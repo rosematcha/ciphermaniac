@@ -9,6 +9,12 @@ import type { EarningsPlayer } from '../../shared/earningsTypes.js';
 
 export type EarningsLens = 'career' | 'top-seasons' | 'current';
 
+/**
+ * Which money a lens counts: what was actually paid at the time, or the same
+ * finishes restated at today's published payouts.
+ */
+export type EarningsBasis = 'actual' | 'adjusted';
+
 export interface EarningsRow {
   /**
    * Competition rank: equal amounts share a rank and the next distinct amount
@@ -30,19 +36,22 @@ type Scored = Omit<EarningsRow, 'rank'>;
  * occupy two places on a table of the biggest seasons ever, not have the
  * smaller one hidden behind the bigger one.
  */
-function seasonRows(player: EarningsPlayer): Scored[] {
-  return Object.entries(player.seasons).map(([seasonKey, amount]) => ({ player, amount, seasonKey }));
+function seasonRows(player: EarningsPlayer, basis: EarningsBasis): Scored[] {
+  return Object.entries(player[basis].seasons).map(([seasonKey, amount]) => ({ player, amount, seasonKey }));
 }
 
 /** The amounts a lens reads off one player — none, one, or one per season. */
-function lensRows(player: EarningsPlayer, lens: EarningsLens, currentSeason: string): Scored[] {
+function lensRows(player: EarningsPlayer, lens: EarningsLens, currentSeason: string, basis: EarningsBasis): Scored[] {
+  const totals = player[basis];
   if (lens === 'career') {
-    return [{ player, amount: player.total, seasonKey: null }];
+    // A player can have no money at all under one basis and plenty under the
+    // other, so an empty career total drops out rather than ranking at zero.
+    return totals.total === 0 ? [] : [{ player, amount: totals.total, seasonKey: null }];
   }
   if (lens === 'top-seasons') {
-    return seasonRows(player);
+    return seasonRows(player, basis);
   }
-  const amount = player.seasons[currentSeason];
+  const amount = totals.seasons[currentSeason];
   return amount == null ? [] : [{ player, amount, seasonKey: currentSeason }];
 }
 
@@ -52,8 +61,13 @@ function lensRows(player: EarningsPlayer, lens: EarningsLens, currentSeason: str
  *
  * Ties break by name, then season, so the order is stable across renders.
  */
-export function rankByLens(players: EarningsPlayer[], lens: EarningsLens, currentSeason: string): EarningsRow[] {
-  const scored = players.flatMap(player => lensRows(player, lens, currentSeason));
+export function rankByLens(
+  players: EarningsPlayer[],
+  lens: EarningsLens,
+  currentSeason: string,
+  basis: EarningsBasis
+): EarningsRow[] {
+  const scored = players.flatMap(player => lensRows(player, lens, currentSeason, basis));
   scored.sort(
     (a, b) =>
       b.amount - a.amount ||

@@ -9,8 +9,11 @@
  */
 
 import { cardSupercategory } from '../../lib/cardStats';
+import { itemUid } from '../../lib/data/compat';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../../lib/constants';
 import type { Day2CardStat } from '../../lib/data/events';
+import type { EventCardStat, EventField } from './eventField';
+import { type OnlineField, onlineFieldRate } from './onlineField';
 import type { CardItem } from '../../types';
 
 export type Mode = 'standard' | 'rising' | 'converting' | 'fraudulent';
@@ -26,7 +29,11 @@ export interface RenderItem {
   total: number;
   pct: number;
   cat: CatKind;
-  /** Rising mode only: percentage-point delta vs comparison. */
+  /**
+   * Rising mode: percentage-point gain over the comparison event.
+   * Fraudulent mode: the card's rate at the tournament minus its online one,
+   * so a fraud is always negative.
+   */
   delta?: number;
   /** Converting mode only: Day 1 to Day 2 conversion (0..100). */
   conversion?: number;
@@ -34,12 +41,25 @@ export interface RenderItem {
   day2Count?: number;
   /** Converting mode only: count of all Day 1 decks playing this card. */
   day1Count?: number;
-  /** Fraudulent mode only: share of Day 1 decks playing the card (0..100). */
-  playRate?: number;
+  /** Fraudulent mode only: share of the tournament's decks playing it (0..100). */
+  eventRate?: number;
+  /** Fraudulent mode only: the card's online finish rate (0..100). */
+  onlineSuccessRate?: number;
+  /** Fraudulent mode only: the pooled evidence against the card, in sigma. */
+  score?: number;
 }
 
 /** Modes whose numbers come from the event's Day 1 to Day 2 cut. */
 export function needsDay2Stats(mode: Mode): boolean {
+  return mode === 'converting';
+}
+
+/**
+ * Modes that measure one tournament, and so cannot run against the rolling
+ * online window: Converting needs its Day 2 cut, and Fraudulent would be
+ * comparing the online window against itself.
+ */
+export function needsTournament(mode: Mode): boolean {
   return mode === 'converting' || mode === 'fraudulent';
 }
 
@@ -50,34 +70,47 @@ export function needsDay2Stats(mode: Mode): boolean {
 const POOL_SLACK = 8;
 
 /**
- * How far below the field a card's conversion must fall, in standard
- * deviations, before it counts as a fraud rather than a bad weekend.
+ * How unlikely a card's shortfall must be, in standard deviations, before it
+ * counts as a fraud rather than a different weekend.
  *
- * Roughly a one-sided 93% confidence that the shortfall is real. It doubles as
- * the sample-size guard: a card in twelve decks that converted none of them is
- * only about 0.8 sigma below an 18% field, so it never reaches the graphic.
+ * Applied to the pooled score, so roughly a one-sided 98% confidence that the
+ * card underperformed its reputation on the signals available. It doubles as
+ * the sample-size guard: against a 700-deck event a card has to shed several
+ * points of play rate to clear this on the play term alone, and a card the
+ * event barely sampled never converts its way there either.
  */
-export const FRAUD_MAX_Z = -1.5;
+export const FRAUD_MAX_Z = -2;
 
 /**
- * How far a card's conversion sits from the field's, in standard deviations.
+ * How far a card's play rate at the events sits from its play rate online, in
+ * standard deviations.
  *
- * The field rate is the null hypothesis — if a card were just another card,
- * its Day 2 count would be a binomial draw at that rate — so this measures how
- * unlikely its conversion is rather than how low it is. Popularity enters only
- * through the sample size, which is the point: the same 6-point shortfall is
- * far more damning across 300 decks than across 20.
- * @param conversion - The card's Day 1 to Day 2 conversion (0..100)
- * @param fieldConversion - The event's overall Day 2 rate (0..100)
- * @param sampleSize - Day 1 decks playing the card
- * @returns Standard deviations from the field rate; negative means below it
+ * The two-proportion test treats the online window as the null hypothesis — if
+ * the card were as good as its ladder reputation, the events would be another
+ * draw at that rate — so this measures how unlikely the gap is rather than how
+ * wide it is. Both deck totals enter, which is the point: a 6-point drop across
+ * a 700-deck event is damning, and the same drop across a 60-deck one is not.
+ * @param onlineFound - Online decks playing the card
+ * @param onlineTotal - Online decks in the window
+ * @param eventFound - Event decks playing the card
+ * @param eventTotal - Decks across the pooled events
+ * @returns Standard deviations from the online rate; negative means below it
  */
-export function conversionZScore(conversion: number, fieldConversion: number, sampleSize: number): number {
-  if (sampleSize <= 0 || fieldConversion <= 0 || fieldConversion >= 100) {
+export function playRateZScore(
+  onlineFound: number,
+  onlineTotal: number,
+  eventFound: number,
+  eventTotal: number
+): number {
+  if (onlineTotal <= 0 || eventTotal <= 0) {
     return 0;
   }
-  const sigma = Math.sqrt((fieldConversion * (100 - fieldConversion)) / sampleSize);
-  return sigma === 0 ? 0 : (conversion - fieldConversion) / sigma;
+  const pooled = (onlineFound + eventFound) / (onlineTotal + eventTotal);
+  if (pooled <= 0 || pooled >= 1) {
+    return 0;
+  }
+  const sigma = Math.sqrt(pooled * (1 - pooled) * (1 / onlineTotal + 1 / eventTotal));
+  return sigma === 0 ? 0 : (eventFound / eventTotal - onlineFound / onlineTotal) / sigma;
 }
 
 /** Basic energy is its own set code; it never belongs in a usage graphic. */
@@ -184,11 +217,15 @@ export interface RenderModelInput {
   items: CardItem[] | null;
   /** Rising mode: the comparison tournament's master items. */
   comparisonItems?: CardItem[] | null;
-  /** Converting and fraudulent modes: the event's day-2 stats. */
+  /** Converting mode: the event's day-2 stats. */
   day2Stats?: Day2CardStat[] | null;
-  /** Fraudulent mode: the event's overall Day 2 rate, the yardstick for the outlier test. */
-  fieldConversion?: number | null;
-  /** Fraudulent mode: minimum share of Day 1 decks (0..100) a card must appear in. */
+  /** Fraudulent mode: the online window's rows, the reputation being tested. */
+  onlineItems?: CardItem[] | null;
+  /** Fraudulent mode: the selected tournament, indexed for lookup. */
+  eventField?: EventField | null;
+  /** Fraudulent mode: online finish rates, when the cron has published them. */
+  onlineField?: OnlineField | null;
+  /** Fraudulent mode: minimum share of online decks (0..100) a card must appear in. */
   playFloor?: number;
   /** `SET::NUMBER` to the name it evolves from. */
   evolutionMap?: Map<string, string>;
@@ -218,21 +255,14 @@ function fromDay2Stat(stat: Day2CardStat, master: CardItem | undefined): RenderI
     cat: master ? classify(master) : 'pokemon',
     conversion: stat.conversion,
     day1Count: stat.day1Count,
-    day2Count: stat.day2Count,
-    playRate: master?.pct
+    day2Count: stat.day2Count
   };
 }
 
 /** Day-2 rows with enough of a sample to mean anything, joined to master. */
-function day2Candidates(
-  stats: Day2CardStat[],
-  master: CardItem[],
-  minDecks: number
-): { row: RenderItem; playRate: number }[] {
+function day2Candidates(stats: Day2CardStat[], master: CardItem[], minDecks: number): RenderItem[] {
   const byUid = indexByUid(master);
-  return stats
-    .filter(s => s.day1Count >= minDecks && s.set !== 'SVE')
-    .map(s => ({ row: fromDay2Stat(s, byUid.get(s.uid)), playRate: byUid.get(s.uid)?.pct ?? 0 }));
+  return stats.filter(s => s.day1Count >= minDecks && s.set !== 'SVE').map(s => fromDay2Stat(s, byUid.get(s.uid)));
 }
 
 /** Highest Day 1 to Day 2 conversion first. */
@@ -244,35 +274,152 @@ function convertingCandidates(input: RenderModelInput, master: CardItem[], pool:
   return day2Candidates(stats, master, input.minDecks)
     .sort((a, b) =>
       // Tie-break on sample size so a higher-confidence row wins.
-      b.row.pct !== a.row.pct ? b.row.pct - a.row.pct : b.row.total - a.row.total
+      b.pct !== a.pct ? b.pct - a.pct : b.total - a.total
     )
-    .slice(0, pool)
-    .map(c => c.row);
+    .slice(0, pool);
 }
 
 /**
- * Cards the field overplayed: a real play rate paired with a conversion far
- * enough below the field to be an outlier rather than variance.
+ * Whether the card's set was even available at the tournament.
  *
- * Ranked by how many standard deviations below the field each card sits, so
- * the list is ordered by how unlikely the shortfall is. Basic energy is
- * dropped — its conversion tracks whichever archetypes happened to sleeve it,
- * which says nothing about the card.
+ * The online window is always current, so a set that released after the chosen
+ * event puts its whole roster at the top of the list — heavily played online,
+ * in none of the event's decks. If not one card from a set made those decks,
+ * the two sides were not playing the same format.
  */
-function fraudulentCandidates(input: RenderModelInput, master: CardItem[], pool: number): RenderItem[] {
-  const stats = input.day2Stats;
-  const field = input.fieldConversion;
-  if (!stats || field === null || field === undefined) {
+function playedAtEvent(item: CardItem, field: EventField): boolean {
+  return !item.set || field.sets.has(item.set.toUpperCase());
+}
+
+/** Whether an online row is even eligible to be called a fraud. */
+function isFraudCandidate(item: CardItem, field: EventField, floor: number): boolean {
+  if (isBasicEnergy(item) || classify(item) === 'energy-basic') {
+    return false;
+  }
+  return item.pct >= floor && playedAtEvent(item, field);
+}
+
+/**
+ * How far a rate sits from the field's, in standard deviations.
+ *
+ * The field rate is the null hypothesis — if the card were nothing special, its
+ * successes would be a binomial draw at that rate — so this measures how
+ * unlikely the shortfall is rather than how deep it is. Sample size is the
+ * whole point: an 8-point conversion shortfall across 300 decks is damning, the
+ * same shortfall across 12 decks is a weekend.
+ * @param rate - The card's own rate (0..100)
+ * @param fieldRate - The population's rate (0..100)
+ * @param sampleSize - Decks the card's rate was measured over
+ * @returns Standard deviations from the field rate; negative means below it
+ */
+export function rateZScore(rate: number, fieldRate: number, sampleSize: number): number {
+  if (sampleSize <= 0 || fieldRate <= 0 || fieldRate >= 100) {
+    return 0;
+  }
+  const sigma = Math.sqrt((fieldRate * (100 - fieldRate)) / sampleSize);
+  return sigma === 0 ? 0 : (rate - fieldRate) / sigma;
+}
+
+/** The evidence against a card, in sigma. Absent terms are absent data. */
+export interface FraudSignals {
+  /** Play rate at the event vs online. */
+  play: number;
+  /** Day 2 conversion at the event vs the event's field rate. */
+  conversion: number | null;
+  /** Online finish rate vs the online field's. */
+  online: number | null;
+}
+
+/**
+ * Combine the signals into one score, in sigma.
+ *
+ * Stouffer's method: the sum over the square root of how many terms were
+ * available. Two independent one-sigma shortfalls are stronger evidence than
+ * either alone, and dividing by sqrt(k) keeps a card measured on three signals
+ * on the same scale as one measured on two — an event with no published cut, or
+ * a window with no finish artifact, then costs nothing but precision.
+ * @param signals - The available signals
+ * @returns Combined sigma; negative means the card underperformed its billing
+ */
+export function fraudScore(signals: FraudSignals): number {
+  const terms = [signals.play, signals.conversion, signals.online].filter((z): z is number => z !== null);
+  if (terms.length === 0) {
+    return 0;
+  }
+  return terms.reduce((sum, z) => sum + z, 0) / Math.sqrt(terms.length);
+}
+
+/** How the event's own decks did with the card, when it published a cut. */
+function conversionSignal(stat: EventCardStat | undefined, fieldConversion: number | null): number | null {
+  if (!stat || stat.day1 <= 0 || fieldConversion === null) {
+    return null;
+  }
+  return rateZScore((stat.day2 / stat.day1) * 100, fieldConversion, stat.day1);
+}
+
+/** How the ladder's own decks did with the card, when the artifact exists. */
+function onlineSignal(uid: string, online: OnlineField | null | undefined): number | null {
+  const counts = online?.cards.get(uid);
+  if (!online || !counts || counts.decks <= 0) {
+    return null;
+  }
+  return rateZScore((counts.success / counts.decks) * 100, onlineFieldRate(online), counts.decks);
+}
+
+/** One online row measured against the tournament, on every signal available. */
+function fromOnlineItem(item: CardItem, input: RenderModelInput, field: EventField): RenderItem {
+  // Same UID both sides were keyed under, so a padded collector number on one
+  // side cannot quietly read as "never played" on the other.
+  const uid = itemUid(item);
+  const stat = field.cards.get(uid);
+  const eventFound = stat?.found ?? 0;
+  const eventRate = (eventFound / field.deckTotal) * 100;
+  const counts = input.onlineField?.cards.get(uid);
+  return {
+    ...fromMasterItem(item),
+    // The deck counts describe the event, since that is the claim being made;
+    // `pct` stays the online rate the drop is measured from.
+    found: eventFound,
+    total: field.deckTotal,
+    eventRate,
+    delta: eventRate - item.pct,
+    conversion: stat && stat.day1 > 0 ? (stat.day2 / stat.day1) * 100 : undefined,
+    onlineSuccessRate: counts && counts.decks > 0 ? (counts.success / counts.decks) * 100 : undefined,
+    score: fraudScore({
+      play: playRateZScore(item.found, item.total, eventFound, field.deckTotal),
+      conversion: conversionSignal(stat, field.fieldConversion),
+      online: onlineSignal(uid, input.onlineField)
+    })
+  };
+}
+
+/**
+ * Cards the ladder rates higher than their results justify: a real online play
+ * rate, paired with evidence from the tournament that the rate was not earned.
+ *
+ * The candidates come from the ONLINE side, not the event's own report — a card
+ * nobody at the tournament sleeved is the strongest fraud there is, and it has
+ * no row in the event to be found on.
+ *
+ * Three things can count against a card, and {@link fraudScore} pools them: the
+ * field dropped it, the decks that kept it missed Day 2, and it was already
+ * losing online. Ranking on the pooled score rather than on the play-rate drop
+ * is what keeps a card that is merely UNDERRATED — barely played at the event
+ * but converting well when it was — off a list titled fraudulent.
+ */
+function fraudulentCandidates(input: RenderModelInput, pool: number): RenderItem[] {
+  const field = input.eventField;
+  const { onlineItems } = input;
+  if (!field || !onlineItems || field.deckTotal <= 0) {
     return [];
   }
   const floor = input.playFloor ?? 0;
-  return day2Candidates(stats, master, 0)
-    .filter(c => c.playRate >= floor && c.row.cat !== 'energy-basic')
-    .map(c => ({ ...c, z: conversionZScore(c.row.pct, field, c.row.total) }))
-    .filter(c => c.z <= FRAUD_MAX_Z)
-    .sort((a, b) => a.z - b.z)
-    .slice(0, pool)
-    .map(c => c.row);
+  return onlineItems
+    .filter(it => isFraudCandidate(it, field, floor))
+    .map(it => fromOnlineItem(it, input, field))
+    .filter(row => (row.score ?? 0) <= FRAUD_MAX_Z)
+    .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+    .slice(0, pool);
 }
 
 /** Biggest gain in play rate against the comparison event. */
@@ -316,7 +463,7 @@ function candidatesFor(input: RenderModelInput, master: CardItem[], pool: number
     return convertingCandidates(input, master, pool);
   }
   if (input.mode === 'fraudulent') {
-    return fraudulentCandidates(input, master, pool);
+    return fraudulentCandidates(input, pool);
   }
   if (input.mode === 'rising') {
     return risingCandidates(input, master, pool);

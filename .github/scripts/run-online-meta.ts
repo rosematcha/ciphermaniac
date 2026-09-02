@@ -30,6 +30,7 @@ import { generateReportFromDecks, listedDeckCount } from '../../shared/data/repo
 import { buildArchetypeReports } from '../../shared/data/archetypes/build.js';
 import { onlineArchetypeOptions } from '../../shared/data/reports/onlineArtifacts.js';
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.js';
+import { buildCardSuccessIndex } from '../../shared/data/reports/cardSuccess.js';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.js';
 import {
   decodeStandings,
@@ -695,6 +696,14 @@ async function main(): Promise<void> {
     }
   }
 
+  // Per-card finish rates, computed with the trends above and for the same
+  // reason (P-31): it is pure, in-memory work, so a bug here must surface while
+  // the previous report is still whole rather than between two uploads.
+  const cardSuccess = buildCardSuccessIndex(
+    reportDecks as unknown as Parameters<typeof buildCardSuccessIndex>[0],
+    synonymDb
+  );
+
   // Everything needed for a complete report is now in hand. In clean mode it is
   // finally safe to clear the old artifacts (P-03): a fetch outage, empty window,
   // or trend bug above already aborted without touching production.
@@ -710,6 +719,17 @@ async function main(): Promise<void> {
   if (GENERATE_MASTER) {
     console.log('[online-meta] Uploading master.json...');
     await putJson(`${basePath}/master.json`, masterReport);
+    // Finish rates ride with master: same population, same canonical keys, and
+    // the only other place this window's placements survive is the 36 MB
+    // decks.json that no browser should be asked to download.
+    if (cardSuccess) {
+      console.log(
+        `[online-meta] Uploading cardSuccess.json (${cardSuccess.successTotal}/${cardSuccess.deckTotal} decks ${cardSuccess.tag})...`
+      );
+      await putJson(`${basePath}/cardSuccess.json`, cardSuccess);
+    } else {
+      console.log('[online-meta] Skipping cardSuccess.json (no deck met the field-size floor)');
+    }
   } else {
     console.log('[online-meta] Skipping master.json (GENERATE_MASTER=false)');
   }

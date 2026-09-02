@@ -142,6 +142,31 @@ test('the earnings table re-ranks under each lens', async ({ page }) => {
   await expect(page.locator('tbody tr').first().locator('.earnings-season')).toBeVisible();
 });
 
+test('an earnings row expands into its own breakdown', async ({ page }) => {
+  await gotoClean(page, '/tools/earnings?lens=top-seasons');
+  await expect(page.locator('table.data tbody tr').first()).toBeVisible();
+  // The per-event file is deliberately not fetched until a row is opened.
+  await expect(page.locator('.row-expansion')).toHaveCount(0);
+
+  // Driven by keyboard rather than click: the table header is sticky, so on a
+  // short viewport whatever row Playwright scrolls to ends up underneath it and
+  // pointer hit-testing fails. The caret is a real button, so this also covers
+  // the keyboard path.
+  const openRow = async (index: number) => {
+    const caret = page.locator('tbody tr.is-link .row-caret').nth(index);
+    await caret.focus();
+    await page.keyboard.press('Enter');
+  };
+
+  await openRow(0);
+  await expect(page.locator('.row-expansion')).toHaveCount(1);
+  await expect(page.locator('.earnings-breakdown tr').first()).toBeVisible();
+
+  // Opening another row replaces the first — only one panel at a time.
+  await openRow(1);
+  await expect(page.locator('.row-expansion')).toHaveCount(1);
+});
+
 test('social graphics fits long card names inside their cards', async ({ page }, testInfo) => {
   // The canvas is a fixed 1280px desktop composition; the mobile project gets
   // the "built for desktop" note instead, so there is nothing to measure.
