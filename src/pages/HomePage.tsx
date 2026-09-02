@@ -11,15 +11,19 @@ import {
   prettyTournamentName,
   tournamentDate
 } from '../lib/data';
-import type { ArcTag, FieldRow, Story } from '../lib/storylines';
-import type { ArchetypeIndexEntry, TournamentParticipant } from '../types';
+import type { FieldRow, Story } from '../lib/storylines';
+import type { ArchetypeIndexEntry, MetaReport, TournamentParticipant } from '../types';
 import { Skeleton } from '../components/Skeleton';
 import { Section } from '../components/Section';
 import { ArchetypeCard } from '../components/ArchetypeCard';
 import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
 import { formatPercent, nameFromTournamentKey, parseISODate, shortDate } from '../lib/format';
-import { resolved } from '../lib/resource';
+import { latestValue, resolved } from '../lib/resource';
+import type { UpcomingEvent } from '../../shared/upcomingTypes.js';
+import { useTournament } from '../lib/tournamentContext';
+import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
+import { absoluteIso, relativeTimeAgo } from '../lib/freshness';
 
 /**
  * storylines.ts (~25KB source) is home-only, but HomePage is deliberately
@@ -52,29 +56,40 @@ const LATEST_EVENT_WINDOW_DAYS = 14;
 // regions (e.g. Utrecht + Campinas on the same weekend).
 const LATEST_EVENT_CLUSTER_DAYS = 3;
 const RECENT_MAJORS_COUNT = 6;
+const CUT_STRIP_ROWS = 8;
 const UPCOMING_COUNT = 6;
 
 /**
  * Home page.
  *
- * Locked to the rolling online meta regardless of the global tournament
- * selector — this page is a site-wide overview, not a tournament view.
+ * Follows the global tournament selector. On the default online-meta scope
+ * the page is a site-wide overview: the callout auto-picks the most recent
+ * major and Top archetypes reads the rolling online meta. When a specific
+ * event is selected, the callout shows that event (no recency gate) and
+ * Top archetypes reads that event's field.
  *
  * Sections:
- *   1. Latest major-event callout (only if a regional/international finished
- *      within the last 14 days)
- *   2. Top archetypes gallery (online meta)
+ *   1. Event callout (latest major within 14 days, or the selected event)
+ *   2. Top archetypes gallery (scope's archetype index)
  *   3. Recent major tournaments (regional + international + special)
  *   4. Upcoming tournaments (scraped from Limitless)
  */
 export function HomePage() {
-  const [archetypes] = createResource(fetchOnlineArchetypes);
+  const { tournament } = useTournament();
+  const isOnlineScope = () => tournament() === ONLINE_META_NAME;
+  const [onlineArchetypes] = createResource(fetchOnlineArchetypes);
+  const [scopeArchetypes] = createResource(tournament, fetchArchetypes);
+  const [scopeMeta] = createResource(tournament, fetchMeta);
   const [tournamentsList] = createResource(fetchTournamentsList);
   const [upcoming] = createResource(fetchUpcomingTournaments);
 
   // Non-suspending reads: keep navigation instant and let the skeleton /
   // error fallbacks below actually render (see lib/resource.ts).
-  const archetypesData = () => resolved(archetypes);
+  const onlineArchetypesData = () => resolved(onlineArchetypes);
+  // Scope-keyed: stale-while-revalidate so a selector switch updates the grid
+  // in place rather than flashing the skeleton.
+  const archetypesData = () => latestValue(scopeArchetypes);
+  const scopeMetaData = () => latestValue(scopeMeta);
   const tournamentsListData = () => resolved(tournamentsList);
   const upcomingData = () => resolved(upcoming);
 
@@ -126,6 +141,8 @@ export function HomePage() {
   });
 
   const latestMajorData = () => resolved(latestMajor);
+  /** Event the callout shows: the selected tournament, else the auto-picked latest major. */
+  const calloutKey = () => (isOnlineScope() ? latestMajorData() : tournament());
 
   // The residual "Other" bucket is not a real archetype and must not rank
   // inline among named decks. Pull it out of the grid and surface it as a
@@ -144,13 +161,23 @@ export function HomePage() {
 
   return (
     <>
-      <Show when={latestMajorData()}>
-        <section class='home-callout-wrap'>
-          <LatestEventCallout tournamentKey={latestMajorData()!} onlineArchetypes={archetypesData()} />
-        </section>
+      <Show when={calloutKey()} keyed fallback={<h1 class='sr-only'>Ciphermaniac</h1>}>
+        {key => (
+          <section class='home-callout-wrap'>
+            <LatestEventCallout tournamentKey={key} onlineArchetypes={onlineArchetypesData()} />
+          </section>
+        )}
       </Show>
 
-      <Section title='Top archetypes' right={<A href='/archetypes'>View all →</A>}>
+      <Section
+        title='Top archetypes'
+        right={
+          <>
+            <ScopeLine tournament={tournament()} meta={scopeMetaData()} archetypes={archetypesData()} />
+            <A href='/archetypes'>View all →</A>
+          </>
+        }
+      >
         <Show
           when={archetypesData()}
           fallback={
@@ -173,7 +200,8 @@ export function HomePage() {
             </div>
             <Show when={otherEntry()}>
               <p class='gallery-other'>
-                + Other: {(otherEntry()!.deckCount ?? 0).toLocaleString()} decks, {formatPercent(otherEntry()!.percent)}
+                + Other: {(otherEntry()!.deckCount ?? 0).toLocaleString()} decks,{' '}
+                {formatPercent(otherEntry()!.percent, 0)}
               </p>
             </Show>
           </Show>
@@ -230,27 +258,46 @@ export function HomePage() {
             }
           >
             <div class='tournament-list'>
-              <For each={upcomingData()!.events.slice(0, UPCOMING_COUNT)}>
-                {e => (
-                  <a
-                    class='tournament-row tournament-row-link'
-                    href={e.limitlessUrl ?? e.externalUrl ?? '#'}
-                    target='_blank'
-                    rel='noopener'
-                  >
-                    <span class='date'>{shortDate(parseISODate(e.date))}</span>
-                    <span class='name'>{e.name}</span>
-                    <span class='players'>
-                      {labelType(e.type)} · {e.country}
-                    </span>
-                  </a>
-                )}
-              </For>
+              <For each={upcomingData()!.events.slice(0, UPCOMING_COUNT)}>{e => <UpcomingRow event={e} />}</For>
             </div>
           </Show>
         </Show>
       </Section>
     </>
+  );
+}
+
+/* ---------- Scope line ---------- */
+
+/**
+ * States what the Top archetypes grid is measuring and how current it is:
+ * scope label, deck count, and the report's generation time. Freshness is
+ * the site's core promise, so it belongs next to the numbers, not only in
+ * the topnav chip.
+ */
+function ScopeLine(props: {
+  tournament: string;
+  meta: MetaReport | undefined;
+  archetypes: ArchetypeIndexEntry[] | undefined;
+}) {
+  const label = () =>
+    props.tournament === ONLINE_META_NAME ? ONLINE_META_LABEL : prettyTournamentName(props.tournament);
+  // Event meta.json files predate deckTotal; sum the index as a fallback.
+  const decks = () =>
+    props.meta?.deckTotal ?? props.archetypes?.reduce((acc, a) => acc + (a.deckCount ?? 0), 0) ?? undefined;
+  const updated = () => (props.meta?.generatedAt ? relativeTimeAgo(props.meta.generatedAt) : null);
+  return (
+    <span class='scope-line'>
+      <span>{label()}</span>
+      <Show when={decks()}>
+        <span class='dot'>·</span>
+        <span>{decks()!.toLocaleString()} decks</span>
+      </Show>
+      <Show when={updated()}>
+        <span class='dot'>·</span>
+        <span title={absoluteIso(props.meta!.generatedAt)}>updated {updated()} ago</span>
+      </Show>
+    </span>
   );
 }
 
@@ -494,6 +541,17 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
     return max || null;
   });
 
+  // Roster is capped so a 32-player cut doesn't push the archetype grid off
+  // screen; the disclosure resets when the callout re-keys to another event.
+  const [showFullCut, setShowFullCut] = createSignal(false);
+  const sortedCut = createMemo(() =>
+    topCutParticipants()
+      .slice()
+      .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99))
+  );
+  const visibleCut = () => (showFullCut() ? sortedCut() : sortedCut().slice(0, CUT_STRIP_ROWS));
+  const hiddenCutCount = () => sortedCut().length - visibleCut().length;
+
   /** Field summary for the header line: players, decklists, drops, diversity. */
   const fieldSummary = createMemo(() => {
     const players = eventMeta()?.players ?? participantsData()?.length ?? 0;
@@ -513,36 +571,37 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
   return (
     <article class='callout'>
       <header class='callout-head'>
-        <span class='callout-eyebrow'>Latest event</span>
-        <h2 class='callout-title'>{eventMeta()?.name ?? prettyTournamentName(props.tournamentKey)}</h2>
+        <h1 class='callout-title'>{eventMeta()?.name ?? prettyTournamentName(props.tournamentKey)}</h1>
         <div class='callout-meta'>
           <Show when={eventMeta()?.date}>
             <span>{eventMeta()!.date}</span>
           </Show>
           <Show when={eventMeta()?.city || eventMeta()?.country}>
-            <span class='dot'>·</span>
-            <span>{[eventMeta()!.city, eventMeta()!.country].filter(Boolean).join(', ')}</span>
+            <span class='dot callout-meta-extra'>·</span>
+            <span class='callout-meta-extra'>
+              {[eventMeta()!.city, eventMeta()!.country].filter(Boolean).join(', ')}
+            </span>
           </Show>
           <Show when={fieldSummary().players > 0}>
             <span class='dot'>·</span>
             <span>{fieldSummary().players.toLocaleString()} players</span>
           </Show>
           <Show when={fieldSummary().decklists > 0 && fieldSummary().decklists !== fieldSummary().players}>
-            <span class='dot'>·</span>
-            <span>{fieldSummary().decklists.toLocaleString()} decklists</span>
+            <span class='dot callout-meta-extra'>·</span>
+            <span class='callout-meta-extra'>{fieldSummary().decklists.toLocaleString()} decklists</span>
           </Show>
           <Show when={fieldSummary().drops > 0}>
-            <span class='dot'>·</span>
-            <span>{fieldSummary().drops} dropped</span>
+            <span class='dot callout-meta-extra'>·</span>
+            <span class='callout-meta-extra'>{fieldSummary().drops} dropped</span>
           </Show>
           <Show when={fieldSummary().day2 > 0}>
-            <span class='dot'>·</span>
-            <span>{fieldSummary().day2} to Day 2</span>
+            <span class='dot callout-meta-extra'>·</span>
+            <span class='callout-meta-extra'>{fieldSummary().day2} to Day 2</span>
           </Show>
           <Show when={fieldSummary().cutSize > 0}>
-            <span class='dot'>·</span>
-            <span>
-              {fieldSummary().cutDiversity} of {fieldSummary().cutSize} unique in cut
+            <span class='dot callout-meta-extra'>·</span>
+            <span class='callout-meta-extra'>
+              {fieldSummary().cutDiversity} of {fieldSummary().cutSize} archetypes in cut
             </span>
           </Show>
           <Show when={eventMeta()?.format}>
@@ -557,7 +616,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
       <Show
         when={!participants.loading}
         fallback={
-          <div class='callout-body'>
+          <div class='callout-loading'>
             <Skeleton height='240px' />
           </div>
         }
@@ -577,12 +636,11 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
 
       <Show when={topCutParticipants().length > 0}>
         <div class='callout-cut-strip'>
-          <ul class='callout-cut-strip-list'>
-            <For
-              each={topCutParticipants()
-                .slice()
-                .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99))}
-            >
+          <h2 class='callout-cut-strip-label' id='callout-cut-heading'>
+            Top cut · {topCutParticipants().length}
+          </h2>
+          <ul class='callout-cut-strip-list' aria-labelledby='callout-cut-heading'>
+            <For each={visibleCut()}>
               {p => {
                 const entry = lookupArchetype(p.deckName);
                 return (
@@ -605,6 +663,11 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
               }}
             </For>
           </ul>
+          <Show when={hiddenCutCount() > 0}>
+            <button type='button' class='callout-cut-more' onClick={() => setShowFullCut(true)}>
+              Show all {topCutParticipants().length}
+            </button>
+          </Show>
         </div>
       </Show>
 
@@ -735,14 +798,22 @@ function StoryCard(props: { story: Story; hasDay2: boolean }) {
           <CardStack thumbnails={thumbnails()} size='sm' />
         </Show>
       </div>
-      <div class='story-card-tag' title={ARC_TAG_TITLES[props.story.tag]}>
-        <span class='story-card-symbol' aria-hidden='true'>
-          {meta().symbol}
+      <div class='story-card-head'>
+        <h3 class='story-card-subject'>{props.story.subject}</h3>
+        <span class='story-card-tag'>
+          <span class='story-card-symbol' aria-hidden='true'>
+            {meta().symbol}
+          </span>
+          <span>{props.story.tagLabel}</span>
         </span>
-        <span>{props.story.tagLabel ?? meta().label}</span>
       </div>
-      <h4 class='story-card-headline'>{props.story.headline}</h4>
-      <p class='story-card-body'>{props.story.body}</p>
+      <p class='story-card-figure'>
+        <span class='story-card-value'>{props.story.figure}</span>
+        <span class='story-card-measure'>{props.story.measure}</span>
+      </p>
+      <Show when={props.story.detail}>
+        <p class='story-card-detail'>{props.story.detail}</p>
+      </Show>
     </A>
   );
 }
@@ -756,18 +827,6 @@ function isOtherEntry(a: ArchetypeIndexEntry): boolean {
   return normalize(a.label || a.name) === 'other';
 }
 
-/**
- * Concrete scale for each story tag, taken verbatim from the thresholds in
- * `classifyArc` (src/lib/storylines.ts). Surfaced as a `title` on the tag so a
- * bare "surged"/"faded" chip states what it actually measures.
- */
-const ARC_TAG_TITLES: Record<ArcTag, string> = {
-  surged: 'Share climbed at least 1 pp at both the Day 2 and top-cut steps.',
-  climbed: 'Share climbed at least 1 pp at either the Day 2 or top-cut step.',
-  faded: 'At least 5% of the field, but none of the top cut.',
-  steady: 'No move of at least 1 pp through the Day 2 and top-cut steps.'
-};
-
 /* ---------- Recent major row ---------- */
 
 function RecentMajorRow(props: { tournamentKey: string }) {
@@ -778,6 +837,30 @@ function RecentMajorRow(props: { tournamentKey: string }) {
       <span class='name'>{nameFromTournamentKey(props.tournamentKey)}</span>
       <span class='players'>{classifyByName(props.tournamentKey)}</span>
     </div>
+  );
+}
+
+/**
+ * Upcoming row: an external link when Limitless gives us one, otherwise a
+ * plain row — never a `#` anchor that opens an empty tab.
+ */
+function UpcomingRow(props: { event: UpcomingEvent }) {
+  const href = () => props.event.limitlessUrl ?? props.event.externalUrl ?? null;
+  const cells = (
+    <>
+      <span class='date'>{shortDate(parseISODate(props.event.date))}</span>
+      <span class='name'>{props.event.name}</span>
+      <span class='players'>
+        {labelType(props.event.type)} · {props.event.country}
+      </span>
+    </>
+  );
+  return (
+    <Show when={href()} fallback={<div class='tournament-row'>{cells}</div>}>
+      <a class='tournament-row tournament-row-link' href={href()!} target='_blank' rel='noopener'>
+        {cells}
+      </a>
+    </Show>
   );
 }
 
