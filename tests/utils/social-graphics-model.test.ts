@@ -15,9 +15,9 @@ import {
   buildRenderModel,
   classify,
   collapseEvolutions,
-  conversionZScore,
   FRAUD_MAX_Z,
   isBasicEnergy,
+  playRateZScore,
   type RenderItem,
   shortTournament,
   statsAreClose,
@@ -233,98 +233,120 @@ test('converting mode excludes basic energy', () => {
 // Fraudulent
 // ---------------------------------------------------------------------------
 
-/** A day-2 stat row whose uid matches `item()`, so it joins to a play rate. */
-function stat(name: string, conversion: number, day1Count: number) {
+/** An event field in which every named card sits at `rate` percent of decks. */
+function field(rates: Record<string, number>, deckTotal = 800, sets = ['SVI']) {
+  const found = new Map<string, number>();
+  for (const [name, rate] of Object.entries(rates)) {
+    found.set(`${name}::SVI::001`, Math.round((rate / 100) * deckTotal));
+  }
   return {
-    uid: `${name}::SVI::001`,
-    name,
-    set: 'SVI',
-    number: '1',
-    conversion,
-    day1Count,
-    day2Count: Math.round((conversion / 100) * day1Count)
+    deckTotal,
+    found,
+    events: ['2026-08-28, World Championship San Francisco'],
+    sets: new Set(sets),
+    fellBack: false
   };
 }
 
-/** Fraudulent needs the field rate, and reads play rate off the master rows. */
-function fraudulent(master: CardItem[], stats: unknown, playFloor = 0, fieldConversion: number | null = 20) {
+/** Fraudulent reads the online rates off master and the results off the field. */
+function fraudulent(master: CardItem[], eventField: unknown, playFloor = 0) {
   return buildRenderModel({
     mode: 'fraudulent',
     size: 10,
     minDecks: 5,
     items: master,
-    day2Stats: stats as never,
-    fieldConversion,
+    eventField: eventField as never,
     playFloor
   });
 }
 
-test('a conversion far below the field scores as an outlier, and sample size decides how far', () => {
-  // Same 10-point shortfall, four times the decks: twice the certainty.
-  assert.ok(conversionZScore(10, 20, 100) < FRAUD_MAX_Z);
-  assert.ok(conversionZScore(10, 20, 400) < conversionZScore(10, 20, 100));
-  // At the field rate a card is nothing special, and above it is not a fraud.
-  assert.equal(conversionZScore(20, 20, 100), 0);
-  assert.ok(conversionZScore(30, 20, 100) > 0);
+/** An online master row: `pct` of `total` decks played it. */
+function online(name: string, pct: number, total = 10000, extra: Partial<CardItem> = {}): CardItem {
+  return item(name, pct, { found: Math.round((pct / 100) * total), total, ...extra });
+}
+
+test('a drop from the online rate scores as an outlier, and both deck totals decide how far', () => {
+  // Same 10-point drop, four times the event decks: a stronger reading.
+  assert.ok(playRateZScore(3000, 10000, 200, 1000) < FRAUD_MAX_Z);
+  assert.ok(playRateZScore(3000, 10000, 800, 4000) < playRateZScore(3000, 10000, 200, 1000));
+  // At its online rate a card is nothing special, and above it is no fraud.
+  assert.equal(playRateZScore(3000, 10000, 300, 1000), 0);
+  assert.ok(playRateZScore(3000, 10000, 400, 1000) > 0);
   // Degenerate inputs score neutral rather than dividing by zero.
-  assert.equal(conversionZScore(0, 20, 0), 0);
-  assert.equal(conversionZScore(0, 0, 50), 0);
+  assert.equal(playRateZScore(3000, 10000, 0, 0), 0);
+  assert.equal(playRateZScore(0, 0, 100, 1000), 0);
+  assert.equal(playRateZScore(0, 10000, 0, 1000), 0);
 });
 
-test('fraudulent mode ranks by the strength of the shortfall, not by its size', () => {
-  const master = [item('Widespread', 40), item('Narrow', 12)];
-  // Narrow is further below the field, but off a sample too small to trust.
-  const stats = [stat('Widespread', 10, 400), stat('Narrow', 5, 20)];
-  const out = fraudulent(master, stats);
+test('fraudulent mode ranks by how far a card fell, not by how popular it was', () => {
+  const master = [online('Ladder Darling', 30), online('Bigger Faller', 40)];
+  const out = fraudulent(master, field({ 'Ladder Darling': 18, 'Bigger Faller': 22 }));
   assert.deepEqual(
     out.map(r => r.name),
-    ['Widespread', 'Narrow']
+    ['Bigger Faller', 'Ladder Darling']
   );
-  assert.equal(out[0].playRate, 40, 'the play rate rides along for the subtitle');
-  assert.equal(out[0].pct, 10, 'the headline number is still the conversion rate');
+  assert.equal(out[0].pct, 40, 'the online rate is what the drop is measured from');
+  assert.equal(Math.round(out[0].eventRate ?? 0), 22, 'the event rate rides along for the subtitle');
+  assert.equal(Math.round(out[0].delta ?? 0), -18);
+  assert.equal(out[0].total, 800, 'the deck counts describe the events, which is the claim');
 });
 
-test('fraudulent mode drops shortfalls that are within noise', () => {
-  const master = [item('Unlucky', 30)];
-  // One of twelve decks against a 20% field is about a sigma out — an ordinary
-  // weekend for a small sample, not a fraud.
-  const out = fraudulent(master, [stat('Unlucky', 8, 12)]);
-  assert.deepEqual(out, []);
+test('fraudulent mode drops gaps that are within noise', () => {
+  // Two points off a 20% card, against 800 event decks, is an ordinary weekend.
+  assert.deepEqual(fraudulent([online('Steady', 20)], field({ Steady: 18 })), []);
 });
 
-test('fraudulent mode ignores cards below the play-rate floor', () => {
-  const master = [item('Popular', 25), item('Rare', 4)];
-  const stats = [stat('Popular', 8, 200), stat('Rare', 2, 200)];
+test('a card the events never sleeved is the strongest fraud there is', () => {
+  const out = fraudulent([online('Absent', 25)], field({}));
   assert.deepEqual(
-    fraudulent(master, stats, 10).map(r => r.name),
+    out.map(r => r.name),
+    ['Absent']
+  );
+  assert.equal(out[0].eventRate, 0);
+  assert.equal(out[0].found, 0);
+});
+
+test('fraudulent mode ignores cards below the online play floor', () => {
+  const master = [online('Popular', 25), online('Fringe', 4)];
+  assert.deepEqual(
+    fraudulent(master, field({ Popular: 8, Fringe: 0 }), 10).map(r => r.name),
     ['Popular'],
-    'a card in 4% of decks was not overplayed, whatever it converted at'
+    'a card in 4% of online decks was never hyped enough to be a fraud'
   );
 });
 
 test('fraudulent mode excludes basic energy', () => {
-  // Basic energy converts like whichever decks happened to sleeve it.
+  // Basic energy tracks whichever archetypes happened to sleeve it.
   const master = [
-    item('Darkness Energy', 60, { uid: 'Darkness Energy::SVI::001', category: 'energy/basic' } as Partial<CardItem>),
-    item('Boss Card', 30)
+    online('Darkness Energy', 60, 10000, { category: 'energy/basic' } as Partial<CardItem>),
+    online('Boss Card', 30)
   ];
-  const stats = [stat('Darkness Energy', 8, 400), stat('Boss Card', 9, 300)];
+  const out = fraudulent(master, field({ 'Darkness Energy': 30, 'Boss Card': 12 }));
   assert.deepEqual(
-    fraudulent(master, stats).map(r => r.name),
+    out.map(r => r.name),
     ['Boss Card']
   );
 });
 
-test('fraudulent mode renders nothing without a field rate to measure against', () => {
-  const master = [item('Widespread', 40)];
-  assert.deepEqual(fraudulent(master, [stat('Widespread', 5, 300)], 0, null), []);
+test('a set the events never saw is a format gap, not a fraud', () => {
+  // A set that released mid-window, or after the event the field fell back to,
+  // would otherwise put its whole roster at the top of the list.
+  const master = [online('Brand New', 30)];
+  assert.deepEqual(fraudulent(master, field({}, 800, ['MEG'])), []);
+  assert.deepEqual(
+    fraudulent(master, field({}, 800, ['SVI'])).map(r => r.name),
+    ['Brand New'],
+    'the same card is a fraud once its set is on the table'
+  );
 });
 
-test('fraudulent mode skips cards it cannot match to a play rate', () => {
-  const stats = [
-    { uid: 'unmatched', name: 'Ghost', set: 'SVI', number: '9', conversion: 5, day1Count: 80, day2Count: 4 }
-  ];
-  assert.deepEqual(fraudulent(MASTER, stats, 10), []);
+test('fraudulent mode renders nothing without events to measure against', () => {
+  const master = [online('Widespread', 40)];
+  assert.deepEqual(fraudulent(master, null), []);
+  assert.deepEqual(
+    fraudulent(master, { deckTotal: 0, found: new Map(), events: [], sets: new Set(), fellBack: false }),
+    []
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -346,16 +368,9 @@ test('a mode renders nothing until its own data arrives', () => {
     'converting needs the day-2 stats'
   );
   assert.deepEqual(
-    buildRenderModel({
-      mode: 'fraudulent',
-      size: 10,
-      minDecks: 5,
-      items: MASTER,
-      day2Stats: null,
-      fieldConversion: 20
-    }),
+    buildRenderModel({ mode: 'fraudulent', size: 10, minDecks: 5, items: MASTER, eventField: null }),
     [],
-    'fraudulent needs the day-2 stats'
+    'fraudulent needs the event field'
   );
 });
 
