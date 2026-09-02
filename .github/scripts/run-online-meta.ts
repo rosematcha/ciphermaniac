@@ -30,6 +30,7 @@ import { generateReportFromDecks, listedDeckCount } from '../../shared/data/repo
 import { buildArchetypeReports } from '../../shared/data/archetypes/build.js';
 import { onlineArchetypeOptions } from '../../shared/data/reports/onlineArtifacts.js';
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.js';
+import { buildCardSuccessIndex } from '../../shared/data/reports/cardSuccess.js';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.js';
 import {
   decodeStandings,
@@ -710,6 +711,21 @@ async function main(): Promise<void> {
   if (GENERATE_MASTER) {
     console.log('[online-meta] Uploading master.json...');
     await putJson(`${basePath}/master.json`, masterReport);
+    // Finish rates ride with master: same population, same canonical keys, and
+    // the only other place this window's placements survive is the 36 MB
+    // decks.json that no browser should be asked to download.
+    const cardSuccess = buildCardSuccessIndex(
+      reportDecks as unknown as Parameters<typeof buildCardSuccessIndex>[0],
+      synonymDb
+    );
+    if (cardSuccess) {
+      console.log(
+        `[online-meta] Uploading cardSuccess.json (${cardSuccess.successTotal}/${cardSuccess.deckTotal} decks ${cardSuccess.tag})...`
+      );
+      await putJson(`${basePath}/cardSuccess.json`, cardSuccess);
+    } else {
+      console.log('[online-meta] Skipping cardSuccess.json (no deck met the field-size floor)');
+    }
   } else {
     console.log('[online-meta] Skipping master.json (GENERATE_MASTER=false)');
   }
