@@ -1480,16 +1480,9 @@ body[data-mode='dark'] .tournament-row-link:hover {
   opacity: 0.5;
 }
 
-/* Body splits into "winner with deck thumbnail" (left) + "top cut" (right). */
-.callout-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0;
-}
-@media (max-width: 720px) {
-  .callout-body {
-    grid-template-columns: 1fr;
-  }
+/* Skeleton slot while participants load; same inset as the stories block. */
+.callout-loading {
+  padding: 22px 28px 26px;
 }
 
 .callout-format-pill {
@@ -1578,6 +1571,75 @@ body[data-mode='dark'] .tournament-row-link:hover {
 .callout-cut-strip-row .cut-deck:hover {
   text-decoration: underline;
 }
+.callout-cut-more {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.callout-cut-more:hover {
+  color: var(--fg);
+}
+
+@media (max-width: 640px) {
+  .callout-head,
+  .callout-cut-strip,
+  .callout-stories,
+  .callout-loading {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  .callout-head {
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-3);
+  }
+  .callout-title {
+    font-size: 24px;
+  }
+  .callout-meta-extra {
+    display: none;
+  }
+  .callout-cut-strip-list {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .callout-cut-strip-row {
+    grid-template-columns: 36px auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    row-gap: 2px;
+    padding: 6px 0;
+  }
+  .callout-cut-strip-row .cut-place {
+    grid-row: 1 / span 2;
+    align-self: start;
+  }
+  .callout-cut-strip-row .cut-name {
+    grid-column: 2 / span 2;
+    grid-row: 1;
+  }
+  .callout-cut-strip-row .cut-country {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .callout-cut-strip-row .cut-country-empty {
+    display: none;
+  }
+  .callout-cut-strip-row .cut-deck {
+    grid-column: 3;
+    grid-row: 2;
+    max-width: none;
+  }
+  .callout-cut-strip-row .cut-country-empty + .cut-name + .cut-deck {
+    grid-column: 2 / span 2;
+  }
+}
 
 /* ---------- Conversion table (Field → Day 2 → top cut) ---------- */
 .conversion-disclosure {
@@ -1611,30 +1673,8 @@ body[data-mode='dark'] .tournament-row-link:hover {
    Latest Event callout — Story layout (Stamp design system)
    ===================================================================== */
 
-/* Storylines section header */
 .callout-stories {
   padding: 22px 28px 26px;
-}
-.callout-stories-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-.callout-stories-head h3 {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  margin: 0;
-  color: var(--fg);
-}
-.callout-stories-head .right {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: var(--muted);
 }
 .callout-stories-grid {
   display: grid;

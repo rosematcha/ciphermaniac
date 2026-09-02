@@ -55,6 +55,7 @@ const LATEST_EVENT_WINDOW_DAYS = 14;
 // regions (e.g. Utrecht + Campinas on the same weekend).
 const LATEST_EVENT_CLUSTER_DAYS = 3;
 const RECENT_MAJORS_COUNT = 6;
+const CUT_STRIP_ROWS = 8;
 const UPCOMING_COUNT = 6;
 
 /**
@@ -547,6 +548,17 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
     return max || null;
   });
 
+  // Roster is capped so a 32-player cut doesn't push the archetype grid off
+  // screen; the disclosure resets when the callout re-keys to another event.
+  const [showFullCut, setShowFullCut] = createSignal(false);
+  const sortedCut = createMemo(() =>
+    topCutParticipants()
+      .slice()
+      .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99))
+  );
+  const visibleCut = () => (showFullCut() ? sortedCut() : sortedCut().slice(0, CUT_STRIP_ROWS));
+  const hiddenCutCount = () => sortedCut().length - visibleCut().length;
+
   /** Field summary for the header line: players, decklists, drops, diversity. */
   const fieldSummary = createMemo(() => {
     const players = eventMeta()?.players ?? participantsData()?.length ?? 0;
@@ -572,29 +584,31 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
             <span>{eventMeta()!.date}</span>
           </Show>
           <Show when={eventMeta()?.city || eventMeta()?.country}>
-            <span class='dot'>·</span>
-            <span>{[eventMeta()!.city, eventMeta()!.country].filter(Boolean).join(', ')}</span>
+            <span class='dot callout-meta-extra'>·</span>
+            <span class='callout-meta-extra'>
+              {[eventMeta()!.city, eventMeta()!.country].filter(Boolean).join(', ')}
+            </span>
           </Show>
           <Show when={fieldSummary().players > 0}>
             <span class='dot'>·</span>
             <span>{fieldSummary().players.toLocaleString()} players</span>
           </Show>
           <Show when={fieldSummary().decklists > 0 && fieldSummary().decklists !== fieldSummary().players}>
-            <span class='dot'>·</span>
-            <span>{fieldSummary().decklists.toLocaleString()} decklists</span>
+            <span class='dot callout-meta-extra'>·</span>
+            <span class='callout-meta-extra'>{fieldSummary().decklists.toLocaleString()} decklists</span>
           </Show>
           <Show when={fieldSummary().drops > 0}>
-            <span class='dot'>·</span>
-            <span>{fieldSummary().drops} dropped</span>
+            <span class='dot callout-meta-extra'>·</span>
+            <span class='callout-meta-extra'>{fieldSummary().drops} dropped</span>
           </Show>
           <Show when={fieldSummary().day2 > 0}>
-            <span class='dot'>·</span>
-            <span>{fieldSummary().day2} to Day 2</span>
+            <span class='dot callout-meta-extra'>·</span>
+            <span class='callout-meta-extra'>{fieldSummary().day2} to Day 2</span>
           </Show>
           <Show when={fieldSummary().cutSize > 0}>
-            <span class='dot'>·</span>
-            <span>
-              {fieldSummary().cutDiversity} of {fieldSummary().cutSize} unique in cut
+            <span class='dot callout-meta-extra'>·</span>
+            <span class='callout-meta-extra'>
+              {fieldSummary().cutDiversity} of {fieldSummary().cutSize} archetypes in cut
             </span>
           </Show>
           <Show when={eventMeta()?.format}>
@@ -609,7 +623,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
       <Show
         when={!participants.loading}
         fallback={
-          <div class='callout-body'>
+          <div class='callout-loading'>
             <Skeleton height='240px' />
           </div>
         }
@@ -633,11 +647,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
             Top cut · {topCutParticipants().length}
           </h2>
           <ul class='callout-cut-strip-list' aria-labelledby='callout-cut-heading'>
-            <For
-              each={topCutParticipants()
-                .slice()
-                .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99))}
-            >
+            <For each={visibleCut()}>
               {p => {
                 const entry = lookupArchetype(p.deckName);
                 return (
@@ -660,6 +670,11 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
               }}
             </For>
           </ul>
+          <Show when={hiddenCutCount() > 0}>
+            <button type='button' class='callout-cut-more' onClick={() => setShowFullCut(true)}>
+              Show all {topCutParticipants().length}
+            </button>
+          </Show>
         </div>
       </Show>
 
