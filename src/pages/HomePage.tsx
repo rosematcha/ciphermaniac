@@ -12,7 +12,7 @@ import {
   tournamentDate
 } from '../lib/data';
 import type { ArcTag, FieldRow, Story } from '../lib/storylines';
-import type { ArchetypeIndexEntry, TournamentParticipant } from '../types';
+import type { ArchetypeIndexEntry, MetaReport, TournamentParticipant } from '../types';
 import { Skeleton } from '../components/Skeleton';
 import { Section } from '../components/Section';
 import { ArchetypeCard } from '../components/ArchetypeCard';
@@ -21,7 +21,8 @@ import { EmptyState } from '../components/EmptyState';
 import { formatPercent, nameFromTournamentKey, parseISODate, shortDate } from '../lib/format';
 import { latestValue, resolved } from '../lib/resource';
 import { useTournament } from '../lib/tournamentContext';
-import { ONLINE_META_NAME } from '../lib/constants';
+import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
+import { absoluteIso, relativeTimeAgo } from '../lib/freshness';
 
 /**
  * storylines.ts (~25KB source) is home-only, but HomePage is deliberately
@@ -76,6 +77,7 @@ export function HomePage() {
   const isOnlineScope = () => tournament() === ONLINE_META_NAME;
   const [onlineArchetypes] = createResource(fetchOnlineArchetypes);
   const [scopeArchetypes] = createResource(tournament, fetchArchetypes);
+  const [scopeMeta] = createResource(tournament, fetchMeta);
   const [tournamentsList] = createResource(fetchTournamentsList);
   const [upcoming] = createResource(fetchUpcomingTournaments);
 
@@ -85,6 +87,7 @@ export function HomePage() {
   // Scope-keyed: stale-while-revalidate so a selector switch updates the grid
   // in place rather than flashing the skeleton.
   const archetypesData = () => latestValue(scopeArchetypes);
+  const scopeMetaData = () => latestValue(scopeMeta);
   const tournamentsListData = () => resolved(tournamentsList);
   const upcomingData = () => resolved(upcoming);
 
@@ -164,7 +167,15 @@ export function HomePage() {
         )}
       </Show>
 
-      <Section title='Top archetypes' right={<A href='/archetypes'>View all →</A>}>
+      <Section
+        title='Top archetypes'
+        right={
+          <>
+            <ScopeLine tournament={tournament()} meta={scopeMetaData()} />
+            <A href='/archetypes'>View all →</A>
+          </>
+        }
+      >
         <Show
           when={archetypesData()}
           fallback={
@@ -265,6 +276,34 @@ export function HomePage() {
         </Show>
       </Section>
     </>
+  );
+}
+
+/* ---------- Scope line ---------- */
+
+/**
+ * States what the Top archetypes grid is measuring and how current it is:
+ * scope label, deck count, and the report's generation time. Freshness is
+ * the site's core promise, so it belongs next to the numbers, not only in
+ * the topnav chip.
+ */
+function ScopeLine(props: { tournament: string; meta: MetaReport | undefined }) {
+  const label = () =>
+    props.tournament === ONLINE_META_NAME ? ONLINE_META_LABEL : prettyTournamentName(props.tournament);
+  const decks = () => props.meta?.deckTotal;
+  const updated = () => (props.meta?.generatedAt ? relativeTimeAgo(props.meta.generatedAt) : null);
+  return (
+    <span class='scope-line'>
+      <span>{label()}</span>
+      <Show when={decks()}>
+        <span class='dot'>·</span>
+        <span>{decks()!.toLocaleString()} decks</span>
+      </Show>
+      <Show when={updated()}>
+        <span class='dot'>·</span>
+        <span title={absoluteIso(props.meta!.generatedAt)}>updated {updated()} ago</span>
+      </Show>
+    </span>
   );
 }
 

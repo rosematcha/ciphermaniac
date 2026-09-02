@@ -397,6 +397,28 @@
   font-size: 11px;
   color: var(--muted);
   letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.scope-line {
+  font-variant-numeric: tabular-nums;
+}
+.scope-line .dot {
+  margin: 0 5px;
+  opacity: 0.5;
+}
+@media (max-width: 640px) {
+  .section-head {
+    flex-wrap: wrap;
+  }
+  .section-head .right:has(.scope-line) {
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
 }
 
 /* ---------- KPI tile ---------- */
