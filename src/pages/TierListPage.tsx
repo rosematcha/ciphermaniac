@@ -432,8 +432,9 @@ export function TierListPage() {
                 onChange={e => setSearchParams({ t: e.currentTarget.value })}
                 aria-label='Tournament'
               >
-                <option value={ONLINE_META_NAME}>{prettyTournamentName(ONLINE_META_NAME)}</option>
-                <For each={latestValue(tournaments) ?? []}>
+                {/* The fetched list already leads with the online meta, so it is only
+                    a fallback for the frame before the list arrives. */}
+                <For each={latestValue(tournaments) ?? [ONLINE_META_NAME]}>
                   {name => <option value={name}>{prettyTournamentName(name)}</option>}
                 </For>
               </select>
