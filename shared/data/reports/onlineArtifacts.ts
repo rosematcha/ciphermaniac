@@ -42,7 +42,8 @@ export function onlineArchetypeOptions(
     thumbnailConfig: (thumbnailConfig ?? {}) as never,
     cardTypesDb,
     masterReport: masterReport as never,
-    includeSignatureCards: true
+    includeSignatureCards: true,
+    excludeGenericGroups: true
   };
 }
 
