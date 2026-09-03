@@ -583,6 +583,19 @@
     flex-basis: 100%;
     justify-content: space-between;
   }
+  /* The tail always takes its own line here. Beside the label it fills the
+     row to within a few px in Inter, and the fallback face a phone paints
+     first is wider — so the tail wrapped, then unwrapped as Inter landed, and
+     the gallery under it went down 17px and back (0.27 CLS on the runner,
+     which has no Arial to stand in; Android has none either). A second line
+     that is always there costs nothing. The dot that joined it to the label
+     goes with the join. */
+  .scope-line-tail {
+    display: flex;
+  }
+  .scope-line-tail > .dot:first-child {
+    display: none;
+  }
 }
 
 /* ---------- KPI tile ---------- */
