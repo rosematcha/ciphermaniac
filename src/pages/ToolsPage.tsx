@@ -63,6 +63,27 @@ export function ToolsPage() {
             </div>
           </A>
 
+          <A class='arche' href='/tools/tier-list'>
+            <div class='arche-thumb' aria-hidden='true'>
+              <svg viewBox='0 0 100 80'>
+                <rect x='8' y='14' width='18' height='13' rx='2' fill='currentColor' opacity='0.5' />
+                <rect x='30' y='14' width='11' height='13' rx='2' fill='currentColor' opacity='0.28' />
+                <rect x='45' y='14' width='11' height='13' rx='2' fill='currentColor' opacity='0.28' />
+                <rect x='8' y='31' width='18' height='13' rx='2' fill='currentColor' opacity='0.42' />
+                <rect x='30' y='31' width='11' height='13' rx='2' fill='currentColor' opacity='0.28' />
+                <rect x='8' y='48' width='18' height='13' rx='2' fill='currentColor' opacity='0.28' />
+                <rect x='30' y='48' width='11' height='13' rx='2' fill='currentColor' opacity='0.28' />
+                <rect x='45' y='48' width='11' height='13' rx='2' fill='currentColor' opacity='0.14' />
+              </svg>
+            </div>
+            <div class='arche-name'>Tier List Maker</div>
+            <div class='arche-stats'>
+              <span class='arche-wr'>
+                Rank an event's archetypes, or one card's distinct arts, and save it as an image
+              </span>
+            </div>
+          </A>
+
           <A class='arche' href='/tools/card-wall'>
             <div class='arche-thumb' aria-hidden='true'>
               <svg viewBox='0 0 100 80'>
