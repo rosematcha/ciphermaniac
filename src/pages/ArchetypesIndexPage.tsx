@@ -9,7 +9,7 @@ import { SearchInput } from '../components/Chip';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
-import { ArchetypeCard } from '../components/ArchetypeCard';
+import { ArchetypeCard, ArchetypeCardSkeleton } from '../components/ArchetypeCard';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { createPersistentViewMode } from '../lib/persistentSignal';
 import { formatPercent } from '../lib/format';
@@ -109,7 +109,7 @@ export function ArchetypesIndexPage() {
           fallback={
             <Show when={viewMode() === 'grid'} fallback={<ListSkeleton />}>
               <div class='gallery-grid'>
-                <For each={Array.from({ length: 8 })}>{() => <Skeleton height='240px' />}</For>
+                <For each={Array.from({ length: 8 })}>{() => <ArchetypeCardSkeleton />}</For>
               </div>
             </Show>
           }
@@ -220,11 +220,12 @@ function ArchetypesListView(props: {
     <th class='num sortable' aria-sort={ariaSort(p.col)}>
       <button type='button' class='th-sort' onClick={() => toggle(p.col)}>
         {p.label}
-        <Show when={sortCol() === p.col}>
-          <span class='sort-mark' aria-hidden='true'>
-            {sortDir() === 'ascending' ? '▲' : '▼'}
-          </span>
-        </Show>
+        {/* Always present, hidden when inactive: `table-layout` is auto, so a
+            mark that appears on click re-solves every column width and the
+            whole table jumps sideways under the pointer. */}
+        <span class='sort-mark' classList={{ 'is-idle': sortCol() !== p.col }} aria-hidden='true'>
+          {sortDir() === 'ascending' ? '▲' : '▼'}
+        </span>
       </button>
     </th>
   );

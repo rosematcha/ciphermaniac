@@ -615,11 +615,11 @@ function SortableTh(props: {
     >
       <button class='th-sort' type='button' onClick={() => props.onSort(props.sortKey)}>
         {props.label}
-        <Show when={active()}>
-          <span class='sort-mark' aria-hidden='true'>
-            {props.dir === 'asc' ? '▲' : '▼'}
-          </span>
-        </Show>
+        {/* Always present, hidden when inactive — see the note in
+            ArchetypesIndexPage's SortHeader. */}
+        <span class='sort-mark' classList={{ 'is-idle': !active() }} aria-hidden='true'>
+          {props.dir === 'asc' ? '▲' : '▼'}
+        </span>
       </button>
     </th>
   );
@@ -725,12 +725,21 @@ function ViewSkeleton(props: { mode: ViewMode }) {
       when={props.mode === 'list'}
       fallback={
         <div class='cards-grid'>
+          {/* Built from the tile's own classes rather than fixed pixel heights:
+              the card box is 140% of its column width, so a flat 180px block
+              was short by a different amount at every breakpoint. */}
           <For each={Array.from({ length: 14 })}>
             {() => (
-              <div>
-                <Skeleton height='180px' rounded='10px' />
-                <Skeleton height='14px' style={{ 'margin-top': '8px' }} />
-                <Skeleton height='11px' style={{ 'margin-top': '4px' }} />
+              <div class='card-tile card-tile-skeleton' aria-hidden='true'>
+                <div class='card-tile-card' />
+                <div class='card-tile-meta'>
+                  <div class='card-tile-name-row'>
+                    <Skeleton width='60%' height='1em' />
+                  </div>
+                  <div class='card-tile-decks'>
+                    <Skeleton width='80%' height='1em' />
+                  </div>
+                </div>
               </div>
             )}
           </For>

@@ -67,6 +67,25 @@ import '../styles/pages/tier-list.css';
 const LABEL_DEFAULT: Record<TierMode, boolean> = { icons: true, previews: false, arts: false };
 
 /**
+ * Tile height per view, for before there is a tile to measure.
+ *
+ * The board draws its empty rows from `--tl-item-h`, and nothing can set that
+ * until the archetype index lands — so without a seed the rows came up against
+ * the stylesheet's fallback and snapped to their real height a second later.
+ *
+ * These are the settled values `measureTile` produces in each view, read off
+ * the running page rather than computed: the icon chip in particular does not
+ * come out where its CSS box suggests. They stay a seed, not an authority —
+ * `measureTile` overwrites each one as soon as a real tile exists, which is
+ * what keeps them honest if a tile's styling changes.
+ */
+const NOMINAL_ITEM_H: Record<TierMode, { bare: number; labelled: number }> = {
+  icons: { bare: 44, labelled: 40 },
+  previews: { bare: 72, labelled: 90 },
+  arts: { bare: 87, labelled: 104 }
+};
+
+/**
  * What the editor popover is open on, by id.
  *
  * Ids, not objects: editing a tier replaces its object, and a popover holding
@@ -239,8 +258,15 @@ export function TierListPage() {
    * mid-layout under-reserves by a few pixels, which is the jolt this exists to
    * remove. Re-read once art lands, since a thumbnail with no intrinsic size
    * yet is shorter than the real thing.
+   *
+   * Seeded from NOMINAL_ITEM_H first: until the index lands there is nothing to
+   * measure, and the board rendered its empty rows against the stylesheet's
+   * 68px fallback, then snapped down by 32px — the largest shift on any tools
+   * page. The seed lands within a pixel or two; the measurement takes it from
+   * there.
    */
   function measureTile(): void {
+    document.body.style.setProperty('--tl-item-h', `${NOMINAL_ITEM_H[mode()][labels() ? 'labelled' : 'bare']}px`);
     const apply = (): void => {
       const tiles = document.querySelectorAll<HTMLElement>('.tl-tray .tl-item, .tl-board .tl-item');
       if (tiles.length === 0) {

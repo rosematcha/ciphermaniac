@@ -61,7 +61,9 @@ function IconTile(props: TileProps): JSX.Element {
   return (
     <div class='tl-item' data-id={props.item.id}>
       <div class='tl-ico'>
-        <ArchetypeIcons slugs={props.item.icons ?? []} size={26} />
+        {/* `placeholder`: with labels off a sprite-less archetype is an empty
+            chip with nothing to identify or grab it by. */}
+        <ArchetypeIcons slugs={props.item.icons ?? []} size={26} placeholder />
         {/* `.cap`, not a bare span: `ArchetypeIcons` renders a span too, and a
             rule that hides every span in here takes the sprites with it. */}
         <span class='cap'>{props.item.label}</span>

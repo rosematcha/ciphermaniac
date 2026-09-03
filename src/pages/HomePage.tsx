@@ -15,7 +15,7 @@ import type { FieldRow, Story } from '../lib/storylines';
 import type { ArchetypeIndexEntry, MetaReport, TournamentParticipant } from '../types';
 import { Skeleton } from '../components/Skeleton';
 import { Section } from '../components/Section';
-import { ArchetypeCard } from '../components/ArchetypeCard';
+import { ArchetypeCard, ArchetypeCardSkeleton } from '../components/ArchetypeCard';
 import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
 import { formatPercent, nameFromTournamentKey, parseISODate, shortDate } from '../lib/format';
@@ -60,6 +60,29 @@ const CUT_STRIP_ROWS = 8;
 const UPCOMING_COUNT = 6;
 
 /**
+ * Majors that finished within the callout's window, newest-first eligible set.
+ *
+ * Split out of the `latestMajor` resource so the page can answer "will there be
+ * a callout?" from the tournaments list alone, without waiting on the size
+ * comparison that picks WHICH one. That answer is what gates the reserved slot:
+ * reserving on a maybe and then collapsing costs exactly as much as not
+ * reserving at all.
+ */
+function majorsInWindow(list: string[] | undefined): { t: string; date: Date }[] {
+  if (!list) {
+    return [];
+  }
+  const now = Date.now();
+  const windowMs = LATEST_EVENT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  return majorTournaments(list)
+    .map(t => ({ t, date: tournamentDate(t) }))
+    .filter(
+      (x): x is { t: string; date: Date } =>
+        x.date !== null && now - x.date.getTime() <= windowMs && x.date.getTime() <= now
+    );
+}
+
+/**
  * Home page.
  *
  * Follows the global tournament selector. On the default online-meta scope
@@ -100,18 +123,7 @@ export function HomePage() {
   // event over a larger same-weekend event purely because of tournament-ID
   // ordering — e.g. Campinas (1,725) shouldn't outrank Utrecht (2,150).
   const [latestMajor] = createResource(tournamentsListData, async list => {
-    if (!list) {
-      return null;
-    }
-    const majors = majorTournaments(list);
-    const now = Date.now();
-    const windowMs = LATEST_EVENT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-    const inWindow = majors
-      .map(t => ({ t, date: tournamentDate(t) }))
-      .filter(
-        (x): x is { t: string; date: Date } =>
-          x.date !== null && now - x.date.getTime() <= windowMs && x.date.getTime() <= now
-      );
+    const inWindow = majorsInWindow(list);
     if (inWindow.length === 0) {
       return null;
     }
@@ -143,6 +155,14 @@ export function HomePage() {
   const latestMajorData = () => resolved(latestMajor);
   /** Event the callout shows: the selected tournament, else the auto-picked latest major. */
   const calloutKey = () => (isOnlineScope() ? latestMajorData() : tournament());
+  /**
+   * True once we know a callout is coming but not yet which event it is.
+   *
+   * Deliberately not "the list is still loading": until the list lands there
+   * may be no recent major at all, and holding space for one that never
+   * arrives just moves the shift from the appearance to the collapse.
+   */
+  const calloutPending = () => isOnlineScope() && majorsInWindow(tournamentsListData()).length > 0;
 
   // The residual "Other" bucket is not a real archetype and must not rank
   // inline among named decks. Pull it out of the grid and surface it as a
@@ -161,7 +181,25 @@ export function HomePage() {
 
   return (
     <>
-      <Show when={calloutKey()} keyed fallback={<h1 class='sr-only'>Ciphermaniac</h1>}>
+      {/* Picking the headline event costs two round trips: the tournaments list,
+          then a size comparison across the weekend cluster. Mounting the whole
+          callout at the end of that inserted a tall article above everything
+          else. The shell goes in as soon as the list proves an event is coming
+          — after the first trip, before the second — so only the smaller of the
+          two waits is unreserved, and the slot is never held for a callout that
+          turns out not to exist. */}
+      <Show
+        when={calloutKey()}
+        keyed
+        fallback={
+          <Show when={calloutPending()} fallback={<h1 class='sr-only'>Ciphermaniac</h1>}>
+            <section class='home-callout-wrap'>
+              <h1 class='sr-only'>Ciphermaniac</h1>
+              <CalloutSkeleton />
+            </section>
+          </Show>
+        }
+      >
         {key => (
           <section class='home-callout-wrap'>
             <LatestEventCallout tournamentKey={key} onlineArchetypes={onlineArchetypesData()} />
@@ -182,7 +220,7 @@ export function HomePage() {
           when={archetypesData()}
           fallback={
             <div class='gallery-grid'>
-              <For each={Array.from({ length: 8 })}>{() => <Skeleton height='220px' />}</For>
+              <For each={Array.from({ length: 8 })}>{() => <ArchetypeCardSkeleton />}</For>
             </div>
           }
         >
@@ -267,6 +305,24 @@ export function HomePage() {
   );
 }
 
+/**
+ * Reserved shell for the event callout. Mirrors `.callout`'s own head and body
+ * insets so the space it holds is the space the real article takes.
+ */
+function CalloutSkeleton() {
+  return (
+    <article class='callout' aria-hidden='true'>
+      <header class='callout-head'>
+        <Skeleton width='min(420px, 70%)' height='29px' />
+        <Skeleton width='min(320px, 90%)' height='17px' />
+      </header>
+      <div class='callout-loading'>
+        <Skeleton height='240px' />
+      </div>
+    </article>
+  );
+}
+
 /* ---------- Scope line ---------- */
 
 /**
@@ -286,17 +342,23 @@ function ScopeLine(props: {
   const decks = () =>
     props.meta?.deckTotal ?? props.archetypes?.reduce((acc, a) => acc + (a.deckCount ?? 0), 0) ?? undefined;
   const updated = () => (props.meta?.generatedAt ? relativeTimeAgo(props.meta.generatedAt) : null);
+  // The tail sits in a width-reserved, opacity-faded slot (`.scope-line-tail`)
+  // rather than appearing piecemeal: both halves come from the same meta.json,
+  // and letting them widen the line on arrival re-wrapped the section head and
+  // dropped everything below it.
   return (
     <span class='scope-line'>
       <span>{label()}</span>
-      <Show when={decks()}>
-        <span class='dot'>·</span>
-        <span>{decks()!.toLocaleString()} decks</span>
-      </Show>
-      <Show when={updated()}>
-        <span class='dot'>·</span>
-        <span title={absoluteIso(props.meta!.generatedAt)}>updated {updated()} ago</span>
-      </Show>
+      <span class='scope-line-tail' classList={{ 'is-ready': decks() !== undefined || updated() !== null }}>
+        <Show when={decks()}>
+          <span class='dot'>·</span>
+          <span>{decks()!.toLocaleString()} decks</span>
+        </Show>
+        <Show when={updated()}>
+          <span class='dot'>·</span>
+          <span title={absoluteIso(props.meta!.generatedAt)}>updated {updated()} ago</span>
+        </Show>
+      </span>
     </span>
   );
 }
