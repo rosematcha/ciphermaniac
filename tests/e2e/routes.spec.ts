@@ -375,10 +375,11 @@ test.describe('theme', () => {
   });
 });
 
-test('on a touch pointer a tier shows its tools on tap, and hides them again', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'mobile', 'the touch affordance, on the touch project');
-  // Playwright's device descriptors do not move the hover media queries, and
-  // this behaviour lives entirely inside one — so it is emulated explicitly.
+/**
+ * Playwright's device descriptors do not move the hover media queries, and the
+ * touch behaviour lives entirely inside one — so it is emulated explicitly.
+ */
+async function touchOnly(page: import('@playwright/test').Page): Promise<void> {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setEmulatedMedia', {
     features: [
@@ -387,6 +388,11 @@ test('on a touch pointer a tier shows its tools on tap, and hides them again', a
       { name: 'pointer', value: 'coarse' }
     ]
   });
+}
+
+test('on a touch pointer a tier shows its tools on tap, and hides them again', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'the touch affordance, on the touch project');
+  await touchOnly(page);
   await gotoClean(page, '/tools/tier-list');
 
   const tools = (nth: number) => page.locator('.tl-plate').nth(nth).locator('.tl-tools');
@@ -412,4 +418,25 @@ test('on a touch pointer a tier shows its tools on tap, and hides them again', a
   // The second tap does act.
   await page.locator('.tl-plate').nth(1).locator('[data-move$=":-1"]').tap();
   await expect.poll(names).toEqual([before[1], before[0], ...before.slice(2)]);
+});
+
+test('on a touch pointer the export is shown on screen rather than navigated to', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'the touch affordance, on the touch project');
+  // A download link in an in-app browser navigates to the file — the report
+  // was "I click the button and the page just reloads itself".
+  await touchOnly(page);
+  await gotoClean(page, '/tools/tier-list');
+  await expect(page.locator('.tl-tray .tl-item').first()).toBeVisible();
+
+  await page.locator('.tl-actions .tl-btn.primary').tap();
+  const shot = page.locator('.tl-shot img');
+  await expect(shot).toBeVisible({ timeout: 25_000 });
+  await expect(shot).toHaveAttribute('src', /^blob:/);
+  expect(new URL(page.url()).pathname).toBe('/tools/tier-list');
+  // The board is handed back exactly as it was.
+  await expect(page.locator('.tl-board')).not.toHaveAttribute('data-exporting');
+  expect(await page.locator('.tl-board').evaluate(el => (el as HTMLElement).style.width)).toBe('');
+
+  await page.locator('.tl-shot-bar .tl-btn', { hasText: 'Done' }).tap();
+  await expect(page.locator('.tl-shot')).toHaveCount(0);
 });
