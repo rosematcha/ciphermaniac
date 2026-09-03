@@ -2,15 +2,19 @@
  * Tier List Maker state, kept free of Solid so it unit-tests under plain
  * `node:test`.
  *
- * Two ideas carry the whole model:
+ * Three ideas carry the whole model:
  *
  * - **Placement keys off a tier's id, never its index.** Moving a tier has to
  *   carry its contents with it; keying by position swaps two rows' worth of
  *   items instead.
- * - **The board is rebuilt from state on every render.** The drag layer mutates
- *   the DOM directly for smoothness, and the result is read back into
- *   `placement` on drop, so adding an archetype or flipping a toggle never
- *   throws away the arranging already done.
+ * - **Placement is an ordered list per zone**, not a lookup from item to tier.
+ *   Where an item sits inside its tier is part of the ranking — dropping a card
+ *   at the front of S means something — and a plain item→tier map throws that
+ *   away.
+ * - **State is the only authority.** The drag layer moves real DOM for
+ *   smoothness but puts it back before committing, because the board is
+ *   rendered by a framework that owns those nodes: leaving a node reparented
+ *   makes the next render produce a duplicate.
  * @module pages/tierList/model
  */
 
@@ -53,8 +57,11 @@ export interface CustomArchetype {
   cards: string[];
 }
 
-/** Where the tray sits in a placement map. */
+/** Zone key for the unranked tray. Tiers use their own ids. */
 export const TRAY = 'tray';
+
+/** Zone key → the item ids it holds, in the order the user put them in. */
+export type Placement = ReadonlyMap<string, readonly string[]>;
 
 let tierSeq = 0;
 
@@ -98,19 +105,47 @@ export function withTierOrder(tiers: readonly Tier[], ids: readonly string[]): T
  */
 export function withDeletedTier(
   tiers: readonly Tier[],
-  placement: ReadonlyMap<string, string>,
+  placement: Placement,
   id: string
-): { tiers: Tier[]; placement: Map<string, string> } {
+): { tiers: Tier[]; placement: Map<string, string[]> } {
+  const next = clone(placement);
   if (tiers.length <= 1) {
-    return { tiers: [...tiers], placement: new Map(placement) };
+    return { tiers: [...tiers], placement: next };
   }
-  const next = new Map(placement);
-  for (const [item, at] of next) {
-    if (at === id) {
-      next.delete(item);
+  next.delete(id);
+  return { tiers: tiers.filter(t => t.id !== id), placement: next };
+}
+
+const clone = (placement: Placement): Map<string, string[]> =>
+  new Map([...placement].map(([zone, ids]) => [zone, [...ids]]));
+
+/**
+ * Moves an item to `zone` at `index`, removing it from wherever it was.
+ *
+ * The removal runs across every zone rather than only the one the item came
+ * from: a shared link or a stale render can leave the same id listed twice, and
+ * a drop is the natural place to make that impossible.
+ */
+export function withDroppedItem(
+  placement: Placement,
+  itemId: string,
+  zone: string,
+  index: number
+): Map<string, string[]> {
+  const next = clone(placement);
+  for (const [key, ids] of next) {
+    const at = ids.indexOf(itemId);
+    if (at >= 0) {
+      ids.splice(at, 1);
+      if (ids.length === 0 && key !== zone) {
+        next.delete(key);
+      }
     }
   }
-  return { tiers: tiers.filter(t => t.id !== id), placement: next };
+  const list = next.get(zone) ?? [];
+  list.splice(Math.max(0, Math.min(index, list.length)), 0, itemId);
+  next.set(zone, list);
+  return next;
 }
 
 /** Applies an edit to one tier, leaving the rest untouched. */
@@ -126,16 +161,34 @@ export function withEditedTier(tiers: readonly Tier[], id: string, patch: Partia
 export function distribute(
   items: readonly TierItem[],
   tiers: readonly Tier[],
-  placement: ReadonlyMap<string, string>
+  placement: Placement
 ): { buckets: Map<string, TierItem[]>; tray: TierItem[] } {
-  const buckets = new Map(tiers.map(t => [t.id, [] as TierItem[]]));
-  const tray: TierItem[] = [];
+  const byId = new Map(items.map(item => [item.id, item]));
+  const buckets = new Map<string, TierItem[]>();
+  const spoken = new Set<string>();
+
+  const take = (zone: string): TierItem[] => {
+    const list: TierItem[] = [];
+    for (const id of placement.get(zone) ?? []) {
+      const item = byId.get(id);
+      // An id with no item is a tier holding something the current view does
+      // not show — a shared archetype list opened on the card-arts tab, say.
+      if (item && !spoken.has(id)) {
+        spoken.add(id);
+        list.push(item);
+      }
+    }
+    return list;
+  };
+
+  for (const tier of tiers) {
+    buckets.set(tier.id, take(tier.id));
+  }
+  // Anything never placed joins the tray in the order the view supplies, after
+  // whatever the user has explicitly arranged there.
+  const tray = take(TRAY);
   for (const item of items) {
-    const at = placement.get(item.id);
-    const bucket = at ? buckets.get(at) : undefined;
-    if (bucket) {
-      bucket.push(item);
-    } else {
+    if (!spoken.has(item.id)) {
       tray.push(item);
     }
   }
@@ -146,16 +199,13 @@ export function distribute(
  * Renaming a custom archetype changes its item id, so its placement has to be
  * carried across or the archetype drops back to the tray on the next render.
  */
-export function withRenamedPlacement(
-  placement: ReadonlyMap<string, string>,
-  from: string,
-  to: string
-): Map<string, string> {
-  const next = new Map(placement);
-  const at = next.get(from);
-  next.delete(from);
-  if (at !== undefined && from !== to) {
-    next.set(to, at);
+export function withRenamedPlacement(placement: Placement, from: string, to: string): Map<string, string[]> {
+  const next = clone(placement);
+  for (const ids of next.values()) {
+    const at = ids.indexOf(from);
+    if (at >= 0) {
+      ids.splice(at, 1, to);
+    }
   }
   return next;
 }
@@ -171,8 +221,8 @@ export interface ShareState {
   subject: string;
   title: string;
   tiers: Tier[];
-  /** Item id → tier id. Tray entries are omitted; absence means unranked. */
-  placement: Map<string, string>;
+  /** Zone key → ordered item ids. Absence from every zone means unranked. */
+  placement: Map<string, string[]>;
   custom: CustomArchetype[];
 }
 
@@ -194,17 +244,13 @@ interface WireState {
  * never reaches a server — which is the only way a tool with no backend can
  * offer sharing at all.
  */
-export function encodeShare(state: ShareState): string {
-  const byTier = new Map<string, string[]>(state.tiers.map(t => [t.id, []]));
-  for (const [item, at] of state.placement) {
-    byTier.get(at)?.push(item);
-  }
+export function encodeShare(state: Omit<ShareState, 'placement'> & { placement: Placement }): string {
   const wire: WireState = {
     v: 1,
     m: state.mode,
     s: state.subject,
     t: state.title,
-    r: state.tiers.map(t => [t.name, t.swatch, ...(byTier.get(t.id) ?? [])]),
+    r: state.tiers.map(t => [t.name, t.swatch, ...(state.placement.get(t.id) ?? [])]),
     c: state.custom.map(c => [c.id, c.name, c.icons, c.cards])
   };
   return toBase64Url(JSON.stringify(wire));
@@ -217,13 +263,13 @@ export function decodeShare(encoded: string): ShareState | null {
     return null;
   }
   const tiers: Tier[] = [];
-  const placement = new Map<string, string>();
+  const placement = new Map<string, string[]>();
   for (const row of wire.r) {
     const [name, swatchId, ...ids] = row;
     const tier = makeTier(name ?? '', swatchId ?? 'neutral-stone');
     tiers.push(tier);
-    for (const id of ids) {
-      placement.set(id, tier.id);
+    if (ids.length > 0) {
+      placement.set(tier.id, ids);
     }
   }
   return {

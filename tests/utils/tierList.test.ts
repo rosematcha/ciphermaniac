@@ -21,6 +21,7 @@ import {
   type TierItem,
   withAddedTier,
   withDeletedTier,
+  withDroppedItem,
   withEditedTier,
   withMovedTier,
   withRenamedPlacement,
@@ -108,13 +109,13 @@ test('a dragged order is applied wholesale', () => {
 test('deleting a tier returns its contents to the tray rather than destroying them', () => {
   const tiers = defaultTiers();
   const placement = new Map([
-    ['Dragapult', tiers[0]!.id],
-    ['Gardevoir', tiers[1]!.id]
+    [tiers[0]!.id, ['Dragapult']],
+    [tiers[1]!.id, ['Gardevoir']]
   ]);
   const result = withDeletedTier(tiers, placement, tiers[0]!.id);
   assert.equal(result.tiers.length, 5);
-  assert.equal(result.placement.has('Dragapult'), false, 'went back to the tray');
-  assert.equal(result.placement.get('Gardevoir'), tiers[1]!.id, 'untouched');
+  assert.equal(result.placement.has(tiers[0]!.id), false, 'went back to the tray');
+  assert.deepEqual(result.placement.get(tiers[1]!.id), ['Gardevoir'], 'untouched');
 });
 
 test('the last tier cannot be deleted', () => {
@@ -154,7 +155,7 @@ test('everything starts unranked', () => {
 
 test('placement keys off the tier id, so a reorder carries contents with it', () => {
   const tiers = defaultTiers();
-  const placement = new Map([['a', tiers[0]!.id]]);
+  const placement = new Map([[tiers[0]!.id, ['a']]]);
   const moved = withMovedTier(tiers, tiers[0]!.id, 3);
   const { buckets } = distribute([item('a')], moved, placement);
   assert.deepEqual(
@@ -165,7 +166,7 @@ test('placement keys off the tier id, so a reorder carries contents with it', ()
 });
 
 test('an item in a tier that no longer exists falls back to the tray', () => {
-  const { tray } = distribute([item('a')], defaultTiers(), new Map([['a', 'ghost-tier']]));
+  const { tray } = distribute([item('a')], defaultTiers(), new Map([['ghost-tier', ['a']]]));
   assert.deepEqual(
     tray.map(t => t.id),
     ['a']
@@ -173,14 +174,67 @@ test('an item in a tier that no longer exists falls back to the tray', () => {
 });
 
 test('renaming a custom archetype carries its placement to the new id', () => {
-  const moved = withRenamedPlacement(new Map([['Rogue', 't2']]), 'Rogue', 'Rogue v2');
-  assert.equal(moved.get('Rogue v2'), 't2');
-  assert.equal(moved.has('Rogue'), false);
+  const moved = withRenamedPlacement(new Map([['t2', ['Dragapult', 'Rogue']]]), 'Rogue', 'Rogue v2');
+  assert.deepEqual(moved.get('t2'), ['Dragapult', 'Rogue v2'], 'renamed in place, order kept');
 });
 
-test('renaming to the same name is not a self-delete', () => {
-  const same = withRenamedPlacement(new Map([['Rogue', 't2']]), 'Rogue', 'Rogue');
-  assert.equal(same.has('Rogue'), false, 'the old key is dropped');
+test('renaming to the same name leaves the list alone', () => {
+  const same = withRenamedPlacement(new Map([['t2', ['Rogue']]]), 'Rogue', 'Rogue');
+  assert.deepEqual(same.get('t2'), ['Rogue']);
+});
+
+// ---------------------------------------------------------------------------
+// Dropping
+// ---------------------------------------------------------------------------
+
+test('a drop lands at the index it was released over', () => {
+  const start = new Map([['t1', ['a', 'b', 'c']]]);
+  assert.deepEqual(withDroppedItem(start, 'd', 't1', 1).get('t1'), ['a', 'd', 'b', 'c']);
+  assert.deepEqual(withDroppedItem(start, 'd', 't1', 0).get('t1'), ['d', 'a', 'b', 'c']);
+  assert.deepEqual(withDroppedItem(start, 'd', 't1', 99).get('t1'), ['a', 'b', 'c', 'd']);
+});
+
+test('a drop removes the item from wherever it was, so it can never appear twice', () => {
+  const start = new Map([
+    ['t1', ['a', 'b']],
+    ['t2', ['c']]
+  ]);
+  const moved = withDroppedItem(start, 'a', 't2', 0);
+  assert.deepEqual(moved.get('t2'), ['a', 'c']);
+  assert.deepEqual(moved.get('t1'), ['b']);
+});
+
+test('a duplicated id from a stale payload is collapsed on the next drop', () => {
+  const messy = new Map([
+    ['t1', ['a']],
+    ['t2', ['a']]
+  ]);
+  const fixed = withDroppedItem(messy, 'a', 't1', 0);
+  assert.deepEqual([...fixed.values()].flat(), ['a'], 'exactly one copy survives');
+});
+
+test('a drop never mutates the map it was given', () => {
+  const start = new Map([['t1', ['a']]]);
+  withDroppedItem(start, 'b', 't1', 0);
+  assert.deepEqual(start.get('t1'), ['a']);
+});
+
+test('order inside a tier is what the board renders', () => {
+  const tiers = defaultTiers();
+  const placement = new Map([[tiers[0]!.id, ['c', 'a', 'b']]]);
+  const { buckets } = distribute([item('a'), item('b'), item('c')], tiers, placement);
+  assert.deepEqual(
+    buckets.get(tiers[0]!.id)?.map(i => i.id),
+    ['c', 'a', 'b']
+  );
+});
+
+test('unplaced items follow whatever the tray has been arranged as', () => {
+  const { tray } = distribute([item('a'), item('b'), item('c')], defaultTiers(), new Map([['tray', ['c']]]));
+  assert.deepEqual(
+    tray.map(t => t.id),
+    ['c', 'a', 'b']
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -195,9 +249,8 @@ test('a shared list round-trips through the URL payload', () => {
     title: 'Every Rare Candy, ranked',
     tiers,
     placement: new Map([
-      ['SVI::191', tiers[0]!.id],
-      ['DEX::100', tiers[0]!.id],
-      ['UL::082', tiers[2]!.id]
+      [tiers[0]!.id, ['SVI::191', 'DEX::100']],
+      [tiers[2]!.id, ['UL::082']]
     ]),
     custom: [{ id: 1, name: 'Rogue Deck', icons: ['dragapult'], cards: ['ASC/160'] }]
   };
@@ -212,9 +265,8 @@ test('a shared list round-trips through the URL payload', () => {
     tiers.map(t => t.swatch)
   );
   // Ids are reissued on decode, so compare by position rather than by id.
-  assert.deepEqual([...back.placement.keys()].sort(), ['DEX::100', 'SVI::191', 'UL::082']);
-  assert.equal(back.placement.get('SVI::191'), back.tiers[0]!.id);
-  assert.equal(back.placement.get('UL::082'), back.tiers[2]!.id);
+  assert.deepEqual(back.placement.get(back.tiers[0]!.id), ['SVI::191', 'DEX::100'], 'order survives');
+  assert.deepEqual(back.placement.get(back.tiers[2]!.id), ['UL::082']);
   assert.deepEqual(back.custom, state.custom);
 });
 

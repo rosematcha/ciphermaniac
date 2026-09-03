@@ -45,13 +45,16 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
       <div class='tl-frame'>
         <div class='tl-board' ref={props.boardRef}>
           <div class='tl-title'>
+            {/* No child when the title is empty: a framework-rendered empty
+                text node still defeats `:empty`, so the placeholder would
+                never show and the masthead would collapse to nothing. */}
             <b
               contenteditable='plaintext-only'
               spellcheck={false}
               data-placeholder='Name this tier list'
               onInput={e => props.onTitle(e.currentTarget.textContent ?? '')}
             >
-              {props.title}
+              <Show when={props.title}>{text => text()}</Show>
             </b>
           </div>
           <For each={props.tiers}>

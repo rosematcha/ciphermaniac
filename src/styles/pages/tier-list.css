@@ -14,22 +14,7 @@
   color: var(--negative);
 }
 
-/* The surfaces we did not draw still belong to the palette. Scoped to this
-   page rather than dropped into global.css, which is not this change's to
-   touch. */
-.tl-page ::selection {
-  background: color-mix(in srgb, var(--accent) 32%, transparent);
-  color: var(--fg);
-}
-.tl-page :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.tl-tray h4 span,
-.tl-list li span {
-  font-variant-numeric: tabular-nums;
-}
-
+/* ================= shared tier-list primitives ================= */
 /* The DOM contract the sortables need:
    .tl-board > .tl-row[data-row] > (.tl-plate, .tl-zone[data-tier] > .tl-item[data-id]) */
 
@@ -168,7 +153,7 @@ body.tl-rowdrag {
   gap: 7px;
   padding: 9px 10px;
   align-content: flex-start;
-  min-height: calc(var(--item-h, 68px) + 18px);
+  min-height: calc(var(--tl-item-h, 68px) + 18px);
   background: var(--surface-2);
   transition: background var(--ms-fast) var(--ease-base);
 }
@@ -667,13 +652,235 @@ body[data-mode='dark'] .tl-pop {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
-/* The flat ink shadow all but vanishes against a near-black page. */
 body[data-mode='dark'] .tl-list,
 body[data-mode='dark'] .tl-tray,
 body[data-mode='dark'] .tl-board,
-body[data-mode='dark'] .tl-pop {
+body[data-mode='dark'] .ps {
   box-shadow: 3px 3px 0 0 var(--surface-2);
 }
 body[data-mode='dark'] .tl-list {
   border-color: var(--muted);
+}
+
+.tl-list {
+  position: absolute;
+  z-index: 60;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 296px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+.tl-list[hidden] {
+  display: none;
+}
+.tl-list li {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 9px;
+  align-items: center;
+  padding: 5px 7px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.tl-list li[aria-selected='true'] {
+  background: var(--surface-2);
+}
+.tl-list li img {
+  width: 26px;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  border-radius: 2px;
+  border: 1px solid var(--rule);
+  background: var(--surface-2);
+}
+.tl-list li b {
+  font-weight: 500;
+}
+.tl-list li b mark {
+  background: none;
+  color: var(--accent);
+  font-weight: 700;
+}
+.tl-list li span {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.tl-list .none {
+  display: block;
+  padding: 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* palette popover */
+.tl-pal {
+  display: grid;
+  grid-template-columns: repeat(12, 18px);
+  gap: 3px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+.tl-pal i {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+}
+.tl-pal i:hover {
+  outline: 1px solid var(--fg);
+  outline-offset: 1px;
+}
+
+/* add-tier control, outside the board */
+.tl-add {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: none;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  cursor: pointer;
+  width: 100%;
+  transition:
+    color var(--ms-fast),
+    border-color var(--ms-fast);
+}
+.tl-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* title block baked into the export (V10) */
+.tl-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 13px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.tl-title b {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  outline: none;
+  border-radius: 2px;
+  padding: 1px 5px;
+  margin-left: -5px;
+  min-width: 40px;
+}
+.tl-title b:hover {
+  background: var(--surface-2);
+}
+.tl-title b:focus {
+  background: var(--surface-2);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.tl-title b:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+   Phones
+   A 124px plate is a third of a 390px viewport, and the row it
+   labels gets what is left. Everything narrows; nothing is
+   removed, because a tier list you cannot finish on the device
+   you had it open on is not a tier list.
+   ============================================================ */
+@media (max-width: 720px) {
+  .tl-row {
+    --plate-w: 62px;
+  }
+  .tl-plate {
+    font-size: 20px;
+    padding: 8px 4px;
+  }
+  .tl-plate[data-len='long'] {
+    font-size: 13px;
+  }
+  .tl-plate[data-len='xlong'] {
+    font-size: 10px;
+  }
+  /* Four 24px targets do not fit beside each other on a 62px plate, so they
+     stack two by two and the plate grows a floor to hold them. */
+  .tl-tools {
+    flex-wrap: wrap;
+    gap: 0;
+    align-content: center;
+  }
+  .tl-tools button {
+    width: 50%;
+    height: 26px;
+  }
+  .tl-zone {
+    padding: 7px;
+    gap: 6px;
+  }
+
+  .tl-conf {
+    gap: 8px;
+  }
+  .tl-conf .sel,
+  .tl-combo {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+  .tl-actions {
+    width: 100%;
+  }
+  .tl-actions .tl-btn {
+    flex: 1;
+  }
+
+  /* The editor stops being a popover: at this width there is nowhere to hang
+     it that does not cover what it is editing. */
+  .tl-pop {
+    position: fixed;
+    inset: auto 8px 8px;
+    top: auto !important;
+    left: 8px !important;
+    width: auto;
+    max-height: 76vh;
+    overflow-y: auto;
+  }
+  .sw {
+    min-height: 26px;
+  }
+
+  .tl-title {
+    padding: 11px 12px 10px;
+  }
+  .tl-title b {
+    font-size: 17px;
+  }
+}
+
+/* A pointer that cannot hover has no way to reveal hover-only controls, so
+   they are simply always on there. The export is taken from a rendered node,
+   not from a screenshot, so this costs the image nothing. */
+@media (hover: none) {
+  .tl-tools,
+  .tl-edit {
+    opacity: 1;
+  }
 }

@@ -15,6 +15,12 @@
  *    drag start rather than hit-tested on every move.
  * 4. The dragged element itself is what moves. A clone can drift out of sync
  *    with the original.
+ *
+ * The board is rendered by a framework that owns those nodes, so the drag puts
+ * every node back exactly where it found it before reporting the drop. Leaving
+ * a node reparented makes the next render duplicate it: the framework rebuilds
+ * the destination from state and the hand-moved node is still sitting there.
+ * State is the only authority; this module just proposes a move.
  * @module lib/tierList/itemSortable
  */
 
@@ -43,14 +49,31 @@ interface DragState {
   placeholder: HTMLElement | null;
   zones: ZoneRect[];
   over: HTMLElement | null;
+  /** Where the item sat before the drag, so it can be handed back untouched. */
+  home: { parent: Node; next: Node | null };
 }
 
-/** Reports a completed move so the caller can read the DOM back into state. */
+/** Where a completed drag wants its item to end up. */
+export interface ItemDrop {
+  itemId: string;
+  /** A tier id, or `tray`. */
+  zone: string;
+  /** Index among that zone's items. */
+  index: number;
+}
+
 export interface ItemSortableOptions {
-  onDrop: () => void;
+  /** Apply the move to state; the caller re-renders and this module animates the settle. */
+  onDrop: (drop: ItemDrop) => void;
 }
 
 const rectOf = (el: Element): DOMRect => el.getBoundingClientRect();
+
+/** Put a tile back where it was found, tolerating a sibling that has since moved. */
+function restore(item: HTMLElement, home: { parent: Node; next: Node | null }): void {
+  const next = home.next?.parentNode === home.parent ? home.next : null;
+  home.parent.insertBefore(item, next);
+}
 
 /**
  * Installs the sortable on the document. Returns a teardown for `onCleanup`.
@@ -100,13 +123,17 @@ export function installItemSortable(options: ItemSortableOptions): () => void {
     state.grabX = state.startX - rect.left;
     state.grabY = state.startY - rect.top;
 
+    // Captured before anything moves: the node that follows the tile in its
+    // own zone. Taking it after the placeholder is inserted would capture the
+    // tile itself, and handing a node back in front of itself throws.
+    state.home = { parent: state.item.parentNode!, next: state.item.nextSibling };
+
     const placeholder = document.createElement('div');
     placeholder.className = 'tl-slot';
     placeholder.style.width = `${rect.width}px`;
     placeholder.style.height = `${rect.height}px`;
     state.item.parentNode?.insertBefore(placeholder, state.item);
     state.placeholder = placeholder;
-
     state.item.style.width = `${rect.width}px`;
     state.item.style.height = `${rect.height}px`;
     state.item.classList.add('tl-dragging');
@@ -234,7 +261,8 @@ export function installItemSortable(options: ItemSortableOptions): () => void {
       grabY: 0,
       placeholder: null,
       zones: [],
-      over: null
+      over: null,
+      home: { parent: document.body, next: null }
     };
     item.setPointerCapture?.(event.pointerId);
   }
@@ -257,6 +285,47 @@ export function installItemSortable(options: ItemSortableOptions): () => void {
     schedule();
   }
 
+  /** Index the placeholder currently sits at, among its zone's real tiles. */
+  function dropIndex(placeholder: HTMLElement): number {
+    let index = 0;
+    for (const child of placeholder.parentNode?.children ?? []) {
+      if (child === placeholder) {
+        break;
+      }
+      if (child.classList.contains('tl-item')) {
+        index += 1;
+      }
+    }
+    return index;
+  }
+
+  /**
+   * Slide the freshly-rendered tile from wherever the pointer left it. The
+   * element that lands is not the element that was dragged — the framework
+   * built a new one — so the settle is anchored to a remembered rect rather
+   * than to the node.
+   */
+  function settle(itemId: string, from: DOMRect): void {
+    requestAnimationFrame(() => {
+      const landed = document.querySelector<HTMLElement>(`.tl-item[data-id="${CSS.escape(itemId)}"]`);
+      if (!landed) {
+        return;
+      }
+      const to = rectOf(landed);
+      const dx = from.left - to.left;
+      const dy = from.top - to.top;
+      if (!dx && !dy) {
+        return;
+      }
+      landed.style.transition = 'none';
+      landed.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      requestAnimationFrame(() => {
+        landed.style.transition = '';
+        landed.style.transform = '';
+      });
+    });
+  }
+
   function onPointerUp(): void {
     if (!drag) {
       return;
@@ -268,43 +337,39 @@ export function installItemSortable(options: ItemSortableOptions): () => void {
       drag = null;
       return;
     }
-    const { item, placeholder, over } = drag;
+    const { item, placeholder, over, home } = drag;
     const from = rectOf(item);
-    const to = rectOf(placeholder!);
+    const zone = placeholder!.parentNode as HTMLElement | null;
+    const target = zone?.dataset.tier;
+    const index = dropIndex(placeholder!);
+    const itemId = item.dataset.id ?? '';
 
-    // Hand the tile back to the document flow first, then animate the gap it
-    // has to close, so the settle always lands exactly on the layout.
-    placeholder!.parentNode?.insertBefore(item, placeholder!);
+    // Hand every node back exactly as it was found, then let state decide.
     placeholder!.remove();
     item.style.width = '';
     item.style.height = '';
+    item.style.transform = '';
     item.classList.remove('tl-dragging');
     over?.classList.remove('over');
     document.body.classList.remove('tl-drag-active');
+    restore(item, home);
 
-    item.style.transition = 'none';
-    item.style.transform = `translate3d(${from.left - to.left}px, ${from.top - to.top}px, 0)`;
-    requestAnimationFrame(() => {
-      item.style.transition = '';
-      item.style.transform = '';
-    });
-
-    for (const zone of document.querySelectorAll('.tl-zone')) {
-      zone.classList.toggle('empty', !zone.querySelector('.tl-item'));
-    }
     drag = null;
-    options.onDrop();
+    if (target && itemId) {
+      options.onDrop({ itemId, zone: target, index });
+      settle(itemId, from);
+    }
   }
 
   function onPointerCancel(): void {
     if (drag?.started) {
-      drag.placeholder?.parentNode?.insertBefore(drag.item, drag.placeholder);
       drag.placeholder?.remove();
       drag.item.style.width = '';
       drag.item.style.height = '';
       drag.item.style.transform = '';
       drag.item.classList.remove('tl-dragging');
       document.body.classList.remove('tl-drag-active');
+      restore(drag.item, drag.home);
     }
     drag = null;
   }

@@ -28,7 +28,7 @@ import {
 import { type ArtCard, fetchArtCards } from '../lib/data/artGroups';
 import { ONLINE_META_NAME } from '../lib/constants';
 import { latestValue } from '../lib/resource';
-import { installItemSortable } from '../lib/tierList/itemSortable';
+import { installItemSortable, type ItemDrop } from '../lib/tierList/itemSortable';
 import { installRowSortable } from '../lib/tierList/rowSortable';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { interEmbedCss } from '../utils/fontEmbed';
@@ -44,9 +44,9 @@ import {
   type Tier,
   type TierItem,
   type TierMode,
-  TRAY,
   withAddedTier,
   withDeletedTier,
+  withDroppedItem,
   withEditedTier,
   withMovedTier,
   withRenamedPlacement,
@@ -97,7 +97,7 @@ export function TierListPage() {
   const [mode, setMode] = createSignal<TierMode>('icons');
   const [labelChoice, setLabelChoice] = createSignal<boolean | null>(null);
   const [tiers, setTiers] = createSignal<Tier[]>(defaultTiers());
-  const [placement, setPlacement] = createSignal(new Map<string, string>());
+  const [placement, setPlacement] = createSignal<Map<string, string[]>>(new Map());
   const [custom, setCustom] = createSignal<CustomArchetype[]>([]);
   const [cardName, setCardName] = createSignal('');
   const [title, setTitle] = createSignal('');
@@ -120,14 +120,30 @@ export function TierListPage() {
   onMount(() => {
     document.title = 'Tier List Maker — Tools — Ciphermaniac';
     restoreFromHash();
-    onCleanup(installItemSortable({ onDrop: capturePlacement }));
+    onCleanup(installItemSortable({ onDrop: applyDrop }));
     onCleanup(installRowSortable({ onReorder: ids => setTiers(list => withTierOrder(list, ids)) }));
   });
 
   createEffect(() => {
     document.body.classList.toggle('tl-labels', labels());
   });
-  onCleanup(() => document.body.classList.remove('tl-labels'));
+  onCleanup(() => {
+    document.body.classList.remove('tl-labels');
+    document.body.style.removeProperty('--tl-item-h');
+  });
+
+  // Re-measure whenever what a tile looks like changes.
+  createEffect(() => {
+    void mode();
+    void labels();
+    void split();
+    measureTile();
+  });
+
+  /** State is the authority; the sortable only proposes. */
+  const applyDrop = (drop: ItemDrop): void => {
+    setPlacement(map => withDroppedItem(map, drop.itemId, drop.zone, drop.index));
+  };
 
   // -------------------------------------------------------------- content
 
@@ -183,23 +199,30 @@ export function TierListPage() {
   // -------------------------------------------------------------- state
 
   /**
-   * The drag layer mutates the DOM for smoothness; this reads the result back
-   * so a re-render can put everything where the user left it.
+   * Publish the height of a real tile so an empty tier reserves exactly the
+   * room one will take, and the board does not jolt as the first tile lands.
+   * Measured rather than hardcoded: it changes with the view, the label toggle,
+   * and anything done to tile sizes later.
+   *
+   * Read on the next frame, not synchronously after a render — measuring
+   * mid-layout under-reserves by a few pixels, which is the jolt this exists to
+   * remove. Re-read once art lands, since a thumbnail with no intrinsic size
+   * yet is shorter than the real thing.
    */
-  function capturePlacement(): void {
-    const next = new Map<string, string>();
-    for (const zone of document.querySelectorAll<HTMLElement>('.tl-board .tl-zone, .tl-tray .tl-zone')) {
-      const key = zone.dataset.tier;
-      if (!key || key === TRAY) {
-        continue;
+  function measureTile(): void {
+    const apply = (): void => {
+      const tiles = document.querySelectorAll<HTMLElement>('.tl-tray .tl-item, .tl-board .tl-item');
+      if (tiles.length === 0) {
+        return;
       }
-      for (const tile of zone.querySelectorAll<HTMLElement>('.tl-item')) {
-        if (tile.dataset.id) {
-          next.set(tile.dataset.id, key);
-        }
-      }
+      const tallest = Math.max(...[...tiles].map(t => t.getBoundingClientRect().height));
+      document.body.style.setProperty('--tl-item-h', `${Math.ceil(tallest)}px`);
+    };
+    requestAnimationFrame(() => requestAnimationFrame(apply));
+    const art = document.querySelector<HTMLImageElement>('.tl-tray .tl-item img, .tl-board .tl-item img');
+    if (art && !art.complete) {
+      art.addEventListener('load', () => requestAnimationFrame(apply), { once: true });
     }
-    setPlacement(next);
   }
 
   /**

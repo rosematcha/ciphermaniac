@@ -7,13 +7,21 @@
  * chose. These come from two palettes that already solve this exact problem —
  * a warm-paper ground with earthy accents:
  *
- * - Everforest (sainnhe/everforest), light accents as `vivid` and dark accents
- *   as `soft`. Its light background is `#FDF6E3`, within a hair of our own
- *   `--surface`, so its accents were already tuned against this paper.
- * - Gruvbox (morhetz/gruvbox), the "faded" accents as `deep`, a register
- *   Everforest does not ship. Two substitutions were forced: `faded_yellow`
- *   #b57614 and `faded_green` #79740e both land in the band where a fill is too
- *   dark for ink text and too light for paper text, so neither clears AA.
+ * - Gruvbox (morhetz/gruvbox), the "neutral" accents as `vivid` — the working
+ *   register, and where the default ramp comes from. Everforest's light accents
+ *   sat here first and read shrill: they are tuned as syntax *foreground*
+ *   colours on cream, and a 124px plate is a very different job from a keyword.
+ *   Gruvbox's mid-tones are warmer, sit down into the paper, and give a red
+ *   that reads as brick rather than as an alert.
+ * - Gruvbox's "faded" accents as `deep`.
+ * - Everforest (sainnhe/everforest) dark accents as `soft`, the quiet register.
+ * - Gruvbox greys as `neutral`, for a deliberately colourless tier.
+ *
+ * Several hues needed nudging out of the band where a fill is too dark for ink
+ * text and too light for paper text — `neutral_orange` #d65d0e, `neutral_blue`
+ * #458588 and `neutral_purple` #b16286 all land there, as do `faded_yellow`
+ * #b57614 and `faded_green` #79740e. Each was stepped away from the crossover
+ * rather than swapped for a different hue.
  *
  * Every swatch carries the text colour it was verified against; the test suite
  * re-asserts the whole set at ≥4.5:1 so a future edit cannot quietly break one.
@@ -37,15 +45,15 @@ export const INK = '#1f1a13';
 export const PAPER = '#fbf5e6';
 
 export const SWATCHES: readonly Swatch[] = [
-  { id: 'vivid-red', tone: 'vivid', hex: '#f85552', text: INK },
-  { id: 'vivid-orange', tone: 'vivid', hex: '#f57d26', text: INK },
-  { id: 'vivid-yellow', tone: 'vivid', hex: '#dfa000', text: INK },
-  { id: 'vivid-green', tone: 'vivid', hex: '#8da101', text: INK },
-  { id: 'vivid-sage', tone: 'vivid', hex: '#93b259', text: INK },
-  { id: 'vivid-aqua', tone: 'vivid', hex: '#35a77c', text: INK },
-  { id: 'vivid-blue', tone: 'vivid', hex: '#3a94c5', text: INK },
-  { id: 'vivid-slate', tone: 'vivid', hex: '#5f8fa8', text: INK },
-  { id: 'vivid-purple', tone: 'vivid', hex: '#df69ba', text: INK },
+  { id: 'vivid-red', tone: 'vivid', hex: '#cc241d', text: PAPER },
+  { id: 'vivid-orange', tone: 'vivid', hex: '#de7018', text: INK },
+  { id: 'vivid-yellow', tone: 'vivid', hex: '#d79921', text: INK },
+  { id: 'vivid-sage', tone: 'vivid', hex: '#b0a63a', text: INK },
+  { id: 'vivid-green', tone: 'vivid', hex: '#98971a', text: INK },
+  { id: 'vivid-aqua', tone: 'vivid', hex: '#689d6a', text: INK },
+  { id: 'vivid-blue', tone: 'vivid', hex: '#5ca0a6', text: INK },
+  { id: 'vivid-slate', tone: 'vivid', hex: '#7099a8', text: INK },
+  { id: 'vivid-purple', tone: 'vivid', hex: '#c4829f', text: INK },
   { id: 'soft-red', tone: 'soft', hex: '#e67e80', text: INK },
   { id: 'soft-orange', tone: 'soft', hex: '#e69875', text: INK },
   { id: 'soft-yellow', tone: 'soft', hex: '#dbbc7f', text: INK },
@@ -64,10 +72,10 @@ export const SWATCHES: readonly Swatch[] = [
   { id: 'deep-blue', tone: 'deep', hex: '#076678', text: PAPER },
   { id: 'deep-slate', tone: 'deep', hex: '#3c5a66', text: PAPER },
   { id: 'deep-purple', tone: 'deep', hex: '#8f3f71', text: PAPER },
-  { id: 'neutral-bone', tone: 'neutral', hex: '#d8d3ba', text: INK },
-  { id: 'neutral-stone', tone: 'neutral', hex: '#bdc3af', text: INK },
-  { id: 'neutral-ash', tone: 'neutral', hex: '#939f91', text: INK },
-  { id: 'neutral-slate', tone: 'neutral', hex: '#5c6a72', text: PAPER }
+  { id: 'neutral-bone', tone: 'neutral', hex: '#d5c4a1', text: INK },
+  { id: 'neutral-stone', tone: 'neutral', hex: '#a89984', text: INK },
+  { id: 'neutral-ash', tone: 'neutral', hex: '#928374', text: INK },
+  { id: 'neutral-slate', tone: 'neutral', hex: '#6f635a', text: PAPER }
 ];
 
 const BY_ID = new Map(SWATCHES.map(s => [s.id, s]));
@@ -78,9 +86,12 @@ export function swatch(id: string): Swatch {
 }
 
 /**
- * The default six: red, orange, mustard, olive, forest, stone. Warm at the top,
- * cool below it, colourless at the floor — so the ramp reads as a ranking
- * before you read a single letter.
+ * The default six: brick, burnt orange, mustard, olive, sage green, taupe.
+ *
+ * Hue travel is deliberately short and the descent is carried by saturation and
+ * lightness instead. A red→orange→yellow→green→teal ramp is a spectrum, and a
+ * spectrum reads as decoration rather than as a ranking; these six sit in one
+ * family and still separate cleanly row to row.
  */
 export const DEFAULT_RAMP: readonly string[] = [
   'vivid-red',
@@ -88,7 +99,7 @@ export const DEFAULT_RAMP: readonly string[] = [
   'vivid-yellow',
   'vivid-green',
   'vivid-aqua',
-  'neutral-stone'
+  'neutral-ash'
 ];
 
 export const DEFAULT_TIER_NAMES: readonly string[] = ['S', 'A', 'B', 'C', 'D', 'F'];
