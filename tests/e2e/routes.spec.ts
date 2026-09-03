@@ -173,6 +173,35 @@ test('a narrow desktop viewport uses the compact two-tier header', async ({ page
   expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth);
 });
 
+test('the footer uses a compact site map without overflowing narrow viewports', async ({ page }, testInfo) => {
+  if (testInfo.project.name !== 'mobile') {
+    await page.setViewportSize({ width: 700, height: 800 });
+  }
+  await gotoClean(page, '/');
+
+  const footer = await page.locator('.site-footer').evaluate(element => {
+    const links = [...element.querySelectorAll('.site-footer-links a')].map(link =>
+      Math.round(link.getBoundingClientRect().top)
+    );
+    const note = element.querySelector('.site-footer-note')!.getBoundingClientRect();
+    const toggle = element.querySelector('.chip')!.getBoundingClientRect();
+    const styles = getComputedStyle(element);
+    return {
+      gridTemplateAreas: styles.gridTemplateAreas,
+      linkRows: new Set(links).size,
+      noteCenter: Math.round(note.top + note.height / 2),
+      toggleCenter: Math.round(toggle.top + toggle.height / 2),
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth
+    };
+  });
+
+  expect(footer.gridTemplateAreas).toContain('"links links"');
+  expect(footer.linkRows).toBe(2);
+  expect(footer.noteCenter).toBe(footer.toggleCenter);
+  expect(footer.scrollWidth).toBeLessThanOrEqual(footer.clientWidth);
+});
+
 test('the Tools menu closes once the pointer leaves, even after a click', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
