@@ -6,6 +6,8 @@
  * in-Worker job anymore; a Pages Function can't fit the fetch fan-out within
  * the free plan's subrequest/CPU limits.
  */
-export { fetchRecentOnlineTournaments, gatherDecks } from './tournamentFetcher';
+export { countField, DEFAULT_MIN_FIELD_PLAYERS, fetchRecentOnlineTournaments, gatherDecks } from './tournamentFetcher';
+export { compileExclusions, matchExclusion } from './exclusions';
+export { utcDayWindow } from './window';
 export { buildArchetypeReports } from './reportGenerator';
 export { buildTrendReport, buildCardTrendReport } from './archetypeBuilder';

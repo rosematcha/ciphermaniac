@@ -1,5 +1,6 @@
 import { SUCCESS_TAG_NAMES } from '../data/contracts';
 import { deriveArchetypeGrouping } from '../data/archetypes/build';
+import { isGenericArchetypeName } from '../analysis/archetypeClassifier.js';
 import { getCanonicalCard } from '../data/cardSynonyms.js';
 import { cardUidOrName } from '../data/cardIdentity';
 import type {
@@ -31,6 +32,7 @@ export function buildTrendReport(
     Number.isFinite(options.minAppearances) ? Number(options.minAppearances) : DEFAULT_MIN_TREND_APPEARANCES
   );
   const seriesLimit = Number.isFinite(options.seriesLimit) ? Math.max(1, Number(options.seriesLimit)) : null;
+  const minDayDecks = Math.max(0, Number(options.minDayDecks) || 0);
 
   const tournamentIndex = new Map();
   const sortedTournaments = (Array.isArray(tournaments) ? tournaments : [])
@@ -96,8 +98,21 @@ export function buildTrendReport(
     archetypes.set(base, archetype);
   }
 
+  // Decks per calendar day across every archetype; days under the floor are
+  // dropped from every timeline at once so the chart never plots them.
+  const dayTotals = new Map<string, number>();
+  for (const tournament of sortedTournaments) {
+    const dateKey = tournament.date ? String(tournament.date).split('T')[0] : 'unknown';
+    dayTotals.set(dateKey, (dayTotals.get(dateKey) || 0) + (tournamentIndex.get(tournament.id)?.deckTotal || 0));
+  }
+  const thinDays = new Set([...dayTotals].filter(([, total]) => total < minDayDecks).map(([date]) => date));
+
   const series: TrendSeriesEntry[] = [];
   archetypes.forEach(archetype => {
+    // "Other" / "Unknown" is a bucket, not a deck; it has no page and no trend.
+    if (isGenericArchetypeName(archetype.displayName)) {
+      return;
+    }
     const timeline = sortedTournaments.map(tournament => {
       const entry = archetype.timeline.get(tournament.id);
       const tournamentMeta = tournamentIndex.get(tournament.id);
@@ -159,6 +174,7 @@ export function buildTrendReport(
     }
 
     const dailyTimeline = Array.from(dailyData.entries())
+      .filter(([date]) => !thinDays.has(date))
       .map(([date, data]) => ({
         date,
         decks: data.decks,
@@ -211,6 +227,39 @@ export function buildTrendReport(
   }
 
   return result;
+}
+
+/** Deck-weighted presence share (0-100, one decimal) across a slice of events. */
+function weightedShare(slice: Array<{ present: number; total: number }>): number {
+  const present = slice.reduce((sum, entry) => sum + (entry.present || 0), 0);
+  const total = slice.reduce((sum, entry) => sum + (entry.total || 0), 0);
+  return total ? Math.round((present / total) * 1000) / 10 : 0;
+}
+
+type MoverCandidate = CardTrendItem & { presenceSignature: string };
+
+/** Sort key for picking one card out of an evolution line: highest set number wins. */
+function printingRank(item: CardTrendItem): number {
+  const digits = String(item.number || '').replace(/\D/g, '');
+  return digits ? Number(digits) : -1;
+}
+
+/**
+ * Cards from one set whose presence is identical in every event are one
+ * signal, not several: an evolution line moves together and used to fill
+ * three rows of the movers list with the same numbers. Keep the
+ * highest-numbered printing of each group, which for a line is its final
+ * stage.
+ */
+function collapseIdenticalTimelines(series: MoverCandidate[]): CardTrendItem[] {
+  const bySignature = new Map<string, MoverCandidate>();
+  for (const item of series) {
+    const current = bySignature.get(item.presenceSignature);
+    if (!current || printingRank(item) > printingRank(current)) {
+      bySignature.set(item.presenceSignature, item);
+    }
+  }
+  return [...bySignature.values()].map(({ presenceSignature: _signature, ...item }) => item);
 }
 
 export function buildCardTrendReport(
@@ -287,7 +336,7 @@ export function buildCardTrendReport(
     });
   }
 
-  const series: CardTrendItem[] = [];
+  const series: MoverCandidate[] = [];
   cardPresence.forEach((presenceMap, key) => {
     const timeline = Array.from(tournamentsMap.values())
       .sort((first, second) => Date.parse(first.date || 0) - Date.parse(second.date || 0))
@@ -308,13 +357,11 @@ export function buildCardTrendReport(
       return;
     }
 
+    // Deck-weighted share over the first and last third of the window's
+    // events: a 4-player pod and a 500-player open used to count the same.
     const chunk = Math.max(1, Math.ceil(timeline.length / 3));
-    const startSlice = timeline.slice(0, chunk);
-    const endSlice = timeline.slice(-chunk);
-    const startAvg =
-      Math.round((startSlice.reduce((sum, entry) => sum + (entry.share || 0), 0) / startSlice.length) * 10) / 10;
-    const endAvg =
-      Math.round((endSlice.reduce((sum, entry) => sum + (entry.share || 0), 0) / endSlice.length) * 10) / 10;
+    const startAvg = weightedShare(timeline.slice(0, chunk));
+    const endAvg = weightedShare(timeline.slice(-chunk));
     const delta = Math.round((endAvg - startAvg) * 10) / 10;
 
     series.push({
@@ -328,7 +375,11 @@ export function buildCardTrendReport(
       delta,
       currentShare: endAvg,
       recentAvg: endAvg,
-      startAvg
+      startAvg,
+      // Same set + same presence in every event: the shape an evolution line
+      // printed together takes. Unrelated cards from different sets that
+      // happen to share a timeline stay separate.
+      presenceSignature: `${cardMeta.get(key)?.set || ''}|${timeline.map(entry => entry.present).join(',')}`
     });
   });
 
@@ -349,16 +400,15 @@ export function buildCardTrendReport(
   // historical share so we can show genuine drops (including drops to ~0).
   const MIN_VISIBLE_SHARE = 0.3;
 
-  const rising = [...series]
+  const movers = collapseIdenticalTimelines(series).filter(item => !BASIC_ENERGY_NAMES.has(item.name));
+  const rising = movers
     .filter(item => item.delta > 0)
     .filter(item => item.recentAvg >= MIN_VISIBLE_SHARE)
-    .filter(item => !BASIC_ENERGY_NAMES.has(item.name))
     .sort((first, second) => second.delta - first.delta)
     .slice(0, topCount);
-  const falling = [...series]
+  const falling = movers
     .filter(item => item.delta < 0)
     .filter(item => item.startAvg >= MIN_VISIBLE_SHARE)
-    .filter(item => !BASIC_ENERGY_NAMES.has(item.name))
     .sort((first, second) => first.delta - second.delta)
     .slice(0, topCount);
 

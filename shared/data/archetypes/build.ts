@@ -23,6 +23,7 @@
  */
 
 import { normalizeArchetypeName, sanitizeForFilename } from '../../cardUtils';
+import { isGenericArchetypeName } from '../../analysis/archetypeClassifier';
 import { canonicalizeArchetypeLabel } from './identity';
 import { type DeckEntry, generateReportFromDecks, type LegacyCardReport, listedDeckCount } from '../reports/cardReport';
 import type { SynonymDatabase } from '../cardIdentity';
@@ -105,6 +106,12 @@ export interface ArchetypeBuildOptions {
   /** Optional canonical-UID resolver (rolling canonicals bound to an event
    * date), forwarded to the per-archetype card reports. */
   resolveUid?: (uid: string) => string;
+  /**
+   * Leave "Other" / "Unknown" style groups out of the files and index. Their
+   * decks still count in `deckTotal`, so every real archetype's share is
+   * unchanged; the bucket just stops masquerading as a deck with a page.
+   */
+  excludeGenericGroups?: boolean;
 }
 
 /** A grouped archetype's report file (producers add their own filenames). */
@@ -210,6 +217,7 @@ export function buildArchetypeReports(
     sortMode,
     displayNames = 'raw',
     emptyBaseFallback = 'Unknown',
+    excludeGenericGroups = false,
     thumbnailConfig = null,
     cardTypesDb = null,
     masterReport = null,
@@ -243,6 +251,9 @@ export function buildArchetypeReports(
   const decksByBase = new Map<string, ArchetypeDeckInput[]>();
   for (const { base, displayName, decks: archetypeDecks } of groups.values()) {
     if (archetypeDecks.length < minDecks) {
+      continue;
+    }
+    if (excludeGenericGroups && isGenericArchetypeName(displayName)) {
       continue;
     }
     files.push({
