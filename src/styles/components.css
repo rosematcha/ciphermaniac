@@ -1157,7 +1157,7 @@ table.data {
 .data tbody tr:hover {
   background: var(--surface-2);
 }
-.data tbody tr.is-link:hover .cardname {
+.data tbody tr.is-link .cardname:hover {
   color: var(--accent);
 }
 .data td.num,

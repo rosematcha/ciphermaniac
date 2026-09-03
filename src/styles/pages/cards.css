@@ -152,8 +152,12 @@
   padding: 8px 0;
   cursor: pointer;
   user-select: none;
+  transition: background var(--ms-fast);
 }
-.au-head:hover .au-name a {
+.au-head:hover {
+  background: var(--surface-2);
+}
+.au-name a:hover {
   color: var(--accent-hover);
 }
 .au-chevron {
