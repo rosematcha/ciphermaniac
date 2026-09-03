@@ -259,7 +259,7 @@ test('buildMatchupMatrix aggregates wins/losses/ties correctly', () => {
     }
   ];
 
-  const result = buildMatchupMatrix(targetArchetype, pairingsData);
+  const result = buildMatchupMatrix(targetArchetype, pairingsData, 3);
 
   // Check Gholdengo matchup (4 games total)
   assert.ok(result['Gholdengo Lunatone'], 'Should have Gholdengo matchup');
@@ -300,7 +300,7 @@ test('buildMatchupMatrix handles ties correctly', () => {
     }
   ];
 
-  const result = buildMatchupMatrix(targetArchetype, pairingsData);
+  const result = buildMatchupMatrix(targetArchetype, pairingsData, 3);
 
   assert.ok(result.OpponentDeck, 'Should have OpponentDeck matchup');
   const opponent = result.OpponentDeck;
@@ -325,7 +325,7 @@ test('buildMatchupMatrix handles double losses (winner = -1)', () => {
     }
   ];
 
-  const result = buildMatchupMatrix(targetArchetype, pairingsData);
+  const result = buildMatchupMatrix(targetArchetype, pairingsData, 3);
 
   const opponent = result.OpponentDeck;
   assert.ok(opponent, 'Should have matchup data');
@@ -349,7 +349,7 @@ test('buildMatchupMatrix skips byes (no player2)', () => {
     }
   ];
 
-  const result = buildMatchupMatrix(targetArchetype, pairingsData);
+  const result = buildMatchupMatrix(targetArchetype, pairingsData, 3);
 
   const opponent = result.OpponentDeck;
   assert.ok(opponent, 'Should have matchup data');
@@ -374,14 +374,14 @@ test('buildMatchupMatrix filters out matchups with insufficient sample size', ()
         makePairing('p1', 'p2', 'p1'),
         makePairing('p1', 'p2', 'p1'),
         makePairing('p1', 'p2', 'p1'),
-        // Only 2 games vs RareOpponent (below MIN_MATCHUP_GAMES = 3)
+        // Only 2 games vs RareOpponent (below the minGames floor of 3)
         makePairing('p1', 'p3', 'p1'),
         makePairing('p1', 'p3', 'p1')
       ]
     }
   ];
 
-  const result = buildMatchupMatrix(targetArchetype, pairingsData);
+  const result = buildMatchupMatrix(targetArchetype, pairingsData, 3);
 
   assert.ok(result.FrequentOpponent, 'Should include frequent matchup');
   assert.ok(!result.RareOpponent, 'Should filter out rare matchup (< 3 games)');
@@ -403,7 +403,7 @@ test('buildMatchupMatrix calculates winRate correctly', () => {
     }
   ];
 
-  const result = buildMatchupMatrix(targetArchetype, pairingsData);
+  const result = buildMatchupMatrix(targetArchetype, pairingsData, 3);
 
   const opponent = result.OpponentDeck;
   // Win rate = wins / total = 2 / 4 = 50%
@@ -429,7 +429,7 @@ test('buildMatchupMatrix aggregates across multiple tournaments', () => {
     }
   ];
 
-  const result = buildMatchupMatrix(targetArchetype, pairingsData);
+  const result = buildMatchupMatrix(targetArchetype, pairingsData, 3);
 
   const charizard = result.Charizard;
   assert.ok(charizard, 'Should have Charizard matchup');
@@ -460,7 +460,7 @@ test('buildMatchupMatrix handles missing deck info gracefully', () => {
     }
   ];
 
-  const result = buildMatchupMatrix(targetArchetype, pairingsData);
+  const result = buildMatchupMatrix(targetArchetype, pairingsData, 3);
 
   // No matchups should be recorded since opponents are unknown
   assert.deepStrictEqual(result, {}, 'Should skip matches with unknown decks');
@@ -500,7 +500,8 @@ test('generateArchetypeTrends includes matchups when pairingsData is provided', 
 
   const result = generateArchetypeTrends(decks, tournaments, null, {
     pairingsData,
-    archetypeName
+    archetypeName,
+    minMatchupGames: 3
   });
 
   // Should have matchups section
@@ -594,7 +595,7 @@ test('buildMatchupMatrix counts mirror matches symmetrically (P-26)', () => {
     }
   ];
 
-  const result = buildMatchupMatrix('TestDeck', pairingsData);
+  const result = buildMatchupMatrix('TestDeck', pairingsData, 3);
   const mirror = result.TestDeck;
   assert.ok(mirror, 'Mirror-only pairings keep the self-keyed entry');
   assert.strictEqual(mirror.total, 3, 'Each mirror match counted once');
