@@ -203,6 +203,19 @@ body.tl-rowdrag {
   user-select: none;
   pointer-events: none;
 }
+/* Switching view rebuilds every tile, so its art starts from nothing: on a
+   cold cache the tray reads as forty cards that lost their pictures. A pending
+   image wears the site's skeleton shimmer until it paints. Keyed on the
+   attribute rather than a wrapper class so the animation stops the moment the
+   bitmap lands, instead of running behind sixty loaded tiles forever. */
+:is(.tl-prev, .tl-art) img:not([data-loaded]) {
+  /* --rule rather than the generic skeleton's --surface-2: the tile sits in a
+     --surface-2 well, and a placeholder the colour of the well behind it does
+     not read as a card that is still arriving. */
+  background: linear-gradient(90deg, var(--rule), color-mix(in srgb, var(--rule) 45%, var(--surface)), var(--rule));
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
 .tl-item:active {
   cursor: grabbing;
 }

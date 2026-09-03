@@ -116,6 +116,31 @@ test('the tools index features the tier list and label maker as tiles', async ({
   await expect(page.locator('.tools-more-item')).toHaveCount(4);
 });
 
+test('a tier list tile carries a placeholder until its art paints', async ({ page }) => {
+  // Switching view rebuilds every tile, so its art starts from nothing. Holding
+  // the thumbnails open is what makes that window observable: `vite preview`
+  // runs no /thumbnails Function, so the art has to be served from here anyway.
+  const pixel = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  await page.route('**/thumbnails/**', async route => {
+    await new Promise(resolve => {
+      setTimeout(resolve, 700);
+    });
+    await route.fulfill({ status: 200, contentType: 'image/png', body: pixel });
+  });
+  await gotoClean(page, '/tools/tier-list');
+  await page.getByRole('tab', { name: 'Previews', exact: true }).click();
+  const art = page.locator('.tl-prev img').first();
+  await expect(art).toBeAttached();
+  await expect(art).not.toHaveAttribute('data-loaded', '');
+  expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('skeleton-shimmer');
+  // And the placeholder gets out of the way the moment the bitmap lands.
+  await expect(art).toHaveAttribute('data-loaded', '', { timeout: 10_000 });
+  expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+});
+
 test('hovering the Tools nav item reveals the two headline tools', async ({ page }, testInfo) => {
   // Desktop affordance only — phones get the /tools page instead.
   test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
