@@ -848,19 +848,26 @@ body[data-mode='dark'] .tl-btn {
    labels gets what is left. Everything narrows; nothing is
    removed, because a tier list you cannot finish on the device
    you had it open on is not a tier list.
+
+   None of it reaches an export. The image is not going to be
+   looked at on the phone it was made on, and a 62px plate under
+   full-size tiles reads as a mistake there; the board is widened
+   to a desktop measure for the rasterise (see exportFit), so it
+   gets desktop plates to go with it. Hence `:not([data-exporting])`
+   on everything here that the board wears.
    ============================================================ */
 @media (max-width: 720px) {
-  .tl-row {
+  .tl-board:not([data-exporting]) .tl-row {
     --plate-w: 62px;
   }
-  .tl-plate {
+  .tl-board:not([data-exporting]) .tl-plate {
     font-size: 20px;
     padding: 8px 4px;
   }
-  .tl-plate[data-len='long'] {
+  .tl-board:not([data-exporting]) .tl-plate[data-len='long'] {
     font-size: 13px;
   }
-  .tl-plate[data-len='xlong'] {
+  .tl-board:not([data-exporting]) .tl-plate[data-len='xlong'] {
     font-size: 10px;
   }
   /* Four 24px targets do not fit beside each other on a 62px plate, so they
@@ -874,7 +881,9 @@ body[data-mode='dark'] .tl-btn {
     width: 50%;
     height: 26px;
   }
-  .tl-zone {
+  /* The tray keeps the phone's spacing either way — it is never exported. */
+  .tl-tray .tl-zone,
+  .tl-board:not([data-exporting]) .tl-zone {
     padding: 7px;
     gap: 6px;
   }
@@ -909,10 +918,10 @@ body[data-mode='dark'] .tl-btn {
     min-height: 26px;
   }
 
-  .tl-title {
+  .tl-board:not([data-exporting]) .tl-title {
     padding: 11px 12px 10px;
   }
-  .tl-title b {
+  .tl-board:not([data-exporting]) .tl-title b {
     font-size: 17px;
   }
 }
@@ -938,3 +947,4 @@ body[data-mode='dark'] .tl-btn {
     opacity: 1;
   }
 }
+

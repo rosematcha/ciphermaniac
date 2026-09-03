@@ -8,7 +8,11 @@
  * nothing about the width of a browser window has anything to do with the shape
  * of the artwork.
  *
- * So the export picks its own width. The board is narrowed through a series of
+ * So the export picks its own width. The board is first WIDENED to
+ * {@link WIDEST} — the shape of the artwork cannot depend on the device it was
+ * arranged on, and starting from the phone's own 390px meant a tier of four
+ * chips was already wrapped before the fit began, so no phone could reach a
+ * landscape ratio at all. From there it is narrowed through a series of
  * candidates, each wrapping roughly one more tile out of its longest row, and
  * every candidate is *measured* rather than predicted — icon chips are as wide
  * as the archetype's name, so there is no arithmetic that gets this right for
@@ -42,6 +46,17 @@ const NARROWEST = EXPORT_RATIOS[EXPORT_RATIOS.length - 1]!;
 
 /** Breathing room to the right of the last tile, in CSS px. */
 export const SLACK = 18;
+
+/**
+ * The width the board is measured at before anything is narrowed, in CSS px.
+ *
+ * It is what `.page` gives the board on a desktop viewport (1180 max-width less
+ * its 32px sides), which is the point: the same list exports the same shape
+ * from a phone as from a laptop, and both stop widening in the same place. A
+ * board whose longest row needs more than this wraps here exactly as it would
+ * on a desktop screen.
+ */
+export const WIDEST = 1116;
 
 /**
  * How far off a target a candidate may sit and still count as hitting it.
@@ -166,7 +181,26 @@ export function bestLayout(samples: readonly LayoutSample[]): LayoutSample | nul
 }
 
 /**
- * Narrows `board` to the width it should be exported at.
+ * The width to export at, given a way to measure the board at any width.
+ *
+ * Split from the DOM work so the walk — widen, sweep, choose, re-measure — can
+ * be asserted without a browser.
+ * @param measureAt - Applies a width and returns what the board became.
+ * @returns The width in CSS px, or null when no candidate could be measured.
+ */
+export function fitWidth(measureAt: (width: number) => LayoutSample): number | null {
+  const best = bestLayout(sampleLayouts(measureAt(WIDEST), measureAt));
+  if (!best) {
+    return null;
+  }
+  // Re-apply and re-measure: the chosen width comes from the sample's own
+  // usage, and the sample was taken at a width that may have been slightly
+  // wider than the tiles ended up needing.
+  return Math.round(exportWidth(measureAt(best.constraint)));
+}
+
+/**
+ * Sets `board` to the width it should be exported at.
  *
  * Measures its own way there, so it works the same in all three views and
  * survives any later change to tile sizes. A board with no tiles is left alone:
@@ -202,14 +236,11 @@ export function fitBoardForExport(board: HTMLElement): () => void {
     return { ...measure(), constraint };
   };
 
-  const best = bestLayout(sampleLayouts(measure(), sampleAt));
-  if (!best) {
+  const width = fitWidth(sampleAt);
+  if (width === null) {
     restore();
     return restore;
   }
-  // Re-apply and re-measure: the chosen width comes from the sample's own
-  // usage, and the sample was taken at a width that may have been slightly
-  // wider than the tiles ended up needing.
-  style.width = `${Math.round(exportWidth(sampleAt(best.constraint)))}px`;
+  style.width = `${width}px`;
   return restore;
 }

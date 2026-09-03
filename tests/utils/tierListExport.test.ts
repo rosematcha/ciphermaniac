@@ -14,10 +14,12 @@ import {
   bestLayout,
   EXPORT_RATIOS,
   exportWidth,
+  fitWidth,
   type LayoutSample,
   ratioDistance,
   sampleLayouts,
-  SLACK
+  SLACK,
+  WIDEST
 } from '../../src/lib/tierList/exportFit';
 
 /** The narrowest target; below this an export is padded up rather than left tight. */
@@ -179,4 +181,37 @@ test('every shape lands on a target, unless it is one row too wide to wrap', () 
 
 test('nothing to measure means nothing to choose', () => {
   assert.equal(bestLayout([]), null);
+});
+
+// ---------------------------------------------------------------------------
+// The whole walk
+// ---------------------------------------------------------------------------
+
+test('the fit starts from the desktop measure, whatever width the board had', () => {
+  // Starting from the phone's own 390px, a tier of four chips was already
+  // wrapped before the fit began, and no phone could reach a landscape ratio.
+  const measure = board(6, 4);
+  const asked: number[] = [];
+  const width = fitWidth(constraint => {
+    asked.push(constraint);
+    return measure(constraint);
+  });
+  assert.equal(asked[0], WIDEST);
+  // And it lands where a desktop lands.
+  const best = bestLayout(sampleLayouts(measure(WIDEST), measure));
+  assert.ok(best);
+  assert.equal(width, Math.round(exportWidth(measure(best.constraint))));
+});
+
+test('a board wider than a desktop wraps at the desktop measure rather than growing past it', () => {
+  const width = fitWidth(board(1, 30));
+  assert.ok(width !== null);
+  assert.ok(width <= WIDEST + SLACK, `one tier of thirty came out ${width}px wide`);
+});
+
+test('a board with nothing to measure yields no width', () => {
+  assert.equal(
+    fitWidth(() => ({ constraint: 0, height: 0, used: 0 })),
+    null
+  );
 });
