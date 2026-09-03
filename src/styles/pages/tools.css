@@ -1,7 +1,14 @@
 /* Tools index: the two headline tools get real tiles, everything else is a
    plain list so the page reads as a hierarchy rather than a wall of cards. */
 .tools-featured {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 320px));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 650px;
+}
+
+@media (max-width: 640px) {
+  .tools-featured {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
 }
 
 .tools-more {
