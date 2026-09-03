@@ -21,6 +21,16 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* The footer starts below the fold, always. It sits under content that grows as
+   late data lands, so anywhere inside the first screen it would be shoved down
+   on every arrival — measured at 0.18 CLS on /cards, twelve times the budget,
+   from one footer. Off-screen it moves just as much and costs nothing. A full
+   viewport of main also gives short routes a floor instead of a footer parked
+   under two lines of text. */
+main.page {
+  min-height: 100dvh;
+}
+
 body {
   font-family: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
   font-size: 15px;

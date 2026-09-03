@@ -229,26 +229,6 @@
   display: flex;
   gap: 6px;
 }
-.topnav-mode-toggle {
-  font-size: 12px;
-  color: var(--muted);
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  transition:
-    background var(--ms-fast),
-    color var(--ms-fast),
-    transform var(--ms-fast);
-}
-.topnav-mode-toggle:hover {
-  color: var(--fg);
-  background: var(--surface-2);
-}
-.topnav-mode-toggle:active {
-  transform: scale(var(--press-scale));
-}
-
 @media (max-width: 640px) {
   .topnav {
     grid-template-columns: max-content minmax(0, 1fr);
@@ -308,8 +288,70 @@
     max-width: 100%;
     padding: 8px 10px;
   }
-  .topnav-mode-toggle {
-    padding: 8px 10px;
+}
+
+/* ---------- Site footer ----------
+   A rule and a row: the site's map, who runs it, and the mode toggle. It ends
+   the page rather than decorating it, so it borrows the topnav's measure and
+   its link treatment and adds nothing of its own.
+   ------------------------------------ */
+.site-footer {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--space-4) 32px var(--space-6);
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+.site-footer-links a,
+.site-footer-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+.site-footer-links a {
+  font-weight: 500;
+  transition: color var(--ms-fast) var(--ease-base);
+}
+.site-footer-links a:hover {
+  color: var(--fg);
+  text-decoration: none;
+}
+/* Pushed off the links, and the toggle off it: three groups, one row. */
+.site-footer-note {
+  margin: 0;
+  margin-inline-start: auto;
+}
+.site-footer .chip {
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .site-footer {
+    /* Same safe-area treatment as `.page`: the toggle must not sit under the
+       home-indicator bar. */
+    padding: var(--space-4) max(var(--space-3), env(safe-area-inset-left))
+      max(var(--space-5), env(safe-area-inset-bottom));
+    padding-right: max(var(--space-3), env(safe-area-inset-right));
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+  /* Stacked: the links take the row they need, then the note and the toggle
+     share the next one. */
+  .site-footer-links {
+    flex: 1 1 100%;
+  }
+  .site-footer-note {
+    margin-inline-start: 0;
+  }
+  .site-footer .chip {
+    margin-inline-start: auto;
   }
 }
 
@@ -4150,7 +4192,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
     --row-height: 44px;
   }
 
-  .topnav-mode-toggle,
   .t-selector-trigger {
     min-height: 44px;
     display: inline-flex;
