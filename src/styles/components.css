@@ -538,9 +538,7 @@
 }
 /* The scope label is known synchronously; the deck count and freshness stamp
    arrive with meta.json. Reserving their width means the wrap decision inside
-   `.right` is made once, at first paint — on a phone the tail used to arrive
-   wide enough to push "View all" onto a second line, dropping the whole
-   archetype gallery 28px (the site's largest measured shift). */
+   `.right` is made once, at first paint. */
 .scope-line-tail {
   display: inline-flex;
   align-items: baseline;
@@ -579,21 +577,20 @@
   .section-head {
     flex-wrap: wrap;
   }
+}
+
+/* The scope details are supplementary. Keep them for desktop, but give the
+   compact header entirely to its title and destination link on smaller
+   screens. */
+@media (max-width: 1023px) {
+  .section-head:has(.scope-line) {
+    flex-wrap: nowrap;
+  }
   .section-head .right:has(.scope-line) {
-    flex-basis: 100%;
-    justify-content: space-between;
+    flex: 0 0 auto;
+    min-height: 0;
   }
-  /* The tail always takes its own line here. Beside the label it fills the
-     row to within a few px in Inter, and the fallback face a phone paints
-     first is wider — so the tail wrapped, then unwrapped as Inter landed, and
-     the gallery under it went down 17px and back (0.27 CLS on the runner,
-     which has no Arial to stand in; Android has none either). A second line
-     that is always there costs nothing. The dot that joined it to the label
-     goes with the join. */
-  .scope-line-tail {
-    display: flex;
-  }
-  .scope-line-tail > .dot:first-child {
+  .section-head .right .scope-line {
     display: none;
   }
 }
