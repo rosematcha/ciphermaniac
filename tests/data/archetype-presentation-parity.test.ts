@@ -26,6 +26,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import archetypeIcons from '../../src/data/archetype-icons.json';
+import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 
 import {
   buildCardMetaLookup,
@@ -278,6 +280,15 @@ test('thumbnail override reconciliation strips straight apostrophes only (online
   // ...but a curly-quote label does NOT (the online char class covers U+0027
   // only) — it falls through to inference and returns empty here.
   assert.deepStrictEqual(resolveArchetypeThumbnails('base', 'N’s  Zoroark!', { items: [] }, { config }), []);
+});
+
+test('Other uses Substitute for both its card thumbnail and mini icon', () => {
+  assert.deepStrictEqual(archetypeThumbnails.Other, ['PHF/102']);
+  assert.deepStrictEqual(archetypeIcons.Other, ['substitute']);
+  assert.deepStrictEqual(resolveArchetypeThumbnails('Other', 'Other', { items: [] }, { config: archetypeThumbnails }), [
+    'PHF/102'
+  ]);
+  assert.deepStrictEqual(resolveArchetypeIcons('Other', 'Other', [], null, archetypeIcons), ['substitute']);
 });
 
 // ---------------------------------------------------------------------------
