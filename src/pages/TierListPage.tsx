@@ -25,7 +25,7 @@ import {
   prettyTournamentName,
   resolveArchetypeIcons
 } from '../lib/data';
-import { type ArtCard, browsableArtCards, fetchArtCards } from '../lib/data/artGroups';
+import { type ArtCard, browsableArtCards, fetchArtCards, findArtCard } from '../lib/data/artGroups';
 import { ONLINE_META_NAME } from '../lib/constants';
 import { latestValue } from '../lib/resource';
 import { fitBoardForExport } from '../lib/tierList/exportFit';
@@ -130,7 +130,7 @@ export function TierListPage() {
   const [tiers, setTiers] = createSignal<Tier[]>(defaultTiers());
   const [placement, setPlacement] = createSignal<Map<string, string[]>>(new Map());
   const [custom, setCustom] = createSignal<CustomArchetype[]>([]);
-  const [cardName, setCardName] = createSignal('');
+  const [cardKey, setCardKey] = createSignal('');
   const [title, setTitle] = createSignal('');
   const [editing, setEditing] = createSignal<EditSubject | null>(null);
   const [resetArmed, setResetArmed] = createSignal(false);
@@ -147,7 +147,9 @@ export function TierListPage() {
   const labels = (): boolean => labelChoice() ?? LABEL_DEFAULT[mode()];
   const cards = (): ArtCard[] => latestValue(artCards) ?? [];
   const browseCards = createMemo<ArtCard[]>(() => browsableArtCards(cards()));
-  const activeCard = (): ArtCard | undefined => cards().find(c => c.name === cardName()) ?? cards()[0];
+  // Cluster key, not name: 72 card names cover more than one card, and the
+  // picker offers each separately.
+  const activeCard = (): ArtCard | undefined => findArtCard(cards(), cardKey()) ?? cards()[0];
 
   onMount(() => {
     document.title = 'Tier List Maker — Tools — Ciphermaniac';
@@ -386,7 +388,7 @@ export function TierListPage() {
     setCustom(state.custom);
     nextCustomId = Math.max(0, ...state.custom.map(c => c.id));
     if (state.mode === 'arts') {
-      setCardName(state.subject);
+      setCardKey(state.subject);
     } else if (state.subject) {
       setSearchParams({ t: state.subject });
     }
@@ -395,7 +397,7 @@ export function TierListPage() {
   async function share(): Promise<void> {
     const encoded = encodeShare({
       mode: mode(),
-      subject: mode() === 'arts' ? (activeCard()?.name ?? '') : tournament(),
+      subject: mode() === 'arts' ? (activeCard()?.key ?? '') : tournament(),
       title: title(),
       tiers: tiers(),
       placement: placement(),
@@ -530,7 +532,7 @@ export function TierListPage() {
               label={c => c.name}
               weight={c => c.arts.length}
               width='260px'
-              onPick={c => setCardName(c.name)}
+              onPick={c => setCardKey(c.key)}
             >
               {(card, query) => {
                 const [before, hit, after] = splitMatch(card.name, query);

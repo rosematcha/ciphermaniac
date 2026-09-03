@@ -151,20 +151,105 @@ class ParameterSignatureTest(unittest.TestCase):
 
 
 class ClustersFromSynonymsTest(unittest.TestCase):
-    def test_groups_prints_by_card_name_in_release_order(self):
-        database = {"prints": {
-            "Rare Candy::SVI::191": 0.1,
-            "Ultra Ball::DEX::102": 0.5,
-            "Rare Candy::PAF::089": 0.2,
-        }}
+    def test_groups_prints_by_reprint_cluster_in_release_order(self):
+        database = {
+            "prints": {
+                "Rare Candy::SVI::191": 0.1,
+                "Ultra Ball::DEX::102": 0.5,
+                "Rare Candy::PAF::089": 0.2,
+            },
+            "synonyms": {"Rare Candy::PAF::089": "Rare Candy::SVI::191"},
+        }
         self.assertEqual(
             build.clusters_from_synonyms(database),
-            {"Rare Candy": ["SVI::191", "PAF::089"], "Ultra Ball": ["DEX::102"]},
+            {
+                "Rare Candy::SVI::191": {"name": "Rare Candy", "prints": ["SVI::191", "PAF::089"]},
+                "Ultra Ball::DEX::102": {"name": "Ultra Ball", "prints": ["DEX::102"]},
+            },
         )
+
+    def test_splits_one_name_that_covers_two_different_cards(self):
+        # The Obsidian Flames Charizard ex and the 151 one share a name and
+        # nothing else; ranking their art together is the bug this prevents.
+        database = {
+            "prints": {
+                "Charizard ex::OBF::125": 1.0,
+                "Charizard ex::PAF::054": 1.0,
+                "Charizard ex::MEW::006": 1.0,
+                "Charizard ex::MEW::183": 1.0,
+            },
+            "synonyms": {
+                "Charizard ex::PAF::054": "Charizard ex::OBF::125",
+                "Charizard ex::MEW::183": "Charizard ex::MEW::006",
+            },
+        }
+        self.assertEqual(
+            build.clusters_from_synonyms(database),
+            {
+                "Charizard ex::OBF::125": {"name": "Charizard ex", "prints": ["OBF::125", "PAF::054"]},
+                "Charizard ex::MEW::006": {"name": "Charizard ex", "prints": ["MEW::006", "MEW::183"]},
+            },
+        )
+
+    def test_keys_on_the_earliest_print_not_the_rolling_canonical(self):
+        # Canonicals move when prices and legality do. Keying on one would
+        # rebuild every grouping and break every shared tier list with it.
+        database = {
+            "prints": {"Rare Candy::SVI::191": 0.1, "Rare Candy::PAF::089": 0.2},
+            "synonyms": {"Rare Candy::SVI::191": "Rare Candy::PAF::089"},
+        }
+        self.assertEqual(list(build.clusters_from_synonyms(database)), ["Rare Candy::SVI::191"])
+
+    def test_a_print_with_no_synonym_edge_is_its_own_cluster(self):
+        database = {"prints": {"Iono::PAL::185": 1.0}, "synonyms": {}}
+        self.assertEqual(
+            build.clusters_from_synonyms(database),
+            {"Iono::PAL::185": {"name": "Iono", "prints": ["PAL::185"]}},
+        )
+
+    def test_follows_a_synonym_chain_to_one_cluster(self):
+        database = {
+            "prints": {"Boss's Orders::RCL::154": 1.0, "Boss's Orders::SHF::058": 1.0,
+                       "Boss's Orders::BRS::132": 1.0},
+            "synonyms": {"Boss's Orders::SHF::058": "Boss's Orders::BRS::132",
+                         "Boss's Orders::BRS::132": "Boss's Orders::RCL::154"},
+        }
+        self.assertEqual(
+            build.clusters_from_synonyms(database),
+            {"Boss's Orders::RCL::154": {
+                "name": "Boss's Orders",
+                "prints": ["RCL::154", "SHF::058", "BRS::132"],
+            }},
+        )
+
+    def test_a_cyclic_synonym_map_terminates(self):
+        database = {
+            "prints": {"Potion::A::001": 1.0, "Potion::B::002": 1.0},
+            "synonyms": {"Potion::A::001": "Potion::B::002", "Potion::B::002": "Potion::A::001"},
+        }
+        clusters = build.clusters_from_synonyms(database)
+        self.assertEqual(sum(len(c["prints"]) for c in clusters.values()), 2)
 
     def test_skips_malformed_uids_and_missing_prints(self):
         self.assertEqual(build.clusters_from_synonyms({}), {})
         self.assertEqual(build.clusters_from_synonyms({"prints": {"Rare Candy": 1}}), {})
+
+
+class SelectByNameTest(unittest.TestCase):
+    CLUSTERS = {
+        "Charizard ex::OBF::125": {"name": "Charizard ex", "prints": ["OBF::125"]},
+        "Charizard ex::MEW::006": {"name": "Charizard ex", "prints": ["MEW::006"]},
+        "Iono::PAL::185": {"name": "Iono", "prints": ["PAL::185"]},
+    }
+
+    def test_one_name_selects_every_cluster_under_it(self):
+        self.assertEqual(
+            sorted(build.select_by_name(self.CLUSTERS, {"Charizard ex"})),
+            ["Charizard ex::MEW::006", "Charizard ex::OBF::125"],
+        )
+
+    def test_an_unknown_name_selects_nothing(self):
+        self.assertEqual(build.select_by_name(self.CLUSTERS, {"Pidgey"}), {})
 
 
 class SignatureTest(unittest.TestCase):
@@ -194,8 +279,8 @@ class BareNumberTest(unittest.TestCase):
 class SummariseTest(unittest.TestCase):
     def test_counts_prints_arts_and_collapsed_duplicates(self):
         cards = {
-            "Rare Candy": {"arts": [["SVI::191", "PAF::089"], ["UL::082"]], "unmatched": []},
-            "Ultra Ball": {"arts": [["DEX::102"]], "unmatched": ["XX::999"]},
+            "Rare Candy::UL::082": {"arts": [["SVI::191", "PAF::089"], ["UL::082"]], "unmatched": []},
+            "Ultra Ball::DEX::102": {"arts": [["DEX::102"]], "unmatched": ["XX::999"]},
         }
         self.assertEqual(
             build.summarise(cards),
