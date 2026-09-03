@@ -142,8 +142,8 @@ test('a tier list tile carries a placeholder until its art paints', async ({ pag
 });
 
 test('hovering the Tools nav item reveals the two headline tools', async ({ page }, testInfo) => {
-  // Desktop affordance only — phones get the /tools page instead.
-  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
+  // Desktop affordance only — compact headers get the /tools page instead.
+  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
   const menu = page.locator('.topnav-menu');
   await expect(menu).toBeHidden();
@@ -156,8 +156,25 @@ test('hovering the Tools nav item reveals the two headline tools', async ({ page
   );
 });
 
+test('a narrow desktop viewport uses the compact two-tier header', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'this covers desktop browsers resized below the header breakpoint');
+  await page.setViewportSize({ width: 700, height: 800 });
+  await gotoClean(page, '/');
+
+  const header = await page.locator('.topnav').evaluate(nav => {
+    const styles = getComputedStyle(nav);
+    return {
+      gridTemplateAreas: styles.gridTemplateAreas,
+      scrollWidth: nav.scrollWidth,
+      clientWidth: nav.clientWidth
+    };
+  });
+  expect(header.gridTemplateAreas).toContain('"links links"');
+  expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth);
+});
+
 test('the Tools menu closes once the pointer leaves, even after a click', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
+  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
   const menu = page.locator('.topnav-menu');
   const tools = page.locator('.topnav').getByRole('link', { name: 'Tools', exact: true });
@@ -170,7 +187,7 @@ test('the Tools menu closes once the pointer leaves, even after a click', async 
 });
 
 test('keyboard focus opens the Tools menu', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
+  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
   const menu = page.locator('.topnav-menu');
   // Tab in from the neighbouring link: :focus-visible only matches when the

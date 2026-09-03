@@ -229,7 +229,7 @@
   display: flex;
   gap: 6px;
 }
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .topnav {
     grid-template-columns: max-content minmax(0, 1fr);
     grid-template-rows: auto auto;
@@ -287,6 +287,7 @@
   .t-selector-trigger {
     max-width: 100%;
     padding: 8px 10px;
+    min-height: 44px;
   }
 }
 
@@ -390,7 +391,7 @@
 .t-freshness.is-ready {
   opacity: 1;
 }
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .t-freshness {
     display: none;
   }
