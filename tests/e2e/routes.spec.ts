@@ -147,7 +147,7 @@ test('hovering the Tools nav item reveals the two headline tools', async ({ page
   await gotoClean(page, '/');
   const menu = page.locator('.topnav-menu');
   await expect(menu).toBeHidden();
-  await page.getByRole('link', { name: 'Tools', exact: true }).hover();
+  await page.locator('.topnav').getByRole('link', { name: 'Tools', exact: true }).hover();
   await expect(menu).toBeVisible();
   await expect(menu.getByRole('link', { name: 'Tier List Maker' })).toHaveAttribute('href', '/tools/tier-list');
   await expect(menu.getByRole('link', { name: 'Deck Box Label Maker' })).toHaveAttribute(
@@ -160,7 +160,7 @@ test('the Tools menu closes once the pointer leaves, even after a click', async 
   test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
   await gotoClean(page, '/');
   const menu = page.locator('.topnav-menu');
-  const tools = page.getByRole('link', { name: 'Tools', exact: true });
+  const tools = page.locator('.topnav').getByRole('link', { name: 'Tools', exact: true });
   await tools.click();
   await expect(page).toHaveURL(/\/tools$/);
   // The clicked anchor still holds DOM focus, so the menu must not be pinned
@@ -175,9 +175,10 @@ test('keyboard focus opens the Tools menu', async ({ page }, testInfo) => {
   const menu = page.locator('.topnav-menu');
   // Tab in from the neighbouring link: :focus-visible only matches when the
   // browser saw a keyboard interaction, which a bare focus() does not give us.
-  await page.getByRole('link', { name: 'Players', exact: true }).focus();
+  const nav = page.locator('.topnav');
+  await nav.getByRole('link', { name: 'Players', exact: true }).focus();
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('link', { name: 'Tools', exact: true })).toBeFocused();
+  await expect(nav.getByRole('link', { name: 'Tools', exact: true })).toBeFocused();
   await expect(menu).toBeVisible();
 });
 
@@ -340,4 +341,36 @@ test('the exported board carries tier names, not the tier controls', async ({ pa
   });
   expect(shown.tools).toBe('none');
   expect(shown.name).not.toBe('none');
+});
+
+test.describe('theme', () => {
+  // Nothing stored, and an OS asking for dark.
+  test.use({ colorScheme: 'dark' });
+
+  test('a first visit follows the system, and the footer toggle overrides it', async ({ page }) => {
+    await gotoClean(page, '/tools');
+    await expect(page.locator('body')).toHaveAttribute('data-mode', 'dark');
+
+    // The button names the mode it switches TO, so in the dark it offers light.
+    const toggle = page.locator('.site-footer .chip');
+    await expect(toggle).toHaveText('Light mode');
+    await toggle.click();
+    await expect(page.locator('body')).toHaveAttribute('data-mode', 'light');
+    await expect(toggle).toHaveText('Dark mode');
+
+    // A deliberate choice outlives the page, and beats the OS on the next one.
+    await gotoClean(page, '/trends');
+    await expect(page.locator('body')).toHaveAttribute('data-mode', 'light');
+    await expect(page.locator('.site-footer .chip')).toHaveText('Dark mode');
+  });
+
+  test('the stored mode is on the document before the app boots', async ({ page }) => {
+    // The bundle is a module script: waiting for it to set the attribute means
+    // showing a dark-mode user a white page first.
+    await page.addInitScript(() => localStorage.setItem('cm:mode', 'dark'));
+    await page.goto('/tools');
+    await page.route('**/*.js', route => route.abort());
+    await page.reload({ waitUntil: 'commit' });
+    await expect(page.locator('body')).toHaveAttribute('data-mode', 'dark');
+  });
 });

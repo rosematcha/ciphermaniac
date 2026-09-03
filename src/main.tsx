@@ -17,6 +17,7 @@ import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { installPreloadRecovery } from './lib/preloadRecovery';
 import { probeR2Ready } from './components/CardImage';
+import { initTheme } from './lib/theme';
 
 // A deploy replaces every content-hashed chunk, so a tab that predates it will
 // fail the next lazy route's preload. Recover before any route can hit it.
@@ -77,9 +78,8 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   });
 }
 
-// Default to light unless the user has previously picked dark.
-const savedMode = (typeof localStorage !== 'undefined' && localStorage.getItem('cm:mode')) as 'light' | 'dark' | null;
-document.body.dataset.mode = savedMode ?? 'light';
+// Before render: an attribute swap after first paint is a visible flash.
+initTheme();
 
 render(
   () => (

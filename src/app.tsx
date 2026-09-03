@@ -1,6 +1,7 @@
 import { ErrorBoundary, type ParentComponent, Suspense } from 'solid-js';
 import { useIsRouting } from '@solidjs/router';
 import { SurveyBanner } from './components/SurveyBanner';
+import { SiteFooter } from './components/SiteFooter';
 import { Skeleton } from './components/Skeleton';
 import { TopNav } from './components/TopNav';
 import { TournamentProvider } from './lib/tournamentContext';
@@ -59,6 +60,7 @@ export const App: ParentComponent = props => {
           <Suspense fallback={<ChunkFallback />}>{props.children}</Suspense>
         </ErrorBoundary>
       </main>
+      <SiteFooter />
     </TournamentProvider>
   );
 };
