@@ -35,6 +35,7 @@
   border-bottom: 0;
 }
 .tl-plate {
+  --plate-stroke: rgb(0 0 0 / 45%);
   background: var(--plate);
   color: var(--plate-fg);
   display: grid;
@@ -62,11 +63,25 @@
   font-weight: 700;
 }
 
-/* Reorder, edit and delete live ON the plate and appear on hover, so the
-   board carries no permanent chrome and the export needs nothing stripped. */
 .tl-plate-name {
   display: block;
+  /* One treatment for every swatch: white letters with a thin dark outline
+     read the same on brick as on bone, so a tier's colour never decides how
+     its letter looks. The ring is em-based so it thins with the step-down
+     sizes instead of clogging a 10px name. */
+  color: #fff;
+  text-shadow:
+    0.045em 0 0 var(--plate-stroke),
+    -0.045em 0 0 var(--plate-stroke),
+    0 0.045em 0 var(--plate-stroke),
+    0 -0.045em 0 var(--plate-stroke),
+    0.032em 0.032em 0 var(--plate-stroke),
+    -0.032em 0.032em 0 var(--plate-stroke),
+    0.032em -0.032em 0 var(--plate-stroke),
+    -0.032em -0.032em 0 var(--plate-stroke);
 }
+/* Reorder, edit and delete live ON the plate and appear on plate hover, so the
+   board carries no permanent chrome and the export needs nothing stripped. */
 .tl-tools {
   position: absolute;
   inset: 0;
@@ -78,7 +93,9 @@
   opacity: 0;
   transition: opacity var(--ms-fast) var(--ease-base);
 }
-.tl-row:hover .tl-tools,
+/* The plate only, not the row: reaching across a row to drop a tile should
+   not light up four buttons at the far left. */
+.tl-plate:hover .tl-tools,
 .tl-tools:focus-within {
   opacity: 1;
 }

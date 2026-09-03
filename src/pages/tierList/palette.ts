@@ -25,6 +25,9 @@
  *
  * Every swatch carries the text colour it was verified against; the test suite
  * re-asserts the whole set at ≥4.5:1 so a future edit cannot quietly break one.
+ * That colour dresses the plate's controls. The tier name itself is white with a
+ * dark outline on every swatch, so a tier's colour never changes how its letter
+ * looks — see `.tl-plate-name`.
  * @module pages/tierList/palette
  */
 
