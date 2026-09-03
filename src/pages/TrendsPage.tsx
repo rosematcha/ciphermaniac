@@ -317,9 +317,15 @@ function OnlineView(props: { windowKey: OnlineWindow }) {
       <Section
         title='Archetype share over time'
         right={
-          <Show when={trendsData() !== undefined} fallback='—'>
-            {chart().days.length} daily snapshots · {sourceCaption()}
-          </Show>
+          // Width-reserved and faded in, not swapped from an em dash: this
+          // caption goes from one character to ~280px when the trend file
+          // lands, and on a phone that was enough to wrap the section head and
+          // push the chart down a line.
+          <span class='section-meta-slot' classList={{ 'is-ready': trendsData() !== undefined }}>
+            <Show when={trendsData() !== undefined}>
+              {chart().days.length} daily snapshots · {sourceCaption()}
+            </Show>
+          </span>
         }
       >
         <Show when={dataStamp()}>
@@ -718,6 +724,15 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
   onMount(() => {
     if (!containerRef) {
       return;
+    }
+    // Read the real width before the browser paints. The ResizeObserver below
+    // only reports on a later frame, so until this ran the chart painted at
+    // the 880 guess: the svg scales to its container, so on a 350px phone that
+    // first frame was 392px tall against the 240px it settles at, and the
+    // legend under it jumped by the difference.
+    const initial = containerRef.getBoundingClientRect().width;
+    if (initial > 0) {
+      setWidth(initial);
     }
     const ro = new ResizeObserver(entries => {
       for (const entry of entries) {

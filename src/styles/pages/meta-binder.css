@@ -94,6 +94,14 @@
 .mb-summary-price {
   display: inline-flex;
   align-items: baseline;
+  /* Reserved while pricing loads — see the note in MetaBinderPage. Wide enough
+     for a four-figure total plus an "N unpriced" tail. */
+  min-width: 132px;
+  opacity: 0;
+  transition: opacity var(--ms-base) var(--ease-base);
+}
+.mb-summary-price.is-ready {
+  opacity: 1;
 }
 .mb-summary-price b {
   color: var(--accent);
@@ -167,6 +175,18 @@
 }
 .mb-card:hover {
   transform: translateY(-2px);
+}
+/* Loading placeholder — shares the card's box model, drops its affordances. */
+.mb-card-skeleton {
+  pointer-events: none;
+  content-visibility: visible;
+}
+.mb-card-skeleton .mb-card-img {
+  box-shadow: none;
+}
+.mb-card-skeleton .skeleton {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .mb-card-img {

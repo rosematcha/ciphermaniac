@@ -332,7 +332,24 @@ export function InLovingMemoryPage() {
 function MasterLoading() {
   return (
     <div class='ilm-grid' aria-busy='true'>
-      <For each={Array.from({ length: 12 })}>{() => <Skeleton height='240px' />}</For>
+      {/* Shaped like `.ilm-card`: the art box is a 2.5:3.5 aspect, so a tile's
+          height follows its column width and a flat pixel value is only ever
+          right at one breakpoint. */}
+      <For each={Array.from({ length: 12 })}>
+        {() => (
+          <div class='ilm-card ilm-card-skeleton'>
+            <div class='ilm-card-img' />
+            <div class='ilm-card-meta'>
+              <div class='ilm-card-bar' />
+              <div class='ilm-card-foot'>
+                <span class='ilm-card-name'>
+                  <Skeleton width='70%' height='1em' />
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </For>
     </div>
   );
 }

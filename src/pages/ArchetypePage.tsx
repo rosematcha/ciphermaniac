@@ -392,8 +392,17 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
             )}
           </Show>
         </div>
-        <Show when={trendTimeline()} keyed>
-          {points => <UsageSparkline points={points} />}
+        {/* The row keeps its height from first paint. The timeline arrives on a
+            second request, and letting the sparkline appear from nothing pushed
+            every tab and card below it down 40px. Eligible archetypes reserve
+            the slot; ineligible scopes (an event, a snapshot) never render it,
+            so they pay nothing. */}
+        <Show when={trendEligible()}>
+          <div class='arche-spark-slot'>
+            <Show when={trendTimeline()} keyed>
+              {points => <UsageSparkline points={points} />}
+            </Show>
+          </div>
         </Show>
       </section>
 

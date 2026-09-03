@@ -326,7 +326,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  min-width: 92px;
+  /* Fixed, not min-: at 92px the chip outgrew its slot the moment meta.json
+     landed and dragged the selector sideways. 128px covers every label the
+     formatter produces except "less than a minute", which truncates rather
+     than pushing — a clipped word in a quiet timestamp beats the whole topnav
+     stepping left. */
+  width: 128px;
   min-height: 18px;
   font-size: 11px;
   color: var(--muted);
@@ -334,6 +339,11 @@
   white-space: nowrap;
   opacity: 0;
   transition: opacity var(--ms-base) var(--ease-base);
+}
+.t-freshness > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .t-freshness.is-ready {
   opacity: 1;
@@ -443,6 +453,9 @@
 .hero-meta {
   font-size: 13px;
   color: var(--muted);
+  /* Most heroes fill this line from a resource, so it starts empty and the
+     whole page slid up under it. Reserve the line height up front. */
+  min-height: 1.5em;
 }
 .hero-meta .dot {
   margin: 0 8px;
@@ -470,6 +483,9 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   min-width: 0;
+  /* This slot is meta text that arrives with the section's data. Hold one
+     line so a section that starts with an empty right slot doesn't grow one. */
+  min-height: 1.5em;
 }
 .scope-line {
   font-variant-numeric: tabular-nums;
@@ -477,6 +493,36 @@
 .scope-line .dot {
   margin: 0 5px;
   opacity: 0.5;
+}
+/* The scope label is known synchronously; the deck count and freshness stamp
+   arrive with meta.json. Reserving their width means the wrap decision inside
+   `.right` is made once, at first paint — on a phone the tail used to arrive
+   wide enough to push "View all" onto a second line, dropping the whole
+   archetype gallery 28px (the site's largest measured shift). */
+.scope-line-tail {
+  display: inline-flex;
+  align-items: baseline;
+  min-width: 216px;
+  opacity: 0;
+  transition: opacity var(--ms-base) var(--ease-base);
+}
+.scope-line-tail.is-ready {
+  opacity: 1;
+}
+/* Same idea for a whole `.right` slot whose text arrives with the section's
+   data: hold its width from the start rather than growing into it. */
+.section-meta-slot {
+  display: inline-block;
+  min-width: 284px;
+  /* Caps the reservation at whatever the slot actually has. Below the width
+     where 284px fits, the head is going to wrap either way; what matters is
+     that it never pushes the row wider than the page. */
+  max-width: 100%;
+  opacity: 0;
+  transition: opacity var(--ms-base) var(--ease-base);
+}
+.section-meta-slot.is-ready {
+  opacity: 1;
 }
 @media (max-width: 640px) {
   .section-head {
@@ -1004,6 +1050,10 @@ table.data {
   margin-left: 4px;
   font-size: 10px;
   color: var(--accent);
+}
+/* The inactive column's mark still occupies its slot; only the glyph goes. */
+.data th .sort-mark.is-idle {
+  visibility: hidden;
 }
 /* Shared base for the button-driven sortable headers other pages render as
    `<th class="sortable"><button class="th-sort">…</button></th>`. Strips native
@@ -2562,6 +2612,18 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   display: grid;
   gap: 2px;
   min-width: 0; /* cascade — child rows can ellipsis */
+}
+/* Loading placeholder shaped like a tile — see the note in CardsIndexPage.
+   It carries `.card-tile`, so it also picks up that rule's `content-visibility:
+   auto`, which would lay the offscreen ones out against the 240px estimate
+   instead of their real height. There are only fourteen; measure them properly. */
+.card-tile-skeleton {
+  cursor: default;
+  pointer-events: none;
+  content-visibility: visible;
+}
+.card-tile-skeleton .card-tile-card {
+  box-shadow: none;
 }
 .card-tile-name-row {
   display: flex;

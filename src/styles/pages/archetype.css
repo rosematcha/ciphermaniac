@@ -106,6 +106,11 @@
 /* ---------- Usage sparkline (archetype hero) ----------
    30-day meta-share trajectory with a start-to-end delta chip. Sits under the
    hero stat row; the line uses the chart-1 token so it reads as data, not chrome. */
+/* Height-reserved wrapper: matches `.arche-spark`'s own margin + svg height so
+   the row occupies its final space before the trend file resolves. */
+.arche-spark-slot {
+  min-height: 40px;
+}
 .arche-spark {
   display: flex;
   align-items: center;
@@ -149,4 +154,15 @@
 }
 .arche-spark-delta.down .arche-spark-chip {
   color: var(--negative);
+}
+
+/* Loading placeholder for a gallery card. Borrows `.arche`'s box model so it
+   matches the card's height at any column width; only the affordances differ. */
+.arche-skeleton {
+  cursor: default;
+  pointer-events: none;
+}
+.arche-skeleton .skeleton-block {
+  display: inline-block;
+  vertical-align: middle;
 }

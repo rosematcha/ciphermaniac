@@ -251,16 +251,22 @@ export function MetaBinderPage() {
         <div class='mb-summary-stat'>
           <b class='num'>{binder().totalDecks.toLocaleString()}</b> decks covered
         </div>
-        <Show when={totalPrice()}>
-          {price => (
-            <div class='mb-summary-stat mb-summary-price'>
-              <b class='num'>${price().sum.toFixed(2)}</b>
-              <Show when={price().priced < price().total}>
-                <span class='mb-unpriced'>{price().total - price().priced} unpriced</span>
-              </Show>
-            </div>
-          )}
-        </Show>
+        {/* Prices resolve after the binder itself, and this row wraps: letting
+            the stat appear at its natural width re-flowed the summary and
+            dropped the action buttons a line. The slot holds its width and
+            fades the number in instead. */}
+        <div class='mb-summary-stat mb-summary-price' classList={{ 'is-ready': Boolean(totalPrice()) }}>
+          <Show when={totalPrice()}>
+            {price => (
+              <>
+                <b class='num'>${price().sum.toFixed(2)}</b>
+                <Show when={price().priced < price().total}>
+                  <span class='mb-unpriced'>{price().total - price().priced} unpriced</span>
+                </Show>
+              </>
+            )}
+          </Show>
+        </div>
         <div class='mb-summary-actions'>
           <button type='button' class='btn btn-secondary' onClick={copyChecklist} disabled={!binder().cardCount}>
             {copied() ? 'Copied' : 'Copy list'}
@@ -305,7 +311,24 @@ export function MetaBinderPage() {
 function BinderLoading() {
   return (
     <div class='mb-grid' aria-busy='true'>
-      <For each={Array.from({ length: 12 })}>{() => <Skeleton height='220px' />}</For>
+      {/* Shaped like `.mb-card` rather than a flat block: the art box is a 2.5:3.5
+          aspect, so a tile's height follows its column width and no single pixel
+          value is right at more than one breakpoint. */}
+      <For each={Array.from({ length: 12 })}>
+        {() => (
+          <div class='mb-card mb-card-skeleton'>
+            <div class='mb-card-img' />
+            <div class='mb-card-meta'>
+              <span class='mb-card-name'>
+                <Skeleton width='75%' height='1em' />
+              </span>
+              <span class='mb-card-stats'>
+                <Skeleton width='40%' height='1em' />
+              </span>
+            </div>
+          </div>
+        )}
+      </For>
     </div>
   );
 }
