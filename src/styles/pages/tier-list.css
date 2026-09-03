@@ -572,10 +572,6 @@ body[data-mode='dark'] .tl-btn {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-1);
 }
-body[data-mode='dark'] .tl-pop {
-  box-shadow: 3px 3px 0 0 var(--surface-2);
-  border-color: var(--muted);
-}
 .tl-pop header {
   display: flex;
   align-items: center;
@@ -685,15 +681,10 @@ body[data-mode='dark'] .tl-pop {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
-body[data-mode='dark'] .tl-list,
-body[data-mode='dark'] .tl-tray,
-body[data-mode='dark'] .tl-board,
-body[data-mode='dark'] .ps {
-  box-shadow: 3px 3px 0 0 var(--surface-2);
-}
-body[data-mode='dark'] .tl-list {
-  border-color: var(--muted);
-}
+/* No dark-mode overrides for these: `--shadow-1` already resolves to the
+   offset on `--surface-2` there, and `--border` is the border. Restating both
+   by hand is how the popover and the typeahead ended up outlined in `--muted`
+   — #a4998a against a #25221f fill, which reads as a white halo, not an edge. */
 
 .tl-list {
   position: absolute;
