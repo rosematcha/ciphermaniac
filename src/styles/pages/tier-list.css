@@ -826,6 +826,11 @@ body[data-mode='dark'] .tl-list {
   font-weight: 400;
   letter-spacing: -0.01em;
 }
+/* Set for the duration of the rasterise only. An unnamed list ships with no
+   masthead at all, rather than with its own placeholder baked in. */
+.tl-board[data-exporting] .tl-title.untitled {
+  display: none;
+}
 
 /* ============================================================
    Phones

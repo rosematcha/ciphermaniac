@@ -44,7 +44,10 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
     <>
       <div class='tl-frame'>
         <div class='tl-board' ref={props.boardRef}>
-          <div class='tl-title'>
+          {/* `untitled` is what lets the export drop the masthead: on screen the
+              placeholder has to stay clickable, but a JPG of someone's tier list
+              should not read "Name this tier list". See `[data-exporting]`. */}
+          <div class='tl-title' classList={{ untitled: !props.title }}>
             {/* No child when the title is empty: a framework-rendered empty
                 text node still defeats `:empty`, so the placeholder would
                 never show and the masthead would collapse to nothing. */}

@@ -386,7 +386,8 @@ export function TierListPage() {
   }
 
   async function exportJpg(): Promise<void> {
-    if (!board) {
+    const node = board;
+    if (!node) {
       return;
     }
     setBusy(true);
@@ -395,7 +396,7 @@ export function TierListPage() {
       // Wait for in-flight art before snapshotting, or the rasteriser races a
       // half-decoded thumbnail and bakes a blank tile into the image.
       await Promise.all(
-        [...board.querySelectorAll('img')].map(img =>
+        [...node.querySelectorAll('img')].map(img =>
           img.complete && img.naturalWidth > 0
             ? Promise.resolve()
             : new Promise<void>(resolve => {
@@ -406,12 +407,15 @@ export function TierListPage() {
       );
       const [{ domToJpeg }, fontCssText] = await Promise.all([import('modern-screenshot'), interEmbedCss()]);
       const dark = document.body.dataset.mode === 'dark';
-      const dataUrl = await domToJpeg(board, {
+      // Lets the stylesheet drop anything that is an editing affordance rather
+      // than artwork — today just the masthead of an unnamed list.
+      node.dataset.exporting = '';
+      const dataUrl = await domToJpeg(node, {
         scale: 2,
         quality: 0.92,
         backgroundColor: dark ? '#25221f' : '#fbf5e6',
         font: { cssText: fontCssText }
-      });
+      }).finally(() => delete node.dataset.exporting);
       const link = document.createElement('a');
       link.download = exportName();
       link.href = dataUrl;
