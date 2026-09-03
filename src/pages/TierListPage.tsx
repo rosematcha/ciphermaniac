@@ -25,7 +25,7 @@ import {
   prettyTournamentName,
   resolveArchetypeIcons
 } from '../lib/data';
-import { type ArtCard, fetchArtCards } from '../lib/data/artGroups';
+import { type ArtCard, browsableArtCards, fetchArtCards } from '../lib/data/artGroups';
 import { ONLINE_META_NAME } from '../lib/constants';
 import { latestValue } from '../lib/resource';
 import { installItemSortable, type ItemDrop } from '../lib/tierList/itemSortable';
@@ -124,6 +124,7 @@ export function TierListPage() {
 
   const labels = (): boolean => labelChoice() ?? LABEL_DEFAULT[mode()];
   const cards = (): ArtCard[] => latestValue(artCards) ?? [];
+  const browseCards = createMemo<ArtCard[]>(() => browsableArtCards(cards()));
   const activeCard = (): ArtCard | undefined => cards().find(c => c.name === cardName()) ?? cards()[0];
 
   onMount(() => {
@@ -469,6 +470,7 @@ export function TierListPage() {
             <Combo
               placeholder='Search cards by name...'
               options={cards()}
+              browse={browseCards()}
               label={c => c.name}
               weight={c => c.arts.length}
               width='260px'

@@ -8,16 +8,28 @@
  *
  * Never pre-filled — the box is for searching, not for displaying state, which
  * matches `SearchInput` and `PokemonPicker` elsewhere in the app.
+ *
+ * Browsing and searching are separate lists. With nothing typed the box offers
+ * `browse` in full and lets the user scroll it; once there is a query it ranks
+ * the whole of `options` and shows the best few. A caller with a long tail can
+ * therefore keep the tail findable without making it the first thing anyone
+ * sees.
  * @module pages/tierList/Combo
  */
 
-import { createSignal, createUniqueId, For, type JSX, Show } from 'solid-js';
-import { rankByQuery } from './model';
+import { createEffect, createMemo, createSignal, createUniqueId, For, type JSX, Show } from 'solid-js';
+import { rankByQuery, SUGGESTION_LIMIT } from './model';
 
 interface ComboProps<T> {
   /** Placeholder and accessible name; the box carries no visible label. */
   placeholder: string;
   options: readonly T[];
+  /**
+   * What the list offers before anything is typed, in the order to show it.
+   * Defaults to the head of `options`, which is right for a picker whose whole
+   * catalogue is too long to scroll.
+   */
+  browse?: readonly T[];
   /** Display name, also what the query matches against. */
   label: (item: T) => string;
   /** Higher sorts first among equally-good matches. */
@@ -45,8 +57,27 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
   const [open, setOpen] = createSignal(false);
   const [active, setActive] = createSignal(0);
 
-  const results = (): T[] => rankByQuery(props.options, query(), props.label, props.weight);
+  // Memoised: with a browse list running to a hundred entries this is read
+  // several times per render, and every read would otherwise re-rank.
+  const results = createMemo<T[]>(() => {
+    const q = query().trim();
+    if (!q) {
+      return [...(props.browse ?? props.options.slice(0, SUGGESTION_LIMIT))];
+    }
+    return rankByQuery(props.options, q, props.label, props.weight);
+  });
   const optionId = (i: number): string => `${listId}-${i}`;
+
+  // A browsable list is taller than its own window, so walking it with the
+  // arrow keys has to bring the active row along. `nearest` keeps a click-then-
+  // arrow from jumping the list about.
+  createEffect(() => {
+    if (!open()) {
+      return;
+    }
+    const row = document.getElementById(optionId(active()));
+    row?.scrollIntoView({ block: 'nearest' });
+  });
 
   const take = (index: number): void => {
     const item = results()[index];

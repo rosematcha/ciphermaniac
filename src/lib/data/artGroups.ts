@@ -19,6 +19,19 @@ const { fetchJsonOptional } = dataClient;
 /** How many distinct arts a card needs before ranking it is worth the trouble. */
 export const MIN_ARTS_TO_RANK = 3;
 
+/**
+ * How many arts a card needs to appear in the picker before anything is typed.
+ *
+ * Two thresholds because browsing and searching want different things. A user
+ * who has typed "rare" knows what they are after and should find Rare Candy
+ * whether it has three arts or twenty. A user who has typed nothing is looking
+ * for something worth ranking, and the three-art tail is 233 cards deep —
+ * mostly a promo, a reprint and a staff stamp, which is a list of three, not a
+ * tier list. Five is where a card starts having enough arts to rank; it puts
+ * 97 cards in the default scroll where the old head-of-list cap showed eight.
+ */
+export const MIN_ARTS_TO_BROWSE = 5;
+
 interface ArtGroupsPayload {
   version: number;
   cards: Record<string, { arts: string[][]; unmatched: string[] }>;
@@ -64,4 +77,13 @@ export async function fetchArtCards(): Promise<ArtCard[]> {
     }
   }
   return cards.sort((a, b) => b.arts.length - a.arts.length || a.name.localeCompare(b.name));
+}
+
+/**
+ * The cards the picker offers with an empty query. A subset of what stays
+ * searchable, never a different order — {@link fetchArtCards} has already put
+ * the richest first, which is the order to browse in.
+ */
+export function browsableArtCards(cards: readonly ArtCard[]): ArtCard[] {
+  return cards.filter(card => card.arts.length >= MIN_ARTS_TO_BROWSE);
 }
