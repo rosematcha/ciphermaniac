@@ -286,6 +286,36 @@ test('a lazy route whose chunk a deploy removed recovers with one reload', async
   expect(errors, 'the preload failure should be handled, not thrown').toEqual([]);
 });
 
+test('a tier-list tile always has artwork, even with no sprite to show', async ({ page }) => {
+  // Both sprite sources cut off, which is the worst case and the one the
+  // fixture run is already in: every chip has to fall through to the committed
+  // Substitute doll rather than render an empty box nobody can identify or,
+  // with labels off, reliably grab.
+  await page.route('**://r2.limitlesstcg.net/**', route => route.abort());
+  await gotoClean(page, '/tools/tier-list');
+
+  const tiles = page.locator('.tl-tray .tl-item');
+  await expect(tiles.first()).toBeVisible({ timeout: 15_000 });
+  const withoutArt = await page.evaluate(
+    () => [...document.querySelectorAll('.tl-tray .tl-item')].filter(t => !t.querySelector('img')).length
+  );
+  expect(withoutArt, 'every tile should carry an icon or the substitute').toBe(0);
+
+  // Labels off is the touch-target case: the chip is only its sprite, so the
+  // sprite grows and the chip takes a 44px floor.
+  await page.locator('.tl-conf .chip', { hasText: 'Labels' }).click();
+  await expect(page.locator('body')).not.toHaveClass(/tl-labels/);
+  const smallest = await page.evaluate(() =>
+    Math.min(
+      ...[...document.querySelectorAll('.tl-tray .tl-ico')].map(chip => {
+        const box = chip.getBoundingClientRect();
+        return Math.min(box.width, box.height);
+      })
+    )
+  );
+  expect(smallest, 'every unlabelled chip should be a 44px target').toBeGreaterThanOrEqual(44);
+});
+
 test('an unknown route renders the not-found page rather than erroring', async ({ page }) => {
   await gotoClean(page, '/this-route-does-not-exist');
   await expect(page.locator('body')).toContainText(/not found|404/i);
