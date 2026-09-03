@@ -14,21 +14,20 @@
  * as the archetype's name, so there is no arithmetic that gets this right for
  * all three views.
  *
- * Two rules pick the winner, and both exist because the obvious version of this
- * got it wrong:
+ * Targets are tried **widest first, not nearest**. Scoring every candidate
+ * against every ratio and taking the closest match turned a two-tier list of
+ * fourteen cards into a 4:5 portrait four cards wide, because wrapping a wide
+ * board eventually passes near enough to some ratio to win on points. A
+ * two-tier list is short and wide, and the row-is-a-tier reading is the whole
+ * point of the image.
  *
- * - **Widest target first, not nearest target.** Scoring every candidate
- *   against every ratio and taking the closest match turned a two-tier list of
- *   fourteen cards into a 4:5 portrait four cards wide, because wrapping a wide
- *   board eventually passes near enough to some ratio to win on points. A
- *   two-tier list is short and wide, and the row-is-a-tier reading is the whole
- *   point of the image. So the targets are tried widest first and the first one
- *   anything comes close to wins.
- * - **Padding towards a ratio is capped at one tile's worth.** A tall narrow
- *   list — ten tiers holding one card each — has no width to give, and padding
- *   it out to 4:5 would be a worse version of the void this exists to remove.
- *   Up to one tile, the gap reads as a row that could have held one more card,
- *   which is what every tier list looks like anyway.
+ * Every export lands on a target, including the sparse ones. A first pass
+ * capped padding at one tile's width, on the theory that a six-tier board
+ * holding one card had no width to give and padding it to 4:5 would be a
+ * worse version of the void this exists to remove. That was wrong: it came out
+ * a 284px sliver, and empty rows in a tier list are not a void — they are the
+ * point, they say those tiers are empty. So the ratio always wins and the
+ * narrowest, 4:5, is the floor on how narrow an export can get.
  * @module lib/tierList/exportFit
  */
 
@@ -92,18 +91,16 @@ export function ratioDistance(ratio: number): number {
 }
 
 /**
- * The width to export a measured layout at.
+ * The width to export a measured layout at: the content plus {@link SLACK}, or
+ * {@link NARROWEST} of its height, whichever is wider.
  *
- * The content plus {@link SLACK}, then padded towards {@link NARROWEST} — but
- * never by more than one tile's stride, past which the padding stops reading as
- * an unfilled row and starts reading as a void.
+ * Height is not a lever — it comes from how many tiers there are — so on a
+ * sparse board width is the only way to reach a target ratio at all.
  * @param sample - A measured layout.
- * @param tileStride - One tile's width plus the gap after it.
  * @returns The width in CSS px.
  */
-export function exportWidth(sample: LayoutSample, tileStride: number): number {
-  const tight = sample.used + SLACK;
-  return Math.min(Math.max(tight, sample.height * NARROWEST), tight + Math.max(0, tileStride));
+export function exportWidth(sample: LayoutSample): number {
+  return Math.max(sample.used + SLACK, sample.height * NARROWEST);
 }
 
 /**
@@ -135,14 +132,14 @@ export function sampleLayouts(natural: LayoutSample, measureAt: (width: number) 
  *
  * Targets are tried widest first and the first one any candidate comes within
  * {@link TOLERANCE} of wins — "aim wide, narrow only as needed". Nothing within
- * tolerance of anything falls back to the nearest miss, which is the tall
- * narrow list that simply has no width to give.
+ * tolerance of anything falls back to the nearest miss, though with 4:5 acting
+ * as a floor that is now only reachable by a board wider than 16:9 at one tile
+ * per row.
  * @param samples - Measured layouts, widest first.
- * @param tileStride - One tile's width plus the gap after it.
  * @returns The best sample, or null when there is nothing to choose between.
  */
-export function bestLayout(samples: readonly LayoutSample[], tileStride: number): LayoutSample | null {
-  const ratioOf = (sample: LayoutSample): number => exportWidth(sample, tileStride) / sample.height;
+export function bestLayout(samples: readonly LayoutSample[]): LayoutSample | null {
+  const ratioOf = (sample: LayoutSample): number => exportWidth(sample) / sample.height;
   const nearest = (target: number | null): LayoutSample | null => {
     let best: LayoutSample | null = null;
     let bestDistance = Infinity;
@@ -205,8 +202,7 @@ export function fitBoardForExport(board: HTMLElement): () => void {
     return { ...measure(), constraint };
   };
 
-  const stride = tileStride(board, tiles());
-  const best = bestLayout(sampleLayouts(measure(), sampleAt), stride);
+  const best = bestLayout(sampleLayouts(measure(), sampleAt));
   if (!best) {
     restore();
     return restore;
@@ -214,14 +210,6 @@ export function fitBoardForExport(board: HTMLElement): () => void {
   // Re-apply and re-measure: the chosen width comes from the sample's own
   // usage, and the sample was taken at a width that may have been slightly
   // wider than the tiles ended up needing.
-  style.width = `${Math.round(exportWidth(sampleAt(best.constraint), stride))}px`;
+  style.width = `${Math.round(exportWidth(sampleAt(best.constraint)))}px`;
   return restore;
-}
-
-/** One tile's width plus the gap that follows it, taken from the widest tile on the board. */
-function tileStride(board: HTMLElement, tiles: readonly HTMLElement[]): number {
-  const widest = Math.max(...tiles.map(tile => tile.getBoundingClientRect().width));
-  const zone = board.querySelector('.tl-zone');
-  const gap = zone ? Number.parseFloat(getComputedStyle(zone).columnGap) : NaN;
-  return widest + (Number.isFinite(gap) ? gap : 0);
 }
