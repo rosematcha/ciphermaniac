@@ -828,6 +828,15 @@ body[data-mode='dark'] .tl-btn {
 .tl-board[data-exporting] .tl-title.untitled {
   display: none;
 }
+/* Editing affordances leave the document for the rasterise. On a pointer that
+   hovers they are already invisible when the export is taken, but a touch
+   device shows them permanently (see the `hover: none` block below), and the
+   tier tools sit ON the plate — so the exported image came back with four
+   buttons where the tier's letter should be. `display`, not `opacity`: both
+   are absolutely positioned, so neither costs the layout anything. */
+.tl-board[data-exporting] :is(.tl-tools, .tl-edit) {
+  display: none;
+}
 
 /* ============================================================
    Phones
@@ -905,8 +914,9 @@ body[data-mode='dark'] .tl-btn {
 }
 
 /* A pointer that cannot hover has no way to reveal hover-only controls, so
-   they are simply always on there. The export is taken from a rendered node,
-   not from a screenshot, so this costs the image nothing. */
+   they are simply always on there. The export is taken from this same node, so
+   `[data-exporting]` above has to remove them explicitly — on hover pointers
+   they happen to be invisible already, here they are not. */
 @media (hover: none) {
   .tl-tools,
   .tl-edit {

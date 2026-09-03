@@ -320,3 +320,24 @@ test('an unknown route renders the not-found page rather than erroring', async (
   await gotoClean(page, '/this-route-does-not-exist');
   await expect(page.locator('body')).toContainText(/not found|404/i);
 });
+
+test('the exported board carries tier names, not the tier controls', async ({ page }) => {
+  // The JPG is a rasterise of this very node, so anything on screen at export
+  // time lands in the image. The controls sit ON the plate and are merely
+  // hover-hidden — which hides nothing on a phone, and phones shipped exports
+  // with four buttons where the tier letter belonged.
+  await gotoClean(page, '/tools/tier-list');
+  const plate = page.locator('.tl-board .tl-plate').first();
+  await expect(plate).toBeVisible();
+
+  const shown = await plate.evaluate(el => {
+    const board = el.closest('.tl-board') as HTMLElement;
+    board.dataset.exporting = '';
+    const tools = getComputedStyle(el.querySelector('.tl-tools')!).display;
+    const name = getComputedStyle(el.querySelector('.tl-plate-name')!).display;
+    delete board.dataset.exporting;
+    return { tools, name };
+  });
+  expect(shown.tools).toBe('none');
+  expect(shown.name).not.toBe('none');
+});
