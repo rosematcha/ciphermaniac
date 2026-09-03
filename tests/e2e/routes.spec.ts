@@ -420,6 +420,27 @@ test('on a touch pointer a tier shows its tools on tap, and hides them again', a
   await expect.poll(names).toEqual([before[1], before[0], ...before.slice(2)]);
 });
 
+test('on a touch pointer the second tap opens the tier editor, and a rename lands on the plate', async ({
+  page
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'the touch affordance, on the touch project');
+  await touchOnly(page);
+  await gotoClean(page, '/tools/tier-list');
+
+  const plate = page.locator('.tl-plate').nth(0);
+  const before = await plate.locator('.tl-plate-name').textContent();
+  await plate.tap();
+  await plate.locator('[data-tier-id]').tap();
+
+  const field = page.locator('.tl-pop input');
+  await expect(field).toBeVisible();
+  await expect(field).toHaveValue(before ?? '');
+  await field.fill('Top');
+  await expect(plate.locator('.tl-plate-name')).toHaveText('Top');
+  // Acting on a tool puts the tools away, so the name is readable again.
+  await expect(plate.locator('.tl-tools')).toHaveCSS('opacity', '0');
+});
+
 test('on a touch pointer the export is shown on screen rather than navigated to', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'the touch affordance, on the touch project');
   // A download link in an in-app browser navigates to the file — the report

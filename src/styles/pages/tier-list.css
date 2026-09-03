@@ -933,9 +933,11 @@ body[data-mode='dark'] .tl-btn {
 
    :hover is switched off rather than left alone: a tap makes a touch browser
    treat the plate as hovered and it stays that way, so the hover rule would
-   pin open the last plate touched. */
+   pin open the last plate touched. The tap is the only thing that opens them. */
 @media (hover: none) {
-  .tl-plate:hover .tl-tools {
+  /* Neither hover nor focus opens them — a tapped button keeps focus on some
+     browsers, which would pin its plate open after the tap that closed it. */
+  .tl-plate:not([data-open]) .tl-tools {
     opacity: 0;
     pointer-events: none;
   }
