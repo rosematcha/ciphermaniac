@@ -12,6 +12,15 @@ html, body {
   overscroll-behavior-y: contain;
 }
 
+html {
+  /* Reserve the scrollbar track even on short pages. Skeletons are shorter
+     than the content that replaces them, so a page that loads across the
+     viewport-height threshold used to gain a scrollbar mid-load and shove
+     every centred element sideways. No-op where scrollbars overlay (macOS,
+     touch). */
+  scrollbar-gutter: stable;
+}
+
 body {
   font-family: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
   font-size: 15px;
