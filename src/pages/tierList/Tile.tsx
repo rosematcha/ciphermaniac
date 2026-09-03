@@ -59,7 +59,9 @@ function IconTile(props: TileProps): JSX.Element {
     <div class='tl-item' data-id={props.item.id}>
       <div class='tl-ico'>
         <ArchetypeIcons slugs={props.item.icons ?? []} size={26} />
-        <span>{props.item.label}</span>
+        {/* `.cap`, not a bare span: `ArchetypeIcons` renders a span too, and a
+            rule that hides every span in here takes the sprites with it. */}
+        <span class='cap'>{props.item.label}</span>
       </div>
       <EditButton {...props} />
     </div>
