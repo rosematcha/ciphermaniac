@@ -512,3 +512,64 @@ test('Thumbnail API: accepts card numbers with letter suffix', async () => {
 
   restoreFetch();
 });
+
+/**
+ * The pokemontcg.io leg of the proxy. Those scans hotlink fine, so this route
+ * exists for CORS alone: without a same-origin copy the tier list's rasteriser
+ * cannot read a vintage print back, and it exports as an empty frame.
+ */
+test('Thumbnail API: proxies pokemontcg.io scans with CORS open', async () => {
+  const requested: string[] = [];
+  mockFetch({
+    predicate: url => {
+      const urlStr = typeof url === 'string' ? url : (url as Request).url;
+      if (urlStr.includes('images.pokemontcg.io')) {
+        requested.push(urlStr);
+        return true;
+      }
+      return false;
+    },
+    status: 200,
+    headers: { 'Content-Type': 'image/png' },
+    body: 'fake-image-data'
+  });
+
+  const response = await ThumbnailModule.onRequest({
+    request: makeThumbnailRequest('/thumbnails/ptcgio/base1/94_hires')
+  });
+  assert.strictEqual(response.status, 200, 'Should serve a vintage scan');
+  assert.strictEqual(requested[0], 'https://images.pokemontcg.io/base1/94_hires.png');
+  assert.strictEqual(response.headers.get('Access-Control-Allow-Origin'), '*');
+
+  restoreFetch();
+});
+
+test('Thumbnail API: the pokemontcg.io leg only forwards names it recognises', async () => {
+  // Nothing here may reach the network: an open-ended proxy is an open redirect
+  // with a cache in front of it.
+  const attempted: string[] = [];
+  mockFetch({
+    predicate: url => {
+      attempted.push(typeof url === 'string' ? url : (url as Request).url);
+      return true;
+    },
+    status: 200,
+    headers: { 'Content-Type': 'image/png' },
+    body: 'fake-image-data'
+  });
+
+  const rejected = [
+    '/thumbnails/ptcgio/base1/..%2F..%2Fetc%2Fpasswd',
+    '/thumbnails/ptcgio/base1/94.png%3Fx',
+    '/thumbnails/ptcgio/BASE1%20/94',
+    '/thumbnails/ptcgio/b/94',
+    '/thumbnails/ptcgio/base1/hires'
+  ];
+  for (const path of rejected) {
+    const response = await ThumbnailModule.onRequest({ request: makeThumbnailRequest(path) });
+    assert.ok([400, 404].includes(response.status), `Should refuse ${path}, got ${response.status}`);
+  }
+  assert.deepStrictEqual(attempted, [], 'A refused name must not be fetched');
+
+  restoreFetch();
+});
