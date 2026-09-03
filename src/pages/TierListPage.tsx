@@ -454,6 +454,24 @@ export function TierListPage() {
 
       <section class='tl-page'>
         <div class='tl-conf'>
+          {/* Subject leads the row: what is being ranked decides what every
+              control after it even means, so it is the first thing picked. */}
+          <div class='segmented' role='tablist' aria-label='Subject'>
+            <For each={MODE_LABELS}>
+              {option => (
+                <button
+                  type='button'
+                  role='tab'
+                  class={mode() === option.value || (option.value === 'icons' && mode() === 'previews') ? 'active' : ''}
+                  aria-selected={mode() === option.value || (option.value === 'icons' && mode() === 'previews')}
+                  onClick={() => setMode(option.value)}
+                >
+                  {option.label}
+                </button>
+              )}
+            </For>
+          </div>
+
           <Show
             when={mode() === 'arts'}
             fallback={
@@ -505,22 +523,6 @@ export function TierListPage() {
             </Combo>
           </Show>
 
-          <div class='segmented' role='tablist' aria-label='Subject'>
-            <For each={MODE_LABELS}>
-              {option => (
-                <button
-                  type='button'
-                  role='tab'
-                  class={mode() === option.value || (option.value === 'icons' && mode() === 'previews') ? 'active' : ''}
-                  aria-selected={mode() === option.value || (option.value === 'icons' && mode() === 'previews')}
-                  onClick={() => setMode(option.value)}
-                >
-                  {option.label}
-                </button>
-              )}
-            </For>
-          </div>
-
           <Show when={mode() !== 'arts'}>
             <div class='segmented' role='tablist' aria-label='Archetype artwork'>
               <button
@@ -544,7 +546,7 @@ export function TierListPage() {
             </div>
           </Show>
 
-          <button type='button' class='tl-toggle' aria-pressed={labels()} onClick={() => setLabelChoice(!labels())}>
+          <button type='button' class='chip' aria-pressed={labels()} onClick={() => setLabelChoice(!labels())}>
             Labels
           </button>
 

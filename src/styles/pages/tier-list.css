@@ -256,11 +256,16 @@ body.tl-drag-active .tl-item:not(.tl-dragging) {
 .tl-ico {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 4px 9px 4px 5px;
+  /* Asymmetric: a sprite carries its own transparent margin, so matching the
+     label's padding on the left would read as a gap rather than as padding. */
+  padding: 6px 11px 6px 7px;
+  /* A floor, so a chip whose sprite is missing is still the height of its
+     neighbours instead of collapsing to its text. */
+  min-height: 40px;
   transition: transform var(--ms-fast) var(--ease-base);
 }
 .tl-item:hover > .tl-ico {
@@ -270,6 +275,13 @@ body.tl-drag-active .tl-item:not(.tl-dragging) {
   width: 26px;
   height: 26px;
   image-rendering: -webkit-optimize-contrast;
+}
+/* With no label the sprite is the whole control, so it grows and the chip
+   lands on 44px square — the smallest thing a finger reliably hits, and this
+   view is the one that gets dragged around on a phone. */
+body:not(.tl-labels) .tl-ico img {
+  width: 32px;
+  height: 32px;
 }
 .tl-ico .cap {
   font-size: 12.5px;
@@ -305,8 +317,14 @@ body:not(.tl-labels) .cap {
   display: none;
 }
 body:not(.tl-labels) .tl-ico {
-  padding: 3px;
-  gap: 2px;
+  padding: 5px;
+  gap: 3px;
+  /* An archetype with no sprite has nothing to size the chip — "Other" came
+     out a 12px speck, which is not something a finger can pick up. The floor
+     is the same 44px every other chip lands on. */
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
 }
 
 /* item — 5:7 card art */
@@ -422,26 +440,14 @@ body[data-mode='dark'] .tl-btn {
   box-shadow: 2px 2px 0 0 var(--surface-2);
 }
 
-.tl-toggle {
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
+/* On/off in this app is a `.chip`: filled with the accent when it is on. The
+   toolbar's own controls run a few px taller than a chip does in a filter row,
+   so the metrics are matched here — the pressed treatment is the language, the
+   padding is not. */
+.tl-conf .chip {
   padding: 7px 12px;
-  cursor: pointer;
-  color: var(--muted);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  transition:
-    color var(--ms-fast),
-    background var(--ms-fast);
-}
-.tl-toggle[aria-pressed='true'] {
-  background: var(--surface-2);
-  color: var(--fg);
-}
-.tl-toggle:hover {
-  color: var(--fg);
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
 .tl-edit {
