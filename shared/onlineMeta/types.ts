@@ -56,18 +56,6 @@ export interface GatheredDeck {
 // reportGenerator presentation copy (DB-MASTER-PLAN Phase 2, slice 5); the
 // shared engine's types live in shared/data/archetypes/presentation.ts.
 
-/** Tournament details response from Limitless API */
-export interface TournamentDetailsResponse {
-  decklists?: boolean;
-  isOnline?: boolean;
-  format?: string | null;
-  platform?: string | null;
-  organizer?: {
-    name?: string;
-    id?: string;
-  } | null;
-}
-
 /** Base options for functions that accept env and diagnostic options */
 interface BaseOptions {
   diagnostics?: DiagnosticsCollector;
