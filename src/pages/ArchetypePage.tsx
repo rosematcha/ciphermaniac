@@ -304,6 +304,7 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
     ({ t, slug, label }) => fetchArchetypeWinRate(t, slug, label)
   );
   const wr = () => resolved(winRate);
+  const wrGames = () => wr()?.games ?? 0;
 
   // Typical-list cost from card prices; null (renders nothing) when coverage is thin.
   const [prices] = createResource(fetchPrices);
@@ -361,48 +362,63 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
               </InfoTip>
             </span>
           </Show>
-          <Show when={wr()} keyed>
-            {agg => (
-              <Show when={agg.games > 0}>
-                <span class='dot'>·</span>
-                <span class='arche-stat' classList={{ 'is-muted': agg.games < WR_MUTE_GAMES }}>
-                  <span class='arche-stat-lead'>
-                    {agg.games < WR_MIN_GAMES || agg.winRate === null ? '—' : `${agg.winRate.toFixed(1)}%`} win rate ·{' '}
-                    {agg.games.toLocaleString()} games
-                  </span>
-                  <InfoTip marker='i' label='Win rate'>
-                    Match win rate across all recorded games, mirrors excluded. Ties count as one third of a win.
-                  </InfoTip>
-                </span>
-              </Show>
-            )}
+          {/* Win rate comes from its own request, and it sits in the middle of a
+              line that wraps on a phone — inserting it on arrival pushed the
+              cost chip onto a second row and took the tabs and the whole card
+              list down with it. The slot holds its width from first paint and
+              only collapses if the request comes back with no games, which
+              trades a shift on every archetype for one on the few without
+              recorded matches. */}
+          <Show when={winRate.loading || wrGames() > 0}>
+            <span class='arche-stat-slot' classList={{ 'is-pending': winRate.loading }}>
+              <span class='dot'>·</span>
+              <span class='arche-stat' classList={{ 'is-muted': wrGames() > 0 && wrGames() < WR_MUTE_GAMES }}>
+                <Show when={wr()} keyed>
+                  {agg => (
+                    <>
+                      <span class='arche-stat-lead'>
+                        {agg.games < WR_MIN_GAMES || agg.winRate === null ? '—' : `${agg.winRate.toFixed(1)}%`} win rate
+                        · {agg.games.toLocaleString()} games
+                      </span>
+                      <InfoTip marker='i' label='Win rate'>
+                        Match win rate across all recorded games, mirrors excluded. Ties count as one third of a win.
+                      </InfoTip>
+                    </>
+                  )}
+                </Show>
+              </span>
+            </span>
           </Show>
-          <Show when={deckCost()} keyed>
-            {cost => (
-              <>
-                <span class='dot'>·</span>
-                <span class='arche-stat'>
-                  <span class='arche-stat-lead'>≈ ${Math.round(cost.cost).toLocaleString()} typical list</span>
-                  <InfoTip marker='i' label='Typical list cost'>
-                    Market price of a typical list: cards in at least half of lists, at their most common copy count.
-                    TCGPlayer prices.
-                  </InfoTip>
-                </span>
-              </>
-            )}
+          {/* Reserved on the same terms as the win-rate chip above: prices are a
+              separate file, and on a phone this arriving took the hero to a
+              second line. */}
+          <Show when={prices.loading || deckCost() !== null}>
+            <span class='arche-stat-slot arche-stat-slot-cost' classList={{ 'is-pending': prices.loading }}>
+              <span class='dot'>·</span>
+              <span class='arche-stat'>
+                <Show when={deckCost()} keyed>
+                  {cost => (
+                    <>
+                      <span class='arche-stat-lead'>≈ ${Math.round(cost.cost).toLocaleString()} typical list</span>
+                      <InfoTip marker='i' label='Typical list cost'>
+                        Market price of a typical list: cards in at least half of lists, at their most common copy
+                        count. TCGPlayer prices.
+                      </InfoTip>
+                    </>
+                  )}
+                </Show>
+              </span>
+            </span>
           </Show>
         </div>
-        {/* The row keeps its height from first paint. The timeline arrives on a
-            second request, and letting the sparkline appear from nothing pushed
-            every tab and card below it down 40px. Eligible archetypes reserve
-            the slot; ineligible scopes (an event, a snapshot) never render it,
-            so they pay nothing. */}
+        {/* The timeline arrives on a second request, and letting the sparkline
+            appear from nothing pushed every tab and card below it down a row.
+            Eligible archetypes hold the space; ineligible scopes (an event, a
+            snapshot) never render it, so they pay nothing. */}
         <Show when={trendEligible()}>
-          <div class='arche-spark-slot'>
-            <Show when={trendTimeline()} keyed>
-              {points => <UsageSparkline points={points} />}
-            </Show>
-          </div>
+          <Show when={trendTimeline()} keyed fallback={<UsageSparklinePending />}>
+            {points => <UsageSparkline points={points} />}
+          </Show>
         </Show>
       </section>
 
@@ -516,9 +532,33 @@ function formatSnapshotDate(raw: string | null): string {
  * mirroring the Trends chart. Purely presentational, so the SVG is aria-hidden
  * and the delta is restated as text for screen readers.
  */
+/**
+ * Stand-in that holds the sparkline's space until its timeline lands.
+ *
+ * Built from the same three children at the same widths rather than given a
+ * fixed height: the row wraps below about 440px, so any single min-height is
+ * wrong at one width or the other. Matching the shape means it wraps where the
+ * real one will, at every width, without a breakpoint to keep in sync.
+ */
+function UsageSparklinePending() {
+  return (
+    <div class='arche-spark' aria-hidden='true'>
+      <span class='arche-spark-label'>Usage, last 30 days</span>
+      <Skeleton width={`${SPARK_W}px`} height={`${SPARK_H}px`} />
+      <span class='arche-spark-delta'>
+        <Skeleton width='151px' height='1em' />
+      </span>
+    </div>
+  );
+}
+
+/** Sparkline canvas size, shared with the pending stand-in above. */
+const SPARK_W = 132;
+const SPARK_H = 30;
+
 function UsageSparkline(props: { points: TrendTimelinePoint[] }) {
-  const W = 132;
-  const H = 30;
+  const W = SPARK_W;
+  const H = SPARK_H;
   const PAD = 3;
   const shares = createMemo(() => props.points.map(p => p.share));
   const start = () => shares()[0];
