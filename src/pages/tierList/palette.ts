@@ -1,0 +1,163 @@
+/**
+ * Tier-plate palette.
+ *
+ * Five registers. `ramp` is a generated six-step gradient and nothing else —
+ * see {@link DEFAULT_RAMP}. The four the picker offers beyond it are hand-
+ * tuned: two generated attempts failed the same way, a hue sweep at one
+ * lightness going muddy, and letting lightness follow the hue fixing the
+ * muddiness but still reading as arithmetic rather than as colour someone
+ * chose. They come from two palettes that already solve this exact problem —
+ * a warm-paper ground with earthy accents:
+ *
+ * - Gruvbox (morhetz/gruvbox), the "neutral" accents as `vivid` — the working
+ *   register. Everforest's light accents sat here first and read shrill: they
+ *   are tuned as syntax *foreground* colours on cream, and a 124px plate is a
+ *   very different job from a keyword. Gruvbox's mid-tones are warmer, sit down
+ *   into the paper, and give a red that reads as brick rather than as an alert.
+ * - Gruvbox's "faded" accents as `deep`.
+ * - Everforest (sainnhe/everforest) dark accents as `soft`, the quiet register.
+ * - Gruvbox greys as `neutral`, for a deliberately colourless tier.
+ *
+ * Several hues needed nudging out of the band where a fill is too dark for ink
+ * text and too light for paper text — `neutral_orange` #d65d0e, `neutral_blue`
+ * #458588 and `neutral_purple` #b16286 all land there, as do `faded_yellow`
+ * #b57614 and `faded_green` #79740e. Each was stepped away from the crossover
+ * rather than swapped for a different hue.
+ *
+ * Every swatch carries the text colour it was verified against; the test suite
+ * re-asserts the whole set at ≥4.5:1 so a future edit cannot quietly break one.
+ * That colour dresses the plate's controls. The tier name itself is white with a
+ * dark outline on every swatch, so a tier's colour never changes how its letter
+ * looks — see `.tl-plate-name`.
+ * @module pages/tierList/palette
+ */
+
+/**
+ * Which register a swatch belongs to. `ramp` is the default board's own six and
+ * is not part of the auto-colour walk; the rest are exhausted in this order.
+ */
+export type SwatchTone = 'ramp' | 'vivid' | 'soft' | 'deep' | 'neutral';
+
+export interface Swatch {
+  /** Stable id, `tone-hue`. This is what a tier stores. */
+  id: string;
+  tone: SwatchTone;
+  hex: string;
+  /** Ink or paper, whichever clears AA against `hex`. */
+  text: string;
+}
+
+/** Ink and paper, matching `--fg` and `--surface` in light mode. */
+export const INK = '#1f1a13';
+export const PAPER = '#fbf5e6';
+
+export const SWATCHES: readonly Swatch[] = [
+  { id: 'ramp-red', tone: 'ramp', hex: '#b72728', text: PAPER },
+  { id: 'ramp-orange', tone: 'ramp', hex: '#d17414', text: INK },
+  { id: 'ramp-yellow', tone: 'ramp', hex: '#dfb536', text: INK },
+  { id: 'ramp-green', tone: 'ramp', hex: '#60a259', text: INK },
+  { id: 'ramp-blue', tone: 'ramp', hex: '#1868a0', text: PAPER },
+  { id: 'ramp-purple', tone: 'ramp', hex: '#623e96', text: PAPER },
+  { id: 'vivid-red', tone: 'vivid', hex: '#cc241d', text: PAPER },
+  { id: 'vivid-orange', tone: 'vivid', hex: '#de7018', text: INK },
+  { id: 'vivid-yellow', tone: 'vivid', hex: '#d79921', text: INK },
+  { id: 'vivid-sage', tone: 'vivid', hex: '#b0a63a', text: INK },
+  { id: 'vivid-green', tone: 'vivid', hex: '#98971a', text: INK },
+  { id: 'vivid-aqua', tone: 'vivid', hex: '#689d6a', text: INK },
+  { id: 'vivid-blue', tone: 'vivid', hex: '#5ca0a6', text: INK },
+  { id: 'vivid-slate', tone: 'vivid', hex: '#7099a8', text: INK },
+  { id: 'vivid-purple', tone: 'vivid', hex: '#c4829f', text: INK },
+  { id: 'soft-red', tone: 'soft', hex: '#e67e80', text: INK },
+  { id: 'soft-orange', tone: 'soft', hex: '#e69875', text: INK },
+  { id: 'soft-yellow', tone: 'soft', hex: '#dbbc7f', text: INK },
+  { id: 'soft-green', tone: 'soft', hex: '#a7c080', text: INK },
+  { id: 'soft-sage', tone: 'soft', hex: '#b9c99a', text: INK },
+  { id: 'soft-aqua', tone: 'soft', hex: '#83c092', text: INK },
+  { id: 'soft-blue', tone: 'soft', hex: '#7fbbb3', text: INK },
+  { id: 'soft-slate', tone: 'soft', hex: '#a2b0bf', text: INK },
+  { id: 'soft-purple', tone: 'soft', hex: '#d699b6', text: INK },
+  { id: 'deep-red', tone: 'deep', hex: '#9d0006', text: PAPER },
+  { id: 'deep-orange', tone: 'deep', hex: '#af3a03', text: PAPER },
+  { id: 'deep-yellow', tone: 'deep', hex: '#d79921', text: INK },
+  { id: 'deep-green', tone: 'deep', hex: '#63600b', text: PAPER },
+  { id: 'deep-sage', tone: 'deep', hex: '#5f6b1e', text: PAPER },
+  { id: 'deep-aqua', tone: 'deep', hex: '#427b58', text: PAPER },
+  { id: 'deep-blue', tone: 'deep', hex: '#076678', text: PAPER },
+  { id: 'deep-slate', tone: 'deep', hex: '#3c5a66', text: PAPER },
+  { id: 'deep-purple', tone: 'deep', hex: '#8f3f71', text: PAPER },
+  { id: 'neutral-bone', tone: 'neutral', hex: '#d5c4a1', text: INK },
+  { id: 'neutral-stone', tone: 'neutral', hex: '#a89984', text: INK },
+  { id: 'neutral-ash', tone: 'neutral', hex: '#928374', text: INK },
+  { id: 'neutral-slate', tone: 'neutral', hex: '#6f635a', text: PAPER }
+];
+
+const BY_ID = new Map(SWATCHES.map(s => [s.id, s]));
+
+/** Falls back to stone so an unknown id from a shared URL still renders. */
+export function swatch(id: string): Swatch {
+  return BY_ID.get(id) ?? BY_ID.get('neutral-stone')!;
+}
+
+/**
+ * The default six: red, orange, yellow, green, blue, purple.
+ *
+ * The tier-list convention, and it earns its place by being the convention —
+ * everyone reading a tier list already knows which end of a rainbow is best,
+ * so the hue does the ranking work with no legend and no learning.
+ *
+ * Generated rather than picked, at hues 26, 58, 90, 142, 245 and 300 in OKLCH.
+ * Lightness is *not* monotonic across the six and cannot be: a yellow dark
+ * enough to fit a descending ramp is olive, and a purple light enough is
+ * lilac, so each step takes the lightness its hue needs to read as its own
+ * name — L 0.79 at yellow, 0.51 at red, 0.45 at purple. Hues are pulled
+ * warmwards of the primaries (orange 58 not 70, blue 245 not 255) so the six
+ * still sit on the warm paper the rest of the site is built on.
+ *
+ * Chroma is held near 0.13–0.18, which keeps every step inside sRGB — the
+ * fully-saturated version of this ramp clips at orange — and clears AA at
+ * 5.1:1 or better, each at least 2:1 clear of the ink/paper crossover.
+ */
+export const DEFAULT_RAMP: readonly string[] = [
+  'ramp-red',
+  'ramp-orange',
+  'ramp-yellow',
+  'ramp-green',
+  'ramp-blue',
+  'ramp-purple'
+];
+
+export const DEFAULT_TIER_NAMES: readonly string[] = ['S', 'A', 'B', 'C', 'D', 'F'];
+
+/**
+ * Order in which an added tier picks its colour.
+ *
+ * Each register is walked at a stride of 4 over its nine hues. Nine and four
+ * are coprime, so every hue is still used exactly once, but consecutive tiers
+ * land far apart on the wheel instead of adjacent — walking in hue order gave a
+ * tidy ramp at six tiers and put two near-identical reds beside each other at
+ * fourteen. Hues already spoken for by the default ramp are skipped so an added
+ * tier never collides with one — the `ramp` register itself stays out, since a
+ * seventh tier that lands mid-gradient reads as part of the descent.
+ */
+const STRIDE = 4;
+
+function walk(tone: SwatchTone, taken: ReadonlySet<string>): string[] {
+  const set = SWATCHES.filter(s => s.tone === tone);
+  return set.map((_, i) => set[(i * STRIDE) % set.length]!.id).filter(id => !taken.has(id));
+}
+
+export const AUTO_ORDER: readonly string[] = (() => {
+  const taken = new Set(DEFAULT_RAMP);
+  return [
+    ...walk('vivid', taken),
+    ...walk('deep', taken),
+    ...walk('soft', taken),
+    ...SWATCHES.filter(s => s.tone === 'neutral' && !taken.has(s.id)).map(s => s.id)
+  ];
+})();
+
+/** The first colour no existing tier is using, so a new tier is legible on arrival. */
+export function nextSwatchId(used: Iterable<string>): string {
+  const taken = new Set(used);
+  return AUTO_ORDER.find(id => !taken.has(id)) ?? 'neutral-stone';
+}

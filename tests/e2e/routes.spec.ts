@@ -106,6 +106,81 @@ test('the tools index links to the card wall', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Card Wall/i })).toHaveAttribute('href', '/tools/card-wall');
 });
 
+test('the tools index features the tier list and label maker as tiles', async ({ page }) => {
+  await gotoClean(page, '/tools');
+  const featured = page.locator('.tools-featured .arche');
+  await expect(featured).toHaveCount(2);
+  await expect(featured.nth(0)).toHaveAttribute('href', '/tools/tier-list');
+  await expect(featured.nth(1)).toHaveAttribute('href', '/tools/deck-box-labels');
+  // Everything else is a plain row, not a tile.
+  await expect(page.locator('.tools-more-item')).toHaveCount(4);
+});
+
+test('a tier list tile carries a placeholder until its art paints', async ({ page }) => {
+  // Switching view rebuilds every tile, so its art starts from nothing. Holding
+  // the thumbnails open is what makes that window observable: `vite preview`
+  // runs no /thumbnails Function, so the art has to be served from here anyway.
+  const pixel = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  await page.route('**/thumbnails/**', async route => {
+    await new Promise(resolve => {
+      setTimeout(resolve, 700);
+    });
+    await route.fulfill({ status: 200, contentType: 'image/png', body: pixel });
+  });
+  await gotoClean(page, '/tools/tier-list');
+  await page.getByRole('tab', { name: 'Previews', exact: true }).click();
+  const art = page.locator('.tl-prev img').first();
+  await expect(art).toBeAttached();
+  await expect(art).not.toHaveAttribute('data-loaded', '');
+  expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('skeleton-shimmer');
+  // And the placeholder gets out of the way the moment the bitmap lands.
+  await expect(art).toHaveAttribute('data-loaded', '', { timeout: 10_000 });
+  expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+});
+
+test('hovering the Tools nav item reveals the two headline tools', async ({ page }, testInfo) => {
+  // Desktop affordance only — phones get the /tools page instead.
+  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
+  await gotoClean(page, '/');
+  const menu = page.locator('.topnav-menu');
+  await expect(menu).toBeHidden();
+  await page.getByRole('link', { name: 'Tools', exact: true }).hover();
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('link', { name: 'Tier List Maker' })).toHaveAttribute('href', '/tools/tier-list');
+  await expect(menu.getByRole('link', { name: 'Deck Box Label Maker' })).toHaveAttribute(
+    'href',
+    '/tools/deck-box-labels'
+  );
+});
+
+test('the Tools menu closes once the pointer leaves, even after a click', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
+  await gotoClean(page, '/');
+  const menu = page.locator('.topnav-menu');
+  const tools = page.getByRole('link', { name: 'Tools', exact: true });
+  await tools.click();
+  await expect(page).toHaveURL(/\/tools$/);
+  // The clicked anchor still holds DOM focus, so the menu must not be pinned
+  // open by it — only hover and keyboard focus may hold it.
+  await page.mouse.move(0, 300);
+  await expect(menu).toBeHidden();
+});
+
+test('keyboard focus opens the Tools menu', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
+  await gotoClean(page, '/');
+  const menu = page.locator('.topnav-menu');
+  // Tab in from the neighbouring link: :focus-visible only matches when the
+  // browser saw a keyboard interaction, which a bare focus() does not give us.
+  await page.getByRole('link', { name: 'Players', exact: true }).focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Tools', exact: true })).toBeFocused();
+  await expect(menu).toBeVisible();
+});
+
 test('the card wall mounts and paints its loop', async ({ page }) => {
   // No card art here: /thumbnails is a Pages Function and `vite preview` does
   // not run one, so every scan 404s and the wall draws its placeholder slots.
