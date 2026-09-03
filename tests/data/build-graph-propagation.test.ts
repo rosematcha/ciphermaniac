@@ -58,6 +58,7 @@ test('a synonym-only change dirties all and only its declared descendants', asyn
   // Every node whose transitive deps include `synonyms` (and card-types, which
   // shares the cardObservations source) — but NOT event source captures.
   assert.deepStrictEqual(dirty, [
+    'art-groups',
     'card-types',
     'event-core:0054',
     'event-core:0055',

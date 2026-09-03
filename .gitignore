@@ -109,3 +109,6 @@ trends.json
 # Playwright artifacts
 test-results/
 .cache/
+
+# Card art cache for .github/scripts/build-art-groups.py (rebuilt on demand)
+.art-cache/

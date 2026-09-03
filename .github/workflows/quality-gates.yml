@@ -33,13 +33,15 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-          cache-dependency-path: .github/scripts/requirements.txt
+          cache-dependency-path: .github/scripts/requirements-art.txt
 
       - name: Install Node dependencies
         run: npm ci
 
       - name: Install Python dependencies
-        run: pip install -r .github/scripts/requirements.txt
+        # requirements-art.txt includes requirements.txt and adds OpenCV, which
+        # the card-art grouping tests import.
+        run: pip install -r .github/scripts/requirements-art.txt
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
