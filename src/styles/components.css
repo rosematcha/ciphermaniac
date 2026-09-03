@@ -198,10 +198,18 @@
     opacity var(--ms-fast) var(--ease-base),
     visibility var(--ms-fast) var(--ease-base);
 }
-.topnav-item:hover > .topnav-menu,
-.topnav-item:focus-within > .topnav-menu {
+/* Keyboard focus opens it; a mouse click does not, or the menu would stay
+   pinned open after clicking Tools itself (the anchor keeps DOM focus). */
+.topnav-item:has(:focus-visible) > .topnav-menu {
   opacity: 1;
   visibility: visible;
+}
+/* Hover is gated on a real pointer so a tap does not leave it stuck open. */
+@media (hover: hover) and (pointer: fine) {
+  .topnav-item:hover > .topnav-menu {
+    opacity: 1;
+    visibility: visible;
+  }
 }
 .topnav-menu-link {
   font-size: 12.5px;

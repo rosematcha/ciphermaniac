@@ -156,6 +156,31 @@ test('hovering the Tools nav item reveals the two headline tools', async ({ page
   );
 });
 
+test('the Tools menu closes once the pointer leaves, even after a click', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
+  await gotoClean(page, '/');
+  const menu = page.locator('.topnav-menu');
+  const tools = page.getByRole('link', { name: 'Tools', exact: true });
+  await tools.click();
+  await expect(page).toHaveURL(/\/tools$/);
+  // The clicked anchor still holds DOM focus, so the menu must not be pinned
+  // open by it — only hover and keyboard focus may hold it.
+  await page.mouse.move(0, 300);
+  await expect(menu).toBeHidden();
+});
+
+test('keyboard focus opens the Tools menu', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
+  await gotoClean(page, '/');
+  const menu = page.locator('.topnav-menu');
+  // Tab in from the neighbouring link: :focus-visible only matches when the
+  // browser saw a keyboard interaction, which a bare focus() does not give us.
+  await page.getByRole('link', { name: 'Players', exact: true }).focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Tools', exact: true })).toBeFocused();
+  await expect(menu).toBeVisible();
+});
+
 test('the card wall mounts and paints its loop', async ({ page }) => {
   // No card art here: /thumbnails is a Pages Function and `vite preview` does
   // not run one, so every scan 404s and the wall draws its placeholder slots.
