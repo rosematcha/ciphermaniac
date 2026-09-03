@@ -109,7 +109,7 @@ test('Extract trainer subtypes and detect ACE SPEC cards via gatherDecks heurist
 
   const diagnostics: any = {};
   const mockEnv = { LIMITLESS_API_KEY: 'test-key' };
-  const decks = await gatherDecks(mockEnv as any, tournaments as any, diagnostics, null, {});
+  const decks = await gatherDecks(mockEnv as any, tournaments as any, diagnostics, null, { minFieldPlayers: 1 });
   // Should produce one deck with enriched cards
   assert.strictEqual(decks.length, 1);
   const { cards } = decks[0];

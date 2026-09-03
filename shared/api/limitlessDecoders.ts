@@ -124,7 +124,7 @@ export interface TournamentDetails {
   format?: string;
   platform?: string;
   players?: number;
-  organizer?: { name?: string };
+  organizer?: { name?: string; id?: string };
 }
 
 /**
@@ -142,7 +142,14 @@ export function decodeTournamentDetails(raw: unknown): TournamentDetails {
   if (!isRecord(raw)) {
     throw new LimitlessShapeError('tournament details', raw);
   }
-  const organizer = isRecord(raw.organizer) ? { name: str(raw.organizer.name) ?? undefined } : undefined;
+  let organizer: TournamentDetails['organizer'];
+  if (isRecord(raw.organizer)) {
+    organizer = { name: str(raw.organizer.name) ?? undefined };
+    const organizerId = str(raw.organizer.id);
+    if (organizerId) {
+      organizer.id = organizerId;
+    }
+  }
   return {
     decklists: typeof raw.decklists === 'boolean' ? raw.decklists : undefined,
     isOnline: typeof raw.isOnline === 'boolean' ? raw.isOnline : undefined,

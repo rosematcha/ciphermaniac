@@ -420,4 +420,4 @@ function resolveArchetypeClassification(input: ClassificationInput, deckIndex: D
   };
 }
 
-export { buildArchetypeDeckIndex, resolveArchetypeClassification };
+export { buildArchetypeDeckIndex, isGenericArchetypeName, resolveArchetypeClassification };
