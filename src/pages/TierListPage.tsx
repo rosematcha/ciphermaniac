@@ -435,9 +435,6 @@ export function TierListPage() {
     <>
       <section class='hero'>
         <h1>Tier List Maker</h1>
-        <div class='hero-meta'>
-          <span>Rank an event's archetypes, or one card's distinct arts, and save it as an image</span>
-        </div>
       </section>
 
       <section class='tl-page'>
