@@ -34,7 +34,12 @@ export const MIN_ARTS_TO_BROWSE = 5;
 
 interface ArtGroupsPayload {
   version: number;
-  cards: Record<string, { arts: string[][]; unmatched: string[] }>;
+  /**
+   * Keyed by the reprint cluster's earliest printing, NOT by card name: a name
+   * can cover two unrelated cards (Charizard ex is both the Obsidian Flames
+   * one and the 151 one) and each gets its own entry.
+   */
+  cards: Record<string, { name?: string; arts: string[][]; unmatched: string[] }>;
 }
 
 /** One printing, as the picker and the board show it. */
@@ -47,6 +52,12 @@ export interface CardArt {
 
 /** A card worth building a tier list over. */
 export interface ArtCard {
+  /**
+   * The artifact's cluster key — `Name::SET::NUMBER` of the card's earliest
+   * printing. Identity, because {@link name} is not unique; a shared tier list
+   * carries this so it reopens on the card it was built from.
+   */
+  key: string;
   name: string;
   /** One entry per distinct illustration, in release order. */
   arts: CardArt[];
@@ -55,6 +66,28 @@ export interface ArtCard {
 function toArt(ref: string): CardArt | null {
   const [set, number] = ref.split('::');
   return set && number ? { ref, set, number } : null;
+}
+
+/**
+ * The card name out of a cluster key. Only a fallback: the producer ships the
+ * name, but a v1 artifact was keyed by the bare name and this keeps such a
+ * build readable rather than blank while the grouping workflow catches up.
+ */
+function cardNameFromKey(key: string): string {
+  return key.split('::').slice(0, -2).join('::') || key;
+}
+
+/**
+ * The card a share link or a picked suggestion refers to.
+ *
+ * Matches the cluster key first, then falls back to the card name so links
+ * shared before the artifact was split per cluster still open. For the 72
+ * names covering more than one card that lands on the richest cluster —
+ * catalogue order, see {@link fetchArtCards} — which is the closest thing to
+ * the merged entry the link was built against.
+ */
+export function findArtCard(cards: readonly ArtCard[], subject: string): ArtCard | undefined {
+  return cards.find(card => card.key === subject) ?? cards.find(card => card.name === subject);
 }
 
 /**
@@ -68,12 +101,12 @@ export async function fetchArtCards(): Promise<ArtCard[]> {
     return [];
   }
   const cards: ArtCard[] = [];
-  for (const [name, entry] of Object.entries(payload.cards)) {
+  for (const [key, entry] of Object.entries(payload.cards)) {
     // The first member of each group is that art's earliest printing — the
     // producer writes groups in the order Limitless lists prints.
     const arts = entry.arts.map(group => toArt(group[0] ?? '')).filter((a): a is CardArt => a !== null);
     if (arts.length >= MIN_ARTS_TO_RANK) {
-      cards.push({ name, arts });
+      cards.push({ key, name: entry.name ?? cardNameFromKey(key), arts });
     }
   }
   return cards.sort((a, b) => b.arts.length - a.arts.length || a.name.localeCompare(b.name));
