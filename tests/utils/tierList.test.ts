@@ -73,10 +73,31 @@ test('the default ramp is the whole ramp register, in board order', () => {
   assert.deepEqual(register, [...DEFAULT_RAMP]);
 });
 
-test('the default ramp descends in lightness, so rank survives greyscale', () => {
-  const steps = DEFAULT_RAMP.map(id => luminance(swatch(id).hex));
+/** Plain HSL hue in degrees, which is all the ordering assertion below needs. */
+function hue(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
+  const [max, min] = [Math.max(r, g, b), Math.min(r, g, b)];
+  const span = max - min;
+  if (span === 0) {
+    return 0;
+  }
+  const sextant = max === r ? (g - b) / span : max === g ? 2 + (b - r) / span : 4 + (r - g) / span;
+  return (sextant * 60 + 360) % 360;
+}
+
+test('the default ramp walks one way round the hue wheel, red to purple', () => {
+  // Measured from the first plate rather than from 0deg: red sits within a
+  // degree or two of the origin, and a ramp starting at 359 is not a defect.
+  const origin = hue(swatch(DEFAULT_RAMP[0]!).hex);
+  const steps = DEFAULT_RAMP.map(id => (hue(swatch(id).hex) - origin + 360) % 360);
+  // The gap is only asserted loosely: HSL compresses the orange-to-yellow arc
+  // to a third of what it spans in OKLCH, where the ramp is actually spaced.
+  // What this test is for is catching a reorder, not grading the spacing.
   for (let i = 1; i < steps.length; i++) {
-    assert.ok(steps[i]! < steps[i - 1]!, `${DEFAULT_RAMP[i]} is not darker than ${DEFAULT_RAMP[i - 1]}`);
+    assert.ok(
+      steps[i]! > steps[i - 1]! + 8,
+      `${DEFAULT_RAMP[i]} is not clearly further round the wheel than ${DEFAULT_RAMP[i - 1]}`
+    );
   }
 });
 

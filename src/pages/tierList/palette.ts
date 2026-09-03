@@ -52,12 +52,12 @@ export const INK = '#1f1a13';
 export const PAPER = '#fbf5e6';
 
 export const SWATCHES: readonly Swatch[] = [
-  { id: 'ramp-red', tone: 'ramp', hex: '#bc3233', text: PAPER },
-  { id: 'ramp-crimson', tone: 'ramp', hex: '#b32e4e', text: PAPER },
-  { id: 'ramp-raspberry', tone: 'ramp', hex: '#a72e63', text: PAPER },
-  { id: 'ramp-magenta', tone: 'ramp', hex: '#993074', text: PAPER },
-  { id: 'ramp-plum', tone: 'ramp', hex: '#893482', text: PAPER },
-  { id: 'ramp-violet', tone: 'ramp', hex: '#78378b', text: PAPER },
+  { id: 'ramp-red', tone: 'ramp', hex: '#b72728', text: PAPER },
+  { id: 'ramp-orange', tone: 'ramp', hex: '#d17414', text: INK },
+  { id: 'ramp-yellow', tone: 'ramp', hex: '#dfb536', text: INK },
+  { id: 'ramp-green', tone: 'ramp', hex: '#60a259', text: INK },
+  { id: 'ramp-blue', tone: 'ramp', hex: '#1868a0', text: PAPER },
+  { id: 'ramp-purple', tone: 'ramp', hex: '#623e96', text: PAPER },
   { id: 'vivid-red', tone: 'vivid', hex: '#cc241d', text: PAPER },
   { id: 'vivid-orange', tone: 'vivid', hex: '#de7018', text: INK },
   { id: 'vivid-yellow', tone: 'vivid', hex: '#d79921', text: INK },
@@ -99,26 +99,31 @@ export function swatch(id: string): Swatch {
 }
 
 /**
- * The default six: brick red descending to violet.
+ * The default six: red, orange, yellow, green, blue, purple.
  *
- * Six tiers want six steps, so the ramp is generated rather than picked —
- * equal steps in OKLCH from L 0.53 C 0.175 H 25 to L 0.46 C 0.145 H -42, which
- * is the *short* way round the wheel, red into magenta into violet. Going the
- * long way (red → orange → green → blue → purple) is a spectrum, and a
- * spectrum reads as decoration rather than as a ranking. Equal perceptual
- * steps also mean no two adjacent rows are ever the ambiguous pair.
+ * The tier-list convention, and it earns its place by being the convention —
+ * everyone reading a tier list already knows which end of a rainbow is best,
+ * so the hue does the ranking work with no legend and no learning.
  *
- * Lightness descends with rank, so the ordering survives the two ways a tier
- * list gets looked at: greyscaled, and thumbnailed to the width of a phone.
- * Every step carries paper text at 5.3:1 or better.
+ * Generated rather than picked, at hues 26, 58, 90, 142, 245 and 300 in OKLCH.
+ * Lightness is *not* monotonic across the six and cannot be: a yellow dark
+ * enough to fit a descending ramp is olive, and a purple light enough is
+ * lilac, so each step takes the lightness its hue needs to read as its own
+ * name — L 0.79 at yellow, 0.51 at red, 0.45 at purple. Hues are pulled
+ * warmwards of the primaries (orange 58 not 70, blue 245 not 255) so the six
+ * still sit on the warm paper the rest of the site is built on.
+ *
+ * Chroma is held near 0.13–0.18, which keeps every step inside sRGB — the
+ * fully-saturated version of this ramp clips at orange — and clears AA at
+ * 5.1:1 or better, each at least 2:1 clear of the ink/paper crossover.
  */
 export const DEFAULT_RAMP: readonly string[] = [
   'ramp-red',
-  'ramp-crimson',
-  'ramp-raspberry',
-  'ramp-magenta',
-  'ramp-plum',
-  'ramp-violet'
+  'ramp-orange',
+  'ramp-yellow',
+  'ramp-green',
+  'ramp-blue',
+  'ramp-purple'
 ];
 
 export const DEFAULT_TIER_NAMES: readonly string[] = ['S', 'A', 'B', 'C', 'D', 'F'];
