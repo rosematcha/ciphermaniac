@@ -1,18 +1,19 @@
 /**
  * Tier-plate palette.
  *
- * Hand-tuned, not generated. Two generated attempts failed the same way: a hue
- * sweep at one lightness went muddy, and letting lightness follow the hue fixed
- * the muddiness but still read as arithmetic rather than as colour someone
- * chose. These come from two palettes that already solve this exact problem —
+ * Five registers. `ramp` is a generated six-step gradient and nothing else —
+ * see {@link DEFAULT_RAMP}. The four the picker offers beyond it are hand-
+ * tuned: two generated attempts failed the same way, a hue sweep at one
+ * lightness going muddy, and letting lightness follow the hue fixing the
+ * muddiness but still reading as arithmetic rather than as colour someone
+ * chose. They come from two palettes that already solve this exact problem —
  * a warm-paper ground with earthy accents:
  *
  * - Gruvbox (morhetz/gruvbox), the "neutral" accents as `vivid` — the working
- *   register, and where the default ramp comes from. Everforest's light accents
- *   sat here first and read shrill: they are tuned as syntax *foreground*
- *   colours on cream, and a 124px plate is a very different job from a keyword.
- *   Gruvbox's mid-tones are warmer, sit down into the paper, and give a red
- *   that reads as brick rather than as an alert.
+ *   register. Everforest's light accents sat here first and read shrill: they
+ *   are tuned as syntax *foreground* colours on cream, and a 124px plate is a
+ *   very different job from a keyword. Gruvbox's mid-tones are warmer, sit down
+ *   into the paper, and give a red that reads as brick rather than as an alert.
  * - Gruvbox's "faded" accents as `deep`.
  * - Everforest (sainnhe/everforest) dark accents as `soft`, the quiet register.
  * - Gruvbox greys as `neutral`, for a deliberately colourless tier.
@@ -31,8 +32,11 @@
  * @module pages/tierList/palette
  */
 
-/** Which register a swatch belongs to. Registers are exhausted in this order. */
-export type SwatchTone = 'vivid' | 'soft' | 'deep' | 'neutral';
+/**
+ * Which register a swatch belongs to. `ramp` is the default board's own six and
+ * is not part of the auto-colour walk; the rest are exhausted in this order.
+ */
+export type SwatchTone = 'ramp' | 'vivid' | 'soft' | 'deep' | 'neutral';
 
 export interface Swatch {
   /** Stable id, `tone-hue`. This is what a tier stores. */
@@ -48,6 +52,12 @@ export const INK = '#1f1a13';
 export const PAPER = '#fbf5e6';
 
 export const SWATCHES: readonly Swatch[] = [
+  { id: 'ramp-red', tone: 'ramp', hex: '#bc3233', text: PAPER },
+  { id: 'ramp-crimson', tone: 'ramp', hex: '#b32e4e', text: PAPER },
+  { id: 'ramp-raspberry', tone: 'ramp', hex: '#a72e63', text: PAPER },
+  { id: 'ramp-magenta', tone: 'ramp', hex: '#993074', text: PAPER },
+  { id: 'ramp-plum', tone: 'ramp', hex: '#893482', text: PAPER },
+  { id: 'ramp-violet', tone: 'ramp', hex: '#78378b', text: PAPER },
   { id: 'vivid-red', tone: 'vivid', hex: '#cc241d', text: PAPER },
   { id: 'vivid-orange', tone: 'vivid', hex: '#de7018', text: INK },
   { id: 'vivid-yellow', tone: 'vivid', hex: '#d79921', text: INK },
@@ -89,20 +99,26 @@ export function swatch(id: string): Swatch {
 }
 
 /**
- * The default six: brick, burnt orange, mustard, olive, sage green, taupe.
+ * The default six: brick red descending to violet.
  *
- * Hue travel is deliberately short and the descent is carried by saturation and
- * lightness instead. A red→orange→yellow→green→teal ramp is a spectrum, and a
- * spectrum reads as decoration rather than as a ranking; these six sit in one
- * family and still separate cleanly row to row.
+ * Six tiers want six steps, so the ramp is generated rather than picked —
+ * equal steps in OKLCH from L 0.53 C 0.175 H 25 to L 0.46 C 0.145 H -42, which
+ * is the *short* way round the wheel, red into magenta into violet. Going the
+ * long way (red → orange → green → blue → purple) is a spectrum, and a
+ * spectrum reads as decoration rather than as a ranking. Equal perceptual
+ * steps also mean no two adjacent rows are ever the ambiguous pair.
+ *
+ * Lightness descends with rank, so the ordering survives the two ways a tier
+ * list gets looked at: greyscaled, and thumbnailed to the width of a phone.
+ * Every step carries paper text at 5.3:1 or better.
  */
 export const DEFAULT_RAMP: readonly string[] = [
-  'vivid-red',
-  'vivid-orange',
-  'vivid-yellow',
-  'vivid-green',
-  'vivid-aqua',
-  'neutral-ash'
+  'ramp-red',
+  'ramp-crimson',
+  'ramp-raspberry',
+  'ramp-magenta',
+  'ramp-plum',
+  'ramp-violet'
 ];
 
 export const DEFAULT_TIER_NAMES: readonly string[] = ['S', 'A', 'B', 'C', 'D', 'F'];
@@ -115,7 +131,8 @@ export const DEFAULT_TIER_NAMES: readonly string[] = ['S', 'A', 'B', 'C', 'D', '
  * land far apart on the wheel instead of adjacent — walking in hue order gave a
  * tidy ramp at six tiers and put two near-identical reds beside each other at
  * fourteen. Hues already spoken for by the default ramp are skipped so an added
- * tier never collides with one.
+ * tier never collides with one — the `ramp` register itself stays out, since a
+ * seventh tier that lands mid-gradient reads as part of the descent.
  */
 const STRIDE = 4;
 

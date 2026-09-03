@@ -68,6 +68,22 @@ test('the auto order covers every swatch outside the default ramp, exactly once'
   assert.deepEqual([...AUTO_ORDER].sort(), expected.sort());
 });
 
+test('the default ramp is the whole ramp register, in board order', () => {
+  const register = SWATCHES.filter(s => s.tone === 'ramp').map(s => s.id);
+  assert.deepEqual(register, [...DEFAULT_RAMP]);
+});
+
+test('the default ramp descends in lightness, so rank survives greyscale', () => {
+  const steps = DEFAULT_RAMP.map(id => luminance(swatch(id).hex));
+  for (let i = 1; i < steps.length; i++) {
+    assert.ok(steps[i]! < steps[i - 1]!, `${DEFAULT_RAMP[i]} is not darker than ${DEFAULT_RAMP[i - 1]}`);
+  }
+});
+
+test('an auto-coloured tier never lands inside the default gradient', () => {
+  assert.ok(!AUTO_ORDER.some(id => swatch(id).tone === 'ramp'));
+});
+
 test('added tiers never reuse a colour that is already on the board', () => {
   // The case that matters: a fourteen-tier board, coloured without the picker.
   const used = [...DEFAULT_RAMP];

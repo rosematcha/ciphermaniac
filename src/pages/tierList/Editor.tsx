@@ -57,6 +57,7 @@ interface EditorProps {
 }
 
 const TONES: { tone: SwatchTone; label: string }[] = [
+  { tone: 'ramp', label: 'Ramp' },
   { tone: 'vivid', label: 'Vivid' },
   { tone: 'soft', label: 'Soft' },
   { tone: 'deep', label: 'Deep' },
