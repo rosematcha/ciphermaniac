@@ -91,6 +91,9 @@
   gap: 1px;
   background: color-mix(in srgb, var(--plate) 72%, var(--border));
   opacity: 0;
+  /* They cover the plate whole, so while hidden they must also be untouchable —
+     otherwise the overlay, not the plate, takes the tap meant to reveal it. */
+  pointer-events: none;
   transition: opacity var(--ms-fast) var(--ease-base);
 }
 /* The plate only, not the row: reaching across a row to drop a tile should
@@ -98,6 +101,7 @@
 .tl-plate:hover .tl-tools,
 .tl-tools:focus-within {
   opacity: 1;
+  pointer-events: auto;
 }
 /* Nothing offers itself while an item is in the air. Carrying a tile over a
    tier should show the tier, not four buttons you cannot press. */
@@ -913,12 +917,23 @@ body[data-mode='dark'] .tl-btn {
   }
 }
 
-/* A pointer that cannot hover has no way to reveal hover-only controls, so
-   they are simply always on there. The export is taken from this same node, so
-   `[data-exporting]` above has to remove them explicitly — on hover pointers
-   they happen to be invisible already, here they are not. */
+/* A pointer that cannot hover reveals a tier's tools by tapping its plate, and
+   hides them by tapping anywhere else — TierBoard owns which plate is open.
+   They used to be permanently on here, which parked four buttons over every
+   tier's letter for the whole session.
+
+   :hover is switched off rather than left alone: a tap makes a touch browser
+   treat the plate as hovered and it stays that way, so the hover rule would
+   pin open the last plate touched. */
 @media (hover: none) {
-  .tl-tools,
+  .tl-plate:hover .tl-tools {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .tl-plate[data-open] .tl-tools {
+    opacity: 1;
+    pointer-events: auto;
+  }
   .tl-edit {
     opacity: 1;
   }

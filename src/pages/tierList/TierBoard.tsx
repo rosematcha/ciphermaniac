@@ -3,12 +3,13 @@
  *
  * The board is the document: the exported JPG and this node are the same
  * element, so nothing that is not part of the artwork renders inside it at full
- * opacity. Every tier control sits on the plate and appears on row hover, which
- * means the export needs nothing stripped before it is taken.
+ * opacity. Every tier control sits on the plate and appears on plate hover —
+ * or, on a pointer that cannot hover, on a tap of the plate. Either way the
+ * board's resting state is the artwork alone.
  * @module pages/tierList/TierBoard
  */
 
-import { For, type JSX, Show } from 'solid-js';
+import { createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
 import { Icon } from './icons';
 import { swatch } from './palette';
 import { Tile } from './Tile';
@@ -40,6 +41,53 @@ function plateLength(name: string): 'short' | 'long' | 'xlong' {
 }
 
 export function TierBoard(props: TierBoardProps): JSX.Element {
+  // Which plate is showing its tools. Only touch pointers read this (see the
+  // `hover: none` block in tier-list.css); a mouse reveals them by hovering and
+  // hides them by leaving, which needs no state at all.
+  const [open, setOpen] = createSignal<string | null>(null);
+
+  onMount(() => {
+    // The tap that reveals the tools must not also press one. The tools cover
+    // the plate, so the moment `pointerdown` opens them they are under the
+    // finger — and the `click` that ends the same tap is aimed at whatever is
+    // there NOW, which is a button the user has not seen yet. (It deleted the
+    // tier they tapped.) So the opening gesture's click is swallowed: first tap
+    // reveals, second tap acts.
+    let opening = false;
+
+    // One document listener rather than a handler per plate: the same press
+    // that opens one plate has to close whichever was open, including presses
+    // that land nowhere near the board.
+    const onDown = (event: PointerEvent): void => {
+      opening = false;
+      const target = event.target as Element | null;
+      // A press on a tool belongs to the tool.
+      if (target?.closest('.tl-tools')) {
+        return;
+      }
+      const plate = target?.closest<HTMLElement>('.tl-plate')?.dataset.plate ?? null;
+      const next = plate === open() ? null : plate;
+      opening = next !== null;
+      setOpen(next);
+    };
+
+    const onClick = (event: MouseEvent): void => {
+      const target = event.target as Element | null;
+      if (opening && target?.closest('.tl-tools')) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      opening = false;
+    };
+
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('click', onClick, true);
+    onCleanup(() => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('click', onClick, true);
+    });
+  });
+
   return (
     <>
       <div class='tl-frame'>
@@ -67,7 +115,12 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
                 data-row={tier.id}
                 style={{ '--plate': swatch(tier.swatch).hex, '--plate-fg': swatch(tier.swatch).text }}
               >
-                <div class='tl-plate' data-len={plateLength(tier.name)} data-plate={tier.id}>
+                <div
+                  class='tl-plate'
+                  data-len={plateLength(tier.name)}
+                  data-plate={tier.id}
+                  data-open={open() === tier.id ? '' : undefined}
+                >
                   <span class='tl-plate-name'>{tier.name}</span>
                   <span class='tl-tools'>
                     <button
@@ -93,7 +146,10 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
                       data-tier-id={tier.id}
                       title='Rename and recolour'
                       aria-label={`Edit ${tier.name}`}
-                      onClick={() => props.onEditTier(tier.id)}
+                      onClick={() => {
+                        setOpen(null);
+                        props.onEditTier(tier.id);
+                      }}
                     >
                       <Icon name='edit' />
                     </button>
@@ -102,7 +158,10 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
                       data-deltier={tier.id}
                       title='Delete tier'
                       aria-label={`Delete ${tier.name}`}
-                      onClick={() => props.onDelete(tier.id)}
+                      onClick={() => {
+                        setOpen(null);
+                        props.onDelete(tier.id);
+                      }}
                     >
                       <Icon name='close' />
                     </button>

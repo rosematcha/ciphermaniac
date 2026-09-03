@@ -374,3 +374,42 @@ test.describe('theme', () => {
     await expect(page.locator('body')).toHaveAttribute('data-mode', 'dark');
   });
 });
+
+test('on a touch pointer a tier shows its tools on tap, and hides them again', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'the touch affordance, on the touch project');
+  // Playwright's device descriptors do not move the hover media queries, and
+  // this behaviour lives entirely inside one — so it is emulated explicitly.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setEmulatedMedia', {
+    features: [
+      { name: 'hover', value: 'none' },
+      { name: 'any-hover', value: 'none' },
+      { name: 'pointer', value: 'coarse' }
+    ]
+  });
+  await gotoClean(page, '/tools/tier-list');
+
+  const tools = (nth: number) => page.locator('.tl-plate').nth(nth).locator('.tl-tools');
+  await expect(tools(0)).toHaveCSS('opacity', '0');
+
+  await page.locator('.tl-plate').nth(0).tap();
+  await expect(tools(0)).toHaveCSS('opacity', '1');
+  // One plate at a time, and a tap anywhere else puts them all away.
+  await page.locator('.tl-plate').nth(2).tap();
+  await expect(tools(0)).toHaveCSS('opacity', '0');
+  await expect(tools(2)).toHaveCSS('opacity', '1');
+  await page.locator('.tl-tray h4').tap();
+  await expect(tools(2)).toHaveCSS('opacity', '0');
+
+  // The tap that reveals must not also press what it reveals: the tools land
+  // under the finger, and the click ending that same tap used to hit whichever
+  // button was there — deleting the tier the user had only meant to open.
+  const names = () => page.locator('.tl-plate-name').allTextContents();
+  const before = await names();
+  await page.locator('.tl-plate').nth(1).tap();
+  expect(await names()).toEqual(before);
+
+  // The second tap does act.
+  await page.locator('.tl-plate').nth(1).locator('[data-move$=":-1"]').tap();
+  await expect.poll(names).toEqual([before[1], before[0], ...before.slice(2)]);
+});
