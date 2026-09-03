@@ -106,6 +106,31 @@ test('the tools index links to the card wall', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Card Wall/i })).toHaveAttribute('href', '/tools/card-wall');
 });
 
+test('the tools index features the tier list and label maker as tiles', async ({ page }) => {
+  await gotoClean(page, '/tools');
+  const featured = page.locator('.tools-featured .arche');
+  await expect(featured).toHaveCount(2);
+  await expect(featured.nth(0)).toHaveAttribute('href', '/tools/tier-list');
+  await expect(featured.nth(1)).toHaveAttribute('href', '/tools/deck-box-labels');
+  // Everything else is a plain row, not a tile.
+  await expect(page.locator('.tools-more-item')).toHaveCount(4);
+});
+
+test('hovering the Tools nav item reveals the two headline tools', async ({ page }, testInfo) => {
+  // Desktop affordance only — phones get the /tools page instead.
+  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 640px');
+  await gotoClean(page, '/');
+  const menu = page.locator('.topnav-menu');
+  await expect(menu).toBeHidden();
+  await page.getByRole('link', { name: 'Tools', exact: true }).hover();
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('link', { name: 'Tier List Maker' })).toHaveAttribute('href', '/tools/tier-list');
+  await expect(menu.getByRole('link', { name: 'Deck Box Label Maker' })).toHaveAttribute(
+    'href',
+    '/tools/deck-box-labels'
+  );
+});
+
 test('the card wall mounts and paints its loop', async ({ page }) => {
   // No card art here: /thumbnails is a Pages Function and `vite preview` does
   // not run one, so every scan 404s and the wall draws its placeholder slots.

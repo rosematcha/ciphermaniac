@@ -173,6 +173,50 @@
   height: 2px;
   background: var(--accent);
 }
+.topnav-item {
+  position: relative;
+  display: flex;
+}
+
+/* Hover shortcut to the headline tools. Pointer/keyboard only — phones get the
+   /tools page instead (hidden in the 640px block below). */
+.topnav-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 190px;
+  display: grid;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--ms-fast) var(--ease-base),
+    visibility var(--ms-fast) var(--ease-base);
+}
+.topnav-item:hover > .topnav-menu,
+.topnav-item:focus-within > .topnav-menu {
+  opacity: 1;
+  visibility: visible;
+}
+.topnav-menu-link {
+  font-size: 12.5px;
+  color: var(--muted);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.topnav-menu-link:hover,
+.topnav-menu-link:focus-visible {
+  color: var(--fg);
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
 .topnav-actions {
   display: flex;
   gap: 6px;
@@ -248,6 +292,9 @@
   }
   .topnav-link.active::after {
     bottom: 4px;
+  }
+  .topnav-menu {
+    display: none;
   }
   .t-selector-trigger {
     max-width: 100%;
