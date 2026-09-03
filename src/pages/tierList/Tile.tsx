@@ -32,6 +32,9 @@ function EditButton(props: TileProps): JSX.Element {
       <button
         type='button'
         class='tl-edit'
+        // The popover re-finds its anchor by selector after a render, so the
+        // pencil has to be addressable without holding on to the node.
+        data-edit={props.item.customId}
         aria-label={`Edit ${props.item.label}`}
         // The tile under it is draggable; a press on the pencil must not
         // become the start of a drag.

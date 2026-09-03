@@ -24,11 +24,11 @@ interface TierBoardProps {
   onTitle: (title: string) => void;
   onMove: (id: string, step: number) => void;
   onDelete: (id: string) => void;
-  onEditTier: (id: string, anchor: HTMLElement) => void;
+  onEditTier: (id: string) => void;
   onEditItem: (customId: number) => void;
   onAddTier: () => void;
   /** Absent in card-arts view: a printing either exists or it does not. */
-  onAddArchetype?: (anchor: HTMLElement) => void;
+  onAddArchetype?: () => void;
 }
 
 /** Long names step down through two sizes rather than wrapping into fragments. */
@@ -90,7 +90,7 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
                       data-tier-id={tier.id}
                       title='Rename and recolour'
                       aria-label={`Edit ${tier.name}`}
-                      onClick={e => props.onEditTier(tier.id, e.currentTarget)}
+                      onClick={() => props.onEditTier(tier.id)}
                     >
                       <Icon name='edit' />
                     </button>
@@ -121,7 +121,7 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
           Unranked <span>{props.tray.length}</span>
           <Show when={props.onAddArchetype}>
             {add => (
-              <button type='button' class='tl-mini' data-addarch onClick={e => add()(e.currentTarget)}>
+              <button type='button' class='tl-mini' data-addarch onClick={() => add()()}>
                 + Add archetype
               </button>
             )}

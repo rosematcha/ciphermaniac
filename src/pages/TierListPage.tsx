@@ -63,6 +63,15 @@ import '../styles/pages/tier-list.css';
  */
 const LABEL_DEFAULT: Record<TierMode, boolean> = { icons: true, previews: false, arts: false };
 
+/**
+ * What the editor popover is open on, by id.
+ *
+ * Ids, not objects: editing a tier replaces its object, and a popover holding
+ * the old one goes stale — so the target it renders from is derived fresh from
+ * `tiers()` and `custom()` instead. A null archetype id is a new one.
+ */
+type EditSubject = { kind: 'tier'; id: string } | { kind: 'archetype'; id: number | null };
+
 /** How long a reordered row takes to travel. Long enough to follow, short enough to keep clicking. */
 const ROW_MOVE_MS = 140;
 
@@ -101,7 +110,7 @@ export function TierListPage() {
   const [custom, setCustom] = createSignal<CustomArchetype[]>([]);
   const [cardName, setCardName] = createSignal('');
   const [title, setTitle] = createSignal('');
-  const [editing, setEditing] = createSignal<EditorTarget | null>(null);
+  const [editing, setEditing] = createSignal<EditSubject | null>(null);
   const [resetArmed, setResetArmed] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
@@ -181,6 +190,18 @@ export function TierListPage() {
   });
 
   const split = createMemo(() => distribute(items(), tiers(), placement()));
+
+  const editorTarget = createMemo<EditorTarget | null>(() => {
+    const subject = editing();
+    if (!subject) {
+      return null;
+    }
+    if (subject.kind === 'tier') {
+      const tier = tiers().find(t => t.id === subject.id);
+      return tier ? { kind: 'tier', tier } : null;
+    }
+    return { kind: 'archetype', draft: custom().find(c => c.id === subject.id) ?? null };
+  });
 
   const canonicals = createMemo<CanonicalOption[]>(() => {
     const database = latestValue(synonyms);
@@ -405,13 +426,6 @@ export function TierListPage() {
 
   // -------------------------------------------------------------- render
 
-  const openTier = (id: string, anchor: HTMLElement): void => {
-    const tier = tiers().find(t => t.id === id);
-    if (tier) {
-      setEditing({ kind: 'tier', tier, anchor });
-    }
-  };
-
   return (
     <>
       <section class='hero'>
@@ -561,33 +575,26 @@ export function TierListPage() {
             onTitle={setTitle}
             onMove={(id, step) => animateRows(() => setTiers(list => withMovedTier(list, id, step)))}
             onDelete={deleteTier}
-            onEditTier={openTier}
-            onEditItem={id => {
-              const anchor = document.querySelector<HTMLElement>(`[data-edit="${id}"]`);
-              const draft = custom().find(c => c.id === id) ?? null;
-              if (anchor && draft) {
-                setEditing({ kind: 'archetype', draft, anchor });
-              }
-            }}
+            onEditTier={id => setEditing({ kind: 'tier', id })}
+            onEditItem={id => setEditing({ kind: 'archetype', id })}
             onAddTier={() => setTiers(withAddedTier)}
-            onAddArchetype={
-              mode() === 'arts' ? undefined : anchor => setEditing({ kind: 'archetype', draft: null, anchor })
-            }
+            onAddArchetype={mode() === 'arts' ? undefined : () => setEditing({ kind: 'archetype', id: null })}
           />
         </Show>
       </section>
 
-      <Show when={editing()} keyed>
+      {/* Unkeyed: the popover stays mounted across edits to its subject, so a
+          rename does not tear down the input the user is typing into. */}
+      <Show when={editorTarget()}>
         {target => (
           <Editor
-            target={target}
+            target={target()}
             sprites={SPRITES}
             canonicals={canonicals()}
             onTierChange={patch => {
-              const current = target;
-              if (current.kind === 'tier') {
-                setTiers(list => withEditedTier(list, current.tier.id, patch));
-                setEditing({ ...current, tier: { ...current.tier, ...patch } });
+              const subject = editing();
+              if (subject?.kind === 'tier') {
+                setTiers(list => withEditedTier(list, subject.id, patch));
               }
             }}
             onArchetypeSave={saveArchetype}

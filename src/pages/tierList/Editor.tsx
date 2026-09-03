@@ -5,6 +5,12 @@
  * and updates live underneath, so a colour is judged against the tiles it will
  * sit with instead of against a dialog. It anchors under whatever opened it and
  * clamps itself inside the viewport.
+ *
+ * The target names what is being edited; it never carries the node it hangs
+ * from. Editing a tier replaces that tier's object, so the board rebuilds its
+ * row, so a held-on-to anchor is detached by the time the next placement runs —
+ * and a detached node measures 0×0, which sent the panel to the top-left
+ * corner on the first keystroke. The anchor is re-queried instead.
  * @module pages/tierList/Editor
  */
 
@@ -29,10 +35,16 @@ export interface CanonicalOption {
   number: string;
 }
 
-/** What the popover is editing, and where it hangs from. */
-export type EditorTarget =
-  | { kind: 'tier'; tier: Tier; anchor: HTMLElement }
-  | { kind: 'archetype'; draft: CustomArchetype | null; anchor: HTMLElement };
+/** What the popover is editing. Derived state, rebuilt whenever the subject changes. */
+export type EditorTarget = { kind: 'tier'; tier: Tier } | { kind: 'archetype'; draft: CustomArchetype | null };
+
+/** Live lookup of the control the popover hangs from. Null means leave it be. */
+function anchorFor(target: EditorTarget): HTMLElement | null {
+  if (target.kind === 'tier') {
+    return document.querySelector(`[data-tier-id="${target.tier.id}"]`);
+  }
+  return document.querySelector(target.draft ? `[data-edit="${target.draft.id}"]` : '[data-addarch]');
+}
 
 interface EditorProps {
   target: EditorTarget;
@@ -58,11 +70,12 @@ export function Editor(props: EditorProps): JSX.Element {
   let panel: HTMLDivElement | undefined;
 
   const place = (): void => {
-    if (!panel) {
+    const anchor = anchorFor(props.target);
+    if (!panel || !anchor) {
       return;
     }
     const box = panel.getBoundingClientRect();
-    const at = props.target.anchor.getBoundingClientRect();
+    const at = anchor.getBoundingClientRect();
     const left = Math.max(10, Math.min(at.left, window.innerWidth - box.width - 10));
     const top = Math.max(10, Math.min(at.bottom + 8, window.innerHeight - box.height - 10));
     panel.style.left = `${left}px`;
@@ -93,15 +106,23 @@ export function Editor(props: EditorProps): JSX.Element {
   });
 
   createEffect(() => {
-    // Re-anchor whenever the target changes; the panel's size changes with it.
-    void props.target;
+    // Re-anchor when the subject changes — not on every edit to it. A rename
+    // replaces the tier object on each keystroke and moves nothing.
+    void (props.target.kind === 'tier' ? props.target.tier.id : props.target.draft?.id);
     queueMicrotask(place);
   });
 
   return (
     <div class='tl-pop' role='dialog' aria-label='Editor' ref={panel}>
-      <Show when={props.target.kind === 'tier' ? props.target : null}>
-        {tier => <TierFields tier={tier().tier} onChange={props.onTierChange} onClose={props.onClose} />}
+      {/* Unkeyed on purpose: the tier's object is replaced on every keystroke of
+          a rename, and remounting the fields there would take the focused input
+          with it. */}
+      <Show when={props.target.kind === 'tier'}>
+        <TierFields
+          tier={() => (props.target.kind === 'tier' ? props.target.tier : null)}
+          onChange={props.onTierChange}
+          onClose={props.onClose}
+        />
       </Show>
       <Show when={props.target.kind === 'archetype' ? props.target : null} keyed>
         {target => (
@@ -131,21 +152,37 @@ function Header(props: { title: string; onClose: () => void }): JSX.Element {
 }
 
 function TierFields(props: {
-  tier: Tier;
+  /** Null once the tier is gone, which only happens as the popover closes. */
+  tier: () => Tier | null;
   onChange: (patch: Partial<Omit<Tier, 'id'>>) => void;
   onClose: () => void;
 }): JSX.Element {
+  let field: HTMLInputElement | undefined;
+  const selected = (): string | undefined => props.tier()?.swatch;
+
+  // The name is pushed into the field only when the two actually disagree,
+  // which happens when the popover moves to a different tier — never on the
+  // user's own keystrokes. Binding `value` outright instead re-assigns the
+  // string the user is halfway through typing, and some browsers answer that
+  // by parking the caret at the end of the field.
+  createEffect(() => {
+    const name = props.tier()?.name ?? '';
+    if (field && field.value !== name) {
+      field.value = name;
+    }
+  });
+
   return (
     <>
       <Header title='Tier' onClose={props.onClose} />
       <div class='tl-field'>
         <span class='tl-legend'>Name</span>
         <input
+          ref={field}
           type='text'
           class='search'
           maxLength={24}
           spellcheck={false}
-          value={props.tier.name}
           onInput={e => props.onChange({ name: e.currentTarget.value })}
           onKeyDown={e => {
             if (e.key === 'Enter') {
@@ -165,10 +202,10 @@ function TierFields(props: {
                     <button
                       type='button'
                       class='sw'
-                      classList={{ on: sw.id === props.tier.swatch }}
+                      classList={{ on: sw.id === selected() }}
                       style={{ background: sw.hex }}
                       aria-label={`${row.label} ${sw.id.split('-')[1]}`}
-                      aria-pressed={sw.id === props.tier.swatch}
+                      aria-pressed={sw.id === selected()}
                       onClick={() => props.onChange({ swatch: sw.id })}
                     />
                   )}
