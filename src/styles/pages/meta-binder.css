@@ -95,8 +95,11 @@
   display: inline-flex;
   align-items: baseline;
   /* Reserved while pricing loads — see the note in MetaBinderPage. Wide enough
-     for a four-figure total plus an "N unpriced" tail. */
+     for a four-figure total plus an "N unpriced" tail, and tall enough to hold
+     its line: reserving only the width still let the empty slot collapse to
+     nothing and drop the action buttons 18px when the prices landed. */
   min-width: 132px;
+  min-height: 1.5em;
   opacity: 0;
   transition: opacity var(--ms-base) var(--ease-base);
 }

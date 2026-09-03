@@ -242,14 +242,20 @@ export function MetaBinderPage() {
       </div>
 
       <div class='mb-summary'>
+        {/* The counts start at zero and grow a digit or two once the archetype
+            cards land. This row wraps, so those few pixels were enough to send
+            the action buttons to a new line and drop the grid below them. */}
         <div class='mb-summary-stat'>
-          <b class='num'>{binder().cardCount}</b> cards
+          <b class='num num-slot'>{binder().cardCount}</b> cards
         </div>
         <div class='mb-summary-stat'>
-          <b class='num'>{binder().copyCount}</b> copies
+          <b class='num num-slot'>{binder().copyCount}</b> copies
         </div>
         <div class='mb-summary-stat'>
-          <b class='num'>{binder().totalDecks.toLocaleString()}</b> decks covered
+          <b class='num num-slot' style={{ 'min-width': '5ch' }}>
+            {binder().totalDecks.toLocaleString()}
+          </b>{' '}
+          decks covered
         </div>
         {/* Prices resolve after the binder itself, and this row wraps: letting
             the stat appear at its natural width re-flowed the summary and

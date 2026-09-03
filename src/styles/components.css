@@ -524,6 +524,15 @@
 .section-meta-slot.is-ready {
   opacity: 1;
 }
+/* A count that arrives with the data, sitting inside running text. Reserving a
+   few digits keeps the line's length — and so where it wraps — stable between
+   the empty state and the loaded one. Pairs with `.num`'s tabular figures, so
+   `ch` really is one digit. */
+.num-slot {
+  display: inline-block;
+  min-width: 3ch;
+  font-variant-numeric: tabular-nums;
+}
 @media (max-width: 640px) {
   .section-head {
     flex-wrap: wrap;
