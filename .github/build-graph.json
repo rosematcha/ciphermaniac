@@ -20,6 +20,7 @@
     { "name": "online-trends", "dependsOn": ["online-meta"], "keySpec": { "contractVersion": 1, "builderVersion": "online-trends-v1" } },
     { "name": "prices", "dependsOn": ["online-meta", "synonyms"], "keySpec": { "contractVersion": 1, "builderVersion": "prices-v1" } },
     { "name": "price-history", "dependsOn": ["prices"], "keySpec": { "contractVersion": 1, "builderVersion": "price-history-v1" } },
+    { "name": "art-groups", "dependsOn": ["synonyms"], "keySpec": { "contractVersion": 1, "builderVersion": "art-groups-v1" }, "sourceHashes": { "cardArt": "SRC:cardArt" } },
     { "name": "snapshots", "dependsOn": ["tournament-catalog", "event-core:0054", "event-core:0055"], "keySpec": { "contractVersion": 1, "builderVersion": "snapshots-v1" } }
   ]
 }

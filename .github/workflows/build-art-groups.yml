@@ -1,0 +1,102 @@
+# =============================================================================
+# Card Art Grouping
+# =============================================================================
+# Works out which printings of a card show the same illustration, so anything
+# ranking card art (the tier list) can offer one entry per picture instead of
+# six near-identical ones. Reads assets/card-synonyms.json, writes
+# assets/card-art-groups.json.
+#
+# Incremental: a card whose printing list is unchanged reuses the previous
+# run's grouping, and downloaded art is cached between runs, so a routine run
+# only pays for newly-printed cards. Retuning the comparison parameters
+# invalidates every card and forces a full rebuild.
+#
+# Triggers:
+#   - Manual dispatch
+#   - Weekly, after the synonym DB has picked up the week's new sets
+# =============================================================================
+
+name: (Card Images) Art Grouping
+
+run-name: >-
+  ${{ github.event_name == 'schedule' && 'Weekly card art grouping' || 'Card art grouping (manual)' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      rebuild:
+        description: 'Ignore the previous artifact and regroup every card'
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 5 * * 1' # Mondays at 05:00 UTC, after the WebP conversion at 04:30
+
+# All R2 bucket writers share one concurrency group so producers and repair
+# jobs can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
+concurrency:
+  group: r2-bucket-writers
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-art-groups:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: .github/scripts/requirements-art.txt
+
+      - name: Install dependencies
+        run: pip install -r .github/scripts/requirements-art.txt
+
+      # Normalised card art, ~100KB per printing (~350MB in full). Restored on a
+      # prefix match, so a run that gained printings reuses what it already had.
+      - name: Restore card art cache
+        uses: actions/cache@v4
+        with:
+          path: .art-cache
+          key: art-cache-${{ github.run_id }}
+          restore-keys: art-cache-
+
+      - name: Build art groups
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+        run: |
+          python .github/scripts/build-art-groups.py \
+            --output card-art-groups.json \
+            ${{ inputs.rebuild && '--rebuild' || '' }} \
+            | tee art-groups.log
+
+      # Kept for review: the grouping is a judgement call about images, and the
+      # run log is the only place to see what it decided.
+      - name: Upload run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: art-groups
+          path: |
+            card-art-groups.json
+            art-groups.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Card Art Grouping" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          grep -E '^Grouped ' art-groups.log >> $GITHUB_STEP_SUMMARY || \
+            echo "Run did not reach the grouping summary — see the job log." >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,6 @@
+# Pinned dependencies for the card-art grouping producer (build-art-groups.py).
+# Kept separate from requirements.txt because OpenCV is a ~90MB install that no
+# other producer needs.
+-r requirements.txt
+numpy==2.3.5
+opencv-python-headless==4.13.0.90
