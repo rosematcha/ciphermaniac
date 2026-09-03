@@ -27,6 +27,7 @@ import {
 } from '../lib/data';
 import { type ArtCard, browsableArtCards, fetchArtCards, findArtCard } from '../lib/data/artGroups';
 import { ONLINE_META_NAME } from '../lib/constants';
+import { downloadBlob, isTouchDevice } from '../lib/download';
 import { latestValue } from '../lib/resource';
 import { fitBoardForExport } from '../lib/tierList/exportFit';
 import { installItemSortable, type ItemDrop } from '../lib/tierList/itemSortable';
@@ -35,6 +36,7 @@ import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { interEmbedCss } from '../utils/fontEmbed';
 import { Combo, splitMatch } from './tierList/Combo';
 import { type CanonicalOption, Editor, type EditorTarget, type SpriteOption } from './tierList/Editor';
+import { Shot } from './tierList/Shot';
 import { TierBoard } from './tierList/TierBoard';
 import {
   type CustomArchetype,
@@ -136,6 +138,7 @@ export function TierListPage() {
   const [resetArmed, setResetArmed] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const [shot, setShot] = createSignal<File | null>(null);
 
   let board: HTMLDivElement | undefined;
   let nextCustomId = 1;
@@ -423,6 +426,19 @@ export function TierListPage() {
     return `${slug || 'tier-list'}-tiers.jpg`;
   }
 
+  /**
+   * A desktop gets a download. A phone gets the image on screen, with the share
+   * sheet behind a button: an in-app browser has nowhere to put a download and
+   * navigates to the file instead, which reads as the page reloading. See `Shot`.
+   */
+  function deliver(file: File): void {
+    if (isTouchDevice()) {
+      setShot(file);
+    } else {
+      downloadBlob(file, file.name);
+    }
+  }
+
   async function exportJpg(): Promise<void> {
     const node = board;
     if (!node) {
@@ -443,7 +459,7 @@ export function TierListPage() {
               })
         )
       );
-      const [{ domToJpeg }, fontCssText] = await Promise.all([import('modern-screenshot'), interEmbedCss()]);
+      const [{ domToBlob }, fontCssText] = await Promise.all([import('modern-screenshot'), interEmbedCss()]);
       const dark = document.body.dataset.mode === 'dark';
       // Lets the stylesheet drop anything that is an editing affordance rather
       // than artwork — today just the masthead of an unnamed list.
@@ -451,7 +467,8 @@ export function TierListPage() {
       // The exported image is not the browser window, so it does not inherit
       // its width. See `exportFit`.
       const unfit = fitBoardForExport(node);
-      const dataUrl = await domToJpeg(node, {
+      const blob = await domToBlob(node, {
+        type: 'image/jpeg',
         scale: 2,
         quality: 0.92,
         backgroundColor: dark ? '#25221f' : '#fbf5e6',
@@ -460,10 +477,7 @@ export function TierListPage() {
         unfit();
         delete node.dataset.exporting;
       });
-      const link = document.createElement('a');
-      link.download = exportName();
-      link.href = dataUrl;
-      link.click();
+      deliver(new File([blob], exportName(), { type: 'image/jpeg' }));
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : 'Export failed.');
@@ -650,6 +664,10 @@ export function TierListPage() {
             onClose={() => setEditing(null)}
           />
         )}
+      </Show>
+
+      <Show when={shot()} keyed>
+        {file => <Shot file={file} onClose={() => setShot(null)} />}
       </Show>
     </>
   );
