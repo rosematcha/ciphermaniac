@@ -28,6 +28,7 @@ import {
 import { type ArtCard, browsableArtCards, fetchArtCards } from '../lib/data/artGroups';
 import { ONLINE_META_NAME } from '../lib/constants';
 import { latestValue } from '../lib/resource';
+import { fitBoardForExport } from '../lib/tierList/exportFit';
 import { installItemSortable, type ItemDrop } from '../lib/tierList/itemSortable';
 import { installRowSortable } from '../lib/tierList/rowSortable';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
@@ -419,12 +420,18 @@ export function TierListPage() {
       // Lets the stylesheet drop anything that is an editing affordance rather
       // than artwork — today just the masthead of an unnamed list.
       node.dataset.exporting = '';
+      // The exported image is not the browser window, so it does not inherit
+      // its width. See `exportFit`.
+      const unfit = fitBoardForExport(node);
       const dataUrl = await domToJpeg(node, {
         scale: 2,
         quality: 0.92,
         backgroundColor: dark ? '#25221f' : '#fbf5e6',
         font: { cssText: fontCssText }
-      }).finally(() => delete node.dataset.exporting);
+      }).finally(() => {
+        unfit();
+        delete node.dataset.exporting;
+      });
       const link = document.createElement('a');
       link.download = exportName();
       link.href = dataUrl;
