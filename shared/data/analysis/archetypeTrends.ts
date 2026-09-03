@@ -1,6 +1,6 @@
-import { aggregateCanonicalCardsPerDeck } from '../../canonicalDeckCards';
+import { aggregateCanonicalCardsPerDeck, type SynonymDatabase } from '../cardIdentity';
+import { isGenericArchetypeName } from '../../analysis/archetypeClassifier';
 import { SUCCESS_TAG_NAMES } from '../contracts';
-import type { SynonymDatabase } from '../../synonyms';
 
 // Performance tiers = the synthetic `all` aggregate plus every placement/percent
 // tag emitted by the one frozen SUCCESS_TAG_POLICY (phase2/topcut are Labs-only
@@ -104,6 +104,8 @@ type SynonymDb = SynonymDatabase;
 export interface TrendOptions {
   pairingsData?: PairingData[];
   archetypeName?: string | null;
+  /** Games an opponent needs before its record is published (default {@link MIN_MATCHUP_GAMES}). */
+  minMatchupGames?: number;
 }
 
 interface CopyTrendEntry {
@@ -201,8 +203,12 @@ const SUBSTITUTION_THRESHOLD = -0.5;
 // correlation with another card is noise rather than a shared deck slot.
 const SUBSTITUTION_MIN_PLAYRATE = 15;
 
-// Minimum matches for matchup to be statistically meaningful
-const MIN_MATCHUP_GAMES = 3;
+/**
+ * Minimum games before a matchup is published. Matches the frontend's
+ * WR_MIN_GAMES readout floor so a row never has to be backfilled from a
+ * 3-0 record: below this, a win rate is a coin toss wearing a percent sign.
+ */
+export const MIN_MATCHUP_GAMES = 20;
 
 /**
  * Gets the ISO date string (YYYY-MM-DD) for a given date
@@ -457,6 +463,11 @@ function creditMatch(
   // Mirrors keep their self-keyed entry — the frontend derives its "(mirror)"
   // row and match count from it — but are recorded symmetrically below.
   const opponentArchetype = isPlayer1Target ? deck2 : deck1;
+  // "Other" / "Unknown" is a bucket, not a deck: a 62% record against it says
+  // nothing a reader can act on.
+  if (isGenericArchetypeName(opponentArchetype)) {
+    return;
+  }
   if (!matchups.has(opponentArchetype)) {
     matchups.set(opponentArchetype, { opponent: opponentArchetype, wins: 0, losses: 0, ties: 0, total: 0 });
   }
@@ -509,9 +520,14 @@ function finalizeMatchup(tally: MatchupTally, isMirror: boolean): MatchupRecord 
  * {@link MIN_MATCHUP_GAMES} times are dropped as statistically meaningless.
  * @param targetArchetype - The archetype we are generating trends for
  * @param allPairings - Per-tournament pairing sheets with the standings that name each deck
+ * @param minGames - Games an opponent needs before its record is published
  * @returns Matchup records keyed by opponent archetype
  */
-export function buildMatchupMatrix(targetArchetype: string, allPairings: PairingData[]): Record<string, MatchupRecord> {
+export function buildMatchupMatrix(
+  targetArchetype: string,
+  allPairings: PairingData[],
+  minGames: number = MIN_MATCHUP_GAMES
+): Record<string, MatchupRecord> {
   if (!allPairings || !allPairings.length) {
     return {};
   }
@@ -529,7 +545,7 @@ export function buildMatchupMatrix(targetArchetype: string, allPairings: Pairing
 
   const result: Record<string, MatchupRecord> = {};
   for (const [opponent, tally] of matchups.entries()) {
-    if (tally.total >= MIN_MATCHUP_GAMES) {
+    if (tally.total >= minGames) {
       result[opponent] = finalizeMatchup(tally, opponent === targetArchetype);
     }
   }
@@ -965,7 +981,7 @@ export function generateArchetypeTrends(
   synonymDb: SynonymDb | null,
   options?: TrendOptions
 ): TrendReport {
-  const { pairingsData = [], archetypeName = null } = options || {};
+  const { pairingsData = [], archetypeName = null, minMatchupGames = MIN_MATCHUP_GAMES } = options || {};
 
   if (!decks || !decks.length) {
     return emptyTrendReport();
@@ -1008,7 +1024,7 @@ export function generateArchetypeTrends(
   insights.substitutions = findSubstitutions(Object.keys(finalCards), cardPlayrateTimelines);
 
   const matchups: Record<string, MatchupRecord> =
-    pairingsData.length > 0 && archetypeName ? buildMatchupMatrix(archetypeName, pairingsData) : {};
+    pairingsData.length > 0 && archetypeName ? buildMatchupMatrix(archetypeName, pairingsData, minMatchupGames) : {};
 
   return {
     meta: {

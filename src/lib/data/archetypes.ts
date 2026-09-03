@@ -1,7 +1,7 @@
 /**
  * Archetype index, per-archetype reports, and icon resolution.
  *
- * Archetype identity is a triple (D3): a lowercased comparison key, a cased
+ * Archetype identity is a triple: a lowercased comparison key, a cased
  * display name, and a slug derived from the key. {@link normalizeArchetypeKey}
  * is the comparison key — every lookup that could otherwise split one archetype
  * across casing or punctuation goes through it.

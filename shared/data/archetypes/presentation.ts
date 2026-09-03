@@ -1,16 +1,5 @@
 /**
- * Archetype presentation: the ONE implementation of archetype thumbnails,
- * signature cards, and icons (DB-MASTER-PLAN Phase 2, slice 5; decision D8).
- *
- * Merged authorities, per the plan's "Archetype presentation" row:
- * - Thumbnails + signature cards: ported verbatim from the CURRENT ONLINE
- *   pipeline (`.github/scripts/run-online-meta.mjs`), which is authoritative.
- *   The older copy in `functions/lib/onlineMeta/reportGenerator.ts` (stage-1
- *   inference only, 99.9% gate) was stale and retires with this module.
- * - Icons: ported from `.github/scripts/download-tournament.py`
- *   (`resolve_archetype_icons` and helpers) — Python was the only icon
- *   implementation, so this is the one place the plan authorizes porting FROM
- *   Python into TypeScript.
+ * Archetype thumbnail, signature-card, and icon presentation policy.
  *
  * Every fallback class is annotated with its source below. Config maps
  * (thumbnail/icon overrides) are passed in by callers — this module performs

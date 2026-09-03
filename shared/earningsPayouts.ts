@@ -20,7 +20,18 @@ import type { CrawledResult, EarningsDivision, EarningsSeason, EarningsTier, Ear
  * Seniors, which pays far less — a Senior Regional win is $2,500 against a
  * Masters $10,000. Worlds is the exception: it pays the same in every division.
  */
-export const PAYOUTS: Record<EarningsTier, Record<EarningsDivision, Array<{ through: number; amount: number }>>> = {
+type PayoutBand = Readonly<{ through: number; amount: number }>;
+
+const WORLDS_PAYOUTS: readonly PayoutBand[] = [
+  { through: 1, amount: 50_000 },
+  { through: 2, amount: 30_000 },
+  { through: 4, amount: 20_000 },
+  { through: 8, amount: 15_000 },
+  { through: 16, amount: 10_000 },
+  { through: 32, amount: 5_000 }
+];
+
+export const PAYOUTS: Record<EarningsTier, Record<EarningsDivision, readonly PayoutBand[]>> = {
   regional: {
     masters: [
       { through: 1, amount: 10_000 },
@@ -57,23 +68,8 @@ export const PAYOUTS: Record<EarningsTier, Record<EarningsDivision, Array<{ thro
     ]
   },
   worlds: {
-    masters: [
-      { through: 1, amount: 50_000 },
-      { through: 2, amount: 30_000 },
-      { through: 4, amount: 20_000 },
-      { through: 8, amount: 15_000 },
-      { through: 16, amount: 10_000 },
-      { through: 32, amount: 5_000 }
-    ],
-    // Worlds publishes a single prize column for every division.
-    'junior-senior': [
-      { through: 1, amount: 50_000 },
-      { through: 2, amount: 30_000 },
-      { through: 4, amount: 20_000 },
-      { through: 8, amount: 15_000 },
-      { through: 16, amount: 10_000 },
-      { through: 32, amount: 5_000 }
-    ]
+    masters: WORLDS_PAYOUTS,
+    'junior-senior': WORLDS_PAYOUTS
   }
 };
 

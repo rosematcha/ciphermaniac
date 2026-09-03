@@ -1,10 +1,4 @@
-/**
- * Shared Resend transactional-email helper for Cloudflare Pages functions.
- *
- * Both the feedback form and the survey notification send plain-text mail
- * through Resend using the RESEND_API_KEY secret, so the actual HTTP call lives
- * here to keep a single source of truth.
- */
+/** Shared Resend transactional-email helper for Cloudflare Pages functions. */
 
 export interface ResendEnv {
   RESEND_API_KEY?: string;

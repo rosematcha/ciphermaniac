@@ -27,7 +27,7 @@ import {
   validateCardUsageIndex,
   validateConversionIndex
 } from '../../shared/data/artifacts.ts';
-import { type NormalizedEvent, parseCardUid } from '../../shared/data/contracts.ts';
+import { type NormalizedEvent, parseCardIdentity } from '../../shared/data/contracts.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256Hex } from '../../shared/data/hash.ts';
 
@@ -145,7 +145,7 @@ test('distribution player counts sum to foundCount for every card', () => {
 
 test('every report item set/number agrees with its canonical UID', () => {
   for (const item of labsCardReport.items) {
-    const parsed = parseCardUid(item.uid);
+    const parsed = parseCardIdentity(item.uid);
     assert.ok(parsed, `unparseable uid ${item.uid}`);
     assert.strictEqual(item.set, parsed.set);
     assert.strictEqual(item.number, parsed.number);

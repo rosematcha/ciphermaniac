@@ -36,7 +36,7 @@ import {
   type MajorsWindowResult
 } from '../../src/lib/majorsTrends.ts';
 import type { ArchetypeIndexEntry } from '../../src/types/index.ts';
-import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/synonyms.ts';
+import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 
 /** Window sizes the page offers (must match MAJORS_WINDOW_COUNT in TrendsPage). */
 const WINDOWS: { key: string; count: number }[] = [

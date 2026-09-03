@@ -24,7 +24,7 @@ import {
 } from '../../src/lib/data.ts';
 import { canonicalizeReport } from '../../src/lib/data/compat.ts';
 import { computeMajorsMovers, type EventSnapshot } from '../../src/lib/majorsTrends.ts';
-import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.ts';
+import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import type { CardItem } from '../../src/types';
 
 const MEG_UID = "Boss's Orders::MEG::114";

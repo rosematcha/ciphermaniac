@@ -151,7 +151,7 @@ function uidFor(item: CardItem): string {
   }
   // Reports predating canonical uids: rebuild the same Name::SET::NUMBER shape
   // so pricing lookups still line up. Through the constructor, so the number is
-  // padded the way price keys and the synonym database expect (D20).
+  // padded the way price keys and the synonym database expect.
   return cardUidOrName(item.name, item.set, item.number);
 }
 

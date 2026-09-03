@@ -48,7 +48,15 @@ test('gatherDecks includes entries without decklists when archetype metadata is 
           placing: 3,
           name: 'C',
           player: 'p3'
-        }
+        },
+        // Pad the field past the 8-player floor with placed, listed players.
+        ...Array.from({ length: 5 }, (_, index) => ({
+          placing: index + 4,
+          name: `Filler ${index}`,
+          player: `f${index}`,
+          deck: { id: 'gardevoir', name: 'Gardevoir' },
+          decklist: { pokemon: [{ name: 'Gardevoir ex', count: 2, set: 'SVI', number: '086' }] }
+        }))
       ];
     }
 
@@ -56,11 +64,12 @@ test('gatherDecks includes entries without decklists when archetype metadata is 
   };
 
   const decks = await gatherDecks(env, tournaments, diagnostics, null, { fetchJson });
-  assert.equal(decks.length, 2);
+  assert.equal(decks.length, 7);
   assert.equal(decks[0].archetype, 'Dragapult Dusknoir');
   assert.equal(decks[1].archetype, 'Dragapult Dusknoir');
   assert.equal(decks[0].hasDecklist, true);
   assert.equal(decks[1].hasDecklist, false);
+  assert.equal(diagnostics.tournamentFields.t1.fieldSize, 8);
 });
 
 test('gatherDecks uses full standings instead of top-cut caps', async () => {

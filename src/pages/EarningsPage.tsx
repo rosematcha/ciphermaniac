@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, For, onMount, Show, type Signal } from 'solid-js';
+import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
 import { fetchEarnings, fetchEarningsEvents } from '../lib/data';
 import { resolved } from '../lib/resource';
@@ -7,7 +7,7 @@ import { Segmented } from '../components/Segmented';
 import { Pagination } from '../components/Pagination';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
-import { createPagination } from '../lib/pagination';
+import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { parseISODate, shortDate } from '../lib/format';
 import {
   eventAmount,
@@ -86,17 +86,10 @@ export function EarningsPage() {
     return rankByLens(loaded.players, lens(), season.key, basis());
   });
 
-  const pageParam: Signal<number> = [
-    () => {
-      const n = Number(params.page);
-      return Number.isInteger(n) && n > 1 ? n : 1;
-    },
-    (p => {
-      const next = typeof p === 'function' ? p(pageParam[0]()) : p;
-      setParams({ page: next > 1 ? String(next) : undefined }, { replace: true });
-      return next;
-    }) as Signal<number>[1]
-  ];
+  const pageParam = createQueryPageSignal(
+    () => params.page,
+    page => setParams({ page }, { replace: true })
+  );
   // No resetOn list: setLens and setBasis already clear `page` themselves.
   const { page, totalPages, pageItems, setPage } =
     // eslint-disable-next-line solid/reactivity -- createPagination reads `rows` inside its own createMemo (a tracked scope); the analyzer can't see through the helper

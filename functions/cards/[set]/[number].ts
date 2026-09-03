@@ -20,7 +20,7 @@ import {
   resolveCanonicalRoute
 } from '../../../shared/data/canonicalCardRoute';
 import { loadCardSynonyms } from '../../../shared/data/cardSynonyms';
-import type { SynonymDatabase } from '../../../shared/synonyms';
+import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
 
 interface Env {
   CARD_TYPES_KV?: KVNamespace;

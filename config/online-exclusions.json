@@ -1,0 +1,21 @@
+{
+  "organizerIds": [],
+  "organizerNames": [],
+  "namePatterns": [
+    "\\bno[\\s-]*meta\\b",
+    "\\bno\\s+[a-z'’]+\\s*(tournament|cup|event|series|!|\\?)",
+    "\\boops!?\\s*all\\b",
+    "\\b(pokemon|pokémon|trainer|horse|basic|ex|single[\\s-]prize|non[\\s-]?ex)s?\\s+only\\b",
+    "\\bonly\\s+(pokemon|pokémon|trainer)s?\\b",
+    "\\bcontent\\s+creator\\b",
+    "\\bgym\\s+leader\\s+challenge\\b",
+    "\\bglc\\b",
+    "\\bpre-?release\\b",
+    "\\bcube\\b",
+    "\\bdraft\\b",
+    "\\btheme\\s+deck\\b",
+    "\\bexpanded\\b",
+    "\\bunlimited\\b",
+    "\\bbaby\\s+pokemon\\b"
+  ]
+}

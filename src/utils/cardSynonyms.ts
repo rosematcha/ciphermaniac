@@ -3,10 +3,10 @@
  * @module utils/cardSynonyms
  *
  * This module provides browser-side card synonym resolution.
- * Core logic is shared with backend via shared/synonyms
+ * Core logic is shared with backend via shared/data/cardIdentity
  */
 
-import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/synonyms.js';
+import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/data/cardIdentity.js';
 import { R2_ORIGIN } from '../lib/constants';
 
 const SYNONYMS_URL = `${R2_ORIGIN}/assets/card-synonyms.json`;

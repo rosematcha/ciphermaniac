@@ -70,32 +70,20 @@ interface AdvancedPanelProps {
   viewMode: ViewMode;
 }
 
-export function AdvancedPanel(props: AdvancedPanelProps) {
+function useAdvancedPanel(props: AdvancedPanelProps) {
   const [decks] = createResource(
     () => ({ t: props.tournament, slug: props.slug }),
     ({ t, slug }) => fetchArchetypeDecks(t, slug)
   );
   const [synonymDb] = createResource(() => getSynonymDatabase());
 
-  // Let the panel's shell paint before the heavy first aggregation runs. When
-  // decks.json is already in the data layer's short cache, the resource
-  // resolves in a microtask — which runs BEFORE the browser paints — so for a
-  // top archetype (1,200+ decks × ~27 cards) the clone + co-occurrence +
-  // report passes would block the tab open. rAF + timeout pushes that work to
-  // after first paint; on a cold fetch the network wait dwarfs this anyway.
+  // Defer cached-data aggregation until after the shell's first paint.
   const [painted, setPainted] = createSignal(false);
   requestAnimationFrame(() => {
     setTimeout(() => setPainted(true), 0);
   });
 
-  /**
-   * The data layer canonicalizes `cards.json` at read time (e.g. Dragapult ex
-   * is reported under its canonical printing PRE/073 even though most decks
-   * actually list TWM/130). The filter aggregator keys card counts by raw
-   * `SET~NUMBER`, so without canonicalizing the deck-side cards too, a rule
-   * built from the canonical printing would match zero decks. Walk each deck
-   * once on load and rewrite each card's set/number to the canonical pair.
-   */
+  // Reports and decklists must use the same canonical printing before filtering.
   const canonicalDecks = createMemo(() => {
     if (!painted()) {
       return undefined;
@@ -105,31 +93,17 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     if (!raw) {
       return raw;
     }
-    // Wait for BOTH the decks and the synonym DB before canonicalizing. If we
-    // returned the raw decks while the DB is still pending, downstream memos
-    // would run once against raw deck objects (populating the identity-keyed
-    // deckCardCountsCache in clientSideFiltering for those objects) and then a
-    // second time once the DB resolves and every deck is cloned — throwing away
-    // that cache and doubling the aggregation work. `getSynonymDatabase` always
-    // resolves (falls back to an empty DB on failure), so this never stalls.
+    // Waiting for both avoids populating deck caches twice under different objects.
     if (!db) {
       return undefined;
     }
     return canonicalizeDecks(raw, db);
   });
 
-  // Look up a report card by the SET~NUMBER id rules/decks use, so a shared
-  // build (which only carries cardIds) can be re-hydrated with display fields.
-  // Report items can be rolling-canonical prints on a rebaked event; the decks
-  // (and thus rule cardIds) key by the GLOBAL canonical, so resolve each item to
-  // its cluster canonical before keying — otherwise a persisted rule never
-  // rehydrates and a search pick never matches a deck.
+  // Index by the global match key used by persisted rules and canonical decks.
   const itemByCardId = createMemo(() => indexItemsByCardId(props.report.items as CardItem[], synonymDb() ?? null));
 
-  // Archetype-wide inclusion rate per card (cardId → fraction), derived from a
-  // co-occurrence over ALL canonicalized decks. Built the same way the filtered
-  // context is, so the cardIds line up exactly (deriving the baseline from the
-  // report instead mis-keys energy/reprints and the niche math silently fails).
+  // Derive the baseline from canonical decks so match keys remain aligned.
   const baselinePct = createMemo(() => buildBaselinePct(canonicalDecks() ?? [], props.report.items));
 
   function rulesFromPersisted(persisted: PersistedRule[]): Rule[] {
@@ -139,7 +113,6 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { tournament: selectedTournament } = useTournament();
 
-  // Hydrate the initial build from the URL (shareable + survives reload).
   const initial = decodeBuildState({
     b: firstParam(searchParams.b),
     s: firstParam(searchParams.s),
@@ -147,9 +120,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   });
   // eslint-disable-next-line solid/reactivity -- intentional one-shot hydration of the initial build from the URL; later URL changes flow through setSearchParams, not back into this seed
   const initialRules = rulesFromPersisted(initial.rules);
-  // Clamp the URL-supplied bracket to a known option. `filterDecksBySuccess`
-  // now throws on unknown buckets, so a typo'd `s` param in a shared link must
-  // not reach it — fall back to "all" instead of crashing the panel.
+  // Keep malformed shared links from reaching the strict success filter.
   const initialSuccess =
     initial.successFilter && SUCCESS_OPTIONS.some(o => o.value === initial.successFilter)
       ? initial.successFilter
@@ -163,7 +134,6 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   const [popoverOpen, setPopoverOpen] = createSignal(false);
   const [highlighted, setHighlighted] = createSignal(0);
 
-  // Build-toward-60 tooling state.
   const [questionsOpen, setQuestionsOpen] = createSignal(false);
   const [skipped, setSkipped] = createSignal<Set<string>>(new Set());
   const [copyMsg, setCopyMsg] = createSignal('');
@@ -191,11 +161,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   };
   onCleanup(cancelDebounce);
 
-  // The threshold slider fires setThreshold on every input event while dragging.
-  // The visual `{threshold()}%` output stays instant (it reads the signal
-  // directly), but the URL write is debounced so the router isn't hammered with
-  // a setSearchParams per tick. Rules/bracket are already debounced upstream, so
-  // this only really throttles the slider.
+  // Keep the slider responsive while debouncing URL and aggregation work.
   let urlWriteTimer: ReturnType<typeof setTimeout> | undefined;
   const cancelUrlWrite = () => {
     if (urlWriteTimer !== undefined) {
@@ -205,11 +171,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
   };
   onCleanup(cancelUrlWrite);
 
-  // Mirror the applied build into the URL so it can be shared / survives a
-  // reload. Runs once on mount re-writing the hydrated params (idempotent), and
-  // again whenever the applied rules / bracket / threshold change. `replace`
-  // keeps build tweaks out of the history stack. The effect tracks the signals
-  // synchronously but defers the actual write ~300ms.
+  // Mirror applied state into a replace-only, shareable URL.
   createEffect(() => {
     const params = encodeBuildState({
       rules: appliedRules(),
@@ -223,10 +185,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     }, 300);
   });
 
-  // When the user switches to a different archetype/tournament without the
-  // component unmounting (e.g. tab stays on `advanced`), reset all build state
-  // and cancel any pending debounce so a stale apply doesn't fire onto the new
-  // archetype's signals. The URL effect above then clears the stale params.
+  // Reset when the resource identity changes without an unmount.
   createEffect(
     on(
       [() => props.slug, () => props.tournament],
@@ -390,12 +349,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     return (matchCount() / total) * 100;
   });
 
-  // `filteredReport()` is rebuilt from scratch on every apply (generateReportAndCooccurrence
-  // creates brand-new item objects), so CardList's <For each> — which is reference-keyed —
-  // would tear down and remount every CardTile (including its CardImage) on each filter
-  // change even when a card's numbers didn't move. Reconcile by cardId here: reuse the
-  // previous item object whenever its content is unchanged, so <For> sees the same
-  // reference and leaves that tile mounted.
+  // Preserve unchanged item identities so CardList does not remount every tile.
   let prevItemsById: ReadonlyMap<string, CardListItem> = new Map();
   const displayedItems = createMemo<CardListItem[]>(() => {
     const r = filteredReport();
@@ -403,9 +357,6 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
       prevItemsById = new Map();
       return [];
     }
-    // Debounced (see `schedule`): the slider fires per drag tick, and this memo
-    // re-filters + reconciles the whole report — the readout stays on the raw
-    // `threshold()` so the % label still tracks the thumb instantly.
     const next = reconcileDisplayedItems(r.items as unknown as CardListItem[], appliedThreshold(), prevItemsById);
     prevItemsById = next.byCardId;
     return next.items;
@@ -600,9 +551,6 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     }
   }
 
-  // Copy a link that reproduces this exact view — archetype (path), tournament
-  // (the `tour` param), and every filter/threshold/bracket (the build params the
-  // URL effect already maintains).
   async function shareLink() {
     const url = new URL(window.location.href);
     url.searchParams.set('tour', selectedTournament());
@@ -614,7 +562,53 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
     }
   }
 
-  // ----- Render -----
+  return {
+    addComplement,
+    addRuleFromItem,
+    answerBoth,
+    answerNeither,
+    answerQuestion,
+    appliedRules,
+    appliedSuccess,
+    applyNow,
+    candidates,
+    complements,
+    copyMsg,
+    copyPtcgl,
+    cycleOp,
+    decks,
+    displayedItems,
+    highlighted,
+    matchCount,
+    onSearchKey,
+    optionPct,
+    poolTotal,
+    popoverOpen,
+    questions,
+    questionsOpen,
+    removeRule,
+    reset,
+    rules,
+    schedule,
+    search,
+    setCount,
+    setHighlighted,
+    setPopoverOpen,
+    setQuestionsOpen,
+    setSearch,
+    setThreshold,
+    shareLink,
+    sharePct,
+    skipQuestion,
+    successFilter,
+    threshold,
+    toggleMode,
+    updateSuccess
+  };
+}
+
+export function AdvancedPanel(props: AdvancedPanelProps) {
+  const model = useAdvancedPanel(props);
 
   return (
     <div class='advanced-panel'>
@@ -622,24 +616,28 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
         <div class='fb-controls'>
           <label class='fb-field'>
             <span class='fb-field-label'>Tournament finish</span>
-            <select class='fb-select' value={successFilter()} onChange={e => updateSuccess(e.currentTarget.value)}>
+            <select
+              class='fb-select'
+              value={model.successFilter()}
+              onChange={e => model.updateSuccess(e.currentTarget.value)}
+            >
               <For each={SUCCESS_OPTIONS}>{opt => <option value={opt.value}>{opt.label}</option>}</For>
             </select>
           </label>
 
           <label class='fb-field'>
             <span class='fb-field-label'>
-              Inclusion threshold <output class='fb-threshold-out'>{threshold()}%</output>
+              Inclusion threshold <output class='fb-threshold-out'>{model.threshold()}%</output>
             </span>
             <input
               type='range'
               min='0'
               max='100'
               step='5'
-              value={threshold()}
+              value={model.threshold()}
               onInput={e => {
-                setThreshold(Number(e.currentTarget.value));
-                schedule();
+                model.setThreshold(Number(e.currentTarget.value));
+                model.schedule();
               }}
               class='fb-range'
             />
@@ -651,27 +649,27 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
           <input
             type='text'
             placeholder='Search a card to add a rule…'
-            value={search()}
+            value={model.search()}
             onInput={e => {
-              setSearch(e.currentTarget.value);
-              setPopoverOpen(true);
-              setHighlighted(0);
+              model.setSearch(e.currentTarget.value);
+              model.setPopoverOpen(true);
+              model.setHighlighted(0);
             }}
-            onFocus={() => setPopoverOpen(true)}
-            onBlur={() => window.setTimeout(() => setPopoverOpen(false), 120)}
-            onKeyDown={onSearchKey}
+            onFocus={() => model.setPopoverOpen(true)}
+            onBlur={() => window.setTimeout(() => model.setPopoverOpen(false), 120)}
+            onKeyDown={model.onSearchKey}
           />
-          <Show when={popoverOpen() && candidates().length > 0}>
+          <Show when={model.popoverOpen() && model.candidates().length > 0}>
             <div class='fb-b-popover'>
-              <For each={candidates()}>
+              <For each={model.candidates()}>
                 {(item, idx) => (
                   <div
-                    class={`item ${idx() === highlighted() ? 'highlighted' : ''}`}
+                    class={`item ${idx() === model.highlighted() ? 'highlighted' : ''}`}
                     onMouseDown={e => {
                       e.preventDefault();
-                      addRuleFromItem(item);
+                      model.addRuleFromItem(item);
                     }}
-                    onMouseEnter={() => setHighlighted(idx())}
+                    onMouseEnter={() => model.setHighlighted(idx())}
                   >
                     <span class='name'>{item.name}</span>
                     <span class='meta'>
@@ -684,18 +682,18 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
           </Show>
         </div>
 
-        <Show when={rules().length > 0}>
+        <Show when={model.rules().length > 0}>
           <div class='fb-b-rules-head'>
-            Active rules · <b>{rules().length}</b>
+            Active rules · <b>{model.rules().length}</b>
           </div>
-          <For each={rules()}>
+          <For each={model.rules()}>
             {rule => (
               <div class='fb-b-row'>
                 <span class='card-name'>{rule.name}</span>
                 <button
                   type='button'
                   class={`op-select ${rule.mode}`}
-                  onClick={() => toggleMode(rule.id)}
+                  onClick={() => model.toggleMode(rule.id)}
                   title='Toggle include/exclude'
                 >
                   {rule.mode === 'include' ? '+ Must include' : '− Must exclude'}
@@ -704,7 +702,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
                   <button
                     type='button'
                     class='op-label'
-                    onClick={() => cycleOp(rule.id)}
+                    onClick={() => model.cycleOp(rule.id)}
                     disabled={rule.mode === 'exclude'}
                     title='Cycle operator'
                   >
@@ -716,10 +714,10 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
                     max='60'
                     value={rule.mode === 'exclude' || !Number.isFinite(rule.count) ? '' : rule.count}
                     disabled={rule.mode === 'exclude'}
-                    onInput={e => setCount(rule.id, e.currentTarget.value)}
+                    onInput={e => model.setCount(rule.id, e.currentTarget.value)}
                   />
                 </div>
-                <button class='remove' onClick={() => removeRule(rule.id)} aria-label='Remove rule'>
+                <button class='remove' onClick={() => model.removeRule(rule.id)} aria-label='Remove rule'>
                   ✕
                 </button>
               </div>
@@ -727,33 +725,33 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
           </For>
         </Show>
 
-        <Show when={questions().length > 0}>
+        <Show when={model.questions().length > 0}>
           <div class='fb-quiz-section'>
-            <button class='fb-narrow' type='button' onClick={() => setQuestionsOpen(o => !o)}>
-              {questionsOpen() ? 'Hide choices' : `Help me choose · ${questions().length} either/or →`}
+            <button class='fb-narrow' type='button' onClick={() => model.setQuestionsOpen(o => !o)}>
+              {model.questionsOpen() ? 'Hide choices' : `Help me choose · ${model.questions().length} either/or →`}
             </button>
-            <Show when={questionsOpen() ? questions()[0] : undefined}>
+            <Show when={model.questionsOpen() ? model.questions()[0] : undefined}>
               {q => (
                 <div class='fb-quiz'>
                   <div class='fb-quiz-head'>Which do you run?</div>
                   <div class='fb-quiz-options'>
                     <For each={q().options}>
                       {opt => (
-                        <button class='fb-quiz-opt' type='button' onClick={() => answerQuestion(q(), opt)}>
+                        <button class='fb-quiz-opt' type='button' onClick={() => model.answerQuestion(q(), opt)}>
                           <span class='name'>{opt.name}</span>
-                          <span class='pct'>{optionPct(opt)}%</span>
+                          <span class='pct'>{model.optionPct(opt)}%</span>
                         </button>
                       )}
                     </For>
                   </div>
                   <div class='fb-quiz-foot'>
-                    <button type='button' onClick={() => answerBoth(q())}>
+                    <button type='button' onClick={() => model.answerBoth(q())}>
                       {q().options.length > 2 ? 'All' : 'Both'}
                     </button>
-                    <button type='button' onClick={() => answerNeither(q())}>
+                    <button type='button' onClick={() => model.answerNeither(q())}>
                       Neither
                     </button>
-                    <button type='button' onClick={() => skipQuestion(q().id)}>
+                    <button type='button' onClick={() => model.skipQuestion(q().id)}>
                       Skip
                     </button>
                   </div>
@@ -765,28 +763,28 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
 
         <div class='fb-foot'>
           <Show
-            when={!decks.loading && decks() !== null}
+            when={!model.decks.loading && model.decks() !== null}
             fallback={
               <span class='fb-count fb-count-muted'>
-                <Show when={decks.loading} fallback={<>Decks unavailable for this archetype.</>}>
+                <Show when={model.decks.loading} fallback={<>Decks unavailable for this archetype.</>}>
                   Loading deck data…
                 </Show>
               </span>
             }
           >
             <span class='fb-count'>
-              <b>{matchCount().toLocaleString()}</b> {matchCount() === 1 ? 'deck' : 'decks'} match
+              <b>{model.matchCount().toLocaleString()}</b> {model.matchCount() === 1 ? 'deck' : 'decks'} match
               <Show when={props.report.deckTotal > 0}>
                 {' '}
-                · {sharePct().toFixed(1)}% of {props.label} lists
+                · {model.sharePct().toFixed(1)}% of {props.label} lists
               </Show>
             </span>
           </Show>
           <div class='fb-actions'>
-            <button class='btn btn-ghost' type='button' onClick={reset}>
+            <button class='btn btn-ghost' type='button' onClick={model.reset}>
               Reset
             </button>
-            <button class='btn btn-primary' type='button' onClick={applyNow}>
+            <button class='btn btn-primary' type='button' onClick={model.applyNow}>
               Apply filter →
             </button>
           </div>
@@ -794,9 +792,9 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
       </div>
 
       <Show
-        when={decks() !== null && !decks.loading}
+        when={model.decks() !== null && !model.decks.loading}
         fallback={
-          <Show when={decks.loading} fallback={<EmptyState title='No per-deck data for this archetype yet.' />}>
+          <Show when={model.decks.loading} fallback={<EmptyState title='No per-deck data for this archetype yet.' />}>
             <div style={{ 'margin-top': '24px' }}>
               <Skeleton height='320px' />
             </div>
@@ -810,45 +808,53 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
               title='Cards counted by their average number of copies — a guide toward a full 60, not a hard limit.'
             >
               <span class='fb-bar-count'>
-                <b>{poolTotal()}</b> / {DECK_TARGET} cards
+                <b>{model.poolTotal()}</b> / {DECK_TARGET} cards
               </span>
               <div
-                class={`fb-bar-track ${poolTotal() === DECK_TARGET ? 'is-complete' : poolTotal() > DECK_TARGET ? 'is-over' : ''}`}
+                class={`fb-bar-track ${model.poolTotal() === DECK_TARGET ? 'is-complete' : model.poolTotal() > DECK_TARGET ? 'is-over' : ''}`}
               >
-                <div class='fb-bar-fill' style={{ width: `${Math.min(100, (poolTotal() / DECK_TARGET) * 100)}%` }} />
+                <div
+                  class='fb-bar-fill'
+                  style={{ width: `${Math.min(100, (model.poolTotal() / DECK_TARGET) * 100)}%` }}
+                />
               </div>
-              <Show when={poolTotal() > DECK_TARGET}>
-                <span class='fb-bar-over'>{poolTotal() - DECK_TARGET} over</span>
+              <Show when={model.poolTotal() > DECK_TARGET}>
+                <span class='fb-bar-over'>{model.poolTotal() - DECK_TARGET} over</span>
               </Show>
             </div>
             <div class='fb-bar-actions'>
-              <Show when={copyMsg()}>
-                <span class='fb-bar-msg'>{copyMsg()}</span>
+              <Show when={model.copyMsg()}>
+                <span class='fb-bar-msg'>{model.copyMsg()}</span>
               </Show>
               <button
                 class='fb-bar-btn'
                 type='button'
-                onClick={copyPtcgl}
-                disabled={poolTotal() === 0}
+                onClick={model.copyPtcgl}
+                disabled={model.poolTotal() === 0}
                 title='Copy this pool as a PTCGL decklist'
               >
                 Copy list
               </button>
-              <button class='fb-bar-btn' type='button' onClick={shareLink} title='Copy a link that restores this view'>
+              <button
+                class='fb-bar-btn'
+                type='button'
+                onClick={model.shareLink}
+                title='Copy a link that restores this view'
+              >
                 Share
               </button>
             </div>
           </div>
 
-          <Show when={complements().length > 0}>
+          <Show when={model.complements().length > 0}>
             <div class='fb-suggest'>
               <span class='fb-suggest-label'>Niche partners</span>
-              <For each={complements()}>
+              <For each={model.complements()}>
                 {c => (
                   <button
                     class='fb-suggest-chip'
                     type='button'
-                    onClick={() => addComplement(c.ref)}
+                    onClick={() => model.addComplement(c.ref)}
                     title={
                       c.basePct !== undefined
                         ? `${c.ref.name}: ${(c.coPct * 100).toFixed(0)}% of these decks vs ${(c.basePct * 100).toFixed(0)}% archetype-wide`
@@ -865,16 +871,16 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
           </Show>
 
           <CardList
-            title={appliedRules().length || appliedSuccess() !== 'all' ? 'Filtered cards' : 'All cards'}
-            items={displayedItems()}
+            title={model.appliedRules().length || model.appliedSuccess() !== 'all' ? 'Filtered cards' : 'All cards'}
+            items={model.displayedItems()}
             viewMode={props.viewMode}
             emptyMessage={
-              matchCount() === 0
+              model.matchCount() === 0
                 ? 'No decks match these filters.'
-                : `No cards above ${threshold()}% in the filtered subset.`
+                : `No cards above ${model.threshold()}% in the filtered subset.`
             }
-            rightSlot={`${displayedItems().length.toLocaleString()} cards · ≥ ${threshold()}%`}
-            hideEmptyBuckets={appliedRules().length > 0}
+            rightSlot={`${model.displayedItems().length.toLocaleString()} cards · ≥ ${model.threshold()}%`}
+            hideEmptyBuckets={model.appliedRules().length > 0}
           />
         </div>
       </Show>

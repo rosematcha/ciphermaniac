@@ -14,16 +14,26 @@ import { createR2Client, createReportsBinding } from './lib/r2.mjs';
 import {
   buildCardTrendReport,
   buildTrendReport,
+  compileExclusions,
+  DEFAULT_MIN_FIELD_PLAYERS,
   fetchRecentOnlineTournaments,
-  gatherDecks
+  gatherDecks,
+  utcDayWindow
 } from '../../shared/onlineMeta/index.ts';
 import { loadCardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
 import { fetchLimitlessJson } from '../../shared/api/limitless.ts';
 import type { DiagnosticsCollector, TrendSeriesEntry } from '../../shared/onlineMeta/types.ts';
+import onlineExclusions from '../../config/online-exclusions.json';
 
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
 const LOOKBACK_DAYS = 30;
 const MAX_ARCHETYPES_IN_SERIES = 32;
+/**
+ * A calendar day needs this many decks across every event to plot. The
+ * current window's thinnest full day carries ~350; this only catches a day
+ * that one small event had to itself.
+ */
+const MIN_DAY_DECKS = 100;
 // If the default lookback yields too few tournaments, widen the window step-by-step
 // until we have enough events for the rising/falling chunked-average computation
 // to produce non-degenerate deltas. 4 events => chunk=2 on each side, no overlap.
@@ -142,10 +152,11 @@ function parseBoolean(value: string | undefined, fallback = false): boolean {
 
 async function main() {
   const cleanMonthCache = parseBoolean(process.env.CLEAN_MONTH_CACHE, false);
-  const windowEnd = new Date();
+  const now = new Date();
+  // Whole UTC days ending yesterday, so the chart never ends on a half day.
+  let window = utcDayWindow(now, LOOKBACK_DAYS);
   let lookbackDays = LOOKBACK_DAYS;
-  let since = new Date(windowEnd.getTime() - (lookbackDays - 1) * 24 * 60 * 60 * 1000);
-  const now = windowEnd;
+  const exclusions = compileExclusions(onlineExclusions);
 
   const env = {
     REPORTS: new R2Binding(R2_REPORTS_PREFIX),
@@ -181,9 +192,21 @@ async function main() {
   const cardTypesDb = await loadCardTypesDatabase(env);
   console.log(`[trends] Card DB entries: ${Object.keys(cardTypesDb || {}).length}`);
 
-  console.log(`[trends] Fetching tournaments since ${since.toISOString()}`);
-  let tournaments = await fetchRecentOnlineTournaments(env, since, { maxPages: 20, windowEnd, fetchJson });
-  console.log(`[trends] Tournaments: ${tournaments.length}`);
+  const diagnostics: DiagnosticsCollector = {};
+  const fetchWindow = () =>
+    fetchRecentOnlineTournaments(env, window.start, {
+      maxPages: 20,
+      windowEnd: window.lastInstant,
+      fetchJson,
+      diagnostics,
+      exclusions
+    });
+
+  console.log(`[trends] Fetching tournaments ${window.start.toISOString()} .. ${window.end.toISOString()}`);
+  let tournaments = await fetchWindow();
+  console.log(
+    `[trends] Tournaments: ${tournaments.length} (${diagnostics.excludedTournaments?.length || 0} excluded by config)`
+  );
 
   // Auto-widen the lookback window if we have too few tournaments to compute
   // meaningful chunked-average deltas. Without this, sparse windows produce
@@ -196,9 +219,9 @@ async function main() {
       `[trends] Only ${tournaments.length} tournament(s) in last ${lookbackDays}d; widening to ${widerLookback}d`
     );
     lookbackDays = widerLookback;
-    since = new Date(windowEnd.getTime() - (lookbackDays - 1) * 24 * 60 * 60 * 1000);
+    window = utcDayWindow(now, lookbackDays);
     // eslint-disable-next-line no-await-in-loop
-    tournaments = await fetchRecentOnlineTournaments(env, since, { maxPages: 20, windowEnd, fetchJson });
+    tournaments = await fetchWindow();
     console.log(`[trends] Tournaments after widening: ${tournaments.length}`);
   }
 
@@ -207,7 +230,6 @@ async function main() {
   }
 
   console.log('[trends] Gathering decks...');
-  const diagnostics: DiagnosticsCollector = {};
   const decks = await gatherDecks(env, tournaments, diagnostics, cardTypesDb, { fetchJson });
   console.log(`[trends] Decks: ${decks.length}`);
   if (diagnostics?.archetypeClassification) {
@@ -235,10 +257,11 @@ async function main() {
   }
 
   const rawTrendReport = buildTrendReport(decks, tournamentsWithDecks, {
-    windowStart: since,
-    windowEnd: now,
+    windowStart: window.start,
+    windowEnd: window.end,
     now,
-    minAppearances: 2
+    minAppearances: 2,
+    minDayDecks: MIN_DAY_DECKS
   });
   const {
     tournaments: trendTournaments = tournamentsWithDecks,
@@ -252,18 +275,31 @@ async function main() {
     archetypeCount: trimmedSeries.length
   };
   const cardTrends = buildCardTrendReport(decks, trendTournaments, {
-    windowStart: since,
-    windowEnd: now,
+    windowStart: window.start,
+    windowEnd: window.end,
     minAppearances: 2
   });
 
   const meta = {
     name: TRENDS_FOLDER,
     generatedAt: now.toISOString(),
-    windowStart: since.toISOString(),
-    windowEnd: now.toISOString(),
+    windowStart: window.start.toISOString(),
+    windowEnd: window.end.toISOString(),
+    lookbackDays,
     deckTotal: decks.length,
-    tournamentCount: tournamentsWithDecks.length
+    tournamentCount: tournamentsWithDecks.length,
+    fieldPolicy: {
+      population: 'players with a placing',
+      minFieldPlayers: DEFAULT_MIN_FIELD_PLAYERS,
+      minDayDecks: MIN_DAY_DECKS
+    },
+    unplacedEntries: diagnostics.entriesWithoutPlacing?.length || 0,
+    excluded: diagnostics.excludedTournaments || [],
+    skipped: {
+      belowMinimum: diagnostics.tournamentsBelowMinimum || [],
+      standingsFailures: diagnostics.standingsFetchFailures || [],
+      detailsFailures: diagnostics.detailsFetchFailures || []
+    }
   };
 
   const baseKey = `${TRENDS_FOLDER}`;

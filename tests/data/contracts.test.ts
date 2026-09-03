@@ -6,7 +6,7 @@
  * derivation, and stable content-addressed IDs (with snapshotted hashes).
  */
 
-import { cardUidOrName } from '../../shared/data/cardIdentity.ts';
+import { cardUidOrName, normalizeCardNumber } from '../../shared/data/cardIdentity.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -24,13 +24,12 @@ import {
   matchId,
   type NormalizedEvent,
   onlineParticipantId,
-  parseCardUid,
+  parseCardIdentity,
   validateCardRecord,
   validateNormalizedEvent
 } from '../../shared/data/contracts.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256Hex } from '../../shared/data/hash.ts';
-import { normalizeCardNumber } from '../../shared/cardUtils.ts';
 
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'data-pipeline');
 
@@ -315,10 +314,14 @@ test('SVI/1 and svi/001 resolve to the same canonical UID', () => {
   assert.strictEqual(cardUidOrName('Pikachu ex', 'SVI', '1'), 'Pikachu ex::SVI::001');
 });
 
-test('parseCardUid round-trips canonical and bare-name UIDs', () => {
-  assert.deepStrictEqual(parseCardUid('Comfey::SIT::TG15'), { name: 'Comfey', set: 'SIT', number: 'TG15' });
-  assert.deepStrictEqual(parseCardUid('Basic Fire Energy'), { name: 'Basic Fire Energy', set: null, number: null });
-  assert.strictEqual(parseCardUid('Bad::Two'), null);
+test('parseCardIdentity round-trips canonical and bare-name UIDs', () => {
+  assert.deepStrictEqual(parseCardIdentity('Comfey::SIT::TG15'), { name: 'Comfey', set: 'SIT', number: 'TG15' });
+  assert.deepStrictEqual(parseCardIdentity('Basic Fire Energy'), {
+    name: 'Basic Fire Energy',
+    set: null,
+    number: null
+  });
+  assert.strictEqual(parseCardIdentity('Bad::Two'), null);
 });
 
 // ============================================================================

@@ -53,8 +53,6 @@ const TierListPage = lazy(() => import('./pages/TierListPage').then(m => ({ defa
 const CardWallPage = lazy(() => import('./pages/CardWallPage').then(m => ({ default: m.CardWallPage })));
 const EarningsPage = lazy(() => import('./pages/EarningsPage').then(m => ({ default: m.EarningsPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
-const SurveyPage = lazy(() => import('./pages/SurveyPage').then(m => ({ default: m.SurveyPage })));
-const SurveyResultsPage = lazy(() => import('./pages/SurveyResultsPage').then(m => ({ default: m.SurveyResultsPage })));
 
 // Legacy /standings/:id links redirect to the equivalent /players/:id profile.
 function StandingsPlayerRedirect() {
@@ -110,8 +108,6 @@ render(
       <Route path='/toys/social-graphics' component={() => <Navigate href='/tools/social-graphics' />} />
       <Route path='/toys/in-loving-memory' component={() => <Navigate href='/tools/in-loving-memory' />} />
       <Route path='/about' component={AboutPage} />
-      <Route path='/survey' component={SurveyPage} />
-      <Route path='/survey/results' component={SurveyResultsPage} />
       <Route path='*' component={NotFoundPage} />
     </Router>
   ),

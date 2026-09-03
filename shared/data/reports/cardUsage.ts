@@ -1,16 +1,10 @@
 /**
- * Canonical LEGACY-shape card-usage index builder — the single home for the
+ * Card-usage index builder — the single home for the
  * inverted "which archetypes play this card" index that production publishes as
  * `cardUsage.json`.
  *
  * Schema (legacy, what `src/lib/data.ts` reads today):
  *   `{ usage: { "<canonicalUID>": [{ slug, found, pct, dist: [...] }, ...] } }`
- *
- * Consolidated in DB-MASTER-PLAN Phase 2, slice 4. The live producer
- * (`.github/scripts/run-online-meta.ts`) imports this builder directly.
- * Python's `download-tournament.py::build_card_usage_index` is the other
- * historical producer; it retires with the report migration and is not
- * pinned here.
  *
  * The index is built from per-archetype card reports whose items are already
  * synonym-canonicalized (their `uid` is the canonical key directly), so this
@@ -22,9 +16,7 @@
  * producer's ordering exactly — introducing a found-desc/slug sort here would
  * diverge from the pinned `.mjs` output, so it is intentionally NOT done.
  *
- * IMPORTANT: This module is isomorphic — it works in both browser and
- * Node.js/Workers. Do not add any environment-specific dependencies here.
- * @module shared/data/reports/cardUsage
+ * This module is environment-neutral.
  */
 
 /** One copy-count bucket of a usage row's distribution (legacy `percent` 0-100). */

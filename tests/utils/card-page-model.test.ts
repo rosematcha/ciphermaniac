@@ -26,7 +26,7 @@ import {
   snapshotDateLabel,
   supportsConversion
 } from '../../src/pages/cardPage/model.ts';
-import type { SynonymDatabase } from '../../shared/synonyms.ts';
+import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../../src/types/index.ts';
 
 const DB: SynonymDatabase = {

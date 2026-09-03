@@ -12,7 +12,7 @@
  * @module src/lib/data/paths
  */
 
-import { cardNumberIndexKey } from '../../../shared/cardUtils.js';
+import { cardNumberIndexKey } from '../../../shared/data/cardIdentity.js';
 import { ONLINE_META_NAME } from '../constants';
 
 /** The rolling online meta report's tournament key. */

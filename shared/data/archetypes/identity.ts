@@ -1,12 +1,6 @@
 /**
  * Archetype identity: the one home for the comparison-key / display-label /
- * stable-slug separation and the label-normalization primitives that used to
- * live inline in producers and in the classifier.
- *
- * DB-MASTER-PLAN Phase 2, slice 5 — "Archetype classification" authority row:
- * classification logic stays in
- * {@link module:functions/lib/analysis/archetypeClassifier}, but its local name
- * normalization re-points here.
+ * stable-slug separation and label-normalization primitives.
  *
  * Two distinct normalizations live here on purpose; do not conflate them:
  *  - {@link archetypeKey}/{@link archetypeSlug}: the identity triple used to
@@ -16,8 +10,7 @@
  *    classifier's label-matching primitives (looser, apostrophe- and
  *    punctuation-stripping) used only to compare a deck name against rule names.
  *
- * IMPORTANT: isomorphic — no environment-specific dependencies.
- * @module shared/data/archetypes/identity
+ * This module is environment-neutral.
  */
 
 import { normalizeArchetypeName } from '../../cardUtils';

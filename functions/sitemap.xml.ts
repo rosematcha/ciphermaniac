@@ -1,5 +1,6 @@
 import { loadCardSynonyms } from '../shared/data/cardSynonyms.js';
 import { loadCardTypesDatabase } from '../shared/data/cardTypesDatabase.js';
+import { parseCardUid } from '../shared/data/cardIdentity.js';
 
 interface Env {
   REPORTS?: { get: (key: string) => Promise<{ text(): Promise<string> } | null> };
@@ -93,19 +94,11 @@ async function loadArchetypeIndex(env: Env): Promise<ArchetypeIndexEntry[]> {
 }
 
 function parseUidToKey(uid: string): string | null {
-  if (!uid || !uid.includes('::')) {
+  const parsed = parseCardUid(uid);
+  if (!parsed) {
     return null;
   }
-  const parts = uid.split('::');
-  if (parts.length < 3) {
-    return null;
-  }
-  const set = String(parts[1]).toUpperCase();
-  const number = String(parts[2]).toUpperCase();
-  if (!set || !number) {
-    return null;
-  }
-  return `${set}::${number}`;
+  return `${parsed.set}::${parsed.number}`;
 }
 
 function buildSynonymExclusions(synonyms: Record<string, string> | undefined): Set<string> {

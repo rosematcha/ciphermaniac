@@ -23,7 +23,7 @@ import {
   sameRenderedContent,
   searchCandidates
 } from '../../src/components/advancedPanel/model.ts';
-import type { SynonymDatabase } from '../../shared/synonyms.ts';
+import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import type { CardItem, Deck } from '../../src/types/index.ts';
 import type { PersistedRule, Rule } from '../../src/utils/buildState.ts';
 

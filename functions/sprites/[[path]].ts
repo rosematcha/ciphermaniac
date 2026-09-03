@@ -13,14 +13,10 @@
  * edge-cached, so the fallback costs one origin fetch per sprite per PoP.
  */
 
-import { corsPreflight } from '../lib/api/responses.js';
+import { corsPreflight, IMAGE_FETCH_INIT, imageProxyResponse, textError } from '../lib/api/responses.js';
 
 const MIRROR_BASE = 'https://r2.ciphermaniac.com/pokemon-sprites/gen9';
 const FALLBACK_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
-
-const CACHE_TTL = 86400; // edge fetch TTL
-// A given gen's sprite never changes once published.
-const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 // Sprite slugs are lowercase, hyphenated, with optional form suffixes:
 // `dragapult`, `greninja-mega`, `raging-bolt`, `mr-mime-galar`.
@@ -32,15 +28,6 @@ interface Context {
   request: Request;
 }
 
-type CfRequestInit = RequestInit & { cf?: unknown };
-
-function plainError(message: string, status: number): Response {
-  return new Response(message, {
-    status,
-    headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }
-  });
-}
-
 export async function onRequest(context: Context): Promise<Response> {
   const { request } = context;
   const url = new URL(request.url);
@@ -48,23 +35,19 @@ export async function onRequest(context: Context): Promise<Response> {
   // /sprites/dragapult.png -> ['sprites', 'dragapult.png']
   const parts = url.pathname.split('/').filter(Boolean).slice(1);
   if (parts.length !== 1) {
-    return plainError(`Invalid path format. Expected: /sprites/{slug}.png, got: ${url.pathname}`, 400);
+    return textError(`Invalid path format. Expected: /sprites/{slug}.png, got: ${url.pathname}`, 400);
   }
 
   const slug = parts[0].replace(/\.png$/, '');
   if (!slug || slug.length > MAX_SLUG_LENGTH || !SLUG_PATTERN.test(slug)) {
-    return plainError('Invalid sprite slug.', 400);
+    return textError('Invalid sprite slug.', 400);
   }
 
   let lastStatus = 404;
   for (const base of [MIRROR_BASE, FALLBACK_BASE]) {
-    const requestInit: CfRequestInit = {
-      cf: { cacheTtl: CACHE_TTL, cacheEverything: true }
-    };
-
     let response: Response;
     try {
-      response = await fetch(`${base}/${slug}.png`, requestInit);
+      response = await fetch(`${base}/${slug}.png`, IMAGE_FETCH_INIT);
     } catch {
       // Origin unreachable — try the next source rather than 500ing.
       lastStatus = 502;
@@ -76,22 +59,10 @@ export async function onRequest(context: Context): Promise<Response> {
       continue;
     }
 
-    const headers = new Headers(response.headers);
-    // Drop Limitless/Cloudflare's `__cf_bm` cookie: its Domain is a public
-    // suffix, so browsers reject it, and any response carrying Set-Cookie is
-    // uncacheable at the edge — which would invoke this Function per sprite
-    // per view. See functions/thumbnails/[[path]].ts for the full story.
-    headers.delete('Set-Cookie');
-    headers.delete('Vary');
-    headers.set('Access-Control-Allow-Origin', '*');
-    headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    headers.set('Cache-Control', IMMUTABLE_CACHE_CONTROL);
-    headers.set('Content-Type', 'image/png');
-
-    return new Response(response.body, { status: response.status, headers });
+    return imageProxyResponse(response);
   }
 
-  return plainError('Sprite not found', lastStatus);
+  return textError('Sprite not found', lastStatus);
 }
 
 export async function onRequestOptions(): Promise<Response> {

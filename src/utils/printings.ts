@@ -6,9 +6,13 @@
  * @module utils/printings
  */
 
-import { getClusterMembers, parseCardUid, type SynonymDatabase } from '../../shared/synonyms.js';
-import { cardUid } from '../../shared/data/cardIdentity';
-import { cardNumberIndexKey } from '../../shared/cardUtils.js';
+import {
+  cardNumberIndexKey,
+  cardUid,
+  getClusterMembers,
+  parseCardUid,
+  type SynonymDatabase
+} from '../../shared/data/cardIdentity.js';
 
 export interface PrintingRow {
   /** Full print UID (Name::SET::NUMBER, number zero-padded). */

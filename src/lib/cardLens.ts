@@ -8,7 +8,7 @@ import type { DeckCard, PlayerMatchRecord } from '../types';
 import type { DeckRecord } from './data';
 import { pointsWinRate } from './matchups';
 import { buildCardId, canonicalizeDeckCard } from '../../shared/deckCardId';
-import { normalizeCardNumber } from '../../shared/cardUtils.js';
+import { normalizeCardNumber } from '../../shared/data/cardIdentity.js';
 
 export interface DeckLite {
   /** Tournament-scoped player id (string in decks.json; joins to PlayerMatchRecord.playerId). */

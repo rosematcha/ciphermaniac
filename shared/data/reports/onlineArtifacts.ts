@@ -42,14 +42,15 @@ export function onlineArchetypeOptions(
     thumbnailConfig: (thumbnailConfig ?? {}) as never,
     cardTypesDb,
     masterReport: masterReport as never,
-    includeSignatureCards: true
+    includeSignatureCards: true,
+    excludeGenericGroups: true
   };
 }
 
 /**
  * Regenerate the online window's master/cardUsage/archetype-index from decks.
  * @param decks - The online window's aggregated decks (`decks.json`)
- * @param inputs - Synonym DB (online master IS synonym-canonicalized, D5), card
+ * @param inputs - Synonym DB, card
  *   types (thumbnail/signature inference), and the thumbnail override config
  * @returns The three derived serving artifacts
  */

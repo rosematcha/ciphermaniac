@@ -52,22 +52,6 @@ export interface GatheredDeck {
   successTags: string[];
 }
 
-// The ReportItem/ReportData thumbnail-inference shapes retired with the stale
-// reportGenerator presentation copy (DB-MASTER-PLAN Phase 2, slice 5); the
-// shared engine's types live in shared/data/archetypes/presentation.ts.
-
-/** Tournament details response from Limitless API */
-export interface TournamentDetailsResponse {
-  decklists?: boolean;
-  isOnline?: boolean;
-  format?: string | null;
-  platform?: string | null;
-  organizer?: {
-    name?: string;
-    id?: string;
-  } | null;
-}
-
 /** Base options for functions that accept env and diagnostic options */
 interface BaseOptions {
   diagnostics?: DiagnosticsCollector;
@@ -84,23 +68,53 @@ interface ArchetypeClassificationDiagnostics {
   unknown: number;
 }
 
+/**
+ * How big a tournament's field really was. `registered` is what Limitless
+ * lists (late registrations and no-shows included); `fieldSize` is the number
+ * of players who actually posted a placing, which is what shares and
+ * success-tag cutoffs are computed against.
+ */
+export interface TournamentFieldCounts {
+  registered: number | null;
+  /** Standings rows with a placing. */
+  placed: number;
+  /** Standings rows without a placing (registered, never played). */
+  unplaced: number;
+  /** max(placed, highest placing) — players who played but have no row. */
+  fieldSize: number;
+}
+
+export interface ExcludedTournament {
+  tournamentId: string;
+  name: string;
+  organizer: string | null;
+  reason: string;
+  matched: string;
+}
+
 export interface DiagnosticsCollector {
   /** Tournaments whose /details fetch threw (transient/network/API failures). */
   detailsFetchFailures?: Array<{ tournamentId: string; name: string; message: string }>;
   detailsWithoutDecklists?: Array<{ tournamentId: string; name: string }>;
   detailsOffline?: Array<{ tournamentId: string; name: string }>;
   detailsUnsupportedFormat?: Array<{ tournamentId: string; name: string; format: string }>;
+  /** Tournaments dropped by the hand-maintained exclusion config. */
+  excludedTournaments?: ExcludedTournament[];
   standingsFetchFailures?: Array<{ tournamentId: string; name: string; message: string }>;
   invalidStandingsPayload?: Array<{ tournamentId: string; name: string }>;
   entriesWithoutDecklists?: Array<{ tournamentId: string; player: string }>;
   entriesWithoutPlacing?: Array<{ tournamentId: string; name: string; player: string }>;
-  tournamentsBelowMinimum?: Array<{ tournamentId: string; name: string; players?: number | null }>;
+  tournamentsBelowMinimum?: Array<{ tournamentId: string; name: string; players?: number | null; fieldSize?: number }>;
+  /** Per-tournament field counts, keyed by tournament id. */
+  tournamentFields?: Record<string, TournamentFieldCounts>;
   archetypeClassification?: ArchetypeClassificationDiagnostics;
 }
 
 /** Options for fetchRecentOnlineTournaments */
 export interface FetchTournamentsOptions extends BaseOptions {
   windowEnd?: string | Date;
+  /** Compiled hand-maintained exclusions (see shared/onlineMeta/exclusions). */
+  exclusions?: import('./exclusions').CompiledExclusions | null;
   pageSize?: number;
   maxPages?: number;
   detailsConcurrency?: number;
@@ -120,6 +134,16 @@ export interface FetchTournamentsOptions extends BaseOptions {
 /** Options for gatherDecks */
 export interface GatherDecksOptions extends BaseOptions {
   standingsConcurrency?: number;
+  /**
+   * Smallest field (players with a placing) an event needs to contribute
+   * decks. Default 8: below that a single result moves an archetype's share
+   * for the day by whole points.
+   */
+  minFieldPlayers?: number;
+  /** Fraction of standings fetches allowed to fail before the run aborts. Default 0.25. */
+  maxStandingsFailureRatio?: number;
+  /** Absolute standings-fetch failures always tolerated. Default 2. */
+  standingsFailureAllowance?: number;
 }
 
 /** Options for buildArchetypeReports */
@@ -134,6 +158,12 @@ export interface BuildTrendReportOptions {
   windowEnd?: string | Date;
   minAppearances?: number;
   seriesLimit?: number;
+  /**
+   * Days with fewer decks than this across every event are left out of the
+   * daily timelines. A day carried by one small event plots as a cliff for
+   * every archetype at once. Default 0 (keep every day).
+   */
+  minDayDecks?: number;
 }
 
 /** Options for buildCardTrendReport */
@@ -148,7 +178,7 @@ export interface BuildCardTrendReportOptions {
    * single trend entry. When omitted, card keys are kept raw and reprints
    * appear as separate rows.
    */
-  synonymDb?: import('../synonyms').SynonymDatabase | null;
+  synonymDb?: import('../data/cardIdentity').SynonymDatabase | null;
 }
 
 /** Trend report result structure */

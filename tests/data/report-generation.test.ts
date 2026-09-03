@@ -141,7 +141,15 @@ test('gatherDecks derives success tags and handles small tournaments / ties', as
         { name: 'Alice', placing: 1, decklist: { pokemon: [{ name: 'A', count: 4 }] } },
         { name: 'Bob', placing: 2, decklist: { pokemon: [{ name: 'B', count: 4 }] } },
         { name: 'Carol', placing: 2, decklist: { pokemon: [{ name: 'C', count: 4 }] } },
-        { name: 'Dave', placing: 4, decklist: { pokemon: [{ name: 'D', count: 4 }] } }
+        { name: 'Dave', placing: 4, decklist: { pokemon: [{ name: 'D', count: 4 }] } },
+        // Four more placed players so the field clears the 8-player floor.
+        ...['Erin', 'Frank', 'Grace', 'Heidi'].map((name, index) => ({
+          name,
+          placing: 5 + index,
+          decklist: { pokemon: [{ name: 'E', count: 4 }] }
+        })),
+        // A registration that never played: no placing, no deck in the meta.
+        { name: 'Ghost', decklist: { pokemon: [{ name: 'G', count: 4 }] } }
       ]
     },
     {
@@ -161,7 +169,9 @@ test('gatherDecks derives success tags and handles small tournaments / ties', as
   assert.ok(below, 'Tiny event should be recorded as below minimum');
 
   const t1Decks = decks.filter(deck => deck.tournamentId === 't1');
-  assert.strictEqual(t1Decks.length, 4);
+  assert.strictEqual(t1Decks.length, 8);
+  assert.ok(t1Decks.every(deck => deck.tournamentPlayers === 8));
+  assert.strictEqual(diagnostics.entriesWithoutPlacing.length, 1);
 
   const alice = t1Decks.find(deck => deck.player === 'Alice');
   assert.ok(alice);
@@ -213,7 +223,7 @@ test('gatherDecks reclassifies generic archetypes using Limitless deck ids', asy
 
   const diagnostics: any = {};
   const mockEnv = { LIMITLESS_API_KEY: 'test-key' };
-  const decks = await gatherDecks(mockEnv as any, tournaments as any, diagnostics, null, {});
+  const decks = await gatherDecks(mockEnv as any, tournaments as any, diagnostics, null, { minFieldPlayers: 1 });
 
   assert.equal(decks.length, 1);
   assert.equal(decks[0].archetype, 'Gholdengo Lunatone');
