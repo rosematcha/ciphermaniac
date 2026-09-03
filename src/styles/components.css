@@ -229,7 +229,7 @@
   display: flex;
   gap: 6px;
 }
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .topnav {
     grid-template-columns: max-content minmax(0, 1fr);
     grid-template-rows: auto auto;
@@ -287,6 +287,7 @@
   .t-selector-trigger {
     max-width: 100%;
     padding: 8px 10px;
+    min-height: 44px;
   }
 }
 
@@ -332,26 +333,38 @@
   font-size: 12px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .site-footer {
     /* Same safe-area treatment as `.page`: the toggle must not sit under the
        home-indicator bar. */
     padding: var(--space-4) max(var(--space-3), env(safe-area-inset-left))
       max(var(--space-5), env(safe-area-inset-bottom));
     padding-right: max(var(--space-3), env(safe-area-inset-right));
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas:
+      'links links'
+      'note toggle';
+    align-items: center;
     gap: var(--space-3);
   }
-  /* Stacked: the links take the row they need, then the note and the toggle
-     share the next one. */
+  /* A compact site map has a predictable second row on every narrow viewport,
+     rather than relying on flex wrapping once the three footer groups no
+     longer fit beside one another. */
   .site-footer-links {
-    flex: 1 1 100%;
+    grid-area: links;
+    display: grid;
+    grid-template-columns: repeat(3, max-content);
+    column-gap: clamp(18px, 5vw, 36px);
+    row-gap: var(--space-2);
   }
   .site-footer-note {
-    margin-inline-start: 0;
+    grid-area: note;
+    margin: 0;
   }
   .site-footer .chip {
-    margin-inline-start: auto;
+    grid-area: toggle;
+    margin: 0;
   }
 }
 
@@ -390,7 +403,7 @@
 .t-freshness.is-ready {
   opacity: 1;
 }
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .t-freshness {
     display: none;
   }
@@ -538,9 +551,7 @@
 }
 /* The scope label is known synchronously; the deck count and freshness stamp
    arrive with meta.json. Reserving their width means the wrap decision inside
-   `.right` is made once, at first paint — on a phone the tail used to arrive
-   wide enough to push "View all" onto a second line, dropping the whole
-   archetype gallery 28px (the site's largest measured shift). */
+   `.right` is made once, at first paint. */
 .scope-line-tail {
   display: inline-flex;
   align-items: baseline;
@@ -579,9 +590,21 @@
   .section-head {
     flex-wrap: wrap;
   }
+}
+
+/* The scope details are supplementary. Keep them for desktop, but give the
+   compact header entirely to its title and destination link on smaller
+   screens. */
+@media (max-width: 1023px) {
+  .section-head:has(.scope-line) {
+    flex-wrap: nowrap;
+  }
   .section-head .right:has(.scope-line) {
-    flex-basis: 100%;
-    justify-content: space-between;
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+  .section-head .right .scope-line {
+    display: none;
   }
 }
 
@@ -1144,7 +1167,7 @@ table.data {
 .data tbody tr:hover {
   background: var(--surface-2);
 }
-.data tbody tr.is-link:hover .cardname {
+.data tbody tr.is-link .cardname:hover {
   color: var(--accent);
 }
 .data td.num,

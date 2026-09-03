@@ -36,9 +36,6 @@ export function ToolsPage() {
     <>
       <section class='hero'>
         <h1>Tools</h1>
-        <div class='hero-meta'>
-          <span>Print something for your shelf, or look back at decks that rotated out</span>
-        </div>
       </section>
 
       <section>

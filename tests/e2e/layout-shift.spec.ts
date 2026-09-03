@@ -50,12 +50,43 @@ const ROUTES = [
  */
 const OBSERVER = `
 window.__cls = 0;
+window.__shifts = [];
 new PerformanceObserver(list => {
   for (const entry of list.getEntries()) {
-    if (!entry.hadRecentInput) { window.__cls += entry.value; }
+    if (entry.hadRecentInput) { continue; }
+    window.__cls += entry.value;
+    window.__shifts.push({
+      at: Math.round(entry.startTime),
+      value: entry.value,
+      moved: (entry.sources || []).map(source => {
+        const node = source.node;
+        const name = node ? node.tagName.toLowerCase() + (node.className ? '.' + String(node.className).trim().split(/\\s+/).join('.') : '') : '?';
+        const rect = r => Math.round(r.x) + ',' + Math.round(r.y) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height);
+        return name + ' ' + rect(source.previousRect) + ' -> ' + rect(source.currentRect);
+      })
+    });
   }
 }).observe({ type: 'layout-shift', buffered: true });
 `;
+
+interface Shift {
+  at: number;
+  value: number;
+  moved: string[];
+}
+
+/**
+ * The largest shifts, each with what moved and from where to where. A budget
+ * failure that only says "0.27" leaves the cause to be guessed at from a
+ * machine that may not reproduce it.
+ */
+function describe(shifts: Shift[]): string {
+  return [...shifts]
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+    .map(shift => `  ${shift.value.toFixed(4)} at ${shift.at}ms: ${shift.moved.join('; ') || '(no sources)'}`)
+    .join('\n');
+}
 
 async function throttle(page: Page): Promise<void> {
   const client = await page.context().newCDPSession(page);
@@ -81,8 +112,11 @@ test.describe('layout shift', () => {
       // files) to land — several of the shifts this guards against only
       // happened when one of those resolved after first paint.
       await page.waitForTimeout(8000);
-      const cls = await page.evaluate(() => (window as unknown as { __cls: number }).__cls);
-      expect(cls, `CLS on ${route}`).toBeLessThan(BUDGET);
+      const { cls, shifts } = await page.evaluate(() => {
+        const w = window as unknown as { __cls: number; __shifts: Shift[] };
+        return { cls: w.__cls, shifts: w.__shifts };
+      });
+      expect(cls, `CLS on ${route}\n${describe(shifts)}`).toBeLessThan(BUDGET);
     });
   }
 });
