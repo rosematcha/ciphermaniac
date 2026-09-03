@@ -196,6 +196,18 @@
 .ilm-card:hover {
   transform: translateY(-2px);
 }
+/* Loading placeholder — shares the card's box model, drops its affordances. */
+.ilm-card-skeleton {
+  pointer-events: none;
+  content-visibility: visible;
+}
+.ilm-card-skeleton .ilm-card-img {
+  box-shadow: none;
+}
+.ilm-card-skeleton .skeleton {
+  display: inline-block;
+  vertical-align: middle;
+}
 .ilm-card-img {
   position: relative;
   aspect-ratio: 2.5 / 3.5;

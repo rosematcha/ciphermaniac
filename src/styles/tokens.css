@@ -81,11 +81,12 @@ body[data-mode="dark"] {
   --shadow-1: 3px 3px 0 0 var(--surface-2);
 }
 
-@media (max-width: 640px) {
-  /* The topnav wraps to two rows (word/actions, then links) on phones, so the
-     sticky-header offset grows to match. */
+@media (max-width: 900px) {
+  /* The topnav wraps to two rows (word/actions, then links) before the
+     single-row desktop header would overflow. The selector's 44px target and
+     the link row make the rendered header 114px tall. */
   :root {
-    --topnav-h: 92px;
+    --topnav-h: 114px;
   }
 }
 

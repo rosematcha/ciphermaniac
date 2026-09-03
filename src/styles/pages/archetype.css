@@ -14,6 +14,22 @@
 .arche-stat.is-muted {
   opacity: 0.55;
 }
+/* Width-reserved wrapper for the hero's win-rate chip — see the note in
+   ArchetypePage. Sized to the chip's real width (a percentage, a game count
+   and the info marker) plus the separator dot and its margins. inline-flex so
+   the pair also stops breaking across two lines. */
+.arche-stat-slot {
+  display: inline-flex;
+  align-items: baseline;
+  min-width: 220px;
+}
+.arche-stat-slot.is-pending > * {
+  visibility: hidden;
+}
+/* The cost chip is shorter than the win-rate one. */
+.arche-stat-slot-cost {
+  min-width: 150px;
+}
 .arche-stat-lead {
   color: var(--fg);
   font-variant-numeric: tabular-nums;
@@ -131,6 +147,9 @@
   fill: var(--chart-1);
 }
 .arche-spark-delta {
+  /* Held at the width the real delta renders at, so the pending stand-in and
+     the loaded row break onto a second line at the same viewport width. */
+  min-width: 151px;
   font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -149,4 +168,15 @@
 }
 .arche-spark-delta.down .arche-spark-chip {
   color: var(--negative);
+}
+
+/* Loading placeholder for a gallery card. Borrows `.arche`'s box model so it
+   matches the card's height at any column width; only the affordances differ. */
+.arche-skeleton {
+  cursor: default;
+  pointer-events: none;
+}
+.arche-skeleton .skeleton-block {
+  display: inline-block;
+  vertical-align: middle;
 }

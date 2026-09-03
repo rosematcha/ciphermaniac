@@ -26,6 +26,17 @@
   <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-latin-700.woff2" crossorigin>
 </head>
 <body>
+  <!-- Theme before first paint. main.tsx sets the same attribute (lib/theme.ts),
+       but it is a module script, so it does not run until the document has been
+       parsed — long enough for someone who chose dark to be shown a white page
+       first. Stored choice only; the system preference is handled in CSS
+       (tokens.css) for exactly the same reason. -->
+  <script>
+    try {
+      var saved = localStorage.getItem('cm:mode');
+      if (saved === 'light' || saved === 'dark') { document.body.dataset.mode = saved; }
+    } catch (e) { /* storage unavailable: the CSS default stands */ }
+  </script>
   <div id="root"></div>
   <!-- Recovery: if the entry bundle fails to load (stale service-worker shell
        pointing at a hashed asset a deploy has since removed), reload once with

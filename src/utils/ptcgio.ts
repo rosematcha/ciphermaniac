@@ -8,7 +8,12 @@
  * its name against our synonym DB (2026-07-21).
  *
  * Unlike the Limitless CDN, images.pokemontcg.io hotlinks cleanly — no
- * bot-management cookie — so these URLs load directly in the browser.
+ * bot-management cookie — so a direct URL loads in the browser. It sends no
+ * `Access-Control-Allow-Origin`, though, and an image the page cannot re-read
+ * cannot be inlined into a canvas or a rasterised DOM snapshot: every vintage
+ * print came back as an empty frame in the tier list's JPG. So the art is
+ * served through the same-origin proxy first, exactly like the Limitless
+ * scans, and the direct URLs stay behind it as a fallback for display.
  * @module utils/ptcgio
  */
 
@@ -54,6 +59,8 @@ const PTCGIO_SET_IDS: Record<string, string> = {
 };
 
 const PTCGIO_BASE = 'https://images.pokemontcg.io';
+/** Same-origin route in front of {@link PTCGIO_BASE}. See functions/thumbnails. */
+const PTCGIO_PROXY = '/thumbnails/ptcgio';
 
 /** True when the set's art must come from pokemontcg.io (absent on Limitless). */
 export function hasPtcgioImages(setCode: string): boolean {
@@ -85,8 +92,13 @@ export function ptcgioImageUrls(setCode: string, number: string | number, size: 
   if (!id) {
     return [];
   }
-  const base = `${PTCGIO_BASE}/${id}/${ptcgioNumber(setCode, number)}`;
-  return size === 'lg' ? [`${base}_hires.png`, `${base}.png`] : [`${base}.png`, `${base}_hires.png`];
+  const name = ptcgioNumber(setCode, number);
+  // Hi-res first for the hero, the ~245px scan first for thumbnails.
+  const files = size === 'lg' ? [`${name}_hires`, name] : [name, `${name}_hires`];
+  return [
+    ...files.map(file => `${PTCGIO_PROXY}/${id}/${file}`),
+    ...files.map(file => `${PTCGIO_BASE}/${id}/${file}.png`)
+  ];
 }
 
 /**
@@ -101,6 +113,8 @@ export function ptcgioSrcset(setCode: string, number: string | number): string |
   if (!id) {
     return null;
   }
-  const base = `${PTCGIO_BASE}/${id}/${ptcgioNumber(setCode, number)}`;
-  return `${base}.png 245w, ${base}_hires.png 735w`;
+  // Proxy-only: a srcset has no error fallback, and the direct URLs are the
+  // ones an export cannot read.
+  const base = `${PTCGIO_PROXY}/${id}/${ptcgioNumber(setCode, number)}`;
+  return `${base} 245w, ${base}_hires 735w`;
 }

@@ -60,14 +60,23 @@ test('the number is zero-padded for both sources, since the CDN is strict about 
   assert.ok(buildAttempts('SVI', '1', 'xs', false)[0].endsWith('/SVI/001'));
 });
 
-test('a vintage set goes straight to pokemontcg.io regardless of skipR2', () => {
-  // Limitless has no scans for those sets, so R2 and the proxy would only 404.
+test('a vintage set goes to pokemontcg.io regardless of skipR2', () => {
+  // Limitless has no scans for those sets, so R2 and its proxy tiers would only 404.
   for (const useR2 of [true, false]) {
     const attempts: string[] = buildAttempts('BS', '4', 'lg', useR2);
     assert.equal(
-      attempts.some(u => u.includes(R2) || u.startsWith(PROXY)),
+      attempts.some(u => u.includes(R2)),
       false,
-      `vintage must not hit R2 or the proxy (useR2=${useR2})`
+      `vintage must not hit R2 (useR2=${useR2})`
     );
+    assert.equal(
+      attempts.some(u => u.startsWith(`${PROXY}/lg/`) || u.startsWith(`${PROXY}/sm/`)),
+      false,
+      `vintage must not ask Limitless for a scan it does not have (useR2=${useR2})`
+    );
+    // Same-origin first: a hotlinked pokemontcg.io scan displays, but sends no
+    // CORS header, so it cannot be inlined into an export.
+    assert.ok(attempts[0].startsWith(`${PROXY}/ptcgio/base1/4_hires`), attempts[0]);
+    assert.ok(attempts.at(-1)?.startsWith('https://images.pokemontcg.io/'), String(attempts.at(-1)));
   }
 });

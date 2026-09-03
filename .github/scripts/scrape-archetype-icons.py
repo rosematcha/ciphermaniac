@@ -52,6 +52,15 @@ REQUEST_DELAY = 0.5  # be polite between snapshot fetches
 OUTPUT_PATH = Path("src") / "data" / "archetype-icons.json"
 MAX_ICONS = 2
 
+# Limitless deliberately has no deck-index row for its residual "Other" bucket,
+# so scraping cannot discover its representative icon. Keep this product choice
+# here rather than relying on a JSON edit that a later refresh could lose. Its
+# Substitute art is committed at static/img/substitute.png from
+# https://limitless3.nyc3.cdn.digitaloceanspaces.com/pokemon/substitute.png.
+MANUAL_ICON_OVERRIDES: Dict[str, List[str]] = {
+    "Other": ["substitute"],
+}
+
 # Shrouded Fable is the earliest format our tournament data covers, so it's the
 # floor for the cumulative scrape. Everything older on the selector (pre-SFA
 # 2024 sets like TEF/TWM, plus the 2023-and-earlier rotations) is dropped.
@@ -225,6 +234,10 @@ def main() -> int:
     else:
         # Preserve hand-edited keys; only add archetypes we didn't already have.
         merged = {**scraped, **existing}
+
+    # These are deliberately absent from the Limitless deck index, so every
+    # refresh must restore their manual representative icon.
+    merged = {**merged, **MANUAL_ICON_OVERRIDES}
 
     merged = {k: merged[k] for k in sorted(merged, key=str.lower)}
 

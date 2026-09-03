@@ -6,6 +6,10 @@ producer answers the next question — which of those printings are the same
 *picture* — so a tier list over card art can offer one entry per illustration
 instead of six near-identical ones.
 
+Its unit is the synonym DB's reprint cluster, not the card name: a name can
+cover two unrelated cards (Charizard ex is both the Obsidian Flames one and
+the 151 one), so each gets its own entry, keyed by its earliest printing.
+
 Reads:  ``assets/card-synonyms.json`` (R2)
 Writes: ``assets/card-art-groups.json`` (R2)
 
@@ -45,7 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import art_similarity as art  # noqa: E402
 import r2 as r2lib  # noqa: E402
 
-ARTIFACT_VERSION = 1
+ARTIFACT_VERSION = 2
 SYNONYMS_KEY = "assets/card-synonyms.json"
 OUTPUT_KEY = "assets/card-art-groups.json"
 PUBLIC_ORIGIN = "https://r2.ciphermaniac.com"
@@ -100,21 +104,53 @@ def load_json_source(client, bucket: str, key: str, required: bool):
     return response.json()
 
 
-def clusters_from_synonyms(database: dict) -> dict[str, list[str]]:
-    """Card name -> its printings as ``SET::NUMBER``, in release order.
+def resolve_canonical(synonyms: dict[str, str], uid: str) -> str:
+    """Follow a print's synonym edges to its cluster's canonical UID.
+
+    The producer writes a flat map today, but it has flattened chains before,
+    so walk rather than assume — bounded, because a cycle in the map must not
+    hang the build.
+    """
+    seen = {uid}
+    current = uid
+    while True:
+        nxt = synonyms.get(current)
+        if nxt is None or nxt in seen:
+            return current
+        seen.add(nxt)
+        current = nxt
+
+
+def clusters_from_synonyms(database: dict) -> dict[str, dict]:
+    """Cluster key -> ``{"name", "prints"}``, one entry per reprint cluster.
+
+    A card *name* is not a card. Seventy-odd names cover two or three unrelated
+    cards — "Charizard ex" is both the Obsidian Flames one and the 151 one —
+    so grouping printings by name alone hands a card-art tier list a mix of two
+    different cards' illustrations. The synonym map's variant -> canonical
+    edges are exactly the "these printings are the same card" relation, so
+    cluster membership comes from there; a printing with no edge is its own
+    one-member cluster.
+
+    Keyed by the cluster's earliest printing rather than by its canonical UID:
+    canonicals roll as prices and legality move, and a key that moves with them
+    would invalidate every cached grouping and every shared tier list.
 
     The synonym producer writes ``prints`` straight from Limitless's prints
     table, so its key order is release order and the first member of an art
     group is that art's first printing.
     """
-    clusters: dict[str, list[str]] = {}
+    synonyms = database.get("synonyms") or {}
+    by_canonical: dict[str, dict] = {}
     for uid in database.get("prints") or {}:
         parts = uid.split("::")
         if len(parts) != 3:
             continue
         name, set_code, number = parts
-        clusters.setdefault(name, []).append(f"{set_code}::{number}")
-    return clusters
+        cluster = by_canonical.setdefault(resolve_canonical(synonyms, uid),
+                                          {"name": name, "prints": []})
+        cluster["prints"].append(f"{set_code}::{number}")
+    return {f"{c['name']}::{c['prints'][0]}": c for c in by_canonical.values()}
 
 
 def signature(prints: Iterable[str]) -> str:
@@ -236,11 +272,11 @@ def group_cluster(paths: dict[str, Path]) -> list[list[str]]:
 
 
 def _group_task(payload: tuple[str, dict[str, str]]) -> tuple[str, list[list[str]]]:
-    name, paths = payload
-    return name, group_cluster({ref: Path(p) for ref, p in paths.items()})
+    key, paths = payload
+    return key, group_cluster({ref: Path(p) for ref, p in paths.items()})
 
 
-def build_cards(clusters: dict[str, list[str]], previous: dict, cache: Path,
+def build_cards(clusters: dict[str, dict], previous: dict, cache: Path,
                 jobs: int) -> tuple[dict[str, dict], int]:
     """Group every card, reusing unchanged results from the previous artifact."""
     import requests
@@ -251,24 +287,25 @@ def build_cards(clusters: dict[str, list[str]], previous: dict, cache: Path,
     reused = 0
 
     session = requests.Session()
-    for index, (name, prints) in enumerate(sorted(clusters.items()), start=1):
+    for index, (key, cluster) in enumerate(sorted(clusters.items()), start=1):
+        name, prints = cluster["name"], cluster["prints"]
         sig = signature(prints)
-        cached = prior.get(name)
+        cached = prior.get(key)
         if cached and cached.get("sig") == sig:
-            cards[name] = cached
+            cards[key] = cached
             reused += 1
             continue
-        log(f"  [{index}/{len(clusters)}] {name} ({len(prints)} printings)")
+        log(f"  [{index}/{len(clusters)}] {key} ({len(prints)} printings)")
         available, unmatched = download_cluster(session, cache, prints)
-        cards[name] = {"sig": sig, "arts": [], "unmatched": unmatched}
+        cards[key] = {"name": name, "sig": sig, "arts": [], "unmatched": unmatched}
         if available:
-            pending.append((name, {ref: str(path) for ref, path in available.items()}))
+            pending.append((key, {ref: str(path) for ref, path in available.items()}))
 
     if pending:
         log(f"  comparing {len(pending)} cards across {jobs} worker(s)")
         with futures.ProcessPoolExecutor(max_workers=jobs) as pool:
-            for name, arts in pool.map(_group_task, pending):
-                cards[name]["arts"] = arts
+            for key, arts in pool.map(_group_task, pending):
+                cards[key]["arts"] = arts
     return cards, reused
 
 
@@ -289,8 +326,8 @@ def write_gallery(cards: dict[str, dict], cache: Path, out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     base = os.path.relpath(cache.resolve(), out.resolve()).replace(os.sep, "/")
     rows = []
-    for name in sorted(cards):
-        card = cards[name]
+    for key in sorted(cards):
+        card = cards[key]
         if sum(len(group) for group in card["arts"]) + len(card["unmatched"]) < 2:
             continue
         groups = "".join(
@@ -303,7 +340,8 @@ def write_gallery(cards: dict[str, dict], cache: Path, out: Path) -> None:
         )
         missing = ("<p class=miss>no image: " + ", ".join(card["unmatched"]) + "</p>"
                    if card["unmatched"] else "")
-        rows.append(f"<section><h2>{escape(name)}</h2>{groups}{missing}</section>")
+        heading = f'{escape(card.get("name") or key)} <span class=k>{escape(key)}</span>'
+        rows.append(f"<section><h2>{heading}</h2>{groups}{missing}</section>")
     (out / "index.html").write_text(
         "<!doctype html><meta charset=utf-8><title>Art groups</title>"
         "<style>body{font:14px/1.4 system-ui;margin:24px;background:#111;color:#eee}"
@@ -312,26 +350,40 @@ def write_gallery(cards: dict[str, dict], cache: Path, out: Path) -> None:
         "padding:6px;margin-bottom:6px}"
         "figure{margin:0;width:110px}img{width:110px;border-radius:4px;display:block}"
         "figcaption{font:11px monospace;color:#9aa;padding-top:2px}"
+        "h2 .k{font:11px monospace;color:#78839a;font-weight:400}"
         ".miss{color:#c88;font-size:12px}</style>" + "".join(rows),
         encoding="utf-8",
     )
     log(f"  gallery written to {out / 'index.html'}")
 
 
-def explain(name: str, clusters: dict[str, list[str]], cache: Path) -> int:
+def select_by_name(clusters: dict[str, dict], names: set[str]) -> dict[str, dict]:
+    """The clusters whose card name is one of ``names``.
+
+    Clusters are keyed by their earliest printing, but a person types a name —
+    and a name can cover more than one cluster, so a lookup returns all of
+    them.
+    """
+    return {key: cluster for key, cluster in clusters.items() if cluster["name"] in names}
+
+
+def explain(name: str, clusters: dict[str, dict], cache: Path) -> int:
     """Print every pairwise score for one card, best-separated first."""
     import requests
 
-    prints = clusters.get(name)
-    if not prints:
+    selected = select_by_name(clusters, {name})
+    if not selected:
         log(f"no such card: {name}")
         return 1
-    available, unmatched = download_cluster(requests.Session(), cache, prints)
-    loaded = {ref: art.load_bands(str(path)) for ref, path in available.items()}
-    log(f"{name}: {len(available)} printings" + (f", {len(unmatched)} without art" if unmatched else ""))
-    for ncc, chroma, a, b in art.score_all_pairs(list(loaded), loaded.__getitem__):
-        mark = "MATCH" if art.is_same_art(ncc, chroma) else "     "
-        log(f"  {mark} ncc={ncc:6.3f} chroma={chroma:6.1f}  {a:10s} {b}")
+    session = requests.Session()
+    for key, cluster in sorted(selected.items()):
+        available, unmatched = download_cluster(session, cache, cluster["prints"])
+        loaded = {ref: art.load_bands(str(path)) for ref, path in available.items()}
+        log(f"{key}: {len(available)} printings"
+            + (f", {len(unmatched)} without art" if unmatched else ""))
+        for ncc, chroma, a, b in art.score_all_pairs(list(loaded), loaded.__getitem__):
+            mark = "MATCH" if art.is_same_art(ncc, chroma) else "     "
+            log(f"  {mark} ncc={ncc:6.3f} chroma={chroma:6.1f}  {a:10s} {b}")
     return 0
 
 
@@ -376,18 +428,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     log("Loading card synonyms...")
     database = load_json_source(client, bucket, SYNONYMS_KEY, required=True)
     clusters = clusters_from_synonyms(database)
-    log(f"  {len(clusters)} cards, {sum(len(v) for v in clusters.values())} printings")
+    log(f"  {len(clusters)} cards, {sum(len(c['prints']) for c in clusters.values())} printings")
 
     if args.explain:
         return explain(args.explain, clusters, cache)
 
     if args.cards:
         wanted = {name.strip() for name in args.cards.split(",") if name.strip()}
-        missing = wanted - clusters.keys()
+        clusters = select_by_name(clusters, wanted)
+        missing = wanted - {cluster["name"] for cluster in clusters.values()}
         if missing:
             log(f"unknown card(s): {', '.join(sorted(missing))}")
             return 1
-        clusters = {name: clusters[name] for name in wanted}
 
     previous = {} if args.rebuild else (load_json_source(client, bucket, OUTPUT_KEY, required=False) or {})
     if previous.get("version") != ARTIFACT_VERSION:

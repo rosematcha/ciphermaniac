@@ -97,6 +97,9 @@ trends.json
 !/static/404.html
 !/static/robots.txt
 !/static/fonts/
+# Committed UI artwork, not pipeline output: the Substitute doll that stands in
+# for an archetype with no sprite. Same-origin on purpose — see ArchetypeIcon.
+!/static/img/
 !/static/sw.js
 # Player prize earnings (scripts/scrape-player-earnings.ts). Small, changes only
 # when a season's results move, and served straight off the build.

@@ -119,19 +119,37 @@ export function EarningsPage() {
     return season ? shortSeasonLabel(season.label) : null;
   };
 
+  /**
+   * The line renders its full structure from the first paint, with the two
+   * counts and the stamp in reserved slots.
+   *
+   * Returning null until the payload landed left the hero a single reserved
+   * line and then filled it with two lines' worth of text on a phone, dropping
+   * the table below it 19px. The words are known up front; only the numbers
+   * are not.
+   */
   const heroMeta = () => {
     const loaded = data();
-    if (!loaded) {
-      return null;
-    }
-    const updated = shortDate(parseISODate(loaded.generatedAt));
+    const updated = loaded ? shortDate(parseISODate(loaded.generatedAt)) : null;
     return (
       <>
-        <span>{loaded.players.length.toLocaleString()} players</span>
+        <span>
+          <span class='num-slot' style={{ 'min-width': '5ch' }}>
+            {loaded?.players.length.toLocaleString() ?? ''}
+          </span>{' '}
+          players
+        </span>
         <span class='dot'>·</span>
-        <span>{loaded.seasons.length} seasons</span>
+        <span>
+          <span class='num-slot'>{loaded?.seasons.length ?? ''}</span> seasons
+        </span>
         <span class='dot'>·</span>
-        <span>Prize data from Limitless, updated {updated}</span>
+        <span>
+          Prize data from Limitless, updated{' '}
+          <span class='num-slot' style={{ 'min-width': '4em' }}>
+            {updated ?? ''}
+          </span>
+        </span>
       </>
     );
   };

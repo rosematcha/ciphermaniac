@@ -162,6 +162,7 @@ export function CardImage(props: CardImageProps) {
   const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', useR2()));
   const [attemptIndex, setAttemptIndex] = createSignal(0);
   const [errored, setErrored] = createSignal(false);
+  const [loaded, setLoaded] = createSignal(false);
 
   // A reused instance must not carry card A's retry/error state over to card B.
   createEffect(
@@ -170,6 +171,7 @@ export function CardImage(props: CardImageProps) {
       () => {
         setAttemptIndex(0);
         setErrored(false);
+        setLoaded(false);
       },
       { defer: true }
     )
@@ -213,6 +215,11 @@ export function CardImage(props: CardImageProps) {
         decoding='async'
         class={`card-img ${props.class ?? ''}`}
         style={props.style}
+        // The attribute is the loading contract callers style against: absent
+        // until the bitmap has painted, so a pending image can carry a
+        // placeholder rather than sitting transparent (see `.tl-item`).
+        data-loaded={loaded() ? '' : undefined}
+        onLoad={() => setLoaded(true)}
         onError={onError}
         referrerpolicy='no-referrer'
       />

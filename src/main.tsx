@@ -17,6 +17,7 @@ import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { installPreloadRecovery } from './lib/preloadRecovery';
 import { probeR2Ready } from './components/CardImage';
+import { initTheme } from './lib/theme';
 
 // A deploy replaces every content-hashed chunk, so a tab that predates it will
 // fail the next lazy route's preload. Recover before any route can hit it.
@@ -48,6 +49,7 @@ const InLovingMemoryPage = lazy(() =>
 );
 const LabelMakerPage = lazy(() => import('./pages/LabelMakerPage').then(m => ({ default: m.LabelMakerPage })));
 const MetaBinderPage = lazy(() => import('./pages/MetaBinderPage').then(m => ({ default: m.MetaBinderPage })));
+const TierListPage = lazy(() => import('./pages/TierListPage').then(m => ({ default: m.TierListPage })));
 const CardWallPage = lazy(() => import('./pages/CardWallPage').then(m => ({ default: m.CardWallPage })));
 const EarningsPage = lazy(() => import('./pages/EarningsPage').then(m => ({ default: m.EarningsPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
@@ -76,9 +78,8 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   });
 }
 
-// Default to light unless the user has previously picked dark.
-const savedMode = (typeof localStorage !== 'undefined' && localStorage.getItem('cm:mode')) as 'light' | 'dark' | null;
-document.body.dataset.mode = savedMode ?? 'light';
+// Before render: an attribute swap after first paint is a visible flash.
+initTheme();
 
 render(
   () => (
@@ -101,6 +102,7 @@ render(
       <Route path='/tools/deck-box-labels' component={LabelMakerPage} />
       <Route path='/tools/meta-binder' component={MetaBinderPage} />
       <Route path='/tools/card-wall' component={CardWallPage} />
+      <Route path='/tools/tier-list' component={TierListPage} />
       <Route path='/tools/earnings' component={EarningsPage} />
       {/* The section shipped as /toys before it was made public — keep the old
           paths working for anyone who bookmarked or shared one. */}

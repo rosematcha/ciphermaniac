@@ -98,3 +98,43 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
     U+1D00-1DBF, U+1E00-1EFF, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
+
+/* ============================================================
+   Metric-compatible fallback
+
+   `font-display: swap` means the first paint uses a system face and the real
+   Inter arrives a beat later. Without matched metrics that swap re-flowed
+   every text run on the page — measured as the topnav links, the tournament
+   selector and each section's meta line all jumping at ~50ms, on every route.
+
+   The overrides make the fallback occupy the same space Inter will, so the
+   swap changes glyph shapes and nothing else. Values are measured, not
+   guessed: `size-adjust` is the Inter/Arial advance-width ratio over a corpus
+   of this site's own strings (nav labels, card names, player names, scope
+   lines), and the ascent/descent overrides are Inter's hhea metrics
+   (2728/2816 and 680/2816) divided by that ratio.
+
+   Two faces because Arial has no 600: the browser resolves 600-800 to Arial
+   Bold, whose ratio against Inter is meaningfully tighter than the regular's.
+   Android has no Arial and falls through to system-ui, unadjusted — the same
+   place it landed before this block existed.
+   ============================================================ */
+
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial'), local('Helvetica');
+  font-weight: 400 500;
+  size-adjust: 105.3%;
+  ascent-override: 92%;
+  descent-override: 22.93%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial Bold'), local('Arial'), local('Helvetica');
+  font-weight: 600 800;
+  size-adjust: 102%;
+  ascent-override: 94.98%;
+  descent-override: 23.68%;
+  line-gap-override: 0%;
+}

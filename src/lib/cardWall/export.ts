@@ -410,14 +410,3 @@ export function estimateGifBytes(frames: number, width: number, height: number, 
   const bytesPerPixel = colors >= 256 ? 0.55 : colors >= 128 ? 0.45 : 0.32;
   return Math.round(frames * width * height * bytesPerPixel);
 }
-
-/** Hand a finished export to the browser as a download. */
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  // Revoking immediately can beat the download off the mark in Safari.
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}

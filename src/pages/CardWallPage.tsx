@@ -2,15 +2,9 @@ import { createMemo, createResource, createSignal, For, onCleanup, onMount, Show
 import { cardKey, loadWallImages, type WallImages } from '../lib/cardWall/images';
 import { buildScene, GIF_FRAME_RATES, type RowSetting, type WallConfig, type WallDeal } from '../lib/cardWall/scene';
 import { createWallPainter, type WallLook } from '../lib/cardWall/render';
-import {
-  describeVideoOutput,
-  downloadBlob,
-  estimateGifBytes,
-  exportGif,
-  exportVideo,
-  gifFrameCount
-} from '../lib/cardWall/export';
+import { describeVideoOutput, estimateGifBytes, exportGif, exportVideo, gifFrameCount } from '../lib/cardWall/export';
 import { WALL_ROSTER } from '../lib/cardWall/roster';
+import { downloadBlob } from '../lib/download';
 import { createPersistentSignal } from '../lib/persistentSignal';
 import { Segmented } from '../components/Segmented';
 import '../styles/pages/card-wall.css';
