@@ -44,11 +44,13 @@ import {
   type Tier,
   type TierItem,
   type TierMode,
+  TRAY,
   withAddedTier,
   withDeletedTier,
   withDroppedItem,
   withEditedTier,
   withMovedTier,
+  withPinnedTray,
   withRenamedPlacement,
   withTierOrder
 } from './tierList/model';
@@ -152,7 +154,13 @@ export function TierListPage() {
 
   /** State is the authority; the sortable only proposes. */
   const applyDrop = (drop: ItemDrop): void => {
-    setPlacement(map => withDroppedItem(map, drop.itemId, drop.zone, drop.index));
+    // The tray's stored order is sparse — see `withPinnedTray`. Write the order
+    // the user was looking at down first, or the drop index, which was counted
+    // off the screen, gets clamped to a much shorter list.
+    const trayOrder = drop.zone === TRAY ? split().tray.map(item => item.id) : null;
+    setPlacement(map =>
+      withDroppedItem(trayOrder ? withPinnedTray(map, trayOrder) : map, drop.itemId, drop.zone, drop.index)
+    );
   };
 
   // -------------------------------------------------------------- content

@@ -148,6 +148,27 @@ export function withDroppedItem(
   return next;
 }
 
+/**
+ * Writes the tray's rendered order into `placement`.
+ *
+ * The tray renders as its stored list followed by every item that has never
+ * been placed, so the stored list is normally far shorter than what the user is
+ * looking at — empty, on a board nobody has touched. A drop index counted off
+ * the screen means nothing against it: {@link withDroppedItem} clamps to the
+ * list it is handed, so a tile released at position eight of a thirty-nine
+ * item tray landed at position zero. That is why the tray would let you move
+ * something up but never down.
+ *
+ * Pinning the visible order first makes the two the same list, after which an
+ * index means what it says. Called only when the tray is the destination; a
+ * tier's stored list is already everything it renders.
+ */
+export function withPinnedTray(placement: Placement, order: readonly string[]): Map<string, string[]> {
+  const next = clone(placement);
+  next.set(TRAY, [...order]);
+  return next;
+}
+
 /** Applies an edit to one tier, leaving the rest untouched. */
 export function withEditedTier(tiers: readonly Tier[], id: string, patch: Partial<Omit<Tier, 'id'>>): Tier[] {
   return tiers.map(t => (t.id === id ? { ...t, ...patch } : t));

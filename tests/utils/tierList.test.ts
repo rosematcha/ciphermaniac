@@ -24,6 +24,7 @@ import {
   withDroppedItem,
   withEditedTier,
   withMovedTier,
+  withPinnedTray,
   withRenamedPlacement,
   withTierOrder
 } from '../../src/pages/tierList/model';
@@ -271,6 +272,52 @@ test('unplaced items follow whatever the tray has been arranged as', () => {
   assert.deepEqual(
     tray.map(t => t.id),
     ['c', 'a', 'b']
+  );
+});
+
+test('pinning the tray writes the visible order down, so an index means what it says', () => {
+  const shown = ['a', 'b', 'c', 'd'];
+  const pinned = withPinnedTray(new Map(), shown);
+  assert.deepEqual(pinned.get('tray'), shown);
+  // The point of pinning: without it the stored list is empty and the drop
+  // clamps to index 0, which is the "you can move up but never down" bug.
+  const bare = withDroppedItem(new Map(), 'a', 'tray', 3);
+  assert.deepEqual(bare.get('tray'), ['a']);
+  const moved = withDroppedItem(pinned, 'a', 'tray', 3);
+  assert.deepEqual(moved.get('tray'), ['b', 'c', 'd', 'a']);
+});
+
+test('a pinned tray moves a tile down as readily as up', () => {
+  const shown = ['a', 'b', 'c', 'd', 'e'];
+  // Indexes are counted among the tiles that stay put: the dragged tile is out
+  // of flow while it is in the air, which is what the sortable reports against.
+  const down = withDroppedItem(withPinnedTray(new Map(), shown), 'b', 'tray', 3);
+  assert.deepEqual(down.get('tray'), ['a', 'c', 'd', 'b', 'e']);
+  const up = withDroppedItem(withPinnedTray(new Map(), shown), 'd', 'tray', 1);
+  assert.deepEqual(up.get('tray'), ['a', 'd', 'b', 'c', 'e']);
+});
+
+test('pinning the tray leaves the tiers alone and does not mutate its input', () => {
+  const before = new Map([
+    ['t1', ['x']],
+    ['tray', ['old']]
+  ]);
+  const pinned = withPinnedTray(before, ['a', 'b']);
+  assert.deepEqual(pinned.get('t1'), ['x']);
+  assert.deepEqual(pinned.get('tray'), ['a', 'b']);
+  assert.deepEqual(before.get('tray'), ['old']);
+});
+
+test('a pinned tray survives the round trip through distribute', () => {
+  const items = [item('a'), item('b'), item('c')];
+  const pinned = withPinnedTray(
+    new Map(),
+    items.map(i => i.id)
+  );
+  const { tray } = distribute(items, defaultTiers(), withDroppedItem(pinned, 'a', 'tray', 2));
+  assert.deepEqual(
+    tray.map(t => t.id),
+    ['b', 'c', 'a']
   );
 });
 
