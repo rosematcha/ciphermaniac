@@ -389,6 +389,40 @@ test('previews survive a format change and draw the cards of the new one', async
   await expect(page.locator('.tl-tray .tl-noart')).toHaveCount(0);
 });
 
+test('the card picker is one box: the current card idle, a search once focused', async ({ page }) => {
+  // The picker stands for the card being ranked and only becomes a search
+  // while it has focus. Closing without choosing has to put the name back, or
+  // the toolbar is left with a blank field standing for nothing.
+  const pixel = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  await page.route('**/thumbnails/**', route => route.fulfill({ status: 200, contentType: 'image/png', body: pixel }));
+  await gotoClean(page, '/tools/tier-list');
+  await page.getByRole('tab', { name: 'Card arts', exact: true }).click();
+
+  const box = page.locator('.tl-picker input');
+  // Richest card first, and its art sits in the field beside the name.
+  await expect(box).toHaveValue('Rare Candy');
+  await expect(page.locator('.tl-picker .tl-combo-lead img')).toBeAttached();
+  await expect(page.locator('.tl-tray .tl-item')).toHaveCount(5);
+
+  await box.focus();
+  await expect(box).toHaveValue('');
+  const list = page.locator('.tl-picker .tl-list');
+  await expect(list.locator('li.cur')).toContainText('Rare Candy');
+  await page.keyboard.press('Escape');
+  await expect(list).toHaveCount(0);
+  await expect(box).toHaveValue('Rare Candy');
+
+  // Below the browse floor but above the rank floor: findable by typing only.
+  await box.focus();
+  await box.fill('swi');
+  await list.getByRole('option', { name: /Switch/ }).click();
+  await expect(box).toHaveValue('Switch');
+  await expect(page.locator('.tl-tray .tl-item')).toHaveCount(4);
+});
+
 test('an unknown route renders the not-found page rather than erroring', async ({ page }) => {
   await gotoClean(page, '/this-route-does-not-exist');
   await expect(page.locator('body')).toContainText(/not found|404/i);

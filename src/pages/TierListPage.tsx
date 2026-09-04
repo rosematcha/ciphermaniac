@@ -561,21 +561,18 @@ export function TierListPage() {
               </select>
             }
           >
-            <Show when={activeCard()}>
-              {card => (
-                <span class='tl-current'>
-                  <CardImage set={card().arts[0]!.set} number={card().arts[0]!.number} size='xs' lazy skipR2 />
-                  {card().name} <span>{card().arts.length} arts</span>
-                </span>
-              )}
-            </Show>
+            {/* One box, like the format select beside the other tab: it shows
+                the card the board is ranking and turns into the search for
+                the next one when focused. See Combo. */}
             <Combo
               placeholder='Search cards by name...'
               options={cards()}
               browse={browseCards()}
               label={c => c.name}
               weight={c => c.arts.length}
-              width='260px'
+              selected={activeCard()}
+              adorn={c => <CardImage set={c.arts[0]!.set} number={c.arts[0]!.number} size='xs' lazy skipR2 />}
+              width='250px'
               onPick={c => setCardKey(c.key)}
             >
               {(card, query) => {
