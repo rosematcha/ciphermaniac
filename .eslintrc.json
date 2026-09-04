@@ -230,18 +230,18 @@
     //
     // Ceilings as of the ratchet's introduction:
     //   complexity 51             scripts/build-card-types.mjs parseCardPage
-    //   max-lines-per-function 663 src/components/AdvancedPanel.tsx AdvancedPanel
-    //   max-lines 990             src/pages/TrendsPage.tsx
+    //   max-lines-per-function 553 src/pages/LabelMakerPage.tsx LabelMakerPage
+    //   max-lines 995             src/pages/TrendsPage.tsx
     //   max-depth 5               scripts/check-card-types.mjs
     //   max-params 8              src/lib/labelmaker/renderLabel.ts drawProgress
     "complexity": ["error", 51],
     "max-depth": ["error", 5],
-    "max-lines-per-function": ["error", { "max": 670, "skipBlankLines": true, "skipComments": true }],
+    "max-lines-per-function": ["error", { "max": 560, "skipBlankLines": true, "skipComments": true }],
     "max-nested-callbacks": ["warn", 4],
     "max-params": ["error", 8],
     "max-statements": "off",
     "no-magic-numbers": "off",
-    "max-lines": ["error", { "max": 1000, "skipBlankLines": true, "skipComments": true }],
+    "max-lines": ["error", { "max": 995, "skipBlankLines": true, "skipComments": true }],
 
     // Ternary expressions
     "no-nested-ternary": "off",
