@@ -5,7 +5,9 @@
  * older (DP era and before), the POP series, and XY promos have no art there,
  * so those set codes map to pokemontcg.io set ids instead. Every entry below
  * was verified by fetching a sample card from api.pokemontcg.io and matching
- * its name against our synonym DB (2026-07-21).
+ * its name against our synonym DB (2026-07-21); the EX-era and Platinum-era
+ * additions were read off Limitless's own card pages, which fall back to the
+ * same host and so name the set id in the image URL (2026-09-04).
  *
  * Unlike the Limitless CDN, images.pokemontcg.io hotlinks cleanly — no
  * bot-management cookie — so a direct URL loads in the browser. It sends no
@@ -36,10 +38,16 @@ const PTCGIO_SET_IDS: Record<string, string> = {
   // EX era
   RS: 'ex1',
   SS: 'ex2',
+  DR: 'ex3',
+  MA: 'ex4',
+  HL: 'ex5',
   RG: 'ex6',
+  TRR: 'ex7',
+  DX: 'ex8',
   EM: 'ex9',
   UF: 'ex10',
   DS: 'ex11',
+  LM: 'ex12',
   HP: 'ex13',
   CG: 'ex14',
   DF: 'ex15',
@@ -50,13 +58,24 @@ const PTCGIO_SET_IDS: Record<string, string> = {
   SW: 'dp3',
   GE: 'dp4',
   MD: 'dp5',
+  LA: 'dp6',
   SF: 'dp7',
   PL: 'pl1',
+  RR: 'pl2',
+  SV: 'pl3',
+  AR: 'pl4',
+  DPP: 'dpp',
   // POP series + XY promos
   P5: 'pop5',
   P8: 'pop8',
   XYP: 'xyp'
 };
+
+/**
+ * Promo sets whose files carry a letter prefix instead of a bare number
+ * (``dpp/DP46``, ``xyp/XY27``). Everything else is numbered plainly.
+ */
+const PTCGIO_NUMBER_PREFIXES: Record<string, string> = { DPP: 'DP', XYP: 'XY' };
 
 const PTCGIO_BASE = 'https://images.pokemontcg.io';
 /** Same-origin route in front of {@link PTCGIO_BASE}. See functions/thumbnails. */
@@ -69,13 +88,13 @@ export function hasPtcgioImages(setCode: string): boolean {
 
 /**
  * pokemontcg.io card numbers strip our zero-padding (base1/94, not 094);
- * XY promos additionally carry an XY prefix (xyp/XY27).
+ * promo sets additionally carry a letter prefix (xyp/XY27, dpp/DP46).
  */
 function ptcgioNumber(setCode: string, number: string | number): string {
   const raw = String(number).trim();
   const match = raw.match(/^0*(\d+)([A-Za-z]*)$/);
   const stripped = match ? `${match[1]}${match[2]}` : raw;
-  return setCode.toUpperCase() === 'XYP' ? `XY${stripped}` : stripped;
+  return `${PTCGIO_NUMBER_PREFIXES[setCode.toUpperCase()] ?? ''}${stripped}`;
 }
 
 /**
