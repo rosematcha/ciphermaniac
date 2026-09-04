@@ -15,15 +15,10 @@
  * edge cache, and the art comes back with the rest of the page.
  */
 
-import { corsPreflight } from '../lib/api/responses.js';
+import { corsPreflight, IMAGE_FETCH_INIT, imageProxyResponse, textError } from '../lib/api/responses.js';
 
 const LIMITLESS_CDN_BASE = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
 const PTCGIO_BASE = 'https://images.pokemontcg.io';
-const CACHE_TTL = 86400; // 24 hours (edge fetch TTL)
-// Card art for a given set/number never changes, so let browsers cache it for a
-// year and skip revalidation entirely.
-const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
-
 // Validation patterns
 const SET_CODE_PATTERN = /^[A-Z0-9]{2,8}$/;
 // Plain numbers (123, 18a) or letter-prefixed gallery numbers (TG24, GG05, SV107).
@@ -35,8 +30,6 @@ const PTCGIO_FILE_PATTERN = /^[A-Za-z]{0,4}[0-9]+[A-Za-z]?(?:_hires)?$/;
 interface Context {
   request: Request;
 }
-
-type CfRequestInit = RequestInit & { cf?: unknown };
 
 function normalizeCardNumber(raw: unknown): { trimmed: string | null; padded: string | null } {
   const trimmed = String(raw ?? '').trim();
@@ -76,10 +69,7 @@ function normalizeCardNumber(raw: unknown): { trimmed: string | null; padded: st
 async function fetchWithFallback(urls: string[]): Promise<Response> {
   let lastStatus = 404;
   for (const url of urls) {
-    const requestInit: CfRequestInit = {
-      cf: { cacheTtl: CACHE_TTL, cacheEverything: true }
-    };
-    const response = await fetch(url, requestInit);
+    const response = await fetch(url, IMAGE_FETCH_INIT);
 
     if (response.ok) {
       return response;
@@ -88,17 +78,7 @@ async function fetchWithFallback(urls: string[]): Promise<Response> {
     lastStatus = response.status;
   }
 
-  throw new Response('Image not found', {
-    status: lastStatus,
-    headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }
-  });
-}
-
-function textError(message: string, status: number): Response {
-  return new Response(message, {
-    status,
-    headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }
-  });
+  throw textError('Image not found', lastStatus);
 }
 
 /**
@@ -109,27 +89,7 @@ async function deliver(candidateUrls: string[]): Promise<Response> {
   try {
     const response = await fetchWithFallback(candidateUrls);
 
-    // Clone the response to add CORS headers.
-    const headers = new Headers(response.headers);
-    // Drop Limitless/Cloudflare's `__cf_bm` bot-management cookie. Its Domain is
-    // set to the public suffix `digitaloceanspaces.com`, which browsers reject
-    // ("invalid domain") — and once rejected, concurrent direct-to-CDN image
-    // loads get 403-challenged, which is why hotlinking broke in the browser.
-    // Passing it through here is both useless (wrong domain for our origin) and
-    // harmful: Cloudflare will not edge-cache any response carrying Set-Cookie,
-    // so leaving it in would invoke this Function on every single image view.
-    // Stripping it makes the response cacheable, so repeat views are free.
-    headers.delete('Set-Cookie');
-    headers.delete('Vary');
-    headers.set('Access-Control-Allow-Origin', '*');
-    headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    headers.set('Cache-Control', IMMUTABLE_CACHE_CONTROL);
-    headers.set('Content-Type', 'image/png');
-
-    return new Response(response.body, {
-      status: response.status,
-      headers
-    });
+    return imageProxyResponse(response);
   } catch (error) {
     if (error instanceof Response) {
       return error;
@@ -161,10 +121,7 @@ export async function onRequest(context: Context): Promise<Response> {
   const relevantParts = pathParts.slice(1);
 
   if (relevantParts.length !== 3) {
-    return new Response(`Invalid path format. Expected: /thumbnails/{size}/{set}/{number}, got: ${url.pathname}`, {
-      status: 400,
-      headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }
-    });
+    return textError(`Invalid path format. Expected: /thumbnails/{size}/{set}/{number}, got: ${url.pathname}`, 400);
   }
 
   const [size, set, number] = relevantParts;

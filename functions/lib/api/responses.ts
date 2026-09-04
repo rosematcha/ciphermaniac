@@ -6,6 +6,29 @@ export function jsonSuccess<T>(data: T, status = 200): Response {
   return jsonResponse(data, { status });
 }
 
+export const IMAGE_FETCH_INIT: RequestInit & { cf?: unknown } = {
+  cf: { cacheTtl: 86400, cacheEverything: true }
+};
+
+export function textError(message: string, status: number): Response {
+  return new Response(message, {
+    status,
+    headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }
+  });
+}
+
+/** Strip origin cookies so proxied immutable images remain edge-cacheable. */
+export function imageProxyResponse(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.delete('Set-Cookie');
+  headers.delete('Vary');
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  headers.set('Content-Type', 'image/png');
+  return new Response(response.body, { status: response.status, headers });
+}
+
 export interface JsonResponseOptions {
   status?: number;
   /** Value for the Cache-Control header. Omitted entirely when unset. */
