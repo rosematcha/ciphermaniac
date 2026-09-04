@@ -1,103 +1,37 @@
 /**
- * Choosing the width the board is exported at.
- *
- * On screen the board takes the width the page gives it, which is correct
- * there: the tray sits under it and the rows should line up with the rest of
- * the layout. In an exported image that width is a liability. A card-art list
- * four tiles across came out 1116px wide with 700 of them empty, because
- * nothing about the width of a browser window has anything to do with the shape
- * of the artwork.
- *
- * So the export picks its own width. The board is first WIDENED to
- * {@link WIDEST} — the shape of the artwork cannot depend on the device it was
- * arranged on, and starting from the phone's own 390px meant a tier of four
- * chips was already wrapped before the fit began, so no phone could reach a
- * landscape ratio at all. From there it is narrowed through a series of
- * candidates, each wrapping roughly one more tile out of its longest row, and
- * every candidate is *measured* rather than predicted — icon chips are as wide
- * as the archetype's name, so there is no arithmetic that gets this right for
- * all three views.
- *
- * Targets are tried **widest first, not nearest**. Scoring every candidate
- * against every ratio and taking the closest match turned a two-tier list of
- * fourteen cards into a 4:5 portrait four cards wide, because wrapping a wide
- * board eventually passes near enough to some ratio to win on points. A
- * two-tier list is short and wide, and the row-is-a-tier reading is the whole
- * point of the image.
- *
- * Every export lands on a target, including the sparse ones. A first pass
- * capped padding at one tile's width, on the theory that a six-tier board
- * holding one card had no width to give and padding it to 4:5 would be a
- * worse version of the void this exists to remove. That was wrong: it came out
- * a 284px sliver, and empty rows in a tier list are not a void — they are the
- * point, they say those tiers are empty. So the ratio always wins and the
- * narrowest, 4:5, is the floor on how narrow an export can get.
- * @module lib/tierList/exportFit
+ * Device-independent export fitting. Measure a geometric width sweep, prefer
+ * the widest acceptable target, and pad sparse boards to at least 4:5.
  */
 
-/**
- * Aspect ratios (width ÷ height) the export aims for, widest first. A tie goes
- * to the wider candidate, which is the one that wrapped less.
- */
+/** Target aspect ratios, widest first. */
 export const EXPORT_RATIOS: readonly number[] = [16 / 9, 4 / 3, 5 / 4, 1, 4 / 5];
 
-/** The narrowest ratio worth padding out to. */
 const NARROWEST = EXPORT_RATIOS[EXPORT_RATIOS.length - 1]!;
 
-/** Breathing room to the right of the last tile, in CSS px. */
 export const SLACK = 18;
 
-/**
- * The width the board is measured at before anything is narrowed, in CSS px.
- *
- * It is what `.page` gives the board on a desktop viewport (1180 max-width less
- * its 32px sides), which is the point: the same list exports the same shape
- * from a phone as from a laptop, and both stop widening in the same place. A
- * board whose longest row needs more than this wraps here exactly as it would
- * on a desktop screen.
- */
+/** Desktop board width in CSS pixels, used as the device-independent starting point. */
 export const WIDEST = 1116;
 
-/**
- * How far off a target a candidate may sit and still count as hitting it.
- * Fifteen percent: close enough that nobody reads the image as a different
- * shape, loose enough that a discrete set of wrap points can land on it.
- */
+/** A candidate within 15% of a target counts as a hit. */
 const TOLERANCE = Math.log(1.15);
 
 /**
- * Widths to measure, as fractions of the width the content needs unwrapped.
- *
- * Geometric rather than one-tile-at-a-time, because the thing being matched is
- * a ratio: even steps in width are wildly uneven steps in shape. Stepping by a
- * tile also stepped straight over the wide end of the target list — an
- * eighteen-chip board went from 3:1 to 1.4:1 in one move, missing both 16:9 and
- * 4:3, and settled for a square.
- *
- * Nothing below one tile wide is reachable: a flex row will not shrink under
- * its own min-content, so an over-narrow constraint measures the same shape as
- * the last usable one and is discarded as a duplicate.
+ * Geometric constraints sample aspect ratios evenly. Constraints below one
+ * tile are omitted because flex min-content makes them duplicate measurements.
  */
 const SWEEP: readonly number[] = [
   1, 0.88, 0.78, 0.69, 0.61, 0.54, 0.48, 0.42, 0.37, 0.33, 0.29, 0.25, 0.22, 0.19, 0.16
 ];
 
-/** One shape the board can take, as measured at some width. */
 export interface LayoutSample {
-  /** The width the board was constrained to for this measurement. */
   constraint: number;
   height: number;
   /** Board left edge to the right edge of the rightmost tile. */
   used: number;
 }
 
-/**
- * How far a ratio sits from the nearest target.
- *
- * Log distance, not linear: 2.0 is as far from 16:9 as 1.58 is, and a linear
- * difference would call the first one closer purely because ratios above 1 have
- * more room to spread out.
- */
+/** Log distance treats proportional misses above and below a target equally. */
 export function ratioDistance(ratio: number): number {
   if (!(ratio > 0)) {
     return Infinity;
@@ -105,29 +39,14 @@ export function ratioDistance(ratio: number): number {
   return Math.min(...EXPORT_RATIOS.map(target => Math.abs(Math.log(ratio / target))));
 }
 
-/**
- * The width to export a measured layout at: the content plus {@link SLACK}, or
- * {@link NARROWEST} of its height, whichever is wider.
- *
- * Height is not a lever — it comes from how many tiers there are — so on a
- * sparse board width is the only way to reach a target ratio at all.
- * @param sample - A measured layout.
- * @returns The width in CSS px.
- */
+/** Pads content by `SLACK` and enforces the narrowest target ratio. */
 export function exportWidth(sample: LayoutSample): number {
   return Math.max(sample.used + SLACK, sample.height * NARROWEST);
 }
 
 /**
- * Walks a board down through progressively narrower widths, measuring each.
- *
- * Takes the measurement as a callback so the walk can be exercised without a
- * DOM; the caller supplies whatever applying a width really costs. Candidates
- * that came out the same shape as the one before are dropped, so the result is
- * one entry per distinct wrapping.
- * @param natural - The board measured at its own unconstrained width.
- * @param measureAt - Applies a width and returns what the board became.
- * @returns Distinct candidates, widest first.
+ * Measures progressively narrower widths and drops consecutive duplicate
+ * layouts. The callback keeps this logic independent of the DOM.
  */
 export function sampleLayouts(natural: LayoutSample, measureAt: (width: number) => LayoutSample): LayoutSample[] {
   const tight = natural.used + SLACK;
@@ -143,15 +62,8 @@ export function sampleLayouts(natural: LayoutSample, measureAt: (width: number) 
 }
 
 /**
- * The candidate to export.
- *
- * Targets are tried widest first and the first one any candidate comes within
- * {@link TOLERANCE} of wins — "aim wide, narrow only as needed". Nothing within
- * tolerance of anything falls back to the nearest miss, though with 4:5 acting
- * as a floor that is now only reachable by a board wider than 16:9 at one tile
- * per row.
- * @param samples - Measured layouts, widest first.
- * @returns The best sample, or null when there is nothing to choose between.
+ * Chooses a candidate by target precedence, then proximity. With no target hit,
+ * uses the closest candidate overall.
  */
 export function bestLayout(samples: readonly LayoutSample[]): LayoutSample | null {
   const ratioOf = (sample: LayoutSample): number => exportWidth(sample) / sample.height;
@@ -161,8 +73,7 @@ export function bestLayout(samples: readonly LayoutSample[]): LayoutSample | nul
     for (const sample of samples) {
       const ratio = ratioOf(sample);
       const distance = target === null ? ratioDistance(ratio) : Math.abs(Math.log(ratio / target));
-      // Strictly less than, so a tie keeps the earlier — and therefore wider —
-      // candidate rather than wrapping for nothing.
+      // A strict comparison preserves the earlier, wider candidate on ties.
       if (distance < bestDistance) {
         bestDistance = distance;
         best = sample;
@@ -180,37 +91,18 @@ export function bestLayout(samples: readonly LayoutSample[]): LayoutSample | nul
   return nearest(null);
 }
 
-/**
- * The width to export at, given a way to measure the board at any width.
- *
- * Split from the DOM work so the walk — widen, sweep, choose, re-measure — can
- * be asserted without a browser.
- * @param measureAt - Applies a width and returns what the board became.
- * @returns The width in CSS px, or null when no candidate could be measured.
- */
+/** Returns the export width from a device-independent measurement sweep. */
 export function fitWidth(measureAt: (width: number) => LayoutSample): number | null {
   const best = bestLayout(sampleLayouts(measureAt(WIDEST), measureAt));
   if (!best) {
     return null;
   }
-  // Re-apply and re-measure: the chosen width comes from the sample's own
-  // usage, and the sample was taken at a width that may have been slightly
-  // wider than the tiles ended up needing.
+  // Re-measure because the chosen constraint can exceed the tiles' used width.
   return Math.round(exportWidth(measureAt(best.constraint)));
 }
 
-/**
- * Sets `board` to the width it should be exported at.
- *
- * Measures its own way there, so it works the same in all three views and
- * survives any later change to tile sizes. A board with no tiles is left alone:
- * there is no content to fit and nothing to measure it from.
- * @param board - The node the exporter will rasterise.
- * @returns A teardown restoring the board's own width. Always call it.
- */
+/** Fits a board for export and returns a function that restores its width. */
 export function fitBoardForExport(board: HTMLElement): () => void {
-  // Aliased, not written through the parameter: this function owns the board's
-  // width for the duration of an export and nothing else.
   const { style } = board;
   const original = style.width;
   const restore = (): void => {

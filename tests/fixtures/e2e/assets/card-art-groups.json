@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "cards": {
+    "Rare Candy::SVI::191": {
+      "name": "Rare Candy",
+      "arts": [["SVI::191"], ["PAF::089", "MEW::158"], ["SUM::129"], ["CES::142"], ["BRS::150"]],
+      "unmatched": []
+    },
+    "Switch::SVI::194": {
+      "name": "Switch",
+      "arts": [["SVI::194"], ["SSH::183"], ["CES::147"], ["MEW::160"]],
+      "unmatched": []
+    },
+    "Ultra Ball::SVI::196": {
+      "name": "Ultra Ball",
+      "arts": [["SVI::196"], ["PAF::091"], ["BRS::150"]],
+      "unmatched": []
+    }
+  }
+}

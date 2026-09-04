@@ -47,8 +47,25 @@ test('the same-origin proxy leads and the hotlinks trail it', () => {
   );
 });
 
-test('XY promo numbers get the XY prefix', () => {
+test('promo numbers get their set prefix', () => {
   assert.strictEqual(ptcgioImageUrls('XYP', '027', 'sm')[0], '/thumbnails/ptcgio/xyp/XY27');
+  // DP promos are where the 2010 format's Garchomp C and Luxray GL live.
+  assert.strictEqual(ptcgioImageUrls('DPP', '046', 'sm')[0], '/thumbnails/ptcgio/dpp/DP46');
+});
+
+/**
+ * The EX and Platinum eras arrived with the tier list's past formats, which
+ * rank decks built entirely out of them. Missing one is a whole format of blank
+ * tiles, so the boundaries of each era are pinned rather than sampled.
+ */
+test('the EX and Platinum eras are mapped end to end', () => {
+  const ex = ['RS', 'SS', 'DR', 'MA', 'HL', 'RG', 'TRR', 'DX', 'EM', 'UF', 'DS', 'LM', 'HP', 'CG', 'DF', 'PK'];
+  const platinum = ['DP', 'MT', 'SW', 'GE', 'MD', 'LA', 'SF', 'PL', 'RR', 'SV', 'AR', 'DPP'];
+  for (const set of [...ex, ...platinum]) {
+    assert.ok(hasPtcgioImages(set), `${set} unmapped`);
+  }
+  assert.strictEqual(ptcgioImageUrls('TRR', '019', 'sm')[0], '/thumbnails/ptcgio/ex7/19');
+  assert.strictEqual(ptcgioImageUrls('RR', '109', 'sm')[0], '/thumbnails/ptcgio/pl2/109');
 });
 
 test('modern sets are not claimed', () => {

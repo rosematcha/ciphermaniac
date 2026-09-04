@@ -238,7 +238,7 @@ export function withRenamedPlacement(placement: Placement, from: string, to: str
 /** Everything a shared link has to carry. */
 export interface ShareState {
   mode: TierMode;
-  /** Tournament name, or the card name in `arts` mode. */
+  /** Format id, or the card's cluster key in `arts` mode. */
   subject: string;
   title: string;
   tiers: Tier[];

@@ -6,8 +6,12 @@
  * rebuilt from the ranking function, so mouse and keyboard cannot disagree
  * about what is selected.
  *
- * Never pre-filled — the box is for searching, not for displaying state, which
- * matches `SearchInput` and `PokemonPicker` elsewhere in the app.
+ * Two shapes. Given `selected`, the box stands for that item while idle — its
+ * name is the value and `adorn` draws beside it — and becomes a search the
+ * moment it is focused, emptying so the browse list is the first thing seen;
+ * closing puts the name back. That makes one control out of "what is chosen"
+ * and "change it", the way a select is. Without `selected` the box only
+ * searches and keeps what was typed, like `SearchInput` and `PokemonPicker`.
  *
  * Browsing and searching are separate lists. With nothing typed the box offers
  * `browse` in full and lets the user scroll it; once there is a query it ranks
@@ -34,6 +38,13 @@ interface ComboProps<T> {
   label: (item: T) => string;
   /** Higher sorts first among equally-good matches. */
   weight?: (item: T) => number;
+  /**
+   * The item the box stands for while it is not being typed in. Shown as the
+   * value, marked in the list, and the row the keyboard starts on.
+   */
+  selected?: T;
+  /** Drawn inside the field beside the selected item's name, e.g. its art. */
+  adorn?: (item: T) => JSX.Element;
   /** Row content beside the name, e.g. a thumbnail and a count. */
   children: (item: T, query: string) => JSX.Element;
   onPick: (item: T) => void;
@@ -67,6 +78,9 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
     return rankByQuery(props.options, q, props.label, props.weight);
   });
   const optionId = (i: number): string => `${listId}-${i}`;
+  const stands = (): boolean => props.selected !== undefined;
+  /** The idle box shows what it stands for; an open one shows what is typed. */
+  const shown = (): string => (open() || props.selected === undefined ? query() : props.label(props.selected));
 
   // A browsable list is taller than its own window, so walking it with the
   // arrow keys has to bring the active row along. `nearest` keeps a click-then-
@@ -79,6 +93,20 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
     row?.scrollIntoView({ block: 'nearest' });
   });
 
+  /** Opening from idle lands on the current item, so Enter is a no-op rather than a surprise. */
+  const openList = (): void => {
+    setOpen(true);
+    setActive(props.selected === undefined ? 0 : Math.max(0, results().indexOf(props.selected)));
+  };
+
+  /** A box that stands for something forgets the search on close; a plain one keeps it. */
+  const close = (): void => {
+    setOpen(false);
+    if (stands()) {
+      setQuery('');
+    }
+  };
+
   const take = (index: number): void => {
     const item = results()[index];
     if (!item) {
@@ -89,13 +117,25 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
     props.onPick(item);
   };
 
+  /**
+   * A closed box still has focus after a pick or an Escape, and it is showing
+   * a name. A keystroke then would edit that name. Empty it first, so the
+   * character lands in a fresh search instead.
+   */
+  const startTyping = (event: KeyboardEvent): void => {
+    if (!open() && stands() && (event.key.length === 1 || event.key === 'Backspace')) {
+      setQuery('');
+      setOpen(true);
+    }
+  };
+
   const onKeyDown = (event: KeyboardEvent): void => {
+    startTyping(event);
     const count = results().length;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       if (!open()) {
-        setOpen(true);
-        setActive(0);
+        openList();
         return;
       }
       setActive(i => (count ? (i + (event.key === 'ArrowDown' ? 1 : count - 1)) % count : 0));
@@ -104,12 +144,17 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
       take(active());
     } else if (event.key === 'Escape') {
       event.stopPropagation();
-      setOpen(false);
+      close();
     }
   };
 
   return (
-    <div class='tl-combo' style={props.width ? { width: props.width } : undefined}>
+    <div
+      class='tl-combo'
+      classList={{ 'tl-picker': stands() }}
+      style={props.width ? { width: props.width } : undefined}
+    >
+      <Show when={props.selected}>{item => <span class='tl-combo-lead'>{props.adorn?.(item())}</span>}</Show>
       <input
         type='text'
         class='search'
@@ -122,15 +167,15 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
         aria-activedescendant={open() && results().length > 0 ? optionId(active()) : undefined}
         aria-label={props.placeholder}
         placeholder={props.placeholder}
-        value={query()}
+        value={shown()}
         onInput={e => {
           setQuery(e.currentTarget.value);
           setActive(0);
           setOpen(true);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={openList}
         // Delayed so a click on a result lands before the list unmounts.
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={() => setTimeout(close, 150)}
         onKeyDown={onKeyDown}
       />
       <Show when={open()}>
@@ -142,6 +187,7 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
                   role='option'
                   id={optionId(i())}
                   aria-selected={i() === active()}
+                  classList={{ cur: item === props.selected }}
                   onMouseDown={e => {
                     e.preventDefault();
                     take(i());

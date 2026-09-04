@@ -1,0 +1,1471 @@
+{
+  "version": 1,
+  "shareFloor": 0.75,
+  "formats": [
+    {
+      "id": "expanded",
+      "label": "Expanded",
+      "group": "current",
+      "players": 355,
+      "windows": 6,
+      "scrapedAt": "2026-09-04",
+      "archetypes": [
+        {
+          "name": "Gardevoir",
+          "icons": [
+            "gardevoir"
+          ],
+          "share": 5.17,
+          "cards": [
+            "SVI/086"
+          ]
+        },
+        {
+          "name": "Dragapult",
+          "icons": [
+            "dragapult"
+          ],
+          "share": 4.89,
+          "cards": [
+            "TWM/130"
+          ]
+        },
+        {
+          "name": "Regidrago",
+          "icons": [
+            "regidrago"
+          ],
+          "share": 4.02,
+          "cards": [
+            "SIT/136"
+          ]
+        },
+        {
+          "name": "Ceruledge",
+          "icons": [
+            "ceruledge"
+          ],
+          "share": 3.16,
+          "cards": [
+            "SSP/036"
+          ]
+        },
+        {
+          "name": "Charizard",
+          "icons": [
+            "charizard"
+          ],
+          "share": 3.16,
+          "cards": [
+            "OBF/125"
+          ]
+        },
+        {
+          "name": "Mega Lucario",
+          "icons": [
+            "lucario-mega"
+          ],
+          "share": 3.16,
+          "cards": [
+            "MEG/077"
+          ]
+        },
+        {
+          "name": "Alakazam",
+          "icons": [
+            "alakazam"
+          ],
+          "share": 2.87,
+          "cards": [
+            "MEG/056"
+          ]
+        },
+        {
+          "name": "Mega Venusaur",
+          "icons": [
+            "venusaur-mega"
+          ],
+          "share": 2.87,
+          "cards": [
+            "MEG/003"
+          ]
+        },
+        {
+          "name": "Gholdengo",
+          "icons": [
+            "gholdengo"
+          ],
+          "share": 2.59,
+          "cards": [
+            "PAR/139"
+          ]
+        },
+        {
+          "name": "Mew Genesect",
+          "icons": [
+            "mew",
+            "genesect"
+          ],
+          "share": 2.3,
+          "cards": [
+            "FST/114",
+            "FST/185"
+          ]
+        },
+        {
+          "name": "Miraidon",
+          "icons": [
+            "miraidon"
+          ],
+          "share": 1.72,
+          "cards": [
+            "SVI/081"
+          ]
+        },
+        {
+          "name": "N's Zoroark",
+          "icons": [
+            "zoroark"
+          ],
+          "share": 1.72,
+          "cards": [
+            "JTG/098"
+          ]
+        },
+        {
+          "name": "Raging Bolt",
+          "icons": [
+            "raging-bolt"
+          ],
+          "share": 1.72,
+          "cards": [
+            "TEF/123"
+          ]
+        },
+        {
+          "name": "Shadow Rider Calyrex",
+          "icons": [
+            "calyrex-shadow-rider"
+          ],
+          "share": 1.72,
+          "cards": [
+            "CRE/075"
+          ]
+        },
+        {
+          "name": "Blissey",
+          "icons": [
+            "blissey"
+          ],
+          "share": 1.44,
+          "cards": [
+            "CRE/119"
+          ]
+        },
+        {
+          "name": "Froslass Munkidori",
+          "icons": [
+            "froslass",
+            "munkidori"
+          ],
+          "share": 1.44,
+          "cards": [
+            "ASC/047",
+            "TWM/095"
+          ]
+        },
+        {
+          "name": "Honchkrow",
+          "icons": [
+            "honchkrow"
+          ],
+          "share": 1.44,
+          "cards": [
+            "UNB/109"
+          ]
+        },
+        {
+          "name": "Iron Thorns",
+          "icons": [
+            "iron-thorns"
+          ],
+          "share": 1.44,
+          "cards": [
+            "TWM/077"
+          ]
+        },
+        {
+          "name": "Mega Absol Box",
+          "icons": [
+            "absol-mega",
+            "kangaskhan-mega"
+          ],
+          "share": 1.44,
+          "cards": [
+            "MEG/086",
+            "MEG/104"
+          ]
+        },
+        {
+          "name": "Mega Lopunny",
+          "icons": [
+            "lopunny-mega"
+          ],
+          "share": 1.44,
+          "cards": [
+            "PFL/084"
+          ]
+        },
+        {
+          "name": "Greninja",
+          "icons": [
+            "greninja"
+          ],
+          "share": 1.15,
+          "cards": [
+            "TWM/106"
+          ]
+        },
+        {
+          "name": "Lugia Archeops",
+          "icons": [
+            "lugia",
+            "archeops"
+          ],
+          "share": 1.15,
+          "cards": [
+            "SIT/139",
+            "SIT/147"
+          ]
+        },
+        {
+          "name": "Ogerpon Meganium",
+          "icons": [
+            "ogerpon",
+            "meganium"
+          ],
+          "share": 1.15,
+          "cards": [
+            "TWM/025",
+            "MEG/010"
+          ]
+        },
+        {
+          "name": "Rocket's Mewtwo",
+          "icons": [
+            "mewtwo",
+            "spidops"
+          ],
+          "share": 1.15,
+          "cards": [
+            "DRI/081",
+            "DRI/020"
+          ]
+        },
+        {
+          "name": "Snorlax Stall",
+          "icons": [
+            "snorlax"
+          ],
+          "share": 1.15,
+          "cards": [
+            "PGO/055"
+          ]
+        },
+        {
+          "name": "Vikavolt",
+          "icons": [
+            "vikavolt"
+          ],
+          "share": 1.15,
+          "cards": [
+            "DAA/060"
+          ]
+        },
+        {
+          "name": "ADP",
+          "icons": [
+            "arceus"
+          ],
+          "share": 0.86,
+          "cards": [
+            "CEC/156"
+          ]
+        },
+        {
+          "name": "Conkeldurr",
+          "icons": [
+            "conkeldurr"
+          ],
+          "share": 0.86,
+          "cards": [
+            "TWM/105"
+          ]
+        },
+        {
+          "name": "Cynthia's Garchomp",
+          "icons": [
+            "garchomp"
+          ],
+          "share": 0.86,
+          "cards": [
+            "DRI/104"
+          ]
+        },
+        {
+          "name": "Eternatus",
+          "icons": [
+            "eternatus-eternamax"
+          ],
+          "share": 0.86,
+          "cards": [
+            "DAA/117"
+          ]
+        },
+        {
+          "name": "Lost Zone Box",
+          "icons": [
+            "comfey",
+            "cramorant"
+          ],
+          "share": 0.86,
+          "cards": [
+            "LOR/079",
+            "LOR/050"
+          ]
+        },
+        {
+          "name": "Marnie's Grimmsnarl",
+          "icons": [
+            "grimmsnarl"
+          ],
+          "share": 0.86,
+          "cards": [
+            "DRI/136"
+          ]
+        },
+        {
+          "name": "Rocket's Honchkrow",
+          "icons": [
+            "honchkrow",
+            "porygon2"
+          ],
+          "share": 0.86,
+          "cards": [
+            "ASC/127",
+            "DRI/154"
+          ]
+        },
+        {
+          "name": "Slowking",
+          "icons": [
+            "slowking"
+          ],
+          "share": 0.86,
+          "cards": [
+            "SCR/058"
+          ]
+        },
+        {
+          "name": "Ultra Necrozma",
+          "icons": [
+            "necrozma-ultra"
+          ],
+          "share": 0.86,
+          "cards": [
+            "CEC/164"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ex",
+      "label": "RS-PK",
+      "group": "past",
+      "players": 2731,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Dark Tyranitar",
+          "icons": [
+            "tyranitar"
+          ],
+          "share": 13.51,
+          "cards": [
+            "TRR/019"
+          ]
+        },
+        {
+          "name": "Gardevoir δ",
+          "icons": [
+            "gardevoir"
+          ],
+          "share": 7.47,
+          "cards": [
+            "DF/093"
+          ]
+        },
+        {
+          "name": "Rayler",
+          "icons": [
+            "rayquaza",
+            "stantler"
+          ],
+          "share": 7.36,
+          "cards": [
+            "DF/097",
+            "UF/032"
+          ]
+        },
+        {
+          "name": "Dragtrode",
+          "icons": [
+            "dragonite",
+            "electrode"
+          ],
+          "share": 5.57,
+          "cards": [
+            "TRR/015",
+            "TRR/004"
+          ]
+        },
+        {
+          "name": "Flygon δ",
+          "icons": [
+            "flygon"
+          ],
+          "share": 5.2,
+          "cards": [
+            "DF/092"
+          ]
+        },
+        {
+          "name": "Banette",
+          "icons": [
+            "banette"
+          ],
+          "share": 4.87,
+          "cards": [
+            "LM/085"
+          ]
+        },
+        {
+          "name": "Rai-Eggs",
+          "icons": [
+            "raichu",
+            "exeggutor"
+          ],
+          "share": 3.77,
+          "cards": [
+            "HP/015",
+            "HP/041"
+          ]
+        },
+        {
+          "name": "Arcanine ex",
+          "icons": [
+            "arcanine"
+          ],
+          "share": 3.11,
+          "cards": [
+            "LM/083"
+          ]
+        },
+        {
+          "name": "Scizor",
+          "icons": [
+            "scizor"
+          ],
+          "share": 2.45,
+          "cards": [
+            "UF/108"
+          ]
+        },
+        {
+          "name": "Blastoise Lugia",
+          "icons": [
+            "blastoise",
+            "lugia"
+          ],
+          "share": 2.42,
+          "cards": [
+            "RG/104",
+            "UF/105"
+          ]
+        },
+        {
+          "name": "Camler",
+          "icons": [
+            "camerupt",
+            "stantler"
+          ],
+          "share": 2.42,
+          "cards": [
+            "DX/004",
+            "UF/032"
+          ]
+        },
+        {
+          "name": "Nidoqueen",
+          "icons": [
+            "nidoqueen",
+            "pidgeot"
+          ],
+          "share": 2.27,
+          "cards": [
+            "RG/009",
+            "RG/010"
+          ]
+        },
+        {
+          "name": "Sceptile",
+          "icons": [
+            "sceptile"
+          ],
+          "share": 1.87,
+          "cards": [
+            "CG/096"
+          ]
+        },
+        {
+          "name": "Bombcatty",
+          "icons": [
+            "delcatty",
+            "electrode"
+          ],
+          "share": 1.83,
+          "cards": [
+            "CG/091",
+            "RG/107"
+          ]
+        },
+        {
+          "name": "Dragonite ex δ",
+          "icons": [
+            "dragonite"
+          ],
+          "share": 1.65,
+          "cards": [
+            "DF/091"
+          ]
+        },
+        {
+          "name": "Mewtric",
+          "icons": [
+            "manectric",
+            "mew"
+          ],
+          "share": 1.46,
+          "cards": [
+            "DX/101",
+            "LM/088"
+          ]
+        },
+        {
+          "name": "Latias Mewtwo δ",
+          "icons": [
+            "latias",
+            "mewtwo"
+          ],
+          "share": 1.43,
+          "cards": [
+            "DF/095",
+            "DS/012"
+          ]
+        },
+        {
+          "name": "Dark Steelix",
+          "icons": [
+            "steelix"
+          ],
+          "share": 1.14,
+          "cards": [
+            "TRR/010"
+          ]
+        },
+        {
+          "name": "Meganium",
+          "icons": [
+            "meganium"
+          ],
+          "share": 1.03,
+          "cards": [
+            "UF/106"
+          ]
+        },
+        {
+          "name": "Metanite",
+          "icons": [
+            "metagross",
+            "dragonite"
+          ],
+          "share": 1.03,
+          "cards": [
+            "DS/011",
+            "DS/003"
+          ]
+        },
+        {
+          "name": "Rat Lock",
+          "icons": [
+            "raticate",
+            "pidgeot"
+          ],
+          "share": 1.03,
+          "cards": [
+            "RG/048",
+            "RG/010"
+          ]
+        },
+        {
+          "name": "Exeggutor Electrode",
+          "icons": [
+            "exeggutor",
+            "electrode"
+          ],
+          "share": 0.99,
+          "cards": [
+            "RG/005",
+            "RG/107"
+          ]
+        },
+        {
+          "name": "Exeggutor Rayquaza δ",
+          "icons": [
+            "exeggutor",
+            "rayquaza"
+          ],
+          "share": 0.84,
+          "cards": [
+            "HP/041",
+            "DF/097"
+          ]
+        },
+        {
+          "name": "Kingdra δ",
+          "icons": [
+            "kingdra"
+          ],
+          "share": 0.77,
+          "cards": [
+            "DF/094"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2010",
+      "label": "2010",
+      "group": "past",
+      "players": 315,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Gardevoir",
+          "icons": [
+            "gardevoir"
+          ],
+          "share": 13.02,
+          "cards": [
+            "SW/131"
+          ]
+        },
+        {
+          "name": "Cursegar",
+          "icons": [
+            "gengar",
+            "spiritomb"
+          ],
+          "share": 12.06,
+          "cards": [
+            "AR/097",
+            "AR/032"
+          ]
+        },
+        {
+          "name": "Luxchomp",
+          "icons": [
+            "luxray",
+            "garchomp"
+          ],
+          "share": 10.48,
+          "cards": [
+            "RR/109",
+            "DPP/046"
+          ]
+        },
+        {
+          "name": "Flygon",
+          "icons": [
+            "flygon"
+          ],
+          "share": 7.62,
+          "cards": [
+            "RR/105"
+          ]
+        },
+        {
+          "name": "Gyarados",
+          "icons": [
+            "gyarados"
+          ],
+          "share": 7.3,
+          "cards": [
+            "SF/019"
+          ]
+        },
+        {
+          "name": "Dialgachomp",
+          "icons": [
+            "dialga",
+            "garchomp"
+          ],
+          "share": 6.98,
+          "cards": [
+            "PL/122",
+            "DPP/046"
+          ]
+        },
+        {
+          "name": "Jumpluff",
+          "icons": [
+            "jumpluff"
+          ],
+          "share": 5.08,
+          "cards": [
+            "HS/006"
+          ]
+        },
+        {
+          "name": "Tyranitar",
+          "icons": [
+            "tyranitar"
+          ],
+          "share": 4.13,
+          "cards": [
+            "UL/088"
+          ]
+        },
+        {
+          "name": "Magnezone",
+          "icons": [
+            "magnezone"
+          ],
+          "share": 2.86,
+          "cards": [
+            "LA/142"
+          ]
+        },
+        {
+          "name": "Kingdra",
+          "icons": [
+            "kingdra"
+          ],
+          "share": 2.22,
+          "cards": [
+            "UL/085"
+          ]
+        },
+        {
+          "name": "Donphan",
+          "icons": [
+            "donphan"
+          ],
+          "share": 1.9,
+          "cards": [
+            "HS/107"
+          ]
+        },
+        {
+          "name": "Palkia Lock",
+          "icons": [
+            "palkia",
+            "mesprit"
+          ],
+          "share": 1.59,
+          "cards": [
+            "PL/125",
+            "LA/034"
+          ]
+        },
+        {
+          "name": "Gengar",
+          "icons": [
+            "gengar"
+          ],
+          "share": 0.95,
+          "cards": [
+            "AR/097"
+          ]
+        },
+        {
+          "name": "Glaceon",
+          "icons": [
+            "glaceon"
+          ],
+          "share": 0.95,
+          "cards": [
+            "MD/098"
+          ]
+        },
+        {
+          "name": "Porygon-Z",
+          "icons": [
+            "porygon-z"
+          ],
+          "share": 0.95,
+          "cards": [
+            "MD/100"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2011",
+      "label": "2011",
+      "group": "past",
+      "players": 59,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Yanmega",
+          "icons": [
+            "yanmega"
+          ],
+          "share": 28.81,
+          "cards": [
+            "TM/098"
+          ]
+        },
+        {
+          "name": "Reshiram Typhlosion",
+          "icons": [
+            "reshiram",
+            "typhlosion"
+          ],
+          "share": 15.25,
+          "cards": [
+            "BLW/026",
+            "HS/110"
+          ]
+        },
+        {
+          "name": "Kingdra",
+          "icons": [
+            "kingdra"
+          ],
+          "share": 13.56,
+          "cards": [
+            "UL/085"
+          ]
+        },
+        {
+          "name": "Magnezone",
+          "icons": [
+            "magnezone"
+          ],
+          "share": 13.56,
+          "cards": [
+            "TM/096"
+          ]
+        },
+        {
+          "name": "Vileplume Reuniclus",
+          "icons": [
+            "vileplume",
+            "reuniclus"
+          ],
+          "share": 10.17,
+          "cards": [
+            "UD/024",
+            "BLW/057"
+          ]
+        },
+        {
+          "name": "Tyranitar",
+          "icons": [
+            "tyranitar"
+          ],
+          "share": 3.39,
+          "cards": [
+            "UL/088"
+          ]
+        },
+        {
+          "name": "Magmortar",
+          "icons": [
+            "magmortar"
+          ],
+          "share": 1.69,
+          "cards": [
+            "TM/027"
+          ]
+        },
+        {
+          "name": "Typhlosion RDL",
+          "icons": [
+            "typhlosion",
+            "rayquaza"
+          ],
+          "share": 1.69,
+          "cards": [
+            "HS/110",
+            "UD/089"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "2016",
+      "label": "2016",
+      "group": "past",
+      "players": 108,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Greninja",
+          "icons": [
+            "greninja"
+          ],
+          "share": 15.74,
+          "cards": [
+            "BKP/041"
+          ]
+        },
+        {
+          "name": "Night March",
+          "icons": [
+            "joltik",
+            "pumpkaboo"
+          ],
+          "share": 12.96,
+          "cards": [
+            "PHF/026",
+            "PHF/044"
+          ]
+        },
+        {
+          "name": "Vespiquen",
+          "icons": [
+            "vespiquen"
+          ],
+          "share": 8.33,
+          "cards": [
+            "AOR/010"
+          ]
+        },
+        {
+          "name": "Seismitoad",
+          "icons": [
+            "seismitoad"
+          ],
+          "share": 7.41,
+          "cards": [
+            "FFI/020"
+          ]
+        },
+        {
+          "name": "Bronzong Box",
+          "icons": [
+            "bronzong",
+            "aegislash"
+          ],
+          "share": 6.48,
+          "cards": [
+            "FCO/062",
+            "PHF/065"
+          ]
+        },
+        {
+          "name": "Mega Audino",
+          "icons": [
+            "audino-mega"
+          ],
+          "share": 6.48,
+          "cards": [
+            "FCO/085"
+          ]
+        },
+        {
+          "name": "Mega Manectric",
+          "icons": [
+            "manectric-mega"
+          ],
+          "share": 6.48,
+          "cards": [
+            "PHF/024"
+          ]
+        },
+        {
+          "name": "Volcanion",
+          "icons": [
+            "volcanion"
+          ],
+          "share": 5.56,
+          "cards": [
+            "STS/026"
+          ]
+        },
+        {
+          "name": "Darkrai",
+          "icons": [
+            "darkrai"
+          ],
+          "share": 4.63,
+          "cards": [
+            "BKP/074"
+          ]
+        },
+        {
+          "name": "Trevenant",
+          "icons": [
+            "trevenant"
+          ],
+          "share": 4.63,
+          "cards": [
+            "BKP/066"
+          ]
+        },
+        {
+          "name": "Yveltal",
+          "icons": [
+            "yveltal"
+          ],
+          "share": 3.7,
+          "cards": [
+            "XY/079"
+          ]
+        },
+        {
+          "name": "Mega Gardevoir",
+          "icons": [
+            "gardevoir-mega"
+          ],
+          "share": 0.93,
+          "cards": [
+            "PRC/106"
+          ]
+        },
+        {
+          "name": "Primal Groudon",
+          "icons": [
+            "groudon-primal"
+          ],
+          "share": 0.93,
+          "cards": [
+            "PRC/086"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sumlot",
+      "label": "SUM-LOT",
+      "group": "past",
+      "players": 189,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Zoroark",
+          "icons": [
+            "zoroark"
+          ],
+          "share": 24.87,
+          "cards": [
+            "SLG/053"
+          ]
+        },
+        {
+          "name": "Malamar",
+          "icons": [
+            "malamar"
+          ],
+          "share": 11.64,
+          "cards": [
+            "FLI/051"
+          ]
+        },
+        {
+          "name": "Blacephalon (GX)",
+          "icons": [
+            "blacephalon"
+          ],
+          "share": 11.11,
+          "cards": [
+            "LOT/052"
+          ]
+        },
+        {
+          "name": "Gardevoir",
+          "icons": [
+            "gardevoir"
+          ],
+          "share": 7.94,
+          "cards": [
+            "BUS/093"
+          ]
+        },
+        {
+          "name": "Regigigas Stall",
+          "icons": [
+            "regigigas",
+            "hoopa-unbound"
+          ],
+          "share": 6.35,
+          "cards": [
+            "CIN/084",
+            "SLG/055"
+          ]
+        },
+        {
+          "name": "Granbull",
+          "icons": [
+            "granbull"
+          ],
+          "share": 5.82,
+          "cards": [
+            "LOT/138"
+          ]
+        },
+        {
+          "name": "Lost March",
+          "icons": [
+            "jumpluff",
+            "natu"
+          ],
+          "share": 4.23,
+          "cards": [
+            "LOT/014",
+            "LOT/087"
+          ]
+        },
+        {
+          "name": "Tapu Koko Spread",
+          "icons": [
+            "tapu-koko"
+          ],
+          "share": 3.7,
+          "cards": [
+            "SMP/030"
+          ]
+        },
+        {
+          "name": "Buzzwole (GX)",
+          "icons": [
+            "buzzwole"
+          ],
+          "share": 2.65,
+          "cards": [
+            "CIN/057"
+          ]
+        },
+        {
+          "name": "Buzzwole (FLI)",
+          "icons": [
+            "buzzwole"
+          ],
+          "share": 2.12,
+          "cards": [
+            "FLI/077"
+          ]
+        },
+        {
+          "name": "Meganium Box",
+          "icons": [
+            "meganium",
+            "swampert"
+          ],
+          "share": 2.12,
+          "cards": [
+            "LOT/008",
+            "CES/035"
+          ]
+        },
+        {
+          "name": "Rayquaza",
+          "icons": [
+            "rayquaza"
+          ],
+          "share": 2.12,
+          "cards": [
+            "CES/109"
+          ]
+        },
+        {
+          "name": "Sylveon",
+          "icons": [
+            "sylveon"
+          ],
+          "share": 1.59,
+          "cards": [
+            "GRI/092"
+          ]
+        },
+        {
+          "name": "Decidueye",
+          "icons": [
+            "decidueye"
+          ],
+          "share": 1.06,
+          "cards": [
+            "SUM/012"
+          ]
+        },
+        {
+          "name": "White Kyurem",
+          "icons": [
+            "kyurem-white"
+          ],
+          "share": 1.06,
+          "cards": [
+            "LOT/063"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rmep",
+      "label": "EFG",
+      "group": "past",
+      "points": 14495,
+      "top": 22,
+      "windows": 1,
+      "scrapedAt": "2026-09-04",
+      "archetypes": [
+        {
+          "name": "Giratina",
+          "icons": [
+            "giratina-origin"
+          ],
+          "share": 15.7,
+          "cards": [
+            "LOR/131"
+          ]
+        },
+        {
+          "name": "Gardevoir",
+          "icons": [
+            "gardevoir"
+          ],
+          "share": 14.47,
+          "cards": [
+            "SVI/086"
+          ]
+        },
+        {
+          "name": "Charizard",
+          "icons": [
+            "charizard"
+          ],
+          "share": 14.4,
+          "cards": [
+            "OBF/125"
+          ]
+        },
+        {
+          "name": "Mew Genesect",
+          "icons": [
+            "mew",
+            "genesect"
+          ],
+          "share": 9.01,
+          "cards": [
+            "FST/114",
+            "FST/185"
+          ]
+        },
+        {
+          "name": "Lost Zone Box",
+          "icons": [
+            "comfey",
+            "sableye"
+          ],
+          "share": 8.89,
+          "cards": [
+            "LOR/079",
+            "LOR/070"
+          ]
+        },
+        {
+          "name": "Roaring Moon",
+          "icons": [
+            "roaring-moon"
+          ],
+          "share": 8.46,
+          "cards": [
+            "PAR/124"
+          ]
+        },
+        {
+          "name": "Miraidon",
+          "icons": [
+            "miraidon"
+          ],
+          "share": 8.04,
+          "cards": [
+            "SVI/081"
+          ]
+        },
+        {
+          "name": "Snorlax Stall",
+          "icons": [
+            "snorlax"
+          ],
+          "share": 4.89,
+          "cards": [
+            "PGO/055"
+          ]
+        },
+        {
+          "name": "Inteleon",
+          "icons": [
+            "inteleon-gmax"
+          ],
+          "share": 3.36,
+          "cards": [
+            "FST/079"
+          ]
+        },
+        {
+          "name": "Chien-Pao Baxcalibur",
+          "icons": [
+            "chien-pao",
+            "baxcalibur"
+          ],
+          "share": 3.07,
+          "cards": [
+            "PAL/061",
+            "PAL/060"
+          ]
+        },
+        {
+          "name": "Entei",
+          "icons": [
+            "entei"
+          ],
+          "share": 2.77,
+          "cards": [
+            "BRS/022"
+          ]
+        },
+        {
+          "name": "Arceus",
+          "icons": [
+            "arceus"
+          ],
+          "share": 2.14,
+          "cards": [
+            "BRS/123"
+          ]
+        },
+        {
+          "name": "Gholdengo",
+          "icons": [
+            "gholdengo"
+          ],
+          "share": 1.14,
+          "cards": [
+            "PAR/139"
+          ]
+        },
+        {
+          "name": "Palkia",
+          "icons": [
+            "palkia-origin"
+          ],
+          "share": 1.01,
+          "cards": [
+            "ASR/040"
+          ]
+        },
+        {
+          "name": "Klawf",
+          "icons": [
+            "klawf"
+          ],
+          "share": 0.96,
+          "cards": [
+            "PAR/105"
+          ]
+        },
+        {
+          "name": "Lugia Archeops",
+          "icons": [
+            "lugia",
+            "archeops"
+          ],
+          "share": 0.84,
+          "cards": [
+            "SIT/139",
+            "SIT/147"
+          ]
+        },
+        {
+          "name": "Zoroark Box",
+          "icons": [
+            "zoroark"
+          ],
+          "share": 0.29,
+          "cards": [
+            "EVS/103"
+          ]
+        },
+        {
+          "name": "Rapid Strike Urshifu",
+          "icons": [
+            "urshifu-rapid-strike-gmax"
+          ],
+          "share": 0.19,
+          "cards": [
+            "BST/088"
+          ]
+        },
+        {
+          "name": "Regis",
+          "icons": [
+            "regigigas"
+          ],
+          "share": 0.08,
+          "cards": [
+            "ASR/130"
+          ]
+        },
+        {
+          "name": "Dialga",
+          "icons": [
+            "dialga-origin"
+          ],
+          "share": 0.07,
+          "cards": [
+            "ASR/114"
+          ]
+        },
+        {
+          "name": "Hisuian Goodra",
+          "icons": [
+            "goodra-hisui"
+          ],
+          "share": 0.07,
+          "cards": [
+            "LOR/136"
+          ]
+        },
+        {
+          "name": "Banette",
+          "icons": [
+            "banette"
+          ],
+          "share": 0.07,
+          "cards": [
+            "SVI/088"
+          ]
+        }
+      ]
+    }
+  ]
+}
