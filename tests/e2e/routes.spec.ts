@@ -363,30 +363,30 @@ test('a tier-list tile always has artwork, even with no sprite to show', async (
   expect(smallest, 'every unlabelled chip should be a 44px target').toBeGreaterThanOrEqual(44);
 });
 
-test('a past format ranks its own archetypes and drops the previews toggle', async ({ page }) => {
-  // The past formats are bundled, not fetched, so this needs no fixture — and
-  // it is the case worth covering: they carry sprites but no card thumbnails,
-  // which is why the Previews toggle has to go away with them.
+test('a past format ranks its own archetypes and keeps the previews toggle', async ({ page }) => {
+  // The past formats are bundled, not fetched, so this needs no fixture. Their
+  // snapshot carries the cards each archetype's decklists were built around, so
+  // the toggle survives the format change rather than vanishing with it.
   await gotoClean(page, '/tools/tier-list');
   await expect(page.getByRole('tab', { name: 'Previews', exact: true })).toBeVisible();
 
   await page.locator('.tl-conf select.sel').selectOption('2016');
-  await expect(page.getByRole('tab', { name: 'Previews', exact: true })).toBeHidden();
+  await expect(page.getByRole('tab', { name: 'Previews', exact: true })).toBeVisible();
   await expect(page.locator('.tl-tray .tl-item').first()).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('.tl-tray')).toContainText('Night March');
   expect(new URL(page.url()).searchParams.get('format')).toBe('2016');
 });
 
-test('leaving previews for a format without them falls back to icons', async ({ page }) => {
+test('previews survive a format change and draw the cards of the new one', async ({ page }) => {
   await gotoClean(page, '/tools/tier-list');
   await page.getByRole('tab', { name: 'Previews', exact: true }).click();
   await expect(page.locator('.tl-tray .tl-prev').first()).toBeAttached({ timeout: 15_000 });
 
   await page.locator('.tl-conf select.sel').selectOption('ex');
-  // Previews had nothing to draw here; the board has to show sprite chips
-  // rather than a tray of empty frames.
-  await expect(page.locator('.tl-tray .tl-prev')).toHaveCount(0);
-  await expect(page.locator('.tl-tray .tl-ico').first()).toBeVisible();
+  // A vintage format's art comes off pokemontcg.io rather than the Limitless
+  // CDN, so this is also the check that that source is wired up at all.
+  await expect(page.locator('.tl-tray .tl-prev').first()).toBeAttached({ timeout: 15_000 });
+  await expect(page.locator('.tl-tray .tl-noart')).toHaveCount(0);
 });
 
 test('an unknown route renders the not-found page rather than erroring', async ({ page }) => {

@@ -183,11 +183,11 @@ export function TierListPage() {
   });
 
   /**
-   * Previews only exist on Standard, so landing on any other format has to put
-   * the view back to icons — otherwise the board renders empty tiles and the
-   * toggle that would fix it is gone with the format that offered it. An effect
-   * rather than a handler on the picker: a shared link and the back button set
-   * the format too, and neither goes through the picker.
+   * Landing on a format with no card art has to put the view back to icons —
+   * otherwise the board renders empty tiles and the toggle that would fix it is
+   * gone with the format that offered it. An effect rather than a handler on
+   * the picker: a shared link and the back button set the format too, and
+   * neither goes through the picker.
    */
   createEffect(() => {
     if (mode() === 'previews' && !format().previews) {
@@ -595,8 +595,8 @@ export function TierListPage() {
             </Combo>
           </Show>
 
-          {/* Only Standard carries card thumbnails. Offering Previews on a
-              format with none would be a toggle that changes nothing. */}
+          {/* Offering Previews on a format whose snapshot predates card art
+              would be a toggle that changes nothing. */}
           <Show when={mode() !== 'arts' && format().previews}>
             <div class='segmented' role='tablist' aria-label='Archetype artwork'>
               <button

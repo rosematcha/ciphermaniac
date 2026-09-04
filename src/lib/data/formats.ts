@@ -3,11 +3,11 @@
  * come from.
  *
  * Two sources, one interface. Standard is our own rolling online-meta report on
- * R2 — rebuilt daily, and the only format that ships card thumbnails, because
- * it is the only one whose decklists we hold. Everything else is a committed
- * snapshot of the Limitless metagame table, scraped by
- * `.github/scripts/scrape-format-archetypes.py`; those carry sprite slugs and
- * nothing else.
+ * R2, rebuilt daily. Everything else is a committed snapshot of the Limitless
+ * metagame table, scraped by `.github/scripts/scrape-format-archetypes.py`,
+ * which reads each archetype's decklists there for the cards it was built
+ * around — so a scraped format carries sprite slugs and card art both, and
+ * Previews works everywhere.
  *
  * The snapshot is bundled rather than fetched for the same reason the archetype
  * icon map is: the repo's runtime data dir is CI-populated, so a same-origin
@@ -30,9 +30,9 @@ export interface TierFormat {
   label: string;
   group: FormatGroup;
   /**
-   * Whether the format's archetypes carry card thumbnails. Only Standard does,
-   * and the page hides its Icons/Previews toggle without them — a Previews
-   * mode with nothing to preview is a broken control, not an empty one.
+   * Whether the format's archetypes carry card thumbnails. The page hides its
+   * Icons/Previews toggle without them — a Previews mode with nothing to
+   * preview is a broken control, not an empty one.
    */
   previews: boolean;
 }
@@ -41,6 +41,8 @@ interface SnapshotArchetype {
   name: string;
   icons: string[];
   share: number;
+  /** `SET/NNN` refs, at most two. Absent on a snapshot taken before arts. */
+  cards?: string[];
 }
 
 interface SnapshotFormat {
@@ -75,6 +77,17 @@ const SCRAPED: SnapshotFormat[] = ((snapshot as { formats?: SnapshotFormat[] }).
 const SCRAPED_BY_ID = new Map(SCRAPED.map(format => [format.id, format]));
 
 /**
+ * Whether every archetype in a format has art, which is what the Previews
+ * toggle promises. All-or-nothing on purpose: a board where a handful of tiles
+ * fall back to their name reads as broken art, not as a format we know less
+ * about, and the honest fix is to leave the toggle off until the scrape covers
+ * the whole table.
+ */
+function hasArts(format: SnapshotFormat): boolean {
+  return format.archetypes.every(archetype => (archetype.cards?.length ?? 0) > 0);
+}
+
+/**
  * Every format the picker offers, in display order: Standard leads, then the
  * snapshot's own order, which its producer keeps in catalog order.
  */
@@ -84,7 +97,7 @@ export const TIER_FORMATS: TierFormat[] = [
     id: format.id,
     label: format.label,
     group: format.group === 'past' ? ('past' as const) : ('current' as const),
-    previews: false
+    previews: hasArts(format)
   }))
 ];
 
@@ -110,8 +123,8 @@ export function tierFormat(id: string | undefined): TierFormat {
  *
  * Async for both sources so the caller does not have to know which one it got.
  * The snapshot's entries fill in the index shape's required fields rather than
- * inventing data: there are no decklists behind a scraped format, so its deck
- * count is null and its thumbnails are empty.
+ * inventing data: its cards are the ones the format's own decklists were built
+ * around, but no report stands behind them, so the deck count stays null.
  */
 export async function fetchFormatArchetypes(id: string): Promise<ArchetypeIndexEntry[]> {
   const format = tierFormat(id);
@@ -123,7 +136,7 @@ export async function fetchFormatArchetypes(id: string): Promise<ArchetypeIndexE
     label: archetype.name,
     deckCount: null,
     percent: archetype.share,
-    thumbnails: [],
+    thumbnails: archetype.cards ?? [],
     icons: archetype.icons
   }));
 }
