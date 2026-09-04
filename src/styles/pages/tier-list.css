@@ -664,26 +664,47 @@ body[data-mode='dark'] .tl-btn {
   padding: 6px 10px;
   font-size: 12.5px;
 }
-/* Which card the board is currently showing, beside the box that changes it —
-   the same shape as PokemonPicker's selected-sprite row. */
-.tl-current {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12.5px;
+/* The picker stands for the card the board is showing — thumbnail in the
+   field, name as the value — so it sits where the format select sits on the
+   other tab and matches its height and caret. It used to be that name beside
+   a separate search box: two controls for one decision, and a phone stacked
+   them into rows of their own. */
+.tl-picker .search {
+  height: 34px;
+  padding: 0 28px 0 30px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  border-radius: var(--radius-sm);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    right 13px center,
+    right 8px center;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
 }
-.tl-current img {
-  width: 24px;
-  aspect-ratio: 5 / 7;
+/* Typing reads as typing, not as the chosen name. */
+.tl-picker .search[aria-expanded='true'] {
+  font-weight: 500;
+}
+.tl-combo-lead {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  pointer-events: none;
+}
+.tl-combo-lead img {
+  width: 17px;
+  height: 24px;
   object-fit: cover;
   border-radius: 2px;
-  border: 1px solid var(--border);
-}
-.tl-current span {
-  color: var(--muted);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--rule);
+  background: var(--surface-2);
 }
 /* No dark-mode overrides for these: `--shadow-1` already resolves to the
    offset on `--surface-2` there, and `--border` is the border. Restating both
@@ -721,6 +742,13 @@ body[data-mode='dark'] .tl-btn {
 }
 .tl-list li[aria-selected='true'] {
   background: var(--surface-2);
+}
+/* The row the box already stands for. */
+.tl-list li.cur {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.tl-list li.cur b {
+  font-weight: 700;
 }
 .tl-list li img {
   width: 26px;
@@ -896,7 +924,16 @@ body[data-mode='dark'] .tl-btn {
     width: 100%;
     flex: 1 1 100%;
   }
+  /* Three rows on the card-arts tab, not four: the Labels chip joins the
+     subject tabs on the first, the picker takes the second alone, the actions
+     keep the third. The format select is left in place — its row also holds
+     the Icons/Previews toggle, which would not fit beside the tabs. */
+  .tl-conf .tl-combo,
+  .tl-conf .grow {
+    order: 1;
+  }
   .tl-actions {
+    order: 2;
     width: 100%;
   }
   .tl-actions .tl-btn {

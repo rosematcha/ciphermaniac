@@ -1,8 +1,3 @@
-/**
- * tests/security/api-security.test.ts
- * Security-focused tests for API endpoints including feedback and thumbnails.
- */
-
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -10,22 +5,15 @@ import { generateMaliciousInput } from '../__utils__/mock-data-factory.js';
 
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers.js';
 
-// Import the feedback handler under test
 import * as FeedbackModule from '../../functions/api/feedback.ts';
-
-// Import thumbnail handler for path validation tests
 import * as ThumbnailModule from '../../functions/thumbnails/[[path]].ts';
 import * as SpriteModule from '../../functions/sprites/[[path]].ts';
 
-// Reset rate limit store before each test to prevent cross-test interference
 beforeEach(() => {
   FeedbackModule._resetRateLimitStore();
   restoreFetch();
 });
 
-/**
- * Helper to build a Cloudflare-style Request for the function
- */
 function makeJsonRequest(body: unknown, headers: Record<string, string> = {}) {
   return new Request('https://ciphermaniac.test/feedback', {
     method: 'POST',
@@ -37,13 +25,6 @@ function makeJsonRequest(body: unknown, headers: Record<string, string> = {}) {
   });
 }
 
-// ============================================================================
-// Feedback API Security Tests
-// ============================================================================
-
-/**
- * Test: Ensure preflight OPTIONS returns expected CORS headers.
- */
 test('Feedback API: OPTIONS preflight returns CORS headers', async () => {
   const resp = FeedbackModule.onRequestOptions();
   assert.equal(resp.status, 200);
@@ -53,14 +34,10 @@ test('Feedback API: OPTIONS preflight returns CORS headers', async () => {
   assert.ok(allowMethods && allowMethods.includes('POST'));
 });
 
-/**
- * Test: malformed JSON and invalid content types should be rejected
- */
 test('Feedback API: rejects malformed JSON and invalid Content-Type', async () => {
   const badJsonReq = new Request('https://ciphermaniac.test/feedback', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // Intentionally malformed JSON
     body: '{invalidJson: true,'
   });
 
@@ -78,12 +55,6 @@ test('Feedback API: rejects malformed JSON and invalid Content-Type', async () =
   assert.equal(plainResp.status, 400);
 });
 
-/**
- * Test XSS and script tag sanitization by observing the content sent to the email provider.
- * The feedback handler builds a plaintext email and forwards it via Resend API. We mock
- * the outbound fetch to capture the `body` sent. The secure expectation is that
- * user-supplied HTML/script content is neutralized before being forwarded.
- */
 test('Feedback API: neutralizes XSS and script tags in outgoing email payload', async () => {
   const malicious = generateMaliciousInput('xss').payload as string;
   let capturedBodyText = null as string | null;
@@ -91,13 +62,8 @@ test('Feedback API: neutralizes XSS and script tags in outgoing email payload', 
   mockFetch([
     {
       predicate: (_input, init) => {
-        // capture the body that would be POSTed to the external mail API
-        try {
-          if (init && typeof (init as any).body === 'string') {
-            capturedBodyText = (init as any).body as string;
-          }
-        } catch {
-          // ignore
+        if (typeof init?.body === 'string') {
+          capturedBodyText = init.body;
         }
         return true;
       },
@@ -118,23 +84,17 @@ test('Feedback API: neutralizes XSS and script tags in outgoing email payload', 
   const resp = await FeedbackModule.onRequestPost({ request: req, env });
   assert.equal(resp.status, 200, 'Expected successful response when mail provider accepts request');
 
-  // We expect the outgoing email payload (JSON string) to NOT contain raw script tags or angle brackets
   assert.ok(capturedBodyText !== null, 'Outbound email body should have been captured by mockFetch');
   if (capturedBodyText) {
     const lower = capturedBodyText.toLowerCase();
-    // The secure expectation (test assertion) is that script tags are neutralized
     assert.equal(lower.includes('<script>'), false, 'Outbound email should not contain literal <script> tags');
     assert.equal(lower.includes('</script>'), false, 'Outbound email should not contain literal </script> tags');
-    // Also expect that common XSS sequences are either encoded or stripped
     assert.equal(lower.includes("alert('xss')"), false, 'Outbound email should not contain direct JS payloads');
   }
 
   restoreFetch();
 });
 
-/**
- * Email header injection should be prevented: contactInfo must not inject additional headers
- */
 test('Feedback API: prevents email header injection via contactInfo', async () => {
   let capturedBodyText = null as string | null;
   mockFetch([
@@ -163,22 +123,20 @@ test('Feedback API: prevents email header injection via contactInfo', async () =
 
   const resp = await FeedbackModule.onRequestPost({ request: req, env });
   assert.equal(resp.status, 200);
-  // Secure expectation: no raw header injection patterns inside the email text payload
   assert.ok(capturedBodyText !== null);
   if (capturedBodyText) {
-    const decoded = capturedBodyText;
-    assert.equal(decoded.includes('\nBcc:'), false, 'Outbound email must not contain injected Bcc header');
-    assert.equal(decoded.includes('\r\nBcc:'), false, 'Outbound email must not contain CRLF-injected Bcc header');
+    assert.equal(capturedBodyText.includes('\nBcc:'), false, 'Outbound email must not contain injected Bcc header');
+    assert.equal(
+      capturedBodyText.includes('\r\nBcc:'),
+      false,
+      'Outbound email must not contain CRLF-injected Bcc header'
+    );
   }
 
   restoreFetch();
 });
 
-/**
- * Test that API does not echo secrets such as API keys when a downstream service returns an error message
- */
 test('Feedback API: does not expose API keys from downstream errors', async () => {
-  // Simulate downstream provider returning an error body that contains sensitive token material
   const leakedKey = 'Bearer sk_live_SUPER_SECRET_KEY_12345';
   mockFetch([
     {
@@ -198,18 +156,13 @@ test('Feedback API: does not expose API keys from downstream errors', async () =
   const env = { RESEND_API_KEY: 'sk_set_but_downstream_leaks' } as any;
 
   const resp = await FeedbackModule.onRequestPost({ request: req, env });
-  // The function is expected to catch and return 500 on downstream failure
   assert.equal(resp.status, 500);
   const text = await resp.text();
-  // Secure expectation: response body should NOT contain leaked key material
   assert.equal(text.includes('SUPER_SECRET_KEY_12345'), false, 'Error response must not echo downstream secrets');
 
   restoreFetch();
 });
 
-/**
- * Unicode handling and size tests: ensure unicode payloads are preserved and very large bodies handled safely
- */
 test('Feedback API: handles unicode characters and enforces size limits', async () => {
   let captured = null as string | null;
   mockFetch([
@@ -237,8 +190,7 @@ test('Feedback API: handles unicode characters and enforces size limits', async 
   assert.equal(resp.status, 200);
   assert.ok(captured && captured.includes(unicode), 'Unicode content should be preserved in outgoing email text');
 
-  // Test extremely large body (>1MB). The secure expectation is that the API rejects overly large submissions.
-  const largeString = 'A'.repeat(1024 * 1024 + 100); // ~1MB + 100 bytes
+  const largeString = 'A'.repeat(1024 * 1024 + 100);
   const largeReq = new Request('https://ciphermaniac.test/feedback', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -246,30 +198,18 @@ test('Feedback API: handles unicode characters and enforces size limits', async 
   });
 
   const largeResp = await FeedbackModule.onRequestPost({ request: largeReq, env });
-  // Secure expectation: the server should reject the large payload (413 or 400). We assert it here so failures will flag.
   assert.ok([413, 400].includes(largeResp.status), `Large payload should be rejected; got ${largeResp.status}`);
 
   restoreFetch();
 });
 
-// ============================================================================
-// Thumbnail Path Validation Tests
-// ============================================================================
-
-/**
- * Helper to create a thumbnail request
- */
 function makeThumbnailRequest(path: string): Request {
   return new Request(`https://ciphermaniac.test${path}`, {
     method: 'GET'
   });
 }
 
-/**
- * Test: Thumbnail endpoint validates path format
- */
 test('Thumbnail API: rejects invalid path format', async () => {
-  // Missing parts
   const request = makeThumbnailRequest('/thumbnails/sm/TEF');
   const response = await ThumbnailModule.onRequest({ request });
   assert.strictEqual(response.status, 400, 'Should reject path with missing number');
@@ -277,9 +217,6 @@ test('Thumbnail API: rejects invalid path format', async () => {
   assert.ok(text.includes('Invalid path format'), 'Error should mention path format');
 });
 
-/**
- * Test: Thumbnail endpoint validates size parameter
- */
 test('Thumbnail API: rejects invalid size parameter', async () => {
   const request = makeThumbnailRequest('/thumbnails/large/TEF/123');
   const response = await ThumbnailModule.onRequest({ request });
@@ -288,44 +225,29 @@ test('Thumbnail API: rejects invalid size parameter', async () => {
   assert.ok(text.includes('Invalid size'), 'Error should mention invalid size');
 });
 
-/**
- * Test: Thumbnail endpoint validates set code format
- */
 test('Thumbnail API: rejects invalid set code format', async () => {
-  // Set code with special characters (potential path traversal)
   const request = makeThumbnailRequest('/thumbnails/sm/../TEF/123');
   const response = await ThumbnailModule.onRequest({ request });
-  // The path parsing will result in different path parts
   assert.ok([400, 404].includes(response.status), 'Should reject malformed set code');
 });
 
 test('Thumbnail API: rejects set code with invalid characters', async () => {
-  // Set code too long
   const request = makeThumbnailRequest('/thumbnails/sm/TOOLONGSETCODE/123');
   const response = await ThumbnailModule.onRequest({ request });
   assert.strictEqual(response.status, 400, 'Should reject set code > 8 chars');
 
-  // Set code too short
   const request2 = makeThumbnailRequest('/thumbnails/sm/X/123');
   const response2 = await ThumbnailModule.onRequest({ request: request2 });
   assert.strictEqual(response2.status, 400, 'Should reject set code < 2 chars');
 });
 
-/**
- * Test: Thumbnail endpoint validates card number format
- */
 test('Thumbnail API: rejects invalid card number format', async () => {
-  // Non-numeric card number with invalid chars
   const request = makeThumbnailRequest('/thumbnails/sm/TEF/abc!@#');
   const response = await ThumbnailModule.onRequest({ request });
   assert.strictEqual(response.status, 400, 'Should reject invalid card number');
 });
 
-/**
- * Test: Thumbnail endpoint handles path traversal attempts
- */
 test('Thumbnail API: prevents path traversal attacks', async () => {
-  // Attempt to traverse outside allowed paths
   const traversalPaths = [
     '/thumbnails/sm/../../etc/passwd',
     '/thumbnails/sm/TEF/../../../secret/123',
@@ -335,14 +257,10 @@ test('Thumbnail API: prevents path traversal attacks', async () => {
   for (const path of traversalPaths) {
     const request = makeThumbnailRequest(path);
     const response = await ThumbnailModule.onRequest({ request });
-    // Should either reject or result in 404 - never serve external files
     assert.ok([400, 404].includes(response.status), `Path traversal attempt should be blocked: ${path}`);
   }
 });
 
-/**
- * Test: Thumbnail OPTIONS returns proper CORS headers
- */
 test('Thumbnail API: OPTIONS preflight returns CORS headers', async () => {
   const response = await ThumbnailModule.onRequestOptions();
   assert.strictEqual(response.status, 204);
@@ -374,11 +292,7 @@ test('Sprite API: falls back and returns an immutable, CORS-open image', async (
   assert.strictEqual(response.headers.get('Vary'), null);
 });
 
-/**
- * Test: Thumbnail endpoint accepts valid paths
- */
 test('Thumbnail API: accepts valid sm/xs sizes', async () => {
-  // Mock fetch to simulate CDN response
   mockFetch({
     predicate: url => {
       const urlStr = typeof url === 'string' ? url : (url as Request).url;
@@ -389,14 +303,12 @@ test('Thumbnail API: accepts valid sm/xs sizes', async () => {
     body: 'fake-image-data'
   });
 
-  // Test 'sm' size
   const smRequest = makeThumbnailRequest('/thumbnails/sm/TEF/123');
   const smResponse = await ThumbnailModule.onRequest({ request: smRequest });
   assert.strictEqual(smResponse.status, 200, 'Should accept sm size');
 
   restoreFetch();
 
-  // Mock again for xs
   mockFetch({
     predicate: url => {
       const urlStr = typeof url === 'string' ? url : (url as Request).url;
@@ -407,7 +319,6 @@ test('Thumbnail API: accepts valid sm/xs sizes', async () => {
     body: 'fake-image-data'
   });
 
-  // Test 'xs' size
   const xsRequest = makeThumbnailRequest('/thumbnails/xs/PAL/45');
   const xsResponse = await ThumbnailModule.onRequest({ request: xsRequest });
   assert.strictEqual(xsResponse.status, 200, 'Should accept xs size');
@@ -415,10 +326,6 @@ test('Thumbnail API: accepts valid sm/xs sizes', async () => {
   restoreFetch();
 });
 
-/**
- * Test: Thumbnail endpoint accepts trainer-gallery numbers (letter prefix)
- * and probes the CDN's TG-style filename (LOR_TG24_R_EN_LG.png).
- */
 test('Thumbnail API: accepts trainer gallery card numbers', async () => {
   const requested: string[] = [];
   mockFetch({
@@ -444,7 +351,6 @@ test('Thumbnail API: accepts trainer gallery card numbers', async () => {
 
   restoreFetch();
 
-  // Single-digit gallery numbers pad to Limitless's two-digit form (GG05).
   const padded: string[] = [];
   mockFetch({
     predicate: url => {
@@ -466,10 +372,6 @@ test('Thumbnail API: accepts trainer gallery card numbers', async () => {
   restoreFetch();
 });
 
-/**
- * Test: variant suffixes are lowercased for the CDN's case-sensitive
- * filenames (SLG_068a, not SLG_068A) even when the request carries uppercase.
- */
 test('Thumbnail API: lowercases variant suffixes', async () => {
   const requested: string[] = [];
   mockFetch({
@@ -496,14 +398,10 @@ test('Thumbnail API: lowercases variant suffixes', async () => {
   restoreFetch();
 });
 
-/**
- * Test: Thumbnail endpoint normalizes card numbers correctly
- */
 test('Thumbnail API: handles card number normalization', async () => {
   mockFetch({
     predicate: (url, _init) => {
       const urlStr = typeof url === 'string' ? url : (url as Request).url;
-      // Verify the normalized URL format
       return urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com');
     },
     status: 200,
@@ -511,7 +409,6 @@ test('Thumbnail API: handles card number normalization', async () => {
     body: 'fake-image-data'
   });
 
-  // Card number with leading zeros
   const request = makeThumbnailRequest('/thumbnails/sm/TEF/007');
   const response = await ThumbnailModule.onRequest({ request });
   assert.strictEqual(response.status, 200, 'Should handle leading zeros');
@@ -519,9 +416,6 @@ test('Thumbnail API: handles card number normalization', async () => {
   restoreFetch();
 });
 
-/**
- * Test: Thumbnail endpoint handles card numbers with letter suffixes
- */
 test('Thumbnail API: accepts card numbers with letter suffix', async () => {
   mockFetch({
     predicate: () => true,
@@ -530,7 +424,6 @@ test('Thumbnail API: accepts card numbers with letter suffix', async () => {
     body: 'fake-image-data'
   });
 
-  // Card number with letter suffix (e.g., 123a, 45GG)
   const request = makeThumbnailRequest('/thumbnails/sm/TEF/123a');
   const response = await ThumbnailModule.onRequest({ request });
   assert.strictEqual(response.status, 200, 'Should accept card number with suffix');
@@ -538,11 +431,6 @@ test('Thumbnail API: accepts card numbers with letter suffix', async () => {
   restoreFetch();
 });
 
-/**
- * The pokemontcg.io leg of the proxy. Those scans hotlink fine, so this route
- * exists for CORS alone: without a same-origin copy the tier list's rasteriser
- * cannot read a vintage print back, and it exports as an empty frame.
- */
 test('Thumbnail API: proxies pokemontcg.io scans with CORS open', async () => {
   const requested: string[] = [];
   mockFetch({
@@ -570,8 +458,6 @@ test('Thumbnail API: proxies pokemontcg.io scans with CORS open', async () => {
 });
 
 test('Thumbnail API: the pokemontcg.io leg only forwards names it recognises', async () => {
-  // Nothing here may reach the network: an open-ended proxy is an open redirect
-  // with a cache in front of it.
   const attempted: string[] = [];
   mockFetch({
     predicate: url => {
