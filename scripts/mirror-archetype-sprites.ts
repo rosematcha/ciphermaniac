@@ -36,6 +36,16 @@ const s3Client = new S3Client({
 });
 const bucket = requireEnv('R2_BUCKET_NAME');
 
+/**
+ * Every slug the site can render, from both committed sources.
+ *
+ * The icon map covers Standard, which is the only format whose archetypes the
+ * runtime looks up by name. The format snapshot carries its own icons inline
+ * and reaches much further back — Expanded and the past formats bring in
+ * Pokémon that have never been Standard-legal here, and an unmirrored sprite
+ * loads cross-origin, which taints the canvas the tier list exports through and
+ * leaves a hole in the image.
+ */
 async function collectSlugs(): Promise<Set<string>> {
   const slugs = new Set<string>();
   const icons = JSON.parse(await readFile('src/data/archetype-icons.json', 'utf-8')) as Record<string, string[]>;
@@ -44,8 +54,16 @@ async function collectSlugs(): Promise<Set<string>> {
       slugs.add(slug);
     }
   }
-  // Icon slugs only ever come from this committed map (the runtime looks
-  // archetypes up in it), so mirroring the map's slugs covers everything.
+  const formats = JSON.parse(await readFile('src/data/format-archetypes.json', 'utf-8')) as {
+    formats?: { archetypes?: { icons?: string[] }[] }[];
+  };
+  for (const format of formats.formats ?? []) {
+    for (const archetype of format.archetypes ?? []) {
+      for (const slug of archetype.icons ?? []) {
+        slugs.add(slug);
+      }
+    }
+  }
   return slugs;
 }
 

@@ -1,0 +1,988 @@
+{
+  "version": 1,
+  "shareFloor": 0.75,
+  "formats": [
+    {
+      "id": "expanded",
+      "label": "Expanded",
+      "group": "current",
+      "players": 355,
+      "windows": 6,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Gardevoir",
+          "icons": [
+            "gardevoir"
+          ],
+          "share": 5.17
+        },
+        {
+          "name": "Dragapult",
+          "icons": [
+            "dragapult"
+          ],
+          "share": 4.89
+        },
+        {
+          "name": "Regidrago",
+          "icons": [
+            "regidrago"
+          ],
+          "share": 4.02
+        },
+        {
+          "name": "Ceruledge",
+          "icons": [
+            "ceruledge"
+          ],
+          "share": 3.16
+        },
+        {
+          "name": "Charizard",
+          "icons": [
+            "charizard"
+          ],
+          "share": 3.16
+        },
+        {
+          "name": "Mega Lucario",
+          "icons": [
+            "lucario-mega"
+          ],
+          "share": 3.16
+        },
+        {
+          "name": "Alakazam",
+          "icons": [
+            "alakazam"
+          ],
+          "share": 2.87
+        },
+        {
+          "name": "Mega Venusaur",
+          "icons": [
+            "venusaur-mega"
+          ],
+          "share": 2.87
+        },
+        {
+          "name": "Gholdengo",
+          "icons": [
+            "gholdengo"
+          ],
+          "share": 2.59
+        },
+        {
+          "name": "Mew Genesect",
+          "icons": [
+            "mew",
+            "genesect"
+          ],
+          "share": 2.3
+        },
+        {
+          "name": "Miraidon",
+          "icons": [
+            "miraidon"
+          ],
+          "share": 1.72
+        },
+        {
+          "name": "N's Zoroark",
+          "icons": [
+            "zoroark"
+          ],
+          "share": 1.72
+        },
+        {
+          "name": "Raging Bolt",
+          "icons": [
+            "raging-bolt"
+          ],
+          "share": 1.72
+        },
+        {
+          "name": "Shadow Rider Calyrex",
+          "icons": [
+            "calyrex-shadow-rider"
+          ],
+          "share": 1.72
+        },
+        {
+          "name": "Blissey",
+          "icons": [
+            "blissey"
+          ],
+          "share": 1.44
+        },
+        {
+          "name": "Froslass Munkidori",
+          "icons": [
+            "froslass",
+            "munkidori"
+          ],
+          "share": 1.44
+        },
+        {
+          "name": "Honchkrow",
+          "icons": [
+            "honchkrow"
+          ],
+          "share": 1.44
+        },
+        {
+          "name": "Iron Thorns",
+          "icons": [
+            "iron-thorns"
+          ],
+          "share": 1.44
+        },
+        {
+          "name": "Mega Absol Box",
+          "icons": [
+            "absol-mega",
+            "kangaskhan-mega"
+          ],
+          "share": 1.44
+        },
+        {
+          "name": "Mega Lopunny",
+          "icons": [
+            "lopunny-mega"
+          ],
+          "share": 1.44
+        },
+        {
+          "name": "Greninja",
+          "icons": [
+            "greninja"
+          ],
+          "share": 1.15
+        },
+        {
+          "name": "Lugia Archeops",
+          "icons": [
+            "lugia",
+            "archeops"
+          ],
+          "share": 1.15
+        },
+        {
+          "name": "Ogerpon Meganium",
+          "icons": [
+            "ogerpon",
+            "meganium"
+          ],
+          "share": 1.15
+        },
+        {
+          "name": "Rocket's Mewtwo",
+          "icons": [
+            "mewtwo",
+            "spidops"
+          ],
+          "share": 1.15
+        },
+        {
+          "name": "Snorlax Stall",
+          "icons": [
+            "snorlax"
+          ],
+          "share": 1.15
+        },
+        {
+          "name": "Vikavolt",
+          "icons": [
+            "vikavolt"
+          ],
+          "share": 1.15
+        },
+        {
+          "name": "ADP",
+          "icons": [
+            "arceus"
+          ],
+          "share": 0.86
+        },
+        {
+          "name": "Conkeldurr",
+          "icons": [
+            "conkeldurr"
+          ],
+          "share": 0.86
+        },
+        {
+          "name": "Cynthia's Garchomp",
+          "icons": [
+            "garchomp"
+          ],
+          "share": 0.86
+        },
+        {
+          "name": "Eternatus",
+          "icons": [
+            "eternatus-eternamax"
+          ],
+          "share": 0.86
+        },
+        {
+          "name": "Lost Zone Box",
+          "icons": [
+            "comfey",
+            "cramorant"
+          ],
+          "share": 0.86
+        },
+        {
+          "name": "Marnie's Grimmsnarl",
+          "icons": [
+            "grimmsnarl"
+          ],
+          "share": 0.86
+        },
+        {
+          "name": "Rocket's Honchkrow",
+          "icons": [
+            "honchkrow",
+            "porygon2"
+          ],
+          "share": 0.86
+        },
+        {
+          "name": "Slowking",
+          "icons": [
+            "slowking"
+          ],
+          "share": 0.86
+        },
+        {
+          "name": "Ultra Necrozma",
+          "icons": [
+            "necrozma-ultra"
+          ],
+          "share": 0.86
+        }
+      ]
+    },
+    {
+      "id": "ex",
+      "label": "RS-PK",
+      "group": "past",
+      "players": 2731,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Dark Tyranitar",
+          "icons": [
+            "tyranitar"
+          ],
+          "share": 13.51
+        },
+        {
+          "name": "Gardevoir δ",
+          "icons": [
+            "gardevoir"
+          ],
+          "share": 7.47
+        },
+        {
+          "name": "Rayler",
+          "icons": [
+            "rayquaza",
+            "stantler"
+          ],
+          "share": 7.36
+        },
+        {
+          "name": "Dragtrode",
+          "icons": [
+            "dragonite",
+            "electrode"
+          ],
+          "share": 5.57
+        },
+        {
+          "name": "Flygon δ",
+          "icons": [
+            "flygon"
+          ],
+          "share": 5.2
+        },
+        {
+          "name": "Banette",
+          "icons": [
+            "banette"
+          ],
+          "share": 4.87
+        },
+        {
+          "name": "Rai-Eggs",
+          "icons": [
+            "raichu",
+            "exeggutor"
+          ],
+          "share": 3.77
+        },
+        {
+          "name": "Arcanine ex",
+          "icons": [
+            "arcanine"
+          ],
+          "share": 3.11
+        },
+        {
+          "name": "Scizor",
+          "icons": [
+            "scizor"
+          ],
+          "share": 2.45
+        },
+        {
+          "name": "Blastoise Lugia",
+          "icons": [
+            "blastoise",
+            "lugia"
+          ],
+          "share": 2.42
+        },
+        {
+          "name": "Camler",
+          "icons": [
+            "camerupt",
+            "stantler"
+          ],
+          "share": 2.42
+        },
+        {
+          "name": "Nidoqueen",
+          "icons": [
+            "nidoqueen",
+            "pidgeot"
+          ],
+          "share": 2.27
+        },
+        {
+          "name": "Sceptile",
+          "icons": [
+            "sceptile"
+          ],
+          "share": 1.87
+        },
+        {
+          "name": "Bombcatty",
+          "icons": [
+            "delcatty",
+            "electrode"
+          ],
+          "share": 1.83
+        },
+        {
+          "name": "Dragonite ex δ",
+          "icons": [
+            "dragonite"
+          ],
+          "share": 1.65
+        },
+        {
+          "name": "Mewtric",
+          "icons": [
+            "manectric",
+            "mew"
+          ],
+          "share": 1.46
+        },
+        {
+          "name": "Latias Mewtwo δ",
+          "icons": [
+            "latias",
+            "mewtwo"
+          ],
+          "share": 1.43
+        },
+        {
+          "name": "Dark Steelix",
+          "icons": [
+            "steelix"
+          ],
+          "share": 1.14
+        },
+        {
+          "name": "Meganium",
+          "icons": [
+            "meganium"
+          ],
+          "share": 1.03
+        },
+        {
+          "name": "Metanite",
+          "icons": [
+            "metagross",
+            "dragonite"
+          ],
+          "share": 1.03
+        },
+        {
+          "name": "Rat Lock",
+          "icons": [
+            "raticate",
+            "pidgeot"
+          ],
+          "share": 1.03
+        },
+        {
+          "name": "Exeggutor Electrode",
+          "icons": [
+            "exeggutor",
+            "electrode"
+          ],
+          "share": 0.99
+        },
+        {
+          "name": "Exeggutor Rayquaza δ",
+          "icons": [
+            "exeggutor",
+            "rayquaza"
+          ],
+          "share": 0.84
+        },
+        {
+          "name": "Kingdra δ",
+          "icons": [
+            "kingdra"
+          ],
+          "share": 0.77
+        }
+      ]
+    },
+    {
+      "id": "2010",
+      "label": "2010",
+      "group": "past",
+      "players": 315,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Gardevoir",
+          "icons": [
+            "gardevoir"
+          ],
+          "share": 13.02
+        },
+        {
+          "name": "Cursegar",
+          "icons": [
+            "gengar",
+            "spiritomb"
+          ],
+          "share": 12.06
+        },
+        {
+          "name": "Luxchomp",
+          "icons": [
+            "luxray",
+            "garchomp"
+          ],
+          "share": 10.48
+        },
+        {
+          "name": "Flygon",
+          "icons": [
+            "flygon"
+          ],
+          "share": 7.62
+        },
+        {
+          "name": "Gyarados",
+          "icons": [
+            "gyarados"
+          ],
+          "share": 7.3
+        },
+        {
+          "name": "Dialgachomp",
+          "icons": [
+            "dialga",
+            "garchomp"
+          ],
+          "share": 6.98
+        },
+        {
+          "name": "Jumpluff",
+          "icons": [
+            "jumpluff"
+          ],
+          "share": 5.08
+        },
+        {
+          "name": "Tyranitar",
+          "icons": [
+            "tyranitar"
+          ],
+          "share": 4.13
+        },
+        {
+          "name": "Magnezone",
+          "icons": [
+            "magnezone"
+          ],
+          "share": 2.86
+        },
+        {
+          "name": "Kingdra",
+          "icons": [
+            "kingdra"
+          ],
+          "share": 2.22
+        },
+        {
+          "name": "Donphan",
+          "icons": [
+            "donphan"
+          ],
+          "share": 1.9
+        },
+        {
+          "name": "Palkia Lock",
+          "icons": [
+            "palkia",
+            "mesprit"
+          ],
+          "share": 1.59
+        },
+        {
+          "name": "Gengar",
+          "icons": [
+            "gengar"
+          ],
+          "share": 0.95
+        },
+        {
+          "name": "Glaceon",
+          "icons": [
+            "glaceon"
+          ],
+          "share": 0.95
+        },
+        {
+          "name": "Porygon-Z",
+          "icons": [
+            "porygon-z"
+          ],
+          "share": 0.95
+        }
+      ]
+    },
+    {
+      "id": "2011",
+      "label": "2011",
+      "group": "past",
+      "players": 59,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Yanmega",
+          "icons": [
+            "yanmega"
+          ],
+          "share": 28.81
+        },
+        {
+          "name": "Reshiram Typhlosion",
+          "icons": [
+            "reshiram",
+            "typhlosion"
+          ],
+          "share": 15.25
+        },
+        {
+          "name": "Kingdra",
+          "icons": [
+            "kingdra"
+          ],
+          "share": 13.56
+        },
+        {
+          "name": "Magnezone",
+          "icons": [
+            "magnezone"
+          ],
+          "share": 13.56
+        },
+        {
+          "name": "Vileplume Reuniclus",
+          "icons": [
+            "vileplume",
+            "reuniclus"
+          ],
+          "share": 10.17
+        },
+        {
+          "name": "Tyranitar",
+          "icons": [
+            "tyranitar"
+          ],
+          "share": 3.39
+        },
+        {
+          "name": "Magmortar",
+          "icons": [
+            "magmortar"
+          ],
+          "share": 1.69
+        },
+        {
+          "name": "Typhlosion RDL",
+          "icons": [
+            "typhlosion",
+            "rayquaza"
+          ],
+          "share": 1.69
+        }
+      ]
+    },
+    {
+      "id": "2016",
+      "label": "2016",
+      "group": "past",
+      "players": 108,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Greninja",
+          "icons": [
+            "greninja"
+          ],
+          "share": 15.74
+        },
+        {
+          "name": "Night March",
+          "icons": [
+            "joltik",
+            "pumpkaboo"
+          ],
+          "share": 12.96
+        },
+        {
+          "name": "Vespiquen",
+          "icons": [
+            "vespiquen"
+          ],
+          "share": 8.33
+        },
+        {
+          "name": "Seismitoad",
+          "icons": [
+            "seismitoad"
+          ],
+          "share": 7.41
+        },
+        {
+          "name": "Bronzong Box",
+          "icons": [
+            "bronzong",
+            "aegislash"
+          ],
+          "share": 6.48
+        },
+        {
+          "name": "Mega Audino",
+          "icons": [
+            "audino-mega"
+          ],
+          "share": 6.48
+        },
+        {
+          "name": "Mega Manectric",
+          "icons": [
+            "manectric-mega"
+          ],
+          "share": 6.48
+        },
+        {
+          "name": "Volcanion",
+          "icons": [
+            "volcanion"
+          ],
+          "share": 5.56
+        },
+        {
+          "name": "Darkrai",
+          "icons": [
+            "darkrai"
+          ],
+          "share": 4.63
+        },
+        {
+          "name": "Trevenant",
+          "icons": [
+            "trevenant"
+          ],
+          "share": 4.63
+        },
+        {
+          "name": "Yveltal",
+          "icons": [
+            "yveltal"
+          ],
+          "share": 3.7
+        },
+        {
+          "name": "Mega Gardevoir",
+          "icons": [
+            "gardevoir-mega"
+          ],
+          "share": 0.93
+        },
+        {
+          "name": "Primal Groudon",
+          "icons": [
+            "groudon-primal"
+          ],
+          "share": 0.93
+        }
+      ]
+    },
+    {
+      "id": "sumlot",
+      "label": "SUM-LOT",
+      "group": "past",
+      "players": 189,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Zoroark",
+          "icons": [
+            "zoroark"
+          ],
+          "share": 24.87
+        },
+        {
+          "name": "Malamar",
+          "icons": [
+            "malamar"
+          ],
+          "share": 11.64
+        },
+        {
+          "name": "Blacephalon (GX)",
+          "icons": [
+            "blacephalon"
+          ],
+          "share": 11.11
+        },
+        {
+          "name": "Gardevoir",
+          "icons": [
+            "gardevoir"
+          ],
+          "share": 7.94
+        },
+        {
+          "name": "Regigigas Stall",
+          "icons": [
+            "regigigas",
+            "hoopa-unbound"
+          ],
+          "share": 6.35
+        },
+        {
+          "name": "Granbull",
+          "icons": [
+            "granbull"
+          ],
+          "share": 5.82
+        },
+        {
+          "name": "Lost March",
+          "icons": [
+            "jumpluff",
+            "natu"
+          ],
+          "share": 4.23
+        },
+        {
+          "name": "Tapu Koko Spread",
+          "icons": [
+            "tapu-koko"
+          ],
+          "share": 3.7
+        },
+        {
+          "name": "Buzzwole (GX)",
+          "icons": [
+            "buzzwole"
+          ],
+          "share": 2.65
+        },
+        {
+          "name": "Buzzwole (FLI)",
+          "icons": [
+            "buzzwole"
+          ],
+          "share": 2.12
+        },
+        {
+          "name": "Meganium Box",
+          "icons": [
+            "meganium",
+            "swampert"
+          ],
+          "share": 2.12
+        },
+        {
+          "name": "Rayquaza",
+          "icons": [
+            "rayquaza"
+          ],
+          "share": 2.12
+        },
+        {
+          "name": "Sylveon",
+          "icons": [
+            "sylveon"
+          ],
+          "share": 1.59
+        },
+        {
+          "name": "Decidueye",
+          "icons": [
+            "decidueye"
+          ],
+          "share": 1.06
+        },
+        {
+          "name": "White Kyurem",
+          "icons": [
+            "kyurem-white"
+          ],
+          "share": 1.06
+        }
+      ]
+    },
+    {
+      "id": "rmep",
+      "label": "EFG",
+      "group": "past",
+      "players": 615,
+      "windows": 1,
+      "scrapedAt": "2026-09-03",
+      "archetypes": [
+        {
+          "name": "Lost Zone Box",
+          "icons": [
+            "comfey",
+            "cramorant"
+          ],
+          "share": 17.89
+        },
+        {
+          "name": "Arceus",
+          "icons": [
+            "arceus"
+          ],
+          "share": 12.2
+        },
+        {
+          "name": "Gardevoir",
+          "icons": [
+            "gardevoir"
+          ],
+          "share": 10.41
+        },
+        {
+          "name": "Lugia Archeops",
+          "icons": [
+            "lugia",
+            "archeops"
+          ],
+          "share": 10.08
+        },
+        {
+          "name": "Miraidon",
+          "icons": [
+            "miraidon"
+          ],
+          "share": 9.27
+        },
+        {
+          "name": "Mew Genesect",
+          "icons": [
+            "mew",
+            "genesect"
+          ],
+          "share": 8.94
+        },
+        {
+          "name": "Giratina",
+          "icons": [
+            "giratina-origin"
+          ],
+          "share": 5.69
+        },
+        {
+          "name": "Hisuian Goodra",
+          "icons": [
+            "goodra-hisui"
+          ],
+          "share": 3.09
+        },
+        {
+          "name": "Inteleon",
+          "icons": [
+            "inteleon-gmax"
+          ],
+          "share": 2.76
+        },
+        {
+          "name": "Shadow Rider Calyrex",
+          "icons": [
+            "calyrex-shadow-rider"
+          ],
+          "share": 2.11
+        },
+        {
+          "name": "Dialga",
+          "icons": [
+            "dialga-origin"
+          ],
+          "share": 1.95
+        },
+        {
+          "name": "Charizard",
+          "icons": [
+            "charizard"
+          ],
+          "share": 1.46
+        },
+        {
+          "name": "Chien-Pao Baxcalibur",
+          "icons": [
+            "chien-pao",
+            "baxcalibur"
+          ],
+          "share": 1.3
+        },
+        {
+          "name": "Rapid Strike Urshifu",
+          "icons": [
+            "urshifu-rapid-strike-gmax"
+          ],
+          "share": 1.3
+        },
+        {
+          "name": "Palkia",
+          "icons": [
+            "palkia-origin"
+          ],
+          "share": 0.98
+        }
+      ]
+    }
+  ]
+}
