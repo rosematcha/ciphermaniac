@@ -1,10 +1,8 @@
 /**
  * Cross-tournament player profiles.
  *
- * These bodies are the last scope still served from legacy paths rather than
- * the immutable release (DB-MASTER-PLAN Phase 4 follow-up: ~89k objects), so a
+ * These bodies are served from mutable paths rather than the immutable release, so a
  * 404 here is a normal miss, not release-body corruption.
- * @module src/lib/data/players
  */
 
 import { dataClient } from './client';

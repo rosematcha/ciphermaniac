@@ -3,7 +3,7 @@
  *
  * Every join here resolves through the synonym map to the GLOBAL cluster
  * identity before comparing. A rebaked historical event keys its rows by that
- * event's rolling canonical print (D17), which is a different UID from today's
+ * event's rolling canonical print, which is a different UID from today's
  * global canonical for the same card — so a direct UID match would silently
  * find nothing on exactly the events that have been reprocessed.
  * @module src/lib/data/cards

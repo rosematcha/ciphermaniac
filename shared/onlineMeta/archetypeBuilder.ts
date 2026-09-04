@@ -59,9 +59,7 @@ export function buildTrendReport(
     if (!tournamentId || !tournamentIndex.has(tournamentId)) {
       continue;
     }
-    // Same lowercased grouping this file always used, now derived through the
-    // shared archetype grouping helper (Phase 2, slice 5). Note the historical
-    // 'unknown' (lowercase) fallback base, unlike reportGenerator's 'Unknown'.
+    // This producer requires a lowercase `unknown` fallback.
     const { base } = deriveArchetypeGrouping(deck?.archetype || 'Unknown', 'lower', 'unknown');
     const displayName = deck?.archetype || 'Unknown';
 
@@ -307,7 +305,7 @@ export function buildCardTrendReport(
       // zero-padded (`PRE/004`). Interpolating the fields split one printing
       // across every spelling of its number AND missed the 547 padded synonym
       // entries outright, so the collapse below silently did nothing for them
-      // (D20).
+      //.
       let key = cardUidOrName(name, set, number);
       // Canonicalize so reprints (e.g. same card in two sets) collapse into
       // a single trend entry instead of splitting appearances + share.

@@ -94,9 +94,7 @@ export interface FilteredReport {
  * Deck counts are keyed by {@link buildCardKeyFromCard}, which uppercases the
  * set and zero-pads the number, and matching is an exact Map lookup. So a
  * match id that arrives lowercased or unpadded — from a URL, a shared build, or
- * an API caller — silently matches ZERO decks rather than erroring. This is the
- * `SET~NUMBER` half of the same normalization hazard D20 closed for
- * `Name::SET::NUMBER` UIDs.
+ * an API caller — silently matches zero decks rather than erroring.
  * @param raw - A match id, in any casing or padding
  * @returns The canonical match id, or null when it is not a usable id
  */
@@ -362,7 +360,7 @@ function aggregateDecks(decks: Deck[], options: AggregateOptions = {}): Aggregat
   });
 
   // Decklist-less decks can't contribute a card, so they'd cap every card in
-  // the filtered set below 100% (D13) — same rule the published reports use.
+  // the filtered set below 100% — same rule the published reports use.
   const deckTotal = listedDeckCount(decks);
   const items = Array.from(cardUsage.values()).map(usage => {
     // Use shared distribution calculation - note: we sort by percent desc here (different from backend)

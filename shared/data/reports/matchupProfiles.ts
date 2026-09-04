@@ -110,7 +110,7 @@ export function buildMatchupProfiles(event: NormalizedEvent): MatchupProfilesBod
   const players = event.meta.playerCount > 0 ? event.meta.playerCount : event.participants.length;
 
   // Group by the archetype comparison KEY so casing/punctuation variants of one
-  // archetype (e.g. a mirror match) collapse instead of splitting (D3). Each key
+  // archetype (e.g. a mirror match) collapse instead of splitting. Each key
   // gets one canonical display label — the lexicographically smallest displayName
   // among its decks — matching the determinism rule used by the archetype build.
   const keyByParticipant = new Map<string, string>();

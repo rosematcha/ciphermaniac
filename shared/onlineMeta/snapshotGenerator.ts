@@ -177,7 +177,7 @@ export async function runRotationSnapshot(
   // boundary to satisfy reportBuilder's narrower DeckEntry/CardEntry types.
   const typedDecks = decks as unknown as Parameters<typeof generateReportFromDecks>[0];
   // `deckTotal` above is the window's deck count (the snapshot's meta size);
-  // card inclusion divides by the decks that actually carry a list (D13).
+  // card inclusion divides by the decks that actually carry a list.
   const masterReport = generateReportFromDecks(typedDecks, listedDeckCount(typedDecks), synonymDb);
   const { archetypeFiles, archetypeIndex, minDecks, deckMap } = buildArchetypeReports(
     typedDecks,

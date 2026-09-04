@@ -2,8 +2,7 @@
 /**
  * Module responsibility report.
  *
- * DB-MASTER-PLAN Phase 17 asks for a soft signal, explicitly NOT a line-count
- * gate: the question is "is this module accumulating unrelated
+ * This is a soft signal, not a line-count gate. The question is "is this module accumulating unrelated
  * responsibilities", not "is this file over 300 lines". A 600-line module that
  * does one thing is fine; a 300-line one that fetches, transforms, formats, and
  * renders is not.

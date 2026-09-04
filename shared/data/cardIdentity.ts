@@ -1,25 +1,14 @@
 /**
- * Card identity policy — the single home for card number/set/UID normalization,
- * synonym resolution, and per-deck canonical aggregation.
+ * Card number, set, UID, synonym, and per-deck canonicalization policy.
  *
- * Consolidated from `shared/cardUtils.ts`, `shared/data/cardIdentity.ts`, and
- * `shared/canonicalDeckCards.ts` (DB-MASTER-PLAN Phase 2, slice 1). Those
- * modules now re-export from here so existing callers keep working unchanged.
- *
- * Invariants preserved from the plan:
+ * Invariants:
  * - Two printings of one canonical card in a single deck count once
  *   ({@link aggregateCanonicalCardsPerDeck} sums copies per canonical UID).
  * - `found <= deckTotal`: presence is incremented exactly once per deck because
  *   downstream counters iterate the aggregated per-deck map, not raw card rows.
  *
- * IMPORTANT: This module is isomorphic — it works in both browser and
- * Node.js/Workers. Do not add any environment-specific dependencies here.
- * @module shared/data/cardIdentity
+ * This module is environment-neutral.
  */
-
-// ============================================================================
-// Card number / set / UID normalization (from shared/cardUtils.ts)
-// ============================================================================
 
 /**
  * Normalizes a card number to 3-digit format with optional uppercase suffix.
@@ -73,15 +62,10 @@ export function cardNumberIndexKey(value: string | number): string {
   return `${digits}${suffix}`;
 }
 
-// ============================================================================
-// Card identity forms
-// ============================================================================
-
 /**
  * The three string forms of card identity in this codebase. They are all
- * strings, they all look alike, and confusing two of them is how
- * `/cards/TWM/130` and `/cards/PRE/073` came to 301 at each other (D19). The
- * branded types below exist so the compiler can tell them apart.
+ * strings, they all look alike, and confusing them causes broken joins and
+ * redirect loops. The branded type lets the compiler distinguish canonical UIDs.
  *
  * | Form | Shape | Number | Built by |
  * |---|---|---|---|

@@ -1,25 +1,18 @@
 /**
  * Read-time compatibility layer for the browser.
  *
- * MIGRATION DEBT, deliberately quarantined. Everything here exists to repair or
+ * Everything here repairs or
  * reinterpret artifacts written under an older contract:
  *
  * - {@link canonicalizeReport} collapses variant printings in a report that was
- *   built before the current synonym mapping existed (D5).
+ *   built before the current synonym mapping existed.
  * - {@link normalizeIndexPercentScale} detects an archetype index still written
- *   on the 0-1 fraction scale instead of 0-100 (D2).
+ *   on the 0-1 fraction scale instead of 0-100.
  * - {@link canonicalizeCardTrendEntries} re-keys trend rows onto canonical UIDs.
  *
- * Keeping this in one named module rather than spread through the data layer is
- * the point. DB-MASTER-PLAN Phase 7/16 deletes it once every served artifact
- * comes from the release contract, and that deletion should be a `git rm`, not
- * an archaeology exercise. Nothing new belongs here: a new artifact shape is a
- * producer change, not a reader workaround.
- *
- * `canonicalizedAt`-marked payloads (rolling canonicals, D17) are already
+ * `canonicalizedAt`-marked payloads are already
  * build-time canonicalized and pass through UNTOUCHED — re-mapping them would
  * rewrite a period-correct historical print to today's global canonical.
- * @module src/lib/data/compat
  */
 
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../../shared/data/cardIdentity.js';

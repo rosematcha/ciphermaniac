@@ -2,8 +2,7 @@
 /**
  * Compare the newest route benchmark against an earlier one.
  *
- * DB-MASTER-PLAN Phase 12.5 states the budgets in terms of what a change is
- * allowed to do, not absolute numbers:
+ * Budgets describe allowed regressions rather than absolute numbers:
  *
  *   - no unexplained additional blocking request
  *   - no material transferred-byte increase
@@ -33,7 +32,7 @@ const BUDGET = {
   requests: 0,
   /** "Material" transferred-byte increase. */
   bytesPct: 10,
-  /** "Significant" p95 regression, per the Phase 0 rule: min(5%, 50ms). */
+  /** Significant p95 regression: min(5%, 50ms). */
   timePct: 5,
   timeMs: 50
 };

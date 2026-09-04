@@ -2,39 +2,29 @@
  * Serving-artifact data contract (schema v1).
  *
  * The denormalized layer built from {@link module:shared/data/contracts}
- * normalized records. These are the shapes the Phase 2 builders will emit:
+ * normalized records. These shapes carry:
  * card usage reports, the per-card archetype usage index, Day 2 conversion, and
  * the archetype index. They carry PERCENTAGES (0-100, `Pct` suffix), copy-count
  * DISTRIBUTIONS, explicit sort order, and 1-based ranks — everything the
  * normalized layer deliberately leaves out.
  *
- * Contract decisions this file freezes (see .scratch/db-migration design docs):
- * - Percentages use a `Pct` suffix and are 0-100 (fixes the fraction-vs-percent
- *   divergence D2); every percentage is {@link calculatePercentage} of a count
+ * - Percentages use a `Pct` suffix and are 0-100; every percentage is {@link calculatePercentage} of a count
  *   over a total, rounded to 2 decimals, so byte output never depends on float
  *   accumulation order.
- * - Card set/number on a report item are DERIVED from the canonical UID (fixes
- *   D4) via {@link parseCardIdentity} and validated against it — never carried from a
+ * - Card set/number on a report item are derived from the canonical UID via
+ *   {@link parseCardIdentity} and validated against it — never carried from a
  *   pre-synonym printing.
  * - Items sort by an explicit total order — usagePct desc, foundCount desc, name
- *   asc, uid asc (fixes the missing tie-breaker D9) — so input deck order cannot
+ *   asc, uid asc — so input deck order cannot
  *   change the bytes. Ranks are assigned 1-based after sorting.
- * - The archetype index carries all three presentation arrays (thumbnails,
- *   signatureCards, icons) per D8; Phase 2 fills them, so the reference builder
- *   emits empty arrays for now.
- * - Byte-compatibility with the CURRENT legacy artifacts is NOT a goal here;
- *   these are the corrected schemas the Phase 2 producer cutover adopts.
+ * - The archetype index always carries thumbnails, signature cards, and icons.
  *
  * The builders here (`buildCardReport`, `buildArchetypeIndex`,
  * `buildConversionIndex`, `buildCardUsageIndex`) are the REFERENCE
- * implementations Phase 2 migrates the online, Python, and Function producers
- * onto. They compute artifacts purely from normalized {@link Deck} records and
+ * implementations. They compute artifacts purely from normalized {@link Deck} records and
  * are deterministic: permuting the input decks yields byte-identical output.
  *
- * IMPORTANT: like {@link module:shared/data/contracts}, this module is
- * environment-neutral (browser + Node + Workers). It must not import
- * `node:crypto` or any environment-specific dependency.
- * @module shared/data/artifacts
+ * This module is environment-neutral.
  */
 
 import { calculatePercentage } from '../reportUtils';
@@ -180,7 +170,7 @@ export interface ArchetypeIndexEntry {
   deckCount: number;
   /** `deckCount` as a percentage of the total decks, 0-100. */
   sharePct: number;
-  /** Presentation arrays (D8); Phase 2 fills them, empty for now. */
+  /** Presentation arrays are always present. */
   thumbnails: string[];
   signatureCards: string[];
   icons: string[];
@@ -203,7 +193,7 @@ export interface ArchetypeCardReport {
 // ============================================================================
 
 /**
- * The card report total order (D9): usagePct desc, foundCount desc, name asc,
+ * The card report total order: usagePct desc, foundCount desc, name asc,
  * uid asc. `uid` is unique within a report, so this is a strict total order —
  * the result is identical regardless of input deck order.
  */
@@ -273,8 +263,7 @@ function buildDist(histogram: Map<number, number>, foundCount: number): DistEntr
 }
 
 /**
- * Build a card usage report from normalized decks — the reference
- * implementation Phase 2 migrates the producers onto. Each canonical card is
+ * Build a card usage report from normalized decks. Each canonical card is
  * counted once per deck; `usagePct` is {@link calculatePercentage} of foundCount
  * over deckTotal; the copy-count distribution comes from a per-card histogram;
  * items are sorted by the explicit tie-breakers and then ranked 1-based;
@@ -434,10 +423,9 @@ export function buildConversionIndex(decks: Deck[], participants: Participant[])
 /**
  * Build the archetype index. Decks are grouped by archetype key; the display
  * label is chosen deterministically as the lexicographically smallest label in
- * the group so input order cannot change bytes (Phase 2 presentation may later
- * override it with a curated label). `sharePct` is {@link calculatePercentage}
+ * the group so input order cannot change bytes. `sharePct` is {@link calculatePercentage}
  * of deckCount over the total; entries sort by deckCount desc then key asc. The
- * three presentation arrays are present but empty (D8; Phase 2 fills them).
+ * three presentation arrays are present but empty.
  * @param decks - Normalized decks
  * @returns The archetype index
  */
@@ -697,7 +685,7 @@ function checkArchetypeEntry(entry: unknown, index: number, deckTotal: number, e
         `(${calculatePercentage(deckCount, deckTotal)})`
     );
   }
-  // D8: all three presentation arrays are always present, even when empty.
+  // all three presentation arrays are always present, even when empty.
   for (const field of ['thumbnails', 'signatureCards', 'icons'] as const) {
     if (!Array.isArray(entry[field])) {
       errors.push(`${path}.${field}: expected array`);
@@ -821,7 +809,7 @@ export function validateConversionIndex(value: unknown): ValidationResult<Conver
  * Validate an unknown value as an {@link ArchetypeIndex}. Each deck belongs to
  * exactly one archetype, so the deck total is recovered as the sum of the
  * deckCounts and used to check each `sharePct`. Also checks identity derivation,
- * that all three presentation arrays are present (D8), and the deckCount-desc
+ * that all three presentation arrays are present, and the deckCount-desc
  * then key-asc ordering.
  * @param value - The value to validate
  * @returns `{ ok: true, value }` or `{ ok: false, errors }`

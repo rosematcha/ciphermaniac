@@ -54,7 +54,6 @@ export {
 } from './data/matchups';
 export type { MatchupPair, MatchupProfile, OnlineMatchupRecord } from './data/matchups';
 
-// Pricing moved to ./data/prices; re-exported so page imports stay at one site.
 export {
   fetchPriceHistoryForSet,
   fetchPriceMovers,
@@ -64,15 +63,6 @@ export {
 } from './data/prices';
 export type { PriceMoverList, PriceMoverMetric, PriceMoverRow, PricePoint, PricingEntry } from './data/prices';
 
-// --- Upcoming tournaments (Limitless scraper Function) ---
-// Types live in shared/upcomingTypes.ts so the producing Pages Function
-// (functions/api/limitless/upcoming.ts — owned separately) can share them.
-// FOLLOW-UP: point that Function's inline types at shared/upcomingTypes.ts too.
-
-/**
- * Hits the /api/limitless/upcoming Pages Function, which scrapes Limitless's
- * upcoming-tournaments page and caches at the edge for 6 hours.
- */
 export async function fetchUpcomingTournaments(): Promise<UpcomingPayload | null> {
   try {
     const response = await fetch('/api/limitless/upcoming', { mode: 'cors' });

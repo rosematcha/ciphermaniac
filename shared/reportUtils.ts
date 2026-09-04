@@ -109,7 +109,7 @@ export function composeCategoryPath(
  * Sort report items by percentage (descending), then found count, then name,
  * then canonical uid. This is the standard total order for card usage reports:
  * the uid tie-breaker makes equal-name/equal-found ties deterministic and
- * input-order-independent (DB-MASTER-PLAN decision D9).
+ * input-order-independent.
  * @param items - Array of items with pct, found, name, and optional uid properties
  * @returns New sorted array (does not mutate input)
  */

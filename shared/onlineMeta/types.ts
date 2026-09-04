@@ -52,10 +52,6 @@ export interface GatheredDeck {
   successTags: string[];
 }
 
-// The ReportItem/ReportData thumbnail-inference shapes retired with the stale
-// reportGenerator presentation copy (DB-MASTER-PLAN Phase 2, slice 5); the
-// shared engine's types live in shared/data/archetypes/presentation.ts.
-
 /** Base options for functions that accept env and diagnostic options */
 interface BaseOptions {
   diagnostics?: DiagnosticsCollector;

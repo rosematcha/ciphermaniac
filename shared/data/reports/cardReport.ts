@@ -1,25 +1,17 @@
 /**
- * Canonical card-report builder — the single home for the legacy-shape usage
+ * Canonical card-report builder — the single home for the usage
  * report ({@link LegacyCardReport}: `{ deckTotal, items[] }` with `pct` 0-100,
  * `dist`, and `uid`/`set`/`number` derived from the canonical UID).
  *
- * Consolidated from `functions/lib/data/reportBuilder.ts` (the tested authority)
- * in DB-MASTER-PLAN Phase 2, slice 3. `reportBuilder.ts` now re-exports from
- * here so existing callers keep working unchanged.
- *
- * Behavioral notes vs. the legacy authority (both recorded as approved semantic
- * differences in `.github/data-migration-status.json`):
- * - D9: items carry an explicit total order. They are sorted by `pct`/`found`
+ * Invariants:
+ * - items carry an explicit total order. They are sorted by `pct`/`found`
  *   descending, then `name`, then canonical `uid` (see {@link sortReportItems}),
- *   so equal-found ties are input-order-independent. The previous builder sorted
- *   by found only, leaving ties dependent on first-seen deck order.
- * - D4 (preserved): `set`/`number` are always derived from the canonical UID,
+ *   so equal-found ties are input-order-independent.
+ * - `set`/`number` are always derived from the canonical UID,
  *   never from the first-seen variant's meta, so `uid`/`set`/`number` stay
  *   mutually consistent after a synonym rewrite.
  *
- * IMPORTANT: This module is isomorphic — it works in both browser and
- * Node.js/Workers. Do not add any environment-specific dependencies here.
- * @module shared/data/reports/cardReport
+ * This module is environment-neutral.
  */
 
 import {
@@ -109,7 +101,7 @@ export interface CanonicalizeOptions {
 /**
  * Count the decks that can actually contribute a card to a usage report.
  *
- * This is the correct denominator for card inclusion (D13). A standings entry
+ * This is the correct denominator for card inclusion. A standings entry
  * whose decklist was never published still counts as a deck in the meta — it
  * has a placement, a player, and an archetype — but it can never contain a
  * card, so dividing inclusion by it caps every card in the group at
@@ -146,8 +138,8 @@ export function listedDeckCount(deckList: readonly { cards?: unknown }[]): numbe
  * Presence is counted once per deck per canonical UID (two synonym variants in
  * one deck collapse to a single row — never yielding `pct > 100`). `set`/
  * `number`/`uid` are derived from the canonical UID so they stay mutually
- * consistent after a synonym rewrite (D4). Items carry an explicit total order:
- * `pct`/`found` descending, then `name`, then `uid` (D9).
+ * consistent after a synonym rewrite. Items carry an explicit total order:
+ * `pct`/`found` descending, then `name`, then `uid`.
  * @param deckList - Decks to aggregate
  * @param deckTotal - Denominator for `pct`/`total` (see {@link listedDeckCount})
  * @param synonymDb - Synonym database (or null for no canonicalization)
@@ -291,7 +283,7 @@ export function generateReportFromDecks(
     return item;
   });
 
-  // D9: total-order tie-breakers (pct/found desc, then name, then canonical
+  // total-order tie-breakers (pct/found desc, then name, then canonical
   // uid) make equal-found ties input-order-independent, then assign 1-based rank
   // over the deterministic order.
   const sorted = sortReportItems(items);

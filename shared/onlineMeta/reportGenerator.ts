@@ -1,22 +1,4 @@
-/**
- * Archetype report generation for Functions snapshots — now a thin wrapper
- * around the consolidated archetype builder in `shared/data/archetypes/`
- * (DB-MASTER-PLAN Phase 2, slice 5).
- *
- * The previous local implementation carried a STALE copy of the thumbnail
- * engine (stage-1 name inference only, gated at 99.9% usage) that predated the
- * online pipeline's three-stage engine. Per the plan's "Archetype presentation"
- * authority row it retires here: snapshots now resolve thumbnails through the
- * shared engine (30% stage-1 gate plus ability/attack and distinctiveness
- * stages). Recorded output difference (Functions-only path): archetypes without
- * a config override that previously got `[]` thumbnails can now get inferred
- * ones; override-config hits are unchanged.
- *
- * Everything else about this producer's shape is preserved exactly: lowercased
- * group keys and slug bases (the D3 quirk), fraction `percent`, deckCount-desc
- * ordering, `${base}.json` filenames, and NO `signatureCards`/`icons` fields on
- * index entries.
- */
+/** Functions-snapshot adapter for the shared archetype builder. */
 import {
   buildArchetypeReports as buildArchetypeReportsShared,
   type ArchetypeDeckInput as SharedArchetypeDeckInput

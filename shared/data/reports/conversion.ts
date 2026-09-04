@@ -1,18 +1,11 @@
 /**
- * Canonical LEGACY-shape Day 2 conversion index builder — the single home for
+ * Day 2 conversion index builder — the single home for
  * the per-card Day 1 -> Day 2 counts production publishes as `conversion.json`.
  *
  * Schema (legacy, what `src/lib/data.ts` reads today):
  *   `{ day1Total, day2Total, cards: { "<canonicalUID>": { day1, day2 } } }`
  *
- * Consolidated in DB-MASTER-PLAN Phase 2, slice 4 as a faithful port of the only
- * current producer, Python's `download-tournament.py::build_conversion_index`.
- * Python can't run inside the JS test suite, so
- * `tests/data/card-usage-conversion-parity.test.ts` pins this builder against
- * hand-authored expectations derived from the Python semantics. There is no
- * TypeScript producer today; this becomes the canonical one.
- *
- * Semantics (mirroring Python exactly):
+ * Semantics:
  * - Day 2 membership is the deck's `madePhase2` flag; `day2Total` counts Day 2
  *   decks and `day1Total` is the full deck population.
  * - A canonical card is counted once per deck (a deck listing two variant

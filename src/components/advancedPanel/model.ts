@@ -6,10 +6,7 @@
  * reconciling the displayed list — lives here, taking data in and returning
  * data out. None of it touches Solid, the DOM, or the router.
  *
- * Extracted so the work can be MEASURED (see tests/perf/advanced-panel.bench.ts)
- * rather than guessed at. DB-MASTER-PLAN Phase 7.5 gates a Web Worker on
- * profiling, and a transform tangled up in reactive scope cannot be profiled.
- * @module src/components/advancedPanel/model
+ * Kept separate so it can be measured by tests/perf/advanced-panel.bench.ts.
  */
 
 import { buildCooccurrence, type CooccurrenceContext } from '../../../shared/cardCooccurrence';

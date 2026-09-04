@@ -7,7 +7,7 @@
  * them into one lookup the online rows can be measured against.
  *
  * The lookup re-keys every event row onto TODAY's canonical print. Rebaked
- * events are already canonicalized to their own event-date print (D17), which
+ * events are already canonicalized to their own event-date print, which
  * is the right thing for displaying that event but leaves the two sides of this
  * comparison speaking different UIDs — Worlds keys Dudunsparce as TEF 129 while
  * the online window keys it as PRE 080, and an unmapped join reports a 20%

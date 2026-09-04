@@ -460,7 +460,7 @@ function buildPendingDeck(
       tournamentOrganizer: tournament.organizer,
       deckSource: 'limitless-online',
       // Online windows never carry Day-2 phases, so phase tags are not
-      // appended (appendPhaseTags defaults false) — see divergence D7.
+      // appended (`appendPhaseTags` defaults to false).
       successTags: computeSuccessTags(entry.placing, fieldSize)
     }
   };

@@ -8,7 +8,7 @@
  *
  * The joins are the interesting part, because most of them are cluster-aware
  * for a non-obvious reason: a rebaked historical event keys its rows by that
- * event's ROLLING canonical print (D17), which is a different UID from today's
+ * event's ROLLING canonical print, which is a different UID from today's
  * global canonical for the same card. A direct match silently finds nothing on
  * exactly the events that have been reprocessed, so each lookup here tries the
  * card's own UID, then its global canonical, then a set/number fallback.

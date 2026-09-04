@@ -42,7 +42,7 @@ export interface DeckRecord {
   archetype: string;
   archetypeId: string;
   cards: DeckCardRecord[];
-  /** Whether this deck's pilot made the Day 2 cut (Phase 2). */
+  /** Whether this deck's pilot made the Day 2 cut. */
   madePhase2?: boolean;
 }
 
