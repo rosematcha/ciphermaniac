@@ -23,6 +23,12 @@ Each surviving row is then followed to its own deck page for the cards it was
 built around, so the tier list's Previews mode works on a format we hold no
 decklists for. That pass is most of a scrape's runtime — see :mod:`deck_arts`.
 
+**Two tables, not one.** Most formats read play.limitlesstcg.com — the online
+ladder, which is where a rotated format still gets played. EFG is the exception:
+it was a real-tournament Standard format, so its metagame lives on
+limitlesstcg.com's points ranking instead, and it is cut at a rank rather than
+at a share floor. See :mod:`limitless_events`.
+
 **The Expanded window.** Unlike the past formats, whose pages cover their whole
 history, ``?format=expanded`` shows only the current set's window — six
 tournaments and forty-odd players as this was written. At a 0.75% floor a single
@@ -51,10 +57,11 @@ import time
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 
+import limitless_events as events  # noqa: E402
 from deck_arts import archetype_arts  # noqa: E402
 from limitless_decks import (  # noqa: E402
     DeckRow,
@@ -90,6 +97,15 @@ class FormatSpec:
     group: str
     #: Fold several set windows into one table. See the module docstring.
     aggregate: bool = False
+    #: Read the real-tournament points ranking on limitlesstcg.com instead of
+    #: the online ladder. Set :attr:`query` and :attr:`top` with it.
+    events: bool = False
+    #: The events table's own format key, which is not our id — ours is frozen
+    #: into shared tier-list URLs and theirs names a set range.
+    query: Optional[str] = None
+    #: Rank to cut the events table at. Points thin out rather than stopping, so
+    #: there is no share floor to apply. See :func:`limitless_events.top_archetypes`.
+    top: Optional[int] = None
 
 
 FORMATS: List[FormatSpec] = [
@@ -99,7 +115,7 @@ FORMATS: List[FormatSpec] = [
     FormatSpec("2011", "2011", "past"),
     FormatSpec("2016", "2016", "past"),
     FormatSpec("sumlot", "SUM-LOT", "past"),
-    FormatSpec("rmep", "EFG", "past"),
+    FormatSpec("rmep", "EFG", "past", events=True, query="BST-PAR", top=22),
 ]
 
 FORMATS_BY_ID: Dict[str, FormatSpec] = {spec.id: spec for spec in FORMATS}
@@ -150,7 +166,30 @@ def attach_arts(
 def scrape_single(spec: FormatSpec) -> Tuple[Dict[str, object], List[str]]:
     """A format whose page already covers its whole history."""
     html = fetch_decks_html({"format": spec.id, "combine": "1"})
-    return _entry(spec, ranked_archetypes(parse_deck_rows(html)), parse_field_size(html), 1), []
+    return _entry(spec, ranked_archetypes(parse_deck_rows(html)), {"players": parse_field_size(html)}, 1), []
+
+
+def scrape_events(spec: FormatSpec) -> Dict[str, object]:
+    """A format read off the real-tournament points ranking.
+
+    Its own end-to-end path, not a branch inside the ladder's: different site,
+    different markup, a rank cut instead of a share floor, and card art that
+    comes pre-averaged rather than sampled. The only thing the two share is the
+    shape they write.
+    """
+    rows = events.top_archetypes(events.parse_ranking_rows(events.fetch_ranking_html(spec.query)), spec.top)
+    if not rows:
+        raise RuntimeError(f"{spec.id}: the {spec.query} ranking came back empty — page layout may have changed")
+    archetypes = []
+    for row in rows:
+        time.sleep(REQUEST_DELAY)
+        arts = events.archetype_arts(row.slug, spec.query, row.icons)
+        if not arts:
+            print(f"  ! {row.name}: no card art found")
+        archetypes.append(
+            {"name": row.name, "icons": row.icons, "share": round(row.share * 100, 2), "cards": arts}
+        )
+    return _entry(spec, archetypes, {"points": sum(row.count or 0 for row in rows), "top": spec.top}, 1)
 
 
 def scrape_aggregated(spec: FormatSpec) -> Tuple[Dict[str, object], List[str]]:
@@ -183,15 +222,25 @@ def scrape_aggregated(spec: FormatSpec) -> Tuple[Dict[str, object], List[str]]:
 
     if not pages:
         raise RuntimeError(f"{spec.id}: every set window came back empty")
-    return _entry(spec, ranked_archetypes(aggregate_rows(pages)), players, len(pages)), used
+    return _entry(spec, ranked_archetypes(aggregate_rows(pages)), {"players": players}, len(pages)), used
 
 
-def _entry(spec: FormatSpec, archetypes: List[Dict[str, object]], players: int, windows: int) -> Dict[str, object]:
+def _entry(
+    spec: FormatSpec, archetypes: List[Dict[str, object]], provenance: Dict[str, object], windows: int
+) -> Dict[str, object]:
+    """The written shape, whichever table produced it.
+
+    ``provenance`` says what was measured and where the table was cut, under the
+    names those things actually go by: players and a share floor for the ladder,
+    championship points and a rank for the tournament ranking. Flattening the
+    two onto one pair of keys would make one of them a lie, and the difference
+    is what tells a reader why a 0.29% deck earned a tile.
+    """
     return {
         "id": spec.id,
         "label": spec.label,
         "group": spec.group,
-        "players": players,
+        **provenance,
         "windows": windows,
         "scrapedAt": date.today().isoformat(),
         "archetypes": archetypes,
@@ -200,6 +249,10 @@ def _entry(spec: FormatSpec, archetypes: List[Dict[str, object]], players: int, 
 
 def scrape(spec: FormatSpec) -> Dict[str, object]:
     print(f"Scraping {spec.label} (format={spec.id})...")
+    if spec.events:
+        entry = scrape_events(spec)
+        print(f"  took the top {len(entry['archetypes'])} of the {spec.query} ranking")
+        return entry
     entry, set_codes = scrape_aggregated(spec) if spec.aggregate else scrape_single(spec)
     archetypes = entry["archetypes"]
     assert isinstance(archetypes, list)
