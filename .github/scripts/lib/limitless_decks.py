@@ -3,7 +3,8 @@
 Two producers scrape this page for different halves of the same row: the icon
 map wants the sprite slugs, and the format archetype snapshot wants the shares.
 They were parsing the same markup twice, so the fetch, the retry policy and the
-row shape live here instead.
+row shape live here instead; :mod:`deck_arts` follows the row's slug through to
+the deck's own page and borrows the fetch on the way.
 
 A row looks like::
 
@@ -66,8 +67,8 @@ class DeckRow:
         return self.name == OTHER_DECK_NAME
 
 
-def fetch_decks_html(params: Dict[str, str], *, session: Optional[requests.Session] = None) -> str:
-    """GET the decks page, retrying with a widening backoff.
+def fetch_html(url: str, params: Dict[str, str], *, session: Optional[requests.Session] = None) -> str:
+    """GET a Limitless page, retrying with a widening backoff.
 
     Raises RuntimeError rather than returning a partial page: a producer that
     writes a snapshot from a failed fetch publishes an empty format.
@@ -76,13 +77,18 @@ def fetch_decks_html(params: Dict[str, str], *, session: Optional[requests.Sessi
     last_err: Exception | None = None
     for attempt in range(HTTP_RETRIES):
         try:
-            resp = get(DECKS_URL, params=params, timeout=HTTP_TIMEOUT, headers={"User-Agent": USER_AGENT})
+            resp = get(url, params=params, timeout=HTTP_TIMEOUT, headers={"User-Agent": USER_AGENT})
             resp.raise_for_status()
             return resp.text
         except requests.RequestException as err:  # pragma: no cover - network
             last_err = err
             time.sleep(1.5 * (attempt + 1))
-    raise RuntimeError(f"Failed to fetch decks ({params}): {last_err}")
+    raise RuntimeError(f"Failed to fetch {url} ({params}): {last_err}")
+
+
+def fetch_decks_html(params: Dict[str, str], *, session: Optional[requests.Session] = None) -> str:
+    """GET the metagame table."""
+    return fetch_html(DECKS_URL, params, session=session)
 
 
 def parse_deck_rows(html: str) -> List[DeckRow]:
