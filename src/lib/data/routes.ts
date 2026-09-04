@@ -15,7 +15,7 @@ import {
   canonicalRouteKey,
   resolveCanonicalRoute
 } from '../../../shared/data/canonicalCardRoute';
-import type { SynonymDatabase } from '../../../shared/synonyms.js';
+import { cardNumberIndexKey, type SynonymDatabase } from '../../../shared/data/cardIdentity.js';
 import { getSynonymDatabase } from '../../utils/cardSynonyms';
 import type { CardItem } from '../../types';
 
@@ -34,7 +34,7 @@ import type { CardItem } from '../../types';
  */
 function findCardBySetNumber(items: CardItem[], set: string, number: string): CardItem | undefined {
   const setU = set.toUpperCase();
-  const targetKey = normalizeCardNumberKey(number);
+  const targetKey = cardNumberIndexKey(number);
   return items.find(item => {
     if (!item.set || item.set.toUpperCase() !== setU) {
       return false;
@@ -42,7 +42,7 @@ function findCardBySetNumber(items: CardItem[], set: string, number: string): Ca
     if (!item.number) {
       return false;
     }
-    return normalizeCardNumberKey(String(item.number)) === targetKey;
+    return cardNumberIndexKey(item.number) === targetKey;
   });
 }
 
@@ -101,16 +101,6 @@ export function findCardBySetNumberCanonical(
  * the number into a digit prefix and an alphabetic suffix; strips leading zeros
  * from the digit prefix only.
  */
-export function normalizeCardNumberKey(raw: string): string {
-  const upper = raw.toUpperCase();
-  const match = upper.match(/^(\d+)(.*)$/);
-  if (!match) {
-    return upper;
-  }
-  const digits = match[1].replace(/^0+/, '') || '0';
-  return `${digits}${match[2]}`;
-}
-
 /**
  * Resolve a (set, number) to its canonical (set, number) via the synonym DB.
  * Returns null if the input pair has no canonical mapping (i.e. it's already

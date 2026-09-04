@@ -26,7 +26,7 @@ import {
   matchId as makeMatchId,
   type Match,
   type NormalizedEvent,
-  parseCardUid,
+  parseCardIdentity,
   type Participant,
   type TrainerType
 } from '../contracts';
@@ -174,7 +174,7 @@ function buildDeckCards(rows: LabsSourceCard[], synonymDb: SynonymDatabase | nul
 
   const cards: DeckCard[] = [];
   for (const bucket of buckets.values()) {
-    const parsed = parseCardUid(bucket.canonicalUid);
+    const parsed = parseCardIdentity(bucket.canonicalUid);
     const canonical = parsed ?? { name: bucket.canonicalUid, set: null, number: null, uid: bucket.canonicalUid };
     const card: DeckCard = {
       canonical: { uid: bucket.canonicalUid, name: canonical.name, set: canonical.set, number: canonical.number },

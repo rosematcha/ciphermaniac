@@ -3,7 +3,7 @@
  *
  * Every join here resolves through the synonym map to the GLOBAL cluster
  * identity before comparing. A rebaked historical event keys its rows by that
- * event's rolling canonical print (D17), which is a different UID from today's
+ * event's rolling canonical print, which is a different UID from today's
  * global canonical for the same card — so a direct UID match would silently
  * find nothing on exactly the events that have been reprocessed.
  * @module src/lib/data/cards
@@ -11,9 +11,13 @@
 
 import { dataClient } from './client';
 import { tournamentPath } from './paths';
-import { getCanonicalCardFromData, type SynonymDatabase } from '../../../shared/synonyms.js';
-import { itemUid } from './compat';
-import { normalizeCardNumberKey } from './routes';
+import {
+  cardNumberIndexKey,
+  getCanonicalCardFromData,
+  itemUid,
+  parseCardUid,
+  type SynonymDatabase
+} from '../../../shared/data/cardIdentity.js';
 import type { CardDistributionEntry, CardItem } from '../../types';
 
 const { fetchJsonOptional } = dataClient;
@@ -92,10 +96,10 @@ export function cardUsageForCard(
   }
   if (card.set && card.number != null) {
     const setU = card.set.toUpperCase();
-    const numKey = normalizeCardNumberKey(String(card.number));
+    const numKey = cardNumberIndexKey(card.number);
     for (const [uid, entries] of Object.entries(payload.usage)) {
-      const parts = uid.split('::');
-      if (parts.length >= 3 && parts[1].toUpperCase() === setU && normalizeCardNumberKey(parts[2]) === numKey) {
+      const parsed = parseCardUid(uid);
+      if (parsed && parsed.set === setU && cardNumberIndexKey(parsed.number) === numKey) {
         return entries;
       }
     }

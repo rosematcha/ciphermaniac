@@ -1,34 +1,32 @@
-/**
- * Shared response utilities for Cloudflare Pages functions
- */
-
 export function jsonError(message: string, status: number, headers?: Record<string, string>): Response {
-  return new Response(
-    JSON.stringify({
-      error: message,
-      status
-    }),
-    {
-      status,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store',
-        ...headers
-      }
-    }
-  );
+  return jsonResponse({ error: message, status }, { status, cacheControl: 'no-store', cors: false, headers });
 }
 
 export function jsonSuccess<T>(data: T, status = 200): Response {
-  return new Response(JSON.stringify(data), {
+  return jsonResponse(data, { status });
+}
+
+export const IMAGE_FETCH_INIT: RequestInit & { cf?: unknown } = {
+  cf: { cacheTtl: 86400, cacheEverything: true }
+};
+
+export function textError(message: string, status: number): Response {
+  return new Response(message, {
     status,
-    headers: {
-      'Content-Type': 'application/json',
-      // Match jsonError and the OPTIONS preflight handlers so cross-origin
-      // callers can actually read successful responses.
-      'Access-Control-Allow-Origin': '*'
-    }
+    headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }
   });
+}
+
+/** Strip origin cookies so proxied immutable images remain edge-cacheable. */
+export function imageProxyResponse(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.delete('Set-Cookie');
+  headers.delete('Vary');
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  headers.set('Content-Type', 'image/png');
+  return new Response(response.body, { status: response.status, headers });
 }
 
 export interface JsonResponseOptions {
@@ -41,10 +39,6 @@ export interface JsonResponseOptions {
   headers?: Record<string, string>;
 }
 
-/**
- * Build a JSON response with the common Content-Type / CORS / Cache-Control
- * headers. Consolidates the copy-pasted JSON helpers across the API routes.
- */
 export function jsonResponse(body: unknown, options: JsonResponseOptions = {}): Response {
   const { status = 200, cacheControl, cors = true, headers } = options;
   const finalHeaders: Record<string, string> = {
@@ -73,10 +67,6 @@ export interface CorsPreflightOptions {
   origin?: string;
 }
 
-/**
- * Build a CORS preflight (OPTIONS) response. Consolidates the copy-pasted
- * onRequestOptions handlers across the API routes.
- */
 export function corsPreflight(methods: string, options: CorsPreflightOptions = {}): Response {
   const { status = 204, allowHeaders = 'Content-Type', maxAge, origin = '*' } = options;
   const headers: Record<string, string> = {

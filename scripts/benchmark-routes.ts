@@ -1,5 +1,5 @@
 /**
- * Reproducible route-data browser benchmark (DB-MASTER-PLAN Phase 0).
+ * Reproducible route-data browser benchmark.
  *
  * Serves the production build with `vite preview` and drives Playwright's
  * bundled Chromium over a fixed set of deep links on a throttled mobile

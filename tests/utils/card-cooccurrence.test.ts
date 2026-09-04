@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildCardId, type Deck } from '../../shared/clientSideFiltering.ts';
+import type { Deck } from '../../shared/clientSideFiltering.ts';
+import { buildCardId } from '../../shared/data/cardIdentity.ts';
 import { buildCooccurrence, findComplements, findSubstituteQuestions } from '../../shared/cardCooccurrence.ts';
 
 // Stable collector numbers per single-letter card label.

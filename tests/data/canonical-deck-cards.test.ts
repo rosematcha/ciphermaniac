@@ -1,7 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { aggregateCanonicalCardsPerDeck } from '../../shared/canonicalDeckCards.ts';
-import type { SynonymDatabase } from '../../shared/synonyms.ts';
+import { aggregateCanonicalCardsPerDeck, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 
 const db: SynonymDatabase = {
   synonyms: { 'Pikachu::OLD::002': 'Pikachu::NEW::001' },

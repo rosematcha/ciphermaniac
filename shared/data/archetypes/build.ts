@@ -1,25 +1,7 @@
 /**
- * Archetype report building: the ONE implementation of deck grouping by
- * archetype identity and archetype-index entry construction
- * (DB-MASTER-PLAN Phase 2, slice 5).
- *
- * Consolidates three producer copies:
- * - `.github/scripts/run-online-meta.mjs` `buildArchetypeReports` (online; the
- *   thumbnail/signature authority; case-preserving group keys, fraction percent).
- * - `functions/lib/onlineMeta/reportGenerator.ts` `buildArchetypeReports`
- *   (Functions snapshots; lowercased group keys — the D3 split-identity quirk —
- *   and a STALE thumbnail copy that retires with this move).
- * - `.github/scripts/download-tournament.py` `build_archetype_reports`
- *   (tournaments; adds icons, rounds percent to 6 decimals, sorts index by
- *   deckCount desc then label).
- *
- * Producer-specific quirks stay reproducible via {@link ArchetypeBuildOptions}
- * so legacy callers keep emitting EXACTLY their current shapes; the D2 (percent
- * scale) and D3 (casing) fixes activate at the Phase 4/6 cutover via new
- * options values, not by changing the legacy ones.
- *
- * IMPORTANT: isomorphic — no environment-specific dependencies, no I/O.
- * @module shared/data/archetypes/build
+ * Archetype grouping and index construction shared by every producer.
+ * Producer-specific output shapes are selected through
+ * {@link ArchetypeBuildOptions}. This module is environment-neutral.
  */
 
 import { normalizeArchetypeName, sanitizeForFilename } from '../../cardUtils';
@@ -48,7 +30,7 @@ export interface ArchetypeDeckInput extends DeckEntry {
   archetype?: string | null;
 }
 
-/** How group keys and slug bases are derived — the D3 producer split. */
+/** How group keys and slug bases are derived. */
 export type ArchetypeNameCasing =
   /**
    * Online .mjs / Python behavior: case-preserving normalized name as the
@@ -64,7 +46,7 @@ export type ArchetypeNameCasing =
 
 /** Options reproducing each producer's exact output shape. */
 export interface ArchetypeBuildOptions {
-  /** Group-key/slug casing profile (D3 quirk). */
+  /** Group-key/slug casing profile. */
   nameCasing: ArchetypeNameCasing;
   /**
    * Minimum group size as a fraction of total decks; groups below
@@ -75,7 +57,6 @@ export interface ArchetypeBuildOptions {
   /**
    * Index `percent` representation. 'fraction' = raw deckCount/deckTotal
    * (online + reportGenerator); 'fraction6' = rounded to 6 decimals (Python).
-   * The D2 0-100 `sharePct` representation arrives at the Phase 4/6 cutover.
    */
   percentMode: 'fraction' | 'fraction6';
   /**
@@ -172,7 +153,7 @@ function sanitizeForFilenameSimple(text: string): string {
 
 /**
  * Derive an archetype's group key and slug base from a display label under a
- * producer casing profile (D3 quirk).
+ * producer casing profile.
  * @param displayName - The (already defaulted) display label
  * @param nameCasing - Producer casing profile
  * @param emptyBaseFallback - Fallback base when sanitization empties the name
@@ -262,7 +243,7 @@ export function buildArchetypeReports(
       // `deckCount` is the archetype's meta share and counts every deck the
       // archetype was played in, decklist or not. The report's denominator is
       // the narrower listed-deck count — a deck with no list can't contain a
-      // card, so counting it would cap every card below 100% (D13).
+      // card, so counting it would cap every card below 100%.
       deckCount: archetypeDecks.length,
       data: generateReportFromDecks(archetypeDecks, listedDeckCount(archetypeDecks), synonymDb, { resolveUid })
     });

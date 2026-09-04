@@ -7,10 +7,7 @@
  * energies invert the age rule: they are worthless, so we take the newest
  * cheap print instead.
  *
- * TypeScript port of the retired `.github/scripts/lib/canonical-print.mjs`,
- * preserving its behavior exactly (DB-MASTER-PLAN Phase 2, slice 1); the
- * synonym producer (`update-card-synonyms.mjs`) now imports this module
- * directly. Mirror of `choose_canonical_print` in `download-tournament.py` —
+ * Mirror of `choose_canonical_print` in `download-tournament.py` —
  * keep the two implementations in sync until the Python one retires after
  * parity.
  *

@@ -2,11 +2,8 @@
  * Event artifact orchestrator.
  *
  * One pure function that turns a NORMALIZED event into the set of serving
- * artifacts, keyed by their relative R2 path. This is the shared builder the
- * plan's architecture diagram calls for: the Labs adapter emits normalized
- * records, and this orchestrator (called by the event build CLI and by Phase 6
- * regeneration) produces every serving body from them — no source fetching, no
- * duplicated domain policy.
+ * artifacts, keyed by their relative R2 path. The Labs adapter emits normalized
+ * records and this orchestrator produces every serving body from them.
  *
  * Card reports, card usage, conversion, matches, player matches and matchup
  * profiles come from the already-consolidated builders. The deck/participant/
@@ -32,10 +29,9 @@ import { buildCanonicalMatches, buildPlayerMatches } from './eventMatches';
 import { buildMatchupProfiles } from './matchupProfiles';
 
 /**
- * Canonical archetype-build profile for the new pipeline: group by the
- * lowercased comparison key (D3), no minimum-size filter, deterministic
- * deckCount-then-label ordering, signature cards on. The D2 0-100 `sharePct`
- * representation arrives at the Phase 4/6 cutover, so `percent` stays a fraction.
+ * Archetype-build profile: group by the
+ * lowercased comparison key, no minimum-size filter, deterministic
+ * deckCount-then-label ordering, signature cards on, and fractional percentages.
  */
 const ARCHETYPE_BUILD_PROFILE: Omit<ArchetypeBuildOptions, 'masterReport'> = {
   nameCasing: 'lower',
@@ -80,7 +76,7 @@ export interface PlayerArtifactRow {
   decklistPublished: boolean;
 }
 
-/** Flatten a normalized deck's cards to the canonical serving shape (D4). */
+/** Flatten a normalized deck's cards to the canonical serving shape. */
 function projectCards(cards: DeckCard[]): CardEntry[] {
   return cards.map(card => {
     const entry: CardEntry = {

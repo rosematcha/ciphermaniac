@@ -24,7 +24,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { generateReportAndCooccurrence } from '../../shared/clientSideFiltering.ts';
-import type { SynonymDatabase } from '../../shared/synonyms.ts';
+import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import type { CardItem, Deck } from '../../src/types/index.ts';
 import {
   applyFilters,

@@ -13,6 +13,7 @@
  */
 
 import { dataClient } from './client';
+import { parseCardUid } from '../../../shared/data/cardIdentity';
 
 const { fetchJsonOptional } = dataClient;
 
@@ -74,7 +75,7 @@ function toArt(ref: string): CardArt | null {
  * build readable rather than blank while the grouping workflow catches up.
  */
 function cardNameFromKey(key: string): string {
-  return key.split('::').slice(0, -2).join('::') || key;
+  return parseCardUid(key)?.name ?? key;
 }
 
 /**

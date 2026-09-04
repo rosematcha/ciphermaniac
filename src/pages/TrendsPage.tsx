@@ -15,7 +15,6 @@ import {
   fetchPriceMovers,
   fetchTournamentsList,
   getArchetypeIconMap,
-  itemUid,
   majorTournaments,
   PRICE_HISTORY_MIN_DAYS,
   type PriceMoverList,
@@ -25,7 +24,7 @@ import {
   tournamentDate
 } from '../lib/data';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
-import { getCanonicalCardFromData } from '../../shared/synonyms.js';
+import { getCanonicalCardFromData, itemUid } from '../../shared/data/cardIdentity.js';
 import type { CardItem } from '../types';
 import {
   type ArchetypeSeries,

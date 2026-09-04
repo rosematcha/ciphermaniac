@@ -60,8 +60,7 @@ export function canonicalStringify(value: unknown): string {
 }
 
 /**
- * Volatile timestamp fields excluded from SEMANTIC hashing (DB-MASTER-PLAN
- * Phase 3: "exclude volatile timestamps from semantic hashes"). A re-fetch or
+ * Volatile timestamp fields excluded from semantic hashing. A re-fetch or
  * rebuild that only bumps these must not change a node key, or every run would
  * rebuild everything and defeat incremental builds.
  */

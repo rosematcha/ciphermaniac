@@ -1,7 +1,6 @@
 import { loadCardSynonyms } from '../data/cardSynonyms.js';
-import { getCanonicalCardFromData } from '../synonyms';
-import { cardNumberIndexKey } from '../cardUtils.js';
-import { cardUid } from '../data/cardIdentity';
+import { getCanonicalCardFromData, maybeItemUid, parseCardUid } from '../data/cardIdentity';
+import { cardRouteKey } from '../data/canonicalCardRoute';
 import { getJson, getJsonResult, putJson } from './storageWriter';
 
 const SNAPSHOT_ROOT = 'reports/Snapshots';
@@ -40,17 +39,8 @@ interface MinimalArchetypeIndexEntry {
   name?: string;
 }
 
-function itemUid(item: MinimalCardItem): string | null {
-  if (item.uid) {
-    return item.uid;
-  }
-  return cardUid(item.name, item.set, item.number);
-}
-
 function setNumberKey(set: string, number: string | number): string {
-  // Shared normalization (zero-strip + uppercase suffix) so the keys written
-  // here always match the ones the SPA reader builds.
-  return `${set.toUpperCase()}::${cardNumberIndexKey(number)}`;
+  return cardRouteKey(set, number);
 }
 
 /**
@@ -86,15 +76,15 @@ async function loadActiveSets(env: unknown, synonymDb: unknown) {
   const activeCanonicalUids = new Set<string>();
   const activeSetNumber = new Set<string>();
   for (const item of liveMaster?.items ?? []) {
-    const uid = itemUid(item);
+    const uid = maybeItemUid(item);
     if (uid) {
       const canonical = getCanonicalCardFromData(synonymDb as Parameters<typeof getCanonicalCardFromData>[0], uid);
       activeCanonicalUids.add(canonical);
       // Active set/number is recorded from canonical so reprint URLs that
       // resolve to a live canonical are not added back as "rotated" entries.
-      const parts = canonical.split('::');
-      if (parts.length >= 3 && parts[1] && parts[2]) {
-        activeSetNumber.add(setNumberKey(parts[1], parts[2]));
+      const parsed = parseCardUid(canonical);
+      if (parsed) {
+        activeSetNumber.add(setNumberKey(parsed.set, parsed.number));
       }
     } else if (item.set && item.number !== undefined && item.number !== null) {
       activeSetNumber.add(setNumberKey(item.set, item.number));
@@ -151,7 +141,7 @@ export async function rebuildSnapshotIndex(env: unknown, rotations: RotationDesc
     });
 
     for (const item of master?.items ?? []) {
-      const uid = itemUid(item);
+      const uid = maybeItemUid(item);
       if (uid) {
         const canonical = getCanonicalCardFromData(synonymDb, uid);
         if (activeCanonicalUids.has(canonical)) {
@@ -160,9 +150,9 @@ export async function rebuildSnapshotIndex(env: unknown, rotations: RotationDesc
         if (!(canonical in cards)) {
           cards[canonical] = rotation.date;
         }
-        const parts = canonical.split('::');
-        if (parts.length >= 3 && parts[1] && parts[2]) {
-          const key = setNumberKey(parts[1], parts[2]);
+        const parsed = parseCardUid(canonical);
+        if (parsed) {
+          const key = setNumberKey(parsed.set, parsed.number);
           if (!activeSetNumber.has(key) && !(key in cardsBySetNumber)) {
             cardsBySetNumber[key] = rotation.date;
           }

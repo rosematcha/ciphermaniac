@@ -2,7 +2,7 @@ import { SUCCESS_TAG_NAMES } from '../data/contracts';
 import { deriveArchetypeGrouping } from '../data/archetypes/build';
 import { isGenericArchetypeName } from '../analysis/archetypeClassifier.js';
 import { getCanonicalCard } from '../data/cardSynonyms.js';
-import { cardUidOrName } from '../data/cardIdentity';
+import { cardUidOrName, parseCardUid } from '../data/cardIdentity';
 import type {
   BuildCardTrendReportOptions,
   BuildTrendReportOptions,
@@ -59,9 +59,7 @@ export function buildTrendReport(
     if (!tournamentId || !tournamentIndex.has(tournamentId)) {
       continue;
     }
-    // Same lowercased grouping this file always used, now derived through the
-    // shared archetype grouping helper (Phase 2, slice 5). Note the historical
-    // 'unknown' (lowercase) fallback base, unlike reportGenerator's 'Unknown'.
+    // This producer requires a lowercase `unknown` fallback.
     const { base } = deriveArchetypeGrouping(deck?.archetype || 'Unknown', 'lower', 'unknown');
     const displayName = deck?.archetype || 'Unknown';
 
@@ -307,7 +305,7 @@ export function buildCardTrendReport(
       // zero-padded (`PRE/004`). Interpolating the fields split one printing
       // across every spelling of its number AND missed the 547 padded synonym
       // entries outright, so the collapse below silently did nothing for them
-      // (D20).
+      //.
       let key = cardUidOrName(name, set, number);
       // Canonicalize so reprints (e.g. same card in two sets) collapse into
       // a single trend entry instead of splitting appearances + share.
@@ -319,9 +317,9 @@ export function buildCardTrendReport(
         // Use the canonical UID's set/number for display when the key was
         // rewritten by the synonym DB; this keeps the UI link pointing at
         // the canonical card page.
-        const parts = key.includes('::') ? key.split('::') : null;
-        if (parts && parts.length >= 3) {
-          cardMeta.set(key, { name: parts[0], set: parts[1] || null, number: parts[2] || null });
+        const parsed = parseCardUid(key);
+        if (parsed) {
+          cardMeta.set(key, parsed);
         } else {
           cardMeta.set(key, { name, set: set || null, number: number || null });
         }

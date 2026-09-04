@@ -9,7 +9,7 @@
  */
 
 import { cardSupercategory } from '../../lib/cardStats';
-import { itemUid } from '../../lib/data/compat';
+import { itemUid } from '../../../shared/data/cardIdentity';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../../lib/constants';
 import type { Day2CardStat } from '../../lib/data/events';
 import type { EventCardStat, EventField } from './eventField';

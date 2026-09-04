@@ -8,17 +8,15 @@
  *
  * The joins are the interesting part, because most of them are cluster-aware
  * for a non-obvious reason: a rebaked historical event keys its rows by that
- * event's ROLLING canonical print (D17), which is a different UID from today's
+ * event's ROLLING canonical print, which is a different UID from today's
  * global canonical for the same card. A direct match silently finds nothing on
  * exactly the events that have been reprocessed, so each lookup here tries the
  * card's own UID, then its global canonical, then a set/number fallback.
  * @module src/pages/cardPage/model
  */
 
-import { cardUidOrName } from '../../../shared/data/cardIdentity';
-import type { SynonymDatabase } from '../../../shared/synonyms';
-import { findByClusterUid, normalizeCardNumberKey } from '../../lib/data';
-import { itemUid } from '../../lib/data/compat';
+import { cardNumberIndexKey, cardUidOrName, itemUid, type SynonymDatabase } from '../../../shared/data/cardIdentity';
+import { findByClusterUid } from '../../lib/data';
 import { cardUsageForCard, type CardUsagePayload } from '../../lib/data/cards';
 import type { Day2CardStat } from '../../lib/data/events';
 import type { PricePoint, PricingEntry } from '../../lib/data/prices';
@@ -194,10 +192,10 @@ export function findCardInArchetypeReport(report: ArchetypeReport, card: CardIte
     return null;
   }
   const setU = card.set?.toUpperCase();
-  const numKey = card.number != null ? normalizeCardNumberKey(String(card.number)) : null;
+  const numKey = card.number != null ? cardNumberIndexKey(card.number) : null;
   for (const item of report.items) {
     if (setU && numKey && item.set && item.number !== undefined) {
-      if (item.set.toUpperCase() === setU && normalizeCardNumberKey(String(item.number)) === numKey) {
+      if (item.set.toUpperCase() === setU && cardNumberIndexKey(item.number) === numKey) {
         return item;
       }
     }
@@ -284,8 +282,8 @@ export function findConversionStat(
   }
   if (card.set && card.number != null) {
     const setU = card.set.toUpperCase();
-    const numKey = normalizeCardNumberKey(String(card.number));
-    return stats.find(s => s.set?.toUpperCase() === setU && normalizeCardNumberKey(String(s.number)) === numKey);
+    const numKey = cardNumberIndexKey(card.number);
+    return stats.find(s => s.set?.toUpperCase() === setU && cardNumberIndexKey(s.number) === numKey);
   }
   return undefined;
 }

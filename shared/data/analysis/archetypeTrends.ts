@@ -1,7 +1,6 @@
-import { aggregateCanonicalCardsPerDeck } from '../../canonicalDeckCards';
+import { aggregateCanonicalCardsPerDeck, type SynonymDatabase } from '../cardIdentity';
 import { isGenericArchetypeName } from '../../analysis/archetypeClassifier';
 import { SUCCESS_TAG_NAMES } from '../contracts';
-import type { SynonymDatabase } from '../../synonyms';
 
 // Performance tiers = the synthetic `all` aggregate plus every placement/percent
 // tag emitted by the one frozen SUCCESS_TAG_POLICY (phase2/topcut are Labs-only

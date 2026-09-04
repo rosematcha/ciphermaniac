@@ -6,9 +6,7 @@
  * immutable `/releases/v1/…` roots WHEN a release is embedded. When it is not —
  * the default committed state — {@link resolveDataPath} returns the path
  * unchanged, so production behavior is byte-identical to before this layer
- * existed. This is the single place `src/lib/data.ts` routes report paths
- * through (DB-MASTER-PLAN Phase 4 browser change).
- * @module src/lib/releaseClient
+ * existed.
  */
 
 import { EMBEDDED_RELEASE } from '../generated/release';

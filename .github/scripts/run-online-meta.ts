@@ -2,50 +2,50 @@
 /**
  * Online-meta producer: builds the "Online - Last 14 Days" report set on R2.
  *
- * This is orchestration around the shared builders (DB-MASTER-PLAN Phase 2
- * cutover of the old run-online-meta.mjs): success tags come from the frozen
- * SUCCESS_TAG_POLICY (computeSuccessTags), card reports from
- * shared/data/reports/cardReport, archetype grouping/presentation from
+ * This is orchestration around the shared builders: tournaments and decks come
+ * from the one shared fetcher (shared/onlineMeta/tournamentFetcher, which
+ * owns the field-size policy, the event floor, the exclusion config, and the
+ * fetch-failure budgets), success tags from the frozen SUCCESS_TAG_POLICY,
+ * card reports from shared/data/reports/cardReport, archetype grouping from
  * shared/data/archetypes/build, and the card-usage index from
- * shared/data/reports/cardUsage. The Limitless fetch/gather plumbing keeps the
- * old producer's exact behavior (serial fetches, key-in-query auth, sha1
- * deck ids truncated to 12 chars) so published artifacts stay stable.
+ * shared/data/reports/cardUsage. Deck ids keep the old producer's 12-char
+ * sha1 prefix so published artifacts stay stable.
  */
 
-import crypto from 'node:crypto';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { createR2Client, getJsonResult, putJson as putJsonR2 } from './lib/r2.mjs';
-import { type CardTypesDatabase, enrichCardWithType } from '../../shared/data/cardTypesDatabase.js';
-import {
-  buildArchetypeDeckIndex,
-  type DeckIndex,
-  resolveArchetypeClassification
-} from '../../shared/analysis/archetypeClassifier.js';
+import type { CardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
-import { generateArchetypeTrends } from '../../shared/data/analysis/archetypeTrends.js';
-import { computeSuccessTags } from '../../shared/data/contracts.js';
+import onlineExclusions from '../../config/online-exclusions.json';
+import { generateArchetypeTrends, MIN_MATCHUP_GAMES } from '../../shared/data/analysis/archetypeTrends.js';
 import { generateReportFromDecks, listedDeckCount } from '../../shared/data/reports/cardReport.js';
 import { buildArchetypeReports } from '../../shared/data/archetypes/build.js';
 import { onlineArchetypeOptions } from '../../shared/data/reports/onlineArtifacts.js';
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.js';
 import { buildCardSuccessIndex } from '../../shared/data/reports/cardSuccess.js';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.js';
+import { fetchLimitlessJson } from '../../shared/api/limitless.js';
 import {
-  decodeStandings,
-  decodeTournamentDetails,
-  decodeTournamentList,
-  detectDecodeBreakage
-} from '../../shared/api/limitlessDecoders.js';
+  compileExclusions,
+  DEFAULT_MIN_FIELD_PLAYERS,
+  fetchRecentOnlineTournaments,
+  gatherDecks,
+  utcDayWindow
+} from '../../shared/onlineMeta/index.js';
+import type { DiagnosticsCollector, GatheredDeck, OnlineTournamentSummary } from '../../shared/onlineMeta/types.js';
 
-const LIMITLESS_API_BASE = 'https://play.limitlesstcg.com/api';
 const WINDOW_DAYS = 14;
 const CACHE_REFRESH_LOOKBACK_DAYS = 30;
 const TARGET_FOLDER = 'Online - Last 14 Days';
-const PAGE_SIZE = 100;
 const MAX_PAGES = 15;
-const SUPPORTED_FORMATS = new Set(['STANDARD']);
+/**
+ * Smallest field whose pairings feed the matchup matrix. Shares tolerate an
+ * 8-player event; a win rate built from its three rounds does not.
+ */
+const MIN_MATCHUP_FIELD_PLAYERS = 16;
+const DECK_ID_LENGTH = 12;
 const ARCHETYPE_THUMBNAILS: Record<string, string[]> = archetypeThumbnails || {};
 
 const missingEnv: string[] = [];
@@ -86,10 +86,6 @@ const s3Client = createR2Client({
   secretAccessKey: R2_SECRET_ACCESS_KEY
 });
 
-function daysAgo(days: number): Date {
-  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-}
-
 function parseBoolean(value: string | undefined, fallback = false): boolean {
   if (value === undefined || value === null || value === '') {
     return fallback;
@@ -107,230 +103,37 @@ function parseBoolean(value: string | undefined, fallback = false): boolean {
 const CLEAN_MONTH_CACHE = parseBoolean(process.env.CLEAN_MONTH_CACHE, false);
 
 // ============================================================================
-// Limitless fetch plumbing (behavior preserved from the .mjs producer)
+// Limitless plumbing
 // ============================================================================
 
-interface TournamentSummary {
-  id: string;
-  name: string;
-  date: string;
-  format: string;
-  platform: string | null;
-  game: string;
-  players: number | null;
-  organizer: string | null;
-}
+const limitlessEnv = { LIMITLESS_API_KEY };
 
-interface StandingsEntry {
-  name?: string;
-  player?: string;
-  country?: string | null;
-  placing?: number;
-  deck?: { id?: string | null; name?: string | null };
-  decklist?: Record<string, Array<{ name?: string; [key: string]: unknown }>>;
-}
-
-interface GatheredDeck {
-  id: string;
-  player: string;
-  playerId: string | null;
-  country: string | null;
-  placement: number | null;
-  archetype: string;
-  archetypeId: string | null;
-  archetypeSource: string;
-  cards: CardEntry[];
-  hasDecklist: boolean;
-  tournamentId: string;
-  tournamentName: string;
-  tournamentDate: string;
-  tournamentFormat: string;
-  tournamentPlatform: string | null;
-  tournamentOrganizer: string | null;
-  tournamentPlayers: number;
-  successTags: string[];
-}
-
-interface CardEntry {
-  count: number;
-  name: string;
-  set: string | null;
-  number: string | null;
-  category: string;
-  trainerType?: string;
-  energyType?: string;
-  aceSpec?: boolean;
-  regulationMark?: string;
-}
-
-function buildLimitlessUrl(path: string, params: Record<string, string | number | undefined> = {}): URL {
-  const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-  const base = LIMITLESS_API_BASE.endsWith('/') ? LIMITLESS_API_BASE : `${LIMITLESS_API_BASE}/`;
-  const url = new URL(normalizedPath, base);
-  url.searchParams.set('key', LIMITLESS_API_KEY);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null) {
-      return;
+/** The shared client, with caches bypassed in clean-refresh mode. */
+const fetchJson: typeof fetchLimitlessJson = (path, options = {}) => {
+  if (!CLEAN_MONTH_CACHE) {
+    return fetchLimitlessJson(path, options);
+  }
+  return fetchLimitlessJson(path, {
+    ...options,
+    fetchOptions: {
+      ...options.fetchOptions,
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', Pragma: 'no-cache' }
     }
-    url.searchParams.set(key, String(value));
   });
-  return url;
-}
-
-async function fetchLimitless<T = unknown>(path: string, params?: Record<string, string | number>): Promise<T> {
-  const url = buildLimitlessUrl(path, params);
-  const headers: Record<string, string> = {
-    'X-Access-Key': LIMITLESS_API_KEY,
-    Accept: 'application/json'
-  };
-  if (CLEAN_MONTH_CACHE) {
-    headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
-    headers.Pragma = 'no-cache';
-  }
-  const response = await fetch(url, {
-    headers,
-    cache: CLEAN_MONTH_CACHE ? 'no-store' : undefined
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Limitless request failed (${response.status}): ${text.slice(0, 200)}`);
-  }
-
-  const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    const text = await response.text();
-    throw new Error(`Unexpected response type (${contentType}): ${text.slice(0, 200)}`);
-  }
-
-  return response.json() as Promise<T>;
-}
-
-async function fetchRecentOnlineTournaments(since: Date): Promise<TournamentSummary[]> {
-  const sinceMs = since.getTime();
-  const found: TournamentSummary[] = [];
-
-  for (let page = 1; page <= MAX_PAGES; page += 1) {
-    // eslint-disable-next-line no-await-in-loop
-    const raw = await fetchLimitless('/tournaments', {
-      game: 'PTCG',
-      limit: PAGE_SIZE,
-      page
-    });
-    // Decode rather than cast: this response becomes published artifacts, so a
-    // shape change upstream must fail loudly here instead of being baked into a
-    // release.
-    const decoded = decodeTournamentList(raw);
-    const breakage = detectDecodeBreakage(decoded, `tournament list page ${page}`);
-    if (breakage) {
-      console.warn(`[online-meta] ${breakage}`);
-    }
-    const list = decoded.rows;
-    if (list.length === 0) {
-      break;
-    }
-
-    let sawOlder = false;
-    for (const entry of list) {
-      const dateMs = Date.parse(entry?.date);
-      if (!Number.isFinite(dateMs) || dateMs < sinceMs) {
-        sawOlder = true;
-        continue;
-      }
-
-      // eslint-disable-next-line no-await-in-loop
-      const details = decodeTournamentDetails(await fetchLimitless(`/tournaments/${entry.id}/details`));
-      if (details.decklists === false) {
-        continue;
-      }
-      if (details.isOnline === false) {
-        continue;
-      }
-      const formatId = (details.format || entry.format || '').toUpperCase();
-      if (formatId && !SUPPORTED_FORMATS.has(formatId)) {
-        continue;
-      }
-
-      found.push({
-        id: entry.id,
-        name: entry.name,
-        date: entry.date,
-        format: formatId || 'UNKNOWN',
-        platform: details.platform || null,
-        // The list was queried with game=PTCG, so a row that omits `game` is
-        // the one we asked for. The old cast asserted this field was always
-        // present; the decoder showed it is not guaranteed.
-        game: entry.game ?? 'PTCG',
-        players: details.players || entry.players || null,
-        organizer: details.organizer?.name || null
-      });
-    }
-
-    if (sawOlder) {
-      break;
-    }
-  }
-
-  return found.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
-}
-
-function determinePlacementLimit(players: number | null): number {
-  const count = Number(players) || 0;
-  if (count > 0 && count <= 3) {
-    return 0;
-  }
-  // Use full standings so archetype shares represent what was actually played.
-  return Number.POSITIVE_INFINITY;
-}
-
-function toCardEntries(decklist: unknown, cardTypesDb: CardTypesDatabase | null): CardEntry[] {
-  if (!decklist || typeof decklist !== 'object') {
-    return [];
-  }
-
-  const cards: CardEntry[] = [];
-  for (const [section, entries] of Object.entries(decklist)) {
-    if (!Array.isArray(entries)) {
-      continue;
-    }
-
-    for (const card of entries as Array<{ count?: number; name?: string; set?: string; number?: string }>) {
-      const count = Number(card?.count) || 0;
-      if (!count) {
-        continue;
-      }
-      const sectionLower = section.toLowerCase();
-      let category = 'trainer';
-      if (sectionLower === 'pokemon') {
-        category = 'pokemon';
-      } else if (sectionLower === 'energy') {
-        category = 'energy';
-      }
-      let entry: CardEntry = {
-        count,
-        name: card?.name || 'Unknown Card',
-        set: card?.set || null,
-        number: card?.number || null,
-        category
-      };
-
-      if (cardTypesDb && entry.set && entry.number) {
-        entry = enrichCardWithType(entry, cardTypesDb);
-      }
-
-      cards.push(entry);
-    }
-  }
-  return cards;
-}
+};
 
 type PairingData = import('../../shared/data/analysis/archetypeTrends.js').PairingData;
 
 /**
- * Fetches pairings and standings for all tournaments for matchup analysis.
+ * Fetches pairings and standings for the tournaments whose fields are large
+ * enough for a matchup record to mean anything.
  */
-async function gatherPairingsData(tournaments: TournamentSummary[]): Promise<PairingData[]> {
+async function gatherPairingsData(
+  tournaments: OnlineTournamentSummary[]
+): Promise<{ pairingsData: PairingData[]; failures: Array<{ tournamentId: string; name: string; message: string }> }> {
   const pairingsData: PairingData[] = [];
+  const failures: Array<{ tournamentId: string; name: string; message: string }> = [];
 
   console.log(`[online-meta] Fetching pairings data for ${tournaments.length} tournaments...`);
 
@@ -338,133 +141,25 @@ async function gatherPairingsData(tournaments: TournamentSummary[]): Promise<Pai
     try {
       // eslint-disable-next-line no-await-in-loop
       const [pairings, standings] = await Promise.all([
-        fetchLimitless<PairingData['pairings']>(`/tournaments/${tournament.id}/pairings`),
-        fetchLimitless<PairingData['standings']>(`/tournaments/${tournament.id}/standings`)
+        fetchJson(`/tournaments/${tournament.id}/pairings`, { env: limitlessEnv }),
+        fetchJson(`/tournaments/${tournament.id}/standings`, { env: limitlessEnv })
       ]);
 
-      if (pairings && standings) {
+      if (Array.isArray(pairings) && Array.isArray(standings)) {
         pairingsData.push({
           tournamentId: tournament.id,
-          pairings,
-          standings
+          pairings: pairings as PairingData['pairings'],
+          standings: standings as PairingData['standings']
         });
       }
     } catch (error) {
       console.warn(`[online-meta] Failed to fetch pairings for ${tournament.name}: ${(error as Error).message}`);
-      // Continue with other tournaments
+      failures.push({ tournamentId: tournament.id, name: tournament.name, message: (error as Error).message });
     }
   }
 
   console.log(`[online-meta] Gathered pairings data for ${pairingsData.length} tournaments`);
-  return pairingsData;
-}
-
-async function gatherDecks(
-  tournaments: TournamentSummary[],
-  cardTypesDb: CardTypesDatabase | null
-): Promise<GatheredDeck[]> {
-  let deckIndex: DeckIndex | null = null;
-  try {
-    const deckRulesPayload = await fetchLimitless('/games/PTCG/decks');
-    deckIndex = buildArchetypeDeckIndex(deckRulesPayload);
-    console.log(`[online-meta] Loaded ${deckIndex?.ruleCount || 0} archetype deck rules`);
-  } catch (error) {
-    console.warn(
-      `[online-meta] Failed to fetch deck rules for archetype classification: ${(error as Error)?.message || error}`
-    );
-  }
-
-  const decks: GatheredDeck[] = [];
-
-  for (const tournament of tournaments) {
-    const limit = determinePlacementLimit(tournament.players);
-    if (!limit) {
-      continue;
-    }
-
-    let standings: StandingsEntry[];
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const decodedStandings = decodeStandings(await fetchLimitless(`/tournaments/${tournament.id}/standings`));
-      const standingsBreakage = detectDecodeBreakage(decodedStandings, `standings for ${tournament.name}`);
-      if (standingsBreakage) {
-        console.warn(`[online-meta] ${standingsBreakage}`);
-      }
-      standings = decodedStandings.rows;
-    } catch (error) {
-      console.warn(`Failed to fetch standings for ${tournament.name}: ${(error as Error).message}`);
-      continue;
-    }
-
-    const sorted = [...standings].sort((a, b) => {
-      const placingA = Number.isFinite(a?.placing) ? Number(a.placing) : Number.POSITIVE_INFINITY;
-      const placingB = Number.isFinite(b?.placing) ? Number(b.placing) : Number.POSITIVE_INFINITY;
-      return placingA - placingB;
-    });
-
-    // Derive tournament size when Limitless doesn't provide it
-    const maxReportedPlacing = Number.isFinite(sorted.at(-1)?.placing) ? Number(sorted.at(-1)?.placing) : 0;
-    const derivedPlayers = Number(tournament?.players) || Math.max(sorted.length, maxReportedPlacing);
-
-    const topEntries = sorted.slice(0, limit);
-    for (const entry of topEntries) {
-      const classification = resolveArchetypeClassification(
-        {
-          deckName: entry?.deck?.name,
-          deckId: entry?.deck?.id,
-          decklist: entry?.decklist
-        },
-        deckIndex
-      );
-
-      const cards = toCardEntries(entry?.decklist, cardTypesDb);
-      if (!cards.length) {
-        const hasDeckDescriptor = Boolean(entry?.deck?.name || entry?.deck?.id);
-        if (!hasDeckDescriptor) {
-          continue;
-        }
-      }
-
-      const fallbackIdentity = `${tournament.id}::${entry?.player || entry?.name || ''}::${entry?.placing ?? ''}::${classification?.id || entry?.deck?.id || classification?.name || entry?.deck?.name || ''}`;
-      const hashSource =
-        cards.length > 0
-          ? cards
-              .map(card => `${card.count}x${card.name}::${card.set || ''}::${card.number || ''}`)
-              .sort()
-              .join('|')
-          : fallbackIdentity;
-
-      const hash = crypto
-        .createHash('sha1')
-        .update(hashSource || 'unknown-deck')
-        .digest('hex');
-
-      decks.push({
-        id: hash.slice(0, 12),
-        player: entry?.name || entry?.player || 'Unknown Player',
-        playerId: entry?.player || null,
-        country: entry?.country || null,
-        placement: entry?.placing ?? null,
-        archetype: classification?.name || entry?.deck?.name || 'Unknown',
-        archetypeId: classification?.id || entry?.deck?.id || null,
-        archetypeSource: classification?.source || 'unknown',
-        cards,
-        hasDecklist: cards.length > 0,
-        tournamentId: tournament.id,
-        tournamentName: tournament.name,
-        tournamentDate: tournament.date,
-        tournamentFormat: tournament.format,
-        tournamentPlatform: tournament.platform,
-        tournamentOrganizer: tournament.organizer,
-        tournamentPlayers: derivedPlayers,
-        // Online windows never carry Day-2 phases, so phase tags are not
-        // appended (appendPhaseTags defaults false).
-        successTags: computeSuccessTags(entry?.placing, derivedPlayers)
-      });
-    }
-  }
-
-  return decks;
+  return { pairingsData, failures };
 }
 
 // ============================================================================
@@ -566,55 +261,156 @@ async function loadCardSynonyms(): Promise<SynonymDatabase> {
 }
 
 // ============================================================================
+// Gathering
+// ============================================================================
+
+interface GatheredWindow {
+  tournaments: OnlineTournamentSummary[];
+  decks: GatheredDeck[];
+  diagnostics: DiagnosticsCollector;
+}
+
+/**
+ * Fetch and gather the report window. In clean-refresh mode a wider window is
+ * fetched so the Limitless cache is repopulated, but the published report is
+ * always the WINDOW_DAYS window — never silently widened while labelled
+ * "Last 14 Days" (P-30). Tournaments that contributed no decks (below the
+ * field floor, failed standings) are dropped so the report's tournament list
+ * is exactly its deck population.
+ */
+async function gatherWindow(
+  now: Date,
+  cardTypesDb: CardTypesDatabase | null
+): Promise<GatheredWindow & { fetchWindowDays: number }> {
+  const reportWindow = utcDayWindow(now, WINDOW_DAYS);
+  const fetchWindowDays = CLEAN_MONTH_CACHE ? Math.max(WINDOW_DAYS, CACHE_REFRESH_LOOKBACK_DAYS) : WINDOW_DAYS;
+  const fetchWindow = utcDayWindow(now, fetchWindowDays);
+  const diagnostics: DiagnosticsCollector = {};
+
+  console.log(
+    `[online-meta] Gathering tournaments ${fetchWindow.start.toISOString()} .. ${fetchWindow.end.toISOString()}`
+  );
+  const fetched = await fetchRecentOnlineTournaments(limitlessEnv, fetchWindow.start, {
+    windowEnd: fetchWindow.lastInstant,
+    maxPages: MAX_PAGES,
+    diagnostics,
+    exclusions: compileExclusions(onlineExclusions),
+    fetchJson
+  });
+  console.log(
+    `[online-meta] Found ${fetched.length} eligible tournaments (${diagnostics.excludedTournaments?.length || 0} excluded by config)`
+  );
+
+  const gathered = await gatherDecks(limitlessEnv, fetched, diagnostics, cardTypesDb, { fetchJson });
+  if (!gathered.length) {
+    throw new Error('No decklists gathered from online tournaments');
+  }
+
+  const reportStartMs = reportWindow.start.getTime();
+  const inWindow = fetched.filter(tournament => {
+    const dateMs = Date.parse(tournament.date);
+    return Number.isFinite(dateMs) && dateMs >= reportStartMs;
+  });
+  if (!inWindow.length) {
+    throw new Error(
+      `No tournaments fall within the ${WINDOW_DAYS}-day report window ` +
+        `(fetched ${fetched.length} over ${fetchWindowDays} days); ` +
+        'refusing to publish a mislabelled report'
+    );
+  }
+
+  const deckCounts = new Map<string, number>();
+  for (const deck of gathered) {
+    deckCounts.set(deck.tournamentId, (deckCounts.get(deck.tournamentId) || 0) + 1);
+  }
+  const tournaments = inWindow.filter(tournament => (deckCounts.get(tournament.id) || 0) > 0);
+  const tournamentIds = new Set(tournaments.map(tournament => tournament.id));
+  const decks = gathered
+    .filter(deck => tournamentIds.has(deck.tournamentId))
+    .map(deck => ({ ...deck, id: deck.id.slice(0, DECK_ID_LENGTH) }));
+  if (!decks.length) {
+    throw new Error('No decklists remained after report-window filtering');
+  }
+
+  return { tournaments, decks, diagnostics, fetchWindowDays };
+}
+
+function buildMeta(
+  now: Date,
+  window: GatheredWindow,
+  fetchWindowDays: number,
+  archetypes: { minDecks: number; pairingsFailures: Array<{ tournamentId: string; name: string; message: string }> }
+): Record<string, unknown> {
+  const reportWindow = utcDayWindow(now, WINDOW_DAYS);
+  const { diagnostics } = window;
+  const fields = diagnostics.tournamentFields || {};
+  return {
+    name: TARGET_FOLDER,
+    source: 'limitless-online',
+    generatedAt: now.toISOString(),
+    windowStart: reportWindow.start.toISOString(),
+    windowEnd: reportWindow.end.toISOString(),
+    deckTotal: window.decks.length,
+    tournamentCount: window.tournaments.length,
+    archetypeMinPercent: 0.5,
+    archetypeMinDecks: archetypes.minDecks,
+    refreshMode: CLEAN_MONTH_CACHE,
+    refreshLookbackDays: fetchWindowDays,
+    // What the numbers were computed against, so a reader never has to guess.
+    fieldPolicy: {
+      population: 'players with a placing',
+      minFieldPlayers: DEFAULT_MIN_FIELD_PLAYERS,
+      minMatchupFieldPlayers: MIN_MATCHUP_FIELD_PLAYERS,
+      minMatchupGames: MIN_MATCHUP_GAMES
+    },
+    unplacedEntries: diagnostics.entriesWithoutPlacing?.length || 0,
+    excluded: diagnostics.excludedTournaments || [],
+    skipped: {
+      belowMinimum: diagnostics.tournamentsBelowMinimum || [],
+      standingsFailures: diagnostics.standingsFetchFailures || [],
+      detailsFailures: diagnostics.detailsFetchFailures || [],
+      pairingsFailures: archetypes.pairingsFailures
+    },
+    tournaments: window.tournaments.map(t => ({
+      id: t.id,
+      name: t.name,
+      date: t.date,
+      // `players` is the field the report was computed against; `registered`
+      // is what Limitless lists, late registrations and no-shows included.
+      players: fields[t.id]?.fieldSize ?? t.players,
+      registered: fields[t.id]?.registered ?? t.players,
+      format: t.format,
+      platform: t.platform,
+      organizer: t.organizer
+    }))
+  };
+}
+
+// ============================================================================
 // Main Function
 // ============================================================================
 
 async function main(): Promise<void> {
   const now = new Date();
-  const reportWindowStart = daysAgo(WINDOW_DAYS);
-  const fetchWindowDays = CLEAN_MONTH_CACHE ? Math.max(WINDOW_DAYS, CACHE_REFRESH_LOOKBACK_DAYS) : WINDOW_DAYS;
-  const fetchWindowStart = daysAgo(fetchWindowDays);
   const basePath = `${R2_REPORTS_PREFIX}/${TARGET_FOLDER}`;
 
   // NOTE: In CLEAN_MONTH_CACHE mode the existing artifacts are deleted only
   // AFTER a complete, validated report is in hand (see below), so a fetch outage
   // or an empty report window can no longer wipe production (P-03).
 
-  console.log(`[online-meta] Gathering tournaments since ${fetchWindowStart.toISOString()}`);
-  const tournaments = await fetchRecentOnlineTournaments(fetchWindowStart);
-  console.log(`[online-meta] Found ${tournaments.length} eligible tournaments`);
-
   const cardTypesDb = await loadCardTypesDatabase();
   const synonymDb = await loadCardSynonyms();
-  const decks = await gatherDecks(tournaments, cardTypesDb);
-  if (!decks.length) {
-    throw new Error('No decklists gathered from online tournaments');
-  }
+  const window = await gatherWindow(now, cardTypesDb);
+  const { tournaments: reportTournaments, decks: reportDecks, diagnostics } = window;
+  console.log('[online-meta] Archetype classification summary:', diagnostics.archetypeClassification);
 
-  // The published report always describes the WINDOW_DAYS window. When a clean
-  // rebuild fetches a wider window (CACHE_REFRESH_LOOKBACK_DAYS), keep only the
-  // tournaments that actually fall inside the report window — never silently
-  // widen the report to older events while labelling it "Last 14 Days" (P-30).
-  const reportWindowStartMs = reportWindowStart.getTime();
-  const reportTournaments = tournaments.filter(tournament => {
-    const dateMs = Date.parse(tournament?.date);
-    return Number.isFinite(dateMs) && dateMs >= reportWindowStartMs;
-  });
-  if (!reportTournaments.length) {
-    throw new Error(
-      `No tournaments fall within the ${WINDOW_DAYS}-day report window ` +
-        `(fetched ${tournaments.length} over ${fetchWindowDays} days); ` +
-        'refusing to publish a mislabelled report'
-    );
-  }
-  const reportTournamentIds = new Set(reportTournaments.map(tournament => tournament.id));
-  const reportDecks = decks.filter(deck => reportTournamentIds.has(deck?.tournamentId));
-  if (!reportDecks.length) {
-    throw new Error('No decklists remained after report-window filtering');
-  }
-
-  // Gather pairings data for matchup analysis
-  const pairingsData = await gatherPairingsData(reportTournaments);
+  // Gather pairings data for matchup analysis, from fields large enough to
+  // carry a matchup record.
+  const fields = diagnostics.tournamentFields || {};
+  const matchupTournaments = reportTournaments.filter(
+    tournament => (fields[tournament.id]?.fieldSize || 0) >= MIN_MATCHUP_FIELD_PLAYERS
+  );
+  const { pairingsData, failures: pairingsFailures } = await gatherPairingsData(matchupTournaments);
 
   console.log(`[online-meta] Aggregating ${reportDecks.length} decks`);
   // Decklist-less standings entries stay in the deck list — they're real decks
@@ -627,8 +423,8 @@ async function main(): Promise<void> {
   );
   // The frozen 'preserve' online profile: case-preserving group keys (D3
   // quirk), 0.5% deck floor, fraction percent, deckCount-desc ordering,
-  // thumbnails + signature cards on index entries — pinned byte-identical to
-  // the old .mjs builder before cutover.
+  // thumbnails + signature cards on index entries. The "Other" bucket stays in
+  // the denominator but gets no page.
   const {
     files: archetypeFiles,
     index: archetypeIndex,
@@ -640,28 +436,7 @@ async function main(): Promise<void> {
     onlineArchetypeOptions(ARCHETYPE_THUMBNAILS, cardTypesDb, masterReport)
   );
 
-  const meta = {
-    name: TARGET_FOLDER,
-    source: 'limitless-online',
-    generatedAt: now.toISOString(),
-    windowStart: reportWindowStart.toISOString(),
-    windowEnd: now.toISOString(),
-    deckTotal: reportDecks.length,
-    tournamentCount: reportTournaments.length,
-    archetypeMinPercent: 0.5,
-    archetypeMinDecks: minDecks,
-    refreshMode: CLEAN_MONTH_CACHE,
-    refreshLookbackDays: fetchWindowDays,
-    tournaments: reportTournaments.map(t => ({
-      id: t.id,
-      name: t.name,
-      date: t.date,
-      players: t.players,
-      format: t.format,
-      platform: t.platform,
-      organizer: t.organizer
-    }))
-  };
+  const meta = buildMeta(now, window, window.fetchWindowDays, { minDecks, pairingsFailures });
 
   // Pre-generate every archetype's trends BEFORE any destructive step. Trend
   // generation is pure/in-memory, so a failure here signals a real bug — surface

@@ -7,6 +7,22 @@ export interface Pagination<T> {
   setPage: (p: number) => void;
 }
 
+export function createQueryPageSignal(
+  read: () => string | undefined,
+  write: (value: string | undefined) => void
+): Signal<number> {
+  const get = () => {
+    const value = Number(read());
+    return Number.isInteger(value) && value > 1 ? value : 1;
+  };
+  const set: Signal<number>[1] = value => {
+    const next = typeof value === 'function' ? value(get()) : value;
+    write(next > 1 ? String(next) : undefined);
+    return next;
+  };
+  return [get, set];
+}
+
 export function createPagination<T>(
   source: () => readonly T[],
   pageSize: number,

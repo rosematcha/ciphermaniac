@@ -1,6 +1,5 @@
 import { ErrorBoundary, type ParentComponent, Suspense } from 'solid-js';
 import { useIsRouting } from '@solidjs/router';
-import { SurveyBanner } from './components/SurveyBanner';
 import { SiteFooter } from './components/SiteFooter';
 import { Skeleton } from './components/Skeleton';
 import { TopNav } from './components/TopNav';
@@ -38,7 +37,6 @@ export const App: ParentComponent = props => {
       {/* Slim pending bar: instant feedback the moment a nav starts, for the
           cases that still take time (lazy chunk download on slow networks). */}
       <div class='route-progress' classList={{ active: isRouting() }} aria-hidden='true' />
-      <SurveyBanner />
       <TopNav />
       <main class='page'>
         <ErrorBoundary

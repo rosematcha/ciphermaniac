@@ -170,6 +170,19 @@ async function getJsonFromR2(key: string): Promise<unknown | null> {
   }
 }
 
+type JsonReader = (path: string) => Promise<unknown | null>;
+
+async function collectReportCards(cards: Map<string, CardRef>, root: string, readJson: JsonReader): Promise<void> {
+  const master = (await readJson(`${root}master.json`)) as { items?: unknown } | null;
+  collectFromItems(master?.items, cards);
+  const archetypeIndex = (await readJson(`${root}archetypes/index.json`)) as
+    { archetypes?: { thumbnails?: unknown }[] } | { thumbnails?: unknown }[] | null;
+  const entries = Array.isArray(archetypeIndex) ? archetypeIndex : (archetypeIndex?.archetypes ?? []);
+  for (const entry of entries) {
+    collectFromThumbnails(entry.thumbnails, cards);
+  }
+}
+
 /**
  * Discover cards via the S3 API. CI runners can't read the public
  * r2.ciphermaniac.com edge (Cloudflare bot-management blocks datacenter IPs),
@@ -179,14 +192,7 @@ async function getJsonFromR2(key: string): Promise<unknown | null> {
 async function discoverViaS3(cards: Map<string, CardRef>): Promise<void> {
   const prefixes = await listReportPrefixes();
   for (const prefix of prefixes) {
-    const master = (await getJsonFromR2(`${prefix}master.json`)) as { items?: unknown } | null;
-    collectFromItems(master?.items, cards);
-    const archeIndex = (await getJsonFromR2(`${prefix}archetypes/index.json`)) as
-      { archetypes?: { thumbnails?: unknown }[] } | { thumbnails?: unknown }[] | null;
-    const list = Array.isArray(archeIndex) ? archeIndex : (archeIndex?.archetypes ?? []);
-    for (const entry of list) {
-      collectFromThumbnails((entry as { thumbnails?: unknown }).thumbnails, cards);
-    }
+    await collectReportCards(cards, prefix, getJsonFromR2);
   }
 }
 
@@ -195,16 +201,8 @@ async function discoverViaHttp(cards: Map<string, CardRef>): Promise<void> {
   const tournaments = (await fetchJson(`${R2_BASE}/reports/tournaments.json`)) as string[] | null;
   const liveNames = [...(tournaments ?? []), 'Online - Last 14 Days'];
   for (const name of liveNames) {
-    const master = (await fetchJson(`${R2_BASE}/reports/${encodeURIComponent(name)}/master.json`)) as {
-      items?: unknown;
-    } | null;
-    collectFromItems(master?.items, cards);
-    const archeIndex = (await fetchJson(`${R2_BASE}/reports/${encodeURIComponent(name)}/archetypes/index.json`)) as
-      { archetypes?: { thumbnails?: unknown }[] } | { thumbnails?: unknown }[] | null;
-    const list = Array.isArray(archeIndex) ? archeIndex : (archeIndex?.archetypes ?? []);
-    for (const entry of list) {
-      collectFromThumbnails((entry as { thumbnails?: unknown }).thumbnails, cards);
-    }
+    const root = `${R2_BASE}/reports/${encodeURIComponent(name)}/`;
+    await collectReportCards(cards, root, fetchJson);
   }
 }
 

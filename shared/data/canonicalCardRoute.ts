@@ -2,7 +2,7 @@
  * Canonical card-page URL resolution — the ONE resolver for `/cards/:set/:number`.
  *
  * Three distinct identity concepts exist in this codebase and must not be
- * conflated (DB-MASTER-PLAN D4/D17):
+ * conflated:
  *
  * - **Global canonical UID** — `Name::SET::NUMBER`, stable cross-event card
  *   identity. Produced by {@link getCanonicalCardFromData}. Aggregation joins
@@ -16,8 +16,7 @@
  * The route layer erases the card NAME, so it is a projection of the UID graph
  * and can degrade independently of it: a UID graph that is perfectly acyclic
  * can still project onto a cyclic route graph if two clusters' variant/canonical
- * pairs collide on `(set, number)`. That is exactly how `/cards/TWM/130` and
- * `/cards/PRE/073` came to 301 at each other (migration status, Phase 6 note).
+ * pairs collide on `(set, number)`.
  *
  * The invariant this module owns:
  *

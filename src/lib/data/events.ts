@@ -10,12 +10,10 @@
 
 import { dataClient } from './client';
 import { tournamentPath } from './paths';
-import { getCanonicalCardFromData } from '../../../shared/synonyms.js';
-import { cardUidOrName } from '../../../shared/data/cardIdentity';
+import { cardUidOrName, getCanonicalCardFromData, itemUid, parseCardUid } from '../../../shared/data/cardIdentity.js';
 import { getSynonymDatabase } from '../../utils/cardSynonyms';
 import type { TournamentParticipant } from '../../types';
 import { fetchMaster, type MasterPayload } from './reports';
-import { itemUid } from './compat';
 
 const { fetchJsonOptional } = dataClient;
 
@@ -44,7 +42,7 @@ export interface DeckRecord {
   archetype: string;
   archetypeId: string;
   cards: DeckCardRecord[];
-  /** Whether this deck's pilot made the Day 2 cut (Phase 2). */
+  /** Whether this deck's pilot made the Day 2 cut. */
   madePhase2?: boolean;
 }
 
@@ -105,11 +103,7 @@ function displayForUid(
   if (hit) {
     return hit;
   }
-  const parts = uid.split('::');
-  if (parts.length < 3) {
-    return null;
-  }
-  return { name: parts[0], set: parts[1], number: parts[2] };
+  return parseCardUid(uid);
 }
 
 /**

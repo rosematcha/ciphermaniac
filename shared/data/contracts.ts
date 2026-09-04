@@ -8,7 +8,7 @@
  * Denormalized serving artifacts (percentages, distributions, sort order) are a
  * separate layer built from these records.
  *
- * Contract decisions this file freezes (see .scratch/db-migration design docs):
+ * Invariants:
  * - Percentages use a `Pct` suffix and are 0-100; the normalized layer stores
  *   COUNTS wherever possible and leaves percentages to serving artifacts.
  * - Card numbers are the canonical padded form (018A) via
@@ -25,13 +25,11 @@
  *   attributes (stage, mechanicSubtypes, structured weakness/resistance, hp, …)
  *   scraped into card-types.json keyed by `SET::NUMBER`.
  *
- * IMPORTANT: this module is environment-neutral (browser + Node + Workers). It
- * must not import `node:crypto`; the {@link deckId} constructor takes a hash
- * function so callers can supply `sha256Hex` from `shared/data/hash.ts`.
- * @module shared/data/contracts
+ * This module is environment-neutral. The {@link deckId} constructor accepts a
+ * hash function rather than importing `node:crypto`.
  */
 
-import { normalizeCardNumber } from '../cardUtils';
+import { normalizeCardNumber, parseCardUid } from './cardIdentity';
 import { validateArchetypeIdentity } from './archetypes/identity';
 import {
   checkArrayOf,
@@ -50,17 +48,8 @@ import {
   whenPresent
 } from './validate';
 
-// Archetype identity policy (key/displayName/slug triple) lives in
-// shared/data/archetypes/identity.ts (DB-MASTER-PLAN Phase 2, slice 5). These
-// re-exports keep contracts.ts's public API intact for existing importers.
 export { archetypeKey, archetypeSlug, makeArchetypeIdentity } from './archetypes/identity';
-
-/** Schema version stamped on every top-level normalized record. */
 export const SCHEMA_VERSION = 1;
-
-// ============================================================================
-// Enums / literal unions
-// ============================================================================
 
 /** Data source shape for a normalized event. */
 export type NormalizedEventKind = 'labs-event' | 'online-window';
@@ -185,7 +174,7 @@ export const SUCCESS_TAG_POLICY: SuccessTagPolicy = {
 /**
  * Compute success tags for a placement in a field of `fieldSize` players. The
  * placement/percent tags come from the policy; `phase2`/`topcut` are appended
- * only for Labs events (`appendPhaseTags`), matching the D7 divergence where
+ * only for Labs events (`appendPhaseTags`), matching the producer difference where
  * online windows never emit them. Tags are returned in policy order:
  * placement rules, then percent rules, then phase2, then topcut.
  * @param placement - Finishing position (1-based) or null
@@ -243,7 +232,7 @@ export function computeSuccessTags(
  * {@link SUCCESS_TAG_POLICY} (the Labs-only `phase2`/`topcut` phase tags are
  * excluded). This is the canonical taxonomy consumers iterate when they need a
  * literal-typed tier list; a test pins it to the policy so the two cannot
- * drift. See divergence D7.
+ * drift.
  */
 export const SUCCESS_TAG_NAMES = ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'] as const;
 
@@ -617,21 +606,15 @@ export interface ParsedCardUid {
  * @param uid - The UID to parse
  * @returns Parsed pieces, or null if malformed
  */
-export function parseCardUid(uid: string): ParsedCardUid | null {
+export function parseCardIdentity(uid: string): ParsedCardUid | null {
   if (typeof uid !== 'string' || uid.length === 0) {
     return null;
   }
-  const parts = uid.split('::');
-  if (parts.length === 1) {
-    return { name: parts[0], set: null, number: null };
+  const parsed = parseCardUid(uid);
+  if (parsed) {
+    return parsed;
   }
-  if (parts.length === 3) {
-    if (!parts[0] || !parts[1] || !parts[2]) {
-      return null;
-    }
-    return { name: parts[0], set: parts[1], number: parts[2] };
-  }
-  return null;
+  return uid.includes('::') ? null : { name: uid, set: null, number: null };
 }
 
 /** Minimal card shape needed to compute a deck's content hash. */
@@ -813,7 +796,7 @@ function checkUidSegments(record: Record<string, unknown>, path: string, errors:
     errors.push(`${path}.uid: expected non-empty string`);
     return null;
   }
-  const parsed = parseCardUid(uid);
+  const parsed = parseCardIdentity(uid);
   if (!parsed) {
     errors.push(`${path}.uid: unparseable UID "${uid}"`);
     return null;
@@ -1268,7 +1251,7 @@ function collectMatches(matches: unknown[] | null, participantIds: Set<string>, 
 /**
  * successTags must equal the policy recomputation exactly, order included, so
  * the artifacts built from them are byte-deterministic. Phase tags append only
- * for Labs events (D7 divergence).
+ * for Labs events.
  */
 function checkSuccessTagDrift(
   decks: unknown[] | null,
@@ -1342,7 +1325,7 @@ export function validateNormalizedEvent(value: unknown): ValidationResult<Normal
   const playerCount = isRecord(value.meta) && isInteger(value.meta.playerCount) ? value.meta.playerCount : null;
   checkSuccessTagDrift(decks, participantById, playerCount, kind === 'labs-event', errors);
 
-  // Structural asymmetry (D11): online windows carry no match data.
+  // Structural asymmetry: online windows carry no match data.
   if (kind === 'online-window' && matches && matches.length > 0) {
     errors.push('root.matches: online windows must have an empty matches array');
   }

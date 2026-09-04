@@ -52,22 +52,6 @@ export interface GatheredDeck {
   successTags: string[];
 }
 
-// The ReportItem/ReportData thumbnail-inference shapes retired with the stale
-// reportGenerator presentation copy (DB-MASTER-PLAN Phase 2, slice 5); the
-// shared engine's types live in shared/data/archetypes/presentation.ts.
-
-/** Tournament details response from Limitless API */
-export interface TournamentDetailsResponse {
-  decklists?: boolean;
-  isOnline?: boolean;
-  format?: string | null;
-  platform?: string | null;
-  organizer?: {
-    name?: string;
-    id?: string;
-  } | null;
-}
-
 /** Base options for functions that accept env and diagnostic options */
 interface BaseOptions {
   diagnostics?: DiagnosticsCollector;
@@ -194,7 +178,7 @@ export interface BuildCardTrendReportOptions {
    * single trend entry. When omitted, card keys are kept raw and reprints
    * appear as separate rows.
    */
-  synonymDb?: import('../synonyms').SynonymDatabase | null;
+  synonymDb?: import('../data/cardIdentity').SynonymDatabase | null;
 }
 
 /** Trend report result structure */

@@ -9,7 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { buildPrintingRows, formatPrintPrice, sortPrintings } from '../../src/utils/printings.ts';
-import type { SynonymDatabase } from '../../shared/synonyms.ts';
+import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 
 // prints keys are in scrape (release) order: SFA → SSP → MEG → ASC.
 const DB: SynonymDatabase = {

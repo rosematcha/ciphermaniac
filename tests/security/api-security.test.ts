@@ -15,6 +15,7 @@ import * as FeedbackModule from '../../functions/api/feedback.ts';
 
 // Import thumbnail handler for path validation tests
 import * as ThumbnailModule from '../../functions/thumbnails/[[path]].ts';
+import * as SpriteModule from '../../functions/sprites/[[path]].ts';
 
 // Reset rate limit store before each test to prevent cross-test interference
 beforeEach(() => {
@@ -347,6 +348,30 @@ test('Thumbnail API: OPTIONS preflight returns CORS headers', async () => {
   assert.strictEqual(response.status, 204);
   assert.strictEqual(response.headers.get('Access-Control-Allow-Origin'), '*');
   assert.ok(response.headers.get('Access-Control-Allow-Methods')?.includes('GET'));
+});
+
+test('Sprite API: rejects invalid slugs', async () => {
+  const response = await SpriteModule.onRequest({ request: makeThumbnailRequest('/sprites/../mew.png') });
+  assert.strictEqual(response.status, 400);
+});
+
+test('Sprite API: falls back and returns an immutable, CORS-open image', async () => {
+  mockFetch([
+    { status: 404 },
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/octet-stream', 'Set-Cookie': 'blocked=1', Vary: 'Origin' },
+      body: 'fake-image-data'
+    }
+  ]);
+
+  const response = await SpriteModule.onRequest({ request: makeThumbnailRequest('/sprites/mew.png') });
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(response.headers.get('Content-Type'), 'image/png');
+  assert.strictEqual(response.headers.get('Access-Control-Allow-Origin'), '*');
+  assert.strictEqual(response.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
+  assert.strictEqual(response.headers.get('Set-Cookie'), null);
+  assert.strictEqual(response.headers.get('Vary'), null);
 });
 
 /**

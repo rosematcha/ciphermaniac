@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { canonicalizeReport } from '../../src/lib/data/compat.ts';
-import type { SynonymDatabase } from '../../shared/synonyms.ts';
+import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import type { CardItem } from '../../src/types';
 
 /**

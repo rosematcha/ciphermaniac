@@ -1,4 +1,4 @@
-import { createMemo, createResource, For, type JSX, onMount, Show, type Signal } from 'solid-js';
+import { createMemo, createResource, For, type JSX, onMount, Show } from 'solid-js';
 import { A, useNavigate, useSearchParams } from '@solidjs/router';
 import { fetchPlayerIndexSlim } from '../lib/data';
 import { resolved } from '../lib/resource';
@@ -7,7 +7,7 @@ import { SearchInput } from '../components/Chip';
 import { Pagination } from '../components/Pagination';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
-import { createPagination } from '../lib/pagination';
+import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { debounced } from '../lib/debounce';
 import { prefetchPlayerProfilePage } from '../lib/prefetch';
 import type { PlayerIndexSlimEntry } from '../types';
@@ -87,17 +87,10 @@ export function PlayersPage() {
 
   const sorted = createMemo(() => [...filtered()].sort(comparePlayers(sortKey(), sortDir())));
 
-  const pageParam: Signal<number> = [
-    () => {
-      const n = Number(params.page);
-      return Number.isInteger(n) && n > 1 ? n : 1;
-    },
-    (p => {
-      const next = typeof p === 'function' ? p(pageParam[0]()) : p;
-      setParams({ page: next > 1 ? String(next) : undefined }, { replace: true });
-      return next;
-    }) as Signal<number>[1]
-  ];
+  const pageParam = createQueryPageSignal(
+    () => params.page,
+    page => setParams({ page }, { replace: true })
+  );
   // No resetOn list: setQuery and setSort already clear `page` themselves.
   const { page, totalPages, pageItems: pageRows, setPage } =
     // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper

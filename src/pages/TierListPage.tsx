@@ -15,6 +15,7 @@
 
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
+import { parseCardUid } from '../../shared/data/cardIdentity';
 import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '../components/Skeleton';
 import { CardImage } from '../components/CardImage';
@@ -244,8 +245,8 @@ export function TierListPage() {
     }
     return Object.entries(database.canonicals)
       .map(([name, uid]) => {
-        const [, set, number] = uid.split('::');
-        return set && number ? { name, set, number } : null;
+        const parsed = parseCardUid(uid);
+        return parsed ? { name, set: parsed.set, number: parsed.number } : null;
       })
       .filter((c): c is CanonicalOption => c !== null)
       .sort((a, b) => a.name.localeCompare(b.name));

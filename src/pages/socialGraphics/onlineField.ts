@@ -13,7 +13,7 @@
  * @module src/pages/socialGraphics/onlineField
  */
 
-import { getCanonicalCardFromData, type SynonymDatabase } from '../../../shared/synonyms.js';
+import { getCanonicalCardFromData, type SynonymDatabase } from '../../../shared/data/cardIdentity.js';
 import type { CardSuccessIndex, SuccessCounts } from '../../../shared/data/reports/cardSuccess';
 import { fetchCardSuccessIndex } from '../../lib/data';
 import { getSynonymDatabase } from '../../utils/cardSynonyms';
