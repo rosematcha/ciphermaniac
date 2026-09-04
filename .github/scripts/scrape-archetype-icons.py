@@ -35,22 +35,21 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import requests
-from bs4 import BeautifulSoup
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 
-LIMITLESS_DECKS_URL = "https://play.limitlesstcg.com/decks"
-ICON_SRC_RE = re.compile(r"/pokemon/[^/]+/([^/]+?)\.png", re.IGNORECASE)
-HTTP_TIMEOUT = 20
-HTTP_RETRIES = 4
-REQUEST_DELAY = 0.5  # be polite between snapshot fetches
+from limitless_decks import (  # noqa: E402
+    REQUEST_DELAY,
+    fetch_decks_html,
+    parse_deck_rows,
+    parse_set_options,
+)
+
 OUTPUT_PATH = Path("src") / "data" / "archetype-icons.json"
-MAX_ICONS = 2
 
 # Limitless deliberately has no deck-index row for its residual "Other" bucket,
 # so scraping cannot discover its representative icon. Keep this product choice
@@ -90,26 +89,16 @@ FALLBACK_SET_TARGETS: List[Tuple[str, str]] = [
 ]
 
 
-def parse_set_options(html: str) -> List[Tuple[str, str]]:
-    """Read the decks-page set selector, oldest → newest.
+def targets_from_selector(html: str) -> List[Tuple[str, str]]:
+    """Cut the decks-page set selector down to the snapshots we scrape.
 
     The selector lists sets newest-first and spans every rotation back to 2021,
     so we reverse it and cut everything older than EARLIEST_TARGET. That single
     cut handles both the rotation floor and the pre-SFA 2024 sets, because
-    document order puts older rotations after 2024.
+    document order puts older rotations after 2024. Options with no rotation
+    are dropped: a snapshot is only addressable as a (rotation, set) pair.
     """
-    soup = BeautifulSoup(html, "html.parser")
-    selector = soup.find("select", id="set")
-    if not selector:
-        return []
-
-    options: List[Tuple[str, str]] = []
-    for option in selector.find_all("option"):
-        rotation = (option.get("data-rotation") or "").strip()
-        set_code = (option.get("data-set") or "").strip()
-        if rotation and set_code and (rotation, set_code) not in options:
-            options.append((rotation, set_code))
-
+    options = [pair for pair in parse_set_options(html) if pair[0]]
     options.reverse()
     if EARLIEST_TARGET not in options:
         return []
@@ -118,7 +107,7 @@ def parse_set_options(html: str) -> List[Tuple[str, str]]:
 
 def discover_targets() -> List[Tuple[str, str]]:
     try:
-        targets = parse_set_options(fetch_html({}))
+        targets = targets_from_selector(fetch_decks_html({}))
     except RuntimeError as err:
         print(f"WARNING: could not fetch the set selector ({err});", file=sys.stderr)
         targets = []
@@ -132,48 +121,9 @@ def discover_targets() -> List[Tuple[str, str]]:
     return FALLBACK_SET_TARGETS
 
 
-def fetch_html(params: Dict[str, str]) -> str:
-    last_err: Exception | None = None
-    for attempt in range(HTTP_RETRIES):
-        try:
-            resp = requests.get(
-                LIMITLESS_DECKS_URL,
-                params=params,
-                timeout=HTTP_TIMEOUT,
-                headers={"User-Agent": "ciphermaniac-icon-scraper/1.0"},
-            )
-            resp.raise_for_status()
-            return resp.text
-        except requests.RequestException as err:  # pragma: no cover - network
-            last_err = err
-            time.sleep(1.5 * (attempt + 1))
-    raise RuntimeError(f"Failed to fetch decks ({params}): {last_err}")
-
-
 def parse_rows(html: str) -> Dict[str, List[str]]:
     """Map each archetype display name → ordered, de-duped icon slug list."""
-    soup = BeautifulSoup(html, "html.parser")
-    mapping: Dict[str, List[str]] = {}
-    for row in soup.select("tr"):
-        link = row.find("a", href=re.compile(r"/decks/"))
-        if not link:
-            continue
-        name = link.get_text(strip=True)
-        if not name:
-            continue
-        slugs: List[str] = []
-        for img in row.select("img.pokemon"):
-            match = ICON_SRC_RE.search(img.get("src") or "")
-            if not match:
-                continue
-            slug = match.group(1).lower()
-            if slug and slug not in slugs:
-                slugs.append(slug)
-            if len(slugs) >= MAX_ICONS:
-                break
-        if slugs:
-            mapping[name] = slugs
-    return mapping
+    return {row.name: row.icons for row in parse_deck_rows(html) if row.icons}
 
 
 def load_existing() -> Dict[str, List[str]]:
@@ -215,7 +165,7 @@ def main() -> int:
         if index:
             time.sleep(REQUEST_DELAY)
         print(f"Fetching decks (rotation={rotation}, set={set_code})...")
-        html = fetch_html({"rotation": rotation, "set": set_code})
+        html = fetch_decks_html({"rotation": rotation, "set": set_code})
         rows = parse_rows(html)
         new = sum(1 for name in rows if name not in scraped)
         print(f"  parsed {len(rows)} archetype rows (+{new} new to this run)")
