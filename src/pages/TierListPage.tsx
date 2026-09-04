@@ -1,7 +1,7 @@
 /**
  * Tier List Maker.
  *
- * Rank the archetypes of an event, or the distinct arts of one card, and export
+ * Rank the archetypes of a format, or the distinct arts of one card, and export
  * the result as a JPG. The card-art tab is the reason the art-grouping pipeline
  * exists: Rare Candy has twenty-two printings but fourteen distinct
  * illustrations, and ranking the same picture six times is not a tier list.
@@ -20,14 +20,15 @@ import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '../components/Skeleton';
 import { CardImage } from '../components/CardImage';
 import {
-  fetchArchetypes,
-  fetchTournamentsList,
+  fetchFormatArchetypes,
+  FORMAT_SPRITE_SLUGS,
   getArchetypeIconMap,
-  prettyTournamentName,
-  resolveArchetypeIcons
+  resolveArchetypeIcons,
+  TIER_FORMATS,
+  tierFormat,
+  type TierFormat
 } from '../lib/data';
 import { type ArtCard, browsableArtCards, fetchArtCards, findArtCard } from '../lib/data/artGroups';
-import { ONLINE_META_NAME } from '../lib/constants';
 import { downloadBlob, isTouchDevice } from '../lib/download';
 import { latestValue } from '../lib/resource';
 import { fitBoardForExport } from '../lib/tierList/exportFit';
@@ -105,6 +106,15 @@ const MODE_LABELS: { value: TierMode; label: string }[] = [
   { value: 'arts', label: 'Card arts' }
 ];
 
+/**
+ * The picker's two halves. Formats still being played move; the ones below the
+ * divide are settled, so a list made from one stays true indefinitely.
+ */
+const FORMAT_GROUPS: { group: TierFormat['group']; label: string }[] = [
+  { group: 'current', label: 'Current formats' },
+  { group: 'past', label: 'Past formats' }
+];
+
 /** Title-case a sprite slug: `arcanine-hisui` → `Arcanine (Hisui)`. */
 function spriteLabel(slug: string): string {
   const [head, ...form] = slug.split('-');
@@ -113,18 +123,18 @@ function spriteLabel(slug: string): string {
 }
 
 /**
- * Only slugs we have mirrored to R2 — the same committed map the mirror script
- * reads. Anything outside it loads from the LimitlessTCG CDN, and a
- * cross-origin sprite cannot be inlined into the exported JPG: it would leave a
- * hole in the image the user posts.
+ * Only slugs we have mirrored to R2 — the two committed sources the mirror
+ * script reads, the Standard icon map and the format snapshots. Anything
+ * outside them loads from the LimitlessTCG CDN, and a cross-origin sprite
+ * cannot be inlined into the exported JPG: it would leave a hole in the image
+ * the user posts.
  */
-const SPRITES: SpriteOption[] = [...new Set([...getArchetypeIconMap().values()].flat())]
+const SPRITES: SpriteOption[] = [...new Set([...[...getArchetypeIconMap().values()].flat(), ...FORMAT_SPRITE_SLUGS])]
   .sort()
   .map(slug => ({ slug, label: spriteLabel(slug) }));
 
 export function TierListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tournaments] = createResource(fetchTournamentsList);
   const [artCards] = createResource(fetchArtCards);
   const [synonyms] = createResource(getSynonymDatabase);
 
@@ -144,9 +154,11 @@ export function TierListPage() {
   let board: HTMLDivElement | undefined;
   let nextCustomId = 1;
 
-  const tournament = (): string =>
-    typeof searchParams.t === 'string' && searchParams.t ? searchParams.t : ONLINE_META_NAME;
-  const [archetypes] = createResource(tournament, fetchArchetypes);
+  // Resolved, not raw: an unknown id in the URL falls back to Standard rather
+  // than fetching a format that does not exist.
+  const format = (): TierFormat =>
+    tierFormat(typeof searchParams.format === 'string' ? searchParams.format : undefined);
+  const [archetypes] = createResource(() => format().id, fetchFormatArchetypes);
 
   const labels = (): boolean => labelChoice() ?? LABEL_DEFAULT[mode()];
   const cards = (): ArtCard[] => latestValue(artCards) ?? [];
@@ -168,6 +180,19 @@ export function TierListPage() {
   onCleanup(() => {
     document.body.classList.remove('tl-labels');
     document.body.style.removeProperty('--tl-item-h');
+  });
+
+  /**
+   * Previews only exist on Standard, so landing on any other format has to put
+   * the view back to icons — otherwise the board renders empty tiles and the
+   * toggle that would fix it is gone with the format that offered it. An effect
+   * rather than a handler on the picker: a shared link and the back button set
+   * the format too, and neither goes through the picker.
+   */
+  createEffect(() => {
+    if (mode() === 'previews' && !format().previews) {
+      setMode('icons');
+    }
   });
 
   // Re-measure whenever what a tile looks like changes.
@@ -394,14 +419,14 @@ export function TierListPage() {
     if (state.mode === 'arts') {
       setCardKey(state.subject);
     } else if (state.subject) {
-      setSearchParams({ t: state.subject });
+      setSearchParams({ format: state.subject });
     }
   }
 
   async function share(): Promise<void> {
     const encoded = encodeShare({
       mode: mode(),
-      subject: mode() === 'arts' ? (activeCard()?.key ?? '') : tournament(),
+      subject: mode() === 'arts' ? (activeCard()?.key ?? '') : format().id,
       title: title(),
       tiers: tiers(),
       placement: placement(),
@@ -419,7 +444,7 @@ export function TierListPage() {
   // -------------------------------------------------------------- export
 
   function exportName(): string {
-    const subject = mode() === 'arts' ? (activeCard()?.name ?? 'cards') : prettyTournamentName(tournament());
+    const subject = mode() === 'arts' ? (activeCard()?.name ?? 'cards') : format().label;
     const slug = (title() || subject)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -520,14 +545,18 @@ export function TierListPage() {
             fallback={
               <select
                 class='sel'
-                value={tournament()}
-                onChange={e => setSearchParams({ t: e.currentTarget.value })}
-                aria-label='Tournament'
+                value={format().id}
+                onChange={e => setSearchParams({ format: e.currentTarget.value })}
+                aria-label='Format'
               >
-                {/* The fetched list already leads with the online meta, so it is only
-                    a fallback for the frame before the list arrives. */}
-                <For each={latestValue(tournaments) ?? [ONLINE_META_NAME]}>
-                  {name => <option value={name}>{prettyTournamentName(name)}</option>}
+                <For each={FORMAT_GROUPS}>
+                  {section => (
+                    <optgroup label={section.label}>
+                      <For each={TIER_FORMATS.filter(entry => entry.group === section.group)}>
+                        {entry => <option value={entry.id}>{entry.label}</option>}
+                      </For>
+                    </optgroup>
+                  )}
                 </For>
               </select>
             }
@@ -566,7 +595,9 @@ export function TierListPage() {
             </Combo>
           </Show>
 
-          <Show when={mode() !== 'arts'}>
+          {/* Only Standard carries card thumbnails. Offering Previews on a
+              format with none would be a toggle that changes nothing. */}
+          <Show when={mode() !== 'arts' && format().previews}>
             <div class='segmented' role='tablist' aria-label='Archetype artwork'>
               <button
                 type='button'
