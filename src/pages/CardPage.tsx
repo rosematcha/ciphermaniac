@@ -27,7 +27,6 @@ import {
   fetchRotationIndex,
   findCardBySetNumberCanonical,
   getArchetypeIconMap,
-  itemUid,
   PRICE_HISTORY_MIN_DAYS,
   priceHistorySpanDays,
   type PricePoint,
@@ -38,7 +37,7 @@ import {
 } from '../lib/data';
 import { buildCanonicalCardId } from '../../shared/deckCardId';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
-import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/synonyms.js';
+import { getCanonicalCardFromData, itemUid, type SynonymDatabase } from '../../shared/data/cardIdentity.js';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { useTournament } from '../lib/tournamentContext';
 import '../styles/pages/cards.css';

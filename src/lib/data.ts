@@ -17,8 +17,6 @@ export type { UpcomingPayload };
 
 export { fetchEvolutionMap } from './data/evolution';
 
-// Card identity helper, re-exported so pages keep one import site for it.
-export { itemUid } from './data/compat';
 export { snapshotSourceKey } from './data/paths';
 export { fetchRotationIndex, snapshotDateForArchetype, snapshotDateForCard } from './data/snapshots';
 export { fetchPlayerDecks, fetchPlayerIndexSlim, fetchPlayerProfile } from './data/players';
@@ -39,7 +37,7 @@ export { cardUsageForCard, fetchCardUsage, findByClusterUid } from './data/cards
 export type { CardUsageEntry, CardUsagePayload } from './data/cards';
 export { fetchArchetypeDecks, fetchConversionIndex, fetchDay2CardStats, fetchParticipants } from './data/events';
 export type { Day2CardStat, DeckRecord } from './data/events';
-export { findCardBySetNumberCanonical, normalizeCardNumberKey, resolveCanonicalSetNumber } from './data/routes';
+export { findCardBySetNumberCanonical, resolveCanonicalSetNumber } from './data/routes';
 // Tournament-key parsing lives in shared: the daily majors-trends pipeline
 // classifies and dates events the same way the selector does.
 export {

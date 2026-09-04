@@ -15,7 +15,7 @@
 import { buildCooccurrence, type CooccurrenceContext } from '../../../shared/cardCooccurrence';
 import { buildCanonicalCardId, buildCardId, canonicalizeDeckCard } from '../../../shared/deckCardId';
 import { filterDecks, filterDecksBySuccess } from '../../../shared/clientSideFiltering';
-import type { SynonymDatabase } from '../../../shared/synonyms';
+import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
 import { foldSearch } from '../../utils/searchFold';
 import type { CardItem, Deck, DeckCard } from '../../types';
 import type { PersistedRule, Rule } from '../../utils/buildState';

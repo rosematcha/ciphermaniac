@@ -2,7 +2,7 @@
  * Card identity policy — the single home for card number/set/UID normalization,
  * synonym resolution, and per-deck canonical aggregation.
  *
- * Consolidated from `shared/cardUtils.ts`, `shared/synonyms.ts`, and
+ * Consolidated from `shared/cardUtils.ts`, `shared/data/cardIdentity.ts`, and
  * `shared/canonicalDeckCards.ts` (DB-MASTER-PLAN Phase 2, slice 1). Those
  * modules now re-export from here so existing callers keep working unchanged.
  *
@@ -87,7 +87,7 @@ export function cardNumberIndexKey(value: string | number): string {
  * |---|---|---|---|
  * | {@link CardUid} | `Name::SET::NUMBER` | zero-PADDED (`073`) | {@link cardUid} |
  * | `CardRouteKey` | `SET::NUMBER` | zero-STRIPPED (`73`) | `cardRouteKey` in canonicalCardRoute |
- * | `CardMatchId` | `SET~NUMBER` | zero-PADDED | `buildCardId` in clientSideFiltering |
+ * | `CardMatchId` | `SET~NUMBER` | zero-PADDED | {@link buildCardId} |
  *
  * The padded/stripped split is not cosmetic. The synonym database keys UIDs
  * padded — 547 of its 2,295 entries have a leading zero — so a UID built
@@ -155,6 +155,24 @@ export function cardUidOrName(
   return cardUid(name, setCode, number) ?? name;
 }
 
+export function maybeItemUid(item: {
+  uid?: string;
+  name?: string;
+  set?: string | null;
+  number?: string | number | null;
+}): string | null {
+  return item.uid || (item.name ? cardUidOrName(item.name, item.set, item.number) : null);
+}
+
+export function itemUid(item: {
+  uid?: string;
+  name: string;
+  set?: string | null;
+  number?: string | number | null;
+}): string {
+  return maybeItemUid(item) as string;
+}
+
 /**
  * Assert that an existing string is already a canonical card UID.
  *
@@ -196,23 +214,13 @@ export function canonicalizeVariant(
  * @param number - The card number
  * @returns Identifier like "SVI~118", or null if invalid
  */
-export function buildCardIdentifier(
-  setCode: string | null | undefined,
-  number: string | number | null | undefined
-): string | null {
-  const sc = (setCode || '').toString().toUpperCase().trim();
-  if (!sc) {
-    return null;
-  }
-  const normalized = normalizeCardNumber(number);
-  if (!normalized) {
-    return null;
-  }
-  return `${sc}~${normalized}`;
+export function buildCardId(setCode: string, number: string | number | null | undefined): string {
+  const set = setCode.trim().toUpperCase();
+  return `${set}~${normalizeCardNumber(number)}`;
 }
 
 // ============================================================================
-// Synonym resolution (from shared/synonyms.ts)
+// Synonym resolution (from shared/data/cardIdentity.ts)
 // ============================================================================
 
 /**
@@ -507,7 +515,7 @@ export function aggregateCanonicalCardsPerDeck(
 
     const name = card?.name || 'Unknown Card';
     const [canonSet, canonNumber] = canonicalizeVariant(card?.set, card?.number);
-    const baseUid = canonSet && canonNumber ? `${name}::${canonSet}::${canonNumber}` : name;
+    const baseUid = cardUidOrName(name, canonSet, canonNumber);
     const uid = synonymDb ? getCanonicalCardFromData(synonymDb, baseUid) : baseUid;
 
     const existing = result.get(uid);
@@ -520,11 +528,11 @@ export function aggregateCanonicalCardsPerDeck(
     let metaName = name;
     let metaSet: string | null = canonSet;
     let metaNumber: string | null = canonNumber;
-    if (uid.includes('::')) {
-      const parts = uid.split('::');
-      metaName = parts[0] || name;
-      metaSet = parts[1] || null;
-      metaNumber = parts[2] || null;
+    const parsed = parseCardUid(uid);
+    if (parsed) {
+      metaName = parsed.name;
+      metaSet = parsed.set;
+      metaNumber = parsed.number;
     }
 
     result.set(uid, {

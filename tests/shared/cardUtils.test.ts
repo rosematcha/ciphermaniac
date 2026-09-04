@@ -7,14 +7,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  buildCardIdentifier,
-  canonicalizeVariant,
   normalizeArchetypeName,
-  normalizeCardNumber,
   sanitizeDisplayName,
   sanitizeForFilename,
   sanitizeForPath
 } from '../../shared/cardUtils';
+import { buildCardId, canonicalizeVariant, normalizeCardNumber } from '../../shared/data/cardIdentity';
 
 // ============================================================================
 // normalizeCardNumber tests
@@ -110,35 +108,29 @@ test('canonicalizeVariant trims whitespace from set code', () => {
 });
 
 // ============================================================================
-// buildCardIdentifier tests
+// buildCardId tests
 // ============================================================================
 
-test('buildCardIdentifier builds SET~NUMBER format', () => {
-  assert.strictEqual(buildCardIdentifier('SVI', '118'), 'SVI~118');
-  assert.strictEqual(buildCardIdentifier('TEF', '97'), 'TEF~097');
-  assert.strictEqual(buildCardIdentifier('paldea', '5'), 'PALDEA~005');
+test('buildCardId builds SET~NUMBER format', () => {
+  assert.strictEqual(buildCardId('SVI', '118'), 'SVI~118');
+  assert.strictEqual(buildCardId('TEF', '97'), 'TEF~097');
+  assert.strictEqual(buildCardId('paldea', '5'), 'PALDEA~005');
 });
 
-test('buildCardIdentifier handles letter suffixes', () => {
-  assert.strictEqual(buildCardIdentifier('SVI', '18a'), 'SVI~018A');
-  assert.strictEqual(buildCardIdentifier('TEF', '5b'), 'TEF~005B');
+test('buildCardId handles letter suffixes', () => {
+  assert.strictEqual(buildCardId('SVI', '18a'), 'SVI~018A');
+  assert.strictEqual(buildCardId('TEF', '5b'), 'TEF~005B');
 });
 
-test('buildCardIdentifier returns null for empty set code', () => {
-  assert.strictEqual(buildCardIdentifier('', '118'), null);
-  assert.strictEqual(buildCardIdentifier(null, '118'), null);
-  assert.strictEqual(buildCardIdentifier(undefined, '118'), null);
+test('buildCardId preserves an empty number for validation by callers', () => {
+  assert.strictEqual(buildCardId('SVI', ''), 'SVI~');
+  assert.strictEqual(buildCardId('SVI', null), 'SVI~');
+  assert.strictEqual(buildCardId('SVI', undefined), 'SVI~');
 });
 
-test('buildCardIdentifier returns null for empty number', () => {
-  assert.strictEqual(buildCardIdentifier('SVI', ''), null);
-  assert.strictEqual(buildCardIdentifier('SVI', null), null);
-  assert.strictEqual(buildCardIdentifier('SVI', undefined), null);
-});
-
-test('buildCardIdentifier handles numeric input for number', () => {
-  assert.strictEqual(buildCardIdentifier('SVI', 118), 'SVI~118');
-  assert.strictEqual(buildCardIdentifier('TEF', 5), 'TEF~005');
+test('buildCardId handles numeric input for number', () => {
+  assert.strictEqual(buildCardId('SVI', 118), 'SVI~118');
+  assert.strictEqual(buildCardId('TEF', 5), 'TEF~005');
 });
 
 // ============================================================================

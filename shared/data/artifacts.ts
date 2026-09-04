@@ -14,7 +14,7 @@
  *   over a total, rounded to 2 decimals, so byte output never depends on float
  *   accumulation order.
  * - Card set/number on a report item are DERIVED from the canonical UID (fixes
- *   D4) via {@link parseCardUid} and validated against it — never carried from a
+ *   D4) via {@link parseCardIdentity} and validated against it — never carried from a
  *   pre-synonym printing.
  * - Items sort by an explicit total order — usagePct desc, foundCount desc, name
  *   asc, uid asc (fixes the missing tie-breaker D9) — so input deck order cannot
@@ -46,7 +46,7 @@ import {
   type DeckCard,
   type EnergyType,
   makeArchetypeIdentity,
-  parseCardUid,
+  parseCardIdentity,
   type Participant,
   type TrainerType,
   type ValidationResult
@@ -311,7 +311,7 @@ export function buildCardReport(decks: Deck[]): CardReport {
   }
 
   const items: CardReportItem[] = Array.from(foundCounts.entries()).map(([uid, foundCount]) => {
-    const parsed = parseCardUid(uid);
+    const parsed = parseCardIdentity(uid);
     const meta = metaByUid.get(uid) as CardMeta;
     return {
       rank: 0,
@@ -530,7 +530,7 @@ function validateUidMeta(record: Record<string, unknown>, path: string, errors: 
     errors.push(`${path}.uid: expected non-empty string`);
     return;
   }
-  const parsed = parseCardUid(uid);
+  const parsed = parseCardIdentity(uid);
   if (!parsed) {
     errors.push(`${path}.uid: unparseable UID "${uid}"`);
     return;
@@ -648,7 +648,7 @@ const USAGE_ROW_SPEC: FieldSpec = {
  */
 function checkUsageRows(uid: string, rows: unknown, errors: string[]): void {
   const path = `usage["${uid}"]`;
-  if (!parseCardUid(uid)) {
+  if (!parseCardIdentity(uid)) {
     errors.push(`${path}: unparseable UID key "${uid}"`);
   }
   if (!Array.isArray(rows) || rows.length === 0) {
@@ -764,7 +764,7 @@ function checkConversionCard(
   errors: string[]
 ): void {
   const path = `cards["${uid}"]`;
-  if (!parseCardUid(uid)) {
+  if (!parseCardIdentity(uid)) {
     errors.push(`${path}: unparseable UID key "${uid}"`);
   }
   if (!isRecord(counts)) {

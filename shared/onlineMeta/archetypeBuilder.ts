@@ -2,7 +2,7 @@ import { SUCCESS_TAG_NAMES } from '../data/contracts';
 import { deriveArchetypeGrouping } from '../data/archetypes/build';
 import { isGenericArchetypeName } from '../analysis/archetypeClassifier.js';
 import { getCanonicalCard } from '../data/cardSynonyms.js';
-import { cardUidOrName } from '../data/cardIdentity';
+import { cardUidOrName, parseCardUid } from '../data/cardIdentity';
 import type {
   BuildCardTrendReportOptions,
   BuildTrendReportOptions,
@@ -319,9 +319,9 @@ export function buildCardTrendReport(
         // Use the canonical UID's set/number for display when the key was
         // rewritten by the synonym DB; this keeps the UI link pointing at
         // the canonical card page.
-        const parts = key.includes('::') ? key.split('::') : null;
-        if (parts && parts.length >= 3) {
-          cardMeta.set(key, { name: parts[0], set: parts[1] || null, number: parts[2] || null });
+        const parsed = parseCardUid(key);
+        if (parsed) {
+          cardMeta.set(key, parsed);
         } else {
           cardMeta.set(key, { name, set: set || null, number: number || null });
         }

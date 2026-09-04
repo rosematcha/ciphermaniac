@@ -5,8 +5,8 @@
  * can generate the filtered report client-side using the raw deck data.
  */
 
-import { normalizeArchetypeName, normalizeCardNumber } from './cardUtils.js';
-import { cardUid } from './data/cardIdentity';
+import { normalizeArchetypeName } from './cardUtils.js';
+import { buildCardId, cardUid, normalizeCardNumber } from './data/cardIdentity';
 import { logger } from './logger.js';
 import { assignRanks, calculatePercentage, createDistFromHistogram, sortReportItems } from './reportUtils.js';
 import { listedDeckCount } from './data/reports/cardReport.js';
@@ -86,36 +86,6 @@ export interface FilteredReport {
     generatedClientSide: true;
     filterCount: number;
   };
-}
-
-/**
- * Builds a card identifier from set and number
- * Matches the offline include/exclude generator in .github/scripts/run-online-meta.mjs
- * @param set
- * @param number
- * @returns
- */
-export function buildCardId(set: string, number: string | number | null | undefined): string {
-  if (number === undefined || number === null) {
-    return `${set}~`;
-  }
-
-  const raw = String(number).trim();
-  if (!raw) {
-    return `${set}~`;
-  }
-
-  // Extract digits and optional suffix (e.g., "118" or "118A")
-  const match = /^(\d+)([A-Za-z]*)$/.exec(raw);
-  if (!match) {
-    // Non-standard format, use as-is but uppercase
-    return `${set}~${raw.toUpperCase()}`;
-  }
-
-  const [, digits, suffix = ''] = match;
-  const normalized = digits.padStart(3, '0');
-  const fullNumber = suffix ? `${normalized}${suffix.toUpperCase()}` : normalized;
-  return `${set}~${fullNumber}`;
 }
 
 /**

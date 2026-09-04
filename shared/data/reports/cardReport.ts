@@ -22,7 +22,13 @@
  * @module shared/data/reports/cardReport
  */
 
-import { canonicalizeVariant, cardUidOrName, getCanonicalCardFromData, type SynonymDatabase } from '../cardIdentity';
+import {
+  canonicalizeVariant,
+  cardUidOrName,
+  getCanonicalCardFromData,
+  parseCardUid,
+  type SynonymDatabase
+} from '../cardIdentity';
 import { sanitizeDisplayName } from '../../cardUtils';
 import {
   calculatePercentage,
@@ -244,18 +250,14 @@ export function generateReportFromDecks(
       dist: createDistributionFromCounts(countsList, foundCount)
     };
 
-    if (uid.includes('::')) {
+    const parsedUid = parseCardUid(uid);
+    if (parsedUid) {
       // Derive set/number from the canonical UID itself so uid/set/number stay
       // mutually consistent. Reading them from the first-seen variant's
       // perDeckMeta would emit e.g. uid `X::NEW::001` alongside set `OLD` /
       // number `002` whenever a synonym mapping rewrote the variant.
-      const [, canonicalSet, canonicalNumber] = uid.split('::');
-      if (canonicalSet) {
-        item.set = canonicalSet;
-      }
-      if (canonicalNumber) {
-        item.number = canonicalNumber;
-      }
+      item.set = parsedUid.set;
+      item.number = parsedUid.number;
       item.uid = uid;
     }
 

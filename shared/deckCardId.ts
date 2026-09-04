@@ -1,7 +1,7 @@
 /**
  * Shared deck-card identity helpers.
  *
- * `buildCardId` (re-exported from clientSideFiltering) builds the `SET~NUMBER`
+ * `buildCardId` builds the `SET~NUMBER`
  * key the filter aggregator uses. `canonicalizeDeckCard` rewrites a deck card to
  * its canonical printing so a cardId built from a canonicalized report item (the
  * data layer canonicalizes reports at read time) matches the deck-side card.
@@ -10,9 +10,7 @@
  * analyzer counts cards exactly the same way.
  */
 import type { DeckCard } from './deckTypes.js';
-import { getCanonicalCardFromData } from './synonyms.js';
-import { cardUid } from './data/cardIdentity';
-import { buildCardId } from './clientSideFiltering';
+import { buildCardId, cardUid, getCanonicalCardFromData, parseCardUid } from './data/cardIdentity';
 
 export { buildCardId };
 
@@ -36,11 +34,11 @@ export function canonicalizeDeckCard(card: DeckCard, db: Parameters<typeof getCa
   if (canonical === variantUid) {
     return card;
   }
-  const parts = canonical.split('::');
-  if (parts.length < 3) {
+  const parsed = parseCardUid(canonical);
+  if (!parsed) {
     return card;
   }
-  return { ...card, name: parts[0], set: parts[1], number: parts[2] };
+  return { ...card, ...parsed };
 }
 
 /**

@@ -31,7 +31,7 @@
  * @module shared/data/contracts
  */
 
-import { normalizeCardNumber } from '../cardUtils';
+import { normalizeCardNumber, parseCardUid } from './cardIdentity';
 import { validateArchetypeIdentity } from './archetypes/identity';
 import {
   checkArrayOf,
@@ -617,21 +617,15 @@ export interface ParsedCardUid {
  * @param uid - The UID to parse
  * @returns Parsed pieces, or null if malformed
  */
-export function parseCardUid(uid: string): ParsedCardUid | null {
+export function parseCardIdentity(uid: string): ParsedCardUid | null {
   if (typeof uid !== 'string' || uid.length === 0) {
     return null;
   }
-  const parts = uid.split('::');
-  if (parts.length === 1) {
-    return { name: parts[0], set: null, number: null };
+  const parsed = parseCardUid(uid);
+  if (parsed) {
+    return parsed;
   }
-  if (parts.length === 3) {
-    if (!parts[0] || !parts[1] || !parts[2]) {
-      return null;
-    }
-    return { name: parts[0], set: parts[1], number: parts[2] };
-  }
-  return null;
+  return uid.includes('::') ? null : { name: uid, set: null, number: null };
 }
 
 /** Minimal card shape needed to compute a deck's content hash. */
@@ -813,7 +807,7 @@ function checkUidSegments(record: Record<string, unknown>, path: string, errors:
     errors.push(`${path}.uid: expected non-empty string`);
     return null;
   }
-  const parsed = parseCardUid(uid);
+  const parsed = parseCardIdentity(uid);
   if (!parsed) {
     errors.push(`${path}.uid: unparseable UID "${uid}"`);
     return null;

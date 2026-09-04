@@ -22,8 +22,8 @@
  * @module src/lib/data/compat
  */
 
-import { getCanonicalCardFromData, type SynonymDatabase } from '../../../shared/synonyms.js';
-import { cardUidOrName } from '../../../shared/data/cardIdentity';
+import { getCanonicalCardFromData, type SynonymDatabase } from '../../../shared/data/cardIdentity.js';
+import { itemUid, parseCardUid } from '../../../shared/data/cardIdentity';
 import { calculatePercentage } from '../../../shared/reportUtils.js';
 import type { ArchetypeIndexEntry, CardDistributionEntry, CardItem } from '../../types';
 
@@ -38,19 +38,6 @@ export interface CanonicalizableTrendEntry {
   set: string | null;
   number: string | null;
   appearances: number;
-}
-
-/**
- * Compute the UID for a card item. Prefers an explicit `uid` field, then
- * `Name::SET::NUMBER`, then bare name as a last resort. The number is
- * zero-padded to the synonym DB's canonical form (e.g. `098`, not `98`) so the
- * fallback UID hits the synonym index consistently.
- */
-export function itemUid(item: CardItem): string {
-  if (item.uid) {
-    return item.uid;
-  }
-  return cardUidOrName(item.name, item.set, item.number);
 }
 
 export type AnyCardItem = CardItem & {
@@ -90,7 +77,7 @@ export function canonicalizeReport<T extends { deckTotal: number; items: AnyCard
   for (const item of report.items) {
     const uid = itemUid(item);
     const canonicalUid = getCanonicalCardFromData(db, uid);
-    const canonicalParts = canonicalUid.includes('::') ? canonicalUid.split('::') : null;
+    const canonicalParts = parseCardUid(canonicalUid);
 
     const existing = grouped.get(canonicalUid);
     if (!existing) {
@@ -99,10 +86,10 @@ export function canonicalizeReport<T extends { deckTotal: number; items: AnyCard
       // (canonicalUid !== uid); otherwise keep the item's own display fields so
       // the padded lookup UID doesn't leak into the rendered number.
       const next: AnyCardItem = { ...item, uid: canonicalUid };
-      if (canonicalUid !== uid && canonicalParts && canonicalParts.length >= 3) {
-        next.name = canonicalParts[0];
-        next.set = canonicalParts[1];
-        next.number = canonicalParts[2];
+      if (canonicalUid !== uid && canonicalParts) {
+        next.name = canonicalParts.name;
+        next.set = canonicalParts.set;
+        next.number = canonicalParts.number;
       }
       if (item.dist) {
         next.dist = item.dist.map(d => ({ ...d }));
@@ -208,12 +195,12 @@ export function canonicalizeCardTrendEntries<T extends CanonicalizableTrendEntry
   const grouped = new Map<string, T>();
   for (const entry of entries) {
     const canonicalKey = getCanonicalCardFromData(db, entry.key);
-    const canonicalParts = canonicalKey.includes('::') ? canonicalKey.split('::') : null;
+    const canonicalParts = parseCardUid(canonicalKey);
     const next: T = { ...entry, key: canonicalKey };
-    if (canonicalParts && canonicalParts.length >= 3) {
-      next.name = canonicalParts[0];
-      next.set = canonicalParts[1];
-      next.number = canonicalParts[2];
+    if (canonicalParts) {
+      next.name = canonicalParts.name;
+      next.set = canonicalParts.set;
+      next.number = canonicalParts.number;
     }
     const prev = grouped.get(canonicalKey);
     if (!prev || (next.appearances ?? 0) > (prev.appearances ?? 0)) {

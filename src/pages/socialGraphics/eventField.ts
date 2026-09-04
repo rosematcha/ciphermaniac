@@ -16,10 +16,9 @@
  * @module src/pages/socialGraphics/eventField
  */
 
-import { getCanonicalCardFromData, type SynonymDatabase } from '../../../shared/synonyms.js';
+import { getCanonicalCardFromData, itemUid, type SynonymDatabase } from '../../../shared/data/cardIdentity.js';
 import { fetchConversionIndex, fetchMaster, type MasterPayload } from '../../lib/data';
 import type { ConversionPayload } from '../../lib/data/events';
-import { itemUid } from '../../lib/data/compat';
 import { getSynonymDatabase } from '../../utils/cardSynonyms';
 
 /** What one tournament did with a card: who played it, and how they finished. */

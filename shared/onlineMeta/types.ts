@@ -182,7 +182,7 @@ export interface BuildCardTrendReportOptions {
    * single trend entry. When omitted, card keys are kept raw and reprints
    * appear as separate rows.
    */
-  synonymDb?: import('../synonyms').SynonymDatabase | null;
+  synonymDb?: import('../data/cardIdentity').SynonymDatabase | null;
 }
 
 /** Trend report result structure */

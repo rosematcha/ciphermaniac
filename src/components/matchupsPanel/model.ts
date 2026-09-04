@@ -11,7 +11,7 @@
 
 import { buildCanonicalCardId, buildCardId } from '../../../shared/deckCardId';
 import { bucketWinRate } from '../../lib/matchups';
-import type { SynonymDatabase } from '../../../shared/synonyms';
+import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
 import type { CardItem } from '../../types';
 
 /** How the rest-of-field list is ordered. */

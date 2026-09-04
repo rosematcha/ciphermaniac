@@ -3,10 +3,10 @@
  * @module lib/cardSynonyms
  *
  * This module provides server-side card synonym resolution.
- * Core logic is shared with frontend via shared/synonyms
+ * Core logic is shared with frontend via shared/data/cardIdentity
  */
 
-import { EMPTY_DATABASE, getCanonicalCardFromData, type SynonymDatabase } from '../synonyms';
+import { EMPTY_DATABASE, getCanonicalCardFromData, type SynonymDatabase } from './cardIdentity';
 
 // Re-export core functions with original names for backwards compatibility
 export { getCanonicalCardFromData as getCanonicalCard };
