@@ -1,15 +1,5 @@
-/**
- * Upcoming tournaments — fetches https://limitlesstcg.com/tournaments/upcoming?game=PTCG
- * and returns a clean JSON list. Edge-cached for 6 hours, so the upstream is hit
- * at most ~4x per day per cache region.
- *
- * Deliberately thin: fetch -> parse -> respond. The scraping lives in
- * shared/api/upcomingParser so the brittle part is unit-testable against
- * fixture markup instead of only against whatever Limitless is serving today.
- */
-
 import { detectParseBreakage, parseUpcoming } from '../../../shared/api/upcomingParser.js';
-import { corsPreflight, jsonResponse } from '../../lib/api/responses.js';
+import { corsPreflight, jsonError, jsonResponse } from '../../lib/api/responses.js';
 import type { UpcomingPayload } from '../../../shared/upcomingTypes';
 
 const UPCOMING_URL = 'https://limitlesstcg.com/tournaments/upcoming?game=PTCG';
@@ -20,6 +10,7 @@ type CfRequestInit = RequestInit & { cf?: unknown };
 // Upcoming events change rarely; browser-cache 1h, edge-cache 6h.
 const RESPONSE_CACHE_CONTROL = `public, max-age=3600, s-maxage=${CACHE_TTL_SECONDS}`;
 const JSON_CHARSET_HEADER = { 'Content-Type': 'application/json; charset=utf-8' } as const;
+const ERROR_HEADERS = { ...JSON_CHARSET_HEADER, 'Access-Control-Allow-Origin': '*' } as const;
 
 interface Context {
   request: Request;
@@ -39,11 +30,11 @@ export async function onRequest(_context: Context): Promise<Response> {
     };
     const response = await fetch(UPCOMING_URL, init);
     if (!response.ok) {
-      return jsonError(`Upstream ${response.status}`, 502);
+      return jsonError(`Upstream ${response.status}`, 502, ERROR_HEADERS);
     }
     html = await response.text();
   } catch (err) {
-    return jsonError(`Fetch failed: ${err instanceof Error ? err.message : String(err)}`, 502);
+    return jsonError(`Fetch failed: ${err instanceof Error ? err.message : String(err)}`, 502, ERROR_HEADERS);
   }
 
   const result = parseUpcoming(html);
@@ -69,8 +60,4 @@ export async function onRequest(_context: Context): Promise<Response> {
 
 export async function onRequestOptions(): Promise<Response> {
   return corsPreflight('GET, OPTIONS', { allowHeaders: null, maxAge: 86400 });
-}
-
-function jsonError(message: string, status: number): Response {
-  return jsonResponse({ error: message }, { status, cacheControl: 'no-store', headers: { ...JSON_CHARSET_HEADER } });
 }
