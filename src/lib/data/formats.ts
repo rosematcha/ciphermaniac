@@ -58,14 +58,9 @@ interface SnapshotFormat {
  */
 export const STANDARD_FORMAT_ID = 'standard';
 
-/**
- * The label names the window as well as the format: this is ladder data over a
- * rolling fortnight, not every Standard game ever played, and the picker sits
- * next to formats that *are* their whole history.
- */
 const STANDARD: TierFormat = {
   id: STANDARD_FORMAT_ID,
-  label: 'Standard (online, last 14 days)',
+  label: 'Standard',
   group: 'current',
   previews: true
 };
