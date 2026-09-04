@@ -134,8 +134,7 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
     }
     const feedbackData = parsedBody;
 
-    // Honeypot: real users never fill this hidden field. Pretend success (same
-    // pattern as the survey endpoint) so bots don't learn they were caught.
+    // Pretend honeypot submissions succeeded so bots do not learn they were caught.
     if (typeof feedbackData.hp === 'string' && feedbackData.hp.trim()) {
       return jsonSuccess({ success: true });
     }

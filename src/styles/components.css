@@ -27,58 +27,6 @@
   }
 }
 
-/* ---------- Survey banner ---------- */
-.survey-banner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: var(--accent);
-  color: var(--accent-fg);
-  padding: 9px 44px;
-  font-size: 14px;
-  text-align: center;
-}
-.survey-banner-link {
-  color: var(--accent-fg);
-  font-weight: 700;
-  text-decoration: underline;
-}
-.survey-banner-link:hover {
-  text-decoration: underline;
-}
-.survey-banner-close {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--accent-fg);
-  font-size: 22px;
-  line-height: 1;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-}
-.survey-banner-close:hover {
-  background: rgba(0, 0, 0, 0.14);
-}
-@media (max-width: 640px) {
-  /* At ~390px the default padding/size pushes the copy onto a second line and
-     doubles the banner height. Tighten the type and side padding, and keep the
-     link on one line (ellipsis) so it can never wrap to two tall rows. */
-  .survey-banner {
-    gap: 6px;
-    padding: 7px 44px 7px 12px;
-    font-size: 12px;
-  }
-  .survey-banner-link {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
 /* ---------- Route pending bar ---------- */
 /* Instant "something is happening" feedback while the router resolves a
    navigation (in practice: a lazy chunk downloading on a slow connection —
@@ -4242,11 +4190,10 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
     min-height: 44px;
   }
 
-  /* Icon-only buttons (row remove, lens clear, banner dismiss) render
+  /* Icon-only buttons (row remove and lens clear) render
      24-32px square — the glyph stays small, only the hit area grows. */
   .fb-b-row .remove,
-  .mu-lens-clear,
-  .survey-banner-close {
+  .mu-lens-clear {
     min-width: 44px;
     min-height: 44px;
     display: inline-flex;

@@ -51,7 +51,7 @@ GitHub Actions collect and process everything on a schedule; the site itself nev
 | Card Metadata | Refreshes card synonyms, types, and WebP thumbnails | Daily / weekly |
 | Download Tournament | Scrapes Day 2 decklists from major events on [LimitlessTCG](https://limitlesstcg.com/) | On demand |
 
-Artifacts land in Cloudflare R2 (browsable at [r2.ciphermaniac.com](https://r2.ciphermaniac.com/)), and the site runs on Cloudflare Pages with Functions backed by KV, R2, and D1.
+Artifacts land in Cloudflare R2 (browsable at [r2.ciphermaniac.com](https://r2.ciphermaniac.com/)), and the site runs on Cloudflare Pages with Functions backed by KV and R2.
 
 **Stack:** SolidJS + TypeScript (strict) + Vite on the front end; Cloudflare Pages Functions on the back.
 
@@ -86,8 +86,8 @@ Requires Node 22+.
 `r2.ciphermaniac.com`, and `/thumbnails` and `/sprites` proxy to production so
 canvas exports stay same-origin. It needs network access but no credentials.
 Run `npm run dev:functions` in a second terminal for the `/api` endpoints —
-feedback, survey, the Limitless proxies, upcoming tournaments. Wrangler
-simulates the R2, KV, and D1 bindings locally, so those stores start empty.
+feedback, the Limitless proxies, and upcoming tournaments. Wrangler simulates
+the R2 and KV bindings locally, so those stores start empty.
 
 The Python tests need the pinned producer dependencies:
 
