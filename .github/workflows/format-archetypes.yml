@@ -42,7 +42,7 @@ concurrency:
 jobs:
   scrape-format-archetypes:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     permissions:
       contents: write
@@ -70,6 +70,12 @@ jobs:
 
       # Formats the run does not touch are carried through from the committed
       # file, so a partial scrape never empties the picker.
+      #
+      # Most of the runtime is the card-art pass: every archetype that clears
+      # the share floor has its own deck page and a handful of its decklists
+      # read for the cards it was built around. The monthly run pays that for
+      # Expanded's three dozen archetypes and nothing else; the "all" dispatch
+      # walks a hundred-odd and is why the timeout is what it is.
       - name: Scrape format archetypes
         run: |
           REQUESTED="${{ inputs.formats || 'expanded' }}"
@@ -117,9 +123,11 @@ jobs:
         run: |
           echo "## Format Archetypes" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Format | Players | Archetypes | Scraped |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|---------|------------|---------|" >> $GITHUB_STEP_SUMMARY
-          jq -r '.formats[] | "| \(.label) | \(.players) | \(.archetypes | length) | \(.scrapedAt) |"' \
+          echo "| Format | Field | Archetypes | Scraped |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|------------|---------|" >> $GITHUB_STEP_SUMMARY
+          # Players on the ladder-sourced formats, championship points on the
+          # tournament-ranking ones.
+          jq -r '.formats[] | "| \(.label) | \(.players // .points) | \(.archetypes | length) | \(.scrapedAt) |"' \
             src/data/format-archetypes.json >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then

@@ -64,7 +64,12 @@ class RankedArchetypeTests(unittest.TestCase):
 
     def test_share_is_recorded_as_a_percentage(self):
         rows = [_deck("Lugia", ["lugia"], 10, 0.1234)]
-        self.assertEqual(formats.ranked_archetypes(rows)[0], {"name": "Lugia", "icons": ["lugia"], "share": 12.34})
+        self.assertEqual(
+            formats.ranked_archetypes(rows)[0],
+            # The slug rides along for the arts pass and is dropped again before
+            # the file is written.
+            {"name": "Lugia", "slug": "lugia", "icons": ["lugia"], "share": 12.34},
+        )
 
 
 class MergeTests(unittest.TestCase):

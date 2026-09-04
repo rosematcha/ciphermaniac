@@ -19,6 +19,10 @@ Every scrape asks for combined deck variants (``combine=1``), because a tier
 list wants "Lugia Archeops", not four spellings of it, and drops rows at or
 below :data:`SHARE_FLOOR` along with Limitless's residual "Other" bucket.
 
+Each surviving row is then followed to its own deck page for the cards it was
+built around, so the tier list's Previews mode works on a format we hold no
+decklists for. That pass is most of a scrape's runtime — see :mod:`deck_arts`.
+
 **The Expanded window.** Unlike the past formats, whose pages cover their whole
 history, ``?format=expanded`` shows only the current set's window — six
 tournaments and forty-odd players as this was written. At a 0.75% floor a single
@@ -47,10 +51,11 @@ import time
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Sequence
+from typing import Dict, List, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 
+from deck_arts import archetype_arts  # noqa: E402
 from limitless_decks import (  # noqa: E402
     DeckRow,
     REQUEST_DELAY,
@@ -106,27 +111,62 @@ def ranked_archetypes(rows: Sequence[DeckRow]) -> List[Dict[str, object]]:
     Names are disambiguated *after* the floor, not before: a deck whose
     same-named twin never made the cut keeps its plain label, which is the one
     the format's players use.
+
+    The slug rides along unwritten: it is how the arts pass finds the deck's
+    page, and it is dropped again before the file is written because nothing at
+    runtime has any use for it.
     """
     kept = [row for row in rows if not row.is_other and row.share * 100 > SHARE_FLOOR]
     kept = disambiguate_names(kept)
     kept.sort(key=lambda row: (-row.share, row.name))
-    return [{"name": row.name, "icons": row.icons, "share": round(row.share * 100, 2)} for row in kept]
+    return [
+        {"name": row.name, "slug": row.slug, "icons": row.icons, "share": round(row.share * 100, 2)}
+        for row in kept
+    ]
 
 
-def scrape_single(spec: FormatSpec) -> Dict[str, object]:
+def attach_arts(
+    archetypes: List[Dict[str, object]], format_id: str, set_codes: Sequence[str]
+) -> List[Dict[str, object]]:
+    """Give every archetype the cards its decks were built around.
+
+    A deck page plus a handful of decklists each, which is the expensive half of
+    a scrape — a full ``--all`` run is a few hundred requests. That is the price
+    of a Previews mode on formats we hold no decklists for, and it is paid
+    monthly for Expanded and once for a past format.
+    """
+    out: List[Dict[str, object]] = []
+    for archetype in archetypes:
+        slug = str(archetype.pop("slug", ""))
+        icons = archetype.get("icons") or []
+        arts = archetype_arts(slug, format_id, icons, set_codes=set_codes) if slug else []
+        if not arts:
+            print(f"  ! {archetype['name']}: no card art found")
+        out.append({**archetype, "cards": arts})
+        time.sleep(REQUEST_DELAY)
+    return out
+
+
+def scrape_single(spec: FormatSpec) -> Tuple[Dict[str, object], List[str]]:
     """A format whose page already covers its whole history."""
     html = fetch_decks_html({"format": spec.id, "combine": "1"})
-    return _entry(spec, ranked_archetypes(parse_deck_rows(html)), parse_field_size(html), 1)
+    return _entry(spec, ranked_archetypes(parse_deck_rows(html)), parse_field_size(html), 1), []
 
 
-def scrape_aggregated(spec: FormatSpec) -> Dict[str, object]:
-    """A format that has to be read one set window at a time."""
+def scrape_aggregated(spec: FormatSpec) -> Tuple[Dict[str, object], List[str]]:
+    """A format that has to be read one set window at a time.
+
+    The windows that had players come back with the entry: the archetype pages
+    the arts pass reads are windowed the same way this table is, so they have to
+    be walked over the same set codes or they answer for the newest set alone.
+    """
     index = fetch_decks_html({"format": spec.id, "combine": "1"})
     codes = [code for _, code in parse_set_options(index)]
     if not codes:
         raise RuntimeError(f"{spec.id}: set selector unreadable, cannot pick windows")
 
     pages: List[Sequence[DeckRow]] = []
+    used: List[str] = []
     players = 0
     for code in codes[:EXPANDED_WINDOW_SCAN]:
         if len(pages) >= EXPANDED_WINDOWS:
@@ -138,11 +178,12 @@ def scrape_aggregated(spec: FormatSpec) -> Dict[str, object]:
         if field == 0:
             continue
         pages.append(parse_deck_rows(html))
+        used.append(code)
         players += field
 
     if not pages:
         raise RuntimeError(f"{spec.id}: every set window came back empty")
-    return _entry(spec, ranked_archetypes(aggregate_rows(pages)), players, len(pages))
+    return _entry(spec, ranked_archetypes(aggregate_rows(pages)), players, len(pages)), used
 
 
 def _entry(spec: FormatSpec, archetypes: List[Dict[str, object]], players: int, windows: int) -> Dict[str, object]:
@@ -159,12 +200,13 @@ def _entry(spec: FormatSpec, archetypes: List[Dict[str, object]], players: int, 
 
 def scrape(spec: FormatSpec) -> Dict[str, object]:
     print(f"Scraping {spec.label} (format={spec.id})...")
-    entry = scrape_aggregated(spec) if spec.aggregate else scrape_single(spec)
+    entry, set_codes = scrape_aggregated(spec) if spec.aggregate else scrape_single(spec)
     archetypes = entry["archetypes"]
     assert isinstance(archetypes, list)
     print(f"  kept {len(archetypes)} archetypes above {SHARE_FLOOR}% of {entry['players']} players")
     if not archetypes:
         raise RuntimeError(f"{spec.id}: nothing cleared the share floor — page layout may have changed")
+    entry["archetypes"] = attach_arts(archetypes, spec.id, set_codes)
     return entry
 
 
