@@ -1026,6 +1026,11 @@ body[data-mode='dark'] .arche:hover {
   .table-wrap .data td {
     white-space: nowrap;
   }
+  /* The wrapper is a scroll container here, so a sticky header would pin
+     `--topnav-h` down inside it and sit on top of the first rows. */
+  .table-wrap .data thead th {
+    position: static;
+  }
 }
 table.data {
   width: 100%;
