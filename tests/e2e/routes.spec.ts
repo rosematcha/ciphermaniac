@@ -114,6 +114,18 @@ test('a player profile only offers decklists that exist', async ({ page }) => {
   await expect(rows.nth(1).getByRole('button', { name: 'Show decklist' })).toBeVisible();
 });
 
+test('a player profile expands a decklist from its caret', async ({ page }) => {
+  await gotoClean(page, '/players/1272');
+  const history = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Tournament history' }) });
+  const row = history.locator('tbody > tr').first();
+
+  await row.getByRole('button', { name: 'Show decklist' }).click();
+  await expect(history.locator('.row-expansion .deck-inline-list li').first()).toBeVisible();
+
+  await row.getByRole('button', { name: 'Hide decklist' }).click();
+  await expect(history.locator('.row-expansion')).toHaveCount(0);
+});
+
 test('tournaments index renders the catalog', async ({ page }) => {
   await gotoClean(page, '/tournaments');
   await expect(page.locator('main')).toBeVisible();
