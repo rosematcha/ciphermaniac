@@ -2335,7 +2335,8 @@ body[data-mode='dark'] .story-card:active {
 .chart-tooltip {
   position: absolute;
   top: 8px;
-  transform: translateX(12px);
+  /* `left` is computed in TrendsPage against the measured tooltip width, so the
+     card flips sides only when it would actually overflow the chart box. */
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm, 6px);
@@ -2347,9 +2348,6 @@ body[data-mode='dark'] .story-card:active {
   min-width: 200px;
   max-width: 300px;
   z-index: 2;
-}
-.chart-tooltip.is-right {
-  transform: translateX(calc(-100% - 12px));
 }
 .chart-tooltip-date {
   font-weight: 600;
