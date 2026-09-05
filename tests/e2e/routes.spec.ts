@@ -96,6 +96,24 @@ test('a player profile renders their tournament history', async ({ page }) => {
   await expect(page.locator('main')).toBeVisible();
 });
 
+test('a player profile only offers decklists that exist', async ({ page }) => {
+  await page.route('**/players/1272/profile.json', async route => {
+    const response = await route.fetch();
+    const profile = (await response.json()) as { tournaments: Array<{ deckId: string | null }> };
+    profile.tournaments[0].deckId = null;
+    await route.fulfill({ response, json: profile });
+  });
+
+  await gotoClean(page, '/players/1272');
+  const history = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Tournament history' }) });
+  const rows = history.locator('tbody > tr');
+
+  await expect(history.getByRole('columnheader')).toHaveCount(6);
+  await expect(rows.first()).not.toHaveClass(/is-link/);
+  await expect(rows.first().getByRole('button', { name: 'Show decklist' })).toHaveCount(0);
+  await expect(rows.nth(1).getByRole('button', { name: 'Show decklist' })).toBeVisible();
+});
+
 test('tournaments index renders the catalog', async ({ page }) => {
   await gotoClean(page, '/tournaments');
   await expect(page.locator('main')).toBeVisible();

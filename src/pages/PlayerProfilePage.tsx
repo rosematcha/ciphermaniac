@@ -20,7 +20,6 @@ import { resolved } from '../lib/resource';
 import '../styles/pages/players-tables.css';
 
 const ARCHETYPE_PREVIEW_COUNT = 5;
-const SMALL_SAMPLE_GAMES = 10;
 
 export function PlayerProfilePage() {
   const params = useParams<{ id: string }>();
@@ -169,8 +168,6 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
                 <For each={archetypesToShow()}>
                   {a => {
                     const pct = winPercent(a.wins, a.losses);
-                    const decisiveGames = a.wins + a.losses;
-                    const smallSample = decisiveGames < SMALL_SAMPLE_GAMES;
                     return (
                       <tr>
                         <td>
@@ -189,13 +186,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
                         <td class='num'>
                           {a.wins}-{a.losses}-{a.ties}
                         </td>
-                        <td
-                          class='num'
-                          classList={{ 'stat-dim': smallSample }}
-                          title={smallSample ? `Small sample: ${decisiveGames} games` : undefined}
-                        >
-                          {pct != null ? `${Math.round(pct)}%` : '—'}
-                        </td>
+                        <td class='num'>{pct != null ? `${Math.round(pct)}%` : '—'}</td>
                         <td class='num'>{a.day2s.toLocaleString()}</td>
                         <td class='num'>{a.bestPlacement ?? '—'}</td>
                       </tr>
@@ -222,7 +213,6 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
             <thead>
               <tr>
                 <th class='num expand-col' aria-label='Expand' />
-                <th>Date</th>
                 <th>Event</th>
                 <th>Archetype</th>
                 <th class='num'>Placement</th>
@@ -260,7 +250,11 @@ interface TournamentRowProps {
 
 function TournamentRow(props: TournamentRowProps) {
   const [expanded, setExpanded] = createSignal(false);
+  const hasDecklist = () => Boolean(props.entry.deckId);
   const toggle = () => {
+    if (!hasDecklist()) {
+      return;
+    }
     const next = !expanded();
     setExpanded(next);
     if (next) {
@@ -270,23 +264,24 @@ function TournamentRow(props: TournamentRowProps) {
 
   return (
     <>
-      <tr class='is-link' onClick={toggle}>
+      <tr classList={{ 'is-link': hasDecklist() }} onClick={toggle}>
         <td class='num expand-col'>
-          <button
-            type='button'
-            class='row-caret'
-            classList={{ open: expanded() }}
-            aria-expanded={expanded()}
-            aria-label={expanded() ? 'Hide decklist' : 'Show decklist'}
-            onClick={e => {
-              e.stopPropagation();
-              toggle();
-            }}
-          >
-            ▸
-          </button>
+          <Show when={hasDecklist()}>
+            <button
+              type='button'
+              class='row-caret'
+              classList={{ open: expanded() }}
+              aria-expanded={expanded()}
+              aria-label={expanded() ? 'Hide decklist' : 'Show decklist'}
+              onClick={e => {
+                e.stopPropagation();
+                toggle();
+              }}
+            >
+              ▸
+            </button>
+          </Show>
         </td>
-        <td class='muted-cell'>{props.entry.tournamentDate}</td>
         <td>
           <span class='cardname'>{prettyTournamentName(props.entry.tournamentId)}</span>
         </td>
@@ -331,7 +326,7 @@ function TournamentRow(props: TournamentRowProps) {
       </tr>
       <Show when={expanded()}>
         <tr class='row-expansion'>
-          <td colspan={7}>
+          <td colspan={6}>
             <DeckPanel archetypeName={props.archetypeName} cards={props.cards()} loading={props.loading()} />
           </td>
         </tr>
