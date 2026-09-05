@@ -172,3 +172,18 @@ export function sliceCardMovers<T>(
     falling: (cardTrends?.falling ?? []).slice(0, limit)
   };
 }
+
+/** Selectable day windows for the online (daily) view. */
+export type OnlineWindow = '7d' | '14d' | '30d';
+
+export const ONLINE_WINDOW_OPTIONS: { value: OnlineWindow; label: string }[] = [
+  { value: '7d', label: '7 days' },
+  { value: '14d', label: '14 days' },
+  { value: '30d', label: '30 days' }
+];
+
+export const ONLINE_WINDOW_DAYS: Record<OnlineWindow, number> = {
+  '7d': 7,
+  '14d': 14,
+  '30d': 30
+};

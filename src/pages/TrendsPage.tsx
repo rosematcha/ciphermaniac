@@ -2,9 +2,13 @@ import {
   buildOnlineChart,
   type ChartData,
   formatDateWindow,
+  ONLINE_WINDOW_DAYS,
+  ONLINE_WINDOW_OPTIONS,
+  type OnlineWindow,
   relativeTimeFrom,
   sliceCardMovers
 } from './trendsPage/model';
+import { createChartTooltipPlacement } from './trendsPage/chartTooltip';
 import { createMemo, createResource, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import {
@@ -50,23 +54,12 @@ import { DAY_MS } from '../lib/trendWindow';
 import '../styles/pages/trends.css';
 
 type Source = 'online' | 'majors';
-type OnlineWindow = '7d' | '14d' | '30d';
 type MajorsWindow = '3-events' | '5-events' | '10-events';
 
 const SOURCE_OPTIONS: { value: Source; label: string }[] = [
   { value: 'online', label: 'Online (daily)' },
   { value: 'majors', label: 'Majors (events)' }
 ];
-const ONLINE_WINDOW_OPTIONS: { value: OnlineWindow; label: string }[] = [
-  { value: '7d', label: '7 days' },
-  { value: '14d', label: '14 days' },
-  { value: '30d', label: '30 days' }
-];
-const ONLINE_WINDOW_DAYS: Record<OnlineWindow, number> = {
-  '7d': 7,
-  '14d': 14,
-  '30d': 30
-};
 const MAJORS_WINDOW_OPTIONS: { value: MajorsWindow; label: string }[] = [
   { value: '3-events', label: 'Last 3 events' },
   { value: '5-events', label: 'Last 5 events' },
@@ -884,6 +877,8 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
   const [pinIdx, setPinIdx] = createSignal<number | null>(null);
   let svgRef: SVGSVGElement | undefined;
 
+  let wrapRef: HTMLDivElement | undefined;
+
   function indexFromPointer(e: PointerEvent): number | null {
     if (!svgRef || props.days.length === 0) {
       return null;
@@ -958,9 +953,15 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
     return { day, entries, xPx: x(day.date) };
   });
 
+  const tooltip = createChartTooltipPlacement(
+    () => wrapRef,
+    width,
+    () => hoverData()?.xPx ?? null
+  );
+
   return (
     <div class='chart-card' ref={containerRef}>
-      <div class='chart-svg-wrap'>
+      <div class='chart-svg-wrap' ref={wrapRef}>
         <svg
           class='chart trend-chart'
           ref={svgRef}
@@ -1053,33 +1054,29 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
         </svg>
 
         <Show when={hoverData()}>
-          {h => {
-            const w = width();
-            const isRight = h().xPx > w / 2;
-            return (
-              <div class='chart-tooltip' classList={{ 'is-right': isRight }} style={{ left: `${h().xPx}px` }}>
-                <div class='chart-tooltip-date'>
-                  {h().day.date.toLocaleDateString(undefined, {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
-                </div>
-                <ul class='chart-tooltip-list'>
-                  <For each={h().entries}>
-                    {e => (
-                      <li>
-                        <span class='dot' style={{ background: e.color }} />
-                        <ArchetypeIcons slugs={e.slugs} size={16} reserveSlot />
-                        <span class='label'>{e.label}</span>
-                        <span class='value'>{e.value.toFixed(1)}%</span>
-                      </li>
-                    )}
-                  </For>
-                </ul>
+          {h => (
+            <div class='chart-tooltip' ref={tooltip.observeTooltip} style={tooltip.style()}>
+              <div class='chart-tooltip-date'>
+                {h().day.date.toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric'
+                })}
               </div>
-            );
-          }}
+              <ul class='chart-tooltip-list'>
+                <For each={h().entries}>
+                  {e => (
+                    <li>
+                      <span class='dot' style={{ background: e.color }} />
+                      <ArchetypeIcons slugs={e.slugs} size={16} reserveSlot />
+                      <span class='label'>{e.label}</span>
+                      <span class='value'>{e.value.toFixed(1)}%</span>
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </div>
+          )}
         </Show>
       </div>
 
