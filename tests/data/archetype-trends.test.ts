@@ -140,8 +140,3 @@ test('buildCardTrendReport calculates deltas and handles filtering', () => {
   const filtered = buildCardTrendReport(decks as any, tournaments as any, { minAppearances: 5 });
   assert.strictEqual(filtered.cardsAnalyzed, 0);
 });
-
-// cleanup
-test('cleanup archetype-trends mocks', () => {
-  // no global mocks left
-});

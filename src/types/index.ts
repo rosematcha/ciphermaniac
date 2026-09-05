@@ -50,11 +50,13 @@ export interface TournamentParticipant {
 }
 
 export type {
+  PlayerArchetypeBreakdown,
   PlayerDeckCard,
   PlayerDecks,
   PlayerIndexEntry,
   PlayerIndexSlimEntry,
   PlayerProfile,
+  PlayerRound,
   PlayerTournamentEntry
 } from '../../shared/playerTypes.js';
 

@@ -1,8 +1,12 @@
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
 import { fetchLimitlessJson } from '../../shared/api/limitless.ts';
+
+afterEach(() => {
+  restoreFetch();
+});
 
 // Test-only global used by limitless key resolution fallbacks.
 declare global {
@@ -212,8 +216,4 @@ test('fetchLimitlessJson throws for non-JSON content type', async () => {
     // @ts-ignore
     globalThis.__LIMITLESS_API_KEY__ = origKey;
   }
-});
-
-test('cleanup limitless-coverage', () => {
-  restoreFetch();
 });

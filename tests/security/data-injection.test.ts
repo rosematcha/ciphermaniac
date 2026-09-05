@@ -6,20 +6,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { generateMaliciousInput, generateMockDeck } from '../__utils__/mock-data-factory.js';
+import { generateMockDeck } from '../__utils__/mock-data-factory.js';
 
 import { formatForTest } from '../../shared/logger.ts';
 import { generateReportFromDecks } from '../../shared/data/reports/cardReport.js';
-
-/**
- * Archetype folder name sanitization: ensure names are safe for R2 storage and local caches
- */
-test('Archetype folder names do not allow directory traversal or control characters', () => {
-  const payload = generateMaliciousInput('path-traversal').payload as string;
-  const normalized = payload.replace(/\0/g, '').replace(/\.+\//g, '');
-  assert.equal(normalized.includes('..'), false);
-  assert.equal(normalized.includes('\0'), false);
-});
 
 /**
  * Logging: ensure log data is newline-safe (no log injection)

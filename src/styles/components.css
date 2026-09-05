@@ -490,6 +490,10 @@
      line so a section that starts with an empty right slot doesn't grow one. */
   min-height: 1.5em;
 }
+/* space-between only pushes the meta right when an h2 shares the row with it. */
+.section-head .right:only-child {
+  margin-left: auto;
+}
 .scope-line {
   font-variant-numeric: tabular-nums;
 }
@@ -554,49 +558,6 @@
   .section-head .right .scope-line {
     display: none;
   }
-}
-
-/* ---------- KPI tile ---------- */
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-}
-.kpi {
-  background: var(--surface);
-  border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px 18px;
-  box-shadow: var(--shadow-1);
-  display: grid;
-  gap: 6px;
-  position: relative;
-}
-.kpi-label {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 600;
-}
-.kpi-value {
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  color: var(--fg);
-  font-variant-numeric: tabular-nums;
-}
-.kpi-value.leader {
-  font-size: 22px;
-  letter-spacing: -0.02em;
-}
-.kpi-foot {
-  font-size: 12px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 /* ---------- Trend indicator ---------- */
@@ -947,7 +908,8 @@ body[data-mode='dark'] .arche:hover {
 .search {
   flex: 1 1 240px;
   min-width: 240px;
-  padding: 9px 12px;
+  height: var(--control-h);
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
@@ -1026,6 +988,11 @@ body[data-mode='dark'] .arche:hover {
   .table-wrap .data td {
     white-space: nowrap;
   }
+  /* The wrapper is a scroll container here, so a sticky header would pin
+     `--topnav-h` down inside it and sit on top of the first rows. */
+  .table-wrap .data thead th {
+    position: static;
+  }
 }
 table.data {
   width: 100%;
@@ -1095,21 +1062,37 @@ table.data {
   color: inherit;
   cursor: pointer;
 }
-.data th.sortable[aria-sort='ascending'] button.th-sort::after {
-  content: '▲';
-  font-size: 10px;
-  color: var(--accent);
-}
-.data th.sortable[aria-sort='descending'] button.th-sort::after {
+/* The mark is reserved in every sortable header and only its glyph is hidden:
+   `table-layout` is auto, so a mark that appears on click re-solves the column
+   widths and the table jumps sideways under the pointer.
+
+   Pages that reserve the mark in markup instead — a `.sort-mark` span, as the
+   card and archetype indexes render — opt out here, or the active column draws
+   both and reads "Inclusion ▼ ▼". */
+.data th.sortable button.th-sort:not(:has(.sort-mark))::after {
   content: '▼';
   font-size: 10px;
   color: var(--accent);
+  visibility: hidden;
+}
+.data th.sortable[aria-sort='ascending'] button.th-sort:not(:has(.sort-mark))::after {
+  content: '▲';
+  visibility: visible;
+}
+.data th.sortable[aria-sort='descending'] button.th-sort:not(:has(.sort-mark))::after {
+  visibility: visible;
 }
 .data tbody tr:last-child td {
   border-bottom: 0;
 }
 .data tbody tr {
   transition: background var(--ms-fast);
+}
+/* Only rows that actually go somewhere get the pointer. Every clickable row on
+   the site carries `.is-link`; the profile's archetype rows and its
+   decklist-less tournament rows do not, and were promising a click they
+   couldn't honour. */
+.data tbody tr.is-link {
   cursor: pointer;
 }
 .data tbody tr:hover {
@@ -1276,6 +1259,9 @@ tr.row-expansion > td {
 /* ---------- Pagination (numbered) ---------- */
 .pagination {
   display: inline-flex;
+  /* Wraps only when it has to: a three-digit page count overflowed the
+     narrowest phones, and the row is otherwise unchanged. */
+  flex-wrap: wrap;
   gap: 4px;
   align-items: center;
   margin-top: 16px;
@@ -1319,6 +1305,11 @@ tr.row-expansion > td {
 /* ---------- Segmented control ---------- */
 .segmented {
   display: inline-flex;
+  align-items: stretch;
+  /* Not a fixed height: the phone breakpoint raises the buttons to a 40px tap
+     target, and a fixed 38px group let the active pill draw outside its own
+     border. The group grows to whatever its buttons need. */
+  min-height: var(--control-h);
   padding: 3px;
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -1326,10 +1317,12 @@ tr.row-expansion > td {
   gap: 2px;
 }
 .segmented button {
+  display: inline-flex;
+  align-items: center;
   font-size: 13px;
   color: var(--muted);
   font-weight: 500;
-  padding: 5px 12px;
+  padding: 0 12px;
   border-radius: 3px;
   transition:
     background var(--ms-fast),
@@ -1975,17 +1968,20 @@ body[data-mode='dark'] .story-card:active {
 .card-page-hero .card-meta-row .sep {
   opacity: 0.4;
 }
-.card-page-hero .actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
 .card-page-grid {
   display: grid;
   grid-template-columns: minmax(240px, 300px) 1fr;
   gap: 36px;
   align-items: start;
+}
+@media (min-width: 761px) {
+  /* The rail is short (art, four stats, a frame grid) while the archetype list
+     runs on for screens, so pin it: the card and its headline numbers stay in
+     view while the reader scrolls the list. */
+  .card-page-left {
+    position: sticky;
+    top: calc(var(--topnav-h) + 16px);
+  }
 }
 @media (max-width: 760px) {
   .card-page-grid {
@@ -2010,27 +2006,24 @@ body[data-mode='dark'] .story-card:active {
     /* Keep the card's own 5:7 aspect — don't let the stretched row distort it. */
     align-self: start;
   }
-  /* The panel fills the art's height and spreads its rows to match, so the two
+  /* The list fills the art's height and spreads its rows to match, so the two
      columns line up top and bottom. */
-  .card-page-left .stats-panel {
+  .card-page-left .stats-list {
     grid-column: 2;
     grid-row: 1;
     display: flex;
     flex-direction: column;
   }
-  .card-page-left .stats-panel .stat-row {
+  .card-page-left .stats-list .stat-row {
     flex: 1 1 0;
     align-items: center;
   }
-  /* Tighten the rail so all seven rows fit comfortably beside the art. */
-  .stats-panel {
-    padding: 2px 13px;
-  }
-  .stats-panel .stat-row {
+  /* Tighten the rail so all the rows fit comfortably beside the art. */
+  .stats-list .stat-row {
     padding: 8px 0;
     font-size: 12.5px;
   }
-  .stats-panel .stat-label {
+  .stats-list .stat-label {
     font-size: 11.5px;
   }
   .card-page-hero {
@@ -2071,14 +2064,9 @@ body[data-mode='dark'] .story-card:active {
   background: var(--surface);
 }
 
-.stats-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 4px 16px;
-  box-shadow: var(--shadow-1);
-}
-.stats-panel .stat-row {
+/* Hairline-ruled stat rows under the card art: no box, the rules do the work,
+   like the data rows elsewhere on the page. */
+.stats-list .stat-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -2086,38 +2074,44 @@ body[data-mode='dark'] .story-card:active {
   border-bottom: 1px solid var(--rule);
   font-size: 13px;
 }
-.stats-panel .stat-row:last-child {
-  border-bottom: 0;
-}
-.stats-panel .stat-label {
+.stats-list .stat-label {
   color: var(--muted);
 }
-.stats-panel .stat-value {
+.stats-list .stat-value {
   color: var(--fg);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.stats-panel .stat-label,
-.stats-panel .stat-value {
+.stats-list .stat-label,
+.stats-list .stat-value {
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 6px;
+}
+/* The secondary half of a value — a rank denominator ("of 944"), a record
+   behind a win rate. Lives here rather than in cards.css because the player
+   profile's phase list uses .stats-list without ever loading that sheet, and
+   ran the two halves together as one number. */
+.stats-list .stat-rank-total {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
 }
 /* Headline stat: the inclusion rate is the single number the page is about, so
    it carries the accent and a touch more weight in both the desktop rail and
    the mobile split rail — mirroring the accent price value below it. */
-.stats-panel .stat-row--lead .stat-value {
+.stats-list .stat-row--lead .stat-value {
   color: var(--accent);
   font-size: 15px;
 }
 /* Market price row: the value doubles as the TCGplayer link when we have a
-   product id, so it takes the accent like other links in the panel. */
-.stats-panel .stat-value .price-link {
+   product id, so it takes the accent like other links in the rail. */
+.stats-list .stat-value .price-link {
   color: var(--accent);
   font-weight: 700;
   text-decoration: none;
 }
-.stats-panel .stat-value .price-link:hover {
+.stats-list .stat-value .price-link:hover {
   text-decoration: underline;
 }
 
@@ -2190,15 +2184,15 @@ body[data-mode='dark'] .story-card:active {
   transform: translateX(calc(-50% + var(--tip-shift, 0px))) translateY(0);
   pointer-events: auto;
 }
-/* Keep the bubble on-screen near the right edge of the panel. */
-.stats-panel .stat-value .info-tip-bubble {
+/* Keep the bubble on-screen near the right edge of the rail. */
+.stats-list .stat-value .info-tip-bubble {
   left: auto;
   right: 0;
   transform: translateY(2px);
 }
-.stats-panel .stat-value .info-tip:hover .info-tip-bubble,
-.stats-panel .stat-value .info-tip:focus-visible .info-tip-bubble,
-.stats-panel .stat-value .info-tip.open .info-tip-bubble {
+.stats-list .stat-value .info-tip:hover .info-tip-bubble,
+.stats-list .stat-value .info-tip:focus-visible .info-tip-bubble,
+.stats-list .stat-value .info-tip.open .info-tip-bubble {
   transform: translateY(0);
 }
 .info-tip-bubble p {
@@ -2680,91 +2674,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   white-space: nowrap;
 }
 
-/* ---------- Decklist grid (player profile) ---------- */
-.deck-grid {
-  display: grid;
-  gap: 28px;
-}
-.deck-group {
-  display: grid;
-  gap: 12px;
-}
-.deck-group-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 700;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--rule);
-}
-.deck-group-count {
-  color: var(--fg);
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-}
-.deck-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
-  gap: 10px;
-}
-.deck-card {
-  display: grid;
-  gap: 6px;
-  text-decoration: none;
-  color: var(--fg);
-  transition: transform var(--ms-fast);
-}
-.deck-card:hover {
-  text-decoration: none;
-  transform: translateY(-1px);
-}
-.deck-card:active {
-  transform: translateY(0) scale(0.99);
-}
-.deck-card-image {
-  aspect-ratio: 5 / 7;
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-1);
-}
-.deck-card-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.deck-card-image .card-image-fallback {
-  width: 100%;
-  height: 100%;
-  border-radius: 0;
-}
-.deck-card-info {
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-  font-size: 11.5px;
-  line-height: 1.3;
-}
-.deck-card-count {
-  font-weight: 700;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-.deck-card-name {
-  color: var(--fg);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
 /* ---------- Trends / movers ---------- */
 .movers {
   display: grid;
@@ -2948,7 +2857,8 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 }
 .fb-select {
   width: 100%;
-  padding: 8px 10px;
+  height: var(--control-h);
+  padding: 0 10px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -3513,8 +3423,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 @media (hover: none) {
   .arche:hover,
   .card-tile:hover,
-  .story-card:hover,
-  .deck-card:hover {
+  .story-card:hover {
     transform: none;
   }
   .arche:hover,

@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildPrintingRows, formatPrintPrice, sortPrintings } from '../../src/utils/printings.ts';
+import { buildPrintingRows, formatPrintPrice } from '../../src/utils/printings.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 
 // prints keys are in scrape (release) order: SFA → SSP → MEG → ASC.
@@ -27,16 +27,20 @@ const DB: SynonymDatabase = {
   }
 };
 
-test('builds rows in release order with page/cheapest/bling flags', () => {
+test('builds rows in release order with the page flag and per-print prices', () => {
   const rows = buildPrintingRows(DB, 'Night Stretcher::SFA::061');
   assert.deepStrictEqual(
     rows.map(r => r.uid),
     ['Night Stretcher::SFA::061', 'Night Stretcher::SSP::251', 'Night Stretcher::MEG::173', 'Night Stretcher::ASC::196']
   );
-  assert.strictEqual(rows[0].isPage, true);
-  assert.strictEqual(rows[2].price, null);
-  assert.strictEqual(rows.find(r => r.isCheapest)?.uid, 'Night Stretcher::ASC::196');
-  assert.strictEqual(rows.find(r => r.isBling)?.uid, 'Night Stretcher::SSP::251');
+  assert.deepStrictEqual(
+    rows.map(r => r.isPage),
+    [true, false, false, false]
+  );
+  assert.deepStrictEqual(
+    rows.map(r => r.price),
+    [0.27, 9.1, null, 0.25]
+  );
 });
 
 test('marks the page print on a variant URL, including non-padded numbers', () => {
@@ -44,32 +48,6 @@ test('marks the page print on a variant URL, including non-padded numbers', () =
   assert.strictEqual(rows.find(r => r.isPage)?.uid, 'Night Stretcher::ASC::196');
   const loose = buildPrintingRows(DB, 'Night Stretcher::SFA::61');
   assert.strictEqual(loose.find(r => r.isPage)?.uid, 'Night Stretcher::SFA::061');
-});
-
-test('price sort is ascending with unpriced prints first (bottom-tier), and does not mutate', () => {
-  const rows = buildPrintingRows(DB, 'Night Stretcher::SFA::061');
-  const byPrice = sortPrintings(rows, 'price');
-  assert.deepStrictEqual(
-    byPrice.map(r => r.number),
-    ['173', '196', '061', '251']
-  );
-  // original release order untouched
-  assert.strictEqual(rows[0].number, '061');
-  assert.deepStrictEqual(
-    sortPrintings(rows, 'oldest').map(r => r.number),
-    rows.map(r => r.number)
-  );
-});
-
-test('bling is not set when every print costs the same', () => {
-  const flat: SynonymDatabase = {
-    synonyms: { 'Ultra Ball::PAF::091': 'Ultra Ball::SVI::196' },
-    canonicals: {},
-    prints: { 'Ultra Ball::SVI::196': 0.1, 'Ultra Ball::PAF::091': 0.1 }
-  };
-  const rows = buildPrintingRows(flat, 'Ultra Ball::SVI::196');
-  assert.strictEqual(rows.filter(r => r.isCheapest).length, 1);
-  assert.strictEqual(rows.filter(r => r.isBling).length, 0);
 });
 
 test('returns [] for single-print clusters, name-only uids, and missing prints map', () => {

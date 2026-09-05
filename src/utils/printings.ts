@@ -1,8 +1,8 @@
 /**
  * Printings strip logic — pure helpers behind the card page's Printings
  * section. Builds the list of a card's printings (its synonym cluster) with
- * per-print prices from the synonym DB's `prints` map, and sorts by release
- * or price. Kept free of Solid so it unit-tests under plain node:test.
+ * per-print prices from the synonym DB's `prints` map, in release order. Kept
+ * free of Solid so it unit-tests under plain node:test.
  * @module utils/printings
  */
 
@@ -23,13 +23,7 @@ export interface PrintingRow {
   price: number | null;
   /** The print whose stats this page shows (URL/hero print). */
   isPage: boolean;
-  /** Lowest-priced print in the cluster. */
-  isCheapest: boolean;
-  /** Highest-priced print; only set when it differs from the cheapest. */
-  isBling: boolean;
 }
-
-export type PrintingsSort = 'oldest' | 'price';
 
 /**
  * Build the printings rows for a card page, in release order.
@@ -72,24 +66,11 @@ export function buildPrintingRows(database: SynonymDatabase | null, pageUid: str
       number: parsed.number,
       price: typeof price === 'number' ? price : null,
       // Match by set + zero-stripped number so a non-padded page UID still hits.
-      isPage:
-        uid === pageUid || (parsed.set.toUpperCase() === pageSet && cardNumberIndexKey(parsed.number) === pageNum),
-      isCheapest: false,
-      isBling: false
+      isPage: uid === pageUid || (parsed.set.toUpperCase() === pageSet && cardNumberIndexKey(parsed.number) === pageNum)
     });
   }
   if (rows.length < 2) {
     return [];
-  }
-
-  const priced = rows.filter(r => r.price !== null);
-  if (priced.length > 0) {
-    const min = priced.reduce((a, b) => (b.price! < a.price! ? b : a));
-    const max = priced.reduce((a, b) => (b.price! > a.price! ? b : a));
-    min.isCheapest = true;
-    if (max !== min) {
-      max.isBling = true;
-    }
   }
 
   const releaseIndex = new Map(Object.keys(database.prints).map((uid, i) => [uid, i]));
@@ -97,21 +78,6 @@ export function buildPrintingRows(database: SynonymDatabase | null, pageUid: str
     (a, b) =>
       (releaseIndex.get(a.uid) ?? Number.POSITIVE_INFINITY) - (releaseIndex.get(b.uid) ?? Number.POSITIVE_INFINITY)
   );
-}
-
-/**
- * Sort rows for display. 'oldest' keeps the release order rows arrive in;
- * 'price' sorts ascending with unpriced prints first — an unknown price reads
- * as bottom-tier, not bling. Never mutates the input.
- * @param rows - Rows from {@link buildPrintingRows}
- * @param sort - Sort mode
- * @returns A new sorted array
- */
-export function sortPrintings(rows: PrintingRow[], sort: PrintingsSort): PrintingRow[] {
-  if (sort === 'price') {
-    return [...rows].sort((a, b) => (a.price ?? Number.NEGATIVE_INFINITY) - (b.price ?? Number.NEGATIVE_INFINITY));
-  }
-  return [...rows];
 }
 
 /** Whole-cents dollar format for the strip; em dash when the scrape had no price. */

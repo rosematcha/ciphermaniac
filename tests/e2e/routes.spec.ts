@@ -86,14 +86,110 @@ test('trends renders without reaching the network for live data', async ({ page 
   await expect(page.locator('main')).toBeVisible();
 });
 
-test('players index lists the fixture players', async ({ page }) => {
+test('players index ranks the fixture players with a rank switch', async ({ page }) => {
   await gotoClean(page, '/players');
   await expect(page.locator('body')).toContainText(/Gabriel|player/i);
+  const bar = page.locator('.players-bar');
+  await expect(bar.getByRole('tab', { name: 'Day 2s' })).toHaveAttribute('aria-selected', 'true');
+  // Rank, player, events, Day 2s, top cuts, titles, win rate. The last two are
+  // hidden by CSS below 900px, so the mobile project counts the same seven.
+  await expect(page.locator('.players-table thead th')).toHaveCount(7);
+
+  await bar.getByRole('tab', { name: 'Win %' }).click();
+  await expect(page).toHaveURL(/sort=winPct/);
+  await expect(page.locator('.players-table th[aria-sort="descending"]')).toHaveText(/Win %/);
 });
 
-test('a player profile renders their tournament history', async ({ page }) => {
+test('a player profile renders their history as the first tab', async ({ page }) => {
   await gotoClean(page, '/players/1272');
-  await expect(page.locator('main')).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.history-table thead th')).toHaveCount(6);
+  await expect(page.locator('.history-table tbody > tr').first()).toContainText('New Orleans');
+});
+
+test('an opened event switches between its decklist and its rounds', async ({ page }) => {
+  await gotoClean(page, '/players/1272');
+  // The caret is desktop chrome; the row itself is the toggle at every width.
+  const row = page.locator('.history-table tbody > tr').first();
+
+  await row.locator('.history-name').click();
+  const detail = page.locator('.row-expansion .event-detail');
+  await expect(detail.getByRole('tab', { name: 'Decklist' })).toHaveAttribute('aria-selected', 'true');
+  await expect(detail.locator('.deck-inline-list li').first()).toBeVisible();
+
+  await detail.getByRole('tab', { name: 'Rounds' }).click();
+  await expect(detail.locator('.round').first()).toContainText('R1');
+  await expect(detail.locator('.rounds-drop')).toContainText('Dropped after round 7');
+
+  await row.locator('.history-name').click();
+  await expect(page.locator('.row-expansion')).toHaveCount(0);
+});
+
+test('an event without a decklist opens on its rounds', async ({ page }) => {
+  await page.route('**/players/1272/profile.json', async route => {
+    const response = await route.fetch();
+    const profile = (await response.json()) as { tournaments: Array<{ deckId: string | null }> };
+    profile.tournaments[0].deckId = null;
+    await route.fulfill({ response, json: profile });
+  });
+
+  await gotoClean(page, '/players/1272');
+  await page.locator('.history-table tbody > tr').first().locator('.history-name').click();
+  const detail = page.locator('.row-expansion .event-detail');
+  await expect(detail.getByRole('tab', { name: 'Rounds' })).toHaveAttribute('aria-selected', 'true');
+  await expect(detail.locator('.round').first()).toBeVisible();
+});
+
+test('the Decks tab groups events under their deck', async ({ page }) => {
+  await gotoClean(page, '/players/1272?tab=decks');
+  await expect(page.getByRole('tab', { name: 'Decks' })).toHaveAttribute('aria-selected', 'true');
+  const groups = page.locator('.deck-group');
+  await expect(groups.first()).toHaveClass(/open/);
+  await expect(groups.first().locator('.history-table tbody > tr').first()).toBeVisible();
+});
+
+test('a profile cached before rounds existed still renders', async ({ page }) => {
+  // R2 serves profile bodies for six hours, so a visitor can land on one written
+  // before the aggregator started emitting `rounds`.
+  await page.route('**/players/1272/profile.json', async route => {
+    const response = await route.fetch();
+    const profile = (await response.json()) as Record<string, unknown>;
+    delete profile.rounds;
+    await route.fulfill({ response, json: profile });
+  });
+
+  await gotoClean(page, '/players/1272?tab=matchups');
+  await expect(page.getByRole('heading', { name: /No round data/ })).toBeVisible();
+
+  await page.getByRole('tab', { name: 'History' }).click();
+  await page.locator('.history-table tbody > tr').first().getByRole('button', { name: 'Show details' }).click();
+  const detail = page.locator('.row-expansion .event-detail');
+  await detail.getByRole('tab', { name: 'Rounds' }).click();
+  await expect(detail.getByText('No round data published for this event.')).toBeVisible();
+});
+
+test('the Matchups tab rolls the rounds up', async ({ page }) => {
+  await gotoClean(page, '/players/1272?tab=matchups');
+  await expect(page.getByRole('heading', { name: /Decks faced/ })).toBeVisible();
+  // The phase splits lead the tab as a ruled band: label, rate, record.
+  await expect(page.locator('.phase-band .phase-figure').first()).toContainText('Day 1');
+});
+
+test('compare pairs two players on the events they both attended', async ({ page }) => {
+  await gotoClean(page, '/players/compare?a=1272&b=999');
+
+  const shared = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Shared events' }) });
+  // Four events in common; Gabriel finished higher at three of them.
+  await expect(shared.locator('tbody > tr')).toHaveCount(4);
+  await expect(shared.locator('.compare-h2h')).toContainText('3-1');
+  // The event column carries its own date, so there is no separate date column.
+  await expect(shared.getByRole('columnheader')).toHaveCount(5);
+});
+
+test('compare asks for two players before it compares anything', async ({ page }) => {
+  await gotoClean(page, '/players/compare');
+  await expect(page.getByText('Choose two players.')).toBeVisible();
+  await expect(page.getByRole('searchbox')).toHaveCount(2);
 });
 
 test('tournaments index renders the catalog', async ({ page }) => {

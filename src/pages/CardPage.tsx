@@ -14,7 +14,7 @@ import {
   supportsConversion
 } from './cardPage/model';
 import { A, useNavigate, useParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, For, on, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import {
   type Day2CardStat,
   fetchArchetype,
@@ -45,14 +45,7 @@ import { latestValue, resolved } from '../lib/resource';
 import { computeSparkBounds } from '../lib/sparkline';
 import type { CardDistributionEntry, CardItem } from '../types';
 import { Badge } from '../components/Badge';
-import { Segmented } from '../components/Segmented';
-import {
-  buildPrintingRows,
-  formatPrintPrice,
-  type PrintingRow,
-  type PrintingsSort,
-  sortPrintings
-} from '../utils/printings';
+import { buildPrintingRows, formatPrintPrice, type PrintingRow } from '../utils/printings';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
@@ -206,22 +199,7 @@ export function CardPage() {
     return getCanonicalCardFromData(db(), itemUid(c));
   });
 
-  // The printings strip's live selection (hover or pin). While set, the hero
-  // art, the Market price row, and the sparkline all follow that printing.
-  // Owned here (not in the body) because the price memos below key off it.
-  const [previewPrint, setPreviewPrint] = createSignal<PrintingRow | null>(null);
-  createEffect(
-    on(
-      () => {
-        const c = card();
-        return c ? itemUid(c) : null;
-      },
-      () => setPreviewPrint(null),
-      { defer: true }
-    )
-  );
-
-  const priceEntry = createMemo(() => resolvePriceEntry(card(), pricesData() ?? null, previewPrint(), globalCardUid()));
+  const priceEntry = createMemo(() => resolvePriceEntry(card(), pricesData() ?? null, globalCardUid()));
 
   // Rolling 90-day price history for the sparkline, sharded per set so this page
   // downloads only its own set (deduped by fetchJson); empty until the pipeline
@@ -235,7 +213,7 @@ export function CardPage() {
     return Boolean(h) && priceHistorySpanDays(h!) >= PRICE_HISTORY_MIN_DAYS;
   });
   const priceSeries = createMemo<PricePoint[]>(() =>
-    resolvePriceSeries(card(), priceHistoryData(), priceHistoryReady(), previewPrint(), globalCardUid())
+    resolvePriceSeries(card(), priceHistoryData(), priceHistoryReady(), globalCardUid())
   );
 
   // Per-archetype usage: list every archetype that plays this card, with its
@@ -337,8 +315,6 @@ export function CardPage() {
           card={card()!}
           db={db()}
           setNumber={setNumber()}
-          previewPrint={previewPrint()}
-          onPreview={setPreviewPrint}
           priceEntry={priceEntry()}
           priceSeries={priceSeries()}
           conversion={conversionStat()}
@@ -357,8 +333,6 @@ function CardPageBody(props: {
   card: CardItem;
   db: SynonymDatabase | null;
   setNumber: string;
-  previewPrint: PrintingRow | null;
-  onPreview: (p: PrintingRow | null) => void;
   priceEntry: { price?: number; tcgPlayerId?: string } | null;
   priceSeries: PricePoint[];
   conversion: Day2CardStat | undefined;
@@ -375,13 +349,8 @@ function CardPageBody(props: {
   const avgCopies = createMemo(() => averageCopies(props.card));
 
   // Printings strip: every printing in this card's reprint cluster, with the
-  // per-print prices the synonym producer scrapes. The live selection
-  // (`props.previewPrint`) is owned by CardPage so the price memos up there
-  // follow it too; while set, the hero art shows that printing instead of the
-  // page's own.
+  // per-print prices the synonym producer scrapes.
   const printings = createMemo<PrintingRow[]>(() => buildPrintingRows(props.db, itemUid(props.card)));
-  const heroSet = () => props.previewPrint?.set ?? props.card.set!;
-  const heroNumber = (): string | number => props.previewPrint?.number ?? props.card.number!;
 
   return (
     <>
@@ -389,7 +358,7 @@ function CardPageBody(props: {
         <div class='title-block'>
           <h1>{props.card.name}</h1>
           <div class='card-meta-row'>
-            <Show when={props.card.category}>
+            <Show when={props.card.category && !props.card.trainerType}>
               <Badge>{categoryToBadge(props.card.category!)}</Badge>
             </Show>
             <Show when={props.card.trainerType}>
@@ -430,14 +399,10 @@ function CardPageBody(props: {
                 </div>
               }
             >
-              {/* skipR2: a previewed filmstrip print may be one the conversion
-                  pipeline never saw, and this is the lg tier. The page's own
-                  print was played, so it is in R2 and keeps the WebP win. */}
               <CardImage
-                set={heroSet()}
-                number={heroNumber()}
+                set={props.card.set!}
+                number={props.card.number!}
                 size='lg'
-                skipR2={Boolean(props.previewPrint)}
                 sizes='(max-width: 760px) 240px, 300px'
                 lazy={false}
                 alt={`${props.card.name} card`}
@@ -445,7 +410,7 @@ function CardPageBody(props: {
             </Show>
           </div>
 
-          <div class='stats-panel'>
+          <div class='stats-list'>
             <div class='stat-row stat-row--lead'>
               <span class='stat-label'>
                 Inclusion
@@ -453,9 +418,7 @@ function CardPageBody(props: {
                   <p>Share of decks playing at least one copy of this card.</p>
                 </InfoTip>
               </span>
-              <span class='stat-lead-value'>
-                <span class='stat-value'>{props.card.pct.toFixed(1)}%</span>
-              </span>
+              <span class='stat-value'>{props.card.pct.toFixed(1)}%</span>
             </div>
             <Show when={props.conversion}>
               <div class='stat-row'>
@@ -514,7 +477,7 @@ function CardPageBody(props: {
           </div>
 
           <Show when={printings().length > 1}>
-            <PrintingsStrip prints={printings()} onPreview={props.onPreview} />
+            <PrintingsStrip prints={printings()} pagePrice={props.priceEntry?.price ?? null} />
           </Show>
         </div>
 
@@ -531,7 +494,7 @@ function CardPageBody(props: {
                         <div class='bar-fill' style={{ width: `${Math.min(100, d.percent ?? 0)}%` }} />
                       </div>
                       <span class='pct'>
-                        {(d.percent ?? 0).toFixed(1)}% · {(d.players ?? 0).toLocaleString()} decks
+                        {fmtWholePct(d.percent ?? 0)} · {(d.players ?? 0).toLocaleString()} decks
                       </span>
                     </div>
                   )}
@@ -564,106 +527,30 @@ function CardPageBody(props: {
 
 /**
  * Printings strip (left rail): one frame per printing in the card's reprint
- * cluster. Hovering or focusing a frame previews that printing in the hero
- * art; clicking pins it. Sorting uses the shared Segmented control: release
- * order (the synonym DB's prints-map order, promos first then oldest set
- * first) or price ascending. The caption carries the shown print's price, a
- * status tag, and its premium over the cheapest printing.
+ * cluster, in release order, with the page's own print outlined. Each frame's
+ * tooltip carries its set, number and scraped price. The page's print shows the
+ * Market price row's figure instead, so the two never disagree by a few cents
+ * (prices.json and the synonym scrape are separate sources).
  */
-function PrintingsStrip(props: { prints: PrintingRow[]; onPreview: (p: PrintingRow | null) => void }) {
-  const [sort, setSort] = createSignal<PrintingsSort>('oldest');
-  const [pinned, setPinned] = createSignal<PrintingRow | null>(null);
-  const [hovered, setHovered] = createSignal<PrintingRow | null>(null);
-  // New rows mean a new card — drop the old selection so hover/pin state
-  // cannot leak across navigations.
-  createEffect(
-    on(
-      () => props.prints,
-      () => {
-        setPinned(null);
-        setHovered(null);
-      },
-      { defer: true }
-    )
-  );
-
-  const pagePrint = () => props.prints.find(p => p.isPage) ?? props.prints[0];
-  const shown = createMemo(() => hovered() ?? pinned() ?? pagePrint());
-  // Lift the shown print so the hero art follows; null hands the hero back to
-  // the page's own print.
-  createEffect(() => {
-    const s = shown();
-    props.onPreview(s === pagePrint() ? null : s);
-  });
-
-  const tag = (p: PrintingRow) => (p.isPage ? 'tracked' : p.isBling ? 'bling' : p.isCheapest ? 'cheapest' : '');
-  const premium = createMemo(() => {
-    const s = shown();
-    const cheap = props.prints.find(p => p.isCheapest);
-    if (!cheap || s === cheap || s.price === null || cheap.price === null) {
-      return null;
-    }
-    return { amount: s.price - cheap.price, cheap };
-  });
-
+function PrintingsStrip(props: { prints: PrintingRow[]; pagePrice: number | null }) {
+  const framePrice = (p: PrintingRow): number | null => (p.isPage ? (props.pagePrice ?? p.price) : p.price);
   return (
     <div class='card-section printings-strip'>
-      <div class='ps-head'>
-        <h3>Printings</h3>
-        <Segmented
-          options={[
-            { value: 'oldest', label: 'Oldest' },
-            { value: 'price', label: 'Price' }
-          ]}
-          selected={sort()}
-          onSelect={setSort}
-          ariaLabel='Sort printings'
-        />
-      </div>
-      <div class='ps-frames' onMouseLeave={() => setHovered(null)}>
-        <For each={sortPrintings(props.prints, sort())}>
+      <h3>
+        Printings <span class='count'>{props.prints.length}</span>
+      </h3>
+      <div class='ps-frames'>
+        <For each={props.prints}>
           {p => (
-            <button
-              type='button'
+            <span
               class='ps-frame'
-              classList={{ pinned: (pinned() ?? pagePrint()) === p }}
-              aria-label={`${p.set} ${p.number}, ${formatPrintPrice(p.price)}`}
-              title={`${p.set} ${p.number} · ${formatPrintPrice(p.price)}`}
-              onMouseEnter={() => setHovered(p)}
-              onFocus={() => setHovered(p)}
-              onBlur={() => setHovered(null)}
-              onClick={() => setPinned(p)}
+              classList={{ pinned: p.isPage }}
+              title={`${p.set} ${p.number} · ${formatPrintPrice(framePrice(p))}`}
             >
-              <CardImage set={p.set} number={p.number} size='xs' alt='' skipR2 />
-            </button>
+              <CardImage set={p.set} number={p.number} size='xs' alt={`${p.set} ${p.number}`} skipR2 />
+            </span>
           )}
         </For>
-      </div>
-      <div class='ps-caption'>
-        <div class='ps-caption-row'>
-          <span class='ps-id'>
-            {shown().set} · #{shown().number}
-          </span>
-          <span class='ps-caption-price'>
-            <Show when={tag(shown())}>
-              <span class='ps-tag'>{tag(shown())}</span>
-            </Show>
-            <span class='ps-price'>{formatPrintPrice(shown().price)}</span>
-          </span>
-        </div>
-        <Show when={premium()} keyed>
-          {pr => (
-            <div class='ps-premium'>
-              <span class='ps-premium-up'>+${pr.amount.toFixed(2)}</span> over the {formatPrintPrice(pr.cheap.price)}{' '}
-              budget copy ({pr.cheap.set} {pr.cheap.number})
-            </div>
-          )}
-        </Show>
-        <Show when={!premium() && shown().isCheapest && shown().price !== null}>
-          <div class='ps-premium'>
-            <span class='ps-premium-zero'>cheapest printing</span>
-          </div>
-        </Show>
       </div>
     </div>
   );
@@ -723,11 +610,6 @@ function categoryToBadge(category: string): string {
   return main.charAt(0).toUpperCase() + main.slice(1);
 }
 
-/**
- * Locate a card in an archetype report by matching the canonical set + number
- * (preferred) or falling back to name match. Number comparison strips leading
- * zeros so PAL/185 ≈ PAL/0185.
- */
 /**
  * Expandable per-archetype usage rows: every archetype that plays this card,
  * with its inclusion rate and most common copy count on the collapsed row, and
@@ -802,9 +684,6 @@ function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem;
                   <ArchetypeIcons slugs={resolveArchetypeIcons(row.entry, iconMap)} size={20} reserveSlot />
                   <A href={`/archetypes/${encodeURIComponent(row.entry.name)}`}>{row.entry.label}</A>
                 </span>
-                <div class='au-bar' aria-hidden='true'>
-                  <div class='au-bar-fill' style={{ width: `${Math.min(100, inclusion)}%` }} />
-                </div>
                 <span class='au-pct'>{fmtWholePct(inclusion)}</span>
                 <span class='au-modal'>
                   <Show when={modalBucket} keyed>

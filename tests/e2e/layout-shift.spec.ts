@@ -39,6 +39,7 @@ const ROUTES = [
   '/tournaments',
   '/trends',
   '/players',
+  '/players/1272',
   '/tools/tier-list',
   '/tools/earnings',
   '/tools/meta-binder'

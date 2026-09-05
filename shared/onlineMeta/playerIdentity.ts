@@ -52,6 +52,20 @@ for (const override of PLAYER_IDENTITY_OVERRIDES) {
 }
 
 /**
+ * A stable description of the override table as this build holds it.
+ *
+ * The aggregator stores it in its manifest and compares on the next run. An
+ * edit here changes no tournament's content fingerprint, so without this the
+ * no-change fast path would skip the very rebuild the edit exists to cause,
+ * and the old name would stay published indefinitely.
+ */
+export const IDENTITY_OVERRIDES_REVISION: string = PLAYER_IDENTITY_OVERRIDES.map(
+  override => `${override.canonicalId}:${[...(override.aliasIds ?? [])].sort().join('+')}:${override.displayName ?? ''}`
+)
+  .sort()
+  .join('|');
+
+/**
  * Resolve a raw Limitless player id to the id its career is published under.
  * @param playerId - Raw id from a participant row
  * @returns The canonical id, or `playerId` unchanged when it is not an alias

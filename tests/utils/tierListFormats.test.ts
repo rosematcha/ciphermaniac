@@ -11,15 +11,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  fetchFormatArchetypes,
-  FORMAT_SPRITE_SLUGS,
-  STANDARD_FORMAT_ID,
-  TIER_FORMATS,
-  tierFormat
-} from '../../src/lib/data/formats';
+import { fetchFormatArchetypes, TIER_FORMATS, tierFormat } from '../../src/lib/data';
+import { STANDARD_FORMAT_ID } from '../../src/lib/data/formats';
 import snapshot from '../../src/data/format-archetypes.json';
 import icons from '../../src/data/archetype-icons.json';
+import pickerSprites from '../../src/data/pokemon-sprites.json';
 import setCatalog from '../../.github/scripts/data/set-catalog.json';
 import { hasPtcgioImages } from '../../src/utils/ptcgio';
 
@@ -157,20 +153,31 @@ test('at most two sprites per archetype, which is all a tile draws', () => {
   }
 });
 
-test('the exported sprite list covers every slug the snapshot uses', () => {
+test('the snapshot reaches past the Standard icon map, which is why the mirror reads it', () => {
+  // scripts/mirror-archetype-sprites.ts unions archetype-icons.json, this
+  // snapshot and the picker manifest. The icon map only covers Standard, so if
+  // the snapshot ever stopped contributing slugs of its own, dropping it from
+  // that union would look free — and would silently stop mirroring every
+  // Pokémon that has only ever been Expanded-legal here.
+  const standard = new Set(Object.values(icons as Record<string, string[]>).flat());
   const used = new Set(scraped.flatMap(format => format.archetypes.flatMap(archetype => archetype.icons)));
-  const offered = new Set(FORMAT_SPRITE_SLUGS);
-  for (const slug of used) {
-    assert.ok(offered.has(slug), `${slug} missing from FORMAT_SPRITE_SLUGS`);
-  }
-  assert.equal(offered.size, used.size);
+  assert.ok([...used].some(slug => !standard.has(slug)));
 });
 
-test('the sprite list reaches past what Standard alone covers', () => {
-  // The point of exporting it: past formats bring in Pokémon that have never
-  // been Standard-legal here, and the mirror has to know about them.
-  const standard = new Set(Object.values(icons as Record<string, string[]>).flat());
-  assert.ok(FORMAT_SPRITE_SLUGS.some(slug => !standard.has(slug)));
+test('the custom-archetype picker covers the National Dex forms our sprite source provides', () => {
+  const offered = new Set(pickerSprites);
+  assert.equal(offered.size, pickerSprites.length, 'picker sprite manifest has duplicate slugs');
+  for (const slug of [
+    'bulbasaur',
+    'pecharunt',
+    'charizard-mega-x',
+    'darkrai-mega',
+    'ogerpon-wellspring',
+    'tauros-paldea-aqua',
+    'necrozma-dawn-wings'
+  ]) {
+    assert.ok(offered.has(slug), `${slug} missing from custom-archetype picker`);
+  }
 });
 
 test('at most two cards per archetype, which is what Standard ships', () => {

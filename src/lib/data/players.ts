@@ -43,7 +43,11 @@ export async function fetchPlayerIndexSlim(): Promise<PlayerIndexSlimEntry[] | n
   if (slim) {
     return slim;
   }
-  return fetchPlayerJson<PlayerIndexEntry[]>('/players/index.json');
+  // Through the same decoder, not straight out of the fetch: an `index.json`
+  // written before win rate reached the index has no `wins`/`losses`, and the
+  // declared type says otherwise. Handed to the table raw, `wins + losses` is
+  // NaN and every row's win rate reads as a dash.
+  return decodeSlimIndex(await fetchPlayerJson<PlayerIndexEntry[]>('/players/index.json'));
 }
 
 export function fetchPlayerProfile(playerId: string): Promise<PlayerProfile | null> {

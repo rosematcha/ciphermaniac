@@ -1,1 +1,1609 @@
-{"playerId":"1272","name":"Gabriel Smart","aliases":[],"countries":["US"],"generatedAt":"2026-07-11T13:28:26.168Z","summary":{"eventCount":42,"firstEventDate":"2024-09-13","lastEventDate":"2026-06-12","wins":326,"losses":123,"ties":59,"day2s":35,"topCuts":3,"tournamentWins":1,"bestPlacement":1,"medianPlacement":80},"archetypeNames":{"dragapult":"Dragapult","dragapult_dusknoir":"Dragapult Dusknoir","crustle":"Crustle","grimmsnarl_froslass":"Grimmsnarl Froslass","n's_zoroark":"N's Zoroark","mega_absol_box":"Mega Absol Box","gholdengo_lunatone":"Gholdengo Lunatone","charizard_noctowl":"Charizard Noctowl","gardevoir_jellicent":"Gardevoir Jellicent","charizard_pidgeot":"Charizard Pidgeot","gholdengo":"Gholdengo","gholdengo_joltik_box":"Gholdengo Joltik Box","gardevoir":"Gardevoir","joltik_box":"Joltik Box","flareon_noctowl":"Flareon Noctowl","gholdengo_dragapult":"Gholdengo Dragapult","miraidon":"Miraidon","terapagos_noctowl":"Terapagos Noctowl","ancient_box":"Ancient Box"},"archetypes":[{"base":"gholdengo_lunatone","eventCount":6,"wins":48,"losses":18,"ties":13,"day2s":5,"topCuts":1,"bestPlacement":2},{"base":"charizard_pidgeot","eventCount":5,"wins":34,"losses":18,"ties":5,"day2s":4,"topCuts":0,"bestPlacement":43},{"base":"gardevoir","eventCount":5,"wins":38,"losses":11,"ties":8,"day2s":4,"topCuts":0,"bestPlacement":20},{"base":"dragapult","eventCount":4,"wins":31,"losses":11,"ties":4,"day2s":3,"topCuts":0,"bestPlacement":14},{"base":"terapagos_noctowl","eventCount":4,"wins":33,"losses":10,"ties":6,"day2s":4,"topCuts":1,"bestPlacement":7},{"base":"miraidon","eventCount":3,"wins":25,"losses":6,"ties":4,"day2s":2,"topCuts":1,"bestPlacement":1},{"base":"dragapult_dusknoir","eventCount":2,"wins":16,"losses":7,"ties":3,"day2s":2,"topCuts":0,"bestPlacement":116},{"base":"gholdengo","eventCount":2,"wins":14,"losses":7,"ties":4,"day2s":2,"topCuts":0,"bestPlacement":23},{"base":"crustle","eventCount":1,"wins":9,"losses":2,"ties":2,"day2s":1,"topCuts":0,"bestPlacement":24},{"base":"grimmsnarl_froslass","eventCount":1,"wins":10,"losses":3,"ties":1,"day2s":1,"topCuts":0,"bestPlacement":53},{"base":"n's_zoroark","eventCount":1,"wins":8,"losses":4,"ties":2,"day2s":1,"topCuts":0,"bestPlacement":191},{"base":"mega_absol_box","eventCount":1,"wins":5,"losses":3,"ties":0,"day2s":0,"topCuts":0,"bestPlacement":489},{"base":"charizard_noctowl","eventCount":1,"wins":9,"losses":2,"ties":2,"day2s":1,"topCuts":0,"bestPlacement":23},{"base":"gardevoir_jellicent","eventCount":1,"wins":9,"losses":4,"ties":1,"day2s":1,"topCuts":0,"bestPlacement":120},{"base":"gholdengo_joltik_box","eventCount":1,"wins":5,"losses":3,"ties":0,"day2s":0,"topCuts":0,"bestPlacement":288},{"base":"joltik_box","eventCount":1,"wins":8,"losses":3,"ties":1,"day2s":1,"topCuts":0,"bestPlacement":74},{"base":"flareon_noctowl","eventCount":1,"wins":8,"losses":3,"ties":1,"day2s":1,"topCuts":0,"bestPlacement":47},{"base":"gholdengo_dragapult","eventCount":1,"wins":8,"losses":4,"ties":1,"day2s":1,"topCuts":0,"bestPlacement":144},{"base":"ancient_box","eventCount":1,"wins":8,"losses":4,"ties":1,"day2s":1,"topCuts":0,"bestPlacement":102}],"tournaments":[{"tournamentId":"2026-06-12, International Championship New Orleans","tournamentDate":"2026-06-12","totalPlayers":3752,"placement":1699,"wins":3,"losses":3,"ties":1,"madePhase2":false,"madeTopCut":false,"archetype":"dragapult","deckId":"dragapult-ex"},{"tournamentId":"2026-05-29, Regional Championship Indianapolis","tournamentDate":"2026-05-29","totalPlayers":1974,"placement":133,"wins":8,"losses":4,"ties":1,"madePhase2":true,"madeTopCut":false,"archetype":"dragapult_dusknoir","deckId":"dragapult-dusknoir"},{"tournamentId":"2026-05-23, Regional Championship Melbourne","tournamentDate":"2026-05-23","totalPlayers":959,"placement":46,"wins":8,"losses":3,"ties":1,"madePhase2":true,"madeTopCut":false,"archetype":"dragapult","deckId":"dragapult-ex"},{"tournamentId":"2026-05-16, Regional Championship Utrecht","tournamentDate":"2026-05-16","totalPlayers":2150,"placement":46,"wins":10,"losses":3,"ties":1,"madePhase2":true,"madeTopCut":false,"archetype":"dragapult","deckId":"dragapult-ex"},{"tournamentId":"2026-05-08, Regional Championship Los Angeles","tournamentDate":"2026-05-08","totalPlayers":1849,"placement":14,"wins":10,"losses":2,"ties":1,"madePhase2":true,"madeTopCut":false,"archetype":"dragapult","deckId":"dragapult-ex"},{"tournamentId":"2026-04-25, Regional Championship Prague","tournamentDate":"2026-04-25","totalPlayers":1370,"placement":24,"wins":9,"losses":2,"ties":2,"madePhase2":true,"madeTopCut":false,"archetype":"crustle","deckId":"crustle-dri"},{"tournamentId":"2026-04-03, Regional Championship Orlando","tournamentDate":"2026-04-03","totalPlayers":2745,"placement":53,"wins":10,"losses":3,"ties":1,"madePhase2":true,"madeTopCut":false,"archetype":"grimmsnarl_froslass","deckId":"grimmsnarl-froslass"},{"tournamentId":"2026-03-20, Regional Championship Houston","tournamentDate":"2026-03-20","totalPlayers":2635,"placement":191,"wins":8,"losses":4,"ties":2,"madePhase2":true,"madeTopCut":false,"archetype":"n's_zoroark","deckId":"n-zoroark"},{"tournamentId":"2026-02-27, Regional Championship Seattle","tournamentDate":"2026-02-27","totalPlayers":2231,"placement":489,"wins":5,"losses":3,"ties":0,"madePhase2":false,"madeTopCut":false,"archetype":"mega_absol_box","deckId":"mega-absol-box"},{"tournamentId":"2026-02-13, International Championship London","tournamentDate":"2026-02-13","totalPlayers":4010,"placement":231,"wins":9,"losses":4,"ties":1,"madePhase2":true,"madeTopCut":false,"archetype":"gholdengo_lunatone","deckId":"gholdengo-lunatone"}]}
+{
+ "playerId": "1272",
+ "name": "Gabriel Smart",
+ "countries": [
+  "US"
+ ],
+ "generatedAt": "2026-07-11T13:28:26.168Z",
+ "summary": {
+  "eventCount": 42,
+  "firstEventDate": "2024-09-13",
+  "lastEventDate": "2026-06-12",
+  "wins": 326,
+  "losses": 123,
+  "ties": 59,
+  "day2s": 35,
+  "topCuts": 3,
+  "tournamentWins": 1,
+  "bestPlacement": 1,
+  "medianPlacement": 80
+ },
+ "archetypeNames": {
+  "dragapult": "Dragapult",
+  "dragapult_dusknoir": "Dragapult Dusknoir",
+  "crustle": "Crustle",
+  "grimmsnarl_froslass": "Grimmsnarl Froslass",
+  "n's_zoroark": "N's Zoroark",
+  "mega_absol_box": "Mega Absol Box",
+  "gholdengo_lunatone": "Gholdengo Lunatone",
+  "charizard_noctowl": "Charizard Noctowl",
+  "gardevoir_jellicent": "Gardevoir Jellicent",
+  "charizard_pidgeot": "Charizard Pidgeot",
+  "gholdengo": "Gholdengo",
+  "gholdengo_joltik_box": "Gholdengo Joltik Box",
+  "gardevoir": "Gardevoir",
+  "joltik_box": "Joltik Box",
+  "flareon_noctowl": "Flareon Noctowl",
+  "gholdengo_dragapult": "Gholdengo Dragapult",
+  "miraidon": "Miraidon",
+  "terapagos_noctowl": "Terapagos Noctowl",
+  "ancient_box": "Ancient Box"
+ },
+ "archetypes": [
+  {
+   "base": "gholdengo_lunatone",
+   "eventCount": 6,
+   "wins": 48,
+   "losses": 18,
+   "ties": 13,
+   "day2s": 5,
+   "topCuts": 1,
+   "bestPlacement": 2
+  },
+  {
+   "base": "charizard_pidgeot",
+   "eventCount": 5,
+   "wins": 34,
+   "losses": 18,
+   "ties": 5,
+   "day2s": 4,
+   "topCuts": 0,
+   "bestPlacement": 43
+  },
+  {
+   "base": "gardevoir",
+   "eventCount": 5,
+   "wins": 38,
+   "losses": 11,
+   "ties": 8,
+   "day2s": 4,
+   "topCuts": 0,
+   "bestPlacement": 20
+  },
+  {
+   "base": "dragapult",
+   "eventCount": 4,
+   "wins": 31,
+   "losses": 11,
+   "ties": 4,
+   "day2s": 3,
+   "topCuts": 0,
+   "bestPlacement": 14
+  },
+  {
+   "base": "terapagos_noctowl",
+   "eventCount": 4,
+   "wins": 33,
+   "losses": 10,
+   "ties": 6,
+   "day2s": 4,
+   "topCuts": 1,
+   "bestPlacement": 7
+  },
+  {
+   "base": "miraidon",
+   "eventCount": 3,
+   "wins": 25,
+   "losses": 6,
+   "ties": 4,
+   "day2s": 2,
+   "topCuts": 1,
+   "bestPlacement": 1
+  },
+  {
+   "base": "dragapult_dusknoir",
+   "eventCount": 2,
+   "wins": 16,
+   "losses": 7,
+   "ties": 3,
+   "day2s": 2,
+   "topCuts": 0,
+   "bestPlacement": 116
+  },
+  {
+   "base": "gholdengo",
+   "eventCount": 2,
+   "wins": 14,
+   "losses": 7,
+   "ties": 4,
+   "day2s": 2,
+   "topCuts": 0,
+   "bestPlacement": 23
+  },
+  {
+   "base": "crustle",
+   "eventCount": 1,
+   "wins": 9,
+   "losses": 2,
+   "ties": 2,
+   "day2s": 1,
+   "topCuts": 0,
+   "bestPlacement": 24
+  },
+  {
+   "base": "grimmsnarl_froslass",
+   "eventCount": 1,
+   "wins": 10,
+   "losses": 3,
+   "ties": 1,
+   "day2s": 1,
+   "topCuts": 0,
+   "bestPlacement": 53
+  },
+  {
+   "base": "n's_zoroark",
+   "eventCount": 1,
+   "wins": 8,
+   "losses": 4,
+   "ties": 2,
+   "day2s": 1,
+   "topCuts": 0,
+   "bestPlacement": 191
+  },
+  {
+   "base": "mega_absol_box",
+   "eventCount": 1,
+   "wins": 5,
+   "losses": 3,
+   "ties": 0,
+   "day2s": 0,
+   "topCuts": 0,
+   "bestPlacement": 489
+  },
+  {
+   "base": "charizard_noctowl",
+   "eventCount": 1,
+   "wins": 9,
+   "losses": 2,
+   "ties": 2,
+   "day2s": 1,
+   "topCuts": 0,
+   "bestPlacement": 23
+  },
+  {
+   "base": "gardevoir_jellicent",
+   "eventCount": 1,
+   "wins": 9,
+   "losses": 4,
+   "ties": 1,
+   "day2s": 1,
+   "topCuts": 0,
+   "bestPlacement": 120
+  },
+  {
+   "base": "gholdengo_joltik_box",
+   "eventCount": 1,
+   "wins": 5,
+   "losses": 3,
+   "ties": 0,
+   "day2s": 0,
+   "topCuts": 0,
+   "bestPlacement": 288
+  },
+  {
+   "base": "joltik_box",
+   "eventCount": 1,
+   "wins": 8,
+   "losses": 3,
+   "ties": 1,
+   "day2s": 1,
+   "topCuts": 0,
+   "bestPlacement": 74
+  },
+  {
+   "base": "flareon_noctowl",
+   "eventCount": 1,
+   "wins": 8,
+   "losses": 3,
+   "ties": 1,
+   "day2s": 1,
+   "topCuts": 0,
+   "bestPlacement": 47
+  },
+  {
+   "base": "gholdengo_dragapult",
+   "eventCount": 1,
+   "wins": 8,
+   "losses": 4,
+   "ties": 1,
+   "day2s": 1,
+   "topCuts": 0,
+   "bestPlacement": 144
+  },
+  {
+   "base": "ancient_box",
+   "eventCount": 1,
+   "wins": 8,
+   "losses": 4,
+   "ties": 1,
+   "day2s": 1,
+   "topCuts": 0,
+   "bestPlacement": 102
+  }
+ ],
+ "tournaments": [
+  {
+   "tournamentId": "2026-06-12, International Championship New Orleans",
+   "tournamentDate": "2026-06-12",
+   "totalPlayers": 3752,
+   "placement": 1699,
+   "wins": 3,
+   "losses": 3,
+   "ties": 1,
+   "madePhase2": false,
+   "madeTopCut": false,
+   "archetype": "dragapult",
+   "deckId": "dragapult-ex",
+   "dropRound": 7
+  },
+  {
+   "tournamentId": "2026-05-29, Regional Championship Indianapolis",
+   "tournamentDate": "2026-05-29",
+   "totalPlayers": 1974,
+   "placement": 133,
+   "wins": 8,
+   "losses": 4,
+   "ties": 1,
+   "madePhase2": true,
+   "madeTopCut": false,
+   "archetype": "dragapult_dusknoir",
+   "deckId": "dragapult-dusknoir"
+  },
+  {
+   "tournamentId": "2026-05-23, Regional Championship Melbourne",
+   "tournamentDate": "2026-05-23",
+   "totalPlayers": 959,
+   "placement": 46,
+   "wins": 8,
+   "losses": 3,
+   "ties": 1,
+   "madePhase2": true,
+   "madeTopCut": false,
+   "archetype": "dragapult",
+   "deckId": "dragapult-ex"
+  },
+  {
+   "tournamentId": "2026-05-16, Regional Championship Utrecht",
+   "tournamentDate": "2026-05-16",
+   "totalPlayers": 2150,
+   "placement": 46,
+   "wins": 10,
+   "losses": 3,
+   "ties": 1,
+   "madePhase2": true,
+   "madeTopCut": false,
+   "archetype": "dragapult",
+   "deckId": "dragapult-ex"
+  },
+  {
+   "tournamentId": "2026-05-08, Regional Championship Los Angeles",
+   "tournamentDate": "2026-05-08",
+   "totalPlayers": 1849,
+   "placement": 14,
+   "wins": 10,
+   "losses": 2,
+   "ties": 1,
+   "madePhase2": true,
+   "madeTopCut": false,
+   "archetype": "dragapult",
+   "deckId": "dragapult-ex"
+  },
+  {
+   "tournamentId": "2026-04-25, Regional Championship Prague",
+   "tournamentDate": "2026-04-25",
+   "totalPlayers": 1370,
+   "placement": 24,
+   "wins": 9,
+   "losses": 2,
+   "ties": 2,
+   "madePhase2": true,
+   "madeTopCut": false,
+   "archetype": "crustle",
+   "deckId": "crustle-dri"
+  },
+  {
+   "tournamentId": "2026-04-03, Regional Championship Orlando",
+   "tournamentDate": "2026-04-03",
+   "totalPlayers": 2745,
+   "placement": 53,
+   "wins": 10,
+   "losses": 3,
+   "ties": 1,
+   "madePhase2": true,
+   "madeTopCut": false,
+   "archetype": "grimmsnarl_froslass",
+   "deckId": "grimmsnarl-froslass"
+  },
+  {
+   "tournamentId": "2026-03-20, Regional Championship Houston",
+   "tournamentDate": "2026-03-20",
+   "totalPlayers": 2635,
+   "placement": 191,
+   "wins": 8,
+   "losses": 4,
+   "ties": 2,
+   "madePhase2": true,
+   "madeTopCut": false,
+   "archetype": "n's_zoroark",
+   "deckId": "n-zoroark"
+  },
+  {
+   "tournamentId": "2026-02-27, Regional Championship Seattle",
+   "tournamentDate": "2026-02-27",
+   "totalPlayers": 2231,
+   "placement": 489,
+   "wins": 5,
+   "losses": 3,
+   "ties": 0,
+   "madePhase2": false,
+   "madeTopCut": false,
+   "archetype": "mega_absol_box",
+   "deckId": "mega-absol-box"
+  },
+  {
+   "tournamentId": "2026-02-13, International Championship London",
+   "tournamentDate": "2026-02-13",
+   "totalPlayers": 4010,
+   "placement": 231,
+   "wins": 9,
+   "losses": 4,
+   "ties": 1,
+   "madePhase2": true,
+   "madeTopCut": false,
+   "archetype": "gholdengo_lunatone",
+   "deckId": "gholdengo-lunatone"
+  }
+ ],
+ "rounds": {
+  "2026-06-12, International Championship New Orleans": [
+   {
+    "round": 1,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "13906",
+    "opponentName": "Jack Saunders",
+    "opponentCountry": "CA",
+    "opponentArchetype": "Dragapult",
+    "opponentPlacement": 43
+   },
+   {
+    "round": 2,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "822",
+    "opponentName": "Jordan Scott",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 3276
+   },
+   {
+    "round": 3,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "2176",
+    "opponentName": "Cameron Ware",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Blaziken",
+    "opponentPlacement": 2598
+   },
+   {
+    "round": 4,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "45504",
+    "opponentName": "Michael Elkins",
+    "opponentCountry": "US",
+    "opponentArchetype": "Slowking",
+    "opponentPlacement": 2567
+   },
+   {
+    "round": 5,
+    "phase": 1,
+    "outcome": "tie",
+    "opponentId": "1059",
+    "opponentName": "Daniel Zhou",
+    "opponentCountry": "CA",
+    "opponentArchetype": "Dragapult",
+    "opponentPlacement": 296
+   },
+   {
+    "round": 6,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "1356",
+    "opponentName": "Kyle Mullanack",
+    "opponentCountry": "US",
+    "opponentArchetype": "Crustle",
+    "opponentPlacement": 509
+   },
+   {
+    "round": 7,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "34325",
+    "opponentName": "Andrew Kang",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 1042
+   }
+  ],
+  "2026-05-29, Regional Championship Indianapolis": [
+   {
+    "round": 1,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "416",
+    "opponentName": "Tony Santos",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult",
+    "opponentPlacement": 434
+   },
+   {
+    "round": 2,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "34506",
+    "opponentName": "Jeremiah Garrigues-Cortelyou",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Blaziken",
+    "opponentPlacement": 774
+   },
+   {
+    "round": 3,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "52117",
+    "opponentName": "Benjamin Horn",
+    "opponentCountry": "US",
+    "opponentArchetype": "Lillie's Clefairy",
+    "opponentPlacement": 208
+   },
+   {
+    "round": 4,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "37",
+    "opponentName": "Bradley Lippert",
+    "opponentCountry": "US",
+    "opponentArchetype": "Cynthia's Garchomp",
+    "opponentPlacement": 219
+   },
+   {
+    "round": 5,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "52504",
+    "opponentName": "Matthew Rines",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult",
+    "opponentPlacement": 521
+   },
+   {
+    "round": 6,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "1460",
+    "opponentName": "Marc Perry",
+    "opponentCountry": "US",
+    "opponentArchetype": null,
+    "opponentPlacement": null
+   },
+   {
+    "round": 7,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "996",
+    "opponentName": "Caleb Rogerson",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult",
+    "opponentPlacement": 86
+   },
+   {
+    "round": 8,
+    "phase": 1,
+    "outcome": "tie",
+    "opponentId": "967",
+    "opponentName": "DANNY MIRANDA",
+    "opponentCountry": "US",
+    "opponentArchetype": "Slowking",
+    "opponentPlacement": 287
+   },
+   {
+    "round": 9,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "34756",
+    "opponentName": "Braden Whited",
+    "opponentCountry": "US",
+    "opponentArchetype": "Crustle",
+    "opponentPlacement": 150
+   },
+   {
+    "round": 10,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "1630",
+    "opponentName": "Cobi Kawasaki",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult",
+    "opponentPlacement": 68
+   },
+   {
+    "round": 11,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "6692",
+    "opponentName": "Paul Miller",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Froslass",
+    "opponentPlacement": 235
+   },
+   {
+    "round": 12,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "13430",
+    "opponentName": "Jose Munoz",
+    "opponentCountry": "US",
+    "opponentArchetype": "Alakazam Dudunsparce",
+    "opponentPlacement": 173
+   },
+   {
+    "round": 13,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "34714",
+    "opponentName": "Samuel Subler",
+    "opponentCountry": "US",
+    "opponentArchetype": "Cynthia's Garchomp",
+    "opponentPlacement": 73
+   }
+  ],
+  "2026-05-23, Regional Championship Melbourne": [
+   {
+    "round": 1,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "51503",
+    "opponentName": "Huy Doan",
+    "opponentCountry": "AU",
+    "opponentArchetype": "Rocket's Honchkrow",
+    "opponentPlacement": 739
+   },
+   {
+    "round": 2,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "51391",
+    "opponentName": "Ruiqi Ding",
+    "opponentCountry": "CN",
+    "opponentArchetype": "Festival Lead",
+    "opponentPlacement": 361
+   },
+   {
+    "round": 3,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "26002",
+    "opponentName": "Blaine Winchester",
+    "opponentCountry": "AU",
+    "opponentArchetype": "Starmie Dusknoir",
+    "opponentPlacement": 385
+   },
+   {
+    "round": 4,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "29768",
+    "opponentName": "Nobuhide Matsuo",
+    "opponentCountry": "JP",
+    "opponentArchetype": "N's Zoroark",
+    "opponentPlacement": 63
+   },
+   {
+    "round": 5,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "35831",
+    "opponentName": "zhijie shen",
+    "opponentCountry": "AU",
+    "opponentArchetype": "Ogerpon Meganium Hydrapple",
+    "opponentPlacement": 550
+   },
+   {
+    "round": 6,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "12847",
+    "opponentName": "Simon Tian",
+    "opponentCountry": "AU",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 64
+   },
+   {
+    "round": 7,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "41610",
+    "opponentName": "Jeremy Tan",
+    "opponentCountry": "AU",
+    "opponentArchetype": "Raging Bolt Ogerpon",
+    "opponentPlacement": 187
+   },
+   {
+    "round": 8,
+    "phase": 1,
+    "outcome": "tie",
+    "opponentId": "25990",
+    "opponentName": "Brandon Lai",
+    "opponentCountry": "AU",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 19
+   },
+   {
+    "round": 9,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "51407",
+    "opponentName": "Jack Zhang",
+    "opponentCountry": "CN",
+    "opponentArchetype": "Lopunny Dudunsparce",
+    "opponentPlacement": 169
+   },
+   {
+    "round": 10,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "51519",
+    "opponentName": "Vivienne Senora-Culley",
+    "opponentCountry": "AU",
+    "opponentArchetype": "Basic Box",
+    "opponentPlacement": 47
+   },
+   {
+    "round": 11,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "30892",
+    "opponentName": "Hiroyuki Iida",
+    "opponentCountry": "JP",
+    "opponentArchetype": "Ogerpon Meganium Hydrapple",
+    "opponentPlacement": 107
+   },
+   {
+    "round": 12,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "19728",
+    "opponentName": "Shinnosuke Sato",
+    "opponentCountry": "JP",
+    "opponentArchetype": "Ogerpon Meganium Hydrapple",
+    "opponentPlacement": 14
+   }
+  ],
+  "2026-05-16, Regional Championship Utrecht": [
+   {
+    "round": 1,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "26543",
+    "opponentName": "Deren Yigit",
+    "opponentCountry": "NL",
+    "opponentArchetype": "Ogerpon Meganium Arboliva",
+    "opponentPlacement": 1748
+   },
+   {
+    "round": 2,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "3391",
+    "opponentName": "Noah Schade",
+    "opponentCountry": "DE",
+    "opponentArchetype": "Ogerpon Meganium Arboliva",
+    "opponentPlacement": 408
+   },
+   {
+    "round": 3,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "7592",
+    "opponentName": "Harry Miller",
+    "opponentCountry": "UK",
+    "opponentArchetype": "Lucario Hariyama",
+    "opponentPlacement": 85
+   },
+   {
+    "round": 4,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "4162",
+    "opponentName": "Matthew Rowberry",
+    "opponentCountry": "IM",
+    "opponentArchetype": "Raging Bolt Ogerpon",
+    "opponentPlacement": 1654
+   },
+   {
+    "round": 5,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "3893",
+    "opponentName": "Mahdi Eftekhari",
+    "opponentCountry": "DE",
+    "opponentArchetype": "Dragapult Dudunsparce",
+    "opponentPlacement": 305
+   },
+   {
+    "round": 6,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "4314",
+    "opponentName": "Lars Claessens",
+    "opponentCountry": "BE",
+    "opponentArchetype": "Lopunny Dudunsparce",
+    "opponentPlacement": 357
+   },
+   {
+    "round": 7,
+    "phase": 1,
+    "outcome": "tie",
+    "opponentId": "38469",
+    "opponentName": "Tygo Rouwenhorst",
+    "opponentCountry": "NL",
+    "opponentArchetype": "Rocket's Mewtwo",
+    "opponentPlacement": 373
+   },
+   {
+    "round": 8,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "3081",
+    "opponentName": "gon\u00e7alo ferreira",
+    "opponentCountry": "PT",
+    "opponentArchetype": "Lopunny Dudunsparce",
+    "opponentPlacement": 281
+   },
+   {
+    "round": 9,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "3429",
+    "opponentName": "Bas Juffer",
+    "opponentCountry": "NL",
+    "opponentArchetype": "Dragapult",
+    "opponentPlacement": 352
+   },
+   {
+    "round": 10,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "3565",
+    "opponentName": "Luke Burke",
+    "opponentCountry": "UK",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 7
+   },
+   {
+    "round": 11,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "21792",
+    "opponentName": "Jimmy Wuyts",
+    "opponentCountry": "BE",
+    "opponentArchetype": "Diancie Dusknoir",
+    "opponentPlacement": 26
+   },
+   {
+    "round": 12,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "19400",
+    "opponentName": "Levi Aanen",
+    "opponentCountry": "NL",
+    "opponentArchetype": "Festival Lead",
+    "opponentPlacement": 206
+   },
+   {
+    "round": 13,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "264",
+    "opponentName": "Benny Billinger",
+    "opponentCountry": "CA",
+    "opponentArchetype": "Lopunny Dudunsparce",
+    "opponentPlacement": 94
+   },
+   {
+    "round": 14,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "31164",
+    "opponentName": "Mario Jiang",
+    "opponentCountry": "IT",
+    "opponentArchetype": "Clefairy Ogerpon",
+    "opponentPlacement": 132
+   }
+  ],
+  "2026-05-08, Regional Championship Los Angeles": [
+   {
+    "round": 1,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "468",
+    "opponentName": "Jerry Reinhart",
+    "opponentCountry": "US",
+    "opponentArchetype": "Rocket's Mewtwo",
+    "opponentPlacement": 750
+   },
+   {
+    "round": 2,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "29697",
+    "opponentName": "Brandon Vo",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dudunsparce",
+    "opponentPlacement": 36
+   },
+   {
+    "round": 3,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "49729",
+    "opponentName": "Michael Lugo",
+    "opponentCountry": "US",
+    "opponentArchetype": "Cynthia's Garchomp",
+    "opponentPlacement": 1339
+   },
+   {
+    "round": 4,
+    "phase": 1,
+    "outcome": "tie",
+    "opponentId": "49547",
+    "opponentName": "Peyton McDowell",
+    "opponentCountry": "US",
+    "opponentArchetype": "N's Zoroark",
+    "opponentPlacement": 324
+   },
+   {
+    "round": 5,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "1046",
+    "opponentName": "Jose Luis Sanchez",
+    "opponentCountry": "US",
+    "opponentArchetype": "Starmie Froslass",
+    "opponentPlacement": 574
+   },
+   {
+    "round": 6,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "6043",
+    "opponentName": "Jorge Arteaga",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Blaziken",
+    "opponentPlacement": 122
+   },
+   {
+    "round": 7,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "2139",
+    "opponentName": "Preston Rutledge",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 4
+   },
+   {
+    "round": 8,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "11034",
+    "opponentName": "Albert Vinageras",
+    "opponentCountry": "US",
+    "opponentArchetype": "Rocket's Mewtwo",
+    "opponentPlacement": 56
+   },
+   {
+    "round": 9,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "22399",
+    "opponentName": "Edward Nguyen",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 227
+   },
+   {
+    "round": 10,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "11139",
+    "opponentName": "Larry Rubinol",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 214
+   },
+   {
+    "round": 11,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "17860",
+    "opponentName": "Frederick Cardona",
+    "opponentCountry": "US",
+    "opponentArchetype": "N's Zoroark",
+    "opponentPlacement": 120
+   },
+   {
+    "round": 12,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "10338",
+    "opponentName": "omar govea",
+    "opponentCountry": "MX",
+    "opponentArchetype": "Festival Lead",
+    "opponentPlacement": 140
+   },
+   {
+    "round": 13,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "49516",
+    "opponentName": "Fredrik Horak",
+    "opponentCountry": "US",
+    "opponentArchetype": "Rocket's Mewtwo",
+    "opponentPlacement": 63
+   }
+  ],
+  "2026-04-25, Regional Championship Prague": [
+   {
+    "round": 1,
+    "phase": 1,
+    "outcome": "tie",
+    "opponentId": "3671",
+    "opponentName": "David Roodhof",
+    "opponentCountry": "NL",
+    "opponentArchetype": "Basic Box",
+    "opponentPlacement": 191
+   },
+   {
+    "round": 2,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "3541",
+    "opponentName": "Marcus Munkholm",
+    "opponentCountry": "DK",
+    "opponentArchetype": "Alakazam Dudunsparce",
+    "opponentPlacement": 367
+   },
+   {
+    "round": 3,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "47059",
+    "opponentName": "Aidan Tauber",
+    "opponentCountry": "PT",
+    "opponentArchetype": "Dragapult Blaziken",
+    "opponentPlacement": 382
+   },
+   {
+    "round": 4,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "3946",
+    "opponentName": "Sander Wojcik",
+    "opponentCountry": "NL",
+    "opponentArchetype": "Crustle",
+    "opponentPlacement": 10
+   },
+   {
+    "round": 5,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "46650",
+    "opponentName": "Francisco Pires",
+    "opponentCountry": "PT",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 979
+   },
+   {
+    "round": 6,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "4243",
+    "opponentName": "Renaud LEVAIN",
+    "opponentCountry": "FR",
+    "opponentArchetype": "Dragapult",
+    "opponentPlacement": 646
+   },
+   {
+    "round": 7,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "4078",
+    "opponentName": "Toby Clark",
+    "opponentCountry": "UK",
+    "opponentArchetype": "N's Zoroark",
+    "opponentPlacement": 116
+   },
+   {
+    "round": 8,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "12345",
+    "opponentName": "Justin Wies",
+    "opponentCountry": "NL",
+    "opponentArchetype": "Rocket's Mewtwo",
+    "opponentPlacement": 214
+   },
+   {
+    "round": 9,
+    "phase": 2,
+    "outcome": "tie",
+    "opponentId": "3951",
+    "opponentName": "Koen Moors",
+    "opponentCountry": "NL",
+    "opponentArchetype": "Crustle",
+    "opponentPlacement": 60
+   },
+   {
+    "round": 10,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "3471",
+    "opponentName": "Alessandro Frenda",
+    "opponentCountry": "IT",
+    "opponentArchetype": "Dragapult Blaziken",
+    "opponentPlacement": 16
+   },
+   {
+    "round": 11,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "15217",
+    "opponentName": "Ryan Edney",
+    "opponentCountry": "UK",
+    "opponentArchetype": "Cynthia's Garchomp",
+    "opponentPlacement": 143
+   },
+   {
+    "round": 12,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "36259",
+    "opponentName": "Mateusz Mroczek",
+    "opponentCountry": "PL",
+    "opponentArchetype": "Rocket's Mewtwo",
+    "opponentPlacement": 71
+   },
+   {
+    "round": 13,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "28641",
+    "opponentName": "Daniel Otero Mendui\u00f1a",
+    "opponentCountry": "ES",
+    "opponentArchetype": "Dragapult",
+    "opponentPlacement": 88
+   }
+  ],
+  "2026-04-03, Regional Championship Orlando": [
+   {
+    "round": 1,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "22900",
+    "opponentName": "Ryley Hartwig",
+    "opponentCountry": "US",
+    "opponentArchetype": "Gholdengo Lunatone",
+    "opponentPlacement": 1806
+   },
+   {
+    "round": 2,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "47156",
+    "opponentName": "Kathryn Webster",
+    "opponentCountry": "US",
+    "opponentArchetype": "Festival Lead",
+    "opponentPlacement": 1475
+   },
+   {
+    "round": 3,
+    "phase": 1,
+    "outcome": "tie",
+    "opponentId": "999",
+    "opponentName": "Brent Tonisson",
+    "opponentCountry": "AU",
+    "opponentArchetype": "Gardevoir",
+    "opponentPlacement": 76
+   },
+   {
+    "round": 4,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "2133",
+    "opponentName": "Hunter Butler",
+    "opponentCountry": "US",
+    "opponentArchetype": "Gardevoir",
+    "opponentPlacement": 270
+   },
+   {
+    "round": 5,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "36897",
+    "opponentName": "Tianen Li",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 879
+   },
+   {
+    "round": 6,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "1066",
+    "opponentName": "Zach Cohen",
+    "opponentCountry": "US",
+    "opponentArchetype": "Charizard Pidgeot",
+    "opponentPlacement": 1225
+   },
+   {
+    "round": 7,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "14173",
+    "opponentName": "Li Wan",
+    "opponentCountry": "CA",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 254
+   },
+   {
+    "round": 8,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "1439",
+    "opponentName": "Eduardo Melendez",
+    "opponentCountry": "US",
+    "opponentArchetype": "Mega Absol Box",
+    "opponentPlacement": 338
+   },
+   {
+    "round": 9,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "34313",
+    "opponentName": "Cristiano Castaneda",
+    "opponentCountry": "US",
+    "opponentArchetype": "Gardevoir",
+    "opponentPlacement": 152
+   },
+   {
+    "round": 10,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "14300",
+    "opponentName": "Colin Foley",
+    "opponentCountry": "US",
+    "opponentArchetype": "Gardevoir",
+    "opponentPlacement": 346
+   },
+   {
+    "round": 11,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "63",
+    "opponentName": "Alexander Katsarsky",
+    "opponentCountry": "US",
+    "opponentArchetype": "N's Zoroark",
+    "opponentPlacement": 366
+   },
+   {
+    "round": 12,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "47742",
+    "opponentName": "Gabriel Perez",
+    "opponentCountry": "US",
+    "opponentArchetype": "Gholdengo Lunatone",
+    "opponentPlacement": 364
+   },
+   {
+    "round": 13,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "39505",
+    "opponentName": "Brendan Cevasco",
+    "opponentCountry": "US",
+    "opponentArchetype": "Froslass Munkidori",
+    "opponentPlacement": 250
+   },
+   {
+    "round": 14,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "23463",
+    "opponentName": "Changyu Liu",
+    "opponentCountry": "CN",
+    "opponentArchetype": "Mega Absol Box",
+    "opponentPlacement": 132
+   }
+  ],
+  "2026-03-20, Regional Championship Houston": [
+   {
+    "round": 1,
+    "phase": 1,
+    "outcome": "tie",
+    "opponentId": "17437",
+    "opponentName": "Hoss Barnes",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Charizard",
+    "opponentPlacement": 2391
+   },
+   {
+    "round": 2,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "16769",
+    "opponentName": "Brian Dinh",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 1298
+   },
+   {
+    "round": 3,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "37006",
+    "opponentName": "Dylan Clark",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 359
+   },
+   {
+    "round": 4,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "45262",
+    "opponentName": "Rogelio Rangel",
+    "opponentCountry": "US",
+    "opponentArchetype": "Mega Absol Box",
+    "opponentPlacement": 745
+   },
+   {
+    "round": 5,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "16787",
+    "opponentName": "Michael White",
+    "opponentCountry": "US",
+    "opponentArchetype": "Froslass Munkidori",
+    "opponentPlacement": 265
+   },
+   {
+    "round": 6,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "804",
+    "opponentName": "Ryan Miller",
+    "opponentCountry": "US",
+    "opponentArchetype": "Grimmsnarl Froslass",
+    "opponentPlacement": 109
+   },
+   {
+    "round": 7,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "46084",
+    "opponentName": "James Nichols",
+    "opponentCountry": "US",
+    "opponentArchetype": "Grimmsnarl Froslass",
+    "opponentPlacement": 767
+   },
+   {
+    "round": 8,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "46474",
+    "opponentName": "Elton Tang",
+    "opponentCountry": "US",
+    "opponentArchetype": "Iron Hands Magneton",
+    "opponentPlacement": 90
+   },
+   {
+    "round": 9,
+    "phase": 2,
+    "outcome": "tie",
+    "opponentId": "14018",
+    "opponentName": "Sunny Lee",
+    "opponentCountry": "CA",
+    "opponentArchetype": "Joltik Box",
+    "opponentPlacement": 93
+   },
+   {
+    "round": 10,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "1796",
+    "opponentName": "Joshua McRae",
+    "opponentCountry": "US",
+    "opponentArchetype": "Gholdengo Lunatone",
+    "opponentPlacement": 317
+   },
+   {
+    "round": 11,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "28079",
+    "opponentName": "Salvador Cortazar",
+    "opponentCountry": "MX",
+    "opponentArchetype": "Raging Bolt Ogerpon",
+    "opponentPlacement": 375
+   },
+   {
+    "round": 12,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "45681",
+    "opponentName": "Brian Mejia",
+    "opponentCountry": "US",
+    "opponentArchetype": "Gholdengo Lunatone",
+    "opponentPlacement": 79
+   },
+   {
+    "round": 13,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "17998",
+    "opponentName": "Gabriel Paler",
+    "opponentCountry": "US",
+    "opponentArchetype": "Grimmsnarl Froslass",
+    "opponentPlacement": 224
+   },
+   {
+    "round": 14,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "34785",
+    "opponentName": "Moises Paredes",
+    "opponentCountry": "US",
+    "opponentArchetype": "Gholdengo Lunatone",
+    "opponentPlacement": 104
+   }
+  ],
+  "2026-02-27, Regional Championship Seattle": [
+   {
+    "round": 1,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "36657",
+    "opponentName": "Robert Macaibay",
+    "opponentCountry": "US",
+    "opponentArchetype": "Raging Bolt Ogerpon",
+    "opponentPlacement": 1066
+   },
+   {
+    "round": 2,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "43966",
+    "opponentName": "Nicholas Nazarowski",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Charizard",
+    "opponentPlacement": 934
+   },
+   {
+    "round": 3,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "10711",
+    "opponentName": "Timothy Skalland",
+    "opponentCountry": "US",
+    "opponentArchetype": "Iron Hands Magneton",
+    "opponentPlacement": 848
+   },
+   {
+    "round": 4,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "43711",
+    "opponentName": "Jason Shrofe",
+    "opponentCountry": "US",
+    "opponentArchetype": "Mega Absol Box",
+    "opponentPlacement": 1244
+   },
+   {
+    "round": 5,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "1501",
+    "opponentName": "Juan Mora",
+    "opponentCountry": "US",
+    "opponentArchetype": "Charizard Noctowl",
+    "opponentPlacement": 853
+   },
+   {
+    "round": 6,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "43896",
+    "opponentName": "Andrew Hernandez",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 1377
+   },
+   {
+    "round": 7,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "43818",
+    "opponentName": "Bryce Beeton",
+    "opponentCountry": "US",
+    "opponentArchetype": "Charizard Noctowl",
+    "opponentPlacement": 1258
+   },
+   {
+    "round": 8,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "11114",
+    "opponentName": "Alex Meeks",
+    "opponentCountry": "US",
+    "opponentArchetype": "Gholdengo Lunatone",
+    "opponentPlacement": 808
+   }
+  ],
+  "2026-02-13, International Championship London": [
+   {
+    "round": 1,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "28725",
+    "opponentName": "Francesco Saverio Palumbo",
+    "opponentCountry": "IT",
+    "opponentArchetype": "Cynthia's Garchomp",
+    "opponentPlacement": 2063
+   },
+   {
+    "round": 2,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "12155",
+    "opponentName": "Jiahao Ye",
+    "opponentCountry": "CN",
+    "opponentArchetype": "Gardevoir Jellicent",
+    "opponentPlacement": 3449
+   },
+   {
+    "round": 3,
+    "phase": 1,
+    "outcome": "loss",
+    "opponentId": "4290",
+    "opponentName": "Julius Brunfeldt",
+    "opponentCountry": "FI",
+    "opponentArchetype": "Charizard Pidgeot",
+    "opponentPlacement": 2372
+   },
+   {
+    "round": 4,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "3881",
+    "opponentName": "Tobias Freitag",
+    "opponentCountry": "DE",
+    "opponentArchetype": "Hydreigon",
+    "opponentPlacement": 1644
+   },
+   {
+    "round": 5,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "28585",
+    "opponentName": "Filippo Rosati",
+    "opponentCountry": "IT",
+    "opponentArchetype": "Raging Bolt Ogerpon",
+    "opponentPlacement": 2264
+   },
+   {
+    "round": 6,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "26502",
+    "opponentName": "Yoshifumi Seki",
+    "opponentCountry": "JP",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 1519
+   },
+   {
+    "round": 7,
+    "phase": 1,
+    "outcome": "win",
+    "opponentId": "4126",
+    "opponentName": "Simone Canziani",
+    "opponentCountry": "IT",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 1547
+   },
+   {
+    "round": 8,
+    "phase": 1,
+    "outcome": "tie",
+    "opponentId": "8240",
+    "opponentName": "Alessandro Campolo",
+    "opponentCountry": "IT",
+    "opponentArchetype": "Slowking",
+    "opponentPlacement": 325
+   },
+   {
+    "round": 9,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "43231",
+    "opponentName": "Terrance Catania",
+    "opponentCountry": "MT",
+    "opponentArchetype": "Charizard Noctowl",
+    "opponentPlacement": 632
+   },
+   {
+    "round": 10,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "12854",
+    "opponentName": "Kevin Min",
+    "opponentCountry": "AU",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 143
+   },
+   {
+    "round": 11,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "812",
+    "opponentName": "blake wray",
+    "opponentCountry": "US",
+    "opponentArchetype": "Dragapult Dusknoir",
+    "opponentPlacement": 407
+   },
+   {
+    "round": 12,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "3921",
+    "opponentName": "German Arribas Gongora",
+    "opponentCountry": "ES",
+    "opponentArchetype": "Dragapult Charizard",
+    "opponentPlacement": 614
+   },
+   {
+    "round": 13,
+    "phase": 2,
+    "outcome": "win",
+    "opponentId": "507",
+    "opponentName": "Matt Banna",
+    "opponentCountry": "US",
+    "opponentArchetype": "Gholdengo Lunatone",
+    "opponentPlacement": 183
+   },
+   {
+    "round": 14,
+    "phase": 2,
+    "outcome": "loss",
+    "opponentId": "30411",
+    "opponentName": "Haruto Yasuda",
+    "opponentCountry": "JP",
+    "opponentArchetype": "Gholdengo Lunatone",
+    "opponentPlacement": 63
+   }
+  ]
+ }
+}

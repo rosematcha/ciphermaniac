@@ -3,9 +3,9 @@
  * resulting JSON files into `public/players/...` so the Vite dev server can
  * serve them. Lets us see the new pages without a deploy.
  *
- * Usage: `npx tsx scripts/build-players-local.ts`
+ * Usage: `npx tsx scripts/build-players-local.ts` (`FORCE_FULL_REBUILD=1` to ignore the manifest)
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildPlayerAggregates } from '../shared/onlineMeta/playerAggregator';
@@ -51,6 +51,11 @@ const env = {
       } else {
         await writeFile(fullPath, Buffer.from(data));
       }
+    },
+    // A rebuild deletes the decks/matches files of players who no longer
+    // have any; locally that is the file under static/, if it exists.
+    async delete(key: string) {
+      await rm(join(OUT_BASE, key), { force: true });
     }
   }
 };
@@ -68,7 +73,10 @@ async function main() {
   console.info('[local-build] Running player aggregator against public R2...');
   const result = await buildPlayerAggregates(env as any, {
     concurrency: 6,
-    r2Concurrency: 8
+    r2Concurrency: 8,
+    // The manifest fast path also reads public R2, so a local run that wants
+    // fresh bodies (a new aggregator field, say) has to ask for them.
+    forceFullRebuild: process.env.FORCE_FULL_REBUILD === '1'
   });
 
   // Sort by event count desc, then by Day 2s, then by tournament wins. Top

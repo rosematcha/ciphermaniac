@@ -19,9 +19,9 @@ import { parseCardUid } from '../../shared/data/cardIdentity';
 import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '../components/Skeleton';
 import { CardImage } from '../components/CardImage';
+import SPRITE_SLUGS from '../data/pokemon-sprites.json';
 import {
   fetchFormatArchetypes,
-  FORMAT_SPRITE_SLUGS,
   getArchetypeIconMap,
   resolveArchetypeIcons,
   TIER_FORMATS,
@@ -123,15 +123,11 @@ function spriteLabel(slug: string): string {
 }
 
 /**
- * Only slugs we have mirrored to R2 — the two committed sources the mirror
- * script reads, the Standard icon map and the format snapshots. Anything
- * outside them loads from the LimitlessTCG CDN, and a cross-origin sprite
- * cannot be inlined into the exported JPG: it would leave a hole in the image
- * the user posts.
+ * Every Pokémon sprite our source provides. This is deliberately separate
+ * from the format/archetype icon sources: custom archetypes should not be
+ * limited to Pokémon that happen to have appeared in a report.
  */
-const SPRITES: SpriteOption[] = [...new Set([...[...getArchetypeIconMap().values()].flat(), ...FORMAT_SPRITE_SLUGS])]
-  .sort()
-  .map(slug => ({ slug, label: spriteLabel(slug) }));
+const SPRITES: SpriteOption[] = [...new Set(SPRITE_SLUGS)].sort().map(slug => ({ slug, label: spriteLabel(slug) }));
 
 export function TierListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
