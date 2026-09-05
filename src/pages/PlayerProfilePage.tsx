@@ -1,5 +1,5 @@
 import { A, useParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import {
   fetchPlayerDecks,
   fetchPlayerProfile,
@@ -20,7 +20,6 @@ import { resolved } from '../lib/resource';
 import '../styles/pages/players-tables.css';
 
 const ARCHETYPE_PREVIEW_COUNT = 5;
-const SMALL_SAMPLE_GAMES = 10;
 
 export function PlayerProfilePage() {
   const params = useParams<{ id: string }>();
@@ -30,38 +29,29 @@ export function PlayerProfilePage() {
   // on player change, not the previous player's profile.
   const profileData = () => resolved(profile);
 
-  onMount(() => {
-    document.title = 'Player — Ciphermaniac';
-  });
-
   createEffect(() => {
-    const p = profileData();
-    if (p) {
-      document.title = `${p.name} — Ciphermaniac`;
-    }
+    document.title = `${profileData()?.name ?? 'Player'} — Ciphermaniac`;
   });
 
   return (
-    <>
-      <Show
-        when={profileData()}
-        fallback={
-          <Show when={profile.error || profileData() === null} fallback={<ProfileSkeleton />}>
-            <EmptyState
-              title='Player not found.'
-              description="No career profile exists for this player ID. They may not have a Limitless Labs ID, or the index hasn't been rebuilt."
-              actions={
-                <A href='/players' class='btn btn-secondary'>
-                  Back to players
-                </A>
-              }
-            />
-          </Show>
-        }
-      >
-        <ProfileBody profile={profileData()!} playerId={params.id} />
-      </Show>
-    </>
+    <Show
+      when={profileData()}
+      fallback={
+        <Show when={profile.error || profileData() === null} fallback={<ProfileSkeleton />}>
+          <EmptyState
+            title='Player not found.'
+            description="No career profile exists for this player ID. They may not have a Limitless Labs ID, or the index hasn't been rebuilt."
+            actions={
+              <A href='/players' class='btn btn-secondary'>
+                Back to players
+              </A>
+            }
+          />
+        </Show>
+      }
+    >
+      <ProfileBody profile={profileData()!} playerId={params.id} />
+    </Show>
   );
 }
 
@@ -69,7 +59,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
   const s = () => props.profile.summary;
   const matchesPlayed = () => s().wins + s().losses + s().ties;
   const winPct = () => winPercent(s().wins, s().losses);
-  const day2Pct = () => (s().eventCount > 0 ? Math.round((s().day2s / s().eventCount) * 1000) / 10 : 0);
+  const day2Pct = () => ((s().day2s / s().eventCount) * 100).toFixed(1);
   const [showAllArchetypes, setShowAllArchetypes] = createSignal(false);
 
   // Lazy-loaded decklists. The resource is created up-front but gated on
@@ -84,7 +74,6 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
   const cardsFor = (tournamentId: string): PlayerDeckCard[] | undefined => {
     return decksData()?.decks?.[tournamentId];
   };
-  const decksLoading = () => decksRequested() && decks.loading;
 
   const archetypesToShow = createMemo(() => {
     if (showAllArchetypes()) {
@@ -118,7 +107,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
           <div class='kpi-label'>Day 2s</div>
           <div class='kpi-value leader'>{s().day2s.toLocaleString()}</div>
           <div class='kpi-foot'>
-            <Show when={s().eventCount > 0}>{day2Pct().toFixed(1)}% of events</Show>
+            <Show when={s().eventCount > 0}>{day2Pct()}% of events</Show>
           </div>
         </div>
         <div class='kpi'>
@@ -169,8 +158,6 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
                 <For each={archetypesToShow()}>
                   {a => {
                     const pct = winPercent(a.wins, a.losses);
-                    const decisiveGames = a.wins + a.losses;
-                    const smallSample = decisiveGames < SMALL_SAMPLE_GAMES;
                     return (
                       <tr>
                         <td>
@@ -189,13 +176,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
                         <td class='num'>
                           {a.wins}-{a.losses}-{a.ties}
                         </td>
-                        <td
-                          class='num'
-                          classList={{ 'stat-dim': smallSample }}
-                          title={smallSample ? `Small sample: ${decisiveGames} games` : undefined}
-                        >
-                          {pct != null ? `${Math.round(pct)}%` : '—'}
-                        </td>
+                        <td class='num'>{pct != null ? `${Math.round(pct)}%` : '—'}</td>
                         <td class='num'>{a.day2s.toLocaleString()}</td>
                         <td class='num'>{a.bestPlacement ?? '—'}</td>
                       </tr>
@@ -222,7 +203,6 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
             <thead>
               <tr>
                 <th class='num expand-col' aria-label='Expand' />
-                <th>Date</th>
                 <th>Event</th>
                 <th>Archetype</th>
                 <th class='num'>Placement</th>
@@ -238,7 +218,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
                     archetypeName={archetypeName(t.archetype)}
                     ensureDecks={ensureDecks}
                     cards={() => cardsFor(t.tournamentId)}
-                    loading={decksLoading}
+                    loading={() => decks.loading}
                   />
                 )}
               </For>
@@ -260,7 +240,11 @@ interface TournamentRowProps {
 
 function TournamentRow(props: TournamentRowProps) {
   const [expanded, setExpanded] = createSignal(false);
+  const hasDecklist = () => Boolean(props.entry.deckId);
   const toggle = () => {
+    if (!hasDecklist()) {
+      return;
+    }
     const next = !expanded();
     setExpanded(next);
     if (next) {
@@ -270,23 +254,21 @@ function TournamentRow(props: TournamentRowProps) {
 
   return (
     <>
-      <tr class='is-link' onClick={toggle}>
+      <tr classList={{ 'is-link': hasDecklist() }} onClick={toggle}>
         <td class='num expand-col'>
-          <button
-            type='button'
-            class='row-caret'
-            classList={{ open: expanded() }}
-            aria-expanded={expanded()}
-            aria-label={expanded() ? 'Hide decklist' : 'Show decklist'}
-            onClick={e => {
-              e.stopPropagation();
-              toggle();
-            }}
-          >
-            ▸
-          </button>
+          <Show when={hasDecklist()}>
+            {/* No handler: the click bubbles to the row's toggle. */}
+            <button
+              type='button'
+              class='row-caret'
+              classList={{ open: expanded() }}
+              aria-expanded={expanded()}
+              aria-label={expanded() ? 'Hide decklist' : 'Show decklist'}
+            >
+              ▸
+            </button>
+          </Show>
         </td>
-        <td class='muted-cell'>{props.entry.tournamentDate}</td>
         <td>
           <span class='cardname'>{prettyTournamentName(props.entry.tournamentId)}</span>
         </td>
@@ -331,34 +313,23 @@ function TournamentRow(props: TournamentRowProps) {
       </tr>
       <Show when={expanded()}>
         <tr class='row-expansion'>
-          <td colspan={7}>
-            <DeckPanel archetypeName={props.archetypeName} cards={props.cards()} loading={props.loading()} />
+          <td colspan={6}>
+            <Show
+              when={props.cards()?.length}
+              fallback={
+                <div class='row-expansion-empty'>
+                  <Show when={props.loading()} fallback={<>No decklist published for this event.</>}>
+                    <Skeleton width='180px' height='14px' />
+                  </Show>
+                </div>
+              }
+            >
+              <DeckBody archetypeName={props.archetypeName} cards={props.cards()!} />
+            </Show>
           </td>
         </tr>
       </Show>
     </>
-  );
-}
-
-function DeckPanel(props: { archetypeName: string; cards: PlayerDeckCard[] | undefined; loading: boolean }) {
-  // Solid components only run their function body once, so plain `if` against
-  // `props.cards` / `props.loading` captures a stale snapshot — the panel was
-  // sticking on "No decklist published" because the resource hadn't finished
-  // loading on first expand, and the body never re-evaluated when it did.
-  // Use <Show> so the branch tracks the underlying signals.
-  return (
-    <Show
-      when={props.cards && props.cards.length > 0}
-      fallback={
-        <div class='row-expansion-empty'>
-          <Show when={props.loading} fallback={<>No decklist published for this event.</>}>
-            <Skeleton width='180px' height='14px' />
-          </Show>
-        </div>
-      }
-    >
-      <DeckBody archetypeName={props.archetypeName} cards={props.cards!} />
-    </Show>
   );
 }
 
