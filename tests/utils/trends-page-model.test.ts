@@ -14,6 +14,7 @@ import test from 'node:test';
 
 import {
   buildOnlineChart,
+  defaultOnlineWindow,
   formatDateWindow,
   type OnlineTrendReportLike,
   relativeTimeFrom,
@@ -220,4 +221,25 @@ test('movers are capped per direction', () => {
 test('absent mover lists become empty ones', () => {
   assert.deepEqual(sliceCardMovers(null), { rising: [], falling: [] });
   assert.deepEqual(sliceCardMovers({}), { rising: [], falling: [] });
+});
+
+// ---------------------------------------------------------------------------
+// Opening window
+// ---------------------------------------------------------------------------
+
+/** Stand in for the browser's matchMedia with a fixed answer. */
+function withViewport<T>(narrow: boolean, run: () => T): T {
+  const g = globalThis as { window?: unknown };
+  const prev = g.window;
+  g.window = { matchMedia: () => ({ matches: narrow }) };
+  try {
+    return run();
+  } finally {
+    g.window = prev;
+  }
+}
+
+test('the online view opens on two weeks, or one on a phone', () => {
+  assert.equal(withViewport(false, defaultOnlineWindow), '14d');
+  assert.equal(withViewport(true, defaultOnlineWindow), '7d');
 });

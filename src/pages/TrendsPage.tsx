@@ -1,6 +1,7 @@
 import {
   buildOnlineChart,
   type ChartData,
+  defaultOnlineWindow,
   formatDateWindow,
   ONLINE_WINDOW_DAYS,
   ONLINE_WINDOW_OPTIONS,
@@ -99,7 +100,7 @@ export function TrendsPage() {
   const [source, setSourceAndStore] = createPersistentSignal<Source>('cm:trendsSource', 'online', v =>
     v === 'majors' || v === 'online' ? v : null
   );
-  const [onlineWindow, setOnlineWindow] = createSignal<OnlineWindow>('30d');
+  const [onlineWindow, setOnlineWindow] = createSignal<OnlineWindow>(defaultOnlineWindow());
   const [majorsWindow, setMajorsWindow] = createSignal<MajorsWindow>('5-events');
 
   onMount(() => {

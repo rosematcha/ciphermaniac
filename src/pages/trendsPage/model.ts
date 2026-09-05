@@ -187,3 +187,13 @@ export const ONLINE_WINDOW_DAYS: Record<OnlineWindow, number> = {
   '14d': 14,
   '30d': 30
 };
+
+/**
+ * Opening window for the online view: two weeks on desktop, one week on phones,
+ * where 14 daily points crowd together into an unreadable line.
+ * @returns The default window key for this viewport
+ */
+export function defaultOnlineWindow(): OnlineWindow {
+  const narrow = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
+  return narrow ? '7d' : '14d';
+}
