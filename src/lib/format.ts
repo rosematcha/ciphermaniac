@@ -61,15 +61,6 @@ export function parseISODate(s: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Win percentage (0–100, one decimal) from a W/L record, or null when unplayed. */
-export function winPercent(wins: number, losses: number): number | null {
-  const denom = wins + losses;
-  if (!denom) {
-    return null;
-  }
-  return Math.round((wins / denom) * 1000) / 10;
-}
-
 export function shortDate(d: Date | null): string {
   if (!d || Number.isNaN(d.getTime())) {
     return '—';

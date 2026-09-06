@@ -947,7 +947,8 @@ body[data-mode='dark'] .arche:hover {
 .search {
   flex: 1 1 240px;
   min-width: 240px;
-  padding: 9px 12px;
+  height: var(--control-h);
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
@@ -1281,6 +1282,9 @@ tr.row-expansion > td {
 /* ---------- Pagination (numbered) ---------- */
 .pagination {
   display: inline-flex;
+  /* Wraps only when it has to: a three-digit page count overflowed the
+     narrowest phones, and the row is otherwise unchanged. */
+  flex-wrap: wrap;
   gap: 4px;
   align-items: center;
   margin-top: 16px;
@@ -1324,6 +1328,8 @@ tr.row-expansion > td {
 /* ---------- Segmented control ---------- */
 .segmented {
   display: inline-flex;
+  align-items: stretch;
+  height: var(--control-h);
   padding: 3px;
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -1331,10 +1337,12 @@ tr.row-expansion > td {
   gap: 2px;
 }
 .segmented button {
+  display: inline-flex;
+  align-items: center;
   font-size: 13px;
   color: var(--muted);
   font-weight: 500;
-  padding: 5px 12px;
+  padding: 0 12px;
   border-radius: 3px;
   transition:
     background var(--ms-fast),
@@ -2953,7 +2961,8 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 }
 .fb-select {
   width: 100%;
-  padding: 8px 10px;
+  height: var(--control-h);
+  padding: 0 10px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

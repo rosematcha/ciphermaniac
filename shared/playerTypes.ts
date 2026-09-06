@@ -20,6 +20,9 @@ export interface PlayerIndexEntry {
   name: string;
   country?: string;
   eventCount: number;
+  /** Career match record; the index ranks by win rate as well as by counts. */
+  wins: number;
+  losses: number;
   day2s: number;
   topCuts: number;
   tournamentWins: number;
@@ -38,6 +41,8 @@ export interface PlayerIndexSlimEntry {
   name: string;
   country?: string;
   eventCount: number;
+  wins: number;
+  losses: number;
   day2s: number;
   topCuts: number;
   tournamentWins: number;
@@ -56,6 +61,9 @@ export interface PlayerIndexSlimColumnar {
   names: string[];
   countries: string[];
   eventCounts: number[];
+  /** Absent in files written before win rate reached the index; decode as 0. */
+  wins?: number[];
+  losses?: number[];
   day2s: number[];
   topCuts: number[];
   tournamentWins: number[];
@@ -71,6 +79,8 @@ export function encodeSlimIndex(
     names: [],
     countries: [],
     eventCounts: [],
+    wins: [],
+    losses: [],
     day2s: [],
     topCuts: [],
     tournamentWins: []
@@ -80,6 +90,8 @@ export function encodeSlimIndex(
     out.names.push(e.name);
     out.countries.push(e.country ?? '');
     out.eventCounts.push(e.eventCount);
+    out.wins!.push(e.wins);
+    out.losses!.push(e.losses);
     out.day2s.push(e.day2s);
     out.topCuts.push(e.topCuts);
     out.tournamentWins.push(e.tournamentWins);
@@ -95,7 +107,11 @@ export function encodeSlimIndex(
  */
 export function decodeSlimIndex(payload: unknown): PlayerIndexSlimEntry[] | null {
   if (Array.isArray(payload)) {
-    return payload as PlayerIndexSlimEntry[];
+    return (payload as Array<Partial<PlayerIndexSlimEntry>>).map(e => ({
+      ...e,
+      wins: e.wins ?? 0,
+      losses: e.losses ?? 0
+    })) as PlayerIndexSlimEntry[];
   }
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -120,6 +136,8 @@ export function decodeSlimIndex(payload: unknown): PlayerIndexSlimEntry[] | null
       name: p.names[i] ?? '',
       country: p.countries[i] || undefined,
       eventCount: p.eventCounts[i] ?? 0,
+      wins: p.wins?.[i] ?? 0,
+      losses: p.losses?.[i] ?? 0,
       day2s: p.day2s[i] ?? 0,
       topCuts: p.topCuts[i] ?? 0,
       tournamentWins: p.tournamentWins[i] ?? 0
@@ -170,8 +188,37 @@ export interface PlayerTournamentEntry {
   ties: number;
   madePhase2: boolean;
   madeTopCut: boolean;
+  /** Round after which the player dropped, when the standings recorded one. */
+  dropRound?: number | null;
   archetype: string | null;
   deckId: string | null;
+}
+
+/** Per-side result of one round, as the event's match data records it. */
+export type PlayerRoundOutcome = 'win' | 'loss' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown';
+
+/**
+ * One round from the player's side. Lives in `players/{playerId}/matches.json`,
+ * lazy-fetched by the profile's opened events and its Matchups tab.
+ *
+ * `opponentName` is the opponent's CURRENT display name, resolved at build time
+ * from their own career record, never the name the event recorded — a prior
+ * name must not reach a published artifact. Opponents with no career id keep
+ * the event's name, since there is nothing newer to resolve to.
+ */
+export interface PlayerRound {
+  round: number;
+  /** 1 = Day 1 Swiss, 2 = Day 2 Swiss, 3 = top cut; null when the source did not say. */
+  phase: number | null;
+  outcome: PlayerRoundOutcome;
+  /** Career player id, for a link to the opponent's profile; null for a bye or an id-less opponent. */
+  opponentId: string | null;
+  opponentName: string | null;
+  opponentCountry: string | null;
+  /** Opponent's deck label at this event, e.g. "Dragapult Dusknoir". */
+  opponentArchetype: string | null;
+  /** Where the opponent finished this event. */
+  opponentPlacement: number | null;
 }
 
 /**
@@ -206,6 +253,21 @@ export interface PlayerProfile {
   archetypeNames: Record<string, string>;
   archetypes: PlayerArchetypeBreakdown[];
   tournaments: PlayerTournamentEntry[];
+  /**
+   * Every round played, keyed by `tournamentId`, each list in round order. Only
+   * events whose match data was published appear.
+   *
+   * These ride along in the profile rather than in a file of their own: they are
+   * small next to a decklist (the heaviest career gzips to 13KB of rounds, the
+   * median to well under one), they feed two tabs at once, and a separate object
+   * would double the aggregator's writes for no gain — R2 bills operations and
+   * bytes, never object count.
+   *
+   * Optional because the aggregator started writing it after profiles already
+   * existed: a body cached before that run — R2 serves these for six hours —
+   * has no `rounds`, so every reader must treat absence as "none published".
+   */
+  rounds?: Record<string, PlayerRound[]>;
 }
 
 /**

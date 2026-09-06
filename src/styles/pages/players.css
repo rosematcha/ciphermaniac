@@ -1,0 +1,445 @@
+/* Players index and player profile. Layers onto the shared table, tab, badge
+   and segmented styles in components.css; only what these two pages add lives
+   here. */
+
+/* ---------- Index: the control bar ----------
+   Search and the rank switch share one row at every width and park under the
+   nav while the table scrolls. */
+.players-bar {
+  position: sticky;
+  top: var(--topnav-h);
+  z-index: 5;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  margin-bottom: 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+}
+.players-bar .search {
+  flex: 1 1 0;
+  min-width: 120px;
+}
+.players-bar .segmented {
+  flex: none;
+}
+.players-rank {
+  width: 30px;
+}
+.players-country {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.players-table .data th,
+.players-table .data td {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+.players-table .data th {
+  font-size: 10px;
+}
+@media (max-width: 640px) {
+  .players-bar .segmented button {
+    padding: 5px 10px;
+  }
+  .players-table .data th,
+  .players-table .data td {
+    padding: 0 6px;
+  }
+  /* The name column absorbs the slack and truncates, so the four numbers stay
+     on screen down to the narrowest phones. */
+  .players-table .data td.players-name {
+    width: 100%;
+    max-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* ---------- Profile: career line under the name ----------
+   One list of six figures. On desktop it reads as a line, value then label;
+   on a phone it becomes two columns of label / value rows. */
+.player-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.player-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.player-stat dd,
+.player-stat dt {
+  margin: 0;
+}
+.player-stat dd {
+  color: var(--fg);
+  font-weight: 600;
+}
+.player-stat.is-lead dd {
+  color: var(--accent);
+  font-weight: 700;
+}
+.player-stat small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
+  margin-left: 3px;
+}
+.player-tabs .tabs {
+  margin-bottom: 20px;
+}
+@media (max-width: 640px) {
+  .player-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 24px;
+    margin-top: 8px;
+  }
+  .player-stat {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .player-stat dd {
+    white-space: nowrap;
+  }
+}
+
+/* ---------- Profile: history table ----------
+   Desktop shows event, deck, placement, record and the Day 2 badge. A phone
+   keeps a real table but only event (with its deck sprite), finish share and
+   record, so nothing scrolls sideways. */
+.history-event {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.history-event .arche-icons,
+.history-short,
+.finish-share {
+  display: none;
+}
+.history-date {
+  white-space: nowrap;
+}
+.finish-place {
+  white-space: nowrap;
+}
+.history-table .data tbody tr.open > td {
+  background: var(--surface-2);
+}
+@media (max-width: 640px) {
+  .history-table .data th,
+  .history-table .data td {
+    padding: 0 8px;
+  }
+  /* The caret stays at every width: it is the only keyboard/AT affordance for
+     opening a row, so hiding it left the row tappable but not operable. It just
+     gets tighter. */
+  .history-table .data th.expand-col,
+  .history-table .data td.expand-col {
+    width: 18px;
+    padding-left: 6px;
+    padding-right: 0;
+  }
+  .history-table .history-deck,
+  .history-table .history-day2,
+  .history-table .history-date,
+  .history-table .history-full,
+  .history-table .finish-place {
+    display: none;
+  }
+  .history-event .arche-icons,
+  .history-short {
+    display: inline-flex;
+  }
+  .history-short {
+    display: inline;
+  }
+  .finish-share {
+    display: inline;
+    font-weight: 600;
+  }
+  .finish-share.is-cut {
+    color: var(--accent);
+  }
+  /* The name column absorbs whatever the other three leave, and truncates
+     rather than pushing them off the screen. `max-width: 0` with `width: 100%`
+     is what makes an auto-layout table cell ellipsis instead of grow. */
+  .history-table .data td.history-name {
+    width: 100%;
+    max-width: 0;
+    overflow: hidden;
+  }
+  .history-table .history-short {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .table-wrap.history-table {
+    overflow-x: hidden;
+  }
+}
+
+/* ---------- Profile: an opened event ----------
+   Decklist / Rounds switch, then one pane. The decklist pane reuses the
+   shared .deck-inline layout. */
+.event-detail {
+  display: grid;
+  gap: 14px;
+}
+.event-detail .segmented {
+  justify-self: start;
+}
+.rounds {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12.5px;
+  max-width: 560px;
+}
+.rounds-phase {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 8px 0 3px;
+  margin-bottom: 3px;
+  border-bottom: 1px solid var(--rule);
+}
+.rounds-phase:first-child {
+  padding-top: 0;
+}
+.round {
+  display: grid;
+  grid-template-columns: 30px 24px minmax(0, 1fr) minmax(0, 1fr) 46px;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+}
+.round-n {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.round-outcome {
+  font-weight: 700;
+}
+.round-outcome.win {
+  color: var(--positive);
+}
+.round-outcome.loss {
+  color: var(--negative);
+}
+.round-outcome.tie {
+  color: var(--muted);
+}
+.round-opp {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.round-opp a {
+  color: var(--fg);
+}
+.round-opp a:hover {
+  color: var(--accent);
+}
+.round-deck {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  min-width: 0;
+  white-space: nowrap;
+}
+.round-deck span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.round-finish {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.rounds-drop {
+  color: var(--negative);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding-top: 8px;
+}
+@media (max-width: 640px) {
+  .event-detail .segmented {
+    display: flex;
+    justify-self: stretch;
+  }
+  .event-detail .segmented button {
+    flex: 1;
+  }
+  .round {
+    grid-template-columns: 26px 22px minmax(0, 1fr) 40px;
+  }
+  .round-deck {
+    grid-column: 3;
+    font-size: 11.5px;
+  }
+  .round-finish {
+    grid-row: 1;
+    grid-column: 4;
+  }
+}
+
+/* ---------- Profile: decks as groups ---------- */
+.deck-group {
+  border-bottom: 1px solid var(--rule);
+}
+.deck-group-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 0;
+  text-align: left;
+}
+.deck-group-head .row-caret {
+  font-size: 11px;
+}
+.deck-group-name {
+  font-size: 15px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+.deck-group-stats {
+  display: flex;
+  gap: 18px;
+  font-size: 12.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.deck-group-stats b {
+  color: var(--fg);
+  font-weight: 600;
+}
+.deck-group-body {
+  padding: 0 0 12px 30px;
+}
+.deck-group-body .table-wrap {
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+}
+.deck-group-body .data th {
+  background: transparent;
+}
+@media (max-width: 640px) {
+  .deck-group-head {
+    flex-wrap: wrap;
+  }
+  .deck-group-stats {
+    flex-basis: 100%;
+    padding-left: 26px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .deck-group-body {
+    padding-left: 0;
+  }
+}
+
+/* ---------- Profile: matchups tab ---------- */
+.profile-h3 {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin: 0 0 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.profile-h3 .muted-note {
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+}
+.matchups-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 36px;
+  align-items: start;
+  margin-bottom: 26px;
+}
+.matchups-grid > * {
+  min-width: 0;
+}
+.phase-list .stat-row:first-child {
+  padding-top: 0;
+}
+.profile-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 10px 0 0;
+}
+/* Half-width deviation gauge: fill = |WR − 50| / 50, green above even, red below. */
+.wr-gauge {
+  display: inline-block;
+  width: 90px;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.wr-gauge i {
+  display: block;
+  height: 100%;
+  background: var(--positive);
+}
+.wr-gauge.down i {
+  background: var(--negative);
+}
+.wr-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  display: inline-block;
+  min-width: 3.5ch;
+  text-align: right;
+}
+.wr-value.up {
+  color: var(--positive);
+}
+.wr-value.down {
+  color: var(--negative);
+}
+@media (max-width: 640px) {
+  .matchups-grid {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+  .wr-gauge {
+    width: 56px;
+  }
+  .matchups-where {
+    display: none;
+  }
+}

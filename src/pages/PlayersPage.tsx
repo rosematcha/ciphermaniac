@@ -3,6 +3,7 @@ import { A, useNavigate, useSearchParams } from '@solidjs/router';
 import { fetchPlayerIndexSlim } from '../lib/data';
 import { resolved } from '../lib/resource';
 import { Section } from '../components/Section';
+import { Segmented } from '../components/Segmented';
 import { SearchInput } from '../components/Chip';
 import { Pagination } from '../components/Pagination';
 import { Skeleton } from '../components/Skeleton';
@@ -12,19 +13,25 @@ import { debounced } from '../lib/debounce';
 import { prefetchPlayerProfilePage } from '../lib/prefetch';
 import type { PlayerIndexSlimEntry } from '../types';
 import { foldSearch } from '../utils/searchFold';
-import {
-  comparePlayers,
-  DAY2_RATE_MIN_EVENTS,
-  day2Rate,
-  type PlayerSortDir,
-  type PlayerSortKey
-} from '../utils/playerSort';
+import { comparePlayers, type PlayerSortDir, type PlayerSortKey, RATE_MIN_EVENTS, winPct } from '../utils/playerSort';
 import '../styles/pages/players-tables.css';
+import '../styles/pages/players.css';
 
 const PAGE_SIZE = 50;
-const SORT_KEYS: readonly PlayerSortKey[] = ['events', 'day2s', 'topCuts', 'titles', 'day2Rate'];
+const SORT_KEYS: readonly PlayerSortKey[] = ['events', 'day2s', 'winPct'];
 const DEFAULT_SORT: PlayerSortKey = 'day2s';
+/** The two rankings the bar offers; Events sorts from its header only. */
+const RANK_OPTIONS: { value: PlayerSortKey; label: string }[] = [
+  { value: 'day2s', label: 'Day 2s' },
+  { value: 'winPct', label: 'Win %' }
+];
 
+/**
+ * /players — every player with two or more events, ranked. Search and the
+ * rank switch share one bar that stays put while the table scrolls; the table
+ * is rank, player, events, Day 2s, win rate, and keeps those columns on a
+ * phone too.
+ */
 export function PlayersPage() {
   const [index] = createResource(fetchPlayerIndexSlim);
   const navigate = useNavigate();
@@ -33,18 +40,10 @@ export function PlayersPage() {
   // coming back from a profile lands on the same view. Every write replaces —
   // typing and re-sorting must not pile up history entries. Defaults are
   // omitted from the URL so the bare /players stays canonical.
-  const [params, setParams] = useSearchParams<{
-    q?: string;
-    country?: string;
-    sort?: string;
-    dir?: string;
-    page?: string;
-  }>();
+  const [params, setParams] = useSearchParams<{ q?: string; sort?: string; dir?: string; page?: string }>();
   const query = () => (typeof params.q === 'string' ? params.q : '');
   const debouncedQuery = debounced(query, 120);
   const setQuery = (v: string) => setParams({ q: v || undefined, page: undefined }, { replace: true });
-  const country = () => (typeof params.country === 'string' ? params.country : '');
-  const setCountry = (v: string) => setParams({ country: v || undefined, page: undefined }, { replace: true });
   const sortKey = (): PlayerSortKey => {
     const s = params.sort;
     return s && (SORT_KEYS as readonly string[]).includes(s) ? (s as PlayerSortKey) : DEFAULT_SORT;
@@ -63,26 +62,14 @@ export function PlayersPage() {
   // second array of wrapper objects matters for this large, session-long index.
   const foldedNames = createMemo(() => (indexData() ?? []).map(entry => foldSearch(entry.name)));
 
-  // Country codes present in the index, with player counts for the filter menu.
-  const countries = createMemo(() => {
-    const counts = new Map<string, number>();
-    for (const p of indexData() ?? []) {
-      if (p.country) {
-        counts.set(p.country, (counts.get(p.country) ?? 0) + 1);
-      }
-    }
-    return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b));
-  });
-
   const filtered = createMemo<PlayerIndexSlimEntry[]>(() => {
     const q = foldSearch(debouncedQuery().trim());
-    const c = country();
     const rows = indexData() ?? [];
-    if (!q && !c) {
+    if (!q) {
       return rows;
     }
     const folded = foldedNames();
-    return rows.filter((entry, index) => (!q || folded[index].includes(q)) && (!c || entry.country === c));
+    return rows.filter((_, i) => folded[i].includes(q));
   });
 
   const sorted = createMemo(() => [...filtered()].sort(comparePlayers(sortKey(), sortDir())));
@@ -91,57 +78,53 @@ export function PlayersPage() {
     () => params.page,
     page => setParams({ page }, { replace: true })
   );
-  // No resetOn list: setQuery and setSort already clear `page` themselves.
+  // No resetOn list: setQuery and the sort setters already clear `page` themselves.
   const { page, totalPages, pageItems: pageRows, setPage } =
     // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
     createPagination(sorted, PAGE_SIZE, undefined, pageParam);
 
-  function setSort(next: PlayerSortKey) {
-    const dir: PlayerSortDir = sortKey() === next ? (sortDir() === 'asc' ? 'desc' : 'asc') : 'desc';
+  const writeSort = (key: PlayerSortKey, dir: PlayerSortDir) =>
     setParams(
-      {
-        sort: next === DEFAULT_SORT ? undefined : next,
-        dir: dir === 'desc' ? undefined : dir,
-        page: undefined
-      },
+      { sort: key === DEFAULT_SORT ? undefined : key, dir: dir === 'desc' ? undefined : dir, page: undefined },
       { replace: true }
     );
-  }
+  /** A header click: same column flips direction, a new column starts descending. */
+  const toggleSort = (next: PlayerSortKey) =>
+    writeSort(next, sortKey() === next ? (sortDir() === 'asc' ? 'desc' : 'asc') : 'desc');
+  /** The bar's switch always ranks from the top. */
+  const rankBy = (next: PlayerSortKey) => writeSort(next, 'desc');
 
   const ariaSort = (key: PlayerSortKey): 'ascending' | 'descending' | 'none' =>
     sortKey() === key ? (sortDir() === 'asc' ? 'ascending' : 'descending') : 'none';
 
   const profileHref = (p: PlayerIndexSlimEntry) => `/players/${encodeURIComponent(p.playerId)}`;
+  const rankOf = (i: number) => (page() - 1) * PAGE_SIZE + i + 1;
+  const winLabel = (p: PlayerIndexSlimEntry) => (p.wins + p.losses > 0 ? `${Math.round(winPct(p) * 100)}%` : '—');
 
   return (
     <>
-      <Section>
-        <div class='filter-bar'>
-          <div class='filter-row'>
-            <SearchInput value={query()} onInput={setQuery} placeholder='Search by player name...' />
-            <select
-              class='fb-select country-select'
-              aria-label='Filter by country'
-              value={country()}
-              onChange={e => setCountry(e.currentTarget.value)}
-            >
-              <option value=''>All countries</option>
-              <For each={countries()}>
-                {([code, count]) => <option value={code}>{`${code} (${count.toLocaleString()})`}</option>}
-              </For>
-            </select>
-          </div>
+      <section class='hero'>
+        <h1>Players</h1>
+        <div class='hero-meta'>
+          <Show when={indexData()}>
+            <span>{indexData()!.length.toLocaleString()} players with two or more events</span>
+          </Show>
         </div>
-      </Section>
+      </section>
 
-      <Section right={`${filtered().length.toLocaleString()} matching`}>
+      <div class='players-bar'>
+        <SearchInput value={query()} onInput={setQuery} placeholder='Search by player name...' />
+        <Segmented<PlayerSortKey> options={RANK_OPTIONS} selected={sortKey()} onSelect={rankBy} ariaLabel='Rank by' />
+      </div>
+
+      <Section>
         <Show
           when={indexData()}
           fallback={
             <Show when={index.error || indexData() === null} fallback={<TableSkeleton />}>
               <EmptyState
                 title='Player data unavailable'
-                description="Player data for this event isn't available yet. Check back after the next data update."
+                description="Player data isn't available yet. Check back after the next data update."
               />
             </Show>
           }
@@ -151,45 +134,39 @@ export function PlayersPage() {
             fallback={
               <EmptyState
                 title='No players match.'
-                description='Try clearing the search or country filter.'
+                description='Try a different spelling.'
                 actions={
                   <button
                     class='btn btn-secondary'
                     type='button'
-                    onClick={() => setParams({ q: undefined, country: undefined, page: undefined }, { replace: true })}
+                    onClick={() => setParams({ q: undefined, page: undefined }, { replace: true })}
                   >
-                    Reset
+                    Clear search
                   </button>
                 }
               />
             }
           >
-            <div class='table-wrap'>
+            <div class='table-wrap players-table'>
               <table class='data'>
                 <thead>
                   <tr>
+                    <th class='num players-rank'>#</th>
                     <th>Player</th>
-                    <th>Country</th>
-                    <SortableTh ariaSort={ariaSort('events')} onSort={() => setSort('events')}>
+                    <SortableTh ariaSort={ariaSort('events')} onSort={() => toggleSort('events')}>
                       Events
                     </SortableTh>
-                    <SortableTh ariaSort={ariaSort('day2s')} onSort={() => setSort('day2s')}>
+                    <SortableTh ariaSort={ariaSort('day2s')} onSort={() => toggleSort('day2s')}>
                       Day 2s
                     </SortableTh>
-                    <SortableTh ariaSort={ariaSort('day2Rate')} onSort={() => setSort('day2Rate')}>
-                      Day 2 rate
-                    </SortableTh>
-                    <SortableTh ariaSort={ariaSort('topCuts')} onSort={() => setSort('topCuts')}>
-                      Top cuts
-                    </SortableTh>
-                    <SortableTh ariaSort={ariaSort('titles')} onSort={() => setSort('titles')}>
-                      Titles
+                    <SortableTh ariaSort={ariaSort('winPct')} onSort={() => toggleSort('winPct')}>
+                      Win %
                     </SortableTh>
                   </tr>
                 </thead>
                 <tbody>
                   <For each={pageRows()}>
-                    {p => (
+                    {(p, i) => (
                       <tr
                         class='is-link'
                         onClick={e => {
@@ -201,19 +178,20 @@ export function PlayersPage() {
                         }}
                         onMouseEnter={prefetchPlayerProfilePage}
                       >
-                        <td>
+                        <td class='num muted-cell players-rank'>{rankOf(i())}</td>
+                        <td class='players-name'>
                           <A href={profileHref(p)} class='cardname' onFocus={prefetchPlayerProfilePage}>
                             {p.name}
                           </A>
+                          <Show when={p.country}>
+                            <span class='players-country'>{p.country}</span>
+                          </Show>
                         </td>
-                        <td class='muted-cell'>{p.country ?? '—'}</td>
                         <td class='num'>{p.eventCount.toLocaleString()}</td>
                         <td class='num'>{p.day2s.toLocaleString()}</td>
-                        <td class='num' classList={{ 'stat-dim': p.eventCount < DAY2_RATE_MIN_EVENTS }}>
-                          {p.eventCount > 0 ? `${Math.round(day2Rate(p) * 100)}%` : '—'}
+                        <td class='num' classList={{ 'stat-dim': p.eventCount < RATE_MIN_EVENTS }}>
+                          {winLabel(p)}
                         </td>
-                        <td class='num'>{p.topCuts.toLocaleString()}</td>
-                        <td class='num'>{p.tournamentWins.toLocaleString()}</td>
                       </tr>
                     )}
                   </For>
@@ -252,29 +230,27 @@ function SortableTh(props: {
 
 function TableSkeleton() {
   return (
-    <div class='table-wrap'>
+    <div class='table-wrap players-table'>
       <table class='data'>
         <thead>
           <tr>
+            <th class='num players-rank'>#</th>
             <th>Player</th>
-            <th>Country</th>
             <th class='num'>Events</th>
             <th class='num'>Day 2s</th>
-            <th class='num'>Day 2 rate</th>
-            <th class='num'>Top cuts</th>
-            <th class='num'>Titles</th>
+            <th class='num'>Win %</th>
           </tr>
         </thead>
         <tbody>
           <For each={Array.from({ length: 10 })}>
             {() => (
               <tr>
+                <td class='num'>
+                  <Skeleton width='20px' />
+                </td>
                 <td>
                   <Skeleton width='60%' />
                 </td>
-                <td>
-                  <Skeleton width='40px' />
-                </td>
                 <td class='num'>
                   <Skeleton width='32px' />
                 </td>
@@ -283,12 +259,6 @@ function TableSkeleton() {
                 </td>
                 <td class='num'>
                   <Skeleton width='40px' />
-                </td>
-                <td class='num'>
-                  <Skeleton width='32px' />
-                </td>
-                <td class='num'>
-                  <Skeleton width='32px' />
                 </td>
               </tr>
             )}

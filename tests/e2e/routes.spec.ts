@@ -86,17 +86,44 @@ test('trends renders without reaching the network for live data', async ({ page 
   await expect(page.locator('main')).toBeVisible();
 });
 
-test('players index lists the fixture players', async ({ page }) => {
+test('players index ranks the fixture players with a rank switch', async ({ page }) => {
   await gotoClean(page, '/players');
   await expect(page.locator('body')).toContainText(/Gabriel|player/i);
+  const bar = page.locator('.players-bar');
+  await expect(bar.getByRole('tab', { name: 'Day 2s' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.players-table thead th')).toHaveCount(5);
+
+  await bar.getByRole('tab', { name: 'Win %' }).click();
+  await expect(page).toHaveURL(/sort=winPct/);
+  await expect(page.locator('.players-table th[aria-sort="descending"]')).toHaveText(/Win %/);
 });
 
-test('a player profile renders their tournament history', async ({ page }) => {
+test('a player profile renders their history as the first tab', async ({ page }) => {
   await gotoClean(page, '/players/1272');
-  await expect(page.locator('main')).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.history-table thead th')).toHaveCount(6);
+  await expect(page.locator('.history-table tbody > tr').first()).toContainText('New Orleans');
 });
 
-test('a player profile only offers decklists that exist', async ({ page }) => {
+test('an opened event switches between its decklist and its rounds', async ({ page }) => {
+  await gotoClean(page, '/players/1272');
+  // The caret is desktop chrome; the row itself is the toggle at every width.
+  const row = page.locator('.history-table tbody > tr').first();
+
+  await row.locator('.history-name').click();
+  const detail = page.locator('.row-expansion .event-detail');
+  await expect(detail.getByRole('tab', { name: 'Decklist' })).toHaveAttribute('aria-selected', 'true');
+  await expect(detail.locator('.deck-inline-list li').first()).toBeVisible();
+
+  await detail.getByRole('tab', { name: 'Rounds' }).click();
+  await expect(detail.locator('.round').first()).toContainText('R1');
+  await expect(detail.locator('.rounds-drop')).toContainText('Dropped after round 7');
+
+  await row.locator('.history-name').click();
+  await expect(page.locator('.row-expansion')).toHaveCount(0);
+});
+
+test('an event without a decklist opens on its rounds', async ({ page }) => {
   await page.route('**/players/1272/profile.json', async route => {
     const response = await route.fetch();
     const profile = (await response.json()) as { tournaments: Array<{ deckId: string | null }> };
@@ -105,25 +132,45 @@ test('a player profile only offers decklists that exist', async ({ page }) => {
   });
 
   await gotoClean(page, '/players/1272');
-  const history = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Tournament history' }) });
-  const rows = history.locator('tbody > tr');
-
-  await expect(history.getByRole('columnheader')).toHaveCount(6);
-  await expect(rows.first()).not.toHaveClass(/is-link/);
-  await expect(rows.first().getByRole('button', { name: 'Show decklist' })).toHaveCount(0);
-  await expect(rows.nth(1).getByRole('button', { name: 'Show decklist' })).toBeVisible();
+  await page.locator('.history-table tbody > tr').first().locator('.history-name').click();
+  const detail = page.locator('.row-expansion .event-detail');
+  await expect(detail.getByRole('tab', { name: 'Rounds' })).toHaveAttribute('aria-selected', 'true');
+  await expect(detail.locator('.round').first()).toBeVisible();
 });
 
-test('a player profile expands a decklist from its caret', async ({ page }) => {
-  await gotoClean(page, '/players/1272');
-  const history = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Tournament history' }) });
-  const row = history.locator('tbody > tr').first();
+test('the Decks tab groups events under their deck', async ({ page }) => {
+  await gotoClean(page, '/players/1272?tab=decks');
+  await expect(page.getByRole('tab', { name: 'Decks' })).toHaveAttribute('aria-selected', 'true');
+  const groups = page.locator('.deck-group');
+  await expect(groups.first()).toHaveClass(/open/);
+  await expect(groups.first().locator('.history-table tbody > tr').first()).toBeVisible();
+});
 
-  await row.getByRole('button', { name: 'Show decklist' }).click();
-  await expect(history.locator('.row-expansion .deck-inline-list li').first()).toBeVisible();
+test('a profile cached before rounds existed still renders', async ({ page }) => {
+  // R2 serves profile bodies for six hours, so a visitor can land on one written
+  // before the aggregator started emitting `rounds`.
+  await page.route('**/players/1272/profile.json', async route => {
+    const response = await route.fetch();
+    const profile = (await response.json()) as Record<string, unknown>;
+    delete profile.rounds;
+    await route.fulfill({ response, json: profile });
+  });
 
-  await row.getByRole('button', { name: 'Hide decklist' }).click();
-  await expect(history.locator('.row-expansion')).toHaveCount(0);
+  await gotoClean(page, '/players/1272?tab=matchups');
+  await expect(page.getByRole('heading', { name: /No round data/ })).toBeVisible();
+
+  await page.getByRole('tab', { name: 'History' }).click();
+  await page.locator('.history-table tbody > tr').first().getByRole('button', { name: 'Show details' }).click();
+  const detail = page.locator('.row-expansion .event-detail');
+  await detail.getByRole('tab', { name: 'Rounds' }).click();
+  await expect(detail.getByText('No round data published for this event.')).toBeVisible();
+});
+
+test('the Matchups tab rolls the rounds up', async ({ page }) => {
+  await gotoClean(page, '/players/1272?tab=matchups');
+  await expect(page.getByRole('heading', { name: /Decks faced/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'By phase' })).toBeVisible();
+  await expect(page.locator('.phase-list .stat-row').first()).toContainText('Day 1');
 });
 
 test('tournaments index renders the catalog', async ({ page }) => {

@@ -10,6 +10,8 @@ import type {
   PlayerDecks,
   PlayerIndexEntry,
   PlayerProfile,
+  PlayerRound,
+  PlayerRoundOutcome,
   PlayerTournamentEntry
 } from './types';
 
@@ -42,6 +44,21 @@ interface ParticipantRow {
   madeTopCut?: boolean;
   deckId?: string | null;
   deckName?: string | null;
+  dropRound?: number | null;
+}
+
+/** One row of an event's `playerMatches.json`: a single round from one pilot's side. */
+interface MatchRow {
+  /** Usually the tournament-scoped tpId; some events store the career id (see matchesJoinByTpId). */
+  playerId?: number | string | null;
+  playerName?: string | null;
+  opponentId?: number | string | null;
+  opponentName?: string | null;
+  opponentCountry?: string | null;
+  opponentArchetype?: string | null;
+  round?: number;
+  phase?: number | null;
+  outcome?: string;
 }
 
 interface DeckRow {
@@ -78,6 +95,8 @@ interface TournamentSlice {
   date: string;
   participants: ParticipantRow[];
   decks: DeckRow[];
+  /** Empty when the event published no match data. */
+  matches: MatchRow[];
   totalPlayers: number | null;
   /** Content fingerprint from meta.json (fetchedAt/generatedAt); '' if absent. */
   fingerprint: string;
@@ -169,10 +188,11 @@ function median(values: number[]): number | null {
 
 async function loadTournamentSlice(env: unknown, key: string): Promise<TournamentSlice | null> {
   const base = `reports/${key}`;
-  const [participantsR, decksR, metaR] = await Promise.all([
+  const [participantsR, decksR, metaR, matchesR] = await Promise.all([
     getJsonResult<ParticipantRow[]>(env, `${base}/players.json`),
     getJsonResult<DeckRow[]>(env, `${base}/decks.json`),
-    getJsonResult<MetaRow>(env, `${base}/meta.json`)
+    getJsonResult<MetaRow>(env, `${base}/meta.json`),
+    getJsonResult<MatchRow[]>(env, `${base}/playerMatches.json`)
   ]);
   // A corrupt body or transport failure is NOT the same as a genuinely absent
   // slice. Missing → skip (return null); error → abort the whole run so we
@@ -186,9 +206,13 @@ async function loadTournamentSlice(env: unknown, key: string): Promise<Tournamen
   if (metaR.status === 'error') {
     throw new Error(`[playerAggregator] Failed to load ${base}/meta.json`, { cause: metaR.error });
   }
+  if (matchesR.status === 'error') {
+    throw new Error(`[playerAggregator] Failed to load ${base}/playerMatches.json`, { cause: matchesR.error });
+  }
   const participants = participantsR.status === 'ok' ? participantsR.value : null;
   const decks = decksR.status === 'ok' ? decksR.value : null;
   const meta = metaR.status === 'ok' ? metaR.value : null;
+  const matches = matchesR.status === 'ok' ? matchesR.value : null;
 
   if (!Array.isArray(participants) || !participants.length) {
     return null;
@@ -209,6 +233,7 @@ async function loadTournamentSlice(env: unknown, key: string): Promise<Tournamen
     date,
     participants,
     decks: Array.isArray(decks) ? decks : [],
+    matches: Array.isArray(matches) ? matches : [],
     totalPlayers: Number.isFinite(totalPlayers) ? Number(totalPlayers) : null,
     fingerprint: sliceFingerprint(meta)
   };
@@ -240,6 +265,8 @@ interface Accumulator {
   archetypeNames: Map<string, string>;
   /** tournamentId → deck cards, when a join succeeded */
   decks: Map<string, PlayerDeckCard[]>;
+  /** tournamentId → rounds played, in round order, when the event published matches */
+  rounds: Map<string, PlayerRound[]>;
 }
 
 function ensureAcc(map: Map<string, Accumulator>, playerId: string): Accumulator {
@@ -253,7 +280,8 @@ function ensureAcc(map: Map<string, Accumulator>, playerId: string): Accumulator
       latestCountry: null,
       entries: [],
       archetypeNames: new Map(),
-      decks: new Map()
+      decks: new Map(),
+      rounds: new Map()
     };
     map.set(playerId, acc);
   }
@@ -326,7 +354,28 @@ function foldName(s: string): string {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-function buildProfile(acc: Accumulator, generatedAt: string): PlayerProfile {
+/** The name a player is published under this build: the override, else the latest observed. */
+function currentName(acc: Accumulator): string {
+  return overriddenPlayerName(acc.playerId) ?? pickPrimaryName(acc);
+}
+
+/**
+ * The player's rounds, with every opponent who has a career record named as they
+ * are published today. A rename or an identity override therefore reaches every
+ * opponent list at once, and no prior name survives in a published body.
+ */
+function buildRounds(acc: Accumulator, accs: Map<string, Accumulator>): Record<string, PlayerRound[]> {
+  const rounds: Record<string, PlayerRound[]> = {};
+  for (const [tournamentId, played] of acc.rounds) {
+    rounds[tournamentId] = played.map(round => {
+      const opponent = round.opponentId ? accs.get(round.opponentId) : undefined;
+      return opponent ? { ...round, opponentName: currentName(opponent) } : round;
+    });
+  }
+  return rounds;
+}
+
+function buildProfile(acc: Accumulator, accs: Map<string, Accumulator>, generatedAt: string): PlayerProfile {
   const tournaments = [...acc.entries].sort((a, b) => b.tournamentDate.localeCompare(a.tournamentDate));
 
   const wins = tournaments.reduce((s, e) => s + e.wins, 0);
@@ -340,7 +389,7 @@ function buildProfile(acc: Accumulator, generatedAt: string): PlayerProfile {
   const lastEventDate = tournaments[0]?.tournamentDate ?? '';
   const firstEventDate = tournaments[tournaments.length - 1]?.tournamentDate ?? lastEventDate;
 
-  const name = overriddenPlayerName(acc.playerId) ?? pickPrimaryName(acc);
+  const name = currentName(acc);
   const countries = Array.from(acc.countries.keys());
 
   // Only include archetypeNames that actually appear in this profile.
@@ -371,7 +420,8 @@ function buildProfile(acc: Accumulator, generatedAt: string): PlayerProfile {
     },
     archetypeNames,
     archetypes: buildArchetypes(tournaments),
-    tournaments
+    tournaments,
+    rounds: buildRounds(acc, accs)
   };
 }
 
@@ -484,26 +534,136 @@ function detectJoinsByTpId(slice: TournamentSlice): boolean {
       deckPidSet.add(pid);
     }
   }
-
-  let hitsByPlayerId = 0;
-  let hitsByTpId = 0;
-  for (const participant of slice.participants) {
-    const pid = normalizePlayerId(participant.playerId);
-    const tpid = participant.tpId != null ? String(participant.tpId) : null;
-    if (pid && deckPidSet.has(pid)) {
-      hitsByPlayerId += 1;
-    }
-    if (tpid && deckPidSet.has(tpid)) {
-      hitsByTpId += 1;
-    }
-  }
-
-  if (slice.decks.length && hitsByPlayerId === 0 && hitsByTpId === 0) {
+  const { byPlayerId, byTpId } = countJoinHits(slice.participants, deckPidSet);
+  if (slice.decks.length && byPlayerId === 0 && byTpId === 0) {
     console.warn(
       `[playerAggregator] Slice ${slice.key} has ${slice.decks.length} decks but neither playerId nor tpId joins — decks will be dropped`
     );
   }
-  return hitsByTpId > hitsByPlayerId;
+  return byTpId > byPlayerId;
+}
+
+/** How many participants a set of foreign ids matches under each id convention. */
+function countJoinHits(participants: ParticipantRow[], ids: Set<string>): { byPlayerId: number; byTpId: number } {
+  let byPlayerId = 0;
+  let byTpId = 0;
+  for (const participant of participants) {
+    const pid = normalizePlayerId(participant.playerId);
+    const tpid = participant.tpId != null ? String(participant.tpId) : null;
+    if (pid && ids.has(pid)) {
+      byPlayerId += 1;
+    }
+    if (tpid && ids.has(tpid)) {
+      byTpId += 1;
+    }
+  }
+  return { byPlayerId, byTpId };
+}
+
+/**
+ * Match rows key their `playerId` by the same inconsistent convention as decks
+ * (tpId on most events, the career id on a few), so decide per event the same way.
+ */
+function matchesJoinByTpId(slice: TournamentSlice): boolean {
+  const ids = new Set<string>();
+  for (const row of slice.matches) {
+    const id = normalizePlayerId(row.playerId);
+    if (id) {
+      ids.add(id);
+    }
+  }
+  const { byPlayerId, byTpId } = countJoinHits(slice.participants, ids);
+  return byTpId >= byPlayerId;
+}
+
+const ROUND_OUTCOMES: ReadonlySet<string> = new Set(['win', 'loss', 'tie', 'double_loss', 'bye', 'unpaired']);
+
+/** Who a match row's opponent is, in career terms, from that event's standings. */
+interface OpponentLookup {
+  careerId: string | null;
+  placement: number | null;
+}
+
+/**
+ * One match row as the player's round. The opponent is resolved through the
+ * event's standings so the round carries their career id and finish; their
+ * current name is filled in at write time (see buildMatches).
+ */
+function toPlayerRound(row: MatchRow, opponents: Map<string, OpponentLookup>): PlayerRound {
+  const opponentKey = normalizePlayerId(row.opponentId);
+  const opponent = opponentKey ? opponents.get(opponentKey) : undefined;
+  const outcome = row.outcome && ROUND_OUTCOMES.has(row.outcome) ? (row.outcome as PlayerRoundOutcome) : 'unknown';
+  return {
+    round: Number(row.round) || 0,
+    phase: typeof row.phase === 'number' ? row.phase : null,
+    outcome,
+    opponentId: opponent?.careerId ?? null,
+    opponentName: row.opponentName ? String(row.opponentName) : null,
+    opponentCountry: row.opponentCountry ? String(row.opponentCountry) : null,
+    opponentArchetype: row.opponentArchetype ? String(row.opponentArchetype) : null,
+    opponentPlacement: opponent?.placement ?? null
+  };
+}
+
+/** A participant's key under the event's match-row id convention. */
+function matchJoinKey(participant: ParticipantRow, joinByTpId: boolean): string | null {
+  if (joinByTpId) {
+    return participant.tpId != null ? String(participant.tpId) : null;
+  }
+  return normalizePlayerId(participant.playerId);
+}
+
+/**
+ * Fold one event's match rows into the per-player accumulators.
+ *
+ * Rows join to participants by whichever id convention the event uses, and a
+ * row whose recorded pilot name does not fold-match the participant's is
+ * dropped rather than attributed to the wrong career (the two id namespaces
+ * overlap numerically, so a wrong convention would otherwise misfile rounds).
+ */
+function accumulateMatches(accs: Map<string, Accumulator>, slice: TournamentSlice): void {
+  if (!slice.matches.length) {
+    return;
+  }
+  const joinByTpId = matchesJoinByTpId(slice);
+  const participantsByKey = new Map<string, ParticipantRow>();
+  const opponents = new Map<string, OpponentLookup>();
+  for (const participant of slice.participants) {
+    const key = matchJoinKey(participant, joinByTpId);
+    if (!key) {
+      continue;
+    }
+    participantsByKey.set(key, participant);
+    const rawId = normalizePlayerId(participant.playerId);
+    opponents.set(key, { careerId: rawId ? canonicalPlayerId(rawId) : null, placement: participant.placement ?? null });
+  }
+
+  const roundsByKey = new Map<string, PlayerRound[]>();
+  for (const row of slice.matches) {
+    const key = normalizePlayerId(row.playerId);
+    const participant = key ? participantsByKey.get(key) : undefined;
+    if (!key || !participant) {
+      continue;
+    }
+    if (row.playerName && participant.name && foldName(String(row.playerName)) !== foldName(participant.name)) {
+      continue;
+    }
+    let rounds = roundsByKey.get(key);
+    if (!rounds) {
+      rounds = [];
+      roundsByKey.set(key, rounds);
+    }
+    rounds.push(toPlayerRound(row, opponents));
+  }
+
+  for (const [key, rounds] of roundsByKey) {
+    const rawId = normalizePlayerId(participantsByKey.get(key)!.playerId);
+    if (!rawId) {
+      continue;
+    }
+    rounds.sort((first, second) => first.round - second.round);
+    ensureAcc(accs, canonicalPlayerId(rawId)).rounds.set(slice.key, rounds);
+  }
 }
 
 /**
@@ -578,6 +738,7 @@ function toTournamentEntry(
     ties: participant.ties ?? 0,
     madePhase2: Boolean(participant.madePhase2),
     madeTopCut: Boolean(participant.madeTopCut),
+    dropRound: typeof participant.dropRound === 'number' ? participant.dropRound : null,
     archetype,
     deckId: joinedDeck?.deckId ?? joinedDeck?.id ?? participant.deckId ?? null
   };
@@ -629,6 +790,7 @@ function accumulateSlice(accs: Map<string, Accumulator>, slice: TournamentSlice)
       acc.latestCountry = { country: countrySeen!.value, date: countrySeen!.date };
     }
   }
+  accumulateMatches(accs, slice);
 }
 
 /** Everything one pass over the accumulators produces. */
@@ -657,7 +819,7 @@ function planWrites(
   const plan: WritePlan = { index: [], profileWrites: [], deckWrites: [], deckDeletes: [], manifestPlayers: {} };
 
   for (const acc of accs.values()) {
-    const profile = buildProfile(acc, generatedAt);
+    const profile = buildProfile(acc, accs, generatedAt);
     const tournamentKeys = profile.tournaments.map(entry => entry.tournamentId).sort();
     plan.manifestPlayers[acc.playerId] = tournamentKeys;
 
@@ -667,6 +829,8 @@ function planWrites(
         name: profile.name,
         country: acc.latestCountry?.country ?? profile.countries[0],
         eventCount: profile.summary.eventCount,
+        wins: profile.summary.wins,
+        losses: profile.summary.losses,
         day2s: profile.summary.day2s,
         topCuts: profile.summary.topCuts,
         tournamentWins: profile.summary.tournamentWins,

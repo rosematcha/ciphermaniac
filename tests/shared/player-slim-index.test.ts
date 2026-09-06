@@ -14,6 +14,8 @@ function entry(over: Partial<PlayerIndexEntry> = {}): PlayerIndexEntry {
     name: 'Ash Ketchum',
     country: 'US',
     eventCount: 10,
+    wins: 30,
+    losses: 10,
     day2s: 5,
     topCuts: 2,
     tournamentWins: 1,
@@ -27,17 +29,46 @@ test('encode/decode round-trips the slim projection and drops lastEventDate', ()
   const decoded = decodeSlimIndex(encodeSlimIndex(input));
   assert.ok(decoded);
   const expected: PlayerIndexSlimEntry[] = [
-    { playerId: '1', name: 'Ash Ketchum', country: 'US', eventCount: 10, day2s: 5, topCuts: 2, tournamentWins: 1 },
-    { playerId: '2', name: 'Gary Oak', country: undefined, eventCount: 3, day2s: 5, topCuts: 2, tournamentWins: 1 }
+    {
+      playerId: '1',
+      name: 'Ash Ketchum',
+      country: 'US',
+      eventCount: 10,
+      wins: 30,
+      losses: 10,
+      day2s: 5,
+      topCuts: 2,
+      tournamentWins: 1
+    },
+    {
+      playerId: '2',
+      name: 'Gary Oak',
+      country: undefined,
+      eventCount: 3,
+      wins: 30,
+      losses: 10,
+      day2s: 5,
+      topCuts: 2,
+      tournamentWins: 1
+    }
   ];
   assert.deepEqual(decoded, expected);
 });
 
-test('decode passes a legacy row array through unchanged', () => {
-  const legacy: PlayerIndexSlimEntry[] = [
+test('decode passes a legacy row array through, filling the record it lacks with zeros', () => {
+  const legacy = [
     { playerId: '9', name: 'Misty', country: 'JP', eventCount: 4, day2s: 1, topCuts: 0, tournamentWins: 0 }
   ];
-  assert.equal(decodeSlimIndex(legacy), legacy);
+  assert.deepEqual(decodeSlimIndex(legacy), [{ ...legacy[0], wins: 0, losses: 0 }]);
+});
+
+test('a columnar payload written before the record existed decodes with zero wins and losses', () => {
+  const columnar = encodeSlimIndex([entry()]) as unknown as Record<string, unknown>;
+  delete columnar.wins;
+  delete columnar.losses;
+  const decoded = decodeSlimIndex(columnar);
+  assert.equal(decoded?.[0].wins, 0);
+  assert.equal(decoded?.[0].losses, 0);
 });
 
 test('decode preserves entry order', () => {

@@ -41,6 +41,8 @@ body[data-mode="light"] {
 
   /* Density */
   --row-height: 38px;
+  /* One height for the controls that share a row: search input, select, segmented switch. */
+  --control-h: 38px;
   /* Sticky offset for in-table headers: matches the sticky topnav's height so
      headers park directly beneath it. Overridden per breakpoint below. */
   --topnav-h: 56px;

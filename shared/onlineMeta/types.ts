@@ -288,6 +288,8 @@ export type {
   PlayerDecks,
   PlayerIndexEntry,
   PlayerProfile,
+  PlayerRound,
+  PlayerRoundOutcome,
   PlayerTournamentEntry
 } from '../playerTypes';
 

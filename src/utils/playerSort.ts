@@ -4,29 +4,27 @@
  */
 import type { PlayerIndexSlimEntry } from '../../shared/playerTypes.js';
 
-export type PlayerSortKey = 'events' | 'day2s' | 'topCuts' | 'titles' | 'day2Rate';
+export type PlayerSortKey = 'events' | 'day2s' | 'winPct';
 export type PlayerSortDir = 'asc' | 'desc';
 
 /**
- * Below this many events a Day 2 rate is a small sample: dimmed in the table
- * and ranked below qualified players when sorting by rate.
+ * Below this many events a win rate is a small sample: dimmed in the table and
+ * ranked below qualified players when sorting by it.
  */
-export const DAY2_RATE_MIN_EVENTS = 5;
+export const RATE_MIN_EVENTS = 5;
 
-export function day2Rate(p: PlayerIndexSlimEntry): number {
-  return p.eventCount > 0 ? p.day2s / p.eventCount : 0;
+/** Wins over decided games (ties excluded), 0–1; 0 when unplayed. */
+export function winPct(p: PlayerIndexSlimEntry): number {
+  const games = p.wins + p.losses;
+  return games > 0 ? p.wins / games : 0;
 }
 
 export function sortValue(p: PlayerIndexSlimEntry, key: PlayerSortKey): number {
   switch (key) {
     case 'day2s':
       return p.day2s;
-    case 'topCuts':
-      return p.topCuts;
-    case 'titles':
-      return p.tournamentWins;
-    case 'day2Rate':
-      return day2Rate(p);
+    case 'winPct':
+      return winPct(p);
     case 'events':
     default:
       return p.eventCount;
@@ -35,8 +33,8 @@ export function sortValue(p: PlayerIndexSlimEntry, key: PlayerSortKey): number {
 
 /**
  * Comparator for the players table. For the rate sort, players under
- * {@link DAY2_RATE_MIN_EVENTS} always rank below qualified ones regardless of
- * direction — a 2-for-2 weekend must not outrank a 35-of-42 season.
+ * {@link RATE_MIN_EVENTS} always rank below qualified ones regardless of
+ * direction — a 6-0 weekend must not outrank a 326-123 career.
  */
 export function comparePlayers(
   key: PlayerSortKey,
@@ -44,9 +42,9 @@ export function comparePlayers(
 ): (a: PlayerIndexSlimEntry, b: PlayerIndexSlimEntry) => number {
   const factor = dir === 'asc' ? 1 : -1;
   return (a, b) => {
-    if (key === 'day2Rate') {
-      const aQualified = a.eventCount >= DAY2_RATE_MIN_EVENTS;
-      const bQualified = b.eventCount >= DAY2_RATE_MIN_EVENTS;
+    if (key === 'winPct') {
+      const aQualified = a.eventCount >= RATE_MIN_EVENTS;
+      const bQualified = b.eventCount >= RATE_MIN_EVENTS;
       if (aQualified !== bQualified) {
         return aQualified ? -1 : 1;
       }
