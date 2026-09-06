@@ -1988,17 +1988,20 @@ body[data-mode='dark'] .story-card:active {
 .card-page-hero .card-meta-row .sep {
   opacity: 0.4;
 }
-.card-page-hero .actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
 .card-page-grid {
   display: grid;
   grid-template-columns: minmax(240px, 300px) 1fr;
   gap: 36px;
   align-items: start;
+}
+@media (min-width: 761px) {
+  /* The rail is short (art, four stats, a frame grid) while the archetype list
+     runs on for screens, so pin it: the card and its headline numbers stay in
+     view while the reader scrolls the list. */
+  .card-page-left {
+    position: sticky;
+    top: calc(var(--topnav-h) + 16px);
+  }
 }
 @media (max-width: 760px) {
   .card-page-grid {
@@ -2023,27 +2026,24 @@ body[data-mode='dark'] .story-card:active {
     /* Keep the card's own 5:7 aspect — don't let the stretched row distort it. */
     align-self: start;
   }
-  /* The panel fills the art's height and spreads its rows to match, so the two
+  /* The list fills the art's height and spreads its rows to match, so the two
      columns line up top and bottom. */
-  .card-page-left .stats-panel {
+  .card-page-left .stats-list {
     grid-column: 2;
     grid-row: 1;
     display: flex;
     flex-direction: column;
   }
-  .card-page-left .stats-panel .stat-row {
+  .card-page-left .stats-list .stat-row {
     flex: 1 1 0;
     align-items: center;
   }
-  /* Tighten the rail so all seven rows fit comfortably beside the art. */
-  .stats-panel {
-    padding: 2px 13px;
-  }
-  .stats-panel .stat-row {
+  /* Tighten the rail so all the rows fit comfortably beside the art. */
+  .stats-list .stat-row {
     padding: 8px 0;
     font-size: 12.5px;
   }
-  .stats-panel .stat-label {
+  .stats-list .stat-label {
     font-size: 11.5px;
   }
   .card-page-hero {
@@ -2084,14 +2084,9 @@ body[data-mode='dark'] .story-card:active {
   background: var(--surface);
 }
 
-.stats-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 4px 16px;
-  box-shadow: var(--shadow-1);
-}
-.stats-panel .stat-row {
+/* Hairline-ruled stat rows under the card art: no box, the rules do the work,
+   like the data rows elsewhere on the page. */
+.stats-list .stat-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -2099,19 +2094,16 @@ body[data-mode='dark'] .story-card:active {
   border-bottom: 1px solid var(--rule);
   font-size: 13px;
 }
-.stats-panel .stat-row:last-child {
-  border-bottom: 0;
-}
-.stats-panel .stat-label {
+.stats-list .stat-label {
   color: var(--muted);
 }
-.stats-panel .stat-value {
+.stats-list .stat-value {
   color: var(--fg);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.stats-panel .stat-label,
-.stats-panel .stat-value {
+.stats-list .stat-label,
+.stats-list .stat-value {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
@@ -2119,18 +2111,18 @@ body[data-mode='dark'] .story-card:active {
 /* Headline stat: the inclusion rate is the single number the page is about, so
    it carries the accent and a touch more weight in both the desktop rail and
    the mobile split rail — mirroring the accent price value below it. */
-.stats-panel .stat-row--lead .stat-value {
+.stats-list .stat-row--lead .stat-value {
   color: var(--accent);
   font-size: 15px;
 }
 /* Market price row: the value doubles as the TCGplayer link when we have a
-   product id, so it takes the accent like other links in the panel. */
-.stats-panel .stat-value .price-link {
+   product id, so it takes the accent like other links in the rail. */
+.stats-list .stat-value .price-link {
   color: var(--accent);
   font-weight: 700;
   text-decoration: none;
 }
-.stats-panel .stat-value .price-link:hover {
+.stats-list .stat-value .price-link:hover {
   text-decoration: underline;
 }
 
@@ -2203,15 +2195,15 @@ body[data-mode='dark'] .story-card:active {
   transform: translateX(calc(-50% + var(--tip-shift, 0px))) translateY(0);
   pointer-events: auto;
 }
-/* Keep the bubble on-screen near the right edge of the panel. */
-.stats-panel .stat-value .info-tip-bubble {
+/* Keep the bubble on-screen near the right edge of the rail. */
+.stats-list .stat-value .info-tip-bubble {
   left: auto;
   right: 0;
   transform: translateY(2px);
 }
-.stats-panel .stat-value .info-tip:hover .info-tip-bubble,
-.stats-panel .stat-value .info-tip:focus-visible .info-tip-bubble,
-.stats-panel .stat-value .info-tip.open .info-tip-bubble {
+.stats-list .stat-value .info-tip:hover .info-tip-bubble,
+.stats-list .stat-value .info-tip:focus-visible .info-tip-bubble,
+.stats-list .stat-value .info-tip.open .info-tip-bubble {
   transform: translateY(0);
 }
 .info-tip-bubble p {

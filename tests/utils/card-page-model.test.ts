@@ -84,53 +84,32 @@ test('the empty state names the scope that was searched', () => {
 const PRICES = { 'Dragapult ex::PRE::073': { price: 12.5, tcgPlayerId: 'tcg-1' } };
 
 test('a card prices by its own UID', () => {
-  assert.deepEqual(resolvePriceEntry(CARD, PRICES, null, null), { price: 12.5, tcgPlayerId: 'tcg-1' });
+  assert.deepEqual(resolvePriceEntry(CARD, PRICES, null), { price: 12.5, tcgPlayerId: 'tcg-1' });
 });
 
 test('a rolling-print card falls back to its global canonical UID', () => {
   // prices.json keys the CURRENT global canonical; the rendered card may not be it.
-  assert.deepEqual(resolvePriceEntry(ROLLING_CARD, PRICES, null, 'Dragapult ex::PRE::073'), {
+  assert.deepEqual(resolvePriceEntry(ROLLING_CARD, PRICES, 'Dragapult ex::PRE::073'), {
     price: 12.5,
     tcgPlayerId: 'tcg-1'
   });
 });
 
-test('a previewed printing prices itself, not the page card', () => {
-  const preview = { uid: 'Dragapult ex::TWM::200', set: 'TWM', number: '200', price: 88 };
-  assert.deepEqual(resolvePriceEntry(CARD, PRICES, preview, null), { price: 88, tcgPlayerId: undefined });
-});
-
-test('a previewed printing with a tracked price keeps its TCGplayer id', () => {
-  const preview = { uid: 'Dragapult ex::PRE::073', set: 'PRE', number: '073', price: 99 };
-  assert.deepEqual(resolvePriceEntry(CARD, PRICES, preview, null), { price: 12.5, tcgPlayerId: 'tcg-1' });
-});
-
-test('a previewed printing with no price anywhere shows nothing', () => {
-  const preview = { uid: 'Dragapult ex::ASC::160', set: 'ASC', number: '160', price: null };
-  assert.equal(resolvePriceEntry(CARD, PRICES, preview, null), null);
-});
-
 test('missing prices or card yield nothing', () => {
-  assert.equal(resolvePriceEntry(CARD, null, null, null), null);
-  assert.equal(resolvePriceEntry(undefined, PRICES, null, null), null);
+  assert.equal(resolvePriceEntry(CARD, null, null), null);
+  assert.equal(resolvePriceEntry(undefined, PRICES, null), null);
 });
 
 const HISTORY = { 'Dragapult ex::PRE::073': [{ date: '2026-01-01', price: 10 }] };
 
 test('the sparkline series follows the same fallback chain as the price', () => {
-  assert.equal(resolvePriceSeries(CARD, HISTORY, true, null, null).length, 1);
-  assert.equal(resolvePriceSeries(ROLLING_CARD, HISTORY, true, null, 'Dragapult ex::PRE::073').length, 1);
-});
-
-test('a previewed printing gets only its own history, never the page card s', () => {
-  // Showing another print's trend under this print's name would be a lie.
-  const preview = { uid: 'Dragapult ex::TWM::200', set: 'TWM', number: '200' };
-  assert.deepEqual(resolvePriceSeries(CARD, HISTORY, true, preview, null), []);
+  assert.equal(resolvePriceSeries(CARD, HISTORY, true, null).length, 1);
+  assert.equal(resolvePriceSeries(ROLLING_CARD, HISTORY, true, 'Dragapult ex::PRE::073').length, 1);
 });
 
 test('an unready history plots nothing', () => {
-  assert.deepEqual(resolvePriceSeries(CARD, HISTORY, false, null, null), []);
-  assert.deepEqual(resolvePriceSeries(CARD, null, true, null, null), []);
+  assert.deepEqual(resolvePriceSeries(CARD, HISTORY, false, null), []);
+  assert.deepEqual(resolvePriceSeries(CARD, null, true, null), []);
 });
 
 // ---------------------------------------------------------------------------

@@ -33,14 +33,6 @@ export interface ArchetypeUsageRow {
   report: { deckTotal: number };
 }
 
-/** A printing selected in the printings strip, by hover or pin. */
-export interface SelectedPrint {
-  uid: string;
-  set: string;
-  number: string | number;
-  price?: number | null;
-}
-
 // ---------------------------------------------------------------------------
 // Scope
 // ---------------------------------------------------------------------------
@@ -113,48 +105,32 @@ export function emptyDescription(tournament: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * The price to show for the card, or for the previewed printing.
+ * The price to show for the card.
  *
  * `prices.json` keys the CURRENT global canonical UID (the producer resolves
  * through synonyms), but the rendered card may be a rolling-canonical print —
  * hence the fallback to the global UID.
  * @param card - The rendered card
  * @param prices - The price map, or null while loading
- * @param preview - A previewed printing, when the strip has a selection
  * @param globalUid - The card's global canonical UID
  * @returns The price entry, or null
  */
 export function resolvePriceEntry(
   card: CardItem | undefined,
   prices: Record<string, PricingEntry> | null,
-  preview: SelectedPrint | null,
   globalUid: string | null
 ): PricingEntry | null {
   if (!card || !prices) {
     return null;
   }
-  if (preview) {
-    // A previewed printing shows its own price: prices.json when the print is
-    // the tracked canonical (which also carries the TCGplayer id), otherwise
-    // the synonym DB's scraped per-print price.
-    const entry = prices[preview.uid];
-    const price = entry?.price ?? preview.price ?? undefined;
-    return price === undefined || price === null ? null : { price, tcgPlayerId: entry?.tcgPlayerId };
-  }
   return prices[cardUidOrName(card.name, card.set, card.number)] ?? prices[globalUid ?? ''] ?? null;
 }
 
 /**
- * The sparkline series for the card, or for the previewed printing.
- *
- * A previewed printing gets only its own history — another print's trend would
- * lie. The pipeline currently tracks the canonical print, so most previews drop
- * the sparkline; per-print histories light up automatically if the producer
- * starts writing them.
+ * The sparkline series for the card.
  * @param card - The rendered card
  * @param history - Per-set price history, or null
  * @param ready - Whether the history spans enough days to plot
- * @param preview - A previewed printing, when the strip has a selection
  * @param globalUid - The card's global canonical UID
  * @returns The points to plot, possibly empty
  */
@@ -162,14 +138,10 @@ export function resolvePriceSeries(
   card: CardItem | undefined,
   history: Record<string, PricePoint[]> | null | undefined,
   ready: boolean,
-  preview: SelectedPrint | null,
   globalUid: string | null
 ): PricePoint[] {
   if (!card || !history || !ready) {
     return [];
-  }
-  if (preview) {
-    return history[preview.uid] ?? [];
   }
   return history[cardUidOrName(card.name, card.set, card.number)] ?? history[globalUid ?? ''] ?? [];
 }
