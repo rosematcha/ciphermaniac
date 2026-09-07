@@ -14,24 +14,8 @@
 import type { Deck, DeckCard } from './deckTypes.js';
 import { buildCardKeyFromCard, deriveDeckId, getDeckCards } from './clientSideFiltering';
 
-export interface CardRef {
-  cardId: string;
-  name: string;
-  set?: string;
-  number?: string | number;
-  category?: string;
-}
-
-export interface CardPresence {
-  ref: CardRef;
-  deckIds: Set<string>;
-  count: number;
-}
-
-export interface CooccurrenceContext {
-  totalDecks: number;
-  presence: Map<string, CardPresence>;
-}
+import type { CardPresence, CardRef, CooccurrenceContext } from './cardCooccurrenceTypes';
+export type { CardRef, CooccurrenceContext } from './cardCooccurrenceTypes';
 
 export interface ReportItemLike {
   cardId?: string;

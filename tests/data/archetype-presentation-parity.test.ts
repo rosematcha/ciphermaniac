@@ -26,7 +26,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import archetypeIcons from '../../src/data/archetype-icons.json';
+import archetypeIcons from '../fixtures/e2e/assets/archetype-icons.json';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 
 import {

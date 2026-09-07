@@ -33,7 +33,7 @@ export function normalizeCardNumber(value: string | number | null | undefined): 
     // Non-numeric prefix (like "GG05") - just uppercase it
     return raw.toUpperCase();
   }
-  const [, digits, suffix = ''] = match;
+  const [, digits = '', suffix = ''] = match;
   const normalized = digits.padStart(3, '0');
   return suffix ? `${normalized}${suffix.toUpperCase()}` : normalized;
 }
@@ -57,7 +57,7 @@ export function cardNumberIndexKey(value: string | number): string {
   if (!match) {
     return raw.toUpperCase();
   }
-  const digits = match[1].replace(/^0+/, '') || '0';
+  const digits = (match[1] ?? '').replace(/^0+/, '') || '0';
   const suffix = match[2] ? match[2].toUpperCase() : '';
   return `${digits}${suffix}`;
 }

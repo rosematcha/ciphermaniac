@@ -112,7 +112,7 @@
   background: var(--accent-hover);
 }
 .sg-btn[disabled] {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
@@ -130,13 +130,6 @@
      wider viewports. Falls back to horizontal scroll on narrow ones. */
   width: min(100vw - var(--space-4) * 2, 1400px);
   margin-left: calc(50% - min(50vw - var(--space-4), 700px));
-}
-
-.sg-stage-empty {
-  text-align: center;
-  color: var(--muted);
-  font-size: 13px;
-  padding: var(--space-6);
 }
 
 .sg-status {

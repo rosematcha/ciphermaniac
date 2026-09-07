@@ -12,7 +12,7 @@ import { assignRanks, calculatePercentage, createDistFromHistogram, sortReportIt
 import { listedDeckCount } from './data/reports/cardReport.js';
 import { computeSuccessTags, SUCCESS_TAG_NAMES } from './data/contracts.js';
 import type { Deck, DeckCard, Filter, Operator } from './deckTypes.js';
-import type { CardPresence, CooccurrenceContext } from './cardCooccurrence';
+import type { CardPresence, CooccurrenceContext } from './cardCooccurrenceTypes';
 
 export type { Deck };
 

@@ -122,10 +122,12 @@ export interface CanonicalizeOptions {
  * @returns How many of them carry a decklist
  */
 export function listedDeckCount(deckList: readonly { cards?: unknown }[]): number {
-  const decks = Array.isArray(deckList) ? deckList : [];
+  const decks = Array.isArray(deckList) ? (deckList as readonly { cards?: unknown }[]) : [];
   let count = 0;
   for (const deck of decks) {
-    if (Array.isArray(deck?.cards) && deck.cards.length > 0) {
+    // `Array.isArray` widens an `unknown` to `any[]`, so re-narrow before reading length.
+    const cards: unknown = deck?.cards;
+    if (Array.isArray(cards) && (cards as readonly unknown[]).length > 0) {
       count += 1;
     }
   }

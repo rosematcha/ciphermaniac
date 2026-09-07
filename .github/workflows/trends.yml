@@ -102,11 +102,13 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Trends Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Reports prefix**: \`${{ inputs.reports_prefix || 'reports' }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Clean month cache**: ${{ github.event.inputs.clean_month_cache == 'true' && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Trends Report"
+            echo ""
+            echo "- **Trigger**: ${{ github.event_name }}"
+            echo "- **Reports prefix**: \`${{ inputs.reports_prefix || 'reports' }}\`"
+            echo "- **Clean month cache**: ${{ github.event.inputs.clean_month_cache == 'true' && 'Yes' || 'No' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ github.event_name }}" == "workflow_run" ]; then
-            echo "- **Upstream run**: [Online Meta Report #${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+            echo "- **Upstream run**: [Online Meta Report #${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }})" >> "$GITHUB_STEP_SUMMARY"
           fi

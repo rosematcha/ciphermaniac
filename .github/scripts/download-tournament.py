@@ -20,7 +20,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import parse_qs, urlparse
 
 import requests
 from botocore.exceptions import ClientError
@@ -45,7 +44,7 @@ LOCAL_CARD_TYPES_PATH = Path("public") / "assets" / "data" / "card-types.json"
 CARD_SYNONYMS_KEY = "assets/card-synonyms.json"
 LOCAL_CARD_SYNONYMS_PATH = Path("public") / "assets" / "card-synonyms.json"
 ARCHETYPE_THUMBNAILS_PATH = Path("public") / "assets" / "data" / "archetype-thumbnails.json"
-ARCHETYPE_ICONS_PATH = Path("src") / "data" / "archetype-icons.json"
+ARCHETYPE_ICONS_KEY = "assets/archetype-icons.json"
 
 # --- Archetype thumbnail/signature card inference ---
 # Ported from .github/scripts/run-online-meta.mjs so event reports populate the
@@ -1575,7 +1574,6 @@ def aggregate_matchups(
             pair_entry["weightedMatches"] += weight
 
             left_result = r1 if same_order else r2
-            right_result = r2 if same_order else r1
 
             if outcome == "tie":
                 pair_entry["ties"] += 1
@@ -1642,12 +1640,15 @@ def _load_archetype_thumbnail_config() -> Dict[str, List[str]]:
 
 
 def _load_archetype_icon_config() -> Dict[str, List[str]]:
-    try:
-        with ARCHETYPE_ICONS_PATH.open(encoding="utf-8") as handle:
-            data = json.load(handle)
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
+    origin = os.environ.get("PUBLIC_R2_BASE_URL", "https://r2.ciphermaniac.com").rstrip("/")
+    response = requests.get(f"{origin}/{ARCHETYPE_ICONS_KEY}", timeout=30)
+    if response.status_code == 404:
         return {}
+    response.raise_for_status()
+    data = response.json()
+    if not isinstance(data, dict):
+        raise ValueError("Invalid archetype icon database on R2")
+    return data
 
 
 def normalize_deck_label(label: Any) -> str:

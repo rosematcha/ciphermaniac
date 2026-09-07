@@ -27,7 +27,8 @@
     "tests/**/*.ts",
     "playwright.config.ts",
     "knip.config.ts",
-    "types/**/*.d.ts"
+    "types/**/*.d.ts",
+    "playwright.local.config.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

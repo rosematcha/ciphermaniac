@@ -10,7 +10,7 @@ afterEach(() => {
 
 // Test-only global used by limitless key resolution fallbacks.
 declare global {
-  // eslint-disable-next-line no-var, vars-on-top
+  // eslint-disable-next-line vars-on-top
   var __LIMITLESS_API_KEY__: string | undefined;
 }
 
@@ -26,9 +26,7 @@ test('fetchLimitlessJson sends request with correct headers and returns JSON', a
     body: { tournaments: [] }
   });
 
-  // @ts-ignore
   const origKey = globalThis.__LIMITLESS_API_KEY__;
-  // @ts-ignore
   globalThis.__LIMITLESS_API_KEY__ = 'test-key';
 
   try {
@@ -37,7 +35,6 @@ test('fetchLimitlessJson sends request with correct headers and returns JSON', a
     });
     assert.deepEqual(result, { tournaments: [] });
   } finally {
-    // @ts-ignore
     globalThis.__LIMITLESS_API_KEY__ = origKey;
     restoreFetch();
   }
@@ -51,9 +48,7 @@ test('fetchLimitlessJson sends request with URLSearchParams', async () => {
     body: []
   });
 
-  // @ts-ignore
   const origKey = globalThis.__LIMITLESS_API_KEY__;
-  // @ts-ignore
   globalThis.__LIMITLESS_API_KEY__ = 'test-key';
 
   try {
@@ -62,17 +57,14 @@ test('fetchLimitlessJson sends request with URLSearchParams', async () => {
     const result = await fetchLimitlessJson('/tournaments', { searchParams: params });
     assert.ok(Array.isArray(result));
   } finally {
-    // @ts-ignore
     globalThis.__LIMITLESS_API_KEY__ = origKey;
     restoreFetch();
   }
 });
 
 test('fetchLimitlessJson throws for missing API key', async () => {
-  // @ts-ignore
   const origGlobal = globalThis.__LIMITLESS_API_KEY__;
   const origEnv = process.env.LIMITLESS_API_KEY;
-  // @ts-ignore
   delete globalThis.__LIMITLESS_API_KEY__;
   delete process.env.LIMITLESS_API_KEY;
 
@@ -82,7 +74,6 @@ test('fetchLimitlessJson throws for missing API key', async () => {
     if (origEnv) {
       process.env.LIMITLESS_API_KEY = origEnv;
     }
-    // @ts-ignore
     if (origGlobal) {
       globalThis.__LIMITLESS_API_KEY__ = origGlobal;
     }
@@ -90,9 +81,7 @@ test('fetchLimitlessJson throws for missing API key', async () => {
 });
 
 test('fetchLimitlessJson resolves key from process.env', async () => {
-  // @ts-ignore
   const origGlobal = globalThis.__LIMITLESS_API_KEY__;
-  // @ts-ignore
   delete globalThis.__LIMITLESS_API_KEY__;
   const origEnv = process.env.LIMITLESS_API_KEY;
   process.env.LIMITLESS_API_KEY = 'env-key';
@@ -113,7 +102,6 @@ test('fetchLimitlessJson resolves key from process.env', async () => {
     } else {
       delete process.env.LIMITLESS_API_KEY;
     }
-    // @ts-ignore
     if (origGlobal) {
       globalThis.__LIMITLESS_API_KEY__ = origGlobal;
     }
@@ -122,9 +110,7 @@ test('fetchLimitlessJson resolves key from process.env', async () => {
 });
 
 test('fetchLimitlessJson resolves key from env parameter', async () => {
-  // @ts-ignore
   const origGlobal = globalThis.__LIMITLESS_API_KEY__;
-  // @ts-ignore
   delete globalThis.__LIMITLESS_API_KEY__;
   const origEnv = process.env.LIMITLESS_API_KEY;
   delete process.env.LIMITLESS_API_KEY;
@@ -143,7 +129,6 @@ test('fetchLimitlessJson resolves key from env parameter', async () => {
     if (origEnv) {
       process.env.LIMITLESS_API_KEY = origEnv;
     }
-    // @ts-ignore
     if (origGlobal) {
       globalThis.__LIMITLESS_API_KEY__ = origGlobal;
     }
@@ -156,9 +141,7 @@ test('fetchLimitlessJson resolves key from env parameter', async () => {
 // ---------------------------------------------------------------------------
 
 test('fetchLimitlessJson throws for non-ok response', async () => {
-  // @ts-ignore
   const origKey = globalThis.__LIMITLESS_API_KEY__;
-  // @ts-ignore
   globalThis.__LIMITLESS_API_KEY__ = 'test-key';
 
   // Use raw fetch mock since we need the url property on the response
@@ -180,7 +163,6 @@ test('fetchLimitlessJson throws for non-ok response', async () => {
     );
   } finally {
     globalThis.fetch = origFetch;
-    // @ts-ignore
     globalThis.__LIMITLESS_API_KEY__ = origKey;
   }
 });
@@ -190,9 +172,7 @@ test('fetchLimitlessJson throws for non-ok response', async () => {
 // ---------------------------------------------------------------------------
 
 test('fetchLimitlessJson throws for non-JSON content type', async () => {
-  // @ts-ignore
   const origKey = globalThis.__LIMITLESS_API_KEY__;
-  // @ts-ignore
   globalThis.__LIMITLESS_API_KEY__ = 'test-key';
 
   const origFetch = globalThis.fetch;
@@ -213,7 +193,6 @@ test('fetchLimitlessJson throws for non-JSON content type', async () => {
     );
   } finally {
     globalThis.fetch = origFetch;
-    // @ts-ignore
     globalThis.__LIMITLESS_API_KEY__ = origKey;
   }
 });

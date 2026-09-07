@@ -1,0 +1,350 @@
+/* ============================================================
+   Style guide — /style
+
+   Layout only. Every specimen on the page is drawn by the real
+   component class from components.css; nothing here restates a
+   colour, a shadow or a radius that a token already owns.
+
+   Prefixed stg- because this sheet shares the global namespace
+   with every other page sheet (see the "Class namespacing"
+   ruling on the page itself). sg- was already taken by
+   social-graphics.css.
+   ============================================================ */
+
+/* ---------- Token tables ---------- */
+
+.stg-tokens {
+  margin-bottom: var(--space-5);
+}
+.stg-tokens h3 {
+  margin-bottom: 4px;
+}
+
+.stg-note {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 68ch;
+  line-height: 1.55;
+  margin-bottom: var(--space-3);
+}
+.stg-note-lead {
+  margin-bottom: var(--space-4);
+}
+
+.stg-token-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+/* Swatch, name, value, note. The note column collapses first because it is the
+   only one a reader can do without. */
+.stg-token {
+  display: grid;
+  grid-template-columns: 44px 190px 150px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+
+.stg-token-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--fg);
+}
+.stg-token-value {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stg-token-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- Token swatches ---------- */
+
+.stg-swatch-color {
+  width: 40px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--border);
+}
+/* Taller than the other swatches on purpose: at 24px a 14px radius and a full
+   pill both round to a stadium and the two tokens look identical. */
+.stg-swatch-shape {
+  width: 40px;
+  height: 32px;
+  background: var(--surface-2);
+  border: var(--border-width) solid var(--border);
+}
+/* Width is the token being shown, so the bar needs a rule to measure against. */
+.stg-swatch-space {
+  height: 12px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+.stg-swatch-shadow {
+  width: 28px;
+  height: 20px;
+  margin: 2px 6px 6px 2px;
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+}
+/* Runs the base duration and curve on loop so the timing is legible, not just
+   quoted. Suppressed under prefers-reduced-motion by the global rule. */
+.stg-swatch-motion {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+  animation: stg-shuttle 1.6s var(--ease-base) infinite alternate;
+}
+.stg-swatch-none {
+  display: block;
+}
+
+@keyframes stg-shuttle {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(26px);
+  }
+}
+
+/* ---------- Specimens ---------- */
+
+.stg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.stg-spec {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+/* A wide specimen needs the full measure — a table, a tab strip, a hero. */
+.stg-spec-wide {
+  grid-column: 1 / -1;
+}
+
+/* The stage is a plain inset, not a card: the specimens inside it are already
+   panels and chips, and nesting a bordered box around them would misrepresent
+   how they sit on a real page. */
+.stg-spec-stage {
+  background: var(--bg);
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 76px;
+}
+.stg-spec-stage > * {
+  min-width: 0;
+}
+/* A wide specimen is one that only reads correctly at full measure — a panel,
+   a table, a hero. Stack and stretch rather than shrink-to-fit, which was
+   squeezing .stats-panel until its label and value collided. */
+.stg-spec-wide .stg-spec-stage {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.stg-spec-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.stg-spec-caption code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--fg);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+}
+
+.stg-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.stg-stack {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+/* The focus outline, drawn statically. :focus-visible only paints while the
+   element is actually focused, so a guide that relied on it would show an
+   empty box to anyone reading rather than tabbing. Same tokens as the real rule
+   in global.css. */
+.stg-focus-demo {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+/* The canonical bar. Its live counterpart is .au-bar, which is stranded in
+   cards.css; drawn from the spec here so the guide loads no page sheet but
+   the shape shown is still the one the ruling names. */
+.stg-bar-demo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  font-size: 13px;
+}
+.stg-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.stg-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Drift ledger ---------- */
+
+.stg-ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.stg-ruling {
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.stg-ruling-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: 6px;
+}
+.stg-ruling-head h3 {
+  font-size: 15px;
+}
+
+/* Status is a word, not a colour block — an undecided entry needs to be
+   findable in a long list without inventing a new badge treatment. */
+.stg-ruling-status {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.stg-ruling-open .stg-ruling-status {
+  color: var(--accent);
+}
+
+.stg-ruling-found {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  max-width: 76ch;
+}
+.stg-ruling-verdict {
+  font-size: 13px;
+  color: var(--fg);
+  line-height: 1.55;
+  max-width: 76ch;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+
+.stg-ruling-sites {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.stg-ruling-sites code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: var(--border-width) solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 2px 7px;
+  display: inline-block;
+}
+
+/* ---------- Exceptions ---------- */
+
+.stg-exceptions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+.stg-exceptions li {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) 1fr;
+  gap: var(--space-3);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+  align-items: baseline;
+}
+.stg-exception-what {
+  font-size: 13px;
+  font-weight: 600;
+}
+.stg-exception-why {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* ---------- Narrow ---------- */
+
+@media (max-width: 720px) {
+  /* Swatch and name stay on one line; value and note wrap under them rather
+     than being clipped to nothing. */
+  .stg-token {
+    grid-template-columns: 44px 1fr;
+    row-gap: 2px;
+  }
+  .stg-token-value,
+  .stg-token-note {
+    grid-column: 2;
+    white-space: normal;
+  }
+  .stg-exceptions li {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

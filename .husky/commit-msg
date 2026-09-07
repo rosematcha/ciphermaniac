@@ -8,6 +8,11 @@ if [ -z "$msg_file" ] || [ ! -f "$msg_file" ]; then
 	exit 1
 fi
 
+if ! head -n 1 "$msg_file" | grep -Eq '^(feat|fix|chore|refactor|docs|test|perf|build|ci|style|revert)(\([^()]+\))?!?: .+'; then
+  echo "commit-msg: use a Conventional Commit, e.g. fix: handle missing reports" >&2
+  exit 1
+fi
+
 # Names / products commonly stamped into trailers or author fields
 ai_name_re='cursor|cursoragent|claude|anthropic|openai|chatgpt|gpt-|copilot|gemini|bard|devin|aider|swe-agent|codegen|tabnine|cody|ampcode|windsurf|grok|xai|codex|composer|bolt\.new|replit|ghostwriter|codewhisperer|supermaven|graphite'
 

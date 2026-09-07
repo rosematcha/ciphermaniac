@@ -58,6 +58,17 @@ p { margin: 0; }
   font-variant-numeric: tabular-nums;
 }
 
+/* The house micro-label: column headers, KPI captions, field labels, card-page
+   section headings. One recipe, 11px/600/0.08em — the tracking had drifted
+   across eight values (0.04em to 0.16em) at three sizes before this existed. */
+.label-micro {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 button {
   font: inherit;
   color: inherit;
@@ -75,6 +86,18 @@ a:hover { text-decoration: underline; }
 input, select, textarea {
   font: inherit;
   color: inherit;
+}
+
+/* House focus indicator. Wrapped in :where() so it carries zero specificity —
+   any component that needs the inset ring instead (bordered fields, which set
+   `outline: none` and a --focus-ring box-shadow) overrides it without !important.
+   Before this, most controls fell through to the UA outline, which reads as a
+   blue system artifact against warm paper and vanished entirely wherever a
+   component had already zeroed the outline. */
+:where(a, button, summary, [role='button'], [role='tab'], [role='option'], [tabindex]):focus-visible,
+:where(input, select, textarea):focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
 }
 
 ::selection {

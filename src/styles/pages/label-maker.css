@@ -195,15 +195,7 @@
   gap: var(--space-2);
 }
 
-.lm-actions .btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.lm-actions .btn:disabled:active {
-  transform: none;
-}
 
-.lm-hint,
 .lm-error {
   margin: 0;
   font-size: 13px;
@@ -277,7 +269,7 @@
 .lm-field select:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: var(--focus-ring);
 }
 
 .lm-field input[type='range'] {

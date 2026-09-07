@@ -23,10 +23,11 @@ import SPRITE_SLUGS from '../data/pokemon-sprites.json';
 import {
   fetchFormatArchetypes,
   getArchetypeIconMap,
+  loadTierFormats,
   resolveArchetypeIcons,
-  TIER_FORMATS,
+  type TierFormat,
   tierFormat,
-  type TierFormat
+  tierFormats
 } from '../lib/data';
 import { type ArtCard, browsableArtCards, fetchArtCards, findArtCard } from '../lib/data/artGroups';
 import { downloadBlob, isTouchDevice } from '../lib/download';
@@ -164,6 +165,7 @@ export function TierListPage() {
   const activeCard = (): ArtCard | undefined => findArtCard(cards(), cardKey()) ?? cards()[0];
 
   onMount(() => {
+    void loadTierFormats().catch(() => setError('Could not load formats.'));
     document.title = 'Tier List Maker — Tools — Ciphermaniac';
     restoreFromHash();
     onCleanup(installItemSortable({ onDrop: applyDrop }));
@@ -548,7 +550,7 @@ export function TierListPage() {
                 <For each={FORMAT_GROUPS}>
                   {section => (
                     <optgroup label={section.label}>
-                      <For each={TIER_FORMATS.filter(entry => entry.group === section.group)}>
+                      <For each={tierFormats().filter(entry => entry.group === section.group)}>
                         {entry => <option value={entry.id}>{entry.label}</option>}
                       </For>
                     </optgroup>

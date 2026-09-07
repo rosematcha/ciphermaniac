@@ -25,10 +25,29 @@ body[data-mode="light"] {
   --chart-2: #2e4f8a;
   --chart-3: #5a7a2e;
 
-  /* Shape */
+  /* Shape. sm = controls, md = panels; lg is reserved for printed card art
+     (it traces the real card's corner) and pill for count/lens chips. */
   --radius-sm: 3px;
   --radius-md: 5px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
   --border-width: 1px;
+
+  /* Type scale. Named because the codebase had drifted to fifteen sizes,
+     including 10/10.5, 11/11.5 and 12/12.5/13.5 half-steps that were eyeballed
+     rather than chosen. A dense analytics UI earns a fine scale; it does not
+     earn two sizes half a pixel apart doing the same job.
+     14/16/17px are still in circulation and are not yet on the scale — see the
+     "Type scale" ruling on /style. */
+  --text-3xs: 9px;
+  --text-2xs: 10.5px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-body: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 30px;
 
   /* Spacing */
   --space-1: 4px;
@@ -56,8 +75,27 @@ body[data-mode="light"] {
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   --press-scale: 0.96;
 
-  /* Signature: 1px ink border + 3px flat-offset shadow in same ink */
-  --shadow-1: 3px 3px 0 0 var(--border);
+  /* Focus. The outline is the default for anything with its own background;
+     the ring is for bordered fields, which suppress the outline so the accent
+     border and the halo read as one control. */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+
+  /* Signature: 1px ink border + flat offset shadow in the same ink.
+     Only --shadow-ink flips between modes; the tiers below resolve it. */
+  --shadow-ink: var(--border);
+}
+
+/* Declared on `body` as well as `:root` so they resolve against whichever
+   --shadow-ink the mode block on <body> put there. Substitution happens where
+   a custom property is DECLARED, so tiers pinned only to :root would freeze
+   the light-mode ink and never darken. */
+:root,
+body {
+  --shadow-press: 1px 1px 0 0 var(--shadow-ink);
+  --shadow-1: 3px 3px 0 0 var(--shadow-ink);
+  --shadow-2: 4px 4px 0 0 var(--shadow-ink);
 }
 
 body[data-mode="dark"] {
@@ -80,7 +118,7 @@ body[data-mode="dark"] {
   --chart-3: #7ed68a;
 
   /* In dark mode the offset shadow lands on the next surface tier, not on ink */
-  --shadow-1: 3px 3px 0 0 var(--surface-2);
+  --shadow-ink: var(--surface-2);
 }
 
 @media (max-width: 900px) {
@@ -110,6 +148,6 @@ body[data-mode="dark"] {
     --chart-1: #ff9c4a;
     --chart-2: #6bb6ff;
     --chart-3: #7ed68a;
-    --shadow-1: 3px 3px 0 0 var(--surface-2);
+    --shadow-ink: var(--surface-2);
   }
 }

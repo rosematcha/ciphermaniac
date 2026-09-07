@@ -15,6 +15,23 @@ import { expect, test } from '@playwright/test';
 
 /** Fail loudly if a page reaches production R2 — the fixture wiring is broken. */
 test.beforeEach(async ({ page }) => {
+  await page.route('**/*', route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.resourceType() === 'image') {
+      return route.fulfill({
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>'
+      });
+    }
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
+      throw new Error(`page requested external resource: ${url.href}`);
+    }
+    if (url.pathname === '/api/limitless/upcoming') {
+      return route.fulfill({ status: 503, body: 'Unavailable in route fixtures' });
+    }
+    return route.continue();
+  });
   await page.route('**://r2.ciphermaniac.com/**', route => {
     throw new Error(`page requested production R2: ${route.request().url()}`);
   });
@@ -71,7 +88,9 @@ test('a variant card URL resolves to its canonical card', async ({ page }) => {
 });
 
 test('archetypes index lists archetypes', async ({ page }) => {
+  const icons = page.waitForResponse(response => new URL(response.url()).pathname === '/assets/archetype-icons.json');
   await gotoClean(page, '/archetypes');
+  expect((await icons).ok()).toBe(true);
   await expect(page.locator('body')).toContainText('Dragapult');
 });
 
@@ -460,17 +479,18 @@ test('a tier-list tile always has artwork, even with no sprite to show', async (
 });
 
 test('a past format ranks its own archetypes and keeps the previews toggle', async ({ page }) => {
-  // The past formats are bundled, not fetched, so this needs no fixture. Their
-  // snapshot carries the cards each archetype's decklists were built around, so
-  // the toggle survives the format change rather than vanishing with it.
+  // Every format now comes from the fetched snapshot, so this reads the fixture's
+  // own past format rather than a bundled one. Its archetypes carry the cards
+  // their decklists were built around, so the toggle survives the format change
+  // rather than vanishing with it.
   await gotoClean(page, '/tools/tier-list');
   await expect(page.getByRole('tab', { name: 'Previews', exact: true })).toBeVisible();
 
-  await page.locator('.tl-conf select.sel').selectOption('2016');
+  await page.locator('.tl-conf select.sel').selectOption('ex');
   await expect(page.getByRole('tab', { name: 'Previews', exact: true })).toBeVisible();
   await expect(page.locator('.tl-tray .tl-item').first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator('.tl-tray')).toContainText('Night March');
-  expect(new URL(page.url()).searchParams.get('format')).toBe('2016');
+  await expect(page.locator('.tl-tray')).toContainText('Synthetic Vintage Deck');
+  expect(new URL(page.url()).searchParams.get('format')).toBe('ex');
 });
 
 test('previews survive a format change and draw the cards of the new one', async ({ page }) => {

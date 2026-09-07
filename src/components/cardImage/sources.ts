@@ -19,6 +19,7 @@
 
 import { hasPtcgioImages, ptcgioImageUrls, ptcgioSrcset } from '../../utils/ptcgio';
 import { R2_ORIGIN } from '../../lib/constants';
+import { isJokeArt } from '../../lib/jokeMode';
 
 export type CardImageSize = 'xs' | 'sm' | 'lg';
 
@@ -28,6 +29,15 @@ export const TIER_WIDTH: Record<CardImageSize, number> = { xs: 136, sm: 274, lg:
 /** Bucket prefix for the WebP re-encodes. Exported for the readiness probe. */
 export const R2_CARD_IMAGES = `${R2_ORIGIN}/card-images`;
 const THUMBNAILS_PROXY = '/thumbnails';
+
+/**
+ * The September 10th arts ship with the bundle rather than the CDN: they are
+ * printings that do not exist, so no upstream has a scan. One file, no tiers.
+ */
+function jokeArtUrl(set: string, number: string | number): string | null {
+  const num = String(number);
+  return isJokeArt(set, num) ? `/joke-arts/${num}.webp` : null;
+}
 
 function r2TierUrl(setU: string, num: string, size: CardImageSize): string {
   return `${R2_CARD_IMAGES}/${setU}/${setU}_${num}_R_EN_${size.toUpperCase()}.webp`;
@@ -50,6 +60,10 @@ export function buildSrcset(
   useR2: boolean
 ): string {
   const setU = String(set).toUpperCase();
+  const joke = jokeArtUrl(setU, number);
+  if (joke) {
+    return `${joke} ${TIER_WIDTH.lg}w`;
+  }
   const stripped = String(number).replace(/^0+/, '') || '0';
   const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
   // Variant suffixes are lowercase in the CDN filenames (SLG_068a) even though
@@ -74,6 +88,10 @@ export function buildAttempts(
   useR2: boolean
 ): string[] {
   const setU = String(set).toUpperCase();
+  const joke = jokeArtUrl(setU, number);
+  if (joke) {
+    return [joke];
+  }
   const numStr = String(number);
   const stripped = numStr.replace(/^0+/, '') || '0';
   const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);

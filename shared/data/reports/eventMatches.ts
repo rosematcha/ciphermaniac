@@ -109,6 +109,7 @@ function sideOutcome(match: Match, meId: string): PlayerMatchOutcome {
       return 'bye';
     case 'unpaired':
       return 'unpaired';
+    case 'unknown':
     default:
       return 'unknown';
   }

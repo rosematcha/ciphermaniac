@@ -94,8 +94,8 @@ export async function loadCardTypesDatabase(env: WorkerEnv): Promise<CardTypesDa
 
     console.warn('Card types database not found');
     return {};
-  } catch (error: any) {
-    console.error('Failed to load card types database:', error.message);
+  } catch (error: unknown) {
+    console.error('Failed to load card types database:', error instanceof Error ? error.message : String(error));
     return {};
   }
 }

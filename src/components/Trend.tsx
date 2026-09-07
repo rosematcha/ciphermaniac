@@ -19,7 +19,7 @@ export const Trend: Component<TrendProps> = props => {
       class='trend'
       classList={{ up: props.direction === 'up', down: props.direction === 'down', flat: props.direction === 'flat' }}
     >
-      <span class='arrow'>{arrow[props.direction]}</span>
+      {arrow[props.direction]}
       {props.delta !== undefined ? <> {props.delta}</> : null}
     </span>
   );

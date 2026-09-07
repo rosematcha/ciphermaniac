@@ -14,7 +14,6 @@ import { describe, it } from 'node:test';
 import { chooseCanonicalPrint, type PrintVariation } from '../../shared/data/canonicalPrint.ts';
 
 function print(set: string, number: string, price: number | null): PrintVariation {
-  // eslint-disable-next-line camelcase -- price_usd mirrors the scraped print-table shape
   return { set, number, price_usd: price };
 }
 

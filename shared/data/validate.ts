@@ -88,8 +88,7 @@ function skips(value: unknown, presence: Presence): boolean {
  */
 export function checkFields(record: Record<string, unknown>, path: string, spec: FieldSpec, errors: string[]): void {
   const prefix = path ? `${path}.` : '';
-  for (const field of Object.keys(spec)) {
-    const rule = spec[field];
+  for (const [field, rule] of Object.entries(spec)) {
     const value = record[field];
     if (skips(value, rule.presence)) {
       continue;

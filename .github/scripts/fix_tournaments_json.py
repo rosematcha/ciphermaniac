@@ -3,7 +3,6 @@ import os
 import sys
 import json
 import boto3
-from botocore.config import Config
 
 # Configuration
 # Matches download-tournament.py defaults

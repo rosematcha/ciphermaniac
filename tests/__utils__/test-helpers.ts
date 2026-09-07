@@ -33,7 +33,7 @@ export function mockFetch(
 
   if (!_originalFetch) {
     // Save original for restore
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     _originalFetch = (globalThis as any).fetch;
   }
 
@@ -57,7 +57,6 @@ export function mockFetch(
     _currentMockResponses = responses.slice();
   }
 
-  // @ts-ignore replace global fetch
   (globalThis as any).fetch = async function (input: RequestInfo, init?: RequestInit) {
     const reqUrl = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
 
@@ -132,7 +131,6 @@ export function restoreFetch(): void {
     return;
   }
   if (_originalFetch) {
-    // @ts-ignore
     (globalThis as any).fetch = _originalFetch;
     _originalFetch = undefined;
   }
@@ -144,9 +142,7 @@ export function restoreFetch(): void {
  * @param obj Value to clone
  */
 export function deepClone<T>(obj: T): T {
-  // @ts-ignore
   if (typeof (globalThis as any).structuredClone === 'function') {
-    // @ts-ignore
     return (globalThis as any).structuredClone(obj);
   }
   return JSON.parse(JSON.stringify(obj)) as T;

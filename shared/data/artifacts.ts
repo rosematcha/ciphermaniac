@@ -838,8 +838,8 @@ export function validateArchetypeIndex(value: unknown): ValidationResult<Archety
   entries.forEach((entry, index) => checkArchetypeEntry(entry, index, deckTotal, errors));
 
   for (let i = 1; i < entries.length; i++) {
-    const prev = entries[i - 1];
-    const cur = entries[i];
+    const prev: unknown = entries[i - 1];
+    const cur: unknown = entries[i];
     if (
       isRecord(prev) &&
       isRecord(cur) &&

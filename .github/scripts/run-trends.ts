@@ -80,7 +80,6 @@ class R2Binding {
     const keys: string[] = [];
     let continuationToken: string | undefined;
     do {
-      // eslint-disable-next-line no-await-in-loop
       const response = await s3Client.send(
         new ListObjectsV2Command({
           Bucket: R2_BUCKET_NAME,
@@ -105,7 +104,7 @@ class R2Binding {
     let deleted = 0;
     for (let i = 0; i < keys.length; i += 1000) {
       const chunk = keys.slice(i, i + 1000);
-      // eslint-disable-next-line no-await-in-loop
+
       await s3Client.send(
         new DeleteObjectsCommand({
           Bucket: R2_BUCKET_NAME,
@@ -220,7 +219,7 @@ async function main() {
     );
     lookbackDays = widerLookback;
     window = utcDayWindow(now, lookbackDays);
-    // eslint-disable-next-line no-await-in-loop
+
     tournaments = await fetchWindow();
     console.log(`[trends] Tournaments after widening: ${tournaments.length}`);
   }

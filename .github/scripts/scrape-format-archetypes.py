@@ -4,7 +4,7 @@
 The Tier List Maker ranks a *format*, not a tournament. Standard comes from our
 own rolling online-meta report on R2, which we already rebuild daily. Everything
 else has no report behind it, so this scrapes the Limitless metagame table once
-and commits the result to ``src/data/format-archetypes.json``.
+and publishes the result to R2, caching local output under ``.cache/``.
 
 Two kinds of format live in that file:
 
@@ -52,12 +52,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
+from lib.r2 import make_r2_client, read_json
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 
@@ -74,7 +76,8 @@ from limitless_decks import (  # noqa: E402
     parse_set_options,
 )
 
-OUTPUT_PATH = Path("src") / "data" / "format-archetypes.json"
+OUTPUT_PATH = Path(".cache") / "format-archetypes.json"
+OBJECT_KEY = "assets/format-archetypes.json"
 
 #: Minimum metagame share, in percent, for an archetype to earn a tile.
 SHARE_FLOOR = 0.75
@@ -263,16 +266,27 @@ def scrape(spec: FormatSpec) -> Dict[str, object]:
     return entry
 
 
+def r2_client():
+    return make_r2_client(os.environ["R2_ACCOUNT_ID"], os.environ["R2_ACCESS_KEY_ID"],
+                          os.environ["R2_SECRET_ACCESS_KEY"])
+
+
 def load_existing() -> Dict[str, Dict[str, object]]:
-    """Committed entries keyed by format id, or empty when there is no file yet."""
-    try:
-        with OUTPUT_PATH.open(encoding="utf-8") as handle:
-            data = json.load(handle)
-    except (OSError, ValueError):
+    """Published entries keyed by format id; failures must not erase old formats.
+
+    Read from the bucket rather than the public origin: the edge answers a CI
+    runner differently than a browser, so a merge could see a stale body or a
+    challenge page. Only a verified 404 counts as "nothing published yet".
+    """
+    result = read_json(r2_client(), os.environ["R2_BUCKET_NAME"], OBJECT_KEY)
+    if result.status == "missing":
         return {}
+    if result.status != "found":
+        raise RuntimeError(f"Could not read {OBJECT_KEY} ({result.status})") from result.error
+    data = result.value
     formats = data.get("formats") if isinstance(data, dict) else None
     if not isinstance(formats, list):
-        return {}
+        raise ValueError("Invalid format archetype snapshot")
     return {entry["id"]: entry for entry in formats if isinstance(entry, dict) and entry.get("id")}
 
 
@@ -309,6 +323,7 @@ def main() -> int:
     )
     parser.add_argument("--all", action="store_true", help="Scrape every format, past ones included.")
     parser.add_argument("--dry-run", action="store_true", help="Print the merged file instead of writing it.")
+    parser.add_argument("--publish", action="store_true", help="Publish the merged snapshot to R2.")
     args = parser.parse_args()
     if not args.all and not args.formats:
         parser.error("pass --format ID (repeatable) or --all")
@@ -319,7 +334,9 @@ def main() -> int:
             time.sleep(REQUEST_DELAY)
         scraped[spec.id] = scrape(spec)
 
-    document = merge(load_existing(), scraped)
+    # The merge that keeps unscraped formats needs the published document, which
+    # takes bucket credentials; a local run without --publish merges onto nothing.
+    document = merge(load_existing() if args.publish else {}, scraped)
     text = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
     if args.dry_run:
         print(text)
@@ -327,6 +344,11 @@ def main() -> int:
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(text, encoding="utf-8")
+    if args.publish:
+        client = r2_client()
+        client.put_object(Bucket=os.environ["R2_BUCKET_NAME"], Key=OBJECT_KEY,
+                          Body=text.encode("utf-8"), ContentType="application/json",
+                          CacheControl="public, max-age=300")
     total = sum(len(entry["archetypes"]) for entry in document["formats"])
     print(f"Wrote {OUTPUT_PATH} ({len(document['formats'])} formats, {total} archetypes)")
     return 0

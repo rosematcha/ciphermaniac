@@ -33,7 +33,7 @@ export {
   normalizeArchetypeKey,
   resolveArchetypeIcons
 } from './data/archetypes';
-export { fetchFormatArchetypes, TIER_FORMATS, tierFormat } from './data/formats';
+export { fetchFormatArchetypes, loadTierFormats, tierFormats, tierFormat } from './data/formats';
 export type { TierFormat } from './data/formats';
 export { cardUsageForCard, fetchCardUsage, findByClusterUid } from './data/cards';
 export type { CardUsageEntry, CardUsagePayload } from './data/cards';

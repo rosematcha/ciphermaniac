@@ -279,13 +279,13 @@ function ComparisonBody(props: {
 }) {
   const metrics = createMemo(() => buildMetrics(props.a, props.b));
   const archetypeName = (p: PlayerProfile, base: string | null) => (base ? (p.archetypeNames[base] ?? base) : '');
-  const iconMap = getArchetypeIconMap();
+  const iconMap = getArchetypeIconMap;
   const deckCell = (p: PlayerProfile, base: string | null) => {
     const name = archetypeName(p, base);
     return (
       <Show when={name} fallback='—'>
         <span class='arche-name-cell'>
-          <ArchetypeIcons slugs={resolveArchetypeIcons({ name }, iconMap)} size={16} reserveSlot />
+          <ArchetypeIcons slugs={resolveArchetypeIcons({ name }, iconMap())} size={16} reserveSlot />
           {name}
         </span>
       </Show>

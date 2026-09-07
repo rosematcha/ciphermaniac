@@ -22,6 +22,7 @@ import {
 import { ONLINE_META_NAME } from '../lib/constants';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
 import { interEmbedCss } from '../utils/fontEmbed';
 import { latestValue } from '../lib/resource';
 import '../styles/pages/social-graphics.css';
@@ -390,10 +391,15 @@ export function SocialGraphicsPage() {
           </div>
 
           <div class='sg-actions'>
-            <button class='sg-btn primary' type='button' disabled={exportBlocked()} onClick={() => exportImage('png')}>
+            <button
+              class='sg-btn primary'
+              type='button'
+              disabled={exportBlocked()}
+              onClick={() => void exportImage('png')}
+            >
               {busy() === 'png' ? 'Exporting…' : 'Export PNG'}
             </button>
-            <button class='sg-btn' type='button' disabled={exportBlocked()} onClick={() => exportImage('jpg')}>
+            <button class='sg-btn' type='button' disabled={exportBlocked()} onClick={() => void exportImage('jpg')}>
               {busy() === 'jpg' ? 'Exporting…' : 'Export JPG'}
             </button>
             <Show when={error()}>
@@ -418,7 +424,7 @@ export function SocialGraphicsPage() {
                   (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading || onlineField.loading)) ||
                   (needsDay2Stats(mode()) && day2Stats.loading)
                 }
-                fallback={<div class='sg-stage-empty'>{emptyNote(mode())}</div>}
+                fallback={<EmptyState title={emptyNote(mode())} />}
               >
                 <Skeleton height='540px' />
               </Show>

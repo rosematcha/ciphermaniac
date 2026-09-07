@@ -17,6 +17,14 @@ const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixture
 const labs = JSON.parse(readFileSync(join(fixturesDir, 'labs-event.json'), 'utf8')) as NormalizedEvent;
 const online = JSON.parse(readFileSync(join(fixturesDir, 'online-window.json'), 'utf8')) as NormalizedEvent;
 
+test('unknown match outcomes stay unknown for both participants', () => {
+  const event = structuredClone(labs);
+  event.matches = event.matches.map(match => ({ ...match, outcome: 'unknown' }));
+  const rows = buildPlayerMatches(event);
+  assert.ok(rows.length > 0);
+  assert.ok(rows.every(row => row.outcome === 'unknown'));
+});
+
 test('playerMatches: two rows per pair match, one per solo match', () => {
   const rows = buildPlayerMatches(labs);
   // Rows are emitted only from a DECKED pilot's perspective (matching legacy).

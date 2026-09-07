@@ -7,6 +7,12 @@ name: Quality Gates
 # remote one.
 
 on:
+  workflow_dispatch:
+    inputs:
+      prepare_only:
+        description: 'Verify and prepare R2 and Pages without deploying'
+        type: boolean
+        default: true
   pull_request:
   push:
     branches:
@@ -18,30 +24,33 @@ permissions:
 jobs:
   quality-gates:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      QUALITY_BASE: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: npm
 
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: '3.11.16'
           cache: pip
-          cache-dependency-path: .github/scripts/requirements-art.txt
+          cache-dependency-path: .github/scripts/requirements-quality.txt
 
       - name: Install Node dependencies
         run: npm ci
 
       - name: Install Python dependencies
-        # requirements-art.txt includes requirements.txt and adds OpenCV, which
-        # the card-art grouping tests import.
-        run: pip install -r .github/scripts/requirements-art.txt
+        run: pip install --require-hashes -r .github/scripts/requirements-quality.txt
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
@@ -51,3 +60,41 @@ jobs:
 
       - name: Verify
         run: npm run verify
+
+  deploy:
+    needs: quality-gates
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: r2-bucket-writers
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Prepare metadata and embed the current production release
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx tsx .github/scripts/prepare-deployment.ts
+      - name: Build production bundle
+        run: npm run verify:build
+      - name: Deploy verified code
+        if: github.event_name == 'push' || !inputs.prepare_only
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=ciphermaniac --branch=main --commit-hash=${{ github.sha }}

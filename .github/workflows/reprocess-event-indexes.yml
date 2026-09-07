@@ -111,11 +111,13 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "## Reprocess Event Indexes" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- trigger: \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- dry_run: \`${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- only: \`${{ inputs.only || 'all events' }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- limit: \`${{ inputs.limit || 'none' }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "See the job log for per-event artifact counts and cardUsage key movement." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Reprocess Event Indexes"
+            echo ""
+            echo "- trigger: \`${{ github.event_name }}\`"
+            echo "- dry_run: \`${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}\`"
+            echo "- only: \`${{ inputs.only || 'all events' }}\`"
+            echo "- limit: \`${{ inputs.limit || 'none' }}\`"
+            echo ""
+            echo "See the job log for per-event artifact counts and cardUsage key movement."
+          } >> "$GITHUB_STEP_SUMMARY"

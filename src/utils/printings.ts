@@ -13,6 +13,7 @@ import {
   parseCardUid,
   type SynonymDatabase
 } from '../../shared/data/cardIdentity.js';
+import { JOKE_SET, jokeArtNumber } from '../lib/jokeMode.js';
 
 export interface PrintingRow {
   /** Full print UID (Name::SET::NUMBER, number zero-padded). */
@@ -35,9 +36,10 @@ export interface PrintingRow {
  * printings or the DB has no price map — the section simply doesn't render.
  * @param database - Synonym database (with `prints`), or null before load
  * @param pageUid - UID of the print the page is showing
+ * @param joke - Whether to append the card's September 10th art, if it has one
  * @returns Annotated rows in release order, or []
  */
-export function buildPrintingRows(database: SynonymDatabase | null, pageUid: string): PrintingRow[] {
+export function buildPrintingRows(database: SynonymDatabase | null, pageUid: string, joke = false): PrintingRow[] {
   if (!database?.prints || !pageUid.includes('::')) {
     return [];
   }
@@ -74,10 +76,19 @@ export function buildPrintingRows(database: SynonymDatabase | null, pageUid: str
   }
 
   const releaseIndex = new Map(Object.keys(database.prints).map((uid, i) => [uid, i]));
-  return rows.sort(
+  rows.sort(
     (a, b) =>
       (releaseIndex.get(a.uid) ?? Number.POSITIVE_INFINITY) - (releaseIndex.get(b.uid) ?? Number.POSITIVE_INFINITY)
   );
+  // Newest printing of all, so it lands at the end of the strip. Appended
+  // rather than merged into the cluster: nothing upstream knows it exists, and
+  // nothing else on the site should start believing in it.
+  const jokeNumber = joke && page ? jokeArtNumber(page.name) : null;
+  const jokeUid = page && jokeNumber ? cardUid(page.name, JOKE_SET, jokeNumber) : null;
+  if (jokeNumber && jokeUid) {
+    rows.push({ uid: jokeUid, set: JOKE_SET, number: jokeNumber, price: null, isPage: false });
+  }
+  return rows;
 }
 
 /** Whole-cents dollar format for the strip; em dash when the scrape had no price. */

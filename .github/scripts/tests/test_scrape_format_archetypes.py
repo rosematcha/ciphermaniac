@@ -10,10 +10,12 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 import limitless_decks as decks  # noqa: E402
+from r2 import ReadResult  # noqa: E402
 
 
 def _deck(name: str, icons, count, share: float, slug: str = "") -> decks.DeckRow:
@@ -111,20 +113,30 @@ class CatalogTests(unittest.TestCase):
 
 
 class LoadExistingTests(unittest.TestCase):
-    def test_missing_file_is_not_an_error(self):
-        original = formats.OUTPUT_PATH
-        formats.OUTPUT_PATH = Path("does/not/exist.json")
-        try:
-            self.assertEqual(formats.load_existing(), {})
-        finally:
-            formats.OUTPUT_PATH = original
+    """The merge input comes from the bucket, so absence and failure must differ."""
 
-    def test_committed_file_round_trips_through_merge_unchanged(self):
-        existing = formats.load_existing()
-        if not existing:
-            self.skipTest("no committed snapshot yet")
-        merged = formats.merge(existing, {})
-        self.assertEqual(merged["formats"], [existing[spec.id] for spec in formats.FORMATS if spec.id in existing])
+    def read_result(self, result):
+        return patch.multiple(formats, r2_client=Mock(), read_json=Mock(return_value=result))
+
+    def test_nothing_published_yet_is_not_an_error(self):
+        with patch.dict(formats.os.environ, {"R2_BUCKET_NAME": "bucket"}):
+            with self.read_result(ReadResult("missing")):
+                self.assertEqual(formats.load_existing(), {})
+
+    def test_a_read_failure_never_looks_like_an_empty_snapshot(self):
+        with patch.dict(formats.os.environ, {"R2_BUCKET_NAME": "bucket"}):
+            for status in ("transport", "corrupt"):
+                with self.read_result(ReadResult(status, None, RuntimeError("boom"))):
+                    with self.assertRaises(RuntimeError):
+                        formats.load_existing()
+
+    def test_published_snapshot_round_trips_through_merge_unchanged(self):
+        entries = [{"id": spec.id, "archetypes": []} for spec in formats.FORMATS[:2]]
+        document = {"version": 1, "shareFloor": formats.SHARE_FLOOR, "formats": entries}
+        with patch.dict(formats.os.environ, {"R2_BUCKET_NAME": "bucket"}):
+            with self.read_result(ReadResult("found", document)):
+                existing = formats.load_existing()
+        self.assertEqual(formats.merge(existing, {})["formats"], entries)
 
 
 if __name__ == "__main__":

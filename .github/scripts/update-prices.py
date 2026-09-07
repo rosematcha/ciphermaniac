@@ -1060,7 +1060,7 @@ def upload_price_movers_to_r2(r2_client, bucket_name, movers, span_days):
         CacheControl=PRICES_CACHE_CONTROL
     )
     for scope, metrics in movers.items():
-        parts = ', '.join(f"{m} {len(l['rising'])}↑/{len(l['falling'])}↓" for m, l in metrics.items())
+        parts = ', '.join(f"{m} {len(movers['rising'])}↑/{len(movers['falling'])}↓" for m, movers in metrics.items())
         print(f"  ✓ {scope}: {parts}")
 
 

@@ -14,6 +14,7 @@ export default defineConfig({
   publicDir: 'static',
   build: {
     outDir: 'dist',
+    manifest: true,
     emptyOutDir: true,
     target: 'es2022',
     sourcemap: false,

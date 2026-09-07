@@ -13,7 +13,7 @@ import {
   effectiveTournament as scopeTournament,
   supportsConversion
 } from './cardPage/model';
-import { A, useNavigate, useParams } from '@solidjs/router';
+import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import {
   type Day2CardStat,
@@ -51,6 +51,7 @@ import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
 import { InfoTip } from '../components/InfoTip';
 import { mapWithConcurrency } from '../lib/concurrency';
+import { isJokeMode, JOKE_PARAM } from '../lib/jokeMode';
 
 const CONVERSION_INTRO = 'Share of the Day 1 decks playing this card that advanced to Day 2.';
 
@@ -122,6 +123,7 @@ export function CardPage() {
           navigate(`/cards/${canonical.set}/${canonical.number}`, { replace: true });
         }
       })
+      .catch(() => null)
       .finally(() => {
         if (reqSet === params.set && reqNumber === params.number) {
           setCanonicalPending(false);
@@ -349,8 +351,20 @@ function CardPageBody(props: {
   const avgCopies = createMemo(() => averageCopies(props.card));
 
   // Printings strip: every printing in this card's reprint cluster, with the
-  // per-print prices the synonym producer scrapes.
-  const printings = createMemo<PrintingRow[]>(() => buildPrintingRows(props.db, itemUid(props.card)));
+  // per-print prices the synonym producer scrapes — plus, on September 10th or
+  // under `?j=1`, one printing that was never printed. See lib/jokeMode.
+  const [searchParams] = useSearchParams();
+  const joke = createMemo(() => isJokeMode(searchParams[JOKE_PARAM]));
+  const printings = createMemo<PrintingRow[]>(() => buildPrintingRows(props.db, itemUid(props.card), joke()));
+  // Which printing's art the hero shows. Null means the page's own print; a
+  // click on a strip frame swaps the art (clicking it again hands it back).
+  // Only the art follows: every figure on the page, prices included, belongs to
+  // the print in the URL, so the stats and the market price never drift from it.
+  const [shownPrint, setShownPrint] = createSignal<PrintingRow | null>(null);
+  createEffect(() => {
+    void itemUid(props.card);
+    setShownPrint(null);
+  });
 
   return (
     <>
@@ -387,28 +401,7 @@ function CardPageBody(props: {
 
       <div class='card-page-grid'>
         <div class='card-page-left'>
-          <div class='card-image-real'>
-            <Show
-              when={props.card.set && props.card.number !== undefined}
-              fallback={
-                <div class='card-image-fallback' style={{ 'aspect-ratio': '5 / 7' }}>
-                  <div class='card-image-fallback-inner'>
-                    <div class='set'>{props.card.set ?? '—'}</div>
-                    <div class='number'>#{props.card.number ?? '—'}</div>
-                  </div>
-                </div>
-              }
-            >
-              <CardImage
-                set={props.card.set!}
-                number={props.card.number!}
-                size='lg'
-                sizes='(max-width: 760px) 240px, 300px'
-                lazy={false}
-                alt={`${props.card.name} card`}
-              />
-            </Show>
-          </div>
+          <CardHeroArt card={props.card} shown={shownPrint()} />
 
           <div class='stats-list'>
             <div class='stat-row stat-row--lead'>
@@ -477,7 +470,12 @@ function CardPageBody(props: {
           </div>
 
           <Show when={printings().length > 1}>
-            <PrintingsStrip prints={printings()} pagePrice={props.priceEntry?.price ?? null} />
+            <PrintingsStrip
+              prints={printings()}
+              pagePrice={props.priceEntry?.price ?? null}
+              shown={shownPrint()}
+              onSelect={p => setShownPrint(current => (current === p ? null : p))}
+            />
           </Show>
         </div>
 
@@ -526,14 +524,59 @@ function CardPageBody(props: {
 }
 
 /**
- * Printings strip (left rail): one frame per printing in the card's reprint
- * cluster, in release order, with the page's own print outlined. Each frame's
- * tooltip carries its set, number and scraped price. The page's print shows the
- * Market price row's figure instead, so the two never disagree by a few cents
- * (prices.json and the synonym scrape are separate sources).
+ * Hero art for the card page. Shows the print in the URL unless the printings
+ * strip has one selected, in which case that printing's art stands in — the
+ * figures around it still belong to the URL's print.
  */
-function PrintingsStrip(props: { prints: PrintingRow[]; pagePrice: number | null }) {
+function CardHeroArt(props: { card: CardItem; shown: PrintingRow | null }) {
+  const set = () => props.shown?.set ?? props.card.set!;
+  const number = (): string | number => props.shown?.number ?? props.card.number!;
+  return (
+    <div class='card-image-real'>
+      <Show
+        when={props.card.set && props.card.number !== undefined}
+        fallback={
+          <div class='card-image-fallback' style={{ 'aspect-ratio': '5 / 7' }}>
+            <div class='card-image-fallback-inner'>
+              <div class='set'>{props.card.set ?? '—'}</div>
+              <div class='number'>#{props.card.number ?? '—'}</div>
+            </div>
+          </div>
+        }
+      >
+        {/* skipR2: a selected printing may be one the conversion pipeline never
+            covered, so go straight to the origin. */}
+        <CardImage
+          set={set()}
+          number={number()}
+          size='lg'
+          sizes='(max-width: 760px) 240px, 300px'
+          lazy={false}
+          skipR2={Boolean(props.shown)}
+          alt={`${props.card.name} card`}
+        />
+      </Show>
+    </div>
+  );
+}
+
+/**
+ * Printings strip (left rail): one frame per printing in the card's reprint
+ * cluster, in release order, with the shown print outlined. Clicking a frame
+ * swaps the hero art to that printing; clicking it again returns to the page's
+ * own print. Each frame's tooltip carries its set, number and scraped price.
+ * The page's print shows the Market price row's figure instead, so the two
+ * never disagree by a few cents (prices.json and the synonym scrape are
+ * separate sources).
+ */
+function PrintingsStrip(props: {
+  prints: PrintingRow[];
+  pagePrice: number | null;
+  shown: PrintingRow | null;
+  onSelect: (print: PrintingRow) => void;
+}) {
   const framePrice = (p: PrintingRow): number | null => (p.isPage ? (props.pagePrice ?? p.price) : p.price);
+  const isShown = (p: PrintingRow): boolean => (props.shown ? props.shown === p : p.isPage);
   return (
     <div class='card-section printings-strip'>
       <h3>
@@ -542,13 +585,17 @@ function PrintingsStrip(props: { prints: PrintingRow[]; pagePrice: number | null
       <div class='ps-frames'>
         <For each={props.prints}>
           {p => (
-            <span
+            <button
+              type='button'
               class='ps-frame'
-              classList={{ pinned: p.isPage }}
+              classList={{ pinned: isShown(p) }}
+              aria-pressed={isShown(p)}
+              aria-label={`Show the ${p.set} ${p.number} art · ${formatPrintPrice(framePrice(p))}`}
               title={`${p.set} ${p.number} · ${formatPrintPrice(framePrice(p))}`}
+              onClick={() => props.onSelect(p)}
             >
-              <CardImage set={p.set} number={p.number} size='xs' alt={`${p.set} ${p.number}`} skipR2 />
-            </span>
+              <CardImage set={p.set} number={p.number} size='xs' alt='' skipR2 />
+            </button>
           )}
         </For>
       </div>
@@ -619,7 +666,7 @@ function categoryToBadge(category: string): string {
  * popular decks outrank tiny ones with a higher inclusion rate.
  */
 function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem; db: SynonymDatabase | null }) {
-  const iconMap = getArchetypeIconMap();
+  const iconMap = getArchetypeIconMap;
   const sorted = createMemo(() => {
     // Rank by the raw number of players running the card in each archetype
     // (found = pct × deckTotal), so a large deck's high count outweighs a tiny
@@ -681,7 +728,7 @@ function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem;
                   ▶
                 </button>
                 <span class='au-name'>
-                  <ArchetypeIcons slugs={resolveArchetypeIcons(row.entry, iconMap)} size={20} reserveSlot />
+                  <ArchetypeIcons slugs={resolveArchetypeIcons(row.entry, iconMap())} size={20} reserveSlot />
                   <A href={`/archetypes/${encodeURIComponent(row.entry.name)}`}>{row.entry.label}</A>
                 </span>
                 <span class='au-pct'>{fmtWholePct(inclusion)}</span>

@@ -6,4 +6,7 @@ Allow: /
 Disallow: /tools/social-graphics
 Disallow: /toys/social-graphics
 
+# Design system reference for whoever is building the site.
+Disallow: /style
+
 Sitemap: https://ciphermaniac.com/sitemap.xml

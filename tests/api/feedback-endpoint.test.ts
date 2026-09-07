@@ -64,10 +64,8 @@ test('Feedback API - valid feature request formats email with correct subject', 
 
   // We'll patch global fetch manually to capture payload since test-helpers map matching can be strict
   restoreFetch();
-  // @ts-ignore
   const original = globalThis.fetch;
-  // @ts-ignore
-  globalThis.fetch = async function (input: RequestInfo, init?: RequestInit) {
+  globalThis.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
     const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
     if (url === 'https://api.resend.com/emails') {
       capturedBody = init?.body ? JSON.parse(String(init.body)) : null;
@@ -90,7 +88,6 @@ test('Feedback API - valid feature request formats email with correct subject', 
   );
 
   // restore original fetch
-  // @ts-ignore
   globalThis.fetch = original;
 });
 

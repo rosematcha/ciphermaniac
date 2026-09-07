@@ -112,9 +112,11 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Reset Labs History" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Range**: \\`${{ inputs.start_id || '1' }}..${{ inputs.end_id || '54' }}\\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Dry Run**: ${{ inputs.dry_run == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Fail Fast**: ${{ inputs.fail_fast == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Reset Reports**: ${{ inputs.reset_reports == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Reset Labs History"
+            echo ""
+            echo "- **Range**: \`${{ inputs.start_id || '1' }}..${{ inputs.end_id || '54' }}\`"
+            echo "- **Dry Run**: ${{ inputs.dry_run == true && 'Yes' || 'No' }}"
+            echo "- **Fail Fast**: ${{ inputs.fail_fast == true && 'Yes' || 'No' }}"
+            echo "- **Reset Reports**: ${{ inputs.reset_reports == true && 'Yes' || 'No' }}"
+          } >> "$GITHUB_STEP_SUMMARY"

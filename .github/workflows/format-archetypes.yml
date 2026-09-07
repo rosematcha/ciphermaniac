@@ -45,7 +45,7 @@ jobs:
     timeout-minutes: 30
 
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -68,8 +68,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Formats the run does not touch are carried through from the committed
-      # file, so a partial scrape never empties the picker.
+      # Formats the run does not touch are carried through from R2, so a partial scrape never empties the picker.
       #
       # Most of the runtime is the card-art pass: every archetype that clears
       # the share floor has its own deck page and a handful of its decklists
@@ -77,14 +76,19 @@ jobs:
       # Expanded's three dozen archetypes and nothing else; the "all" dispatch
       # walks a hundred-odd and is why the timeout is what it is.
       - name: Scrape format archetypes
+        env:
+          REQUESTED: ${{ inputs.formats || 'expanded' }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
         run: |
-          REQUESTED="${{ inputs.formats || 'expanded' }}"
           if [ "$REQUESTED" == "all" ]; then
-            python .github/scripts/scrape-format-archetypes.py --all
+            python .github/scripts/scrape-format-archetypes.py --publish --all
           else
-            ARGS=""
-            for id in $REQUESTED; do ARGS="$ARGS --format $id"; done
-            python .github/scripts/scrape-format-archetypes.py $ARGS
+            ARGS=(--publish)
+            for id in $REQUESTED; do ARGS+=(--format "$id"); done
+            python .github/scripts/scrape-format-archetypes.py "${ARGS[@]}"
           fi
 
       # An unmirrored sprite loads cross-origin, which taints the canvas the
@@ -97,41 +101,3 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
         run: npx tsx scripts/mirror-archetype-sprites.ts
-
-      - name: Check for changes
-        id: check_changes
-        run: |
-          if git diff --quiet src/data/format-archetypes.json; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "Snapshot unchanged"
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "Snapshot changed"
-          fi
-
-      - name: Commit and push changes
-        if: steps.check_changes.outputs.has_changes == 'true'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-
-          git add src/data/format-archetypes.json
-          git commit -m "chore: refresh format archetype snapshot [skip ci]"
-          git push
-
-      - name: Summary
-        run: |
-          echo "## Format Archetypes" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Format | Field | Archetypes | Scraped |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|------------|---------|" >> $GITHUB_STEP_SUMMARY
-          # Players on the ladder-sourced formats, championship points on the
-          # tournament-ranking ones.
-          jq -r '.formats[] | "| \(.label) | \(.players // .points) | \(.archetypes | length) | \(.scrapedAt) |"' \
-            src/data/format-archetypes.json >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
-            echo "Snapshot committed." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "No change — snapshot is up to date." >> $GITHUB_STEP_SUMMARY
-          fi

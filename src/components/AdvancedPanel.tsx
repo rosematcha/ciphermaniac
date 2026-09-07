@@ -829,7 +829,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
               <button
                 class='fb-bar-btn'
                 type='button'
-                onClick={model.copyPtcgl}
+                onClick={() => void model.copyPtcgl()}
                 disabled={model.poolTotal() === 0}
                 title='Copy this pool as a PTCGL decklist'
               >
@@ -838,7 +838,7 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
               <button
                 class='fb-bar-btn'
                 type='button'
-                onClick={model.shareLink}
+                onClick={() => void model.shareLink()}
                 title='Copy a link that restores this view'
               >
                 Share
