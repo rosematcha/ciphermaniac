@@ -25,8 +25,8 @@
   flex-shrink: 0;
 }
 
-/* Rank denominator ("of 944") and small inline notes (e.g. snapshot price). */
-.stats-list .stat-rank-total,
+/* Small inline notes (e.g. the snapshot price). The rank denominator shares
+   this treatment from components.css, where .stats-list itself lives. */
 .stats-list .stat-note {
   color: var(--muted);
   font-weight: 400;

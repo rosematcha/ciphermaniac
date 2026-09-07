@@ -61,9 +61,57 @@ export function parseISODate(s: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * Win percentage (0–100) from a W/L record, ties excluded, or null when
+ * unplayed. Whole numbers: the player pages show this in table rows and stat
+ * feet, and a tenth of a percent is noise at any sample size we publish.
+ */
+export function winPercent(wins: number, losses: number): number | null {
+  const denom = wins + losses;
+  return denom ? Math.round((wins / denom) * 100) : null;
+}
+
+/** {@link winPercent} as a display string, em dash when unplayed. */
+export function winPercentLabel(wins: number, losses: number): string {
+  const pct = winPercent(wins, losses);
+  return pct == null ? '—' : `${pct}%`;
+}
+
 export function shortDate(d: Date | null): string {
   if (!d || Number.isNaN(d.getTime())) {
     return '—';
   }
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+const ORDINAL_SUFFIX = ['th', 'st', 'nd', 'rd'] as const;
+
+/**
+ * The English ordinal suffix alone ("st", "nd", "rd", "th"). Separate from
+ * {@link ordinal} for the callers that print the numeral themselves — a
+ * four-digit placement wants its thousands separator, and
+ * `1,699` + `th` beats re-implementing the grouping here.
+ */
+export function ordinalSuffix(n: number): string {
+  const abs = Math.abs(Math.trunc(n));
+  const teen = abs % 100;
+  return teen >= 11 && teen <= 13 ? 'th' : (ORDINAL_SUFFIX[abs % 10] ?? 'th');
+}
+
+/**
+ * English ordinal for a placement ("1st", "22nd", "113th"). Placements are
+ * ranks, not counts: rendering them bare reads as a quantity, and a column of
+ * "1 / 797" invites the wrong comparison against the field size beside it.
+ * Teens are all "th" regardless of their last digit.
+ */
+export function ordinal(n: number): string {
+  if (!Number.isFinite(n)) {
+    return '—';
+  }
+  return `${Math.trunc(n)}${ordinalSuffix(n)}`;
+}
+
+/** {@link ordinal} for a nullable placement, em dash when unplaced. */
+export function placementLabel(placement: number | null | undefined): string {
+  return placement == null ? '—' : ordinal(placement);
 }

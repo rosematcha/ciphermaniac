@@ -14,60 +14,17 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { InfoTip } from '../components/InfoTip';
 import { resolved } from '../lib/resource';
-import type { PlayerIndexSlimEntry, PlayerProfile, PlayerTournamentEntry } from '../types';
+import type { PlayerIndexSlimEntry, PlayerProfile } from '../types';
+import { finishCmp, headToHead, type SharedEvent, sharedEvents } from './playerCompare/model';
+import { placementLabel, winPercent, winPercentLabel } from '../lib/format';
 import { foldSearch } from '../utils/searchFold';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/player-compare.css';
 
 const PICKER_LIMIT = 8;
 
-/** Win rate on a 0–1 scale from a W/L record (ties excluded), or null when unplayed. */
-function winRate(wins: number, losses: number): number | null {
-  const denom = wins + losses;
-  return denom ? wins / denom : null;
-}
-
-/** Whole-number percent (site convention), or em dash when unplayed. */
-function pctWhole(wins: number, losses: number): string {
-  const r = winRate(wins, losses);
-  return r == null ? '—' : `${Math.round(r * 100)}%`;
-}
-
 function record(w: number, l: number, t: number): string {
   return `${w}-${l}-${t}`;
-}
-
-interface SharedEvent {
-  tournamentId: string;
-  date: string;
-  a: PlayerTournamentEntry;
-  b: PlayerTournamentEntry;
-}
-
-/**
- * Events both players attended. This is the honest head-to-head surface the
- * data supports: Limitless publishes final standings, not round pairings, so
- * we compare where each player finished at the same event — not direct matches.
- */
-function sharedEvents(a: PlayerProfile, b: PlayerProfile): SharedEvent[] {
-  const byId = new Map(b.tournaments.map(t => [t.tournamentId, t]));
-  const out: SharedEvent[] = [];
-  for (const ta of a.tournaments) {
-    const tb = byId.get(ta.tournamentId);
-    if (tb) {
-      out.push({ tournamentId: ta.tournamentId, date: ta.tournamentDate, a: ta, b: tb });
-    }
-  }
-  out.sort((x, y) => y.date.localeCompare(x.date));
-  return out;
-}
-
-/** −1 when `a` finished higher (lower placement), 1 when `b` did, 0 otherwise. */
-function finishCmp(a: PlayerTournamentEntry, b: PlayerTournamentEntry): number {
-  if (a.placement == null || b.placement == null || a.placement === b.placement) {
-    return 0;
-  }
-  return a.placement < b.placement ? -1 : 1;
 }
 
 export function PlayerComparePage() {
@@ -92,7 +49,9 @@ export function PlayerComparePage() {
     document.title = pa && pb ? `${pa.name} vs ${pb.name} — Ciphermaniac` : 'Compare players — Ciphermaniac';
   });
 
-  const setSlot = (slot: 'a' | 'b', id: string) => setParams({ [slot]: id || undefined });
+  // Replace, don't push: choosing a slot then changing it is two writes, and
+  // the back button should leave the comparison, not walk its half-built states.
+  const setSlot = (slot: 'a' | 'b', id: string) => setParams({ [slot]: id || undefined }, { replace: true });
 
   const shared = createMemo(() => {
     const pa = a();
@@ -100,23 +59,7 @@ export function PlayerComparePage() {
     return pa && pb ? sharedEvents(pa, pb) : [];
   });
 
-  // Head-to-head by finish across shared events: wins for A, wins for B, ties.
-  const headToHead = createMemo(() => {
-    let aWins = 0;
-    let bWins = 0;
-    let ties = 0;
-    for (const ev of shared()) {
-      const c = finishCmp(ev.a, ev.b);
-      if (c < 0) {
-        aWins += 1;
-      } else if (c > 0) {
-        bWins += 1;
-      } else {
-        ties += 1;
-      }
-    }
-    return { aWins, bWins, ties };
-  });
+  const h2h = createMemo(() => headToHead(shared()));
 
   const bothPicked = () => Boolean(params.a && params.b);
 
@@ -124,9 +67,6 @@ export function PlayerComparePage() {
     <>
       <section class='hero'>
         <h1>Compare players</h1>
-        <div class='hero-meta'>
-          <span>Pick two players to compare records and shared events.</span>
-        </div>
       </section>
 
       <div class='compare-pickers'>
@@ -174,7 +114,7 @@ export function PlayerComparePage() {
             </Show>
           }
         >
-          <ComparisonBody a={a()!} b={b()!} shared={shared()} headToHead={headToHead()} />
+          <ComparisonBody a={a()!} b={b()!} shared={shared()} headToHead={h2h()} />
         </Show>
       </Show>
     </>
@@ -248,7 +188,7 @@ function PlayerSlot(props: {
               </Show>
             }
           >
-            <A href={`/players/${props.selectedId}`} class='cardname compare-slot-name'>
+            <A href={`/players/${encodeURIComponent(props.selectedId!)}`} class='cardname compare-slot-name'>
               {props.selected!.name}
             </A>
             <span class='muted-cell'>{props.selected!.countries.join(' · ') || '—'}</span>
@@ -287,8 +227,8 @@ function buildMetrics(a: PlayerProfile, b: PlayerProfile): MetricRow[] {
     }
     return x === y ? 0 : x < y ? -1 : 1;
   };
-  const winA = winRate(sa.wins, sa.losses);
-  const winB = winRate(sb.wins, sb.losses);
+  const winA = winPercent(sa.wins, sa.losses);
+  const winB = winPercent(sb.wins, sb.losses);
   return [
     {
       label: 'Events',
@@ -304,8 +244,8 @@ function buildMetrics(a: PlayerProfile, b: PlayerProfile): MetricRow[] {
     },
     {
       label: 'Win %',
-      aValue: pctWhole(sa.wins, sa.losses),
-      bValue: pctWhole(sb.wins, sb.losses),
+      aValue: winPercentLabel(sa.wins, sa.losses),
+      bValue: winPercentLabel(sb.wins, sb.losses),
       lead: winA == null || winB == null ? 0 : higher(winA, winB)
     },
     { label: 'Day 2s', aValue: String(sa.day2s), bValue: String(sb.day2s), lead: higher(sa.day2s, sb.day2s) },
@@ -318,14 +258,14 @@ function buildMetrics(a: PlayerProfile, b: PlayerProfile): MetricRow[] {
     },
     {
       label: 'Best placement',
-      aValue: sa.bestPlacement == null ? '—' : String(sa.bestPlacement),
-      bValue: sb.bestPlacement == null ? '—' : String(sb.bestPlacement),
+      aValue: placementLabel(sa.bestPlacement),
+      bValue: placementLabel(sb.bestPlacement),
       lead: lower(sa.bestPlacement, sb.bestPlacement)
     },
     {
       label: 'Median placement',
-      aValue: sa.medianPlacement == null ? '—' : String(sa.medianPlacement),
-      bValue: sb.medianPlacement == null ? '—' : String(sb.medianPlacement),
+      aValue: placementLabel(sa.medianPlacement),
+      bValue: placementLabel(sb.medianPlacement),
       lead: lower(sa.medianPlacement, sb.medianPlacement)
     }
   ];
@@ -335,7 +275,7 @@ function ComparisonBody(props: {
   a: PlayerProfile;
   b: PlayerProfile;
   shared: SharedEvent[];
-  headToHead: { aWins: number; bWins: number; ties: number };
+  headToHead: ReturnType<typeof headToHead>;
 }) {
   const metrics = createMemo(() => buildMetrics(props.a, props.b));
   const archetypeName = (p: PlayerProfile, base: string | null) => (base ? (p.archetypeNames[base] ?? base) : '');
@@ -388,8 +328,8 @@ function ComparisonBody(props: {
         right={
           <span class='compare-h2h'>
             <Show when={props.shared.length > 0} fallback='—'>
-              Head-to-head by finish {props.headToHead.aWins}–{props.headToHead.bWins}
-              <Show when={props.headToHead.ties > 0}> · {props.headToHead.ties} even</Show>{' '}
+              Head-to-head by finish {props.headToHead.aWins}-{props.headToHead.bWins}
+              <Show when={props.headToHead.ties > 0}>-{props.headToHead.ties}</Show>{' '}
               <InfoTip marker='i' label='How head-to-head is counted'>
                 Compares final standings at events both attended. Limitless publishes no round pairings, so this
                 reflects placement, not direct matches.
@@ -406,7 +346,6 @@ function ComparisonBody(props: {
             <table class='data'>
               <thead>
                 <tr>
-                  <th>Date</th>
                   <th>Event</th>
                   <th class='num'>{props.a.name}</th>
                   <th>Deck</th>
@@ -420,27 +359,26 @@ function ComparisonBody(props: {
                     const cmp = finishCmp(ev.a, ev.b);
                     return (
                       <tr>
-                        <td class='muted-cell'>{ev.date}</td>
                         <td>
                           <span class='cardname'>{prettyTournamentName(ev.tournamentId)}</span>
                         </td>
-                        <td class='num' classList={{ 'compare-lead': cmp < 0 }}>
-                          <Show when={cmp < 0}>
+                        <td class='num' classList={{ 'compare-lead': cmp === -1 }}>
+                          <Show when={cmp === -1}>
                             <span class='compare-caret' aria-label='Higher finish'>
                               ▲
                             </span>{' '}
                           </Show>
-                          {ev.a.placement ?? '—'}
+                          {placementLabel(ev.a.placement)}
                           <span class='muted-cell'> · {record(ev.a.wins, ev.a.losses, ev.a.ties)}</span>
                         </td>
                         <td class='muted-cell'>{deckCell(props.a, ev.a.archetype)}</td>
-                        <td class='num' classList={{ 'compare-lead': cmp > 0 }}>
-                          <Show when={cmp > 0}>
+                        <td class='num' classList={{ 'compare-lead': cmp === 1 }}>
+                          <Show when={cmp === 1}>
                             <span class='compare-caret' aria-label='Higher finish'>
                               ▲
                             </span>{' '}
                           </Show>
-                          {ev.b.placement ?? '—'}
+                          {placementLabel(ev.b.placement)}
                           <span class='muted-cell'> · {record(ev.b.wins, ev.b.losses, ev.b.ties)}</span>
                         </td>
                         <td class='muted-cell'>{deckCell(props.b, ev.b.archetype)}</td>

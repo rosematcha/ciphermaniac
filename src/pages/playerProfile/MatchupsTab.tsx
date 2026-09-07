@@ -58,7 +58,7 @@ function MatchupsBody(props: { rounds: CareerRounds }) {
             fallback={<p class='profile-note'>No deck faced {MATCHUP_MIN_GAMES} times yet.</p>}
           >
             <div class='table-wrap'>
-              <table class='data'>
+              <table class='data matchup-table'>
                 <thead>
                   <tr>
                     <th>Opponent's deck</th>

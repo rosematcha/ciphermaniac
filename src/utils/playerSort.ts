@@ -13,6 +13,13 @@ export type PlayerSortDir = 'asc' | 'desc';
  */
 export const RATE_MIN_EVENTS = 5;
 
+/**
+ * Reused rather than calling `String.prototype.localeCompare` per comparison —
+ * the name tiebreak runs on most of the ~16k comparisons a 1,500-row re-sort
+ * makes, and re-resolving the collator each time dominates that.
+ */
+const byName = new Intl.Collator(undefined, { sensitivity: 'base' });
+
 /** Wins over decided games (ties excluded), 0–1; 0 when unplayed. */
 export function winPct(p: PlayerIndexSlimEntry): number {
   const games = p.wins + p.losses;
@@ -35,6 +42,11 @@ export function sortValue(p: PlayerIndexSlimEntry, key: PlayerSortKey): number {
  * Comparator for the players table. For the rate sort, players under
  * {@link RATE_MIN_EVENTS} always rank below qualified ones regardless of
  * direction — a 6-0 weekend must not outrank a 326-123 career.
+ *
+ * Ties break on event count, then name, and never flip with `dir`. Day 2s over
+ * 1,500 players are small integers with long runs of ties, so without a
+ * tiebreak the bulk of every page is ordered by whatever the index happened to
+ * emit, and paging through it looks random.
  */
 export function comparePlayers(
   key: PlayerSortKey,
@@ -49,6 +61,13 @@ export function comparePlayers(
         return aQualified ? -1 : 1;
       }
     }
-    return (sortValue(a, key) - sortValue(b, key)) * factor;
+    const primary = (sortValue(a, key) - sortValue(b, key)) * factor;
+    if (primary !== 0) {
+      return primary;
+    }
+    if (key !== 'events' && a.eventCount !== b.eventCount) {
+      return b.eventCount - a.eventCount;
+    }
+    return byName.compare(a.name, b.name);
   };
 }

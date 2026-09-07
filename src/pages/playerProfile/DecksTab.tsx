@@ -1,6 +1,7 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
+import { ordinalSuffix } from '../../lib/format';
 import type { PlayerArchetypeBreakdown, PlayerProfile } from '../../types';
 import type { EventDetailSource } from './EventDetail';
 import { HistoryTable } from './HistoryTable';
@@ -55,7 +56,7 @@ function DeckGroup(props: DeckGroupProps) {
   const winRate = createMemo(() => winRateWhole(props.archetype.wins, props.archetype.losses));
   const best = () => {
     const b = props.archetype.bestPlacement;
-    return b == null ? '—' : b === 1 ? 'won' : `#${b}`;
+    return b == null ? '—' : b === 1 ? 'Won' : `${b.toLocaleString()}${ordinalSuffix(b)}`;
   };
   return (
     <section class='deck-group' classList={{ open: open() }}>
@@ -81,7 +82,7 @@ function DeckGroup(props: DeckGroupProps) {
             <b>{props.archetype.day2s}</b> Day 2s
           </span>
           <span>
-            best <b>{best()}</b>
+            <b>{best()}</b> best
           </span>
         </span>
       </button>

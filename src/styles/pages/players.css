@@ -59,22 +59,47 @@
   }
 }
 
-/* ---------- Profile: career line under the name ----------
-   One list of six figures. On desktop it reads as a line, value then label;
-   on a phone it becomes two columns of label / value rows. */
-.player-stats {
+/* ---------- Profile: the career band ----------
+   Six figures, value over label, in one ruled band. The rules do the
+   separating — six of anything set inline ran together into a sentence, and a
+   framed scorecard would be the box the rest of the site does without. A phone
+   folds the same band into two columns of label / value rows.
+   Shared with the index hero, which uses the identity row alone. */
+.player-ident {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 18px;
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--muted);
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+/* The one action on these pages: out of the meta line, where it read as
+   another fact about the player rather than something to press. */
+.player-compare {
+  flex: none;
+  padding: 7px 12px;
+}
+/* Ink top and bottom, hairlines between: the band is Stamp's ink rule doing
+   the framing a box would otherwise do. In hairline the whole thing went soft
+   against the paper and stopped reading as one object. */
+.player-stats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin: 18px 0 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
 }
 .player-stat {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 3px;
+  min-width: 0;
+  padding: 11px 16px;
+  border-left: 1px solid var(--rule);
+}
+.player-stat:first-child {
+  padding-left: 0;
+  border-left: 0;
 }
 .player-stat dd,
 .player-stat dt {
@@ -82,37 +107,89 @@
 }
 .player-stat dd {
   color: var(--fg);
-  font-weight: 600;
+  font-size: clamp(17px, 1.7vw, 21px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
 }
+.player-stat dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Win rate is the figure the page is about, so it carries the accent — the
+   same lead-stat move as the card page's inclusion rate. */
 .player-stat.is-lead dd {
   color: var(--accent);
-  font-weight: 700;
 }
+/* The Day 2 rate rides in its own label rather than beside the count, where
+   "35 81%" read as one mangled number. */
 .player-stat small {
-  color: var(--muted);
-  font-weight: 400;
-  font-size: 12px;
-  margin-left: 3px;
+  font-size: inherit;
+  font-weight: 500;
+  opacity: 0.75;
 }
 .player-tabs .tabs {
   margin-bottom: 20px;
 }
-@media (max-width: 640px) {
+/* Three across before the record's ten tabular digits start colliding. */
+@media (max-width: 900px) {
   .player-stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 24px;
-    margin-top: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .player-stat {
-    display: flex;
-    flex-direction: row-reverse;
-    justify-content: space-between;
-    padding: 8px 0;
+  .player-stat:nth-child(3n + 1) {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .player-stat:nth-child(-n + 3) {
     border-bottom: 1px solid var(--rule);
   }
+}
+@media (max-width: 640px) {
+  .player-ident {
+    display: block;
+  }
+  .player-compare {
+    margin-top: 12px;
+  }
+  .player-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+    margin-top: 14px;
+    border-top: 0;
+    border-bottom: 0;
+  }
+  .player-stat {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 0;
+    border-left: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .player-stat:nth-child(3n + 1) {
+    padding-left: 0;
+  }
   .player-stat dd {
-    white-space: nowrap;
+    font-size: 14px;
+  }
+  .player-stat dt {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+}
+/* Two columns stop fitting "median finish" somewhere under 380px, and a
+   truncated label is a label that says nothing. One column below that. */
+@media (max-width: 380px) {
+  .player-stats {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -137,8 +214,57 @@
 .finish-place {
   white-space: nowrap;
 }
+/* Fixed widths on the four columns that can take them. Left to auto layout,
+   every deck group on the Decks tab sized its own table and the Finish /
+   Record / Day 2 headers landed in a different place in each one. */
+.history-table .history-deck {
+  width: 220px;
+}
+.history-table .history-finish {
+  width: 140px;
+}
+.history-table .history-record {
+  width: 96px;
+}
+/* The deck links keep their deep link but lose the accent: a column of forty
+   orange names blew the page's accent budget on its least important column and
+   left nothing for the win rate and the top cuts. Same treatment the opponent
+   links in an opened event's rounds already use. */
+.history-deck a {
+  color: var(--fg);
+  transition: color var(--ms-fast);
+}
+.history-deck a:hover {
+  color: var(--accent);
+}
+/* Three states and only two of them print, so the column reads as sparse marks
+   rather than forty repetitions of its own header. Right-aligned: left-aligned
+   it floated in a hundred-odd pixels of dead gutter at the table's edge. */
+.history-table .history-day2 {
+  /* Wide enough for the Top cut badge: any narrower and a group that has one
+     sized its table differently from every group that doesn't. */
+  width: 100px;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--muted);
+}
 .history-table .data tbody tr.open > td {
   background: var(--surface-2);
+}
+/* Between a phone and a full desktop the full event names wrapped to three
+   lines a row. The short name and no date buys the width back, which is worth
+   more than either — the deck column survives down to the phone layout. */
+@media (max-width: 900px) {
+  .history-table .history-full,
+  .history-table .history-date {
+    display: none;
+  }
+  .history-table .history-short {
+    display: inline;
+  }
+  .history-table .history-deck {
+    white-space: nowrap;
+  }
 }
 @media (max-width: 640px) {
   .history-table .data th,
@@ -183,9 +309,17 @@
     max-width: 0;
     overflow: hidden;
   }
+  /* The cell clips, but nothing inside it was constrained to the cell, so a
+     long name was cut mid-word instead of ellipsized. Cap the inline-flex at
+     the cell and let the blockified name shrink inside it. */
+  .history-table .history-event {
+    max-width: 100%;
+  }
   .history-table .history-short {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .table-wrap.history-table {
     overflow-x: hidden;
@@ -303,7 +437,10 @@
   }
 }
 
-/* ---------- Profile: decks as groups ---------- */
+/* ---------- Profile: decks as groups ----------
+   One openable group per archetype. The head has to out-rank eight repeated
+   table headers below it, so it gets the deck's name at heading size and its
+   figures as quiet value/label pairs. */
 .deck-group {
   border-bottom: 1px solid var(--rule);
 }
@@ -312,8 +449,11 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 12px 0;
+  padding: 14px 0;
   text-align: left;
+}
+.deck-group-head:hover .deck-group-name {
+  color: var(--accent);
 }
 .deck-group-head .row-caret {
   font-size: 11px;
@@ -321,12 +461,17 @@
 .deck-group-name {
   font-size: 15px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--ms-fast);
 }
 .deck-group-stats {
   display: flex;
-  gap: 18px;
+  gap: 16px;
   font-size: 12.5px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -337,7 +482,7 @@
   font-weight: 600;
 }
 .deck-group-body {
-  padding: 0 0 12px 30px;
+  padding: 0 0 16px 34px;
 }
 .deck-group-body .table-wrap {
   border: 0;
@@ -345,8 +490,17 @@
   border-radius: 0;
   background: transparent;
 }
+/* Repeated once per group, these headers were as loud as the deck names they
+   sat under. Hairline and small: they label the columns without competing. */
 .deck-group-body .data th {
   background: transparent;
+  height: 24px;
+  font-size: 9.5px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--rule);
+}
+.deck-group-body .data tbody tr:last-child > td {
+  border-bottom: 0;
 }
 @media (max-width: 640px) {
   .deck-group-head {
@@ -441,5 +595,18 @@
   }
   .matchups-where {
     display: none;
+  }
+  /* Deck, games and record don't leave room for the win rate this table exists
+     to show — it sat off the right edge behind a scroll. The record is the
+     detail here; games already carries the sample size beside the rate. */
+  .matchup-table th:nth-child(3),
+  .matchup-table td:nth-child(3) {
+    display: none;
+  }
+  /* And the deck name wraps rather than holding one long line, so the three
+     remaining columns fit the screen with no sideways scroll at all. */
+  .matchup-table th:first-child,
+  .matchup-table td:first-child {
+    white-space: normal;
   }
 }

@@ -61,3 +61,20 @@ test('win rate sort orders by rate within each partition', () => {
   const d = player({ eventCount: 3, wins: 1, losses: 2 });
   assert.deepEqual([d, c, b, a].sort(comparePlayers('winPct', 'desc')), [a, b, c, d]);
 });
+
+test('equal values break on event count, then name — never on index order', () => {
+  const few = player({ name: 'Zoe', day2s: 4, eventCount: 6 });
+  const many = player({ name: 'Adam', day2s: 4, eventCount: 20 });
+  assert.deepEqual([few, many].sort(comparePlayers('day2s', 'desc')), [many, few]);
+  assert.deepEqual([few, many].sort(comparePlayers('day2s', 'asc')), [many, few]);
+
+  const zed = player({ name: 'Zed', day2s: 4, eventCount: 6 });
+  const abe = player({ name: 'Abe', day2s: 4, eventCount: 6 });
+  assert.deepEqual([zed, abe].sort(comparePlayers('day2s', 'desc')), [abe, zed]);
+});
+
+test('sorting by events breaks its own ties on name', () => {
+  const zed = player({ name: 'Zed', eventCount: 9 });
+  const abe = player({ name: 'Abe', eventCount: 9 });
+  assert.deepEqual([zed, abe].sort(comparePlayers('events', 'desc')), [abe, zed]);
+});

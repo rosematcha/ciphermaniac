@@ -95,45 +95,53 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
   return (
     <>
       <section class='hero'>
-        <h1>{props.profile.name}</h1>
-        <div class='hero-meta'>
-          <Show when={props.profile.countries.length}>
-            <span>{props.profile.countries.join(' · ')}</span>
-            <span class='dot'>·</span>
-          </Show>
-          <span>
-            {s().eventCount} {s().eventCount === 1 ? 'event' : 'events'}, {summary().span}
-          </span>
-          <span class='dot'>·</span>
-          <A href={`/players/compare?a=${encodeURIComponent(props.playerId)}`}>Compare</A>
+        <div class='player-ident'>
+          <div>
+            <h1>{props.profile.name}</h1>
+            <div class='hero-meta'>
+              <Show when={props.profile.countries.length}>
+                <span>{props.profile.countries.join(' · ')}</span>
+                <span class='dot'>·</span>
+              </Show>
+              <span>
+                {s().eventCount} {s().eventCount === 1 ? 'event' : 'events'}
+              </span>
+              <span class='dot'>·</span>
+              <span>{summary().span}</span>
+            </div>
+          </div>
+          <A href={`/players/compare?a=${encodeURIComponent(props.playerId)}`} class='btn btn-secondary player-compare'>
+            Compare
+          </A>
         </div>
+        {/* dt before dd keeps the list valid; the band flips them so the figure
+            reads first and the label sits under it. */}
         <dl class='player-stats'>
           <div class='player-stat'>
-            <dd>{summary().record}</dd>
             <dt>record</dt>
+            <dd>{summary().record}</dd>
           </div>
           <div class='player-stat is-lead'>
-            <dd>{summary().winRate == null ? '—' : `${summary().winRate}%`}</dd>
             <dt>win rate</dt>
+            <dd>{summary().winRate == null ? '—' : `${summary().winRate}%`}</dd>
           </div>
           <div class='player-stat'>
-            <dd>
-              {s().day2s}
-              <small>{summary().day2Rate}%</small>
-            </dd>
-            <dt>Day 2s</dt>
+            <dt>
+              Day 2s <small>· {summary().day2Rate}%</small>
+            </dt>
+            <dd>{s().day2s}</dd>
           </div>
           <div class='player-stat'>
-            <dd>{s().topCuts}</dd>
             <dt>top cuts</dt>
+            <dd>{s().topCuts}</dd>
           </div>
           <div class='player-stat'>
-            <dd>{s().tournamentWins}</dd>
             <dt>{s().tournamentWins === 1 ? 'title' : 'titles'}</dt>
+            <dd>{s().tournamentWins}</dd>
           </div>
           <div class='player-stat'>
-            <dd>{summary().medianFinish}</dd>
             <dt>median finish</dt>
+            <dd>{summary().medianFinish}</dd>
           </div>
         </dl>
       </section>
@@ -158,16 +166,18 @@ function ProfileSkeleton() {
   return (
     <>
       <section class='hero'>
-        <Skeleton width='280px' height='32px' />
+        <Skeleton width='280px' height='44px' />
         <div style={{ 'margin-top': '6px' }}>
-          <Skeleton width='220px' height='13px' />
+          <Skeleton width='220px' height='19px' />
         </div>
-        <div style={{ 'margin-top': '10px' }}>
-          <Skeleton width='520px' height='13px' />
+        {/* Stands in for the career band, whose height the CLS budget depends
+            on being reserved before the profile lands. */}
+        <div style={{ 'margin-top': '18px' }}>
+          <Skeleton height='65px' />
         </div>
       </section>
-      <section>
-        <Skeleton width='240px' height='36px' />
+      <section class='player-tabs'>
+        <Skeleton width='240px' height='41px' />
         <div style={{ 'margin-top': '20px' }}>
           <Skeleton height='420px' />
         </div>

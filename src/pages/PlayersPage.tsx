@@ -104,11 +104,20 @@ export function PlayersPage() {
   return (
     <>
       <section class='hero'>
-        <h1>Players</h1>
-        <div class='hero-meta'>
-          <Show when={indexData()}>
-            <span>{indexData()!.length.toLocaleString()} players with two or more events</span>
-          </Show>
+        {/* Compare had no entry point outside a profile, so reaching it meant
+            picking a player you didn't want first. */}
+        <div class='player-ident'>
+          <div>
+            <h1>Players</h1>
+            <div class='hero-meta'>
+              <Show when={indexData()}>
+                <span>{indexData()!.length.toLocaleString()} players with two or more events</span>
+              </Show>
+            </div>
+          </div>
+          <A href='/players/compare' class='btn btn-secondary player-compare'>
+            Compare two players
+          </A>
         </div>
       </section>
 

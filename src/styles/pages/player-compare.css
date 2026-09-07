@@ -1,10 +1,12 @@
-/* Player compare view. Reuses .data / .hero / .kpis from players-tables.css. */
+/* Player compare view. Reuses .data and .hero from players-tables.css. */
 
+/* Not a <section>, so it misses the page's `section + section` rhythm and has
+   to set both gaps itself. */
 .compare-pickers {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  margin-bottom: 24px;
+  margin: var(--section-gap) 0 24px;
 }
 
 @media (max-width: 560px) {

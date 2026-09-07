@@ -3,7 +3,7 @@ import { createSignal, For, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { Badge } from '../../components/Badge';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
-import { nameFromTournamentKey } from '../../lib/format';
+import { nameFromTournamentKey, ordinalSuffix } from '../../lib/format';
 import type { PlayerTournamentEntry } from '../../types';
 import { EventDetail, type EventDetailSource } from './EventDetail';
 import { finishLabel, shortTournamentName, tournamentDateLabel } from './model';
@@ -33,8 +33,8 @@ export function HistoryTable(props: HistoryTableProps) {
             <Show when={showDeck()}>
               <th class='history-deck'>Deck</th>
             </Show>
-            <th class='num'>Finish</th>
-            <th class='num'>Record</th>
+            <th class='num history-finish'>Finish</th>
+            <th class='num history-record'>Record</th>
             <th class='history-day2'>Day 2</th>
           </tr>
         </thead>
@@ -116,9 +116,12 @@ function HistoryRow(props: HistoryRowProps) {
             </Show>
           </td>
         </Show>
-        <td class='num'>
+        <td class='num history-finish'>
           <span class='finish-place'>
-            {props.entry.placement?.toLocaleString() ?? '—'}
+            <Show when={props.entry.placement} fallback='—'>
+              {props.entry.placement!.toLocaleString()}
+              {ordinalSuffix(props.entry.placement!)}
+            </Show>
             <Show when={props.entry.totalPlayers}>
               <span class='muted-cell'> / {props.entry.totalPlayers!.toLocaleString()}</span>
             </Show>
@@ -127,18 +130,16 @@ function HistoryRow(props: HistoryRowProps) {
             {finishLabel(props.entry)}
           </span>
         </td>
-        <td class='num'>
+        <td class='num history-record'>
           {props.entry.wins}-{props.entry.losses}-{props.entry.ties}
         </td>
+        {/* A badge on every Day 2 was a pill in most rows of a long career —
+            loud, and it left nothing for the rare result to stand out with.
+            Only the top cut is badged; Day 2 is plain text, and an event that
+            reached neither is left blank rather than dashed, so the column
+            reads as marks against a quiet field instead of forty repetitions. */}
         <td class='history-day2'>
-          <Show
-            when={props.entry.madeTopCut}
-            fallback={
-              <Show when={props.entry.madePhase2} fallback={<span class='muted-cell'>—</span>}>
-                <Badge>Day 2</Badge>
-              </Show>
-            }
-          >
+          <Show when={props.entry.madeTopCut} fallback={<Show when={props.entry.madePhase2}>Day 2</Show>}>
             <Badge variant='regulation'>Top cut</Badge>
           </Show>
         </td>

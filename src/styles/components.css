@@ -490,6 +490,10 @@
      line so a section that starts with an empty right slot doesn't grow one. */
   min-height: 1.5em;
 }
+/* space-between only pushes the meta right when an h2 shares the row with it. */
+.section-head .right:only-child {
+  margin-left: auto;
+}
 .scope-line {
   font-variant-numeric: tabular-nums;
 }
@@ -554,49 +558,6 @@
   .section-head .right .scope-line {
     display: none;
   }
-}
-
-/* ---------- KPI tile ---------- */
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-}
-.kpi {
-  background: var(--surface);
-  border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px 18px;
-  box-shadow: var(--shadow-1);
-  display: grid;
-  gap: 6px;
-  position: relative;
-}
-.kpi-label {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 600;
-}
-.kpi-value {
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  color: var(--fg);
-  font-variant-numeric: tabular-nums;
-}
-.kpi-value.leader {
-  font-size: 22px;
-  letter-spacing: -0.02em;
-}
-.kpi-foot {
-  font-size: 12px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 /* ---------- Trend indicator ---------- */
@@ -1101,21 +1062,37 @@ table.data {
   color: inherit;
   cursor: pointer;
 }
-.data th.sortable[aria-sort='ascending'] button.th-sort::after {
-  content: '▲';
-  font-size: 10px;
-  color: var(--accent);
-}
-.data th.sortable[aria-sort='descending'] button.th-sort::after {
+/* The mark is reserved in every sortable header and only its glyph is hidden:
+   `table-layout` is auto, so a mark that appears on click re-solves the column
+   widths and the table jumps sideways under the pointer.
+
+   Pages that reserve the mark in markup instead — a `.sort-mark` span, as the
+   card and archetype indexes render — opt out here, or the active column draws
+   both and reads "Inclusion ▼ ▼". */
+.data th.sortable button.th-sort:not(:has(.sort-mark))::after {
   content: '▼';
   font-size: 10px;
   color: var(--accent);
+  visibility: hidden;
+}
+.data th.sortable[aria-sort='ascending'] button.th-sort:not(:has(.sort-mark))::after {
+  content: '▲';
+  visibility: visible;
+}
+.data th.sortable[aria-sort='descending'] button.th-sort:not(:has(.sort-mark))::after {
+  visibility: visible;
 }
 .data tbody tr:last-child td {
   border-bottom: 0;
 }
 .data tbody tr {
   transition: background var(--ms-fast);
+}
+/* Only rows that actually go somewhere get the pointer. Every clickable row on
+   the site carries `.is-link`; the profile's archetype rows and its
+   decklist-less tournament rows do not, and were promising a click they
+   couldn't honour. */
+.data tbody tr.is-link {
   cursor: pointer;
 }
 .data tbody tr:hover {
@@ -2106,7 +2083,16 @@ body[data-mode='dark'] .story-card:active {
 .stats-list .stat-value {
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 6px;
+}
+/* The secondary half of a value — a rank denominator ("of 944"), a record
+   behind a win rate. Lives here rather than in cards.css because the player
+   profile's phase list uses .stats-list without ever loading that sheet, and
+   ran the two halves together as one number. */
+.stats-list .stat-rank-total {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
 }
 /* Headline stat: the inclusion rate is the single number the page is about, so
    it carries the accent and a touch more weight in both the desktop rail and
@@ -2683,91 +2669,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* ---------- Decklist grid (player profile) ---------- */
-.deck-grid {
-  display: grid;
-  gap: 28px;
-}
-.deck-group {
-  display: grid;
-  gap: 12px;
-}
-.deck-group-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 700;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--rule);
-}
-.deck-group-count {
-  color: var(--fg);
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-}
-.deck-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
-  gap: 10px;
-}
-.deck-card {
-  display: grid;
-  gap: 6px;
-  text-decoration: none;
-  color: var(--fg);
-  transition: transform var(--ms-fast);
-}
-.deck-card:hover {
-  text-decoration: none;
-  transform: translateY(-1px);
-}
-.deck-card:active {
-  transform: translateY(0) scale(0.99);
-}
-.deck-card-image {
-  aspect-ratio: 5 / 7;
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-1);
-}
-.deck-card-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.deck-card-image .card-image-fallback {
-  width: 100%;
-  height: 100%;
-  border-radius: 0;
-}
-.deck-card-info {
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-  font-size: 11.5px;
-  line-height: 1.3;
-}
-.deck-card-count {
-  font-weight: 700;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-.deck-card-name {
-  color: var(--fg);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
 }
 
 /* ---------- Trends / movers ---------- */
@@ -3519,8 +3420,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 @media (hover: none) {
   .arche:hover,
   .card-tile:hover,
-  .story-card:hover,
-  .deck-card:hover {
+  .story-card:hover {
     transform: none;
   }
   .arche:hover,

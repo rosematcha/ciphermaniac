@@ -173,6 +173,23 @@ test('the Matchups tab rolls the rounds up', async ({ page }) => {
   await expect(page.locator('.phase-list .stat-row').first()).toContainText('Day 1');
 });
 
+test('compare pairs two players on the events they both attended', async ({ page }) => {
+  await gotoClean(page, '/players/compare?a=1272&b=999');
+
+  const shared = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Shared events' }) });
+  // Four events in common; Gabriel finished higher at three of them.
+  await expect(shared.locator('tbody > tr')).toHaveCount(4);
+  await expect(shared.locator('.compare-h2h')).toContainText('3-1');
+  // The event column carries its own date, so there is no separate date column.
+  await expect(shared.getByRole('columnheader')).toHaveCount(5);
+});
+
+test('compare asks for two players before it compares anything', async ({ page }) => {
+  await gotoClean(page, '/players/compare');
+  await expect(page.getByText('Choose two players.')).toBeVisible();
+  await expect(page.getByRole('searchbox')).toHaveCount(2);
+});
+
 test('tournaments index renders the catalog', async ({ page }) => {
   await gotoClean(page, '/tournaments');
   await expect(page.locator('main')).toBeVisible();

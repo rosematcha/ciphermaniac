@@ -1,7 +1,7 @@
 /*
  * Player / tournament table legibility styles.
- * Imported by PlayersPage, PlayersIndexPage, PlayerProfilePage, PlayerPage,
- * TournamentsIndexPage and the shared Pagination component.
+ * Imported by PlayersPage, PlayerProfilePage, PlayerComparePage,
+ * TournamentsIndexPage, EarningsPage and the shared Pagination component.
  */
 
 /* ---------- Sortable headers (shared contract: th.sortable > button.th-sort) ---------- */
@@ -33,16 +33,6 @@
 .data th[aria-sort='ascending'] .th-sort,
 .data th[aria-sort='descending'] .th-sort {
   color: var(--fg);
-}
-.data th[aria-sort='ascending'] .th-sort::after {
-  content: '▲';
-  font-size: 9px;
-  color: var(--accent);
-}
-.data th[aria-sort='descending'] .th-sort::after {
-  content: '▼';
-  font-size: 9px;
-  color: var(--accent);
 }
 
 /* ---------- Low-confidence / small-sample stat muting ---------- */
