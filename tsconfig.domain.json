@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  },
+  "include": [
+    "shared/data/contracts.ts",
+    "shared/data/canonicalJson.ts",
+    "shared/data/cardIdentity.ts",
+    "types/**/*.d.ts"
+  ]
+}

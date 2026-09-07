@@ -40,7 +40,7 @@ async function generateOgImage() {
   const logoBuffer = await sharp(readFileSync(svgPath), { density: 300 })
     .resize(logoSize, logoSize, {
       fit: 'contain',
-      // eslint-disable-next-line id-length -- Sharp API requires r, g, b for RGB colors
+
       background: { r: 0, g: 0, b: 0, alpha: 0 }
     })
     .png()

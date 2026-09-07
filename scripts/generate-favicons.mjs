@@ -46,7 +46,7 @@ async function generateFavicons() {
       await sharp(svgBuffer, { density: 300 })
         .resize(size, size, {
           fit: 'contain',
-          // eslint-disable-next-line id-length -- Sharp API requires r, g, b for RGB colors
+
           background: { r: 0, g: 0, b: 0, alpha: 0 }
         })
         .png()
@@ -64,7 +64,7 @@ async function generateFavicons() {
     await sharp(svgBuffer, { density: 300 })
       .resize(48, 48, {
         fit: 'contain',
-        // eslint-disable-next-line id-length -- Sharp API requires r, g, b for RGB colors
+
         background: { r: 0, g: 0, b: 0, alpha: 0 }
       })
       .png()

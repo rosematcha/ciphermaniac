@@ -30,7 +30,7 @@
  */
 
 import { normalizeCardNumber, parseCardUid } from './cardIdentity';
-import { validateArchetypeIdentity } from './archetypes/identity';
+import { type ArchetypeIdentity, validateArchetypeIdentity } from './archetypes/identity';
 import {
   checkArrayOf,
   checkFields,
@@ -356,15 +356,7 @@ export interface CardRecord {
 // Archetype identity
 // ============================================================================
 
-/** Archetype identity triple: comparison key, display label, URL slug. */
-export interface ArchetypeIdentity {
-  /** Lowercased, whitespace-collapsed comparison key. */
-  key: string;
-  /** Cased display label, preserved as first seen. */
-  displayName: string;
-  /** URL-safe slug derived from the key (not from a sanitized display label). */
-  slug: string;
-}
+export type { ArchetypeIdentity } from './archetypes/identity';
 
 // ============================================================================
 // Event records

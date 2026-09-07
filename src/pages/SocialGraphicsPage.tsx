@@ -391,10 +391,15 @@ export function SocialGraphicsPage() {
           </div>
 
           <div class='sg-actions'>
-            <button class='sg-btn primary' type='button' disabled={exportBlocked()} onClick={() => exportImage('png')}>
+            <button
+              class='sg-btn primary'
+              type='button'
+              disabled={exportBlocked()}
+              onClick={() => void exportImage('png')}
+            >
               {busy() === 'png' ? 'Exporting…' : 'Export PNG'}
             </button>
-            <button class='sg-btn' type='button' disabled={exportBlocked()} onClick={() => exportImage('jpg')}>
+            <button class='sg-btn' type='button' disabled={exportBlocked()} onClick={() => void exportImage('jpg')}>
               {busy() === 'jpg' ? 'Exporting…' : 'Export JPG'}
             </button>
             <Show when={error()}>

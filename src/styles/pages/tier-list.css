@@ -10,7 +10,7 @@
 }
 .tl-error {
   margin: 0 0 var(--space-3);
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--negative);
 }
 
@@ -42,7 +42,7 @@
   place-items: center;
   padding: 10px 8px;
   font-weight: 800;
-  font-size: 27px;
+  font-size: 30px;
   letter-spacing: -0.03em;
   border: 0;
   border-right: 1px solid var(--border);
@@ -288,7 +288,7 @@ body:not(.tl-labels) .tl-ico img {
   height: 32px;
 }
 .tl-ico .cap {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -345,7 +345,7 @@ body:not(.tl-labels) .tl-ico {
   background: var(--surface-2);
 }
 .tl-art .cap {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--muted);
   text-align: center;
   padding-top: 2px;
@@ -391,7 +391,7 @@ body:not(.tl-labels) .tl-ico {
 }
 .tl-conf .sel {
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13px;
   padding: 7px 28px 7px 11px;
   color: var(--fg);
   background: var(--surface);
@@ -429,7 +429,7 @@ body:not(.tl-labels) .tl-ico {
   color: var(--fg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  box-shadow: 2px 2px 0 0 var(--border);
+  box-shadow: var(--shadow-1);
   cursor: pointer;
 }
 .tl-btn.primary {
@@ -441,7 +441,7 @@ body:not(.tl-labels) .tl-ico {
   color: var(--negative);
 }
 body[data-mode='dark'] .tl-btn {
-  box-shadow: 2px 2px 0 0 var(--surface-2);
+  box-shadow: var(--shadow-1);
 }
 
 /* On/off in this app is a `.chip`: filled with the accent when it is on. The
@@ -450,7 +450,7 @@ body[data-mode='dark'] .tl-btn {
    padding is not. */
 .tl-conf .chip {
   padding: 7px 12px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -522,7 +522,7 @@ body[data-mode='dark'] .tl-btn {
   color: var(--negative);
 }
 .tl-btn[disabled] {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 .tl-picks {
@@ -662,7 +662,7 @@ body[data-mode='dark'] .tl-btn {
   width: 100%;
   min-width: 0;
   padding: 6px 10px;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 /* The picker stands for the card the board is showing — thumbnail in the
    field, name as the value — so it sits where the format select sits on the
@@ -738,7 +738,7 @@ body[data-mode='dark'] .tl-btn {
   padding: 5px 7px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 .tl-list li[aria-selected='true'] {
   background: var(--surface-2);
@@ -767,7 +767,7 @@ body[data-mode='dark'] .tl-btn {
   font-weight: 700;
 }
 .tl-list li span {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -775,7 +775,7 @@ body[data-mode='dark'] .tl-btn {
   display: block;
   padding: 8px;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 /* palette popover */
@@ -833,10 +833,9 @@ body[data-mode='dark'] .tl-btn {
   background: var(--surface);
 }
 .tl-title b {
-  font-size: 21px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.03em;
-  outline: none;
   border-radius: 2px;
   padding: 1px 5px;
   margin-left: -5px;
@@ -896,7 +895,7 @@ body[data-mode='dark'] .tl-btn {
     font-size: 13px;
   }
   .tl-board:not([data-exporting]) .tl-plate[data-len='xlong'] {
-    font-size: 10px;
+    font-size: 10.5px;
   }
   /* Four 24px targets do not fit beside each other on a 62px plate, so they
      stack two by two and the plate grows a floor to hold them. */

@@ -65,6 +65,8 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Backfill Price History" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Window: ${{ github.event.inputs.days || '90' }} days" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Backfill Price History"
+            echo ""
+            echo "Window: ${{ github.event.inputs.days || '90' }} days"
+          } >> "$GITHUB_STEP_SUMMARY"

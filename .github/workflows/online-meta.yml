@@ -108,11 +108,13 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Online Meta Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Master JSON | ${{ inputs.generate_master != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Archetypes | ${{ inputs.generate_archetypes != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Decks | ${{ inputs.generate_decks != 'false' && 'Generated' || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Clean Month Cache | ${{ github.event.inputs.clean_month_cache == 'true' && 'Enabled' || 'Disabled' }} |" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Online Meta Report"
+            echo ""
+            echo "| Component | Status |"
+            echo "|-----------|--------|"
+            echo "| Master JSON | ${{ inputs.generate_master != 'false' && 'Generated' || 'Skipped' }} |"
+            echo "| Archetypes | ${{ inputs.generate_archetypes != 'false' && 'Generated' || 'Skipped' }} |"
+            echo "| Decks | ${{ inputs.generate_decks != 'false' && 'Generated' || 'Skipped' }} |"
+            echo "| Clean Month Cache | ${{ github.event.inputs.clean_month_cache == 'true' && 'Enabled' || 'Disabled' }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

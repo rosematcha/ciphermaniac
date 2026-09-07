@@ -156,7 +156,7 @@ export function CardImage(props: CardImageProps) {
   // number change with it), so honoring it costs no extra churn — whereas
   // ignoring it would 404 the hero at `lg` on every hover over an unconverted
   // print.
-  // eslint-disable-next-line solid/reactivity -- the probe specifically must not track
+
   const r2Probed = r2Ready();
   const useR2 = createMemo(() => r2Probed && props.skipR2 !== true);
   const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', useR2()));

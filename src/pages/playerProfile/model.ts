@@ -137,6 +137,8 @@ export function outcomeTone(outcome: PlayerRound['outcome']): 'win' | 'loss' | '
       return 'loss';
     case 'tie':
       return 'tie';
+    case 'unpaired':
+    case 'unknown':
     default:
       return null;
   }

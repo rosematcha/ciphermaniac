@@ -14,12 +14,17 @@
  */
 
 import { normalizeArchetypeName } from '../../cardUtils';
-import type { ArchetypeIdentity } from '../contracts';
 import { isRecord } from '../validate';
 
-// Re-export the identity triple type so callers can import it from the domain
-// package. The interface is defined in contracts.ts (the schema authority).
-export type { ArchetypeIdentity } from '../contracts';
+/** Archetype identity triple: comparison key, display label, URL slug. */
+export interface ArchetypeIdentity {
+  /** Lowercased, whitespace-collapsed comparison key. */
+  key: string;
+  /** Cased display label, preserved as first seen. */
+  displayName: string;
+  /** URL-safe slug derived from the key (not from a sanitized display label). */
+  slug: string;
+}
 
 // ============================================================================
 // Identity triple: key / displayName / slug

@@ -45,7 +45,7 @@ export function ArchetypesIndexPage() {
     }
     return map;
   });
-  const iconMap = getArchetypeIconMap();
+  const iconMap = getArchetypeIconMap;
   const [query, setQuery] = createSignal('');
   const [viewMode, setViewMode] = createPersistentViewMode('cm:archetypesView');
   const navigate = useNavigate();
@@ -133,7 +133,7 @@ export function ArchetypesIndexPage() {
               fallback={
                 <ArchetypesListView
                   items={filtered()}
-                  iconMap={iconMap}
+                  iconMap={iconMap()}
                   winRates={winRateData()}
                   totalDecks={totalDecks()}
                   scopeLabel={scopeLabel()}

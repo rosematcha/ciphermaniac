@@ -8,16 +8,13 @@
 
 const prefetched = new Set<string>();
 
-/** Route-path -> loader. Keys match the `path` prop passed to `<Route>` in main.tsx. */
-const routeLoaders: Record<string, () => Promise<unknown>> = {
-  '/cards': () => import('../pages/CardsIndexPage'),
-  '/cards/:set/:number': () => import('../pages/CardPage'),
-  '/archetypes': () => import('../pages/ArchetypesIndexPage'),
-  '/archetypes/:slug': () => import('../pages/ArchetypePage'),
-  '/trends': () => import('../pages/TrendsPage'),
-  '/players': () => import('../pages/PlayersPage'),
-  '/players/:id': () => import('../pages/PlayerProfilePage')
-};
+let routeLoaders: Readonly<Record<string, () => Promise<unknown>>> = {};
+
+/** Install route loaders from the application composition root. */
+export function configurePrefetch(loaders: Readonly<Record<string, () => Promise<unknown>>>): void {
+  routeLoaders = loaders;
+  prefetched.clear();
+}
 
 /** Prefetch the lazy chunk for a top-nav route, once per session. */
 export function prefetchRoute(path: string): void {

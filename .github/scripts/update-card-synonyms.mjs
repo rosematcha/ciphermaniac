@@ -426,7 +426,6 @@ async function buildClustersFromLimitless(printSet) {
       continue;
     }
 
-    // eslint-disable-next-line no-await-in-loop
     const variations = await scrapeCardPrintVariations(sampleSet, sampleNum);
     const filtered = (variations || [])
       .filter(v => v?.set && v?.number)

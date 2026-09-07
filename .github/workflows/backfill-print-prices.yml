@@ -72,7 +72,9 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Backfill Print Prices" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Dates: ${{ github.event.inputs.dates || 'all event dates' }}" >> $GITHUB_STEP_SUMMARY
-          echo "Force: ${{ github.event.inputs.force }}" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Backfill Print Prices"
+            echo ""
+            echo "Dates: ${{ github.event.inputs.dates || 'all event dates' }}"
+            echo "Force: ${{ github.event.inputs.force }}"
+          } >> "$GITHUB_STEP_SUMMARY"

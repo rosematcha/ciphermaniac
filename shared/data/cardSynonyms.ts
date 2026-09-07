@@ -52,8 +52,8 @@ export async function loadCardSynonyms(env: WorkerEnv): Promise<SynonymDatabase>
 
     console.warn('Card synonyms database not found');
     return EMPTY_DATABASE;
-  } catch (error: any) {
-    console.error('Failed to load card synonyms database:', error.message);
+  } catch (error: unknown) {
+    console.error('Failed to load card synonyms database:', error instanceof Error ? error.message : String(error));
     return EMPTY_DATABASE;
   }
 }

@@ -1,0 +1,373 @@
+{
+  ".github/scripts/build-loop.ts": [
+    "max-lines-per-function:016477e5c3677ddf874f6a23a416b46c6ad539800d7aa2568c954019f9be4f46:Async function 'main' has too many lines (192). Maximum allowed is 100.",
+    "max-depth:016477e5c3677ddf874f6a23a416b46c6ad539800d7aa2568c954019f9be4f46:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:016477e5c3677ddf874f6a23a416b46c6ad539800d7aa2568c954019f9be4f46:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:016477e5c3677ddf874f6a23a416b46c6ad539800d7aa2568c954019f9be4f46:Async function 'main' has a complexity of 31. Maximum allowed is 12."
+  ],
+  ".github/scripts/event-cli.ts": [
+    "complexity:553e29de581ff2b8b83f1c343ababab538d3b3ea748d5217bb98ee28b8c96193:Function 'parseArgs' has a complexity of 14. Maximum allowed is 12.",
+    "complexity:e0a408952b42e23d038216ed7e2c8d010a9dab875db3884c97da466c73162c10:Async function 'runReindex' has a complexity of 16. Maximum allowed is 12.",
+    "complexity:8b2b8b71803b317a1bde03dbb695659ae26361bd2b674d87db12253722bef1dc:Async function 'runReindexAll' has a complexity of 18. Maximum allowed is 12."
+  ],
+  ".github/scripts/lib/r2.mjs": [
+    "max-params:930c6c06ca22dfdb28da868a03a725c83c405101ca3b0b1679f897e1cecc445b:Async function 'putJson' has too many parameters (5). Maximum allowed is 4."
+  ],
+  ".github/scripts/parity-check-event.ts": [
+    "max-lines-per-function:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Async function 'main' has too many lines (144). Maximum allowed is 100.",
+    "max-depth:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Async function 'main' has a complexity of 35. Maximum allowed is 12."
+  ],
+  ".github/scripts/reconcile-indexes.ts": [
+    "complexity:a6e0c4938c66037261884b999b15c2561faeab28a9680eb83564888f5feb8fb9:Async function 'main' has a complexity of 13. Maximum allowed is 12."
+  ],
+  ".github/scripts/run-online-meta.ts": [
+    "max-lines-per-function:116f2bc568d02d7f4d4a169a087b1c4eb0299b7d5c1b0db68ce42cf17c2f43ba:Async function 'main' has too many lines (123). Maximum allowed is 100.",
+    "max-depth:116f2bc568d02d7f4d4a169a087b1c4eb0299b7d5c1b0db68ce42cf17c2f43ba:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:116f2bc568d02d7f4d4a169a087b1c4eb0299b7d5c1b0db68ce42cf17c2f43ba:Async function 'main' has a complexity of 22. Maximum allowed is 12."
+  ],
+  ".github/scripts/run-trends.ts": [
+    "max-lines-per-function:7053b04ea918d8abc8aabf7406885d09a155f3f994be6f2098103115311f2dc2:Async function 'main' has too many lines (161). Maximum allowed is 100.",
+    "complexity:7053b04ea918d8abc8aabf7406885d09a155f3f994be6f2098103115311f2dc2:Async function 'main' has a complexity of 32. Maximum allowed is 12."
+  ],
+  ".github/scripts/shadow-build-all.ts": [
+    "max-params:324ca65c5aff3d194769ba6b7cc855652ceb7e8484ad019f7c5446d28a3e7d3b:Function 'legacyEventToSource' has too many parameters (5). Maximum allowed is 4.",
+    "max-lines-per-function:ce52d87e6ce6ea996390b2e7b590a9b1c91621cee986e6384d4d0c5c76805650:Async function 'main' has too many lines (145). Maximum allowed is 100.",
+    "complexity:ce52d87e6ce6ea996390b2e7b590a9b1c91621cee986e6384d4d0c5c76805650:Async function 'main' has a complexity of 16. Maximum allowed is 12."
+  ],
+  ".github/scripts/update-card-synonyms.mjs": [
+    "complexity:1c79704bbb07e1d646b7f6e348528f662a7cd8ddf386a75f3373362835f3af7b:Async function 'loadPreviousSynonyms' has a complexity of 13. Maximum allowed is 12.",
+    "max-depth:41054f0d6f75f666123ec34a0a1166ae9b0977deec1904f9a2834f2459d90b50:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:f73f3dfd0c8ead3891e04164a4c513498ade91f926093be8432f6043c41b156d:Arrow function has a complexity of 16. Maximum allowed is 12.",
+    "max-depth:4b32b5440162677f0c1bddff7fa44a8022eba593d52d1ab2859421808c504265:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:4b32b5440162677f0c1bddff7fa44a8022eba593d52d1ab2859421808c504265:Async function 'generateSynonyms' has a complexity of 13. Maximum allowed is 12.",
+    "complexity:b28e6b7fd9533404546c2fd84ec5088623256c583dd71d1fd60177528c7eaa28:Async function 'main' has a complexity of 15. Maximum allowed is 12."
+  ],
+  "functions/api/archetype/filter-report.ts": [
+    "complexity:83ae641fd563fb7fef93cbca93a2a464b74e5b896b252c9186410887dbc30541:Function 'normalizeFilter' has a complexity of 19. Maximum allowed is 12.",
+    "complexity:57ca299927db69f7f8c1b6f6a842aa4d5b83fb2631a5f5fd4229dfd84f975d50:Function 'normalizePayload' has a complexity of 24. Maximum allowed is 12."
+  ],
+  "functions/api/feedback.ts": [
+    "complexity:dcc9066235bc272a5d48c59799b5fd6475537b2055bbb3edf6c0832d5b8816e3:Async function 'onRequestPost' has a complexity of 18. Maximum allowed is 12.",
+    "max-depth:2e6438c969022f25520cdd5ec42895f53223f58a57da853e6dda17f6dcaff9cb:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:2e6438c969022f25520cdd5ec42895f53223f58a57da853e6dda17f6dcaff9cb:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:2e6438c969022f25520cdd5ec42895f53223f58a57da853e6dda17f6dcaff9cb:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:2e6438c969022f25520cdd5ec42895f53223f58a57da853e6dda17f6dcaff9cb:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:2e6438c969022f25520cdd5ec42895f53223f58a57da853e6dda17f6dcaff9cb:Function 'buildEmailContent' has a complexity of 17. Maximum allowed is 12."
+  ],
+  "functions/sitemap.xml.ts": [
+    "complexity:add42e34bcaf31cc2b4332aeb04d5f515eadef337642ab98a84319c6fc35ed73:Async function 'onRequest' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "functions/thumbnails/[[path]].ts": [
+    "complexity:654be2267ea2325fb35a3765aef22e4aab7ce96261a947c1811b4c207b2fb92a:Async function 'onRequest' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "scripts/benchmark-routes.ts": [
+    "complexity:90832438b80e88ff4571bf56654655aeda86aaf226cee6590a0bd401236412f9:Arrow function has a complexity of 17. Maximum allowed is 12."
+  ],
+  "scripts/build-card-types.mjs": [
+    "complexity:12444753254b2d1af69548f18ca22a39cd210a802fdafabb6852ab8fadaac842:Function 'restructureEntry' has a complexity of 16. Maximum allowed is 12.",
+    "max-lines-per-function:810804c5f33cb4b8496e7ad4610a463d6fa5465d33979c07596f1ef4e1d7e33e:Function 'parseCardPage' has too many lines (156). Maximum allowed is 100.",
+    "complexity:810804c5f33cb4b8496e7ad4610a463d6fa5465d33979c07596f1ef4e1d7e33e:Function 'parseCardPage' has a complexity of 51. Maximum allowed is 12.",
+    "max-depth:d3ef7f11384000939358064a4646ae72d87b327268a77b88d0297f9cd91c6aa2:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:a405938a3ffed0672d8b93cf1254d712c2a26e1c7ff725cb409ed9080afc4b19:Async function 'main' has a complexity of 18. Maximum allowed is 12."
+  ],
+  "scripts/check-card-types.mjs": [
+    "max-depth:951e2f5f01704c76bc128f7058889cf74385751033f43b8ed4f3e6148ded8cb9:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:951e2f5f01704c76bc128f7058889cf74385751033f43b8ed4f3e6148ded8cb9:Blocks are nested too deeply (5). Maximum allowed is 3.",
+    "max-depth:951e2f5f01704c76bc128f7058889cf74385751033f43b8ed4f3e6148ded8cb9:Blocks are nested too deeply (5). Maximum allowed is 3.",
+    "max-depth:951e2f5f01704c76bc128f7058889cf74385751033f43b8ed4f3e6148ded8cb9:Blocks are nested too deeply (5). Maximum allowed is 3.",
+    "complexity:951e2f5f01704c76bc128f7058889cf74385751033f43b8ed4f3e6148ded8cb9:Async function 'extractCardsFromReport' has a complexity of 13. Maximum allowed is 12.",
+    "complexity:a4fc6f99ec12ae6d43473a3ddf4d6e33a5e81ecc9c0fabddbcec43b2bc5dad7e:Function 'evaluateClassification' has a complexity of 18. Maximum allowed is 12.",
+    "complexity:cf8ff4f72f11850409db504a13e03411dd3c059f703189c6062c4d498ea63afa:Async function 'main' has a complexity of 18. Maximum allowed is 12."
+  ],
+  "scripts/check-design-drift.ts": [
+    "max-depth:8e1d69e979e3e0bcf27a4106446e898cafa98a67544c9bf854f454cb86ab752f:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:7f75f128cd06cf5456cb5fddb1e465b3cca755f31077a59d4c29f8f90935a89f:Blocks are nested too deeply (4). Maximum allowed is 3."
+  ],
+  "scripts/check-repo-metadata.ts": [
+    "complexity:c21af4540805551014039cae8f8f692027449d1c8236f2bab58e70f3b7533633:Arrow function has a complexity of 14. Maximum allowed is 12.",
+    "complexity:c4a579222e29f3fcd1dbbaf93502ad12da8dcfb345811d8713b851dc344959ba:Arrow function has a complexity of 19. Maximum allowed is 12."
+  ],
+  "scripts/convert-card-images.ts": [
+    "complexity:78665e1fbeb60a5c63466ea7ee7b5c1a945729b04e7f9de66b33ebd89e1b5d29:Async function 'main' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "shared/analysis/archetypeClassifier.ts": [
+    "complexity:c6663a8a044c6cb56eaea99f324e5480841a463f3f4782eba47df4312966604c:Function 'resolveArchetypeClassification' has a complexity of 44. Maximum allowed is 12."
+  ],
+  "shared/api/limitless.ts": [
+    "complexity:586275ed21c60c9ac5c04d95d99d0ca71de0ad41fee58da247960bb14df30b85:Async function 'fetchLimitlessJson' has a complexity of 18. Maximum allowed is 12."
+  ],
+  "shared/cardCooccurrence.ts": [
+    "max-lines-per-function:62e718f80c1873bd6c808e5e067efdafe5316a81c0146e918a2f8d4a344d61e2:Function 'findSubstituteQuestions' has too many lines (105). Maximum allowed is 100.",
+    "max-depth:62e718f80c1873bd6c808e5e067efdafe5316a81c0146e918a2f8d4a344d61e2:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:62e718f80c1873bd6c808e5e067efdafe5316a81c0146e918a2f8d4a344d61e2:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:62e718f80c1873bd6c808e5e067efdafe5316a81c0146e918a2f8d4a344d61e2:Function 'findSubstituteQuestions' has a complexity of 35. Maximum allowed is 12.",
+    "max-depth:6d63e377cd02616002c68c97e100b5a877e07fccafa311412c9b3e8da9bd0b38:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:6d63e377cd02616002c68c97e100b5a877e07fccafa311412c9b3e8da9bd0b38:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:6d63e377cd02616002c68c97e100b5a877e07fccafa311412c9b3e8da9bd0b38:Function 'findComplements' has a complexity of 22. Maximum allowed is 12."
+  ],
+  "shared/clientSideFiltering.ts": [
+    "complexity:af61790c10b35fbd31594d72db01aebf0a816a2cbcb54b6f25285943e361ad1e:Arrow function has a complexity of 24. Maximum allowed is 12.",
+    "complexity:fb9a16dfa56ea8d2ceecb0ac78259055a58437713dd66b120222d4f97797dcdd:Function 'deriveSuccessTags' has a complexity of 29. Maximum allowed is 12.",
+    "complexity:edb8e2584349705e8fcf778cc855b5baacfd0fe4d3728c35d8bca23005539afa:Arrow function has a complexity of 17. Maximum allowed is 12.",
+    "max-lines-per-function:f05f8599340dbf58b0f44af2d3a9d599de69c7321b136c716981b3c75342f213:Function 'aggregateDecks' has too many lines (104). Maximum allowed is 100."
+  ],
+  "shared/data/adapters/labsSource.ts": [
+    "max-params:b57b2d6ab0dab59ca961672260eed1c437e452e4888f6d6f44e26d4df3839595:Function 'deriveOutcome' has too many parameters (5). Maximum allowed is 4.",
+    "complexity:b57b2d6ab0dab59ca961672260eed1c437e452e4888f6d6f44e26d4df3839595:Function 'deriveOutcome' has a complexity of 16. Maximum allowed is 12.",
+    "max-lines-per-function:8860c1523de4a2f0af60b7afc42205ab180c9c8fa974592cdd198dd844b1afc4:Function 'labsSourceToNormalized' has too many lines (131). Maximum allowed is 100.",
+    "complexity:8860c1523de4a2f0af60b7afc42205ab180c9c8fa974592cdd198dd844b1afc4:Function 'labsSourceToNormalized' has a complexity of 19. Maximum allowed is 12.",
+    "complexity:4d2876cf12f380f372ceaebf0cf1fd31abdd986c7422e561c08ff7a0e7496471:Arrow function has a complexity of 14. Maximum allowed is 12.",
+    "complexity:3287638f680aafa3f7879713b243950ef7be7634fae05d496ba9e97e3b5c14cd:Function 'buildDeckCards' has a complexity of 20. Maximum allowed is 12."
+  ],
+  "shared/data/analysis/archetypeTrends.ts": [
+    "complexity:8be9d872d29304a2eec7b8b7f360427c08d1be611648d0e4fc4d1e96e1e03c31:Function 'classifyCard' has a complexity of 13. Maximum allowed is 12.",
+    "max-depth:20aa1000ca0af63ce12b6ffe4d85f4b68ab45a8c4e60ae29428e62de686dc8d0:Blocks are nested too deeply (4). Maximum allowed is 3."
+  ],
+  "shared/data/archetypes/build.ts": [
+    "complexity:2fe591ef167f67456aa8f4ec5d5cdafa621bda1ca06080cfce66520df20fea8e:Function 'buildArchetypeReports' has a complexity of 23. Maximum allowed is 12."
+  ],
+  "shared/data/archetypes/presentation.ts": [
+    "complexity:7f6545dd8cd8fdc13e6e0da133a5e6197eeaad2d0e731926f701676fc5f4df72:Arrow function has a complexity of 14. Maximum allowed is 12.",
+    "complexity:7b5bc0fcbd38cb8289f5b1dd07de386a69ff6b7de1ef7e0d82f601b1edc9bdbf:Arrow function has a complexity of 16. Maximum allowed is 12.",
+    "complexity:5e2668f9f730e8ce308fb4d3b88bd3a668c301dd30598442b69546eaba19ea82:Arrow function has a complexity of 13. Maximum allowed is 12.",
+    "complexity:1a8ce84c3003bda3afb1009fa9b37b0b37ae909b9f54f9b75cc1bb0bae822d6e:Function 'resolveArchetypeThumbnails' has a complexity of 17. Maximum allowed is 12.",
+    "complexity:f289c35899f3742df44760a78d7e7271ec0c8a44a29d6eae8a83a087ad74e955:Function 'generateSignatureCards' has a complexity of 20. Maximum allowed is 12.",
+    "complexity:50d955b32f924626e0cbda20bb7f0d0aa9cb61bf46bd074d014b21502727955c:Function 'deriveIconsFromThumbnails' has a complexity of 16. Maximum allowed is 12.",
+    "max-params:e3f7450d737bbd30d98097900699417303c6ea454e18cc51b2cb6b9af027f5bc:Function 'resolveArchetypeIcons' has too many parameters (5). Maximum allowed is 4.",
+    "complexity:e3f7450d737bbd30d98097900699417303c6ea454e18cc51b2cb6b9af027f5bc:Function 'resolveArchetypeIcons' has a complexity of 14. Maximum allowed is 12."
+  ],
+  "shared/data/artifacts.ts": [
+    "complexity:ce503cb03a05ee3f41cdf37c6a3f706f3c73713f81d8a10812541d10117be7df:Function 'validateCardReport' has a complexity of 13. Maximum allowed is 12.",
+    "max-params:4e0ecdb0df8ccff4c7ca5a2c7fa39952f12204ab5ba30ef328bcdd4c117f8419:Function 'checkConversionCard' has too many parameters (5). Maximum allowed is 4.",
+    "complexity:369556d3340cb8e432c97d0f363947925ccb505a8f2536821d775fdf0c677725:Function 'validateArchetypeIndex' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "shared/data/build/buildLoop.ts": [
+    "max-params:a9d169e64b9addebd82eaccd90cefd063d294f344ba2e3d357ee6f4a8703cb6b:Async function 'runBuildLoop' has too many parameters (5). Maximum allowed is 4."
+  ],
+  "shared/data/build/channel.ts": [
+    "complexity:46bd7d799e1e44239bac9efb2a1bfa79c03b2c336b934c4d740290e5d5e47acb:Async function 'updatePointer' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "shared/data/build/graph.ts": [
+    "complexity:98005ecab0d8a5c936a4447aa8fb9e52b095ca60f7e3ce43830f477e9b9bda1d:Function 'validateNodeReceipt' has a complexity of 20. Maximum allowed is 12."
+  ],
+  "shared/data/build/release.ts": [
+    "complexity:fcf92a9ec5f5861bc2163a50a5fab39cfda85d9f131d540858cb1b98f2e1bfba:Function 'validateReleaseManifest' has a complexity of 23. Maximum allowed is 12."
+  ],
+  "shared/data/canonicalPrint.ts": [
+    "complexity:2e08257337c40dfbca704e24bb57b988166c5d640b6effc3b0fefc41e82ec724:Function 'chooseCanonicalPrint' has a complexity of 16. Maximum allowed is 12.",
+    "complexity:43532683e044611d067bf223835c5d25fe219de10c60e68b78ea5c6da836e761:Function 'resolveCanonicalUidAt' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "shared/data/cardIdentity.ts": [
+    "complexity:d226990ca51d65f38ca8f46a1fa8dbb7a6c7f2ce4749f6f35cac45ff7065e5df:Function 'normalizeSynonymDatabase' has a complexity of 16. Maximum allowed is 12.",
+    "complexity:0c19c55a1843ab25e681762a13ae3fb7b31626a3b89ecb2035b59f09e55a4da9:Function 'aggregateCanonicalCardsPerDeck' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "shared/data/cardTypesDatabase.ts": [
+    "max-depth:5eafd58058e91a6d399555eff9184f004ad2fe850f55ce5949174624c1440965:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:84e9afb22fa27038b5503e62e0f65884c2e2e6841b8b4a0adab0632f14751c7a:Function 'enrichCardWithType' has a complexity of 23. Maximum allowed is 12."
+  ],
+  "shared/data/contracts.ts": [
+    "complexity:479b1db9e2777bf74affffaddb5ced9e1d01fd610915bdda7bd15b9ce928207b:Function 'computeSuccessTags' has a complexity of 18. Maximum allowed is 12.",
+    "complexity:16b3e8e408f119b554f710b2d73c4076fda3f036e56bcd4dcd471ab2e505c439:Function 'validateParticipant' has a complexity of 13. Maximum allowed is 12.",
+    "max-params:2f887ea5dc7ffbaf058f693bcb24ab3962074126ce0fe6b2cae3b8ec301491db:Function 'validateDeck' has too many parameters (5). Maximum allowed is 4.",
+    "max-params:6fffafeebf1d8e40e1df0a3b439d3fa151ce82aa330bc903f0b0d77c4f5d368c:Function 'validateMatch' has too many parameters (5). Maximum allowed is 4.",
+    "max-params:c0a0577cf69223331a756ead4ec224c96ee15da5ca7489e441e706de6dccdd3a:Function 'checkSuccessTagDrift' has too many parameters (5). Maximum allowed is 4."
+  ],
+  "shared/data/reports/cardReport.ts": [
+    "max-lines-per-function:04bf1e0c8c166f46de2ad8a07db6982387820b99eed02eef796a6ce10a429197:Function 'generateReportFromDecks' has too many lines (123). Maximum allowed is 100.",
+    "complexity:04bf1e0c8c166f46de2ad8a07db6982387820b99eed02eef796a6ce10a429197:Function 'generateReportFromDecks' has a complexity of 46. Maximum allowed is 12."
+  ],
+  "shared/data/reports/cardSuccess.ts": [
+    "complexity:6f348bdbe6692d709466f99551f817a247df585a4d6ff433428c4d7a13f7759d:Function 'buildCardSuccessIndex' has a complexity of 22. Maximum allowed is 12."
+  ],
+  "shared/data/reports/conversion.ts": [
+    "complexity:63a103ed0129d72e2005f1d4854bd3824bcaccde7f4bc27e472b721d05e2e297:Function 'buildConversionIndex' has a complexity of 26. Maximum allowed is 12."
+  ],
+  "shared/data/reports/eventArtifacts.ts": [
+    "complexity:11756614c6fe3e4cc8263dd73ece003cd6e91970f88f74d6049230054e20c83b:Function 'buildEventArtifacts' has a complexity of 15. Maximum allowed is 12."
+  ],
+  "shared/data/reports/eventMatches.ts": [
+    "complexity:e8849f4badaa0653f988fa8e2d2f715b219ff97382c41a7e080616eadea2f574:Arrow function has a complexity of 19. Maximum allowed is 12.",
+    "complexity:94c1b761a5deadf408f25ca770feea49b715c24901e639728582043f0367d2b2:Arrow function has a complexity of 20. Maximum allowed is 12."
+  ],
+  "shared/data/reports/matchupProfiles.ts": [
+    "max-lines-per-function:11141464787b10480d228aed5d3ea67f6f8c88c01a1e71be977327f7714e0fba:Function 'buildMatchupProfiles' has too many lines (213). Maximum allowed is 100.",
+    "complexity:11141464787b10480d228aed5d3ea67f6f8c88c01a1e71be977327f7714e0fba:Function 'buildMatchupProfiles' has a complexity of 28. Maximum allowed is 12.",
+    "max-params:853ce6beee74bec0ff3b89156dd964a325069c8099053445aebd6c042877d7f6:Arrow function has too many parameters (5). Maximum allowed is 4."
+  ],
+  "shared/data/validate.ts": [
+    "max-params:f03e2a54e55d23cc53a3ba4e700ccc4dc21c82bfb941d36a40c1c4ac10decb87:Function 'checkArrayOf' has too many parameters (5). Maximum allowed is 4."
+  ],
+  "shared/onlineMeta/archetypeBuilder.ts": [
+    "max-lines-per-function:d455c053a371ede4dcacbdef478d3c3374d16ce758944f69a3b39c82bcfee191:Function 'buildTrendReport' has too many lines (173). Maximum allowed is 100.",
+    "complexity:d455c053a371ede4dcacbdef478d3c3374d16ce758944f69a3b39c82bcfee191:Function 'buildTrendReport' has a complexity of 44. Maximum allowed is 12.",
+    "complexity:1025daab74985fed09ad19a5050712390054ef3a6f682bd7a4f3cf72b1ca3672:Arrow function has a complexity of 13. Maximum allowed is 12.",
+    "max-lines-per-function:62bc6e2d22d701fa892c2eb500ecca7b2ce862bfe8691ccdca66a08f814a7b0b:Function 'buildCardTrendReport' has too many lines (126). Maximum allowed is 100.",
+    "max-depth:62bc6e2d22d701fa892c2eb500ecca7b2ce862bfe8691ccdca66a08f814a7b0b:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:62bc6e2d22d701fa892c2eb500ecca7b2ce862bfe8691ccdca66a08f814a7b0b:Function 'buildCardTrendReport' has a complexity of 30. Maximum allowed is 12."
+  ],
+  "shared/onlineMeta/playerAggregator.ts": [
+    "complexity:8beb1374a09c0677b6ba828d3a32812c67e1d1940f6f7ac79166b5882e70cdc5:Async function 'loadTournamentSlice' has a complexity of 21. Maximum allowed is 12.",
+    "complexity:117f8267e71af84b569ee047d8abc40792b299ac45bd0959f89da0d95ec89fb3:Function 'toPlayerRound' has a complexity of 13. Maximum allowed is 12.",
+    "complexity:96643bc63c30e632977f7885af7dec4d6fe09e238a8b7d40395a7f43b78c1ad7:Function 'accumulateMatches' has a complexity of 16. Maximum allowed is 12.",
+    "complexity:7789fa937abc2c77eceb2d0342bb29e31f136ccd0c260cbe0dcb56b8f6e42e82:Function 'accumulateSlice' has a complexity of 16. Maximum allowed is 12.",
+    "max-params:ac2c392c90c887a497f41111a2b2ab918e9903d4fecf99a5ebeb7222d6a4a1c4:Function 'planWrites' has too many parameters (5). Maximum allowed is 4.",
+    "complexity:ac2c392c90c887a497f41111a2b2ab918e9903d4fecf99a5ebeb7222d6a4a1c4:Function 'planWrites' has a complexity of 13. Maximum allowed is 12.",
+    "complexity:198aed77dbadc36994166c109707cf0cca75fc3688bed5556ade8ef5f59f5fb2:Async function 'buildPlayerAggregates' has a complexity of 14. Maximum allowed is 12."
+  ],
+  "shared/onlineMeta/snapshotGenerator.ts": [
+    "max-lines-per-function:5a20d40c02f7c231b6f0d102512b4792a623e16a43443d2e79cddecb591a32a6:Async function 'runRotationSnapshot' has too many lines (108). Maximum allowed is 100."
+  ],
+  "shared/onlineMeta/snapshotIndexBuilder.ts": [
+    "complexity:bb8c1555cf3e31c337874aa6772752578b485b72df248969c0643512083c409f:Async function 'loadActiveSets' has a complexity of 17. Maximum allowed is 12.",
+    "max-depth:bfc40e973d94e9cb047a2282a69a7a3cc70b37d33ff508d0ee65a0874fbaf10b:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:bfc40e973d94e9cb047a2282a69a7a3cc70b37d33ff508d0ee65a0874fbaf10b:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:bfc40e973d94e9cb047a2282a69a7a3cc70b37d33ff508d0ee65a0874fbaf10b:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:bfc40e973d94e9cb047a2282a69a7a3cc70b37d33ff508d0ee65a0874fbaf10b:Blocks are nested too deeply (5). Maximum allowed is 3.",
+    "max-depth:bfc40e973d94e9cb047a2282a69a7a3cc70b37d33ff508d0ee65a0874fbaf10b:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:bfc40e973d94e9cb047a2282a69a7a3cc70b37d33ff508d0ee65a0874fbaf10b:Async function 'rebuildSnapshotIndex' has a complexity of 27. Maximum allowed is 12."
+  ],
+  "shared/onlineMeta/tournamentFetcher.ts": [
+    "max-depth:966f0f53004d538ddeaa09b19865c2d4f3bec7b3d80bd70e83ea6eef866ff399:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:966f0f53004d538ddeaa09b19865c2d4f3bec7b3d80bd70e83ea6eef866ff399:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:966f0f53004d538ddeaa09b19865c2d4f3bec7b3d80bd70e83ea6eef866ff399:Function 'toCardEntries' has a complexity of 30. Maximum allowed is 12.",
+    "max-params:f3d3de225688c72b5023533bbe2710f36237bcbc29fd661c377c8ef979995090:Function 'enforceFailureBudget' has too many parameters (5). Maximum allowed is 4.",
+    "complexity:d9da65522bc311969211a7d45e31c7f0c6b90e1341de111928ba4a6d7a563c4e:Async function 'fetchTournamentSummaries' has a complexity of 14. Maximum allowed is 12.",
+    "complexity:2e2890b6f6eec8103ed0a6fb8b4cc9471e0c017b109e46f9f29bd93ed9ef0063:Async arrow function has a complexity of 29. Maximum allowed is 12.",
+    "complexity:0ba068467f9a66f69818bfa7e20b138072fbf1d37f2e26652bf6d63248432f76:Function 'initDiagnostics' has a complexity of 14. Maximum allowed is 12.",
+    "max-params:2aa7d7072b0e0776a3653ae9989cf14f6d76960ea802717f738cf90e47e21ea6:Function 'buildPendingDeck' has too many parameters (6). Maximum allowed is 4.",
+    "complexity:2aa7d7072b0e0776a3653ae9989cf14f6d76960ea802717f738cf90e47e21ea6:Function 'buildPendingDeck' has a complexity of 31. Maximum allowed is 12.",
+    "max-params:092cbafb24788e3f0bf6e533da4536e9b29bb25e8e6da906913eeb3506ece9fe:Async function 'gatherDecks' has too many parameters (5). Maximum allowed is 4.",
+    "complexity:092cbafb24788e3f0bf6e533da4536e9b29bb25e8e6da906913eeb3506ece9fe:Async function 'gatherDecks' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "shared/playerTypes.ts": [
+    "complexity:824e0ef62e68000172f189b5c3611040da3530a1bc1a0289c80bd9bce2525f65:Function 'decodeSlimIndex' has a complexity of 23. Maximum allowed is 12."
+  ],
+  "src/components/AdvancedPanel.tsx": [
+    "max-lines-per-function:dceb835b600ee873cddc53eb8eb45e51fd60d911ec4b8cfc7edc24dd6a720e03:Function 'useAdvancedPanel' has too many lines (450). Maximum allowed is 250.",
+    "max-lines-per-function:52782eca7b82d78e5398a35630f5ce8373a38822febd60cf7876cd2f82ddd51c:Function 'AdvancedPanel' has too many lines (271). Maximum allowed is 250."
+  ],
+  "src/components/CardTile.tsx": [
+    "max-depth:aaddb8d0c23fc798e8c02794b0069fdc23a5fcba0d9f8718514f2699500a8446:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:aaddb8d0c23fc798e8c02794b0069fdc23a5fcba0d9f8718514f2699500a8446:Arrow function has a complexity of 13. Maximum allowed is 12."
+  ],
+  "src/components/MatchupsPanel.tsx": [
+    "max-lines-per-function:1767e2ab5d9609910b3d7551290442de8509a83fff0cbbe9027a63e4652d7936:Function 'MatchupsPanel' has too many lines (475). Maximum allowed is 250."
+  ],
+  "src/components/advancedPanel/model.ts": [
+    "max-params:9370e04b7a8a408e147cb194ff6ef9910d4a80e2ee6c18f5e4e32f46d256bee0:Function 'searchCandidates' has too many parameters (5). Maximum allowed is 4."
+  ],
+  "src/lib/archetypeWinRate.ts": [
+    "max-params:d090d8163a01beb765cf83c7043685aa78c99d1e9497da7c55f43cbc914df638:Arrow function has too many parameters (5). Maximum allowed is 4."
+  ],
+  "src/lib/cardFilters.ts": [
+    "complexity:8178b013c98aff583510406c239542d49bd7330e3435190e6309d8ff3d0412bb:Function 'matchesCardFilters' has a complexity of 14. Maximum allowed is 12."
+  ],
+  "src/lib/cardLens.ts": [
+    "complexity:44652fb45655230685bba3cb08bd6ac6b1ef01dc1035c5c846111eb230c3e3c3:Function 'tallyLens' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "src/lib/cardOrder.ts": [
+    "complexity:c2a69008e9c79f9b8bd8991712329825c3b27330cfa9948d4a5aca2f60efc1e0:Function 'deckSection' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "src/lib/cardWall/gif.ts": [
+    "complexity:daa6246ecc6ba86fda2db9c925095564d4d121a9cddbf7934a221dc7dfb5a8b3:Function 'buildPalette' has a complexity of 14. Maximum allowed is 12.",
+    "max-depth:ba67cf76de3af92112157af97aa15d5abfa9c32be5485849f7aa0e7eabe6662d:Blocks are nested too deeply (4). Maximum allowed is 3."
+  ],
+  "src/lib/cardWall/render.ts": [
+    "max-params:0b20f2a52b3867f6f60e51e4feaf3fc16a35f3b4997ff00400ae1a7ca0b841c5:Function 'drawRow' has too many parameters (7). Maximum allowed is 4.",
+    "max-params:103f3fe3a4b7df494562d637b947fde83252da9ee800505942af502badf6e02d:Function 'drawStage' has too many parameters (6). Maximum allowed is 4.",
+    "max-params:6d039df043abe98b5213d8c7dc4b8a631729c42ff6f5349257a2917c8355e21a:Method 'paint' has too many parameters (7). Maximum allowed is 4."
+  ],
+  "src/lib/data/compat.ts": [
+    "max-depth:77ee94f4893e64634c3b70d1fed60de416373a00ef79c259fee6ae6b03ad291a:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:77ee94f4893e64634c3b70d1fed60de416373a00ef79c259fee6ae6b03ad291a:Blocks are nested too deeply (5). Maximum allowed is 3.",
+    "complexity:77ee94f4893e64634c3b70d1fed60de416373a00ef79c259fee6ae6b03ad291a:Function 'canonicalizeReport' has a complexity of 42. Maximum allowed is 12."
+  ],
+  "src/lib/data/events.ts": [
+    "complexity:ad2b2063edf0309160283859f54d0df4476edaca237ed96f1cece2d733aec2f5:Async function 'day2CardStatsFromDecks' has a complexity of 18. Maximum allowed is 12."
+  ],
+  "src/lib/format.ts": [
+    "complexity:9083994bef192fa1103d4fa47ecccee81460320de321b02e2c2afa2c15de203c:Function 'formatRecord' has a complexity of 17. Maximum allowed is 12."
+  ],
+  "src/lib/labelmaker/renderLabel.ts": [
+    "max-params:fd25ebf34ecfd8965ea2c9fff92bf45c24143060d921beb1a915f8df70921ab6:Function 'drawHalo' has too many parameters (5). Maximum allowed is 4.",
+    "max-params:2093e9008e35e8d3c081d033336008b5ddb770bafeee096dc424ae243d0dbfda:Function 'drawStar' has too many parameters (6). Maximum allowed is 4.",
+    "max-params:56fb6afca548387f232032fd6b408e929c8fbfcea7c22971ba70074959c77467:Function 'drawStars' has too many parameters (7). Maximum allowed is 4.",
+    "max-params:99ae5aeb20719d3f063a4633e2ee692be10c207f85a77db33d568af693ba7ae3:Function 'drawProgress' has too many parameters (8). Maximum allowed is 4.",
+    "max-params:9c1dd2ee1432ac13034f618700dd9f76087d44dfcc5e140f2da62ff3aa79d8e2:Function 'fitText' has too many parameters (7). Maximum allowed is 4.",
+    "max-lines-per-function:862c6980d8fdab4fb2cd19d428a8075db3a53065786400d180615f444ca4d235:Function 'rasterize' has too many lines (105). Maximum allowed is 100.",
+    "complexity:862c6980d8fdab4fb2cd19d428a8075db3a53065786400d180615f444ca4d235:Function 'rasterize' has a complexity of 23. Maximum allowed is 12.",
+    "complexity:da693aaae45bb74850b76e36d61d18fcd23e3b85dd0bba616f8d9527da516747:Function 'drawTextBlock' has a complexity of 19. Maximum allowed is 12.",
+    "complexity:9933333b38842df574eb09352bb17188efa12e1962aa35dba0c9da3e842e440d:Async function 'renderLabel' has a complexity of 32. Maximum allowed is 12."
+  ],
+  "src/lib/majorsTrends.ts": [
+    "complexity:7f76814cb5516e4df514ea939f269294f54985d5179245a7d85024129fff8821:Function 'computeMajorsMovers' has a complexity of 16. Maximum allowed is 12.",
+    "complexity:bb7cf5febed7821aba38c85e74269b55e859d1ec5b79780938b1bd8cb8e53996:Arrow function has a complexity of 14. Maximum allowed is 12."
+  ],
+  "src/lib/matchups.ts": [
+    "complexity:08ba309cd01f2d551174decb9b6a29902f30ea1af5d29fc9f861842d4c25cd7c:Function 'rowsFromMajorsProfile' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "src/lib/metaBinder.ts": [
+    "max-lines-per-function:d7f87918de06d361ab020b07d84581fc24cb458c1b980bc350b5d07e234ea0fe:Function 'buildBinder' has too many lines (128). Maximum allowed is 100.",
+    "complexity:d7f87918de06d361ab020b07d84581fc24cb458c1b980bc350b5d07e234ea0fe:Function 'buildBinder' has a complexity of 28. Maximum allowed is 12."
+  ],
+  "src/lib/persistentSignal.ts": [
+    "max-params:956cc8c8d9a7e9452083c10a1332af219b64857ab1793a9110c0bbb4d304dc1e:Function 'createStoredSignal' has too many parameters (5). Maximum allowed is 4."
+  ],
+  "src/lib/storylines.ts": [
+    "complexity:74e6d28a29daf9e32c9ccaa6a562850b4154a68194de8f3761726a94257099fa:Arrow function has a complexity of 13. Maximum allowed is 12.",
+    "complexity:deaaf5506e2ff57fe7aae7c8d1fa4e44ad447a3481f63da25ffede4fd9d50fd4:Arrow function has a complexity of 15. Maximum allowed is 12."
+  ],
+  "src/lib/tierList/itemSortable.ts": [
+    "max-lines-per-function:ff5583cef4956e3aeb4d1b742d791bbeea5dfabac915d0794c5dfd91b0ac2f1b:Function 'installItemSortable' has too many lines (265). Maximum allowed is 100."
+  ],
+  "src/lib/tierList/rowSortable.ts": [
+    "max-lines-per-function:36ca0164f47d31e788d107fbdee3d2b89fb538508e381195a23a64f13cecaf11:Function 'installRowSortable' has too many lines (177). Maximum allowed is 100."
+  ],
+  "src/pages/CardPage.tsx": [
+    "complexity:d84a142aff7f1ee00cd78aacf3189fc4866493f812caec684592c57fe36d929f:Function 'CardPageBody' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "src/pages/CardWallPage.tsx": [
+    "max-lines-per-function:f2b45c43acf3564f26c13a2599507d7a46801cc512f8533846b375961b97997f:Function 'CardWallPage' has too many lines (538). Maximum allowed is 250."
+  ],
+  "src/pages/CardsIndexPage.tsx": [
+    "max-lines-per-function:2938348800b6dfeb19ed683d7e48c320157cb1a5399c1d6827d71c87892fc912:Function 'CardsIndexPage' has too many lines (441). Maximum allowed is 250."
+  ],
+  "src/pages/HomePage.tsx": [
+    "complexity:b104f095892157eed023b5fa9d73312a5a4d87cc1877ecde786b576a2eb6c3ea:Arrow function has a complexity of 13. Maximum allowed is 12.",
+    "complexity:d60426ddfd918a06254bdbd7da0a3c60643ea1a4666cf06e9a197400da361cd8:Arrow function has a complexity of 23. Maximum allowed is 12.",
+    "max-lines-per-function:c9526bcbd8ea14c02aeb92370ae7a30582c317c729a21af69b5b44cdeb61366c:Function 'LatestEventCallout' has too many lines (313). Maximum allowed is 250."
+  ],
+  "src/pages/LabelMakerPage.tsx": [
+    "max-lines-per-function:35e49a3f84436d04ac765971d9bf884be1f943fad7f1029708ec3dafd960dbdf:Function 'LabelMakerPage' has too many lines (553). Maximum allowed is 250."
+  ],
+  "src/pages/MetaBinderPage.tsx": [
+    "max-lines-per-function:e13874bbfbb437ea1ca8f2df6c912fe58fe3b4555cd0aabc87b4df8850116998:Function 'MetaBinderPage' has too many lines (251). Maximum allowed is 250."
+  ],
+  "src/pages/SocialGraphicsPage.tsx": [
+    "max-lines-per-function:9c9d7ce275996f1d425e913a55375b5bbaf03c75c371852e9e62835a3f263eac:Function 'SocialGraphicsPage' has too many lines (304). Maximum allowed is 250.",
+    "complexity:9c9d7ce275996f1d425e913a55375b5bbaf03c75c371852e9e62835a3f263eac:Function 'SocialGraphicsPage' has a complexity of 24. Maximum allowed is 12."
+  ],
+  "src/pages/TierListPage.tsx": [
+    "max-lines-per-function:57ce11de2189a54a46f552e3f08ac9a8c368c37c1b08917b9cb79743ab035bdb:Function 'TierListPage' has too many lines (469). Maximum allowed is 250."
+  ],
+  "src/pages/TrendsPage.tsx": [
+    "max-lines-per-function:3656df5a1e4845d0203b1c5b7f8f14f3ac3318d63a086d6d217d36f25e299960:Function 'ArchetypeTrendChart' has too many lines (432). Maximum allowed is 250."
+  ],
+  "src/pages/cardPage/model.ts": [
+    "complexity:0793c5ccb2b3c502d8166fb3a66763f3ffe97873f376f96f3a8107b557498982:Function 'findCardInArchetypeReport' has a complexity of 16. Maximum allowed is 12."
+  ],
+  "src/pages/socialGraphics/model.ts": [
+    "complexity:ef17683d80b0001d52123f5bf2cc5ae3b127eb085f4e97166ecf85afa6e6ec89:Function 'collapseEvolutions' has a complexity of 13. Maximum allowed is 12."
+  ],
+  "src/pages/tierList/model.ts": [
+    "max-params:b82956608727c7c700e3e71b4825bdf99bc982960f7dad68cc5c4455d9dbb0ba:Function 'rankByQuery' has too many parameters (5). Maximum allowed is 4."
+  ],
+  "src/utils/buildState.ts": [
+    "complexity:99609732abd341ba5c8493777e3bd9b00e691d43537fb67190fc66d20c634a0d:Function 'decodeBuildState' has a complexity of 19. Maximum allowed is 12."
+  ],
+  "src/utils/printings.ts": [
+    "complexity:08e0cd51bd8a290581c15a985e56a448bc54781c55c0d2ac642043c48a57f5b5:Function 'buildPrintingRows' has a complexity of 16. Maximum allowed is 12."
+  ]
+}

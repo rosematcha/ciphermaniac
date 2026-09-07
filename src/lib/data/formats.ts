@@ -1,24 +1,9 @@
-/**
- * The formats the Tier List Maker can rank, and where each one's archetypes
- * come from.
- *
- * Two sources, one interface. Standard is our own rolling online-meta report on
- * R2, rebuilt daily. Everything else is a committed snapshot of the Limitless
- * metagame table, scraped by `.github/scripts/scrape-format-archetypes.py`,
- * which reads each archetype's decklists there for the cards it was built
- * around — so a scraped format carries sprite slugs and card art both, and
- * Previews works everywhere.
- *
- * The snapshot is bundled rather than fetched for the same reason the archetype
- * icon map is: the repo's runtime data dir is CI-populated, so a same-origin
- * fetch would not resolve in dev, and 19KB is cheaper than an R2 round trip we
- * would then have to cache-bust.
- * @module src/lib/data/formats
- */
+/** Format metadata loaded on demand from R2 for the Tier List Maker. */
 
 import { fetchArchetypes } from './archetypes';
 import { ONLINE } from './paths';
-import snapshot from '../../data/format-archetypes.json';
+import { createSignal } from 'solid-js';
+import { dataClient } from './client';
 import type { ArchetypeIndexEntry } from '../../types';
 
 /** Whether a format is still being played, which decides how it is grouped. */
@@ -65,11 +50,65 @@ const STANDARD: TierFormat = {
   previews: true
 };
 
-const SCRAPED: SnapshotFormat[] = ((snapshot as { formats?: SnapshotFormat[] }).formats ?? []).filter(
-  format => format.archetypes.length > 0
-);
+const [scraped, setScraped] = createSignal<SnapshotFormat[]>([]);
 
-const SCRAPED_BY_ID = new Map(SCRAPED.map(format => [format.id, format]));
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validStrings(value: unknown, pattern: RegExp): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.length <= 2 &&
+    value.every(item => typeof item === 'string' && pattern.test(item))
+  );
+}
+
+function isArchetype(value: unknown): value is SnapshotArchetype {
+  if (!isRecord(value) || typeof value.name !== 'string' || !value.name.trim() || value.name === 'Other') {
+    return false;
+  }
+  return (
+    typeof value.share === 'number' &&
+    value.share > 0 &&
+    value.share <= 100 &&
+    validStrings(value.icons, /^[a-z0-9-]+$/) &&
+    (value.cards === undefined || validStrings(value.cards, /^[A-Z0-9]{2,8}\/(?:\d{3}[A-Z]*|[A-Z]{1,4}\d+)$/))
+  );
+}
+
+function isFormat(value: unknown): value is SnapshotFormat {
+  if (!isRecord(value) || typeof value.id !== 'string' || !/^[a-z0-9-]+$/.test(value.id)) {
+    return false;
+  }
+  if (value.id === STANDARD_FORMAT_ID || typeof value.label !== 'string' || !value.label.trim()) {
+    return false;
+  }
+  if (value.group !== 'past' && value.group !== 'current') {
+    return false;
+  }
+  const entries = value.archetypes;
+  return (
+    Array.isArray(entries) &&
+    entries.length > 0 &&
+    entries.every(isArchetype) &&
+    new Set(entries.map(entry => entry.name)).size === entries.length
+  );
+}
+
+export async function loadTierFormats(
+  fetchSnapshot: () => Promise<unknown> = () => dataClient.fetchJson('/assets/format-archetypes.json')
+): Promise<void> {
+  const value = await fetchSnapshot();
+  if (!isRecord(value) || !Array.isArray(value.formats) || !value.formats.every(isFormat)) {
+    throw new Error('Invalid format archetype snapshot');
+  }
+  if (new Set(value.formats.map(format => format.id)).size !== value.formats.length) {
+    throw new Error('Duplicate format IDs');
+  }
+  setScraped(value.formats);
+}
 
 /**
  * Whether every archetype in a format has art, which is what the Previews
@@ -86,9 +125,9 @@ function hasArts(format: SnapshotFormat): boolean {
  * Every format the picker offers, in display order: Standard leads, then the
  * snapshot's own order, which its producer keeps in catalog order.
  */
-export const TIER_FORMATS: TierFormat[] = [
+export const tierFormats = (): TierFormat[] => [
   STANDARD,
-  ...SCRAPED.map(format => ({
+  ...scraped().map(format => ({
     id: format.id,
     label: format.label,
     group: format.group === 'past' ? ('past' as const) : ('current' as const),
@@ -98,7 +137,7 @@ export const TIER_FORMATS: TierFormat[] = [
 
 /** Resolves an id to a format, falling back to Standard for anything unknown. */
 export function tierFormat(id: string | undefined): TierFormat {
-  return TIER_FORMATS.find(format => format.id === id) ?? STANDARD;
+  return tierFormats().find(format => format.id === id) ?? STANDARD;
 }
 
 /**
@@ -114,7 +153,7 @@ export async function fetchFormatArchetypes(id: string): Promise<ArchetypeIndexE
   if (format.id === STANDARD_FORMAT_ID) {
     return fetchArchetypes(ONLINE);
   }
-  return (SCRAPED_BY_ID.get(format.id)?.archetypes ?? []).map(archetype => ({
+  return (scraped().find(entry => entry.id === format.id)?.archetypes ?? []).map(archetype => ({
     name: archetype.name,
     label: archetype.name,
     deckCount: null,

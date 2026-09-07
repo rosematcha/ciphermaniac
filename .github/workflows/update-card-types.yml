@@ -40,7 +40,7 @@ jobs:
     timeout-minutes: 45 # force-refresh re-scrapes every card (~2,700 x ~0.5s)
 
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -156,59 +156,9 @@ jobs:
 
           echo "Uploaded card types database + slim evolves-from/card-facets maps to R2"
 
-      - name: Check for changes
-        id: check_changes
-        run: |
-          if git diff --quiet public/assets/data/card-types.json; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "No changes detected in card types database"
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "Changes detected in card types database"
-          fi
-
-      - name: Commit and push changes
-        if: steps.check_changes.outputs.has_changes == 'true'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-
-          git add public/assets/data/card-types.json
-          git commit -m "chore: update card types database [skip ci]"
-          git push
-
       - name: Upload card types database as artifact
         uses: actions/upload-artifact@v4
         with:
           name: card-types-database
           path: public/assets/data/card-types.json
           retention-days: 30
-
-      - name: Summary
-        run: |
-          echo "## Card Types Database Update" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          if [ "${{ github.event.inputs.force_refresh }}" == "true" ]; then
-            echo "🔄 **Force refresh mode** - All cards were re-scraped to update regulation marks" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
-            echo "Database updated with new card types" >> $GITHUB_STEP_SUMMARY
-
-            # Count cards in database
-            CARD_COUNT=$(jq 'length' public/assets/data/card-types.json)
-            echo "- Total cards in database: **${CARD_COUNT}**" >> $GITHUB_STEP_SUMMARY
-
-            # Count cards with regulation marks
-            REG_MARK_COUNT=$(jq '[.[] | select(.regulationMark != null)] | length' public/assets/data/card-types.json)
-            echo "- Cards with regulation marks: **${REG_MARK_COUNT}**" >> $GITHUB_STEP_SUMMARY
-
-            # ACE SPEC comes from the site's `is:ace` search, not the card pages,
-            # so a zero here means that overlay stopped working.
-            ACE_SPEC_COUNT=$(jq '[.[] | select(.aceSpec == true)] | length' public/assets/data/card-types.json)
-            echo "- ACE SPEC cards: **${ACE_SPEC_COUNT}**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "No new cards to add - database is up to date" >> $GITHUB_STEP_SUMMARY
-          fi

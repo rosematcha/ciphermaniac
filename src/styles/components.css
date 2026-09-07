@@ -160,7 +160,7 @@
   }
 }
 .topnav-menu-link {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted);
   padding: 7px 10px;
   border-radius: var(--radius-sm);
@@ -1059,7 +1059,7 @@ table.data {
 .data th .sort-mark {
   display: inline-block;
   margin-left: 4px;
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--accent);
 }
 /* The inactive column's mark still occupies its slot; only the glyph goes. */
@@ -1348,7 +1348,7 @@ tr.row-expansion > td {
   color: var(--muted);
   font-weight: 500;
   padding: 0 12px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   transition:
     background var(--ms-fast),
     color var(--ms-fast);
@@ -1752,7 +1752,7 @@ tr.row-expansion > td {
     padding-bottom: var(--space-3);
   }
   .callout-title {
-    font-size: 24px;
+    font-size: 22px;
   }
   .callout-meta-extra {
     display: none;
@@ -1858,16 +1858,16 @@ tr.row-expansion > td {
 }
 .story-card:active {
   transform: translate(0, 0);
-  box-shadow: 1px 1px 0 0 var(--border);
+  box-shadow: var(--shadow-press);
 }
 body[data-mode='dark'] .story-card {
-  box-shadow: 2px 2px 0 0 var(--surface-2);
+  box-shadow: var(--shadow-1);
 }
 body[data-mode='dark'] .story-card:hover {
-  box-shadow: 3px 3px 0 0 var(--surface-2);
+  box-shadow: var(--shadow-2);
 }
 body[data-mode='dark'] .story-card:active {
-  box-shadow: 1px 1px 0 0 var(--surface-2);
+  box-shadow: var(--shadow-press);
 }
 
 .story-card-art {
@@ -1936,7 +1936,7 @@ body[data-mode='dark'] .story-card:active {
   margin: 0;
 }
 .story-card-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -2043,7 +2043,7 @@ body[data-mode='dark'] .story-card:active {
     font-size: 13px;
   }
   .stats-list .stat-label {
-    font-size: 11.5px;
+    font-size: 12px;
   }
   .card-page-hero {
     margin-bottom: 18px;
@@ -2337,7 +2337,7 @@ body[data-mode='dark'] .story-card:active {
   stroke: var(--fg);
   stroke-width: 1;
   stroke-dasharray: 3 3;
-  opacity: 0.45;
+  opacity: 0.4;
 }
 .trend-chart .hover-dot {
   stroke: var(--surface);

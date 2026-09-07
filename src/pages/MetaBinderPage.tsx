@@ -274,7 +274,12 @@ export function MetaBinderPage() {
           </Show>
         </div>
         <div class='mb-summary-actions'>
-          <button type='button' class='btn btn-secondary' onClick={copyChecklist} disabled={!binder().cardCount}>
+          <button
+            type='button'
+            class='btn btn-secondary'
+            onClick={() => void copyChecklist()}
+            disabled={!binder().cardCount}
+          >
             {copied() ? 'Copied' : 'Copy list'}
           </button>
           <button type='button' class='btn btn-secondary' onClick={printChecklist} disabled={!binder().cardCount}>

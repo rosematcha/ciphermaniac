@@ -17,7 +17,7 @@ async function collectTestFiles(directory) {
       }
       continue;
     }
-    if (entry.isFile() && entry.name.endsWith('.test.ts')) {
+    if (entry.isFile() && /\.test\.(?:ts|mjs)$/.test(entry.name)) {
       files.push(join(directory, entry.name));
     }
   }

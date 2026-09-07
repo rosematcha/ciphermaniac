@@ -45,12 +45,13 @@ export function fetchRotationIndex(): Promise<SnapshotIndex | null> {
   if (!snapshotIndexPromise) {
     const attempt = fetchJsonOptional<SnapshotIndex>('/reports/Snapshots/index.json').catch(() => null);
     snapshotIndexPromise = attempt;
-    attempt.then(value => {
+    snapshotIndexPromise = attempt.then(value => {
       if (value === null) {
         // Treat "no snapshot index yet" as a soft miss but don't pin a null
         // forever — let later page navs retry in case the file appears.
         snapshotIndexPromise = null;
       }
+      return value;
     });
   }
   return snapshotIndexPromise;

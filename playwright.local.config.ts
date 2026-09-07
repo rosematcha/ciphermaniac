@@ -25,6 +25,7 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   reporter: process.env.CI ? 'line' : 'list',
   use: {
+    serviceWorkers: 'block',
     baseURL: `http://127.0.0.1:${PREVIEW_PORT}`,
     // Any request that escapes to the real R2 is a bug in the fixture setup,
     // not a passing test with a slow network.
@@ -43,7 +44,7 @@ export default defineConfig({
       env: { FIXTURE_PORT: String(FIXTURE_PORT) }
     },
     {
-      command: `npm run build && npx vite preview --host 127.0.0.1 --port ${PREVIEW_PORT} --strictPort`,
+      command: `npx vite build --outDir .cache/e2e-dist && npx vite preview --outDir .cache/e2e-dist --host 127.0.0.1 --port ${PREVIEW_PORT} --strictPort`,
       url: `http://127.0.0.1:${PREVIEW_PORT}/`,
       reuseExistingServer: false,
       timeout: 120_000,

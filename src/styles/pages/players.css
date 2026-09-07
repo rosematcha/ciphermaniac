@@ -65,10 +65,10 @@
 .players-table .data td {
   height: 30px;
   padding: 0 10px;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 .players-table .data th {
-  font-size: 10px;
+  font-size: 10.5px;
 }
 /* A share of the row rather than a fixed width: the figures then keep the same
    proportion of the table whether it is showing five columns or the phone's
@@ -166,7 +166,7 @@
 .player-stat dt {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
   overflow: hidden;
@@ -396,7 +396,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  font-size: 12.5px;
+  font-size: 13px;
   max-width: 560px;
 }
 .rounds-phase {
@@ -461,7 +461,7 @@
 .round-finish {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
 }
 .rounds-drop {
@@ -481,7 +481,7 @@
   }
   .round-deck {
     grid-column: 3;
-    font-size: 11.5px;
+    font-size: 12px;
   }
   .round-finish {
     grid-row: 1;
@@ -524,7 +524,7 @@
 .deck-group-stats {
   display: flex;
   flex: none;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -565,7 +565,7 @@
 .deck-group-body .data th {
   background: transparent;
   height: 24px;
-  font-size: 9.5px;
+  font-size: 9px;
   color: var(--muted);
   border-bottom: 1px solid var(--rule);
 }
@@ -644,7 +644,7 @@
 .phase-figure dt {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -685,7 +685,7 @@
   width: 160px;
   height: 6px;
   background: var(--surface-2);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   vertical-align: middle;
   margin-right: 8px;

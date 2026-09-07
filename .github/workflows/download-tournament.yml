@@ -54,7 +54,7 @@ jobs:
             exit 1
           fi
 
-          echo "ref=${INPUT}" >> $GITHUB_OUTPUT
+          echo "ref=${INPUT}" >> "$GITHUB_OUTPUT"
           echo "Tournament input: $INPUT"
 
       - name: Checkout
@@ -80,8 +80,10 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Tournament Download" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Input**: \`${{ inputs.limitless_url }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Resolved Input**: \`${{ steps.normalize.outputs.ref }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Anonymized**: ${{ inputs.anonymize == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Tournament Download"
+            echo ""
+            echo "- **Input**: \`${{ inputs.limitless_url }}\`"
+            echo "- **Resolved Input**: \`${{ steps.normalize.outputs.ref }}\`"
+            echo "- **Anonymized**: ${{ inputs.anonymize == true && 'Yes' || 'No' }}"
+          } >> "$GITHUB_STEP_SUMMARY"

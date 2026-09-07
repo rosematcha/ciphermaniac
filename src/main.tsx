@@ -18,6 +18,8 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { installPreloadRecovery } from './lib/preloadRecovery';
 import { probeR2Ready } from './components/CardImage';
 import { initTheme } from './lib/theme';
+import { configurePrefetch } from './lib/prefetch';
+import { loadArchetypeIconMap } from './lib/data/archetypes';
 
 // A deploy replaces every content-hashed chunk, so a tab that predates it will
 // fail the next lazy route's preload. Recover before any route can hit it.
@@ -26,6 +28,19 @@ installPreloadRecovery();
 // Warm the image origin marker at startup. The synonym database is intentionally
 // demand-loaded by card-facing data fetches; most routes never need its payload.
 probeR2Ready();
+loadArchetypeIconMap().catch(error => console.warn('Archetype icon metadata unavailable:', error));
+
+const routeLoaders: Record<string, () => Promise<unknown>> = {
+  '/cards': () => import('./pages/CardsIndexPage'),
+  '/cards/:set/:number': () => import('./pages/CardPage'),
+  '/archetypes': () => import('./pages/ArchetypesIndexPage'),
+  '/archetypes/:slug': () => import('./pages/ArchetypePage'),
+  '/trends': () => import('./pages/TrendsPage'),
+  '/players': () => import('./pages/PlayersPage'),
+  '/players/:id': () => import('./pages/PlayerProfilePage')
+};
+
+configurePrefetch(routeLoaders);
 
 const CardsIndexPage = lazy(() => import('./pages/CardsIndexPage').then(m => ({ default: m.CardsIndexPage })));
 const CardPage = lazy(() => import('./pages/CardPage').then(m => ({ default: m.CardPage })));

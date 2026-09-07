@@ -139,7 +139,6 @@ async function gatherPairingsData(
 
   for (const tournament of tournaments) {
     try {
-      // eslint-disable-next-line no-await-in-loop
       const [pairings, standings] = await Promise.all([
         fetchJson(`/tournaments/${tournament.id}/pairings`, { env: limitlessEnv }),
         fetchJson(`/tournaments/${tournament.id}/standings`, { env: limitlessEnv })
@@ -187,7 +186,6 @@ async function listKeys(prefix: string): Promise<string[]> {
   const keys: string[] = [];
   let continuationToken: string | undefined;
   do {
-    // eslint-disable-next-line no-await-in-loop
     const response = await s3Client.send(
       new ListObjectsV2Command({
         Bucket: R2_BUCKET_NAME,
@@ -213,7 +211,7 @@ async function deleteKeys(keys: string[]): Promise<number> {
   let deleted = 0;
   for (let index = 0; index < keys.length; index += 1000) {
     const chunk = keys.slice(index, index + 1000);
-    // eslint-disable-next-line no-await-in-loop
+
     await s3Client.send(
       new DeleteObjectsCommand({
         Bucket: R2_BUCKET_NAME,
@@ -523,19 +521,17 @@ async function main(): Promise<void> {
 
     for (const file of archetypeFiles) {
       // Upload cards.json for each archetype (e.g., archetypes/Gardevoir/cards.json)
-      // eslint-disable-next-line no-await-in-loop
+
       await putJson(`${basePath}/archetypes/${file.base}/cards.json`, file.data);
 
       // Upload decks.json for each archetype (e.g., archetypes/Gardevoir/decks.json)
       const archetypeDecks = decksByBase.get(file.base);
       if (archetypeDecks) {
-        // eslint-disable-next-line no-await-in-loop
         await putJson(`${basePath}/archetypes/${file.base}/decks.json`, archetypeDecks);
 
         // Upload the trends.json pre-generated above.
         const trends = trendsByBase.get(file.base);
         if (trends) {
-          // eslint-disable-next-line no-await-in-loop
           await putJson(`${basePath}/archetypes/${file.base}/trends.json`, trends);
         }
       }
@@ -545,7 +541,6 @@ async function main(): Promise<void> {
     // These can be removed in the future after all consumers are updated
     console.log('[online-meta] Uploading legacy archetype files for backward compatibility...');
     for (const file of archetypeFiles) {
-      // eslint-disable-next-line no-await-in-loop
       await putJson(`${basePath}/archetypes/${file.base}.json`, file.data);
     }
   } else {

@@ -4,37 +4,6 @@
  * TournamentsIndexPage, EarningsPage and the shared Pagination component.
  */
 
-/* ---------- Sortable headers (shared contract: th.sortable > button.th-sort) ---------- */
-.data th.sortable {
-  padding: 0;
-}
-.th-sort {
-  font: inherit;
-  color: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  height: 100%;
-  padding: 0 14px;
-  transition: color var(--ms-fast);
-}
-.data th.num .th-sort {
-  justify-content: flex-end;
-}
-.th-sort:hover {
-  color: var(--fg);
-}
-.data th[aria-sort='ascending'] .th-sort,
-.data th[aria-sort='descending'] .th-sort {
-  color: var(--fg);
-}
-
 /* ---------- Low-confidence / small-sample stat muting ---------- */
 .stat-dim {
   opacity: 0.45;

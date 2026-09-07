@@ -636,7 +636,7 @@ function MajorsView(props: { windowKey: MajorsWindow }) {
    ============================================================ */
 
 function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] }) {
-  const iconMap = getArchetypeIconMap();
+  const iconMap = getArchetypeIconMap;
   const PADDING = { top: 16, right: 16, bottom: 32, left: 46 };
 
   // ---- Series visibility ----
@@ -660,12 +660,12 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
   const slugsByName = createMemo(() => {
     const m = new Map<string, string[]>();
     for (const s of props.series) {
-      m.set(s.name, resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap));
+      m.set(s.name, resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap()));
     }
     return m;
   });
   const slugsOf = (s: ArchetypeSeries): string[] =>
-    slugsByName().get(s.name) ?? resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap);
+    slugsByName().get(s.name) ?? resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap());
 
   const legendList = createMemo<ArchetypeSeries[]>(() => {
     const base = props.series.slice(0, TOP_ARCHETYPES_FOR_CHART);
@@ -1101,7 +1101,10 @@ function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] 
                   onMouseEnter={() => setLegendHover(s.name)}
                   onMouseLeave={() => setLegendHover(null)}
                 >
-                  <ArchetypeIcons slugs={resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap)} size={16} />
+                  <ArchetypeIcons
+                    slugs={resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap())}
+                    size={16}
+                  />
                   {s.label}
                   <span class='muted-cell'> · {s.avg.toFixed(1)}% avg</span>
                 </button>

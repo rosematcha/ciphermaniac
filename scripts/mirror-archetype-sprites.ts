@@ -18,8 +18,8 @@
 
 import { requireEnv } from '../.github/scripts/lib/env.ts';
 import process from 'node:process';
+import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { readFile } from 'node:fs/promises';
-import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 const SOURCE_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
 const DEST_PREFIX = 'pokemon-sprites/gen9';
@@ -49,13 +49,23 @@ const bucket = requireEnv('R2_BUCKET_NAME');
  */
 async function collectSlugs(): Promise<Set<string>> {
   const slugs = new Set<string>();
-  const icons = JSON.parse(await readFile('src/data/archetype-icons.json', 'utf-8')) as Record<string, string[]>;
+  const response = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: 'assets/archetype-icons.json' }));
+  if (!response.Body) {
+    throw new Error('Archetype icon map is missing from R2');
+  }
+  const icons = JSON.parse(await response.Body.transformToString()) as Record<string, string[]>;
   for (const list of Object.values(icons)) {
     for (const slug of list) {
       slugs.add(slug);
     }
   }
-  const formats = JSON.parse(await readFile('src/data/format-archetypes.json', 'utf-8')) as {
+  const formatResponse = await s3Client.send(
+    new GetObjectCommand({ Bucket: bucket, Key: 'assets/format-archetypes.json' })
+  );
+  if (!formatResponse.Body) {
+    throw new Error('Format snapshot is missing from R2');
+  }
+  const formats = JSON.parse(await formatResponse.Body.transformToString()) as {
     formats?: { archetypes?: { icons?: string[] }[] }[];
   };
   for (const format of formats.formats ?? []) {

@@ -96,7 +96,9 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "## Card Art Grouping" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          grep -E '^Grouped ' art-groups.log >> $GITHUB_STEP_SUMMARY || \
-            echo "Run did not reach the grouping summary — see the job log." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Card Art Grouping"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^Grouped ' art-groups.log >> "$GITHUB_STEP_SUMMARY" || \
+            echo "Run did not reach the grouping summary — see the job log." >> "$GITHUB_STEP_SUMMARY"

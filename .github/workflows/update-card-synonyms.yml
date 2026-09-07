@@ -6,25 +6,20 @@
 #
 # Triggers:
 #   - Daily at 6:00 AM UTC (captures new tournament ingestions within 24h)
-#   - Manual dispatch with optional commit toggle
+#   - Manual dispatch
 # =============================================================================
 
 name: (Card Metadata) Synonyms
 
 run-name: >-
   ${{ github.event_name == 'schedule' && 'Daily Synonyms Update' ||
-      format('Synonyms Update (commit={0}, full_rewrite={1})', inputs.commit_to_repo, inputs.full_rewrite) }}
+      format('Synonyms Update (full_rewrite={0})', inputs.full_rewrite) }}
 
 on:
   schedule:
     - cron: '0 6 * * *' # Daily at 6:00 AM UTC
   workflow_dispatch:
     inputs:
-      commit_to_repo:
-        description: 'Commit updated synonyms to repository'
-        required: false
-        type: boolean
-        default: true
       full_rewrite:
         description: 'Full rewrite (ignore existing synonyms cache)'
         required: false
@@ -38,7 +33,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   update-synonyms:
@@ -68,36 +63,6 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           PUBLIC_R2_BASE_URL: https://r2.ciphermaniac.com
           FULL_REWRITE: ${{ inputs.full_rewrite || 'false' }}
-
-      - name: Check for changes
-        id: check_changes
-        run: |
-          if git diff --quiet public/assets/card-synonyms.json 2>/dev/null; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Commit changes
-        if: (inputs.commit_to_repo == true || github.event_name == 'schedule') && steps.check_changes.outputs.has_changes == 'true'
-        env:
-          HUSKY: 0
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add public/assets/card-synonyms.json
-          git commit -m "chore: update card synonyms [skip ci]"
-          git push
-
-      - name: Summary
-        run: |
-          echo "## Card Synonyms Update" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
-            echo "Synonyms database updated" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "No changes - synonyms are up to date" >> $GITHUB_STEP_SUMMARY
-          fi
 
 # The derived-index rebake (P-32) is NOT called from here. As a `workflow_call`
 # it declared this workflow's own `r2-bucket-writers` concurrency group, which

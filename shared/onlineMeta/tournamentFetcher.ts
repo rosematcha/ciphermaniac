@@ -67,7 +67,7 @@ export async function runWithConcurrency<T, R>(
       if (currentIndex >= items.length) {
         break;
       }
-      // eslint-disable-next-line no-await-in-loop
+
       results[currentIndex] = await handler(items[currentIndex], currentIndex);
     }
   }
@@ -110,7 +110,6 @@ async function fetchTournamentSummaries(
   const unique = new Map<string, ReturnType<typeof decodeTournamentList>['rows'][number]>();
 
   for (let page = 1; page <= maxPages; page += 1) {
-    // eslint-disable-next-line no-await-in-loop
     const raw = await fetchJson('/tournaments', {
       env,
       searchParams: { game: 'PTCG', limit: pageSize, page }

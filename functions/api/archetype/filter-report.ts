@@ -422,6 +422,7 @@ function deckFetchError(result: Exclude<DeckFetch, { status: 'ok' }>, payload: A
     case 'upstream':
       console.error(`filter-report: deck storage returned ${result.httpStatus} for ${where}`);
       return jsonError('Deck data is temporarily unavailable', 502, { ...JSON_HEADERS });
+    case 'transport':
     default:
       console.error(`filter-report: deck fetch failed for ${where}: ${result.detail}`);
       return jsonError('Deck data is temporarily unavailable', 502, { ...JSON_HEADERS });

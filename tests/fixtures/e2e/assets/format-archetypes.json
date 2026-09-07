@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "formats": [
+    { "id": "expanded", "label": "Expanded", "group": "current", "archetypes": [
+      { "name": "Synthetic Expanded Deck", "share": 50, "icons": ["pikachu"], "cards": ["SVI/001"] }
+    ] },
+    { "id": "ex", "label": "EX", "group": "past", "archetypes": [
+      { "name": "Synthetic Deck", "share": 25, "icons": ["pikachu"] }
+    ] }
+  ]
+}

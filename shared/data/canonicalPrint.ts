@@ -263,7 +263,7 @@ export function resolveCanonicalUidAt(
     if (!memberParsed) {
       continue;
     }
-    // eslint-disable-next-line camelcase -- price_usd mirrors the scraped print-table shape
+
     variations.push({ set: memberParsed.set, number: memberParsed.number, price_usd: db.prints?.[member] ?? null });
   }
   const chosen = chooseCanonicalPrint(variations, parsed.name, { asOfDate });

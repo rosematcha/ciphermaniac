@@ -236,6 +236,7 @@ export function CardsIndexPage() {
           return item.pct ?? 0;
         case 'avgCopies':
           return averageCopiesValue(item) ?? 0;
+        case 'rank':
         default:
           return item.rank ?? 9e9;
       }

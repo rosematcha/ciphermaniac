@@ -1,0 +1,4 @@
+-r requirements-art.txt
+ruff==0.16.6
+actionlint-py==1.7.12.24
+shellcheck-py==0.11.0.1

@@ -122,6 +122,7 @@ export function CardPage() {
           navigate(`/cards/${canonical.set}/${canonical.number}`, { replace: true });
         }
       })
+      .catch(() => null)
       .finally(() => {
         if (reqSet === params.set && reqNumber === params.number) {
           setCanonicalPending(false);
@@ -619,7 +620,7 @@ function categoryToBadge(category: string): string {
  * popular decks outrank tiny ones with a higher inclusion rate.
  */
 function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem; db: SynonymDatabase | null }) {
-  const iconMap = getArchetypeIconMap();
+  const iconMap = getArchetypeIconMap;
   const sorted = createMemo(() => {
     // Rank by the raw number of players running the card in each archetype
     // (found = pct × deckTotal), so a large deck's high count outweighs a tiny
@@ -681,7 +682,7 @@ function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem;
                   ▶
                 </button>
                 <span class='au-name'>
-                  <ArchetypeIcons slugs={resolveArchetypeIcons(row.entry, iconMap)} size={20} reserveSlot />
+                  <ArchetypeIcons slugs={resolveArchetypeIcons(row.entry, iconMap())} size={20} reserveSlot />
                   <A href={`/archetypes/${encodeURIComponent(row.entry.name)}`}>{row.entry.label}</A>
                 </span>
                 <span class='au-pct'>{fmtWholePct(inclusion)}</span>

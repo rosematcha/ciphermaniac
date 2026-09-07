@@ -15,6 +15,23 @@ import { expect, test } from '@playwright/test';
 
 /** Fail loudly if a page reaches production R2 — the fixture wiring is broken. */
 test.beforeEach(async ({ page }) => {
+  await page.route('**/*', route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.resourceType() === 'image') {
+      return route.fulfill({
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>'
+      });
+    }
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
+      throw new Error(`page requested external resource: ${url.href}`);
+    }
+    if (url.pathname === '/api/limitless/upcoming') {
+      return route.fulfill({ status: 503, body: 'Unavailable in route fixtures' });
+    }
+    return route.continue();
+  });
   await page.route('**://r2.ciphermaniac.com/**', route => {
     throw new Error(`page requested production R2: ${route.request().url()}`);
   });
@@ -71,7 +88,9 @@ test('a variant card URL resolves to its canonical card', async ({ page }) => {
 });
 
 test('archetypes index lists archetypes', async ({ page }) => {
+  const icons = page.waitForResponse(response => new URL(response.url()).pathname === '/assets/archetype-icons.json');
   await gotoClean(page, '/archetypes');
+  expect((await icons).ok()).toBe(true);
   await expect(page.locator('body')).toContainText('Dragapult');
 });
 

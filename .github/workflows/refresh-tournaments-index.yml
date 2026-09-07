@@ -49,6 +49,8 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Refresh Tournaments Index" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Dry run**: ${{ inputs.dry_run_refresh == true && 'Yes' || 'No' }}" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Refresh Tournaments Index"
+            echo ""
+            echo "- **Dry run**: ${{ inputs.dry_run_refresh == true && 'Yes' || 'No' }}"
+          } >> "$GITHUB_STEP_SUMMARY"

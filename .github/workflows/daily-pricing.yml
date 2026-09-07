@@ -57,6 +57,8 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Daily Price Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Price data updated successfully" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Daily Price Check"
+            echo ""
+            echo "Price data updated successfully"
+          } >> "$GITHUB_STEP_SUMMARY"

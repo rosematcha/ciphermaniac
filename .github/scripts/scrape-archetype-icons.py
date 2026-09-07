@@ -6,7 +6,7 @@ On play.limitlesstcg.com/decks each archetype row carries one or two
 ``<img class="pokemon" src="https://r2.limitlesstcg.net/pokemon/gen9/<slug>.png">``
 icons (e.g. ``dragapult`` for Dragapult, ``greninja-mega`` for Mega Greninja, and
 two for dual decks like Dragapult Dusknoir). We harvest those slugs keyed by the
-row's display name and write them to ``src/data/archetype-icons.json``.
+row's display name and write them to ``.cache/archetype-icons.json`` (published to R2 with --publish).
 
 The slug carries form information that can't be derived from the archetype name
 (``Lucario Hariyama`` → ``lucario-mega``), which is exactly why this map exists.
@@ -17,7 +17,7 @@ snapshot list is read from the decks page's own set selector at run time, so a n
 released set is picked up without editing this file. Each ``(rotation, set)``
 snapshot is scraped and MERGED: an archetype's icon Pokémon are stable across
 formats (Charizard Pidgeot is always charizard + pidgeot), so adding a format only
-fills gaps, never rewrites. Hand-edited keys in the committed JSON are preserved too
+fills gaps, never rewrites. Hand-edited keys in the R2 object are preserved too
 (pass --overwrite to force replacement).
 
 Usage:
@@ -35,10 +35,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Tuple
+import requests
+from lib.r2 import make_r2_client
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 
@@ -49,7 +53,9 @@ from limitless_decks import (  # noqa: E402
     parse_set_options,
 )
 
-OUTPUT_PATH = Path("src") / "data" / "archetype-icons.json"
+OUTPUT_PATH = Path(".cache") / "archetype-icons.json"
+ICON_KEY = "assets/archetype-icons.json"
+HTTP_TIMEOUT = 20
 
 # Limitless deliberately has no deck-index row for its residual "Other" bucket,
 # so scraping cannot discover its representative icon. Keep this product choice
@@ -127,12 +133,23 @@ def parse_rows(html: str) -> Dict[str, List[str]]:
 
 
 def load_existing() -> Dict[str, List[str]]:
-    try:
-        with OUTPUT_PATH.open(encoding="utf-8") as handle:
-            data = json.load(handle)
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
+    origin = os.environ.get("PUBLIC_R2_BASE_URL", "https://r2.ciphermaniac.com").rstrip("/")
+    response = requests.get(f"{origin}/{ICON_KEY}", timeout=HTTP_TIMEOUT)
+    if response.status_code == 404:
         return {}
+    response.raise_for_status()
+    data = response.json()
+    validate_icons(data)
+    return data
+
+
+def validate_icons(data) -> None:
+    if not isinstance(data, dict) or any(
+        not isinstance(slugs, list) or not slugs or any(
+            not isinstance(slug, str) or not re.fullmatch(r"[a-z0-9-]+", slug) for slug in slugs
+        ) for slugs in data.values()
+    ):
+        raise ValueError("Invalid archetype icon database")
 
 
 def parse_target(value: str) -> Tuple[str, str]:
@@ -142,8 +159,25 @@ def parse_target(value: str) -> Tuple[str, str]:
     return rotation, set_code
 
 
+def publish_icons(mapping: Dict[str, List[str]]) -> None:
+    validate_icons(mapping)
+    if not mapping:
+        raise ValueError("Refusing to publish an empty archetype icon database")
+    client = make_r2_client(
+        os.environ["R2_ACCOUNT_ID"], os.environ["R2_ACCESS_KEY_ID"], os.environ["R2_SECRET_ACCESS_KEY"]
+    )
+    client.put_object(
+        Bucket=os.environ["R2_BUCKET_NAME"],
+        Key=ICON_KEY,
+        Body=json.dumps(mapping, ensure_ascii=False).encode("utf-8"),
+        ContentType="application/json",
+        CacheControl="public, max-age=300",
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--publish", action="store_true", help="Publish the validated icon map to R2.")
     parser.add_argument(
         "--target",
         dest="targets",
@@ -195,6 +229,9 @@ def main() -> int:
     with OUTPUT_PATH.open("w", encoding="utf-8") as handle:
         json.dump(merged, handle, indent=2, ensure_ascii=False)
         handle.write("\n")
+
+    if args.publish:
+        publish_icons(merged)
 
     added = len(merged) - len(existing)
     print(f"Wrote {OUTPUT_PATH} ({len(merged)} archetypes, +{added} new from {len(targets)} snapshot(s))")

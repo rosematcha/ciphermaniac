@@ -1,8 +1,7 @@
 {
   "note": "Known design drift, recorded so new drift fails the build. This list may only shrink — see scripts/check-design-drift.ts and the ledger on /style.",
-  "generated": "2026-09-07",
+  "generated": "2026-09-08",
   "allowed": [
-    "components.css|micro-label|.callout-eyebrow",
     "components.css|no-blur-shadow|.card-stack-slot"
   ]
 }
