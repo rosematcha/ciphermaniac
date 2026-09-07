@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
@@ -7,6 +7,9 @@ import { enrichCardWithType, loadCardTypesDatabase } from '../../shared/data/car
 import { generateReportFromDecks } from '../../shared/data/reports/cardReport.js';
 import { gatherDecks } from '../../shared/onlineMeta/index.js';
 
+afterEach(() => {
+  restoreFetch();
+});
 // Variant merging and normalization in report generation
 test('Merge variant counts correctly across set/code variations', () => {
   const decks = [
@@ -125,11 +128,4 @@ test('Extract trainer subtypes and detect ACE SPEC cards via gatherDecks heurist
   const energy = cards.find((card: any) => card.name === 'Psychic Energy');
   assert.ok(energy);
   assert.strictEqual(energy.energyType, 'basic');
-
-  restoreFetch();
-});
-
-// cleanup
-test('cleanup card-aggregation mocks', () => {
-  restoreFetch();
 });

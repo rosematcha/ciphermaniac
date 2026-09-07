@@ -11,13 +11,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  fetchFormatArchetypes,
-  FORMAT_SPRITE_SLUGS,
-  STANDARD_FORMAT_ID,
-  TIER_FORMATS,
-  tierFormat
-} from '../../src/lib/data/formats';
+import { fetchFormatArchetypes, FORMAT_SPRITE_SLUGS, TIER_FORMATS, tierFormat } from '../../src/lib/data';
+import { STANDARD_FORMAT_ID } from '../../src/lib/data/formats';
 import snapshot from '../../src/data/format-archetypes.json';
 import icons from '../../src/data/archetype-icons.json';
 import pickerSprites from '../../src/data/pokemon-sprites.json';

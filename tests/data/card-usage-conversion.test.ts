@@ -54,7 +54,7 @@ test('cardUsageForCard returns null when the card is absent', () => {
 test('fetchCardUsage returns null on 404', async () => {
   mockFetch({ predicate: () => true, status: 404, body: null });
   try {
-    const res = await fetchCardUsage(`2026-01-01, Regional Championship Nowhere ${Math.random()}`);
+    const res = await fetchCardUsage('2026-01-01, Regional Championship Nowhere');
     assert.strictEqual(res, null);
   } finally {
     restoreFetch();
@@ -62,7 +62,7 @@ test('fetchCardUsage returns null on 404', async () => {
 });
 
 test('fetchDay2CardStats uses precomputed conversion.json when present', async () => {
-  const tour = `conv-${Math.random()}`;
+  const tour = 'conv-fixture';
   mockFetch({
     predicate: () => true,
     handler: (input: RequestInfo) => {
@@ -94,7 +94,7 @@ test('fetchDay2CardStats uses precomputed conversion.json when present', async (
 });
 
 test('fetchDay2CardStats falls back to decks.json when conversion.json is missing', async () => {
-  const tour = `fallback-${Math.random()}`;
+  const tour = 'fallback-fixture';
   const decks = [
     { madePhase2: true, cards: [{ name: "Boss's Orders", set: 'MEG', number: '114', count: 1 }] },
     { madePhase2: false, cards: [{ name: "Boss's Orders", set: 'MEG', number: '114', count: 2 }] }
@@ -130,7 +130,7 @@ test('fetchDay2CardStats falls back to decks.json when conversion.json is missin
 test('fetchConversionIndex returns null on 404', async () => {
   mockFetch({ predicate: () => true, status: 404, body: null });
   try {
-    assert.strictEqual(await fetchConversionIndex(`missing-${Math.random()}`), null);
+    assert.strictEqual(await fetchConversionIndex('missing-fixture'), null);
   } finally {
     restoreFetch();
   }

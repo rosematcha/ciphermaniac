@@ -1,10 +1,14 @@
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { deepClone, mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
 import { generateReportFromDecks } from '../../shared/data/reports/cardReport.js';
 import { buildArchetypeReports, gatherDecks } from '../../shared/onlineMeta/index.js';
+
+afterEach(() => {
+  restoreFetch();
+});
 
 // Helpers
 function makeCard(
@@ -274,8 +278,4 @@ test('report dedupes synonym variants within a single deck (P-10)', () => {
   const item = report.items[0];
   assert.strictEqual(item.found, 1, 'card counted once for the single deck');
   assert.ok(Number(item.pct) <= 100, `pct must be <= 100 (got ${item.pct})`);
-});
-
-test('cleanup report-generation mocks', () => {
-  restoreFetch();
 });

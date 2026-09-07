@@ -62,13 +62,15 @@ export interface MaliciousPayloads {
 // Internal registry of file paths created during tests that may need cleanup.
 export const generatedFileRegistry = new Set<string>();
 
+let nextId = 0;
+
 /**
- * Generate a simple random identifier string.
+ * Generate a deterministic identifier string.
  * @param prefix optional prefix for the id
  */
 function makeId(prefix = 'id'): string {
-  const rand = Math.floor(Math.random() * 1e9).toString(36);
-  return `${prefix}_${Date.now().toString(36)}_${rand}`;
+  nextId += 1;
+  return `${prefix}_${nextId}`;
 }
 
 /**
@@ -76,13 +78,15 @@ function makeId(prefix = 'id'): string {
  * @param overrides Partial fields to override
  */
 function generateMockCard(overrides: Partial<Card> = {}): Card {
+  const id = makeId('card');
+  const ordinal = nextId % 500 || 500;
   const defaults: Card = {
-    id: makeId('card'),
-    name: `Card ${Math.random().toString(36).slice(2, 8)}`,
-    set: `SET${(Math.floor(Math.random() * 100) + 1).toString().padStart(3, '0')}`,
-    number: `${Math.floor(Math.random() * 500) + 1}`,
+    id,
+    name: `Card ${id}`,
+    set: `SET${String(nextId % 100 || 100).padStart(3, '0')}`,
+    number: String(ordinal),
     count: 1,
-    category: ['Monster', 'Spell', 'Trap', 'Extra', 'Other'][Math.floor(Math.random() * 5)] as CardCategory
+    category: ['Monster', 'Spell', 'Trap', 'Extra', 'Other'][nextId % 5] as CardCategory
   };
   return { ...defaults, ...overrides };
 }
@@ -96,7 +100,7 @@ export function generateMockDeck(overrides: Partial<Deck> = {}): Deck {
 
   const defaults: Deck = {
     id: makeId('deck'),
-    archetype: `Archetype ${Math.random().toString(36).slice(2, 6)}`,
+    archetype: `Archetype ${nextId}`,
     cards: defaultCards,
     tournament: undefined,
     placement: null

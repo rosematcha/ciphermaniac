@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
@@ -7,6 +7,10 @@ import { fetchLimitlessJson } from '../../shared/api/limitless.js';
 
 // Fixed test date for deterministic tests
 const FIXED_TEST_DATE = '2025-01-15T12:00:00.000Z';
+
+afterEach(() => {
+  restoreFetch();
+});
 
 // Helper to construct Request for handler
 function makeRequest(url: string) {
@@ -230,11 +234,6 @@ test('Limitless - network timeout (fetch throws) returns 502', async () => {
   globalThis.fetch = orig;
   // @ts-ignore
   delete globalThis.__LIMITLESS_API_KEY__;
-});
-
-// Clean up any remaining mocks
-test('cleanup', () => {
-  restoreFetch();
 });
 
 // --- Phase 9.3: numeric proxy params are bounded, not forwarded verbatim ---
