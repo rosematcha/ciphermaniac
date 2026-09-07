@@ -22,6 +22,7 @@ import {
 import { ONLINE_META_NAME } from '../lib/constants';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
 import { interEmbedCss } from '../utils/fontEmbed';
 import { latestValue } from '../lib/resource';
 import '../styles/pages/social-graphics.css';
@@ -418,7 +419,7 @@ export function SocialGraphicsPage() {
                   (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading || onlineField.loading)) ||
                   (needsDay2Stats(mode()) && day2Stats.loading)
                 }
-                fallback={<div class='sg-stage-empty'>{emptyNote(mode())}</div>}
+                fallback={<EmptyState title={emptyNote(mode())} />}
               >
                 <Skeleton height='540px' />
               </Show>

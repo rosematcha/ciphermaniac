@@ -53,6 +53,10 @@ const TierListPage = lazy(() => import('./pages/TierListPage').then(m => ({ defa
 const CardWallPage = lazy(() => import('./pages/CardWallPage').then(m => ({ default: m.CardWallPage })));
 const EarningsPage = lazy(() => import('./pages/EarningsPage').then(m => ({ default: m.EarningsPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
+// Unlinked reference route: the design system rendered through the real
+// stylesheets, so it can't drift from them. Kept out of the nav and the
+// sitemap (static/robots.txt) — it's for building, not reading.
+const StyleGuidePage = lazy(() => import('./pages/StyleGuidePage').then(m => ({ default: m.StyleGuidePage })));
 
 // Legacy /standings/:id links redirect to the equivalent /players/:id profile.
 function StandingsPlayerRedirect() {
@@ -108,6 +112,7 @@ render(
       <Route path='/toys/social-graphics' component={() => <Navigate href='/tools/social-graphics' />} />
       <Route path='/toys/in-loving-memory' component={() => <Navigate href='/tools/in-loving-memory' />} />
       <Route path='/about' component={AboutPage} />
+      <Route path='/style' component={StyleGuidePage} />
       <Route path='*' component={NotFoundPage} />
     </Router>
   ),

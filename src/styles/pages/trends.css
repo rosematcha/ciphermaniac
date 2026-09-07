@@ -24,23 +24,7 @@
   justify-content: flex-end;
 }
 
-/* The shared rule makes .mover-col a grid, which stretches its rows apart when
-   one column holds fewer than the other (price movers can be lopsided). Pack
-   them at the top instead; equal-length columns are unaffected. */
-.mover-col {
-  align-content: start;
-}
-
 /* ---- Movers: percentage-point deltas with the base share beneath ---- */
-/* The delta cell now stacks the pp change over the "start -> end%" base, so the
-   number reads as a share change and not a raw percent. */
-.mover-row .delta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  line-height: 1.2;
-}
 .mover-row .delta .delta-pp {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -65,7 +49,7 @@
 /* ---- Chart: Y-axis title ---- */
 .trend-chart .axis-title {
   fill: var(--muted);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -77,19 +61,6 @@
   align-items: flex-start;
   gap: 12px 16px;
   flex-wrap: wrap;
-}
-/* Legend entries are buttons now (click to hide/show a series). Reset the
-   button chrome and keep the shared swatch (::before) from components.css. */
-.trend-legend .leg {
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: var(--fg);
-  cursor: pointer;
-  transition: opacity 0.12s ease;
 }
 .trend-legend .leg.is-hidden {
   opacity: 0.4;
@@ -107,11 +78,11 @@
   color: var(--fg);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   padding: 4px 8px;
   cursor: pointer;
 }
 .trend-add:disabled {
-  color: var(--muted);
-  cursor: default;
+  opacity: 0.4;
+  cursor: not-allowed;
 }

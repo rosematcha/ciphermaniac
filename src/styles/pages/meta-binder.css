@@ -40,7 +40,7 @@
 .mb-tournament select:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: var(--focus-ring);
 }
 
 .mb-archetypes {
@@ -121,10 +121,6 @@
   gap: var(--space-2);
   margin-left: auto;
 }
-.mb-summary-actions .btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
 
 /* ---- Sections ---- */
 
@@ -204,10 +200,7 @@
   transition: box-shadow var(--ms-fast) var(--ease-base);
 }
 .mb-card:hover .mb-card-img {
-  box-shadow: 4px 4px 0 0 var(--border);
-}
-body[data-mode='dark'] .mb-card:hover .mb-card-img {
-  box-shadow: 4px 4px 0 0 var(--surface-2);
+  box-shadow: var(--shadow-2);
 }
 .mb-card-img img {
   position: absolute;

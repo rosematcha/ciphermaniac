@@ -385,7 +385,7 @@
 }
 .t-selector-caret {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 10.5px;
 }
 .t-selector-pop {
   position: absolute;
@@ -463,6 +463,30 @@
 .hero-meta .dot {
   margin: 0 8px;
   opacity: 0.4;
+}
+
+/* ---------- Snapshot banner ----------
+   "You are looking at frozen data" — on the archetype page for a historical
+   event, on the card page for a rotated card. Shared because both render it
+   identically; it lived duplicated verbatim in archetype.css and cards.css,
+   where editing one silently did nothing to the other page. */
+.snapshot-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.snapshot-banner-label {
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 /* ---------- Section heading ---------- */
@@ -600,14 +624,14 @@
 .btn:hover {
   text-decoration: none;
 }
-.btn:active {
+.btn:active:not(:disabled) {
   transform: scale(var(--press-scale));
 }
 .btn-primary {
   background: var(--accent);
   color: var(--accent-fg);
 }
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 .btn-secondary {
@@ -615,15 +639,24 @@
   color: var(--fg);
   border-color: var(--border);
 }
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background: var(--surface-2);
 }
 .btn-ghost {
   background: transparent;
   color: var(--fg);
 }
-.btn-ghost:hover {
+.btn-ghost:hover:not(:disabled) {
   background: var(--surface-2);
+}
+/* One disabled state for every button. Four page sheets used to each re-derive
+   this at 0.4/0.45/0.45/0.5 opacity, and each scoped it to a parent container —
+   so a disabled .btn outside those four containers rendered at full strength
+   and still looked clickable. Matches .pagination button:disabled, which had
+   the only correct version. */
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ---------- Empty state (locked: B — mark + heading + actions) ---------- */
@@ -680,7 +713,7 @@
 /* Residual "Other" bucket — a footnote under the ranked grid, never a tile. */
 .gallery-other {
   margin: 10px 2px 0;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -704,10 +737,7 @@
 .arche:hover {
   text-decoration: none;
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 0 var(--border);
-}
-body[data-mode='dark'] .arche:hover {
-  box-shadow: 4px 4px 0 0 var(--surface-2);
+  box-shadow: var(--shadow-2);
 }
 .arche:active {
   transform: translateY(0) scale(0.99);
@@ -874,16 +904,6 @@ body[data-mode='dark'] .arche:hover {
   align-items: center;
   flex-wrap: wrap;
 }
-.filter-link {
-  margin-left: auto;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--accent);
-  white-space: nowrap;
-}
-.filter-link:hover {
-  color: var(--accent-hover);
-}
 @media (max-width: 640px) {
   .filter-row {
     gap: var(--space-2);
@@ -926,7 +946,7 @@ body[data-mode='dark'] .arche:hover {
 .search:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: var(--focus-ring);
 }
 .chips {
   display: flex;
@@ -1030,6 +1050,8 @@ table.data {
 .data th.sortable {
   cursor: pointer;
   user-select: none;
+  /* The button fills the cell, so the cell's own padding would double up. */
+  padding: 0;
 }
 .data th.sortable:hover {
   color: var(--fg);
@@ -1052,8 +1074,10 @@ table.data {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  width: 100%;
+  height: 100%;
   margin: 0;
-  padding: 0;
+  padding: 0 14px;
   border: 0;
   background: none;
   font: inherit;
@@ -1061,6 +1085,7 @@ table.data {
   text-transform: inherit;
   color: inherit;
   cursor: pointer;
+  transition: color var(--ms-fast) var(--ease-base);
 }
 /* The mark is reserved in every sortable header and only its glyph is hidden:
    `table-layout` is auto, so a mark that appears on click re-solves the column
@@ -1071,7 +1096,7 @@ table.data {
    both and reads "Inclusion ▼ ▼". */
 .data th.sortable button.th-sort:not(:has(.sort-mark))::after {
   content: '▼';
-  font-size: 10px;
+  font-size: 9px;
   color: var(--accent);
   visibility: hidden;
 }
@@ -1450,9 +1475,9 @@ tr.row-expansion > td {
   align-items: center;
   font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--fg);
   text-transform: uppercase;
@@ -1513,7 +1538,7 @@ tr.row-expansion > td {
 }
 .tournament-row .date {
   font-size: 11px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -1537,10 +1562,7 @@ tr.row-expansion > td {
 }
 .tournament-row-clickable:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 0 var(--border);
-}
-body[data-mode='dark'] .tournament-row-clickable:hover {
-  box-shadow: 4px 4px 0 0 var(--surface-2);
+  box-shadow: var(--shadow-2);
 }
 .tournament-row-clickable.active {
   border-color: var(--accent);
@@ -1549,7 +1571,7 @@ body[data-mode='dark'] .tournament-row-clickable:hover {
   color: var(--accent);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   font-size: 10.5px;
 }
 .tournament-row-link {
@@ -1562,10 +1584,7 @@ body[data-mode='dark'] .tournament-row-clickable:hover {
 .tournament-row-link:hover {
   text-decoration: none;
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 0 var(--border);
-}
-body[data-mode='dark'] .tournament-row-link:hover {
-  box-shadow: 4px 4px 0 0 var(--surface-2);
+  box-shadow: var(--shadow-2);
 }
 
 /* ---------- Home: latest-event callout ----------
@@ -1620,7 +1639,7 @@ body[data-mode='dark'] .tournament-row-link:hover {
 .callout-format-pill {
   display: inline-block;
   padding: 1px 8px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: var(--surface-2);
   border: 1px solid var(--border);
   font-size: 11px;
@@ -1662,13 +1681,13 @@ body[data-mode='dark'] .tournament-row-link:hover {
   min-width: 0;
 }
 .callout-cut-strip-row .cut-country {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--muted);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   padding: 1px 4px;
   text-align: center;
   font-variant: small-caps;
@@ -1825,17 +1844,17 @@ body[data-mode='dark'] .tournament-row-link:hover {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: 2px 2px 0 0 var(--border);
+  box-shadow: var(--shadow-1);
   text-decoration: none;
   color: var(--fg);
   transition:
-    transform 180ms ease,
-    box-shadow 180ms ease;
+    transform var(--ms-base) var(--ease-base),
+    box-shadow var(--ms-base) var(--ease-base);
   min-width: 0;
 }
 .story-card:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 0 var(--border);
+  box-shadow: var(--shadow-2);
 }
 .story-card:active {
   transform: translate(0, 0);
@@ -2021,7 +2040,7 @@ body[data-mode='dark'] .story-card:active {
   /* Tighten the rail so all the rows fit comfortably beside the art. */
   .stats-list .stat-row {
     padding: 8px 0;
-    font-size: 12.5px;
+    font-size: 13px;
   }
   .stats-list .stat-label {
     font-size: 11.5px;
@@ -2044,7 +2063,7 @@ body[data-mode='dark'] .story-card:active {
 .card-image-real {
   display: block;
   aspect-ratio: 5 / 7;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-1);
 }
@@ -2059,7 +2078,7 @@ body[data-mode='dark'] .story-card:active {
 .card-image-real .card-image-fallback {
   width: 100%;
   height: 100%;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   border: 1px dashed var(--border);
   background: var(--surface);
 }
@@ -2123,7 +2142,6 @@ body[data-mode='dark'] .story-card:active {
   align-items: center;
   justify-content: center;
   cursor: help;
-  outline: none;
   /* Pad out the hit area so the small marker is easy to hover/tap, then pull
      the surrounding layout back with a matching negative margin. */
   padding: 4px 7px;
@@ -2145,7 +2163,7 @@ body[data-mode='dark'] .story-card:active {
   background: var(--surface);
   color: var(--fg);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow-1);
   padding: 8px 10px;
   font-size: 12px;
@@ -2307,7 +2325,7 @@ body[data-mode='dark'] .story-card:active {
   stroke-width: 1;
 }
 .trend-chart .axis-label {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 500;
   fill: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -2333,7 +2351,7 @@ body[data-mode='dark'] .story-card:active {
      card flips sides only when it would actually overflow the chart box. */
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow-1);
   padding: 8px 10px;
   font-size: 12px;
@@ -2390,11 +2408,21 @@ body[data-mode='dark'] .story-card:active {
   margin-top: 14px;
   font-size: 12px;
 }
+/* Legend entries are buttons (click to hide/show a series), so the shared rule
+   strips the native chrome as well as laying out the swatch. */
 .trend-legend .leg {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: var(--fg);
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  transition: opacity var(--ms-fast) var(--ease-base);
 }
 .trend-legend .leg::before {
   content: '';
@@ -2493,10 +2521,7 @@ body[data-mode='dark'] .story-card:active {
   transition: box-shadow var(--ms-fast) var(--ease-base);
 }
 .card-tile:hover .card-tile-card {
-  box-shadow: 4px 4px 0 0 var(--border);
-}
-body[data-mode='dark'] .card-tile:hover .card-tile-card {
-  box-shadow: 4px 4px 0 0 var(--surface-2);
+  box-shadow: var(--shadow-2);
 }
 
 /* The image fills the 5:7 box absolutely. object-fit: contain shows the full
@@ -2595,7 +2620,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 .card-tile-usage {
   position: relative;
   background: rgba(0, 0, 0, 0.7);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   height: 18px;
   display: flex;
   align-items: center;
@@ -2660,7 +2685,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 .card-tile-set {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
   flex-shrink: 0;
@@ -2687,16 +2712,19 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 }
 .mover-col {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--border-width) solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-1);
   padding: 16px 18px;
   display: grid;
   gap: 6px;
+  /* Pack rows at the top: the grid otherwise stretches them apart when one
+     column holds fewer entries than the other (price movers can be lopsided). */
+  align-content: start;
 }
 .mover-col h3 {
   font-size: 11px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
   font-weight: 700;
@@ -2744,9 +2772,16 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+/* Stacks the pp change over the "start -> end%" base, so the number reads as a
+   share change rather than a raw percent. */
 .mover-row .delta {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  line-height: 1.2;
 }
 .mover-row .delta.up {
   color: var(--positive);
@@ -2873,7 +2908,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 .fb-select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: var(--focus-ring);
 }
 .fb-range {
   width: 100%;
@@ -2934,7 +2969,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 .fb-b-search input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: var(--focus-ring);
 }
 .fb-b-search-icon {
   position: absolute;
@@ -2987,7 +3022,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 .fb-b-rules-head {
   font-size: 10.5px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   font-weight: 700;
   color: var(--muted);
   padding-bottom: 6px;
@@ -3120,13 +3155,13 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
    wrapper via :focus-within instead of the input. */
 .fb-b-row .count-input:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: var(--focus-ring);
 }
 .fb-b-row .count-input input:focus {
   outline: none;
 }
 .fb-b-row .count-input.disabled {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 .fb-b-row .remove {
   width: 24px;
@@ -3134,7 +3169,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   display: grid;
   place-items: center;
   color: var(--muted);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   background: transparent;
   border: 0;
@@ -3265,7 +3300,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 }
 .fb-bar-btn:disabled {
   opacity: 0.4;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 /* Questionnaire — quiet text trigger, then a tight card. */
@@ -3383,7 +3418,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   padding: 4px 10px;
   background: var(--surface);
   border: 1px solid color-mix(in srgb, var(--positive) 40%, var(--border));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font: inherit;
   font-size: 12px;
   color: var(--fg);
@@ -3430,11 +3465,6 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   .card-tile:hover .card-tile-card,
   .story-card:hover {
     box-shadow: var(--shadow-1);
-  }
-  body[data-mode='dark'] .arche:hover,
-  body[data-mode='dark'] .card-tile:hover .card-tile-card,
-  body[data-mode='dark'] .story-card:hover {
-    box-shadow: 3px 3px 0 0 var(--surface-2);
   }
   /* Re-apply the base CardStack fan so :hover doesn't leave slots reshuffled. */
   :is(.arche, .story-card):hover .card-stack-1 .card-stack-slot {
@@ -3520,7 +3550,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 
 /* Summary line + section subline copy */
 .mu-summary {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted);
   margin: 0 0 16px;
   font-variant-numeric: tabular-nums;
@@ -3656,7 +3686,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 }
 .mu-wr {
   font-weight: 700;
-  font-size: 13.5px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 .mu-rec {
@@ -3708,7 +3738,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   min-width: 0;
 }
 .r2-kname .mu-opp .cardname {
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 600;
 }
 .r2-share {
@@ -3727,7 +3757,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   min-width: 0;
 }
 .r2-rname .mu-opp .cardname {
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 /* Row link + muted low-sample treatment */
@@ -3806,12 +3836,12 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--muted);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 5px 13px;
 }
 .r2-lens summary::-webkit-details-marker {
@@ -3845,12 +3875,12 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 }
 .rf-chip {
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 4px 11px;
   cursor: pointer;
   white-space: nowrap;
@@ -3873,7 +3903,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   display: block;
   width: 100%;
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--fg);
   background: transparent;
   border: 1px solid var(--rule);
@@ -3896,10 +3926,10 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 13px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 3px 5px 3px 13px;
 }
 .mu-lens-name {
@@ -3943,7 +3973,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   background: var(--surface);
 }
 .r2-lens-hint {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
   margin: 0 0 10px;
   font-variant-numeric: tabular-nums;
@@ -3992,7 +4022,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
 .r2-ww {
   display: flex;
   gap: 14px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -4007,7 +4037,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   font-variant-numeric: tabular-nums;
   padding: 2px 8px;
   border: 1px solid var(--rule);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
@@ -4185,7 +4215,7 @@ body[data-mode='dark'] .card-tile:hover .card-tile-card {
   transform: translateX(-50%);
   width: 34px;
   height: 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--border);
 }
 .sheet-head h2 {
