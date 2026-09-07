@@ -59,9 +59,6 @@ export interface MaliciousPayloads {
   description: string;
 }
 
-// Internal registry of file paths created during tests that may need cleanup.
-export const generatedFileRegistry = new Set<string>();
-
 let nextId = 0;
 
 /**

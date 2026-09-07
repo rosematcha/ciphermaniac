@@ -329,7 +329,13 @@ function ComparisonBody(props: {
           <span class='compare-h2h'>
             <Show when={props.shared.length > 0} fallback='—'>
               Head-to-head by finish {props.headToHead.aWins}-{props.headToHead.bWins}
-              <Show when={props.headToHead.ties > 0}>-{props.headToHead.ties}</Show>{' '}
+              <Show when={props.headToHead.ties > 0}>-{props.headToHead.ties}</Show>
+              {/* Without this, a pair with an unpublished finish shows four rows
+                  in the table below and a record that only accounts for three,
+                  with nothing on screen saying where the fourth went. */}
+              <Show when={props.headToHead.unscored > 0}>
+                <span class='compare-unscored'> · {props.headToHead.unscored} unscored</span>
+              </Show>{' '}
               <InfoTip marker='i' label='How head-to-head is counted'>
                 Compares final standings at events both attended. Limitless publishes no round pairings, so this
                 reflects placement, not direct matches.

@@ -1,5 +1,5 @@
 import { normalizeArchetypeName, sanitizeForFilename } from '../cardUtils.js';
-import { canonicalPlayerId, overriddenPlayerName } from './playerIdentity';
+import { canonicalPlayerId, IDENTITY_OVERRIDES_REVISION, overriddenPlayerName } from './playerIdentity';
 import { encodeSlimIndex } from '../playerTypes';
 import { runWithConcurrency } from './tournamentFetcher';
 import { batchDelete, batchPutJson, getJson, getJsonResult, putJson } from './storageWriter';
@@ -111,6 +111,15 @@ interface TournamentSlice {
 interface PlayerAggregateManifestV2 extends PlayerAggregateManifest {
   /** tournament key → content fingerprint at last successful build. */
   fingerprints?: Record<string, string>;
+  /**
+   * playerId → the name published for them at last successful build. Diffed
+   * against today's names to find who was renamed, because a rename has to
+   * reach the opponent lists of players whose own events did not change.
+   * Absent on a manifest written before this field existed.
+   */
+  names?: Record<string, string>;
+  /** {@link IDENTITY_OVERRIDES_REVISION} at last successful build. */
+  identityRevision?: string;
 }
 
 function sliceFingerprint(meta: MetaRow | null): string {
@@ -363,6 +372,11 @@ function currentName(acc: Accumulator): string {
  * The player's rounds, with every opponent who has a career record named as they
  * are published today. A rename or an identity override therefore reaches every
  * opponent list at once, and no prior name survives in a published body.
+ *
+ * That only holds because the incremental pass knows to rewrite a profile when
+ * someone it names was renamed — see the third clause of `planWrites`' skip, and
+ * `IDENTITY_OVERRIDES_REVISION` for the override half. Naming them here is not
+ * enough on its own; the run has to decide to write them.
  */
 function buildRounds(acc: Accumulator, accs: Map<string, Accumulator>): Record<string, PlayerRound[]> {
   const rounds: Record<string, PlayerRound[]> = {};
@@ -499,6 +513,15 @@ async function tryFastPath(
   );
   if (!tournamentList.every((key, i) => (prevFingerprints[key] ?? '') === current[i])) {
     console.info('[playerAggregator] Tournament set unchanged but content fingerprints differ; rebuilding');
+    return null;
+  }
+
+  // An identity override is a code edit, not a data one: it moves no
+  // tournament's fingerprint, so nothing above can see it. Skipping here would
+  // leave the name the override exists to retire published until some unrelated
+  // tournament happened to change.
+  if (previousManifest.identityRevision !== IDENTITY_OVERRIDES_REVISION) {
+    console.info('[playerAggregator] Identity overrides changed since last build; rebuilding');
     return null;
   }
 
@@ -800,6 +823,46 @@ interface WritePlan {
   deckWrites: Array<{ key: string; data: PlayerDecks }>;
   deckDeletes: string[];
   manifestPlayers: Record<string, string[]>;
+  /** playerId → the name published this run, for the next run to diff against. */
+  manifestNames: Record<string, string>;
+}
+
+/**
+ * Every player whose published name differs from the one the last manifest
+ * recorded, or `null` when that manifest recorded no names at all and the
+ * question cannot be answered.
+ *
+ * `null` means "assume everyone": it happens once, on the first run after this
+ * field shipped, and rewriting every profile then is what seeds the map.
+ */
+function renamedSince(
+  accs: Map<string, Accumulator>,
+  prevNames: Record<string, string> | undefined,
+  currentNames: Record<string, string>
+): Set<string> | null {
+  if (!prevNames) {
+    return null;
+  }
+  const renamed = new Set<string>();
+  for (const playerId of accs.keys()) {
+    const previous = prevNames[playerId];
+    if (previous !== undefined && previous !== currentNames[playerId]) {
+      renamed.add(playerId);
+    }
+  }
+  return renamed;
+}
+
+/** Whether any opponent this player has a round against was renamed this run. */
+function facedRenamed(acc: Accumulator, renamed: Set<string>): boolean {
+  for (const played of acc.rounds.values()) {
+    for (const round of played) {
+      if (round.opponentId && renamed.has(round.opponentId)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -808,15 +871,31 @@ interface WritePlan {
  *
  * A player is skipped only when their tournament set is unchanged from the last
  * run AND none of their events had their content corrected (P-04) — key
- * equality alone would miss a corrected event under an unchanged folder name.
+ * equality alone would miss a corrected event under an unchanged folder name —
+ * AND neither they nor anyone they have a round against was renamed. That last
+ * clause is what keeps `buildRounds`' promise: a profile embeds its opponents'
+ * names as published today, so a rename has to rewrite every profile that names
+ * the renamed player, not only the profiles whose own events moved.
  */
 function planWrites(
   accs: Map<string, Accumulator>,
   generatedAt: string,
   prevPlayers: Record<string, string[]>,
-  changedTournaments: Set<string>
+  changedTournaments: Set<string>,
+  prevNames: Record<string, string> | undefined
 ): WritePlan {
-  const plan: WritePlan = { index: [], profileWrites: [], deckWrites: [], deckDeletes: [], manifestPlayers: {} };
+  const plan: WritePlan = {
+    index: [],
+    profileWrites: [],
+    deckWrites: [],
+    deckDeletes: [],
+    manifestPlayers: {},
+    manifestNames: {}
+  };
+  for (const acc of accs.values()) {
+    plan.manifestNames[acc.playerId] = currentName(acc);
+  }
+  const renamed = renamedSince(accs, prevNames, plan.manifestNames);
 
   for (const acc of accs.values()) {
     const profile = buildProfile(acc, accs, generatedAt);
@@ -841,7 +920,8 @@ function planWrites(
     const prevKeys = prevPlayers[acc.playerId];
     const keysUnchanged = prevKeys && arrayEquals(tournamentKeys, [...prevKeys].sort());
     const contentUnchanged = !profile.tournaments.some(entry => changedTournaments.has(entry.tournamentId));
-    if (keysUnchanged && contentUnchanged) {
+    const namesUnchanged = renamed !== null && !renamed.has(acc.playerId) && !facedRenamed(acc, renamed);
+    if (keysUnchanged && contentUnchanged && namesUnchanged) {
       continue;
     }
 
@@ -956,7 +1036,7 @@ export async function buildPlayerAggregates(
   const prevPlayers = previousManifest?.players ?? {};
   const changedTournaments = changedTournamentKeys(loadedTournamentKeys, previousManifest?.fingerprints, fingerprints);
 
-  const plan = planWrites(accs, generatedAt, prevPlayers, changedTournaments);
+  const plan = planWrites(accs, generatedAt, prevPlayers, changedTournaments, previousManifest?.names);
   const orphanDeletes = orphanDeleteKeys(prevPlayers, plan.manifestPlayers);
 
   plan.index.sort((first, second) => {
@@ -981,7 +1061,9 @@ export async function buildPlayerAggregates(
     // be cached as "covered" — next run's fast-path needs to retry it.
     tournamentKeys: loadedTournamentKeys.slice().sort(),
     players: plan.manifestPlayers,
-    fingerprints
+    fingerprints,
+    names: plan.manifestNames,
+    identityRevision: IDENTITY_OVERRIDES_REVISION
   };
   await putJson(env, MANIFEST_KEY, manifest);
 

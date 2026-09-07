@@ -66,23 +66,31 @@ function DeckGroup(props: DeckGroupProps) {
         </span>
         <ArchetypeIcons slugs={resolveArchetypeIcons({ name: props.name }, iconMap)} size={22} reserveSlot />
         <span class='deck-group-name'>{props.name}</span>
+        {/* Five figures set inline ran together into one sentence of numbers,
+            and started at a different x in every group. One slot each, fixed
+            width, so they read as a column down the page. */}
         <span class='deck-group-stats'>
-          <span>
-            <b>{props.archetype.eventCount}</b> {props.archetype.eventCount === 1 ? 'event' : 'events'}
+          <span class='deck-group-stat'>
+            <b>{props.archetype.eventCount}</b>
+            <small>{props.archetype.eventCount === 1 ? 'event' : 'events'}</small>
           </span>
-          <span>
+          <span class='deck-group-stat is-record'>
             <b>
               {props.archetype.wins}-{props.archetype.losses}-{props.archetype.ties}
             </b>
+            <small>record</small>
           </span>
-          <span>
-            <b>{winRate() == null ? '—' : `${winRate()}%`}</b> win
+          <span class='deck-group-stat'>
+            <b>{winRate() == null ? '—' : `${winRate()}%`}</b>
+            <small>win</small>
           </span>
-          <span>
-            <b>{props.archetype.day2s}</b> Day 2s
+          <span class='deck-group-stat'>
+            <b>{props.archetype.day2s}</b>
+            <small>Day 2s</small>
           </span>
-          <span>
-            <b>{best()}</b> best
+          <span class='deck-group-stat'>
+            <b>{best()}</b>
+            <small>best</small>
           </span>
         </span>
       </button>

@@ -4,7 +4,7 @@
  */
 import type { PlayerIndexSlimEntry } from '../../shared/playerTypes.js';
 
-export type PlayerSortKey = 'events' | 'day2s' | 'winPct';
+export type PlayerSortKey = 'events' | 'day2s' | 'topCuts' | 'titles' | 'winPct';
 export type PlayerSortDir = 'asc' | 'desc';
 
 /**
@@ -30,6 +30,10 @@ export function sortValue(p: PlayerIndexSlimEntry, key: PlayerSortKey): number {
   switch (key) {
     case 'day2s':
       return p.day2s;
+    case 'topCuts':
+      return p.topCuts;
+    case 'titles':
+      return p.tournamentWins;
     case 'winPct':
       return winPct(p);
     case 'events':

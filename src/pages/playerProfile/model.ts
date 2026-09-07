@@ -181,9 +181,18 @@ interface Tally {
   ties: number;
 }
 
-/** Which column of a record one outcome adds to; byes and unpaired rounds add to none. */
-function tallyColumn(outcome: PlayerRound['outcome']): keyof Tally | null {
-  if (outcome === 'win') {
+/**
+ * Which column of a record one outcome adds to; unpaired rounds add to none.
+ *
+ * `countByes` is the difference between the two questions a record can answer.
+ * Upstream standings count a bye as a win — a career published as 182-103-71
+ * has 180 played wins and two byes — so any record that has to reconcile with
+ * the one in the hero band counts them too. A record about opponents does not:
+ * a bye has no opponent and no deck, so it belongs in neither a matchup line
+ * nor a head-to-head.
+ */
+function tallyColumn(outcome: PlayerRound['outcome'], countByes: boolean): keyof Tally | null {
+  if (outcome === 'win' || (countByes && outcome === 'bye')) {
     return 'wins';
   }
   if (outcome === 'loss' || outcome === 'double_loss') {
@@ -192,8 +201,8 @@ function tallyColumn(outcome: PlayerRound['outcome']): keyof Tally | null {
   return outcome === 'tie' ? 'ties' : null;
 }
 
-function tally<T extends Tally>(row: T, outcome: PlayerRound['outcome']): T {
-  const column = tallyColumn(outcome);
+function tally<T extends Tally>(row: T, outcome: PlayerRound['outcome'], countByes = false): T {
+  const column = tallyColumn(outcome, countByes);
   return column ? { ...row, [column]: row[column] + 1 } : row;
 }
 
@@ -238,7 +247,15 @@ export interface PhaseRow extends Tally {
   label: string;
 }
 
-/** Record in Day 1 Swiss, Day 2 Swiss and top cut, in that order; phases never played are omitted. */
+/**
+ * Record in Day 1 Swiss, Day 2 Swiss and top cut, in that order; phases never
+ * played are omitted.
+ *
+ * Byes count as wins here. These three rows are the career record split by
+ * phase, and the career record they split is the one the hero band prints from
+ * upstream standings — which count byes. Leaving them out made the band read
+ * one or two wins short of the figure directly above it.
+ */
 export function phaseSplit(rounds: CareerRounds): PhaseRow[] {
   const rows = new Map<number, PhaseRow>();
   for (const round of allRounds(rounds)) {
@@ -246,7 +263,7 @@ export function phaseSplit(rounds: CareerRounds): PhaseRow[] {
       continue;
     }
     const row = rows.get(round.phase) ?? { label: phaseLabel(round.phase), wins: 0, losses: 0, ties: 0 };
-    rows.set(round.phase, tally(row, round.outcome));
+    rows.set(round.phase, tally(row, round.outcome, true));
   }
   return [...rows.entries()].sort(([a], [b]) => a - b).map(([, row]) => row);
 }

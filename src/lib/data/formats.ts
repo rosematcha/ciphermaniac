@@ -96,18 +96,6 @@ export const TIER_FORMATS: TierFormat[] = [
   }))
 ];
 
-/**
- * Every sprite slug the committed snapshots use.
- *
- * `scripts/mirror-archetype-sprites.ts` reads the same file, so these are the
- * slugs served from our own R2 — which is what makes them safe to offer in the
- * custom-archetype picker, where a cross-origin sprite would leave a hole in
- * the exported JPG.
- */
-export const FORMAT_SPRITE_SLUGS: string[] = [
-  ...new Set(SCRAPED.flatMap(format => format.archetypes.flatMap(archetype => archetype.icons)))
-];
-
 /** Resolves an id to a format, falling back to Standard for anything unknown. */
 export function tierFormat(id: string | undefined): TierFormat {
   return TIER_FORMATS.find(format => format.id === id) ?? STANDARD;

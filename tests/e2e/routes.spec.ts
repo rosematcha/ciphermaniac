@@ -91,7 +91,9 @@ test('players index ranks the fixture players with a rank switch', async ({ page
   await expect(page.locator('body')).toContainText(/Gabriel|player/i);
   const bar = page.locator('.players-bar');
   await expect(bar.getByRole('tab', { name: 'Day 2s' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('.players-table thead th')).toHaveCount(5);
+  // Rank, player, events, Day 2s, top cuts, titles, win rate. The last two are
+  // hidden by CSS below 900px, so the mobile project counts the same seven.
+  await expect(page.locator('.players-table thead th')).toHaveCount(7);
 
   await bar.getByRole('tab', { name: 'Win %' }).click();
   await expect(page).toHaveURL(/sort=winPct/);
@@ -169,8 +171,8 @@ test('a profile cached before rounds existed still renders', async ({ page }) =>
 test('the Matchups tab rolls the rounds up', async ({ page }) => {
   await gotoClean(page, '/players/1272?tab=matchups');
   await expect(page.getByRole('heading', { name: /Decks faced/ })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'By phase' })).toBeVisible();
-  await expect(page.locator('.phase-list .stat-row').first()).toContainText('Day 1');
+  // The phase splits lead the tab as a ruled band: label, rate, record.
+  await expect(page.locator('.phase-band .phase-figure').first()).toContainText('Day 1');
 });
 
 test('compare pairs two players on the events they both attended', async ({ page }) => {

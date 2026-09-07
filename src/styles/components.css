@@ -1306,7 +1306,10 @@ tr.row-expansion > td {
 .segmented {
   display: inline-flex;
   align-items: stretch;
-  height: var(--control-h);
+  /* Not a fixed height: the phone breakpoint raises the buttons to a 40px tap
+     target, and a fixed 38px group let the active pill draw outside its own
+     border. The group grows to whatever its buttons need. */
+  min-height: var(--control-h);
   padding: 3px;
   background: var(--surface-2);
   border: 1px solid var(--border);

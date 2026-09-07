@@ -2,43 +2,6 @@
  * Test helper utilities for the Ciphermaniac test suite.
  */
 
-import assert from 'node:assert/strict';
-import fs from 'fs';
-import { generatedFileRegistry } from './mock-data-factory';
-
-/**
- * Wait for an asynchronous condition to become true.
- * Polls at a small interval until timeout.
- * @param condition A function returning boolean or Promise<boolean>
- * @param timeout Maximum time in ms to wait (default 2000)
- */
-export async function waitFor(condition: () => boolean | Promise<boolean>, timeout = 2000): Promise<void> {
-  const start = Date.now();
-  const interval = 30;
-
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const res = await Promise.resolve().then(() => condition());
-    if (res) {
-      return;
-    }
-    if (Date.now() - start >= timeout) {
-      throw new Error(`waitFor: condition not met within ${timeout}ms`);
-    }
-    await sleep(interval);
-  }
-}
-
-/**
- * Promise-based delay.
- * @param ms milliseconds to sleep
- */
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => {
-    setTimeout(resolve, ms);
-  });
-}
-
 type MockFetchResponse = {
   url?: string; // optional URL to match
   predicate?: (input: RequestInfo, init?: RequestInit) => boolean; // alternative matcher
@@ -174,52 +137,6 @@ export function restoreFetch(): void {
     _originalFetch = undefined;
   }
   _currentMockResponses = null;
-}
-
-/**
- * Remove generated test files that were registered by the mock data factory.
- * Ignores missing files and collects any other errors.
- */
-export function cleanupTestData(): void {
-  const errors: Error[] = [];
-  for (const fp of Array.from(generatedFileRegistry)) {
-    try {
-      if (fs.existsSync(fp)) {
-        fs.unlinkSync(fp);
-      }
-      generatedFileRegistry.delete(fp);
-    } catch (err) {
-      if (err instanceof Error) {
-        errors.push(err);
-      }
-    }
-  }
-  if (errors.length > 0) {
-    throw new Error(`cleanupTestData: failed to remove ${errors.length} files. First error: ${errors[0].message}`);
-  }
-}
-
-/**
- * Assert that a function throws (sync or async). Optionally check error type or message.
- * @param fn Function expected to throw
- * @param errorType Optional constructor of expected error (e.g. TypeError)
- */
-export async function expectThrows(
-  fn: () => unknown | Promise<unknown>,
-  errorType?: new (...args: any[]) => Error
-): Promise<void> {
-  let threw = false;
-  try {
-    await Promise.resolve().then(() => fn());
-  } catch (err) {
-    threw = true;
-    if (errorType && !(err instanceof errorType)) {
-      assert.fail(`Expected error type ${(errorType as any).name} but got ${(err as Error).name}`);
-    }
-  }
-  if (!threw) {
-    assert.fail('Expected function to throw but it did not');
-  }
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   type PlayerIndexEntry,
   type PlayerIndexSlimEntry
 } from '../../shared/playerTypes.ts';
+import { winPct } from '../../src/utils/playerSort.ts';
 
 function entry(over: Partial<PlayerIndexEntry> = {}): PlayerIndexEntry {
   return {
@@ -69,6 +70,32 @@ test('a columnar payload written before the record existed decodes with zero win
   const decoded = decodeSlimIndex(columnar);
   assert.equal(decoded?.[0].wins, 0);
   assert.equal(decoded?.[0].losses, 0);
+});
+
+test('encoding a legacy index that predates the record writes zeros, not nulls', () => {
+  // The aggregator's no-change fast path re-encodes whatever `index.json`
+  // already held. An index written before win rate existed has no wins/losses,
+  // and `undefined` in the columnar arrays serialises as `null` — which used to
+  // reach the browser as a record for the entire field.
+  const legacy = [entry()] as unknown as Record<string, unknown>[];
+  delete legacy[0].wins;
+  delete legacy[0].losses;
+  const encoded = encodeSlimIndex(legacy as unknown as PlayerIndexEntry[]);
+  assert.deepEqual(encoded.wins, [0]);
+  assert.deepEqual(encoded.losses, [0]);
+  assert.equal(JSON.stringify(encoded).includes('null'), false);
+});
+
+test('a decoded legacy entry yields a real win rate, not NaN', () => {
+  // The players index reads `wins + losses` straight off these entries. The
+  // legacy `index.json` fallback used to skip this decoder entirely, and an
+  // entry without the two fields made every arithmetic result NaN.
+  const decoded = decodeSlimIndex([
+    { playerId: '9', name: 'Misty', eventCount: 4, day2s: 1, topCuts: 0, tournamentWins: 0 }
+  ]);
+  assert.ok(decoded);
+  assert.equal(Number.isNaN(decoded[0].wins + decoded[0].losses), false);
+  assert.equal(winPct(decoded[0]), 0);
 });
 
 test('decode preserves entry order', () => {

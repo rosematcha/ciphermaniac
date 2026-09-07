@@ -90,8 +90,12 @@ export function encodeSlimIndex(
     out.names.push(e.name);
     out.countries.push(e.country ?? '');
     out.eventCounts.push(e.eventCount);
-    out.wins!.push(e.wins);
-    out.losses!.push(e.losses);
+    // Coalesced, not passed through: the aggregator's no-change fast path
+    // re-encodes whatever `index.json` already held, and an index written
+    // before win rate existed has neither field. `undefined` here serialises
+    // as `null`, which decodes to a 0-0 record for the whole field.
+    out.wins!.push(e.wins ?? 0);
+    out.losses!.push(e.losses ?? 0);
     out.day2s.push(e.day2s);
     out.topCuts.push(e.topCuts);
     out.tournamentWins.push(e.tournamentWins);

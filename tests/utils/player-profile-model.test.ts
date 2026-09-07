@@ -76,12 +76,32 @@ test('matchupRollup counts each opponent deck, most-faced first, and skips byes'
   assert.equal(rows[0].winRate, 1 / 3);
 });
 
-test('phaseSplit records Day 1, Day 2 and top cut in order', () => {
+test('phaseSplit records Day 1, Day 2 and top cut in order, counting the bye as a win', () => {
+  // The Day 1 row holds the New Orleans bye. Upstream standings count a bye as
+  // a win, and these three rows split the same career record the hero band
+  // prints, so leaving it out put the band a win behind the figure above it.
   assert.deepEqual(phaseSplit(rounds()), [
-    { label: 'Day 1', wins: 1, losses: 2, ties: 2 },
+    { label: 'Day 1', wins: 2, losses: 2, ties: 2 },
     { label: 'Day 2', wins: 1, losses: 0, ties: 0 },
     { label: 'Top cut', wins: 1, losses: 0, ties: 0 }
   ]);
+});
+
+test('the phase records add up to the career record the hero band shows', () => {
+  // Verified against production: Ajay Sridhar publishes 182-103-71 over 180
+  // played wins and two byes. Whatever the phase rows sum to has to be the
+  // record printed directly above them.
+  const all = Object.values(rounds()).flat();
+  const standings = {
+    wins: all.filter(r => r.outcome === 'win' || r.outcome === 'bye').length,
+    losses: all.filter(r => r.outcome === 'loss' || r.outcome === 'double_loss').length,
+    ties: all.filter(r => r.outcome === 'tie').length
+  };
+  const summed = phaseSplit(rounds()).reduce(
+    (acc, row) => ({ wins: acc.wins + row.wins, losses: acc.losses + row.losses, ties: acc.ties + row.ties }),
+    { wins: 0, losses: 0, ties: 0 }
+  );
+  assert.deepEqual(summed, standings);
 });
 
 test('repeatOpponents keys by career id, counts meetings and lists events newest first', () => {

@@ -99,3 +99,7 @@
   font-variant-numeric: tabular-nums;
   cursor: help;
 }
+/* Only rendered when there is one, so it never has to hold its own space. */
+.compare-unscored {
+  color: var(--muted);
+}

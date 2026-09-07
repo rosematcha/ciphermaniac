@@ -16,9 +16,9 @@ import {
 } from './model';
 
 /**
- * The career against the field: record by opponent deck, by phase, and the
- * opponents met more than once. All three roll up from the rounds the profile
- * already carries, so this tab needs no fetch of its own.
+ * The career against the field: the record by phase as a band, then the record
+ * by opponent deck and the opponents met more than once. All three roll up from
+ * the rounds the profile already carries, so this tab needs no fetch of its own.
  */
 export function MatchupsTab(props: { rounds: CareerRounds }) {
   return (
@@ -47,79 +47,79 @@ function MatchupsBody(props: { rounds: CareerRounds }) {
 
   return (
     <>
-      <div class='matchups-grid'>
-        <div>
-          <h3 class='profile-h3'>
-            Decks faced
-            <span class='muted-note'>{MATCHUP_MIN_GAMES}+ games</span>
-          </h3>
-          <Show
-            when={shown().length > 0}
-            fallback={<p class='profile-note'>No deck faced {MATCHUP_MIN_GAMES} times yet.</p>}
-          >
-            <div class='table-wrap'>
-              <table class='data matchup-table'>
-                <thead>
-                  <tr>
-                    <th>Opponent's deck</th>
-                    <th class='num'>Games</th>
-                    <th class='num'>Record</th>
-                    <th>Win %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <For each={shown()}>
-                    {row => (
-                      <tr>
-                        <td>
-                          <span class='arche-name-cell'>
-                            <ArchetypeIcons
-                              slugs={resolveArchetypeIcons({ name: row.archetype }, iconMap)}
-                              size={18}
-                              reserveSlot
-                            />
-                            <span class='cardname'>{row.archetype}</span>
-                          </span>
-                        </td>
-                        <td class='num'>{row.games}</td>
-                        <td class='num'>
-                          {row.wins}-{row.losses}-{row.ties}
-                        </td>
-                        <td>
-                          <WinRate rate={row.winRate} />
-                        </td>
-                      </tr>
-                    )}
-                  </For>
-                </tbody>
-              </table>
-            </div>
-          </Show>
-          <Show when={rare() > 0}>
-            <p class='profile-note'>
-              {rare()} more {rare() === 1 ? 'deck' : 'decks'} faced fewer than {MATCHUP_MIN_GAMES} times.
-            </p>
-          </Show>
-        </div>
-        <div>
-          <h3 class='profile-h3'>By phase</h3>
-          <div class='stats-list phase-list'>
-            <For each={phases()}>
-              {phase => (
-                <div class='stat-row'>
-                  <span class='stat-label'>{phase.label}</span>
-                  <span class='stat-value'>
-                    {formatRate(winRateWhole(phase.wins, phase.losses))}
-                    <span class='stat-rank-total'>
-                      {phase.wins}-{phase.losses}-{phase.ties}
-                    </span>
+      {/* The phase splits were a 280px right rail holding two or three rows
+          beside a twenty-row table, so most of the column was empty. They read
+          as what they are — a second reading of the career record — set in the
+          same ruled band the hero uses for the first. */}
+      <Show when={phases().length > 0}>
+        <dl class='phase-band'>
+          <For each={phases()}>
+            {phase => (
+              <div class='phase-figure'>
+                <dt>{phase.label}</dt>
+                <dd>
+                  {formatRate(winRateWhole(phase.wins, phase.losses))}
+                  <span class='phase-record'>
+                    {phase.wins}-{phase.losses}-{phase.ties}
                   </span>
-                </div>
-              )}
-            </For>
-          </div>
+                </dd>
+              </div>
+            )}
+          </For>
+        </dl>
+      </Show>
+
+      <h3 class='profile-h3'>
+        Decks faced
+        <span class='muted-note'>{MATCHUP_MIN_GAMES}+ games</span>
+      </h3>
+      <Show
+        when={shown().length > 0}
+        fallback={<p class='profile-note'>No deck faced {MATCHUP_MIN_GAMES} times yet.</p>}
+      >
+        <div class='table-wrap'>
+          <table class='data matchup-table'>
+            <thead>
+              <tr>
+                <th>Opponent's deck</th>
+                <th class='num'>Games</th>
+                <th class='num'>Record</th>
+                <th class='num matchup-wr'>Win %</th>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={shown()}>
+                {row => (
+                  <tr>
+                    <td>
+                      <span class='arche-name-cell'>
+                        <ArchetypeIcons
+                          slugs={resolveArchetypeIcons({ name: row.archetype }, iconMap)}
+                          size={18}
+                          reserveSlot
+                        />
+                        <span class='cardname'>{row.archetype}</span>
+                      </span>
+                    </td>
+                    <td class='num'>{row.games}</td>
+                    <td class='num'>
+                      {row.wins}-{row.losses}-{row.ties}
+                    </td>
+                    <td class='matchup-wr'>
+                      <WinRate rate={row.winRate} />
+                    </td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
         </div>
-      </div>
+      </Show>
+      <Show when={rare() > 0}>
+        <p class='profile-note'>
+          {rare()} more {rare() === 1 ? 'deck' : 'decks'} faced fewer than {MATCHUP_MIN_GAMES} times.
+        </p>
+      </Show>
 
       <h3 class='profile-h3'>Players faced more than once</h3>
       <Show
