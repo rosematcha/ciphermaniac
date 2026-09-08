@@ -59,8 +59,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
-import requests
-from lib.r2 import make_r2_client
+from lib.r2 import make_r2_client, read_json
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 
@@ -267,14 +266,24 @@ def scrape(spec: FormatSpec) -> Dict[str, object]:
     return entry
 
 
+def r2_client():
+    return make_r2_client(os.environ["R2_ACCOUNT_ID"], os.environ["R2_ACCESS_KEY_ID"],
+                          os.environ["R2_SECRET_ACCESS_KEY"])
+
+
 def load_existing() -> Dict[str, Dict[str, object]]:
-    """Published entries keyed by format id; failures must not erase old formats."""
-    origin = os.environ.get("PUBLIC_R2_BASE_URL", "https://r2.ciphermaniac.com").rstrip("/")
-    response = requests.get(f"{origin}/{OBJECT_KEY}", timeout=30)
-    if response.status_code == 404:
+    """Published entries keyed by format id; failures must not erase old formats.
+
+    Read from the bucket rather than the public origin: the edge answers a CI
+    runner differently than a browser, so a merge could see a stale body or a
+    challenge page. Only a verified 404 counts as "nothing published yet".
+    """
+    result = read_json(r2_client(), os.environ["R2_BUCKET_NAME"], OBJECT_KEY)
+    if result.status == "missing":
         return {}
-    response.raise_for_status()
-    data = response.json()
+    if result.status != "found":
+        raise RuntimeError(f"Could not read {OBJECT_KEY} ({result.status})") from result.error
+    data = result.value
     formats = data.get("formats") if isinstance(data, dict) else None
     if not isinstance(formats, list):
         raise ValueError("Invalid format archetype snapshot")
@@ -325,7 +334,9 @@ def main() -> int:
             time.sleep(REQUEST_DELAY)
         scraped[spec.id] = scrape(spec)
 
-    document = merge(load_existing(), scraped)
+    # The merge that keeps unscraped formats needs the published document, which
+    # takes bucket credentials; a local run without --publish merges onto nothing.
+    document = merge(load_existing() if args.publish else {}, scraped)
     text = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
     if args.dry_run:
         print(text)
@@ -334,8 +345,7 @@ def main() -> int:
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(text, encoding="utf-8")
     if args.publish:
-        client = make_r2_client(os.environ["R2_ACCOUNT_ID"], os.environ["R2_ACCESS_KEY_ID"],
-                                os.environ["R2_SECRET_ACCESS_KEY"])
+        client = r2_client()
         client.put_object(Bucket=os.environ["R2_BUCKET_NAME"], Key=OBJECT_KEY,
                           Body=text.encode("utf-8"), ContentType="application/json",
                           CacheControl="public, max-age=300")

@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import requests
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
@@ -13,23 +12,30 @@ spec = importlib.util.spec_from_file_location("archetype_icons_r2", SCRIPTS / "s
 icons = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(icons)
 
+from lib.r2 import ReadResult  # noqa: E402
+
 
 class ArchetypeIconsR2Tests(unittest.TestCase):
+    def read_result(self, result):
+        return patch.multiple(icons, r2_client=Mock(), read_json=Mock(return_value=result))
+
     def test_missing_database_is_empty(self):
-        with patch.object(icons.requests, "get", return_value=Mock(status_code=404)):
-            self.assertEqual(icons.load_existing(), {})
+        with patch.dict(icons.os.environ, {"R2_BUCKET_NAME": "bucket"}):
+            with self.read_result(ReadResult("missing")):
+                self.assertEqual(icons.load_existing(), {})
 
     def test_failure_does_not_discard_existing_database(self):
-        with patch.object(icons.requests, "get", side_effect=requests.Timeout):
-            with self.assertRaises(requests.Timeout):
-                icons.load_existing()
+        with patch.dict(icons.os.environ, {"R2_BUCKET_NAME": "bucket"}):
+            for status in ("transport", "corrupt"):
+                with self.read_result(ReadResult(status, None, RuntimeError("boom"))):
+                    with self.assertRaises(RuntimeError):
+                        icons.load_existing()
 
     def test_invalid_database_is_rejected(self):
-        response = Mock(status_code=200)
-        response.json.return_value = []
-        with patch.object(icons.requests, "get", return_value=response):
-            with self.assertRaises(ValueError):
-                icons.load_existing()
+        with patch.dict(icons.os.environ, {"R2_BUCKET_NAME": "bucket"}):
+            with self.read_result(ReadResult("found", [])):
+                with self.assertRaises(ValueError):
+                    icons.load_existing()
 
     def test_publishes_expected_object(self):
         values = {"R2_ACCOUNT_ID": "account", "R2_ACCESS_KEY_ID": "key",

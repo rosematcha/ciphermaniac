@@ -41,8 +41,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Tuple
-import requests
-from lib.r2 import make_r2_client
+from lib.r2 import make_r2_client, read_json
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 
@@ -55,7 +54,6 @@ from limitless_decks import (  # noqa: E402
 
 OUTPUT_PATH = Path(".cache") / "archetype-icons.json"
 ICON_KEY = "assets/archetype-icons.json"
-HTTP_TIMEOUT = 20
 
 # Limitless deliberately has no deck-index row for its residual "Other" bucket,
 # so scraping cannot discover its representative icon. Keep this product choice
@@ -133,14 +131,22 @@ def parse_rows(html: str) -> Dict[str, List[str]]:
 
 
 def load_existing() -> Dict[str, List[str]]:
-    origin = os.environ.get("PUBLIC_R2_BASE_URL", "https://r2.ciphermaniac.com").rstrip("/")
-    response = requests.get(f"{origin}/{ICON_KEY}", timeout=HTTP_TIMEOUT)
-    if response.status_code == 404:
+    """The published map, read from the bucket itself.
+
+    Reading it back over the public origin went through Cloudflare's edge, which
+    answers a runner differently than a browser (a bot challenge, a cached body),
+    so a merge could see the wrong database or none at all. The bucket is the
+    source of truth and this script already holds credentials for it. Only a
+    verified 404 means "no database yet"; every other failure aborts, because
+    merging onto {} would silently republish a truncated map.
+    """
+    result = read_json(r2_client(), os.environ["R2_BUCKET_NAME"], ICON_KEY)
+    if result.status == "missing":
         return {}
-    response.raise_for_status()
-    data = response.json()
-    validate_icons(data)
-    return data
+    if result.status != "found":
+        raise RuntimeError(f"Could not read {ICON_KEY} ({result.status})") from result.error
+    validate_icons(result.value)
+    return result.value
 
 
 def validate_icons(data) -> None:
@@ -159,13 +165,17 @@ def parse_target(value: str) -> Tuple[str, str]:
     return rotation, set_code
 
 
+def r2_client():
+    return make_r2_client(
+        os.environ["R2_ACCOUNT_ID"], os.environ["R2_ACCESS_KEY_ID"], os.environ["R2_SECRET_ACCESS_KEY"]
+    )
+
+
 def publish_icons(mapping: Dict[str, List[str]]) -> None:
     validate_icons(mapping)
     if not mapping:
         raise ValueError("Refusing to publish an empty archetype icon database")
-    client = make_r2_client(
-        os.environ["R2_ACCOUNT_ID"], os.environ["R2_ACCESS_KEY_ID"], os.environ["R2_SECRET_ACCESS_KEY"]
-    )
+    client = r2_client()
     client.put_object(
         Bucket=os.environ["R2_BUCKET_NAME"],
         Key=ICON_KEY,
@@ -212,7 +222,10 @@ def main() -> int:
         print("ERROR: no archetype rows parsed — page layout may have changed.", file=sys.stderr)
         return 1
 
-    existing = load_existing()
+    # Reading the published map takes bucket credentials, so a local dry run
+    # merges onto nothing and writes a scrape-only cache file; only a --publish
+    # run (which has the credentials) preserves hand-edited keys.
+    existing = load_existing() if args.publish else {}
     if args.overwrite:
         merged = {**existing, **scraped}
     else:

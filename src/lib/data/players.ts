@@ -14,7 +14,7 @@ const { fetchJsonOptional } = dataClient;
 // In dev, serve from the local public/ tree (populated by
 // `npx tsx scripts/build-players-local.ts`) so we don't need a deploy.
 async function fetchPlayerJson<T>(path: string): Promise<T | null> {
-  if (import.meta.env.DEV) {
+  if (import.meta.env?.DEV) {
     const res = await fetch(path);
     // Vite's SPA fallback answers missing files with index.html and a 200, so
     // a genuinely absent player file never 404s in dev. A local miss doesn't
