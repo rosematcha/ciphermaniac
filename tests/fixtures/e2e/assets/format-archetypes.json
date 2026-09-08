@@ -1,11 +1,28 @@
 {
   "version": 1,
+  "shareFloor": 1,
   "formats": [
-    { "id": "expanded", "label": "Expanded", "group": "current", "archetypes": [
-      { "name": "Synthetic Expanded Deck", "share": 50, "icons": ["pikachu"], "cards": ["SVI/001"] }
-    ] },
-    { "id": "ex", "label": "EX", "group": "past", "archetypes": [
-      { "name": "Synthetic Deck", "share": 25, "icons": ["pikachu"] }
-    ] }
+    {
+      "id": "expanded",
+      "label": "Expanded",
+      "group": "current",
+      "archetypes": [
+        { "name": "Synthetic Expanded Deck", "share": 50, "icons": ["pikachu"], "cards": ["SVI/001"] }
+      ]
+    },
+    {
+      "id": "ex",
+      "label": "EX",
+      "group": "past",
+      "archetypes": [
+        { "name": "Synthetic Vintage Deck", "share": 25, "icons": ["pikachu"], "cards": ["RG/009"] }
+      ]
+    },
+    {
+      "id": "2016",
+      "label": "2016",
+      "group": "past",
+      "archetypes": [{ "name": "Synthetic Deck", "share": 25, "icons": ["pikachu"] }]
+    }
   ]
 }

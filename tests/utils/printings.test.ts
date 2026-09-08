@@ -62,3 +62,38 @@ test('formatPrintPrice renders cents or an em dash', () => {
   assert.strictEqual(formatPrintPrice(183.76), '$183.76');
   assert.strictEqual(formatPrintPrice(null), '—');
 });
+
+// --- September 10th arts (src/lib/jokeMode) ---
+
+const BUDEW_DB: SynonymDatabase = {
+  synonyms: { 'Budew::PRE::004': 'Budew::SIT::004' },
+  canonicals: { Budew: 'Budew::SIT::004' },
+  prints: { 'Budew::SIT::004': 1.5, 'Budew::PRE::004': 0.8 }
+};
+
+test("joke mode appends the card's unprinted art at the end of the strip", () => {
+  const rows = buildPrintingRows(BUDEW_DB, 'Budew::SIT::004', true);
+  assert.deepEqual(
+    rows.map(r => r.set),
+    ['SIT', 'PRE', 'UVU']
+  );
+  const joke = rows[2];
+  assert.equal(joke.number, '002');
+  assert.equal(joke.price, null);
+  assert.equal(joke.isPage, false);
+  assert.equal(joke.uid, 'Budew::UVU::002');
+});
+
+test('joke mode is off by default and adds nothing to a card with no joke art', () => {
+  assert.equal(buildPrintingRows(BUDEW_DB, 'Budew::SIT::004').length, 2);
+  assert.equal(buildPrintingRows(DB, 'Night Stretcher::SFA::061', true).length, 4);
+});
+
+test('a joke art never conjures a strip for a single-printing card', () => {
+  const solo: SynonymDatabase = {
+    synonyms: {},
+    canonicals: { Budew: 'Budew::SIT::004' },
+    prints: { 'Budew::SIT::004': 1.5 }
+  };
+  assert.deepEqual(buildPrintingRows(solo, 'Budew::SIT::004', true), []);
+});

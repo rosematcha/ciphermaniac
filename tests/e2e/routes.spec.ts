@@ -479,17 +479,18 @@ test('a tier-list tile always has artwork, even with no sprite to show', async (
 });
 
 test('a past format ranks its own archetypes and keeps the previews toggle', async ({ page }) => {
-  // The past formats are bundled, not fetched, so this needs no fixture. Their
-  // snapshot carries the cards each archetype's decklists were built around, so
-  // the toggle survives the format change rather than vanishing with it.
+  // Every format now comes from the fetched snapshot, so this reads the fixture's
+  // own past format rather than a bundled one. Its archetypes carry the cards
+  // their decklists were built around, so the toggle survives the format change
+  // rather than vanishing with it.
   await gotoClean(page, '/tools/tier-list');
   await expect(page.getByRole('tab', { name: 'Previews', exact: true })).toBeVisible();
 
-  await page.locator('.tl-conf select.sel').selectOption('2016');
+  await page.locator('.tl-conf select.sel').selectOption('ex');
   await expect(page.getByRole('tab', { name: 'Previews', exact: true })).toBeVisible();
   await expect(page.locator('.tl-tray .tl-item').first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator('.tl-tray')).toContainText('Night March');
-  expect(new URL(page.url()).searchParams.get('format')).toBe('2016');
+  await expect(page.locator('.tl-tray')).toContainText('Synthetic Vintage Deck');
+  expect(new URL(page.url()).searchParams.get('format')).toBe('ex');
 });
 
 test('previews survive a format change and draw the cards of the new one', async ({ page }) => {

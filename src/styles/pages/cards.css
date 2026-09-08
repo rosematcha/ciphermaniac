@@ -239,6 +239,8 @@
 .ps-frame {
   display: block;
   flex: 0 0 44px;
+  padding: 0;
+  cursor: pointer;
   aspect-ratio: 5 / 7;
   border: 1px solid var(--border);
   border-radius: 4px;

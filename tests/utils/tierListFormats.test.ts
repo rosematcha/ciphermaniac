@@ -7,13 +7,26 @@ test('published formats populate the catalog and preserve the report interface',
   await loadTierFormats(async () => snapshot);
   assert.deepEqual(
     tierFormats().map(format => format.id),
-    ['standard', 'expanded', 'ex']
+    ['standard', 'expanded', 'ex', '2016']
   );
   assert.equal(tierFormat('unknown').id, 'standard');
   assert.equal(tierFormat(undefined).id, 'standard');
   assert.equal(tierFormat('expanded').previews, true);
-  assert.equal(tierFormat('ex').previews, false);
+  // A past format carries previews when its scrape covered the whole table...
+  assert.equal(tierFormat('ex').previews, true);
+  // ...and not when it did not.
+  assert.equal(tierFormat('2016').previews, false);
   assert.deepEqual(await fetchFormatArchetypes('ex'), [
+    {
+      name: 'Synthetic Vintage Deck',
+      label: 'Synthetic Vintage Deck',
+      deckCount: null,
+      percent: 25,
+      thumbnails: ['RG/009'],
+      icons: ['pikachu']
+    }
+  ]);
+  assert.deepEqual(await fetchFormatArchetypes('2016'), [
     {
       name: 'Synthetic Deck',
       label: 'Synthetic Deck',
@@ -56,7 +69,7 @@ test('malformed or failed refreshes preserve the last usable snapshot', async ()
       throw new Error('offline');
     })
   );
-  assert.equal(tierFormats().length, 3);
+  assert.equal(tierFormats().length, snapshot.formats.length + 1);
 });
 
 test('formats and archetype names must be unique', async () => {

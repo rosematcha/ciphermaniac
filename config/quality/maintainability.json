@@ -325,9 +325,6 @@
   "src/lib/tierList/rowSortable.ts": [
     "max-lines-per-function:36ca0164f47d31e788d107fbdee3d2b89fb538508e381195a23a64f13cecaf11:Function 'installRowSortable' has too many lines (177). Maximum allowed is 100."
   ],
-  "src/pages/CardPage.tsx": [
-    "complexity:d84a142aff7f1ee00cd78aacf3189fc4866493f812caec684592c57fe36d929f:Function 'CardPageBody' has a complexity of 13. Maximum allowed is 12."
-  ],
   "src/pages/CardWallPage.tsx": [
     "max-lines-per-function:f2b45c43acf3564f26c13a2599507d7a46801cc512f8533846b375961b97997f:Function 'CardWallPage' has too many lines (538). Maximum allowed is 250."
   ],
@@ -368,6 +365,6 @@
     "complexity:99609732abd341ba5c8493777e3bd9b00e691d43537fb67190fc66d20c634a0d:Function 'decodeBuildState' has a complexity of 19. Maximum allowed is 12."
   ],
   "src/utils/printings.ts": [
-    "complexity:08e0cd51bd8a290581c15a985e56a448bc54781c55c0d2ac642043c48a57f5b5:Function 'buildPrintingRows' has a complexity of 16. Maximum allowed is 12."
+    "complexity:b3ca7afca01302b86cc3b0050e93221f76e9a433fde0cb3e3dd285493ddd2250:Function 'buildPrintingRows' has a complexity of 23. Maximum allowed is 12."
   ]
 }

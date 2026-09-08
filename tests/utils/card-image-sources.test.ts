@@ -80,3 +80,17 @@ test('a vintage set goes to pokemontcg.io regardless of skipR2', () => {
     assert.ok(attempts.at(-1)?.startsWith('https://images.pokemontcg.io/'), String(attempts.at(-1)));
   }
 });
+
+test('the UVU set resolves to a bundled art rather than any CDN', () => {
+  assert.deepEqual(buildAttempts('UVU', '002', 'lg', true), ['/joke-arts/002.webp']);
+  assert.deepEqual(buildAttempts('uvu', '002', 'xs', false), ['/joke-arts/002.webp']);
+  assert.equal(buildSrcset('UVU', '002', 'lg', true), '/joke-arts/002.webp 460w');
+});
+
+test('a UVU number with no bundled art resolves normally, path traversal included', () => {
+  for (const number of ['../secrets', '087']) {
+    const attempts = buildAttempts('UVU', number, 'xs', false);
+    assert.ok(!attempts.some(u => u.startsWith('/joke-arts/')));
+    assert.ok(attempts.length > 0);
+  }
+});
