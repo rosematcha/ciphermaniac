@@ -53,6 +53,53 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- List view on a phone ----------
+   Auto layout let the sprite-and-name column take the row and pushed both
+   rates off the right edge, where a hidden scrollbar meant nothing said they
+   were there: a ranking with no figures in it. Fixed layout puts the rates
+   back on screen and lets the name truncate instead. */
+@media (max-width: 640px) {
+  .arche-list .data {
+    table-layout: fixed;
+  }
+  .arche-list .data .arche-rank-col {
+    width: 30px;
+  }
+  .arche-list .data th.num:not(.arche-rank-col),
+  .arche-list .data td.num:not(.arche-rank-col) {
+    width: 20%;
+  }
+  .arche-list .arche-decks-col {
+    display: none;
+  }
+  .arche-list .data td.arche-name-col {
+    overflow: hidden;
+  }
+  /* Block-level, so the row of sprite-plus-name is bounded by the cell and the
+     name can shrink to an ellipsis inside it. Inline-flex sizes to its content
+     and simply ran over the meta-share column. */
+  .arche-list .arche-name-cell {
+    display: flex;
+    gap: 8px;
+  }
+  /* The sprites are the label's decoration; on a phone they give a couple of
+     characters back to the label itself. */
+  .arche-list .arche-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .arche-list .data .cardname {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The game count is a footnote on the rate, and a phone has no room for
+     footnotes. */
+  .arche-list .wr-games {
+    display: none;
+  }
+}
+
 /* Muted win-rate cell (20–50 games) / game count in the list view. */
 .wr-cell.is-muted {
   opacity: 0.55;
