@@ -94,18 +94,38 @@
   .players-table .data td {
     padding: 0 6px;
   }
-  /* A phone has no slack to distribute; the numbers size to themselves and the
-     name takes the rest. */
+  /* A phone has no slack to distribute, and auto layout would not give it to
+     the name: a cell capped with `max-width: 0` only ever asks for its longest
+     word, so every spare pixel went to the figures and the ranking read
+     "Ga… 43 35 72%". Fixed layout is the only way to say the name gets the
+     rest — the three figures are two or three characters and never need more
+     than their header. */
+  .players-table .data {
+    table-layout: fixed;
+  }
   .players-table .data th.num:not(.players-rank),
   .players-table .data td.num:not(.players-rank) {
-    width: auto;
+    width: 17%;
   }
-  /* The name column absorbs the slack and truncates, so the three numbers stay
-     on screen down to the narrowest phones. */
+  /* The name column takes what the figures leave and truncates. */
   .players-table .data td.players-name {
-    width: 100%;
-    max-width: 0;
+    width: auto;
+    max-width: none;
     overflow: hidden;
+  }
+  /* Every pixel the country code takes is a pixel off the end of the name. */
+  .players-name .players-ident {
+    gap: 4px;
+  }
+  .players-country {
+    font-size: 10.5px;
+  }
+}
+/* The narrowest phones still cannot fit a full name beside a flag code, and a
+   name beats a nuance: the country goes, and it is still on the profile. */
+@media (max-width: 380px) {
+  .players-country {
+    display: none;
   }
 }
 
