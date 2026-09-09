@@ -1013,6 +1013,29 @@
   .table-wrap .data thead th {
     position: static;
   }
+  /* A sortable header's padding lives on its button, so the phone's tighter
+     gutter has to be set there too. It was still spending 28px a column on
+     desktop padding, and a header label is what sizes a numeric column: three
+     sortable columns took 84px of a 390px screen before a single figure was
+     drawn, and the players table paid for it out of the name. */
+  .table-wrap .data th.sortable button.th-sort {
+    padding: 0 8px;
+  }
+  /* Right-aligned figures under a left-aligned label read as two columns. */
+  .table-wrap .data th.num.sortable button.th-sort {
+    justify-content: flex-end;
+  }
+  /* A figure column is only ever as wide as its header, so on a phone the
+     header is what every other column is competing with: "EVENTS" is four
+     times the width of the 43 underneath it. One step down the scale, with the
+     caret tucked in, buys back most of a name. */
+  .table-wrap .data thead th {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+  .table-wrap .data th.sortable button.th-sort {
+    gap: 2px;
+  }
 }
 table.data {
   width: 100%;
