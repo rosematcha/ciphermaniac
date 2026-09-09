@@ -348,15 +348,15 @@ function ComparisonBody(props: {
           when={props.shared.length > 0}
           fallback={<EmptyState title='No shared events.' description='These two players have no events in common.' />}
         >
-          <div class='table-wrap'>
+          <div class='table-wrap compare-events'>
             <table class='data'>
               <thead>
                 <tr>
-                  <th>Event</th>
+                  <th class='compare-event-col'>Event</th>
                   <th class='num'>{props.a.name}</th>
-                  <th>Deck</th>
+                  <th class='compare-deck-col'>Deck</th>
                   <th class='num'>{props.b.name}</th>
-                  <th>Deck</th>
+                  <th class='compare-deck-col'>Deck</th>
                 </tr>
               </thead>
               <tbody>
@@ -365,7 +365,7 @@ function ComparisonBody(props: {
                     const cmp = finishCmp(ev.a, ev.b);
                     return (
                       <tr>
-                        <td>
+                        <td class='compare-event-col'>
                           <span class='cardname'>{prettyTournamentName(ev.tournamentId)}</span>
                         </td>
                         <td class='num' classList={{ 'compare-lead': cmp === -1 }}>
@@ -377,7 +377,7 @@ function ComparisonBody(props: {
                           {placementLabel(ev.a.placement)}
                           <span class='muted-cell'> · {record(ev.a.wins, ev.a.losses, ev.a.ties)}</span>
                         </td>
-                        <td class='muted-cell'>{deckCell(props.a, ev.a.archetype)}</td>
+                        <td class='muted-cell compare-deck-col'>{deckCell(props.a, ev.a.archetype)}</td>
                         <td class='num' classList={{ 'compare-lead': cmp === 1 }}>
                           <Show when={cmp === 1}>
                             <span class='compare-caret' aria-label='Higher finish'>
@@ -387,7 +387,7 @@ function ComparisonBody(props: {
                           {placementLabel(ev.b.placement)}
                           <span class='muted-cell'> · {record(ev.b.wins, ev.b.losses, ev.b.ties)}</span>
                         </td>
-                        <td class='muted-cell'>{deckCell(props.b, ev.b.archetype)}</td>
+                        <td class='muted-cell compare-deck-col'>{deckCell(props.b, ev.b.archetype)}</td>
                       </tr>
                     );
                   }}

@@ -202,7 +202,9 @@ test('compare pairs two players on the events they both attended', async ({ page
   await expect(shared.locator('tbody > tr')).toHaveCount(4);
   await expect(shared.locator('.compare-h2h')).toContainText('3-1');
   // The event column carries its own date, so there is no separate date column.
-  await expect(shared.getByRole('columnheader')).toHaveCount(5);
+  // Counted in the DOM rather than by role: a phone hides the two deck columns,
+  // and a hidden cell has no columnheader role.
+  await expect(shared.locator('thead th')).toHaveCount(5);
 });
 
 test('compare asks for two players before it compares anything', async ({ page }) => {
