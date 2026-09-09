@@ -3,6 +3,18 @@ import assert from 'node:assert/strict';
 import { fetchFormatArchetypes, loadTierFormats, tierFormat, tierFormats } from '../../src/lib/data/formats';
 import snapshot from '../fixtures/e2e/assets/format-archetypes.json';
 
+test('frozen past formats remain available when the metadata request is offline', async () => {
+  await assert.rejects(
+    loadTierFormats(async () => {
+      throw new Error('offline');
+    })
+  );
+  assert.deepEqual(
+    tierFormats().map(format => format.id),
+    ['standard', 'ex', '2010', '2011', '2016', 'sumlot', 'rmep']
+  );
+});
+
 test('published formats populate the catalog and preserve the report interface', async () => {
   await loadTierFormats(async () => snapshot);
   assert.deepEqual(

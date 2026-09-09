@@ -5,6 +5,7 @@ import { ONLINE } from './paths';
 import { createSignal } from 'solid-js';
 import { dataClient } from './client';
 import type { ArchetypeIndexEntry } from '../../types';
+import frozenRetroSnapshot from '../../data/frozen-retro-formats.json';
 
 /** Whether a format is still being played, which decides how it is grouped. */
 export type FormatGroup = 'current' | 'past';
@@ -38,6 +39,13 @@ interface SnapshotFormat {
 }
 
 /**
+ * Retired formats have settled metagames. Keep their last complete scrape in
+ * the application so the picker still works when the live metadata request is
+ * unavailable; a successful R2 refresh replaces this catalogue wholesale.
+ */
+const FROZEN_RETRO_FORMATS = frozenRetroSnapshot.formats as SnapshotFormat[];
+
+/**
  * Standard's id. It is the default and the only format not in the snapshot,
  * so both halves of the module special-case it.
  */
@@ -50,7 +58,7 @@ const STANDARD: TierFormat = {
   previews: true
 };
 
-const [scraped, setScraped] = createSignal<SnapshotFormat[]>([]);
+const [scraped, setScraped] = createSignal<SnapshotFormat[]>(FROZEN_RETRO_FORMATS);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);

@@ -37,8 +37,11 @@ import { installItemSortable, type ItemDrop } from '../lib/tierList/itemSortable
 import { installRowSortable } from '../lib/tierList/rowSortable';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { interEmbedCss } from '../utils/fontEmbed';
+import { Actions, DockStrip } from './tierList/Actions';
 import { Combo, splitMatch } from './tierList/Combo';
 import { type CanonicalOption, Editor, type EditorTarget, type SpriteOption } from './tierList/Editor';
+import { QuickRank } from './tierList/QuickRank';
+import { animateRows, collapseRow } from './tierList/rowMotion';
 import { Shot } from './tierList/Shot';
 import { TierBoard } from './tierList/TierBoard';
 import {
@@ -99,8 +102,17 @@ const NOMINAL_ITEM_H: Record<TierMode, { bare: number; labelled: number }> = {
  */
 type EditSubject = { kind: 'tier'; id: string } | { kind: 'archetype'; id: number | null };
 
-/** How long a reordered row takes to travel. Long enough to follow, short enough to keep clicking. */
-const ROW_MOVE_MS = 140;
+/**
+ * Below this the page is a different tool.
+ *
+ * A 124px plate and a tray that starts 500px under the board are a desktop
+ * arrangement: on a phone the only interaction the page has — moving a tile
+ * into a tier — became a drag across most of a 2,200px document. Under this
+ * width the tray docks to the bottom edge, the actions ride the dock, and a tap
+ * on a tile followed by a tap on a tier does what the drag did. Matches the
+ * phone block in tier-list.css; the two have to agree.
+ */
+const PHONE_QUERY = '(max-width: 720px)';
 
 const MODE_LABELS: { value: TierMode; label: string }[] = [
   { value: 'icons', label: 'Archetypes' },
@@ -143,10 +155,15 @@ export function TierListPage() {
   const [cardKey, setCardKey] = createSignal('');
   const [title, setTitle] = createSignal('');
   const [editing, setEditing] = createSignal<EditSubject | null>(null);
-  const [resetArmed, setResetArmed] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [shot, setShot] = createSignal<File | null>(null);
+  // Tap-to-place: the tile a tap picked up, waiting for a tier to land in.
+  const [held, setHeld] = createSignal<string | null>(null);
+  const [ranking, setRanking] = createSignal(false);
+
+  const phoneQuery = typeof window === 'undefined' ? null : window.matchMedia(PHONE_QUERY);
+  const [phone, setPhone] = createSignal(phoneQuery?.matches ?? false);
 
   let board: HTMLDivElement | undefined;
   let nextCustomId = 1;
@@ -168,9 +185,30 @@ export function TierListPage() {
     void loadTierFormats().catch(() => setError('Could not load formats.'));
     document.title = 'Tier List Maker — Tools — Ciphermaniac';
     restoreFromHash();
-    onCleanup(installItemSortable({ onDrop: applyDrop }));
+    onCleanup(installItemSortable({ onDrop: applyDrop, onTap: pickUp }));
     onCleanup(installRowSortable({ onReorder: ids => setTiers(list => withTierOrder(list, ids)) }));
+    const onWidth = (event: MediaQueryListEvent): void => {
+      setPhone(event.matches);
+    };
+    phoneQuery?.addEventListener('change', onWidth);
+    onCleanup(() => phoneQuery?.removeEventListener('change', onWidth));
   });
+
+  // Nothing is held on a pointer that drags, and a rotation to landscape must
+  // not leave a tile picked up with no bar to put it down from.
+  createEffect(() => {
+    if (!phone()) {
+      setHeld(null);
+      setRanking(false);
+    }
+  });
+
+  // The prompt that says what is held is a body-scoped class, because the tiers
+  // it lights up are inside the board and the bar that cancels it is not.
+  createEffect(() => {
+    document.body.classList.toggle('tl-placing', held() !== null);
+  });
+  onCleanup(() => document.body.classList.remove('tl-placing'));
 
   createEffect(() => {
     document.body.classList.toggle('tl-labels', labels());
@@ -200,6 +238,39 @@ export function TierListPage() {
     void split();
     measureTile();
   });
+
+  /**
+   * A tap on a tile, which on a phone picks it up. Tapping the held tile again
+   * puts it down: the same gesture undoes itself, so a mis-tap costs nothing.
+   */
+  function pickUp(itemId: string): void {
+    if (!phone()) {
+      return;
+    }
+    const next = held() === itemId ? null : itemId;
+    setHeld(next);
+    // The dock sits over the lower half of the screen, so the tier a tap is
+    // headed for may be off it. Picking something up brings the board back.
+    if (next) {
+      document.querySelector('.tl-frame')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  /** Put an item at the end of a zone, which is where a tap means. */
+  function placeAtEnd(itemId: string, zone: string): void {
+    const index = (zone === TRAY ? split().tray : (split().buckets.get(zone) ?? [])).length;
+    applyDrop({ itemId, zone, index });
+  }
+
+  /** A tap on a tier while a tile is held. Lands at the end of that tier. */
+  function placeHeld(zone: string): void {
+    const itemId = held();
+    if (!itemId) {
+      return;
+    }
+    setHeld(null);
+    placeAtEnd(itemId, zone);
+  }
 
   /** State is the authority; the sortable only proposes. */
   const applyDrop = (drop: ItemDrop): void => {
@@ -248,6 +319,11 @@ export function TierListPage() {
   });
 
   const split = createMemo(() => distribute(items(), tiers(), placement()));
+
+  const heldItem = (): TierItem | undefined => {
+    const id = held();
+    return id === null ? undefined : items().find(item => item.id === id);
+  };
 
   const editorTarget = createMemo<EditorTarget | null>(() => {
     const subject = editing();
@@ -311,58 +387,15 @@ export function TierListPage() {
     }
   }
 
-  /**
-   * Reorder and delete move rows, and a row that teleports is hard to follow.
-   * FLIP the board: measure, mutate, measure, then let the rows travel the
-   * difference.
-   */
-  function animateRows(mutate: () => void): void {
-    const before = new Map<string, number>();
-    for (const row of document.querySelectorAll<HTMLElement>('.tl-board .tl-row[data-row]')) {
-      before.set(row.dataset.row!, row.getBoundingClientRect().top);
-    }
-    mutate();
-    queueMicrotask(() => {
-      const rows = [...document.querySelectorAll<HTMLElement>('.tl-board .tl-row[data-row]')];
-      for (const row of rows) {
-        const was = before.get(row.dataset.row!);
-        const delta = was === undefined ? 0 : was - row.getBoundingClientRect().top;
-        if (!delta) {
-          continue;
-        }
-        row.style.transition = 'none';
-        row.style.transform = `translateY(${delta}px)`;
-      }
-      requestAnimationFrame(() => {
-        for (const row of rows) {
-          row.style.transition = `transform ${ROW_MOVE_MS}ms var(--ease-base)`;
-          row.style.transform = '';
-        }
-      });
-    });
-  }
-
   /** The row collapses first, so the rows below have something to follow. */
   function deleteTier(id: string): void {
-    const row = document.querySelector<HTMLElement>(`.tl-board .tl-row[data-row="${id}"]`);
-    const commit = (): void => {
+    setEditing(null);
+    // eslint-disable-next-line solid/reactivity -- deliberately late: the commit runs after the collapse animation, and must delete against the state as it is then, not as it was 140ms earlier
+    collapseRow(id, () => {
       const next = withDeletedTier(tiers(), placement(), id);
       setTiers(next.tiers);
       setPlacement(next.placement);
-    };
-    setEditing(null);
-    if (!row) {
-      commit();
-      return;
-    }
-    row.style.overflow = 'hidden';
-    row.style.height = `${row.getBoundingClientRect().height}px`;
-    requestAnimationFrame(() => {
-      row.style.transition = `height ${ROW_MOVE_MS}ms var(--ease-base), opacity ${ROW_MOVE_MS}ms var(--ease-base)`;
-      row.style.height = '0px';
-      row.style.opacity = '0';
     });
-    setTimeout(commit, ROW_MOVE_MS);
   }
 
   function saveArchetype(draft: CustomArchetype): void {
@@ -394,7 +427,6 @@ export function TierListPage() {
     setPlacement(new Map());
     setTiers(defaultTiers());
     setEditing(null);
-    setResetArmed(false);
   }
 
   // -------------------------------------------------------------- sharing
@@ -468,6 +500,8 @@ export function TierListPage() {
     if (!node) {
       return;
     }
+    // A held tile lights up every tier, and the export is the board itself.
+    setHeld(null);
     setBusy(true);
     setError(null);
     try {
@@ -522,7 +556,7 @@ export function TierListPage() {
         <div class='tl-conf'>
           {/* Subject leads the row: what is being ranked decides what every
               control after it even means, so it is the first thing picked. */}
-          <div class='segmented' role='tablist' aria-label='Subject'>
+          <div class='segmented tl-subject' role='tablist' aria-label='Subject'>
             <For each={MODE_LABELS}>
               {option => (
                 <button
@@ -593,7 +627,7 @@ export function TierListPage() {
           {/* Offering Previews on a format whose snapshot predates card art
               would be a toggle that changes nothing. */}
           <Show when={mode() !== 'arts' && format().previews}>
-            <div class='segmented' role='tablist' aria-label='Archetype artwork'>
+            <div class='segmented tl-artwork' role='tablist' aria-label='Archetype artwork'>
               <button
                 type='button'
                 role='tab'
@@ -621,23 +655,9 @@ export function TierListPage() {
 
           <span class='grow' />
 
-          <div class='tl-actions'>
-            <button
-              type='button'
-              class='tl-btn'
-              classList={{ warn: resetArmed() }}
-              onClick={() => (resetArmed() ? resetAll() : setResetArmed(true))}
-              onBlur={() => setResetArmed(false)}
-            >
-              {resetArmed() ? 'Reset everything?' : 'Reset'}
-            </button>
-            <button type='button' class='tl-btn' onClick={() => void share()}>
-              Share
-            </button>
-            <button type='button' class='tl-btn primary' disabled={busy()} onClick={() => void exportJpg()}>
-              {busy() ? 'Rendering…' : 'Export JPG'}
-            </button>
-          </div>
+          <Show when={!phone()}>
+            <Actions busy={busy()} onReset={resetAll} onShare={() => void share()} onExport={() => void exportJpg()} />
+          </Show>
         </div>
 
         <Show when={error()}>{message => <p class='tl-error'>{message()}</p>}</Show>
@@ -668,6 +688,21 @@ export function TierListPage() {
             onEditItem={id => setEditing({ kind: 'archetype', id })}
             onAddTier={() => setTiers(withAddedTier)}
             onAddArchetype={mode() === 'arts' ? undefined : () => setEditing({ kind: 'archetype', id: null })}
+            actions={
+              phone() ? (
+                <DockStrip
+                  busy={busy()}
+                  held={heldItem()?.label}
+                  onCancel={() => setHeld(null)}
+                  onReset={resetAll}
+                  onShare={() => void share()}
+                  onExport={() => void exportJpg()}
+                />
+              ) : undefined
+            }
+            onQuickRank={phone() ? () => setRanking(true) : undefined}
+            held={held()}
+            onPlaceHeld={placeHeld}
           />
         </Show>
       </section>
@@ -691,6 +726,15 @@ export function TierListPage() {
             onClose={() => setEditing(null)}
           />
         )}
+      </Show>
+
+      <Show when={ranking()}>
+        <QuickRank
+          items={split().tray}
+          tiers={tiers()}
+          onPlace={(itemId, tierId) => placeAtEnd(itemId, tierId)}
+          onClose={() => setRanking(false)}
+        />
       </Show>
 
       <Show when={shot()} keyed>

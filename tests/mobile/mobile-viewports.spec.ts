@@ -26,6 +26,9 @@ const ROUTES = [
   '/tournaments',
   '/toys',
   '/toys/in-loving-memory',
+  // The tier list docks its tray to the bottom edge on a phone; a fixed strip
+  // is exactly the kind of thing that escapes the viewport when it drifts.
+  '/tools/tier-list',
   '/about'
 ];
 
