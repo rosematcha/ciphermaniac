@@ -1021,10 +1021,6 @@
   .table-wrap .data th.sortable button.th-sort {
     padding: 0 8px;
   }
-  /* Right-aligned figures under a left-aligned label read as two columns. */
-  .table-wrap .data th.num.sortable button.th-sort {
-    justify-content: flex-end;
-  }
   /* A figure column is only ever as wide as its header, so on a phone the
      header is what every other column is competing with: "EVENTS" is four
      times the width of the 43 underneath it. One step down the scale, with the
@@ -1109,6 +1105,12 @@ table.data {
   color: inherit;
   cursor: pointer;
   transition: color var(--ms-fast) var(--ease-base);
+}
+/* A figure column's label belongs over its figures. The button fills the cell,
+   so the cell's own `text-align: right` does not reach the label inside it, and
+   every numeric header sat at the far side of its own column. */
+.data th.num.sortable button.th-sort {
+  justify-content: flex-end;
 }
 /* The mark is reserved in every sortable header and only its glyph is hidden:
    `table-layout` is auto, so a mark that appears on click re-solves the column
