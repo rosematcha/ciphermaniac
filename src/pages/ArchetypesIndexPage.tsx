@@ -160,10 +160,12 @@ type SortDir = 'ascending' | 'descending';
 // Single source of truth for the list table's column headers, shared by the
 // real table and its loading skeleton so the two never drift.
 const COLUMNS: { label: string; class?: string; sort?: SortCol }[] = [
-  { label: '#', class: 'num' },
+  { label: '#', class: 'num arche-rank-col' },
   { label: 'Archetype' },
   { label: 'Meta share', class: 'num', sort: 'share' },
-  { label: 'Decks', class: 'num', sort: 'decks' },
+  // Deck count is meta share counted a second way; it is the column a phone
+  // drops so the two rates stay on screen.
+  { label: 'Decks', class: 'num arche-decks-col', sort: 'decks' },
   { label: 'Win rate', class: 'num', sort: 'winRate' }
 ];
 
@@ -216,8 +218,8 @@ function ArchetypesListView(props: {
     });
   });
 
-  const SortHeader = (p: { col: SortCol; label: string }) => (
-    <th class='num sortable' aria-sort={ariaSort(p.col)}>
+  const SortHeader = (p: { col: SortCol; label: string; class?: string }) => (
+    <th class={`${p.class ?? 'num'} sortable`} aria-sort={ariaSort(p.col)}>
       <button type='button' class='th-sort' onClick={() => toggle(p.col)}>
         {p.label}
         {/* Always present, hidden when inactive: `table-layout` is auto, so a
@@ -231,13 +233,17 @@ function ArchetypesListView(props: {
   );
 
   return (
-    <div class='table-wrap'>
+    <div class='table-wrap arche-list'>
       <table class='data'>
         <thead>
           <tr>
             <For each={COLUMNS}>
               {col =>
-                col.sort ? <SortHeader col={col.sort} label={col.label} /> : <th class={col.class}>{col.label}</th>
+                col.sort ? (
+                  <SortHeader col={col.sort} label={col.label} class={col.class} />
+                ) : (
+                  <th class={col.class}>{col.label}</th>
+                )
               }
             </For>
           </tr>
@@ -257,15 +263,15 @@ function ArchetypesListView(props: {
                   }
                 }}
               >
-                <td class='num muted-cell'>{i() + 1}</td>
-                <td>
+                <td class='num muted-cell arche-rank-col'>{i() + 1}</td>
+                <td class='arche-name-col'>
                   <span class='arche-name-cell'>
                     <ArchetypeIcons slugs={resolveArchetypeIcons(entry, props.iconMap)} size={28} reserveSlot />
                     <span class='cardname'>{entry.label || entry.name}</span>
                   </span>
                 </td>
                 <td class='num'>{formatPercent(entry.percent)}</td>
-                <td class='num muted-cell'>{entry.deckCount?.toLocaleString() ?? '—'}</td>
+                <td class='num muted-cell arche-decks-col'>{entry.deckCount?.toLocaleString() ?? '—'}</td>
                 <td class='num' classList={{ 'wr-cell': true, 'is-muted': gamesOf(entry) < WR_MUTE_GAMES }}>
                   <Show when={gamesOf(entry) >= WR_MIN_GAMES && winRateOf(entry) !== null} fallback={<span>—</span>}>
                     {formatPercent(winRateOf(entry))}
@@ -283,7 +289,7 @@ function ArchetypesListView(props: {
 
 function ListSkeleton() {
   return (
-    <div class='table-wrap'>
+    <div class='table-wrap arche-list'>
       <table class='data'>
         <thead>
           <tr>
@@ -294,7 +300,7 @@ function ListSkeleton() {
           <For each={Array.from({ length: 12 })}>
             {() => (
               <tr>
-                <td class='num'>
+                <td class='num arche-rank-col'>
                   <Skeleton width='20px' />
                 </td>
                 <td>
@@ -303,7 +309,7 @@ function ListSkeleton() {
                 <td class='num'>
                   <Skeleton width='40px' />
                 </td>
-                <td class='num'>
+                <td class='num arche-decks-col'>
                   <Skeleton width='48px' />
                 </td>
                 <td class='num'>

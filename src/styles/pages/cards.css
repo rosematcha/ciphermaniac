@@ -498,3 +498,34 @@
     display: block;
   }
 }
+
+/* ---------- List view on a phone ----------
+   Seven columns do not fit a phone, and auto layout answered that by putting
+   inclusion, copies and price off the right edge behind a hidden scrollbar —
+   the list became a ranking with nothing to rank by. Set, type and average
+   copies are all on the card's own page; inclusion and price stay. */
+@media (max-width: 640px) {
+  .cards-list .data {
+    table-layout: fixed;
+  }
+  .cards-list .data .cards-rank-col {
+    width: 30px;
+  }
+  .cards-list .data th.num:not(.cards-rank-col),
+  .cards-list .data td.num:not(.cards-rank-col) {
+    width: 22%;
+  }
+  .cards-list .cards-set-col,
+  .cards-list .cards-type-col,
+  .cards-list .cards-copies-col {
+    display: none;
+  }
+  .cards-list .data td.cards-name-col {
+    overflow: hidden;
+  }
+  .cards-list .data td.cards-name-col .cardname {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

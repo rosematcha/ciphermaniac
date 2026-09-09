@@ -19,6 +19,8 @@ interface TileProps {
   item: TierItem;
   /** Opens the editor for an archetype the user invented. */
   onEdit?: (customId: number) => void;
+  /** Picked up by a tap and waiting for a tier — see tap-to-place. */
+  held?: boolean;
 }
 
 /**
@@ -59,7 +61,7 @@ export function Tile(props: TileProps): JSX.Element {
 
 function IconTile(props: TileProps): JSX.Element {
   return (
-    <div class='tl-item' data-id={props.item.id}>
+    <div class='tl-item' classList={{ 'tl-held': props.held }} data-id={props.item.id}>
       <div class='tl-ico'>
         {/* `placeholder`: with labels off a sprite-less archetype is an empty
             chip with nothing to identify or grab it by. */}
@@ -76,7 +78,7 @@ function IconTile(props: TileProps): JSX.Element {
 function PreviewTile(props: TileProps): JSX.Element {
   const thumbs = (): string[] => props.item.thumbs ?? [];
   return (
-    <div class='tl-item tl-prev' data-id={props.item.id} title={props.item.label}>
+    <div class='tl-item tl-prev' classList={{ 'tl-held': props.held }} data-id={props.item.id} title={props.item.label}>
       <div class='box'>
         <Show
           when={thumbs().length > 0}
@@ -106,7 +108,7 @@ function PreviewTile(props: TileProps): JSX.Element {
 
 function ArtTile(props: TileProps): JSX.Element {
   return (
-    <div class='tl-item tl-art' data-id={props.item.id} title={props.item.label}>
+    <div class='tl-item tl-art' classList={{ 'tl-held': props.held }} data-id={props.item.id} title={props.item.label}>
       <CardImage set={props.item.set ?? ''} number={props.item.number ?? ''} size='sm' lazy skipR2 />
       <div class='cap'>{props.item.label}</div>
     </div>

@@ -1013,6 +1013,25 @@
   .table-wrap .data thead th {
     position: static;
   }
+  /* A sortable header's padding lives on its button, so the phone's tighter
+     gutter has to be set there too. It was still spending 28px a column on
+     desktop padding, and a header label is what sizes a numeric column: three
+     sortable columns took 84px of a 390px screen before a single figure was
+     drawn, and the players table paid for it out of the name. */
+  .table-wrap .data th.sortable button.th-sort {
+    padding: 0 8px;
+  }
+  /* A figure column is only ever as wide as its header, so on a phone the
+     header is what every other column is competing with: "EVENTS" is four
+     times the width of the 43 underneath it. One step down the scale, with the
+     caret tucked in, buys back most of a name. */
+  .table-wrap .data thead th {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+  .table-wrap .data th.sortable button.th-sort {
+    gap: 2px;
+  }
 }
 table.data {
   width: 100%;
@@ -1086,6 +1105,12 @@ table.data {
   color: inherit;
   cursor: pointer;
   transition: color var(--ms-fast) var(--ease-base);
+}
+/* A figure column's label belongs over its figures. The button fills the cell,
+   so the cell's own `text-align: right` does not reach the label inside it, and
+   every numeric header sat at the far side of its own column. */
+.data th.num.sortable button.th-sort {
+  justify-content: flex-end;
 }
 /* The mark is reserved in every sortable header and only its glyph is hidden:
    `table-layout` is auto, so a mark that appears on click re-solves the column

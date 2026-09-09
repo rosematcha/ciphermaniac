@@ -30,6 +30,22 @@ interface TierBoardProps {
   onAddTier: () => void;
   /** Absent in card-arts view: a printing either exists or it does not. */
   onAddArchetype?: () => void;
+  /**
+   * Reset/Share/Export, rendered on the tray. On a phone the tray is docked to
+   * the bottom edge, which makes it the one strip always in reach — see the
+   * dock rules in tier-list.css. On a desktop the page keeps them in the
+   * toolbar and passes nothing.
+   */
+  actions?: JSX.Element;
+  /** Opens the phone's ranking mode. Absent where there is nothing to rank. */
+  onQuickRank?: () => void;
+  /**
+   * Tap-to-place: the tile a tap has picked up, waiting for a tier. Null when
+   * nothing is held, and always null where dragging is the only way (desktop).
+   */
+  held?: string | null;
+  /** A tap on a tier while something is held. */
+  onPlaceHeld?: (tierId: string) => void;
 }
 
 /** Long names step down through two sizes rather than wrapping into fragments. */
@@ -45,6 +61,9 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
   // `hover: none` block in tier-list.css); a mouse reveals them by hovering and
   // hides them by leaving, which needs no state at all.
   const [open, setOpen] = createSignal<string | null>(null);
+  // Whether the phone's dock is standing tall. Inert on a desktop, where the
+  // tray is a panel in the page and its handle is not rendered at all.
+  const [expanded, setExpanded] = createSignal(false);
 
   onMount(() => {
     // The tap that reveals the tools must not also press one. The tools cover
@@ -63,6 +82,13 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
       const target = event.target as Element | null;
       // A press on a tool belongs to the tool.
       if (target?.closest('.tl-tools')) {
+        return;
+      }
+      // While a tile is held, a press on a plate is aimed at the tier, not at
+      // its controls — revealing four buttons under the finger would put the
+      // placing tap on one of them.
+      if (props.held) {
+        setOpen(null);
         return;
       }
       const plate = target?.closest<HTMLElement>('.tl-plate')?.dataset.plate ?? null;
@@ -114,6 +140,11 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
                 class='tl-row'
                 data-row={tier.id}
                 style={{ '--plate': swatch(tier.swatch).hex, '--plate-fg': swatch(tier.swatch).text }}
+                onClick={() => {
+                  if (props.held) {
+                    props.onPlaceHeld?.(tier.id);
+                  }
+                }}
               >
                 <div
                   class='tl-plate'
@@ -167,7 +198,12 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
                     </button>
                   </span>
                 </div>
-                <Zone items={props.buckets.get(tier.id) ?? []} tier={tier.id} onEditItem={props.onEditItem} />
+                <Zone
+                  items={props.buckets.get(tier.id) ?? []}
+                  tier={tier.id}
+                  held={props.held}
+                  onEditItem={props.onEditItem}
+                />
               </div>
             )}
           </For>
@@ -178,7 +214,18 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
         + Add tier
       </button>
 
-      <div class='tl-tray'>
+      <div class='tl-tray' classList={{ tall: expanded() }}>
+        {/* The handle is the dock's, and only the dock's: on a desktop the tray
+            is a panel in the page and has nothing to grab. Two rows of the pile
+            is the resting height — enough to place from, little enough to leave
+            the board on screen — and this is how you see the rest of it. */}
+        <button
+          type='button'
+          class='tl-grip'
+          aria-expanded={expanded()}
+          aria-label={expanded() ? 'Collapse unranked' : 'Expand unranked'}
+          onClick={() => setExpanded(tall => !tall)}
+        />
         <h4>
           Unranked <span>{props.tray.length}</span>
           <Show when={props.onAddArchetype}>
@@ -188,17 +235,32 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
               </button>
             )}
           </Show>
+          <Show when={props.onQuickRank}>
+            {rank => (
+              <button type='button' class='tl-mini tl-rank' disabled={props.tray.length === 0} onClick={() => rank()()}>
+                Quick rank
+              </button>
+            )}
+          </Show>
         </h4>
-        <Zone items={props.tray} tier='tray' onEditItem={props.onEditItem} />
+        {props.actions}
+        <Zone items={props.tray} tier='tray' held={props.held} onEditItem={props.onEditItem} />
       </div>
     </>
   );
 }
 
-function Zone(props: { items: TierItem[]; tier: string; onEditItem: (customId: number) => void }): JSX.Element {
+function Zone(props: {
+  items: TierItem[];
+  tier: string;
+  held?: string | null;
+  onEditItem: (customId: number) => void;
+}): JSX.Element {
   return (
     <div class='tl-zone' classList={{ empty: props.items.length === 0 }} data-tier={props.tier}>
-      <For each={props.items}>{item => <Tile item={item} onEdit={props.onEditItem} />}</For>
+      <For each={props.items}>
+        {item => <Tile item={item} held={props.held === item.id} onEdit={props.onEditItem} />}
+      </For>
     </div>
   );
 }

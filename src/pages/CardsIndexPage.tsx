@@ -606,11 +606,12 @@ function SortableTh(props: {
   dir: SortDir;
   onSort: (key: SortKey) => void;
   num?: boolean;
+  class?: string;
 }) {
   const active = () => props.activeKey === props.sortKey;
   return (
     <th
-      class='sortable'
+      class={`sortable${props.class ? ` ${props.class}` : ''}`}
       classList={{ num: props.num }}
       aria-sort={active() ? (props.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
     >
@@ -635,11 +636,11 @@ function ListView(props: {
   onSort: (key: SortKey) => void;
 }) {
   return (
-    <div class='table-wrap'>
+    <div class='table-wrap cards-list'>
       <table class='data'>
         <thead>
           <tr>
-            <th class='num'>#</th>
+            <th class='num cards-rank-col'>#</th>
             <SortableTh
               label='Card'
               sortKey='name'
@@ -647,8 +648,8 @@ function ListView(props: {
               dir={props.sortDir}
               onSort={props.onSort}
             />
-            <th>Set</th>
-            <th>Type</th>
+            <th class='cards-set-col'>Set</th>
+            <th class='cards-type-col'>Type</th>
             <SortableTh
               label='Inclusion'
               sortKey='inclusion'
@@ -664,6 +665,7 @@ function ListView(props: {
               dir={props.sortDir}
               onSort={props.onSort}
               num
+              class='cards-copies-col'
             />
             <SortableTh
               label='Price'
@@ -690,8 +692,8 @@ function ListView(props: {
                     }
                   }}
                 >
-                  <td class='num muted-cell'>{item.rank ?? '—'}</td>
-                  <td>
+                  <td class='num muted-cell cards-rank-col'>{item.rank ?? '—'}</td>
+                  <td class='cards-name-col'>
                     <Show
                       when={item.set && item.number !== undefined}
                       fallback={<span class='cardname'>{item.name}</span>}
@@ -701,10 +703,10 @@ function ListView(props: {
                       </CardHoverPreview>
                     </Show>
                   </td>
-                  <td class='muted-cell'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
-                  <td class='muted-cell'>{categoryLabel(item)}</td>
+                  <td class='muted-cell cards-set-col'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
+                  <td class='muted-cell cards-type-col'>{categoryLabel(item)}</td>
                   <td class='num'>{item.pct.toFixed(1)}%</td>
-                  <td class='num muted-cell'>{averageCopies(item)}</td>
+                  <td class='num muted-cell cards-copies-col'>{averageCopies(item)}</td>
                   <td class='num'>
                     <Show when={price() !== null} fallback={<span class='muted-cell'>—</span>}>
                       ${price()!.toFixed(2)}
@@ -747,16 +749,16 @@ function ViewSkeleton(props: { mode: ViewMode }) {
         </div>
       }
     >
-      <div class='table-wrap'>
+      <div class='table-wrap cards-list'>
         <table class='data'>
           <thead>
             <tr>
-              <th class='num'>#</th>
+              <th class='num cards-rank-col'>#</th>
               <th>Card</th>
-              <th>Set</th>
-              <th>Type</th>
+              <th class='cards-set-col'>Set</th>
+              <th class='cards-type-col'>Type</th>
               <th class='num'>Inclusion</th>
-              <th class='num'>Avg copies</th>
+              <th class='num cards-copies-col'>Avg copies</th>
               <th class='num'>Price</th>
             </tr>
           </thead>
@@ -764,22 +766,22 @@ function ViewSkeleton(props: { mode: ViewMode }) {
             <For each={Array.from({ length: 12 })}>
               {() => (
                 <tr>
-                  <td class='num'>
+                  <td class='num cards-rank-col'>
                     <Skeleton width='20px' />
                   </td>
-                  <td>
+                  <td class='cards-name-col'>
                     <Skeleton width='60%' />
                   </td>
-                  <td>
+                  <td class='cards-set-col'>
                     <Skeleton width='50px' />
                   </td>
-                  <td>
+                  <td class='cards-type-col'>
                     <Skeleton width='80px' />
                   </td>
                   <td class='num'>
                     <Skeleton width='40px' />
                   </td>
-                  <td class='num'>
+                  <td class='num cards-copies-col'>
                     <Skeleton width='36px' />
                   </td>
                   <td class='num'>

@@ -103,3 +103,51 @@
 .compare-unscored {
   color: var(--muted);
 }
+
+/* ---------- Both tables on a phone ----------
+   Three columns of comparison and five of shared events do not fit, and auto
+   layout put the second player off the right edge behind a hidden scrollbar —
+   a comparison with one player in it. Fixed layout honours the shares the
+   table already declares, the decks go (they are on each profile), and the
+   long labels truncate. */
+@media (max-width: 640px) {
+  .compare-table,
+  .compare-events .data {
+    table-layout: fixed;
+  }
+  .compare-table th,
+  .compare-table td,
+  .compare-events .data th,
+  .compare-events .data td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .compare-events .compare-deck-col {
+    display: none;
+  }
+  /* A metric label that truncates to "Medi..." has stopped being a label. */
+  .compare-table th:first-child,
+  .compare-table td:first-child {
+    width: 32%;
+    white-space: normal;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .compare-table th:not(:first-child),
+  .compare-table td:not(:first-child) {
+    width: 34%;
+  }
+  .compare-events .data .compare-event-col {
+    width: 50%;
+    /* Every shared event starts "Regional Championship", so a single truncated
+       line said nothing about which one it was. It wraps instead. */
+    white-space: normal;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  /* The win-loss record is a footnote on the finish, and it was eating the
+     finish itself. */
+  .compare-events .data td.num .muted-cell {
+    display: none;
+  }
+}

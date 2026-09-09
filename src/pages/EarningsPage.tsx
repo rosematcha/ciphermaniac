@@ -194,15 +194,15 @@ export function EarningsPage() {
             when={pageItems().length > 0}
             fallback={<EmptyState title='Nobody ranked here.' description='No player has earnings under this view.' />}
           >
-            <div class='table-wrap'>
+            <div class='table-wrap earnings-table'>
               <table class='data'>
                 <thead>
                   <tr>
                     <th class='earnings-rank'>#</th>
                     <th class='num expand-col' aria-label='Expand' />
-                    <th>Player</th>
-                    <th>Country</th>
-                    <th class='num'>{amountHeader()}</th>
+                    <th class='earnings-name'>Player</th>
+                    <th class='earnings-country'>Country</th>
+                    <th class='num earnings-amount'>{amountHeader()}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -275,7 +275,7 @@ function BreakdownRow(props: {
             ▸
           </button>
         </td>
-        <td>
+        <td class='earnings-name'>
           {/* Stops the row toggle so a click on the name still leaves for Limitless. */}
           <a
             class='cardname'
@@ -287,8 +287,8 @@ function BreakdownRow(props: {
             {props.row.player.name}
           </a>
         </td>
-        <td class='muted-cell'>{props.row.player.country || '—'}</td>
-        <td class='num'>
+        <td class='muted-cell earnings-country'>{props.row.player.country || '—'}</td>
+        <td class='num earnings-amount'>
           {formatEarnings(props.row.amount)}
           <Show when={props.row.seasonKey && props.seasonLabel(props.row.seasonKey)}>
             {label => <span class='earnings-season'>{label()}</span>}
@@ -403,15 +403,15 @@ function EventLines(props: { events: EarningsEvent[]; basis: EarningsBasis }) {
 
 function TableSkeleton() {
   return (
-    <div class='table-wrap'>
+    <div class='table-wrap earnings-table'>
       <table class='data'>
         <thead>
           <tr>
             <th class='earnings-rank'>#</th>
             <th class='num expand-col' aria-label='Expand' />
-            <th>Player</th>
-            <th>Country</th>
-            <th class='num'>Career</th>
+            <th class='earnings-name'>Player</th>
+            <th class='earnings-country'>Country</th>
+            <th class='num earnings-amount'>Career</th>
           </tr>
         </thead>
         <tbody>
@@ -422,13 +422,13 @@ function TableSkeleton() {
                   <Skeleton width='16px' />
                 </td>
                 <td class='num expand-col' />
-                <td>
+                <td class='earnings-name'>
                   <Skeleton width='60%' />
                 </td>
-                <td>
+                <td class='earnings-country'>
                   <Skeleton width='40px' />
                 </td>
-                <td class='num'>
+                <td class='num earnings-amount'>
                   <Skeleton width='64px' />
                 </td>
               </tr>

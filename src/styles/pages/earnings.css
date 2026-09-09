@@ -31,6 +31,40 @@
   color: var(--muted);
 }
 
+/* ---------- The table on a phone ----------
+   The money is the whole page, and auto layout was putting it off the right
+   edge behind a hidden scrollbar while the country code sat comfortably in
+   view. Fixed layout, no country (it is on the player's profile), and the name
+   truncates. */
+@media (max-width: 640px) {
+  .earnings-table .data {
+    table-layout: fixed;
+  }
+  .earnings-table .data .earnings-rank {
+    width: 34px;
+  }
+  .earnings-table .data .earnings-amount {
+    width: 38%;
+  }
+  .earnings-table .data .earnings-country {
+    display: none;
+  }
+  .earnings-table .data td.earnings-name {
+    overflow: hidden;
+  }
+  .earnings-table .data td.earnings-name .cardname {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* The season a figure came from is what the top-seasons lens is about, so it
+     stays; it drops under the amount rather than trailing it. */
+  .earnings-table .earnings-season {
+    display: block;
+    margin-left: 0;
+  }
+}
+
 /* ---------- Expanded row breakdown ---------- */
 
 /* Sits inside tr.row-expansion, which already supplies the recessed surface. */

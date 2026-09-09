@@ -320,7 +320,7 @@
     "complexity:deaaf5506e2ff57fe7aae7c8d1fa4e44ad447a3481f63da25ffede4fd9d50fd4:Arrow function has a complexity of 15. Maximum allowed is 12."
   ],
   "src/lib/tierList/itemSortable.ts": [
-    "max-lines-per-function:ff5583cef4956e3aeb4d1b742d791bbeea5dfabac915d0794c5dfd91b0ac2f1b:Function 'installItemSortable' has too many lines (265). Maximum allowed is 100."
+    "max-lines-per-function:95cdf8951109c924f7825b2e9d8c2d99870bf678fbb66593d968907f3c843b43:Function 'installItemSortable' has too many lines (269). Maximum allowed is 100."
   ],
   "src/lib/tierList/rowSortable.ts": [
     "max-lines-per-function:36ca0164f47d31e788d107fbdee3d2b89fb538508e381195a23a64f13cecaf11:Function 'installRowSortable' has too many lines (177). Maximum allowed is 100."
@@ -347,7 +347,7 @@
     "complexity:9c9d7ce275996f1d425e913a55375b5bbaf03c75c371852e9e62835a3f263eac:Function 'SocialGraphicsPage' has a complexity of 24. Maximum allowed is 12."
   ],
   "src/pages/TierListPage.tsx": [
-    "max-lines-per-function:57ce11de2189a54a46f552e3f08ac9a8c368c37c1b08917b9cb79743ab035bdb:Function 'TierListPage' has too many lines (469). Maximum allowed is 250."
+    "max-lines-per-function:5def441bf8b96fd64a307e76c447cbbbff1b86339f1cb1c990bf1c8774c09949:Function 'TierListPage' has too many lines (484). Maximum allowed is 250."
   ],
   "src/pages/TrendsPage.tsx": [
     "max-lines-per-function:3656df5a1e4845d0203b1c5b7f8f14f3ac3318d63a086d6d217d36f25e299960:Function 'ArchetypeTrendChart' has too many lines (432). Maximum allowed is 250."

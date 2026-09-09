@@ -65,6 +65,15 @@ export interface ItemDrop {
 export interface ItemSortableOptions {
   /** Apply the move to state; the caller re-renders and this module animates the settle. */
   onDrop: (drop: ItemDrop) => void;
+  /**
+   * A press on a tile that never became a drag.
+   *
+   * Reported from here rather than from a `click` handler on the tile because
+   * this is the only place that knows which it was: a drag ends in a `click`
+   * too, on whatever the tile was released over, and a page that treats that
+   * as a tap acts twice on one gesture.
+   */
+  onTap?: (itemId: string) => void;
 }
 
 const rectOf = (el: Element): DOMRect => el.getBoundingClientRect();
@@ -334,7 +343,11 @@ export function installItemSortable(options: ItemSortableOptions): () => void {
       cancelAnimationFrame(drag.raf);
     }
     if (!drag.started) {
+      const tapped = drag.item.dataset.id;
       drag = null;
+      if (tapped) {
+        options.onTap?.(tapped);
+      }
       return;
     }
     const { item, placeholder, over, home } = drag;
