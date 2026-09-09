@@ -626,7 +626,10 @@ test('on a touch pointer a tier shows its tools on tap, and hides them again', a
   await page.locator('.tl-plate').nth(2).tap();
   await expect(tools(0)).toHaveCSS('opacity', '0');
   await expect(tools(2)).toHaveCSS('opacity', '1');
-  await page.locator('.tl-tray h4').tap();
+  // The hero, not the tray heading: on a phone the tray is docked and its
+  // heading carries the handle that stands the dock up, so a tap there is a
+  // tap on something rather than the "anywhere else" this is asserting.
+  await page.locator('.hero h1').tap();
   await expect(tools(2)).toHaveCSS('opacity', '0');
 
   // The tap that reveals must not also press what it reveals: the tools land
@@ -682,4 +685,106 @@ test('on a touch pointer the export is shown on screen rather than navigated to'
 
   await page.locator('.tl-shot-bar .tl-btn', { hasText: 'Done' }).tap();
   await expect(page.locator('.tl-shot')).toHaveCount(0);
+});
+
+/* ---------------------------------------------------------------------------
+   The phone layout of the tier list.
+
+   Under 720px the tray leaves the flow and docks to the bottom edge, the three
+   actions ride the dock, and a tap on a tile followed by a tap on a tier does
+   what a drag does. The layout it replaced put the tray 470px below the board
+   and ran it for 1,100px, which made the page's only interaction a drag across
+   most of a 2,200px document with the target off screen for most of it.
+   --------------------------------------------------------------------------- */
+
+test('on a phone the tray docks to the bottom edge and carries the actions', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'the phone layout, on the phone project');
+  await gotoClean(page, '/tools/tier-list');
+  await expect(page.locator('.tl-tray .tl-item').first()).toBeVisible();
+
+  const tray = page.locator('.tl-tray');
+  await expect(tray).toHaveCSS('position', 'fixed');
+  // Reset/Share/Export are on the dock, not eight hundred pixels below it.
+  await expect(page.locator('.tl-dockbar .tl-actions .tl-btn')).toHaveCount(3);
+  await expect(page.locator('.tl-conf .tl-actions')).toHaveCount(0);
+
+  // The dock rests at two rows of the pile and stands up to show the rest.
+  const height = async () => (await tray.boundingBox())!.height;
+  const resting = await height();
+  await page.locator('.tl-grip').tap();
+  await expect.poll(height).toBeGreaterThan(resting);
+  await page.locator('.tl-grip').tap();
+  await expect.poll(height).toBe(resting);
+});
+
+test('on a phone a tap picks a tile up and a tap on a tier places it', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'the phone layout, on the phone project');
+  await gotoClean(page, '/tools/tier-list');
+  const tile = page.locator('.tl-tray .tl-item').first();
+  await expect(tile).toBeVisible();
+  const name = await tile.locator('.cap').textContent();
+  const unranked = page.locator('.tl-tray h4 span').first();
+  const before = Number(await unranked.textContent());
+
+  await tile.tap();
+  // The dock says what is held, in the slot the actions were using.
+  await expect(page.locator('.tl-dockbar')).toContainText(`Place ${name} in a tier`);
+  await expect(tile).toHaveClass(/tl-held/);
+
+  const second = page.locator('.tl-board .tl-row[data-row]').nth(1);
+  await second.tap();
+  await expect(second.locator('.tl-item')).toHaveCount(1);
+  await expect(unranked).toHaveText(String(before - 1));
+  // Nothing is held afterwards, so the actions come back.
+  await expect(page.locator('.tl-dockbar .tl-actions .tl-btn')).toHaveCount(3);
+
+  // Tapping the held tile again puts it down rather than placing it twice.
+  const next = page.locator('.tl-tray .tl-item').first();
+  await next.tap();
+  await next.tap();
+  await expect(page.locator('.tl-dockbar .tl-actions .tl-btn')).toHaveCount(3);
+  await expect(unranked).toHaveText(String(before - 1));
+});
+
+test('on a phone quick rank empties the pile one archetype at a time', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'the phone layout, on the phone project');
+  await gotoClean(page, '/tools/tier-list');
+  await expect(page.locator('.tl-tray .tl-item').first()).toBeVisible();
+  const unranked = page.locator('.tl-tray h4 span').first();
+  const before = Number(await unranked.textContent());
+
+  await page.locator('.tl-rank').tap();
+  const queue = page.locator('.tl-queue');
+  await expect(queue).toBeVisible();
+  await expect(queue.locator('.tl-qhead span')).toHaveText(`${before} left`);
+
+  // Skip rotates the pile rather than dropping anything out of it.
+  const first = await queue.locator('.tl-qface b').textContent();
+  await queue.locator('.tl-skip').tap();
+  await expect(queue.locator('.tl-qface b')).not.toHaveText(first ?? '');
+  await expect(queue.locator('.tl-qhead span')).toHaveText(`${before} left`);
+
+  await queue.locator('.tl-platebtn').first().tap();
+  await expect(queue.locator('.tl-qhead span')).toHaveText(`${before - 1} left`);
+  await expect(unranked).toHaveText(String(before - 1));
+
+  await queue.getByRole('button', { name: 'Done' }).tap();
+  await expect(queue).toHaveCount(0);
+  await expect(page.locator('.tl-board .tl-row[data-row]').first().locator('.tl-item')).toHaveCount(1);
+});
+
+test('on a desktop a click on a tile is not a placement', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'the pointer that drags, on the desktop project');
+  // Tap-to-place exists because dragging on a phone is expensive. With a mouse
+  // it would mean a stray click arms a placement the user never asked for.
+  await gotoClean(page, '/tools/tier-list');
+  const tile = page.locator('.tl-tray .tl-item').first();
+  await expect(tile).toBeVisible();
+  await tile.click();
+
+  await expect(page.locator('body')).not.toHaveClass(/tl-placing/);
+  await expect(tile).not.toHaveClass(/tl-held/);
+  // And the actions stay in the toolbar where a desktop expects them.
+  await expect(page.locator('.tl-conf .tl-actions .tl-btn')).toHaveCount(3);
+  await expect(page.locator('.tl-rank')).toHaveCount(0);
 });

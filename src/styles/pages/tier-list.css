@@ -869,6 +869,13 @@ body[data-mode='dark'] .tl-btn {
   display: none;
 }
 
+/* The dock's handle and its action strip belong to the phone layout; on a
+   desktop the tray is a panel in the page with nothing to grab. */
+.tl-grip,
+.tl-dockbar {
+  display: none;
+}
+
 /* ============================================================
    Phones
    A 124px plate is a third of a 390px viewport, and the row it
@@ -915,28 +922,184 @@ body[data-mode='dark'] .tl-btn {
     gap: 6px;
   }
 
+  /* Two rows, not five. What is ranked pairs with how it is drawn on the
+     first; the format picker takes most of the second, because it was 160px
+     wide in a row of four controls and read as an afterthought. Three
+     controls do not fit on one row here — they measure 418px of content in
+     358px of room — so the split is where it is, and both rows run edge to
+     edge rather than leaving a ragged 23px tail. */
   .tl-conf {
     gap: 8px;
   }
-  .tl-conf .sel,
-  .tl-combo {
-    width: 100%;
-    flex: 1 1 100%;
-  }
-  /* Three rows on the card-arts tab, not four: the Labels chip joins the
-     subject tabs on the first, the picker takes the second alone, the actions
-     keep the third. The format select is left in place — its row also holds
-     the Icons/Previews toggle, which would not fit beside the tabs. */
-  .tl-conf .tl-combo,
-  .tl-conf .grow {
+  /* Wrapping follows `order`, and the two rows only come out as designed if
+     the appearance toggle sits beside the subject rather than after the
+     picker. Reordered here rather than in the markup, where the desktop row
+     reads subject → format → artwork → labels left to right. */
+  .tl-subject {
     order: 1;
   }
-  .tl-actions {
+  .tl-artwork {
     order: 2;
-    width: 100%;
   }
+  .tl-conf .sel,
+  .tl-combo {
+    order: 3;
+  }
+  .tl-conf .chip {
+    order: 4;
+  }
+  .tl-conf .segmented {
+    flex: 1 1 auto;
+  }
+  .tl-conf .segmented button {
+    flex: 1;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .tl-conf .sel {
+    flex: 1 1 200px;
+    width: auto;
+    height: 36px;
+    font-size: 14px;
+  }
+  /* Same shape as the format select it stands in for on the other tab: wide
+     enough to read a card name, and sharing its row with the Labels chip
+     rather than taking one of its own. */
+  .tl-combo {
+    width: auto;
+    flex: 1 1 200px;
+  }
+  /* The spacer only has a job in a single row. */
+  .tl-conf .grow {
+    display: none;
+  }
+
+  /* ---- the dock ----
+     The tray leaves the flow and pins to the bottom edge, so the pile and the
+     tier it is headed for are on screen together. It used to start 470px below
+     the board and run 1,100px: every placement was a drag the length of the
+     document, with the target off screen for most of it. */
+  .tl-tray {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: 176px;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border-bottom: 0;
+    transition: max-height var(--ms-base) var(--ease-base);
+  }
+  /* Standing tall to read the pile. Short by default, because the board is
+     what the dock is aiming at and a tall dock leaves two tiers on screen. */
+  .tl-tray.tall {
+    max-height: 62vh;
+  }
+  /* Room for the dock at the end of the page, so the last tier is reachable. */
+  .tl-page {
+    padding-bottom: 190px;
+  }
+  /* Clear of the handle: the heading runs full width, so a grip sitting in the
+     middle of it lands on "+ Add archetype". */
+  .tl-tray h4 {
+    padding-top: 20px;
+  }
+  /* The board is scrolled into view when a tile is picked up, and the topnav is
+     sticky — without this the top tier lands underneath it. */
+  .tl-frame {
+    scroll-margin-top: 116px;
+  }
+  .tl-tray .tl-zone {
+    overflow-y: auto;
+    min-height: 0;
+    border-radius: 0;
+  }
+  /* A 34px bar is the affordance; the button around it is 44px of tap. */
+  .tl-grip {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: block;
+    width: 64px;
+    height: 15px;
+    padding: 6px 15px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    box-sizing: content-box;
+  }
+  .tl-grip::before {
+    content: '';
+    display: block;
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--muted);
+  }
+  .tl-grip[aria-expanded='true']::before {
+    background: var(--accent);
+  }
+
+  /* The strip the actions ride, and the prompt that replaces them while a tile
+     is held. One slot: a prompt that floated over the dock would cover the
+     buttons it is standing in for. */
+  .tl-dockbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .tl-dockbar > span {
+    flex: 1;
+    padding-left: 3px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .tl-dockbar .tl-actions {
+    flex: 1;
+  }
+  /* These are the page's primary controls here, not a toolbar's tail end, so
+     they take the 44px a finger needs rather than the 34px a mouse does. */
   .tl-actions .tl-btn {
     flex: 1;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+  body.tl-placing .tl-dockbar {
+    border-bottom-color: var(--accent);
+  }
+
+  /* Tap a tile, tap a tier. Every tier offers itself while something is held,
+     and the one under the finger says so. */
+  body.tl-placing .tl-board .tl-zone {
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  }
+  body.tl-placing .tl-board .tl-row:active .tl-zone {
+    background: color-mix(in srgb, var(--accent) 20%, var(--surface-2));
+  }
+  .tl-item.tl-held {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* A 19px line of text is a target a thumb misses. The padding is cancelled
+     by matching negative margins, so the hit area grows to 39px without the
+     heading growing with it. */
+  .tl-tray h4 .tl-mini {
+    padding: 10px 4px;
+    margin-block: -10px;
+  }
+  .tl-mini.tl-rank {
+    margin-left: 14px;
+  }
+  .tl-mini[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   /* The editor stops being a popover: at this width there is nowhere to hang
@@ -984,6 +1147,88 @@ body[data-mode='dark'] .tl-btn {
   .tl-edit {
     opacity: 1;
   }
+}
+
+/* ============================================================
+   Quick rank
+   The pile one archetype at a time, with the tiers as buttons.
+   Only ever mounted on a phone (see PHONE_QUERY): thirty-five
+   drags is a bad minute there, thirty-five taps is not.
+   ============================================================ */
+.tl-queue {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 14px;
+  padding: max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: var(--bg);
+}
+.tl-qhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tl-qhead span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.tl-qface {
+  place-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.tl-qface b {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.tl-qface img {
+  image-rendering: -webkit-optimize-contrast;
+}
+.tl-qface .tl-art-img,
+.tl-qface > img:not(.arche-icon) {
+  width: 150px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+/* Two rows of three: six tiers is the default board, and a 3-up grid puts
+   every one of them under a thumb without scrolling. */
+.tl-plates {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.tl-platebtn {
+  min-width: 0;
+  padding: 14px 4px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 19px;
+  background: var(--plate);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  overflow: hidden;
+}
+/* The same white-on-outline treatment the plates wear, so a tier's colour
+   never decides how its letter reads. */
+.tl-platebtn .tl-plate-name {
+  --plate-stroke: rgb(0 0 0 / 45%);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl-platebtn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.tl-skip {
+  width: 100%;
 }
 
 /* ============================================================
