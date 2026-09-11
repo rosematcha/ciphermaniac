@@ -307,3 +307,163 @@ export interface CardTrendItem {
   recentAvg: number;
   startAvg: number;
 }
+
+// ---------------------------------------------------------------------------
+// Weekly report: this week against last, built by shared/onlineMeta/weeklyBuilder.ts
+// ---------------------------------------------------------------------------
+
+/** One comparison period: whole UTC days, `end` exclusive. */
+export interface WeeklyPeriod {
+  start: string;
+  end: string;
+  /** Placed lists in the period, every archetype including the Other bucket. */
+  lists: number;
+  /** Lists carrying the `top10` success tag. */
+  top10: number;
+}
+
+/** One calendar day of an archetype's daily series. */
+export interface WeeklyDailyPoint {
+  date: string;
+  lists: number;
+  /** Lists carrying the `top10` success tag. */
+  top10: number;
+  /** Share of the day's lists, or null on a day below the floor. */
+  share: number | null;
+  /** Share of the day's top-10% finishes, or null when the day has too few. */
+  top10Share: number | null;
+}
+
+export interface WeeklyDailyTotal {
+  date: string;
+  lists: number;
+  top10: number;
+}
+
+export interface WeeklyArchetype {
+  base: string;
+  displayName: string;
+  lists: number;
+  priorLists: number;
+  /** Share of all lists this week, 0..100 one decimal. */
+  share: number;
+  priorShare: number;
+  /** Share points, this week minus last. */
+  delta: number;
+  /** Share of this week's top-10% finishes. */
+  top10Share: number;
+  priorTop10Share: number;
+  daily: WeeklyDailyPoint[];
+}
+
+/** A card whose inclusion inside one archetype's lists moved. */
+export interface WeeklyDeckCard {
+  uid: string;
+  name: string;
+  set: string | null;
+  number: string | null;
+  /** Share of the archetype's lists this week, 0..100 one decimal. */
+  inclusion: number;
+  priorInclusion: number;
+  delta: number;
+  /** Went from under 5% of lists to 5% or more. */
+  isNew: boolean;
+  /** Inclusion per day over the daily window; null where the deck had too few lists. */
+  daily: (number | null)[];
+}
+
+export interface WeeklyDeck {
+  base: string;
+  displayName: string;
+  lists: number;
+  priorLists: number;
+  added: WeeklyDeckCard[];
+  cut: WeeklyDeckCard[];
+}
+
+/** One archetype's contribution to a card's share change. */
+export interface WeeklyMoverDriver {
+  base: string;
+  displayName: string;
+  /** Share points of the card's change attributable to this archetype. */
+  total: number;
+  /** The part from the archetype itself growing or shrinking. */
+  mix: number;
+  /** The part from the archetype's lists adding or cutting the card. */
+  adoption: number;
+}
+
+export interface WeeklyMover {
+  uid: string;
+  name: string;
+  set: string | null;
+  number: string | null;
+  /** Share of all lists this week, 0..100 one decimal. */
+  share: number;
+  priorShare: number;
+  delta: number;
+  mix: number;
+  adoption: number;
+  drivers: WeeklyMoverDriver[];
+}
+
+export interface WeeklyReport {
+  generatedAt: string;
+  /** Length of each comparison period in days. */
+  days: number;
+  recent: WeeklyPeriod;
+  prior: WeeklyPeriod;
+  /** The calendar days of every `daily` series, ascending. */
+  dates: string[];
+  /** All lists and top-10% finishes per day of the daily window, every archetype. */
+  dailyTotals: WeeklyDailyTotal[];
+  archetypes: WeeklyArchetype[];
+  decks: WeeklyDeck[];
+  movers: { rising: WeeklyMover[]; falling: WeeklyMover[] };
+}
+
+export interface BuildWeeklyReportOptions {
+  /** Exclusive end of the recent period, at a UTC midnight. */
+  windowEnd: string | Date | number;
+  /** Comparison period length in days. Default 7. */
+  days?: number;
+  /** Length of the daily series in days, ending at `windowEnd`. Default 14. */
+  dailyDays?: number;
+  synonymDb?: import('../data/cardIdentity').SynonymDatabase | null;
+  /** Days with fewer lists than this plot as null. Default 100. */
+  minDayLists?: number;
+  /** An archetype needs this many lists in BOTH periods to get a deck block. Default 20. */
+  minDeckLists?: number;
+  /** A day inside an archetype needs this many lists for its inclusion point. Default 8. */
+  minDeckDayLists?: number;
+  /** Archetype rows kept. Default 32. */
+  archetypeLimit?: number;
+  /** Deck blocks kept, by this week's share. Default 8. */
+  deckLimit?: number;
+  /** Added and cut cards kept per deck. Default 8. */
+  deckCardLimit?: number;
+  /** Rising and falling movers kept. Default 12. */
+  moverLimit?: number;
+  /** A card needs this many list appearances across both periods to be a mover. Default 40. */
+  minMoverLists?: number;
+  /** Drivers kept per mover. Default 3. */
+  driverLimit?: number;
+  now?: string | Date;
+}
+
+/**
+ * The forward-rolling day ledger. One row per UTC day, appended by every
+ * trends run, so the meta keeps a memory longer than the 30-day window.
+ */
+export interface TrendHistoryDay {
+  date: string;
+  lists: number;
+  top10: number;
+  archetypes: Record<string, { displayName: string; lists: number; top10: number }>;
+}
+
+export interface TrendHistory {
+  schemaVersion: 1;
+  generatedAt: string;
+  days: TrendHistoryDay[];
+}

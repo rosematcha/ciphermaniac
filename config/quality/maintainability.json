@@ -22,8 +22,8 @@
     "complexity:116f2bc568d02d7f4d4a169a087b1c4eb0299b7d5c1b0db68ce42cf17c2f43ba:Async function 'main' has a complexity of 22. Maximum allowed is 12."
   ],
   ".github/scripts/run-trends.ts": [
-    "max-lines-per-function:7053b04ea918d8abc8aabf7406885d09a155f3f994be6f2098103115311f2dc2:Async function 'main' has too many lines (161). Maximum allowed is 100.",
-    "complexity:7053b04ea918d8abc8aabf7406885d09a155f3f994be6f2098103115311f2dc2:Async function 'main' has a complexity of 32. Maximum allowed is 12."
+    "max-lines-per-function:74508e20e4a8f2723e16b455c4198d0a5fb8c0ef721bf710647827689a3f66f2:Async function 'main' has too many lines (161). Maximum allowed is 100.",
+    "complexity:74508e20e4a8f2723e16b455c4198d0a5fb8c0ef721bf710647827689a3f66f2:Async function 'main' has a complexity of 32. Maximum allowed is 12."
   ],
   ".github/scripts/update-card-synonyms.mjs": [
     "complexity:1c79704bbb07e1d646b7f6e348528f662a7cd8ddf386a75f3373362835f3af7b:Async function 'loadPreviousSynonyms' has a complexity of 13. Maximum allowed is 12.",
