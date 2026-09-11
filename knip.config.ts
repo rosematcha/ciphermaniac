@@ -7,8 +7,7 @@ const config: KnipConfig = {
   // These are retained test oracles/prototypes, not shipped entry points.
   // Production mode still rejects any additional test-only module.
   ignoreIssues: {
-    'shared/data/artifacts.ts': ['files'],
-    'shared/data/build/buildLoop.ts': ['files']
+    'shared/data/artifacts.ts': ['files']
   },
 
   entry: [
@@ -28,7 +27,8 @@ const config: KnipConfig = {
     // Fixture server for the deterministic browser suite: Playwright's
     // `webServer` launches serve-fixtures.ts as a process, so no import graph
     // reaches it.
-    'tests/e2e/serve-fixtures.ts'
+    'tests/e2e/serve-fixtures.ts',
+    'tests/e2e/release-build.config.ts'
   ],
 
   project: [

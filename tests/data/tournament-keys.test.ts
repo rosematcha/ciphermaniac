@@ -23,6 +23,7 @@ import {
 const LA = '2026-05-08, Regional Championship Los Angeles';
 const NAIC = '2026-06-20, North America International Championship';
 const LIMA = '2026-08-29, Special Event Lima';
+const WORLDS = '2026-08-28, World Championship San Francisco';
 
 // ---------------------------------------------------------------------------
 // classifyTournament
@@ -32,6 +33,7 @@ test('events classify by their name', () => {
   assert.equal(classifyTournament(LA), 'regional');
   assert.equal(classifyTournament(NAIC), 'international');
   assert.equal(classifyTournament(LIMA), 'special');
+  assert.equal(classifyTournament(WORLDS), 'worlds');
   assert.equal(classifyTournament(ONLINE_META_NAME), 'online');
   assert.equal(classifyTournament('2026-01-01, League Cup Toronto'), 'other');
 });
@@ -109,9 +111,9 @@ test('an unparseable date leaves the key untouched', () => {
 // majorTournaments
 // ---------------------------------------------------------------------------
 
-test('majors are regionals, internationals, and special events', () => {
-  const list = [LA, NAIC, LIMA, ONLINE_META_NAME, '2026-01-01, League Cup Toronto'];
-  assert.deepEqual(majorTournaments(list), [LA, NAIC, LIMA]);
+test('majors are worlds, internationals, regionals, and special events', () => {
+  const list = [WORLDS, LA, NAIC, LIMA, ONLINE_META_NAME, '2026-01-01, League Cup Toronto'];
+  assert.deepEqual(majorTournaments(list), [WORLDS, LA, NAIC, LIMA]);
 });
 
 test('filtering preserves input order', () => {

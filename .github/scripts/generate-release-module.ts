@@ -1,13 +1,13 @@
 /**
  * Generate the embedded-release module consumed by the app build.
  *
- * Reads a validated release manifest and writes `src/generated/release.ts`
+ * Reads a validated release manifest and writes `shared/generated/release.ts`
  * exporting it, so `npm run build` and the Pages Functions bundle embed the
- * exact release. The committed default exports `null` (legacy fallback); the
+ * exact release. The committed default exports `null` for local development; the
  * production/shadow workflow regenerates this file before building and does NOT
  * commit the generated production release id to main.
  *
- * Usage: tsx generate-release-module.ts <manifest.json> [--out src/generated/release.ts]
+ * Usage: tsx generate-release-module.ts <manifest.json> [--out shared/generated/release.ts]
  * @module .github/scripts/generate-release-module
  */
 
@@ -16,16 +16,16 @@ import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { validateReleaseManifest } from '../../shared/data/build/release.ts';
 
-const DEFAULT_OUT = 'src/generated/release.ts';
+const DEFAULT_OUT = 'shared/generated/release.ts';
 
 export function renderModule(manifest: unknown): string {
   const body = manifest === null ? 'null' : JSON.stringify(manifest, null, 2);
   return `/**
  * GENERATED — do not edit. Written by .github/scripts/generate-release-module.ts.
- * The committed default is \`null\` (legacy path resolution); the release
+ * The committed default is \`null\` for local path resolution; the release
  * workflow overwrites this with the immutable manifest before building.
  */
-import type { ReleaseManifest } from '../../shared/data/build/release';
+import type { ReleaseManifest } from '../data/build/release';
 
 export const EMBEDDED_RELEASE: ReleaseManifest | null = ${body};
 `;

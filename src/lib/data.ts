@@ -22,7 +22,7 @@ export { fetchRotationIndex, snapshotDateForArchetype, snapshotDateForCard } fro
 export { fetchPlayerDecks, fetchPlayerIndexSlim, fetchPlayerProfile } from './data/players';
 export { fetchEarnings, fetchEarningsEvents } from './data/earnings';
 export { fetchMajorsTrendReport, fetchOnlineTrendReport } from './data/trends';
-export type { TrendTimelinePoint } from './data/trends';
+export type { TrendTimelinePoint, WeeklyDeck, WeeklyDeckCard, WeeklyMover, WeeklyReport } from './data/trends';
 export { fetchCardSuccessIndex, fetchMaster, fetchMeta, fetchTournamentsList } from './data/reports';
 export type { MasterPayload } from './data/reports';
 export {

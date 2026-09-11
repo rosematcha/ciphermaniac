@@ -16,25 +16,14 @@ function roots(): Record<ReleaseScope, string> {
     players: '/releases/v1/players/c',
     prices: '/releases/v1/prices/d',
     catalogs: '/releases/v1/catalogs/e',
-    snapshots: '/releases/v1/snapshots/f'
-  };
-}
-
-function served(): Record<ReleaseScope, string[]> {
-  return {
-    online: ['master.json'],
-    trends: ['trends.json'],
-    players: ['index.json'],
-    prices: ['prices.json'],
-    catalogs: ['tournaments.json'],
-    snapshots: ['index.json']
+    snapshots: '/releases/v1/snapshots/f',
+    assets: '/releases/v1/assets/g'
   };
 }
 
 test('composes a valid manifest and a matching embed module', () => {
   const { manifest, module } = buildReleaseArtifacts({
     roots: roots(),
-    served: served(),
     releaseId: '20260713T120000Z-abc1234',
     publishedAt: '2026-07-13T12:00:00Z',
     events: { 'labs:0042': '/releases/v1/events/labs:0042/g' }
@@ -48,8 +37,5 @@ test('composes a valid manifest and a matching embed module', () => {
 test('refuses to compose a release pointing at a mutable root', () => {
   const bad = roots();
   bad.online = 'reports/Online - Last 14 Days';
-  assert.throws(
-    () => buildReleaseArtifacts({ roots: bad, served: served(), releaseId: 'r', publishedAt: 't' }),
-    /invalid manifest/
-  );
+  assert.throws(() => buildReleaseArtifacts({ roots: bad, releaseId: 'r', publishedAt: 't' }), /invalid manifest/);
 });

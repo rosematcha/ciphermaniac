@@ -1,7 +1,7 @@
 /**
  * Conditional channel-pointer updates with replan-on-conflict.
  *
- * The channel pointers (build/v1/channels/{shadow,production}.json) are the one
+ * The channel pointers (`current.json` and `channels/shadow.json`) are the one
  * mutable control-plane object per channel. Updates use an optimistic
  * conditional write (create-if-absent, else if-ETag-matches); a lost race reads
  * the new pointer, lets the caller recompute the next value, and retries. This

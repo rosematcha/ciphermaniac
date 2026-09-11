@@ -88,7 +88,9 @@ test('a variant card URL resolves to its canonical card', async ({ page }) => {
 });
 
 test('archetypes index lists archetypes', async ({ page }) => {
-  const icons = page.waitForResponse(response => new URL(response.url()).pathname === '/assets/archetype-icons.json');
+  const icons = page.waitForResponse(response =>
+    new URL(response.url()).pathname.endsWith('/assets/aaaaaaaaaaaa/archetype-icons.json')
+  );
   await gotoClean(page, '/archetypes');
   expect((await icons).ok()).toBe(true);
   await expect(page.locator('body')).toContainText('Dragapult');
@@ -145,7 +147,7 @@ test('an opened event switches between its decklist and its rounds', async ({ pa
 });
 
 test('an event without a decklist opens on its rounds', async ({ page }) => {
-  await page.route('**/players/1272/profile.json', async route => {
+  await page.route('**/players/aaaaaaaaaaaa/1272/profile.json', async route => {
     const response = await route.fetch();
     const profile = (await response.json()) as { tournaments: Array<{ deckId: string | null }> };
     profile.tournaments[0].deckId = null;
@@ -170,7 +172,7 @@ test('the Decks tab groups events under their deck', async ({ page }) => {
 test('a profile cached before rounds existed still renders', async ({ page }) => {
   // R2 serves profile bodies for six hours, so a visitor can land on one written
   // before the aggregator started emitting `rounds`.
-  await page.route('**/players/1272/profile.json', async route => {
+  await page.route('**/players/aaaaaaaaaaaa/1272/profile.json', async route => {
     const response = await route.fetch();
     const profile = (await response.json()) as Record<string, unknown>;
     delete profile.rounds;

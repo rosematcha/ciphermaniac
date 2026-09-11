@@ -1,4 +1,6 @@
 import { jsonError } from '../../lib/api/responses.js';
+import { EMBEDDED_RELEASE } from '../../../shared/generated/release.js';
+import { type ReleaseManifest, resolveEventPath } from '../../../shared/data/build/release.js';
 
 interface RequestContext {
   request: Request;
@@ -28,6 +30,13 @@ const JSON_HEADERS = {
 
 function encodeTournament(rawTournament: string | undefined): string {
   return encodeURIComponent(String(rawTournament || '').trim());
+}
+
+export function resolveMasterPath(tournament: string, release: ReleaseManifest | null): string | null {
+  if (release) {
+    return resolveEventPath(release, tournament, 'master.json');
+  }
+  return `/reports/${encodeTournament(tournament)}/master.json`;
 }
 
 function parseBytes(headers: Headers): number {
@@ -81,14 +90,18 @@ async function probeAsset(urls: string[]): Promise<AssetProbe> {
 }
 
 export async function onRequestGet({ request, params }: RequestContext): Promise<Response> {
+  const tournament = String(params?.tournament || '').trim();
   const tournamentEncoded = encodeTournament(params?.tournament);
   if (!tournamentEncoded) {
     return jsonError('Tournament parameter is required', 400, { ...JSON_HEADERS });
   }
 
   const { origin } = new URL(request.url);
-  const masterPath = `/reports/${tournamentEncoded}/master.json`;
+  const masterPath = resolveMasterPath(tournament, EMBEDDED_RELEASE);
   const dbPath = `/reports/${tournamentEncoded}/tournament.db`;
+  if (!masterPath) {
+    return jsonError('Tournament report not found', 404, { ...JSON_HEADERS });
+  }
 
   // The probes are independent — run them concurrently; the db result is
   // simply discarded when the master turns out to be missing.

@@ -12,7 +12,7 @@
  * @module src/lib/data/cardFacets
  */
 
-import { R2_BASE } from './client';
+import { dataClient } from './client';
 import { fetchEvolutionMap } from './evolution';
 
 /** One card's facets, as stored in the slim artifact (terse keys). */
@@ -38,6 +38,10 @@ const EMPTY: CardFacetMap = new Map();
 
 let facetsPromise: Promise<CardFacetMap> | null = null;
 
+export function cardFacetsUrl(resolveUrl: (path: string) => string = dataClient.resolveUrl): string {
+  return resolveUrl('/assets/data/card-facets.json');
+}
+
 /**
  * Fetch the slim card-facets map, once per session.
  *
@@ -52,7 +56,7 @@ export function fetchCardFacets(): Promise<CardFacetMap> {
   }
   facetsPromise = (async () => {
     try {
-      const response = await fetch(`${R2_BASE}/assets/data/card-facets.json`, { mode: 'cors' });
+      const response = await fetch(cardFacetsUrl(), { mode: 'cors' });
       if (!response.ok) {
         // The facets artifact is published by the same daily job as
         // evolves-from. Until that job has run once, fall back to the older

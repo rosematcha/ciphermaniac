@@ -72,15 +72,23 @@ export function prettyTournamentName(key: string): string {
   return `${rest} · ${dateLabel}`;
 }
 
+/** Every class a tournament key can fall into. */
+export type TournamentClass = 'online' | 'worlds' | 'international' | 'regional' | 'special' | 'other';
+
 /**
- * Tournament type classification (regional / international / online / special).
- * Used to group + filter in the selector.
+ * Tournament type classification (worlds / international / regional / special
+ * / online). Used to group + filter in the selector and to pick the majors.
  */
-export function classifyTournament(key: string): 'online' | 'regional' | 'international' | 'special' | 'other' {
+export function classifyTournament(key: string): TournamentClass {
   if (key === ONLINE) {
     return 'online';
   }
   const lower = key.toLowerCase();
+  // "World Championship" is checked before "international": the Worlds folder
+  // never carries the word, but a future rename must not demote it.
+  if (lower.includes('world championship')) {
+    return 'worlds';
+  }
   if (lower.includes('international championship')) {
     return 'international';
   }
@@ -107,12 +115,13 @@ export function tournamentDate(key: string): Date | null {
   return toLocalDate(Number(m[1]), Number(m[2]), Number(m[3]));
 }
 
+const MAJOR_CLASSES: ReadonlySet<TournamentClass> = new Set(['worlds', 'international', 'regional', 'special']);
+
 /**
- * Filter a tournament list to "majors" (regional / international / special).
+ * Filter a tournament list to "majors" (worlds / international / regional /
+ * special). Worlds was missing from this set until 2026-09, which left the
+ * biggest event of the year out of every majors window.
  */
 export function majorTournaments(list: string[]): string[] {
-  return list.filter(t => {
-    const c = classifyTournament(t);
-    return c === 'regional' || c === 'international' || c === 'special';
-  });
+  return list.filter(t => MAJOR_CLASSES.has(classifyTournament(t)));
 }

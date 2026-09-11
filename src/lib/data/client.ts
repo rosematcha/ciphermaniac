@@ -164,7 +164,12 @@ export function createDataClient(options: DataClientOptions = {}): DataClient {
       // recover with one controlled reload (adopt a newer release) rather than
       // mixing a legacy generation into this document. recoverFromMissingBody
       // is a no-op unless a manifest is embedded and this is a release path.
-      if (response.status === 404 && isReleaseBodyPath(resolvedPath) && recoverFromMissingBody(resolvedPath)) {
+      if (
+        !optional &&
+        response.status === 404 &&
+        isReleaseBodyPath(resolvedPath) &&
+        recoverFromMissingBody(resolvedPath)
+      ) {
         return new Promise<T | null>(() => {}); // navigation underway; never resolves
       }
       if (optional && response.status === 404) {

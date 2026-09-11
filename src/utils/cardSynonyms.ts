@@ -7,9 +7,7 @@
  */
 
 import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/data/cardIdentity.js';
-import { R2_ORIGIN } from '../lib/constants';
-
-const SYNONYMS_URL = `${R2_ORIGIN}/assets/card-synonyms.json`;
+import { dataClient } from '../lib/data/client';
 
 const SYNONYM_CACHE_KEY = 'cardSynonymsData';
 // Bound the sessionStorage cache so a tab left open across the daily synonym
@@ -51,13 +49,13 @@ async function loadSynonymData(): Promise<SynonymDatabase> {
   }
 
   try {
-    const response = await fetch(SYNONYMS_URL);
-    if (!response.ok) {
+    const loaded = await dataClient.fetchJsonOptional<SynonymDatabase>('/assets/card-synonyms.json');
+    if (!loaded) {
       console.warn('Card synonyms data not found, synonym resolution disabled');
       synonymPromise = null;
       return EMPTY_DATABASE;
     }
-    const data = ((await response.json()) as SynonymDatabase | null) ?? EMPTY_DATABASE;
+    const data = loaded;
     // Cache in sessionStorage (with a timestamp) for subsequent page navigations
     try {
       const entry: CachedSynonyms = { cachedAt: Date.now(), data };

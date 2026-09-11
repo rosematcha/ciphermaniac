@@ -11,6 +11,15 @@ import { dataClient } from './client';
 import { canonicalizeCardTrendEntries } from './compat';
 import { getSynonymDatabase } from '../../utils/cardSynonyms';
 import type { MajorsTrendsPayload } from '../majorsTrends';
+import type { WeeklyReport } from '../../../shared/onlineMeta/types';
+
+export type {
+  WeeklyArchetype,
+  WeeklyDeck,
+  WeeklyDeckCard,
+  WeeklyMover,
+  WeeklyReport
+} from '../../../shared/onlineMeta/types';
 
 const { fetchJsonOptional } = dataClient;
 
@@ -70,6 +79,13 @@ export interface OnlineTrendsPayload {
     rising: CardTrendEntry[];
     falling: CardTrendEntry[];
   };
+  /**
+   * This week against last: archetype shares with a daily series, per-deck
+   * added and cut cards, and attributed card movers. Absent from files built
+   * before the pipeline learned to write it; the page falls back to the daily
+   * series and the plain card lists above.
+   */
+  weekly?: WeeklyReport;
 }
 
 /**

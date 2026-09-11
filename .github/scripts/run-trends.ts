@@ -3,8 +3,15 @@
 /**
  * Trends-only builder for the past month of online tournaments.
  * Keeps the legacy online-meta job untouched. Outputs:
- *   reports/Trends - Last 30 Days/trends.json
+ *   reports/Trends - Last 30 Days/trends.json   daily archetype series, card
+ *                                               movers, and the weekly report
+ *                                               (this week against last)
  *   reports/Trends - Last 30 Days/meta.json
+ *   reports/Trends - Last 30 Days/history.json  forward-rolling day ledger
+ *
+ * The raw deck dump this job used to publish (~78 MB a day, read by nothing,
+ * copied into every immutable release) is gone: everything the page needs is
+ * digested here.
  */
 
 import { requireEnv } from './lib/env.ts';
@@ -12,8 +19,10 @@ import process from 'node:process';
 import { DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { createR2Client, createReportsBinding } from './lib/r2.mjs';
 import {
+  appendTrendHistory,
   buildCardTrendReport,
   buildTrendReport,
+  buildWeeklyReport,
   compileExclusions,
   DEFAULT_MIN_FIELD_PLAYERS,
   fetchRecentOnlineTournaments,
@@ -22,10 +31,12 @@ import {
 } from '../../shared/onlineMeta/index.ts';
 import { loadCardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
 import { fetchLimitlessJson } from '../../shared/api/limitless.ts';
-import type { DiagnosticsCollector, TrendSeriesEntry } from '../../shared/onlineMeta/types.ts';
+import type { DiagnosticsCollector, TrendHistory, TrendSeriesEntry } from '../../shared/onlineMeta/types.ts';
+import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import onlineExclusions from '../../config/online-exclusions.json';
 
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
+const HISTORY_KEY = `${TRENDS_FOLDER}/history.json`;
 const LOOKBACK_DAYS = 30;
 const MAX_ARCHETYPES_IN_SERIES = 32;
 /**
@@ -133,6 +144,28 @@ function trimTrendSeries(series: TrendSeriesEntry[] = [], limit = MAX_ARCHETYPES
   }
 
   return series.slice(0, max);
+}
+
+/** The synonym database, or the empty one when the asset is missing. */
+async function loadSynonymDatabase(reportsBinding: R2Binding): Promise<SynonymDatabase> {
+  const object = await reportsBinding.get('assets/card-synonyms.json');
+  if (!object) {
+    console.warn('[trends] Card synonyms not found; card identities stay raw');
+    return EMPTY_DATABASE;
+  }
+  const db = (await object.json()) as SynonymDatabase;
+  console.log(`[trends] Card synonyms: ${Object.keys(db.synonyms ?? {}).length} entries`);
+  return db;
+}
+
+/** The stored history ledger, or null before the first run. */
+async function loadHistory(reportsBinding: R2Binding): Promise<TrendHistory | null> {
+  const object = await reportsBinding.get(HISTORY_KEY);
+  if (!object) {
+    return null;
+  }
+  const data = (await object.json()) as Partial<TrendHistory>;
+  return Array.isArray(data.days) ? (data as TrendHistory) : null;
 }
 
 function parseBoolean(value: string | undefined, fallback = false): boolean {
@@ -278,6 +311,21 @@ async function main() {
     windowEnd: window.end,
     minAppearances: 2
   });
+  // This week against last, from the same decks. The floors match the daily
+  // chart's: a day under MIN_DAY_DECKS plots as a gap here too.
+  const synonymDb = await loadSynonymDatabase(env.REPORTS);
+  const weekly = buildWeeklyReport(decks, {
+    windowEnd: window.end,
+    dailyDays: lookbackDays,
+    synonymDb,
+    minDayLists: MIN_DAY_DECKS,
+    now
+  });
+  console.log(
+    `[trends] Weekly: ${weekly.recent.lists} lists this week vs ${weekly.prior.lists} last, ` +
+      `${weekly.archetypes.length} archetypes, ${weekly.decks.length} deck blocks, ` +
+      `${weekly.movers.rising.length} rising / ${weekly.movers.falling.length} falling`
+  );
 
   const meta = {
     name: TRENDS_FOLDER,
@@ -302,41 +350,23 @@ async function main() {
   };
 
   const baseKey = `${TRENDS_FOLDER}`;
-  console.log('[trends] Uploading meta, trends, decks, and tournaments...');
+  console.log('[trends] Uploading meta, trends, and history...');
   await env.REPORTS.put(`${baseKey}/meta.json`, meta);
-  await env.REPORTS.put(`${baseKey}/trends.json`, { trendReport, cardTrends });
+  await env.REPORTS.put(`${baseKey}/trends.json`, { trendReport, cardTrends, weekly });
 
-  // Save raw decks for client-side performance filtering
-  // Include only necessary fields to reduce payload size
-  const decksForFiltering = decks.map(deck => ({
-    tournamentId: deck.tournamentId,
-    tournamentName: deck.tournamentName,
-    tournamentDate: deck.tournamentDate,
-    archetype: deck.archetype,
-    successTags: deck.successTags || [],
-    cards: deck.cards || []
-  }));
-  await env.REPORTS.put(`${baseKey}/decks.json`, decksForFiltering);
-
-  // Save tournaments for client-side filtering
-  const tournamentsForFiltering = tournamentsWithDecks.map(t => ({
-    id: t.id,
-    name: t.name,
-    date: t.date,
-    // NOTE: raw tournament summaries never carry deckTotal, so this has always
-    // been 0 at runtime; kept as-is (types-only change) rather than switching
-    // to deckCountByTournament.get(t.id).
-    deckTotal: (t as { deckTotal?: number }).deckTotal || 0
-  }));
-  await env.REPORTS.put(`${baseKey}/tournaments.json`, tournamentsForFiltering);
+  // One row per day, forever: the only memory of the online meta older than
+  // the window. A rerun on the same day replaces that day's row.
+  const history = appendTrendHistory(await loadHistory(env.REPORTS), weekly);
+  await env.REPORTS.put(HISTORY_KEY, history);
 
   console.log('[trends] Done', {
     tournaments: tournamentsWithDecks.length,
     decks: decks.length,
-    decksForFiltering: decksForFiltering.length,
     archetypeSeries: trendReport.series?.length || 0,
     cardRising: cardTrends.rising?.length || 0,
-    cardFalling: cardTrends.falling?.length || 0
+    cardFalling: cardTrends.falling?.length || 0,
+    weeklyDecks: weekly.decks.length,
+    historyDays: history.days.length
   });
 }
 

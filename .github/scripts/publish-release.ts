@@ -4,14 +4,14 @@
  * This runs after the build loop has published every scope's artifacts under
  * immutable `/releases/v1/…` roots. It composes the release manifest (unchanged
  * scopes reuse their prior roots), validates it, writes it, and generates
- * `src/generated/release.ts` so the subsequent `npm run build` and Pages
+ * `shared/generated/release.ts` so the subsequent `npm run build` and Pages
  * Functions bundle embed exactly this release. It does NOT touch the production
  * channel pointer — that is a separate, post-deploy, ETag-conditional step so
  * the deployed bundle and the tooling pointer can never diverge.
  *
  * Usage:
- *   tsx publish-release.ts --roots <roots.json> --served <served.json> --release-id <id> \
- *     --published-at <iso> --manifest-out <path> --module-out src/generated/release.ts [--events <events.json>]
+ *   tsx publish-release.ts --roots <roots.json> --release-id <id> \
+ *     --published-at <iso> --manifest-out <path> --module-out shared/generated/release.ts [--events <events.json>]
  * @module .github/scripts/publish-release
  */
 
@@ -27,7 +27,6 @@ interface Args {
   publishedAt: string;
   manifestOut: string;
   moduleOut: string;
-  served: string;
   events?: string;
   dependencies?: string;
 }
@@ -42,13 +41,12 @@ function parseArgs(argv: string[]): Args {
     releaseId: get('--release-id'),
     publishedAt: get('--published-at'),
     manifestOut: get('--manifest-out'),
-    moduleOut: get('--module-out') ?? 'src/generated/release.ts',
-    served: get('--served'),
+    moduleOut: get('--module-out') ?? 'shared/generated/release.ts',
     events: get('--events'),
     dependencies: get('--dependencies')
   };
   for (const [key, value] of Object.entries(args)) {
-    if (value === undefined && ['roots', 'releaseId', 'publishedAt', 'manifestOut', 'served'].includes(key)) {
+    if (value === undefined && ['roots', 'releaseId', 'publishedAt', 'manifestOut'].includes(key)) {
       throw new Error(`Missing required --${key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)}`);
     }
   }
@@ -65,7 +63,6 @@ async function loadJson<T>(path: string | undefined): Promise<T | undefined> {
 /** Compose + validate the manifest and render the embed module (pure of I/O). */
 export function buildReleaseArtifacts(input: {
   roots: Record<ReleaseScope, string>;
-  served: Record<ReleaseScope, string[]>;
   releaseId: string;
   publishedAt: string;
   events?: Record<string, string>;
@@ -78,13 +75,11 @@ export function buildReleaseArtifacts(input: {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const roots = (await loadJson<Record<ReleaseScope, string>>(args.roots))!;
-  const served = (await loadJson<Record<ReleaseScope, string[]>>(args.served))!;
   const events = await loadJson<Record<string, string>>(args.events);
   const dependencies = await loadJson<Record<string, string>>(args.dependencies);
 
   const { manifest, module } = buildReleaseArtifacts({
     roots,
-    served,
     releaseId: args.releaseId,
     publishedAt: args.publishedAt,
     events,
