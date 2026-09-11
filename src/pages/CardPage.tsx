@@ -638,12 +638,6 @@ function PrintingsStrip(props: {
           )}
         </For>
       </div>
-      <div class='ps-readout' aria-live='polite'>
-        <span>
-          {activePrint().set} · #{activePrint().number}
-        </span>
-        <strong>{formatPrintPrice(framePrice(activePrint()))}</strong>
-      </div>
     </div>
   );
 }

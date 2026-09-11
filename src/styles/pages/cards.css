@@ -223,8 +223,8 @@
 
 /* ---------- Printings strip (CardPage left rail) ----------
    One frame per printing in the card's reprint cluster, under the stat rows,
-   in release order. The page's own print is outlined. The readout follows a
-   hovered/focused frame and records that printing's set, number, and price. */
+   in release order. The page's own print is outlined; hover/focus previews
+   that printing through the main card and Market price above. */
 .printings-strip h3 .count {
   color: var(--muted);
   font-weight: 500;
@@ -270,21 +270,6 @@
   display: block;
   padding: 0;
   font-size: 7px;
-}
-.ps-readout {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  border-top: 1px solid var(--rule);
-  margin-top: 9px;
-  padding-top: 8px;
-  color: var(--muted);
-  font-size: 13px;
-}
-.ps-readout strong {
-  color: var(--text);
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 760px) {
   /* The split rail (art | stats) is a 2-col grid on phones; the strip drops
