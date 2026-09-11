@@ -1,8 +1,8 @@
 /**
  * Cross-tournament player profiles.
  *
- * These bodies are served from mutable paths rather than the immutable release, so a
- * 404 here is a normal miss, not release-body corruption.
+ * These bodies resolve through the current immutable release. A missing profile
+ * is still a normal optional miss because not every searched player has one.
  */
 
 import { dataClient } from './client';

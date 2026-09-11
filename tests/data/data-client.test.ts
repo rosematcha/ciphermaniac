@@ -299,7 +299,7 @@ test('a 404 on a legacy path never triggers release recovery', async () => {
     }
   });
   assert.equal(await c.fetchJsonOptional('/players/1/profile.json'), null);
-  assert.equal(recovered, 0, 'per-player bodies pass through to legacy; a miss there is normal');
+  assert.equal(recovered, 0, 'optional misses do not trigger a release reload');
 });
 
 test('a non-404 error on a release body is an error, not a recovery', async () => {

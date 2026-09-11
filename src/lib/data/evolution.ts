@@ -1,12 +1,11 @@
 /**
  * Card evolution metadata: `"SET::NUMBER"` → the Pokemon a card evolves from.
  *
- * Reads a static asset rather than a report, so it bypasses the report client
- * and its release-path resolution entirely.
+ * Reads release-pinned metadata through the shared data client.
  * @module src/lib/data/evolution
  */
 
-import { R2_BASE } from './client';
+import { dataClient } from './client';
 
 /**
  * Maps `"SET::NUMBER"` → the lowercase name of the Pokémon this card evolves from.
@@ -21,7 +20,10 @@ export type EvolutionFetcher = (input: RequestInfo | URL, init?: RequestInit) =>
  * browser fetcher below; the factory keeps the fallback and retry policy
  * independently testable without adding a cache-reset hook to production.
  */
-export function createEvolutionMapLoader(fetcher: EvolutionFetcher): () => Promise<Map<string, string>> {
+export function createEvolutionMapLoader(
+  fetcher: EvolutionFetcher,
+  resolveUrl: (path: string) => string = dataClient.resolveUrl
+): () => Promise<Map<string, string>> {
   let evolutionMapPromise: Promise<Map<string, string>> | null = null;
 
   return () => {
@@ -36,12 +38,12 @@ export function createEvolutionMapLoader(fetcher: EvolutionFetcher): () => Promi
         // Prefer the slim precomputed map (~20KB vs the 700KB full database);
         // fall back to deriving it from card-types.json until the pipeline has
         // published the slim artifact for the first time.
-        const slim = await fetcher(`${R2_BASE}/assets/data/evolves-from.json`, { mode: 'cors' });
+        const slim = await fetcher(resolveUrl('/assets/data/evolves-from.json'), { mode: 'cors' });
         if (slim.ok) {
           const entries = (await slim.json()) as Record<string, string>;
           return new Map<string, string>(Object.entries(entries));
         }
-        const response = await fetcher(`${R2_BASE}/assets/data/card-types.json`, { mode: 'cors' });
+        const response = await fetcher(resolveUrl('/assets/data/card-types.json'), { mode: 'cors' });
         if (!response.ok) {
           evolutionMapPromise = null;
           return new Map<string, string>();

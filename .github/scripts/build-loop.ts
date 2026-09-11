@@ -2,63 +2,153 @@
  * Full-scope build loop → complete immutable release (DB-MASTER-PLAN Phase 6).
  *
  * Assembles a COMPLETE release across every scope:
- *  - events / online / catalogs: built fresh through the consolidated shared
- *    builders (byte-parity-verified against production);
- *  - trends / players / prices / snapshots: CAPTURED — the current production
- *    artifacts are copied forward to immutable keys (these scopes are not being
- *    rewritten in this migration, so a content-addressed capture is their build
- *    node). `--lite` captures only each scope's hot index artifacts (cheap
- *    shadow); a full run captures every body.
+ *  - events / catalogs: built fresh through the consolidated shared builders;
+ *  - online / trends / players / prices / snapshots / assets: captured in full
+ *    from the serialized producer tree. A scope is complete or is not published.
  *
  * Publishes to immutable `releases/v1/…` keys, emits `roots.json` + folder-keyed
  * `events.json` for {@link ../scripts/publish-release}, composes + validates the
  * manifest, and never touches `reports/` or the production channel. DRY RUN by
  * default; `--write` publishes; `--gc` removes what it wrote.
  *
- * Usage: tsx build-loop.ts [--write] [--lite] [--gc] [--limit N] [--allow-shrink] [--emit-roots roots.json] [--emit-served served.json] [--emit-events events.json]
+ * Usage: tsx build-loop.ts [--write] [--gc] [--limit N] [--allow-shrink] [--emit-roots roots.json] [--emit-events events.json]
  * @module .github/scripts/build-loop
  */
 
 import { requireEnv } from './lib/env.ts';
-import { readFile, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { writeFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import {
+  CopyObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  type S3Client
+} from '@aws-sdk/client-s3';
 import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
+import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts';
 import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
-import { buildOnlineServingArtifacts } from '../../shared/data/reports/onlineArtifacts.ts';
-import type { ArchetypeDeckInput } from '../../shared/data/archetypes/build.ts';
 import { buildTournamentCatalog, listReportFolders } from './event-cli.ts';
-import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
+import { createR2Client, getJsonResult, putJson, withR2Retry } from './lib/r2.mjs';
 
 const CACHE = 'public, max-age=31536000, immutable';
 
-// Captured scopes: index artifacts copied forward from legacy. `rel` is the
-// SCOPE-RELATIVE key (what the browser resolver expects under the scope root,
-// after stripping the legacy folder); `legacy` is where the body lives today.
-// Decoupling the two is essential — publishing under the legacy folder name
-// (e.g. "Trends - Last 30 Days/trends.json") would not match the resolver's
-// scope-relative "trends.json" and would 404.
-const CAPTURED_KEYS: Record<Exclude<ReleaseScope, 'online' | 'catalogs'>, { rel: string; legacy: string }[]> = {
-  trends: [
-    { rel: 'trends.json', legacy: 'reports/Trends - Last 30 Days/trends.json' },
-    { rel: 'meta.json', legacy: 'reports/Trends - Last 30 Days/meta.json' },
-    { rel: 'majors-trends.json', legacy: 'reports/majors-trends.json' }
-  ],
-  players: [
-    { rel: 'index.json', legacy: 'players/index.json' },
-    { rel: 'index-slim.json', legacy: 'players/index-slim.json' }
-  ],
-  prices: [
-    { rel: 'prices.json', legacy: 'reports/prices.json' },
-    { rel: 'prices-history.json', legacy: 'reports/prices-history.json' },
-    { rel: 'price-movers.json', legacy: 'reports/price-movers.json' }
-  ],
-  snapshots: [{ rel: 'index.json', legacy: 'reports/Snapshots/index.json' }]
-};
+interface ScopeObject {
+  sourceKey: string;
+  relativeKey: string;
+  etag: string;
+  size: number;
+}
+
+async function listJsonObjects(options: {
+  client: S3Client;
+  bucket: string;
+  prefix: string;
+  relativeTo: string;
+  include?: (key: string) => boolean;
+}): Promise<ScopeObject[]> {
+  const { client, bucket, prefix, relativeTo, include = () => true } = options;
+  const objects: ScopeObject[] = [];
+  let continuationToken: string | undefined;
+  do {
+    const token = continuationToken;
+    const page = await withR2Retry(() =>
+      client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ContinuationToken: token }))
+    );
+    for (const object of page.Contents ?? []) {
+      const key = object.Key;
+      if (key?.endsWith('.json') && object.ETag && include(key)) {
+        objects.push({
+          sourceKey: key,
+          relativeKey: key.slice(relativeTo.length),
+          etag: object.ETag,
+          size: object.Size ?? 0
+        });
+      }
+    }
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return objects.sort((a, b) => a.relativeKey.localeCompare(b.relativeKey));
+}
+
+async function describeObject(
+  client: S3Client,
+  bucket: string,
+  sourceKey: string,
+  relativeKey: string
+): Promise<ScopeObject | null> {
+  try {
+    const object = await withR2Retry(() => client.send(new HeadObjectCommand({ Bucket: bucket, Key: sourceKey })));
+    return object.ETag ? { sourceKey, relativeKey, etag: object.ETag, size: object.ContentLength ?? 0 } : null;
+  } catch (error) {
+    if ((error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function runConcurrent<T>(items: readonly T[], worker: (item: T) => Promise<void>, limit = 24): Promise<void> {
+  let next = 0;
+  async function run(): Promise<void> {
+    while (next < items.length) {
+      const item = items[next++];
+      await worker(item);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => run()));
+}
+
+function encodedCopySource(bucket: string, key: string): string {
+  return `${encodeURIComponent(bucket)}/${key.split('/').map(encodeURIComponent).join('/')}`;
+}
+
+async function captureScope(options: {
+  client: S3Client;
+  bucket: string;
+  scope: ReleaseScope;
+  objects: ScopeObject[];
+  write: boolean;
+  written: string[];
+  gen: (value: unknown) => string;
+}): Promise<string> {
+  const { client, bucket, scope, objects, write, written, gen } = options;
+  const generation = gen(objects.map(({ relativeKey, etag, size }) => ({ relativeKey, etag, size })));
+  const root = `releases/v1/${scope}/${generation}`;
+  const markerKey = `${root}/_complete.json`;
+  if (!write) {
+    return `/${root}`;
+  }
+  const marker = await getJsonResult(client, bucket, markerKey);
+  if (marker.status === 'found') {
+    return `/${root}`;
+  }
+  if (marker.status !== 'missing') {
+    throw new Error(`Cannot verify ${markerKey}: ${marker.status}`);
+  }
+  await runConcurrent(objects, async object => {
+    const target = `${root}/${object.relativeKey}`;
+    await withR2Retry(() =>
+      client.send(
+        new CopyObjectCommand({
+          Bucket: bucket,
+          Key: target,
+          CopySource: encodedCopySource(bucket, object.sourceKey),
+          MetadataDirective: 'REPLACE',
+          ContentType: 'application/json',
+          CacheControl: CACHE
+        })
+      )
+    );
+    written.push(target);
+  });
+  await putJson(client, bucket, markerKey, { generation, objectCount: objects.length }, { cacheControl: CACHE });
+  written.push(markerKey);
+  return `/${root}`;
+}
 
 /**
  * Fail the build when a release would publish FEWER events than the one
@@ -71,12 +161,15 @@ const CAPTURED_KEYS: Record<Exclude<ReleaseScope, 'online' | 'catalogs'>, { rel:
  * @throws When events present in the served release are absent from this build
  */
 async function assertNoEventRegression(folders: string[], load: <T>(key: string) => Promise<T | null>): Promise<void> {
-  const pointer = await load<{ releaseId?: string }>('build/v1/channels/production.json');
+  const pointer: { releaseId?: string; manifest?: string } | null =
+    (await load<{ releaseId?: string; manifest?: string }>('current.json')) ??
+    (await load<{ releaseId?: string; manifest?: string }>('build/v1/channels/production.json'));
   if (!pointer?.releaseId) {
     console.log('[build-loop] no production release to compare against — skipping regression guard');
     return;
   }
-  const served = await load<{ events?: Record<string, string> }>(`build/v1/releases/${pointer.releaseId}.json`);
+  const manifestKey = pointer.manifest?.replace(/^\/+/, '') ?? `build/v1/releases/${pointer.releaseId}.json`;
+  const served = await load<{ events?: Record<string, string> }>(manifestKey);
   const previous = Object.keys(served?.events ?? {});
   const current = new Set(folders);
   const missing = previous.filter(folder => !current.has(folder));
@@ -102,12 +195,8 @@ export type EventCapturePlan =
  * Beyond the obvious missing-file case, an event with ZERO decks is a
  * not-yet-published event rather than a real one: Labs posts standings as soon
  * as an event starts and the decklists hours or days later. Capturing that
- * window freezes `{"deckTotal":0}` into an IMMUTABLE release body, and because
- * that body serves 200 the browser never falls back to the legacy path where
- * the decks eventually land — the event reads as empty across the whole app
- * until the next release. Skipping leaves it unlinked in the manifest, so it
- * passes through to its legacy location and self-heals the moment the decks
- * are downloaded.
+ * window freezes `{"deckTotal":0}` into an immutable release body. Skipping it
+ * keeps the incomplete event out of both the release catalog and event map.
  * @param bodies - The folder's loaded decks/players/meta bodies (null when absent)
  * @returns The capture decision, with a human-readable reason when declining
  */
@@ -127,10 +216,159 @@ export function planEventCapture(bodies: {
   return { capture: true, decks, players, meta };
 }
 
+interface BuildContext {
+  load: <T>(key: string) => Promise<T | null>;
+  publish: (key: string, body: unknown) => Promise<void>;
+  gen: (value: unknown) => string;
+  synonyms: SynonymDatabase | null;
+}
+
+async function buildEvent(folder: string, context: BuildContext): Promise<string | null> {
+  const base = `reports/${folder}`;
+  const [decks, players, matches, meta] = await Promise.all([
+    context.load<Record<string, unknown>[]>(`${base}/decks.json`),
+    context.load<Record<string, unknown>[]>(`${base}/players.json`),
+    context.load<Record<string, unknown>[]>(`${base}/matches.json`),
+    context.load<Record<string, unknown>>(`${base}/meta.json`)
+  ]);
+  const plan = planEventCapture({ decks, players, meta });
+  if (!plan.capture) {
+    console.log(`[build-loop] skipping ${folder}: ${plan.reason}`);
+    return null;
+  }
+  const archByTp = new Map<string, string>();
+  const cardsByTp: Record<string, unknown[]> = {};
+  for (const deck of plan.decks) {
+    if (deck.playerId === undefined) {
+      continue;
+    }
+    if (deck.archetype) {
+      archByTp.set(String(deck.playerId), String(deck.archetype));
+    }
+    if (Array.isArray(deck.cards)) {
+      cardsByTp[String(deck.playerId)] = deck.cards;
+    }
+  }
+  const source = {
+    labsCode: folder.replace(/[^a-z0-9]/gi, '').slice(-8),
+    fetchedAt: '1970-01-01T00:00:00Z',
+    meta: {
+      name: String(plan.meta.name),
+      date: String(plan.meta.startDate ?? plan.meta.date),
+      players: plan.meta.players as number,
+      division: (plan.meta.division as string) ?? null,
+      country: (plan.meta.country as string) ?? null
+    },
+    standings: plan.players.map(player => ({
+      tpId: player.tpId as number,
+      playerId: (player.playerId as string) ?? null,
+      name: String(player.name),
+      country: (player.country as string) ?? null,
+      placement: (player.placement as number) ?? null,
+      wins: player.wins as number,
+      losses: player.losses as number,
+      ties: player.ties as number,
+      points: (player.points as number) ?? null,
+      opw: (player.opw as number) ?? null,
+      oopw: (player.oopw as number) ?? null,
+      madePhase2: Boolean(player.madePhase2),
+      madeTopCut: Boolean(player.madeTopCut),
+      decklistPublished: Boolean(player.decklistPublished),
+      deckName: archByTp.get(String(player.tpId)) ?? null
+    })),
+    decklists: cardsByTp as never,
+    matches: (matches ?? []).map(match => ({
+      round: match.round as number,
+      phase: (match.phase as number) ?? null,
+      table: (match.table as number) ?? null,
+      completed: Boolean(match.completed),
+      p1Id: match.player1Id as number,
+      p2Id: (match.player2Id as number) ?? null,
+      winner: (match.winnerCode as number) ?? null
+    }))
+  };
+  const artifacts = buildEventArtifacts(labsSourceToNormalized(source, { synonymDb: context.synonyms }), {
+    synonymDb: context.synonyms
+  });
+  const generation = context.gen([...artifacts.entries()].sort());
+  const root = `releases/v1/events/${folder}/${generation}`;
+  await Promise.all([...artifacts].map(([path, body]) => context.publish(`${root}/${path}`, body)));
+  await context.publish(`${root}/_complete.json`, { generation, objectCount: artifacts.size });
+  return `/${root}`;
+}
+
+async function buildEvents(folders: string[], context: BuildContext): Promise<Record<string, string>> {
+  const events: Record<string, string> = {};
+  for (const folder of folders) {
+    const root = await buildEvent(folder, context);
+    if (root) {
+      events[folder] = root;
+    }
+  }
+  return events;
+}
+
+async function discoverCapturedScopes(
+  client: S3Client,
+  bucket: string
+): Promise<
+  Array<{
+    scope: ReleaseScope;
+    objects: ScopeObject[];
+  }>
+> {
+  const list = (prefix: string, relativeTo: string, include?: (key: string) => boolean) =>
+    listJsonObjects({ client, bucket, prefix, relativeTo, include });
+  const [online, trends, players, snapshots, assets, priceShards, priceGlobals, majors] = await Promise.all([
+    list('reports/Online - Last 14 Days/', 'reports/Online - Last 14 Days/'),
+    list('reports/Trends - Last 30 Days/', 'reports/Trends - Last 30 Days/'),
+    list('players/', 'players/', key => key !== 'players/_manifest.json'),
+    list('reports/Snapshots/', 'reports/Snapshots/'),
+    list('assets/', 'assets/', key => !key.startsWith('assets/print-prices/')),
+    list('reports/price-history/', 'reports/'),
+    Promise.all(
+      ['prices.json', 'prices-history.json', 'price-movers.json'].map(relativeKey =>
+        describeObject(client, bucket, `reports/${relativeKey}`, relativeKey)
+      )
+    ),
+    describeObject(client, bucket, 'reports/majors-trends.json', 'majors-trends.json')
+  ]);
+  if (majors) {
+    trends.push(majors);
+  }
+  return [
+    { scope: 'online', objects: online },
+    { scope: 'trends', objects: trends },
+    { scope: 'players', objects: players },
+    {
+      scope: 'prices',
+      objects: [...priceGlobals.filter((item): item is ScopeObject => item !== null), ...priceShards]
+    },
+    { scope: 'snapshots', objects: snapshots },
+    { scope: 'assets', objects: assets }
+  ];
+}
+
+function assertRequiredArtifacts(captures: Array<{ scope: ReleaseScope; objects: ScopeObject[] }>): void {
+  const required: Partial<Record<ReleaseScope, string[]>> = {
+    online: ['master.json', 'meta.json', 'decks.json', 'cardUsage.json', 'archetypes/index.json'],
+    trends: ['trends.json', 'meta.json', 'majors-trends.json'],
+    players: ['index.json', 'index-slim.json'],
+    prices: ['prices.json'],
+    assets: ['card-synonyms.json', 'data/card-types.json']
+  };
+  for (const { scope, objects } of captures) {
+    const present = new Set(objects.map(object => object.relativeKey));
+    const missing = (required[scope] ?? []).filter(path => !present.has(path));
+    if (missing.length) {
+      throw new Error(`${scope} scope is incomplete: missing ${missing.join(', ')}`);
+    }
+  }
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const write = argv.includes('--write');
-  const lite = argv.includes('--lite');
   const gc = argv.includes('--gc');
   const limit = argv.includes('--limit') ? Number(argv[argv.indexOf('--limit') + 1]) : Infinity;
   const arg = (f: string): string | undefined => (argv.indexOf(f) >= 0 ? argv[argv.indexOf(f) + 1] : undefined);
@@ -154,20 +392,7 @@ async function main(): Promise<void> {
   };
   const gen = (obj: unknown): string => sha256HexString(canonicalStringify(obj)).slice(0, 12);
 
-  const synonyms =
-    await load<Parameters<typeof buildEventArtifacts>[1] extends { synonymDb?: infer S } ? S : never>(
-      'assets/card-synonyms.json'
-    );
-  // Inputs the online-window regeneration needs beyond decks: card types (thumbnail
-  // + signature inference) and the hand-maintained thumbnail overrides (repo asset).
-  const cardTypesDb = await load('assets/data/card-types.json');
-  const thumbnailConfig = JSON.parse(
-    await readFile(
-      resolve(dirname(fileURLToPath(import.meta.url)), '../../public/assets/data/archetype-thumbnails.json'),
-      'utf8'
-    )
-  );
-
+  const synonyms = await load<SynonymDatabase>('assets/card-synonyms.json');
   // ---- Discover scopes ----
   const allFolders = await listReportFolders(client, bucket);
   const eventFolders = allFolders.filter(f => /^\d{4}-\d{2}-\d{2},/.test(f)).slice(0, limit);
@@ -176,161 +401,33 @@ async function main(): Promise<void> {
   }
 
   const roots: Partial<Record<ReleaseScope, string>> = {};
-  // Exactly the scope-relative keys this run publishes, per scope. The manifest
-  // records this so the browser rewrites ONLY these keys to immutable roots and
-  // passes every other path (per-player/snapshot bodies, absent online files)
-  // through to legacy — never a release-body 404 for something we never captured.
-  const served: Partial<Record<ReleaseScope, string[]>> = {};
-  const events: Record<string, string> = {};
-
-  // ---- Events (fresh, folder-keyed) ----
-  for (const folder of eventFolders) {
-    const base = `reports/${folder}`;
-    const [decks, players, matches, meta] = await Promise.all([
-      load<Record<string, unknown>[]>(`${base}/decks.json`),
-      load<Record<string, unknown>[]>(`${base}/players.json`),
-      load<Record<string, unknown>[]>(`${base}/matches.json`),
-      load<Record<string, unknown>>(`${base}/meta.json`)
-    ]);
-    const plan = planEventCapture({ decks, players, meta });
-    if (!plan.capture) {
-      console.log(`[build-loop] skipping ${folder}: ${plan.reason}`);
-      continue;
-    }
-    const archByTp = new Map<string, string>();
-    const cardsByTp: Record<string, unknown[]> = {};
-    for (const d of plan.decks) {
-      if (d.playerId !== undefined) {
-        if (d.archetype) {
-          archByTp.set(String(d.playerId), String(d.archetype));
-        }
-        if (Array.isArray(d.cards)) {
-          cardsByTp[String(d.playerId)] = d.cards;
-        }
-      }
-    }
-    const source = {
-      labsCode: folder.replace(/[^a-z0-9]/gi, '').slice(-8),
-      fetchedAt: '1970-01-01T00:00:00Z',
-      meta: {
-        name: String(plan.meta.name),
-        date: String(plan.meta.startDate ?? plan.meta.date),
-        players: plan.meta.players as number,
-        division: (plan.meta.division as string) ?? null,
-        country: (plan.meta.country as string) ?? null
-      },
-      standings: plan.players.map(p => ({
-        tpId: p.tpId as number,
-        playerId: (p.playerId as string) ?? null,
-        name: String(p.name),
-        country: (p.country as string) ?? null,
-        placement: (p.placement as number) ?? null,
-        wins: p.wins as number,
-        losses: p.losses as number,
-        ties: p.ties as number,
-        points: (p.points as number) ?? null,
-        opw: (p.opw as number) ?? null,
-        oopw: (p.oopw as number) ?? null,
-        madePhase2: Boolean(p.madePhase2),
-        madeTopCut: Boolean(p.madeTopCut),
-        decklistPublished: Boolean(p.decklistPublished),
-        deckName: archByTp.get(String(p.tpId)) ?? null
-      })),
-      decklists: cardsByTp as never,
-      matches: (matches ?? []).map(m => ({
-        round: m.round as number,
-        phase: (m.phase as number) ?? null,
-        table: (m.table as number) ?? null,
-        completed: Boolean(m.completed),
-        p1Id: m.player1Id as number,
-        p2Id: (m.player2Id as number) ?? null,
-        winner: (m.winnerCode as number) ?? null
-      }))
-    };
-    const event = labsSourceToNormalized(source, { synonymDb: synonyms });
-    const artifacts = buildEventArtifacts(event, { synonymDb: synonyms });
-    const g = gen([...artifacts.entries()].sort());
-    const root = `releases/v1/events/${folder}/${g}`;
-    for (const [path, body] of artifacts) {
-      await publish(`${root}/${path}`, body);
-    }
-    events[folder] = `/${root}`;
-  }
+  const events = await buildEvents(eventFolders, { load, publish, gen, synonyms });
 
   // ---- Catalog (fresh) ----
-  const catalog = buildTournamentCatalog(allFolders.filter(f => f !== 'Online - Last 14 Days'));
+  const catalog = buildTournamentCatalog(Object.keys(events));
   const catalogRoot = `releases/v1/catalogs/${gen(catalog)}`;
   await publish(`${catalogRoot}/tournaments.json`, catalog);
+  await publish(`${catalogRoot}/_complete.json`, { objectCount: 1 });
   roots.catalogs = `/${catalogRoot}`;
-  served.catalogs = ['tournaments.json'];
 
-  // ---- Online (source captured, derived artifacts REGENERATED via shared builders) ----
-  // decks.json + meta.json are the fetched source (kept as captured); master,
-  // cardUsage, and the archetype index are rebuilt from those decks through the
-  // consolidated builders — the same D4/D9 semantics events already use, retiring
-  // the duplicate generation inside run-online-meta.mjs.
-  const onlineDecks = await load<ArchetypeDeckInput[]>('reports/Online - Last 14 Days/decks.json');
-  if (onlineDecks) {
-    const onlineMeta = await load('reports/Online - Last 14 Days/meta.json');
-    const { master, cardUsage, archetypeIndex } = buildOnlineServingArtifacts(onlineDecks, {
-      synonymDb: synonyms,
-      cardTypesDb,
-      thumbnailConfig
-    });
-    const onlineBodies: Record<string, unknown> = {
-      'master.json': master,
-      'decks.json': onlineDecks,
-      'meta.json': onlineMeta,
-      'cardUsage.json': cardUsage,
-      'archetypes/index.json': archetypeIndex
-    };
-    const onlineRoot = `releases/v1/online/${gen(onlineBodies)}`;
-    for (const [k, body] of Object.entries(onlineBodies)) {
-      if (body !== null) {
-        await publish(`${onlineRoot}/${k}`, body);
-      }
-    }
-    served.online = Object.entries(onlineBodies)
-      .filter(([, body]) => body !== null)
-      .map(([k]) => k);
-    roots.online = `/${onlineRoot}`;
-  }
-
-  // ---- Captured scopes (index artifacts copied forward from legacy) ----
-  // Per-entity bodies (per-player, per-snapshot) are intentionally NOT captured;
-  // the resolver passes those deep-links through to legacy (dual-written) until
-  // a later slice moves them onto immutable revision-addressed keys.
-  for (const scope of ['trends', 'players', 'prices', 'snapshots'] as const) {
-    const relBodies: Record<string, unknown> = {};
-    for (const { rel, legacy } of CAPTURED_KEYS[scope]) {
-      const body = await load(legacy);
-      if (body !== null) {
-        relBodies[rel] = body;
-      }
-    }
-    const root = `releases/v1/${scope}/${gen(relBodies)}`;
-    for (const [rel, body] of Object.entries(relBodies)) {
-      await publish(`${root}/${rel}`, body);
-    }
-    roots[scope] = `/${root}`;
-    served[scope] = Object.keys(relBodies);
+  // ---- Complete captured scopes ----
+  const captures = await discoverCapturedScopes(client, bucket);
+  assertRequiredArtifacts(captures);
+  for (const capture of captures) {
+    roots[capture.scope] = await captureScope({ client, bucket, ...capture, write, written, gen });
   }
 
   // ---- Compose + validate manifest ----
-  const releaseId = `${lite ? 'shadow' : 'release'}-${gen({ roots, served, events })}`;
+  const releaseId = `release-${gen({ roots, events })}`;
   const manifest = composeRelease({
     releaseId,
     publishedAt: '1970-01-01T00:00:00Z',
     roots: roots as Record<ReleaseScope, string>,
-    served: served as Record<ReleaseScope, string[]>,
     events
   });
 
   if (arg('--emit-roots')) {
     await writeFile(arg('--emit-roots')!, JSON.stringify(roots, null, 2));
-  }
-  if (arg('--emit-served')) {
-    await writeFile(arg('--emit-served')!, JSON.stringify(served, null, 2));
   }
   if (arg('--emit-events')) {
     await writeFile(arg('--emit-events')!, JSON.stringify(events, null, 2));
@@ -338,8 +435,8 @@ async function main(): Promise<void> {
 
   console.log('[build-loop] ===== SUMMARY =====');
   console.log(`  events built    : ${Object.keys(events).length}`);
-  console.log(`  scope roots     : ${Object.keys(roots).length}/6 ${Object.keys(roots).sort().join(', ')}`);
-  console.log(`  capture mode    : ${lite ? 'lite (index artifacts)' : 'full'}`);
+  console.log(`  scope roots     : ${Object.keys(roots).length}/7 ${Object.keys(roots).sort().join(', ')}`);
+  console.log('  capture mode    : complete');
   console.log(`  manifest        : ${manifest.releaseId} (valid)`);
   console.log(write ? `  objects written : ${written.length}` : '  DRY RUN — nothing written (pass --write)');
 

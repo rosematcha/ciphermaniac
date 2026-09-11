@@ -1,7 +1,7 @@
 /**
  * Update a release channel pointer with an ETag-conditional write.
  *
- * The last step of promotion: point build/v1/channels/{channel}.json at the
+ * The last step of promotion: update the channel's single current pointer to the
  * just-deployed release. Uses the conditional update-with-replan so a concurrent
  * promotion cannot be clobbered. Runs AFTER the Pages deploy, so the deployed
  * bundle (which embeds the manifest) and this tooling pointer cannot diverge.
@@ -50,14 +50,15 @@ async function main(): Promise<void> {
   // so any git-integrated source build (which re-embeds the current pointer's
   // manifest at build time) can always fetch it. Keyed by releaseId, so it is
   // effectively immutable and safe to write once.
-  const manifestKey = `build/v1/releases/${manifest.releaseId}.json`;
+  const manifestKey = `releases/v1/manifests/${manifest.releaseId}.json`;
   await store.put(manifestKey, JSON.stringify(manifest));
   console.log(`[update-channel] persisted manifest -> ${manifestKey}`);
 
-  const key = `build/v1/channels/${channel}.json`;
+  const key = channel === 'production' ? 'current.json' : `channels/${channel}.json`;
   const written = await updatePointer(store, key, () => ({
     channel,
     releaseId: manifest.releaseId,
+    manifest: `/${manifestKey}`,
     promotedFrom: 'publish-data-release'
   }));
   console.log(`[update-channel] ${key} -> release ${(written as { releaseId: string })?.releaseId}`);

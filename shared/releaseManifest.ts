@@ -1,11 +1,10 @@
 /**
- * Release-aware URL resolution with legacy fallback.
+ * Release-aware URL resolution.
  *
  * Builds a resolver from the (optional) embedded release manifest. When a
- * manifest is present, scope artifacts resolve to their immutable
- * `/releases/v1/…` roots and are cacheable for a year; when it is absent — the
- * default committed state — the resolver returns the legacy mutable path, so the
- * app behaves exactly as it does today until a release is actually embedded.
+ * manifest is present, every data artifact resolves to its immutable root. The
+ * mutable tree is producer input, never a per-file browser fallback. A null
+ * manifest remains useful for local builds.
  *
  * The embedded manifest is frozen for the document lifetime: a resolver never
  * switches roots mid-session (adopting a new release requires a reload).
@@ -13,7 +12,6 @@
  */
 
 import {
-  isScopeArtifactServed,
   type ReleaseManifest,
   type ReleaseScope,
   resolveEventPath,
@@ -28,7 +26,8 @@ const LEGACY_SCOPE_ROOTS: Record<ReleaseScope, string> = {
   players: 'players',
   prices: 'reports',
   catalogs: 'reports',
-  snapshots: 'reports/Snapshots'
+  snapshots: 'reports/Snapshots',
+  assets: 'assets'
 };
 
 export interface ReleaseResolver {
@@ -36,12 +35,6 @@ export interface ReleaseResolver {
   readonly isReleaseAware: boolean;
   /** The frozen release id, or null in legacy mode. */
   readonly releaseId: string | null;
-  /**
-   * Whether this release actually published `relativePath` under `scope`. False
-   * in legacy mode and for any key the release did not capture — the caller then
-   * keeps the legacy path. Prevents rewriting to an unpublished immutable key.
-   */
-  servesScopePath(scope: ReleaseScope, relativePath: string): boolean;
   /** Resolve a scope artifact to a full path (release-immutable or legacy). */
   scopePath(scope: ReleaseScope, relativePath: string): string;
   /** Resolve an event artifact, or null when the event is not directly linked. */
@@ -53,28 +46,33 @@ function joinLegacy(root: string, relativePath: string): string {
 }
 
 /**
- * Build a resolver from an optional embedded manifest. An invalid manifest is
- * treated as absent (legacy fallback) rather than throwing, so a corrupt embed
- * degrades to today's behavior instead of breaking the app.
+ * Build a resolver from an optional embedded manifest. Invalid manifests throw:
+ * silently mixing an invalid release with mutable data breaks atomicity.
  * @param embedded - The embedded manifest, or null
  * @returns A frozen release resolver
  */
 export function createReleaseResolver(embedded: unknown): ReleaseResolver {
-  const manifest = coerceManifest(embedded);
-  if (manifest === null) {
+  if (embedded === null || embedded === undefined) {
     return Object.freeze({
       isReleaseAware: false,
       releaseId: null,
-      servesScopePath: (_scope: ReleaseScope, _relativePath: string) => false,
       scopePath: (scope: ReleaseScope, relativePath: string) => joinLegacy(LEGACY_SCOPE_ROOTS[scope], relativePath),
       eventPath: (_eventId: string, _relativePath: string) => null
     });
   }
-  const frozen = Object.freeze({ ...manifest, roots: Object.freeze({ ...manifest.roots }) }) as ReleaseManifest;
+  const manifest = coerceManifest(embedded);
+  if (manifest === null) {
+    throw new Error('Invalid embedded release manifest');
+  }
+  const frozen = Object.freeze({
+    ...manifest,
+    roots: Object.freeze({ ...manifest.roots }),
+    events: Object.freeze({ ...manifest.events }),
+    dependencies: Object.freeze({ ...manifest.dependencies })
+  }) as ReleaseManifest;
   return Object.freeze({
     isReleaseAware: true,
     releaseId: frozen.releaseId,
-    servesScopePath: (scope: ReleaseScope, relativePath: string) => isScopeArtifactServed(frozen, scope, relativePath),
     scopePath: (scope: ReleaseScope, relativePath: string) => resolveScopePath(frozen, scope, relativePath),
     eventPath: (eventId: string, relativePath: string) => resolveEventPath(frozen, eventId, relativePath)
   });

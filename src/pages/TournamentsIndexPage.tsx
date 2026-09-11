@@ -11,10 +11,11 @@ import { nameFromTournamentKey } from '../lib/format';
 import { latestValue } from '../lib/resource';
 import { foldSearch } from '../utils/searchFold';
 
-type Filter = 'all' | 'regional' | 'international' | 'special';
+type Filter = 'all' | 'worlds' | 'regional' | 'international' | 'special';
 
 const CLASSIFICATION_LABELS: Record<ReturnType<typeof classifyTournament>, string> = {
   online: 'Online',
+  worlds: 'Worlds',
   regional: 'Regional',
   international: 'International',
   special: 'Special',
@@ -76,6 +77,7 @@ export function TournamentsIndexPage() {
             <ChipGroup
               options={[
                 { value: 'all', label: 'All' },
+                { value: 'worlds', label: 'Worlds' },
                 { value: 'regional', label: 'Regionals' },
                 { value: 'international', label: 'Internationals' },
                 { value: 'special', label: 'Special events' }

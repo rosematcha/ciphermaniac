@@ -12,12 +12,20 @@
  * @module shared/data/build/release
  */
 
-export const RELEASE_CONTRACT_VERSION = 1;
+export const RELEASE_CONTRACT_VERSION = 2;
 
 /** Scopes that carry a single root path for the whole scope. */
-export type ReleaseScope = 'online' | 'trends' | 'players' | 'prices' | 'catalogs' | 'snapshots';
+export type ReleaseScope = 'online' | 'trends' | 'players' | 'prices' | 'catalogs' | 'snapshots' | 'assets';
 
-const RELEASE_SCOPES: readonly ReleaseScope[] = ['online', 'trends', 'players', 'prices', 'catalogs', 'snapshots'];
+export const RELEASE_SCOPES: readonly ReleaseScope[] = [
+  'online',
+  'trends',
+  'players',
+  'prices',
+  'catalogs',
+  'snapshots',
+  'assets'
+];
 
 /** The immutable release manifest embedded in the deployed app. */
 export interface ReleaseManifest {
@@ -28,15 +36,6 @@ export interface ReleaseManifest {
   publishedAt: string;
   /** Scope -> immutable root path (e.g. "/releases/v1/online/abc123"). */
   roots: Record<ReleaseScope, string>;
-  /**
-   * Scope -> the exact scope-relative keys this release actually published.
-   * The resolver rewrites a scope path to its immutable root ONLY when the key
-   * appears here; every other path passes through to the legacy (dual-written)
-   * location. This keeps the release self-describing and provably free of the
-   * "release body 404 → recovery reload" trap for keys we never captured (e.g.
-   * per-player bodies, or online conversion/matchupProfiles that don't exist).
-   */
-  served: Record<ReleaseScope, string[]>;
   /** Direct-link event id -> immutable event root path. */
   events: Record<string, string>;
   /** Cross-scope dependency generations, for provenance and GC. */
@@ -45,6 +44,28 @@ export interface ReleaseManifest {
 
 function isImmutableRoot(path: unknown): path is string {
   return typeof path === 'string' && path.startsWith('/releases/v1/') && !path.endsWith('/');
+}
+
+function validateRoots(value: unknown): string[] {
+  if (typeof value !== 'object' || value === null) {
+    return ['roots: expected object'];
+  }
+  const roots = value as Record<string, unknown>;
+  return RELEASE_SCOPES.flatMap(scope => {
+    if (!(scope in roots)) {
+      return [`roots.${scope}: missing`];
+    }
+    return isImmutableRoot(roots[scope]) ? [] : [`roots.${scope}: expected an immutable /releases/v1/... path`];
+  });
+}
+
+function validateEvents(value: unknown): string[] {
+  if (typeof value !== 'object' || value === null) {
+    return ['events: expected object'];
+  }
+  return Object.entries(value as Record<string, unknown>).flatMap(([eventId, root]) =>
+    isImmutableRoot(root) ? [] : [`events.${eventId}: expected an immutable /releases/v1/... path`]
+  );
 }
 
 /**
@@ -81,20 +102,6 @@ function joinPath(root: string, relativePath: string): string {
   return `${root}/${trimmed}`;
 }
 
-/**
- * Whether the release actually published `relativePath` under `scope`. Only
- * served keys are safe to rewrite to the immutable root; everything else must
- * fall back to the legacy path.
- * @param manifest - The release manifest
- * @param scope - The data scope
- * @param relativePath - Path relative to the scope root
- * @returns True when this exact key is in the release's served set
- */
-export function isScopeArtifactServed(manifest: ReleaseManifest, scope: ReleaseScope, relativePath: string): boolean {
-  const keys = manifest.served?.[scope];
-  return Array.isArray(keys) && keys.includes(relativePath.replace(/^\/+/, ''));
-}
-
 /** Collect all errors preventing `value` from being a valid release manifest. */
 export function validateReleaseManifest(value: unknown): string[] {
   const errors: string[] = [];
@@ -112,40 +119,8 @@ export function validateReleaseManifest(value: unknown): string[] {
     }
   }
 
-  if (typeof manifest.roots !== 'object' || manifest.roots === null) {
-    errors.push('roots: expected object');
-  } else {
-    const roots = manifest.roots as Record<string, unknown>;
-    for (const scope of RELEASE_SCOPES) {
-      if (!(scope in roots)) {
-        errors.push(`roots.${scope}: missing`);
-      } else if (!isImmutableRoot(roots[scope])) {
-        errors.push(`roots.${scope}: expected an immutable /releases/v1/... path`);
-      }
-    }
-  }
-
-  if (typeof manifest.served !== 'object' || manifest.served === null) {
-    errors.push('served: expected object');
-  } else {
-    const served = manifest.served as Record<string, unknown>;
-    for (const scope of RELEASE_SCOPES) {
-      const keys = served[scope];
-      if (!Array.isArray(keys) || keys.some(k => typeof k !== 'string')) {
-        errors.push(`served.${scope}: expected an array of scope-relative key strings`);
-      }
-    }
-  }
-
-  if (typeof manifest.events !== 'object' || manifest.events === null) {
-    errors.push('events: expected object');
-  } else {
-    for (const [eventId, root] of Object.entries(manifest.events as Record<string, unknown>)) {
-      if (!isImmutableRoot(root)) {
-        errors.push(`events.${eventId}: expected an immutable /releases/v1/... path`);
-      }
-    }
-  }
+  errors.push(...validateRoots(manifest.roots));
+  errors.push(...validateEvents(manifest.events));
 
   if (typeof manifest.dependencies !== 'object' || manifest.dependencies === null) {
     errors.push('dependencies: expected object');
@@ -159,8 +134,6 @@ export interface ReleaseComposition {
   releaseId: string;
   publishedAt: string;
   roots: Record<ReleaseScope, string>;
-  /** Exact scope-relative keys published per scope (see {@link ReleaseManifest.served}). */
-  served: Record<ReleaseScope, string[]>;
   events?: Record<string, string>;
   dependencies?: Record<string, string>;
 }
@@ -177,7 +150,6 @@ export function composeRelease(composition: ReleaseComposition): ReleaseManifest
     releaseId: composition.releaseId,
     publishedAt: composition.publishedAt,
     roots: composition.roots,
-    served: composition.served,
     events: composition.events ?? {},
     dependencies: composition.dependencies ?? {}
   };

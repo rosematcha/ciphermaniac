@@ -3,19 +3,17 @@
  *
  * Builds one resolver from the embedded release manifest (frozen for the
  * document lifetime) and maps legacy `reports/…` / `players/…` paths to their
- * immutable `/releases/v1/…` roots WHEN a release is embedded. When it is not —
- * the default committed state — {@link resolveDataPath} returns the path
- * unchanged, so production behavior is byte-identical to before this layer
- * existed.
+ * immutable `/releases/v1/…` roots when a release is embedded. The committed
+ * null state leaves local development usable without a published release.
  */
 
-import { EMBEDDED_RELEASE } from '../generated/release';
+import { EMBEDDED_RELEASE } from '../../shared/generated/release';
 import { createReleaseResolver, type ReleaseResolver } from '../../shared/releaseManifest';
 import type { ReleaseScope } from '../../shared/data/build/release';
 
 const resolver = createReleaseResolver(EMBEDDED_RELEASE);
 
-/** True when an immutable release drives resolution (vs. legacy pass-through). */
+/** True when an immutable release drives resolution. */
 export const { isReleaseAware } = resolver;
 
 const ONLINE_PREFIX = 'reports/Online - Last 14 Days/';
@@ -26,6 +24,9 @@ const PLAYERS_PREFIX = 'players/';
 /** Classify a legacy report path to a scope + scope-relative path, or null. */
 function classify(path: string): { scope: ReleaseScope; rel: string } | null {
   const p = path.replace(/^\/+/, '');
+  if (p.startsWith('assets/')) {
+    return { scope: 'assets', rel: p.slice('assets/'.length) };
+  }
   if (p.startsWith(ONLINE_PREFIX)) {
     return { scope: 'online', rel: p.slice(ONLINE_PREFIX.length) };
   }
@@ -41,9 +42,9 @@ function classify(path: string): { scope: ReleaseScope; rel: string } | null {
   if (p === 'reports/tournaments.json') {
     return { scope: 'catalogs', rel: 'tournaments.json' };
   }
-  // Per-set history shards (reports/price-history/…) are deliberately absent:
-  // like per-player bodies they pass through to their legacy location rather
-  // than being captured into a release.
+  if (p.startsWith('reports/price-history/')) {
+    return { scope: 'prices', rel: p.slice('reports/'.length) };
+  }
   if (p === 'reports/prices.json' || p === 'reports/prices-history.json' || p === 'reports/price-movers.json') {
     return { scope: 'prices', rel: p.slice('reports/'.length) };
   }
@@ -54,10 +55,9 @@ function classify(path: string): { scope: ReleaseScope; rel: string } | null {
 }
 
 /**
- * Resolve a report path. Pass-through (byte-identical) when no release is
- * embedded; otherwise rewrite to immutable release roots ONLY the scope keys the
- * release actually published, passing every other path (unpublished bodies,
- * unlinked events) through to its legacy location.
+ * Resolve a report path. Local builds without a manifest pass paths through;
+ * release builds resolve every recognized data path immutably and reject paths
+ * absent from that release.
  * @param path - The legacy report path (e.g. "/reports/Online - Last 14 Days/master.json")
  * @returns The path to fetch (unchanged in production, or a `/releases/v1/…` path)
  */
@@ -78,19 +78,11 @@ export function resolvePathWith(withResolver: ReleaseResolver, path: string): st
   }
   const classified = classify(path);
   if (classified) {
-    // Only rewrite keys this release actually published; a path the release did
-    // not capture (per-player bodies, per-snapshot bodies, online files that do
-    // not exist) passes through UNCHANGED to its legacy (dual-written) location,
-    // where a 404 is a normal optional miss rather than release-body corruption.
-    if (!withResolver.servesScopePath(classified.scope, classified.rel)) {
-      return path;
-    }
     const resolved = withResolver.scopePath(classified.scope, classified.rel);
     return resolved.startsWith('/') ? resolved : `/${resolved}`;
   }
   // Event-folder path: /reports/{YYYY-MM-DD, Name}/{rel}. Resolve via the
-  // embedded event map (keyed by the folder name the UI already uses); pass
-  // through when the event is not directly linked in this release.
+  // embedded event map, keyed by the folder name the UI already uses.
   const event = classifyEvent(path);
   if (event) {
     const resolved = withResolver.eventPath(event.folder, event.rel);
@@ -98,7 +90,7 @@ export function resolvePathWith(withResolver: ReleaseResolver, path: string): st
       return resolved.startsWith('/') ? resolved : `/${resolved}`;
     }
   }
-  return path;
+  throw new Error(`Data path is not present in release ${withResolver.releaseId}: ${path}`);
 }
 
 /** True when a resolved path targets an immutable release body. */
