@@ -108,6 +108,17 @@ test('a selected printing uses its scraped price when prices.json has no entry',
   );
 });
 
+test('a selected printing keeps its own TCGplayer product link', () => {
+  const prices = { ...PRICES, 'Dragapult ex::TWM::200': { price: 24.75, tcgPlayerId: 'tcg-variant' } };
+  assert.deepEqual(
+    resolvePriceEntry(CARD, prices, {
+      selected: { uid: 'Dragapult ex::TWM::200', set: 'TWM', number: '200', price: 20 },
+      globalUid: 'Dragapult ex::PRE::073'
+    }),
+    { price: 24.75, tcgPlayerId: 'tcg-variant' }
+  );
+});
+
 test('missing prices or card yield nothing', () => {
   assert.equal(resolvePriceEntry(CARD, null, { selected: null, globalUid: null }), null);
   assert.equal(resolvePriceEntry(undefined, PRICES, { selected: null, globalUid: null }), null);

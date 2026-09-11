@@ -121,9 +121,9 @@ export function emptyDescription(tournament: string): string {
 /**
  * The price to show for the card or selected printing.
  *
- * `prices.json` keys the CURRENT global canonical UID (the producer resolves
- * through synonyms), but the rendered card may be a rolling-canonical print —
- * hence the fallback to the global UID.
+ * `prices.json` carries entries for priced printings. The rendered card may be
+ * a rolling-canonical print without its own entry, so the normal card path
+ * still falls back to the global canonical UID.
  * @param card - The rendered card
  * @param prices - The price map, or null while loading
  * @param globalUid - The card's global canonical UID

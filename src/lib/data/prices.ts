@@ -23,7 +23,8 @@ interface PricingPayload {
 }
 
 /**
- * Returns a flat map of `Name::SET::NUMBER` → { price, tcgPlayerId }.
+ * Returns a flat map of every priced `Name::SET::NUMBER` printing →
+ * `{ price, tcgPlayerId }`.
  */
 export async function fetchPrices(): Promise<Record<string, PricingEntry>> {
   const payload = await fetchJsonOptional<PricingPayload>('/reports/prices.json');

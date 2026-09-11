@@ -1145,9 +1145,9 @@ def upload_price_history_to_r2(r2_client, bucket_name, history):
 def upload_prices_to_r2(r2_client, bucket_name, price_data):
     """Upload the spot-price snapshot to R2 (frontend-compatible format).
 
-    Canonical UIDs only. The card index and archetype pages fetch this on load
-    and only ever look up canonicals, so the extra printings we now price stay
-    out of it — they reach the browser pre-digested in the movers artifact.
+    Every priced UID is included. Card index and archetype pages still look up
+    only canonical UIDs, while the card page uses a selected printing's exact
+    entry to link its market price to the matching TCGplayer product.
     """
     key = 'reports/prices.json'
 
@@ -1214,9 +1214,9 @@ def main():
     # Add basic energy prices
     add_basic_energy_prices(price_data, card_list)
     
-    # Upload snapshot to R2 (canonicals only — see upload_prices_to_r2)
-    canonical_prices = {uid: entry for uid, entry in price_data.items() if uid in canonical_list}
-    upload_prices_to_r2(r2_client, bucket_name, canonical_prices)
+    # Publish every priced printing: card listings use their canonical entries,
+    # while the card detail strip needs the selected printing's product link.
+    upload_prices_to_r2(r2_client, bucket_name, price_data)
 
     # Append onto the rolling price history. The monolith is this job's own
     # append state; the browser reads the shards and the movers artifact.
