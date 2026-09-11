@@ -14,7 +14,7 @@ import {
   supportsConversion
 } from './cardPage/model';
 import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, on, Show } from 'solid-js';
 import {
   type Day2CardStat,
   fetchArchetype,
@@ -201,7 +201,27 @@ export function CardPage() {
     return getCanonicalCardFromData(db(), itemUid(c));
   });
 
-  const priceEntry = createMemo(() => resolvePriceEntry(card(), pricesData() ?? null, globalCardUid()));
+  // The printings strip owns the ephemeral hover/pin interaction, but the
+  // selected print belongs here: its market price and price history are fetched
+  // alongside the URL card's data.
+  const [previewPrint, setPreviewPrint] = createSignal<PrintingRow | null>(null);
+  createEffect(
+    on(
+      () => {
+        const c = card();
+        return c ? itemUid(c) : null;
+      },
+      () => setPreviewPrint(null),
+      { defer: true }
+    )
+  );
+
+  const pagePriceEntry = createMemo(() =>
+    resolvePriceEntry(card(), pricesData() ?? null, { selected: null, globalUid: globalCardUid() })
+  );
+  const priceEntry = createMemo(() =>
+    resolvePriceEntry(card(), pricesData() ?? null, { selected: previewPrint(), globalUid: globalCardUid() })
+  );
 
   // Rolling 90-day price history for the sparkline, sharded per set so this page
   // downloads only its own set (deduped by fetchJson); empty until the pipeline
@@ -215,7 +235,10 @@ export function CardPage() {
     return Boolean(h) && priceHistorySpanDays(h!) >= PRICE_HISTORY_MIN_DAYS;
   });
   const priceSeries = createMemo<PricePoint[]>(() =>
-    resolvePriceSeries(card(), priceHistoryData(), priceHistoryReady(), globalCardUid())
+    resolvePriceSeries(card(), priceHistoryData(), priceHistoryReady(), {
+      selected: previewPrint(),
+      globalUid: globalCardUid()
+    })
   );
 
   // Per-archetype usage: list every archetype that plays this card, with its
@@ -317,6 +340,9 @@ export function CardPage() {
           card={card()!}
           db={db()}
           setNumber={setNumber()}
+          previewPrint={previewPrint()}
+          onPreview={setPreviewPrint}
+          pagePrice={pagePriceEntry()?.price ?? null}
           priceEntry={priceEntry()}
           priceSeries={priceSeries()}
           conversion={conversionStat()}
@@ -335,6 +361,9 @@ function CardPageBody(props: {
   card: CardItem;
   db: SynonymDatabase | null;
   setNumber: string;
+  previewPrint: PrintingRow | null;
+  onPreview: (print: PrintingRow | null) => void;
+  pagePrice: number | null;
   priceEntry: { price?: number; tcgPlayerId?: string } | null;
   priceSeries: PricePoint[];
   conversion: Day2CardStat | undefined;
@@ -356,16 +385,6 @@ function CardPageBody(props: {
   const [searchParams] = useSearchParams();
   const joke = createMemo(() => isJokeMode(searchParams[JOKE_PARAM]));
   const printings = createMemo<PrintingRow[]>(() => buildPrintingRows(props.db, itemUid(props.card), joke()));
-  // Which printing's art the hero shows. Null means the page's own print; a
-  // click on a strip frame swaps the art (clicking it again hands it back).
-  // Only the art follows: every figure on the page, prices included, belongs to
-  // the print in the URL, so the stats and the market price never drift from it.
-  const [shownPrint, setShownPrint] = createSignal<PrintingRow | null>(null);
-  createEffect(() => {
-    void itemUid(props.card);
-    setShownPrint(null);
-  });
-
   return (
     <>
       <div class='card-page-hero'>
@@ -401,7 +420,7 @@ function CardPageBody(props: {
 
       <div class='card-page-grid'>
         <div class='card-page-left'>
-          <CardHeroArt card={props.card} shown={shownPrint()} />
+          <CardHeroArt card={props.card} shown={props.previewPrint} />
 
           <div class='stats-list'>
             <div class='stat-row stat-row--lead'>
@@ -470,12 +489,7 @@ function CardPageBody(props: {
           </div>
 
           <Show when={printings().length > 1}>
-            <PrintingsStrip
-              prints={printings()}
-              pagePrice={props.priceEntry?.price ?? null}
-              shown={shownPrint()}
-              onSelect={p => setShownPrint(current => (current === p ? null : p))}
-            />
+            <PrintingsStrip prints={printings()} pagePrice={props.pagePrice} onSelect={props.onPreview} />
           </Show>
         </div>
 
@@ -562,27 +576,49 @@ function CardHeroArt(props: { card: CardItem; shown: PrintingRow | null }) {
 
 /**
  * Printings strip (left rail): one frame per printing in the card's reprint
- * cluster, in release order, with the shown print outlined. Clicking a frame
- * swaps the hero art to that printing; clicking it again returns to the page's
- * own print. Each frame's tooltip carries its set, number and scraped price.
- * The page's print shows the Market price row's figure instead, so the two
- * never disagree by a few cents (prices.json and the synonym scrape are
- * separate sources).
+ * cluster, in release order, with the shown print outlined. Hovering or
+ * focusing a frame previews its art and price; a click pins that preview until
+ * the frame is clicked again. The page's print uses the Market price row's
+ * figure so the two sources never disagree by a few cents.
  */
 function PrintingsStrip(props: {
   prints: PrintingRow[];
   pagePrice: number | null;
-  shown: PrintingRow | null;
-  onSelect: (print: PrintingRow) => void;
+  onSelect: (print: PrintingRow | null) => void;
 }) {
   const framePrice = (p: PrintingRow): number | null => (p.isPage ? (props.pagePrice ?? p.price) : p.price);
-  const isShown = (p: PrintingRow): boolean => (props.shown ? props.shown === p : p.isPage);
+  const [pinned, setPinned] = createSignal<PrintingRow | null>(null);
+  const [hovered, setHovered] = createSignal<PrintingRow | null>(null);
+  const pagePrint = () => props.prints.find(p => p.isPage) ?? props.prints[0];
+  const activePrint = createMemo(() => hovered() ?? pinned() ?? pagePrint());
+  const isShown = (p: PrintingRow): boolean => activePrint() === p;
+
+  createEffect(
+    on(
+      () => props.prints,
+      () => {
+        setPinned(null);
+        setHovered(null);
+      },
+      { defer: true }
+    )
+  );
+
+  createEffect(() => {
+    const active = activePrint();
+    props.onSelect(active === pagePrint() ? null : active);
+  });
+
+  const pin = (print: PrintingRow) => {
+    setPinned(current => (current === print ? null : print));
+  };
+
   return (
     <div class='card-section printings-strip'>
       <h3>
         Printings <span class='count'>{props.prints.length}</span>
       </h3>
-      <div class='ps-frames'>
+      <div class='ps-frames' onMouseLeave={() => setHovered(null)}>
         <For each={props.prints}>
           {p => (
             <button
@@ -592,12 +628,21 @@ function PrintingsStrip(props: {
               aria-pressed={isShown(p)}
               aria-label={`Show the ${p.set} ${p.number} art · ${formatPrintPrice(framePrice(p))}`}
               title={`${p.set} ${p.number} · ${formatPrintPrice(framePrice(p))}`}
-              onClick={() => props.onSelect(p)}
+              onMouseEnter={() => setHovered(p)}
+              onFocus={() => setHovered(p)}
+              onBlur={() => setHovered(null)}
+              onClick={() => pin(p)}
             >
               <CardImage set={p.set} number={p.number} size='xs' alt='' skipR2 />
             </button>
           )}
         </For>
+      </div>
+      <div class='ps-readout' aria-live='polite'>
+        <span>
+          {activePrint().set} · #{activePrint().number}
+        </span>
+        <strong>{formatPrintPrice(framePrice(activePrint()))}</strong>
       </div>
     </div>
   );

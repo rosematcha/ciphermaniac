@@ -33,6 +33,20 @@ export interface ArchetypeUsageRow {
   report: { deckTotal: number };
 }
 
+/** A printing selected in the printings strip, by hover or pin. */
+export interface SelectedPrint {
+  uid: string;
+  set: string;
+  number: string | number;
+  price?: number | null;
+}
+
+/** The URL card's global identity and any transient printing-strip selection. */
+export interface PriceLookup {
+  globalUid: string | null;
+  selected: SelectedPrint | null;
+}
+
 // ---------------------------------------------------------------------------
 // Scope
 // ---------------------------------------------------------------------------
@@ -105,7 +119,7 @@ export function emptyDescription(tournament: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * The price to show for the card.
+ * The price to show for the card or selected printing.
  *
  * `prices.json` keys the CURRENT global canonical UID (the producer resolves
  * through synonyms), but the rendered card may be a rolling-canonical print —
@@ -118,16 +132,21 @@ export function emptyDescription(tournament: string): string {
 export function resolvePriceEntry(
   card: CardItem | undefined,
   prices: Record<string, PricingEntry> | null,
-  globalUid: string | null
+  lookup: PriceLookup
 ): PricingEntry | null {
   if (!card || !prices) {
     return null;
   }
-  return prices[cardUidOrName(card.name, card.set, card.number)] ?? prices[globalUid ?? ''] ?? null;
+  if (lookup.selected) {
+    const entry = prices[lookup.selected.uid];
+    const price = entry?.price ?? lookup.selected.price;
+    return price === undefined || price === null ? null : { price, tcgPlayerId: entry?.tcgPlayerId };
+  }
+  return prices[cardUidOrName(card.name, card.set, card.number)] ?? prices[lookup.globalUid ?? ''] ?? null;
 }
 
 /**
- * The sparkline series for the card.
+ * The sparkline series for the card or selected printing.
  * @param card - The rendered card
  * @param history - Per-set price history, or null
  * @param ready - Whether the history spans enough days to plot
@@ -138,12 +157,15 @@ export function resolvePriceSeries(
   card: CardItem | undefined,
   history: Record<string, PricePoint[]> | null | undefined,
   ready: boolean,
-  globalUid: string | null
+  lookup: PriceLookup
 ): PricePoint[] {
   if (!card || !history || !ready) {
     return [];
   }
-  return history[cardUidOrName(card.name, card.set, card.number)] ?? history[globalUid ?? ''] ?? [];
+  if (lookup.selected) {
+    return history[lookup.selected.uid] ?? [];
+  }
+  return history[cardUidOrName(card.name, card.set, card.number)] ?? history[lookup.globalUid ?? ''] ?? [];
 }
 
 // ---------------------------------------------------------------------------

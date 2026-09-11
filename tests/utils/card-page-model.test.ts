@@ -84,32 +84,58 @@ test('the empty state names the scope that was searched', () => {
 const PRICES = { 'Dragapult ex::PRE::073': { price: 12.5, tcgPlayerId: 'tcg-1' } };
 
 test('a card prices by its own UID', () => {
-  assert.deepEqual(resolvePriceEntry(CARD, PRICES, null), { price: 12.5, tcgPlayerId: 'tcg-1' });
-});
-
-test('a rolling-print card falls back to its global canonical UID', () => {
-  // prices.json keys the CURRENT global canonical; the rendered card may not be it.
-  assert.deepEqual(resolvePriceEntry(ROLLING_CARD, PRICES, 'Dragapult ex::PRE::073'), {
+  assert.deepEqual(resolvePriceEntry(CARD, PRICES, { selected: null, globalUid: null }), {
     price: 12.5,
     tcgPlayerId: 'tcg-1'
   });
 });
 
+test('a rolling-print card falls back to its global canonical UID', () => {
+  // prices.json keys the CURRENT global canonical; the rendered card may not be it.
+  assert.deepEqual(resolvePriceEntry(ROLLING_CARD, PRICES, { selected: null, globalUid: 'Dragapult ex::PRE::073' }), {
+    price: 12.5,
+    tcgPlayerId: 'tcg-1'
+  });
+});
+
+test('a selected printing uses its scraped price when prices.json has no entry', () => {
+  assert.deepEqual(
+    resolvePriceEntry(CARD, PRICES, {
+      selected: { uid: 'Dragapult ex::TWM::200', set: 'TWM', number: '200', price: 24.75 },
+      globalUid: 'Dragapult ex::PRE::073'
+    }),
+    { price: 24.75, tcgPlayerId: undefined }
+  );
+});
+
 test('missing prices or card yield nothing', () => {
-  assert.equal(resolvePriceEntry(CARD, null, null), null);
-  assert.equal(resolvePriceEntry(undefined, PRICES, null), null);
+  assert.equal(resolvePriceEntry(CARD, null, { selected: null, globalUid: null }), null);
+  assert.equal(resolvePriceEntry(undefined, PRICES, { selected: null, globalUid: null }), null);
 });
 
 const HISTORY = { 'Dragapult ex::PRE::073': [{ date: '2026-01-01', price: 10 }] };
 
 test('the sparkline series follows the same fallback chain as the price', () => {
-  assert.equal(resolvePriceSeries(CARD, HISTORY, true, null).length, 1);
-  assert.equal(resolvePriceSeries(ROLLING_CARD, HISTORY, true, 'Dragapult ex::PRE::073').length, 1);
+  assert.equal(resolvePriceSeries(CARD, HISTORY, true, { selected: null, globalUid: null }).length, 1);
+  assert.equal(
+    resolvePriceSeries(ROLLING_CARD, HISTORY, true, { selected: null, globalUid: 'Dragapult ex::PRE::073' }).length,
+    1
+  );
+});
+
+test("a selected printing never borrows another printing's sparkline", () => {
+  assert.deepEqual(
+    resolvePriceSeries(CARD, HISTORY, true, {
+      selected: { uid: 'Dragapult ex::TWM::200', set: 'TWM', number: '200', price: 24.75 },
+      globalUid: 'Dragapult ex::PRE::073'
+    }),
+    []
+  );
 });
 
 test('an unready history plots nothing', () => {
-  assert.deepEqual(resolvePriceSeries(CARD, HISTORY, false, null), []);
-  assert.deepEqual(resolvePriceSeries(CARD, null, true, null), []);
+  assert.deepEqual(resolvePriceSeries(CARD, HISTORY, false, { selected: null, globalUid: null }), []);
+  assert.deepEqual(resolvePriceSeries(CARD, null, true, { selected: null, globalUid: null }), []);
 });
 
 // ---------------------------------------------------------------------------
