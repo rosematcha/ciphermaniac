@@ -1,10 +1,4 @@
 {
-  ".github/scripts/build-loop.ts": [
-    "max-lines-per-function:016477e5c3677ddf874f6a23a416b46c6ad539800d7aa2568c954019f9be4f46:Async function 'main' has too many lines (192). Maximum allowed is 100.",
-    "max-depth:016477e5c3677ddf874f6a23a416b46c6ad539800d7aa2568c954019f9be4f46:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "max-depth:016477e5c3677ddf874f6a23a416b46c6ad539800d7aa2568c954019f9be4f46:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "complexity:016477e5c3677ddf874f6a23a416b46c6ad539800d7aa2568c954019f9be4f46:Async function 'main' has a complexity of 31. Maximum allowed is 12."
-  ],
   ".github/scripts/event-cli.ts": [
     "complexity:553e29de581ff2b8b83f1c343ababab538d3b3ea748d5217bb98ee28b8c96193:Function 'parseArgs' has a complexity of 14. Maximum allowed is 12.",
     "complexity:e0a408952b42e23d038216ed7e2c8d010a9dab875db3884c97da466c73162c10:Async function 'runReindex' has a complexity of 16. Maximum allowed is 12.",
@@ -30,11 +24,6 @@
   ".github/scripts/run-trends.ts": [
     "max-lines-per-function:7053b04ea918d8abc8aabf7406885d09a155f3f994be6f2098103115311f2dc2:Async function 'main' has too many lines (161). Maximum allowed is 100.",
     "complexity:7053b04ea918d8abc8aabf7406885d09a155f3f994be6f2098103115311f2dc2:Async function 'main' has a complexity of 32. Maximum allowed is 12."
-  ],
-  ".github/scripts/shadow-build-all.ts": [
-    "max-params:324ca65c5aff3d194769ba6b7cc855652ceb7e8484ad019f7c5446d28a3e7d3b:Function 'legacyEventToSource' has too many parameters (5). Maximum allowed is 4.",
-    "max-lines-per-function:ce52d87e6ce6ea996390b2e7b590a9b1c91621cee986e6384d4d0c5c76805650:Async function 'main' has too many lines (145). Maximum allowed is 100.",
-    "complexity:ce52d87e6ce6ea996390b2e7b590a9b1c91621cee986e6384d4d0c5c76805650:Async function 'main' has a complexity of 16. Maximum allowed is 12."
   ],
   ".github/scripts/update-card-synonyms.mjs": [
     "complexity:1c79704bbb07e1d646b7f6e348528f662a7cd8ddf386a75f3373362835f3af7b:Async function 'loadPreviousSynonyms' has a complexity of 13. Maximum allowed is 12.",
@@ -143,17 +132,8 @@
     "max-params:4e0ecdb0df8ccff4c7ca5a2c7fa39952f12204ab5ba30ef328bcdd4c117f8419:Function 'checkConversionCard' has too many parameters (5). Maximum allowed is 4.",
     "complexity:369556d3340cb8e432c97d0f363947925ccb505a8f2536821d775fdf0c677725:Function 'validateArchetypeIndex' has a complexity of 13. Maximum allowed is 12."
   ],
-  "shared/data/build/buildLoop.ts": [
-    "max-params:a9d169e64b9addebd82eaccd90cefd063d294f344ba2e3d357ee6f4a8703cb6b:Async function 'runBuildLoop' has too many parameters (5). Maximum allowed is 4."
-  ],
   "shared/data/build/channel.ts": [
     "complexity:46bd7d799e1e44239bac9efb2a1bfa79c03b2c336b934c4d740290e5d5e47acb:Async function 'updatePointer' has a complexity of 13. Maximum allowed is 12."
-  ],
-  "shared/data/build/graph.ts": [
-    "complexity:98005ecab0d8a5c936a4447aa8fb9e52b095ca60f7e3ce43830f477e9b9bda1d:Function 'validateNodeReceipt' has a complexity of 20. Maximum allowed is 12."
-  ],
-  "shared/data/build/release.ts": [
-    "complexity:fcf92a9ec5f5861bc2163a50a5fab39cfda85d9f131d540858cb1b98f2e1bfba:Function 'validateReleaseManifest' has a complexity of 23. Maximum allowed is 12."
   ],
   "shared/data/canonicalPrint.ts": [
     "complexity:2e08257337c40dfbca704e24bb57b988166c5d640b6effc3b0fefc41e82ec724:Function 'chooseCanonicalPrint' has a complexity of 16. Maximum allowed is 12.",

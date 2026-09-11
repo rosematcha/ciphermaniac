@@ -3,17 +3,16 @@
  *
  * Run as the first step of the Cloudflare Pages build command for git-integrated
  * (source) deployments. It reads the public production channel pointer, fetches
- * that release's persisted manifest, and writes `src/generated/release.ts` so the
+ * that release's persisted manifest, and writes `shared/generated/release.ts` so the
  * source build embeds the SAME manifest production is already serving — instead
  * of the committed `null` default, which would silently revert the data cutover.
  *
- * Fail-safe: any missing pointer, missing/invalid manifest, or network error
- * writes the `null` (legacy) module rather than failing the build. The release
- * workflow itself does NOT use this script — it generates the module from the
+ * Missing or invalid release state fails the build. The release workflow itself
+ * does NOT use this script — it generates the module from the
  * freshly composed manifest and deploys via direct upload, so the two paths can
  * never fight over the module.
  *
- * Usage: tsx embed-current-release.ts [--out src/generated/release.ts]
+ * Usage: tsx embed-current-release.ts [--out shared/generated/release.ts]
  *   DATA_BASE (default https://r2.ciphermaniac.com) — public bucket origin.
  *   CHANNEL   (default production) — channel pointer to follow.
  * @module .github/scripts/embed-current-release
@@ -25,7 +24,7 @@ import { pathToFileURL } from 'node:url';
 import { validateReleaseManifest } from '../../shared/data/build/release.ts';
 import { renderModule } from './generate-release-module.ts';
 
-const DEFAULT_OUT = 'src/generated/release.ts';
+const DEFAULT_OUT = 'shared/generated/release.ts';
 
 async function fetchJson(url: string): Promise<unknown | null> {
   try {
@@ -39,15 +38,23 @@ async function fetchJson(url: string): Promise<unknown | null> {
   }
 }
 
-/** Resolve the current production manifest, or null when none is promoted. */
+/** Resolve and validate the selected channel's current manifest. */
 export async function resolveCurrentManifest(dataBase: string, channel: string): Promise<unknown | null> {
   const base = dataBase.replace(/\/+$/, '');
-  const pointer = (await fetchJson(`${base}/build/v1/channels/${channel}.json`)) as { releaseId?: unknown } | null;
+  const pointerKey = channel === 'production' ? 'current.json' : `channels/${channel}.json`;
+  const pointer = (await fetchJson(`${base}/${pointerKey}`)) as {
+    releaseId?: unknown;
+    manifest?: unknown;
+  } | null;
   const releaseId = pointer && typeof pointer.releaseId === 'string' ? pointer.releaseId : null;
   if (!releaseId) {
     return null;
   }
-  const manifest = await fetchJson(`${base}/build/v1/releases/${encodeURIComponent(releaseId)}.json`);
+  const manifestPath =
+    typeof pointer?.manifest === 'string'
+      ? pointer.manifest
+      : `/releases/v1/manifests/${encodeURIComponent(releaseId)}.json`;
+  const manifest = await fetchJson(`${base}/${manifestPath.replace(/^\/+/, '')}`);
   if (manifest === null) {
     return null;
   }
@@ -62,18 +69,20 @@ async function main(): Promise<void> {
   const channel = process.env.CHANNEL ?? 'production';
 
   const manifest = await resolveCurrentManifest(dataBase, channel);
+  if (!manifest) {
+    throw new Error(`No valid ${channel} release is available at ${dataBase}`);
+  }
   await mkdir(dirname(out), { recursive: true });
   await writeFile(out, renderModule(manifest));
 
-  const label = manifest ? (manifest as { releaseId: string }).releaseId : 'null (legacy — no promoted release)';
+  const label = (manifest as { releaseId: string }).releaseId;
   console.log(`[embed-current-release] embedded ${label} at ${out}`);
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   main().catch(error => {
-    // Never fail the build for this: fall back to the committed legacy module.
-    console.error('[embed-current-release] non-fatal:', error instanceof Error ? error.message : error);
-    process.exit(0);
+    console.error('[embed-current-release]', error instanceof Error ? error.message : error);
+    process.exit(1);
   });
 }

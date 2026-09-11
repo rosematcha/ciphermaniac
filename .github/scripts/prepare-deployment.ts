@@ -63,17 +63,21 @@ async function readJson(key: string): Promise<unknown> {
 }
 
 async function embedCurrentRelease(): Promise<void> {
-  const pointer = (await readJson('build/v1/channels/production.json')) as { releaseId?: unknown };
+  const pointer = (await readJson('current.json')) as { releaseId?: unknown; manifest?: unknown };
   if (typeof pointer.releaseId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(pointer.releaseId)) {
     throw new Error('Invalid production release pointer');
   }
-  const manifest = await readJson(`build/v1/releases/${pointer.releaseId}.json`);
+  const manifestKey =
+    typeof pointer.manifest === 'string'
+      ? pointer.manifest.replace(/^\/+/, '')
+      : `releases/v1/manifests/${pointer.releaseId}.json`;
+  const manifest = await readJson(manifestKey);
   const errors = validateReleaseManifest(manifest);
   if (errors.length) {
     throw new Error(`Invalid production manifest: ${errors.join(', ')}`);
   }
-  await mkdir('src/generated', { recursive: true });
-  await writeFile('src/generated/release.ts', renderModule(manifest));
+  await mkdir('shared/generated', { recursive: true });
+  await writeFile('shared/generated/release.ts', renderModule(manifest));
   console.log(`Embedded production release ${pointer.releaseId}`);
 }
 

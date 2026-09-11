@@ -1,7 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { onRequestGet } from '../../functions/reports/[tournament]/manifest.json.ts';
+import { onRequestGet, resolveMasterPath } from '../../functions/reports/[tournament]/manifest.json.ts';
+import { composeRelease } from '../../shared/data/build/release.ts';
+
+test('reports manifest resolves masters through the embedded event release', () => {
+  const release = composeRelease({
+    releaseId: 'release-test',
+    publishedAt: '2026-09-11T00:00:00Z',
+    roots: {
+      online: '/releases/v1/online/a',
+      trends: '/releases/v1/trends/b',
+      players: '/releases/v1/players/c',
+      prices: '/releases/v1/prices/d',
+      catalogs: '/releases/v1/catalogs/e',
+      snapshots: '/releases/v1/snapshots/f',
+      assets: '/releases/v1/assets/g'
+    },
+    events: { '2026-01-01, Test': '/releases/v1/events/test/h' }
+  });
+  assert.equal(resolveMasterPath('2026-01-01, Test', release), '/releases/v1/events/test/h/master.json');
+  assert.equal(resolveMasterPath('missing', release), null);
+});
 
 test('reports manifest endpoint reports master size and db availability', async () => {
   const originalFetch = globalThis.fetch;

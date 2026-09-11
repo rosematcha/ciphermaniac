@@ -1,6 +1,6 @@
 /**
  * tests/data/release-resolver.test.ts
- * Release-aware resolver with legacy fallback + the generated module renderer.
+ * Release-aware resolver and the generated module renderer.
  */
 
 import test from 'node:test';
@@ -11,7 +11,7 @@ import { renderModule } from '../../.github/scripts/generate-release-module.ts';
 
 function manifest(): unknown {
   return {
-    contractVersion: 1,
+    contractVersion: 2,
     releaseId: '20260713T000000Z-abc',
     publishedAt: '2026-07-13T00:00:00Z',
     roots: {
@@ -20,15 +20,8 @@ function manifest(): unknown {
       players: '/releases/v1/players/ccc',
       prices: '/releases/v1/prices/ddd',
       catalogs: '/releases/v1/catalogs/eee',
-      snapshots: '/releases/v1/snapshots/fff'
-    },
-    served: {
-      online: ['master.json'],
-      trends: ['trends.json'],
-      players: ['index.json', 'index-slim.json'],
-      prices: ['prices.json', 'prices-history.json'],
-      catalogs: ['tournaments.json'],
-      snapshots: ['index.json']
+      snapshots: '/releases/v1/snapshots/fff',
+      assets: '/releases/v1/assets/ggg'
     },
     events: { 'labs:0042': '/releases/v1/events/labs:0042/999' },
     dependencies: {}
@@ -53,19 +46,11 @@ test('an embedded manifest resolves immutable release roots', () => {
   );
 });
 
-test('servesScopePath is true only for published keys; false in legacy mode', () => {
-  const resolver = createReleaseResolver(manifest());
-  assert.strictEqual(resolver.servesScopePath('online', 'master.json'), true);
-  assert.strictEqual(resolver.servesScopePath('players', 'index-slim.json'), true);
-  assert.strictEqual(resolver.servesScopePath('players', '1272/profile.json'), false);
-  assert.strictEqual(resolver.servesScopePath('online', 'conversion.json'), false);
-  assert.strictEqual(createReleaseResolver(null).servesScopePath('online', 'master.json'), false);
-});
-
-test('a corrupt embedded manifest degrades to legacy rather than throwing', () => {
-  const resolver = createReleaseResolver({ contractVersion: 1, releaseId: 'x', roots: { online: 'reports/mutable' } });
-  assert.strictEqual(resolver.isReleaseAware, false);
-  assert.strictEqual(resolver.scopePath('trends', 'trends.json'), 'reports/Trends - Last 30 Days/trends.json');
+test('a corrupt embedded manifest fails instead of mixing release and mutable data', () => {
+  assert.throws(
+    () => createReleaseResolver({ contractVersion: 2, releaseId: 'x', roots: { online: 'reports/mutable' } }),
+    /Invalid embedded release manifest/
+  );
 });
 
 test('coerceManifest accepts a valid manifest and rejects junk', () => {

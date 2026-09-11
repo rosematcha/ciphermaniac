@@ -1,10 +1,9 @@
 /**
- * R2-backed ObjectStore for the build loop.
+ * R2-backed object store for release publication and channel updates.
  *
  * Implements the create-only immutable write (`If-None-Match: *`), plain read,
- * and overwrite that shared/data/build/receiptStore.ts's publication algorithm
- * needs. Immutable release bodies get a one-year cache policy; receipts and
- * channel pointers are mutable control-plane objects.
+ * and overwrite operations. Immutable release bodies get a one-year cache
+ * policy; channel pointers are mutable control-plane objects.
  * @module .github/scripts/lib/build/r2ObjectStore
  */
 

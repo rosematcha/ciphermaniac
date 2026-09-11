@@ -1,6 +1,11 @@
 import type { S3Client } from '@aws-sdk/client-s3';
-import type { ObjectStore } from '../../../../shared/data/build/receiptStore';
 import type { ConditionalPointerStore } from '../../../../shared/data/build/channel';
+
+interface ObjectStore {
+  putIfAbsent(key: string, body: string): Promise<void>;
+  get(key: string): Promise<string | null>;
+  put(key: string, body: string): Promise<void>;
+}
 
 /**
  * Build an ObjectStore over an R2 bucket (create-only immutable writes) that

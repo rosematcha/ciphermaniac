@@ -26,6 +26,7 @@ const eventSample = Number(process.argv[3] ?? 8);
 interface ChannelPointer {
   channel: string;
   releaseId: string;
+  manifest?: string;
   promotedFrom?: string;
 }
 
@@ -33,7 +34,6 @@ interface ReleaseManifest {
   releaseId: string;
   publishedAt?: string;
   roots: Record<string, string>;
-  served: Record<string, string[]>;
   events: Record<string, string | { root?: string }>;
 }
 
@@ -63,10 +63,12 @@ function eventRoot(value: string | { root?: string }): string | null {
 
 const problems: string[] = [];
 
-const pointer = await getJson<ChannelPointer>(`build/v1/channels/${channel}.json`);
+const pointerKey = channel === 'production' ? 'current.json' : `channels/${channel}.json`;
+const pointer = await getJson<ChannelPointer>(pointerKey);
 console.log(`channel ${channel} -> release ${pointer.releaseId}`);
 
-const manifest = await getJson<ReleaseManifest>(`build/v1/releases/${pointer.releaseId}.json`);
+const manifestPath = pointer.manifest ?? `/releases/v1/manifests/${pointer.releaseId}.json`;
+const manifest = await getJson<ReleaseManifest>(manifestPath);
 if (manifest.releaseId !== pointer.releaseId) {
   problems.push(`manifest releaseId ${manifest.releaseId} does not match the pointer ${pointer.releaseId}`);
 }
@@ -80,16 +82,26 @@ if (Number.isFinite(publishedAt)) {
   }
 }
 
+const requiredArtifacts: Record<string, string[]> = {
+  online: ['master.json', 'meta.json', 'decks.json', 'cardUsage.json', 'archetypes/index.json'],
+  trends: ['trends.json', 'meta.json', 'majors-trends.json'],
+  players: ['index.json', 'index-slim.json'],
+  prices: ['prices.json'],
+  catalogs: ['tournaments.json'],
+  snapshots: [],
+  assets: ['card-synonyms.json', 'data/card-types.json']
+};
+
 console.log(`\nscopes: ${Object.keys(manifest.roots).join(', ')}`);
 let checked = 0;
-for (const [scope, entries] of Object.entries(manifest.served)) {
+for (const [scope, entries] of Object.entries(requiredArtifacts)) {
   const root = manifest.roots[scope];
   if (!root) {
-    problems.push(`served scope ${scope} has no root`);
+    problems.push(`required scope ${scope} has no root`);
     continue;
   }
-  console.log(`  ${scope.padEnd(10)} ${String(entries.length).padStart(3)} served`);
-  for (const rel of entries) {
+  console.log(`  ${scope.padEnd(10)} complete marker + ${entries.length} sentinel(s)`);
+  for (const rel of ['_complete.json', ...entries]) {
     const status = await resolves(`${R2}${encodeURI(`${root}/${rel}`)}`);
     checked += 1;
     if (status !== 200) {
@@ -107,10 +119,12 @@ for (const [folder, value] of sampled) {
     problems.push(`event ${folder} has no root`);
     continue;
   }
-  const status = await resolves(`${R2}${encodeURI(`${root}/master.json`)}`);
-  checked += 1;
-  if (status !== 200) {
-    problems.push(`event ${folder}: ${status} for ${root}/master.json`);
+  for (const rel of ['_complete.json', 'master.json']) {
+    const status = await resolves(`${R2}${encodeURI(`${root}/${rel}`)}`);
+    checked += 1;
+    if (status !== 200) {
+      problems.push(`event ${folder}: ${status} for ${root}/${rel}`);
+    }
   }
 }
 

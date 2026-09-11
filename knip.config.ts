@@ -7,8 +7,7 @@ const config: KnipConfig = {
   // These are retained test oracles/prototypes, not shipped entry points.
   // Production mode still rejects any additional test-only module.
   ignoreIssues: {
-    'shared/data/artifacts.ts': ['files'],
-    'shared/data/build/buildLoop.ts': ['files']
+    'shared/data/artifacts.ts': ['files']
   },
 
   entry: [

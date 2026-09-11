@@ -27,7 +27,7 @@ test('with an embedded manifest, scope paths resolve to immutable release roots'
   const { createReleaseResolver } = await import('../../shared/releaseManifest.ts');
   const { resolvePathWith } = await import('../../src/lib/releaseClient.ts');
   const resolver = createReleaseResolver({
-    contractVersion: 1,
+    contractVersion: 2,
     releaseId: '20260713T000000Z-abc',
     publishedAt: '2026-07-13T00:00:00Z',
     roots: {
@@ -36,15 +36,8 @@ test('with an embedded manifest, scope paths resolve to immutable release roots'
       players: '/releases/v1/players/ccc',
       prices: '/releases/v1/prices/ddd',
       catalogs: '/releases/v1/catalogs/eee',
-      snapshots: '/releases/v1/snapshots/fff'
-    },
-    served: {
-      online: ['master.json', 'decks.json', 'meta.json', 'cardUsage.json', 'archetypes/index.json'],
-      trends: ['trends.json', 'meta.json', 'majors-trends.json'],
-      players: ['index.json', 'index-slim.json'],
-      prices: ['prices.json', 'prices-history.json', 'price-movers.json'],
-      catalogs: ['tournaments.json'],
-      snapshots: ['index.json']
+      snapshots: '/releases/v1/snapshots/fff',
+      assets: '/releases/v1/assets/ggg'
     },
     events: { '2026-01-16, Regional X': '/releases/v1/events/2026-01-16, Regional X/999' },
     dependencies: {}
@@ -65,37 +58,40 @@ test('with an embedded manifest, scope paths resolve to immutable release roots'
   );
   assert.strictEqual(resolvePathWith(resolver, '/reports/prices.json'), '/releases/v1/prices/ddd/prices.json');
   assert.strictEqual(
+    resolvePathWith(resolver, '/assets/card-synonyms.json'),
+    '/releases/v1/assets/ggg/card-synonyms.json'
+  );
+  assert.strictEqual(
     resolvePathWith(resolver, '/reports/price-movers.json'),
     '/releases/v1/prices/ddd/price-movers.json'
   );
-  // Per-set history shards are per-entity bodies: never captured, always legacy.
-  assert.strictEqual(resolvePathWith(resolver, '/reports/price-history/SCR.json'), '/reports/price-history/SCR.json');
+  assert.strictEqual(
+    resolvePathWith(resolver, '/reports/price-history/SCR.json'),
+    '/releases/v1/prices/ddd/price-history/SCR.json'
+  );
   assert.strictEqual(
     resolvePathWith(resolver, '/reports/majors-trends.json'),
     '/releases/v1/trends/bbb/majors-trends.json'
   );
-  // UNPUBLISHED keys pass through to legacy: per-player bodies, and online files
-  // the release never captured (conversion doesn't exist for the online window).
-  assert.strictEqual(resolvePathWith(resolver, '/players/1272/profile.json'), '/players/1272/profile.json');
-  assert.strictEqual(resolvePathWith(resolver, '/players/1272/decks.json'), '/players/1272/decks.json');
+  assert.strictEqual(
+    resolvePathWith(resolver, '/players/1272/profile.json'),
+    '/releases/v1/players/ccc/1272/profile.json'
+  );
+  assert.strictEqual(resolvePathWith(resolver, '/players/1272/decks.json'), '/releases/v1/players/ccc/1272/decks.json');
   assert.strictEqual(
     resolvePathWith(resolver, '/reports/Online - Last 14 Days/conversion.json'),
-    '/reports/Online - Last 14 Days/conversion.json'
+    '/releases/v1/online/aaa/conversion.json'
   );
   assert.strictEqual(
     resolvePathWith(resolver, '/reports/Snapshots/2025-05-01/master.json'),
-    '/reports/Snapshots/2025-05-01/master.json'
+    '/releases/v1/snapshots/fff/2025-05-01/master.json'
   );
   // Event-folder paths resolve when the event is in the embedded map.
   assert.strictEqual(
     resolvePathWith(resolver, '/reports/2026-01-16, Regional X/master.json'),
     '/releases/v1/events/2026-01-16, Regional X/999/master.json'
   );
-  // An event NOT in the map passes through.
-  assert.strictEqual(
-    resolvePathWith(resolver, '/reports/2026-02-01, Other/master.json'),
-    '/reports/2026-02-01, Other/master.json'
-  );
+  assert.throws(() => resolvePathWith(resolver, '/reports/2026-02-01, Other/master.json'), /not present in release/);
 });
 
 test('missing-release-body recovery: reload once for a release path, never for legacy or twice', async () => {
