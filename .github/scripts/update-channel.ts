@@ -13,10 +13,36 @@
 import { requireEnv } from './lib/env.ts';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { validateReleaseManifest } from '../../shared/data/build/release.ts';
+import { type ReleaseManifest, validateReleaseManifest } from '../../shared/data/build/release.ts';
 import { updatePointer } from '../../shared/data/build/channel.ts';
 import { createR2Client } from './lib/r2.mjs';
 import { createR2ObjectStore } from './lib/build/r2ObjectStore.mjs';
+
+interface PendingEventStore {
+  get(key: string): Promise<string | null>;
+  delete(key: string): Promise<void>;
+}
+
+export async function clearPromotedEvents(
+  store: PendingEventStore,
+  manifest: { events?: Record<string, string> }
+): Promise<number> {
+  const body = await store.get('pending-events.json');
+  if (body === null) {
+    return 0;
+  }
+  const pending = JSON.parse(body) as { events?: Record<string, unknown> };
+  if (!pending.events || typeof pending.events !== 'object' || Array.isArray(pending.events)) {
+    throw new Error('Pending event pointer is invalid');
+  }
+  const folders = Object.keys(pending.events);
+  const missing = folders.filter(folder => manifest.events?.[folder] !== pending.events?.[folder]);
+  if (missing.length > 0) {
+    throw new Error(`Refusing to clear unpromoted events: ${missing.join(', ')}`);
+  }
+  await store.delete('pending-events.json');
+  return folders.length;
+}
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
@@ -29,7 +55,7 @@ async function main(): Promise<void> {
     throw new Error('Missing --manifest <release-manifest.json>');
   }
 
-  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as { releaseId: string };
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as ReleaseManifest;
   const errors = validateReleaseManifest(manifest);
   if (errors.length > 0) {
     throw new Error(`Refusing to promote an invalid manifest:\n  ${errors.join('\n  ')}`);
@@ -59,6 +85,8 @@ async function main(): Promise<void> {
     promotedFrom: 'publish-data-release'
   }));
   console.log(`[update-channel] ${key} -> release ${(written as { releaseId: string })?.releaseId}`);
+  const cleared = await clearPromotedEvents(store, manifest);
+  console.log(`[update-channel] cleared ${cleared} promoted pending event(s)`);
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;

@@ -7,6 +7,7 @@ scheduled job ever notices.
 """
 
 import importlib.util
+import json
 import unittest
 from pathlib import Path
 
@@ -40,18 +41,24 @@ class _FakeSession:
         return _FakeResponse(self._text)
 
 
-class _FakeDownloadModule:
-    """Stands in for download-tournament.py's R2 helpers."""
+class _Body:
+    def __init__(self, value):
+        self._value = value
 
-    def __init__(self, folders, metas):
-        self._folders = folders
-        self._metas = metas
+    def read(self):
+        return json.dumps(self._value).encode()
 
-    def list_report_folders(self, _client, _bucket):
-        return self._folders
 
-    def fetch_tournament_meta(self, _client, _bucket, folder):
-        return self._metas.get(folder, {})
+class _FakeClient:
+    def __init__(self, values):
+        self._values = values
+
+    def get_object(self, Bucket, Key):  # noqa: ARG002
+        if Key not in self._values:
+            error = Exception("missing")
+            error.response = {"Error": {"Code": "NoSuchKey"}}
+            raise error
+        return {"Body": _Body(self._values[Key])}
 
 
 class FetchPublishedCodesTest(unittest.TestCase):
@@ -71,26 +78,31 @@ class FetchPublishedCodesTest(unittest.TestCase):
 
 class FetchIngestedCodesTest(unittest.TestCase):
     def test_reads_labs_code_from_every_folder_meta(self):
-        download = _FakeDownloadModule(
-            ["2026-02-13, International Championship London", "2025-06-13, IC New Orleans"],
-            {
-                "2026-02-13, International Championship London": {"labsCode": "0054"},
-                "2025-06-13, IC New Orleans": {"labsCode": " 0031 "},
-            },
-        )
-        codes = ingest_module.fetch_ingested_codes(download, None, "bucket")
+        client = self.client_with_metas([{"labsCode": "0054"}, {"labsCode": " 0031 "}])
+        codes = ingest_module.fetch_ingested_codes(client, "bucket")
         self.assertEqual(codes, {"0054", "0031"})
 
     def test_ignores_folders_without_a_usable_code(self):
-        download = _FakeDownloadModule(
-            ["Snapshots", "2026-02-13, Event", "2026-03-20, Event"],
-            {
-                "Snapshots": {},
-                "2026-02-13, Event": {"labsCode": ""},
-                "2026-03-20, Event": {"labsCode": 58},
-            },
+        client = self.client_with_metas([{}, {"labsCode": ""}, {"labsCode": 58}])
+        self.assertEqual(ingest_module.fetch_ingested_codes(client, "bucket"), set())
+
+    @staticmethod
+    def client_with_metas(metas):
+        events = {
+            f"2026-01-{index + 1:02d}, Event {index}": (
+                f"/releases/v1/events/2026-01-{index + 1:02d}, Event {index}/abc123def45{index}"
+            )
+            for index in range(len(metas))
+        }
+        manifest = {"releaseId": "release_1", "roots": {}, "events": events}
+        values = {
+            "current.json": {"releaseId": "release_1"},
+            "build/v1/releases/release_1.json": manifest,
+        }
+        values.update(
+            {f"{root.lstrip('/')}/meta.json": meta for root, meta in zip(events.values(), metas)}
         )
-        self.assertEqual(ingest_module.fetch_ingested_codes(download, None, "bucket"), set())
+        return _FakeClient(values)
 
 
 class ParseEnvTest(unittest.TestCase):

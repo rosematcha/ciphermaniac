@@ -18,12 +18,15 @@ filenames can ``import r2`` after adding ``lib/`` to ``sys.path``.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, NamedTuple, Optional
 
 # Error codes that unambiguously mean "the object does not exist". Anything else
 # (AccessDenied, throttling, 5xx, connection resets) is a transport failure and
 # must never be mistaken for absence.
 _MISSING_OBJECT_CODES = ("NoSuchKey", "NotFound", "404")
+_MANIFEST_KEY = re.compile(r"^(?:build/v1/releases|releases/v1/manifests)/[A-Za-z0-9_-]+\.json$")
+_EVENT_ROOT = re.compile(r"^/?releases/v1/events/[^/]+/[a-f0-9]{12,64}$")
 
 
 class ReadResult(NamedTuple):
@@ -123,3 +126,67 @@ def object_exists(client, bucket, key) -> bool:
         if is_missing_object_error(exc):
             return False
         raise
+
+
+def load_production_release(client, bucket):
+    """Load and minimally validate the authoritative production release."""
+    pointer_result = read_json(client, bucket, "current.json")
+    if pointer_result.status != "found" or not isinstance(pointer_result.value, dict):
+        raise RuntimeError(f"Production pointer unavailable: {pointer_result.status}")
+    pointer = pointer_result.value
+    release_id = pointer.get("releaseId")
+    if not isinstance(release_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", release_id):
+        raise RuntimeError("Production pointer has an invalid releaseId")
+    manifest_key = pointer.get("manifest") or f"build/v1/releases/{release_id}.json"
+    if not isinstance(manifest_key, str):
+        raise RuntimeError("Production pointer has an invalid manifest key")
+    manifest_key = manifest_key.lstrip("/")
+    if not _MANIFEST_KEY.fullmatch(manifest_key):
+        raise RuntimeError(f"Production pointer has an unsafe manifest key: {manifest_key}")
+    manifest_result = read_json(client, bucket, manifest_key)
+    if manifest_result.status != "found" or not isinstance(manifest_result.value, dict):
+        raise RuntimeError(f"Production manifest unavailable: {manifest_result.status}")
+    manifest = manifest_result.value
+    if manifest.get("releaseId") != release_id:
+        raise RuntimeError("Production pointer and manifest release IDs disagree")
+    if not isinstance(manifest.get("roots"), dict) or not isinstance(manifest.get("events"), dict):
+        raise RuntimeError("Production manifest has invalid roots or events")
+    return manifest
+
+
+def production_event_key(manifest, event, relative_path):
+    """Resolve an event artifact against an immutable production event root."""
+    root = manifest.get("events", {}).get(event)
+    if not isinstance(root, str) or not _EVENT_ROOT.fullmatch(root):
+        raise RuntimeError(f"Event absent or invalid in production release: {event}")
+    return f"{root.lstrip('/')}/{relative_path.lstrip('/')}"
+
+
+def production_scope_key(manifest, scope, relative_path):
+    """Resolve a scope artifact against an immutable production scope root."""
+    root = manifest.get("roots", {}).get(scope)
+    if not isinstance(root, str) or not root.startswith(f"/releases/v1/{scope}/"):
+        raise RuntimeError(f"Scope absent or invalid in production release: {scope}")
+    return f"{root.lstrip('/')}/{relative_path.lstrip('/')}"
+
+
+def load_event_sources(client, bucket):
+    """Merge production event roots with immutable events awaiting promotion."""
+    manifest = load_production_release(client, bucket)
+    pending_result = read_json(client, bucket, "pending-events.json")
+    if pending_result.status == "missing":
+        pending = {}
+    elif pending_result.status == "found" and isinstance(pending_result.value, dict):
+        pending = pending_result.value.get("events", {})
+    else:
+        raise RuntimeError(f"Pending event pointer unavailable: {pending_result.status}")
+    if not isinstance(pending, dict):
+        raise RuntimeError("Pending event pointer has invalid events")
+    sources = dict(manifest["events"])
+    sources.update(pending)
+    for folder, root in sources.items():
+        if not isinstance(folder, str) or not re.match(r"^\d{4}-\d{2}-\d{2},", folder):
+            raise RuntimeError(f"Invalid event folder: {folder}")
+        if not isinstance(root, str) or not _EVENT_ROOT.fullmatch(root):
+            raise RuntimeError(f"Invalid immutable event root: {root}")
+    return manifest, sources

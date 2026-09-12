@@ -22,11 +22,9 @@ import { CopyObjectCommand, HeadObjectCommand, ListObjectsV2Command, type S3Clie
 import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
-import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
-import { labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts';
-import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
-import { buildTournamentCatalog, listReportFolders } from './event-cli.ts';
+import { buildTournamentCatalog } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson, withR2Retry } from './lib/r2.mjs';
+import { loadEventSources } from './lib/build/productionRelease.ts';
 
 const CACHE = 'public, max-age=31536000, immutable';
 
@@ -180,147 +178,33 @@ export async function assertNoEventRegression(
   console.log(`[build-loop] regression guard: ${previous.length} served event(s) all present`);
 }
 
-type EventBody = Record<string, unknown>;
-
-/** The decision to capture an event folder, carrying the narrowed bodies. */
-export type EventCapturePlan =
-  { capture: true; decks: EventBody[]; players: EventBody[]; meta: EventBody } | { capture: false; reason: string };
-
-/**
- * Decide whether an event folder may be captured into an immutable release.
- *
- * Beyond the obvious missing-file case, an event with ZERO decks is a
- * not-yet-published event rather than a real one: Labs posts standings as soon
- * as an event starts and the decklists hours or days later. Capturing that
- * window freezes `{"deckTotal":0}` into an immutable release body. Skipping it
- * keeps the incomplete event out of both the release catalog and event map.
- * @param bodies - The folder's loaded decks/players/meta bodies (null when absent)
- * @returns The capture decision, with a human-readable reason when declining
- */
-export function planEventCapture(bodies: {
-  decks: EventBody[] | null;
-  players: EventBody[] | null;
-  meta: EventBody | null;
-}): EventCapturePlan {
-  const { decks, players, meta } = bodies;
-  if (!decks || !players || !meta) {
-    const absent = [!decks && 'decks.json', !players && 'players.json', !meta && 'meta.json'].filter(Boolean);
-    return { capture: false, reason: `missing ${absent.join(', ')}` };
-  }
-  if (decks.length === 0) {
-    return { capture: false, reason: '0 decks (decklists not published yet)' };
-  }
-  return { capture: true, decks, players, meta };
-}
-
-interface BuildContext {
-  load: <T>(key: string) => Promise<T | null>;
-  publish: (key: string, body: unknown) => Promise<void>;
-  gen: (value: unknown) => string;
-  synonyms: SynonymDatabase | null;
-}
-
-export async function buildEvent(folder: string, context: BuildContext): Promise<string | null> {
-  const base = `reports/${folder}`;
-  const [decks, players, matches, meta] = await Promise.all([
-    context.load<Record<string, unknown>[]>(`${base}/decks.json`),
-    context.load<Record<string, unknown>[]>(`${base}/players.json`),
-    context.load<Record<string, unknown>[]>(`${base}/matches.json`),
-    context.load<Record<string, unknown>>(`${base}/meta.json`)
-  ]);
-  const plan = planEventCapture({ decks, players, meta });
-  if (!plan.capture) {
-    console.log(`[build-loop] skipping ${folder}: ${plan.reason}`);
-    return null;
-  }
-  const archByTp = new Map<string, string>();
-  const cardsByTp: Record<string, unknown[]> = {};
-  for (const deck of plan.decks) {
-    if (deck.playerId === undefined) {
-      continue;
+export async function validateEventSources(
+  sources: Record<string, string>,
+  load: <T>(key: string) => Promise<T | null>
+): Promise<Record<string, string>> {
+  await runConcurrent(Object.entries(sources), async ([folder, sourceRoot]) => {
+    const root = sourceRoot.replace(/^\/+|\/+$/g, '');
+    const [marker, decks, meta, master] = await Promise.all([
+      load<{ generation?: string; objectCount?: number }>(`${root}/_complete.json`),
+      load<unknown[]>(`${root}/decks.json`),
+      load<unknown>(`${root}/meta.json`),
+      load<unknown>(`${root}/master.json`)
+    ]);
+    const generation = root.split('/').at(-1);
+    if (
+      !marker ||
+      marker.generation !== generation ||
+      typeof marker.objectCount !== 'number' ||
+      !Number.isInteger(marker.objectCount) ||
+      marker.objectCount <= 0 ||
+      !Array.isArray(decks) ||
+      !meta ||
+      !master
+    ) {
+      throw new Error(`Immutable event generation is incomplete: ${folder} -> ${sourceRoot}`);
     }
-    if (deck.archetype) {
-      archByTp.set(String(deck.playerId), String(deck.archetype));
-    }
-    if (Array.isArray(deck.cards)) {
-      cardsByTp[String(deck.playerId)] = deck.cards;
-    }
-  }
-  const source = {
-    labsCode: folder.replace(/[^a-z0-9]/gi, '').slice(-8),
-    fetchedAt: '1970-01-01T00:00:00Z',
-    meta: {
-      name: String(plan.meta.name),
-      date: String(plan.meta.startDate ?? plan.meta.date),
-      players: plan.meta.players as number,
-      division: (plan.meta.division as string) ?? null,
-      country: (plan.meta.country as string) ?? null
-    },
-    standings: plan.players.map(player => ({
-      tpId: player.tpId as number,
-      playerId: (player.playerId as string) ?? null,
-      name: String(player.name),
-      country: (player.country as string) ?? null,
-      placement: (player.placement as number) ?? null,
-      wins: player.wins as number,
-      losses: player.losses as number,
-      ties: player.ties as number,
-      points: (player.points as number) ?? null,
-      opw: (player.opw as number) ?? null,
-      oopw: (player.oopw as number) ?? null,
-      madePhase2: Boolean(player.madePhase2),
-      madeTopCut: Boolean(player.madeTopCut),
-      decklistPublished: Boolean(player.decklistPublished),
-      deckName: archByTp.get(String(player.tpId)) ?? null
-    })),
-    decklists: cardsByTp as never,
-    matches: (matches ?? []).map(match => ({
-      round: match.round as number,
-      phase: (match.phase as number) ?? null,
-      table: (match.table as number) ?? null,
-      completed: Boolean(match.completed),
-      p1Id: match.player1Id as number,
-      p2Id: (match.player2Id as number) ?? null,
-      winner: (match.winnerCode as number) ?? null
-    }))
-  };
-  const artifacts = buildEventArtifacts(labsSourceToNormalized(source, { synonymDb: context.synonyms }), {
-    synonymDb: context.synonyms
   });
-  const generation = context.gen([...artifacts.entries()].sort());
-  const root = `releases/v1/events/${folder}/${generation}`;
-  const complete = await context.load<{ generation?: string; objectCount?: number }>(`${root}/_complete.json`);
-  if (!eventNeedsPublication(complete, generation, artifacts.size)) {
-    return `/${root}`;
-  }
-  await Promise.all([...artifacts].map(([path, body]) => context.publish(`${root}/${path}`, body)));
-  await context.publish(`${root}/_complete.json`, { generation, objectCount: artifacts.size });
-  return `/${root}`;
-}
-
-export function eventNeedsPublication(
-  marker: { generation?: string; objectCount?: number } | null,
-  generation: string,
-  objectCount: number
-): boolean {
-  if (!marker) {
-    return true;
-  }
-  if (marker.generation !== generation || marker.objectCount !== objectCount) {
-    throw new Error(`Invalid completion marker for event generation ${generation}`);
-  }
-  return false;
-}
-
-async function buildEvents(folders: string[], context: BuildContext): Promise<Record<string, string>> {
-  const events: Record<string, string> = {};
-  for (const folder of folders) {
-    const root = await buildEvent(folder, context);
-    if (root) {
-      events[folder] = root;
-    }
-  }
-  return events;
+  return { ...sources };
 }
 
 async function discoverCapturedScopes(
@@ -412,16 +296,16 @@ async function main(): Promise<void> {
   };
   const gen = (obj: unknown): string => sha256HexString(canonicalStringify(obj)).slice(0, 12);
 
-  const synonyms = await load<SynonymDatabase>('assets/card-synonyms.json');
   // ---- Discover scopes ----
-  const allFolders = await listReportFolders(client, bucket);
-  const eventFolders = allFolders.filter(f => /^\d{4}-\d{2}-\d{2},/.test(f)).slice(0, limit);
+  const { sources } = await loadEventSources({ read: load });
+  const eventFolders = Object.keys(sources).sort().slice(0, limit);
   if (!argv.includes('--allow-shrink') && limit === Infinity) {
     await assertNoEventRegression(eventFolders, load);
   }
 
   const roots: Partial<Record<ReleaseScope, string>> = {};
-  const events = await buildEvents(eventFolders, { load, publish, gen, synonyms });
+  const selectedSources = Object.fromEntries(eventFolders.map(folder => [folder, sources[folder]]));
+  const events = await validateEventSources(selectedSources, load);
   if (!argv.includes('--allow-shrink') && limit === Infinity) {
     await assertNoEventRegression(Object.keys(events), load);
   }

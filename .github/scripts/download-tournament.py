@@ -13,6 +13,7 @@ import json
 import os
 import re
 import sqlite3
+import subprocess
 import sys
 import tempfile
 from collections import Counter, defaultdict
@@ -2819,17 +2820,13 @@ def build_tournament_sqlite_bytes(
 def main():
     tournament_input = os.environ.get("LIMITLESS_INPUT") or os.environ.get("LIMITLESS_URL")
     anonymize = os.environ.get("ANONYMIZE", "false").lower() == "true"
-    generate_tournament_synonyms = parse_bool_env("GENERATE_TOURNAMENT_SYNONYMS", False)
-    write_tournament_db = parse_bool_env("WRITE_TOURNAMENT_DB", False)
-    rebuild_tournaments_only = parse_bool_env("REBUILD_TOURNAMENTS_JSON_ONLY", False)
-    rebuild_tournaments_dry_run = parse_bool_env("REBUILD_TOURNAMENTS_JSON_DRY_RUN", False)
 
     r2_account_id = os.environ.get("R2_ACCOUNT_ID")
     r2_access_key_id = os.environ.get("R2_ACCESS_KEY_ID")
     r2_secret_access_key = os.environ.get("R2_SECRET_ACCESS_KEY")
     r2_bucket_name = os.environ.get("R2_BUCKET_NAME", "ciphermaniac-reports")
 
-    if not tournament_input and not rebuild_tournaments_only:
+    if not tournament_input:
         print("Error: LIMITLESS_INPUT (or LIMITLESS_URL) environment variable not set")
         sys.exit(1)
 
@@ -2843,25 +2840,7 @@ def main():
 
         r2_client = r2.make_r2_client(r2_account_id, r2_access_key_id, r2_secret_access_key)
 
-    if rebuild_tournaments_only:
-        if not r2_client:
-            print("Error: R2 client is required to rebuild tournaments.json")
-            sys.exit(1)
-        print("Rebuilding tournaments.json from existing report folders...")
-        rebuilt = rebuild_tournaments_json_from_reports(
-            r2_client,
-            r2_bucket_name,
-            dry_run=rebuild_tournaments_dry_run,
-        )
-        action = "Would rebuild" if rebuild_tournaments_dry_run else "Rebuilt"
-        print(f"✓ {action} tournaments.json with {len(rebuilt)} entries")
-        return
-
     card_types_db = load_card_types_database(r2_client, r2_bucket_name)
-    existing_synonyms, existing_canonicals = {}, {}
-    if generate_tournament_synonyms:
-        existing_synonyms, existing_canonicals = load_existing_canonicals(r2_client, r2_bucket_name)
-
     session = requests.Session()
 
     try:
@@ -2913,13 +2892,11 @@ def main():
 
     # Build full participant table from standings
     participants = []
-    standings_by_tp_id: Dict[int, Dict[str, Any]] = {}
     for row in standings:
         tp_id = row.get("tp_id")
         if tp_id is None:
             continue
         tp_id = int(tp_id)
-        standings_by_tp_id[tp_id] = row
         participants.append(
             {
                 "tpId": tp_id,
@@ -2978,7 +2955,6 @@ def main():
 
     # Build deck analytics rows and per-player matches
     all_decks = []
-    decks_by_tp_id: Dict[int, Dict[str, Any]] = {}
     player_matches = []
     canonical_matches_map: Dict[str, Dict[str, Any]] = {}
 
@@ -3029,8 +3005,6 @@ def main():
         }
 
         all_decks.append(deck)
-        decks_by_tp_id[tp_id] = deck
-
         for match_row in payload.get("matches") or []:
             round_num = match_row.get("round")
             if round_num is None:
@@ -3109,84 +3083,6 @@ def main():
     all_decks.sort(key=lambda d: (d.get("placement") is None, d.get("placement") or 999999, d.get("player") or ""))
     player_matches.sort(key=lambda m: (m.get("round") or 0, m.get("playerId") or 0))
 
-    # Finalize canonical matches with derived outcomes and participant flags
-    canonical_matches = []
-    for key, record in canonical_matches_map.items():
-        outcome_type, result1, result2 = derive_canonical_outcome(
-            {
-                "p1_id": record.get("player1Id"),
-                "p2_id": record.get("player2Id"),
-                "winner": record.get("winnerCode"),
-            }
-        )
-        p1_id = record.get("player1Id")
-        p2_id = record.get("player2Id")
-
-        p1_row = standings_by_tp_id.get(int(p1_id), {}) if p1_id is not None else {}
-        p2_row = standings_by_tp_id.get(int(p2_id), {}) if p2_id is not None else {}
-
-        canonical_matches.append(
-            {
-                "id": hashlib.sha1(key.encode("utf-8")).hexdigest()[:12],
-                **record,
-                "winner": record.get("winnerCode"),
-                "outcomeType": outcome_type,
-                "player1Result": result1,
-                "player2Result": result2,
-                "player1MadePhase2": int(p1_row.get("day2") or 0) == 1 if p1_row else None,
-                "player1MadeTopCut": int(p1_row.get("topcut") or 0) == 1 if p1_row else None,
-                "player2MadePhase2": int(p2_row.get("day2") or 0) == 1 if p2_row else None,
-                "player2MadeTopCut": int(p2_row.get("topcut") or 0) == 1 if p2_row else None,
-            }
-        )
-
-    canonical_matches.sort(key=lambda m: (m.get("round") or 0, m.get("table") or 0, m.get("key") or ""))
-
-    profiles = aggregate_matchups(canonical_matches, standings_by_tp_id, decks_by_tp_id, players_total)
-    matchup_profiles = {
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "tournament": {
-            "id": str(tournament_id),
-            "labsCode": labs_code,
-            "name": tournament_name,
-            "players": players_total,
-            "division": DIVISION,
-        },
-        "phaseMultipliers": PHASE_MULTIPLIERS,
-        "qualityModel": {
-            "description": "qualityWeighted = phaseMultiplier * avg(playerQualityA, playerQualityB)",
-            "tierBase": {"topcut": 1.0, "phase2": 0.7, "other": 0.4},
-            "placementPercentileWeight": 0.3,
-        },
-        "profiles": profiles,
-    }
-
-    master_report = generate_report_json(all_decks, len(all_decks), all_decks)
-    card_index = generate_card_index(all_decks)
-    synonyms_data = None
-    if generate_tournament_synonyms:
-        synonyms_data = generate_card_synonyms(all_decks, session, existing_synonyms, existing_canonicals)
-
-    archetype_data_map, archetype_index = build_archetype_reports(all_decks, master_report, card_types_db)
-
-    # Synonyms for the build-time inverted indexes below. Reuse the merged set
-    # when tournament synonyms were generated this run; otherwise pull the global
-    # assets/card-synonyms.json — the same file the frontend canonicalizes reads
-    # against, so cardUsage/conversion UIDs line up with master.json at read time.
-    if synonyms_data is not None:
-        index_synonyms = synonyms_data.get("synonyms", {})
-        index_canonicals = synonyms_data.get("canonicals", {})
-    elif existing_synonyms or existing_canonicals:
-        index_synonyms, index_canonicals = existing_synonyms, existing_canonicals
-    else:
-        index_synonyms, index_canonicals = load_existing_canonicals(r2_client, r2_bucket_name)
-
-    card_usage = build_card_usage_index(archetype_data_map, index_synonyms, index_canonicals)
-    conversion = build_conversion_index(all_decks, index_synonyms, index_canonicals)
-
-    phase2_decks = [deck for deck in all_decks if deck.get("madePhase2")]
-    topcut_decks = [deck for deck in all_decks if deck.get("madeTopCut")]
-
     if start_date_iso and tournament_name:
         folder_name = f"{start_date_iso}, {sanitize_for_path(tournament_name)}"
     elif tournament_name:
@@ -3194,141 +3090,47 @@ def main():
     else:
         folder_name = f"Tournament {labs_code}"
 
-    base_path = f"reports/{folder_name}"
-
-    # Additive shadow output (DB-MASTER-PLAN Phase 2): when EMIT_SOURCE_EVENT is
-    # set to a path, write the loose Labs *source* record the TypeScript event
-    # CLI consumes. This does not change the legacy production path — it lets a
-    # shadow build run `event-cli build --from labs-source` and compare before
-    # the Phase 6 cutover retires the Python artifact generation below.
+    source_decklists = {int(deck["playerId"]): deck["cards"] for deck in all_decks}
+    source_match_rows = [
+        {
+            "round": record.get("round"),
+            "phase": record.get("phase"),
+            "table": record.get("table"),
+            "completed": record.get("completed"),
+            "p1_id": record.get("player1Id"),
+            "p2_id": record.get("player2Id"),
+            "winner": record.get("winnerCode"),
+        }
+        for record in canonical_matches_map.values()
+    ]
+    source_event = build_labs_source_event(
+        labs_code, metadata, participants, source_decklists, source_match_rows
+    )
     emit_source_path = os.environ.get("EMIT_SOURCE_EVENT")
+    if LOCAL_EXPORT_DIR and not emit_source_path:
+        emit_source_path = str(Path(LOCAL_EXPORT_DIR) / "source-events" / f"{folder_name}.json")
     if emit_source_path:
-        source_decklists = {int(deck["playerId"]): deck["cards"] for deck in all_decks}
-        source_match_rows = [
-            {
-                "round": record.get("round"),
-                "phase": record.get("phase"),
-                "table": record.get("table"),
-                "completed": record.get("completed"),
-                "p1_id": record.get("player1Id"),
-                "p2_id": record.get("player2Id"),
-                "winner": record.get("winnerCode"),
-            }
-            for record in canonical_matches_map.values()
-        ]
-        source_event = build_labs_source_event(
-            labs_code, metadata, participants, source_decklists, source_match_rows
-        )
-        with open(emit_source_path, "w", encoding="utf-8") as handle:
-            json.dump(source_event, handle, separators=(",", ":"))
-        print(f"  ✓ Emitted Labs source record to {emit_source_path}")
-
-    participants_phase2 = sum(1 for row in participants if row.get("madePhase2"))
-    participants_topcut = sum(1 for row in participants if row.get("madeTopCut"))
-    index_report = {
-        "folder": folder_name,
-        "path": base_path,
-        "name": tournament_name,
-        "labsCode": labs_code,
-        "tournamentId": str(tournament_id),
-        "date": start_date_iso or date_text,
-        "playersTotal": len(participants),
-        "decklistPlayers": len(all_decks),
-        "playerMatches": len(player_matches),
-        "canonicalMatches": len(canonical_matches),
-        "archetypes": len(archetype_data_map),
-        "phase2Participants": participants_phase2,
-        "topcutParticipants": participants_topcut,
-        "phase2Decks": len(phase2_decks),
-        "topcutDecks": len(topcut_decks),
-        "generatedAt": metadata.get("fetchedAt"),
-        "reportVersion": metadata.get("reportVersion"),
-    }
-
-    print(f"\nUploading tournament report to {base_path}")
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/index.json", index_report)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/meta.json", metadata)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/players.json", participants)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/decks.json", all_decks)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/playerMatches.json", player_matches)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/matches.json", canonical_matches)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/matchupProfiles.json", matchup_profiles)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/master.json", master_report)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/cardIndex.json", card_index)
-    if synonyms_data is not None:
-        upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/synonyms.json", synonyms_data)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/index.json", archetype_index)
-    upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/cardUsage.json", card_usage)
-    if conversion is not None:
-        upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/conversion.json", conversion)
+        output_path = Path(emit_source_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(source_event, separators=(",", ":")), encoding="utf-8")
+        print(f"  ✓ Emitted Labs source record to {output_path}")
     else:
-        # A rerun of an event that no longer has a Day 2 cut must not leave the
-        # previous conversion.json in place — the frontend prefers it over the
-        # decks.json fallback and would show stale Day 2 stats (P-08).
-        delete_from_r2(r2_client, r2_bucket_name, f"{base_path}/conversion.json")
-
-    if write_tournament_db:
-        print("  Building tournament.db...")
-        sqlite_blob = build_tournament_sqlite_bytes(
-            all_decks=all_decks,
-            master_report=master_report,
-            participants=participants,
-            player_matches=player_matches,
-            canonical_matches=canonical_matches,
-            matchup_profiles=matchup_profiles,
-            metadata=metadata,
-            labs_code=labs_code,
-        )
-        upload_binary_to_r2(
-            r2_client,
-            r2_bucket_name,
-            f"{base_path}/tournament.db",
-            sqlite_blob,
-            "application/x-sqlite3",
-        )
-
-    # Group player matches by pilot tpId once so each archetype only pays for
-    # the (small) subset of records involving its own pilots. The frontend's
-    # card lens filters playerMatches down to one archetype by playerId, so we
-    # ship it that slice directly (~7MB whole-event file -> a few KB per deck).
-    matches_by_tp_id: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
-    for player_match in player_matches:
-        tp = player_match.get("playerId")
-        if tp is not None:
-            matches_by_tp_id[int(tp)].append(player_match)
-
-    for archetype_base, payload in archetype_data_map.items():
-        upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/{archetype_base}/cards.json", payload["cards"])
-        upload_to_r2(r2_client, r2_bucket_name, f"{base_path}/archetypes/{archetype_base}/decks.json", payload["decks"])
-        archetype_matches: List[Dict[str, Any]] = []
-        for deck in payload["decks"]:
-            deck_tp = deck.get("playerId")
-            if deck_tp is None:
-                continue
-            archetype_matches.extend(matches_by_tp_id.get(int(deck_tp), []))
-        archetype_matches.sort(key=lambda m: (m.get("round") or 0, m.get("playerId") or 0))
-        upload_to_r2(
-            r2_client, r2_bucket_name, f"{base_path}/archetypes/{archetype_base}/matches.json", archetype_matches
-        )
-
-    print("\nUploading slices...")
-    build_slice_payloads(base_path, "phase2", phase2_decks, r2_client, r2_bucket_name, card_types_db)
-    build_slice_payloads(base_path, "topcut", topcut_decks, r2_client, r2_bucket_name, card_types_db)
-
-    print("\nUpdating tournaments.json...")
-    update_tournaments_json(r2_client, r2_bucket_name, folder_name)
+        repository = Path(__file__).resolve().parents[2]
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", encoding="utf-8") as handle:
+            json.dump(source_event, handle, separators=(",", ":"))
+            handle.flush()
+            subprocess.run(
+                ["npx", "--no-install", "tsx", ".github/scripts/event-cli.ts", "publish-source", "--input", handle.name],
+                cwd=repository,
+                check=True,
+            )
 
     print("\n✓ Process complete!")
     print(f"  Tournament: {folder_name}")
     print(f"  Participants: {len(participants)}")
     print(f"  Decks (analytics): {len(all_decks)}")
     print(f"  Player matches: {len(player_matches)}")
-    print(f"  Canonical matches: {len(canonical_matches)}")
-    print(f"  Phase2 decks: {len(phase2_decks)}")
-    print(f"  Topcut decks: {len(topcut_decks)}")
-    print(f"  Archetypes: {len(archetype_data_map)}")
-    print(f"  Tournament DB: {'enabled' if write_tournament_db else 'disabled'}")
-    print(f"  Tournament synonyms: {'enabled' if generate_tournament_synonyms else 'disabled'}")
+    print("  Published: immutable event pending production promotion")
 
 
 if __name__ == "__main__":
