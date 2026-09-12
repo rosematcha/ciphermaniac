@@ -158,7 +158,7 @@ export async function pruneReleases(
     obsolete
   };
   if (write) {
-    // Re-read all channels after the inventory; an unexpected promotion cancels deletion.
+    // Re-read production after the inventory; an unexpected promotion cancels deletion.
     const freshKeep = await retainedRoots(store, now);
     for (const group of generations) {
       if (freshKeep.has(group.prefix)) {
