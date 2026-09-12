@@ -117,25 +117,42 @@ export interface RailRow {
   label: string;
   /** Average of the plotted line over the visible window, 0..100. */
   avg: number;
-  /** This week against last in share points, or null when the file has no weekly block. */
+  /**
+   * Change across the visible window in the plotted metric: the line's last
+   * point minus its first. Null when the window holds fewer than two points.
+   */
   delta: number | null;
 }
 
 /**
+ * How far a plotted line moved across the window it shows, so the figure
+ * beside the chart always describes the lines in it: switching 7d/14d/30d or
+ * All/Top 10% changes both together.
+ * @param points - The plotted points, null where a day is missing
+ * @returns Last present point minus first, to one decimal; null under two points
+ */
+export function windowChange(points: (number | null)[]): number | null {
+  const present = points.filter((v): v is number => v !== null);
+  if (present.length < 2) {
+    return null;
+  }
+  return Math.round((present[present.length - 1] - present[0]) * 10) / 10;
+}
+
+/**
  * Rail rows for the visible series: the default lines plus any the user added.
- * @param series - Ranked chart series
+ * @param series - Ranked chart series, already cut to the visible window
  * @param added - Names the user added beyond the default lines
- * @param deltas - This-week-against-last per archetype name, when known
  * @returns Rows in colour order
  */
-export function railRows(series: ArchetypeSeries[], added: string[], deltas: Map<string, number> | null): RailRow[] {
+export function railRows(series: ArchetypeSeries[], added: string[]): RailRow[] {
   const base = series.slice(0, DEFAULT_LINES);
   const extra = added.map(n => series.find(s => s.name === n)).filter((s): s is ArchetypeSeries => s !== undefined);
   return [...base, ...extra].map(s => ({
     name: s.name,
     label: s.label,
     avg: s.avg,
-    delta: deltas?.get(s.name) ?? null
+    delta: windowChange(s.points)
   }));
 }
 

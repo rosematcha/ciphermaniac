@@ -180,10 +180,6 @@ function OnlineView(props: { state: TrendsState }) {
     }
     return data.weekly ? chartFromWeekly(data.weekly, metric(), days) : chartFromDaily(data.trendReport, days);
   });
-  const deltas = createMemo(() => {
-    const w = weekly();
-    return w ? new Map(w.archetypes.map(a => [a.base, a.delta])) : null;
-  });
   // Top-10% shares exist only in the weekly block; without it the chart is share.
   const metric = (): ChartMetric => (weekly() ? props.state.metric() : 'share');
   const yLabel = () => (metric() === 'top10' ? 'Share of top-10% finishes' : 'Meta share (%)');
@@ -195,7 +191,6 @@ function OnlineView(props: { state: TrendsState }) {
         loaded={trendsData() !== undefined}
         series={chart().series}
         days={chart().days}
-        deltas={deltas()}
         showMetric={weekly() !== undefined}
         yLabel={yLabel()}
         empty={
@@ -245,7 +240,6 @@ function MajorsView(props: { state: TrendsState }) {
         loaded={reportData() !== undefined}
         series={chart().series}
         days={chart().days}
-        deltas={null}
         showMetric={false}
         yLabel='Meta share (%)'
         empty={
@@ -283,7 +277,6 @@ function ChartSection(props: {
   loaded: boolean;
   series: ArchetypeSeries[];
   days: DayBin[];
-  deltas: Map<string, number> | null;
   showMetric: boolean;
   yLabel: string;
   empty: JSX.Element;
@@ -291,7 +284,7 @@ function ChartSection(props: {
   const [hidden, setHidden] = createSignal<ReadonlySet<string>>(new Set());
   const [added, setAdded] = createSignal<string[]>([]);
   const [highlight, setHighlight] = createSignal<string | null>(null);
-  const rows = createMemo(() => railRows(props.series, added(), props.deltas));
+  const rows = createMemo(() => railRows(props.series, added()));
   const visible = createMemo(() =>
     rows()
       .map(r => r.name)

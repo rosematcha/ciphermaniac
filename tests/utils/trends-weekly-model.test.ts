@@ -19,6 +19,7 @@ import {
   signedPercent,
   smoothSeries,
   wholePercent,
+  windowChange,
   yAxisDomain
 } from '../../src/pages/trendsPage/weekly.ts';
 import type { WeeklyReport } from '../../src/lib/data/trends.ts';
@@ -144,24 +145,38 @@ test('the daily fallback builds the same shape from the older report, smoothed t
   assert.deepEqual(chart.series[1].points, [null, null, 5]);
 });
 
-test('rail rows are the default lines plus what the user added, with deltas when known', () => {
-  const series = Array.from({ length: 9 }, (_, i) => ({ name: `s${i}`, label: `S${i}`, avg: 9 - i, points: [] }));
-  const rows = railRows(
-    series,
-    ['s8', 'missing'],
-    new Map([
-      ['s0', 2.3],
-      ['s8', -0.4]
-    ])
-  );
+test('rail rows are the default lines plus what the user added, each with its window change', () => {
+  const series = Array.from({ length: 9 }, (_, i) => ({
+    name: `s${i}`,
+    label: `S${i}`,
+    avg: 9 - i,
+    points: i === 0 ? [5, null, 7.3] : i === 8 ? [4, 3.6] : [2]
+  }));
+  const rows = railRows(series, ['s8', 'missing']);
   assert.deepEqual(
     rows.map(r => r.name),
     ['s0', 's1', 's2', 's3', 's4', 's5', 's8']
   );
   assert.equal(rows[0].delta, 2.3);
-  assert.equal(rows[1].delta, null);
+  assert.equal(rows[1].delta, null, 'one point is no change to report');
   assert.equal(rows[6].delta, -0.4);
-  assert.equal(railRows(series, [], null)[0].delta, null);
+});
+
+test('the rail change follows the window and the metric, because it reads the plotted line', () => {
+  const week = chartFromWeekly(weekly(), 'share', 7);
+  const fortnight = chartFromWeekly(weekly(), 'share', 14);
+  const top10 = chartFromWeekly(weekly(), 'top10', 7);
+  // beta climbs a point a day, so a longer window shows a bigger change.
+  assert.equal(railRows(week.series, [])[2].delta, 6);
+  assert.equal(railRows(fortnight.series, [])[2].delta, 9);
+  // alpha is flat in share and flat in top-10% share.
+  assert.equal(railRows(top10.series, [])[0].delta, 0);
+});
+
+test('the window change skips missing days and needs two points', () => {
+  assert.equal(windowChange([null, 3, null, 5.25, null]), 2.3);
+  assert.equal(windowChange([null, 4, null]), null);
+  assert.equal(windowChange([]), null);
 });
 
 test('the Y axis runs one whole percent past the data at each end', () => {
