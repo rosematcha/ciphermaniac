@@ -111,6 +111,17 @@ async function removeGeneration(store: Store, generation: Generation, now: numbe
   }
 }
 
+async function removeGenerations(store: Store, generations: Generation[], now: number): Promise<void> {
+  let next = 0;
+  async function worker(): Promise<void> {
+    while (next < generations.length) {
+      const generation = generations[next++];
+      await removeGeneration(store, generation, now);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(8, generations.length) }, worker));
+}
+
 /** Call only under the shared bucket-writer lock. Dry-run is the default. */
 export async function pruneReleases(
   store: Store,
@@ -140,9 +151,7 @@ export async function pruneReleases(
         throw new Error(`Release became active during cleanup: ${group.prefix}`);
       }
     }
-    for (const group of generations) {
-      await removeGeneration(store, group, now);
-    }
+    await removeGenerations(store, generations, now);
   }
   return plan;
 }

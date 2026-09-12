@@ -9,22 +9,16 @@
  * Publishes to immutable `releases/v1/…` keys, emits `roots.json` + folder-keyed
  * `events.json` for {@link ../scripts/publish-release}, composes + validates the
  * manifest, and never touches `reports/` or the production channel. DRY RUN by
- * default; `--write` publishes; `--gc` removes what it wrote.
+ * default; `--write` publishes. Retention runs through prune-releases.ts.
  *
- * Usage: tsx build-loop.ts [--write] [--gc] [--limit N] [--allow-shrink] [--emit-roots roots.json] [--emit-events events.json]
+ * Usage: tsx build-loop.ts [--write] [--limit N] [--allow-shrink] [--emit-roots roots.json] [--emit-events events.json]
  * @module .github/scripts/build-loop
  */
 
 import { requireEnv } from './lib/env.ts';
 import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import {
-  CopyObjectCommand,
-  DeleteObjectCommand,
-  HeadObjectCommand,
-  ListObjectsV2Command,
-  type S3Client
-} from '@aws-sdk/client-s3';
+import { CopyObjectCommand, HeadObjectCommand, ListObjectsV2Command, type S3Client } from '@aws-sdk/client-s3';
 import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
@@ -160,7 +154,10 @@ async function captureScope(options: {
  * @param load - JSON reader for the bucket
  * @throws When events present in the served release are absent from this build
  */
-async function assertNoEventRegression(folders: string[], load: <T>(key: string) => Promise<T | null>): Promise<void> {
+export async function assertNoEventRegression(
+  folders: string[],
+  load: <T>(key: string) => Promise<T | null>
+): Promise<void> {
   const pointer: { releaseId?: string; manifest?: string } | null =
     (await load<{ releaseId?: string; manifest?: string }>('current.json')) ??
     (await load<{ releaseId?: string; manifest?: string }>('build/v1/channels/production.json'));
@@ -223,7 +220,7 @@ interface BuildContext {
   synonyms: SynonymDatabase | null;
 }
 
-async function buildEvent(folder: string, context: BuildContext): Promise<string | null> {
+export async function buildEvent(folder: string, context: BuildContext): Promise<string | null> {
   const base = `reports/${folder}`;
   const [decks, players, matches, meta] = await Promise.all([
     context.load<Record<string, unknown>[]>(`${base}/decks.json`),
@@ -292,9 +289,27 @@ async function buildEvent(folder: string, context: BuildContext): Promise<string
   });
   const generation = context.gen([...artifacts.entries()].sort());
   const root = `releases/v1/events/${folder}/${generation}`;
+  const complete = await context.load<{ generation?: string; objectCount?: number }>(`${root}/_complete.json`);
+  if (!eventNeedsPublication(complete, generation, artifacts.size)) {
+    return `/${root}`;
+  }
   await Promise.all([...artifacts].map(([path, body]) => context.publish(`${root}/${path}`, body)));
   await context.publish(`${root}/_complete.json`, { generation, objectCount: artifacts.size });
   return `/${root}`;
+}
+
+export function eventNeedsPublication(
+  marker: { generation?: string; objectCount?: number } | null,
+  generation: string,
+  objectCount: number
+): boolean {
+  if (!marker) {
+    return true;
+  }
+  if (marker.generation !== generation || marker.objectCount !== objectCount) {
+    throw new Error(`Invalid completion marker for event generation ${generation}`);
+  }
+  return false;
 }
 
 async function buildEvents(folders: string[], context: BuildContext): Promise<Record<string, string>> {
@@ -369,7 +384,9 @@ function assertRequiredArtifacts(captures: Array<{ scope: ReleaseScope; objects:
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const write = argv.includes('--write');
-  const gc = argv.includes('--gc');
+  if (argv.includes('--gc')) {
+    throw new Error('--gc is unsafe for shared release roots; use prune-releases.ts');
+  }
   const limit = argv.includes('--limit') ? Number(argv[argv.indexOf('--limit') + 1]) : Infinity;
   const arg = (f: string): string | undefined => (argv.indexOf(f) >= 0 ? argv[argv.indexOf(f) + 1] : undefined);
 
@@ -382,6 +399,9 @@ async function main(): Promise<void> {
   const written: string[] = [];
   const load = async <T>(key: string): Promise<T | null> => {
     const r = await getJsonResult<T>(client, bucket, key);
+    if (r.status !== 'found' && r.status !== 'missing') {
+      throw new Error(`Cannot read release input ${key}: ${r.status}`);
+    }
     return r.status === 'found' ? r.value : null;
   };
   const publish = async (key: string, body: unknown): Promise<void> => {
@@ -402,6 +422,9 @@ async function main(): Promise<void> {
 
   const roots: Partial<Record<ReleaseScope, string>> = {};
   const events = await buildEvents(eventFolders, { load, publish, gen, synonyms });
+  if (!argv.includes('--allow-shrink') && limit === Infinity) {
+    await assertNoEventRegression(Object.keys(events), load);
+  }
 
   // ---- Catalog (fresh) ----
   const catalog = buildTournamentCatalog(Object.keys(events));
@@ -439,13 +462,6 @@ async function main(): Promise<void> {
   console.log('  capture mode    : complete');
   console.log(`  manifest        : ${manifest.releaseId} (valid)`);
   console.log(write ? `  objects written : ${written.length}` : '  DRY RUN — nothing written (pass --write)');
-
-  if (gc && write) {
-    for (const key of written) {
-      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
-    }
-    console.log(`[build-loop] GC'd ${written.length} objects`);
-  }
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
