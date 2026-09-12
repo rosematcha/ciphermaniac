@@ -3,29 +3,46 @@ import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
 import type { ArchetypeSeries, DayBin } from '../../lib/majorsTrends';
 import { createChartTooltipPlacement } from './chartTooltip';
-import { DAY_MS, type EventMarker } from './weekly';
+import { DAY_MS, yAxisDomain } from './weekly';
 
-const LINE_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', '#9c5fd0', '#d4a043', '#3eb9c5'];
+/** Eight lines at most, so eight colours and none repeats. */
+const LINE_COLORS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  '#9c5fd0',
+  '#d4a043',
+  '#3eb9c5',
+  '#c2567e',
+  '#8b6b4a'
+];
 
-/** Stable line colour for a series by its rank index (cycles the palette). */
+/** Line colour for the rail position `index` (cycles past eight). */
 export function lineColor(index: number): string {
   return LINE_COLORS[index % LINE_COLORS.length];
 }
 
 interface ArchetypeTrendChartProps {
-  /** Every ranked series; colours key off the index here so they never shift. */
   series: ArchetypeSeries[];
+  /** Line colour per series name, keyed by rail position so no two lines share one. */
+  colors: Map<string, string>;
   days: DayBin[];
   /** Names of the series to draw. */
   visible: string[];
   /** A series to bring forward while the rest fade (the rail's hover). */
   highlight: string | null;
-  /** Dated events drawn as dashed markers on the axis. */
-  markers: EventMarker[];
   yLabel: string;
 }
 
 const PADDING = { top: 16, right: 16, bottom: 32, left: 46 };
+
+/**
+ * Beside the rail, the card is stretched to the rail's height and the chart
+ * fills it. Must match the `.trends-chart-cell` breakpoint in trends.css.
+ */
+const BESIDE_RAIL_QUERY = '(min-width: 901px)';
+/** Shortest the chart draws when it fills, so a short rail never crushes it. */
+const MIN_FILL_HEIGHT = 240;
 
 /**
  * The archetype line chart. It owns the crosshair, the tooltip, and the touch
@@ -34,12 +51,7 @@ const PADDING = { top: 16, right: 16, bottom: 32, left: 46 };
  */
 export function ArchetypeTrendChart(props: ArchetypeTrendChartProps) {
   const iconMap = getArchetypeIconMap;
-  const colorByName = createMemo(() => {
-    const m = new Map<string, string>();
-    props.series.forEach((s, i) => m.set(s.name, lineColor(i)));
-    return m;
-  });
-  const colorOf = (name: string): string => colorByName().get(name) ?? lineColor(0);
+  const colorOf = (name: string): string => props.colors.get(name) ?? lineColor(0);
   const slugsByName = createMemo(() => {
     const m = new Map<string, string[]>();
     for (const s of props.series) {
@@ -56,27 +68,38 @@ export function ArchetypeTrendChart(props: ArchetypeTrendChartProps) {
   // ever stretching its coordinates. Text and dots stay at a constant size.
   let containerRef: HTMLDivElement | undefined;
   const [width, setWidth] = createSignal(880);
+  // Height the card offers when it is stretched beside the rail; 0 when stacked,
+  // where the card's height comes from the chart and measuring it would loop.
+  const [fillHeight, setFillHeight] = createSignal(0);
   onMount(() => {
     if (!containerRef) {
       return;
     }
+    const beside = window.matchMedia(BESIDE_RAIL_QUERY);
     const initial = containerRef.getBoundingClientRect().width;
     if (initial > 0) {
       setWidth(initial);
     }
     const ro = new ResizeObserver(entries => {
       for (const entry of entries) {
-        const w = entry.contentRect.width;
+        const { width: w, height: h } = entry.contentRect;
         if (w > 0) {
           setWidth(w);
         }
+        setFillHeight(beside.matches ? h : 0);
       }
     });
     ro.observe(containerRef);
     onCleanup(() => ro.disconnect());
   });
   const innerW = () => width() - PADDING.left - PADDING.right;
-  const height = () => (width() < 560 ? 220 : 300);
+  const height = () => {
+    const fill = fillHeight();
+    if (fill > 0) {
+      return Math.max(MIN_FILL_HEIGHT, Math.floor(fill));
+    }
+    return width() < 560 ? 220 : 300;
+  };
   const innerH = () => height() - PADDING.top - PADDING.bottom;
 
   const xDomain = createMemo(() => {
@@ -94,35 +117,14 @@ export function ArchetypeTrendChart(props: ArchetypeTrendChartProps) {
     return PADDING.left + Math.max(0, Math.min(1, frac)) * innerW();
   }
 
-  const yDomain = createMemo(() => {
-    let max = -Infinity;
-    for (const s of visibleSeries()) {
-      for (const p of s.points) {
-        if (p !== null && Number.isFinite(p) && p > max) {
-          max = p;
-        }
-      }
-    }
-    if (!Number.isFinite(max) || max <= 0) {
-      return { min: 0, max: 10, step: 2 };
-    }
-    // The top of the axis is the next tick above the data, so the ticks are
-    // evenly spaced and the last one never lands a hair under the top.
-    const step = max <= 4 ? 1 : max <= 10 ? 2 : max <= 25 ? 5 : 10;
-    return { min: 0, max: Math.ceil(max / step) * step, step };
-  });
+  const yDomain = createMemo(() =>
+    yAxisDomain(visibleSeries().flatMap(s => s.points.filter((p): p is number => p !== null)))
+  );
   const y = (v: number) => {
     const { min, max } = yDomain();
     return PADDING.top + innerH() - ((v - min) / (max - min)) * innerH();
   };
-  const yTicks = () => {
-    const { max, step } = yDomain();
-    const ticks: number[] = [];
-    for (let v = 0; v <= max; v += step) {
-      ticks.push(v);
-    }
-    return ticks;
-  };
+  const yTicks = () => yDomain().ticks;
 
   // Break the path at gaps so a missing day leaves a gap instead of a line.
   function segmentsFor(points: (number | null)[]): { d: string; isolated: { x: number; y: number }[] } {
@@ -171,12 +173,6 @@ export function ArchetypeTrendChart(props: ArchetypeTrendChartProps) {
     }
     return ticks;
   };
-  const markerPoints = createMemo(() =>
-    props.markers
-      .map(m => ({ label: m.label, day: props.days.find(d => d.key === m.date) }))
-      .filter((m): m is { label: string; day: DayBin } => m.day !== undefined)
-      .map(m => ({ label: m.label, xPx: x(m.day.date) }))
-  );
   // Dots only on a short window: on a two-week or smoothed line they are noise.
   const showDots = () => props.days.length <= 7;
 
@@ -302,16 +298,6 @@ export function ArchetypeTrendChart(props: ArchetypeTrendChartProps) {
               )}
             </For>
           </g>
-          <For each={markerPoints()}>
-            {m => (
-              <g class='trend-marker'>
-                <line x1={m.xPx} x2={m.xPx} y1={PADDING.top} y2={height() - PADDING.bottom} />
-                <text x={m.xPx + 4} y={PADDING.top + 10}>
-                  {m.label}
-                </text>
-              </g>
-            )}
-          </For>
           <For each={visibleSeries()}>
             {series => {
               const color = colorOf(series.name);

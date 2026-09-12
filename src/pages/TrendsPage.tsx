@@ -4,9 +4,7 @@ import {
   fetchMajorsTrendReport,
   fetchOnlineTrendReport,
   fetchPriceMovers,
-  fetchTournamentsList,
   getArchetypeIconMap,
-  PRICE_HISTORY_MIN_DAYS,
   type PriceMoverList,
   type PriceMoverMetric,
   type PriceMoverRow,
@@ -32,10 +30,10 @@ import { createPersistentSignal } from '../lib/persistentSignal';
 import { latestValue } from '../lib/resource';
 import { defaultOnlineWindow, ONLINE_WINDOW_DAYS, type OnlineWindow, sliceCardMovers } from './trendsPage/model';
 import {
+  changeArrow,
   chartFromDaily,
   chartFromWeekly,
   type ChartMetric,
-  eventMarkers,
   MAX_LINES,
   railRows,
   rankedArchetypes,
@@ -49,7 +47,6 @@ import '../styles/pages/trends.css';
 
 type Source = 'online' | 'majors';
 type MajorsWindow = '3-events' | '5-events' | '10-events';
-type Line = 'daily' | 'smoothed';
 
 const SOURCE_OPTIONS: { value: Source; label: string }[] = [
   { value: 'online', label: 'Online' },
@@ -68,10 +65,6 @@ const MAJORS_WINDOW_OPTIONS: { value: MajorsWindow; label: string }[] = [
 const METRIC_OPTIONS: { value: ChartMetric; label: string }[] = [
   { value: 'share', label: 'All' },
   { value: 'top10', label: 'Top 10%' }
-];
-const LINE_OPTIONS: { value: Line; label: string }[] = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'smoothed', label: 'Smoothed' }
 ];
 /** Deck blocks shown, and tiles per side inside each. */
 const DECK_BLOCKS = 6;
@@ -99,8 +92,6 @@ interface TrendsState {
   setMajorsWindow: (v: MajorsWindow) => void;
   metric: () => ChartMetric;
   setMetric: (v: ChartMetric) => void;
-  line: () => Line;
-  setLine: (v: Line) => void;
 }
 
 export function TrendsPage() {
@@ -110,9 +101,6 @@ export function TrendsPage() {
   const [onlineWindow, setOnlineWindow] = createSignal<OnlineWindow>(defaultOnlineWindow());
   const [majorsWindow, setMajorsWindow] = createSignal<MajorsWindow>('5-events');
   const [metric, setMetric] = createSignal<ChartMetric>('share');
-  const [line, setLine] = createPersistentSignal<Line>('cm:trendsLine', 'smoothed', v =>
-    v === 'daily' || v === 'smoothed' ? v : null
-  );
   const state: TrendsState = {
     source,
     setSource,
@@ -121,9 +109,7 @@ export function TrendsPage() {
     majorsWindow,
     setMajorsWindow,
     metric,
-    setMetric,
-    line,
-    setLine
+    setMetric
   };
 
   onMount(() => {
@@ -144,7 +130,7 @@ export function TrendsPage() {
  * The control band. It renders twice, once in the section head for desktop and
  * once between the chart and the rail for phones, sharing the page's signals.
  */
-function Controls(props: { state: TrendsState }) {
+function Controls(props: { state: TrendsState; showMetric: boolean }) {
   const s = () => props.state;
   return (
     <span class='trends-controls'>
@@ -166,13 +152,16 @@ function Controls(props: { state: TrendsState }) {
           onSelect={s().setOnlineWindow}
           ariaLabel='Window'
         />
-        <Segmented<ChartMetric>
-          options={METRIC_OPTIONS}
-          selected={s().metric()}
-          onSelect={s().setMetric}
-          ariaLabel='Finishes'
-        />
-        <Segmented<Line> options={LINE_OPTIONS} selected={s().line()} onSelect={s().setLine} ariaLabel='Line' />
+        {/* Only a file with the weekly block carries top-10% shares; the older
+            daily series has nothing for the switch to show. */}
+        <Show when={props.showMetric}>
+          <Segmented<ChartMetric>
+            options={METRIC_OPTIONS}
+            selected={s().metric()}
+            onSelect={s().setMetric}
+            ariaLabel='Finishes'
+          />
+        </Show>
       </Show>
     </span>
   );
@@ -180,27 +169,24 @@ function Controls(props: { state: TrendsState }) {
 
 function OnlineView(props: { state: TrendsState }) {
   const [trends] = createResource(fetchOnlineTrendReport);
-  const [tournaments] = createResource(fetchTournamentsList);
   const trendsData = () => latestValue(trends);
   const weekly = (): WeeklyReport | undefined => trendsData()?.weekly;
 
   const chart = createMemo(() => {
     const data = trendsData();
     const days = ONLINE_WINDOW_DAYS[props.state.onlineWindow()];
-    const smoothed = props.state.line() === 'smoothed';
     if (!data) {
       return { series: [] as ArchetypeSeries[], days: [] as DayBin[] };
     }
-    return data.weekly
-      ? chartFromWeekly(data.weekly, props.state.metric(), days, smoothed)
-      : chartFromDaily(data.trendReport, days, smoothed);
+    return data.weekly ? chartFromWeekly(data.weekly, metric(), days) : chartFromDaily(data.trendReport, days);
   });
   const deltas = createMemo(() => {
     const w = weekly();
     return w ? new Map(w.archetypes.map(a => [a.base, a.delta])) : null;
   });
-  const markers = createMemo(() => eventMarkers(latestValue(tournaments) ?? [], chart().days));
-  const yLabel = () => (props.state.metric() === 'top10' ? 'Share of top-10% finishes' : 'Meta share (%)');
+  // Top-10% shares exist only in the weekly block; without it the chart is share.
+  const metric = (): ChartMetric => (weekly() ? props.state.metric() : 'share');
+  const yLabel = () => (metric() === 'top10' ? 'Share of top-10% finishes' : 'Meta share (%)');
 
   return (
     <>
@@ -210,7 +196,7 @@ function OnlineView(props: { state: TrendsState }) {
         series={chart().series}
         days={chart().days}
         deltas={deltas()}
-        markers={markers()}
+        showMetric={weekly() !== undefined}
         yLabel={yLabel()}
         empty={
           <EmptyState
@@ -260,7 +246,7 @@ function MajorsView(props: { state: TrendsState }) {
         series={chart().series}
         days={chart().days}
         deltas={null}
-        markers={[]}
+        showMetric={false}
         yLabel='Meta share (%)'
         empty={
           <EmptyState
@@ -298,7 +284,7 @@ function ChartSection(props: {
   series: ArchetypeSeries[];
   days: DayBin[];
   deltas: Map<string, number> | null;
-  markers: ReturnType<typeof eventMarkers>;
+  showMetric: boolean;
   yLabel: string;
   empty: JSX.Element;
 }) {
@@ -317,7 +303,8 @@ function ChartSection(props: {
     const shown = new Set(rows().map(r => r.name));
     return props.series.filter(s => !shown.has(s.name));
   });
-  const colorOf = (name: string) => lineColor(props.series.findIndex(s => s.name === name));
+  const colors = createMemo(() => new Map(rows().map((r, i) => [r.name, lineColor(i)])));
+  const colorOf = (name: string) => colors().get(name) ?? lineColor(0);
   const iconMap = getArchetypeIconMap;
 
   function toggle(name: string) {
@@ -334,6 +321,15 @@ function ChartSection(props: {
       return next;
     });
   }
+  function remove(name: string) {
+    setAdded(prev => prev.filter(n => n !== name));
+    setHidden(prev => {
+      const next = new Set(prev);
+      next.delete(name);
+      return next;
+    });
+    setHighlight(null);
+  }
   function onAdd(e: Event & { currentTarget: HTMLSelectElement }) {
     const select = e.currentTarget;
     const name = select.value;
@@ -348,60 +344,75 @@ function ChartSection(props: {
       <div class='section-head'>
         <h2>Archetype share over time</h2>
         <span class='right trends-controls-desktop'>
-          <Controls state={props.state} />
+          <Controls state={props.state} showMetric={props.showMetric} />
         </span>
       </div>
       <Show when={props.loaded} fallback={<Skeleton height='360px' />}>
         <Show when={props.series.length > 0} fallback={props.empty}>
           <div class='trends-chart-layout'>
-            <div>
+            <div class='trends-chart-cell'>
               <ArchetypeTrendChart
                 series={props.series}
+                colors={colors()}
                 days={props.days}
                 visible={visible()}
                 highlight={highlight()}
-                markers={props.markers}
                 yLabel={props.yLabel}
               />
               <div class='trends-controls-phone'>
-                <Controls state={props.state} />
+                <Controls state={props.state} showMetric={props.showMetric} />
               </div>
             </div>
             <div class='trends-rail'>
               <For each={rows()}>
                 {row => (
-                  <button
-                    type='button'
+                  <div
                     class='trends-rail-row'
                     classList={{ 'is-hidden': hidden().has(row.name) }}
-                    aria-pressed={!hidden().has(row.name)}
-                    title={hidden().has(row.name) ? 'Show this line' : 'Hide this line'}
-                    onClick={() => toggle(row.name)}
                     onMouseEnter={() => setHighlight(row.name)}
                     onMouseLeave={() => setHighlight(null)}
                   >
-                    <span class='trends-rail-main'>
-                      <span class='trends-rail-name'>
-                        <span class='trends-rail-swatch' style={{ background: colorOf(row.name) }} />
-                        <ArchetypeIcons
-                          slugs={resolveArchetypeIcons({ name: row.name, label: row.label }, iconMap())}
-                          size={16}
-                        />
-                        <span class='trends-rail-label'>{row.label}</span>
+                    <button
+                      type='button'
+                      class='trends-rail-toggle'
+                      aria-pressed={!hidden().has(row.name)}
+                      title={hidden().has(row.name) ? 'Show this line' : 'Hide this line'}
+                      onClick={() => toggle(row.name)}
+                    >
+                      <span class='trends-rail-main'>
+                        <span class='trends-rail-name'>
+                          <span class='trends-rail-swatch' style={{ background: colorOf(row.name) }} />
+                          <ArchetypeIcons
+                            slugs={resolveArchetypeIcons({ name: row.name, label: row.label }, iconMap())}
+                            size={16}
+                          />
+                          <span class='trends-rail-label'>{row.label}</span>
+                        </span>
+                        <span class='trends-rail-avg'>
+                          {wholePercent(row.avg)} avg over {props.days.length} days
+                        </span>
                       </span>
-                      <span class='trends-rail-avg'>
-                        {wholePercent(row.avg)} avg over {props.days.length} days
-                      </span>
-                    </span>
-                    <Show when={row.delta !== null}>
-                      <span class='trends-delta' classList={{ up: (row.delta ?? 0) > 0, down: (row.delta ?? 0) < 0 }}>
-                        <span class='trends-arrow' aria-hidden='true'>
-                          {(row.delta ?? 0) < 0 ? '↓' : '↑'}
-                        </span>{' '}
-                        {signedDecimal(row.delta ?? 0)}
-                      </span>
+                      <Show when={row.delta !== null}>
+                        <span class='trends-delta' classList={{ up: (row.delta ?? 0) > 0, down: (row.delta ?? 0) < 0 }}>
+                          <span class='trends-arrow' aria-hidden='true'>
+                            {changeArrow(row.delta ?? 0)}
+                          </span>{' '}
+                          {signedDecimal(row.delta ?? 0)}
+                        </span>
+                      </Show>
+                    </button>
+                    <Show when={added().includes(row.name)}>
+                      <button
+                        type='button'
+                        class='trends-rail-remove'
+                        aria-label={`Remove ${row.label} from the chart`}
+                        title='Remove from the chart'
+                        onClick={() => remove(row.name)}
+                      >
+                        ×
+                      </button>
                     </Show>
-                  </button>
+                  </div>
                 )}
               </For>
               <Show when={addable().length > 0}>
@@ -468,7 +479,7 @@ function DeckBlock(props: { deck: WeeklyDeck; archetype: WeeklyReport['archetype
               </span>
               <span class='trends-delta' classList={{ up: a().delta > 0, down: a().delta < 0 }}>
                 <span class='trends-arrow' aria-hidden='true'>
-                  {a().delta < 0 ? '↓' : '↑'}
+                  {changeArrow(a().delta)}
                 </span>{' '}
                 {signedDecimal(a().delta)}
               </span>
@@ -623,7 +634,7 @@ type PriceScope = 'all' | 'standard';
 /**
  * The biggest market-price swings over the trailing window. Every threshold
  * lives in the pipeline; this renders the artifact. Hidden until the history
- * spans PRICE_HISTORY_MIN_DAYS. Rows, not tiles: the movers cover every
+ * spans one full window. Rows, not tiles: the movers cover every
  * printing, and older sets have no art on R2.
  */
 function PriceMovers() {
@@ -636,7 +647,7 @@ function PriceMovers() {
   );
   const ready = createMemo(() => {
     const p = latestValue(payload);
-    return p && p.spanDays >= PRICE_HISTORY_MIN_DAYS ? p : null;
+    return p && p.spanDays >= p.windowDays ? p : null;
   });
   const movers = createMemo<PriceMoverList>(() => ready()?.scopes[scope()][metric()] ?? { rising: [], falling: [] });
   const magnitude = (m: PriceMoverRow): string =>

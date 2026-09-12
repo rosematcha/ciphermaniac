@@ -10,15 +10,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  changeArrow,
   chartFromDaily,
   chartFromWeekly,
-  eventMarkers,
   railRows,
   rankedArchetypes,
   signedDecimal,
   signedPercent,
   smoothSeries,
-  wholePercent
+  wholePercent,
+  yAxisDomain
 } from '../../src/pages/trendsPage/weekly.ts';
 import type { WeeklyReport } from '../../src/lib/data/trends.ts';
 
@@ -91,34 +92,29 @@ test("archetypes rank by this week's share, then by lists", () => {
   );
 });
 
-test('the chart slices the last N days and keeps the rank order', () => {
-  const chart = chartFromWeekly(weekly(), 'share', 7, false);
+test('the chart slices the last N days, keeps the rank order, and plots the 7-day mean', () => {
+  const chart = chartFromWeekly(weekly(), 'share', 7);
   assert.equal(chart.days.length, 7);
   assert.equal(chart.days[0].key, '2026-09-08');
   assert.deepEqual(
     chart.series.map(s => s.name),
     ['alpha', 'gamma', 'beta']
   );
-  assert.deepEqual(chart.series[2].points, [15, 16, 17, 18, 19, 20, 21]);
+  // beta runs 8..21, so each visible point is the mean of the 7 days ending there.
+  assert.deepEqual(chart.series[2].points, [12, 13, 14, 15, 16, 17, 18]);
 });
 
 test('the chart can plot top-10% share instead', () => {
-  const chart = chartFromWeekly(weekly(), 'top10', 3, false);
+  const chart = chartFromWeekly(weekly(), 'top10', 3);
   assert.deepEqual(chart.series[0].points, [17, 17, 17]);
 });
 
-test('smoothing is applied before the window is cut, so the first visible day is already averaged', () => {
-  const chart = chartFromWeekly(weekly(), 'share', 3, true);
-  // beta runs 8..21; the last three smoothed points are means of the 7 days ending there.
-  assert.deepEqual(chart.series[2].points, [16, 17, 18]);
-});
-
 test('the rail average follows the visible window', () => {
-  const chart = chartFromWeekly(weekly(), 'share', 2, false);
-  assert.equal(chart.series[2].avg, 20.5);
+  const chart = chartFromWeekly(weekly(), 'share', 2);
+  assert.equal(chart.series[2].avg, 17.5);
 });
 
-test('the daily fallback builds the same shape from the older report', () => {
+test('the daily fallback builds the same shape from the older report, smoothed the same way', () => {
   const chart = chartFromDaily(
     {
       series: [
@@ -128,14 +124,14 @@ test('the daily fallback builds the same shape from the older report', () => {
           avgShare: 5,
           timeline: [
             { date: '2026-09-01', share: 4 },
+            { date: '2026-09-02', share: 5 },
             { date: '2026-09-03', share: 6 }
           ]
         },
         { base: 'b', displayName: 'B', avgShare: 9, timeline: [{ date: '2026-09-02', share: 9 }] }
       ]
     },
-    30,
-    false
+    30
   );
   assert.deepEqual(
     chart.days.map(d => d.key),
@@ -145,7 +141,7 @@ test('the daily fallback builds the same shape from the older report', () => {
     chart.series.map(s => s.name),
     ['b', 'a']
   );
-  assert.deepEqual(chart.series[1].points, [4, null, 6]);
+  assert.deepEqual(chart.series[1].points, [null, null, 5]);
 });
 
 test('rail rows are the default lines plus what the user added, with deltas when known', () => {
@@ -168,29 +164,44 @@ test('rail rows are the default lines plus what the user added, with deltas when
   assert.equal(railRows(series, [], null)[0].delta, null);
 });
 
-test('event markers land on charted days only, one per day, biggest event first', () => {
-  const days = ['2026-08-28', '2026-08-29'].map(key => ({ key, date: new Date(`${key}T12:00:00Z`), count: 1 }));
-  const markers = eventMarkers(
-    [
-      '2026-08-28, World Championship San Francisco',
-      '2026-08-28, Special Event Lima',
-      '2026-08-29, Regional Championship Nowhere',
-      '2026-08-01, Regional Championship Elsewhere',
-      '2026-08-29, League Cup Toronto'
-    ],
-    days
-  );
-  assert.deepEqual(markers, [
-    { date: '2026-08-28', label: 'Worlds' },
-    { date: '2026-08-29', label: 'Regional' }
-  ]);
+test('the Y axis runs one whole percent past the data at each end', () => {
+  const axis = yAxisDomain([3.8, 7.2, 12]);
+  assert.equal(axis.min, 3);
+  assert.equal(axis.max, 13);
+  assert.deepEqual(axis.ticks, [3, 6, 8, 10, 13]);
+});
+
+test('a whole-number extreme still gets its percent of headroom', () => {
+  const axis = yAxisDomain([4, 12]);
+  assert.equal(axis.min, 3);
+  assert.equal(axis.max, 13);
+});
+
+test('the Y axis never runs below zero', () => {
+  assert.equal(yAxisDomain([0.4, 5]).min, 0);
+  assert.equal(yAxisDomain([0, 5]).min, 0);
+});
+
+test('a wide range steps in fives or tens and keeps the bounds', () => {
+  assert.deepEqual(yAxisDomain([2, 21.5]).ticks, [1, 5, 10, 15, 22]);
+  // 40 sits half a step under the 45 bound, close enough to crowd its label.
+  assert.deepEqual(yAxisDomain([1, 44]).ticks, [0, 10, 20, 30, 45]);
+});
+
+test('an empty chart falls back to zero to ten', () => {
+  assert.deepEqual(yAxisDomain([]), { min: 0, max: 10, ticks: [0, 2, 4, 6, 8, 10] });
 });
 
 test('figures format the way the tiles and rail print them', () => {
   assert.equal(signedPercent(9.4), '+9%');
   assert.equal(signedPercent(-5.6), '−6%');
   assert.equal(signedDecimal(2.31), '+2.3%');
-  assert.equal(signedDecimal(-0.05), '−0.1%');
+  assert.equal(signedDecimal(-0.06), '−0.1%');
+  assert.equal(signedDecimal(0.04), '0.0%');
+  assert.equal(signedDecimal(-0.02), '0.0%');
+  assert.equal(changeArrow(2.3), '↑');
+  assert.equal(changeArrow(-0.4), '↓');
+  assert.equal(changeArrow(0.01), '');
   assert.equal(wholePercent(0.4), '<1%');
   assert.equal(wholePercent(57.5), '58%');
   assert.equal(wholePercent(0), '0%');

@@ -11,7 +11,6 @@
 
 import type { ArchetypeSeries, DayBin } from '../../lib/majorsTrends';
 import type { WeeklyArchetype, WeeklyReport } from '../../lib/data/trends';
-import { classifyTournament, tournamentDate } from '../../lib/data';
 import type { OnlineTrendReportLike } from './model';
 
 /** One calendar day in milliseconds. */
@@ -57,24 +56,22 @@ const dayBin = (date: string): DayBin => ({ key: date, date: new Date(`${date}T1
 
 /**
  * Chart series from the weekly report: one line per archetype over the last
- * `days` days, in share or top-10% share, optionally smoothed.
+ * `days` days, in share or top-10% share, as the 7-day trailing mean.
  * @param weekly - The weekly report
  * @param metric - Which daily figure to plot
  * @param days - How many trailing days to show
- * @param smoothed - Whether to plot the 7-day trailing mean
  * @returns Ranked series and their day bins
  */
 export function chartFromWeekly(
   weekly: WeeklyReport,
   metric: ChartMetric,
-  days: number,
-  smoothed: boolean
+  days: number
 ): { series: ArchetypeSeries[]; days: DayBin[] } {
   const dates = weekly.dates.slice(-days);
   const offset = weekly.dates.length - dates.length;
   const series = rankedArchetypes(weekly).map(a => {
     const full = a.daily.map(p => (metric === 'top10' ? p.top10Share : p.share));
-    const points = (smoothed ? smoothSeries(full) : full).slice(offset);
+    const points = smoothSeries(full).slice(offset);
     return { name: a.base, label: a.displayName, avg: mean(points), points };
   });
   return { series, days: dates.map(dayBin) };
@@ -82,12 +79,11 @@ export function chartFromWeekly(
 
 /**
  * Chart series from the older daily report, for files without a weekly block.
- * Share only; smoothing still applies.
+ * Share only, smoothed the same way.
  */
 export function chartFromDaily(
   report: OnlineTrendReportLike,
-  days: number,
-  smoothed: boolean
+  days: number
 ): { series: ArchetypeSeries[]; days: DayBin[] } {
   const dateSet = new Set<string>();
   for (const s of report.series ?? []) {
@@ -109,7 +105,7 @@ export function chartFromDaily(
           full[i] = p.share;
         }
       }
-      const points = (smoothed ? smoothSeries(full) : full).slice(offset);
+      const points = smoothSeries(full).slice(offset);
       return { name: s.base, label: s.displayName, avg: mean(points), points };
     });
   return { series, days: dates.map(dayBin) };
@@ -143,46 +139,38 @@ export function railRows(series: ArchetypeSeries[], added: string[], deltas: Map
   }));
 }
 
-/** A dated marker on the chart's axis. */
-export interface EventMarker {
-  date: string;
-  label: string;
+/** The chart's Y axis: its bounds and the ticks to label. */
+export interface YAxis {
+  min: number;
+  max: number;
+  ticks: number[];
 }
 
-const MARKER_LABELS: Partial<Record<ReturnType<typeof classifyTournament>, string>> = {
-  worlds: 'Worlds',
-  international: 'IC',
-  regional: 'Regional',
-  special: 'Special'
-};
-
 /**
- * Major events that fall on one of the charted days. One label per day; when
- * two share a day the bigger class wins, in the order the labels are listed.
- * @param tournaments - Tournament keys from the catalog
- * @param days - The charted day bins
- * @returns Markers in date order
+ * Y axis fitted to the data: one whole percent below the lowest value and one
+ * above the highest, so a chart running 3.8% to 12% reads 3% to 13% rather
+ * than 0% to 20%. Ticks are the bounds plus the round steps between them,
+ * dropping any step that would crowd a bound.
+ * @param values - Every plotted value
+ * @returns The axis; 0% to 10% when there is nothing to plot
  */
-export function eventMarkers(tournaments: string[], days: DayBin[]): EventMarker[] {
-  const charted = new Set(days.map(d => d.key));
-  const byDate = new Map<string, EventMarker>();
-  const rank = Object.keys(MARKER_LABELS);
-  for (const key of tournaments) {
-    const label = MARKER_LABELS[classifyTournament(key)];
-    const date = tournamentDate(key);
-    if (!label || !date) {
-      continue;
-    }
-    const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    if (!charted.has(iso)) {
-      continue;
-    }
-    const current = byDate.get(iso);
-    if (!current || rank.indexOf(label) < rank.indexOf(current.label)) {
-      byDate.set(iso, { date: iso, label });
+export function yAxisDomain(values: number[]): YAxis {
+  const finite = values.filter(v => Number.isFinite(v));
+  if (finite.length === 0) {
+    return { min: 0, max: 10, ticks: [0, 2, 4, 6, 8, 10] };
+  }
+  const min = Math.max(0, Math.ceil(Math.min(...finite)) - 1);
+  const max = Math.floor(Math.max(...finite)) + 1;
+  const range = max - min;
+  const step = range <= 4 ? 1 : range <= 10 ? 2 : range <= 25 ? 5 : 10;
+  const ticks = [min];
+  for (let v = Math.ceil(min / step) * step; v < max; v += step) {
+    if (v - min > step / 2 && max - v > step / 2) {
+      ticks.push(v);
     }
   }
-  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  ticks.push(max);
+  return { min, max, ticks };
 }
 
 /** Signed whole-number change for a tile's overlay, e.g. "+9%". */
@@ -191,9 +179,20 @@ export function signedPercent(delta: number): string {
   return `${delta < 0 ? '−' : '+'}${whole}%`;
 }
 
-/** Signed one-decimal change for text, e.g. "+2.3%". */
+/** Signed one-decimal change for text, e.g. "+2.3%"; a change that rounds to nothing is "0.0%". */
 export function signedDecimal(delta: number): string {
+  if (Math.abs(delta) < 0.05) {
+    return '0.0%';
+  }
   return `${delta < 0 ? '−' : '+'}${Math.abs(delta).toFixed(1)}%`;
+}
+
+/** Arrow for a change, or nothing when it rounds to zero. */
+export function changeArrow(delta: number): string {
+  if (Math.abs(delta) < 0.05) {
+    return '';
+  }
+  return delta < 0 ? '↓' : '↑';
 }
 
 /** Whole-number percent for a level, with "<1%" under one. */
