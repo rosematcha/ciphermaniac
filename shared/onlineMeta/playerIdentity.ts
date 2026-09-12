@@ -36,7 +36,10 @@ export const PLAYER_IDENTITY_OVERRIDES: readonly PlayerIdentityOverride[] = [
   { canonicalId: '9397', aliasIds: ['16920'], displayName: 'Caitlin White' },
   // Re-registered under a new account (45677) from Houston 2026 onward; the
   // older account (17712) holds her events through NAIC 2025.
-  { canonicalId: '45677', aliasIds: ['17712'], displayName: 'Reese Lundquist' }
+  { canonicalId: '45677', aliasIds: ['17712'], displayName: 'Reese Lundquist' },
+  // Olive used the original account (169); Olivia's active account (25523)
+  // owns the combined career and the name she now uses.
+  { canonicalId: '25523', aliasIds: ['169'], displayName: 'Olivia Battaglia' }
 ];
 
 const CANONICAL_BY_ALIAS = new Map<string, string>();

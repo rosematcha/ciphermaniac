@@ -1203,12 +1203,6 @@ tr.row-expansion > td {
   font-size: 13px;
   padding: 4px 0;
 }
-.deck-inline-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 10px;
-}
 .deck-inline-groups {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

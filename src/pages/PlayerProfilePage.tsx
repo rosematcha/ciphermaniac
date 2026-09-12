@@ -149,10 +149,15 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
       <section class='player-tabs'>
         <Tabs<ProfileTab> options={TAB_OPTIONS} selected={tab()} onSelect={setTab} ariaLabel='Profile section' />
         <Show when={tab() === 'history'}>
-          <HistoryTable entries={props.profile.tournaments} archetypeName={archetypeName} source={source} />
+          <HistoryTable
+            entries={props.profile.tournaments}
+            archetypeName={archetypeName}
+            playerId={props.playerId}
+            source={source}
+          />
         </Show>
         <Show when={tab() === 'decks'}>
-          <DecksTab profile={props.profile} archetypeName={archetypeName} source={source} />
+          <DecksTab profile={props.profile} archetypeName={archetypeName} playerId={props.playerId} source={source} />
         </Show>
         <Show when={tab() === 'matchups'}>
           <MatchupsTab rounds={careerRounds()} />
