@@ -406,6 +406,9 @@
 .event-detail .segmented {
   justify-self: start;
 }
+.event-shout-out {
+  justify-self: start;
+}
 /* The pane hangs off one row, so it starts where that row's event name starts
    rather than at the table's own edge — otherwise the detail read as a block
    the whole table owned. 46px is the caret column: 14 + 28 + 4. */

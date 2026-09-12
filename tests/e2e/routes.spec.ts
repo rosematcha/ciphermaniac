@@ -161,6 +161,21 @@ test('an event without a decklist opens on its rounds', async ({ page }) => {
   await expect(detail.locator('.round').first()).toBeVisible();
 });
 
+test('Chris Franco has a shout-out in the Orlando event details', async ({ page }) => {
+  await page.route('**/players/2037/profile.json', async route => {
+    const response = await route.fetch({ url: route.request().url().replace('/2037/', '/1272/') });
+    await route.fulfill({ response });
+  });
+
+  await gotoClean(page, '/players/2037');
+  const row = page.locator('.history-table tbody > tr').filter({ hasText: 'Orlando' });
+  await row.locator('.history-name').click();
+  await expect(page.getByRole('link', { name: "Anyone you'd like to shout out?" })).toHaveAttribute(
+    'href',
+    'https://www.youtube.com/watch?v=SpkkypxnGTs&t=13369s'
+  );
+});
+
 test('the Decks tab groups events under their deck', async ({ page }) => {
   await gotoClean(page, '/players/1272?tab=decks');
   await expect(page.getByRole('tab', { name: 'Decks' })).toHaveAttribute('aria-selected', 'true');

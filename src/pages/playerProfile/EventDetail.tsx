@@ -12,6 +12,10 @@ import { groupRoundsByPhase, OUTCOME_LETTER, outcomeTone } from './model';
 
 type Pane = 'decklist' | 'rounds';
 
+const CHRIS_FRANCO_ID = '2037';
+const ORLANDO_TOURNAMENT_ID = '2026-04-03, Regional Championship Orlando';
+const SHOUT_OUT_URL = 'https://www.youtube.com/watch?v=SpkkypxnGTs&t=13369s';
+
 const PANE_OPTIONS: { value: Pane; label: string }[] = [
   { value: 'decklist', label: 'Decklist' },
   { value: 'rounds', label: 'Rounds' }
@@ -32,6 +36,7 @@ export interface EventDetailSource {
 interface EventDetailProps {
   entry: PlayerTournamentEntry;
   archetypeName: string;
+  playerId: string;
   source: EventDetailSource;
 }
 
@@ -48,6 +53,11 @@ export function EventDetail(props: EventDetailProps) {
   return (
     <div class='event-detail'>
       <Segmented<Pane> options={PANE_OPTIONS} selected={pane()} onSelect={setPane} ariaLabel='Event detail' />
+      <Show when={props.playerId === CHRIS_FRANCO_ID && props.entry.tournamentId === ORLANDO_TOURNAMENT_ID}>
+        <a class='btn btn-secondary event-shout-out' href={SHOUT_OUT_URL} target='_blank' rel='noopener'>
+          Anyone you'd like to shout out?
+        </a>
+      </Show>
       <Show when={pane() === 'decklist'}>
         <Show
           when={cards()?.length}
