@@ -35,7 +35,6 @@ export interface EventDetailSource {
 
 interface EventDetailProps {
   entry: PlayerTournamentEntry;
-  archetypeName: string;
   playerId: string;
   source: EventDetailSource;
 }
@@ -63,7 +62,7 @@ export function EventDetail(props: EventDetailProps) {
           when={cards()?.length}
           fallback={<DetailEmpty loading={props.source.loading()} text='No decklist published for this event.' />}
         >
-          <DeckBody archetypeName={props.archetypeName} cards={cards()!} />
+          <DeckBody cards={cards()!} />
         </Show>
       </Show>
       <Show when={pane() === 'rounds'}>
@@ -145,16 +144,11 @@ function roundNote(round: PlayerRound): string {
   return '—';
 }
 
-export function DeckBody(props: { archetypeName: string; cards: PlayerDeckCard[] }) {
+export function DeckBody(props: { cards: PlayerDeckCard[] }) {
   const groups = createMemo(() => groupDeckByCategory(props.cards));
-  const total = () => props.cards.reduce((acc, c) => acc + (c.count ?? 0), 0);
 
   return (
     <div class='deck-inline'>
-      <div class='deck-inline-head'>
-        <span class='cardname'>{props.archetypeName || 'Decklist'}</span>
-        <span class='muted-cell'>{total()} cards</span>
-      </div>
       <div class='deck-inline-groups'>
         <For each={groups()}>
           {group => (
