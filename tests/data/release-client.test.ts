@@ -92,6 +92,18 @@ test('with an embedded manifest, scope paths resolve to immutable release roots'
     '/releases/v1/events/2026-01-16, Regional X/999/master.json'
   );
   assert.throws(() => resolvePathWith(resolver, '/reports/2026-02-01, Other/master.json'), /not present in release/);
+  // The real data layer encodes folder names before passing them to the resolver.
+  const { tournamentPath } = await import('../../src/lib/data/paths.ts');
+  for (const folder of ['Online - Last 14 Days', 'Trends - Last 30 Days', '2026-01-16, Regional X']) {
+    assert.strictEqual(
+      resolvePathWith(resolver, `${tournamentPath(folder)}/master.json`),
+      resolvePathWith(resolver, `/reports/${folder}/master.json`)
+    );
+  }
+  assert.strictEqual(
+    resolvePathWith(resolver, `${tournamentPath('Online - Last 14 Days')}/archetypes/Mega%20Gardevoir.json`),
+    '/releases/v1/online/aaa/archetypes/Mega%20Gardevoir.json'
+  );
 });
 
 test('missing-release-body recovery: reload once for a release path, never for legacy or twice', async () => {

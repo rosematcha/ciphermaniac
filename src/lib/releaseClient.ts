@@ -76,14 +76,18 @@ export function resolvePathWith(withResolver: ReleaseResolver, path: string): st
   if (!withResolver.isReleaseAware) {
     return path;
   }
-  const classified = classify(path);
+  const normalized = path.replace(
+    /^(\/*reports\/)([^/]+)/,
+    (_match, prefix: string, folder: string) => `${prefix}${decodeURIComponent(folder)}`
+  );
+  const classified = classify(normalized);
   if (classified) {
     const resolved = withResolver.scopePath(classified.scope, classified.rel);
     return resolved.startsWith('/') ? resolved : `/${resolved}`;
   }
   // Event-folder path: /reports/{YYYY-MM-DD, Name}/{rel}. Resolve via the
   // embedded event map, keyed by the folder name the UI already uses.
-  const event = classifyEvent(path);
+  const event = classifyEvent(normalized);
   if (event) {
     const resolved = withResolver.eventPath(event.folder, event.rel);
     if (resolved) {
