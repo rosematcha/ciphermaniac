@@ -1,9 +1,4 @@
 {
-  ".github/scripts/event-cli.ts": [
-    "complexity:553e29de581ff2b8b83f1c343ababab538d3b3ea748d5217bb98ee28b8c96193:Function 'parseArgs' has a complexity of 14. Maximum allowed is 12.",
-    "complexity:e0a408952b42e23d038216ed7e2c8d010a9dab875db3884c97da466c73162c10:Async function 'runReindex' has a complexity of 16. Maximum allowed is 12.",
-    "complexity:8b2b8b71803b317a1bde03dbb695659ae26361bd2b674d87db12253722bef1dc:Async function 'runReindexAll' has a complexity of 18. Maximum allowed is 12."
-  ],
   ".github/scripts/lib/r2.mjs": [
     "max-params:930c6c06ca22dfdb28da868a03a725c83c405101ca3b0b1679f897e1cecc445b:Async function 'putJson' has too many parameters (5). Maximum allowed is 4."
   ],
@@ -12,9 +7,6 @@
     "max-depth:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "max-depth:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Async function 'main' has a complexity of 35. Maximum allowed is 12."
-  ],
-  ".github/scripts/reconcile-indexes.ts": [
-    "complexity:a6e0c4938c66037261884b999b15c2561faeab28a9680eb83564888f5feb8fb9:Async function 'main' has a complexity of 13. Maximum allowed is 12."
   ],
   ".github/scripts/run-online-meta.ts": [
     "max-lines-per-function:116f2bc568d02d7f4d4a169a087b1c4eb0299b7d5c1b0db68ce42cf17c2f43ba:Async function 'main' has too many lines (123). Maximum allowed is 100.",
@@ -30,8 +22,7 @@
     "max-depth:41054f0d6f75f666123ec34a0a1166ae9b0977deec1904f9a2834f2459d90b50:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:f73f3dfd0c8ead3891e04164a4c513498ade91f926093be8432f6043c41b156d:Arrow function has a complexity of 16. Maximum allowed is 12.",
     "max-depth:4b32b5440162677f0c1bddff7fa44a8022eba593d52d1ab2859421808c504265:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "complexity:4b32b5440162677f0c1bddff7fa44a8022eba593d52d1ab2859421808c504265:Async function 'generateSynonyms' has a complexity of 13. Maximum allowed is 12.",
-    "complexity:b28e6b7fd9533404546c2fd84ec5088623256c583dd71d1fd60177528c7eaa28:Async function 'main' has a complexity of 15. Maximum allowed is 12."
+    "complexity:4b32b5440162677f0c1bddff7fa44a8022eba593d52d1ab2859421808c504265:Async function 'generateSynonyms' has a complexity of 13. Maximum allowed is 12."
   ],
   "functions/api/archetype/filter-report.ts": [
     "complexity:83ae641fd563fb7fef93cbca93a2a464b74e5b896b252c9186410887dbc30541:Function 'normalizeFilter' has a complexity of 19. Maximum allowed is 12.",
