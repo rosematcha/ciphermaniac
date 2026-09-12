@@ -2,9 +2,8 @@ import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-j
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
 import type { ArchetypeSeries, DayBin } from '../../lib/majorsTrends';
-import { DAY_MS } from '../../lib/trendWindow';
 import { createChartTooltipPlacement } from './chartTooltip';
-import type { EventMarker } from './weekly';
+import { DAY_MS, type EventMarker } from './weekly';
 
 const LINE_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', '#9c5fd0', '#d4a043', '#3eb9c5'];
 

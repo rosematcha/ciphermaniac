@@ -14,6 +14,9 @@ import type { WeeklyArchetype, WeeklyReport } from '../../lib/data/trends';
 import { classifyTournament, tournamentDate } from '../../lib/data';
 import type { OnlineTrendReportLike } from './model';
 
+/** One calendar day in milliseconds. */
+export const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** Which figure the chart plots. */
 export type ChartMetric = 'share' | 'top10';
 
