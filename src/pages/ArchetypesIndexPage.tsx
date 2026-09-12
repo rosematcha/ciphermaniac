@@ -103,7 +103,7 @@ export function ArchetypesIndexPage() {
         </div>
       </Section>
 
-      <Section right={`${filtered().length.toLocaleString()} matching`}>
+      <Section>
         <Show
           when={archetypesData()}
           fallback={

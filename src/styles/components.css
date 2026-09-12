@@ -323,39 +323,6 @@
   align-items: center;
   gap: 8px;
 }
-/* Freshness chip: a fixed-width slot (reserved before data lands) keeps the
-   trigger from shifting, and the label fades in once meta.json resolves. */
-.t-freshness {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  /* Fixed, not min-: at 92px the chip outgrew its slot the moment meta.json
-     landed and dragged the selector sideways. 128px covers every label the
-     formatter produces except "less than a minute", which truncates rather
-     than pushing — a clipped word in a quiet timestamp beats the whole topnav
-     stepping left. */
-  width: 128px;
-  min-height: 18px;
-  font-size: 11px;
-  color: var(--muted);
-  text-align: right;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity var(--ms-base) var(--ease-base);
-}
-.t-freshness > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.t-freshness.is-ready {
-  opacity: 1;
-}
-@media (max-width: 900px) {
-  .t-freshness {
-    display: none;
-  }
-}
 .t-selector-trigger {
   display: inline-flex;
   align-items: center;

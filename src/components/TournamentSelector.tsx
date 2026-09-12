@@ -1,9 +1,7 @@
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { fetchMeta, fetchTournamentsList, prettyTournamentName } from '../lib/data';
+import { fetchTournamentsList, prettyTournamentName } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
-import { latestValue } from '../lib/resource';
-import { absoluteIso, relativeTimeAgo } from '../lib/freshness';
 import { foldSearch } from '../utils/searchFold';
 
 /**
@@ -87,7 +85,6 @@ export function TournamentSelector() {
 
   return (
     <div class='t-selector' ref={containerRef}>
-      <FreshnessChip tournament={tournament()} />
       <button
         class='t-selector-trigger'
         type='button'
@@ -131,28 +128,6 @@ export function TournamentSelector() {
         </div>
       </Show>
     </div>
-  );
-}
-
-/**
- * Small muted "Updated {relative} ago" chip for the active scope, read from
- * that scope's meta.json `generatedAt`. Uses stale-while-revalidate so the
- * chip keeps its prior value while a scope switch refetches; the reserved slot
- * (fixed min-height + opacity fade) means it never shifts surrounding layout.
- */
-function FreshnessChip(props: { tournament: string }) {
-  const [meta] = createResource(() => props.tournament, fetchMeta);
-  const generatedAt = () => latestValue(meta)?.generatedAt;
-  const relative = () => {
-    const at = generatedAt();
-    return at ? relativeTimeAgo(at) : null;
-  };
-  return (
-    <span class='t-freshness' classList={{ 'is-ready': relative() !== null }}>
-      <Show when={relative()}>
-        <span title={absoluteIso(generatedAt()!)}>Updated {relative()} ago</span>
-      </Show>
-    </span>
   );
 }
 
