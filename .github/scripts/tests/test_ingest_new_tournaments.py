@@ -100,7 +100,7 @@ class FetchIngestedCodesTest(unittest.TestCase):
             "build/v1/releases/release_1.json": manifest,
         }
         values.update(
-            {f"{root.lstrip('/')}/meta.json": meta for root, meta in zip(events.values(), metas)}
+            {f"{root.lstrip('/')}/meta.json": meta for root, meta in zip(events.values(), metas, strict=True)}
         )
         return _FakeClient(values)
 
