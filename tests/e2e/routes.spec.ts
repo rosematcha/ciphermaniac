@@ -162,8 +162,8 @@ test('an event without a decklist opens on its rounds', async ({ page }) => {
 });
 
 test('Chris Franco has a shout-out in the Orlando event details', async ({ page }) => {
-  await page.route('**/players/2037/profile.json', async route => {
-    const response = await route.fetch({ url: route.request().url().replace('/2037/', '/1272/') });
+  await page.route('**/players/aaaaaaaaaaaa/2037/profile.json', async route => {
+    const response = await route.fetch({ url: route.request().url().replace('/2037/', '/999/') });
     await route.fulfill({ response });
   });
 
