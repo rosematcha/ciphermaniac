@@ -1,5 +1,5 @@
-// Relative-time formatting for the "Updated … ago" freshness chip. Coarse by
-// design: minutes, hours, days — never seconds, so the chip doesn't churn once
+// Relative-time formatting for the home page's "updated … ago" line. Coarse by
+// design: minutes, hours, days — never seconds, so the label doesn't churn once
 // per second and reads calmly. Pure and JSON-safe; `now` is injectable for tests.
 
 /**
