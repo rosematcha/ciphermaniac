@@ -59,6 +59,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test release-aware browser paths
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e:local
+
       # 1. Dry-run plan so a manual operator sees the dirty set before writing.
       #    Skipped on the daily schedule (unattended) to avoid a redundant rebuild.
       - name: Plan build graph
@@ -90,17 +95,21 @@ jobs:
           --manifest-out release-manifest.json
           --module-out shared/generated/release.ts
 
+      - name: Verify published release bodies before deployment
+        run: npx tsx scripts/verify-release.ts production 0 --manifest release-manifest.json
+
       # 5. Build the frontend + Pages Functions with the manifest embedded.
       - name: Build with embedded manifest
         run: npm run build
 
       # 6. Deploy Cloudflare Pages atomically (the activation point).
       - name: Deploy to Cloudflare Pages
+        if: env.CHANNEL == 'production'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=ciphermaniac
+          command: pages deploy dist --project-name=ciphermaniac --branch=main
 
       # 7. Update the channel pointer for tooling (ETag-conditional, replan on conflict).
       #    Runs AFTER the deploy so the bundle and pointer cannot diverge.

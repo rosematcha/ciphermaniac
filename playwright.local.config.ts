@@ -44,7 +44,7 @@ export default defineConfig({
       env: { FIXTURE_PORT: String(FIXTURE_PORT) }
     },
     {
-      command: `npx vite build --outDir .cache/e2e-dist && npx vite preview --outDir .cache/e2e-dist --host 127.0.0.1 --port ${PREVIEW_PORT} --strictPort`,
+      command: `npx vite build --config tests/e2e/release-build.config.ts --outDir .cache/e2e-dist && npx vite preview --outDir .cache/e2e-dist --host 127.0.0.1 --port ${PREVIEW_PORT} --strictPort`,
       url: `http://127.0.0.1:${PREVIEW_PORT}/`,
       reuseExistingServer: false,
       timeout: 120_000,

@@ -18,6 +18,7 @@
  */
 
 import process from 'node:process';
+import { readFile } from 'node:fs/promises';
 
 const R2 = process.env.PUBLIC_R2_BASE_URL ?? 'https://r2.ciphermaniac.com';
 const channel = process.argv[2] ?? 'production';
@@ -64,11 +65,16 @@ function eventRoot(value: string | { root?: string }): string | null {
 const problems: string[] = [];
 
 const pointerKey = channel === 'production' ? 'current.json' : `channels/${channel}.json`;
-const pointer = await getJson<ChannelPointer>(pointerKey);
+const manifestFlag = process.argv.indexOf('--manifest');
+const localManifest: ReleaseManifest | null =
+  manifestFlag < 0 ? null : (JSON.parse(await readFile(process.argv[manifestFlag + 1], 'utf8')) as ReleaseManifest);
+const pointer: ChannelPointer = localManifest
+  ? { channel, releaseId: localManifest.releaseId }
+  : await getJson<ChannelPointer>(pointerKey);
 console.log(`channel ${channel} -> release ${pointer.releaseId}`);
 
 const manifestPath = pointer.manifest ?? `/releases/v1/manifests/${pointer.releaseId}.json`;
-const manifest = await getJson<ReleaseManifest>(manifestPath);
+const manifest = localManifest ?? (await getJson<ReleaseManifest>(manifestPath));
 if (manifest.releaseId !== pointer.releaseId) {
   problems.push(`manifest releaseId ${manifest.releaseId} does not match the pointer ${pointer.releaseId}`);
 }

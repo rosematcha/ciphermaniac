@@ -13,6 +13,7 @@ import { createServer, type Server } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fixtureLegacyPath } from './release-fixture';
 
 const FIXTURE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/e2e');
 
@@ -34,7 +35,7 @@ export async function startFixtureServer(port = 0, root: string = FIXTURE_ROOT):
 
   const server: Server = createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
-    const decoded = decodeURIComponent(url.pathname);
+    const decoded = fixtureLegacyPath(decodeURIComponent(url.pathname));
     requests.push(decoded);
 
     const headers = {
