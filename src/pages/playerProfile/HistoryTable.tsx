@@ -150,12 +150,7 @@ function HistoryRow(props: HistoryRowProps) {
       <Show when={expanded()}>
         <tr class='row-expansion'>
           <td colspan={props.columnCount}>
-            <EventDetail
-              entry={props.entry}
-              archetypeName={props.archetypeName}
-              playerId={props.playerId}
-              source={props.source}
-            />
+            <EventDetail entry={props.entry} playerId={props.playerId} source={props.source} />
           </td>
         </tr>
       </Show>

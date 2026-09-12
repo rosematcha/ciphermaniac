@@ -107,3 +107,8 @@ test('ids without an override pass through untouched', () => {
   assert.equal(canonicalPlayerId('12786'), '12786');
   assert.equal(overriddenPlayerName('12786'), null);
 });
+
+test('Olive Battaglia’s original account folds into Olivia Battaglia’s active account', () => {
+  assert.equal(canonicalPlayerId('169'), '25523');
+  assert.equal(overriddenPlayerName('25523'), 'Olivia Battaglia');
+});
