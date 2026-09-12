@@ -13,6 +13,7 @@ const OPEN_BY_DEFAULT = 3;
 interface DecksTabProps {
   profile: PlayerProfile;
   archetypeName: (base: string | null) => string;
+  playerId: string;
   source: EventDetailSource;
 }
 
@@ -31,6 +32,7 @@ export function DecksTab(props: DecksTabProps) {
             name={props.archetypeName(archetype.base)}
             entries={props.profile.tournaments.filter(t => t.archetype === archetype.base)}
             archetypeName={props.archetypeName}
+            playerId={props.playerId}
             source={props.source}
             openByDefault={index() < OPEN_BY_DEFAULT}
           />
@@ -45,6 +47,7 @@ interface DeckGroupProps {
   name: string;
   entries: PlayerProfile['tournaments'];
   archetypeName: (base: string | null) => string;
+  playerId: string;
   source: EventDetailSource;
   openByDefault: boolean;
 }
@@ -99,6 +102,7 @@ function DeckGroup(props: DeckGroupProps) {
           <HistoryTable
             entries={props.entries}
             archetypeName={props.archetypeName}
+            playerId={props.playerId}
             source={props.source}
             showDeck={false}
           />

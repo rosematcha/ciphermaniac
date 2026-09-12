@@ -11,6 +11,7 @@ import { finishLabel, shortTournamentName, tournamentDateLabel } from './model';
 interface HistoryTableProps {
   entries: PlayerTournamentEntry[];
   archetypeName: (base: string | null) => string;
+  playerId: string;
   source: EventDetailSource;
   /** The Decks tab groups rows under their deck, so it drops the column. */
   showDeck?: boolean;
@@ -44,6 +45,7 @@ export function HistoryTable(props: HistoryTableProps) {
               <HistoryRow
                 entry={entry}
                 archetypeName={props.archetypeName(entry.archetype)}
+                playerId={props.playerId}
                 source={props.source}
                 showDeck={showDeck()}
                 columnCount={columnCount()}
@@ -59,6 +61,7 @@ export function HistoryTable(props: HistoryTableProps) {
 interface HistoryRowProps {
   entry: PlayerTournamentEntry;
   archetypeName: string;
+  playerId: string;
   source: EventDetailSource;
   showDeck: boolean;
   columnCount: number;
@@ -147,7 +150,12 @@ function HistoryRow(props: HistoryRowProps) {
       <Show when={expanded()}>
         <tr class='row-expansion'>
           <td colspan={props.columnCount}>
-            <EventDetail entry={props.entry} archetypeName={props.archetypeName} source={props.source} />
+            <EventDetail
+              entry={props.entry}
+              archetypeName={props.archetypeName}
+              playerId={props.playerId}
+              source={props.source}
+            />
           </td>
         </tr>
       </Show>
