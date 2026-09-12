@@ -329,9 +329,6 @@
   "src/pages/TierListPage.tsx": [
     "max-lines-per-function:5def441bf8b96fd64a307e76c447cbbbff1b86339f1cb1c990bf1c8774c09949:Function 'TierListPage' has too many lines (484). Maximum allowed is 250."
   ],
-  "src/pages/TrendsPage.tsx": [
-    "max-lines-per-function:3656df5a1e4845d0203b1c5b7f8f14f3ac3318d63a086d6d217d36f25e299960:Function 'ArchetypeTrendChart' has too many lines (432). Maximum allowed is 250."
-  ],
   "src/pages/cardPage/model.ts": [
     "complexity:0793c5ccb2b3c502d8166fb3a66763f3ffe97873f376f96f3a8107b557498982:Function 'findCardInArchetypeReport' has a complexity of 16. Maximum allowed is 12."
   ],
@@ -346,5 +343,8 @@
   ],
   "src/utils/printings.ts": [
     "complexity:b3ca7afca01302b86cc3b0050e93221f76e9a433fde0cb3e3dd285493ddd2250:Function 'buildPrintingRows' has a complexity of 23. Maximum allowed is 12."
+  ],
+  "src/pages/trendsPage/ArchetypeTrendChart.tsx": [
+    "max-lines-per-function:20d37a1a72978a44d52b973993b519143482d933e333d5f32a741d78087da604:Function 'ArchetypeTrendChart' has too many lines (330). Maximum allowed is 250."
   ]
 }

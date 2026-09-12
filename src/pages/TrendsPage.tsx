@@ -1,107 +1,130 @@
-import {
-  buildOnlineChart,
-  type ChartData,
-  defaultOnlineWindow,
-  formatDateWindow,
-  ONLINE_WINDOW_DAYS,
-  ONLINE_WINDOW_OPTIONS,
-  type OnlineWindow,
-  relativeTimeFrom,
-  sliceCardMovers
-} from './trendsPage/model';
-import { createChartTooltipPlacement } from './trendsPage/chartTooltip';
-import { createMemo, createResource, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
+import { createMemo, createResource, createSignal, For, type JSX, onMount, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import {
-  fetchArchetypes,
   fetchMajorsTrendReport,
-  fetchMaster,
   fetchOnlineTrendReport,
   fetchPriceMovers,
   fetchTournamentsList,
   getArchetypeIconMap,
-  majorTournaments,
   PRICE_HISTORY_MIN_DAYS,
   type PriceMoverList,
   type PriceMoverMetric,
   type PriceMoverRow,
   resolveArchetypeIcons,
-  tournamentDate
+  type WeeklyDeck,
+  type WeeklyDeckCard,
+  type WeeklyMover,
+  type WeeklyReport
 } from '../lib/data';
-import { getSynonymDatabase } from '../utils/cardSynonyms';
-import { getCanonicalCardFromData, itemUid } from '../../shared/data/cardIdentity.js';
-import type { CardItem } from '../types';
 import {
   type ArchetypeSeries,
-  computeMajorsArchetypeSeries,
-  computeMajorsMovers,
   type DayBin,
-  type EventSnapshot,
   type MajorsWindowResult,
   type MoverRow,
-  type MoversResult,
-  NEWCOMER_MIN_SHARE,
   parseDayKey
 } from '../lib/majorsTrends';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
-import { CardHoverPreview } from '../components/CardHoverPreview';
 import { Section } from '../components/Section';
 import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
 import { latestValue } from '../lib/resource';
-import { DAY_MS } from '../lib/trendWindow';
+import { defaultOnlineWindow, ONLINE_WINDOW_DAYS, type OnlineWindow, sliceCardMovers } from './trendsPage/model';
+import {
+  chartFromDaily,
+  chartFromWeekly,
+  type ChartMetric,
+  eventMarkers,
+  MAX_LINES,
+  railRows,
+  rankedArchetypes,
+  signedDecimal,
+  smoothSeries,
+  wholePercent
+} from './trendsPage/weekly';
+import { ArchetypeTrendChart, lineColor } from './trendsPage/ArchetypeTrendChart';
+import { TrendTile } from './trendsPage/TrendTile';
 import '../styles/pages/trends.css';
 
 type Source = 'online' | 'majors';
 type MajorsWindow = '3-events' | '5-events' | '10-events';
+type Line = 'daily' | 'smoothed';
 
 const SOURCE_OPTIONS: { value: Source; label: string }[] = [
-  { value: 'online', label: 'Online (daily)' },
-  { value: 'majors', label: 'Majors (events)' }
+  { value: 'online', label: 'Online' },
+  { value: 'majors', label: 'Majors' }
+];
+const ONLINE_WINDOW_OPTIONS: { value: OnlineWindow; label: string }[] = [
+  { value: '7d', label: '7d' },
+  { value: '14d', label: '14d' },
+  { value: '30d', label: '30d' }
 ];
 const MAJORS_WINDOW_OPTIONS: { value: MajorsWindow; label: string }[] = [
-  { value: '3-events', label: 'Last 3 events' },
-  { value: '5-events', label: 'Last 5 events' },
-  { value: '10-events', label: 'Last 10 events' }
+  { value: '3-events', label: '3 events' },
+  { value: '5-events', label: '5 events' },
+  { value: '10-events', label: '10 events' }
 ];
-const MAJORS_WINDOW_COUNT: Record<MajorsWindow, number> = {
-  '3-events': 3,
-  '5-events': 5,
-  '10-events': 10
-};
-
-const ARCHETYPE_LINE_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', '#9c5fd0', '#d4a043', '#3eb9c5'];
-
-const TOP_ARCHETYPES_FOR_CHART = 6;
-/** Never draw more than this many lines at once — the chart stays readable. */
-const MAX_VISIBLE_SERIES = 8;
-
-/** Stable line color for a series by its rank index (cycles the palette). */
-function lineColor(index: number): string {
-  return ARCHETYPE_LINE_COLORS[index % ARCHETYPE_LINE_COLORS.length];
-}
+const METRIC_OPTIONS: { value: ChartMetric; label: string }[] = [
+  { value: 'share', label: 'All' },
+  { value: 'top10', label: 'Top 10%' }
+];
+const LINE_OPTIONS: { value: Line; label: string }[] = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'smoothed', label: 'Smoothed' }
+];
+/** Deck blocks shown, and tiles per side inside each. */
+const DECK_BLOCKS = 6;
+const DECK_TILES = 2;
+/** Mover tiles per direction. */
+const MOVER_TILES = 4;
 
 /**
- * Trends — two distinct ways of looking at meta movement.
+ * Trends: what moved this week, and what moved it.
  *
- *  • Online (daily): reads the cron-built `Trends - Last 30 Days/trends.json`,
- *    which carries 30 daily timeline points per archetype plus pre-computed
- *    rising/falling card lists. Window is selectable in days (7 / 14 / 30).
- *    This is the default — it's smooth, dense, and reflects the actual day-by-day
- *    meta evolution from hundreds of online tournaments.
- *
- *  • Majors (events): one data point per regional / international / special
- *    tournament. Sparser but each point is a real bricks-and-mortar event.
- *    Window is selectable by event count (last 3 / 5 / 10).
+ * The page is one chart with a rail of the archetypes it draws, then the cards
+ * each deck added and cut this week against last, then the cards whose share
+ * of all lists moved most, then price movers. The online source reads the
+ * pipeline's weekly report; the majors source reads the per-event artifact
+ * and shows what it can (no deck blocks, since events are too few to compare
+ * a deck's lists week to week).
  */
+/** The page's controls: signals shared by the two control bands and the views. */
+interface TrendsState {
+  source: () => Source;
+  setSource: (v: Source) => void;
+  onlineWindow: () => OnlineWindow;
+  setOnlineWindow: (v: OnlineWindow) => void;
+  majorsWindow: () => MajorsWindow;
+  setMajorsWindow: (v: MajorsWindow) => void;
+  metric: () => ChartMetric;
+  setMetric: (v: ChartMetric) => void;
+  line: () => Line;
+  setLine: (v: Line) => void;
+}
+
 export function TrendsPage() {
-  const [source, setSourceAndStore] = createPersistentSignal<Source>('cm:trendsSource', 'online', v =>
+  const [source, setSource] = createPersistentSignal<Source>('cm:trendsSource', 'online', v =>
     v === 'majors' || v === 'online' ? v : null
   );
   const [onlineWindow, setOnlineWindow] = createSignal<OnlineWindow>(defaultOnlineWindow());
   const [majorsWindow, setMajorsWindow] = createSignal<MajorsWindow>('5-events');
+  const [metric, setMetric] = createSignal<ChartMetric>('share');
+  const [line, setLine] = createPersistentSignal<Line>('cm:trendsLine', 'smoothed', v =>
+    v === 'daily' || v === 'smoothed' ? v : null
+  );
+  const state: TrendsState = {
+    source,
+    setSource,
+    onlineWindow,
+    setOnlineWindow,
+    majorsWindow,
+    setMajorsWindow,
+    metric,
+    setMetric,
+    line,
+    setLine
+  };
 
   onMount(() => {
     document.title = 'Trends — Ciphermaniac';
@@ -109,62 +132,499 @@ export function TrendsPage() {
 
   return (
     <>
-      <Section>
-        <div class='filter-bar'>
-          <div class='filter-row'>
-            <Segmented<Source>
-              options={SOURCE_OPTIONS}
-              selected={source()}
-              onSelect={setSourceAndStore}
-              ariaLabel='Trend source'
-            />
-            <Show
-              when={source() === 'online'}
-              fallback={
-                <Segmented<MajorsWindow>
-                  options={MAJORS_WINDOW_OPTIONS}
-                  selected={majorsWindow()}
-                  onSelect={setMajorsWindow}
-                  ariaLabel='Majors window'
-                />
-              }
-            >
-              <Segmented<OnlineWindow>
-                options={ONLINE_WINDOW_OPTIONS}
-                selected={onlineWindow()}
-                onSelect={setOnlineWindow}
-                ariaLabel='Online window'
-              />
-            </Show>
-          </div>
-        </div>
-      </Section>
-
-      <Show when={source() === 'online'} fallback={<MajorsView windowKey={majorsWindow()} />}>
-        <OnlineView windowKey={onlineWindow()} />
+      <Show when={source() === 'online'} fallback={<MajorsView state={state} />}>
+        <OnlineView state={state} />
       </Show>
-
       <PriceMovers />
     </>
   );
 }
 
+/**
+ * The control band. It renders twice, once in the section head for desktop and
+ * once between the chart and the rail for phones, sharing the page's signals.
+ */
+function Controls(props: { state: TrendsState }) {
+  const s = () => props.state;
+  return (
+    <span class='trends-controls'>
+      <Segmented<Source> options={SOURCE_OPTIONS} selected={s().source()} onSelect={s().setSource} ariaLabel='Source' />
+      <Show
+        when={s().source() === 'online'}
+        fallback={
+          <Segmented<MajorsWindow>
+            options={MAJORS_WINDOW_OPTIONS}
+            selected={s().majorsWindow()}
+            onSelect={s().setMajorsWindow}
+            ariaLabel='Events'
+          />
+        }
+      >
+        <Segmented<OnlineWindow>
+          options={ONLINE_WINDOW_OPTIONS}
+          selected={s().onlineWindow()}
+          onSelect={s().setOnlineWindow}
+          ariaLabel='Window'
+        />
+        <Segmented<ChartMetric>
+          options={METRIC_OPTIONS}
+          selected={s().metric()}
+          onSelect={s().setMetric}
+          ariaLabel='Finishes'
+        />
+        <Segmented<Line> options={LINE_OPTIONS} selected={s().line()} onSelect={s().setLine} ariaLabel='Line' />
+      </Show>
+    </span>
+  );
+}
+
+function OnlineView(props: { state: TrendsState }) {
+  const [trends] = createResource(fetchOnlineTrendReport);
+  const [tournaments] = createResource(fetchTournamentsList);
+  const trendsData = () => latestValue(trends);
+  const weekly = (): WeeklyReport | undefined => trendsData()?.weekly;
+
+  const chart = createMemo(() => {
+    const data = trendsData();
+    const days = ONLINE_WINDOW_DAYS[props.state.onlineWindow()];
+    const smoothed = props.state.line() === 'smoothed';
+    if (!data) {
+      return { series: [] as ArchetypeSeries[], days: [] as DayBin[] };
+    }
+    return data.weekly
+      ? chartFromWeekly(data.weekly, props.state.metric(), days, smoothed)
+      : chartFromDaily(data.trendReport, days, smoothed);
+  });
+  const deltas = createMemo(() => {
+    const w = weekly();
+    return w ? new Map(w.archetypes.map(a => [a.base, a.delta])) : null;
+  });
+  const markers = createMemo(() => eventMarkers(latestValue(tournaments) ?? [], chart().days));
+  const yLabel = () => (props.state.metric() === 'top10' ? 'Share of top-10% finishes' : 'Meta share (%)');
+
+  return (
+    <>
+      <ChartSection
+        state={props.state}
+        loaded={trendsData() !== undefined}
+        series={chart().series}
+        days={chart().days}
+        deltas={deltas()}
+        markers={markers()}
+        yLabel={yLabel()}
+        empty={
+          <EmptyState
+            title='No online trend data yet.'
+            description="The daily trend file isn't published yet. Switch to Majors for per-event data, or check back after the next run."
+          />
+        }
+      />
+      <Show when={weekly()}>{w => <DeckBlocks weekly={w()} />}</Show>
+      <Show when={weekly()} fallback={<LegacyMovers payload={trendsData()} />}>
+        {w => (
+          <MoverSection
+            rising={w().movers.rising.slice(0, MOVER_TILES)}
+            falling={w().movers.falling.slice(0, MOVER_TILES)}
+          />
+        )}
+      </Show>
+    </>
+  );
+}
+
+function MajorsView(props: { state: TrendsState }) {
+  const [report] = createResource(fetchMajorsTrendReport);
+  const reportData = () => latestValue(report);
+  const windowResult = createMemo<MajorsWindowResult | null>(
+    () => reportData()?.windows[props.state.majorsWindow()] ?? null
+  );
+  const chart = createMemo(() => {
+    const w = windowResult();
+    if (!w) {
+      return { series: [] as ArchetypeSeries[], days: [] as DayBin[] };
+    }
+    return {
+      series: w.series,
+      days: w.dayKeys.map(key => ({ key, date: parseDayKey(key), count: 1 }))
+    };
+  });
+  const movers = () => windowResult()?.movers;
+  const toTile = (m: MoverRow): JSX.Element => (
+    <TrendTile name={m.name} set={m.set} number={m.number} delta={m.delta} level={m.recentAvg ?? 0} />
+  );
+  return (
+    <>
+      <ChartSection
+        state={props.state}
+        loaded={reportData() !== undefined}
+        series={chart().series}
+        days={chart().days}
+        deltas={null}
+        markers={[]}
+        yLabel='Meta share (%)'
+        empty={
+          <EmptyState
+            title='Not enough major events.'
+            description='Fewer than two championships are available. Widen the window or switch to the online source.'
+          />
+        }
+      />
+      <Show when={movers()?.enoughForMovers}>
+        <Section title='Top card movers' right='Recent events against the ones before, weighted by field size'>
+          <div class='trends-two'>
+            <div>
+              <h3 class='trends-dir up'>Rising</h3>
+              <div class='trends-tiles'>
+                <For each={movers()?.rising.slice(0, MOVER_TILES) ?? []}>{toTile}</For>
+              </div>
+            </div>
+            <div>
+              <h3 class='trends-dir down'>Falling</h3>
+              <div class='trends-tiles'>
+                <For each={movers()?.falling.slice(0, MOVER_TILES) ?? []}>{toTile}</For>
+              </div>
+            </div>
+          </div>
+        </Section>
+      </Show>
+    </>
+  );
+}
+
+/** The chart with its rail; which lines draw is decided here. */
+function ChartSection(props: {
+  state: TrendsState;
+  loaded: boolean;
+  series: ArchetypeSeries[];
+  days: DayBin[];
+  deltas: Map<string, number> | null;
+  markers: ReturnType<typeof eventMarkers>;
+  yLabel: string;
+  empty: JSX.Element;
+}) {
+  const [hidden, setHidden] = createSignal<ReadonlySet<string>>(new Set());
+  const [added, setAdded] = createSignal<string[]>([]);
+  const [highlight, setHighlight] = createSignal<string | null>(null);
+  const rows = createMemo(() => railRows(props.series, added(), props.deltas));
+  const visible = createMemo(() =>
+    rows()
+      .map(r => r.name)
+      .filter(n => !hidden().has(n))
+      .slice(0, MAX_LINES)
+  );
+  const atCap = () => visible().length >= MAX_LINES;
+  const addable = createMemo(() => {
+    const shown = new Set(rows().map(r => r.name));
+    return props.series.filter(s => !shown.has(s.name));
+  });
+  const colorOf = (name: string) => lineColor(props.series.findIndex(s => s.name === name));
+  const iconMap = getArchetypeIconMap;
+
+  function toggle(name: string) {
+    setHidden(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        if (atCap()) {
+          return prev;
+        }
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  }
+  function onAdd(e: Event & { currentTarget: HTMLSelectElement }) {
+    const select = e.currentTarget;
+    const name = select.value;
+    select.value = '';
+    if (name && !atCap()) {
+      setAdded(prev => (prev.includes(name) ? prev : [...prev, name]));
+    }
+  }
+
+  return (
+    <section>
+      <div class='section-head'>
+        <h2>Archetype share over time</h2>
+        <span class='right trends-controls-desktop'>
+          <Controls state={props.state} />
+        </span>
+      </div>
+      <Show when={props.loaded} fallback={<Skeleton height='360px' />}>
+        <Show when={props.series.length > 0} fallback={props.empty}>
+          <div class='trends-chart-layout'>
+            <div>
+              <ArchetypeTrendChart
+                series={props.series}
+                days={props.days}
+                visible={visible()}
+                highlight={highlight()}
+                markers={props.markers}
+                yLabel={props.yLabel}
+              />
+              <div class='trends-controls-phone'>
+                <Controls state={props.state} />
+              </div>
+            </div>
+            <div class='trends-rail'>
+              <For each={rows()}>
+                {row => (
+                  <button
+                    type='button'
+                    class='trends-rail-row'
+                    classList={{ 'is-hidden': hidden().has(row.name) }}
+                    aria-pressed={!hidden().has(row.name)}
+                    title={hidden().has(row.name) ? 'Show this line' : 'Hide this line'}
+                    onClick={() => toggle(row.name)}
+                    onMouseEnter={() => setHighlight(row.name)}
+                    onMouseLeave={() => setHighlight(null)}
+                  >
+                    <span class='trends-rail-main'>
+                      <span class='trends-rail-name'>
+                        <span class='trends-rail-swatch' style={{ background: colorOf(row.name) }} />
+                        <ArchetypeIcons
+                          slugs={resolveArchetypeIcons({ name: row.name, label: row.label }, iconMap())}
+                          size={16}
+                        />
+                        <span class='trends-rail-label'>{row.label}</span>
+                      </span>
+                      <span class='trends-rail-avg'>
+                        {wholePercent(row.avg)} avg over {props.days.length} days
+                      </span>
+                    </span>
+                    <Show when={row.delta !== null}>
+                      <span class='trends-delta' classList={{ up: (row.delta ?? 0) > 0, down: (row.delta ?? 0) < 0 }}>
+                        <span class='trends-arrow' aria-hidden='true'>
+                          {(row.delta ?? 0) < 0 ? '↓' : '↑'}
+                        </span>{' '}
+                        {signedDecimal(row.delta ?? 0)}
+                      </span>
+                    </Show>
+                  </button>
+                )}
+              </For>
+              <Show when={addable().length > 0}>
+                <div class='trends-rail-add'>
+                  <select aria-label='Add an archetype to the chart' disabled={atCap()} onChange={onAdd}>
+                    <option value=''>{atCap() ? `Showing ${MAX_LINES} lines` : 'Add archetype…'}</option>
+                    <For each={addable()}>{s => <option value={s.name}>{s.label}</option>}</For>
+                  </select>
+                </div>
+              </Show>
+            </div>
+          </div>
+        </Show>
+      </Show>
+    </section>
+  );
+}
+
 /* ============================================================
-   PRICE MOVERS — biggest TCGPlayer market-price swings
+   What changed inside each deck
    ============================================================ */
 
-/** Which printings the movers lists cover. */
+function DeckBlocks(props: { weekly: WeeklyReport }) {
+  const decks = createMemo(() => {
+    const order = new Map(rankedArchetypes(props.weekly).map((a, i) => [a.base, i]));
+    return [...props.weekly.decks]
+      .sort((a, b) => (order.get(a.base) ?? 99) - (order.get(b.base) ?? 99))
+      .slice(0, DECK_BLOCKS);
+  });
+  const byBase = createMemo(() => new Map(props.weekly.archetypes.map(a => [a.base, a])));
+  return (
+    <Show when={decks().length > 0}>
+      <Section
+        title='What changed inside each deck'
+        right="Inclusion among the deck's own lists, this week against last"
+      >
+        <div class='trends-decks'>
+          <For each={decks()}>{deck => <DeckBlock deck={deck} archetype={byBase().get(deck.base)} />}</For>
+        </div>
+      </Section>
+    </Show>
+  );
+}
+
+function DeckBlock(props: { deck: WeeklyDeck; archetype: WeeklyReport['archetypes'][number] | undefined }) {
+  const iconMap = getArchetypeIconMap;
+  const slugs = () => resolveArchetypeIcons({ name: props.deck.base, label: props.deck.displayName }, iconMap());
+  const tile = (c: WeeklyDeckCard) => (
+    <TrendTile name={c.name} set={c.set} number={c.number} delta={c.delta} level={c.inclusion} />
+  );
+  return (
+    <div class='trends-deck'>
+      <div class='trends-deck-head'>
+        <h3>
+          <ArchetypeIcons slugs={slugs()} size={22} />
+          <A href={`/archetypes/${props.deck.base}`}>{props.deck.displayName}</A>
+        </h3>
+        <Show when={props.archetype}>
+          {a => (
+            <span class='trends-deck-usage'>
+              <DeckSpark points={a().daily.map(p => p.share)} />
+              <span class='trends-deck-range'>
+                {wholePercent(a().priorShare)} → {wholePercent(a().share)}
+              </span>
+              <span class='trends-delta' classList={{ up: a().delta > 0, down: a().delta < 0 }}>
+                <span class='trends-arrow' aria-hidden='true'>
+                  {a().delta < 0 ? '↓' : '↑'}
+                </span>{' '}
+                {signedDecimal(a().delta)}
+              </span>
+            </span>
+          )}
+        </Show>
+      </div>
+      <div class='trends-deck-row'>
+        <For each={props.deck.added.slice(0, DECK_TILES)}>{tile}</For>
+        <span class='trends-deck-rule' aria-hidden='true' />
+        <For each={props.deck.cut.slice(0, DECK_TILES)}>{tile}</For>
+      </div>
+    </div>
+  );
+}
+
+const SPARK_W = 90;
+const SPARK_H = 18;
+
+/** The deck head's usage line: the last fourteen days, smoothed. */
+function DeckSpark(props: { points: (number | null)[] }) {
+  const pts = createMemo(() => smoothSeries(props.points).slice(-14));
+  const path = createMemo(() => {
+    const present = pts().filter((v): v is number => v !== null);
+    if (present.length < 2) {
+      return null;
+    }
+    const max = Math.max(...present);
+    const min = Math.min(...present);
+    const range = max - min || 1;
+    const n = pts().length;
+    let d = '';
+    let open = false;
+    pts().forEach((v, i) => {
+      if (v === null) {
+        open = false;
+        return;
+      }
+      const x = ((i / (n - 1)) * SPARK_W).toFixed(1);
+      const y = (SPARK_H - 2 - ((v - min) / range) * (SPARK_H - 4)).toFixed(1);
+      d += `${open ? 'L' : 'M'}${x} ${y} `;
+      open = true;
+    });
+    const last = present[present.length - 1];
+    return { d: d.trim(), endY: SPARK_H - 2 - ((last - min) / range) * (SPARK_H - 4) };
+  });
+  return (
+    <Show when={path()}>
+      {p => (
+        <svg
+          class='trends-spark'
+          width={SPARK_W}
+          height={SPARK_H}
+          viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
+          aria-hidden='true'
+        >
+          <path d={p().d} fill='none' />
+          <circle cx={SPARK_W} cy={p().endY} r='2.4' />
+        </svg>
+      )}
+    </Show>
+  );
+}
+
+/* ============================================================
+   Top card movers
+   ============================================================ */
+
+function MoverSection(props: { rising: WeeklyMover[]; falling: WeeklyMover[] }) {
+  const iconMap = getArchetypeIconMap;
+  const tile = (m: WeeklyMover) => {
+    const driver = m.drivers[0];
+    return (
+      <TrendTile
+        name={m.name}
+        set={m.set}
+        number={m.number}
+        delta={m.delta}
+        level={m.share}
+        meta={
+          driver ? (
+            <>
+              <ArchetypeIcons
+                slugs={resolveArchetypeIcons({ name: driver.base, label: driver.displayName }, iconMap())}
+                size={14}
+              />
+              <span class='trends-driver'>{driver.displayName}</span>
+            </>
+          ) : undefined
+        }
+      />
+    );
+  };
+  return (
+    <Show when={props.rising.length > 0 || props.falling.length > 0}>
+      <Section title='Top card movers' right='Share of all lists, this week against last · the deck that moved it most'>
+        <div class='trends-two'>
+          <div>
+            <h3 class='trends-dir up'>Rising</h3>
+            <div class='trends-tiles'>
+              <For each={props.rising}>{tile}</For>
+            </div>
+          </div>
+          <div>
+            <h3 class='trends-dir down'>Falling</h3>
+            <div class='trends-tiles'>
+              <For each={props.falling}>{tile}</For>
+            </div>
+          </div>
+        </div>
+      </Section>
+    </Show>
+  );
+}
+
+/** Movers from the older window-start-to-end lists, for a file without a weekly block. */
+function LegacyMovers(props: {
+  payload: ReturnType<typeof latestValue<Awaited<ReturnType<typeof fetchOnlineTrendReport>>>>;
+}) {
+  const movers = createMemo(() => sliceCardMovers(props.payload?.cardTrends, MOVER_TILES));
+  const tile = (m: { name: string; set: string | null; number: string | null; delta: number; endShare: number }) => (
+    <TrendTile name={m.name} set={m.set} number={m.number} delta={m.delta} level={m.endShare} />
+  );
+  return (
+    <Show when={movers().rising.length > 0 || movers().falling.length > 0}>
+      <Section title='Top card movers' right='Share of all lists, end of the window against its start'>
+        <div class='trends-two'>
+          <div>
+            <h3 class='trends-dir up'>Rising</h3>
+            <div class='trends-tiles'>
+              <For each={movers().rising}>{tile}</For>
+            </div>
+          </div>
+          <div>
+            <h3 class='trends-dir down'>Falling</h3>
+            <div class='trends-tiles'>
+              <For each={movers().falling}>{tile}</For>
+            </div>
+          </div>
+        </div>
+      </Section>
+    </Show>
+  );
+}
+
+/* ============================================================
+   Price movers
+   ============================================================ */
+
 type PriceScope = 'all' | 'standard';
 
 /**
- * Price movers, independent of the online/majors toggle: the biggest swings
- * over the trailing window of the rolling price history. Every threshold, the
- * window boundary and the standard-printing filter live in the pipeline; this
- * renders the pre-computed artifact verbatim. Two toggles pick which of the four
- * pre-sorted lists shows — printings scope (all / standard) and metric (percent
- * / dollar). Renders nothing until the history spans PRICE_HISTORY_MIN_DAYS, so
- * it stays invisible rather than showing a placeholder while the pipeline
- * accumulates its first month of data.
+ * The biggest market-price swings over the trailing window. Every threshold
+ * lives in the pipeline; this renders the artifact. Hidden until the history
+ * spans PRICE_HISTORY_MIN_DAYS. Rows, not tiles: the movers cover every
+ * printing, and older sets have no art on R2.
  */
 function PriceMovers() {
   const [payload] = createResource(fetchPriceMovers);
@@ -174,42 +634,41 @@ function PriceMovers() {
   const [metric, setMetric] = createPersistentSignal<PriceMoverMetric>('cm:trendsPriceMetric', 'pct', v =>
     v === 'pct' || v === 'value' ? v : null
   );
-
-  /** The artifact once it clears the readiness gate, else null. */
   const ready = createMemo(() => {
     const p = latestValue(payload);
     return p && p.spanDays >= PRICE_HISTORY_MIN_DAYS ? p : null;
   });
   const movers = createMemo<PriceMoverList>(() => ready()?.scopes[scope()][metric()] ?? { rising: [], falling: [] });
-
-  /** The headline number for a row, in the selected metric (unsigned). */
   const magnitude = (m: PriceMoverRow): string =>
-    metric() === 'pct' ? `${Math.abs(Math.round(m.pct))}%` : `$${Math.abs(m.delta).toFixed(2)}`;
+    metric() === 'pct'
+      ? `${m.pct < 0 ? '−' : '+'}${Math.abs(Math.round(m.pct))}%`
+      : `${m.delta < 0 ? '−' : '+'}$${Math.abs(m.delta).toFixed(2)}`;
 
-  const column = (rows: PriceMoverRow[], dir: 'up' | 'down', arrow: string) => (
-    <For each={rows}>
-      {(m, idx) => (
-        <A href={`/cards/${m.set}/${m.number}`} class='mover-row'>
-          <span class='rank'>{idx() + 1}</span>
-          <span class='name'>
-            <CardHoverPreview set={m.set} number={m.number}>
-              {m.name}
-            </CardHoverPreview>
-          </span>
-          <span class='set'>
-            {m.set}/{m.number}
-          </span>
-          <span class={`delta ${dir}`}>
-            <span class='delta-pp'>
-              {arrow} {magnitude(m)}
+  const column = (rows: PriceMoverRow[], dir: 'up' | 'down') => (
+    <div class='trends-rows'>
+      <For each={rows}>
+        {(m, idx) => (
+          <A href={`/cards/${m.set}/${m.number}`} class='trends-row'>
+            <span class='trends-row-rank'>{idx() + 1}</span>
+            <span class='trends-row-name'>
+              {m.name}{' '}
+              <span class='trends-row-set'>
+                {m.set}/{m.number}
+              </span>
             </span>
-            <span class='delta-base'>
-              ${m.start.toFixed(2)} → ${m.current.toFixed(2)}
+            <span class='trends-row-price'>
+              ${m.current.toFixed(2)} <small>from ${m.start.toFixed(2)}</small>
             </span>
-          </span>
-        </A>
-      )}
-    </For>
+            <span class='trends-delta' classList={{ [dir]: true }}>
+              <span class='trends-arrow' aria-hidden='true'>
+                {dir === 'up' ? '↑' : '↓'}
+              </span>{' '}
+              {magnitude(m)}
+            </span>
+          </A>
+        )}
+      </For>
+    </div>
   );
 
   return (
@@ -217,8 +676,8 @@ function PriceMovers() {
       <Section
         title='Price movers'
         right={
-          <div class='price-scope'>
-            <span>Last {ready()?.windowDays} days</span>
+          <span class='trends-controls'>
+            <span class='trends-controls-note'>Last {ready()?.windowDays} days</span>
             <Segmented<PriceMoverMetric>
               ariaLabel='Rank by'
               options={[
@@ -232,971 +691,25 @@ function PriceMovers() {
               ariaLabel='Printings included'
               options={[
                 { value: 'all', label: 'All printings' },
-                { value: 'standard', label: 'Standard only' }
+                { value: 'standard', label: 'Standard' }
               ]}
               selected={scope()}
               onSelect={setScope}
             />
-          </div>
+          </span>
         }
       >
-        <div class='movers'>
-          <div class='mover-col'>
-            <h3 class='up'>Rising: biggest gainers</h3>
-            {column(movers().rising, 'up', '↑')}
+        <div class='trends-two'>
+          <div>
+            <h3 class='trends-dir up'>Rising</h3>
+            {column(movers().rising, 'up')}
           </div>
-          <div class='mover-col'>
-            <h3 class='down'>Falling: biggest drops</h3>
-            {column(movers().falling, 'down', '↓')}
+          <div>
+            <h3 class='trends-dir down'>Falling</h3>
+            {column(movers().falling, 'down')}
           </div>
         </div>
       </Section>
     </Show>
   );
-}
-
-/* ============================================================
-   ONLINE — daily timeline + card-trend lists from cron
-   ============================================================ */
-
-function OnlineView(props: { windowKey: OnlineWindow }) {
-  const [trends] = createResource(fetchOnlineTrendReport);
-
-  // Non-suspending read: keeps navigation instant and lets the skeleton
-  // fallbacks below actually render (see lib/resource.ts).
-  const trendsData = () => latestValue(trends);
-
-  /**
-   * Pick the top-N archetypes by avgShare across the full file, then slice
-   * each archetype's timeline to the selected window.
-   */
-  const chart = createMemo<ChartData>(() =>
-    buildOnlineChart(trendsData()?.trendReport, ONLINE_WINDOW_DAYS[props.windowKey])
-  );
-
-  /** Card-level movers from the cron's pre-computed lists, sliced (top 12 each). */
-  const cardMovers = createMemo(() => sliceCardMovers<CardTrendLike>(trendsData()?.cardTrends));
-
-  /** Window meta for the right-side caption. */
-  const sourceCaption = createMemo(() => {
-    const data = trendsData();
-    if (!data) {
-      return null;
-    }
-    const tc = data.trendReport.tournamentCount;
-    return `${tc.toLocaleString()} online events aggregated`;
-  });
-
-  /**
-   * Freshness + window straight from the payload (not Date.now), so the label
-   * never silently disagrees with the data when the cron lags.
-   */
-  const dataStamp = createMemo(() => {
-    const data = trendsData();
-    if (!data) {
-      return null;
-    }
-    const report = data.trendReport;
-    const updated = relativeTimeFrom(report.generatedAt);
-    const window = formatDateWindow(report.windowStart, report.windowEnd);
-    if (!updated && !window) {
-      return null;
-    }
-    return { updated, window };
-  });
-
-  return (
-    <>
-      <Section
-        title='Archetype share over time'
-        right={
-          // Width-reserved and faded in, not swapped from an em dash: this
-          // caption goes from one character to ~280px when the trend file
-          // lands, and on a phone that was enough to wrap the section head and
-          // push the chart down a line.
-          <span class='section-meta-slot' classList={{ 'is-ready': trendsData() !== undefined }}>
-            <Show when={trendsData() !== undefined}>
-              {chart().days.length} daily snapshots · {sourceCaption()}
-            </Show>
-          </span>
-        }
-      >
-        <Show when={dataStamp()}>
-          {stamp => (
-            <p class='trends-stamp'>
-              <Show when={stamp().window}>{w => <span>Window {w()}.</span>}</Show>{' '}
-              <Show when={stamp().updated}>{u => <span>Updated {u()}.</span>}</Show>
-            </p>
-          )}
-        </Show>
-        <Show when={trendsData() !== undefined} fallback={<Skeleton height='360px' />}>
-          <Show
-            when={trendsData() && chart().series.length > 0}
-            fallback={
-              <EmptyState
-                title='No online trend data yet.'
-                description="The cron-built trend file isn't published yet. Switch source to 'Majors (events)' for per-tournament data, or check back after the cron's next run."
-              />
-            }
-          >
-            <ArchetypeTrendChart series={chart().series} days={chart().days} />
-          </Show>
-        </Show>
-      </Section>
-
-      <Show when={cardMovers().rising.length > 0 || cardMovers().falling.length > 0}>
-        <Section title='Top card movers' right='Rising and falling cards across the window'>
-          <div class='movers'>
-            <MoverColumn<CardTrendLike>
-              title='Rising: biggest gainers'
-              titleClass='up'
-              rows={cardMovers().rising}
-              href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
-              cardRef={m => (m.set && m.number ? { set: m.set, number: m.number } : null)}
-              name={m => m.name}
-              setLabel={m => (
-                <>
-                  {m.set ?? ''}/{m.number ?? ''}
-                </>
-              )}
-              trailing={m => (
-                <span class='delta up'>
-                  <span class='delta-pp'>↑ {Math.abs(m.delta).toFixed(1)} pp</span>
-                  <span class='delta-base'>
-                    {m.startShare.toFixed(1)} → {m.endShare.toFixed(1)}%
-                  </span>
-                </span>
-              )}
-            />
-            <MoverColumn<CardTrendLike>
-              title='Falling: biggest losers'
-              titleClass='down'
-              rows={cardMovers().falling}
-              href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
-              cardRef={m => (m.set && m.number ? { set: m.set, number: m.number } : null)}
-              name={m => m.name}
-              setLabel={m => (
-                <>
-                  {m.set ?? ''}/{m.number ?? ''}
-                </>
-              )}
-              trailing={m => (
-                <span class='delta down'>
-                  <span class='delta-pp'>↓ {Math.abs(m.delta).toFixed(1)} pp</span>
-                  <span class='delta-base'>
-                    {m.startShare.toFixed(1)} → {m.endShare.toFixed(1)}%
-                  </span>
-                </span>
-              )}
-            />
-          </div>
-        </Section>
-      </Show>
-    </>
-  );
-}
-
-/* ============================================================
-   MAJORS — per-event series, card-level movers
-   ============================================================ */
-
-function MajorsView(props: { windowKey: MajorsWindow }) {
-  // Fast path: the pipeline precomputes the movers + timeline for each window
-  // into a small artifact (see .github/scripts/run-majors-trends.ts). Fetch it
-  // first; only when it's absent (404 — e.g. right after a deploy, before the
-  // pipeline has run) do we fall back to the legacy client computation, which
-  // downloads every event's master.json (~5 MB total).
-  const [report] = createResource(fetchMajorsTrendReport);
-  const [tournaments] = createResource(fetchTournamentsList);
-
-  // Non-suspending reads (see lib/resource.ts).
-  const reportData = () => latestValue(report);
-  const tournamentsData = () => latestValue(tournaments);
-
-  /** True once the artifact fetch has resolved to a 404 — the fallback is live. */
-  const artifactMissing = () => reportData() === null;
-
-  /** Precomputed result for the selected window, or null when unavailable. */
-  const windowResult = createMemo<MajorsWindowResult | null>(() => {
-    const data = reportData();
-    return data ? (data.windows[props.windowKey] ?? null) : null;
-  });
-
-  // Fallback only: the major tournament keys for the window. Empty whenever the
-  // artifact is present, so the snapshots resource below never fires (and the
-  // ~5 MB of master.json downloads never happen).
-  const sample = createMemo<string[]>(() => {
-    if (!artifactMissing()) {
-      return [];
-    }
-    const list = tournamentsData() ?? [];
-    return majorTournaments(list).slice(0, MAJORS_WINDOW_COUNT[props.windowKey]);
-  });
-
-  const [snapshots] = createResource<EventSnapshot[], string[]>(sample, async list => {
-    if (list.length === 0) {
-      return [];
-    }
-    const results = await Promise.all(
-      list.map(async t => {
-        const [masterResult, archetypesResult] = await Promise.allSettled([fetchMaster(t), fetchArchetypes(t)]);
-        return {
-          tournament: t,
-          date: tournamentDate(t) ?? new Date(0),
-          master: masterResult.status === 'fulfilled' ? masterResult.value : null,
-          archetypes: archetypesResult.status === 'fulfilled' ? archetypesResult.value : null
-        };
-      })
-    );
-    return results;
-  });
-  // `latestValue`: window-size switches refetch the snapshots — keep the old
-  // chart in place instead of flashing a skeleton.
-  const snapshotsData = () => latestValue(snapshots);
-
-  // Cross-event card movers key on each item's GLOBAL cluster identity so a
-  // rebaked (rolling-canonical) master and a non-rebaked one join the same card.
-  // Only used on the fallback (client-compute) path; the resolver is a no-op for
-  // non-rebaked masters (their items are already the global canonical).
-  const [synonymDb] = createResource(() => getSynonymDatabase());
-  const moverKeyResolver = createMemo(() => {
-    const db = synonymDb();
-    return db ? (item: CardItem) => getCanonicalCardFromData(db, itemUid(item)) : undefined;
-  });
-
-  /** Number of events in the window, for the section captions. */
-  const sampleCount = () => {
-    const w = windowResult();
-    return w ? w.sampleCount : sample().length;
-  };
-
-  /** Archetype-share timeline: from the artifact when present, else computed. */
-  const archetypeSeries = createMemo<{ series: ArchetypeSeries[]; days: DayBin[] }>(() => {
-    const w = windowResult();
-    if (w) {
-      return {
-        series: w.series,
-        days: w.dayKeys.map(key => ({ key, date: parseDayKey(key), count: 1 }))
-      };
-    }
-    return computeMajorsArchetypeSeries(snapshotsData() ?? []);
-  });
-
-  /** Card movers: from the artifact when present, else computed. */
-  const movers = createMemo<MoversResult>(() => {
-    const w = windowResult();
-    return w ? w.movers : computeMajorsMovers(snapshotsData() ?? [], NEWCOMER_MIN_SHARE, moverKeyResolver());
-  });
-
-  /**
-   * Busy while the artifact fetch is in flight, or (on the fallback path) while
-   * the per-event snapshots are downloading — so the skeleton shows instead of
-   * an empty state.
-   */
-  const busy = () => {
-    if (reportData() === undefined) {
-      return true;
-    }
-    return artifactMissing() && snapshots.loading;
-  };
-
-  return (
-    <>
-      <Section
-        title='Archetype share over time'
-        right={`${archetypeSeries().days.length} days · ${sampleCount()} events`}
-      >
-        <Show
-          when={archetypeSeries().series.length > 0}
-          fallback={
-            <Show
-              when={busy()}
-              fallback={
-                <EmptyState
-                  title='Not enough major events.'
-                  description='Fewer than two regional / international / special championships are available. Widen the window or switch to the online source.'
-                />
-              }
-            >
-              <Skeleton height='360px' />
-            </Show>
-          }
-        >
-          <ArchetypeTrendChart series={archetypeSeries().series} days={archetypeSeries().days} />
-        </Show>
-      </Section>
-
-      <Section title='Top card movers' right={`Across ${sampleCount()} tournaments`}>
-        <Show
-          when={movers().enoughForMovers}
-          fallback={
-            <Show
-              when={busy()}
-              fallback={
-                <EmptyState
-                  title='Not enough events to compare'
-                  description='Card movers compare the recent half of the window against the older half, and each half needs at least two events so a single tournament does not read as a trend. Widen the window to Last 5 or Last 10 events.'
-                />
-              }
-            >
-              <div class='movers'>
-                <Skeleton height='320px' />
-                <Skeleton height='320px' />
-              </div>
-            </Show>
-          }
-        >
-          <Show when={movers().coverage}>
-            {c => (
-              <p class='movers-note'>
-                Recent half: {c().recentCount} events, {c().recent}. Earlier half: {c().olderCount} events, {c().older}.
-                Shares are weighted by each event's deck total.
-              </p>
-            )}
-          </Show>
-          <div class='movers'>
-            <MoverColumn<MoverRow>
-              title='Rising: biggest gainers'
-              titleClass='up'
-              rows={movers().rising}
-              href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
-              cardRef={m => (m.set && m.number ? { set: m.set, number: m.number } : null)}
-              name={m => m.name}
-              setLabel={m => (
-                <>
-                  {m.set}/{m.number}
-                </>
-              )}
-              trailing={m => (
-                <span class='delta up'>
-                  <span class='delta-pp'>↑ {m.delta.toFixed(1)} pp</span>
-                  <span class='delta-base'>
-                    {(m.olderAvg ?? 0).toFixed(1)} → {(m.recentAvg ?? 0).toFixed(1)}%
-                  </span>
-                </span>
-              )}
-            />
-            <MoverColumn<MoverRow>
-              title='Falling: biggest losers'
-              titleClass='down'
-              rows={movers().falling}
-              href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
-              cardRef={m => (m.set && m.number ? { set: m.set, number: m.number } : null)}
-              name={m => m.name}
-              setLabel={m => (
-                <>
-                  {m.set}/{m.number}
-                </>
-              )}
-              trailing={m => (
-                <span class='delta down'>
-                  <span class='delta-pp'>↓ {Math.abs(m.delta).toFixed(1)} pp</span>
-                  <span class='delta-base'>
-                    {(m.olderAvg ?? 0).toFixed(1)} → {(m.recentAvg ?? 0).toFixed(1)}%
-                  </span>
-                </span>
-              )}
-            />
-          </div>
-        </Show>
-      </Section>
-
-      <Show when={movers().newcomers.length > 0}>
-        <Section title='Newcomers' right='Appeared only in recent events'>
-          <MoverColumn<MoverRow>
-            note={
-              <Show when={movers().coverage}>
-                {c => (
-                  <p class='movers-note'>
-                    Held at least {movers().newcomerMin}% share in the recent half ({c().recent}) and absent from the
-                    older half.
-                  </p>
-                )}
-              </Show>
-            }
-            rows={movers().newcomers}
-            href={m => (m.set && m.number ? `/cards/${m.set}/${m.number}` : '#')}
-            cardRef={m => (m.set && m.number ? { set: m.set, number: m.number } : null)}
-            name={m => m.name}
-            setLabel={m => (
-              <>
-                {m.set}/{m.number}
-              </>
-            )}
-            trailing={m => <span class='share-neutral'>{(m.recentAvg ?? 0).toFixed(1)}% of decks</span>}
-          />
-        </Section>
-      </Show>
-    </>
-  );
-}
-
-/* ============================================================
-   Shared chart
-   ============================================================ */
-
-function ArchetypeTrendChart(props: { series: ArchetypeSeries[]; days: DayBin[] }) {
-  const iconMap = getArchetypeIconMap;
-  const PADDING = { top: 16, right: 16, bottom: 32, left: 46 };
-
-  // ---- Series visibility ----
-  // `props.series` is the full ranked list. We draw the top-N by default; the
-  // user can hide any line (click the legend) or add any archetype (the select).
-  // Colors are keyed by rank index in the full list, so they never shift as
-  // series are toggled or added.
-  const [hidden, setHidden] = createSignal<ReadonlySet<string>>(new Set());
-  const [added, setAdded] = createSignal<string[]>([]);
-  const [legendHover, setLegendHover] = createSignal<string | null>(null);
-
-  const colorByName = createMemo(() => {
-    const m = new Map<string, string>();
-    props.series.forEach((s, i) => m.set(s.name, lineColor(i)));
-    return m;
-  });
-  const colorOf = (name: string): string => colorByName().get(name) ?? lineColor(0);
-
-  // Resolve each series' archetype icon slugs once per series list, rather than
-  // per render inside the hover tooltip.
-  const slugsByName = createMemo(() => {
-    const m = new Map<string, string[]>();
-    for (const s of props.series) {
-      m.set(s.name, resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap()));
-    }
-    return m;
-  });
-  const slugsOf = (s: ArchetypeSeries): string[] =>
-    slugsByName().get(s.name) ?? resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap());
-
-  const legendList = createMemo<ArchetypeSeries[]>(() => {
-    const base = props.series.slice(0, TOP_ARCHETYPES_FOR_CHART);
-    const extra = added()
-      .map(n => props.series.find(s => s.name === n))
-      .filter((s): s is ArchetypeSeries => s !== undefined);
-    return [...base, ...extra];
-  });
-  const visibleSeries = createMemo<ArchetypeSeries[]>(() =>
-    legendList()
-      .filter(s => !hidden().has(s.name))
-      .slice(0, MAX_VISIBLE_SERIES)
-  );
-  const atCap = () => visibleSeries().length >= MAX_VISIBLE_SERIES;
-  const addable = createMemo<ArchetypeSeries[]>(() => {
-    const shown = new Set(legendList().map(s => s.name));
-    return props.series.filter(s => !shown.has(s.name));
-  });
-
-  function toggleSeries(name: string) {
-    setHidden(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        // Re-showing: respect the visible cap.
-        if (visibleSeries().length >= MAX_VISIBLE_SERIES) {
-          return prev;
-        }
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
-    });
-  }
-  function onAddSeries(e: Event & { currentTarget: HTMLSelectElement }) {
-    const select = e.currentTarget;
-    const name = select.value;
-    select.value = '';
-    if (!name || atCap()) {
-      return;
-    }
-    setAdded(prev => (prev.includes(name) ? prev : [...prev, name]));
-  }
-
-  // Width is measured from the container so the SVG fills horizontally without
-  // ever stretching its coordinates. Text and dots stay at a constant size.
-  let containerRef: HTMLDivElement | undefined;
-  const [width, setWidth] = createSignal(880);
-  onMount(() => {
-    if (!containerRef) {
-      return;
-    }
-    // Read the real width before the browser paints. The ResizeObserver below
-    // only reports on a later frame, so until this ran the chart painted at
-    // the 880 guess: the svg scales to its container, so on a 350px phone that
-    // first frame was 392px tall against the 240px it settles at, and the
-    // legend under it jumped by the difference.
-    const initial = containerRef.getBoundingClientRect().width;
-    if (initial > 0) {
-      setWidth(initial);
-    }
-    const ro = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const w = entry.contentRect.width;
-        if (w > 0) {
-          setWidth(w);
-        }
-      }
-    });
-    ro.observe(containerRef);
-    onCleanup(() => ro.disconnect());
-  });
-  const innerW = () => width() - PADDING.left - PADDING.right;
-  // Shorter chart on phones: at 320px tall the chart plus legend ate most of
-  // the first screen (F5). Width is the container width, so <560 ≈ phone.
-  const height = () => (width() < 560 ? 240 : 320);
-  const innerH = () => height() - PADDING.top - PADDING.bottom;
-
-  // X domain spans the actual data range so the line fills the chart width,
-  // regardless of how wide the user's window selector is.
-  const xDomain = createMemo(() => {
-    if (props.days.length === 0) {
-      const now = Date.now();
-      return { start: now - DAY_MS, end: now };
-    }
-    const start = props.days[0].date.getTime();
-    const end = props.days[props.days.length - 1].date.getTime();
-    return { start, end: start === end ? start + DAY_MS : end };
-  });
-
-  function x(d: Date): number {
-    const { start, end } = xDomain();
-    const t = d.getTime();
-    const frac = (t - start) / (end - start);
-    return PADDING.left + Math.max(0, Math.min(1, frac)) * innerW();
-  }
-
-  // Y domain: max rounded up to nearest %, min rounded down to nearest % —
-  // so the chart fills vertically too.
-  const yDomain = createMemo(() => {
-    let max = -Infinity;
-    let min = Infinity;
-    for (const s of visibleSeries()) {
-      for (const p of s.points) {
-        if (p === null || !Number.isFinite(p)) {
-          continue;
-        }
-        if (p > max) {
-          max = p;
-        }
-        if (p < min) {
-          min = p;
-        }
-      }
-    }
-    if (!Number.isFinite(max)) {
-      return { min: 0, max: 10 };
-    }
-    const yMax = Math.max(1, Math.ceil(max));
-    const yMin = Math.max(0, Math.floor(min));
-    return { min: yMin === yMax ? Math.max(0, yMax - 1) : yMin, max: yMax };
-  });
-
-  const y = (v: number) => {
-    const { min, max } = yDomain();
-    return PADDING.top + innerH() - ((v - min) / (max - min)) * innerH();
-  };
-
-  const yTicks = () => {
-    const { min, max } = yDomain();
-    const range = max - min;
-    const step = range <= 4 ? 1 : range <= 10 ? 2 : range <= 25 ? 5 : 10;
-    const set = new Set<number>();
-    set.add(min);
-    set.add(max);
-    for (let v = Math.ceil(min / step) * step; v <= max; v += step) {
-      if (v > min && v < max) {
-        set.add(v);
-      }
-    }
-    return Array.from(set).sort((a, b) => a - b);
-  };
-
-  // Break the path at gaps: each run of consecutive present points is its own
-  // `M…L` subpath, so a missing day leaves a gap instead of a fabricated straight
-  // line. A run of one point has no line to draw, so it's emitted as a dot.
-  function segmentsFor(points: (number | null)[]): { d: string; isolated: { x: number; y: number }[] } {
-    let d = '';
-    const isolated: { x: number; y: number }[] = [];
-    let i = 0;
-    while (i < points.length) {
-      const v = points[i];
-      if (v === null || !Number.isFinite(v)) {
-        i++;
-        continue;
-      }
-      let j = i;
-      while (j < points.length) {
-        const w = points[j];
-        if (w === null || !Number.isFinite(w)) {
-          break;
-        }
-        j++;
-      }
-      if (j - i === 1) {
-        isolated.push({ x: x(props.days[i].date), y: y(points[i] as number) });
-      } else {
-        for (let k = i; k < j; k++) {
-          const cmd = k === i ? 'M' : 'L';
-          d += `${cmd} ${x(props.days[k].date).toFixed(1)} ${y(points[k] as number).toFixed(1)} `;
-        }
-      }
-      i = j;
-    }
-    return { d: d.trim(), isolated };
-  }
-
-  // Snap ticks to real data dates so a label never lands on a day with no data.
-  const xTicks = () => {
-    const count = props.days.length;
-    if (count === 0) {
-      return [] as { label: string; xPx: number }[];
-    }
-    const tickCount = Math.min(7, count);
-    const seen = new Set<number>();
-    const ticks: { label: string; xPx: number }[] = [];
-    for (let i = 0; i < tickCount; i++) {
-      const idx = tickCount === 1 ? 0 : Math.round((i / (tickCount - 1)) * (count - 1));
-      if (seen.has(idx)) {
-        continue;
-      }
-      seen.add(idx);
-      const d = props.days[idx].date;
-      ticks.push({
-        label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-        xPx: x(d)
-      });
-    }
-    return ticks;
-  };
-
-  // Drop per-point dots when there are many daily points — the line itself is the story.
-  const showDots = () => props.days.length <= 14;
-
-  // Crosshair index. `hoverIdx` follows the mouse and clears on leave; `pinIdx`
-  // is set by tap on touch/pen devices and persists until tapped again. The
-  // effective index is hover ?? pin so a mouse user's transient hover always
-  // wins over a stale pin.
-  const [hoverIdx, setHoverIdx] = createSignal<number | null>(null);
-  const [pinIdx, setPinIdx] = createSignal<number | null>(null);
-  let svgRef: SVGSVGElement | undefined;
-
-  let wrapRef: HTMLDivElement | undefined;
-
-  function indexFromPointer(e: PointerEvent): number | null {
-    if (!svgRef || props.days.length === 0) {
-      return null;
-    }
-    const rect = svgRef.getBoundingClientRect();
-    if (rect.width === 0) {
-      return null;
-    }
-    const svgX = ((e.clientX - rect.left) / rect.width) * width();
-    let best = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < props.days.length; i++) {
-      const dx = Math.abs(x(props.days[i].date) - svgX);
-      if (dx < bestDist) {
-        bestDist = dx;
-        best = i;
-      }
-    }
-    return best;
-  }
-
-  // On touch, a horizontal drag scrubs the crosshair day-by-day (touch-action:
-  // pan-y on the svg leaves vertical scrolling to the browser).
-  let scrubbing = false;
-
-  function handlePointerMove(e: PointerEvent) {
-    if (e.pointerType === 'mouse') {
-      setHoverIdx(indexFromPointer(e));
-      return;
-    }
-    if (scrubbing) {
-      const idx = indexFromPointer(e);
-      if (idx !== null && idx !== pinIdx()) {
-        setPinIdx(idx);
-      }
-    }
-  }
-  function handlePointerLeave() {
-    setHoverIdx(null);
-  }
-  function handlePointerDown(e: PointerEvent) {
-    if (e.pointerType === 'mouse') {
-      return;
-    }
-    scrubbing = true;
-    svgRef?.setPointerCapture(e.pointerId);
-    const idx = indexFromPointer(e);
-    if (idx === null) {
-      return;
-    }
-    setPinIdx(prev => (prev === idx ? null : idx));
-  }
-  function handlePointerUp() {
-    scrubbing = false;
-  }
-
-  const hoverData = createMemo(() => {
-    const i = hoverIdx() ?? pinIdx();
-    if (i === null || i >= props.days.length) {
-      return null;
-    }
-    const day = props.days[i];
-    const entries = visibleSeries()
-      .map(s => ({
-        label: s.label,
-        slugs: slugsOf(s),
-        color: colorOf(s.name),
-        value: s.points[i]
-      }))
-      .filter((e): e is { label: string; slugs: string[]; color: string; value: number } => e.value !== null)
-      .sort((a, b) => b.value - a.value);
-    return { day, entries, xPx: x(day.date) };
-  });
-
-  const tooltip = createChartTooltipPlacement(
-    () => wrapRef,
-    width,
-    () => hoverData()?.xPx ?? null
-  );
-
-  return (
-    <div class='chart-card' ref={containerRef}>
-      <div class='chart-svg-wrap' ref={wrapRef}>
-        <svg
-          class='chart trend-chart'
-          ref={svgRef}
-          width={width()}
-          height={height()}
-          viewBox={`0 0 ${width()} ${height()}`}
-          onPointerMove={handlePointerMove}
-          onPointerLeave={handlePointerLeave}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-        >
-          <g class='grid'>
-            <For each={yTicks()}>
-              {v => (
-                <>
-                  <line x1={PADDING.left} x2={width() - PADDING.right} y1={y(v)} y2={y(v)} />
-                  <text x={PADDING.left - 6} y={y(v)} class='axis-label' text-anchor='end' dominant-baseline='middle'>
-                    {v}%
-                  </text>
-                </>
-              )}
-            </For>
-          </g>
-
-          <text
-            class='axis-title'
-            x={12}
-            y={PADDING.top + innerH() / 2}
-            transform={`rotate(-90 12 ${PADDING.top + innerH() / 2})`}
-            text-anchor='middle'
-          >
-            Meta share (%)
-          </text>
-
-          <g>
-            <For each={xTicks()}>
-              {tick => (
-                <text x={tick.xPx} y={height() - PADDING.bottom + 18} class='axis-label' text-anchor='middle'>
-                  {tick.label}
-                </text>
-              )}
-            </For>
-          </g>
-
-          <For each={visibleSeries()}>
-            {series => {
-              const color = colorOf(series.name);
-              const seg = createMemo(() => segmentsFor(series.points));
-              const dim = () => legendHover() !== null && legendHover() !== series.name;
-              return (
-                <g style={{ opacity: dim() ? 0.22 : 1 }}>
-                  <path
-                    d={seg().d}
-                    fill='none'
-                    stroke={color}
-                    stroke-width='2'
-                    stroke-linecap='round'
-                    stroke-linejoin='round'
-                  />
-                  <Show
-                    when={showDots()}
-                    fallback={
-                      <For each={seg().isolated}>{pt => <circle cx={pt.x} cy={pt.y} r='3' fill={color} />}</For>
-                    }
-                  >
-                    <For each={series.points}>
-                      {(v, j) =>
-                        v === null ? null : (
-                          <circle cx={x(props.days[j()].date)} cy={y(v as number)} r='3' fill={color} />
-                        )
-                      }
-                    </For>
-                  </Show>
-                </g>
-              );
-            }}
-          </For>
-
-          <Show when={hoverData()}>
-            {h => (
-              <g class='hover-layer' pointer-events='none'>
-                <line x1={h().xPx} x2={h().xPx} y1={PADDING.top} y2={height() - PADDING.bottom} class='hover-line' />
-                <For each={h().entries}>
-                  {e => <circle cx={h().xPx} cy={y(e.value)} r='4.5' fill={e.color} class='hover-dot' />}
-                </For>
-              </g>
-            )}
-          </Show>
-        </svg>
-
-        <Show when={hoverData()}>
-          {h => (
-            <div class='chart-tooltip' ref={tooltip.observeTooltip} style={tooltip.style()}>
-              <div class='chart-tooltip-date'>
-                {h().day.date.toLocaleDateString(undefined, {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric'
-                })}
-              </div>
-              <ul class='chart-tooltip-list'>
-                <For each={h().entries}>
-                  {e => (
-                    <li>
-                      <span class='dot' style={{ background: e.color }} />
-                      <ArchetypeIcons slugs={e.slugs} size={16} reserveSlot />
-                      <span class='label'>{e.label}</span>
-                      <span class='value'>{e.value.toFixed(1)}%</span>
-                    </li>
-                  )}
-                </For>
-              </ul>
-            </div>
-          )}
-        </Show>
-      </div>
-
-      <div class='trend-controls'>
-        <div class='chart-legend trend-legend'>
-          <For each={legendList()}>
-            {s => {
-              const isHidden = () => hidden().has(s.name);
-              return (
-                <button
-                  type='button'
-                  class='leg'
-                  classList={{
-                    'is-hidden': isHidden(),
-                    'is-dim': legendHover() !== null && legendHover() !== s.name && !isHidden()
-                  }}
-                  style={{ '--leg-color': colorOf(s.name) }}
-                  aria-pressed={!isHidden()}
-                  title={isHidden() ? 'Click to show' : 'Click to hide'}
-                  onClick={() => toggleSeries(s.name)}
-                  onMouseEnter={() => setLegendHover(s.name)}
-                  onMouseLeave={() => setLegendHover(null)}
-                >
-                  <ArchetypeIcons
-                    slugs={resolveArchetypeIcons({ name: s.name, label: s.label }, iconMap())}
-                    size={16}
-                  />
-                  {s.label}
-                  <span class='muted-cell'> · {s.avg.toFixed(1)}% avg</span>
-                </button>
-              );
-            }}
-          </For>
-        </div>
-        <Show when={addable().length > 0}>
-          <select
-            class='trend-add'
-            aria-label='Add an archetype to the chart'
-            disabled={atCap()}
-            onChange={onAddSeries}
-          >
-            <option value=''>{atCap() ? `Showing max ${MAX_VISIBLE_SERIES}` : 'Add archetype'}</option>
-            <For each={addable()}>{s => <option value={s.name}>{s.label}</option>}</For>
-          </select>
-        </Show>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   Shared movers column
-   ============================================================ */
-
-/**
- * A single `mover-col`: an optional heading, an optional lead-in note, and a
- * ranked list of `mover-row` links. The row shape differs between the online
- * (CardTrendLike) and majors (Mover) views, so the caller supplies accessors
- * for the href / name / set label plus the trailing delta (or share) cell.
- */
-function MoverColumn<T>(props: {
-  title?: string;
-  titleClass?: string;
-  note?: JSX.Element;
-  rows: T[];
-  href: (row: T) => string;
-  name: (row: T) => string;
-  setLabel: (row: T) => JSX.Element;
-  trailing: (row: T) => JSX.Element;
-  /**
-   * Card identity for the hover art preview, or null for rows that have none
-   * (those render an inert `#` href). Anchored to the name rather than the
-   * whole row: `mover-row` is full-width, so a row-level anchor would centre
-   * the preview far from the pointer.
-   */
-  cardRef?: (row: T) => { set: string; number: string | number } | null;
-}) {
-  return (
-    <div class='mover-col'>
-      <Show when={props.title}>
-        <h3 class={props.titleClass}>{props.title}</h3>
-      </Show>
-      {props.note}
-      <For each={props.rows}>
-        {(m, idx) => {
-          const card = props.cardRef?.(m) ?? null;
-          return (
-            <A href={props.href(m)} class='mover-row'>
-              <span class='rank'>{idx() + 1}</span>
-              {/* Anchor nested inside `.name`, not wrapped around it: `.mover-row`
-                  is a 4-column grid and `.name` owns the ellipsis truncation, both
-                  of which an extra wrapper element would break. */}
-              <span class='name'>
-                <Show when={card} fallback={props.name(m)}>
-                  <CardHoverPreview set={card!.set} number={card!.number}>
-                    {props.name(m)}
-                  </CardHoverPreview>
-                </Show>
-              </span>
-              <span class='set'>{props.setLabel(m)}</span>
-              {props.trailing(m)}
-            </A>
-          );
-        }}
-      </For>
-    </div>
-  );
-}
-
-/* ---------- helpers ---------- */
-
-interface CardTrendLike {
-  name: string;
-  set: string | null;
-  number: string | null;
-  /** Share-point change over the window (endShare - startShare), in pp. */
-  delta: number;
-  /** Share at the start of the window, 0..100. */
-  startShare: number;
-  /** Share at the end of the window, 0..100. */
-  endShare: number;
 }
