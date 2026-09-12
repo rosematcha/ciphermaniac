@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-Refresh the most recent tournament report folders in R2 by re-running download-tournament.py.
+Refresh the most recent immutable tournaments by re-running download-tournament.py.
 
 This script is intended to run before online-meta when CLEAN_MONTH_CACHE=true.
-It targets folders listed in reports/tournaments.json within the last LOOKBACK_DAYS.
+It targets production and pending events within the last LOOKBACK_DAYS.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import subprocess
@@ -22,7 +21,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import r2  # noqa: E402
 
 
-TOURNAMENTS_KEY = "reports/tournaments.json"
 FOLDER_DATE_PATTERN = re.compile(r"^(\d{4}-\d{2}-\d{2}),\s+")
 
 
@@ -59,54 +57,8 @@ def list_recent_folders(folders: Iterable[str], cutoff: datetime) -> list[str]:
     return selected
 
 
-def list_prefix_keys(r2_client, bucket_name: str, prefix: str) -> set[str]:
-    keys: set[str] = set()
-    continuation_token = None
-
-    while True:
-        kwargs = {
-            "Bucket": bucket_name,
-            "Prefix": prefix,
-        }
-        if continuation_token:
-            kwargs["ContinuationToken"] = continuation_token
-
-        response = r2_client.list_objects_v2(**kwargs)
-        for obj in response.get("Contents", []):
-            key = obj.get("Key")
-            if key:
-                keys.add(key)
-
-        if not response.get("IsTruncated"):
-            break
-        continuation_token = response.get("NextContinuationToken")
-
-    return keys
-
-
-def delete_keys(r2_client, bucket_name: str, keys: Iterable[str]) -> int:
-    key_list = list(keys)
-    deleted = 0
-    for index in range(0, len(key_list), 1000):
-        chunk = key_list[index : index + 1000]
-        if not chunk:
-            continue
-        r2_client.delete_objects(
-            Bucket=bucket_name,
-            Delete={"Objects": [{"Key": key} for key in chunk], "Quiet": True},
-        )
-        deleted += len(chunk)
-    return deleted
-
-
-def fetch_json(r2_client, bucket_name: str, key: str):
-    response = r2_client.get_object(Bucket=bucket_name, Key=key)
-    raw = response["Body"].read().decode("utf-8")
-    return json.loads(raw)
-
-
-def get_source_url(r2_client, bucket_name: str, folder_name: str) -> str | None:
-    meta_key = f"reports/{folder_name}/meta.json"
+def get_source_url(r2_client, bucket_name: str, event_root: str) -> str | None:
+    meta_key = f"{event_root.lstrip('/')}/meta.json"
     result = r2.read_json(r2_client, bucket_name, meta_key)
     if result.status == "missing":
         return None
@@ -137,21 +89,14 @@ def main() -> int:
 
     lookback_days = int(os.environ.get("REFRESH_LOOKBACK_DAYS", "30"))
     cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days - 1)
-    delete_before_rebuild = parse_bool(os.environ.get("REFRESH_DELETE_EXISTING"), True)
-
     r2_client = r2.make_r2_client(account_id, access_key, secret_key)
 
     try:
-        folders = fetch_json(r2_client, bucket_name, TOURNAMENTS_KEY)
+        _, sources = r2.load_event_sources(r2_client, bucket_name)
     except Exception as error:  # noqa: BLE001
-        print(f"[refresh] Failed to load {TOURNAMENTS_KEY}: {error}")
+        print(f"[refresh] Failed to load immutable event sources: {error}")
         return 1
-
-    if not isinstance(folders, list):
-        print(f"[refresh] {TOURNAMENTS_KEY} is not an array")
-        return 1
-
-    recent_folders = list_recent_folders(folders, cutoff)
+    recent_folders = list_recent_folders(sources, cutoff)
     print(
         f"[refresh] Found {len(recent_folders)} tournament folders in the last {lookback_days} days (cutoff={cutoff.date()})"
     )
@@ -164,20 +109,10 @@ def main() -> int:
     refreshed = 0
 
     for folder_name in recent_folders:
-        source_url = get_source_url(r2_client, bucket_name, folder_name)
+        source_url = get_source_url(r2_client, bucket_name, sources[folder_name])
         if not source_url:
             print(f"[refresh] Skipping {folder_name}: missing sourceUrl in meta.json")
             continue
-
-        # Snapshot the existing objects BEFORE the rebuild so we can prune only
-        # the orphans afterwards. Deleting up front (the old behaviour) left the
-        # folder empty or partial whenever the download failed, even though the
-        # index still listed the event (P-02). The subprocess overwrites the
-        # full report in place, so a failure now leaves the previous data intact.
-        prefix = f"reports/{folder_name}/"
-        stale_candidates: set[str] = set()
-        if delete_before_rebuild:
-            stale_candidates = list_prefix_keys(r2_client, bucket_name, prefix)
 
         print(f"[refresh] Rebuilding {folder_name} from {source_url}")
         env = os.environ.copy()
@@ -194,16 +129,7 @@ def main() -> int:
             failures.append((folder_name, str(error)))
             continue
 
-        # Only after a successful rebuild, remove objects the fresh run did not
-        # overwrite (e.g. archetype folders that no longer exist).
-        if delete_before_rebuild:
-            fresh_keys = list_prefix_keys(r2_client, bucket_name, prefix)
-            orphans = stale_candidates - fresh_keys
-            if orphans:
-                removed = delete_keys(r2_client, bucket_name, orphans)
-                print(f"[refresh] Removed {removed} orphaned objects under {prefix}")
-
-    print(f"[refresh] Refreshed {refreshed} tournament folders")
+    print(f"[refresh] Refreshed {refreshed} immutable tournament(s)")
     if failures:
         print(f"[refresh] {len(failures)} failures:")
         for folder_name, message in failures:

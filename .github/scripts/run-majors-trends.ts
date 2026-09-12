@@ -37,6 +37,8 @@ import {
 } from '../../src/lib/majorsTrends.ts';
 import type { ArchetypeIndexEntry } from '../../src/types/index.ts';
 import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
+import { loadEventSources } from './lib/build/productionRelease.ts';
+import { buildTournamentCatalog } from './event-cli.ts';
 
 /** Window sizes the page offers (must match MAJORS_WINDOW_COUNT in TrendsPage). */
 const WINDOWS: { key: string; count: number }[] = [
@@ -104,11 +106,19 @@ async function loadSynonymDatabase(): Promise<SynonymDatabase> {
  *    re-detects the 0..1 vs 0..100 percent scale per file, so it doesn't need the
  *    page's normalizeIndexPercentScale pre-pass to reach the same numbers.
  */
-async function buildSnapshot(tournament: string, db: SynonymDatabase): Promise<EventSnapshot> {
+async function buildSnapshot(
+  sources: Record<string, string>,
+  tournament: string,
+  db: SynonymDatabase
+): Promise<EventSnapshot> {
+  const root = sources[tournament]?.replace(/^\/+/, '');
+  if (!root) {
+    throw new Error(`Missing immutable source for ${tournament}`);
+  }
   // S3 object keys use the raw folder name; the SDK handles URL-encoding.
   const [rawMaster, rawArchetypes] = await Promise.all([
-    fetchJsonSafe<MasterPayload>(`${REPORTS_PREFIX}/${tournament}/master.json`),
-    fetchJsonSafe<ArchetypeIndexEntry[]>(`${REPORTS_PREFIX}/${tournament}/archetypes/index.json`)
+    fetchJsonSafe<MasterPayload>(`${root}/master.json`),
+    fetchJsonSafe<ArchetypeIndexEntry[]>(`${root}/archetypes/index.json`)
   ]);
   return {
     tournament,
@@ -119,7 +129,8 @@ async function buildSnapshot(tournament: string, db: SynonymDatabase): Promise<E
 }
 
 async function main() {
-  const tournaments = (await fetchJson<string[]>(`${REPORTS_PREFIX}/tournaments.json`)) ?? [];
+  const { sources } = await loadEventSources({ read: fetchJson });
+  const tournaments = buildTournamentCatalog(Object.keys(sources));
   const majors = majorTournaments(tournaments).slice(0, MAX_EVENTS);
   console.log(`[majors-trends] ${tournaments.length} tournaments, ${majors.length} majors (cap ${MAX_EVENTS})`);
   if (majors.length === 0) {
@@ -131,7 +142,7 @@ async function main() {
 
   // Snapshots are ordered most-recent first (tournaments.json is), which the
   // recent/older half split in the movers computation relies on.
-  const snapshots = await Promise.all(majors.map(t => buildSnapshot(t, db)));
+  const snapshots = await Promise.all(majors.map(t => buildSnapshot(sources, t, db)));
   const withMaster = snapshots.filter(s => s.master !== null).length;
   const withArchetypes = snapshots.filter(s => s.archetypes !== null).length;
   console.log(`[majors-trends] Snapshots: ${snapshots.length} (master=${withMaster}, archetypes=${withArchetypes})`);

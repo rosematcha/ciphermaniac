@@ -54,7 +54,6 @@ import r2  # noqa: E402
 
 ARCHIVE_URL = "https://tcgcsv.com/archive/tcgplayer/prices-{date}.ppmd.7z"
 GROUPS_URL = "https://tcgcsv.com/tcgplayer/3/groups"
-TOURNAMENTS_KEY = "reports/tournaments.json"
 CARD_SYNONYMS_KEY = "assets/card-synonyms.json"
 SET_CATALOG_PATH = _SCRIPTS_DIR / "data" / "set-catalog.json"
 
@@ -279,16 +278,6 @@ def load_synonyms(r2_client, bucket, local_path):
     return data
 
 
-def load_tournaments(r2_client, bucket):
-    """Load reports/tournaments.json from R2; abort on any non-found read."""
-    print(f"Loading event dates from R2 ({TOURNAMENTS_KEY})...")
-    result = r2.read_json(r2_client, bucket, TOURNAMENTS_KEY)
-    if result.status != "found":
-        print(f"Error: could not load tournaments ({result.status}): {result.error}")
-        sys.exit(1)
-    return result.value
-
-
 def upload_artifact(r2_client, bucket, date_str, artifact):
     """Upload one date's print-price artifact to R2 (compact JSON)."""
     key = f"{PRINT_PRICES_PREFIX}{date_str}.json"
@@ -332,10 +321,13 @@ def main():
 
     r2_client = up.initialize_r2_client()
     bucket = up.os.environ.get("R2_BUCKET_NAME", "ciphermaniac-reports")
+    release = up.r2.load_production_release(r2_client, bucket)
 
     # 1. Print-UID universe → per-set groups.
     synonyms_data = load_synonyms(r2_client, bucket, args.synonyms)
-    universe = build_uid_universe(synonyms_data, up.load_all_event_cards(r2_client, bucket))
+    universe = build_uid_universe(
+        synonyms_data, up.load_all_event_cards(r2_client, bucket, release)
+    )
     uids_by_set = group_uids_by_set(universe)
     print(f"Print-UID universe: {len(universe)} prints across {len(uids_by_set)} sets")
 
@@ -375,8 +367,7 @@ def main():
                   f"{ARCHIVE_FLOOR}: {old}")
         dates = [d for d in dates if d >= ARCHIVE_FLOOR]
     else:
-        tournaments_data = load_tournaments(r2_client, bucket)
-        dates, skipped_old = extract_event_dates(tournaments_data)
+        dates, skipped_old = extract_event_dates(release["events"])
         if skipped_old:
             print(f"Warning: {len(skipped_old)} event dates before archive floor "
                   f"{ARCHIVE_FLOOR} skipped: {skipped_old}")

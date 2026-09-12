@@ -124,15 +124,18 @@ def main():
 
     r2_client = up.initialize_r2_client()
     bucket = up.os.environ.get("R2_BUCKET_NAME", "ciphermaniac-reports")
+    release = up.r2.load_production_release(r2_client, bucket)
 
     # Same card universe as the daily job: every printing in every cluster and
     # every card any archived event reported, not just the canonicals, so newly
     # tracked collector/cheap siblings get their full 90 days rather than the
     # single point the daily job seeds them with.
-    master_report = up.load_online_meta_report(r2_client, bucket)
+    master_report = up.load_online_meta_report(r2_client, bucket, release)
     synonyms_data = up.load_card_synonyms(r2_client, bucket)
     current_canonicals = up.extract_current_meta_canonicals(master_report, synonyms_data)
-    archive_prints = up.expand_to_clusters(up.load_all_event_cards(r2_client, bucket), synonyms_data)
+    archive_prints = up.expand_to_clusters(
+        up.load_all_event_cards(r2_client, bucket, release), synonyms_data
+    )
     card_list = (
         up.extract_unique_cards(master_report, synonyms_data)
         | up.build_print_universe(synonyms_data)

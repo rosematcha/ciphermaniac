@@ -23,7 +23,7 @@ test('reports manifest resolves masters through the embedded event release', () 
   assert.equal(resolveMasterPath('missing', release), null);
 });
 
-test('reports manifest endpoint reports master size and db availability', async () => {
+test('reports manifest endpoint reports master size without an obsolete tournament database', async () => {
   const originalFetch = globalThis.fetch;
 
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -38,10 +38,6 @@ test('reports manifest endpoint reports master size and db availability', async 
           'last-modified': 'Mon, 02 Mar 2026 00:00:00 GMT'
         }
       });
-    }
-
-    if (method === 'HEAD' && url.includes('/tournament.db')) {
-      return new Response(null, { status: 404 });
     }
 
     return new Response(null, { status: 404 });
@@ -72,8 +68,7 @@ test('reports manifest endpoint reports master size and db availability', async 
 // --- P-18: storage failures must not be masked as a 404 ---
 
 async function callManifest(status: number | 'network'): Promise<Response> {
-  // Every probe (both mirrors, master + db) resolves the same way, simulating
-  // a total storage outage.
+  // Both master mirrors resolve the same way, simulating a total storage outage.
   const original = globalThis.fetch;
   globalThis.fetch = (async () => {
     if (status === 'network') {
@@ -103,24 +98,4 @@ test('reports manifest returns 503 when master probe hits a network error', asyn
 test('reports manifest still returns 404 when the report is genuinely absent', async () => {
   const response = await callManifest(404);
   assert.strictEqual(response.status, 404);
-});
-
-test('reports manifest returns 503 when master exists but the db probe 5xxs', async () => {
-  const original = globalThis.fetch;
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    const method = (init?.method || 'GET').toUpperCase();
-    if (method === 'HEAD' && url.includes('/master.json')) {
-      return new Response(null, { status: 200, headers: { 'content-length': '10' } });
-    }
-    // tournament.db probe: storage error
-    return new Response(null, { status: 503 });
-  }) as typeof fetch;
-  try {
-    const request = new Request('https://ciphermaniac.com/reports/Some%20Event/manifest.json');
-    const response = await onRequestGet({ request, params: { tournament: 'Some Event' } });
-    assert.strictEqual(response.status, 503);
-  } finally {
-    globalThis.fetch = original;
-  }
 });

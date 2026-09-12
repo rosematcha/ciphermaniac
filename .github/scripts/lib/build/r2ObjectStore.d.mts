@@ -5,13 +5,14 @@ interface ObjectStore {
   putIfAbsent(key: string, body: string): Promise<void>;
   get(key: string): Promise<string | null>;
   put(key: string, body: string): Promise<void>;
+  delete(key: string): Promise<void>;
 }
 
 /**
  * Build an ObjectStore over an R2 bucket (create-only immutable writes) that
  * also satisfies the conditional pointer store (ETag If-Match / If-None-Match).
  */
-export declare function createR2ObjectStore(
+export declare function createR2ObjectStore<T = unknown>(
   client: S3Client,
   bucket: string
-): ObjectStore & ConditionalPointerStore<unknown>;
+): ObjectStore & ConditionalPointerStore<T>;

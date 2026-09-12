@@ -23,7 +23,9 @@ import {
 } from '../../../shared/clientSideFiltering.js';
 import { canonicalizeDeckCard } from '../../../shared/deckCardId.js';
 import { loadCardSynonyms } from '../../../shared/data/cardSynonyms.js';
+import { type ReleaseManifest, resolveEventPath } from '../../../shared/data/build/release.js';
 import type { ArchetypeFilterRequest, Deck, Filter, Operator } from '../../../shared/deckTypes.js';
+import { EMBEDDED_RELEASE } from '../../../shared/generated/release.js';
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -344,9 +346,19 @@ function normalizePayload(raw: unknown): ArchetypeFilterRequest | null {
   };
 }
 
-function buildReportsPath(payload: ArchetypeFilterRequest, archetypeDecks = false): string {
+export function buildReportsPath(
+  payload: ArchetypeFilterRequest,
+  archetypeDecks = false,
+  release: ReleaseManifest | null = EMBEDDED_RELEASE
+): string | null {
   const encodedTournament = encodeURIComponent(payload.tournament);
   const slicePath = payload.slice && payload.slice !== 'all' ? `/slices/${payload.slice}` : '';
+  const relativePath = archetypeDecks
+    ? `${slicePath}/archetypes/${encodeURIComponent(payload.archetype)}/decks.json`
+    : `${slicePath}/decks.json`;
+  if (release) {
+    return resolveEventPath(release, payload.tournament, relativePath);
+  }
   if (archetypeDecks) {
     return `/reports/${encodedTournament}${slicePath}/archetypes/${encodeURIComponent(payload.archetype)}/decks.json`;
   }
@@ -396,11 +408,19 @@ async function loadDecks(request: Request, payload: ArchetypeFilterRequest): Pro
   // Try the small archetype-specific slice first; only fall back to the full
   // (multi-MB) decks file when the slice is missing. Fetching both in parallel
   // wasted bandwidth/CPU downloading the large file on every request.
-  const specific = await fetchDecksFromPath(request, buildReportsPath(payload, true));
+  const specificPath = buildReportsPath(payload, true);
+  if (!specificPath) {
+    return { status: 'missing' };
+  }
+  const specific = await fetchDecksFromPath(request, specificPath);
   if (specific.status === 'ok') {
     return specific;
   }
-  const fallback = await fetchDecksFromPath(request, buildReportsPath(payload, false));
+  const fallbackPath = buildReportsPath(payload, false);
+  if (!fallbackPath) {
+    return { status: 'missing' };
+  }
+  const fallback = await fetchDecksFromPath(request, fallbackPath);
   // A genuinely absent per-archetype slice is normal; report the fallback's
   // outcome. But if the slice fetch failed for an interesting reason and the
   // fallback is merely missing, surface the interesting one.

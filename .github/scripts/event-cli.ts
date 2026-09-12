@@ -3,15 +3,14 @@
  *
  * Turns a validated NORMALIZED event record into the full set of serving
  * artifacts (via {@link buildEventArtifacts}) and writes them to a local
- * directory or uploads them to R2 under `reports/{prefix}/`. This is the
+ * directory, or publishes a Labs source directly to an immutable event root. This is the
  * TypeScript event builder the plan calls for: the Python Labs adapter emits
  * normalized records, and this CLI — the one home for artifact generation —
- * consumes them. Backfill/reprocess scripts call this instead of importing the
- * Python monolith.
+ * consumes them.
  *
  * Usage:
  *   tsx event-cli.ts build --input <normalized.json> --out-dir <dir>
- *   tsx event-cli.ts build --input <normalized.json> --r2-prefix "<date, Name>"
+ *   tsx event-cli.ts publish-source --input <labs-source.json>
  *
  * R2 mode needs R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY /
  * R2_BUCKET_NAME in the environment.
@@ -31,16 +30,17 @@ import { buildConversionIndex } from '../../shared/data/reports/conversion.ts';
 import { type DeckEntry, generateReportFromDecks } from '../../shared/data/reports/cardReport.ts';
 import { makeRollingResolver } from '../../shared/data/canonicalPrint.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
-import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
-
-const CACHE_CONTROL = 'public, max-age=21600';
+import { createR2Client, getJsonResult } from './lib/r2.mjs';
+import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
+import { sha256HexString } from '../../shared/data/hash.ts';
+import { type ConditionalPointerStore, updatePointer } from '../../shared/data/build/channel.ts';
+import { createR2ObjectStore } from './lib/build/r2ObjectStore.mjs';
 
 interface BuildArgs {
   input: string;
   /** 'normalized' (default) or 'labs-source' (run the adapter first). */
   from?: 'normalized' | 'labs-source';
   outDir?: string;
-  r2Prefix?: string;
   synonyms?: string;
   /** Canonicalize card UIDs as of the event's date (rolling canonicals). */
   rolling?: boolean;
@@ -61,8 +61,6 @@ function parseArgs(argv: string[]): BuildArgs {
       args.input = value;
     } else if (flag === '--out-dir') {
       args.outDir = value;
-    } else if (flag === '--r2-prefix') {
-      args.r2Prefix = value;
     } else if (flag === '--synonyms') {
       args.synonyms = value;
     } else if (flag === '--print-prices') {
@@ -79,8 +77,8 @@ function parseArgs(argv: string[]): BuildArgs {
   if (!args.input) {
     throw new Error('Missing --input <event.json>');
   }
-  if (!args.outDir && !args.r2Prefix) {
-    throw new Error('Provide --out-dir <dir> or --r2-prefix "<date, Name>"');
+  if (!args.outDir) {
+    throw new Error('Provide --out-dir <dir>');
   }
   return args as BuildArgs;
 }
@@ -118,7 +116,57 @@ async function writeLocal(artifacts: Map<string, unknown>, outDir: string): Prom
   console.log(`[event-cli] Wrote ${artifacts.size} artifacts to ${outDir}`);
 }
 
-async function uploadR2(artifacts: Map<string, unknown>, prefix: string): Promise<void> {
+interface ImmutableEventStore extends ConditionalPointerStore<{ events?: Record<string, string>; updatedAt?: string }> {
+  get(key: string): Promise<string | null>;
+  putIfAbsent(key: string, body: string): Promise<void>;
+}
+
+function eventFolder(source: LabsSourceEvent): string {
+  const date = String(source.meta?.date ?? '').trim();
+  const name = String(source.meta?.name ?? '')
+    .replace(/[<>:"/\\|?*]/g, '')
+    .trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !name) {
+    throw new Error('Labs source needs a valid event date and name');
+  }
+  return `${date}, ${name}`;
+}
+
+async function putImmutable(store: ImmutableEventStore, key: string, body: string): Promise<void> {
+  const existing = await store.get(key);
+  if (existing !== null) {
+    try {
+      if (canonicalStringify(JSON.parse(existing) as unknown) === body) {
+        return;
+      }
+    } catch {
+      // A corrupt body at an immutable key is a conflict, never an overwrite.
+    }
+    throw new Error(`Immutable event object has conflicting content: ${key}`);
+  }
+  await store.putIfAbsent(key, body);
+}
+
+export async function publishEventArtifacts(
+  store: ImmutableEventStore,
+  folder: string,
+  artifacts: Map<string, unknown>,
+  now = new Date().toISOString()
+): Promise<string> {
+  const entries = [...artifacts.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const generation = sha256HexString(canonicalStringify(entries)).slice(0, 12);
+  const root = `releases/v1/events/${folder}/${generation}`;
+  await Promise.all(entries.map(([path, body]) => putImmutable(store, `${root}/${path}`, canonicalStringify(body))));
+  await putImmutable(store, `${root}/_complete.json`, canonicalStringify({ generation, objectCount: artifacts.size }));
+  await updatePointer(store, 'pending-events.json', current => ({
+    events: { ...(current?.events ?? {}), [folder]: `/${root}` },
+    updatedAt: now
+  }));
+  return `/${root}`;
+}
+
+async function publishSource(input: string): Promise<void> {
+  const source = (await loadJson(input)) as LabsSourceEvent;
   const accountId = requireEnv('R2_ACCOUNT_ID');
   const bucket = requireEnv('R2_BUCKET_NAME');
   const client = createR2Client({
@@ -126,11 +174,37 @@ async function uploadR2(artifacts: Map<string, unknown>, prefix: string): Promis
     accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
     secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
   });
-  const base = `reports/${prefix}`;
-  for (const [path, body] of artifacts) {
-    await putJson(client, bucket, `${base}/${path}`, body, { cacheControl: CACHE_CONTROL });
+  const read = async <T>(key: string): Promise<T | null> => {
+    const result = await getJsonResult<T>(client, bucket, key);
+    if (result.status === 'found') {
+      return result.value;
+    }
+    if (result.status === 'missing') {
+      return null;
+    }
+    throw new Error(`Cannot read event dependency ${key}: ${result.status}`, { cause: result.error });
+  };
+  const synonymDb = await read<SynonymDatabase>('assets/card-synonyms.json');
+  const candidate = labsSourceToNormalized(source, { synonymDb });
+  const validated = validateNormalizedEvent(candidate);
+  if (!validated.ok) {
+    throw new Error(
+      `Invalid normalized event (${validated.errors.length} errors):\n  ${validated.errors.join('\n  ')}`
+    );
   }
-  console.log(`[event-cli] Uploaded ${artifacts.size} artifacts to ${bucket}/${base}`);
+  const { date } = source.meta;
+  const printPrices = await read<{ prices?: Record<string, number | null> }>(`assets/print-prices/${date}.json`);
+  const artifacts = buildEventArtifacts(validated.value, {
+    synonymDb,
+    rollingCanonicals: true,
+    printPrices: printPrices?.prices ?? null
+  });
+  const root = await publishEventArtifacts(
+    createR2ObjectStore<{ events?: Record<string, string>; updatedAt?: string }>(client, bucket),
+    eventFolder(source),
+    artifacts
+  );
+  console.log(`[event-cli] Published immutable event ${root}`);
 }
 
 /** A legacy `decks.json` deck row, only the fields reindex/rebake need. */
@@ -338,256 +412,6 @@ export function buildTournamentCatalog(folders: string[]): string[] {
   });
 }
 
-/**
- * List every folder directly under `reports/`, following S3 pagination.
- *
- * R2 caps a delimited listing at 1000 scanned keys per page, and an event
- * folder holds ~18 objects — so a single un-paginated call silently returns
- * only the lexicographically FIRST folders. Because folder names are date-
- * prefixed, that drops the most recent events, which is how the published
- * catalog lost every event after 2026-02-13. Always page to exhaustion.
- * @param client - R2/S3 client
- * @param bucket - Bucket name
- * @returns Folder names without the `reports/` prefix or trailing slash
- */
-export async function listReportFolders(client: ReturnType<typeof createR2Client>, bucket: string): Promise<string[]> {
-  const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
-  const folders: string[] = [];
-  let token: string | undefined;
-  do {
-    const page = await client.send(
-      new ListObjectsV2Command({ Bucket: bucket, Prefix: 'reports/', Delimiter: '/', ContinuationToken: token })
-    );
-    for (const p of page.CommonPrefixes ?? []) {
-      const folder = (p.Prefix ?? '').replace(/^reports\//, '').replace(/\/$/, '');
-      if (folder) {
-        folders.push(folder);
-      }
-    }
-    token = page.IsTruncated ? page.NextContinuationToken : undefined;
-  } while (token);
-  return folders;
-}
-
-async function runRebuildCatalog(rest: string[]): Promise<void> {
-  const arg = (flag: string): string | undefined => {
-    const i = rest.indexOf(flag);
-    return i >= 0 ? rest[i + 1] : undefined;
-  };
-  const outDir = arg('--out-dir');
-  if (!outDir && !rest.includes('--write')) {
-    throw new Error('rebuild-catalog needs --out-dir <dir> (dry run) or --write');
-  }
-
-  const bucket = requireEnv('R2_BUCKET_NAME');
-  const client = createR2Client({
-    accountId: requireEnv('R2_ACCOUNT_ID'),
-    accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
-    secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
-  });
-  const folders = (await listReportFolders(client, bucket)).filter(f => f !== 'Online - Last 14 Days');
-
-  const catalog = buildTournamentCatalog(folders);
-  if (outDir) {
-    await writeLocal(new Map([['tournaments.json', catalog]]), outDir);
-  }
-  if (rest.includes('--write')) {
-    await putJson(client, bucket, 'reports/tournaments.json', catalog, { cacheControl: CACHE_CONTROL });
-    console.log(`[event-cli] Rebuilt reports/tournaments.json with ${catalog.length} entries`);
-  }
-}
-
-interface R2Reader {
-  read: <T>(key: string) => Promise<T | null>;
-  client: ReturnType<typeof createR2Client>;
-  bucket: string;
-}
-
-function makeR2Reader(): R2Reader {
-  const bucket = requireEnv('R2_BUCKET_NAME');
-  const client = createR2Client({
-    accountId: requireEnv('R2_ACCOUNT_ID'),
-    accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
-    secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
-  });
-  const read = async <T>(key: string): Promise<T | null> => {
-    const result = await getJsonResult<T>(client, bucket, key);
-    if (result.status === 'found') {
-      return result.value;
-    }
-    if (result.status === 'missing') {
-      return null;
-    }
-    throw new Error(`failed to read ${key}: ${result.status}`);
-  };
-  return { read, client, bucket };
-}
-
-/** The `assets/print-prices/{date}.json` backfill artifact. */
-interface PrintPricesArtifact {
-  prices?: Record<string, number | null>;
-}
-
-/**
- * Load event-date print prices from the TCGCSV backfill artifact. A verified
- * missing artifact degrades to null (the resolver falls back to the synonym
- * DB's current prints); transport failures still throw.
- */
-async function loadPrintPrices(r2: R2Reader, asOfDate: string): Promise<Record<string, number | null> | null> {
-  const artifact = await r2.read<PrintPricesArtifact>(`assets/print-prices/${asOfDate}.json`);
-  if (!artifact?.prices) {
-    console.log(`[event-cli] No print-prices artifact for ${asOfDate}; using current prints as the price signal`);
-    return null;
-  }
-  return artifact.prices;
-}
-
-/** Derive the event date from a `reports/<date, Name>` prefix or folder name. */
-function eventDateFromPrefix(prefix: string): string | null {
-  return extractDatePrefix(prefix.replace(/^reports\//, ''));
-}
-
-async function runReindex(rest: string[]): Promise<void> {
-  const arg = (flag: string): string | undefined => {
-    const i = rest.indexOf(flag);
-    return i >= 0 ? rest[i + 1] : undefined;
-  };
-  const r2Prefix = arg('--r2-prefix');
-  const outDir = arg('--out-dir');
-  const synonymsPath = arg('--synonyms');
-  const rolling = rest.includes('--rolling');
-  const printPricesPath = arg('--print-prices');
-  if (!r2Prefix) {
-    throw new Error('reindex needs --r2-prefix "reports/<date, Name>"');
-  }
-  if (!outDir && !rest.includes('--write')) {
-    throw new Error('reindex needs --out-dir <dir> (dry run) or --write (upload to R2)');
-  }
-
-  const r2 = makeR2Reader();
-  const decks = await r2.read<ReindexDeck[]>(`${r2Prefix}/decks.json`);
-  if (!decks) {
-    throw new Error(`${r2Prefix}/decks.json not found`);
-  }
-  const synonymDb = synonymsPath
-    ? ((await loadJson(synonymsPath)) as SynonymDatabase)
-    : await r2.read<SynonymDatabase>('assets/card-synonyms.json');
-
-  let bodies: Map<string, unknown>;
-  if (rolling) {
-    if (!synonymDb) {
-      throw new Error('reindex --rolling requires a synonym database');
-    }
-    const asOfDate = eventDateFromPrefix(r2Prefix);
-    if (!asOfDate) {
-      throw new Error(`reindex --rolling: cannot derive the event date from "${r2Prefix}"`);
-    }
-    const printPrices = printPricesPath
-      ? (((await loadJson(printPricesPath)) as PrintPricesArtifact).prices ?? null)
-      : await loadPrintPrices(r2, asOfDate);
-    bodies = rebakeFromDecks(decks, synonymDb, asOfDate, printPrices);
-  } else {
-    const { cardUsage, conversion } = reindexFromDecks(decks, synonymDb);
-    bodies = new Map<string, unknown>([['cardUsage.json', cardUsage]]);
-    if (conversion !== null) {
-      bodies.set('conversion.json', conversion);
-    }
-  }
-
-  if (outDir) {
-    await writeLocal(bodies, outDir);
-  }
-  if (rest.includes('--write')) {
-    for (const [path, body] of bodies) {
-      await putJson(r2.client, r2.bucket, `${r2Prefix}/${path}`, body, { cacheControl: CACHE_CONTROL });
-    }
-    console.log(`[event-cli] ${rolling ? 'Rebaked' : 'Reindexed'} ${bodies.size} artifact(s) for ${r2Prefix}`);
-  }
-}
-
-/**
- * Rebake every cataloged event with rolling canonicals (the reprocess
- * workflow's engine). Reads `reports/tournaments.json`, and per dated event:
- * loads `decks.json`, the synonym DB, and that date's print-prices artifact,
- * then rebuilds the card-facing artifacts via {@link rebakeFromDecks}.
- * `--dry-run` logs per-event artifact counts and how many cardUsage keys would
- * move, without uploading.
- */
-async function runReindexAll(rest: string[]): Promise<void> {
-  const arg = (flag: string): string | undefined => {
-    const i = rest.indexOf(flag);
-    return i >= 0 ? rest[i + 1] : undefined;
-  };
-  const dryRun = rest.includes('--dry-run');
-  const only = arg('--only');
-  const limitRaw = arg('--limit');
-  const limit = limitRaw ? Number.parseInt(limitRaw, 10) : Number.POSITIVE_INFINITY;
-  if (limitRaw && !Number.isFinite(limit)) {
-    throw new Error(`--limit must be a number, got "${limitRaw}"`);
-  }
-
-  const r2 = makeR2Reader();
-  const catalog =
-    await r2.read<(string | { folder?: string; name?: string; path?: string })[]>('reports/tournaments.json');
-  if (!catalog) {
-    throw new Error('reports/tournaments.json not found');
-  }
-  const synonymDb = await r2.read<SynonymDatabase>('assets/card-synonyms.json');
-  if (!synonymDb) {
-    throw new Error('assets/card-synonyms.json not found');
-  }
-
-  const folders = catalog
-    .map(entry => (typeof entry === 'string' ? entry : entry.folder || entry.name || entry.path || ''))
-    .filter(Boolean)
-    .filter(folder => !only || folder === only);
-
-  const pricesByDate = new Map<string, Record<string, number | null> | null>();
-  let processed = 0;
-  let skipped = 0;
-  for (const folder of folders) {
-    if (processed >= limit) {
-      break;
-    }
-    const asOfDate = extractDatePrefix(folder);
-    if (!asOfDate) {
-      console.log(`[event-cli] Skipping undated folder "${folder}"`);
-      skipped++;
-      continue;
-    }
-    const prefix = `reports/${folder}`;
-    const decks = await r2.read<ReindexDeck[]>(`${prefix}/decks.json`);
-    if (!decks || decks.length === 0) {
-      console.log(`[event-cli] Skipping ${folder}: no decks.json`);
-      skipped++;
-      continue;
-    }
-    if (!pricesByDate.has(asOfDate)) {
-      pricesByDate.set(asOfDate, await loadPrintPrices(r2, asOfDate));
-    }
-    const bodies = rebakeFromDecks(decks, synonymDb, asOfDate, pricesByDate.get(asOfDate) ?? null);
-
-    if (dryRun) {
-      const existingUsage = await r2.read<{ usage?: Record<string, unknown> }>(`${prefix}/cardUsage.json`);
-      const nextUsage = bodies.get('cardUsage.json') as { usage: Record<string, unknown> };
-      const oldKeys = new Set(Object.keys(existingUsage?.usage ?? {}));
-      const movedKeys = Object.keys(nextUsage.usage).filter(key => !oldKeys.has(key)).length;
-      console.log(
-        `[event-cli] DRY RUN ${folder} (${asOfDate}): ${bodies.size} artifact(s), ${movedKeys}/${Object.keys(nextUsage.usage).length} cardUsage keys move`
-      );
-    } else {
-      for (const [path, body] of bodies) {
-        await putJson(r2.client, r2.bucket, `${prefix}/${path}`, body, { cacheControl: CACHE_CONTROL });
-      }
-      console.log(`[event-cli] Rebaked ${folder} (${asOfDate}): ${bodies.size} artifact(s)`);
-    }
-    processed++;
-  }
-  console.log(
-    `[event-cli] reindex-all complete: ${processed} event(s) ${dryRun ? 'analyzed' : 'rebaked'}, ${skipped} skipped`
-  );
-}
-
 async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   if (command === 'build') {
@@ -596,24 +420,16 @@ async function main(): Promise<void> {
     if (args.outDir) {
       await writeLocal(artifacts, args.outDir);
     }
-    if (args.r2Prefix) {
-      await uploadR2(artifacts, args.r2Prefix);
+    return;
+  }
+  if (command === 'publish-source') {
+    if (rest.length !== 2 || rest[0] !== '--input' || !rest[1]) {
+      throw new Error('Usage: publish-source --input <labs-source.json>');
     }
+    await publishSource(rest[1]);
     return;
   }
-  if (command === 'reindex') {
-    await runReindex(rest);
-    return;
-  }
-  if (command === 'reindex-all') {
-    await runReindexAll(rest);
-    return;
-  }
-  if (command === 'rebuild-catalog') {
-    await runRebuildCatalog(rest);
-    return;
-  }
-  throw new Error(`Unknown command "${command ?? ''}". Supported: build, reindex, reindex-all, rebuild-catalog`);
+  throw new Error(`Unknown command "${command ?? ''}". Supported: build, publish-source`);
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;

@@ -28,6 +28,8 @@ import { fileURLToPath } from 'node:url';
 import { createR2Client, createReportsBinding } from '../.github/scripts/lib/r2.mjs';
 import { runRotationSnapshot } from '../shared/onlineMeta/snapshotGenerator';
 import { rebuildSnapshotIndex, type RotationDescriptor } from '../shared/onlineMeta/snapshotIndexBuilder';
+import { loadEventSources } from '../.github/scripts/lib/build/productionRelease';
+import { buildTournamentCatalog } from '../.github/scripts/event-cli';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_BASE = join(ROOT, 'static');
@@ -61,6 +63,13 @@ const reports =
         r2Bucket
       )
     : null;
+let eventSources: Record<string, string> | null = null;
+
+function resolveEventSource(key: string): string {
+  const match = /^reports\/(\d{4}-\d{2}-\d{2},[^/]+)\/(.+)$/.exec(key);
+  const root = match && eventSources ? eventSources[match[1]] : undefined;
+  return root && match ? `${root.replace(/^\/+/, '')}/${match[2]}` : key;
+}
 
 async function readLocal(key: string): Promise<string | null> {
   try {
@@ -131,7 +140,12 @@ const env = {
       // public edge, which can serve data cached up to 6h and be stale right
       // after an upstream online-meta upload (P-14). Public HTTP is reserved
       // for credentialless local dev.
-      const remote = reports ? await readFromR2S3(key) : await readFromR2Public(key);
+      if (reports && eventSources && key === 'reports/tournaments.json') {
+        const catalog = JSON.stringify(buildTournamentCatalog(Object.keys(eventSources)));
+        return { text: async () => catalog };
+      }
+      const resolvedKey = reports ? resolveEventSource(key) : key;
+      const remote = reports ? await readFromR2S3(resolvedKey) : await readFromR2Public(resolvedKey);
       if (remote !== null) {
         return { text: async () => remote };
       }
@@ -152,6 +166,15 @@ async function main() {
   if (!targets.length) {
     console.error(`[snapshots] No matching rotation for "${arg}". Known: ${ROTATIONS.map(r => r.date).join(', ')}`);
     process.exit(1);
+  }
+  if (reports) {
+    const loaded = await loadEventSources({
+      read: async <T>(key: string): Promise<T | null> => {
+        const body = await readFromR2S3(key);
+        return body === null ? null : (JSON.parse(body) as T);
+      }
+    });
+    eventSources = loaded.sources;
   }
 
   console.info(

@@ -19,10 +19,30 @@
 
 import process from 'node:process';
 import { readFile } from 'node:fs/promises';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 const R2 = process.env.PUBLIC_R2_BASE_URL ?? 'https://r2.ciphermaniac.com';
 const channel = process.argv[2] ?? 'production';
 const eventSample = Number(process.argv[3] ?? 8);
+
+const credentialNames = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME'] as const;
+const suppliedCredentials = credentialNames.filter(name => process.env[name]);
+if (suppliedCredentials.length > 0 && suppliedCredentials.length !== credentialNames.length) {
+  throw new Error(`Authenticated verification requires ${credentialNames.join(', ')}`);
+}
+
+const r2Client =
+  suppliedCredentials.length === credentialNames.length
+    ? new S3Client({
+        region: 'auto',
+        endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        credentials: {
+          accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!
+        },
+        maxAttempts: 4
+      })
+    : null;
 
 interface ChannelPointer {
   channel: string;
@@ -47,9 +67,9 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 /** HEAD would be ideal, but R2's WAF answers some clients 403 on HEAD. */
-async function resolves(url: string): Promise<number> {
+async function resolvesPublic(path: string): Promise<number> {
   try {
-    const res = await fetch(url);
+    const res = await fetch(`${R2}${encodeURI(path)}`);
     // Drain so the connection can be reused rather than left half-open.
     await res.arrayBuffer().catch(() => undefined);
     return res.status;
@@ -57,6 +77,24 @@ async function resolves(url: string): Promise<number> {
     return 0;
   }
 }
+
+async function resolvesAuthenticated(path: string): Promise<number> {
+  try {
+    const response = await r2Client!.send(
+      new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME!, Key: path.replace(/^\//, ''), Range: 'bytes=0-0' })
+    );
+    await response.Body?.transformToByteArray();
+    return 200;
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && '$metadata' in error) {
+      const metadata = error.$metadata as { httpStatusCode?: number };
+      return metadata.httpStatusCode ?? 0;
+    }
+    return 0;
+  }
+}
+
+const resolves = r2Client ? resolvesAuthenticated : resolvesPublic;
 
 function eventRoot(value: string | { root?: string }): string | null {
   return typeof value === 'string' ? value : (value?.root ?? null);
@@ -72,6 +110,7 @@ const pointer: ChannelPointer = localManifest
   ? { channel, releaseId: localManifest.releaseId }
   : await getJson<ChannelPointer>(pointerKey);
 console.log(`channel ${channel} -> release ${pointer.releaseId}`);
+console.log(`verification transport: ${r2Client ? 'authenticated R2 API' : 'public origin'}`);
 
 const manifestPath = pointer.manifest ?? `/releases/v1/manifests/${pointer.releaseId}.json`;
 const manifest = localManifest ?? (await getJson<ReleaseManifest>(manifestPath));
@@ -108,7 +147,7 @@ for (const [scope, entries] of Object.entries(requiredArtifacts)) {
   }
   console.log(`  ${scope.padEnd(10)} complete marker + ${entries.length} sentinel(s)`);
   for (const rel of ['_complete.json', ...entries]) {
-    const status = await resolves(`${R2}${encodeURI(`${root}/${rel}`)}`);
+    const status = await resolves(`${root}/${rel}`);
     checked += 1;
     if (status !== 200) {
       problems.push(`${scope}: ${status} for ${root}/${rel}`);
@@ -126,7 +165,7 @@ for (const [folder, value] of sampled) {
     continue;
   }
   for (const rel of ['_complete.json', 'master.json']) {
-    const status = await resolves(`${R2}${encodeURI(`${root}/${rel}`)}`);
+    const status = await resolves(`${root}/${rel}`);
     checked += 1;
     if (status !== 200) {
       problems.push(`event ${folder}: ${status} for ${root}/${rel}`);

@@ -4,7 +4,7 @@
  * Reads a validated release manifest and writes `shared/generated/release.ts`
  * exporting it, so `npm run build` and the Pages Functions bundle embed the
  * exact release. The committed default exports `null` for local development; the
- * production/shadow workflow regenerates this file before building and does NOT
+ * production workflow regenerates this file before building and does NOT
  * commit the generated production release id to main.
  *
  * Usage: tsx generate-release-module.ts <manifest.json> [--out shared/generated/release.ts]

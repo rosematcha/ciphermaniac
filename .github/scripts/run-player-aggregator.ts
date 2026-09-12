@@ -18,6 +18,8 @@ import { requireEnv } from './lib/env.ts';
 import process from 'node:process';
 import { createR2Client, createReportsBinding } from './lib/r2.mjs';
 import { buildPlayerAggregates } from '../../shared/onlineMeta/playerAggregator.ts';
+import { loadEventSources } from './lib/build/productionRelease.ts';
+import { buildTournamentCatalog } from './event-cli.ts';
 
 function parseBoolean(value: string | undefined, fallback = false): boolean {
   if (!value) {
@@ -49,14 +51,35 @@ const s3Client = createR2Client({
 // so this binding does NOT prefix anything.
 const reportsBinding = createReportsBinding(s3Client, R2_BUCKET_NAME);
 
+async function readJson<T>(key: string): Promise<T | null> {
+  const object = await reportsBinding.get(key);
+  return object ? ((await object.json()) as T) : null;
+}
+
 async function main() {
   const t0 = Date.now();
+  const { sources } = await loadEventSources({ read: readJson });
+  const catalog = buildTournamentCatalog(Object.keys(sources));
+  const productionBinding = {
+    ...reportsBinding,
+    get: (key: string) => {
+      if (key === 'reports/tournaments.json') {
+        return Promise.resolve({
+          text: () => Promise.resolve(JSON.stringify(catalog)),
+          json: () => Promise.resolve(catalog)
+        });
+      }
+      const match = /^reports\/(\d{4}-\d{2}-\d{2},[^/]+)\/(.+)$/.exec(key);
+      const root = match ? sources[match[1]] : undefined;
+      return reportsBinding.get(root && match ? `${root.replace(/^\/+/, '')}/${match[2]}` : key);
+    }
+  };
   console.log('[player-aggregator]', {
     bucket: R2_BUCKET_NAME,
     forceFullRebuild: FORCE_FULL_REBUILD
   });
 
-  const result = await buildPlayerAggregates({ REPORTS: reportsBinding } as any, {
+  const result = await buildPlayerAggregates({ REPORTS: productionBinding } as any, {
     concurrency: 6,
     r2Concurrency: 8,
     forceFullRebuild: FORCE_FULL_REBUILD

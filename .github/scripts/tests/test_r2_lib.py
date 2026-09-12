@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -37,6 +38,16 @@ class _GetClient:
         if self._error is not None:
             raise self._error
         return {"Body": _Body(self._payload)}
+
+
+class _MappingClient:
+    def __init__(self, values):
+        self._values = values
+
+    def get_object(self, Bucket, Key):
+        if Key not in self._values:
+            raise _S3Error("NoSuchKey")
+        return {"Body": _Body(json.dumps(self._values[Key]).encode())}
 
 
 class _HeadClient:
@@ -110,6 +121,68 @@ class ObjectExistsTest(unittest.TestCase):
         with self.assertRaises(_S3Error):
             r2.object_exists(client, "bucket", "key")
 
+
+class ProductionReleaseTest(unittest.TestCase):
+    def setUp(self):
+        self.manifest = {
+            "schemaVersion": 1,
+            "releaseId": "release_123",
+            "createdAt": "2026-01-01T00:00:00.000Z",
+            "roots": {
+                "online": "/releases/v1/online/abc123def456",
+                "catalogs": "/releases/v1/catalogs/abc123def456",
+                "players": "/releases/v1/players/abc123def456",
+                "assets": "/releases/v1/assets/abc123def456",
+            },
+            "events": {
+                "2026-01-01, Event": "/releases/v1/events/2026-01-01, Event/abc123def456"
+            },
+        }
+        self.client = _MappingClient(
+            {
+                "current.json": {
+                    "releaseId": "release_123",
+                    "manifest": "/build/v1/releases/release_123.json",
+                },
+                "build/v1/releases/release_123.json": self.manifest,
+            }
+        )
+
+    def test_loads_and_resolves_immutable_keys(self):
+        manifest = r2.load_production_release(self.client, "bucket")
+        self.assertEqual(manifest, self.manifest)
+        self.assertEqual(
+            r2.production_event_key(manifest, "2026-01-01, Event", "/master.json"),
+            "releases/v1/events/2026-01-01, Event/abc123def456/master.json",
+        )
+        self.assertEqual(
+            r2.production_scope_key(manifest, "online", "master.json"),
+            "releases/v1/online/abc123def456/master.json",
+        )
+
+    def test_rejects_pointer_manifest_mismatch(self):
+        self.manifest["releaseId"] = "different"
+        with self.assertRaisesRegex(RuntimeError, "release IDs disagree"):
+            r2.load_production_release(self.client, "bucket")
+
+    def test_rejects_unsafe_manifest_key(self):
+        client = _MappingClient(
+            {"current.json": {"releaseId": "release_123", "manifest": "../manifest.json"}}
+        )
+        with self.assertRaisesRegex(RuntimeError, "unsafe manifest key"):
+            r2.load_production_release(client, "bucket")
+
+    def test_pending_event_overrides_production_source(self):
+        self.client._values["pending-events.json"] = {
+            "events": {
+                "2026-01-01, Event": "/releases/v1/events/2026-01-01, Event/fed654cba321"
+            }
+        }
+        _, sources = r2.load_event_sources(self.client, "bucket")
+        self.assertEqual(
+            sources["2026-01-01, Event"],
+            "/releases/v1/events/2026-01-01, Event/fed654cba321",
+        )
 
 class MakeR2ClientTest(unittest.TestCase):
     def test_sets_adaptive_retries_and_timeouts(self):
