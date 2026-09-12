@@ -1,5 +1,10 @@
-import type { ReleaseManifest, ReleaseScope } from '../../../../shared/data/build/release.ts';
-import { resolveEventPath, resolveScopePath, validateReleaseManifest } from '../../../../shared/data/build/release.ts';
+import {
+  type ReleaseManifest,
+  type ReleaseScope,
+  resolveEventPath,
+  resolveScopePath,
+  validateReleaseManifest
+} from '../../../../shared/data/build/release.ts';
 
 export interface JsonReader {
   read<T>(key: string): Promise<T | null>;
@@ -53,11 +58,7 @@ export function productionEventKey(manifest: ReleaseManifest, event: string, rel
   return path.replace(/^\/+/, '');
 }
 
-export function productionScopeKey(
-  manifest: ReleaseManifest,
-  scope: ReleaseScope,
-  relativePath: string
-): string {
+export function productionScopeKey(manifest: ReleaseManifest, scope: ReleaseScope, relativePath: string): string {
   return resolveScopePath(manifest, scope, relativePath).replace(/^\/+/, '');
 }
 
