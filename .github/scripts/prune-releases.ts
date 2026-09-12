@@ -6,6 +6,7 @@ import { r2Config } from './lib/env';
 import {
   expiredGenerations,
   type Generation,
+  generationPrefix,
   protectedGenerations,
   recordGeneration,
   type RetainedManifest,
@@ -16,6 +17,7 @@ import {
 interface Store {
   list(prefix: string): AsyncIterable<StoredObject>;
   read(key: string): Promise<unknown>;
+  readOptional(key: string): Promise<unknown | null>;
   remove(keys: string[]): Promise<void>;
 }
 
@@ -42,6 +44,16 @@ export function createRetentionStore(client: S3Client, bucket: string): Store {
     },
     async read(key) {
       const result = await getJsonResult(client, bucket, key);
+      if (result.status !== 'found') {
+        throw new Error(`Cannot read retention reference ${key}: ${result.status}`);
+      }
+      return result.value;
+    },
+    async readOptional(key) {
+      const result = await getJsonResult(client, bucket, key);
+      if (result.status === 'missing') {
+        return null;
+      }
       if (result.status !== 'found') {
         throw new Error(`Cannot read retention reference ${key}: ${result.status}`);
       }
@@ -84,7 +96,16 @@ async function retainedRoots(store: Store, now: number): Promise<Set<string>> {
       manifests.set(manifest.releaseId, manifest);
     }
   }
-  return protectedGenerations([...manifests.values()], new Set([active.releaseId]), now);
+  const keep = protectedGenerations([...manifests.values()], new Set([active.releaseId]), now);
+  const pending = (await store.readOptional('pending-events.json')) as { events?: Record<string, string> } | null;
+  for (const root of Object.values(pending?.events ?? {})) {
+    const prefix = `${root.replace(/^\/+/, '')}/`;
+    if (!prefix.startsWith('releases/v1/events/') || generationPrefix(prefix) !== prefix) {
+      throw new Error(`Invalid pending event root: ${root}`);
+    }
+    keep.add(prefix);
+  }
+  return keep;
 }
 
 async function obsoleteObjects(store: Store): Promise<StoredObject[]> {
@@ -95,7 +116,11 @@ async function obsoleteObjects(store: Store): Promise<StoredObject[]> {
     }
   }
   for await (const object of store.list('reports/')) {
-    if (object.key.endsWith('/tournament.db')) {
+    if (
+      /^reports\/\d{4}-\d{2}-\d{2},[^/]+\//.test(object.key) ||
+      object.key === 'reports/tournaments.json' ||
+      object.key.endsWith('/tournament.db')
+    ) {
       objects.push(object);
     }
   }
@@ -103,12 +128,19 @@ async function obsoleteObjects(store: Store): Promise<StoredObject[]> {
 }
 
 async function removeObjects(store: Store, objects: StoredObject[]): Promise<void> {
-  for (let offset = 0; offset < objects.length; offset += 1000) {
-    await store.remove(objects.slice(offset, offset + 1000).map(object => object.key));
+  await removeKeys(
+    store,
+    objects.map(object => object.key)
+  );
+}
+
+async function removeKeys(store: Store, keys: string[]): Promise<void> {
+  for (let offset = 0; offset < keys.length; offset += 1000) {
+    await store.remove(keys.slice(offset, offset + 1000));
   }
 }
 
-async function removeGeneration(store: Store, generation: Generation, now: number): Promise<void> {
+async function inventoryGeneration(store: Store, generation: Generation, now: number): Promise<string[]> {
   const keys: string[] = [];
   for await (const object of store.list(generation.prefix)) {
     if (!object.key.startsWith(generation.prefix) || object.modified >= now - 7 * 86_400_000) {
@@ -116,20 +148,20 @@ async function removeGeneration(store: Store, generation: Generation, now: numbe
     }
     keys.push(object.key);
   }
-  for (let offset = 0; offset < keys.length; offset += 1000) {
-    await store.remove(keys.slice(offset, offset + 1000));
-  }
+  return keys;
 }
 
 async function removeGenerations(store: Store, generations: Generation[], now: number): Promise<void> {
   let next = 0;
-  async function worker(): Promise<void> {
+  const inventories: string[][] = [];
+  async function inventoryWorker(): Promise<void> {
     while (next < generations.length) {
-      const generation = generations[next++];
-      await removeGeneration(store, generation, now);
+      const index = next++;
+      inventories[index] = await inventoryGeneration(store, generations[index], now);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(8, generations.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(8, generations.length) }, inventoryWorker));
+  await removeKeys(store, inventories.flat());
 }
 
 /** Call only under the shared bucket-writer lock. Dry-run is the default. */
