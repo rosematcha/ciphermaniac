@@ -21,7 +21,6 @@ import r2  # noqa: E402
 
 
 TCGCSV_GROUPS_URL = 'https://tcgcsv.com/tcgplayer/3/groups'
-ONLINE_META_PATH = 'reports/Online - Last 14 Days'
 CARD_SYNONYMS_KEY = 'assets/card-synonyms.json'
 
 # Rolling price-history artifact: one compact file keyed by card UID → list of
@@ -206,9 +205,9 @@ def initialize_r2_client():
     return r2.make_r2_client(r2_account_id, r2_access_key_id, r2_secret_access_key)
 
 
-def load_online_meta_report(r2_client, bucket_name):
+def load_online_meta_report(r2_client, bucket_name, release):
     """Load the master.json from Online - Last 14 Days report."""
-    key = f'{ONLINE_META_PATH}/master.json'
+    key = r2.production_scope_key(release, 'online', 'master.json')
     print(f"Loading {key}...")
     
     try:
@@ -339,10 +338,10 @@ def extract_current_meta_canonicals(master_report, synonyms_data):
     return card_set
 
 
-def load_all_event_cards(r2_client, bucket_name):
+def load_all_event_cards(r2_client, bucket_name, release):
     """Every card UID that has appeared in any tournament report we host.
 
-    Walks ``reports/tournaments.json`` and reads each event's ``master.json``.
+    Walks the production release manifest and reads each event's ``master.json``.
     Archival reports are rolling-canonical keyed, so their UIDs are period-correct
     prints — exactly what we want in the universe. An event whose report cannot
     be read is skipped with a warning: one missing archive costs a little
@@ -351,22 +350,17 @@ def load_all_event_cards(r2_client, bucket_name):
     (update_price_history keeps only what was priced today).
     """
     print("\nCollecting cards from every archived event...")
-    result = r2.read_json(r2_client, bucket_name, 'reports/tournaments.json')
-    if result.status != 'found':
-        print(f"  Error: could not read reports/tournaments.json ({result.status}): {result.error}")
-        sys.exit(1)
-    data = result.value
-    tournaments = data if isinstance(data, list) else (data or {}).get('tournaments', [])
+    tournaments = sorted(release['events'])
 
     uids = set()
     skipped = 0
     for tournament in tournaments:
-        folder = tournament if isinstance(tournament, str) else (
-            tournament.get('folder') or tournament.get('name') or tournament.get('path')
+        folder = tournament
+        report = r2.read_json(
+            r2_client,
+            bucket_name,
+            r2.production_event_key(release, folder, 'master.json'),
         )
-        if not folder:
-            continue
-        report = r2.read_json(r2_client, bucket_name, f'reports/{folder}/master.json')
         if report.status != 'found':
             skipped += 1
             continue
@@ -1181,9 +1175,10 @@ def main():
     
     # Initialize R2
     r2_client = initialize_r2_client()
+    release = r2.load_production_release(r2_client, bucket_name)
     
     # Load data
-    master_report = load_online_meta_report(r2_client, bucket_name)
+    master_report = load_online_meta_report(r2_client, bucket_name, release)
     synonyms_data = load_card_synonyms(r2_client, bucket_name)
     
     # Canonical cards drive the snapshot; the full print universe (every
@@ -1194,7 +1189,9 @@ def main():
     # whole-set dumps we already pull.
     canonical_list = extract_unique_cards(master_report, synonyms_data)
     current_canonicals = extract_current_meta_canonicals(master_report, synonyms_data)
-    archive_prints = expand_to_clusters(load_all_event_cards(r2_client, bucket_name), synonyms_data)
+    archive_prints = expand_to_clusters(
+        load_all_event_cards(r2_client, bucket_name, release), synonyms_data
+    )
     card_list = canonical_list | build_print_universe(synonyms_data) | archive_prints
     print(f"Pricing {len(card_list)} prints ({len(canonical_list)} canonical, "
           f"{len(current_canonicals)} in the current meta, {len(archive_prints)} from archived events)")

@@ -18,6 +18,7 @@ const ACTIVE = 'releases/v1/online/aaaaaaaaaaaa/';
 const PREVIOUS = 'releases/v1/online/bbbbbbbbbbbb/';
 const EXPIRED = 'releases/v1/online/cccccccccccc/';
 const RECENT = 'releases/v1/online/dddddddddddd/';
+const PENDING = 'releases/v1/events/2026-01-01, Event/eeeeeeeeeeee/';
 const manifest = (releaseId: string, root: string, at = OLD) => ({
   releaseId,
   publishedAt: new Date(at).toISOString(),
@@ -36,7 +37,11 @@ function fixture() {
   for (const prefix of [ACTIVE, PREVIOUS, EXPIRED, RECENT]) {
     objects.push({ key: `${prefix}master.json`, size: 100, modified: prefix === RECENT ? NOW : OLD });
   }
+  objects.push({ key: `${PENDING}master.json`, size: 100, modified: OLD });
   objects.push({ key: 'reports/raw.json', size: 1000, modified: OLD });
+  objects.push({ key: 'reports/event/tournament.db', size: 500, modified: OLD });
+  objects.push({ key: 'reports/2026-01-01, Event/master.json', size: 250, modified: OLD });
+  objects.push({ key: 'reports/tournaments.json', size: 50, modified: OLD });
   const removed: string[] = [];
   const store = {
     async *list(prefix: string) {
@@ -44,6 +49,9 @@ function fixture() {
     },
     async read(key: string) {
       return bodies.get(key);
+    },
+    async readOptional(key: string) {
+      return bodies.get(key) ?? null;
     },
     async remove(keys: string[]) {
       removed.push(...keys);
@@ -102,28 +110,56 @@ test('old active releases and the last two releases survive even after a long pu
 test('dry run reports garbage without touching any objects', async () => {
   const f = fixture();
   const plan = await pruneReleases(f.store, NOW);
-  assert.equal(plan.totalBytes, 400);
-  assert.equal(plan.reclaimBytes, 100);
+  assert.equal(plan.totalBytes, 500);
+  assert.equal(plan.reclaimBytes, 1000);
   assert.deepEqual(
     plan.generations.map(group => group.prefix),
-    [EXPIRED]
+    [EXPIRED, PENDING]
   );
   assert.deepEqual(f.removed, []);
 });
 
-test('cleanup deletes only old unreferenced generations, retaining raw inputs and recent orphans', async () => {
+test('cleanup deletes old unreferenced generations and tournament databases while retaining source JSON', async () => {
   const f = fixture();
   await pruneReleases(f.store, NOW, true);
-  assert.deepEqual(f.removed, [`${EXPIRED}master.json`]);
+  assert.deepEqual(f.removed, [
+    `${EXPIRED}master.json`,
+    `${PENDING}master.json`,
+    'reports/event/tournament.db',
+    'reports/2026-01-01, Event/master.json',
+    'reports/tournaments.json'
+  ]);
 });
 
-test('all legacy and shadow channels protect their roots regardless of age', async () => {
+test('shadow channels are obsolete and do not protect release roots', async () => {
   const f = fixture();
   f.bodies.set('channels/shadow.json', { releaseId: 'expired', manifest: '/build/v1/releases/expired.json' });
   f.objects.push({ key: 'channels/shadow.json', size: 10, modified: OLD });
   const plan = await pruneReleases(f.store, NOW, true);
-  assert.equal(plan.reclaimBytes, 0);
-  assert.deepEqual(f.removed, []);
+  assert.equal(plan.reclaimBytes, 1010);
+  assert.deepEqual(f.removed, [
+    `${EXPIRED}master.json`,
+    `${PENDING}master.json`,
+    'channels/shadow.json',
+    'reports/event/tournament.db',
+    'reports/2026-01-01, Event/master.json',
+    'reports/tournaments.json'
+  ]);
+});
+
+test('pending production events remain protected until promotion', async () => {
+  const f = fixture();
+  f.bodies.set('pending-events.json', {
+    events: { '2026-01-01, Event': `/${PENDING.slice(0, -1)}` }
+  });
+  const plan = await pruneReleases(f.store, NOW, true);
+  assert.equal(plan.reclaimBytes, 900);
+  assert.deepEqual(f.removed, [
+    `${EXPIRED}master.json`,
+    'reports/event/tournament.db',
+    'reports/2026-01-01, Event/master.json',
+    'reports/tournaments.json'
+  ]);
 });
 
 test('a malformed or missing channel manifest blocks all deletion', async () => {

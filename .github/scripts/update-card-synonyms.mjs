@@ -14,6 +14,7 @@ import { chooseCanonicalPrint } from '../../shared/data/canonicalPrint.ts';
 import { assertCanonicalRoutesSound } from '../../shared/data/canonicalCardRoute.ts';
 import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult } from './lib/r2.mjs';
+import { loadEventSources, productionScopeKey } from './lib/build/productionRelease.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -55,18 +56,6 @@ async function putObject(key, data) {
   await s3Client.send(command);
 }
 
-async function loadTournamentsList() {
-  log('Loading tournaments list...');
-  const result = await getJsonResult(s3Client, R2_BUCKET_NAME, 'reports/tournaments.json');
-  if (result.status === 'transport' || result.status === 'corrupt') {
-    throw new Error(`Failed to load reports/tournaments.json (${result.status})`, { cause: result.error });
-  }
-  const data = result.status === 'found' ? result.value : null;
-  const tournaments = Array.isArray(data) ? data : data?.tournaments || [];
-  log(`  Found ${tournaments.length} tournaments`);
-  return tournaments;
-}
-
 async function loadPreviousSynonyms() {
   // Read the live DB straight from R2 (authenticated S3 GET, so it bypasses
   // the hours-long public edge cache). Used to MERGE rather than replace, so a
@@ -91,8 +80,11 @@ async function loadPreviousSynonyms() {
   return { synonyms, canonicals, prints };
 }
 
-async function loadTournamentDecks(folder) {
-  const key = `reports/${folder}/decks.json`;
+async function loadTournamentDecks(release, sources, folder) {
+  const key =
+    folder === ONLINE_META_FOLDER
+      ? productionScopeKey(release, 'online', 'decks.json')
+      : `${sources[folder]?.replace(/^\/+/, '')}/decks.json`;
   const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
   if (result.status === 'transport' || result.status === 'corrupt') {
     throw new Error(`Failed to load ${key} (${result.status})`, { cause: result.error });
@@ -135,7 +127,7 @@ function addDecksToCardMap(cardsByName, decks) {
   }
 }
 
-async function collectAllCards(tournaments) {
+async function collectAllCards(release, sources, tournaments) {
   log('\nCollecting cards from all tournaments...');
   const cardsByName = new Map();
   let processed = 0;
@@ -151,7 +143,7 @@ async function collectAllCards(tournaments) {
     }
 
     processedFolders.add(folder);
-    const decks = await loadTournamentDecks(folder);
+    const decks = await loadTournamentDecks(release, sources, folder);
     if (!decks.length) {
       skipped++;
       continue;
@@ -167,7 +159,7 @@ async function collectAllCards(tournaments) {
 
   let onlineIncluded = processedFolders.has(ONLINE_META_FOLDER);
   if (!onlineIncluded) {
-    const onlineDecks = await loadTournamentDecks(ONLINE_META_FOLDER);
+    const onlineDecks = await loadTournamentDecks(release, sources, ONLINE_META_FOLDER);
     if (onlineDecks.length) {
       addDecksToCardMap(cardsByName, onlineDecks);
       processed++;
@@ -598,6 +590,58 @@ async function uploadToR2(data) {
   log('  ✓ Uploaded successfully');
 }
 
+async function readReleaseReference(key) {
+  const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
+  if (result.status === 'found') {
+    return result.value;
+  }
+  if (result.status === 'missing') {
+    return null;
+  }
+  throw new Error(`Failed to load production release reference ${key} (${result.status})`, { cause: result.error });
+}
+
+function assertSourceCoverage(stats, fullRewrite) {
+  const maxSkippedRaw = Number.parseInt(process.env.SYNONYM_MAX_SKIPPED ?? '', 10);
+  const maxSkipped = Number.isFinite(maxSkippedRaw) ? maxSkippedRaw : 5;
+  if (stats.processed === 0) {
+    throw new Error(`No tournament decks could be loaded (expected ${stats.expected})`);
+  }
+  if (!fullRewrite && stats.skipped > maxSkipped) {
+    throw new Error(
+      `${stats.skipped} tournament source(s) skipped exceeds SYNONYM_MAX_SKIPPED=${maxSkipped}; ` +
+        'set FULL_REWRITE=true or raise SYNONYM_MAX_SKIPPED to override'
+    );
+  }
+}
+
+function mergePreviousSynonyms(synonymsData, previous) {
+  if (!previous) {
+    return synonymsData;
+  }
+  const beforeSynonyms = Object.keys(synonymsData.synonyms).length;
+  const beforeCanonicals = Object.keys(synonymsData.canonicals).length;
+  const merged = {
+    ...synonymsData,
+    synonyms: { ...previous.synonyms, ...synonymsData.synonyms },
+    canonicals: { ...previous.canonicals, ...synonymsData.canonicals },
+    prints: { ...previous.prints, ...synonymsData.prints }
+  };
+  const mergedSynonyms = Object.keys(merged.synonyms).length;
+  const mergedCanonicals = Object.keys(merged.canonicals).length;
+  log(
+    `\nMerged with previous DB: synonyms ${beforeSynonyms}→${mergedSynonyms}, canonicals ${beforeCanonicals}→${mergedCanonicals}`
+  );
+  merged.metadata = {
+    ...synonymsData.metadata,
+    totalSynonyms: mergedSynonyms,
+    totalCanonicals: mergedCanonicals,
+    totalPrints: Object.keys(merged.prints).length,
+    mergedWithPrevious: true
+  };
+  return merged;
+}
+
 async function main() {
   log('='.repeat(60));
   log('Card Synonyms Generator');
@@ -608,8 +652,8 @@ async function main() {
     log('FULL REWRITE MODE: Ignoring existing synonyms cache');
   }
 
-  // Load all tournaments
-  const tournaments = await loadTournamentsList();
+  const { release, sources } = await loadEventSources({ read: readReleaseReference });
+  const tournaments = Object.keys(sources).sort();
   if (!tournaments.length) {
     log('No tournaments found');
     process.exit(1);
@@ -619,50 +663,20 @@ async function main() {
   const previous = fullRewrite ? null : await loadPreviousSynonyms();
 
   // Collect all cards from all tournaments
-  const { cardsByName, stats } = await collectAllCards(tournaments);
+  const { cardsByName, stats } = await collectAllCards(release, sources, tournaments);
 
   // Guard against publishing a DB built from a badly-degraded scrape. The
   // merge below protects existing mappings, but a mass source failure still
   // means this run's fresh clusters are untrustworthy — fail loudly (P-06).
-  const maxSkippedRaw = Number.parseInt(process.env.SYNONYM_MAX_SKIPPED ?? '', 10);
-  const maxSkipped = Number.isFinite(maxSkippedRaw) ? maxSkippedRaw : 5;
-  if (stats.processed === 0) {
-    log(`ERROR: No tournament decks could be loaded (expected ${stats.expected}); aborting`);
-    process.exit(1);
-  }
-  if (!fullRewrite && stats.skipped > maxSkipped) {
-    log(
-      `ERROR: ${stats.skipped} tournament source(s) skipped exceeds SYNONYM_MAX_SKIPPED=${maxSkipped}; aborting to avoid an untrustworthy rebuild`
-    );
-    log('       (set FULL_REWRITE=true or raise SYNONYM_MAX_SKIPPED to override)');
-    process.exit(1);
-  }
+  assertSourceCoverage(stats, fullRewrite);
 
   // Generate canonical synonyms (fresh clusters from this run's data)
-  const synonymsData = await generateSynonyms(cardsByName);
+  let synonymsData = await generateSynonyms(cardsByName);
 
   // Merge previous mappings UNDER the fresh ones: any card re-clustered this
   // run overrides its old entry, while mappings whose source was missing this
   // run are retained rather than dropped (P-06).
-  if (previous) {
-    const beforeSynonyms = Object.keys(synonymsData.synonyms).length;
-    const beforeCanonicals = Object.keys(synonymsData.canonicals).length;
-    synonymsData.synonyms = { ...previous.synonyms, ...synonymsData.synonyms };
-    synonymsData.canonicals = { ...previous.canonicals, ...synonymsData.canonicals };
-    // Prices refresh every run; stale entries are only kept for clusters
-    // whose source was missing this run. Price drift must not count as a
-    // mapping change (mappingsChanged below ignores prints).
-    synonymsData.prints = { ...previous.prints, ...synonymsData.prints };
-    const mergedSynonyms = Object.keys(synonymsData.synonyms).length;
-    const mergedCanonicals = Object.keys(synonymsData.canonicals).length;
-    log(
-      `\nMerged with previous DB: synonyms ${beforeSynonyms}→${mergedSynonyms}, canonicals ${beforeCanonicals}→${mergedCanonicals}`
-    );
-    synonymsData.metadata.totalSynonyms = mergedSynonyms;
-    synonymsData.metadata.totalCanonicals = mergedCanonicals;
-    synonymsData.metadata.totalPrints = Object.keys(synonymsData.prints).length;
-    synonymsData.metadata.mergedWithPrevious = true;
-  }
+  synonymsData = mergePreviousSynonyms(synonymsData, previous);
 
   // Flatten the merged graph to ONE terminal canonical per reprint component.
   // The incremental merge above retains a stale reverse edge whenever a

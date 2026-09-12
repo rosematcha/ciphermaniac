@@ -64,8 +64,5 @@ jobs:
           PUBLIC_R2_BASE_URL: https://r2.ciphermaniac.com
           FULL_REWRITE: ${{ inputs.full_rewrite || 'false' }}
 
-# The derived-index rebake (P-32) is NOT called from here. As a `workflow_call`
-# it declared this workflow's own `r2-bucket-writers` concurrency group, which
-# deadlocked: the job never instantiated and this run was marked failed, so the
-# rebake silently never ran. It now chains off this workflow via `workflow_run`
-# — see `.github/workflows/reprocess-event-indexes.yml`.
+# Event artifacts are rebuilt from immutable sources by the next data release,
+# so synonyms and rolling canonical indexes are promoted together.

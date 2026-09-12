@@ -25,14 +25,9 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  GetObjectCommand,
-  HeadObjectCommand,
-  ListObjectsV2Command,
-  PutObjectCommand,
-  S3Client
-} from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { loadEventSources, productionScopeKey } from '../.github/scripts/lib/build/productionRelease';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STATIC_BASE = join(ROOT, 'static');
@@ -131,32 +126,6 @@ async function fetchJson(url: string): Promise<unknown | null> {
   }
 }
 
-/** Every `reports/…/` folder prefix in the bucket, via the authenticated S3 API. */
-async function listReportPrefixes(): Promise<string[]> {
-  if (!s3Client || !r2Bucket) {
-    return [];
-  }
-  const prefixes: string[] = [];
-  let token: string | undefined;
-  do {
-    const res = await s3Client.send(
-      new ListObjectsV2Command({
-        Bucket: r2Bucket,
-        Prefix: 'reports/',
-        Delimiter: '/',
-        ContinuationToken: token
-      })
-    );
-    for (const cp of res.CommonPrefixes ?? []) {
-      if (cp.Prefix) {
-        prefixes.push(cp.Prefix);
-      }
-    }
-    token = res.IsTruncated ? res.NextContinuationToken : undefined;
-  } while (token);
-  return prefixes;
-}
-
 async function getJsonFromR2(key: string): Promise<unknown | null> {
   if (!s3Client || !r2Bucket) {
     return null;
@@ -190,7 +159,12 @@ async function collectReportCards(cards: Map<string, CardRef>, root: string, rea
  * the credentials. Every tournament folder's master.json carries set/number.
  */
 async function discoverViaS3(cards: Map<string, CardRef>): Promise<void> {
-  const prefixes = await listReportPrefixes();
+  const read = async <T>(key: string): Promise<T | null> => (await getJsonFromR2(key)) as T | null;
+  const { release, sources } = await loadEventSources({ read });
+  const prefixes = [
+    ...Object.values(sources).map(root => `${root.replace(/^\/+/, '')}/`),
+    `${productionScopeKey(release, 'online', '')}/`
+  ];
   for (const prefix of prefixes) {
     await collectReportCards(cards, prefix, getJsonFromR2);
   }
@@ -198,11 +172,12 @@ async function discoverViaS3(cards: Map<string, CardRef>): Promise<void> {
 
 /** Discover via the public HTTP edge — the fallback for `--dry-run` with no creds. */
 async function discoverViaHttp(cards: Map<string, CardRef>): Promise<void> {
-  const tournaments = (await fetchJson(`${R2_BASE}/reports/tournaments.json`)) as string[] | null;
-  const liveNames = [...(tournaments ?? []), 'Online - Last 14 Days'];
-  for (const name of liveNames) {
-    const root = `${R2_BASE}/reports/${encodeURIComponent(name)}/`;
-    await collectReportCards(cards, root, fetchJson);
+  const read = async <T>(key: string): Promise<T | null> =>
+    (await fetchJson(`${R2_BASE}/${encodeURI(key)}`)) as T | null;
+  const { release, sources } = await loadEventSources({ read });
+  const roots = [...Object.values(sources), `/${productionScopeKey(release, 'online', '')}`];
+  for (const root of roots) {
+    await collectReportCards(cards, `${R2_BASE}/${encodeURI(root.replace(/^\/+/, ''))}/`, fetchJson);
   }
 }
 

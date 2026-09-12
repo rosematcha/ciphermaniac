@@ -9,10 +9,10 @@ months of events were missing from the reports, the catalog, and every player
 profile derived from them.
 
 The scan is: read the labs index for published codes, read the `labsCode` of
-every report folder already in R2, and run `download-tournament.py` for the
-difference (oldest first, so a partial run still leaves a chronologically
-contiguous dataset). Each ingest rebuilds `reports/tournaments.json` itself, so
-the catalog and the downstream aggregators pick the events up on their next run.
+every immutable production or pending event, and run `download-tournament.py`
+for the difference (oldest first, so a partial run still leaves a
+chronologically contiguous dataset). Each ingest registers an immutable event
+for the next production release.
 
 Environment:
   R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME
@@ -23,7 +23,6 @@ Environment:
 
 from __future__ import annotations
 
-import importlib.util
 import os
 import re
 import subprocess
@@ -64,17 +63,6 @@ def parse_int_env(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
-def load_download_module():
-    """Import download-tournament.py for its R2 listing + meta helpers."""
-    script_path = Path(__file__).with_name("download-tournament.py")
-    spec = importlib.util.spec_from_file_location("download_tournament", script_path)
-    if not spec or not spec.loader:
-        raise RuntimeError(f"Unable to load module from {script_path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def fetch_published_codes(session: requests.Session) -> list[str]:
     """Every 4-digit labs code linked from the labs index, ascending."""
     response = session.get(LABS_INDEX_URL, timeout=30)
@@ -83,21 +71,21 @@ def fetch_published_codes(session: requests.Session) -> list[str]:
     return codes
 
 
-def fetch_ingested_codes(download_module, r2_client, bucket_name: str) -> set[str]:
+def fetch_ingested_codes(r2_client, bucket_name: str) -> set[str]:
     """
-    Labs codes already in R2, read from each report folder's meta.json.
+    Labs codes already in R2, read from each immutable event's meta.json.
 
     Folder names carry no code, so the meta is the only authority. Folders whose
     meta is missing or codeless are ignored — the worst case is re-downloading
     an event, which is idempotent, rather than skipping one forever.
     """
-    folders = download_module.list_report_folders(r2_client, bucket_name)
+    _, sources = r2.load_event_sources(r2_client, bucket_name)
     codes: set[str] = set()
-    for folder in folders:
-        # build_tournament_meta_map is not reusable here: it deliberately skips
-        # date-prefixed folders (the catalog only needs metas for undated ones),
-        # which is every event we care about.
-        meta = download_module.fetch_tournament_meta(r2_client, bucket_name, folder)
+    for root in sources.values():
+        result = r2.read_json(r2_client, bucket_name, f"{root.lstrip('/')}/meta.json")
+        if result.status != "found":
+            raise RuntimeError(f"Unable to read immutable event meta: {result.status}")
+        meta = result.value
         code = meta.get("labsCode") if isinstance(meta, dict) else None
         if isinstance(code, str) and code.strip():
             codes.add(code.strip())
@@ -127,14 +115,13 @@ def main() -> int:
         return 1
 
     r2_client = r2.make_r2_client(r2_account_id, r2_access_key_id, r2_secret_access_key)
-    download_module = load_download_module()
     session = requests.Session()
 
     published = fetch_published_codes(session)
     if not published:
         print("[ingest] Error: labs index returned no tournament codes")
         return 1
-    ingested = fetch_ingested_codes(download_module, r2_client, bucket_name)
+    ingested = fetch_ingested_codes(r2_client, bucket_name)
     missing = [code for code in published if code not in ingested]
 
     print(f"[ingest] labs published: {len(published)} (latest {published[-1]})")

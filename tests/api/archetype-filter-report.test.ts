@@ -1,7 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { onRequestOptions, onRequestPost } from '../../functions/api/archetype/filter-report.ts';
+import { buildReportsPath, onRequestOptions, onRequestPost } from '../../functions/api/archetype/filter-report.ts';
+import type { ReleaseManifest } from '../../shared/data/build/release.ts';
+
+test('filter-report resolves deck reads through the embedded event release', () => {
+  const release = {
+    events: { Event: '/releases/v1/events/Event/aaaaaaaaaaaa' }
+  } as unknown as ReleaseManifest;
+  const payload = { tournament: 'Event', archetype: 'Deck Name', slice: 'phase2' } as Parameters<
+    typeof buildReportsPath
+  >[0];
+  assert.equal(
+    buildReportsPath(payload, true, release),
+    '/releases/v1/events/Event/aaaaaaaaaaaa/slices/phase2/archetypes/Deck%20Name/decks.json'
+  );
+  assert.equal(buildReportsPath({ ...payload, tournament: 'Missing' }, false, release), null);
+});
 
 test('archetype filter-report endpoint returns filtered aggregate response', async () => {
   const originalFetch = globalThis.fetch;

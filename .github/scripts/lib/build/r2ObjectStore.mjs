@@ -7,7 +7,7 @@
  * @module .github/scripts/lib/build/r2ObjectStore
  */
 
-import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const CONTROL_CACHE_CONTROL = 'no-cache';
@@ -77,6 +77,10 @@ export function createR2ObjectStore(client, bucket) {
           CacheControl: CONTROL_CACHE_CONTROL
         })
       );
+    },
+
+    async delete(key) {
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
     },
 
     /** Read a control-plane pointer with its ETag, or null when absent. */
