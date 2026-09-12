@@ -58,44 +58,54 @@ export function createRetentionStore(client: S3Client, bucket: string): Store {
   };
 }
 
-async function activeManifests(store: Store): Promise<RetainedManifest[]> {
-  const keys = ['current.json'];
-  for (const prefix of ['channels/', 'build/v1/channels/']) {
-    for await (const object of store.list(prefix)) {
-      if (object.key.endsWith('.json')) {
-        keys.push(object.key);
-      }
-    }
+async function activeManifest(store: Store): Promise<RetainedManifest> {
+  const key = 'current.json';
+  const pointer = (await store.read(key)) as { releaseId?: string; manifest?: string };
+  if (!pointer || !/^[a-zA-Z0-9_-]+$/.test(pointer.releaseId ?? '')) {
+    throw new Error(`Invalid production pointer: ${key}`);
   }
-  return Promise.all(
-    keys.map(async key => {
-      const pointer = (await store.read(key)) as { releaseId?: string; manifest?: string };
-      if (!pointer || !/^[a-zA-Z0-9_-]+$/.test(pointer.releaseId ?? '')) {
-        throw new Error(`Invalid channel pointer: ${key}`);
-      }
-      const manifestKey = pointer.manifest?.replace(/^\//, '') ?? `build/v1/releases/${pointer.releaseId}.json`;
-      if (!/^(?:build\/v1\/releases|releases\/v1\/manifests)\/[a-zA-Z0-9_-]+\.json$/.test(manifestKey)) {
-        throw new Error(`Invalid manifest key: ${manifestKey}`);
-      }
-      const manifest = retentionManifest(await store.read(manifestKey));
-      if (manifest.releaseId !== pointer.releaseId) {
-        throw new Error(`Channel and manifest disagree: ${key}`);
-      }
-      return manifest;
-    })
-  );
+  const manifestKey = pointer.manifest?.replace(/^\//, '') ?? `build/v1/releases/${pointer.releaseId}.json`;
+  if (!/^(?:build\/v1\/releases|releases\/v1\/manifests)\/[a-zA-Z0-9_-]+\.json$/.test(manifestKey)) {
+    throw new Error(`Invalid manifest key: ${manifestKey}`);
+  }
+  const manifest = retentionManifest(await store.read(manifestKey));
+  if (manifest.releaseId !== pointer.releaseId) {
+    throw new Error(`Production pointer and manifest disagree: ${key}`);
+  }
+  return manifest;
 }
 
 async function retainedRoots(store: Store, now: number): Promise<Set<string>> {
-  const active = await activeManifests(store);
-  const manifests = new Map(active.map(manifest => [manifest.releaseId, manifest]));
+  const active = await activeManifest(store);
+  const manifests = new Map([[active.releaseId, active]]);
   for (const prefix of ['build/v1/releases/', 'releases/v1/manifests/']) {
     for await (const object of store.list(prefix)) {
       const manifest = retentionManifest(await store.read(object.key));
       manifests.set(manifest.releaseId, manifest);
     }
   }
-  return protectedGenerations([...manifests.values()], new Set(active.map(manifest => manifest.releaseId)), now);
+  return protectedGenerations([...manifests.values()], new Set([active.releaseId]), now);
+}
+
+async function obsoleteObjects(store: Store): Promise<StoredObject[]> {
+  const objects: StoredObject[] = [];
+  for (const prefix of ['channels/', 'build/v1/channels/']) {
+    for await (const object of store.list(prefix)) {
+      objects.push(object);
+    }
+  }
+  for await (const object of store.list('reports/')) {
+    if (object.key.endsWith('/tournament.db')) {
+      objects.push(object);
+    }
+  }
+  return objects;
+}
+
+async function removeObjects(store: Store, objects: StoredObject[]): Promise<void> {
+  for (let offset = 0; offset < objects.length; offset += 1000) {
+    await store.remove(objects.slice(offset, offset + 1000).map(object => object.key));
+  }
 }
 
 async function removeGeneration(store: Store, generation: Generation, now: number): Promise<void> {
@@ -131,6 +141,7 @@ export async function pruneReleases(
   totalBytes: number;
   reclaimBytes: number;
   generations: Generation[];
+  obsolete: StoredObject[];
 }> {
   const keep = await retainedRoots(store, now);
   const groups = new Map<string, Generation>();
@@ -138,10 +149,13 @@ export async function pruneReleases(
     recordGeneration(groups, object);
   }
   const generations = expiredGenerations(groups.values(), keep, now);
+  const obsolete = await obsoleteObjects(store);
   const plan = {
     totalBytes: [...groups.values()].reduce((sum, group) => sum + group.bytes, 0),
-    reclaimBytes: generations.reduce((sum, group) => sum + group.bytes, 0),
-    generations
+    reclaimBytes:
+      generations.reduce((sum, group) => sum + group.bytes, 0) + obsolete.reduce((sum, object) => sum + object.size, 0),
+    generations,
+    obsolete
   };
   if (write) {
     // Re-read all channels after the inventory; an unexpected promotion cancels deletion.
@@ -152,6 +166,7 @@ export async function pruneReleases(
       }
     }
     await removeGenerations(store, generations, now);
+    await removeObjects(store, obsolete);
   }
   return plan;
 }
@@ -168,7 +183,8 @@ async function main(): Promise<void> {
     JSON.stringify({
       totalBytes: plan.totalBytes,
       reclaimBytes: plan.reclaimBytes,
-      generations: plan.generations.length
+      generations: plan.generations.length,
+      obsoleteObjects: plan.obsolete.length
     })
   );
 }

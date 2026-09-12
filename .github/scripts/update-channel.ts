@@ -6,7 +6,7 @@
  * promotion cannot be clobbered. Runs AFTER the Pages deploy, so the deployed
  * bundle (which embeds the manifest) and this tooling pointer cannot diverge.
  *
- * Usage: tsx update-channel.ts --channel <shadow|production> --manifest <release-manifest.json>
+ * Usage: tsx update-channel.ts --manifest <release-manifest.json>
  * @module .github/scripts/update-channel
  */
 
@@ -24,11 +24,7 @@ async function main(): Promise<void> {
     const i = argv.indexOf(flag);
     return i >= 0 ? argv[i + 1] : undefined;
   };
-  const channel = arg('--channel');
   const manifestPath = arg('--manifest');
-  if (channel !== 'shadow' && channel !== 'production') {
-    throw new Error('--channel must be shadow|production');
-  }
   if (!manifestPath) {
     throw new Error('Missing --manifest <release-manifest.json>');
   }
@@ -54,7 +50,8 @@ async function main(): Promise<void> {
   await store.put(manifestKey, JSON.stringify(manifest));
   console.log(`[update-channel] persisted manifest -> ${manifestKey}`);
 
-  const key = channel === 'production' ? 'current.json' : `channels/${channel}.json`;
+  const channel = 'production';
+  const key = 'current.json';
   const written = await updatePointer(store, key, () => ({
     channel,
     releaseId: manifest.releaseId,

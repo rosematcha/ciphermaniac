@@ -122,7 +122,6 @@ def run_download_for_code(code: str, env: dict, script_path: Path) -> Tuple[bool
     run_env["LIMITLESS_INPUT"] = code
     run_env["ANONYMIZE"] = "false"
     run_env["GENERATE_TOURNAMENT_SYNONYMS"] = "false"
-    run_env["WRITE_TOURNAMENT_DB"] = "true"
 
     completed = subprocess.run(cmd, env=run_env, check=False)
     if completed.returncode == 0:

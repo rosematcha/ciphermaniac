@@ -37,6 +37,7 @@ function fixture() {
     objects.push({ key: `${prefix}master.json`, size: 100, modified: prefix === RECENT ? NOW : OLD });
   }
   objects.push({ key: 'reports/raw.json', size: 1000, modified: OLD });
+  objects.push({ key: 'reports/event/tournament.db', size: 500, modified: OLD });
   const removed: string[] = [];
   const store = {
     async *list(prefix: string) {
@@ -103,7 +104,7 @@ test('dry run reports garbage without touching any objects', async () => {
   const f = fixture();
   const plan = await pruneReleases(f.store, NOW);
   assert.equal(plan.totalBytes, 400);
-  assert.equal(plan.reclaimBytes, 100);
+  assert.equal(plan.reclaimBytes, 600);
   assert.deepEqual(
     plan.generations.map(group => group.prefix),
     [EXPIRED]
@@ -111,19 +112,19 @@ test('dry run reports garbage without touching any objects', async () => {
   assert.deepEqual(f.removed, []);
 });
 
-test('cleanup deletes only old unreferenced generations, retaining raw inputs and recent orphans', async () => {
+test('cleanup deletes old unreferenced generations and tournament databases while retaining source JSON', async () => {
   const f = fixture();
   await pruneReleases(f.store, NOW, true);
-  assert.deepEqual(f.removed, [`${EXPIRED}master.json`]);
+  assert.deepEqual(f.removed, [`${EXPIRED}master.json`, 'reports/event/tournament.db']);
 });
 
-test('all legacy and shadow channels protect their roots regardless of age', async () => {
+test('shadow channels are obsolete and do not protect release roots', async () => {
   const f = fixture();
   f.bodies.set('channels/shadow.json', { releaseId: 'expired', manifest: '/build/v1/releases/expired.json' });
   f.objects.push({ key: 'channels/shadow.json', size: 10, modified: OLD });
   const plan = await pruneReleases(f.store, NOW, true);
-  assert.equal(plan.reclaimBytes, 0);
-  assert.deepEqual(f.removed, []);
+  assert.equal(plan.reclaimBytes, 610);
+  assert.deepEqual(f.removed, [`${EXPIRED}master.json`, 'channels/shadow.json', 'reports/event/tournament.db']);
 });
 
 test('a malformed or missing channel manifest blocks all deletion', async () => {

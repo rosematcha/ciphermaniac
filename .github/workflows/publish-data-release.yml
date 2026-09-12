@@ -9,7 +9,7 @@
 # The production cutover is live and verified, so this reconciling release runs
 # on a daily schedule (15:00 UTC — after the legacy producers refresh online meta,
 # player aggregates, trends, and prices) to keep the served release fresh, and can
-# still be dispatched manually (choose shadow to rehearse without touching prod).
+# still be dispatched manually when production needs an immediate refresh.
 # Promotion of the production channel pointer is a separate, post-deploy,
 # ETag-conditional step so the deployed bundle and the tooling pointer cannot
 # diverge. It never runs on push.
@@ -22,12 +22,6 @@ on:
     # Daily, after daily-pricing (14:00 UTC) so the captured scopes are current.
     - cron: '0 15 * * *'
   workflow_dispatch:
-    inputs:
-      channel:
-        description: 'Target channel'
-        type: choice
-        options: [shadow, production]
-        default: shadow
 
 concurrency:
   # Shares the bucket-writer group so a release never races a legacy producer.
@@ -37,11 +31,6 @@ concurrency:
 permissions:
   contents: read
   deployments: write
-
-env:
-  # Scheduled runs carry no inputs -> always target production. Manual runs honor
-  # the chosen channel (shadow rehearses the full path without promoting prod).
-  CHANNEL: ${{ github.event.inputs.channel || 'production' }}
 
 jobs:
   publish:
@@ -104,7 +93,6 @@ jobs:
 
       # 6. Deploy Cloudflare Pages atomically (the activation point).
       - name: Deploy to Cloudflare Pages
-        if: env.CHANNEL == 'production'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -119,7 +107,7 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-        run: npx tsx .github/scripts/update-channel.ts --channel "$CHANNEL" --manifest release-manifest.json
+        run: npx tsx .github/scripts/update-channel.ts --manifest release-manifest.json
 
-      # 8. Prior Pages deployment + prior release remain for rollback (no action).
-      # 9. Expired unreferenced releases are GC'd by a separate protected job.
+      # 8. The prior production release remains briefly available for rollback.
+      #    The protected retention workflow removes expired release data.

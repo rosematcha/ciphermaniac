@@ -2820,7 +2820,7 @@ def main():
     tournament_input = os.environ.get("LIMITLESS_INPUT") or os.environ.get("LIMITLESS_URL")
     anonymize = os.environ.get("ANONYMIZE", "false").lower() == "true"
     generate_tournament_synonyms = parse_bool_env("GENERATE_TOURNAMENT_SYNONYMS", False)
-    write_tournament_db = parse_bool_env("WRITE_TOURNAMENT_DB", True)
+    write_tournament_db = parse_bool_env("WRITE_TOURNAMENT_DB", False)
     rebuild_tournaments_only = parse_bool_env("REBUILD_TOURNAMENTS_JSON_ONLY", False)
     rebuild_tournaments_dry_run = parse_bool_env("REBUILD_TOURNAMENTS_JSON_DRY_RUN", False)
 
