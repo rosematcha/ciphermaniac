@@ -6,6 +6,28 @@
 
 .feedback-page {
   max-width: 560px;
+  margin-inline: auto;
+}
+
+/* The page the visitor came from, offered rather than filled in. */
+.feedback-suggest {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.feedback-suggest:hover {
+  color: var(--fg);
+}
+.feedback-suggest:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .feedback-form {

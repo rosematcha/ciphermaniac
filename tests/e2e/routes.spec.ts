@@ -818,7 +818,10 @@ test('feedback shows its fields once a type is picked, and sends what was asked'
   await expect(page.locator('#feedback-message')).toHaveCount(0);
 
   await page.getByRole('radio', { name: /Something’s wrong/ }).check();
+  await expect(page.locator('#feedback-page')).toHaveValue('');
+  await page.getByRole('button', { name: 'Use /cards' }).click();
   await expect(page.locator('#feedback-page')).toHaveValue('/cards');
+  await expect(page.getByRole('button', { name: 'Use /cards' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.locator('#feedback-message-error')).toHaveText('Required');
 

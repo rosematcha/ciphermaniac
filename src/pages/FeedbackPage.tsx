@@ -3,7 +3,7 @@
  *
  * Nothing is picked up front. The two types ask different questions, so the
  * fields appear once one is chosen. The footer link passes the page the visitor
- * was on as `?from=`, which prefills the Page field. Device details are read
+ * was on as `?from=`, which the Page field offers but doesn't fill. Device details are read
  * locally to show what would be sent, and only leave the browser when the
  * visitor ticks the box.
  * @module pages/FeedbackPage
@@ -233,7 +233,8 @@ export function FeedbackPage(): JSX.Element {
   const [type, setType] = createSignal<FeedbackType | null>(null);
   const [message, setMessage] = createSignal('');
   const [correction, setCorrection] = createSignal('');
-  const [page, setPage] = createSignal(normalizePagePath(searchParams.from));
+  const suggestedPage = normalizePagePath(searchParams.from);
+  const [page, setPage] = createSignal('');
   const [wantsReply, setWantsReply] = createSignal(false);
   const [method, setMethod] = createSignal<ContactMethod>('email');
   const [handle, setHandle] = createSignal('');
@@ -267,6 +268,7 @@ export function FeedbackPage(): JSX.Element {
     setType(null);
     setMessage('');
     setCorrection('');
+    setPage('');
     setWantsReply(false);
     setHandle('');
     setIncludeEnvironment(false);
@@ -346,6 +348,11 @@ export function FeedbackPage(): JSX.Element {
                       value={page()}
                       onInput={event => setPage(event.currentTarget.value)}
                     />
+                    <Show when={suggestedPage && page() !== suggestedPage}>
+                      <button type='button' class='feedback-suggest' onClick={() => setPage(suggestedPage)}>
+                        Use {suggestedPage}
+                      </button>
+                    </Show>
                   </Field>
                 </Show>
                 <ReplyFields
