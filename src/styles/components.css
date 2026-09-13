@@ -674,6 +674,58 @@
     gap: 8px;
   }
 }
+/* Home's top-archetypes strip, capped at two rows. Column steps follow the
+   200px-minimum math auto-fit would use (n columns need 210n - 10px with the
+   10px gap), floored at three and capped at five, and each step hides what
+   would spill onto a third row. nth-child can't read a variable, so every
+   step spells out its own cutoff. */
+.top-archetypes {
+  container: top-archetypes / inline-size;
+}
+.top-archetypes .gallery-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@container top-archetypes (width < 830px) {
+  .top-archetypes .gallery-grid > :nth-child(n + 7) {
+    display: none;
+  }
+}
+@container top-archetypes (830px <= width < 1040px) {
+  .top-archetypes .gallery-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .top-archetypes .gallery-grid > :nth-child(n + 9) {
+    display: none;
+  }
+}
+@container top-archetypes (width >= 1040px) {
+  .top-archetypes .gallery-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+/* Below 620px the three columns drop under 200px each and names wrap. Let
+   the name row absorb the slack so stats line up across a row regardless of
+   how many lines each name takes. */
+@container top-archetypes (width < 620px) {
+  .top-archetypes .arche {
+    padding: 8px 8px 10px;
+    gap: 6px;
+    grid-template-rows: auto 1fr auto;
+  }
+  .top-archetypes .arche-name {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+  .top-archetypes .arche-stats {
+    gap: 0 6px;
+  }
+  .top-archetypes .arche-share {
+    font-size: 17px;
+  }
+  .top-archetypes .arche-wr {
+    font-size: 11px;
+  }
+}
 /* Residual "Other" bucket — a footnote under the ranked grid, never a tile. */
 .gallery-other {
   margin: 10px 2px 0;

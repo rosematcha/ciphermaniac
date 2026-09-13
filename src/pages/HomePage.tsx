@@ -56,6 +56,7 @@ const LATEST_EVENT_WINDOW_DAYS = 14;
 // regions (e.g. Utrecht + Campinas on the same weekend).
 const LATEST_EVENT_CLUSTER_DAYS = 3;
 const RECENT_MAJORS_COUNT = 6;
+const TOP_ARCHETYPES_COUNT = 10;
 const CUT_STRIP_ROWS = 8;
 const UPCOMING_COUNT = 6;
 
@@ -169,7 +170,7 @@ export function HomePage() {
   // footnote line below (see the gallery-other paragraph).
   const rankedArchetypes = () => (archetypesData() ?? []).filter(a => !isOtherEntry(a));
   const otherEntry = () => (archetypesData() ?? []).find(isOtherEntry);
-  const topArchetypes = () => rankedArchetypes().slice(0, 8);
+  const topArchetypes = () => rankedArchetypes().slice(0, TOP_ARCHETYPES_COUNT);
 
   const recentMajors = () => {
     const list = tournamentsListData();
@@ -216,34 +217,36 @@ export function HomePage() {
           </>
         }
       >
-        <Show
-          when={archetypesData()}
-          fallback={
-            <div class='gallery-grid'>
-              <For each={Array.from({ length: 8 })}>{() => <ArchetypeCardSkeleton />}</For>
-            </div>
-          }
-        >
+        <div class='top-archetypes'>
           <Show
-            when={topArchetypes().length > 0}
+            when={archetypesData()}
             fallback={
-              <EmptyState
-                title='No archetypes yet.'
-                description="The current window hasn't aggregated archetype data yet."
-              />
+              <div class='gallery-grid'>
+                <For each={Array.from({ length: TOP_ARCHETYPES_COUNT })}>{() => <ArchetypeCardSkeleton />}</For>
+              </div>
             }
           >
-            <div class='gallery-grid'>
-              <For each={topArchetypes()}>{a => <ArchetypeCard entry={a} />}</For>
-            </div>
-            <Show when={otherEntry()}>
-              <p class='gallery-other'>
-                + Other: {(otherEntry()!.deckCount ?? 0).toLocaleString()} decks,{' '}
-                {formatPercent(otherEntry()!.percent, 0)}
-              </p>
+            <Show
+              when={topArchetypes().length > 0}
+              fallback={
+                <EmptyState
+                  title='No archetypes yet.'
+                  description="The current window hasn't aggregated archetype data yet."
+                />
+              }
+            >
+              <div class='gallery-grid'>
+                <For each={topArchetypes()}>{a => <ArchetypeCard entry={a} />}</For>
+              </div>
+              <Show when={otherEntry()}>
+                <p class='gallery-other'>
+                  + Other: {(otherEntry()!.deckCount ?? 0).toLocaleString()} decks,{' '}
+                  {formatPercent(otherEntry()!.percent, 0)}
+                </p>
+              </Show>
             </Show>
           </Show>
-        </Show>
+        </div>
       </Section>
 
       <Section title='Recent major tournaments' right={<A href='/tournaments'>View all →</A>}>
