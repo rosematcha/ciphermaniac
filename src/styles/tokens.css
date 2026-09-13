@@ -125,7 +125,10 @@ body[data-mode="dark"] {
   /* The topnav wraps to two rows (word/actions, then links) before the
      single-row desktop header would overflow. The selector's 44px target and
      the link row make the rendered header 114px tall. */
-  :root {
+  /* body[data-mode] as well as :root: the light block re-declares every token
+     on body, so an override pinned only to :root never reaches the page. */
+  :root,
+  body[data-mode] {
     --topnav-h: 114px;
   }
 }
