@@ -307,6 +307,24 @@ test('a narrow desktop viewport uses the compact two-tier header', async ({ page
   expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth);
 });
 
+test('the top archetypes grid stops at two rows', async ({ page }) => {
+  await gotoClean(page, '/');
+  const grid = page.locator('.top-archetypes .gallery-grid');
+  await expect(grid.locator('.arche:not(.arche-skeleton)').first()).toBeVisible();
+
+  const layout = await grid.evaluate(element => {
+    const shown = [...element.children].filter(child => child.getClientRects().length > 0);
+    return {
+      columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
+      rendered: element.children.length,
+      shown: shown.length,
+      rows: new Set(shown.map(card => Math.round(card.getBoundingClientRect().top))).size
+    };
+  });
+  expect(layout.rows).toBeLessThanOrEqual(2);
+  expect(layout.shown).toBe(Math.min(layout.rendered, layout.columns * 2));
+});
+
 test('the footer keeps its links on their own row without overflowing narrow viewports', async ({ page }, testInfo) => {
   if (testInfo.project.name !== 'mobile') {
     await page.setViewportSize({ width: 700, height: 800 });

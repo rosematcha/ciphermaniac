@@ -7,13 +7,13 @@
 :root,
 body[data-mode="light"] {
   /* Palette */
-  --bg: #f4ecdb;
-  --surface: #fbf5e6;
-  --surface-2: #ebe0c8;
-  --border: #2f2a22;
-  --rule: #d8ccab;
-  --fg: #1f1a13;
-  --muted: #6e6450;
+  --bg: #f3ebe3;
+  --surface: #faf5f0;
+  --surface-2: #e8dfd5;
+  --border: #2e2821;
+  --rule: #d8cfc4;
+  --fg: #1d1913;
+  --muted: #6a6055;
   --accent: #e07b4a;
   --accent-fg: #ffffff;
   --accent-hover: #c66339;
@@ -64,7 +64,7 @@ body[data-mode="light"] {
   --control-h: 38px;
   /* Sticky offset for in-table headers: matches the sticky topnav's height so
      headers park directly beneath it. Overridden per breakpoint below. */
-  --topnav-h: 56px;
+  --topnav-h: 49px;
 
   /* Motion */
   --ms-fast: 130ms;
@@ -92,20 +92,24 @@ body[data-mode="light"] {
    a custom property is DECLARED, so tiers pinned only to :root would freeze
    the light-mode ink and never darken. */
 :root,
-body {
+body,
+.topnav {
   --shadow-press: 1px 1px 0 0 var(--shadow-ink);
   --shadow-1: 3px 3px 0 0 var(--shadow-ink);
   --shadow-2: 4px 4px 0 0 var(--shadow-ink);
 }
 
-body[data-mode="dark"] {
-  --bg: #1a1816;
-  --surface: #25221f;
-  --surface-2: #2f2c28;
-  --border: #3a3733;
-  --rule: #2c2925;
-  --fg: #f1e7d3;
-  --muted: #a4998a;
+/* The topnav is dark in both modes, so it takes this block whatever the body
+   says; its menus and the tournament popover inherit it. */
+body[data-mode="dark"],
+.topnav {
+  --bg: #181514;
+  --surface: #211f1d;
+  --surface-2: #2b2827;
+  --border: #373533;
+  --rule: #262422;
+  --fg: #ede8e6;
+  --muted: #9e9792;
   --accent: #f08a55;
   --accent-fg: #1a1816;
   --accent-hover: #d4724a;
@@ -136,13 +140,13 @@ body[data-mode="dark"] {
 @media (prefers-color-scheme: dark) {
   /* Only auto-dark when the user hasn't pinned a mode */
   body:not([data-mode]) {
-    --bg: #1a1816;
-    --surface: #25221f;
-    --surface-2: #2f2c28;
-    --border: #3a3733;
-    --rule: #2c2925;
-    --fg: #f1e7d3;
-    --muted: #a4998a;
+    --bg: #181514;
+    --surface: #211f1d;
+    --surface-2: #2b2827;
+    --border: #373533;
+    --rule: #262422;
+    --fg: #ede8e6;
+    --muted: #9e9792;
     --accent: #f08a55;
     --accent-fg: #1a1816;
     --accent-hover: #d4724a;

@@ -20,8 +20,6 @@ export type Mode = 'light' | 'dark';
 
 const STORAGE_KEY = 'cm:mode';
 const DARK_QUERY = '(prefers-color-scheme: dark)';
-/** Keeps the browser's own chrome (mobile address bar) on the page's side. */
-const THEME_COLOR: Record<Mode, string> = { light: '#f4ecdb', dark: '#1a1816' };
 
 /** The mode the user has explicitly chosen, if any. */
 function storedMode(): Mode | null {
@@ -46,7 +44,6 @@ export { mode };
 
 function paint(next: Mode): void {
   document.body.dataset.mode = next;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[next]);
 }
 
 /** Puts the mode on the document. Call once, before the first render. */
