@@ -4,11 +4,13 @@
  *
  * The links are the nav's, plus Tournaments, which it has no room for — so the
  * footer doubles as the site's map on a phone, where the nav's Tools menu is
- * hidden. About is deliberately absent until that page is rewritten.
+ * hidden. About is deliberately absent until that page is rewritten. Feedback
+ * lives only here, and carries the page it was clicked from so the form can
+ * prefill it.
  * @module components/SiteFooter
  */
 
-import { A } from '@solidjs/router';
+import { A, useLocation } from '@solidjs/router';
 import { For, type JSX } from 'solid-js';
 import { prefetchRoute } from '../lib/prefetch';
 import { type Mode, mode, setMode } from '../lib/theme';
@@ -28,6 +30,11 @@ export function SiteFooter(): JSX.Element {
   // action, not a toggle, which is why there is no `aria-pressed` here: a
   // control labelled "Light mode" while pressed would announce a contradiction.
   const next = (): Mode => (mode() === 'dark' ? 'light' : 'dark');
+  const location = useLocation();
+  const feedbackHref = () =>
+    location.pathname === '/feedback'
+      ? '/feedback'
+      : `/feedback?from=${encodeURIComponent(location.pathname + location.search)}`;
   return (
     <footer class='site-footer'>
       <nav class='site-footer-links' aria-label='Footer'>
@@ -38,6 +45,13 @@ export function SiteFooter(): JSX.Element {
             </A>
           )}
         </For>
+        <A
+          href={feedbackHref()}
+          onMouseEnter={() => prefetchRoute('/feedback')}
+          onFocus={() => prefetchRoute('/feedback')}
+        >
+          Feedback
+        </A>
       </nav>
       <p class='site-footer-note'>
         Maintained by{' '}

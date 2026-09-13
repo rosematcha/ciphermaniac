@@ -807,3 +807,34 @@ test('on a desktop a click on a tile is not a placement', async ({ page }, testI
   await expect(page.locator('.tl-conf .tl-actions .tl-btn')).toHaveCount(3);
   await expect(page.locator('.tl-rank')).toHaveCount(0);
 });
+
+test('feedback shows its fields once a type is picked, and sends what was asked', async ({ page }) => {
+  let sent: Record<string, unknown> | null = null;
+  await page.route('**/api/feedback', async route => {
+    sent = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"success":true}' });
+  });
+  await gotoClean(page, '/feedback?from=%2Fcards');
+  await expect(page.locator('#feedback-message')).toHaveCount(0);
+
+  await page.getByRole('radio', { name: /Something’s wrong/ }).check();
+  await expect(page.locator('#feedback-page')).toHaveValue('/cards');
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('#feedback-message-error')).toHaveText('Required');
+
+  await page.locator('#feedback-message').fill('Dusknoir count is doubled');
+  await page.getByRole('checkbox', { name: 'Include my browser, device, and OS' }).check();
+  await expect(page.locator('.feedback-env-list')).toContainText('Browser');
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Sent' })).toBeVisible();
+  expect(sent).toMatchObject({ type: 'wrong', message: 'Dusknoir count is doubled', page: '/cards' });
+  expect((sent as { environment?: { browser?: string } } | null)?.environment?.browser).toBeTruthy();
+});
+
+test('the footer feedback link carries the page it was clicked from', async ({ page }) => {
+  await gotoClean(page, '/cards');
+  await page.locator('.site-footer').getByRole('link', { name: 'Feedback' }).click();
+  await expect(page).toHaveURL(/\/feedback\?from=%2Fcards$/);
+  await expect(page.getByRole('radio', { name: /Something to say/ })).toBeVisible();
+});

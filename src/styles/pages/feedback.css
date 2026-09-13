@@ -1,0 +1,200 @@
+/* ============================================================
+   /feedback
+   Fields sit on the page background, so they take --surface (the
+   "Field chrome" ruling on /style).
+   ============================================================ */
+
+.feedback-page {
+  max-width: 560px;
+}
+
+.feedback-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.feedback-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.feedback-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.feedback-marker {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.feedback-hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+.feedback-error {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--negative);
+}
+
+.feedback-input {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--fg);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  transition:
+    border-color var(--ms-fast) var(--ease-base),
+    box-shadow var(--ms-fast) var(--ease-base);
+}
+.feedback-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+.feedback-input[aria-invalid='true'] {
+  border-color: var(--negative);
+}
+.feedback-textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+/* Native selects clip descenders at the text line-height with block padding. */
+.feedback-select {
+  min-height: 40px;
+  padding-block: 8px;
+  line-height: normal;
+}
+@media (max-width: 640px) {
+  /* Under 16px, iOS zooms the page when a field takes focus. */
+  .feedback-input {
+    font-size: 16px;
+  }
+}
+
+.feedback-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.feedback-fieldset > legend {
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+/* ---------- Type choice ---------- */
+.feedback-choices {
+  display: grid;
+  border-top: var(--border-width) solid var(--rule);
+}
+.feedback-choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  padding: 12px 10px;
+  border-bottom: var(--border-width) solid var(--rule);
+  cursor: pointer;
+  transition: background var(--ms-fast) var(--ease-base);
+}
+.feedback-choice:hover {
+  background: var(--surface-2);
+}
+.feedback-choice:has(input:checked) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.feedback-choice input {
+  grid-row: span 2;
+  align-self: center;
+}
+.feedback-choice-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.feedback-choice-desc {
+  grid-column: 2;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---------- Radios and checkboxes ---------- */
+.feedback-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.feedback-radio,
+.feedback-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  font-size: 14px;
+  cursor: pointer;
+}
+.feedback-choice input,
+.feedback-radio input,
+.feedback-check input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* ---------- Device data ---------- */
+.feedback-env {
+  display: grid;
+  gap: var(--space-2);
+}
+.feedback-env-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+.feedback-env-list dt {
+  color: var(--muted);
+}
+.feedback-env-list dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* Honeypot: off-screen rather than display:none, which some bots skip. */
+.feedback-hp {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+/* ---------- Send and after ---------- */
+.feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.feedback-status {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--negative);
+}
+.feedback-done {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}

@@ -298,11 +298,11 @@
   }
   /* A compact site map has a predictable second row on every narrow viewport,
      rather than relying on flex wrapping once the three footer groups no
-     longer fit beside one another. */
+     longer fit beside one another. Four columns keep seven links to two rows. */
   .site-footer-links {
     grid-area: links;
     display: grid;
-    grid-template-columns: repeat(3, max-content);
+    grid-template-columns: repeat(4, max-content);
     column-gap: clamp(18px, 5vw, 36px);
     row-gap: var(--space-2);
   }
