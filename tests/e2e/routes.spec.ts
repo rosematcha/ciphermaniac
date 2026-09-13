@@ -307,7 +307,7 @@ test('a narrow desktop viewport uses the compact two-tier header', async ({ page
   expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth);
 });
 
-test('the footer uses a compact site map without overflowing narrow viewports', async ({ page }, testInfo) => {
+test('the footer keeps its links on their own row without overflowing narrow viewports', async ({ page }, testInfo) => {
   if (testInfo.project.name !== 'mobile') {
     await page.setViewportSize({ width: 700, height: 800 });
   }
@@ -331,7 +331,7 @@ test('the footer uses a compact site map without overflowing narrow viewports', 
   });
 
   expect(footer.gridTemplateAreas).toContain('"links links"');
-  expect(footer.linkRows).toBe(2);
+  expect(footer.linkRows).toBe(1);
   expect(footer.noteCenter).toBe(footer.toggleCenter);
   expect(footer.scrollWidth).toBeLessThanOrEqual(footer.clientWidth);
 });
@@ -806,4 +806,38 @@ test('on a desktop a click on a tile is not a placement', async ({ page }, testI
   // And the actions stay in the toolbar where a desktop expects them.
   await expect(page.locator('.tl-conf .tl-actions .tl-btn')).toHaveCount(3);
   await expect(page.locator('.tl-rank')).toHaveCount(0);
+});
+
+test('feedback shows its fields once a type is picked, and sends what was asked', async ({ page }) => {
+  let sent: Record<string, unknown> | null = null;
+  await page.route('**/api/feedback', async route => {
+    sent = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"success":true}' });
+  });
+  await gotoClean(page, '/feedback?from=%2Fcards');
+  await expect(page.locator('#feedback-message')).toHaveCount(0);
+
+  await page.getByRole('radio', { name: /Something’s wrong/ }).check();
+  await expect(page.locator('#feedback-page')).toHaveValue('');
+  await page.getByRole('button', { name: 'Use /cards' }).click();
+  await expect(page.locator('#feedback-page')).toHaveValue('/cards');
+  await expect(page.getByRole('button', { name: 'Use /cards' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Send' }).click();
+  await expect(page.locator('#feedback-message-error')).toHaveText('Required');
+
+  await page.locator('#feedback-message').fill('Dusknoir count is doubled');
+  await page.getByRole('checkbox', { name: 'Include my browser, device, and OS' }).check();
+  await expect(page.locator('.feedback-env-list')).toContainText('Browser');
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Sent' })).toBeVisible();
+  expect(sent).toMatchObject({ type: 'wrong', message: 'Dusknoir count is doubled', page: '/cards' });
+  expect((sent as { environment?: { browser?: string } } | null)?.environment?.browser).toBeTruthy();
+});
+
+test('the footer feedback link carries the page it was clicked from', async ({ page }) => {
+  await gotoClean(page, '/cards');
+  await page.locator('.site-footer').getByRole('link', { name: 'Feedback' }).click();
+  await expect(page).toHaveURL(/\/feedback\?from=%2Fcards$/);
+  await expect(page.getByRole('radio', { name: /Something to say/ })).toBeVisible();
 });

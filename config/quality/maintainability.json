@@ -28,14 +28,6 @@
     "complexity:83ae641fd563fb7fef93cbca93a2a464b74e5b896b252c9186410887dbc30541:Function 'normalizeFilter' has a complexity of 19. Maximum allowed is 12.",
     "complexity:57ca299927db69f7f8c1b6f6a842aa4d5b83fb2631a5f5fd4229dfd84f975d50:Function 'normalizePayload' has a complexity of 24. Maximum allowed is 12."
   ],
-  "functions/api/feedback.ts": [
-    "complexity:dcc9066235bc272a5d48c59799b5fd6475537b2055bbb3edf6c0832d5b8816e3:Async function 'onRequestPost' has a complexity of 18. Maximum allowed is 12.",
-    "max-depth:2e6438c969022f25520cdd5ec42895f53223f58a57da853e6dda17f6dcaff9cb:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "max-depth:2e6438c969022f25520cdd5ec42895f53223f58a57da853e6dda17f6dcaff9cb:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "max-depth:2e6438c969022f25520cdd5ec42895f53223f58a57da853e6dda17f6dcaff9cb:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "max-depth:2e6438c969022f25520cdd5ec42895f53223f58a57da853e6dda17f6dcaff9cb:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "complexity:2e6438c969022f25520cdd5ec42895f53223f58a57da853e6dda17f6dcaff9cb:Function 'buildEmailContent' has a complexity of 17. Maximum allowed is 12."
-  ],
   "functions/sitemap.xml.ts": [
     "complexity:add42e34bcaf31cc2b4332aeb04d5f515eadef337642ab98a84319c6fc35ed73:Async function 'onRequest' has a complexity of 13. Maximum allowed is 12."
   ],

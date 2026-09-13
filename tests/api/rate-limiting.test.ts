@@ -34,9 +34,8 @@ function makeJsonRequest(body: unknown, headers: Record<string, string> = {}): R
  */
 function validFeedbackPayload() {
   return {
-    feedbackType: 'feature',
-    feedbackText: 'Test feedback',
-    followUp: 'no'
+    type: 'say',
+    message: 'Test feedback'
   };
 }
 

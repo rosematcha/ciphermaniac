@@ -2,25 +2,18 @@
  * The strip under every page: where the site goes, who runs it, and the mode
  * toggle.
  *
- * The links are the nav's, plus Tournaments, which it has no room for — so the
- * footer doubles as the site's map on a phone, where the nav's Tools menu is
- * hidden. About is deliberately absent until that page is rewritten.
+ * Only the links the nav doesn't carry: Tournaments, which it has no room for,
+ * and Feedback. About is deliberately absent until that page is rewritten.
+ * Feedback carries the page it was clicked from so the form can suggest it.
  * @module components/SiteFooter
  */
 
-import { A } from '@solidjs/router';
+import { A, useLocation } from '@solidjs/router';
 import { For, type JSX } from 'solid-js';
 import { prefetchRoute } from '../lib/prefetch';
 import { type Mode, mode, setMode } from '../lib/theme';
 
-const LINKS: { href: string; label: string }[] = [
-  { href: '/cards', label: 'Cards' },
-  { href: '/archetypes', label: 'Archetypes' },
-  { href: '/tournaments', label: 'Tournaments' },
-  { href: '/trends', label: 'Trends' },
-  { href: '/players', label: 'Players' },
-  { href: '/tools', label: 'Tools' }
-];
+const LINKS: { href: string; label: string }[] = [{ href: '/tournaments', label: 'Tournaments' }];
 
 export function SiteFooter(): JSX.Element {
   // The button names where it goes, not where you are — so it reads as the
@@ -28,6 +21,11 @@ export function SiteFooter(): JSX.Element {
   // action, not a toggle, which is why there is no `aria-pressed` here: a
   // control labelled "Light mode" while pressed would announce a contradiction.
   const next = (): Mode => (mode() === 'dark' ? 'light' : 'dark');
+  const location = useLocation();
+  const feedbackHref = () =>
+    location.pathname === '/feedback'
+      ? '/feedback'
+      : `/feedback?from=${encodeURIComponent(location.pathname + location.search)}`;
   return (
     <footer class='site-footer'>
       <nav class='site-footer-links' aria-label='Footer'>
@@ -38,6 +36,13 @@ export function SiteFooter(): JSX.Element {
             </A>
           )}
         </For>
+        <A
+          href={feedbackHref()}
+          onMouseEnter={() => prefetchRoute('/feedback')}
+          onFocus={() => prefetchRoute('/feedback')}
+        >
+          Feedback
+        </A>
       </nav>
       <p class='site-footer-note'>
         Maintained by{' '}

@@ -73,9 +73,8 @@ test('Feedback API: neutralizes XSS and script tags in outgoing email payload', 
   ]);
 
   const payload = {
-    feedbackType: 'feature',
-    feedbackText: `User says: ${malicious}`,
-    followUp: 'no'
+    type: 'say',
+    message: `User says: ${malicious}`
   };
 
   const req = makeJsonRequest(payload);
@@ -95,7 +94,7 @@ test('Feedback API: neutralizes XSS and script tags in outgoing email payload', 
   restoreFetch();
 });
 
-test('Feedback API: prevents email header injection via contactInfo', async () => {
+test('Feedback API: prevents email header injection via the reply handle', async () => {
   let capturedBodyText = null as string | null;
   mockFetch([
     {
@@ -110,12 +109,9 @@ test('Feedback API: prevents email header injection via contactInfo', async () =
 
   const contact = 'attacker@example.com\nBcc: victim@example.com';
   const payload = {
-    feedbackType: 'bug',
-    feedbackText: 'Something broke',
-    followUp: 'yes',
-    contactMethod: 'email',
-    contactInfo: contact,
-    platform: 'desktop'
+    type: 'wrong',
+    message: 'Something broke',
+    reply: { method: 'email', handle: contact }
   };
 
   const req = makeJsonRequest(payload);
@@ -147,9 +143,8 @@ test('Feedback API: does not expose API keys from downstream errors', async () =
   ]);
 
   const payload = {
-    feedbackType: 'feature',
-    feedbackText: 'Test secret leakage',
-    followUp: 'no'
+    type: 'say',
+    message: 'Test secret leakage'
   };
 
   const req = makeJsonRequest(payload);
@@ -178,9 +173,8 @@ test('Feedback API: handles unicode characters and enforces size limits', async 
 
   const unicode = '反馈: 👍🏽 — 漢字 — emoji — 😊';
   const payload = {
-    feedbackType: 'feature',
-    feedbackText: unicode,
-    followUp: 'no'
+    type: 'say',
+    message: unicode
   };
 
   const req = makeJsonRequest(payload);
@@ -194,7 +188,7 @@ test('Feedback API: handles unicode characters and enforces size limits', async 
   const largeReq = new Request('https://ciphermaniac.test/feedback', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ feedbackType: 'feature', feedbackText: largeString })
+    body: JSON.stringify({ type: 'say', message: largeString })
   });
 
   const largeResp = await FeedbackModule.onRequestPost({ request: largeReq, env });
