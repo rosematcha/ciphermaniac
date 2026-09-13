@@ -77,22 +77,25 @@
   grid-template-columns: auto 1fr auto;
   gap: 24px;
   align-items: center;
-  padding: 14px 32px;
+  /* The dark band runs edge to edge; the padding holds its contents to the
+     1400px measure the header used to be capped at. */
+  padding: 8px max(32px, calc((100% - 1400px) / 2 + 32px));
   border-bottom: 1px solid var(--border);
   background: var(--bg);
-  max-width: 1400px;
-  margin: 0 auto;
+  color-scheme: dark;
   position: sticky;
   top: 0;
   z-index: 50;
 }
 .topnav-word {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.04em;
   color: var(--fg);
+  transition: color var(--ms-fast) var(--ease-base);
 }
 .topnav-word:hover {
+  color: var(--accent);
   text-decoration: none;
 }
 .topnav-links {
@@ -191,7 +194,6 @@
   }
   .topnav-word {
     grid-area: word;
-    font-size: 19px;
   }
   .topnav-actions {
     grid-area: actions;

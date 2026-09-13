@@ -64,7 +64,7 @@ body[data-mode="light"] {
   --control-h: 38px;
   /* Sticky offset for in-table headers: matches the sticky topnav's height so
      headers park directly beneath it. Overridden per breakpoint below. */
-  --topnav-h: 56px;
+  --topnav-h: 49px;
 
   /* Motion */
   --ms-fast: 130ms;
@@ -92,13 +92,17 @@ body[data-mode="light"] {
    a custom property is DECLARED, so tiers pinned only to :root would freeze
    the light-mode ink and never darken. */
 :root,
-body {
+body,
+.topnav {
   --shadow-press: 1px 1px 0 0 var(--shadow-ink);
   --shadow-1: 3px 3px 0 0 var(--shadow-ink);
   --shadow-2: 4px 4px 0 0 var(--shadow-ink);
 }
 
-body[data-mode="dark"] {
+/* The topnav is dark in both modes, so it takes this block whatever the body
+   says; its menus and the tournament popover inherit it. */
+body[data-mode="dark"],
+.topnav {
   --bg: #16191b;
   --surface: #1f2326;
   --surface-2: #292e31;
