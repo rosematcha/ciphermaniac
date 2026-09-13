@@ -7,13 +7,13 @@
 :root,
 body[data-mode="light"] {
   /* Palette */
-  --bg: #f1eee8;
-  --surface: #f9f7f3;
-  --surface-2: #e4dfd6;
-  --border: #2b2824;
-  --rule: #d3ccc0;
-  --fg: #1c1a17;
-  --muted: #625b53;
+  --bg: #f3ebe3;
+  --surface: #faf5f0;
+  --surface-2: #e8dfd5;
+  --border: #2e2821;
+  --rule: #d8cfc4;
+  --fg: #1d1913;
+  --muted: #6a6055;
   --accent: #e07b4a;
   --accent-fg: #ffffff;
   --accent-hover: #c66339;
@@ -103,13 +103,13 @@ body,
    says; its menus and the tournament popover inherit it. */
 body[data-mode="dark"],
 .topnav {
-  --bg: #16191b;
-  --surface: #1f2326;
-  --surface-2: #292e31;
-  --border: #363b3f;
-  --rule: #262a2d;
-  --fg: #e8ecee;
-  --muted: #9aa2a8;
+  --bg: #181514;
+  --surface: #211f1d;
+  --surface-2: #2b2827;
+  --border: #373533;
+  --rule: #262422;
+  --fg: #ede8e6;
+  --muted: #9e9792;
   --accent: #f08a55;
   --accent-fg: #1a1816;
   --accent-hover: #d4724a;
@@ -140,13 +140,13 @@ body[data-mode="dark"],
 @media (prefers-color-scheme: dark) {
   /* Only auto-dark when the user hasn't pinned a mode */
   body:not([data-mode]) {
-    --bg: #16191b;
-    --surface: #1f2326;
-    --surface-2: #292e31;
-    --border: #363b3f;
-    --rule: #262a2d;
-    --fg: #e8ecee;
-    --muted: #9aa2a8;
+    --bg: #181514;
+    --surface: #211f1d;
+    --surface-2: #2b2827;
+    --border: #373533;
+    --rule: #262422;
+    --fg: #ede8e6;
+    --muted: #9e9792;
     --accent: #f08a55;
     --accent-fg: #1a1816;
     --accent-hover: #d4724a;
