@@ -1,24 +1,23 @@
 /**
- * Cloudflare Pages function for handling feedback form submissions
- * Processes feedback and sends emails via Resend
+ * POST /api/feedback: the feedback form's endpoint.
+ *
+ * Validates the body against the shared contract (shared/feedback.ts), then
+ * mails it to the site owner through Resend. Rate limited per IP and capped in
+ * size; a filled honeypot gets a quiet fake success.
  */
 
-import { corsPreflight, jsonError, jsonSuccess } from '../lib/api/responses.js';
+import { type FeedbackSubmission, formatFeedbackEmail, isEmailAddress, parseFeedback } from '../../shared/feedback.js';
+import { type ResendEnv, sendResendEmail } from '../lib/api/email.js';
 import { createRateLimiter } from '../lib/api/rateLimiter.js';
-import { sendResendEmail } from '../lib/api/email.js';
+import { corsPreflight, jsonError, jsonSuccess } from '../lib/api/responses.js';
 
-// Maximum allowed payload size (1MB)
-const MAX_PAYLOAD_SIZE = 1024 * 1024;
+/** The form's largest possible body is about 12 KB; anything near this is not the form. */
+const MAX_PAYLOAD_SIZE = 64 * 1024;
+const CORS = { 'Access-Control-Allow-Origin': '*' };
+const FROM = 'Ciphermaniac Feedback <onboarding@resend.dev>';
+const DEFAULT_RECIPIENT = 'reese@ciphermaniac.com';
 
-// Maximum allowed feedback text length in characters (in addition to the byte cap)
-const MAX_FEEDBACK_TEXT_LENGTH = 10_000;
-
-// The only feedback categories the UI offers. Anything else is a malformed or
-// scripted submission and is rejected.
-const ALLOWED_FEEDBACK_TYPES = new Set(['bug', 'feature']);
-
-// In-memory rate limiter (per-isolate; acceptable for edge functions).
-// 5 requests per IP per hour.
+// In-memory, so per isolate; acceptable at the edge. 5 requests per IP per hour.
 const rateLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000,
   maxRequests: 5
@@ -32,57 +31,8 @@ export function _resetRateLimitStore(): void {
   rateLimiter.reset();
 }
 
-/**
- * Sanitize user text for the plain-text email body.
- *
- * The email is sent as a plain-text (`text`) payload via the Resend JSON API,
- * so HTML entity escaping is NOT applied — it would corrupt legitimate input
- * like "R&D" or "x < 5". As defense-in-depth (in case a mail client ever
- * renders the content as HTML), script tag blocks are removed and any stray
- * script tags are stripped.
- */
-function sanitizeText(text: string): string {
-  if (typeof text !== 'string') {
-    return '';
-  }
-  // Remove script tags and their contents
-  let sanitized = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '[script removed]');
-  // Strip any leftover unpaired script tags
-  sanitized = sanitized.replace(/<\/?script[^>]*>/gi, '[script removed]');
-  // Drop control characters except newline and tab (keeps multi-line feedback readable)
-  // eslint-disable-next-line no-control-regex
-  sanitized = sanitized.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
-  return sanitized;
-}
-
-/**
- * Sanitize a single-line field: same as sanitizeText, plus newlines are
- * collapsed to spaces so labels like "Platform: ..." stay on one line.
- */
-function sanitizeSingleLine(text: string): string {
-  return sanitizeText(text)
-    .replace(/[\r\n]+/g, ' ')
-    .trim();
-}
-
-interface FeedbackData {
-  feedbackType: string;
-  feedbackText: string;
-  /** Honeypot field — hidden in the UI, real users never fill it. */
-  hp?: string;
-  platform?: 'desktop' | 'mobile' | string;
-  desktopOS?: string;
-  desktopBrowser?: string;
-  mobileOS?: string;
-  mobileBrowser?: string;
-  followUp?: 'yes' | 'no';
-  contactMethod?: string;
-  contactInfo?: string;
-}
-
-interface Env {
+interface Env extends ResendEnv {
   FEEDBACK_RECIPIENT?: string;
-  RESEND_API_KEY?: string;
 }
 
 interface RequestContext {
@@ -90,151 +40,118 @@ interface RequestContext {
   env: Env;
 }
 
-function isValidFeedbackData(data: unknown): data is FeedbackData {
-  if (!data || typeof data !== 'object') {
-    return false;
+function rateLimited(request: Request): Response | null {
+  const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+  const result = rateLimiter.check(clientIp);
+  if (result.allowed) {
+    return null;
   }
-  const candidate = data as Record<string, unknown>;
-  return typeof candidate.feedbackType === 'string' && typeof candidate.feedbackText === 'string';
+  return jsonError('Too many requests. Please try again later.', 429, {
+    ...CORS,
+    'Retry-After': String(result.retryAfter || 3600)
+  });
+}
+
+const tooLarge = () => jsonError('Payload too large', 413, CORS);
+
+/**
+ * The body as text, or null once it passes the cap. Counted in bytes as it
+ * streams, so a chunked body with no Content-Length can't be read in full first.
+ */
+async function readBoundedText(request: Request): Promise<string | null> {
+  if (!request.body) {
+    return '';
+  }
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    size += value.byteLength;
+    if (size > MAX_PAYLOAD_SIZE) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+/** The parsed body, or the error Response to send instead. */
+async function readJsonBody(request: Request): Promise<unknown> {
+  // Reject on the declared length before reading anything.
+  if (Number(request.headers.get('content-length')) > MAX_PAYLOAD_SIZE) {
+    return tooLarge();
+  }
+  const text = await readBoundedText(request).catch(() => '');
+  if (text === null) {
+    return tooLarge();
+  }
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return jsonError('Missing required fields', 400, CORS);
+  }
+}
+
+function filledHoneypot(body: unknown): boolean {
+  const honeypot = typeof body === 'object' && body !== null ? (body as { hp?: unknown }).hp : undefined;
+  return typeof honeypot === 'string' && honeypot.trim() !== '';
+}
+
+function sendFeedbackEmail(env: Env, submission: FeedbackSubmission): Promise<Response> {
+  const { subject, text } = formatFeedbackEmail(submission, new Date());
+  // With an email address to reply to, a plain Reply in the inbox reaches the visitor.
+  const handle = submission.reply?.method === 'email' ? submission.reply.handle : '';
+  return sendResendEmail(env, {
+    from: FROM,
+    to: env.FEEDBACK_RECIPIENT || DEFAULT_RECIPIENT,
+    subject,
+    text,
+    ...(isEmailAddress(handle) ? { replyTo: handle } : {})
+  });
 }
 
 export async function onRequestPost({ request, env }: RequestContext): Promise<Response> {
   try {
-    // Rate limiting check using Cloudflare's CF-Connecting-IP header
-    const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
-    const rateLimitResult = rateLimiter.check(clientIp);
-
-    if (!rateLimitResult.allowed) {
-      return jsonError('Too many requests. Please try again later.', 429, {
-        'Access-Control-Allow-Origin': '*',
-        'Retry-After': String(rateLimitResult.retryAfter || 3600)
-      });
+    const limited = rateLimited(request);
+    if (limited) {
+      return limited;
     }
-
-    // Check content length header first to reject oversized payloads early
-    const contentLength = request.headers.get('content-length');
-    if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_SIZE) {
-      return jsonError('Payload too large', 413, { 'Access-Control-Allow-Origin': '*' });
+    const body = await readJsonBody(request);
+    if (body instanceof Response) {
+      return body;
     }
-
-    // Also check actual body size by reading as text first
-    const bodyText = await request.text().catch(() => '');
-    if (bodyText.length > MAX_PAYLOAD_SIZE) {
-      return jsonError('Payload too large', 413, { 'Access-Control-Allow-Origin': '*' });
-    }
-
-    let parsedBody: unknown = null;
-    try {
-      parsedBody = JSON.parse(bodyText);
-    } catch {
-      parsedBody = null;
-    }
-    if (!isValidFeedbackData(parsedBody)) {
-      return jsonError('Missing required fields', 400, { 'Access-Control-Allow-Origin': '*' });
-    }
-    const feedbackData = parsedBody;
-
-    // Pretend honeypot submissions succeeded so bots do not learn they were caught.
-    if (typeof feedbackData.hp === 'string' && feedbackData.hp.trim()) {
+    // Pretend a bot's submission worked, so it never learns it was caught.
+    if (filledHoneypot(body)) {
       return jsonSuccess({ success: true });
     }
-
-    // Normalize and require real content: trimmed text must be non-empty and the
-    // type must be one the UI actually offers. Otherwise an empty or garbage
-    // submission would still send an email and report success.
-    feedbackData.feedbackType = feedbackData.feedbackType.trim();
-    feedbackData.feedbackText = feedbackData.feedbackText.trim();
-    if (!ALLOWED_FEEDBACK_TYPES.has(feedbackData.feedbackType) || !feedbackData.feedbackText) {
-      return jsonError('Missing required fields', 400, { 'Access-Control-Allow-Origin': '*' });
+    const parsed = parseFeedback(body);
+    if (!parsed.ok) {
+      return jsonError(parsed.error, 400, CORS);
     }
-
-    if (feedbackData.feedbackText.length > MAX_FEEDBACK_TEXT_LENGTH) {
-      return jsonError('Feedback text too long', 400, { 'Access-Control-Allow-Origin': '*' });
+    const response = await sendFeedbackEmail(env, parsed.value);
+    if (!response.ok) {
+      console.error('Resend API error:', response.status, await response.text());
+      return jsonError('Internal server error', 500, CORS);
     }
-
-    const recipient = env.FEEDBACK_RECIPIENT || 'reese@ciphermaniac.com';
-    const emailContent = buildEmailContent(feedbackData);
-
-    const resendResponse = await sendEmail(env, recipient, emailContent, feedbackData);
-    if (!resendResponse.ok) {
-      const errorText = await resendResponse.text();
-      console.error('Resend API Error Response:', errorText);
-      throw new Error(`Resend API error: ${resendResponse.status} - ${errorText}`);
-    }
-
     return jsonSuccess({ success: true });
   } catch (error) {
+    // Never echo the error itself: it can carry the API key or a downstream body.
     console.error('Feedback submission error:', error);
-    // Never expose internal error messages which might contain API keys or secrets
-    return jsonError('Internal server error', 500, { 'Access-Control-Allow-Origin': '*' });
+    return jsonError('Internal server error', 500, CORS);
   }
 }
 
-// Handle preflight requests
 export function onRequestOptions(): Response {
   return corsPreflight('POST, OPTIONS', { status: 200 });
-}
-
-function buildEmailContent(data: FeedbackData): string {
-  // Sanitize all user-provided fields (single-line fields also lose newlines)
-  const sanitizedType = sanitizeSingleLine(data.feedbackType);
-  const sanitizedText = sanitizeText(data.feedbackText);
-  const sanitizedPlatform = data.platform ? sanitizeSingleLine(data.platform) : '';
-  const sanitizedDesktopOS = data.desktopOS ? sanitizeSingleLine(data.desktopOS) : '';
-  const sanitizedDesktopBrowser = data.desktopBrowser ? sanitizeSingleLine(data.desktopBrowser) : '';
-  const sanitizedMobileOS = data.mobileOS ? sanitizeSingleLine(data.mobileOS) : '';
-  const sanitizedMobileBrowser = data.mobileBrowser ? sanitizeSingleLine(data.mobileBrowser) : '';
-
-  const lines = [`New ${sanitizedType} submission from Ciphermaniac`, '', `Feedback Type: ${sanitizedType}`, ''];
-
-  if (data.feedbackType === 'bug') {
-    lines.push('Technical Details:');
-    if (sanitizedPlatform) {
-      lines.push(`Platform: ${sanitizedPlatform}`);
-
-      if (data.platform === 'desktop') {
-        if (sanitizedDesktopOS) {
-          lines.push(`OS: ${sanitizedDesktopOS}`);
-        }
-        if (sanitizedDesktopBrowser) {
-          lines.push(`Browser: ${sanitizedDesktopBrowser}`);
-        }
-      } else if (data.platform === 'mobile') {
-        if (sanitizedMobileOS) {
-          lines.push(`Mobile OS: ${sanitizedMobileOS}`);
-        }
-        if (sanitizedMobileBrowser) {
-          lines.push(`Browser: ${sanitizedMobileBrowser}`);
-        }
-      }
-    }
-    lines.push('');
-  }
-
-  lines.push('Feedback:');
-  lines.push(sanitizedText);
-  lines.push('');
-
-  if (data.followUp === 'yes' && data.contactMethod && data.contactInfo) {
-    lines.push('Contact Information:');
-    lines.push(`Method: ${sanitizeSingleLine(data.contactMethod)}`);
-    lines.push(`Contact: ${sanitizeSingleLine(data.contactInfo)}`);
-  } else {
-    lines.push('No follow-up requested');
-  }
-
-  lines.push('');
-  lines.push(`Submitted at: ${new Date().toISOString()}`);
-
-  return lines.join('\n');
-}
-
-async function sendEmail(env: Env, recipient: string, content: string, feedbackData: FeedbackData): Promise<Response> {
-  const subject = `[Ciphermaniac] ${feedbackData.feedbackType === 'bug' ? 'Bug Report' : 'Feature Request'}`;
-  return sendResendEmail(env, {
-    from: 'Ciphermaniac Feedback <onboarding@resend.dev>',
-    to: recipient,
-    subject,
-    text: content
-  });
 }

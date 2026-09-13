@@ -11,6 +11,8 @@ export interface ResendEmailOptions {
   subject: string;
   /** Plain-text body. */
   text: string;
+  /** Where a reply goes, when not to `from`. Callers must pass a validated address. */
+  replyTo?: string;
   /** Abort the request after this many ms (default 10s). */
   timeoutMs?: number;
 }
@@ -37,7 +39,10 @@ export async function sendResendEmail(env: ResendEnv, options: ResendEmailOption
       from: options.from,
       to: options.to,
       subject: options.subject,
-      text: options.text
+      text: options.text,
+      // JSON.stringify drops it when unset.
+      // eslint-disable-next-line camelcase -- Resend's field name
+      reply_to: options.replyTo
     }),
     signal: controller.signal
   }).finally(() => clearTimeout(timeoutId));
