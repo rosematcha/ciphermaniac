@@ -307,7 +307,7 @@ test('a narrow desktop viewport uses the compact two-tier header', async ({ page
   expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth);
 });
 
-test('the footer uses a compact site map without overflowing narrow viewports', async ({ page }, testInfo) => {
+test('the footer keeps its links on their own row without overflowing narrow viewports', async ({ page }, testInfo) => {
   if (testInfo.project.name !== 'mobile') {
     await page.setViewportSize({ width: 700, height: 800 });
   }
@@ -331,7 +331,7 @@ test('the footer uses a compact site map without overflowing narrow viewports', 
   });
 
   expect(footer.gridTemplateAreas).toContain('"links links"');
-  expect(footer.linkRows).toBe(2);
+  expect(footer.linkRows).toBe(1);
   expect(footer.noteCenter).toBe(footer.toggleCenter);
   expect(footer.scrollWidth).toBeLessThanOrEqual(footer.clientWidth);
 });

@@ -2,11 +2,9 @@
  * The strip under every page: where the site goes, who runs it, and the mode
  * toggle.
  *
- * The links are the nav's, plus Tournaments, which it has no room for — so the
- * footer doubles as the site's map on a phone, where the nav's Tools menu is
- * hidden. About is deliberately absent until that page is rewritten. Feedback
- * lives only here, and carries the page it was clicked from so the form can
- * prefill it.
+ * Only the links the nav doesn't carry: Tournaments, which it has no room for,
+ * and Feedback. About is deliberately absent until that page is rewritten.
+ * Feedback carries the page it was clicked from so the form can suggest it.
  * @module components/SiteFooter
  */
 
@@ -15,14 +13,7 @@ import { For, type JSX } from 'solid-js';
 import { prefetchRoute } from '../lib/prefetch';
 import { type Mode, mode, setMode } from '../lib/theme';
 
-const LINKS: { href: string; label: string }[] = [
-  { href: '/cards', label: 'Cards' },
-  { href: '/archetypes', label: 'Archetypes' },
-  { href: '/tournaments', label: 'Tournaments' },
-  { href: '/trends', label: 'Trends' },
-  { href: '/players', label: 'Players' },
-  { href: '/tools', label: 'Tools' }
-];
+const LINKS: { href: string; label: string }[] = [{ href: '/tournaments', label: 'Tournaments' }];
 
 export function SiteFooter(): JSX.Element {
   // The button names where it goes, not where you are — so it reads as the
