@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { ONLINE_META_NAME, scopeSlug } from '../../shared/data/tournamentKeys.ts';
-import { resolveInitialScope } from '../../src/lib/scopeUrl.ts';
+import { isScopeAwarePath, resolveInitialScope, scopeParam, writeScopeParam } from '../../src/lib/scopeUrl.ts';
 
 const EVENT = '2026-05-08, Regional Championship Los Angeles';
 const STORED = '2026-06-20, North America International Championship';
@@ -35,4 +35,29 @@ test('an unresolvable URL and stale storage fall back to online', () => {
     key: ONLINE_META_NAME,
     removeInvalidParam: true
   });
+});
+
+test('scope-aware routes include their detail pages but exclude independent tools', () => {
+  for (const path of ['/', '/cards', '/cards/MEG/114', '/archetypes', '/archetypes/Dragapult', '/tournaments']) {
+    assert.equal(isScopeAwarePath(path), true, path);
+  }
+  for (const path of ['/trends', '/players/1272', '/tools/meta-binder', '/about', '/feedback']) {
+    assert.equal(isScopeAwarePath(path), false, path);
+  }
+});
+
+test('default and snapshot fetch targets never become URL scopes', () => {
+  assert.equal(scopeParam(ONLINE_META_NAME), undefined);
+  assert.equal(scopeParam('snapshot:2026-04-10'), undefined);
+  assert.equal(scopeParam(EVENT), scopeSlug(EVENT));
+});
+
+test('writing a scope preserves other params and removes the default', () => {
+  const params = new URLSearchParams('tab=advanced');
+  writeScopeParam(params, EVENT);
+  assert.equal(params.get('scope'), scopeSlug(EVENT));
+  assert.equal(params.get('tab'), 'advanced');
+  writeScopeParam(params, ONLINE_META_NAME);
+  assert.equal(params.has('scope'), false);
+  assert.equal(params.get('tab'), 'advanced');
 });
