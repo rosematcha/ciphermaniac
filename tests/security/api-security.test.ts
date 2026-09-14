@@ -6,6 +6,7 @@ import { generateMaliciousInput } from '../__utils__/mock-data-factory.js';
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers.js';
 
 import * as FeedbackModule from '../../functions/api/feedback.ts';
+import { imageProxyResponse } from '../../functions/lib/api/responses.ts';
 import * as ThumbnailModule from '../../functions/thumbnails/[[path]].ts';
 import * as SpriteModule from '../../functions/sprites/[[path]].ts';
 
@@ -284,6 +285,11 @@ test('Sprite API: falls back and returns an immutable, CORS-open image', async (
   assert.strictEqual(response.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
   assert.strictEqual(response.headers.get('Set-Cookie'), null);
   assert.strictEqual(response.headers.get('Vary'), null);
+});
+
+test('Image proxy preserves an upstream image content type', () => {
+  const response = imageProxyResponse(new Response('fake-image-data', { headers: { 'Content-Type': 'image/webp' } }));
+  assert.strictEqual(response.headers.get('Content-Type'), 'image/webp');
 });
 
 test('Thumbnail API: accepts valid sm/xs sizes', async () => {

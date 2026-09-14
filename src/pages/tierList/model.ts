@@ -305,21 +305,68 @@ export function decodeShare(encoded: string): ShareState | null {
 
 function parseWire(encoded: string): WireState | null {
   try {
-    const parsed = JSON.parse(fromBase64Url(encoded)) as Partial<WireState>;
-    if (parsed?.v !== 1 || !Array.isArray(parsed.r)) {
+    const parsed: unknown = JSON.parse(fromBase64Url(encoded));
+    if (!isWireState(parsed)) {
       return null;
     }
-    return {
-      v: 1,
-      m: parsed.m ?? 'icons',
-      s: parsed.s ?? '',
-      t: parsed.t ?? '',
-      r: parsed.r,
-      c: Array.isArray(parsed.c) ? parsed.c : []
-    };
+    return parsed;
   } catch {
     return null;
   }
+}
+
+const MAX_WIRE_ROWS = 100;
+const MAX_WIRE_ITEMS = 500;
+const MAX_WIRE_CUSTOM = 100;
+const MAX_WIRE_STRING_LENGTH = 1_000;
+
+function isBoundedString(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= MAX_WIRE_STRING_LENGTH;
+}
+
+function isStringArray(value: unknown, maxLength = MAX_WIRE_ITEMS): value is string[] {
+  return Array.isArray(value) && value.length <= maxLength && value.every(isBoundedString);
+}
+
+function isWireRow(value: unknown): value is string[] {
+  return isStringArray(value) && value.length >= 2;
+}
+
+function isWireCustom(value: unknown): value is WireState['c'][number] {
+  return (
+    Array.isArray(value) &&
+    value.length === 4 &&
+    typeof value[0] === 'number' &&
+    Number.isFinite(value[0]) &&
+    isBoundedString(value[1]) &&
+    isStringArray(value[2], 2) &&
+    isStringArray(value[3], 2)
+  );
+}
+
+function isWireState(value: unknown): value is WireState {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return hasWireMetadata(candidate) && hasWireRows(candidate) && hasWireCustom(candidate);
+}
+
+function hasWireMetadata(candidate: Record<string, unknown>): boolean {
+  return (
+    candidate.v === 1 &&
+    (candidate.m === 'icons' || candidate.m === 'previews' || candidate.m === 'arts') &&
+    isBoundedString(candidate.s) &&
+    isBoundedString(candidate.t)
+  );
+}
+
+function hasWireRows(candidate: Record<string, unknown>): boolean {
+  return Array.isArray(candidate.r) && candidate.r.length <= MAX_WIRE_ROWS && candidate.r.every(isWireRow);
+}
+
+function hasWireCustom(candidate: Record<string, unknown>): boolean {
+  return Array.isArray(candidate.c) && candidate.c.length <= MAX_WIRE_CUSTOM && candidate.c.every(isWireCustom);
 }
 
 /** Base64url over UTF-8, so card names with accents survive the round trip. */

@@ -186,7 +186,7 @@ test('Rate limiting: different IPs have independent limits', async () => {
 // Rate limiting - Fallback IP headers
 // ============================================================================
 
-test('Rate limiting: uses X-Forwarded-For when CF-Connecting-IP is missing', async () => {
+test('Rate limiting: ignores X-Forwarded-For when CF-Connecting-IP is missing', async () => {
   mockFetch({
     predicate: () => true,
     status: 200,
@@ -194,22 +194,21 @@ test('Rate limiting: uses X-Forwarded-For when CF-Connecting-IP is missing', asy
   });
 
   const env = { RESEND_API_KEY: 'sk_test' } as any;
-  const testIp = '203.0.113.50';
-
-  // Exhaust limit using X-Forwarded-For
+  // Missing platform headers share the defensive "unknown" bucket, regardless
+  // of a client-controlled X-Forwarded-For value.
   for (let i = 0; i < 5; i++) {
     const request = makeJsonRequest(validFeedbackPayload(), {
-      'X-Forwarded-For': testIp
+      'X-Forwarded-For': `203.0.113.${i}`
     });
     await onRequestPost({ request, env });
   }
 
   // 6th request should be blocked
   const request = makeJsonRequest(validFeedbackPayload(), {
-    'X-Forwarded-For': testIp
+    'X-Forwarded-For': '203.0.113.50'
   });
   const response = await onRequestPost({ request, env });
-  assert.strictEqual(response.status, 429, 'Should be rate limited via X-Forwarded-For');
+  assert.strictEqual(response.status, 429, 'X-Forwarded-For must not choose the rate-limit bucket');
 });
 
 test('Rate limiting: falls back to "unknown" when no IP headers present', async () => {

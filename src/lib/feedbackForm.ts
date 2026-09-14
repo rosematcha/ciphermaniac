@@ -16,7 +16,6 @@ import {
 export interface FeedbackFormState {
   type: FeedbackType;
   message: string;
-  correction: string;
   page: string;
   wantsReply: boolean;
   method: ContactMethod;
@@ -62,11 +61,7 @@ export function buildSubmission(state: FeedbackFormState, honeypot: string): Fee
     message: state.message.trim(),
     hp: honeypot
   };
-  const correction = state.correction.trim();
   const page = state.page.trim();
-  if (state.type === 'wrong' && correction) {
-    submission.correction = correction;
-  }
   if (state.type === 'wrong' && page) {
     submission.page = page;
   }

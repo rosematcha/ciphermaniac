@@ -370,6 +370,18 @@ test('a payload this version did not write decodes to null rather than throwing'
   assert.equal(decodeShare(''), null);
 });
 
+test('malformed share fields decode to null', () => {
+  const valid = { v: 1, m: 'icons', s: '', t: '', r: [['S', 'vivid-red']], c: [] };
+  const encoded = (value: unknown) => btoa(JSON.stringify(value));
+
+  assert.equal(decodeShare(encoded({ ...valid, m: 'unknown' })), null);
+  assert.equal(decodeShare(encoded({ ...valid, s: 1 })), null);
+  assert.equal(decodeShare(encoded({ ...valid, r: [['S', 1]] })), null);
+  assert.equal(decodeShare(encoded({ ...valid, c: [[Number.NaN, 'Deck', [], []]] })), null);
+  assert.equal(decodeShare(encoded({ ...valid, c: [[1, 'Deck', [1], []]] })), null);
+  assert.equal(decodeShare(encoded({ ...valid, c: [[1, 'Deck', [], [false]]] })), null);
+});
+
 // ---------------------------------------------------------------------------
 // Search
 // ---------------------------------------------------------------------------

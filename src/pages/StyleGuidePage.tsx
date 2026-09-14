@@ -400,7 +400,7 @@ function AnatomySpecimens(props: {
         />
       </Spec>
       <Spec selector='.pagination' rule='Numbered. Sits below the list it pages.' wide>
-        <Pagination page={props.page} totalPages={9} onChange={props.onPage} pageSize={50} totalItems={432} />
+        <Pagination page={props.page} totalPages={9} onChange={props.onPage} />
       </Spec>
     </>
   );

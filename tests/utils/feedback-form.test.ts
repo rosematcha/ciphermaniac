@@ -6,7 +6,6 @@ import { buildSubmission, type FeedbackFormState, sendFeedback, validateForm } f
 const state = (overrides: Partial<FeedbackFormState> = {}): FeedbackFormState => ({
   type: 'wrong',
   message: 'Dusknoir count is doubled',
-  correction: '',
   page: '/cards/PAL/185',
   wantsReply: false,
   method: 'email',
@@ -32,13 +31,12 @@ test('validateForm only asks for a handle once a reply is wanted', () => {
 
 test('buildSubmission sends what a data report asked for, trimmed', () => {
   const body = buildSubmission(
-    state({ message: ' Doubled ', correction: ' One ', wantsReply: true, method: 'bluesky', handle: ' @reese ' }),
+    state({ message: ' Doubled ', wantsReply: true, method: 'bluesky', handle: ' @reese ' }),
     ''
   );
   assert.deepEqual(body, {
     type: 'wrong',
     message: 'Doubled',
-    correction: 'One',
     page: '/cards/PAL/185',
     reply: { method: 'bluesky', handle: '@reese' },
     hp: ''
@@ -54,7 +52,7 @@ test('buildSubmission leaves out blank optional fields', () => {
 });
 
 test('buildSubmission drops data-report fields from something to say', () => {
-  const body = buildSubmission(state({ type: 'say', message: 'Thanks', correction: 'stale', page: '/cards' }), 'bot');
+  const body = buildSubmission(state({ type: 'say', message: 'Thanks', page: '/cards' }), 'bot');
   assert.deepEqual(body, { type: 'say', message: 'Thanks', hp: 'bot' });
 });
 

@@ -46,25 +46,5 @@ ENVIRONMENT = "production"
 #   - POKEMON_TCG_API_KEY: API key for Pokemon TCG data
 #   - (Add other secrets your app requires)
 #
-# Before first deployment, create the preview KV namespace and R2 bucket:
-#   npx wrangler kv:namespace create PRICE_DATA --env preview
-#   npx wrangler r2 bucket create ciphermaniac-reports-preview
-# =============================================================================
-
-[env.preview]
-name = "ciphermaniac-preview"
-
-# KV namespace binding for preview
-# Replace with actual ID after running: npx wrangler kv:namespace create PRICE_DATA --env preview
-[[env.preview.kv_namespaces]]
-binding = "PRICE_DATA"
-id = "preview-price-data-kv-id"
-
-# R2 bucket binding for preview
-[[env.preview.r2_buckets]]
-bucket_name = "ciphermaniac-reports-preview"
-binding = "REPORTS"
-
-# Preview environment variables
-[env.preview.vars]
-ENVIRONMENT = "preview"
+# No preview environment is configured. Add one only after its KV namespace
+# and R2 bucket exist, so preview deploys fail instead of using placeholders.

@@ -482,28 +482,15 @@
 .section-head .right:only-child {
   margin-left: auto;
 }
-.scope-line {
-  font-variant-numeric: tabular-nums;
+/* Destination links ("View all →") are actions, not meta: a step up from the
+   11px caption text around them. */
+.section-head .right a {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
-.scope-line .dot {
-  margin: 0 5px;
-  opacity: 0.5;
-}
-/* The scope label is known synchronously; the deck count and freshness stamp
-   arrive with meta.json. Reserving their width means the wrap decision inside
-   `.right` is made once, at first paint. */
-.scope-line-tail {
-  display: inline-flex;
-  align-items: baseline;
-  min-width: 216px;
-  opacity: 0;
-  transition: opacity var(--ms-base) var(--ease-base);
-}
-.scope-line-tail.is-ready {
-  opacity: 1;
-}
-/* Same idea for a whole `.right` slot whose text arrives with the section's
-   data: hold its width from the start rather than growing into it. */
+/* A whole `.right` slot whose text arrives with the section's data: hold its
+   width from the start rather than growing into it. */
 .section-meta-slot {
   display: inline-block;
   min-width: 284px;
@@ -529,22 +516,6 @@
 @media (max-width: 640px) {
   .section-head {
     flex-wrap: wrap;
-  }
-}
-
-/* The scope details are supplementary. Keep them for desktop, but give the
-   compact header entirely to its title and destination link on smaller
-   screens. */
-@media (max-width: 1023px) {
-  .section-head:has(.scope-line) {
-    flex-wrap: nowrap;
-  }
-  .section-head .right:has(.scope-line) {
-    flex: 0 0 auto;
-    min-height: 0;
-  }
-  .section-head .right .scope-line {
-    display: none;
   }
 }
 
@@ -674,57 +645,68 @@
     gap: 8px;
   }
 }
-/* Home's top-archetypes strip, capped at two rows. Column steps follow the
-   200px-minimum math auto-fit would use (n columns need 210n - 10px with the
-   10px gap), floored at three and capped at five, and each step hides what
-   would spill onto a third row. nth-child can't read a variable, so every
-   step spells out its own cutoff. */
-.top-archetypes {
-  container: top-archetypes / inline-size;
+/* Archetype tile galleries (home and /archetypes): a 200px tile minimum,
+   floored at three columns, so below 620px the three share whatever width
+   there is. The wrapper is the size container because a grid can't query
+   its own width. */
+.arche-gallery {
+  container: arche-gallery / inline-size;
 }
-.top-archetypes .gallery-grid {
+.arche-gallery .gallery-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-@container top-archetypes (width < 830px) {
+@container arche-gallery (width >= 620px) {
+  .arche-gallery .gallery-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+/* Home's top-archetypes strip stops at two rows. The cutoffs follow the
+   auto-fit math above (n columns need 210n - 10px with the 10px gap); from
+   five columns up, the ten tiles HomePage renders fit in two rows anyway.
+   nth-child can't read a variable, so each step spells out its own cutoff. */
+@container arche-gallery (width < 830px) {
   .top-archetypes .gallery-grid > :nth-child(n + 7) {
     display: none;
   }
 }
-@container top-archetypes (830px <= width < 1040px) {
-  .top-archetypes .gallery-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+@container arche-gallery (830px <= width < 1040px) {
   .top-archetypes .gallery-grid > :nth-child(n + 9) {
     display: none;
   }
 }
-@container top-archetypes (width >= 1040px) {
-  .top-archetypes .gallery-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+/* Below 620px the three columns drop under 200px each. Padding and type
+   scale linearly from their desktop values there down to their phone values
+   at 420px, and hold those across phone widths, rather than switching at a
+   breakpoint: a switch let the thumbnail grow as the viewport shrank and
+   flipped names between one and two lines. The name row absorbs any height a
+   taller sibling adds, so thumbnails keep their size and stats line up
+   across a row. */
+.arche-gallery .arche {
+  padding: clamp(8px, 4cqi - 8.8px, 16px) clamp(8px, 4cqi - 8.8px, 16px) clamp(10px, 2cqi + 1.6px, 14px);
+  gap: clamp(6px, 2cqi - 2.4px, 10px);
+  grid-template-rows: auto 1fr auto;
+}
+.arche-gallery .arche-name {
+  font-size: clamp(13px, 1cqi + 8.8px, 15px);
+  line-height: 1.25;
+}
+.arche-gallery .arche-stats {
+  row-gap: 0;
+}
+/* Under 620px a share and a deck count only sometimes fit side by side, and
+   which way they land can flip when the web font swaps in. Stack them
+   outright so a tile's height never depends on font metrics. */
+@container arche-gallery (width < 620px) {
+  .arche-gallery .arche-stats {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
-/* Below 620px the three columns drop under 200px each and names wrap. Let
-   the name row absorb the slack so stats line up across a row regardless of
-   how many lines each name takes. */
-@container top-archetypes (width < 620px) {
-  .top-archetypes .arche {
-    padding: 8px 8px 10px;
-    gap: 6px;
-    grid-template-rows: auto 1fr auto;
-  }
-  .top-archetypes .arche-name {
-    font-size: 13px;
-    line-height: 1.25;
-  }
-  .top-archetypes .arche-stats {
-    gap: 0 6px;
-  }
-  .top-archetypes .arche-share {
-    font-size: 17px;
-  }
-  .top-archetypes .arche-wr {
-    font-size: 11px;
-  }
+.arche-gallery .arche-share {
+  font-size: clamp(17px, 2.5cqi + 6.5px, 22px);
+}
+.arche-gallery .arche-decks {
+  font-size: clamp(11px, 0.5cqi + 8.9px, 12px);
 }
 /* Residual "Other" bucket — a footnote under the ranked grid, never a tile. */
 .gallery-other {
@@ -1620,6 +1602,43 @@ tr.row-expansion > td {
   text-decoration: none;
   transform: translate(-1px, -1px);
   box-shadow: var(--shadow-2);
+}
+/* Loading rows are real rows with the ink taken out: each keeps placeholder
+   text, so it is exactly as tall as the row it stands in for at any width. */
+.tournament-row.is-skeleton :is(.mon, .day, .name > span, .players > span) {
+  color: transparent;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+/* Home event rows on phones: the date becomes a month-over-day column and the
+   name and type stack beside it. The name gets the rest of the row to itself,
+   so rows stay two lines, and the same height, whatever the event is called. */
+@media (max-width: 640px) {
+  .tournament-row-dated {
+    grid-template-columns: 38px 1fr;
+    grid-template-areas: 'date name' 'date type';
+    column-gap: 12px;
+    row-gap: 2px;
+    align-items: center;
+  }
+  .tournament-row-dated .date {
+    grid-area: date;
+    display: grid;
+    justify-items: center;
+    line-height: 1.1;
+  }
+  .tournament-row-dated .day {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--fg);
+    letter-spacing: 0;
+  }
+  .tournament-row-dated .name {
+    grid-area: name;
+  }
+  .tournament-row-dated .players {
+    grid-area: type;
+  }
 }
 
 /* ---------- Home: latest-event callout ----------

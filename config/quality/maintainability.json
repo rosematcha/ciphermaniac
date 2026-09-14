@@ -302,9 +302,6 @@
   "src/pages/LabelMakerPage.tsx": [
     "max-lines-per-function:35e49a3f84436d04ac765971d9bf884be1f943fad7f1029708ec3dafd960dbdf:Function 'LabelMakerPage' has too many lines (553). Maximum allowed is 250."
   ],
-  "src/pages/MetaBinderPage.tsx": [
-    "max-lines-per-function:e13874bbfbb437ea1ca8f2df6c912fe58fe3b4555cd0aabc87b4df8850116998:Function 'MetaBinderPage' has too many lines (251). Maximum allowed is 250."
-  ],
   "src/pages/SocialGraphicsPage.tsx": [
     "max-lines-per-function:9c9d7ce275996f1d425e913a55375b5bbaf03c75c371852e9e62835a3f263eac:Function 'SocialGraphicsPage' has too many lines (304). Maximum allowed is 250.",
     "complexity:9c9d7ce275996f1d425e913a55375b5bbaf03c75c371852e9e62835a3f263eac:Function 'SocialGraphicsPage' has a complexity of 24. Maximum allowed is 12."

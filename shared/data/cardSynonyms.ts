@@ -22,11 +22,8 @@ export { getCanonicalCardFromData as getCanonicalCard };
  * the hour. Keying by binding identity (WeakMap) rather than a module scalar
  * keeps test envs isolated from each other.
  *
- * The `CARD_TYPES_KV` field is preserved on the `WorkerEnv` interface only so
- * legacy callers and tests don't break; nothing reads from it here anymore.
  */
 interface WorkerEnv {
-  CARD_TYPES_KV?: KVNamespace;
   REPORTS?: R2Bucket;
 }
 

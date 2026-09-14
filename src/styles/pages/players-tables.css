@@ -1,18 +1,10 @@
 /*
  * Player / tournament table legibility styles.
  * Imported by PlayersPage, PlayerProfilePage, PlayerComparePage,
- * TournamentsIndexPage, EarningsPage and the shared Pagination component.
+ * TournamentsIndexPage and EarningsPage.
  */
 
 /* ---------- Low-confidence / small-sample stat muting ---------- */
 .stat-dim {
   opacity: 0.45;
-}
-
-/* ---------- Pagination summary line ---------- */
-.pagination-summary {
-  font-size: 12px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  margin-right: 12px;
 }
