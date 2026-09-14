@@ -12,7 +12,7 @@ import {
   tournamentDate
 } from '../lib/data';
 import type { FieldRow, Story } from '../lib/storylines';
-import type { ArchetypeIndexEntry, MetaReport, TournamentParticipant } from '../types';
+import type { ArchetypeIndexEntry, TournamentParticipant } from '../types';
 import { Skeleton } from '../components/Skeleton';
 import { Section } from '../components/Section';
 import { ArchetypeCard, ArchetypeCardSkeleton } from '../components/ArchetypeCard';
@@ -22,8 +22,7 @@ import { formatPercent, nameFromTournamentKey, parseISODate, shortDateParts } fr
 import { latestValue, resolved } from '../lib/resource';
 import type { UpcomingEvent } from '../../shared/upcomingTypes.js';
 import { useTournament } from '../lib/tournamentContext';
-import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
-import { absoluteIso, relativeTimeAgo } from '../lib/freshness';
+import { ONLINE_META_NAME } from '../lib/constants';
 
 /**
  * storylines.ts (~25KB source) is home-only, but HomePage is deliberately
@@ -103,7 +102,6 @@ export function HomePage() {
   const isOnlineScope = () => tournament() === ONLINE_META_NAME;
   const [onlineArchetypes] = createResource(fetchOnlineArchetypes);
   const [scopeArchetypes] = createResource(tournament, fetchArchetypes);
-  const [scopeMeta] = createResource(tournament, fetchMeta);
   const [tournamentsList] = createResource(fetchTournamentsList);
   const [upcoming] = createResource(fetchUpcomingTournaments);
 
@@ -113,7 +111,6 @@ export function HomePage() {
   // Scope-keyed: stale-while-revalidate so a selector switch updates the grid
   // in place rather than flashing the skeleton.
   const archetypesData = () => latestValue(scopeArchetypes);
-  const scopeMetaData = () => latestValue(scopeMeta);
   const tournamentsListData = () => resolved(tournamentsList);
   const upcomingData = () => resolved(upcoming);
 
@@ -208,15 +205,7 @@ export function HomePage() {
         )}
       </Show>
 
-      <Section
-        title='Top archetypes'
-        right={
-          <>
-            <ScopeLine tournament={tournament()} meta={scopeMetaData()} archetypes={archetypesData()} />
-            <A href='/archetypes'>View all →</A>
-          </>
-        }
-      >
+      <Section title='Top archetypes' right={<A href='/archetypes'>View all →</A>}>
         <div class='arche-gallery top-archetypes'>
           <Show
             when={archetypesData()}
@@ -259,7 +248,7 @@ export function HomePage() {
         </Show>
       </Section>
 
-      <Section title='Upcoming tournaments' right='from Limitless'>
+      <Section title='Upcoming tournaments'>
         <Show
           when={upcomingData()}
           fallback={
@@ -314,46 +303,6 @@ function CalloutSkeleton() {
         <Skeleton height='240px' />
       </div>
     </article>
-  );
-}
-
-/* ---------- Scope line ---------- */
-
-/**
- * States what the Top archetypes grid is measuring and how current it is:
- * scope label, deck count, and the report's generation time. Freshness is
- * the site's core promise, so it belongs next to the numbers, not only in
- * the topnav chip.
- */
-function ScopeLine(props: {
-  tournament: string;
-  meta: MetaReport | undefined;
-  archetypes: ArchetypeIndexEntry[] | undefined;
-}) {
-  const label = () =>
-    props.tournament === ONLINE_META_NAME ? ONLINE_META_LABEL : prettyTournamentName(props.tournament);
-  // Event meta.json files predate deckTotal; sum the index as a fallback.
-  const decks = () =>
-    props.meta?.deckTotal ?? props.archetypes?.reduce((acc, a) => acc + (a.deckCount ?? 0), 0) ?? undefined;
-  const updated = () => (props.meta?.generatedAt ? relativeTimeAgo(props.meta.generatedAt) : null);
-  // The tail sits in a width-reserved, opacity-faded slot (`.scope-line-tail`)
-  // rather than appearing piecemeal: both halves come from the same meta.json,
-  // and letting them widen the line on arrival re-wrapped the section head and
-  // dropped everything below it.
-  return (
-    <span class='scope-line'>
-      <span>{label()}</span>
-      <span class='scope-line-tail' classList={{ 'is-ready': decks() !== undefined || updated() !== null }}>
-        <Show when={decks()}>
-          <span class='dot'>·</span>
-          <span>{decks()!.toLocaleString()} decks</span>
-        </Show>
-        <Show when={updated()}>
-          <span class='dot'>·</span>
-          <span title={absoluteIso(props.meta!.generatedAt)}>updated {updated()} ago</span>
-        </Show>
-      </span>
-    </span>
   );
 }
 

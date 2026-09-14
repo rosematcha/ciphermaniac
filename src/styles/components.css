@@ -482,28 +482,15 @@
 .section-head .right:only-child {
   margin-left: auto;
 }
-.scope-line {
-  font-variant-numeric: tabular-nums;
+/* Destination links ("View all →") are actions, not meta: a step up from the
+   11px caption text around them. */
+.section-head .right a {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
-.scope-line .dot {
-  margin: 0 5px;
-  opacity: 0.5;
-}
-/* The scope label is known synchronously; the deck count and freshness stamp
-   arrive with meta.json. Reserving their width means the wrap decision inside
-   `.right` is made once, at first paint. */
-.scope-line-tail {
-  display: inline-flex;
-  align-items: baseline;
-  min-width: 216px;
-  opacity: 0;
-  transition: opacity var(--ms-base) var(--ease-base);
-}
-.scope-line-tail.is-ready {
-  opacity: 1;
-}
-/* Same idea for a whole `.right` slot whose text arrives with the section's
-   data: hold its width from the start rather than growing into it. */
+/* A whole `.right` slot whose text arrives with the section's data: hold its
+   width from the start rather than growing into it. */
 .section-meta-slot {
   display: inline-block;
   min-width: 284px;
@@ -529,22 +516,6 @@
 @media (max-width: 640px) {
   .section-head {
     flex-wrap: wrap;
-  }
-}
-
-/* The scope details are supplementary. Keep them for desktop, but give the
-   compact header entirely to its title and destination link on smaller
-   screens. */
-@media (max-width: 1023px) {
-  .section-head:has(.scope-line) {
-    flex-wrap: nowrap;
-  }
-  .section-head .right:has(.scope-line) {
-    flex: 0 0 auto;
-    min-height: 0;
-  }
-  .section-head .right .scope-line {
-    display: none;
   }
 }
 
