@@ -217,7 +217,7 @@ export function HomePage() {
           </>
         }
       >
-        <div class='top-archetypes'>
+        <div class='arche-gallery top-archetypes'>
           <Show
             when={archetypesData()}
             fallback={

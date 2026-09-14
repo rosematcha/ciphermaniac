@@ -674,57 +674,68 @@
     gap: 8px;
   }
 }
-/* Home's top-archetypes strip, capped at two rows. Column steps follow the
-   200px-minimum math auto-fit would use (n columns need 210n - 10px with the
-   10px gap), floored at three and capped at five, and each step hides what
-   would spill onto a third row. nth-child can't read a variable, so every
-   step spells out its own cutoff. */
-.top-archetypes {
-  container: top-archetypes / inline-size;
+/* Archetype tile galleries (home and /archetypes): a 200px tile minimum,
+   floored at three columns, so below 620px the three share whatever width
+   there is. The wrapper is the size container because a grid can't query
+   its own width. */
+.arche-gallery {
+  container: arche-gallery / inline-size;
 }
-.top-archetypes .gallery-grid {
+.arche-gallery .gallery-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-@container top-archetypes (width < 830px) {
+@container arche-gallery (width >= 620px) {
+  .arche-gallery .gallery-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+/* Home's top-archetypes strip stops at two rows. The cutoffs follow the
+   auto-fit math above (n columns need 210n - 10px with the 10px gap); from
+   five columns up, the ten tiles HomePage renders fit in two rows anyway.
+   nth-child can't read a variable, so each step spells out its own cutoff. */
+@container arche-gallery (width < 830px) {
   .top-archetypes .gallery-grid > :nth-child(n + 7) {
     display: none;
   }
 }
-@container top-archetypes (830px <= width < 1040px) {
-  .top-archetypes .gallery-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+@container arche-gallery (830px <= width < 1040px) {
   .top-archetypes .gallery-grid > :nth-child(n + 9) {
     display: none;
   }
 }
-@container top-archetypes (width >= 1040px) {
-  .top-archetypes .gallery-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+/* Below 620px the three columns drop under 200px each. Padding and type
+   scale linearly from their desktop values there down to their phone values
+   at 420px, and hold those across phone widths, rather than switching at a
+   breakpoint: a switch let the thumbnail grow as the viewport shrank and
+   flipped names between one and two lines. The name row absorbs any height a
+   taller sibling adds, so thumbnails keep their size and stats line up
+   across a row. */
+.arche-gallery .arche {
+  padding: clamp(8px, 4cqi - 8.8px, 16px) clamp(8px, 4cqi - 8.8px, 16px) clamp(10px, 2cqi + 1.6px, 14px);
+  gap: clamp(6px, 2cqi - 2.4px, 10px);
+  grid-template-rows: auto 1fr auto;
+}
+.arche-gallery .arche-name {
+  font-size: clamp(13px, 1cqi + 8.8px, 15px);
+  line-height: 1.25;
+}
+.arche-gallery .arche-stats {
+  row-gap: 0;
+}
+/* Under 620px a share and a deck count only sometimes fit side by side, and
+   which way they land can flip when the web font swaps in. Stack them
+   outright so a tile's height never depends on font metrics. */
+@container arche-gallery (width < 620px) {
+  .arche-gallery .arche-stats {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
-/* Below 620px the three columns drop under 200px each and names wrap. Let
-   the name row absorb the slack so stats line up across a row regardless of
-   how many lines each name takes. */
-@container top-archetypes (width < 620px) {
-  .top-archetypes .arche {
-    padding: 8px 8px 10px;
-    gap: 6px;
-    grid-template-rows: auto 1fr auto;
-  }
-  .top-archetypes .arche-name {
-    font-size: 13px;
-    line-height: 1.25;
-  }
-  .top-archetypes .arche-stats {
-    gap: 0 6px;
-  }
-  .top-archetypes .arche-share {
-    font-size: 17px;
-  }
-  .top-archetypes .arche-wr {
-    font-size: 11px;
-  }
+.arche-gallery .arche-share {
+  font-size: clamp(17px, 2.5cqi + 6.5px, 22px);
+}
+.arche-gallery .arche-decks {
+  font-size: clamp(11px, 0.5cqi + 8.9px, 12px);
 }
 /* Residual "Other" bucket — a footnote under the ranked grid, never a tile. */
 .gallery-other {

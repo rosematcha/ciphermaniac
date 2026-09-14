@@ -108,8 +108,10 @@ export function ArchetypesIndexPage() {
           when={archetypesData()}
           fallback={
             <Show when={viewMode() === 'grid'} fallback={<ListSkeleton />}>
-              <div class='gallery-grid'>
-                <For each={Array.from({ length: 8 })}>{() => <ArchetypeCardSkeleton />}</For>
+              <div class='arche-gallery'>
+                <div class='gallery-grid'>
+                  <For each={Array.from({ length: 8 })}>{() => <ArchetypeCardSkeleton />}</For>
+                </div>
               </div>
             </Show>
           }
@@ -141,10 +143,12 @@ export function ArchetypesIndexPage() {
                 />
               }
             >
-              <div class='gallery-grid'>
-                <For each={filtered()}>
-                  {(a, i) => <ArchetypeCard entry={a} online={onlineByName().get(a.name)} eagerImage={i() < 8} />}
-                </For>
+              <div class='arche-gallery'>
+                <div class='gallery-grid'>
+                  <For each={filtered()}>
+                    {(a, i) => <ArchetypeCard entry={a} online={onlineByName().get(a.name)} eagerImage={i() < 8} />}
+                  </For>
+                </div>
               </div>
             </Show>
           </Show>
