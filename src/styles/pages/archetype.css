@@ -21,7 +21,7 @@
 .arche-stat-slot {
   display: inline-flex;
   align-items: baseline;
-  min-width: 220px;
+  min-width: 250px;
 }
 .arche-stat-slot.is-pending > * {
   visibility: hidden;
@@ -109,6 +109,9 @@
 /* Muted win-rate cell (20–50 games) / game count in the list view. */
 .wr-cell.is-muted {
   opacity: 0.55;
+}
+.wr-cell {
+  min-width: 118px;
 }
 .wr-games {
   margin-left: 6px;

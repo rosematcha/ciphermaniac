@@ -102,6 +102,15 @@ test('an archetype page renders its card list', async ({ page }) => {
   await expect(page.locator('.card-tile, .card-row, [data-card]').first()).toBeVisible({ timeout: 10_000 });
 });
 
+test('archetype matchups show ranges for rows and the card lens', async ({ page }) => {
+  await gotoClean(page, '/archetypes/Dragapult?tab=matchups');
+  await expect(page.locator('.mu-gauge[title^="95% interval"]').first()).toBeVisible();
+
+  await page.getByText('Compare with a specific card').click();
+  await page.getByRole('button', { name: /Shaymin/ }).click();
+  await expect(page.locator('.r2-lens-hint')).toContainText('95% interval');
+});
+
 test('trends renders without reaching the network for live data', async ({ page }) => {
   await gotoClean(page, '/trends');
   await expect(page.locator('main')).toBeVisible();

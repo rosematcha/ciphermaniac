@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { differenceInterval, sampleTier, wilsonInterval } from '../../src/lib/confidence.ts';
+import { differenceInterval, matchPointWilson, sampleTier, wilsonInterval } from '../../src/lib/confidence.ts';
 
 function near(actual: number, expected: number, tolerance = 0.2): void {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} is not within ${tolerance} of ${expected}`);
@@ -8,6 +8,8 @@ function near(actual: number, expected: number, tolerance = 0.2): void {
 
 test('wilsonInterval returns null without a sample', () => {
   assert.equal(wilsonInterval(0, 0), null);
+  assert.equal(wilsonInterval(-1, 10), null);
+  assert.equal(wilsonInterval(11, 10), null);
 });
 
 test('wilsonInterval matches known 95% references', () => {
@@ -36,6 +38,14 @@ test('differenceInterval reports direction and whether zero is excluded', () => 
 test('differenceInterval uses the match-point tie treatment', () => {
   const range = differenceInterval({ wins: 0, ties: 3, total: 3 }, { wins: 0, ties: 0, total: 3 })!;
   near((range.low + range.high) / 2, 33.3);
+});
+
+test('differenceInterval requires games on both sides', () => {
+  assert.equal(differenceInterval({ wins: 0, ties: 0, total: 0 }, { wins: 1, ties: 0, total: 1 }), null);
+});
+
+test('matchPointWilson converts ties to fractional successes', () => {
+  assert.deepEqual(matchPointWilson(10, 1, 20), wilsonInterval(10 + 1 / 3, 20));
 });
 
 test('sampleTier uses the existing 20 and 50 game boundaries', () => {
