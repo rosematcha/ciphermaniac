@@ -1,7 +1,10 @@
 import {
+  conservativeDelta,
+  deltaToneClass,
   formatDeltaPp as fmtDeltaPp,
   formatShare as fmtShare,
   formatWinRate as fmtWinRate,
+  formatDeltaRange,
   formatRange,
   sortByMode,
   suggestTechCards,
@@ -49,7 +52,7 @@ import { Skeleton } from './Skeleton';
 import { InfoTip } from './InfoTip';
 import { buildArchetypeIndexByKey, OpponentCell, resolveOpponentMeta } from './OpponentCell';
 import '../styles/pages/archetype.css';
-import { matchPointWilson } from '../lib/confidence';
+import { differenceInterval, matchPointWilson } from '../lib/confidence';
 
 interface MatchupsPanelProps {
   slug: string;
@@ -261,6 +264,12 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
       withWR: w,
       withoutWR: wo,
       delta: w !== null && wo !== null ? w - wo : null,
+      interval: differenceInterval(
+        { wins: t.withOverall.w, ties: t.withOverall.t, total: t.withOverall.n },
+        { wins: t.withoutOverall.w, ties: t.withoutOverall.t, total: t.withoutOverall.n }
+      ),
+      withGames: t.withOverall.n,
+      withoutGames: t.withoutOverall.n,
       withCount: t.part.withCount,
       withoutCount: t.part.withoutCount
     };
@@ -287,7 +296,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
     return sortByMode(
       rows,
       sortBy(),
-      r => r.lens.delta,
+      r => conservativeDelta(r.lens.delta, r.lens.interval),
       r => r.prevalence
     );
   });
@@ -585,9 +594,13 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
                         {overall => (
                           <p class='r2-lens-hint'>
                             Win rate with at least {minCopies()} cop{minCopies() === 1 ? 'y' : 'ies'} versus without,
-                            across shared matchups. Overall <b>{fmtWinRate(overall().withWR)}</b> with vs{' '}
-                            <b>{fmtWinRate(overall().withoutWR)}</b> without, over {overall().withCount} of{' '}
-                            {overall().withCount + overall().withoutCount} decks.
+                            across shared matchups. Overall <b>{fmtWinRate(overall().withWR)}</b> with (n=
+                            {overall().withGames}) vs <b>{fmtWinRate(overall().withoutWR)}</b> without (n=
+                            {overall().withoutGames});{' '}
+                            <b class={deltaToneClass(overall().delta, overall().interval)}>
+                              {fmtDeltaPp(overall().delta)} (95% interval {formatDeltaRange(overall().interval)})
+                            </b>
+                            , over {overall().withCount} of {overall().withCount + overall().withoutCount} decks.
                           </p>
                         )}
                       </Show>
@@ -757,14 +770,18 @@ function LensDisplayRowView(props: { row: LensDisplayRow; onGo: (slug: string | 
       </div>
       <span class='r2-ww'>
         <span>
-          with <b class='num'>{fmtWinRate(lens().withWR)}</b>
+          with <b class='num'>{fmtWinRate(lens().withWR)}</b> n={lens().withRec.n}
         </span>
         <span>
-          without <b class='num'>{fmtWinRate(lens().withoutWR)}</b>
+          without <b class='num'>{fmtWinRate(lens().withoutWR)}</b> n={lens().withoutRec.n}
         </span>
       </span>
-      <span class={`r2-delta ${toneClass(lens().delta === null ? null : 50 + lens().delta!)}`}>
-        {fmtDeltaPp(lens().delta)}
+      <span
+        class={`r2-delta ${deltaToneClass(lens().delta, lens().interval)}`}
+        title={`95% interval ${formatDeltaRange(lens().interval)}`}
+      >
+        <span>{fmtDeltaPp(lens().delta)}</span>
+        <small>{formatDeltaRange(lens().interval)}</small>
       </span>
     </div>
   );

@@ -4103,6 +4103,14 @@ body[data-mode='dark'] .story-card:active {
   border-radius: var(--radius-pill);
   white-space: nowrap;
 }
+.r2-delta small {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+}
 
 /* ---- Responsive: rows stack the gauge full-width under name + stats ---- */
 @media (max-width: 720px) {
