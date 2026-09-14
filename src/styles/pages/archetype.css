@@ -34,6 +34,12 @@
   color: var(--fg);
   font-variant-numeric: tabular-nums;
 }
+.wr-uncertainty {
+  color: var(--muted);
+  font-size: 0.9em;
+  font-weight: 400;
+  white-space: nowrap;
+}
 
 /* Tech-tab caveat note, shown beside the tab controls. */
 .arche-tab-note {
