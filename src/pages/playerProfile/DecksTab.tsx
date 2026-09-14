@@ -84,7 +84,7 @@ function DeckGroup(props: DeckGroupProps) {
             <small>record</small>
           </span>
           <span class='deck-group-stat'>
-            <b>{winRate() == null ? '—' : `${winRate()}%`}</b>
+            <b>{winRate() == null ? '—' : `${winRate()}% · n=${props.archetype.wins + props.archetype.losses}`}</b>
             <small>win</small>
           </span>
           <span class='deck-group-stat'>

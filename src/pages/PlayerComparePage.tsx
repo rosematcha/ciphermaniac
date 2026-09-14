@@ -244,8 +244,8 @@ function buildMetrics(a: PlayerProfile, b: PlayerProfile): MetricRow[] {
     },
     {
       label: 'Win %',
-      aValue: winPercentLabel(sa.wins, sa.losses),
-      bValue: winPercentLabel(sb.wins, sb.losses),
+      aValue: `${winPercentLabel(sa.wins, sa.losses)} · n=${sa.wins + sa.losses}`,
+      bValue: `${winPercentLabel(sb.wins, sb.losses)} · n=${sb.wins + sb.losses}`,
       lead: winA == null || winB == null ? 0 : higher(winA, winB)
     },
     { label: 'Day 2s', aValue: String(sa.day2s), bValue: String(sb.day2s), lead: higher(sa.day2s, sb.day2s) },

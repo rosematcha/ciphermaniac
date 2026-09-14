@@ -216,7 +216,7 @@
     "complexity:aaddb8d0c23fc798e8c02794b0069fdc23a5fcba0d9f8718514f2699500a8446:Arrow function has a complexity of 13. Maximum allowed is 12."
   ],
   "src/components/MatchupsPanel.tsx": [
-    "max-lines-per-function:1767e2ab5d9609910b3d7551290442de8509a83fff0cbbe9027a63e4652d7936:Function 'MatchupsPanel' has too many lines (475). Maximum allowed is 250."
+    "max-lines-per-function:ef7f5db9d73192dfc730f16c904b0d5a20bb4667934f071d8ac9c387dac96db6:Function 'MatchupsPanel' has too many lines (486). Maximum allowed is 250."
   ],
   "src/components/advancedPanel/model.ts": [
     "max-params:9370e04b7a8a408e147cb194ff6ef9910d4a80e2ee6c18f5e4e32f46d256bee0:Function 'searchCandidates' has too many parameters (5). Maximum allowed is 4."

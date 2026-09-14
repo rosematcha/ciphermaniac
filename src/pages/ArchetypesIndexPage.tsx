@@ -15,7 +15,9 @@ import { createPersistentViewMode } from '../lib/persistentSignal';
 import { formatPercent } from '../lib/format';
 import { latestValue } from '../lib/resource';
 import { prefetchArchetypePage } from '../lib/prefetch';
-import { fetchAllArchetypeWinRates, type WinRateAggregate, WR_MIN_GAMES, WR_MUTE_GAMES } from '../lib/archetypeWinRate';
+import { fetchAllArchetypeWinRates, type WinRateAggregate } from '../lib/archetypeWinRate';
+import { matchPointWilson, sampleTier } from '../lib/confidence';
+import { formatPlusMinus, formatRange } from '../components/matchupsPanel/model';
 import { foldSearch } from '../utils/searchFold';
 import '../styles/pages/archetype.css';
 
@@ -186,6 +188,10 @@ function ArchetypesListView(props: {
 
   const winRateOf = (entry: ArchetypeIndexEntry): number | null => props.winRates?.get(entry.name)?.winRate ?? null;
   const gamesOf = (entry: ArchetypeIndexEntry): number => props.winRates?.get(entry.name)?.games ?? 0;
+  const intervalOf = (entry: ArchetypeIndexEntry) => {
+    const aggregate = props.winRates?.get(entry.name);
+    return aggregate ? matchPointWilson(aggregate.wins, aggregate.ties, aggregate.games) : null;
+  };
 
   function toggle(col: SortCol) {
     if (sortCol() === col) {
@@ -276,9 +282,15 @@ function ArchetypesListView(props: {
                 </td>
                 <td class='num'>{formatPercent(entry.percent)}</td>
                 <td class='num muted-cell arche-decks-col'>{entry.deckCount?.toLocaleString() ?? '—'}</td>
-                <td class='num' classList={{ 'wr-cell': true, 'is-muted': gamesOf(entry) < WR_MUTE_GAMES }}>
-                  <Show when={gamesOf(entry) >= WR_MIN_GAMES && winRateOf(entry) !== null} fallback={<span>—</span>}>
-                    {formatPercent(winRateOf(entry))}
+                <td class='num' classList={{ 'wr-cell': true, 'is-muted': sampleTier(gamesOf(entry)) !== 'solid' }}>
+                  <Show
+                    when={sampleTier(gamesOf(entry)) !== 'thin' && winRateOf(entry) !== null}
+                    fallback={<span>—</span>}
+                  >
+                    <span title={`95% interval ${formatRange(intervalOf(entry))}`}>
+                      {formatPercent(winRateOf(entry))}{' '}
+                      <span class='wr-uncertainty'>{formatPlusMinus(intervalOf(entry))}</span>
+                    </span>
                     <span class='wr-games'>{gamesOf(entry).toLocaleString()}g</span>
                   </Show>
                 </td>

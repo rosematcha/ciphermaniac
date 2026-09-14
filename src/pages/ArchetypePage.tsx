@@ -25,7 +25,9 @@ import { AdvancedPanel } from '../components/AdvancedPanel';
 import { MatchupsPanel } from '../components/MatchupsPanel';
 import { createPersistentSignal, createPersistentViewMode } from '../lib/persistentSignal';
 import { latestValue, resolved } from '../lib/resource';
-import { fetchArchetypeWinRate, WR_MIN_GAMES, WR_MUTE_GAMES } from '../lib/archetypeWinRate';
+import { fetchArchetypeWinRate } from '../lib/archetypeWinRate';
+import { matchPointWilson, sampleTier } from '../lib/confidence';
+import { formatPlusMinus, formatRange } from '../components/matchupsPanel/model';
 import { estimateDeckCost } from '../lib/deckCost';
 import { fetchCardFacets } from '../lib/data/cardFacets';
 import { sortByDeckOrder } from '../lib/cardOrder';
@@ -372,13 +374,25 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
           <Show when={winRate.loading || wrGames() > 0}>
             <span class='arche-stat-slot' classList={{ 'is-pending': winRate.loading }}>
               <span class='dot'>·</span>
-              <span class='arche-stat' classList={{ 'is-muted': wrGames() > 0 && wrGames() < WR_MUTE_GAMES }}>
+              <span class='arche-stat' classList={{ 'is-muted': wrGames() > 0 && sampleTier(wrGames()) !== 'solid' }}>
                 <Show when={wr()} keyed>
                   {agg => (
                     <>
-                      <span class='arche-stat-lead'>
-                        {agg.games < WR_MIN_GAMES || agg.winRate === null ? '—' : `${agg.winRate.toFixed(1)}%`} win rate
-                        · {agg.games.toLocaleString()} games
+                      <span
+                        class='arche-stat-lead'
+                        title={
+                          matchPointWilson(agg.wins, agg.ties, agg.games)
+                            ? `95% interval ${formatRange(matchPointWilson(agg.wins, agg.ties, agg.games))}`
+                            : undefined
+                        }
+                      >
+                        {sampleTier(agg.games) === 'thin' || agg.winRate === null ? '—' : `${agg.winRate.toFixed(1)}%`}{' '}
+                        <span class='wr-uncertainty'>
+                          {sampleTier(agg.games) === 'thin'
+                            ? ''
+                            : formatPlusMinus(matchPointWilson(agg.wins, agg.ties, agg.games))}
+                        </span>{' '}
+                        win rate · {agg.games.toLocaleString()} games
                       </span>
                       <InfoTip marker='i' label='Win rate'>
                         Match win rate across all recorded games, mirrors excluded. Ties count as one third of a win.

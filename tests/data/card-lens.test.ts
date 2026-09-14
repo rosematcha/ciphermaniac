@@ -76,6 +76,8 @@ test('buildLensRows computes win rates (tie = 1/3 of a win) and the delta', () =
   assert.equal(r.opponent, 'Dragapult');
   approx(r.withWR!, (2 / 3) * 100); // w2,t0 → 66.67
   approx(r.withoutWR!, ((0 + 1 / 3) / 2) * 100); // w0,t1 → 16.67
+  assert.ok(r.interval);
+  assert.equal(r.interval.excludesZero, false);
   approx(r.delta!, (2 / 3) * 100 - ((0 + 1 / 3) / 2) * 100); // ~50.0
 });
 

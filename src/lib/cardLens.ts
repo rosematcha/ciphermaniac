@@ -7,6 +7,7 @@
 import type { DeckCard, PlayerMatchRecord } from '../types';
 import type { DeckRecord } from './data';
 import { pointsWinRate } from './matchups';
+import { differenceInterval, type DifferenceRange } from './confidence';
 import { buildCardId, canonicalizeDeckCard } from '../../shared/deckCardId';
 import { normalizeCardNumber } from '../../shared/data/cardIdentity.js';
 
@@ -184,6 +185,7 @@ export interface LensRow {
   withoutWR: number | null;
   /** withWR − withoutWR in percentage points, or null if either side has no games. */
   delta: number | null;
+  interval: DifferenceRange | null;
 }
 
 /** One row per opponent seen by either subset (unsorted, unfiltered — caller adds meta/sort/filter). */
@@ -201,7 +203,11 @@ export function buildLensRows(t: LensTallies): LensRow[] {
       withoutRec,
       withWR,
       withoutWR,
-      delta: withWR !== null && withoutWR !== null ? withWR - withoutWR : null
+      delta: withWR !== null && withoutWR !== null ? withWR - withoutWR : null,
+      interval: differenceInterval(
+        { wins: withRec.w, ties: withRec.t, total: withRec.n },
+        { wins: withoutRec.w, ties: withoutRec.t, total: withoutRec.n }
+      )
     });
   }
   return rows;
