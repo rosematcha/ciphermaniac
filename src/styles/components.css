@@ -3689,6 +3689,15 @@ body[data-mode='dark'] .story-card:active {
   top: 0;
   bottom: 0;
   border-radius: 1px;
+  z-index: 2;
+}
+.mu-gauge-range {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  background: color-mix(in srgb, var(--fg) 25%, transparent);
+  border-inline: 1px solid color-mix(in srgb, var(--fg) 45%, transparent);
+  z-index: 1;
 }
 .mu-gauge-fill.mu-pos {
   background: var(--positive);

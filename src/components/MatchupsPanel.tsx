@@ -2,6 +2,7 @@ import {
   formatDeltaPp as fmtDeltaPp,
   formatShare as fmtShare,
   formatWinRate as fmtWinRate,
+  formatRange,
   sortByMode,
   suggestTechCards,
   summarizeKeyMatchups,
@@ -48,6 +49,7 @@ import { Skeleton } from './Skeleton';
 import { InfoTip } from './InfoTip';
 import { buildArchetypeIndexByKey, OpponentCell, resolveOpponentMeta } from './OpponentCell';
 import '../styles/pages/archetype.css';
+import { matchPointWilson } from '../lib/confidence';
 
 interface MatchupsPanelProps {
   slug: string;
@@ -625,11 +627,25 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
 }
 
 /** The gauge: a half-width deviation bar, empty at even, green above / red below. */
-function Gauge(props: { winRate: number | null; shown: boolean }) {
+function Gauge(props: { winRate: number | null; shown: boolean; wins: number; ties: number; games: number }) {
   const shown = () => props.shown && props.winRate !== null;
   const width = () => (shown() ? gaugeWidth(props.winRate!) : 0);
+  const range = () => (shown() ? matchPointWilson(props.wins, props.ties, props.games) : null);
   return (
-    <span class='mu-gauge' aria-hidden='true'>
+    <span
+      class='mu-gauge'
+      role='img'
+      aria-label={range() ? `95% interval ${formatRange(range())}` : 'Win rate unavailable'}
+      title={range() ? `95% interval ${formatRange(range())}` : undefined}
+    >
+      <Show when={range()}>
+        {interval => (
+          <span
+            class='mu-gauge-range'
+            style={{ left: `${interval().low}%`, width: `${interval().high - interval().low}%` }}
+          />
+        )}
+      </Show>
       <span class={`mu-gauge-fill ${toneClass(shown() ? props.winRate : null)}`} style={{ width: `${width()}%` }} />
     </span>
   );
@@ -643,7 +659,7 @@ function RowStats(props: { row: FieldRow }) {
     <div class='mu-stats'>
       <span class={`mu-wr ${toneClass(wr())}`}>{fmtWinRate(wr())}</span>
       <span class='mu-rec'>
-        {props.row.wins}-{lossesShown()}-{props.row.ties} · {props.row.matches.toLocaleString()}
+        {props.row.wins}-{lossesShown()}-{props.row.ties} · n={props.row.matches.toLocaleString()}
       </span>
     </div>
   );
@@ -677,7 +693,13 @@ function KeyMatchupRow(props: { row: FieldRow; onGo: (slug: string | null) => vo
           <span class='r2-share'>{fmtShare(props.row.prevalence)} of field</span>
         </Show>
       </div>
-      <Gauge winRate={props.row.winRate} shown={props.row.shown} />
+      <Gauge
+        winRate={props.row.winRate}
+        shown={props.row.shown}
+        wins={props.row.wins}
+        ties={props.row.ties}
+        games={props.row.matches}
+      />
       <RowStats row={props.row} />
     </div>
   );
@@ -699,7 +721,13 @@ function RestMatchupRow(props: { row: FieldRow; onGo: (slug: string | null) => v
           </span>
         </Show>
       </div>
-      <Gauge winRate={props.row.winRate} shown={props.row.shown} />
+      <Gauge
+        winRate={props.row.winRate}
+        shown={props.row.shown}
+        wins={props.row.wins}
+        ties={props.row.ties}
+        games={props.row.matches}
+      />
       <RowStats row={props.row} />
     </div>
   );

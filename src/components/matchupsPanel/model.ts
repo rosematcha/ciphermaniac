@@ -13,6 +13,7 @@ import { buildCanonicalCardId, buildCardId } from '../../../shared/deckCardId';
 import { bucketWinRate } from '../../lib/matchups';
 import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
 import type { CardItem } from '../../types';
+import type { DifferenceRange, WilsonRange } from '../../lib/confidence';
 
 /** How the rest-of-field list is ordered. */
 export type SortBy = 'winRate' | 'prevalence';
@@ -33,6 +34,39 @@ export function formatDeltaPp(n: number | null): string {
     return '—';
   }
   return `${n > 0 ? '+' : ''}${Math.round(n)}pp`;
+}
+
+function signedWhole(n: number): string {
+  const rounded = Math.round(n);
+  return `${rounded > 0 ? '+' : ''}${rounded}`;
+}
+
+/** Compact 95% range text for a win rate. */
+export function formatRange(range: Pick<WilsonRange, 'low' | 'high'> | null): string {
+  return range ? `${Math.round(range.low)}–${Math.round(range.high)}%` : '—';
+}
+
+/** Signed interval text for a difference in percentage points. */
+export function formatDeltaRange(range: DifferenceRange | null): string {
+  return range ? `${signedWhole(range.low)} to ${signedWhole(range.high)}` : '—';
+}
+
+/** Half-width suffix used beside aggregate rates. */
+export function formatPlusMinus(range: Pick<WilsonRange, 'low' | 'high'> | null): string {
+  return range ? `±${Math.round((range.high - range.low) / 2)}` : '';
+}
+
+/** Tone a lens delta only when its interval does not cross zero. */
+export function deltaToneClass(delta: number | null, range: DifferenceRange | null): string {
+  return range?.excludesZero ? toneClass(delta === null ? null : 50 + delta) : 'mu-flat';
+}
+
+/** Conservative bound used to rank lens deltas. */
+export function conservativeDelta(delta: number | null, range: DifferenceRange | null): number | null {
+  if (delta === null || range === null) {
+    return null;
+  }
+  return delta >= 0 ? range.low : range.high;
 }
 
 /**
