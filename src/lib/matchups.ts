@@ -126,8 +126,8 @@ export interface MatchupSummary {
   favoredShare: number;
   evenShare: number;
   unfavoredShare: number;
-  best: { label: string; winRate: number } | null;
-  toughest: { label: string; winRate: number } | null;
+  best: { label: string; winRate: number; matches: number } | null;
+  toughest: { label: string; winRate: number; matches: number } | null;
 }
 
 /**
@@ -142,8 +142,8 @@ export function summarizeMatchups(rows: MatchupStat[], minGames = WR_MIN_GAMES):
   let favoredShare = 0;
   let evenShare = 0;
   let unfavoredShare = 0;
-  let best: { label: string; winRate: number } | null = null;
-  let toughest: { label: string; winRate: number } | null = null;
+  let best: { label: string; winRate: number; matches: number } | null = null;
+  let toughest: { label: string; winRate: number; matches: number } | null = null;
   let tracked = 0;
   for (const r of rows) {
     if (r.matches < minGames) {
@@ -163,10 +163,10 @@ export function summarizeMatchups(rows: MatchupStat[], minGames = WR_MIN_GAMES):
       unfavoredShare += share;
     }
     if (!best || r.winRate > best.winRate) {
-      best = { label: r.opponentLabel, winRate: r.winRate };
+      best = { label: r.opponentLabel, winRate: r.winRate, matches: r.matches };
     }
     if (!toughest || r.winRate < toughest.winRate) {
-      toughest = { label: r.opponentLabel, winRate: r.winRate };
+      toughest = { label: r.opponentLabel, winRate: r.winRate, matches: r.matches };
     }
   }
   return { favored, even, unfavored, tracked, favoredShare, evenShare, unfavoredShare, best, toughest };

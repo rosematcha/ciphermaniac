@@ -420,8 +420,9 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
                       <b>{overview().even}</b> even, <b>{overview().unfavored}</b> unfavored.
                       <Show when={overview().best && overview().toughest}>
                         {' '}
-                        Best against <b>{overview().best!.label}</b> ({Math.round(overview().best!.winRate)}%), toughest
-                        against <b>{overview().toughest!.label}</b> ({Math.round(overview().toughest!.winRate)}%).
+                        Best against <b>{overview().best!.label}</b> ({Math.round(overview().best!.winRate)}%, n=
+                        {overview().best!.matches}), toughest against <b>{overview().toughest!.label}</b> (
+                        {Math.round(overview().toughest!.winRate)}%, n={overview().toughest!.matches}).
                       </Show>
                     </p>
                   </>
