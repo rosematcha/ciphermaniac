@@ -90,7 +90,15 @@ const NAMED_ENTITIES: Record<string, string> = {
 };
 function decodeHtmlEntities(s: string): string {
   return s
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (match, hex: string) => decodeCodePoint(match, hex, 16))
+    .replace(/&#(\d+);/g, (match, dec: string) => decodeCodePoint(match, dec, 10))
     .replace(/&([a-zA-Z]+);/g, (m, name) => NAMED_ENTITIES[name] ?? m);
+}
+
+function decodeCodePoint(match: string, value: string, radix: number): string {
+  const codePoint = parseInt(value, radix);
+  if (!Number.isFinite(codePoint) || codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) {
+    return match;
+  }
+  return String.fromCodePoint(codePoint);
 }
