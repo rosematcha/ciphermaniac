@@ -171,7 +171,10 @@ test('archetype filter-report handles phase2 slice in URL path', async () => {
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes('/slices/phase2/')) {
-      return new Response(JSON.stringify(fixtureDecks), { status: 200 });
+      return new Response(JSON.stringify(fixtureDecks), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      });
     }
     return new Response('not found', { status: 404 });
   }) as typeof fetch;
@@ -205,7 +208,10 @@ test('archetype filter-report handles topcut slice in URL path', async () => {
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes('/slices/topcut/')) {
-      return new Response(JSON.stringify(fixtureDecks), { status: 200 });
+      return new Response(JSON.stringify(fixtureDecks), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      });
     }
     return new Response('not found', { status: 404 });
   }) as typeof fetch;
@@ -236,7 +242,11 @@ test('archetype filter-report skips invalid filter entries in array', async () =
     { id: 'd1', archetype: 'Test', cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 2 }] }
   ];
 
-  globalThis.fetch = (async () => new Response(JSON.stringify(fixtureDecks), { status: 200 })) as typeof fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify(fixtureDecks), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    })) as typeof fetch;
 
   try {
     const request = new Request('https://ciphermaniac.com/api/archetype/filter-report', {
@@ -278,7 +288,11 @@ test('archetype filter-report applies success filter when provided', async () =>
     }
   ];
 
-  globalThis.fetch = (async () => new Response(JSON.stringify(fixtureDecks), { status: 200 })) as typeof fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify(fixtureDecks), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    })) as typeof fetch;
 
   try {
     const request = new Request('https://ciphermaniac.com/api/archetype/filter-report', {
@@ -310,7 +324,10 @@ test('archetype filter-report falls back to all-decks path when archetype path r
     if (url.includes('/archetypes/')) {
       return new Response('not valid json', { status: 200 });
     }
-    return new Response(JSON.stringify(fixtureDecks), { status: 200 });
+    return new Response(JSON.stringify(fixtureDecks), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
   }) as typeof fetch;
 
   try {

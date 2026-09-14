@@ -212,6 +212,18 @@ test('a genuinely absent artifact is 404', async () => {
   assert.equal(response.status, 404);
 });
 
+test('an HTML SPA fallback is treated as a missing artifact', async () => {
+  const response = await withFetch(
+    (async () =>
+      new Response('<!doctype html><title>Ciphermaniac</title>', {
+        status: 200,
+        headers: { 'content-type': 'text/html; charset=UTF-8' }
+      })) as typeof globalThis.fetch,
+    () => onRequestPost({ request: post(base()) })
+  );
+  assert.equal(response.status, 404);
+});
+
 test('an upstream 5xx is 502, not 404', async () => {
   const response = await withFetch((async () => new Response('boom', { status: 503 })) as typeof globalThis.fetch, () =>
     onRequestPost({ request: post(base()) })

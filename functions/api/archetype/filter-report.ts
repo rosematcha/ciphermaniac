@@ -392,6 +392,11 @@ async function fetchDecksFromPath(request: Request, path: string): Promise<DeckF
     return { status: 'upstream', httpStatus: response.status };
   }
 
+  const contentType = response.headers.get('content-type')?.toLowerCase();
+  if (contentType && !contentType.includes('json')) {
+    return { status: 'missing' };
+  }
+
   let payload: unknown;
   try {
     payload = await response.json();
