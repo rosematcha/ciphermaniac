@@ -184,8 +184,7 @@ export function EarningsPage() {
         </p>
       </Section>
 
-      {/* No section heading: the hero names the page and Pagination's
-          "Showing 1–50 of 932" carries the per-lens row count. */}
+      {/* No section heading: the hero names the page. */}
       <Section>
         <Show
           when={data()}
@@ -232,13 +231,7 @@ export function EarningsPage() {
               </table>
             </div>
             <Show when={totalPages() > 1}>
-              <Pagination
-                page={page()}
-                totalPages={totalPages()}
-                onChange={setPage}
-                pageSize={PAGE_SIZE}
-                totalItems={rows().length}
-              />
+              <Pagination page={page()} totalPages={totalPages()} onChange={setPage} />
             </Show>
           </Show>
         </Show>

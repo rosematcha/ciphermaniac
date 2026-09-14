@@ -230,13 +230,7 @@ export function PlayersPage() {
               </table>
             </div>
             <Show when={totalPages() > 1}>
-              <Pagination
-                page={page()}
-                totalPages={totalPages()}
-                onChange={setPage}
-                pageSize={PAGE_SIZE}
-                totalItems={filtered().length}
-              />
+              <Pagination page={page()} totalPages={totalPages()} onChange={setPage} />
             </Show>
           </Show>
         </Show>

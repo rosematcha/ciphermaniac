@@ -84,6 +84,20 @@ export function shortDate(d: Date | null): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+/**
+ * {@link shortDate}'s month and day as separate strings, for layouts that
+ * stack them (the home page's date column on phones). Null for a missing or
+ * invalid date, so the caller picks its own placeholder.
+ */
+export function shortDateParts(d: Date | null): { month: string; day: string } | null {
+  if (!d || Number.isNaN(d.getTime())) {
+    return null;
+  }
+  const parts = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).formatToParts(d);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(p => p.type === type)?.value ?? '';
+  return { month: part('month'), day: part('day') };
+}
+
 const ORDINAL_SUFFIX = ['th', 'st', 'nd', 'rd'] as const;
 
 /**
