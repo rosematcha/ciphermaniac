@@ -8,12 +8,24 @@ import { fetchArchetype, fetchArchetypes, fetchPrices, fetchTournamentsList, pre
 import { ONLINE_META_NAME } from '../lib/constants';
 import { latestValue, resolved } from '../lib/resource';
 import { type BinderArchetypeInput, type BinderCard, binderChecklist, buildBinder } from '../lib/metaBinder';
+import { escapeHtml } from '../lib/labelmaker/queue';
 import '../styles/pages/meta-binder.css';
 
 /** Archetypes at or above this meta share are selected on first load. */
 const DEFAULT_SHARE_FLOOR = 1;
 /** `?a=` value standing for "the user deselected everything", vs. no param at all. */
 const EMPTY_SELECTION = 'none';
+
+function checklistDocument(heading: string, checklist: string): string {
+  const safeHeading = escapeHtml(heading);
+  const safeChecklist = escapeHtml(checklist);
+  return (
+    `<!doctype html><html><head><title>${safeHeading}</title><style>` +
+    'body{font:14px/1.5 system-ui,sans-serif;margin:32px;max-width:640px}' +
+    'h1{font-size:18px;margin:0 0 16px}pre{white-space:pre-wrap;font:inherit}' +
+    `</style></head><body><h1>${safeHeading}</h1><pre>${safeChecklist}</pre></body></html>`
+  );
+}
 
 export function MetaBinderPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -174,12 +186,7 @@ export function MetaBinderPage() {
       return;
     }
     const heading = `Meta Binder — ${prettyTournamentName(tournament())}`;
-    win.document.write(
-      `<!doctype html><html><head><title>${heading}</title><style>` +
-        'body{font:14px/1.5 system-ui,sans-serif;margin:32px;max-width:640px}' +
-        'h1{font-size:18px;margin:0 0 16px}pre{white-space:pre-wrap;font:inherit}' +
-        `</style></head><body><h1>${heading}</h1><pre>${binderChecklist(binder())}</pre></body></html>`
-    );
+    win.document.write(checklistDocument(heading, binderChecklist(binder())));
     win.document.close();
     win.print();
   }

@@ -41,7 +41,7 @@ interface RequestContext {
 }
 
 function rateLimited(request: Request): Response | null {
-  const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+  const clientIp = request.headers.get('CF-Connecting-IP') ?? 'unknown';
   const result = rateLimiter.check(clientIp);
   if (result.allowed) {
     return null;

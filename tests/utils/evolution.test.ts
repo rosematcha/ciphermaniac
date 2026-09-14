@@ -40,6 +40,23 @@ test('evolution loader derives lowercase parents from the full database when sli
   assert.equal(map.has('MEG::003'), false);
 });
 
+test('evolution loader leaves invalid Unicode entities intact without discarding the map', async () => {
+  let calls = 0;
+  const load = createEvolutionMapLoader(async () => {
+    calls += 1;
+    return calls === 1
+      ? response({}, 404)
+      : response({
+          'MEG::001': { evolutionInfo: 'Evolves from Safe&#x110000;Name' },
+          'MEG::002': { evolutionInfo: 'Evolves from Safe&#55296;Name' }
+        });
+  });
+
+  const map = await load();
+  assert.equal(map.get('MEG::001'), 'safe&#x110000;name');
+  assert.equal(map.get('MEG::002'), 'safe&#55296;name');
+});
+
 test('evolution loader retries after a failed request instead of caching an empty result', async () => {
   let calls = 0;
   const load = createEvolutionMapLoader(async () => {

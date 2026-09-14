@@ -58,6 +58,10 @@ export function EarningsPage() {
   // Non-suspending read: navigation commits immediately and the skeleton below
   // does the waiting (see lib/resource.ts).
   const data = () => resolved(payload);
+  const payoutSource = () => {
+    const source = data()?.payoutSource;
+    return source?.startsWith('https://') ? source : null;
+  };
 
   /** Newest season in the payload — what the third lens ranks. */
   const currentSeason = () => data()?.seasons[0] ?? null;
@@ -167,9 +171,13 @@ export function EarningsPage() {
         <p class='earnings-note'>
           <Show when={basis() === 'adjusted'} fallback={<>Prize money as it was paid at the time.</>}>
             Every finish paid at the{' '}
-            <a href={data()?.payoutSource} target='_blank' rel='noopener'>
-              current published rates
-            </a>
+            <Show when={payoutSource()} fallback={<>current published rates</>}>
+              {source => (
+                <a href={source()} target='_blank' rel='noopener'>
+                  current published rates
+                </a>
+              )}
+            </Show>
             . Regionals, Internationals and Worlds only; Nationals count at International rates and Special
             Championships at Regional rates. Junior and Senior finishes pay from their own, lower column.
           </Show>
