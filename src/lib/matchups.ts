@@ -8,6 +8,8 @@
  * opponent slug/icons on top. Kept free of Solid + DOM so it's unit-testable.
  */
 import { type MatchupProfile, normalizeArchetypeKey, type OnlineMatchupRecord } from './data';
+export { WR_MIN_GAMES } from './confidence';
+import { WR_MIN_GAMES } from './confidence';
 
 /** A win is worth 3× a tie — Pokémon match points (win 3, tie 1, loss 0). */
 const TIE_VALUE = 1 / 3;
@@ -35,8 +37,6 @@ export function shrunkWinRate(wins: number, ties: number, matches: number): numb
  * key matchup, or appear in the main "rest of the field" list. Rows below this are
  * low-sample: hidden behind the expander and shown without a win-rate readout.
  */
-export const WR_MIN_GAMES = 20;
-
 /**
  * Guaranteed number of matchups that render with a win-rate readout, even when
  * they sit below {@link WR_MIN_GAMES}. A low-playrate deck plays so few total
@@ -126,8 +126,8 @@ export interface MatchupSummary {
   favoredShare: number;
   evenShare: number;
   unfavoredShare: number;
-  best: { label: string; winRate: number } | null;
-  toughest: { label: string; winRate: number } | null;
+  best: { label: string; winRate: number; matches: number } | null;
+  toughest: { label: string; winRate: number; matches: number } | null;
 }
 
 /**
@@ -142,8 +142,8 @@ export function summarizeMatchups(rows: MatchupStat[], minGames = WR_MIN_GAMES):
   let favoredShare = 0;
   let evenShare = 0;
   let unfavoredShare = 0;
-  let best: { label: string; winRate: number } | null = null;
-  let toughest: { label: string; winRate: number } | null = null;
+  let best: { label: string; winRate: number; matches: number } | null = null;
+  let toughest: { label: string; winRate: number; matches: number } | null = null;
   let tracked = 0;
   for (const r of rows) {
     if (r.matches < minGames) {
@@ -163,10 +163,10 @@ export function summarizeMatchups(rows: MatchupStat[], minGames = WR_MIN_GAMES):
       unfavoredShare += share;
     }
     if (!best || r.winRate > best.winRate) {
-      best = { label: r.opponentLabel, winRate: r.winRate };
+      best = { label: r.opponentLabel, winRate: r.winRate, matches: r.matches };
     }
     if (!toughest || r.winRate < toughest.winRate) {
-      toughest = { label: r.opponentLabel, winRate: r.winRate };
+      toughest = { label: r.opponentLabel, winRate: r.winRate, matches: r.matches };
     }
   }
   return { favored, even, unfavored, tracked, favoredShare, evenShare, unfavoredShare, best, toughest };

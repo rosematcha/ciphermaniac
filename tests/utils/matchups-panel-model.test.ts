@@ -10,7 +10,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  conservativeDelta,
+  deltaToneClass,
   formatDeltaPp,
+  formatDeltaRange,
+  formatPlusMinus,
+  formatRange,
   formatShare,
   formatWinRate,
   sortByMode,
@@ -53,6 +58,26 @@ test('lens deltas are signed percentage points', () => {
   assert.equal(formatDeltaPp(-4.6), '-5pp');
   assert.equal(formatDeltaPp(0), '0pp', 'zero is unsigned');
   assert.equal(formatDeltaPp(null), '—');
+});
+
+test('confidence ranges use compact whole-number text', () => {
+  assert.equal(formatRange({ low: 46.6, high: 59.2 }), '47–59%');
+  assert.equal(formatDeltaRange({ low: -2.4, high: 14.2, excludesZero: false }), '-2 to +14');
+  assert.equal(formatPlusMinus({ low: 47, high: 53 }), '±3');
+  assert.equal(formatRange(null), '—');
+  assert.equal(formatDeltaRange(null), '—');
+  assert.equal(formatPlusMinus(null), '');
+});
+
+test('lens delta tone requires an interval excluding zero', () => {
+  assert.equal(deltaToneClass(8, { low: -1, high: 17, excludesZero: false }), 'mu-flat');
+  assert.equal(deltaToneClass(8, { low: 2, high: 14, excludesZero: true }), 'mu-pos');
+});
+
+test('lens delta sorting uses the conservative bound', () => {
+  assert.equal(conservativeDelta(8, { low: 2, high: 14, excludesZero: true }), 2);
+  assert.equal(conservativeDelta(-8, { low: -14, high: -2, excludesZero: true }), -2);
+  assert.equal(conservativeDelta(null, null), null);
 });
 
 // ---------------------------------------------------------------------------

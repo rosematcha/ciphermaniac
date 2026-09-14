@@ -60,6 +60,8 @@ export function AboutPage() {
             <dd>Share of the Day 1 decks playing this card that advanced to Day 2.</dd>
             <dt>Prevalence</dt>
             <dd>This opponent's share of the field.</dd>
+            <dt>95% interval</dt>
+            <dd>A likely range for the underlying win rate given the recorded sample. Wider ranges mean less data.</dd>
             <dt>Day 2</dt>
             <dd>Players whose Day 1 record kept them in the tournament.</dd>
             <dt>Top cut</dt>

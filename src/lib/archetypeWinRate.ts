@@ -13,6 +13,7 @@
  */
 import { fetchArchetypeMatchupsOnline, fetchMatchupProfiles, type MatchupProfile, normalizeArchetypeKey } from './data';
 import { type MatchupRowCore, pointsWinRate, rowsFromMajorsProfile, rowsFromOnlineMatchups } from './matchups';
+export { WR_MIN_GAMES, WR_MUTE_GAMES } from './confidence';
 
 /** Prefer the quality-weighted majors profile, falling back to the unweighted `all`. */
 function pickMajorsProfile(profiles: Awaited<ReturnType<typeof fetchMatchupProfiles>>): MatchupProfile | undefined {
@@ -20,9 +21,6 @@ function pickMajorsProfile(profiles: Awaited<ReturnType<typeof fetchMatchupProfi
 }
 
 /** Below this many games the aggregate is noise — render "—" instead of a number. */
-export const WR_MIN_GAMES = 20;
-/** Between {@link WR_MIN_GAMES} and this, show the number but visually mute it. */
-export const WR_MUTE_GAMES = 50;
 
 export interface WinRateAggregate {
   wins: number;

@@ -99,7 +99,8 @@ export function PlayersPage() {
 
   const profileHref = (p: PlayerIndexSlimEntry) => `/players/${encodeURIComponent(p.playerId)}`;
   const rankOf = (i: number) => (page() - 1) * PAGE_SIZE + i + 1;
-  const winLabel = (p: PlayerIndexSlimEntry) => (p.wins + p.losses > 0 ? `${Math.round(winPct(p) * 100)}%` : '—');
+  const winLabel = (p: PlayerIndexSlimEntry) =>
+    p.wins + p.losses > 0 ? `${Math.round(winPct(p) * 100)}% · n=${p.wins + p.losses}` : '—';
   /* Most of 1,500 careers have no title and many have no top cut. Printing the
      zeros gave two columns of "0"; blank leaves them reading as marks against a
      quiet field, the same way the profile's Day 2 column does. */

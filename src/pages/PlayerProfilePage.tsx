@@ -123,7 +123,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
           </div>
           <div class='player-stat is-lead'>
             <dt>win rate</dt>
-            <dd>{summary().winRate == null ? '—' : `${summary().winRate}%`}</dd>
+            <dd>{summary().winRate == null ? '—' : `${summary().winRate}% · n=${summary().games}`}</dd>
           </div>
           <div class='player-stat'>
             <dt>
