@@ -14,7 +14,6 @@ import { createSignal, For, type JSX, onMount, Show } from 'solid-js';
 import {
   CONTACT_METHODS,
   type ContactMethod,
-  CORRECTION_LABEL,
   type Environment,
   ENVIRONMENT_FIELDS,
   ENVIRONMENT_KEYS,
@@ -232,7 +231,6 @@ export function FeedbackPage(): JSX.Element {
   const [searchParams] = useSearchParams<{ from?: string }>();
   const [type, setType] = createSignal<FeedbackType | null>(null);
   const [message, setMessage] = createSignal('');
-  const [correction, setCorrection] = createSignal('');
   const suggestedPage = normalizePagePath(searchParams.from);
   const [page, setPage] = createSignal('');
   const [wantsReply, setWantsReply] = createSignal(false);
@@ -267,7 +265,6 @@ export function FeedbackPage(): JSX.Element {
   const reset = () => {
     setType(null);
     setMessage('');
-    setCorrection('');
     setPage('');
     setWantsReply(false);
     setHandle('');
@@ -289,7 +286,6 @@ export function FeedbackPage(): JSX.Element {
     const state = {
       type: current,
       message: message(),
-      correction: correction(),
       page: page(),
       wantsReply: wantsReply(),
       method: method(),
@@ -331,15 +327,6 @@ export function FeedbackPage(): JSX.Element {
                   />
                 </Field>
                 <Show when={current() === 'wrong'}>
-                  <Field id='feedback-correction' label={CORRECTION_LABEL} marker='if you know'>
-                    <input
-                      id='feedback-correction'
-                      class='feedback-input'
-                      maxLength={FEEDBACK_LIMITS.correction}
-                      value={correction()}
-                      onInput={event => setCorrection(event.currentTarget.value)}
-                    />
-                  </Field>
                   <Field id='feedback-page' label={PAGE_LABEL} marker='optional'>
                     <input
                       id='feedback-page'
