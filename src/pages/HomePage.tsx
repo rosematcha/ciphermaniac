@@ -18,7 +18,7 @@ import { Section } from '../components/Section';
 import { ArchetypeCard, ArchetypeCardSkeleton } from '../components/ArchetypeCard';
 import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
-import { formatPercent, nameFromTournamentKey, parseISODate, shortDate } from '../lib/format';
+import { formatPercent, nameFromTournamentKey, parseISODate, shortDateParts } from '../lib/format';
 import { latestValue, resolved } from '../lib/resource';
 import type { UpcomingEvent } from '../../shared/upcomingTypes.js';
 import { useTournament } from '../lib/tournamentContext';
@@ -250,14 +250,7 @@ export function HomePage() {
       </Section>
 
       <Section title='Recent major tournaments' right={<A href='/tournaments'>View all →</A>}>
-        <Show
-          when={tournamentsListData()}
-          fallback={
-            <div class='tournament-list'>
-              <For each={Array.from({ length: 4 })}>{() => <Skeleton height='44px' />}</For>
-            </div>
-          }
-        >
+        <Show when={tournamentsListData()} fallback={<TournamentRowsSkeleton count={RECENT_MAJORS_COUNT} />}>
           <Show when={recentMajors().length > 0} fallback={<EmptyState title='No recent majors.' />}>
             <div class='tournament-list'>
               <For each={recentMajors()}>{t => <RecentMajorRow tournamentKey={t} />}</For>
@@ -279,9 +272,7 @@ export function HomePage() {
                 />
               }
             >
-              <div class='tournament-list'>
-                <For each={Array.from({ length: 4 })}>{() => <Skeleton height='44px' />}</For>
-              </div>
+              <TournamentRowsSkeleton count={UPCOMING_COUNT} />
             </Show>
           }
         >
@@ -895,12 +886,54 @@ function isOtherEntry(a: ArchetypeIndexEntry): boolean {
 /* ---------- Recent major row ---------- */
 
 function RecentMajorRow(props: { tournamentKey: string }) {
-  const date = () => tournamentDate(props.tournamentKey);
   return (
-    <div class='tournament-row'>
-      <span class='date'>{date() ? shortDate(date()!) : '—'}</span>
+    <div class='tournament-row tournament-row-dated'>
+      <DateCell date={tournamentDate(props.tournamentKey)} />
       <span class='name'>{nameFromTournamentKey(props.tournamentKey)}</span>
       <span class='players'>{classifyByName(props.tournamentKey)}</span>
+    </div>
+  );
+}
+
+/** Month and day in their own spans, so phones can stack them as a column. */
+function DateCell(props: { date: Date | null }) {
+  const parts = () => shortDateParts(props.date);
+  return (
+    <span class='date'>
+      <Show when={parts()} fallback='—'>
+        {p => (
+          <>
+            <span class='mon'>{p().month}</span> <span class='day'>{p().day}</span>
+          </>
+        )}
+      </Show>
+    </span>
+  );
+}
+
+/**
+ * Loading rows for the two event lists: real dated rows with placeholder text
+ * and the ink taken out, so each is exactly as tall as the row it stands in
+ * for, at every width.
+ */
+function TournamentRowsSkeleton(props: { count: number }) {
+  return (
+    <div class='tournament-list' aria-hidden='true'>
+      <For each={Array.from({ length: props.count })}>
+        {() => (
+          <div class='tournament-row tournament-row-dated is-skeleton'>
+            <span class='date'>
+              <span class='mon'>Jun</span> <span class='day'>12</span>
+            </span>
+            <span class='name'>
+              <span>Regional Championship Stuttgart</span>
+            </span>
+            <span class='players'>
+              <span>Regional</span>
+            </span>
+          </div>
+        )}
+      </For>
     </div>
   );
 }
@@ -913,7 +946,7 @@ function UpcomingRow(props: { event: UpcomingEvent }) {
   const href = () => props.event.limitlessUrl ?? props.event.externalUrl ?? null;
   const cells = (
     <>
-      <span class='date'>{shortDate(parseISODate(props.event.date))}</span>
+      <DateCell date={parseISODate(props.event.date)} />
       <span class='name'>{props.event.name}</span>
       <span class='players'>
         {labelType(props.event.type)} · {props.event.country}
@@ -921,8 +954,8 @@ function UpcomingRow(props: { event: UpcomingEvent }) {
     </>
   );
   return (
-    <Show when={href()} fallback={<div class='tournament-row'>{cells}</div>}>
-      <a class='tournament-row tournament-row-link' href={href()!} target='_blank' rel='noopener'>
+    <Show when={href()} fallback={<div class='tournament-row tournament-row-dated'>{cells}</div>}>
+      <a class='tournament-row tournament-row-dated tournament-row-link' href={href()!} target='_blank' rel='noopener'>
         {cells}
       </a>
     </Show>

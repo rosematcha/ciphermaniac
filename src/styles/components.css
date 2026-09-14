@@ -1621,6 +1621,43 @@ tr.row-expansion > td {
   transform: translate(-1px, -1px);
   box-shadow: var(--shadow-2);
 }
+/* Loading rows are real rows with the ink taken out: each keeps placeholder
+   text, so it is exactly as tall as the row it stands in for at any width. */
+.tournament-row.is-skeleton :is(.mon, .day, .name > span, .players > span) {
+  color: transparent;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+/* Home event rows on phones: the date becomes a month-over-day column and the
+   name and type stack beside it. The name gets the rest of the row to itself,
+   so rows stay two lines, and the same height, whatever the event is called. */
+@media (max-width: 640px) {
+  .tournament-row-dated {
+    grid-template-columns: 38px 1fr;
+    grid-template-areas: 'date name' 'date type';
+    column-gap: 12px;
+    row-gap: 2px;
+    align-items: center;
+  }
+  .tournament-row-dated .date {
+    grid-area: date;
+    display: grid;
+    justify-items: center;
+    line-height: 1.1;
+  }
+  .tournament-row-dated .day {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--fg);
+    letter-spacing: 0;
+  }
+  .tournament-row-dated .name {
+    grid-area: name;
+  }
+  .tournament-row-dated .players {
+    grid-area: type;
+  }
+}
 
 /* ---------- Home: latest-event callout ----------
    Appears at the very top of the home page when a major has finished within

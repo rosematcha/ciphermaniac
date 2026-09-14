@@ -6,6 +6,7 @@ import {
   ordinal,
   ordinalSuffix,
   placementLabel,
+  shortDateParts,
   winPercent,
   winPercentLabel
 } from '../../src/lib/format.ts';
@@ -14,6 +15,19 @@ import type { TournamentParticipant } from '../../src/types/index.ts';
 function participant(overrides: Partial<TournamentParticipant> = {}): TournamentParticipant {
   return { tpId: 1, name: 'Test Player', ...overrides };
 }
+
+test('shortDateParts splits a date into the short month and the day of month', () => {
+  const date = new Date(2026, 5, 12);
+  assert.deepEqual(shortDateParts(date), {
+    month: date.toLocaleDateString(undefined, { month: 'short' }),
+    day: date.toLocaleDateString(undefined, { day: 'numeric' })
+  });
+});
+
+test('shortDateParts is null for a missing or invalid date', () => {
+  assert.equal(shortDateParts(null), null);
+  assert.equal(shortDateParts(new Date(Number.NaN)), null);
+});
 
 test('formatRecord returns an em dash when wins, losses, and ties are all missing', () => {
   assert.equal(formatRecord(participant()), '—');
