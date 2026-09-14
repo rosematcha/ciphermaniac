@@ -55,7 +55,7 @@ export function TournamentSelector() {
   }
 
   function pick(t: string) {
-    setTournament(t);
+    setTournament(t, { history: 'push' });
     close();
   }
 
