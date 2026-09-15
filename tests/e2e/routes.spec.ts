@@ -110,7 +110,7 @@ test('a scope deep link loads the selected tournament', async ({ page }) => {
 test('the tournament selector writes scope history and omits the default', async ({ page }) => {
   await gotoClean(page, '/archetypes');
   await page.locator('.t-selector-trigger').click();
-  await page.getByRole('button', { name: /International Championship New Orleans/ }).click();
+  await page.getByRole('button', { name: /New Orleans Internationals/ }).click();
   await expect(page).toHaveURL(/scope=2026-06-12-international-championship-new-orleans/);
 
   await page.locator('.t-selector-trigger').click();
@@ -133,9 +133,7 @@ test('archetype matchups show ranges for rows and the card lens', async ({ page 
   await expect(page.locator('.mu-gauge[title^="95% interval"]').first()).toBeVisible();
 
   await page.getByText('Compare with a specific card').click();
-  // Shaymin is not one of the suggested chips, so reach it through the search.
-  await page.getByRole('searchbox', { name: 'Search all cards' }).fill('Shaymin');
-  await page.locator('.r2-lens .fb-b-popover .item', { hasText: 'Shaymin' }).first().click();
+  await page.getByRole('button', { name: /Unfair Stamp/ }).click();
   await expect(page.locator('.r2-lens-hint')).toContainText('95% interval');
 });
 
