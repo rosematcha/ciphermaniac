@@ -16,4 +16,4 @@ export const R2_ORIGIN: string = import.meta.env?.VITE_DATA_ORIGIN || 'https://r
 // The online-meta key and label live in shared/data/tournamentKeys, alongside
 // the functions that parse the tournament-key format — the daily pipeline needs
 // them too, and it must not reach up into the frontend for them.
-export { ONLINE_META_LABEL, ONLINE_META_NAME } from '../../shared/data/tournamentKeys';
+export { ONLINE_META_DATE_LABEL, ONLINE_META_LABEL, ONLINE_META_NAME } from '../../shared/data/tournamentKeys';

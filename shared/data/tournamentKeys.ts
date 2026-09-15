@@ -24,7 +24,10 @@ export const ONLINE_META_NAME = 'Online - Last 14 Days';
  * Display label for the online meta. Purely cosmetic — the storage key is the
  * plain string above; nothing parses this label back into a key.
  */
-export const ONLINE_META_LABEL = 'Online ladder · last 14 days';
+export const ONLINE_META_LABEL = 'Online events';
+
+/** Secondary date-style label for the rolling online event window. */
+export const ONLINE_META_DATE_LABEL = 'last 14 days';
 
 const ONLINE = ONLINE_META_NAME;
 

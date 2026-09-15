@@ -114,7 +114,7 @@ test('the tournament selector writes scope history and omits the default', async
   await expect(page).toHaveURL(/scope=2026-06-12-international-championship-new-orleans/);
 
   await page.locator('.t-selector-trigger').click();
-  await page.getByRole('button', { name: /Online ladder/ }).click();
+  await page.getByRole('button', { name: /Online events/ }).click();
   await expect.poll(() => new URL(page.url()).searchParams.has('scope')).toBe(false);
 });
 

@@ -14,6 +14,7 @@ import test from 'node:test';
 import {
   classifyTournament,
   majorTournaments,
+  ONLINE_META_DATE_LABEL,
   ONLINE_META_LABEL,
   ONLINE_META_NAME,
   prettyTournamentName,
@@ -105,6 +106,8 @@ test('shortTournamentName makes event tiers compact and city-first', () => {
 
 test('the online meta renders as its label', () => {
   assert.equal(prettyTournamentName(ONLINE_META_NAME), ONLINE_META_LABEL);
+  assert.equal(ONLINE_META_LABEL, 'Online events');
+  assert.equal(ONLINE_META_DATE_LABEL, 'last 14 days');
 });
 
 test('an unrecognized key is returned unchanged rather than mangled', () => {
