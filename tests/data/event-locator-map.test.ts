@@ -124,8 +124,8 @@ test('a fitted circle fills the uncovered part of the map and is centred in it',
 test('tiles cover the whole viewport at a fractional zoom', () => {
   const view = { center: AUSTIN, zoom: 9.4 };
   const tiles = visibleTiles(view, SIZE);
-  assert.ok(tiles.every(t => t.z === 9));
-  near(tiles[0]?.size ?? 0, 256 * 2 ** 0.4, 1e-9, 'scaled size');
+  assert.ok(tiles.every(t => t.z === 8));
+  near(tiles[0]?.size ?? 0, 256 * 2 ** 1.4, 1e-9, 'scaled size');
   const covered = (x: number, y: number) =>
     tiles.some(t => x >= t.left && x < t.left + t.size && y >= t.top && y < t.top + t.size);
   for (const [x, y] of [
@@ -139,15 +139,16 @@ test('tiles cover the whole viewport at a fractional zoom', () => {
   }
 });
 
-test('tiles only ever scale up: the level changes at whole zooms, not halves', () => {
-  assert.equal(tileLevel(9.4), 9);
-  assert.equal(tileLevel(9.6), 9);
-  assert.equal(tileLevel(9.99), 9);
+test('only every other level is fetched, and tiles only ever scale up', () => {
+  assert.equal(tileLevel(8), 8);
+  assert.equal(tileLevel(9.4), 8);
+  assert.equal(tileLevel(9.99), 8);
   assert.equal(tileLevel(10), 10);
+  assert.equal(tileLevel(2.5), 2, 'never below the shallowest level');
   assert.equal(tileLevel(30), 18, 'clamped to the deepest level');
   const tiles = visibleTiles({ center: AUSTIN, zoom: 9.9 }, SIZE);
-  assert.ok(tiles.every(t => t.z === 9));
-  near(tiles[0]?.size ?? 0, 256 * 2 ** 0.9, 1e-9, 'scaled up, never down');
+  assert.ok(tiles.every(t => t.z === 8));
+  near(tiles[0]?.size ?? 0, 256 * 2 ** 1.9, 1e-9, 'scaled up, never down');
 });
 
 test('a zoom step lands on the adjacent whole level', () => {
@@ -160,18 +161,18 @@ test('a zoom step lands on the adjacent whole level', () => {
 });
 
 test('a departing level can be laid out at the current view', () => {
-  const view = { center: AUSTIN, zoom: 11.2 };
+  const view = { center: AUSTIN, zoom: 12.2 };
   const under = visibleTiles(view, SIZE, 10);
   assert.ok(under.length > 0);
   assert.ok(under.every(t => t.z === 10));
-  near(under[0]?.size ?? 0, 256 * 2 ** 1.2, 1e-9, 'old tiles scaled to the new zoom');
+  near(under[0]?.size ?? 0, 256 * 2 ** 2.2, 1e-9, 'old tiles scaled to the new zoom');
   const centreUnder = under.find(t => t.left <= 250 && t.left + t.size > 250 && t.top <= 350 && t.top + t.size > 350);
   const centreNow = visibleTiles(view, SIZE).find(
     t => t.left <= 250 && t.left + t.size > 250 && t.top <= 350 && t.top + t.size > 350
   );
   assert.ok(centreUnder && centreNow, 'both levels cover the centre');
-  assert.equal(Math.floor(centreNow.x / 2), centreUnder.x, 'the same ground is under the centre');
-  assert.equal(Math.floor(centreNow.y / 2), centreUnder.y);
+  assert.equal(Math.floor(centreNow.x / 4), centreUnder.x, 'the same ground is under the centre');
+  assert.equal(Math.floor(centreNow.y / 4), centreUnder.y);
 });
 
 test('tile columns wrap around the world and rows stay on it', () => {

@@ -7,10 +7,12 @@
  * tiles cover the viewport, fitting a circle into view, zooming around a
  * point — so the component is left with events and DOM.
  *
- * Zoom is continuous. Tiles are drawn at the whole zoom at or below it and
- * scaled up by the remainder, which is what makes pinch zoom smooth. Only
- * ever scaling up means the level changes once per whole zoom, not at every
- * half, so the map swaps its tiles as rarely as it can.
+ * Zoom is continuous. Tiles are drawn at the nearest even zoom at or below
+ * it and scaled up by the remainder, which is what makes pinch zoom smooth.
+ * Only every other level is fetched, and only ever scaled up: the map is for
+ * finding roughly where a store is, so a softer tile costs nothing, while
+ * each skipped level is a set of tiles a phone on cell data never downloads
+ * and a swap it never shows.
  * @module lib/events/mercator
  */
 
@@ -19,6 +21,8 @@ import type { LatLon } from './geo';
 export const TILE_SIZE = 256;
 export const MIN_ZOOM = 2;
 export const MAX_ZOOM = 18;
+/** Only every this-many-th whole zoom has its tiles fetched; the rest scale up. */
+const TILE_LEVEL_STEP = 2;
 const MAX_LATITUDE = 85.05112878;
 const EARTH_RADIUS_KM = 6371.0088;
 
@@ -165,9 +169,9 @@ export function stepZoom(zoom: number, step: 1 | -1): number {
   return clampZoom(step > 0 ? Math.floor(zoom) + 1 : Math.ceil(zoom) - 1);
 }
 
-/** The whole zoom whose tiles are drawn for a (fractional) zoom. */
+/** The zoom whose tiles are drawn for a (fractional) zoom: the nearest fetched level at or below it. */
 export function tileLevel(zoom: number): number {
-  return Math.floor(clampZoom(zoom));
+  return clampZoom(Math.floor(clampZoom(zoom) / TILE_LEVEL_STEP) * TILE_LEVEL_STEP);
 }
 
 /**
