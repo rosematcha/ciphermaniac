@@ -52,6 +52,24 @@ export interface TilePlacement {
   size: number;
 }
 
+/**
+ * The item drawn closest to a screen point, when one is within `reach` pixels.
+ * @returns null when nothing is close enough
+ */
+export function nearestWithin<T>(items: readonly T[], at: (item: T) => Point, target: Point, reach: number): T | null {
+  let best: T | null = null;
+  let bestDistance = reach;
+  for (const item of items) {
+    const point = at(item);
+    const distance = Math.hypot(point.x - target.x, point.y - target.y);
+    if (distance <= bestDistance) {
+      best = item;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
 export function clampZoom(zoom: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
 }

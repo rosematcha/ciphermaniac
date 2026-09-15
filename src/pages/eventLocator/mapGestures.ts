@@ -16,6 +16,8 @@ export interface GestureTarget {
   view: () => MapView;
   setView: (view: MapView) => void;
   size: () => Size;
+  /** A press that lifted where it went down, at its point on the map. */
+  onTap?: (point: Point) => void;
 }
 
 const CLICK_SLOP_PX = 5;
@@ -154,6 +156,10 @@ export function attachGestures(el: HTMLElement, target: GestureTarget): () => vo
     }
     if (pointers.size === 0) {
       lastMoved = Boolean(press?.moved);
+      // A cancelled press (the browser took the gesture) is not a tap.
+      if (press && !press.moved && e.type === 'pointerup') {
+        target.onTap?.({ x: press.x, y: press.y });
+      }
       press = null;
       pinch = null;
     }

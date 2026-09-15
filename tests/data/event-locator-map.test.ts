@@ -12,6 +12,7 @@ import {
   kmPerPixel,
   MAX_ZOOM,
   MIN_ZOOM,
+  nearestWithin,
   panBy,
   project,
   toScreen,
@@ -141,4 +142,17 @@ test('tile columns wrap around the world and rows stay on it', () => {
   assert.ok(tiles.every(t => t.x >= 0 && t.x < 4));
   assert.ok(tiles.every(t => t.y >= 0 && t.y < 4));
   assert.equal(new Set(tiles.map(t => t.key)).size, tiles.length, 'keys are unique');
+});
+
+test('a tap reaches the nearest dot within range, and nothing beyond it', () => {
+  const dots = [
+    { id: 'a', x: 10, y: 10 },
+    { id: 'b', x: 40, y: 10 },
+    { id: 'c', x: 200, y: 200 }
+  ];
+  const at = (dot: { x: number; y: number }) => dot;
+  assert.equal(nearestWithin(dots, at, { x: 22, y: 12 }, 22)?.id, 'a');
+  assert.equal(nearestWithin(dots, at, { x: 30, y: 10 }, 22)?.id, 'b', 'the closer of two in reach');
+  assert.equal(nearestWithin(dots, at, { x: 120, y: 120 }, 22), null);
+  assert.equal(nearestWithin([], at, { x: 0, y: 0 }, 22), null);
 });

@@ -7,7 +7,9 @@ import {
   type Insets,
   kmPerPixel,
   type MapView,
+  nearestWithin,
   panBy,
+  type Point,
   type Size,
   toScreen,
   visibleTiles,
@@ -26,6 +28,8 @@ function tileUrl(z: number, x: number, y: number): string {
 
 const WORLD_VIEW: MapView = { center: { lat: 25, lon: 0 }, zoom: 2 };
 const KEY_PAN_PX = 80;
+/** How far from a dot a tap on the map still opens it: fingers are wider than dots. */
+const TAP_REACH_PX = 22;
 
 export interface LocatorMapProps {
   center: LatLon | null;
@@ -59,6 +63,22 @@ export function LocatorMap(props: LocatorMapProps) {
   const screen = (point: LatLon) => toScreen(point, view(), size());
   const ringPx = () => (props.center ? props.radiusKm / kmPerPixel(props.center.lat, view().zoom) : 0);
 
+  const tapMarker = (marker: VenueMarker) => {
+    if (props.focusBand > 0) {
+      setView(panBy(view(), 0, size().height - props.focusBand / 2 - screen(marker).y));
+    }
+    props.onMarker(marker);
+  };
+
+  // Dots keep their exact hit areas, so a near miss never lands on a neighbour;
+  // a tap on the map itself opens the closest dot within reach.
+  const tapNear = (point: Point) => {
+    const marker = nearestWithin(props.markers, screen, point, TAP_REACH_PX);
+    if (marker) {
+      tapMarker(marker);
+    }
+  };
+
   onMount(() => {
     const observer = new ResizeObserver(entries => {
       const box = entries[0]?.contentRect;
@@ -67,7 +87,7 @@ export function LocatorMap(props: LocatorMapProps) {
       }
     });
     observer.observe(el);
-    const detach = attachGestures(el, { view, setView, size });
+    const detach = attachGestures(el, { view, setView, size, onTap: tapNear });
     onCleanup(() => {
       observer.disconnect();
       detach();
@@ -88,13 +108,6 @@ export function LocatorMap(props: LocatorMapProps) {
   const zoomBy = (step: number) => {
     const current = view();
     setView(zoomAround(current, size(), { x: size().width / 2, y: size().height / 2 }, current.zoom + step));
-  };
-
-  const tapMarker = (marker: VenueMarker) => {
-    if (props.focusBand > 0) {
-      setView(panBy(view(), 0, size().height - props.focusBand / 2 - screen(marker).y));
-    }
-    props.onMarker(marker);
   };
 
   const KEY_ACTIONS: Record<string, () => void> = {
