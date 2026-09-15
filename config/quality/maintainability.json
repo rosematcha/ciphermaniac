@@ -208,7 +208,7 @@
     "complexity:824e0ef62e68000172f189b5c3611040da3530a1bc1a0289c80bd9bce2525f65:Function 'decodeSlimIndex' has a complexity of 23. Maximum allowed is 12."
   ],
   "src/components/AdvancedPanel.tsx": [
-    "max-lines-per-function:dceb835b600ee873cddc53eb8eb45e51fd60d911ec4b8cfc7edc24dd6a720e03:Function 'useAdvancedPanel' has too many lines (450). Maximum allowed is 250.",
+    "max-lines-per-function:469dc94df7c83beeae9837b2ea8faa13fd640c1f14503e61216ec36c5d1aa0cb:Function 'useAdvancedPanel' has too many lines (450). Maximum allowed is 250.",
     "max-lines-per-function:52782eca7b82d78e5398a35630f5ce8373a38822febd60cf7876cd2f82ddd51c:Function 'AdvancedPanel' has too many lines (271). Maximum allowed is 250."
   ],
   "src/components/CardTile.tsx": [

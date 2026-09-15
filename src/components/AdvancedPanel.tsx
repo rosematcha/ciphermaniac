@@ -3,6 +3,7 @@ import { useSearchParams } from '@solidjs/router';
 import type { ArchetypeReport, CardItem, Deck } from '../types';
 import { fetchArchetypeDecks } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
+import { writeScopeParam } from '../lib/scopeUrl';
 import { generateReportAndCooccurrence } from '../../shared/clientSideFiltering';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { buildCanonicalCardId, buildCardId } from '../../shared/deckCardId';
@@ -553,7 +554,7 @@ function useAdvancedPanel(props: AdvancedPanelProps) {
 
   async function shareLink() {
     const url = new URL(window.location.href);
-    url.searchParams.set('tour', selectedTournament());
+    writeScopeParam(url.searchParams, selectedTournament());
     try {
       await navigator.clipboard.writeText(url.toString());
       flashCopyMsg('Link copied!');
