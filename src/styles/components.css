@@ -312,6 +312,18 @@
   .gsearch-trigger {
     display: inline-flex;
   }
+  /* The search and scope controls are separate buttons, but visually read as
+     one compact control group in the phone header. */
+  .topnav-actions {
+    gap: 0;
+  }
+  .gsearch-trigger {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    border-right: 0;
+  }
+  .t-selector-trigger {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
 }
 @media (max-width: 900px) {
   .topnav {

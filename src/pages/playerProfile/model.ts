@@ -6,7 +6,7 @@
  * @module pages/playerProfile/model
  */
 import { nameFromTournamentKey } from '../../lib/format';
-import { tournamentDate } from '../../../shared/data/tournamentKeys';
+import { shortTournamentName as formatShortTournamentName, tournamentDate } from '../../../shared/data/tournamentKeys';
 import type { PlayerProfile, PlayerRound, PlayerTournamentEntry } from '../../types';
 
 /**
@@ -23,24 +23,7 @@ export const REPEAT_MIN_MEETINGS = 2;
 
 /** "Regional Championship Indianapolis" → "Indianapolis Regional", and so on. */
 export function shortTournamentName(key: string): string {
-  const name = nameFromTournamentKey(key);
-  const regional = name.match(/^Regional Championship (.+)$/);
-  if (regional) {
-    return `${regional[1]} Regional`;
-  }
-  const international = name.match(/^International Championship (.+)$/);
-  if (international) {
-    return `${international[1]} International`;
-  }
-  const worlds = name.match(/^World Championships? (\d{4})$/);
-  if (worlds) {
-    return `Worlds ${worlds[1]}`;
-  }
-  const special = name.match(/^Special Event (.+)$/);
-  if (special) {
-    return `${special[1]} Special Event`;
-  }
-  return name;
+  return formatShortTournamentName(nameFromTournamentKey(key));
 }
 
 /** "Jun 12, 2026" from a tournament key, or an empty string when it carries no date. */

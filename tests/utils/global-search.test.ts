@@ -49,7 +49,7 @@ test('buildSearchIndex flattens every source with routes and sublabels', () => {
   assert.equal(arven?.sublabel, 'SVI 181');
   assert.equal(index.find(e => e.kind === 'player' && e.label === 'Ada Dragon')?.sublabel, '9 events');
   const event = index.find(e => e.kind === 'tournament');
-  assert.equal(event?.label, 'International Championship New Orleans');
+  assert.equal(event?.label, 'New Orleans Internationals');
   assert.ok(event?.kind === 'tournament' && event.tournament.startsWith('2026-06-12'));
   assert.match(event?.href ?? '', /^\/\?scope=/);
   assert.match(event?.sublabel ?? '', /2026/);
@@ -146,7 +146,7 @@ test('set and number find a card exactly', () => {
 test('tournaments match on their name', () => {
   const { hits } = searchTiered(index, 'milwaukee');
   assert.equal(hits[0].entry.kind, 'tournament');
-  assert.equal(hits[0].tier, 3);
+  assert.equal(hits[0].tier, 2);
 });
 
 test('the online meta opens the unscoped home page', () => {
