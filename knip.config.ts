@@ -38,6 +38,8 @@ const config: KnipConfig = {
     'scripts/*.{ts,mjs}!',
     'scripts/quality/*.mjs',
     '.github/scripts/*.{ts,mjs}!',
+    // Producer libraries: analyzed so the shared exports they use count as used.
+    '.github/scripts/lib/**/*.{ts,mjs}!',
     'tests/**/*.{ts,js,mjs}'
   ]
 };
