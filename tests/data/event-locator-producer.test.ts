@@ -7,7 +7,10 @@ import test from 'node:test';
 
 import {
   fetchAllEvents,
+  fetchLocalEvents,
   fetchPage,
+  LOCAL_PAGE_SIZE,
+  localsCutoff,
   pageUrl,
   parsePage,
   POKEDATA_TABLE_API
@@ -112,6 +115,41 @@ test('friendly TCG listings are fetched separately from sanctioned events', asyn
   const localRequest = requests.find(request => request.url === POKEDATA_TABLE_API);
   assert.equal(localRequest?.init?.method, 'POST');
   assert.equal(JSON.parse(String(localRequest?.init?.body)).ftcg, '1');
+});
+
+/** Locals records, all on the given date. */
+function localsOn(date: string, count: number): unknown[] {
+  return Array.from({ length: count }, (_, i) => rawLocalEvent({ date, guid: `${date}-${i}` }));
+}
+
+test('the locals pull stops at the first page past the horizon and drops what is past it', async () => {
+  const now = () => new Date('2026-09-15T12:00:00Z');
+  assert.equal(localsCutoff(now(), 21), '2026-10-06');
+  const pages = [
+    JSON.stringify(localsOn('2026-09-20', LOCAL_PAGE_SIZE)),
+    JSON.stringify([...localsOn('2026-10-06', 50), ...localsOn('2026-10-07', 50)])
+  ];
+  const requested: number[] = [];
+  const events = await fetchLocalEvents({
+    now,
+    fetch: async (_input, init) => {
+      const page = JSON.parse(String(init?.body)).page as number;
+      requested.push(page);
+      return respond(pages[page] ?? '[]');
+    },
+    sleep: noSleep
+  });
+  assert.deepEqual(requested, [0, 1]);
+  assert.equal(events.length, 150);
+  assert.ok(events.every(event => (event as { date: string }).date <= '2026-10-06'));
+});
+
+test('a short locals page ends the pull before the horizon', async () => {
+  const events = await fetchLocalEvents({
+    fetch: async () => respond(JSON.stringify(localsOn('2026-09-16', 3))),
+    sleep: noSleep
+  });
+  assert.equal(events.length, 3);
 });
 
 test('a server that answers every page with page 1 is caught', async () => {

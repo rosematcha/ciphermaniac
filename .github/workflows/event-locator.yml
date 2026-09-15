@@ -43,7 +43,8 @@ permissions:
 jobs:
   publish-events:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The sanctioned pull is ~110 pages; the locals pull ~300, at a few seconds each.
+    timeout-minutes: 45
 
     steps:
       - name: Checkout

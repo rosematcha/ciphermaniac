@@ -58,10 +58,23 @@ export interface PokedataOptions {
   log?: (message: string) => void;
   /** Tests and recovery jobs may pull only sanctioned events. */
   includeLocals?: boolean;
+  /** Clock for the locals horizon. */
+  now?: () => Date;
+  /** How far ahead locals are pulled, in days. See {@link LOCALS_HORIZON_DAYS}. */
+  horizonDays?: number;
 }
 
-const LOCAL_PAGE_SIZE = 100;
-const LOCAL_PAGE_LIMIT = 200;
+/**
+ * Pokedata lists locals about three months out, a thousand a day, and every
+ * page takes the server a few seconds. Locals are weekly, so three weeks is
+ * enough to see a store's pattern (two dates a fortnight apart included) and
+ * is a tenth of the feed. The table is sorted by date, so the pull stops at
+ * the first page past the horizon.
+ */
+export const LOCALS_HORIZON_DAYS = 21;
+export const LOCAL_PAGE_SIZE = 100;
+/** Safety net only; the horizon is what ends a pull. */
+const LOCAL_PAGE_LIMIT = 600;
 const LOCAL_QUERY = {
   past: '',
   country: '',
@@ -110,16 +123,44 @@ async function fetchLocalPage(page: number, fetchImpl: typeof globalThis.fetch):
   throw new Error(`local page ${page}: unexpected response shape`);
 }
 
-async function fetchLocalEvents(options: PokedataOptions): Promise<unknown[]> {
+const dateOf = (event: unknown) => {
+  const date = (event as { date?: unknown })?.date;
+  return typeof date === 'string' ? date : null;
+};
+
+/** The page's records inside the horizon, and whether the page reaches past it. */
+function trimToHorizon(page: unknown[], cutoff: string): { kept: unknown[]; done: boolean } {
+  const last = dateOf(page.at(-1));
+  return {
+    kept: page.filter(event => (dateOf(event) ?? '') <= cutoff),
+    done: page.length < LOCAL_PAGE_SIZE || (last !== null && last > cutoff)
+  };
+}
+
+/** `YYYY-MM-DD` of the last day inside the horizon, in UTC. */
+export function localsCutoff(now: Date, horizonDays: number): string {
+  return new Date(now.getTime() + horizonDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * Every local dated within the horizon.
+ *
+ * The table is sorted by date, so a page whose last record is past the
+ * horizon is the last page needed; anything on it past the horizon is dropped.
+ * @throws {Error} When a page fails, or the feed outruns the safety limit
+ */
+export async function fetchLocalEvents(options: PokedataOptions = {}): Promise<unknown[]> {
   const { fetch: fetchImpl = globalThis.fetch, delayMs = 250, sleep = sleepFor, log = () => undefined } = options;
+  const cutoff = localsCutoff((options.now ?? (() => new Date()))(), options.horizonDays ?? LOCALS_HORIZON_DAYS);
   const events: unknown[] = [];
   for (let page = 0; page < LOCAL_PAGE_LIMIT; page++) {
     if (page > 0) {
       await sleep(delayMs);
     }
-    const next = await fetchLocalPage(page, fetchImpl);
-    events.push(...next);
-    if (next.length < LOCAL_PAGE_SIZE) {
+    const { kept, done } = trimToHorizon(await fetchLocalPage(page, fetchImpl), cutoff);
+    events.push(...kept);
+    if (done) {
+      log(`fetched ${page + 1} local pages through ${cutoff}`);
       return events;
     }
     if ((page + 1) % 20 === 0) {
