@@ -29,6 +29,10 @@ html {
    under two lines of text. */
 main.page {
   min-height: 100dvh;
+  /* A hidden tooltip bubble still counts toward scrollable overflow, so one near
+     the right edge widened phone layouts past the viewport. `clip` stops that
+     without making main a scroll container, which would break sticky headers. */
+  overflow-x: clip;
 }
 
 body {
