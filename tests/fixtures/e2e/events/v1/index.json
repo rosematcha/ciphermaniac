@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "generation": "20260915T100000Z",
+  "generatedAt": "2026-09-15T10:00:00.000Z",
+  "source": "https://pokedata.ovh/events/",
+  "cellDegrees": 5,
+  "cells": {
+    "25_-100": 1,
+    "30_-100": 6
+  },
+  "countries": ["US"],
+  "kinds": {
+    "cup": 2,
+    "challenge": 4,
+    "prerelease": 0,
+    "local": 1
+  },
+  "total": 7
+}

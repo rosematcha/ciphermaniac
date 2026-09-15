@@ -1,0 +1,696 @@
+/* ============================================================
+   Event locator (/events)
+   Desktop: the map is sticky beside the list. Phones: the map sits on
+   top and scrolls up under the header until a strip of it is left, which
+   sticks. That is pure CSS, so it moves on the compositor with the page.
+   The day headers park under the strip (--el-strip).
+   ============================================================ */
+
+/* ---------- Toolbar ---------- */
+.el-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  margin: var(--space-4) 0;
+}
+.el-count {
+  margin-left: auto;
+  font-size: var(--text-base);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- Layout ---------- */
+.el-layout {
+  --el-strip: 0px;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 20px;
+  align-items: start;
+}
+.el-map-slot {
+  position: sticky;
+  top: calc(var(--topnav-h) + var(--space-3));
+  z-index: 3;
+}
+/* An open search has to escape the slot's stacking context, or the list
+   (and on phones, the page) would draw over it. */
+.el-map-slot:has(.el-search.open) {
+  z-index: 60;
+}
+.el-map-frame {
+  position: relative;
+  /* clip, not hidden: hidden would make the frame a scroll container and stop
+     the search row sticking to the page on phones. */
+  height: calc(100dvh - var(--topnav-h) - 36px);
+  min-height: 420px;
+  max-height: 780px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: clip;
+  background: var(--surface-2);
+}
+.el-map-canvas {
+  position: absolute;
+  inset: 0;
+}
+.el-results {
+  min-width: 0;
+}
+.el-map-expand,
+.el-map-collapse {
+  display: none;
+}
+
+/* ---------- Map ---------- */
+.lm {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  background: var(--surface-2);
+}
+.lm:active {
+  cursor: grabbing;
+}
+.lm:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.lm-tiles,
+.lm-overlay {
+  position: absolute;
+  inset: 0;
+}
+.lm-overlay {
+  pointer-events: none;
+}
+.lm-tile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+  pointer-events: none;
+}
+/* The standard OSM style is a light map; dark mode inverts it into a muted
+   night palette rather than fetching a second tile set. */
+body[data-mode='dark'] .lm-tile {
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+}
+.lm-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 1.5px dashed var(--accent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.lm-pin {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--fg);
+  border: 2px solid var(--bg);
+}
+.lm-marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--lm-size);
+  height: var(--lm-size);
+  margin: calc(var(--lm-size) / -2) 0 0 calc(var(--lm-size) / -2);
+  border-radius: 50%;
+  background: var(--muted);
+  border: 1.5px solid var(--bg);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: box-shadow var(--ms-fast) var(--ease-base);
+}
+.lm-marker.cup {
+  background: var(--accent);
+}
+.lm-marker.hot,
+.lm-marker:hover {
+  z-index: 1;
+  box-shadow: 0 0 0 3px var(--fg);
+}
+.lm-zoom {
+  position: absolute;
+  z-index: 2;
+  right: 10px;
+  bottom: 28px;
+  display: grid;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+}
+.lm-zoom button {
+  width: 32px;
+  height: 32px;
+  font-size: var(--text-lg);
+  line-height: 1;
+  color: var(--fg);
+}
+.lm-zoom button + button {
+  border-top: 1px solid var(--rule);
+}
+.lm-zoom button:hover {
+  background: var(--surface-2);
+}
+.lm-credit {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  padding: 1px 6px;
+  font-size: var(--text-2xs);
+  color: var(--fg);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border-top-left-radius: var(--radius-sm);
+}
+
+/* ---------- Map overlays: search, locate, radius ---------- */
+.el-map-top {
+  position: absolute;
+  z-index: 5;
+  top: 10px;
+  right: 10px;
+  left: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.el-map-top > * {
+  pointer-events: auto;
+}
+.el-search {
+  position: relative;
+  flex: 0 1 400px;
+  min-width: 0;
+}
+.el-search-row {
+  display: flex;
+  align-items: center;
+  height: var(--control-h);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  transition: border-color var(--ms-fast) var(--ease-base);
+}
+.el-search-row:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-1), var(--focus-ring);
+}
+.el-search-icon,
+.el-option-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.el-search-icon {
+  margin-left: var(--space-3);
+}
+.el-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--text-base);
+}
+/* The row carries the focus ring (above), as bordered fields do site-wide. */
+.el-search-row .el-search-input:focus,
+.el-search-row .el-search-input:focus-visible {
+  outline: none;
+}
+.el-search-input::placeholder {
+  color: var(--muted);
+}
+.el-search-input::-webkit-search-cancel-button {
+  appearance: none;
+}
+.el-search-clear,
+.el-search-cancel {
+  height: 100%;
+  padding: 0 var(--space-3);
+  color: var(--muted);
+  font-size: var(--text-lg);
+}
+.el-search-cancel {
+  display: none;
+  color: var(--accent);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+.el-search-panel {
+  max-height: min(60vh, 460px);
+  margin-top: var(--space-1);
+  padding: var(--space-1);
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+.el-search-panel[hidden] {
+  display: none;
+}
+.el-search-title {
+  padding: var(--space-2) 10px var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.el-option {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.el-option[aria-selected='true'] {
+  background: var(--surface-2);
+}
+.el-option.locate .el-option-icon {
+  stroke: var(--accent);
+}
+.el-option.locate .el-option-label {
+  color: var(--accent);
+}
+.el-option-main {
+  display: grid;
+  min-width: 0;
+}
+.el-option-label,
+.el-option-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.el-option-label {
+  font-size: var(--text-base);
+  color: var(--fg);
+}
+.el-option-label mark {
+  background: none;
+  color: inherit;
+  font-weight: 700;
+}
+.el-option-detail,
+.el-option-meta {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.el-option-meta {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.el-option-meta.strong {
+  color: var(--fg);
+}
+.el-search-note {
+  padding: 10px;
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+.el-locate {
+  flex: none;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+.el-locate:hover {
+  background: var(--surface-2);
+}
+.el-locate svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.el-locate.busy svg {
+  animation: el-spin 1s linear infinite;
+}
+@keyframes el-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.el-radius {
+  position: absolute;
+  z-index: 4;
+  left: 10px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  font-size: var(--text-base);
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+.el-radius input {
+  width: 140px;
+  accent-color: var(--accent);
+}
+.el-radius output {
+  min-width: 52px;
+  color: var(--fg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- List ---------- */
+.el-day-head {
+  position: sticky;
+  top: calc(var(--topnav-h) + var(--el-strip));
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 6px 6px;
+  background: var(--bg);
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.el-day:first-child .el-day-head {
+  padding-top: 0;
+}
+.el-when {
+  color: var(--muted);
+  font-weight: 500;
+}
+.el-n {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.el-day.weekend .el-day-head,
+.el-day.weekend .el-when {
+  color: var(--accent);
+}
+.el-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--rule);
+}
+.el-item {
+  border-top: 1px solid var(--rule);
+}
+.el-row {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr) auto 58px 52px;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  padding: 9px 6px;
+  text-align: left;
+  font-size: var(--text-base);
+  transition: background var(--ms-fast) var(--ease-base);
+}
+.el-row:hover,
+.el-item.hot > .el-row {
+  background: var(--surface-2);
+}
+.el-item.open > .el-row {
+  background: var(--surface);
+}
+.el-time {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.el-main {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.el-name,
+.el-venue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.el-name {
+  color: var(--fg);
+  font-weight: 500;
+}
+.el-venue {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.el-venue-dist {
+  display: none;
+}
+.el-dist,
+.el-fee {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.el-fee {
+  color: var(--fg);
+}
+.el-kind.cup {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.el-kind.prerelease {
+  background: color-mix(in srgb, var(--chart-2) 18%, transparent);
+  border-color: color-mix(in srgb, var(--chart-2) 30%, transparent);
+}
+.el-kind.local {
+  background: color-mix(in srgb, var(--chart-3) 18%, transparent);
+  border-color: color-mix(in srgb, var(--chart-3) 30%, transparent);
+}
+.el-skeleton .el-row {
+  grid-template-columns: 62px minmax(0, 1fr);
+  cursor: default;
+}
+.el-skeleton .el-main {
+  gap: 6px;
+}
+
+/* ---------- Details ---------- */
+.el-details {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2) 6px var(--space-4) 80px;
+  font-size: var(--text-base);
+  background: var(--surface);
+  border-top: 1px dashed var(--rule);
+}
+.el-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px var(--space-4);
+  margin: 0;
+}
+.el-facts > div {
+  display: contents;
+}
+.el-facts dt {
+  color: var(--muted);
+}
+.el-facts dd {
+  margin: 0;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+.el-address {
+  display: block;
+  color: var(--muted);
+}
+.el-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+.el-desc {
+  max-width: 70ch;
+  color: var(--muted);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.el-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.el-actions .btn {
+  padding: 7px var(--space-3);
+  font-size: var(--text-sm);
+}
+.el-credit {
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+/* ---------- Phones and small tablets ---------- */
+@media (max-width: 900px) {
+  /* svh, not vh or innerHeight: it ignores the address bar and the keyboard,
+     so the map never resizes when either comes or goes. */
+  .el-layout {
+    --el-map-full: 40svh;
+    --el-strip: 116px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  /* The slot sticks with its top above the header, so the header covers all
+     of the map but the bottom strip. */
+  .el-map-slot {
+    top: calc(var(--topnav-h) + var(--el-strip) - var(--el-map-full));
+    z-index: 5;
+    height: var(--el-map-full);
+    margin-bottom: var(--space-3);
+  }
+  .el-map-frame {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+  }
+  /* The search row rides down the map as it scrolls away, so it stays in the strip. */
+  .el-map-top {
+    position: sticky;
+    top: calc(var(--topnav-h) + 10px);
+    margin: 10px;
+  }
+  .el-search {
+    flex: 1 1 auto;
+  }
+  /* Once this line passes under the header the strip is too short for the
+     controls, and becomes a tap target (useCollapsingMap). */
+  .el-map-collapse {
+    position: absolute;
+    bottom: 190px;
+    left: 0;
+    display: block;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+  .el-map-frame.collapsed .el-radius,
+  .el-map-frame.collapsed .el-locate,
+  .el-map-frame.collapsed .lm-zoom {
+    display: none;
+  }
+  .el-map-frame.collapsed .el-map-expand {
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    display: block;
+    background: transparent;
+  }
+  .el-radius {
+    bottom: 26px;
+  }
+}
+
+@media (max-width: 640px) {
+  .el-row {
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+  }
+  .el-dist,
+  .el-fee {
+    display: none;
+  }
+  .el-venue-dist {
+    display: inline;
+  }
+  .el-details {
+    padding-left: 6px;
+  }
+  .el-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .el-facts dt:not(:first-child) {
+    margin-top: var(--space-2);
+  }
+}
+
+/* Search takes the whole screen while open, anywhere the map is too short to
+   hold its list: phones, tablets, and the collapsed strip. */
+@media (max-width: 900px) {
+  /* Under 16px, iOS zooms the page when the field takes focus. */
+  .el-search-input {
+    font-size: 16px;
+  }
+  .el-search.open {
+    position: fixed;
+    z-index: 70;
+    top: var(--topnav-h);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    width: auto;
+    padding: 10px var(--space-3);
+    background: var(--bg);
+  }
+  .el-search.open .el-search-row {
+    box-shadow: none;
+  }
+  .el-search.open .el-search-cancel {
+    display: block;
+  }
+  .el-search.open .el-search-panel {
+    flex: 1;
+    max-height: none;
+    margin-top: var(--space-2);
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+  .el-search.open .el-option {
+    min-height: 52px;
+    padding: 10px 6px;
+  }
+  .el-search.open .el-option-label {
+    font-size: var(--text-body);
+  }
+}

@@ -92,7 +92,28 @@ export function prettyTournamentName(key: string): string {
     return key;
   }
   const dateLabel = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  return `${rest} · ${dateLabel}`;
+  return `${shortTournamentName(rest)} · ${dateLabel}`;
+}
+
+/**
+ * Compact event name for UI labels. City-first names scan more quickly in
+ * selectors and tables while retaining the event tier.
+ */
+export function shortTournamentName(name: string): string {
+  const regional = name.match(/^Regional Championship (.+)$/);
+  if (regional) {
+    return `${regional[1]} Regionals`;
+  }
+  const international = name.match(/^International Championship (.+)$/);
+  if (international) {
+    return `${international[1]} Internationals`;
+  }
+  const worlds = name.match(/^World Championships? (.+)$/);
+  if (worlds) {
+    return `Worlds ${worlds[1]}`;
+  }
+  const special = name.match(/^Special Event (.+)$/);
+  return special ? `${special[1]} Special Event` : name;
 }
 
 /** Every class a tournament key can fall into. */

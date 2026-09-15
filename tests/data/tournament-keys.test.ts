@@ -19,6 +19,7 @@ import {
   prettyTournamentName,
   resolveScopeSlug,
   scopeSlug,
+  shortTournamentName,
   tournamentDate
 } from '../../shared/data/tournamentKeys.ts';
 
@@ -90,9 +91,16 @@ test('dates sort chronologically, which is what the majors window relies on', ()
 
 test('a dated key renders as name then date', () => {
   const pretty = prettyTournamentName(LA);
-  assert.match(pretty, /^Regional Championship Los Angeles · /);
+  assert.match(pretty, /^Los Angeles Regionals · /);
   assert.match(pretty, /2026/);
   assert.ok(!pretty.startsWith('2026-05-08'), 'the raw date prefix must not survive');
+});
+
+test('shortTournamentName makes event tiers compact and city-first', () => {
+  assert.equal(shortTournamentName('Regional Championship Melbourne'), 'Melbourne Regionals');
+  assert.equal(shortTournamentName('International Championship New Orleans'), 'New Orleans Internationals');
+  assert.equal(shortTournamentName('World Championship San Francisco'), 'Worlds San Francisco');
+  assert.equal(shortTournamentName('League Cup Toronto'), 'League Cup Toronto');
 });
 
 test('the online meta renders as its label', () => {

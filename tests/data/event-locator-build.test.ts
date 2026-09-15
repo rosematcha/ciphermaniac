@@ -26,7 +26,7 @@ test('events are sharded into cells and counted in the index', () => {
   assert.deepEqual(index.cells, { '30_-100': 2, '50_-5': 1 });
   assert.deepEqual([...cells.keys()], ['30_-100', '50_-5']);
   assert.equal(index.total, 3);
-  assert.deepEqual(index.kinds, { cup: 2, challenge: 1, prerelease: 0 });
+  assert.deepEqual(index.kinds, { cup: 2, challenge: 1, prerelease: 0, local: 0 });
   assert.deepEqual(index.countries, ['GB', 'US']);
   assert.equal(index.version, 1);
   assert.equal(index.generation, '20260915T120000Z');
@@ -66,7 +66,7 @@ test('a listing that appears on two pages is kept once, the later copy winning',
 test('build stats account for every record received', () => {
   const { stats } = build([
     rawEventWithId(1),
-    rawEventWithId(2, { type: 'nonpremier TCG' }),
+    rawEventWithId(2, { type: 'nonpremier VG' }),
     rawEventWithId(3, { latitude: '0', longitude: '0' }),
     null,
     'garbage'

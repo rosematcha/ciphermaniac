@@ -16,6 +16,7 @@
 import { setTimeout as sleepFor } from 'node:timers/promises';
 
 export const POKEDATA_API = 'https://pokedata.ovh/events/apiv2/';
+export const POKEDATA_TABLE_API = 'https://www.pokedata.ovh/events/tableapi/index_table.php';
 /** Pokedata's own locator, which the site credits as the source. */
 export const POKEDATA_SITE = 'https://pokedata.ovh/events/';
 const QUERY = '_tcg/cups/challenges/pre';
@@ -55,6 +56,77 @@ export interface PokedataOptions {
   attempts?: number;
   sleep?: (ms: number) => Promise<unknown>;
   log?: (message: string) => void;
+  /** Tests and recovery jobs may pull only sanctioned events. */
+  includeLocals?: boolean;
+}
+
+const LOCAL_PAGE_SIZE = 100;
+const LOCAL_PAGE_LIMIT = 200;
+const LOCAL_QUERY = {
+  past: '',
+  country: '',
+  city: '',
+  shop: '',
+  league: '',
+  states: '[]',
+  postcode: '',
+  cups: '',
+  challenges: '',
+  vcups: '',
+  vchallenges: '',
+  prereleases: '',
+  premier: '',
+  go: '',
+  gocup: '',
+  mss: '',
+  ftcg: '1',
+  fvg: '',
+  fgo: '',
+  latitude: '',
+  longitude: '',
+  radius: '',
+  unit: 'km',
+  width: 1200
+};
+
+async function fetchLocalPage(page: number, fetchImpl: typeof globalThis.fetch): Promise<unknown[]> {
+  const response = await fetchImpl(POKEDATA_TABLE_API, {
+    method: 'POST',
+    headers: { ...HEADERS, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...LOCAL_QUERY, page })
+  });
+  if (!response.ok) {
+    throw new Error(`local page ${page}: HTTP ${response.status}`);
+  }
+  const body = await response.text();
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch {
+    /* described below */
+  }
+  throw new Error(`local page ${page}: unexpected response shape`);
+}
+
+async function fetchLocalEvents(options: PokedataOptions): Promise<unknown[]> {
+  const { fetch: fetchImpl = globalThis.fetch, delayMs = 250, sleep = sleepFor, log = () => undefined } = options;
+  const events: unknown[] = [];
+  for (let page = 0; page < LOCAL_PAGE_LIMIT; page++) {
+    if (page > 0) {
+      await sleep(delayMs);
+    }
+    const next = await fetchLocalPage(page, fetchImpl);
+    events.push(...next);
+    if (next.length < LOCAL_PAGE_SIZE) {
+      return events;
+    }
+    if ((page + 1) % 20 === 0) {
+      log(`fetched ${page + 1} local pages`);
+    }
+  }
+  throw new Error(`Pokedata locals exceeded the ${LOCAL_PAGE_LIMIT}-page safety limit`);
 }
 
 export function pageUrl(page: number): string {
@@ -147,5 +219,10 @@ export async function fetchAllEvents(options: PokedataOptions = {}): Promise<Pok
   if (distinct < first.totalItems * MIN_COMPLETE_SHARE) {
     throw new Error(`Pokedata returned ${distinct} distinct of the ${first.totalItems} events it advertised`);
   }
-  return { events, totalItems: first.totalItems, totalPages: first.totalPages };
+  const locals = options.includeLocals === false ? [] : await fetchLocalEvents(options);
+  return {
+    events: [...events, ...locals],
+    totalItems: first.totalItems + locals.length,
+    totalPages: first.totalPages + Math.ceil(locals.length / LOCAL_PAGE_SIZE)
+  };
 }
