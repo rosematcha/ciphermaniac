@@ -6,13 +6,14 @@
   "cellDegrees": 5,
   "cells": {
     "25_-100": 1,
-    "30_-100": 5
+    "30_-100": 6
   },
   "countries": ["US"],
   "kinds": {
     "cup": 2,
     "challenge": 4,
-    "prerelease": 0
+    "prerelease": 0,
+    "local": 1
   },
-  "total": 6
+  "total": 7
 }

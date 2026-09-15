@@ -72,6 +72,20 @@ export function rawEventWithId(serial: number, overrides: RawPokedataEvent = {})
   });
 }
 
+/** A Friendly TCG listing, which has an upstream GUID instead of a sanctioned event ID. */
+export function rawLocalEvent(overrides: RawPokedataEvent = {}): RawPokedataEvent {
+  return rawEvent({
+    type: 'nonpremier TCG',
+    name: '',
+    Name: '',
+    Display_id: '',
+    pokemon_url: 'https://www.pokemon.com/us/pokemon-trainer-club/play-pokemon-tournaments//',
+    guid: '10000000-0000-4000-8000-000000000001',
+    Guid: '10000000-0000-4000-8000-000000000001',
+    ...overrides
+  });
+}
+
 /** A page body as the API returns it. */
 export function pageBody(events: RawPokedataEvent[], totalItems: number, totalPages: number, page = 1): string {
   return JSON.stringify({

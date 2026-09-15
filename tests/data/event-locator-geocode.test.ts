@@ -140,7 +140,7 @@ function index(cells: Record<string, number>): LocatorIndex {
     cellDegrees: 5,
     cells,
     countries: ['US'],
-    kinds: { cup: 0, challenge: 1, prerelease: 0 },
+    kinds: { cup: 0, challenge: 1, prerelease: 0, local: 0 },
     total: 1
   };
 }

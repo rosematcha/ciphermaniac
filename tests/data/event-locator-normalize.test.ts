@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { details, eventKindOf, normalizeEvent, safeUrl } from '../../shared/events/normalize.ts';
-import { rawEvent } from '../__utils__/pokedata.ts';
+import { rawEvent, rawLocalEvent } from '../__utils__/pokedata.ts';
 
 function normalized(overrides = {}) {
   const result = normalizeEvent(rawEvent(overrides));
@@ -71,12 +71,13 @@ test('event kinds come from the Pokedata type', () => {
   assert.equal(eventKindOf('League Challenge'), 'challenge');
   assert.equal(eventKindOf('Prerelease'), 'prerelease');
   assert.equal(eventKindOf('TCG Pre-Release'), 'prerelease');
-  assert.equal(eventKindOf('nonpremier TCG'), null);
+  assert.equal(eventKindOf('nonpremier TCG'), 'local');
+  assert.equal(eventKindOf('nonpremier VG'), null);
   assert.equal(eventKindOf(undefined), null);
 });
 
 test('records the locator cannot place or name are skipped with a reason', () => {
-  assert.equal(skipReason({ type: 'nonpremier TCG' }), 'kind');
+  assert.equal(skipReason({ type: 'nonpremier VG' }), 'kind');
   assert.equal(skipReason({ Status: 'Cancelled' }), 'cancelled');
   assert.equal(skipReason({ Display_id: 'abc' }), 'id');
   assert.equal(skipReason({ name: '', Name: '' }), 'name');
@@ -87,6 +88,16 @@ test('records the locator cannot place or name are skipped with a reason', () =>
   assert.equal(skipReason({ latitude: '91', longitude: '10' }), 'coordinates');
   assert.equal(skipReason({ latitude: 'n/a' }), 'coordinates');
   assert.equal(skipReason({ country_code: 'USA' }), 'country');
+});
+
+test('a local uses its stable GUID and a useful fallback name', () => {
+  const result = normalizeEvent(rawLocalEvent());
+  assert.ok(result.ok);
+  assert.equal(result.event.id, '10000000-0000-4000-8000-000000000001');
+  assert.equal(result.event.kind, 'local');
+  assert.equal(result.event.name, 'Weekly local');
+  assert.equal(result.event.url, undefined);
+  assert.equal(skipReason({ type: 'nonpremier TCG', Display_id: '', guid: 'not-a-guid', Guid: '' }), 'id');
 });
 
 test('the capitalized Name stands in when the lowercase name is missing', () => {

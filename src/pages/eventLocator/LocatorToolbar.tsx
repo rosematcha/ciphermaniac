@@ -19,7 +19,8 @@ const UNIT_OPTIONS: { value: DistanceUnit; label: string }[] = [
 const KIND_CHIPS: { kind: EventKind; label: string }[] = [
   { kind: 'cup', label: `League ${KIND_LABEL.cup}s` },
   { kind: 'challenge', label: `${KIND_LABEL.challenge}s` },
-  { kind: 'prerelease', label: `${KIND_LABEL.prerelease}s` }
+  { kind: 'prerelease', label: `${KIND_LABEL.prerelease}s` },
+  { kind: 'local', label: 'Locals' }
 ];
 
 export interface LocatorToolbarProps {

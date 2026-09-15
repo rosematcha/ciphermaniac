@@ -500,6 +500,10 @@ body[data-mode='dark'] .lm-tile {
   background: color-mix(in srgb, var(--chart-2) 18%, transparent);
   border-color: color-mix(in srgb, var(--chart-2) 30%, transparent);
 }
+.el-kind.local {
+  background: color-mix(in srgb, var(--chart-3) 18%, transparent);
+  border-color: color-mix(in srgb, var(--chart-3) 30%, transparent);
+}
 .el-skeleton .el-row {
   grid-template-columns: 62px minmax(0, 1fr);
   cursor: default;

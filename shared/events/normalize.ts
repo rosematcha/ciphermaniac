@@ -18,6 +18,7 @@ export type SkipReason = 'kind' | 'cancelled' | 'id' | 'name' | 'date' | 'coordi
 export type NormalizeResult = { ok: true; event: LocatorEvent } | { ok: false; reason: SkipReason };
 
 const EVENT_ID = /^\d{2}-\d{2}-\d{6}$/;
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const WALL_TIME = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/;
 const CLOCK = /^(\d{2}):(\d{2})/;
@@ -45,6 +46,9 @@ export function eventKindOf(type: unknown): EventKind | null {
   }
   if (value.includes('prerelease') || value.includes('pre-release')) {
     return 'prerelease';
+  }
+  if (value === 'nonpremier tcg') {
+    return 'local';
   }
   return null;
 }
@@ -85,6 +89,15 @@ function eventPageUrl(value: unknown, id: string): string {
     return listed.replace(/^http:/, 'https:');
   }
   return `https://www.pokemon.com/us/pokemon-trainer-club/play-pokemon-tournaments/${id}/`;
+}
+
+function eventIdentity(raw: RawEvent, kind: EventKind): string {
+  const displayId = text(raw.Display_id);
+  if (EVENT_ID.test(displayId)) {
+    return displayId;
+  }
+  const guid = text(raw.guid) || text(raw.Guid);
+  return kind === 'local' && GUID.test(guid) ? guid.toLowerCase() : '';
 }
 
 function coordinates(latValue: unknown, lonValue: unknown): { lat: number; lon: number } | null {
@@ -222,11 +235,11 @@ export function normalizeEvent(raw: RawEvent): NormalizeResult {
   if (isCancelled(raw)) {
     return skip('cancelled');
   }
-  const id = text(raw.Display_id);
-  if (!EVENT_ID.test(id)) {
+  const id = eventIdentity(raw, kind);
+  if (!id) {
     return skip('id');
   }
-  const name = text(raw.name) || text(raw.Name);
+  const name = text(raw.name) || text(raw.Name) || (kind === 'local' ? 'Weekly local' : '');
   if (!name) {
     return skip('name');
   }
@@ -254,7 +267,7 @@ export function normalizeEvent(raw: RawEvent): NormalizeResult {
     region: text(raw.state),
     cc,
     ...place,
-    url: eventPageUrl(raw.pokemon_url, id),
+    ...(kind === 'local' ? {} : { url: eventPageUrl(raw.pokemon_url, id) }),
     ...optionalFields(raw)
   };
   return { ok: true, event };

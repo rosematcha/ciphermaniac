@@ -73,6 +73,20 @@ test('opens on the approximate location and lists what is near it, by day', asyn
   await expect(page.locator('.lm-credit')).toHaveText('© OpenStreetMap contributors');
 });
 
+test('the Locals setting adds casual weekly events and is remembered', async ({ page }) => {
+  await openLocator(page);
+  const locals = page.getByRole('button', { name: 'Locals' });
+  await expect(locals).toHaveAttribute('aria-pressed', 'false');
+  await locals.click();
+  await expect(locals).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.el-row')).toHaveCount(6);
+  await expect(page.locator('.el-count')).toHaveText('6 events, 2 Cups');
+  await expect(page.locator('.el-item', { hasText: 'Weekly local' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Locals' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.el-row')).toHaveCount(6);
+});
+
 test("the store's own registration leads, and pokemon.com carries the details", async ({ page }) => {
   await openLocator(page);
   const cup = page.locator('.el-item', { hasText: "Dragon's Lair Austin League Cup" });

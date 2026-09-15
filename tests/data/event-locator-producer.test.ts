@@ -5,10 +5,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { fetchAllEvents, fetchPage, pageUrl, parsePage } from '../../.github/scripts/lib/pokedata.ts';
+import {
+  fetchAllEvents,
+  fetchPage,
+  pageUrl,
+  parsePage,
+  POKEDATA_TABLE_API
+} from '../../.github/scripts/lib/pokedata.ts';
 import { type Publisher, runEventLocator } from '../../.github/scripts/lib/eventLocator.ts';
 import type { LocatorIndex } from '../../shared/events/types.ts';
-import { pageBody, rawEventWithId } from '../__utils__/pokedata.ts';
+import { pageBody, rawEventWithId, rawLocalEvent } from '../__utils__/pokedata.ts';
 
 const PHP_FATAL =
   '<br />\n<b>Fatal error</b>:  Uncaught TypeError: mysqli::real_escape_string(): Argument #1 ($string) must be of type string';
@@ -79,6 +85,7 @@ test('every page is collected in order', async () => {
     3: pageBody([rawEventWithId(5)], 5, 3, 3)
   };
   const pull = await fetchAllEvents({
+    includeLocals: false,
     fetch: async input => respond(pages[Number(String(input).split('/').pop())] ?? ''),
     sleep: noSleep
   });
@@ -90,9 +97,27 @@ test('every page is collected in order', async () => {
   );
 });
 
+test('friendly TCG listings are fetched separately from sanctioned events', async () => {
+  const requests: { url: string; init?: RequestInit }[] = [];
+  const pull = await fetchAllEvents({
+    fetch: async (input, init) => {
+      requests.push({ url: String(input), init });
+      return String(input) === POKEDATA_TABLE_API
+        ? respond(JSON.stringify([rawLocalEvent()]))
+        : respond(pageBody([rawEventWithId(1)], 1, 1));
+    },
+    sleep: noSleep
+  });
+  assert.equal(pull.events.length, 2);
+  const localRequest = requests.find(request => request.url === POKEDATA_TABLE_API);
+  assert.equal(localRequest?.init?.method, 'POST');
+  assert.equal(JSON.parse(String(localRequest?.init?.body)).ftcg, '1');
+});
+
 test('a server that answers every page with page 1 is caught', async () => {
   await assert.rejects(
     fetchAllEvents({
+      includeLocals: false,
       fetch: async () => respond(pageBody([rawEventWithId(1)], 3, 3, 1)),
       sleep: noSleep,
       attempts: 1
@@ -105,6 +130,7 @@ test('repeated records do not count toward completeness', async () => {
   const same = [rawEventWithId(1), rawEventWithId(1)];
   await assert.rejects(
     fetchAllEvents({
+      includeLocals: false,
       fetch: async input => respond(pageBody(same, 4, 2, Number(String(input).split('/').pop()))),
       sleep: noSleep
     }),
@@ -119,6 +145,7 @@ test('a page count that moves mid-pull fails the pull', async () => {
   };
   await assert.rejects(
     fetchAllEvents({
+      includeLocals: false,
       fetch: async input => respond(pages[Number(String(input).split('/').pop())] ?? ''),
       sleep: noSleep
     }),
@@ -128,7 +155,11 @@ test('a page count that moves mid-pull fails the pull', async () => {
 
 test('a pull well short of the advertised total is refused', async () => {
   await assert.rejects(
-    fetchAllEvents({ fetch: async () => respond(pageBody([rawEventWithId(1)], 300, 1)), sleep: noSleep }),
+    fetchAllEvents({
+      includeLocals: false,
+      fetch: async () => respond(pageBody([rawEventWithId(1)], 300, 1)),
+      sleep: noSleep
+    }),
     /returned 1 distinct of the 300 events it advertised/
   );
 });
@@ -164,7 +195,7 @@ function previousIndex(
     cellDegrees: 5,
     cells,
     countries: ['US'],
-    kinds: { cup: total, challenge: 0, prerelease: 0 },
+    kinds: { cup: total, challenge: 0, prerelease: 0, local: 0 },
     total
   };
 }

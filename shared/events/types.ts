@@ -11,9 +11,10 @@
  * @module shared/events/types
  */
 
-export type EventKind = 'cup' | 'challenge' | 'prerelease';
+export type EventKind = 'cup' | 'challenge' | 'prerelease' | 'local';
 
-export const EVENT_KINDS: readonly EventKind[] = ['cup', 'challenge', 'prerelease'];
+export const EVENT_KINDS: readonly EventKind[] = ['cup', 'challenge', 'prerelease', 'local'];
+export const DEFAULT_EVENT_KINDS: readonly EventKind[] = ['cup', 'challenge', 'prerelease'];
 
 /** Admission a store lists per division, when it lists them separately. */
 export interface DivisionFees {
@@ -30,7 +31,7 @@ export interface DivisionFees {
  * closes at the same instant its event starts, whatever the time zone.
  */
 export interface LocatorEvent {
-  /** Play! Pokémon event ID, e.g. `26-09-015440`. */
+  /** Play! Pokémon event ID, or the upstream GUID for an unsanctioned local. */
   id: string;
   kind: EventKind;
   name: string;
@@ -48,8 +49,8 @@ export interface LocatorEvent {
   cc: string;
   lat: number;
   lon: number;
-  /** The event's page on pokemon.com. Carries the official details. */
-  url: string;
+  /** The event's page on pokemon.com. Locals generally have no event page. */
+  url?: string;
   /** Admission as the store typed it, e.g. `10`, `$10.00`, `7€`. */
   fee?: string;
   divisionFees?: DivisionFees;

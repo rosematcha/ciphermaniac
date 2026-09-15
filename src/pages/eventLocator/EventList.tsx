@@ -5,7 +5,12 @@ import { type DistanceUnit, formatDistance } from '../../lib/events/geo';
 import { dayHeading, formatClock, formatFee, isWeekend, relativeDay, titleCase } from '../../lib/events/format';
 import { EventDetails } from './EventDetails';
 
-export const KIND_LABEL: Record<EventKind, string> = { cup: 'Cup', challenge: 'Challenge', prerelease: 'Prerelease' };
+export const KIND_LABEL: Record<EventKind, string> = {
+  cup: 'Cup',
+  challenge: 'Challenge',
+  prerelease: 'Prerelease',
+  local: 'Local'
+};
 
 export interface EventListProps {
   days: EventDay[];

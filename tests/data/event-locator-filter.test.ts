@@ -71,6 +71,15 @@ test('kinds and the date window narrow the list; past events never show', () => 
   );
 });
 
+test('locals are excluded until their kind is selected', () => {
+  const local = event('local', { kind: 'local' });
+  assert.deepEqual(filterEvents([local], query()), []);
+  assert.deepEqual(
+    filterEvents([local], query({ kinds: new Set(['local']) })).map(e => e.id),
+    ['local']
+  );
+});
+
 test('results run by date, then time, then distance', () => {
   const events = [
     event('late', { time: '19:00' }),

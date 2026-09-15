@@ -7,7 +7,7 @@
  * @module lib/events/viewState
  */
 
-import { EVENT_KINDS, type EventKind } from '../../../shared/events/types';
+import { DEFAULT_EVENT_KINDS, EVENT_KINDS, type EventKind } from '../../../shared/events/types';
 import { type DistanceUnit, fromKm, toKm } from './geo';
 
 /** How the centre was chosen. Decides what may be written into a link. */
@@ -51,7 +51,7 @@ export const DEFAULT_SETTINGS: LocatorSettings = {
   radius: 50,
   unit: 'mi',
   unitPinned: false,
-  kinds: [...EVENT_KINDS],
+  kinds: [...DEFAULT_EVENT_KINDS],
   windowDays: 30
 };
 
@@ -99,7 +99,7 @@ export function parseSettings(raw: unknown): LocatorSettings {
     radius: typeof s.radius === 'number' ? clampRadius(s.radius) : DEFAULT_SETTINGS.radius,
     unit: s.unit === 'km' || s.unit === 'mi' ? s.unit : DEFAULT_SETTINGS.unit,
     unitPinned: s.unitPinned === true,
-    kinds: listed.length ? listed : [...EVENT_KINDS],
+    kinds: listed.length ? listed : [...DEFAULT_EVENT_KINDS],
     // `includes`, not `find(...) ?? default`: null ("All") is a real choice, and `??` would replace it.
     windowDays: WINDOW_CHOICES.includes(s.windowDays as WindowDays)
       ? (s.windowDays as WindowDays)

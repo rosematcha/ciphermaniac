@@ -41,6 +41,7 @@ function start(event: LocatorEvent): string {
 
 export function eventCalendar(event: LocatorEvent, now: Date = new Date()): string {
   const location = [titleCase(event.shop), addressLine(event.address, event.cc)].filter(Boolean).join(', ');
+  const source = event.url ? [`URL:${event.url}`, `DESCRIPTION:${escapeText(event.url)}`] : [];
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -52,8 +53,7 @@ export function eventCalendar(event: LocatorEvent, now: Date = new Date()): stri
     start(event),
     `SUMMARY:${escapeText(titleCase(event.name))}`,
     `LOCATION:${escapeText(location)}`,
-    `URL:${event.url}`,
-    `DESCRIPTION:${escapeText(event.url)}`,
+    ...source,
     'END:VEVENT',
     'END:VCALENDAR'
   ];

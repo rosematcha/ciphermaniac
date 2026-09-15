@@ -109,15 +109,19 @@ export function EventDetails(props: { event: LocatorEvent; id: string }) {
             </a>
           )}
         </Show>
-        <a
-          class='btn'
-          classList={{ 'btn-primary': !event().registrationUrl, 'btn-secondary': Boolean(event().registrationUrl) }}
-          href={event().url}
-          target='_blank'
-          rel='noopener'
-        >
-          Event details on pokemon.com
-        </a>
+        <Show when={event().url}>
+          {url => (
+            <a
+              class='btn'
+              classList={{ 'btn-primary': !event().registrationUrl, 'btn-secondary': Boolean(event().registrationUrl) }}
+              href={url()}
+              target='_blank'
+              rel='noopener'
+            >
+              Event details on pokemon.com
+            </a>
+          )}
+        </Show>
         <Show when={storeSite()}>
           {url => (
             <a class='btn btn-secondary' href={url()} target='_blank' rel={STORE_LINK_REL}>

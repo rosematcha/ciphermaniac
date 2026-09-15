@@ -85,6 +85,7 @@ test('stored settings fall back field by field', () => {
   assert.equal(parseSettings({ windowDays: 12 }).windowDays, 30);
   assert.equal(parseSettings({ windowDays: null }).windowDays, null);
   assert.deepEqual(parseSettings({ kinds: [] }).kinds, ['cup', 'challenge', 'prerelease']);
+  assert.deepEqual(parseSettings({ kinds: ['local'] }).kinds, ['local']);
   assert.equal(parseSettings({ unit: 'furlongs' }).unit, 'mi');
 });
 
