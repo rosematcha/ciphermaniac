@@ -1,41 +1,17 @@
-/**
- * Matchup-profile serving builder (`matchupProfiles.json`).
- *
- * Aggregates archetype-vs-archetype records for one event under two weighting
- * profiles — `all` (every counted match weighted 1) and `qualityWeighted` (each
- * match weighted by phase importance × average player quality). Consumed by the
- * matchups panel and archetype win-rate views, which read `qualityWeighted` with
- * a fallback to `all`.
- *
- * This ports `aggregate_matchups`/`calculate_player_quality` from
- * `.github/scripts/download-tournament.py`, building from the NORMALIZED event
- * (participants + decks + matches) instead of raw Limitless rows. The quality
- * model is versioned policy: tier base (topcut 1.0 / day2 0.7 / other 0.4) plus
- * a placement-percentile bonus, times the phase multiplier.
- *
- * The volatile `generatedAt` and the event `tournament` header are added by the
- * publishing layer; this builder returns only the deterministic body.
- * @module shared/data/reports/matchupProfiles
- */
-
-import type { NormalizedEvent } from '../contracts';
+import type { Match, NormalizedEvent } from '../contracts';
 import { archetypeKey } from '../archetypes/identity';
 
-/** Phase importance multipliers (Swiss 1.0, Day 2 1.75, top cut 3.0). */
-export const PHASE_MULTIPLIERS: Readonly<Record<number, number>> = { 1: 1.0, 2: 1.75, 3: 3.0 };
-
-/** Versioned player-quality model, surfaced in the artifact for provenance. */
+export const PHASE_MULTIPLIERS: Readonly<Record<number, number>> = { 1: 1, 2: 1.75, 3: 3 };
 export const QUALITY_MODEL = {
   description: 'tierBase + placementPercentileWeight * placementPercentile, scaled by phase multiplier',
-  tierBase: { topcut: 1.0, phase2: 0.7, other: 0.4 },
+  tierBase: { topcut: 1, phase2: 0.7, other: 0.4 },
   placementPercentileWeight: 0.3
 } as const;
 
-const COUNTED_OUTCOMES: ReadonlySet<string> = new Set(['decided', 'tie', 'double_loss']);
-
+const COUNTED_OUTCOMES = new Set(['decided', 'tie', 'double_loss']);
+type SideResult = 'win' | 'loss' | 'tie' | 'double_loss';
 export type MatchupWeighting = 'all' | 'qualityWeighted';
 
-/** One archetype-vs-archetype cell (labels sorted, so `A` <= `B`). */
 export interface MatchupPairRow {
   archetypeA: string;
   archetypeB: string;
@@ -52,7 +28,6 @@ export interface MatchupPairRow {
   weightedWinRateB: number;
 }
 
-/** Per-archetype rollup across all its pairs. */
 export interface MatchupArchetypeRow {
   archetype: string;
   matches: number;
@@ -77,269 +52,267 @@ export interface MatchupProfilesBody {
   profiles: Record<MatchupWeighting, MatchupProfile>;
 }
 
-/** Round to `places` decimals (half-up, deterministic). */
+interface Pilot {
+  archetype: string;
+  quality: number;
+}
+interface Results {
+  first: SideResult;
+  second: SideResult;
+}
+interface ProfileState {
+  profile: MatchupProfile;
+  pairs: Map<string, MatchupPairRow>;
+  archetypes: Map<string, MatchupArchetypeRow>;
+}
+interface MatchContext {
+  match: Match;
+  first: Pilot;
+  second: Pilot;
+  results: Results;
+  labels: ReadonlyMap<string, string>;
+}
+
 function round(value: number, places: number): number {
   const factor = 10 ** places;
   return Math.round(value * factor) / factor;
 }
 
-interface Pilot {
-  archetype: string;
-  quality: number;
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function playerQuality(madePhase2: boolean, madeTopCut: boolean, placement: number | null, players: number): number {
-  const tierBase = madeTopCut
+  const tier = madeTopCut
     ? QUALITY_MODEL.tierBase.topcut
     : madePhase2
       ? QUALITY_MODEL.tierBase.phase2
       : QUALITY_MODEL.tierBase.other;
-  let percentile = 0;
-  if (placement !== null && Number.isInteger(placement) && players > 0) {
-    percentile = Math.max(0, Math.min(1, (players - placement + 1) / players));
-  }
-  return tierBase + QUALITY_MODEL.placementPercentileWeight * percentile;
+  const percentile =
+    placement !== null && Number.isInteger(placement) && players > 0
+      ? Math.max(0, Math.min(1, (players - placement + 1) / players))
+      : 0;
+  return tier + QUALITY_MODEL.placementPercentileWeight * percentile;
 }
 
-/**
- * Build the deterministic matchup-profile body for an event.
- * @param event - Normalized event
- * @returns The profile body (phaseMultipliers, qualityModel, profiles)
- */
-export function buildMatchupProfiles(event: NormalizedEvent): MatchupProfilesBody {
+function buildPilots(event: NormalizedEvent): { pilots: Map<string, Pilot>; labels: Map<string, string> } {
   const players = event.meta.playerCount > 0 ? event.meta.playerCount : event.participants.length;
-
-  // Group by the archetype comparison KEY so casing/punctuation variants of one
-  // archetype (e.g. a mirror match) collapse instead of splitting. Each key
-  // gets one canonical display label — the lexicographically smallest displayName
-  // among its decks — matching the determinism rule used by the archetype build.
-  const keyByParticipant = new Map<string, string>();
-  const labelByKey = new Map<string, string>();
+  const keys = new Map<string, string>();
+  const labels = new Map<string, string>();
   for (const deck of event.decks) {
-    const display = (deck.archetype.displayName || '').trim();
-    const key = display ? archetypeKey(display) : '';
-    keyByParticipant.set(deck.participantId, key || 'unknown');
-    if (key) {
-      const existing = labelByKey.get(key);
-      if (existing === undefined || display < existing) {
-        labelByKey.set(key, display);
-      }
+    const label = deck.archetype.displayName.trim();
+    const key = label ? archetypeKey(label) : 'unknown';
+    keys.set(deck.participantId, key);
+    if (key !== 'unknown' && (labels.get(key) === undefined || label < labels.get(key)!)) {
+      labels.set(key, label);
     }
   }
-  const labelFor = (key: string): string => labelByKey.get(key) ?? 'Unknown';
-
-  const pilotByParticipant = new Map<string, Pilot>();
+  const pilots = new Map<string, Pilot>();
   for (const participant of event.participants) {
-    pilotByParticipant.set(participant.participantId, {
-      archetype: keyByParticipant.get(participant.participantId) ?? 'unknown',
-      quality: playerQuality(
-        participant.flags.madePhase2 === true,
-        participant.flags.madeTopCut === true,
-        participant.placement ?? null,
-        players
-      )
+    pilots.set(participant.participantId, {
+      archetype: keys.get(participant.participantId) ?? 'unknown',
+      quality: playerQuality(participant.flags.madePhase2, participant.flags.madeTopCut, participant.placement, players)
     });
   }
+  return { pilots, labels };
+}
 
-  const profiles: Record<MatchupWeighting, MatchupProfile> = {
-    all: { name: 'all', matchesConsidered: 0, weightedMatches: 0, byArchetypePair: [], byArchetype: [] },
-    qualityWeighted: {
-      name: 'qualityWeighted',
-      matchesConsidered: 0,
-      weightedMatches: 0,
-      byArchetypePair: [],
-      byArchetype: []
-    }
+function emptyProfile(name: MatchupWeighting): ProfileState {
+  return {
+    profile: { name, matchesConsidered: 0, weightedMatches: 0, byArchetypePair: [], byArchetype: [] },
+    pairs: new Map(),
+    archetypes: new Map()
   };
-  const pairMaps: Record<MatchupWeighting, Map<string, MatchupPairRow>> = {
-    all: new Map(),
-    qualityWeighted: new Map()
-  };
-  const archMaps: Record<MatchupWeighting, Map<string, MatchupArchetypeRow>> = {
-    all: new Map(),
-    qualityWeighted: new Map()
-  };
+}
 
-  // Internal maps are keyed by the comparison KEY; `archetype` holds the label.
-  const addSideTotals = (
-    weighting: MatchupWeighting,
-    key: string,
-    label: string,
-    weight: number,
-    result: string
-  ): void => {
-    let entry = archMaps[weighting].get(key);
-    if (!entry) {
-      entry = {
-        archetype: label,
-        matches: 0,
-        weightedMatches: 0,
-        weightedWins: 0,
-        weightedLosses: 0,
-        weightedTies: 0,
-        weightedWinRate: 0
-      };
-      archMaps[weighting].set(key, entry);
-    }
-    entry.matches += 1;
-    entry.weightedMatches += weight;
-    if (result === 'win') {
-      entry.weightedWins += weight;
-    } else if (result === 'loss') {
-      entry.weightedLosses += weight;
-    } else if (result === 'tie') {
-      entry.weightedTies += weight;
-    }
-  };
-
-  for (const match of event.matches) {
-    if (match.participantIds.length !== 2) {
-      continue;
-    }
-    if (!COUNTED_OUTCOMES.has(match.outcome)) {
-      continue;
-    }
-    const [p1, p2] = match.participantIds;
-    const pilot1 = pilotByParticipant.get(p1);
-    const pilot2 = pilotByParticipant.get(p2);
-    if (!pilot1 || !pilot2) {
-      continue;
-    }
-    const arch1 = pilot1.archetype;
-    const arch2 = pilot2.archetype;
-    if (arch1 === 'unknown' || arch2 === 'unknown') {
-      continue;
-    }
-
-    // Per-side result from the perspective-free outcome.
-    let r1: string;
-    let r2: string;
-    if (match.outcome === 'tie') {
-      r1 = 'tie';
-      r2 = 'tie';
-    } else if (match.outcome === 'double_loss') {
-      r1 = 'double_loss';
-      r2 = 'double_loss';
-    } else {
-      const p1Won = match.winnerParticipantId === p1;
-      r1 = p1Won ? 'win' : 'loss';
-      r2 = p1Won ? 'loss' : 'win';
-    }
-
-    const phase = match.phase ?? 1;
-    const phaseMult = PHASE_MULTIPLIERS[phase] ?? 1.0;
-    const qualityMult = phaseMult * ((pilot1.quality + pilot2.quality) / 2);
-    const weightByProfile: Record<MatchupWeighting, number> = { all: 1.0, qualityWeighted: qualityMult };
-
-    const [leftArch, rightArch] = arch1 <= arch2 ? [arch1, arch2] : [arch2, arch1];
-    const sameOrder = arch1 === leftArch;
-    const leftResult = sameOrder ? r1 : r2;
-
-    (['all', 'qualityWeighted'] as const).forEach(weighting => {
-      const weight = weightByProfile[weighting];
-      const profile = profiles[weighting];
-      profile.matchesConsidered += 1;
-      profile.weightedMatches += weight;
-
-      const pairKey = `${leftArch}||${rightArch}`;
-      let pair = pairMaps[weighting].get(pairKey);
-      if (!pair) {
-        pair = {
-          archetypeA: labelFor(leftArch),
-          archetypeB: labelFor(rightArch),
-          matches: 0,
-          weightedMatches: 0,
-          winsA: 0,
-          winsB: 0,
-          ties: 0,
-          doubleLosses: 0,
-          weightedWinsA: 0,
-          weightedWinsB: 0,
-          weightedTies: 0,
-          weightedWinRateA: 0,
-          weightedWinRateB: 0
-        };
-        pairMaps[weighting].set(pairKey, pair);
-      }
-      pair.matches += 1;
-      pair.weightedMatches += weight;
-
-      if (match.outcome === 'tie') {
-        pair.ties += 1;
-        pair.winsA += 0.5;
-        pair.winsB += 0.5;
-        pair.weightedWinsA += 0.5 * weight;
-        pair.weightedWinsB += 0.5 * weight;
-        pair.weightedTies += weight;
-      } else if (match.outcome === 'double_loss') {
-        pair.doubleLosses += 1;
-      } else if (leftResult === 'win') {
-        pair.winsA += 1;
-        pair.weightedWinsA += weight;
-      } else if (leftResult === 'loss') {
-        pair.winsB += 1;
-        pair.weightedWinsB += weight;
-      }
-
-      if (r1 === 'win' || r1 === 'loss' || r1 === 'tie') {
-        addSideTotals(weighting, arch1, labelFor(arch1), weight, r1);
-      }
-      if (r2 === 'win' || r2 === 'loss' || r2 === 'tie') {
-        addSideTotals(weighting, arch2, labelFor(arch2), weight, r2);
-      }
-    });
+function resultsFor(match: Match): Results {
+  if (match.outcome === 'tie') {
+    return { first: 'tie', second: 'tie' };
   }
+  if (match.outcome === 'double_loss') {
+    return { first: 'double_loss', second: 'double_loss' };
+  }
+  const firstWon = match.winnerParticipantId === match.participantIds[0];
+  return firstWon ? { first: 'win', second: 'loss' } : { first: 'loss', second: 'win' };
+}
 
-  (['all', 'qualityWeighted'] as const).forEach(weighting => {
-    const profile = profiles[weighting];
-    profile.weightedMatches = round(profile.weightedMatches, 6);
+function pairRow(archetypeA: string, archetypeB: string): MatchupPairRow {
+  return {
+    archetypeA,
+    archetypeB,
+    matches: 0,
+    weightedMatches: 0,
+    winsA: 0,
+    winsB: 0,
+    ties: 0,
+    doubleLosses: 0,
+    weightedWinsA: 0,
+    weightedWinsB: 0,
+    weightedTies: 0,
+    weightedWinRateA: 0,
+    weightedWinRateB: 0
+  };
+}
 
-    const pairRows = [...pairMaps[weighting].values()].map(pair => {
-      const wm = pair.weightedMatches;
-      const weightedWinsA = round(pair.weightedWinsA, 6);
-      const weightedWinsB = round(pair.weightedWinsB, 6);
-      return {
-        ...pair,
-        weightedMatches: round(wm, 6),
-        weightedWinsA,
-        weightedWinsB,
-        weightedTies: round(pair.weightedTies, 6),
-        weightedWinRateA: wm > 0 ? round((weightedWinsA / wm) * 100, 3) : 0,
-        weightedWinRateB: wm > 0 ? round((weightedWinsB / wm) * 100, 3) : 0
-      };
-    });
-    const archRows = [...archMaps[weighting].values()].map(arc => {
-      const wm = arc.weightedMatches;
-      const weightedWins = round(arc.weightedWins, 6);
-      return {
-        ...arc,
-        weightedMatches: round(wm, 6),
-        weightedWins,
-        weightedLosses: round(arc.weightedLosses, 6),
-        weightedTies: round(arc.weightedTies, 6),
-        weightedWinRate: wm > 0 ? round((weightedWins / wm) * 100, 3) : 0
-      };
-    });
+function archetypeRow(archetype: string): MatchupArchetypeRow {
+  return {
+    archetype,
+    matches: 0,
+    weightedMatches: 0,
+    weightedWins: 0,
+    weightedLosses: 0,
+    weightedTies: 0,
+    weightedWinRate: 0
+  };
+}
 
-    pairRows.sort(
+function addArchetype(
+  state: ProfileState,
+  side: { key: string; label: string; result: SideResult },
+  weight: number
+): void {
+  const { key, label, result } = side;
+  if (result === 'double_loss') {
+    return;
+  }
+  const row = state.archetypes.get(key) ?? archetypeRow(label);
+  state.archetypes.set(key, row);
+  row.matches += 1;
+  row.weightedMatches += weight;
+  if (result === 'win') {
+    row.weightedWins += weight;
+  }
+  if (result === 'loss') {
+    row.weightedLosses += weight;
+  }
+  if (result === 'tie') {
+    row.weightedTies += weight;
+  }
+}
+
+function addPairResult(
+  pair: MatchupPairRow,
+  outcome: Match['outcome'],
+  leftResult: SideResult,
+  weight: number
+): MatchupPairRow {
+  const next = { ...pair, matches: pair.matches + 1, weightedMatches: pair.weightedMatches + weight };
+  if (outcome === 'tie') {
+    return {
+      ...next,
+      ties: pair.ties + 1,
+      winsA: pair.winsA + 0.5,
+      winsB: pair.winsB + 0.5,
+      weightedWinsA: pair.weightedWinsA + 0.5 * weight,
+      weightedWinsB: pair.weightedWinsB + 0.5 * weight,
+      weightedTies: pair.weightedTies + weight
+    };
+  }
+  if (outcome === 'double_loss') {
+    return { ...next, doubleLosses: pair.doubleLosses + 1 };
+  }
+  if (leftResult === 'win') {
+    return { ...next, winsA: pair.winsA + 1, weightedWinsA: pair.weightedWinsA + weight };
+  }
+  return { ...next, winsB: pair.winsB + 1, weightedWinsB: pair.weightedWinsB + weight };
+}
+
+function accumulate(state: ProfileState, context: MatchContext, weight: number): void {
+  const { match, first, second, results, labels } = context;
+  state.profile.matchesConsidered += 1;
+  state.profile.weightedMatches += weight;
+  const [left, right] =
+    first.archetype <= second.archetype ? [first.archetype, second.archetype] : [second.archetype, first.archetype];
+  const leftResult = first.archetype === left ? results.first : results.second;
+  const key = `${left}||${right}`;
+  const pair = state.pairs.get(key) ?? pairRow(labels.get(left) ?? 'Unknown', labels.get(right) ?? 'Unknown');
+  state.pairs.set(key, addPairResult(pair, match.outcome, leftResult, weight));
+  addArchetype(
+    state,
+    { key: first.archetype, label: labels.get(first.archetype) ?? 'Unknown', result: results.first },
+    weight
+  );
+  addArchetype(
+    state,
+    { key: second.archetype, label: labels.get(second.archetype) ?? 'Unknown', result: results.second },
+    weight
+  );
+}
+
+function pairOutput(pair: MatchupPairRow): MatchupPairRow {
+  const weightedMatches = round(pair.weightedMatches, 6);
+  const weightedWinsA = round(pair.weightedWinsA, 6);
+  const weightedWinsB = round(pair.weightedWinsB, 6);
+  return {
+    ...pair,
+    weightedMatches,
+    weightedWinsA,
+    weightedWinsB,
+    weightedTies: round(pair.weightedTies, 6),
+    weightedWinRateA: weightedMatches > 0 ? round((weightedWinsA / weightedMatches) * 100, 3) : 0,
+    weightedWinRateB: weightedMatches > 0 ? round((weightedWinsB / weightedMatches) * 100, 3) : 0
+  };
+}
+
+function archetypeOutput(row: MatchupArchetypeRow): MatchupArchetypeRow {
+  const weightedMatches = round(row.weightedMatches, 6);
+  const weightedWins = round(row.weightedWins, 6);
+  return {
+    ...row,
+    weightedMatches,
+    weightedWins,
+    weightedLosses: round(row.weightedLosses, 6),
+    weightedTies: round(row.weightedTies, 6),
+    weightedWinRate: weightedMatches > 0 ? round((weightedWins / weightedMatches) * 100, 3) : 0
+  };
+}
+
+function finalize(state: ProfileState): MatchupProfile {
+  const byArchetypePair = [...state.pairs.values()]
+    .map(pairOutput)
+    .sort(
       (a, b) =>
         b.weightedMatches - a.weightedMatches ||
-        (a.archetypeA < b.archetypeA ? -1 : a.archetypeA > b.archetypeA ? 1 : 0) ||
-        (a.archetypeB < b.archetypeB ? -1 : a.archetypeB > b.archetypeB ? 1 : 0)
+        compareText(a.archetypeA, b.archetypeA) ||
+        compareText(a.archetypeB, b.archetypeB)
     );
-    archRows.sort(
-      (a, b) =>
-        b.weightedMatches - a.weightedMatches || (a.archetype < b.archetype ? -1 : a.archetype > b.archetype ? 1 : 0)
-    );
+  const byArchetype = [...state.archetypes.values()]
+    .map(archetypeOutput)
+    .sort((a, b) => b.weightedMatches - a.weightedMatches || compareText(a.archetype, b.archetype));
+  return { ...state.profile, weightedMatches: round(state.profile.weightedMatches, 6), byArchetypePair, byArchetype };
+}
 
-    profile.byArchetypePair = pairRows;
-    profile.byArchetype = archRows;
-  });
-
-  const phaseMultipliers: Record<string, number> = {};
-  for (const [k, v] of Object.entries(PHASE_MULTIPLIERS)) {
-    phaseMultipliers[k] = v;
+function matchContext(
+  match: Match,
+  pilots: ReadonlyMap<string, Pilot>,
+  labels: ReadonlyMap<string, string>
+): MatchContext | null {
+  if (match.participantIds.length !== 2 || !COUNTED_OUTCOMES.has(match.outcome)) {
+    return null;
   }
+  const first = pilots.get(match.participantIds[0]);
+  const second = pilots.get(match.participantIds[1]);
+  if (!first || !second || first.archetype === 'unknown' || second.archetype === 'unknown') {
+    return null;
+  }
+  return { match, first, second, results: resultsFor(match), labels };
+}
 
-  return { phaseMultipliers, qualityModel: QUALITY_MODEL, profiles };
+export function buildMatchupProfiles(event: NormalizedEvent): MatchupProfilesBody {
+  const { pilots, labels } = buildPilots(event);
+  const states = { all: emptyProfile('all'), qualityWeighted: emptyProfile('qualityWeighted') };
+  for (const match of event.matches) {
+    const context = matchContext(match, pilots, labels);
+    if (!context) {
+      continue;
+    }
+    accumulate(states.all, context, 1);
+    const phase = PHASE_MULTIPLIERS[match.phase ?? 1] ?? 1;
+    accumulate(states.qualityWeighted, context, (phase * (context.first.quality + context.second.quality)) / 2);
+  }
+  return {
+    phaseMultipliers: Object.fromEntries(Object.entries(PHASE_MULTIPLIERS)),
+    qualityModel: QUALITY_MODEL,
+    profiles: { all: finalize(states.all), qualityWeighted: finalize(states.qualityWeighted) }
+  };
 }

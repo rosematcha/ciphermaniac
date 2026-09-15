@@ -133,10 +133,6 @@
     "max-params:6fffafeebf1d8e40e1df0a3b439d3fa151ce82aa330bc903f0b0d77c4f5d368c:Function 'validateMatch' has too many parameters (5). Maximum allowed is 4.",
     "max-params:c0a0577cf69223331a756ead4ec224c96ee15da5ca7489e441e706de6dccdd3a:Function 'checkSuccessTagDrift' has too many parameters (5). Maximum allowed is 4."
   ],
-  "shared/data/reports/cardReport.ts": [
-    "max-lines-per-function:04bf1e0c8c166f46de2ad8a07db6982387820b99eed02eef796a6ce10a429197:Function 'generateReportFromDecks' has too many lines (123). Maximum allowed is 100.",
-    "complexity:04bf1e0c8c166f46de2ad8a07db6982387820b99eed02eef796a6ce10a429197:Function 'generateReportFromDecks' has a complexity of 46. Maximum allowed is 12."
-  ],
   "shared/data/reports/cardSuccess.ts": [
     "complexity:6f348bdbe6692d709466f99551f817a247df585a4d6ff433428c4d7a13f7759d:Function 'buildCardSuccessIndex' has a complexity of 22. Maximum allowed is 12."
   ],
@@ -149,11 +145,6 @@
   "shared/data/reports/eventMatches.ts": [
     "complexity:e8849f4badaa0653f988fa8e2d2f715b219ff97382c41a7e080616eadea2f574:Arrow function has a complexity of 19. Maximum allowed is 12.",
     "complexity:94c1b761a5deadf408f25ca770feea49b715c24901e639728582043f0367d2b2:Arrow function has a complexity of 20. Maximum allowed is 12."
-  ],
-  "shared/data/reports/matchupProfiles.ts": [
-    "max-lines-per-function:11141464787b10480d228aed5d3ea67f6f8c88c01a1e71be977327f7714e0fba:Function 'buildMatchupProfiles' has too many lines (213). Maximum allowed is 100.",
-    "complexity:11141464787b10480d228aed5d3ea67f6f8c88c01a1e71be977327f7714e0fba:Function 'buildMatchupProfiles' has a complexity of 28. Maximum allowed is 12.",
-    "max-params:853ce6beee74bec0ff3b89156dd964a325069c8099053445aebd6c042877d7f6:Arrow function has too many parameters (5). Maximum allowed is 4."
   ],
   "shared/data/validate.ts": [
     "max-params:f03e2a54e55d23cc53a3ba4e700ccc4dc21c82bfb941d36a40c1c4ac10decb87:Function 'checkArrayOf' has too many parameters (5). Maximum allowed is 4."

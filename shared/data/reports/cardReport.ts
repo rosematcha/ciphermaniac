@@ -1,19 +1,3 @@
-/**
- * Canonical card-report builder — the single home for the usage
- * report ({@link LegacyCardReport}: `{ deckTotal, items[] }` with `pct` 0-100,
- * `dist`, and `uid`/`set`/`number` derived from the canonical UID).
- *
- * Invariants:
- * - items carry an explicit total order. They are sorted by `pct`/`found`
- *   descending, then `name`, then canonical `uid` (see {@link sortReportItems}),
- *   so equal-found ties are input-order-independent.
- * - `set`/`number` are always derived from the canonical UID,
- *   never from the first-seen variant's meta, so `uid`/`set`/`number` stay
- *   mutually consistent after a synonym rewrite.
- *
- * This module is environment-neutral.
- */
-
 import {
   canonicalizeVariant,
   cardUidOrName,
@@ -30,10 +14,6 @@ import {
   sortReportItems
 } from '../../reportUtils';
 
-/**
- * A single card row of a deck accepted by {@link generateReportFromDecks}.
- * Production decks carry richer types; only these fields are consumed here.
- */
 export interface CardEntry {
   name?: string;
   count?: number;
@@ -46,16 +26,10 @@ export interface CardEntry {
   regulationMark?: string;
 }
 
-/**
- * A single deck accepted by {@link generateReportFromDecks}.
- */
 export interface DeckEntry {
   cards?: CardEntry[];
 }
 
-/**
- * A single card row in the legacy-shape report.
- */
 export interface ReportItem {
   rank: number;
   name: string;
@@ -73,241 +47,167 @@ export interface ReportItem {
   category?: string;
 }
 
-/**
- * The legacy-shape card usage report.
- */
 export interface LegacyCardReport {
   deckTotal: number;
   items: ReportItem[];
-  /**
-   * Event date the card UIDs were canonicalized against (rolling canonicals).
-   * Present only on build-time-canonicalized artifacts; consumers must skip
-   * read-time re-canonicalization when set, or the period-correct print would
-   * be rewritten to the current global canonical.
-   */
   canonicalizedAt?: string;
 }
 
-/**
- * Optional canonicalization override for the report builders. When provided it
- * replaces the flat synonym lookup — producers inject a date-bound resolver
- * from `canonicalPrint.makeRollingResolver` (which this isomorphic module must
- * not import itself, as it would pull the set catalog into browser bundles).
- */
 export interface CanonicalizeOptions {
   resolveUid?: (uid: string) => string;
 }
 
-/**
- * Count the decks that can actually contribute a card to a usage report.
- *
- * This is the correct denominator for card inclusion. A standings entry
- * whose decklist was never published still counts as a deck in the meta — it
- * has a placement, a player, and an archetype — but it can never contain a
- * card, so dividing inclusion by it caps every card in the group at
- * `(n-1)/n`. That is why Blaziken ex read 99.9% of Dragapult Blaziken lists
- * rather than 100%: one of 778 decks had no list.
- *
- * Derived from the deck's cards rather than from a producer-supplied
- * `hasDecklist` flag, because that flag is declared, not observed (the Labs
- * adapter hardcodes it to true), and a denominator should describe the data
- * being aggregated.
- *
- * The predicate is "has card rows", deliberately not "has a row with a
- * positive count": it must hold for every aggregator that divides by this
- * (here, and `clientSideFiltering.aggregateDecks`, whose numerator counts a
- * zero-copy row as present), and a scraped decklist row always carries a
- * count of at least one.
- * @param deckList - The decks about to be aggregated
- * @returns How many of them carry a decklist
- */
+interface CardMeta {
+  category?: string;
+  trainerType?: string;
+  energyType?: string;
+  aceSpec?: boolean;
+  regulationMark?: string;
+}
+
+interface ReportState {
+  counts: Map<string, number[]>;
+  names: Map<string, string>;
+  metadata: Map<string, CardMeta>;
+}
+
+interface ScanContext {
+  state: ReportState;
+  synonymDb: SynonymDatabase | null;
+  options: CanonicalizeOptions;
+}
+
 export function listedDeckCount(deckList: readonly { cards?: unknown }[]): number {
   const decks = Array.isArray(deckList) ? (deckList as readonly { cards?: unknown }[]) : [];
   let count = 0;
   for (const deck of decks) {
-    // `Array.isArray` widens an `unknown` to `any[]`, so re-narrow before reading length.
-    const cards: unknown = deck?.cards;
-    if (Array.isArray(cards) && (cards as readonly unknown[]).length > 0) {
+    const { cards } = deck;
+    if (Array.isArray(cards) && cards.length > 0) {
       count += 1;
     }
   }
   return count;
 }
 
-/**
- * Build the legacy-shape usage report from a list of decks.
- *
- * Presence is counted once per deck per canonical UID (two synonym variants in
- * one deck collapse to a single row — never yielding `pct > 100`). `set`/
- * `number`/`uid` are derived from the canonical UID so they stay mutually
- * consistent after a synonym rewrite. Items carry an explicit total order:
- * `pct`/`found` descending, then `name`, then `uid`.
- * @param deckList - Decks to aggregate
- * @param deckTotal - Denominator for `pct`/`total` (see {@link listedDeckCount})
- * @param synonymDb - Synonym database (or null for no canonicalization)
- * @returns Legacy-shape report `{ deckTotal, items }`
- */
+function resolveUid(card: CardEntry, synonymDb: SynonymDatabase | null, options: CanonicalizeOptions): string {
+  const [set, number] = canonicalizeVariant(card.set, card.number);
+  const uid = cardUidOrName(card.name || 'Unknown Card', set, number);
+  return options.resolveUid?.(uid) ?? getCanonicalCardFromData(synonymDb, uid);
+}
+
+function metadataOf(card: CardEntry): CardMeta {
+  return {
+    category: card.category || undefined,
+    trainerType: card.trainerType || undefined,
+    energyType: card.energyType || undefined,
+    aceSpec: card.aceSpec || undefined,
+    regulationMark: card.regulationMark || undefined
+  };
+}
+
+function hasMetadata(metadata: CardMeta): boolean {
+  return Boolean(
+    metadata.category || metadata.trainerType || metadata.energyType || metadata.aceSpec || metadata.regulationMark
+  );
+}
+
+function scanCard(card: CardEntry, deckCounts: Map<string, number>, context: ScanContext): void {
+  const { state, synonymDb, options } = context;
+  const count = Number(card.count) || 0;
+  if (!count) {
+    return;
+  }
+  const uid = resolveUid(card, synonymDb, options);
+  deckCounts.set(uid, (deckCounts.get(uid) ?? 0) + count);
+  if (!state.names.has(uid)) {
+    state.names.set(uid, card.name || 'Unknown Card');
+  }
+  const metadata = metadataOf(card);
+  const existingMetadata = state.metadata.get(uid);
+  if (!existingMetadata || (!hasMetadata(existingMetadata) && hasMetadata(metadata))) {
+    state.metadata.set(uid, metadata);
+  }
+}
+
+function scanDeck(
+  deck: DeckEntry,
+  state: ReportState,
+  synonymDb: SynonymDatabase | null,
+  options: CanonicalizeOptions
+): void {
+  const deckCounts = new Map<string, number>();
+  const context = { state, synonymDb, options };
+  for (const card of deck.cards ?? []) {
+    scanCard(card, deckCounts, context);
+  }
+  for (const [uid, count] of deckCounts) {
+    state.counts.set(uid, [...(state.counts.get(uid) ?? []), count]);
+  }
+}
+
+function addIdentity(item: ReportItem, uid: string): void {
+  const parsed = parseCardUid(uid);
+  if (!parsed) {
+    return;
+  }
+  item.set = parsed.set;
+  item.number = parsed.number;
+  item.uid = uid;
+}
+
+function addMetadata(item: ReportItem, metadata: CardMeta | undefined): void {
+  if (!metadata) {
+    return;
+  }
+  if (metadata.trainerType) {
+    item.trainerType = metadata.trainerType;
+  }
+  if (metadata.energyType) {
+    item.energyType = metadata.energyType;
+  }
+  if (metadata.aceSpec) {
+    item.aceSpec = true;
+  }
+  if (metadata.regulationMark) {
+    item.regulationMark = metadata.regulationMark;
+  }
+  const category = composeCategoryPath(metadata.category, metadata.trainerType, metadata.energyType, {
+    aceSpec: Boolean(metadata.aceSpec)
+  });
+  if (category || metadata.category) {
+    item.category = category || metadata.category;
+  }
+}
+
+function buildItem(uid: string, state: ReportState, deckTotal: number): ReportItem {
+  const counts = state.counts.get(uid) ?? [];
+  const found = counts.length;
+  const item: ReportItem = {
+    rank: 0,
+    name: sanitizeDisplayName(state.names.get(uid) ?? uid),
+    found,
+    total: deckTotal,
+    pct: calculatePercentage(found, deckTotal),
+    dist: createDistributionFromCounts(counts, found)
+  };
+  addIdentity(item, uid);
+  addMetadata(item, state.metadata.get(uid));
+  return item;
+}
+
 export function generateReportFromDecks(
   deckList: DeckEntry[],
   deckTotal: number,
   synonymDb: SynonymDatabase | null,
   options: CanonicalizeOptions = {}
 ): LegacyCardReport {
-  const resolveUid = options.resolveUid ?? null;
-  const cardData = new Map<string, number[]>();
-  const nameCasing = new Map<string, string>();
-  const uidMeta = new Map<string, CardMeta>();
-  const uidCategory = new Map<string, CardMeta>();
-
-  const decks = Array.isArray(deckList) ? deckList : [];
-
-  for (const deck of decks) {
-    const perDeckCounts = new Map<string, number>();
-    const perDeckMeta = new Map<string, CardMeta>();
-    const cards = Array.isArray(deck?.cards) ? deck.cards : [];
-
-    for (const card of cards) {
-      const count = Number(card?.count) || 0;
-      if (!count) {
-        continue;
-      }
-      const name = card?.name || 'Unknown Card';
-      const category = card?.category || null;
-      const trainerType = card?.trainerType || null;
-      const energyType = card?.energyType || null;
-      const aceSpec = Boolean(card?.aceSpec);
-      const regulationMark = card?.regulationMark || null;
-
-      const [canonSet, canonNumber] = canonicalizeVariant(card?.set, card?.number);
-      let uid = cardUidOrName(name, canonSet, canonNumber);
-
-      // Resolve to canonical synonym if database is available. An injected
-      // resolver (rolling canonicals bound to an event date) takes precedence
-      // over the flat current-canonical lookup.
-      if (resolveUid) {
-        uid = resolveUid(uid);
-      } else if (synonymDb) {
-        uid = getCanonicalCardFromData(synonymDb, uid);
-      }
-
-      perDeckCounts.set(uid, (perDeckCounts.get(uid) || 0) + count);
-      perDeckMeta.set(uid, {
-        set: canonSet || undefined,
-        number: canonNumber || undefined,
-        category: category || undefined,
-        trainerType: trainerType || undefined,
-        energyType: energyType || undefined,
-        aceSpec: aceSpec || undefined,
-        regulationMark: regulationMark || undefined
-      });
-
-      if (!nameCasing.has(uid)) {
-        nameCasing.set(uid, name);
-      }
-      if ((category || trainerType || energyType || aceSpec || regulationMark) && !uidCategory.has(uid)) {
-        uidCategory.set(uid, {
-          category: category || undefined,
-          trainerType: trainerType || undefined,
-          energyType: energyType || undefined,
-          aceSpec: aceSpec || undefined,
-          regulationMark: regulationMark || undefined
-        });
-      }
-    }
-
-    perDeckCounts.forEach((totalCopies, uid) => {
-      if (!cardData.has(uid)) {
-        cardData.set(uid, []);
-      }
-      cardData.get(uid)!.push(totalCopies);
-
-      if (!uidMeta.has(uid)) {
-        uidMeta.set(uid, perDeckMeta.get(uid)!);
-      }
-    });
+  const state: ReportState = { counts: new Map(), names: new Map(), metadata: new Map() };
+  for (const deck of Array.isArray(deckList) ? deckList : []) {
+    scanDeck(deck, state, synonymDb, options);
   }
-
-  const items = Array.from(cardData.keys()).map(uid => {
-    const countsList = cardData.get(uid) || [];
-    const foundCount = countsList.length;
-    // Preserve the display name's punctuation (e.g. the colon in "Technical
-    // Machine: Evolution") while still stripping traversal/injection. Path
-    // safety for keys/filenames is applied separately, not to display names.
-    const rawName = nameCasing.get(uid) || uid;
-    const safeName = sanitizeDisplayName(rawName);
-    const item: ReportItem = {
-      rank: 0,
-      name: safeName,
-      found: foundCount,
-      total: deckTotal,
-      pct: calculatePercentage(foundCount, deckTotal),
-      dist: createDistributionFromCounts(countsList, foundCount)
-    };
-
-    const parsedUid = parseCardUid(uid);
-    if (parsedUid) {
-      // Derive set/number from the canonical UID itself so uid/set/number stay
-      // mutually consistent. Reading them from the first-seen variant's
-      // perDeckMeta would emit e.g. uid `X::NEW::001` alongside set `OLD` /
-      // number `002` whenever a synonym mapping rewrote the variant.
-      item.set = parsedUid.set;
-      item.number = parsedUid.number;
-      item.uid = uid;
-    }
-
-    const categoryInfo = uidCategory.get(uid) || uidMeta.get(uid);
-    if (categoryInfo) {
-      if (categoryInfo.trainerType) {
-        item.trainerType = categoryInfo.trainerType;
-      }
-      if (categoryInfo.energyType) {
-        item.energyType = categoryInfo.energyType;
-      }
-      if (categoryInfo.aceSpec) {
-        item.aceSpec = true;
-      }
-      if (categoryInfo.regulationMark) {
-        item.regulationMark = categoryInfo.regulationMark;
-      }
-      const categorySlug = composeCategoryPath(
-        categoryInfo.category,
-        categoryInfo.trainerType,
-        categoryInfo.energyType,
-        { aceSpec: Boolean(categoryInfo.aceSpec) }
-      );
-      if (categorySlug) {
-        item.category = categorySlug;
-      } else if (categoryInfo.category) {
-        item.category = categoryInfo.category;
-      }
-    }
-
-    return item;
-  });
-
-  // total-order tie-breakers (pct/found desc, then name, then canonical
-  // uid) make equal-found ties input-order-independent, then assign 1-based rank
-  // over the deterministic order.
-  const sorted = sortReportItems(items);
-  sorted.forEach((item, index) => {
+  const items = sortReportItems([...state.counts.keys()].map(uid => buildItem(uid, state, deckTotal)));
+  items.forEach((item, index) => {
     item.rank = index + 1;
   });
-
-  return {
-    deckTotal,
-    items: sorted
-  };
-}
-
-/**
- * Internal per-UID metadata accumulated while scanning decks.
- */
-interface CardMeta {
-  set?: string;
-  number?: string;
-  category?: string;
-  trainerType?: string;
-  energyType?: string;
-  aceSpec?: boolean;
-  regulationMark?: string;
+  return { deckTotal, items };
 }
