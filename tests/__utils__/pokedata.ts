@@ -72,18 +72,45 @@ export function rawEventWithId(serial: number, overrides: RawPokedataEvent = {})
   });
 }
 
-/** A Friendly TCG listing, which has an upstream GUID instead of a sanctioned event ID. */
+/**
+ * The field set of Pokedata's locals table, which is a different endpoint
+ * with a smaller record: no `time`, `Admission`, or `Display_id`. The start
+ * is only in `when`, and the entry fee is `cost`.
+ */
+const LOCAL_BASE: RawPokedataEvent = {
+  type: 'nonpremier TCG',
+  name: '',
+  date: '2026-09-20',
+  shop: 'TEST GAMES',
+  street_address: '100 MAIN ST, AUSTIN, TX 78701, US',
+  state: 'Texas',
+  city: 'Austin',
+  postal_code: '',
+  country_code: 'US',
+  pokemon_url: 'https://www.pokemon.com/us/pokemon-trainer-club/play-pokemon-tournaments//',
+  guid: '10000000-0000-4000-8000-000000000001',
+  latitude: '30.2672',
+  longitude: '-97.7431',
+  when: '2026-09-20 19:30:00',
+  status: '',
+  totalPlayers: '0',
+  TCaccounts: '0',
+  juniors: '0',
+  seniors: '0',
+  masters: '0',
+  league: '1000001',
+  category: '',
+  tournament_date: '',
+  tournament_completed: '',
+  date_added: '2026-09-01',
+  distance: '0',
+  cost: '$5',
+  registration: ''
+};
+
+/** A Friendly TCG listing from the locals table; override any field. */
 export function rawLocalEvent(overrides: RawPokedataEvent = {}): RawPokedataEvent {
-  return rawEvent({
-    type: 'nonpremier TCG',
-    name: '',
-    Name: '',
-    Display_id: '',
-    pokemon_url: 'https://www.pokemon.com/us/pokemon-trainer-club/play-pokemon-tournaments//',
-    guid: '10000000-0000-4000-8000-000000000001',
-    Guid: '10000000-0000-4000-8000-000000000001',
-    ...overrides
-  });
+  return { ...LOCAL_BASE, ...overrides };
 }
 
 /** A page body as the API returns it. */

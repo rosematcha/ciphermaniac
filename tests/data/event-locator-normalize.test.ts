@@ -90,14 +90,29 @@ test('records the locator cannot place or name are skipped with a reason', () =>
   assert.equal(skipReason({ country_code: 'USA' }), 'country');
 });
 
+function local(overrides = {}) {
+  const result = normalizeEvent(rawLocalEvent(overrides));
+  assert.ok(result.ok, `expected the local to normalize, got ${JSON.stringify(result)}`);
+  return result.event;
+}
+
 test('a local uses its stable GUID and a useful fallback name', () => {
-  const result = normalizeEvent(rawLocalEvent());
-  assert.ok(result.ok);
-  assert.equal(result.event.id, '10000000-0000-4000-8000-000000000001');
-  assert.equal(result.event.kind, 'local');
-  assert.equal(result.event.name, 'Weekly local');
-  assert.equal(result.event.url, undefined);
+  const event = local();
+  assert.equal(event.id, '10000000-0000-4000-8000-000000000001');
+  assert.equal(event.kind, 'local');
+  assert.equal(event.name, 'Weekly local');
+  assert.equal(event.url, undefined);
   assert.equal(skipReason({ type: 'nonpremier TCG', Display_id: '', guid: 'not-a-guid', Guid: '' }), 'id');
+});
+
+test('a local takes its start from `when` and its fee from `cost`, the fields its table has', () => {
+  const event = local();
+  assert.equal(event.time, '19:30');
+  assert.equal(event.fee, '$5');
+  assert.equal(local({ when: '2026-09-20 00:00:00' }).time, '', 'midnight is a store that listed no time');
+  assert.equal(local({ when: '' }).time, '');
+  assert.equal(local({ cost: '' }).fee, undefined);
+  assert.equal(local({ cost: '0' }).fee, undefined);
 });
 
 test('the capitalized Name stands in when the lowercase name is missing', () => {
