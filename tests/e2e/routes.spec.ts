@@ -102,12 +102,40 @@ test('an archetype page renders its card list', async ({ page }) => {
   await expect(page.locator('.card-tile, .card-row, [data-card]').first()).toBeVisible({ timeout: 10_000 });
 });
 
+test('a scope deep link loads the selected tournament', async ({ page }) => {
+  await gotoClean(page, '/archetypes?scope=2026-06-12-international-championship-new-orleans');
+  await expect(page.locator('body')).toContainText('Event Dragapult');
+});
+
+test('the tournament selector writes scope history and omits the default', async ({ page }) => {
+  await gotoClean(page, '/archetypes');
+  await page.locator('.t-selector-trigger').click();
+  await page.getByRole('button', { name: /International Championship New Orleans/ }).click();
+  await expect(page).toHaveURL(/scope=2026-06-12-international-championship-new-orleans/);
+
+  await page.locator('.t-selector-trigger').click();
+  await page.getByRole('button', { name: /Online ladder/ }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.has('scope')).toBe(false);
+});
+
+test('a legacy archetype tournament link is adopted and rewritten', async ({ page }) => {
+  const event = '2026-06-12, International Championship New Orleans';
+  await gotoClean(page, `/archetypes/Dragapult?tour=${encodeURIComponent(event)}`);
+  await expect(page.locator('body')).toContainText('Dragapult ex');
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get('scope'))
+    .toBe('2026-06-12-international-championship-new-orleans');
+  expect(new URL(page.url()).searchParams.has('tour')).toBe(false);
+});
+
 test('archetype matchups show ranges for rows and the card lens', async ({ page }) => {
   await gotoClean(page, '/archetypes/Dragapult?tab=matchups');
   await expect(page.locator('.mu-gauge[title^="95% interval"]').first()).toBeVisible();
 
   await page.getByText('Compare with a specific card').click();
-  await page.getByRole('button', { name: /Shaymin/ }).click();
+  // Shaymin is not one of the suggested chips, so reach it through the search.
+  await page.getByRole('searchbox', { name: 'Search all cards' }).fill('Shaymin');
+  await page.locator('.r2-lens .fb-b-popover .item', { hasText: 'Shaymin' }).first().click();
   await expect(page.locator('.r2-lens-hint')).toContainText('95% interval');
 });
 
@@ -637,6 +665,9 @@ test.describe('theme', () => {
     // showing a dark-mode user a white page first.
     await page.addInitScript(() => localStorage.setItem('cm:mode', 'dark'));
     await page.goto('/tools');
+    // Let the route chunk land first: aborting it mid-load fires the preload
+    // recovery, whose own reload races this one and detaches the frame.
+    await expect(page.getByRole('heading', { level: 1, name: 'Tools' })).toBeVisible();
     await page.route('**/*.js', route => route.abort());
     await page.reload({ waitUntil: 'commit' });
     await expect(page.locator('body')).toHaveAttribute('data-mode', 'dark');

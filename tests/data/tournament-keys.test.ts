@@ -17,6 +17,8 @@ import {
   ONLINE_META_LABEL,
   ONLINE_META_NAME,
   prettyTournamentName,
+  resolveScopeSlug,
+  scopeSlug,
   tournamentDate
 } from '../../shared/data/tournamentKeys.ts';
 
@@ -137,4 +139,25 @@ test('the online key is the R2 folder name verbatim, and the label is not', () =
   // The key doubles as a fetch path; swapping in the display label would 404.
   assert.equal(ONLINE_META_NAME, 'Online - Last 14 Days');
   assert.notEqual(ONLINE_META_LABEL, ONLINE_META_NAME);
+});
+
+test('scope slugs round trip through a published list', () => {
+  const keys = [ONLINE_META_NAME, LA, NAIC, LIMA, WORLDS];
+  for (const key of keys) {
+    assert.equal(resolveScopeSlug(scopeSlug(key), keys), key);
+  }
+});
+
+test('the online scope has a short stable slug', () => {
+  assert.equal(scopeSlug(ONLINE_META_NAME), 'online');
+});
+
+test('scope slugs fold punctuation and diacritics', () => {
+  const key = '2026-09-12, São Paulo Regional: Masters & Juniors!';
+  assert.equal(scopeSlug(key), '2026-09-12-sao-paulo-regional-masters-juniors');
+});
+
+test('an unknown or unpublished scope slug does not resolve', () => {
+  assert.equal(resolveScopeSlug('2026-01-01-unknown', [ONLINE_META_NAME, LA]), null);
+  assert.equal(resolveScopeSlug(scopeSlug(LA), [ONLINE_META_NAME]), null);
 });

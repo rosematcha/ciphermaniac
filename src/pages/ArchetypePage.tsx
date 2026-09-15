@@ -67,19 +67,12 @@ const TECH_THRESHOLD = 30;
 export function ArchetypePage() {
   const params = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { tournament, setTournament } = useTournament();
+  const { tournament } = useTournament();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // A shared link carries the tournament as `tour`. Adopt it *before* the report
-  // resource first reads tournament(), so data loads in the right scope, then
-  // strip it on mount so it can't override a later manual switch on reload.
-  const sharedTour = typeof searchParams.tour === 'string' ? searchParams.tour.trim() : '';
-  if (sharedTour && sharedTour !== tournament()) {
-    setTournament(sharedTour);
-  }
   onMount(() => {
-    if (searchParams.tour || searchParams.tab) {
-      setSearchParams({ tour: undefined, tab: undefined }, { replace: true });
+    if (searchParams.tab) {
+      setSearchParams({ tab: undefined }, { replace: true });
     }
   });
 

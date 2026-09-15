@@ -28,6 +28,29 @@ export const ONLINE_META_LABEL = 'Online ladder · last 14 days';
 
 const ONLINE = ONLINE_META_NAME;
 
+function asciiFold(value: string): string {
+  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/** Convert a published tournament key into its readable URL representation. */
+export function scopeSlug(key: string): string {
+  if (key === ONLINE) {
+    return 'online';
+  }
+  return asciiFold(key)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/** Resolve a URL scope against the currently-published tournament keys. */
+export function resolveScopeSlug(slug: string, keys: readonly string[]): string | null {
+  if (slug === 'online') {
+    return keys.includes(ONLINE) ? ONLINE : null;
+  }
+  return keys.find(key => scopeSlug(key) === slug) ?? null;
+}
+
 /**
  * Build a local-midnight Date, rejecting components that are out of range.
  *

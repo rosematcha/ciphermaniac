@@ -125,7 +125,7 @@ export function TournamentsIndexPage() {
                   <button
                     class='tournament-row tournament-row-clickable'
                     classList={{ active: t === tournament() }}
-                    onClick={() => setTournament(t)}
+                    onClick={() => setTournament(t, { history: 'push' })}
                     title={`Switch active tournament to: ${t}`}
                   >
                     <span class='date'>{dateFromKey(t)}</span>
