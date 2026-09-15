@@ -13,7 +13,6 @@
  */
 import { fetchArchetypeMatchupsOnline, fetchMatchupProfiles, type MatchupProfile, normalizeArchetypeKey } from './data';
 import { type MatchupRowCore, pointsWinRate, rowsFromMajorsProfile, rowsFromOnlineMatchups } from './matchups';
-export { WR_MIN_GAMES, WR_MUTE_GAMES } from './confidence';
 
 /** Prefer the quality-weighted majors profile, falling back to the unweighted `all`. */
 function pickMajorsProfile(profiles: Awaited<ReturnType<typeof fetchMatchupProfiles>>): MatchupProfile | undefined {
