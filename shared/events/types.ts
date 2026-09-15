@@ -138,3 +138,18 @@ export function locatorCellPath(generation: string, cell: string): string {
 export function locatorPlacesPath(generation: string): string {
   return `${LOCATOR_ROOT}/${generation}/places.json`;
 }
+
+/**
+ * The visitor's approximate location, from Cloudflare's IP geolocation.
+ * City-level at best; `/api/locate` answers `{ location: null }` when the
+ * edge has none.
+ */
+export interface ApproximateLocation {
+  lat: number;
+  lon: number;
+  city: string | null;
+  region: string | null;
+  /** Region code where the edge has one, e.g. `TX`. */
+  regionCode: string | null;
+  cc: string | null;
+}
