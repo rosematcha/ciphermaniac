@@ -1,5 +1,6 @@
 import { A, useLocation } from '@solidjs/router';
 import { For, Show } from 'solid-js';
+import { GlobalSearch } from './GlobalSearch';
 import { TournamentSelector } from './TournamentSelector';
 import { prefetchRoute } from '../lib/prefetch';
 
@@ -76,6 +77,7 @@ export function TopNav() {
         </For>
       </nav>
       <div class='topnav-actions'>
+        <GlobalSearch />
         <TournamentSelector />
       </div>
     </header>
