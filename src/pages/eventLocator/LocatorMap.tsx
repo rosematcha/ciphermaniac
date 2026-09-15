@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, untrack } from 'solid-js';
 import type { LatLon } from '../../lib/events/geo';
 import type { VenueMarker } from '../../lib/events/filter';
 import { titleCase } from '../../lib/events/format';
@@ -11,6 +11,9 @@ import {
   panBy,
   type Point,
   type Size,
+  stepZoom,
+  tileLevel,
+  type TilePlacement,
   toScreen,
   visibleTiles,
   zoomAround
@@ -24,6 +27,83 @@ import { attachGestures } from './mapGestures';
  */
 function tileUrl(z: number, x: number, y: number): string {
   return `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+}
+
+interface UnderLayer {
+  tiles: () => TilePlacement[];
+  loaded: (key: string) => void;
+}
+
+/**
+ * The tile level being left, kept until the current level's tiles are all
+ * loaded. Loaded keys are remembered, so returning to a level shows it at once.
+ */
+function useUnderLayer(view: () => MapView, size: () => Size, tiles: () => TilePlacement[]): UnderLayer {
+  const [loadedKeys, setLoadedKeys] = createSignal(new Set<string>(), { equals: false });
+  const [level, setLevel] = createSignal<number | null>(null);
+  const allLoaded = (placed: TilePlacement[]) => placed.every(tile => loadedKeys().has(tile.key));
+  const ready = createMemo(() => allLoaded(tiles()));
+
+  createEffect(
+    on(
+      () => tileLevel(view().zoom),
+      (z, previous) => {
+        // A level that never finished loading is not worth keeping; the one under it stays.
+        if (previous === undefined || previous === z) {
+          return;
+        }
+        const wasShown = untrack(() => allLoaded(visibleTiles(view(), size(), previous)));
+        if (wasShown || level() === null) {
+          setLevel(previous);
+        }
+      }
+    )
+  );
+  createEffect(() => {
+    if (level() !== null && ready() && tiles().length > 0) {
+      setLevel(null);
+    }
+  });
+
+  const underTiles = createMemo(() => {
+    const z = level();
+    return z === null || z === tileLevel(view().zoom) ? [] : visibleTiles(view(), size(), z);
+  });
+  return { tiles: underTiles, loaded: key => setLoadedKeys(keys => keys.add(key)) };
+}
+
+interface TileLayerProps {
+  tiles: TilePlacement[];
+  onLoad: (key: string) => void;
+}
+
+/** Tile images keyed by address, so a pan moves existing images instead of reloading them. */
+function TileLayer(props: TileLayerProps) {
+  const byKey = createMemo(() => new Map(props.tiles.map(tile => [tile.key, tile])));
+  return (
+    <For each={props.tiles.map(tile => tile.key)}>
+      {key => (
+        <Show when={byKey().get(key)}>
+          {tile => (
+            <img
+              class='lm-tile'
+              src={tileUrl(tile().z, tile().x, tile().y)}
+              alt=''
+              draggable={false}
+              decoding='async'
+              onLoad={() => props.onLoad(key)}
+              onError={() => props.onLoad(key)}
+              style={{
+                transform: `translate(${tile().left}px, ${tile().top}px)`,
+                width: `${tile().size}px`,
+                height: `${tile().size}px`
+              }}
+            />
+          )}
+        </Show>
+      )}
+    </For>
+  );
 }
 
 const WORLD_VIEW: MapView = { center: { lat: 25, lon: 0 }, zoom: 2 };
@@ -51,9 +131,8 @@ export function LocatorMap(props: LocatorMapProps) {
   const [view, setView] = createSignal<MapView>(WORLD_VIEW);
 
   const tiles = createMemo(() => (size().width > 0 ? visibleTiles(view(), size()) : []));
-  // Keyed by tile address, so a pan moves existing images instead of reloading them.
-  const tileKeys = createMemo(() => tiles().map(tile => tile.key));
-  const tileByKey = createMemo(() => new Map(tiles().map(tile => [tile.key, tile])));
+  // eslint-disable-next-line solid/reactivity -- the memo is read inside the hook's own tracked scopes
+  const under = useUnderLayer(view, size, tiles);
   const screen = (point: LatLon) => toScreen(point, view(), size());
   const ringPx = () => (props.center ? props.radiusKm / kmPerPixel(props.center.lat, view().zoom) : 0);
 
@@ -92,9 +171,10 @@ export function LocatorMap(props: LocatorMapProps) {
     })
   );
 
-  const zoomBy = (step: number) => {
+  const zoomBy = (step: 1 | -1) => {
     const current = view();
-    setView(zoomAround(current, size(), { x: size().width / 2, y: size().height / 2 }, current.zoom + step));
+    const centre = { x: size().width / 2, y: size().height / 2 };
+    setView(zoomAround(current, size(), centre, stepZoom(current.zoom, step)));
   };
 
   const KEY_ACTIONS: Record<string, () => void> = {
@@ -126,26 +206,10 @@ export function LocatorMap(props: LocatorMapProps) {
       onKeyDown={onKeyDown}
     >
       <div class='lm-tiles' aria-hidden='true'>
-        <For each={tileKeys()}>
-          {key => (
-            <Show when={tileByKey().get(key)}>
-              {tile => (
-                <img
-                  class='lm-tile'
-                  src={tileUrl(tile().z, tile().x, tile().y)}
-                  alt=''
-                  draggable={false}
-                  decoding='async'
-                  style={{
-                    transform: `translate(${tile().left}px, ${tile().top}px)`,
-                    width: `${tile().size}px`,
-                    height: `${tile().size}px`
-                  }}
-                />
-              )}
-            </Show>
-          )}
-        </For>
+        {/* The level the map is leaving stays underneath, rescaled, until the new
+            level has fully loaded: a zoom then resolves in place instead of blanking. */}
+        <TileLayer tiles={under.tiles()} onLoad={() => {}} />
+        <TileLayer tiles={tiles()} onLoad={under.loaded} />
       </div>
       {/* Markers are a pointer shortcut. The list beside the map holds every store and
           event with the same actions, and is the keyboard and screen-reader path: hundreds

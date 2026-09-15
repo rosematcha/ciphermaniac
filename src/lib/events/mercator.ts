@@ -7,8 +7,10 @@
  * tiles cover the viewport, fitting a circle into view, zooming around a
  * point — so the component is left with events and DOM.
  *
- * Zoom is continuous. Tiles are drawn at the nearest whole zoom and scaled by
- * the remainder, which is what makes wheel and pinch zoom smooth.
+ * Zoom is continuous. Tiles are drawn at the whole zoom at or below it and
+ * scaled up by the remainder, which is what makes pinch zoom smooth. Only
+ * ever scaling up means the level changes once per whole zoom, not at every
+ * half, so the map swaps its tiles as rarely as it can.
  * @module lib/events/mercator
  */
 
@@ -158,14 +160,24 @@ export function fitCircle(center: LatLon, radiusKm: number, size: Size, insets: 
   return { center: unproject({ x: p.x - offset.x, y: p.y - offset.y }, zoom), zoom };
 }
 
+/** The next whole zoom in a direction: a fractional zoom steps to its neighbour, a whole one moves a full level. */
+export function stepZoom(zoom: number, step: 1 | -1): number {
+  return clampZoom(step > 0 ? Math.floor(zoom) + 1 : Math.ceil(zoom) - 1);
+}
+
+/** The whole zoom whose tiles are drawn for a (fractional) zoom. */
+export function tileLevel(zoom: number): number {
+  return Math.floor(clampZoom(zoom));
+}
+
 /**
  * Tiles covering the viewport, positioned in screen pixels.
  * @param view - Current centre and (fractional) zoom
  * @param size - Viewport size in CSS pixels
+ * @param z - Tile level to draw; defaults to the level for the view's zoom
  * @returns One placement per tile, columns wrapped around the antimeridian
  */
-export function visibleTiles(view: MapView, size: Size): TilePlacement[] {
-  const z = Math.round(clampZoom(view.zoom));
+export function visibleTiles(view: MapView, size: Size, z = tileLevel(view.zoom)): TilePlacement[] {
   const scale = 2 ** (view.zoom - z);
   const count = 2 ** z;
   const c = project(view.center, z);

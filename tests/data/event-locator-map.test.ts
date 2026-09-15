@@ -15,6 +15,8 @@ import {
   nearestWithin,
   panBy,
   project,
+  stepZoom,
+  tileLevel,
   toScreen,
   unproject,
   visibleTiles,
@@ -135,6 +137,41 @@ test('tiles cover the whole viewport at a fractional zoom', () => {
   ] as const) {
     assert.ok(covered(x, y), `(${x}, ${y}) uncovered`);
   }
+});
+
+test('tiles only ever scale up: the level changes at whole zooms, not halves', () => {
+  assert.equal(tileLevel(9.4), 9);
+  assert.equal(tileLevel(9.6), 9);
+  assert.equal(tileLevel(9.99), 9);
+  assert.equal(tileLevel(10), 10);
+  assert.equal(tileLevel(30), 18, 'clamped to the deepest level');
+  const tiles = visibleTiles({ center: AUSTIN, zoom: 9.9 }, SIZE);
+  assert.ok(tiles.every(t => t.z === 9));
+  near(tiles[0]?.size ?? 0, 256 * 2 ** 0.9, 1e-9, 'scaled up, never down');
+});
+
+test('a zoom step lands on the adjacent whole level', () => {
+  assert.equal(stepZoom(8.6, 1), 9);
+  assert.equal(stepZoom(8.6, -1), 8);
+  assert.equal(stepZoom(9, 1), 10);
+  assert.equal(stepZoom(9, -1), 8);
+  assert.equal(stepZoom(18, 1), 18);
+  assert.equal(stepZoom(2, -1), 2);
+});
+
+test('a departing level can be laid out at the current view', () => {
+  const view = { center: AUSTIN, zoom: 11.2 };
+  const under = visibleTiles(view, SIZE, 10);
+  assert.ok(under.length > 0);
+  assert.ok(under.every(t => t.z === 10));
+  near(under[0]?.size ?? 0, 256 * 2 ** 1.2, 1e-9, 'old tiles scaled to the new zoom');
+  const centreUnder = under.find(t => t.left <= 250 && t.left + t.size > 250 && t.top <= 350 && t.top + t.size > 350);
+  const centreNow = visibleTiles(view, SIZE).find(
+    t => t.left <= 250 && t.left + t.size > 250 && t.top <= 350 && t.top + t.size > 350
+  );
+  assert.ok(centreUnder && centreNow, 'both levels cover the centre');
+  assert.equal(Math.floor(centreNow.x / 2), centreUnder.x, 'the same ground is under the centre');
+  assert.equal(Math.floor(centreNow.y / 2), centreUnder.y);
 });
 
 test('tile columns wrap around the world and rows stay on it', () => {

@@ -2,15 +2,17 @@
  * Pointer, wheel, and double-click handling for the locator map.
  *
  * One pointer drags, two pinch (zooming around their midpoint while the
- * midpoint also pans), the wheel zooms around the cursor, and a double click
- * zooms in a whole step. A double click only zooms when the
+ * midpoint also pans), the wheel zooms around the cursor a whole level at a
+ * time, and a double click zooms in a whole step. Wheel zoom steps rather
+ * than slides so the tiles settle at a crisp level after each notch instead
+ * of being swapped and rescaled on every event. A double click only zooms when the
  * press before it stayed put. The context menu is suppressed, because on
  * Android a finger that rests before dragging would otherwise open it and
  * cancel the drag.
  * @module pages/eventLocator/mapGestures
  */
 
-import { type MapView, panBy, type Point, type Size, zoomAround } from '../../lib/events/mercator';
+import { type MapView, panBy, type Point, type Size, stepZoom, zoomAround } from '../../lib/events/mercator';
 
 export interface GestureTarget {
   view: () => MapView;
@@ -21,7 +23,11 @@ export interface GestureTarget {
 }
 
 const CLICK_SLOP_PX = 5;
-const WHEEL_PX_PER_ZOOM = 300;
+/** Wheel travel that zooms one level. A mouse notch is 100px in Chromium, 3 lines in Firefox. */
+const WHEEL_PX_PER_STEP = 60;
+const WHEEL_PX_PER_LINE = 20;
+/** A pause this long between wheel events starts a fresh step. */
+const WHEEL_REST_MS = 200;
 
 interface Press {
   x: number;
@@ -84,6 +90,29 @@ function pinchStep(
 function localPoint(el: HTMLElement, e: { clientX: number; clientY: number }): Point {
   const box = el.getBoundingClientRect();
   return { x: e.clientX - box.left, y: e.clientY - box.top };
+}
+
+/** A wheel handler that zooms one whole level per step of travel, around the cursor. */
+function wheelZoom(target: GestureTarget, local: (e: WheelEvent) => Point): (e: WheelEvent) => void {
+  let travel = 0;
+  let at = 0;
+  return e => {
+    e.preventDefault();
+    const delta = e.deltaMode === 1 ? e.deltaY * WHEEL_PX_PER_LINE : e.deltaY;
+    // A pause or a change of direction discards what was accumulated.
+    if (e.timeStamp - at > WHEEL_REST_MS || Math.sign(delta) !== Math.sign(travel)) {
+      travel = 0;
+    }
+    at = e.timeStamp;
+    travel += delta;
+    if (Math.abs(travel) < WHEEL_PX_PER_STEP) {
+      return;
+    }
+    const step = travel < 0 ? 1 : -1;
+    travel = 0;
+    const view = target.view();
+    target.setView(zoomAround(view, target.size(), local(e), stepZoom(view.zoom, step)));
+  };
 }
 
 /**
@@ -165,20 +194,14 @@ export function attachGestures(el: HTMLElement, target: GestureTarget): () => vo
     }
   };
 
-  const onWheel = (e: WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-    const view = target.view();
-    const step = Math.max(-1, Math.min(1, delta / WHEEL_PX_PER_ZOOM));
-    target.setView(zoomAround(view, target.size(), local(e), view.zoom - step));
-  };
+  const onWheel = wheelZoom(target, local);
 
   const onDouble = (e: MouseEvent) => {
     if (lastMoved || isControl(e.target)) {
       return;
     }
     const view = target.view();
-    target.setView(zoomAround(view, target.size(), local(e), Math.floor(view.zoom) + 1));
+    target.setView(zoomAround(view, target.size(), local(e), stepZoom(view.zoom, 1)));
   };
 
   return listen(el, [
