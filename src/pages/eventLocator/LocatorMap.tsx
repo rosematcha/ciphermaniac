@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, untrack } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
 import type { LatLon } from '../../lib/events/geo';
 import type { VenueMarker } from '../../lib/events/filter';
 import { titleCase } from '../../lib/events/format';
@@ -29,47 +29,41 @@ function tileUrl(z: number, x: number, y: number): string {
   return `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
 }
 
-interface UnderLayer {
+interface TileStack {
+  /** The level being left underneath the current one, keyed by address. */
   tiles: () => TilePlacement[];
   loaded: (key: string) => void;
 }
 
 /**
- * The tile level being left, kept until the current level's tiles are all
- * loaded. Loaded keys are remembered, so returning to a level shows it at once.
+ * The current level's tiles with the level being left kept underneath until
+ * every new tile has loaded. Both levels live in one keyed list, so the old
+ * images stay in the DOM through the swap rather than being recreated. Only
+ * old tiles that had loaded are kept: nothing is fetched for a level on its
+ * way out. Loaded keys are remembered, so returning to a level shows it at once.
  */
-function useUnderLayer(view: () => MapView, size: () => Size, tiles: () => TilePlacement[]): UnderLayer {
+function useTileStack(view: () => MapView, size: () => Size, tiles: () => TilePlacement[]): TileStack {
   const [loadedKeys, setLoadedKeys] = createSignal(new Set<string>(), { equals: false });
-  const [level, setLevel] = createSignal<number | null>(null);
-  const allLoaded = (placed: TilePlacement[]) => placed.every(tile => loadedKeys().has(tile.key));
-  const ready = createMemo(() => allLoaded(tiles()));
+  const shown = (z: number) => visibleTiles(view(), size(), z).filter(tile => loadedKeys().has(tile.key));
 
-  createEffect(
-    on(
-      () => tileLevel(view().zoom),
-      (z, previous) => {
-        // A level that never finished loading is not worth keeping; the one under it stays.
-        if (previous === undefined || previous === z) {
-          return;
-        }
-        const wasShown = untrack(() => allLoaded(visibleTiles(view(), size(), previous)));
-        if (wasShown || level() === null) {
-          setLevel(previous);
-        }
-      }
-    )
-  );
-  createEffect(() => {
-    if (level() !== null && ready() && tiles().length > 0) {
-      setLevel(null);
+  // One memo decides the level and what is kept underneath in the same pass, so
+  // the old images are never dropped for a tick and rebuilt: an effect would
+  // run after the list had already re-rendered without them.
+  const stacked = createMemo<{ level: number; under: number | null; tiles: TilePlacement[] }>(previous => {
+    const level = tileLevel(view().zoom);
+    const current = tiles();
+    let under = previous?.under ?? null;
+    // A level that never showed anything is not worth keeping; the one under it stays.
+    if (previous && previous.level !== level && shown(previous.level).length > 0) {
+      under = previous.level;
     }
+    if (under === level || (current.length > 0 && current.every(tile => loadedKeys().has(tile.key)))) {
+      under = null;
+    }
+    return { level, under, tiles: [...(under === null ? [] : shown(under)), ...current] };
   });
 
-  const underTiles = createMemo(() => {
-    const z = level();
-    return z === null || z === tileLevel(view().zoom) ? [] : visibleTiles(view(), size(), z);
-  });
-  return { tiles: underTiles, loaded: key => setLoadedKeys(keys => keys.add(key)) };
+  return { tiles: () => stacked().tiles, loaded: key => setLoadedKeys(keys => keys.add(key)) };
 }
 
 interface TileLayerProps {
@@ -77,7 +71,7 @@ interface TileLayerProps {
   onLoad: (key: string) => void;
 }
 
-/** Tile images keyed by address, so a pan moves existing images instead of reloading them. */
+/** Tile images keyed by address, so a pan or a level change moves existing images instead of reloading them. */
 function TileLayer(props: TileLayerProps) {
   const byKey = createMemo(() => new Map(props.tiles.map(tile => [tile.key, tile])));
   return (
@@ -132,7 +126,7 @@ export function LocatorMap(props: LocatorMapProps) {
 
   const tiles = createMemo(() => (size().width > 0 ? visibleTiles(view(), size()) : []));
   // eslint-disable-next-line solid/reactivity -- the memo is read inside the hook's own tracked scopes
-  const under = useUnderLayer(view, size, tiles);
+  const stack = useTileStack(view, size, tiles);
   const screen = (point: LatLon) => toScreen(point, view(), size());
   const ringPx = () => (props.center ? props.radiusKm / kmPerPixel(props.center.lat, view().zoom) : 0);
 
@@ -208,8 +202,7 @@ export function LocatorMap(props: LocatorMapProps) {
       <div class='lm-tiles' aria-hidden='true'>
         {/* The level the map is leaving stays underneath, rescaled, until the new
             level has fully loaded: a zoom then resolves in place instead of blanking. */}
-        <TileLayer tiles={under.tiles()} onLoad={() => {}} />
-        <TileLayer tiles={tiles()} onLoad={under.loaded} />
+        <TileLayer tiles={stack.tiles()} onLoad={stack.loaded} />
       </div>
       {/* Markers are a pointer shortcut. The list beside the map holds every store and
           event with the same actions, and is the keyboard and screen-reader path: hundreds
