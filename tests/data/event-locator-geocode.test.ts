@@ -8,8 +8,13 @@ import assert from 'node:assert/strict';
 import test, { afterEach, mock } from 'node:test';
 
 import { geocode, geocodeUrl, parseGeocode, reverseGeocode } from '../../src/lib/events/geocode.ts';
-import { fetchLocatorEvents, fetchLocatorIndex } from '../../src/lib/data/eventLocator.ts';
-import type { LocatorIndex } from '../../shared/events/types.ts';
+import {
+  fetchLocalEvents,
+  fetchLocalsIndex,
+  fetchLocatorEvents,
+  fetchLocatorIndex
+} from '../../src/lib/data/eventLocator.ts';
+import type { LocalsIndex, LocatorIndex } from '../../shared/events/types.ts';
 
 afterEach(() => {
   mock.restoreAll();
@@ -162,6 +167,53 @@ test('event cells are fetched only when the index lists them, and a vanished cel
   );
   await assert.rejects(fetchLocatorEvents(index({ '10_10': 1, '10_15': 1 }), ['10_15']));
   assert.ok(requested.includes('/events/v1/20260915T100000Z/cells/10_10.json'));
+  assert.ok(!requested.some(path => path.includes('10_20')), 'unlisted cells are never requested');
+});
+
+test('locals cells are optional: a missing one is an empty area, and no index means no locals', async () => {
+  const requested: string[] = [];
+  const cell = {
+    version: 1,
+    key: '10_10',
+    venues: [
+      {
+        id: '42',
+        shop: 'TEST GAMES',
+        address: '',
+        city: 'Austin',
+        region: 'Texas',
+        cc: 'US',
+        lat: 12,
+        lon: 12,
+        slots: [{ weekday: 3, time: '19:30', name: 'Weekly local' }]
+      }
+    ]
+  };
+  mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
+    const path = new URL(String(input)).pathname;
+    requested.push(path);
+    if (path === '/events/locals/v1/cells/10_10.json') {
+      return new Response(JSON.stringify(cell));
+    }
+    return new Response('missing', { status: 404 });
+  });
+  assert.equal(await fetchLocalsIndex(), null);
+  const index: LocalsIndex = {
+    version: 1,
+    updatedAt: '2026-09-15T10:00:00.000Z',
+    source: 'https://pokedata.ovh/events/',
+    cellDegrees: 5,
+    horizonDays: 21,
+    cells: { '10_10': { slots: 1, hash: 'a' }, '10_15': { slots: 1, hash: 'b' } },
+    total: 2,
+    venues: 2
+  };
+  const events = await fetchLocalEvents(index, ['10_10', '10_15', '10_20'], '2026-09-15');
+  assert.deepEqual(
+    events.map(e => e.date),
+    ['2026-09-16', '2026-09-23', '2026-09-30']
+  );
+  assert.ok(requested.includes('/events/locals/v1/cells/10_15.json'), 'a listed but missing cell is tolerated');
   assert.ok(!requested.some(path => path.includes('10_20')), 'unlisted cells are never requested');
 });
 
