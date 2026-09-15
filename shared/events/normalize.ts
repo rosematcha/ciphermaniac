@@ -27,6 +27,8 @@ const EMAIL = /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/;
 const BARE_DOMAIN = /^[\w-]+(\.[\w-]+)+(\/|$)/;
 const DETAILS_LIMIT = 600;
 const COORDINATE_DIGITS = 5;
+/** Name for a local whose store gave it none. */
+export const LOCAL_FALLBACK_NAME = 'Weekly local';
 
 /** Single-line text: whitespace collapsed, trimmed. Numbers are stringified. */
 function text(value: unknown): string {
@@ -255,7 +257,7 @@ export function normalizeEvent(raw: RawEvent): NormalizeResult {
   if (!id) {
     return skip('id');
   }
-  const name = text(raw.name) || text(raw.Name) || (kind === 'local' ? 'Weekly local' : '');
+  const name = text(raw.name) || text(raw.Name) || (kind === 'local' ? LOCAL_FALLBACK_NAME : '');
   if (!name) {
     return skip('name');
   }

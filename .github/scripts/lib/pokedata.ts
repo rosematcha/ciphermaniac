@@ -56,8 +56,6 @@ export interface PokedataOptions {
   attempts?: number;
   sleep?: (ms: number) => Promise<unknown>;
   log?: (message: string) => void;
-  /** Tests and recovery jobs may pull only sanctioned events. */
-  includeLocals?: boolean;
   /** Clock for the locals horizon. */
   now?: () => Date;
   /** How far ahead locals are pulled, in days. See {@link LOCALS_HORIZON_DAYS}. */
@@ -260,10 +258,5 @@ export async function fetchAllEvents(options: PokedataOptions = {}): Promise<Pok
   if (distinct < first.totalItems * MIN_COMPLETE_SHARE) {
     throw new Error(`Pokedata returned ${distinct} distinct of the ${first.totalItems} events it advertised`);
   }
-  const locals = options.includeLocals === false ? [] : await fetchLocalEvents(options);
-  return {
-    events: [...events, ...locals],
-    totalItems: first.totalItems + locals.length,
-    totalPages: first.totalPages + Math.ceil(locals.length / LOCAL_PAGE_SIZE)
-  };
+  return { events, totalItems: first.totalItems, totalPages: first.totalPages };
 }

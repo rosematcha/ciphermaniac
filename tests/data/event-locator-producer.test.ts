@@ -15,8 +15,8 @@ import {
   parsePage,
   POKEDATA_TABLE_API
 } from '../../.github/scripts/lib/pokedata.ts';
-import { type Publisher, runEventLocator } from '../../.github/scripts/lib/eventLocator.ts';
-import type { LocatorIndex } from '../../shared/events/types.ts';
+import { cellHash, type Publisher, runEventLocator, runLocalsLocator } from '../../.github/scripts/lib/eventLocator.ts';
+import type { LocalsCell, LocalsIndex, LocatorIndex } from '../../shared/events/types.ts';
 import { pageBody, rawEventWithId, rawLocalEvent } from '../__utils__/pokedata.ts';
 
 const PHP_FATAL =
@@ -88,7 +88,6 @@ test('every page is collected in order', async () => {
     3: pageBody([rawEventWithId(5)], 5, 3, 3)
   };
   const pull = await fetchAllEvents({
-    includeLocals: false,
     fetch: async input => respond(pages[Number(String(input).split('/').pop())] ?? ''),
     sleep: noSleep
   });
@@ -100,21 +99,19 @@ test('every page is collected in order', async () => {
   );
 });
 
-test('friendly TCG listings are fetched separately from sanctioned events', async () => {
+test('locals come from the table endpoint, posted as a Friendly TCG query', async () => {
   const requests: { url: string; init?: RequestInit }[] = [];
-  const pull = await fetchAllEvents({
+  const events = await fetchLocalEvents({
     fetch: async (input, init) => {
       requests.push({ url: String(input), init });
-      return String(input) === POKEDATA_TABLE_API
-        ? respond(JSON.stringify([rawLocalEvent()]))
-        : respond(pageBody([rawEventWithId(1)], 1, 1));
+      return respond(JSON.stringify([rawLocalEvent()]));
     },
     sleep: noSleep
   });
-  assert.equal(pull.events.length, 2);
-  const localRequest = requests.find(request => request.url === POKEDATA_TABLE_API);
-  assert.equal(localRequest?.init?.method, 'POST');
-  assert.equal(JSON.parse(String(localRequest?.init?.body)).ftcg, '1');
+  assert.equal(events.length, 1);
+  assert.equal(requests[0]?.url, POKEDATA_TABLE_API);
+  assert.equal(requests[0]?.init?.method, 'POST');
+  assert.equal(JSON.parse(String(requests[0]?.init?.body)).ftcg, '1');
 });
 
 /** Locals records, all on the given date. */
@@ -155,7 +152,6 @@ test('a short locals page ends the pull before the horizon', async () => {
 test('a server that answers every page with page 1 is caught', async () => {
   await assert.rejects(
     fetchAllEvents({
-      includeLocals: false,
       fetch: async () => respond(pageBody([rawEventWithId(1)], 3, 3, 1)),
       sleep: noSleep,
       attempts: 1
@@ -168,7 +164,6 @@ test('repeated records do not count toward completeness', async () => {
   const same = [rawEventWithId(1), rawEventWithId(1)];
   await assert.rejects(
     fetchAllEvents({
-      includeLocals: false,
       fetch: async input => respond(pageBody(same, 4, 2, Number(String(input).split('/').pop()))),
       sleep: noSleep
     }),
@@ -183,7 +178,6 @@ test('a page count that moves mid-pull fails the pull', async () => {
   };
   await assert.rejects(
     fetchAllEvents({
-      includeLocals: false,
       fetch: async input => respond(pages[Number(String(input).split('/').pop())] ?? ''),
       sleep: noSleep
     }),
@@ -194,7 +188,6 @@ test('a page count that moves mid-pull fails the pull', async () => {
 test('a pull well short of the advertised total is refused', async () => {
   await assert.rejects(
     fetchAllEvents({
-      includeLocals: false,
       fetch: async () => respond(pageBody([rawEventWithId(1)], 300, 1)),
       sleep: noSleep
     }),
@@ -202,12 +195,13 @@ test('a pull well short of the advertised total is refused', async () => {
   );
 });
 
-function memoryPublisher(existing: LocatorIndex | null = null) {
+function memoryPublisher(existing: LocatorIndex | null = null, existingLocals: LocalsIndex | null = null) {
   const writes: string[] = [];
   const removes: string[] = [];
   const store = new Map<string, unknown>();
   const publisher: Publisher = {
-    readIndex: async () => existing,
+    read: async <T>(key: string) =>
+      (key === 'events/v1/index.json' ? existing : key === 'events/locals/v1/index.json' ? existingLocals : null) as T,
     write: async (key, value) => {
       writes.push(key);
       store.set(key, value);
@@ -293,4 +287,81 @@ test('allow_shrink publishes a real drop but never an empty generation', async (
     /no events/
   );
   assert.deepEqual(emptied.writes, []);
+});
+
+/** The same weekly slot on three weeks, as Pokedata lists it. */
+function weeklyLocal(league: string, overrides: Record<string, unknown> = {}) {
+  return ['2026-09-16', '2026-09-23', '2026-09-30'].map((date, i) =>
+    rawLocalEvent({
+      league,
+      date,
+      guid: `${league.padStart(8, '0')}-0000-4000-8000-${String(i).padStart(12, '0')}`,
+      ...overrides
+    })
+  );
+}
+
+// eslint-disable-next-line camelcase -- Pokedata's field name
+const LONDON = { latitude: '51.5074', longitude: '-0.1278', country_code: 'GB' };
+
+async function localsRun(raw: unknown[], existing: LocalsIndex | null, allowShrink = false) {
+  const memory = memoryPublisher(null, existing);
+  const result = await runLocalsLocator({
+    fetchLocals: async () => raw,
+    publisher: memory.publisher,
+    now: NOW,
+    allowShrink
+  });
+  return { ...memory, result };
+}
+
+test('the first locals run writes every cell, then the index', async () => {
+  const { writes, removes, store, result } = await localsRun([...weeklyLocal('42'), ...weeklyLocal('7', LONDON)], null);
+  assert.deepEqual(writes, [
+    'events/locals/v1/cells/30_-100.json',
+    'events/locals/v1/cells/50_-5.json',
+    'events/locals/v1/index.json'
+  ]);
+  assert.deepEqual(removes, []);
+  const index = store.get('events/locals/v1/index.json') as LocalsIndex;
+  assert.equal(index.total, 2);
+  assert.equal(index.venues, 2);
+  assert.equal(index.horizonDays, 21);
+  assert.equal(index.cells['30_-100']?.hash, cellHash(store.get('events/locals/v1/cells/30_-100.json') as LocalsCell));
+  assert.deepEqual(result.written, ['30_-100', '50_-5']);
+});
+
+test('a run whose locals did not change writes nothing', async () => {
+  const raw = [...weeklyLocal('42'), ...weeklyLocal('7', LONDON)];
+  const first = await localsRun(raw, null);
+  const previous = first.store.get('events/locals/v1/index.json') as LocalsIndex;
+  const second = await localsRun(raw, { ...previous, updatedAt: '2026-09-14T10:00:00.000Z' });
+  assert.deepEqual(second.writes, []);
+  assert.deepEqual(second.removes, []);
+  assert.equal(second.result.unchanged, 2);
+});
+
+test('only the cells that changed are rewritten; a cell with no locals left is deleted after the index', async () => {
+  const first = await localsRun([...weeklyLocal('42'), ...weeklyLocal('7', LONDON)], null);
+  const previous = first.store.get('events/locals/v1/index.json') as LocalsIndex;
+  const second = await localsRun(
+    [...weeklyLocal('42'), ...weeklyLocal('43', { when: '2026-09-16 20:00:00' })],
+    previous
+  );
+  assert.deepEqual(second.writes, ['events/locals/v1/cells/30_-100.json', 'events/locals/v1/index.json']);
+  assert.deepEqual(second.removes, ['events/locals/v1/cells/50_-5.json']);
+  assert.deepEqual(second.result.removed, ['50_-5']);
+  assert.equal(second.result.unchanged, 0);
+});
+
+test('a collapsed locals listing is refused on its own guard, and nothing is written', async () => {
+  const first = await localsRun(Array.from({ length: 10 }, (_, i) => weeklyLocal(String(i + 1))).flat(), null);
+  const previous = first.store.get('events/locals/v1/index.json') as LocalsIndex;
+  await assert.rejects(
+    localsRun(weeklyLocal('1'), previous),
+    /Refusing to publish locals: .*1 events, under 60% of the 10/
+  );
+  const shrunk = await localsRun(weeklyLocal('1'), previous, true);
+  assert.equal(shrunk.writes.at(-1), 'events/locals/v1/index.json');
+  await assert.rejects(localsRun([], previous, true), /no events/);
 });

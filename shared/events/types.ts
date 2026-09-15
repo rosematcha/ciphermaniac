@@ -128,6 +128,58 @@ export interface LocatorPlaces {
   venues: LocatorVenue[];
 }
 
+/**
+ * One recurring slot at a store: a weekday and a start time. Weekly unless
+ * `dates` is present, in which case those are the only dates listed.
+ */
+export interface LocalSlot {
+  /** 0 is Sunday, as `Date#getUTCDay`. */
+  weekday: number;
+  /** Venue-local start, `HH:MM`, or `''` when the store listed none. */
+  time: string;
+  name: string;
+  fee?: string;
+  /** Listed dates, `YYYY-MM-DD`, for a slot that does not repeat every week. */
+  dates?: string[];
+}
+
+/** A store with locals. One record per store, however many weeks are listed. */
+export interface LocalVenue {
+  /** Pokedata's league ID: stable across weeks, unlike each occurrence's GUID. */
+  id: string;
+  shop: string;
+  address: string;
+  city: string;
+  region: string;
+  cc: string;
+  lat: number;
+  lon: number;
+  /** Sorted by weekday, then time. */
+  slots: LocalSlot[];
+}
+
+/** The stores with locals in one grid cell. Rewritten only when its content changes. */
+export interface LocalsCell {
+  version: 1;
+  key: string;
+  venues: LocalVenue[];
+}
+
+export interface LocalsIndex {
+  version: 1;
+  /** When any cell last changed. */
+  updatedAt: string;
+  source: string;
+  cellDegrees: number;
+  /** How many days ahead the producer looked; weekly slots are shown that far. */
+  horizonDays: number;
+  /** Cell key to its slot count and content hash. Only cells with locals are listed. */
+  cells: Record<string, { slots: number; hash: string }>;
+  /** Slots across every cell. */
+  total: number;
+  venues: number;
+}
+
 /** R2 key prefix for every locator artifact. */
 export const LOCATOR_ROOT = 'events/v1';
 export const LOCATOR_INDEX_KEY = `${LOCATOR_ROOT}/index.json`;
@@ -138,6 +190,18 @@ export function locatorCellPath(generation: string, cell: string): string {
 
 export function locatorPlacesPath(generation: string): string {
   return `${LOCATOR_ROOT}/${generation}/places.json`;
+}
+
+/**
+ * Locals live apart from the sanctioned listing: they are off by default, so
+ * the default view never downloads them, and their cells sit at stable paths
+ * because each is replaced whole and only when it changes.
+ */
+export const LOCALS_ROOT = 'events/locals/v1';
+export const LOCALS_INDEX_KEY = `${LOCALS_ROOT}/index.json`;
+
+export function localsCellPath(cell: string): string {
+  return `${LOCALS_ROOT}/cells/${cell}.json`;
 }
 
 /**

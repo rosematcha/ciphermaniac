@@ -9,9 +9,14 @@
 # and deletes the run before last. Each run gets its own folder, so a visitor
 # holding an older index never reads a half-replaced listing.
 #
-# Refuses to publish a generation under 60% of the published one (that is an
+# Then publishes locals (weekly store events) apart, as one record per store
+# slot rather than one per week, three weeks ahead:
+#   - events/locals/v1/cells/{cell}.json (only the cells whose content changed)
+#   - events/locals/v1/index.json (only when something changed)
+#
+# Refuses to publish a listing under 60% of the published one (that is an
 # upstream outage, not a quiet week) unless allow_shrink is ticked. Never
-# publishes an empty one.
+# publishes an empty one. Each listing is guarded on its own.
 #
 # Triggers:
 #   - Daily at 10:00 UTC
