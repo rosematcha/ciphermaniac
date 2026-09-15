@@ -126,13 +126,6 @@
     "max-depth:5eafd58058e91a6d399555eff9184f004ad2fe850f55ce5949174624c1440965:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:84e9afb22fa27038b5503e62e0f65884c2e2e6841b8b4a0adab0632f14751c7a:Function 'enrichCardWithType' has a complexity of 23. Maximum allowed is 12."
   ],
-  "shared/data/contracts.ts": [
-    "complexity:479b1db9e2777bf74affffaddb5ced9e1d01fd610915bdda7bd15b9ce928207b:Function 'computeSuccessTags' has a complexity of 18. Maximum allowed is 12.",
-    "complexity:16b3e8e408f119b554f710b2d73c4076fda3f036e56bcd4dcd471ab2e505c439:Function 'validateParticipant' has a complexity of 13. Maximum allowed is 12.",
-    "max-params:2f887ea5dc7ffbaf058f693bcb24ab3962074126ce0fe6b2cae3b8ec301491db:Function 'validateDeck' has too many parameters (5). Maximum allowed is 4.",
-    "max-params:6fffafeebf1d8e40e1df0a3b439d3fa151ce82aa330bc903f0b0d77c4f5d368c:Function 'validateMatch' has too many parameters (5). Maximum allowed is 4.",
-    "max-params:c0a0577cf69223331a756ead4ec224c96ee15da5ca7489e441e706de6dccdd3a:Function 'checkSuccessTagDrift' has too many parameters (5). Maximum allowed is 4."
-  ],
   "shared/data/reports/cardSuccess.ts": [
     "complexity:6f348bdbe6692d709466f99551f817a247df585a4d6ff433428c4d7a13f7759d:Function 'buildCardSuccessIndex' has a complexity of 22. Maximum allowed is 12."
   ],

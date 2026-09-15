@@ -186,6 +186,27 @@ export const SUCCESS_TAG_POLICY: SuccessTagPolicy = {
  * @param policy - Success-tag policy (defaults to {@link SUCCESS_TAG_POLICY})
  * @returns Ordered, de-duplicated success tags
  */
+function placementTags(place: number, field: number, policy: SuccessTagPolicy): string[] {
+  return policy.placementRules
+    .filter(rule => field >= rule.minPlayers && place <= rule.maxPlacing)
+    .map(rule => rule.tag);
+}
+
+function percentTags(place: number, field: number, policy: SuccessTagPolicy): string[] {
+  return policy.percentRules
+    .filter(rule => field >= rule.minPlayers && place <= Math.max(1, Math.ceil(field * rule.fraction)))
+    .map(rule => rule.tag);
+}
+
+function phaseTags(options: { madePhase2?: boolean; madeTopCut?: boolean; appendPhaseTags?: boolean }): string[] {
+  if (!options.appendPhaseTags) {
+    return [];
+  }
+  return [options.madePhase2 ? 'phase2' : null, options.madeTopCut ? 'topcut' : null].filter(
+    (tag): tag is string => tag !== null
+  );
+}
+
 export function computeSuccessTags(
   placement: number | null | undefined,
   fieldSize: number | null | undefined,
@@ -194,37 +215,11 @@ export function computeSuccessTags(
 ): string[] {
   const place = Number.isFinite(placement) ? Number(placement) : null;
   const field = Number.isFinite(fieldSize) ? Number(fieldSize) : null;
-  const tags: string[] = [];
-
-  if (place !== null && field !== null && place > 0 && field > 1) {
-    for (const rule of policy.placementRules) {
-      if (field >= rule.minPlayers && place <= rule.maxPlacing) {
-        tags.push(rule.tag);
-      }
-    }
-    for (const rule of policy.percentRules) {
-      if (field < rule.minPlayers) {
-        continue;
-      }
-      const cutoff = Math.max(1, Math.ceil(field * rule.fraction));
-      if (place <= cutoff) {
-        tags.push(rule.tag);
-      }
-    }
-  }
-
-  if (options.appendPhaseTags) {
-    // The placement/percent branch never emits phase2/topcut, so these append
-    // unconditionally within the phase-tags branch (no dedupe guard needed).
-    if (options.madePhase2) {
-      tags.push('phase2');
-    }
-    if (options.madeTopCut) {
-      tags.push('topcut');
-    }
-  }
-
-  return tags;
+  const rankingTags =
+    place !== null && field !== null && place > 0 && field > 1
+      ? [...placementTags(place, field, policy), ...percentTags(place, field, policy)]
+      : [];
+  return [...rankingTags, ...phaseTags(options)];
 }
 
 /**
@@ -902,19 +897,20 @@ function checkCategorySubtype(card: Record<string, unknown>, path: string, error
   }
 }
 
-function validateParticipant(participant: unknown, index: number, ids: Set<string>, errors: string[]): void {
-  const path = `participants[${index}]`;
-  if (!isRecord(participant)) {
-    errors.push(`${path}: expected object`);
-    return;
-  }
+function validateParticipantId(
+  participant: Record<string, unknown>,
+  path: string,
+  ids: Set<string>,
+  errors: string[]
+): void {
   if (typeof participant.participantId !== 'string' || participant.participantId.length === 0) {
     errors.push(`${path}.participantId: expected non-empty string`);
   } else {
     pushDuplicate(ids, participant.participantId, path, errors);
   }
-  checkFields(participant, path, PARTICIPANT_SPEC, errors);
+}
 
+function validateParticipantDetails(participant: Record<string, unknown>, path: string, errors: string[]): void {
   if (!isRecord(participant.record)) {
     errors.push(`${path}.record: expected object`);
   } else {
@@ -934,27 +930,40 @@ function validateParticipant(participant: unknown, index: number, ids: Set<strin
       errors
     );
   }
-  // Cross-check: a drop round is only meaningful for a dropped participant, so
-  // it is validated against flags rather than in isolation.
   const { dropRound } = participant;
-  if (dropRound !== null && dropRound !== undefined && isIntegerAtLeast(1)(dropRound)) {
-    if (!isRecord(participant.flags) || participant.flags.dropped !== true) {
-      errors.push(`${path}.dropRound: non-null dropRound requires flags.dropped to be true`);
-    }
+  if (
+    dropRound !== null &&
+    dropRound !== undefined &&
+    isIntegerAtLeast(1)(dropRound) &&
+    (!isRecord(participant.flags) || participant.flags.dropped !== true)
+  ) {
+    errors.push(`${path}.dropRound: non-null dropRound requires flags.dropped to be true`);
   }
+}
+
+function validateParticipant(participant: unknown, index: number, ids: Set<string>, errors: string[]): void {
+  const path = `participants[${index}]`;
+  if (!isRecord(participant)) {
+    errors.push(`${path}: expected object`);
+    return;
+  }
+  validateParticipantId(participant, path, ids, errors);
+  checkFields(participant, path, PARTICIPANT_SPEC, errors);
+  validateParticipantDetails(participant, path, errors);
 }
 
 function validateMeta(meta: Record<string, unknown>, errors: string[]): void {
   checkFields(meta, 'root.meta', META_SPEC, errors);
 }
 
-function validateDeck(
-  deck: unknown,
-  index: number,
-  ids: Set<string>,
-  participantIds: Set<string>,
-  errors: string[]
-): void {
+interface ReferenceValidationContext {
+  ids: Set<string>;
+  participantIds: Set<string>;
+  errors: string[];
+}
+
+function validateDeck(deck: unknown, index: number, context: ReferenceValidationContext): void {
+  const { ids, participantIds, errors } = context;
   const path = `decks[${index}]`;
   if (!isRecord(deck)) {
     errors.push(`${path}: expected object`);
@@ -992,13 +1001,8 @@ function validateDeck(
   }
 }
 
-function validateMatch(
-  match: unknown,
-  index: number,
-  ids: Set<string>,
-  participantIds: Set<string>,
-  errors: string[]
-): void {
+function validateMatch(match: unknown, index: number, context: ReferenceValidationContext): void {
+  const { ids, participantIds, errors } = context;
   const path = `matches[${index}]`;
   if (!isRecord(match)) {
     errors.push(`${path}: expected object`);
@@ -1165,7 +1169,7 @@ function collectDecks(
     return { deckIds, deckById };
   }
   decks.forEach((deck, index) => {
-    validateDeck(deck, index, deckIds, participantIds, errors);
+    validateDeck(deck, index, { ids: deckIds, participantIds, errors });
     if (!isRecord(deck) || typeof deck.deckId !== 'string') {
       return;
     }
@@ -1231,7 +1235,7 @@ function collectMatches(matches: unknown[] | null, participantIds: Set<string>, 
     return;
   }
   const matchIds = new Set<string>();
-  matches.forEach((match, index) => validateMatch(match, index, matchIds, participantIds, errors));
+  matches.forEach((match, index) => validateMatch(match, index, { ids: matchIds, participantIds, errors }));
   checkAscending(
     matches.map(match => (isRecord(match) && typeof match.matchId === 'string' ? match.matchId : undefined)),
     'root.matches',
@@ -1245,13 +1249,15 @@ function collectMatches(matches: unknown[] | null, participantIds: Set<string>, 
  * the artifacts built from them are byte-deterministic. Phase tags append only
  * for Labs events.
  */
-function checkSuccessTagDrift(
-  decks: unknown[] | null,
-  participantById: Map<string, Record<string, unknown>>,
-  playerCount: number | null,
-  appendPhaseTags: boolean,
-  errors: string[]
-): void {
+interface SuccessTagContext {
+  participantById: Map<string, Record<string, unknown>>;
+  playerCount: number | null;
+  appendPhaseTags: boolean;
+  errors: string[];
+}
+
+function checkSuccessTagDrift(decks: unknown[] | null, context: SuccessTagContext): void {
+  const { participantById, playerCount, appendPhaseTags, errors } = context;
   if (!decks) {
     return;
   }
@@ -1315,7 +1321,7 @@ export function validateNormalizedEvent(value: unknown): ValidationResult<Normal
   checkSourceRevisionOrder(value.sourceRevisions, errors);
 
   const playerCount = isRecord(value.meta) && isInteger(value.meta.playerCount) ? value.meta.playerCount : null;
-  checkSuccessTagDrift(decks, participantById, playerCount, kind === 'labs-event', errors);
+  checkSuccessTagDrift(decks, { participantById, playerCount, appendPhaseTags: kind === 'labs-event', errors });
 
   // Structural asymmetry: online windows carry no match data.
   if (kind === 'online-window' && matches && matches.length > 0) {
