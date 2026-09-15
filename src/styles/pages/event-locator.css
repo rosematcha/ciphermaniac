@@ -1,34 +1,22 @@
 /* ============================================================
    Event locator (/events)
-   Desktop: the map is sticky beside the list. Phones: the map sits on
-   top and scrolls up under the header until a strip of it is left, which
-   sticks. That is pure CSS, so it moves on the compositor with the page.
-   The day headers park under the strip (--el-strip).
+   No page heading: the search box names the place, and the line over
+   the list states the result.
+   Desktop: the map is sticky beside the list; the filter bar tops the
+   list and drops every filter in a panel.
+   Phones: a split screen under the header, map above and list below,
+   with a seam between them that states the result and opens the filter
+   sheet. Only the list scrolls.
    ============================================================ */
-
-/* ---------- Toolbar ---------- */
-.el-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
-  align-items: center;
-  margin: var(--space-4) 0;
-}
-.el-count {
-  margin-left: auto;
-  font-size: var(--text-base);
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
 
 /* ---------- Layout ---------- */
 .el-layout {
-  --el-strip: 0px;
+  --el-bar-h: 48px;
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
   gap: 20px;
   align-items: start;
+  margin-top: var(--space-3);
 }
 .el-map-slot {
   position: sticky;
@@ -42,8 +30,7 @@
 }
 .el-map-frame {
   position: relative;
-  /* clip, not hidden: hidden would make the frame a scroll container and stop
-     the search row sticking to the page on phones. */
+  /* clip, not hidden: hidden would make the frame a scroll container. */
   height: calc(100dvh - var(--topnav-h) - 36px);
   min-height: 420px;
   max-height: 780px;
@@ -59,9 +46,59 @@
 .el-results {
   min-width: 0;
 }
-.el-map-expand,
-.el-map-collapse {
+/* The seam and the map's filter button are phone-only; desktop has the filter bar. */
+.el-seam {
   display: none;
+}
+
+/* ---------- Filter bar (desktop): result, scope, and the filters ---------- */
+.el-filterbar {
+  position: sticky;
+  top: var(--topnav-h);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--el-bar-h);
+  padding: 0 6px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+}
+.el-count {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.el-scope {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.el-filters-button {
+  gap: var(--space-2);
+}
+.el-filters-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.el-filters-panel {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  width: 320px;
+  padding: 14px 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
 }
 
 /* ---------- Map ---------- */
@@ -180,7 +217,7 @@ body[data-mode='dark'] .lm-tile {
   border-top-left-radius: var(--radius-sm);
 }
 
-/* ---------- Map overlays: search, locate, radius ---------- */
+/* ---------- Map overlays: search, filters (phones), locate ---------- */
 .el-map-top {
   position: absolute;
   z-index: 5;
@@ -334,9 +371,8 @@ body[data-mode='dark'] .lm-tile {
   font-size: var(--text-base);
   color: var(--muted);
 }
-.el-locate {
+.el-map-button {
   flex: none;
-  margin-left: auto;
   display: grid;
   place-items: center;
   width: var(--control-h);
@@ -347,10 +383,16 @@ body[data-mode='dark'] .lm-tile {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-1);
 }
-.el-locate:hover {
+.el-map-button:hover {
   background: var(--surface-2);
 }
-.el-locate svg {
+.el-locate {
+  margin-left: auto;
+}
+.el-filter-trigger {
+  display: none;
+}
+.el-map-button svg {
   width: 18px;
   height: 18px;
   fill: none;
@@ -366,28 +408,22 @@ body[data-mode='dark'] .lm-tile {
     transform: rotate(360deg);
   }
 }
+
+/* ---------- Radius slider (in the filter panel and sheet) ---------- */
 .el-radius {
-  position: absolute;
-  z-index: 4;
-  left: 10px;
-  bottom: 10px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: 6px var(--space-3);
-  font-size: var(--text-base);
-  color: var(--muted);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
+  gap: var(--space-3);
+  width: 100%;
 }
 .el-radius input {
-  width: 140px;
+  flex: 1;
+  min-width: 0;
   accent-color: var(--accent);
 }
 .el-radius output {
   min-width: 52px;
+  text-align: right;
   color: var(--fg);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -396,7 +432,7 @@ body[data-mode='dark'] .lm-tile {
 /* ---------- List ---------- */
 .el-day-head {
   position: sticky;
-  top: calc(var(--topnav-h) + var(--el-strip));
+  top: calc(var(--topnav-h) + var(--el-bar-h));
   z-index: 2;
   display: flex;
   align-items: baseline;
@@ -407,9 +443,6 @@ body[data-mode='dark'] .lm-tile {
   font-size: var(--text-base);
   font-weight: 600;
   letter-spacing: 0;
-}
-.el-day:first-child .el-day-head {
-  padding-top: 0;
 }
 .el-when {
   color: var(--muted);
@@ -565,63 +598,95 @@ body[data-mode='dark'] .lm-tile {
   color: var(--muted);
 }
 
-/* ---------- Phones and small tablets ---------- */
+/* ---------- Phones and small tablets: split screen ---------- */
 @media (max-width: 900px) {
-  /* svh, not vh or innerHeight: it ignores the address bar and the keyboard,
-     so the map never resizes when either comes or goes. */
-  .el-layout {
-    --el-map-full: 40svh;
-    --el-strip: 116px;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
+  /* The split is the page; nothing under it scrolls (html too: iOS scrolls the root). */
+  html:has(.el-layout),
+  body:has(.el-layout) {
+    overflow: hidden;
   }
-  /* The slot sticks with its top above the header, so the header covers all
-     of the map but the bottom strip. */
+  .el-filterbar,
+  body:has(.el-layout) .site-footer {
+    display: none;
+  }
+  .el-layout {
+    position: fixed;
+    z-index: 1;
+    top: var(--topnav-h);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    margin: 0;
+    background: var(--bg);
+  }
   .el-map-slot {
-    top: calc(var(--topnav-h) + var(--el-strip) - var(--el-map-full));
-    z-index: 5;
-    height: var(--el-map-full);
-    margin-bottom: var(--space-3);
+    position: relative;
+    top: auto;
+    flex: 0 0 45%;
+    min-height: 0;
   }
   .el-map-frame {
     height: 100%;
     min-height: 0;
     max-height: none;
-  }
-  /* The search row rides down the map as it scrolls away, so it stays in the strip. */
-  .el-map-top {
-    position: sticky;
-    top: calc(var(--topnav-h) + 10px);
-    margin: 10px;
+    border: 0;
+    border-radius: 0;
   }
   .el-search {
     flex: 1 1 auto;
   }
-  /* Once this line passes under the header the strip is too short for the
-     controls, and becomes a tap target (useCollapsingMap). */
-  .el-map-collapse {
-    position: absolute;
-    bottom: 190px;
-    left: 0;
-    display: block;
-    width: 1px;
-    height: 1px;
-    pointer-events: none;
+  .el-filter-trigger {
+    display: grid;
   }
-  .el-map-frame.collapsed .el-radius,
-  .el-map-frame.collapsed .el-locate,
-  .el-map-frame.collapsed .lm-zoom {
-    display: none;
+  .el-seam {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--muted);
+    text-align: left;
+    background: var(--bg);
+    border-bottom: 1px solid var(--rule);
   }
-  .el-map-frame.collapsed .el-map-expand {
-    position: absolute;
-    z-index: 3;
-    inset: 0;
-    display: block;
-    background: transparent;
+  .el-seam-count {
+    color: var(--fg);
   }
-  .el-radius {
-    bottom: 26px;
+  .el-results {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0 var(--space-3) var(--space-4);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .el-day-head {
+    top: 0;
+  }
+}
+
+/* Phones on their side: too short to stack, so the map takes the left side
+   at full height and the seam and list share the right. */
+@media (max-width: 900px) and (orientation: landscape) {
+  .el-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 45%) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .el-map-slot {
+    grid-row: 1 / span 2;
+  }
+  .el-seam,
+  .el-results {
+    grid-column: 2;
   }
 }
 
@@ -665,7 +730,7 @@ body[data-mode='dark'] .lm-tile {
 }
 
 /* Search takes the whole screen while open, anywhere the map is too short to
-   hold its list: phones, tablets, and the collapsed strip. */
+   hold its list: phones and small tablets. */
 @media (max-width: 900px) {
   /* Under 16px, iOS zooms the page when the field takes focus. */
   .el-search-input {
@@ -698,6 +763,7 @@ body[data-mode='dark'] .lm-tile {
     background: transparent;
     border: 0;
     box-shadow: none;
+    overscroll-behavior: contain;
   }
   .el-search.open .el-option {
     min-height: 52px;
@@ -705,9 +771,6 @@ body[data-mode='dark'] .lm-tile {
   }
   .el-search.open .el-option-label {
     font-size: var(--text-body);
-  }
-  .el-search.open .el-search-panel {
-    overscroll-behavior: contain;
   }
   html.el-search-lock {
     overflow: hidden;
@@ -718,7 +781,7 @@ body[data-mode='dark'] .lm-tile {
    a tap near one opens it (LocatorMap), without stealing taps from neighbours. */
 @media (max-width: 900px), (pointer: coarse) {
   .lm-zoom button,
-  .el-locate {
+  .el-map-button {
     width: 44px;
     height: 44px;
   }
@@ -729,12 +792,9 @@ body[data-mode='dark'] .lm-tile {
   .el-search-cancel {
     min-width: 44px;
   }
-  .el-radius {
-    min-height: 44px;
-    padding-block: 0;
-  }
+  .el-radius,
   .el-radius input {
-    height: 44px;
+    min-height: 44px;
   }
   .el-actions .btn {
     min-height: 44px;

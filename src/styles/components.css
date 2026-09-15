@@ -4457,25 +4457,30 @@ body[data-mode='dark'] .story-card:active {
   padding: 14px 16px 18px;
   flex: 1 1 auto;
 }
-/* The sheet's "filter room": hairline-separated groups under bold labels. */
-.sheet-body .group {
+/* The "filter room": hairline-separated groups under bold labels, in a sheet
+   or in any panel marked .filter-room. */
+.sheet-body .group,
+.filter-room .group {
   padding-bottom: 18px;
   margin-bottom: 18px;
   border-bottom: 1px solid var(--rule);
 }
-.sheet-body .group:last-child {
+.sheet-body .group:last-child,
+.filter-room .group:last-child {
   padding-bottom: 0;
   margin-bottom: 0;
   border-bottom: 0;
 }
-.sheet-body .group-label {
+.sheet-body .group-label,
+.filter-room .group-label {
   font-size: 12px;
   font-weight: 600;
   color: var(--fg);
   letter-spacing: 0.01em;
   margin: 0 0 8px;
 }
-.sheet-body .chips {
+.sheet-body .chips,
+.filter-room .chips {
   flex-wrap: wrap;
 }
 .sheet-foot {

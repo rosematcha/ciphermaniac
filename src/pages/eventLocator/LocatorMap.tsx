@@ -40,12 +40,6 @@ export interface LocatorMapProps {
   /** Map area covered by overlaid controls, kept clear when fitting. */
   insets: Insets;
   highlighted: string | null;
-  /**
-   * Height of the map's bottom edge that stays on screen when the page scrolls
-   * it away (phones). A tapped marker pans into it, so it is still in view once
-   * the list scrolls to the marker's event. Zero leaves the map where it is.
-   */
-  focusBand: number;
   onMarker: (marker: VenueMarker) => void;
   onMarkerHover: (key: string | null) => void;
 }
@@ -63,19 +57,12 @@ export function LocatorMap(props: LocatorMapProps) {
   const screen = (point: LatLon) => toScreen(point, view(), size());
   const ringPx = () => (props.center ? props.radiusKm / kmPerPixel(props.center.lat, view().zoom) : 0);
 
-  const tapMarker = (marker: VenueMarker) => {
-    if (props.focusBand > 0) {
-      setView(panBy(view(), 0, size().height - props.focusBand / 2 - screen(marker).y));
-    }
-    props.onMarker(marker);
-  };
-
   // Dots keep their exact hit areas, so a near miss never lands on a neighbour;
   // a tap on the map itself opens the closest dot within reach.
   const tapNear = (point: Point) => {
     const marker = nearestWithin(props.markers, screen, point, TAP_REACH_PX);
     if (marker) {
-      tapMarker(marker);
+      props.onMarker(marker);
     }
   };
 
@@ -193,7 +180,7 @@ export function LocatorMap(props: LocatorMapProps) {
               }}
               title={`${titleCase(marker.shop)} · ${marker.count} event${marker.count === 1 ? '' : 's'}`}
               onPointerDown={e => e.stopPropagation()}
-              onClick={() => tapMarker(marker)}
+              onClick={() => props.onMarker(marker)}
               onPointerEnter={() => props.onMarkerHover(marker.key)}
               onPointerLeave={() => props.onMarkerHover(null)}
             />

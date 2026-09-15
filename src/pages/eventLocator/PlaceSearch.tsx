@@ -23,6 +23,8 @@ export interface PlaceSearchProps {
   currentLabel: string;
   currentCountry: string | null;
   countries: ReadonlySet<string>;
+  /** Shown in the empty box in place of the search prompt (phones show the current place). */
+  placeholder?: string;
   locating: boolean;
   locateError: string | null;
   onPick: (place: PlaceSuggestion) => void;
@@ -44,6 +46,7 @@ interface GeocodeState {
 
 const DEBOUNCE_MS = 220;
 const LISTBOX_ID = 'el-search-options';
+const SEARCH_PROMPT = 'Search a place, postcode, or store';
 
 const placeOption = (place: PlaceSuggestion, recent = false): Option => ({
   id: `${recent ? 'recent-' : ''}${place.id}`,
@@ -280,8 +283,8 @@ export function PlaceSearch(props: PlaceSearchProps) {
           class='el-search-input'
           type='search'
           value={query()}
-          placeholder='Search a place, postcode, or store'
-          aria-label='Search a place, postcode, or store'
+          placeholder={props.placeholder || SEARCH_PROMPT}
+          aria-label={SEARCH_PROMPT}
           role='combobox'
           aria-autocomplete='list'
           aria-expanded={open()}

@@ -1,25 +1,12 @@
-import {
-  batch,
-  createEffect,
-  createMemo,
-  createResource,
-  createSignal,
-  For,
-  on,
-  onCleanup,
-  onMount,
-  Show
-} from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
 import { cellKeyFor, cellsForCircle } from '../../shared/events/cells';
-import type { ApproximateLocation, EventKind } from '../../shared/events/types';
+import type { EventKind } from '../../shared/events/types';
 import { fetchLocatorEvents, fetchLocatorIndex } from '../lib/data/eventLocator';
 import { latestValue, resolved } from '../lib/resource';
 import { filterEvents, groupByDay, type VenueMarker, venueMarkers } from '../lib/events/filter';
 import { monthDay } from '../lib/events/format';
 import { type DistanceUnit, toKm, unitForCountry } from '../lib/events/geo';
-import { reverseGeocode } from '../lib/events/geocode';
-import { approximateLabel, deviceLocation, DeviceLocationError, fetchApproximateLocation } from '../lib/events/locate';
 import type { PlaceSuggestion } from '../lib/events/search';
 import {
   centerFromParams,
@@ -37,41 +24,18 @@ import {
 import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '../components/Skeleton';
 import { EventList, eventPanelId } from './eventLocator/EventList';
-import { LocatorToolbar } from './eventLocator/LocatorToolbar';
+import { FilterBar, FilterSeam, FilterSheet } from './eventLocator/FilterSheet';
+import type { LocatorFiltersProps } from './eventLocator/LocatorFilters';
 import { MapPanel } from './eventLocator/MapPanel';
-import { useCollapsingMap } from './eventLocator/useCollapsingMap';
+import { useLocatorCenter } from './eventLocator/useLocatorCenter';
 import { useToday } from './eventLocator/useToday';
 import '../styles/pages/event-locator.css';
 
-const LOCATE_ERRORS: Record<DeviceLocationError['reason'], string> = {
-  denied: 'Location is blocked for this site.',
-  unsupported: 'This browser can’t share a location.',
-  unavailable: 'Couldn’t get a location. Try searching instead.'
-};
 const URL_WRITE_DELAY_MS = 300;
-const DEFAULT_CENTER: LocatorCenter = {
-  lat: 40.691872,
-  lon: -89.592178,
-  label: '201 SW Jefferson Ave, Peoria, IL 61602',
-  cc: 'US',
-  source: 'default'
-};
 /** Centres the page picked itself say so after the place name. */
 const SOURCE_NOTES: Partial<Record<CenterSource, string>> = {
   approximate: ' (approximate)'
 };
-
-function approximateCenter(location: ApproximateLocation | null): LocatorCenter | null {
-  return location
-    ? {
-        lat: location.lat,
-        lon: location.lon,
-        label: approximateLabel(location),
-        cc: location.cc ?? null,
-        source: 'approximate'
-      }
-    : null;
-}
 
 function countText(total: number, cups: number): string {
   const events = `${total} event${total === 1 ? '' : 's'}`;
@@ -82,18 +46,23 @@ export function EventLocatorPage() {
   const [params, setParams] = useSearchParams<LocatorParams & Record<string, string>>();
   const stored = loadStored();
   const initialCenter = centerFromParams(params) ?? stored.center;
-  const [center, setCenter] = createSignal<LocatorCenter | null>(initialCenter);
   const [settings, setSettings] = createSignal<LocatorSettings>(settingsFromParams(params, stored.settings));
-  const [locating, setLocating] = createSignal(false);
-  const [locateError, setLocateError] = createSignal<string | null>(null);
-  const [lookedUp, setLookedUp] = createSignal(Boolean(initialCenter));
   const [expanded, setExpanded] = createSignal<string | null>(null);
   const [hovered, setHovered] = createSignal<string | null>(null);
   const [pendingShop, setPendingShop] = createSignal<string | null>(null);
   const [fitNonce, setFitNonce] = createSignal(0);
+  const [filtersOpen, setFiltersOpen] = createSignal(false);
   const today = useToday();
-  // Newest location request wins: an older device lookup that resolves late is dropped.
-  let request = 0;
+  // Every new centre closes the open event, adopts the country's unit (until
+  // the visitor picks one), and refits the map.
+  const { center, choose, locateDevice, locating, locateError, lookedUp } = useLocatorCenter(initialCenter, next => {
+    setExpanded(null);
+    if (next.cc && !settings().unitPinned) {
+      const unit = unitForCountry(next.cc);
+      setSettings(s => ({ ...s, unit }));
+    }
+    setFitNonce(n => n + 1);
+  });
 
   const [index, { refetch: retryIndex }] = createResource(fetchLocatorIndex);
   const radiusKm = () => toKm(settings().radius, settings().unit);
@@ -143,79 +112,7 @@ export function EventLocatorPage() {
 
   onMount(() => {
     document.title = 'Events — Ciphermaniac';
-    if (!initialCenter) {
-      void locateFirst();
-    }
   });
-
-  /**
-   * Move the search. A centre the visitor chose cancels any device lookup in
-   * flight; one the page picked for itself (`supersede` false) does not.
-   */
-  function choose(next: LocatorCenter, supersede = true) {
-    if (supersede) {
-      request++;
-    }
-    batch(() => {
-      setCenter(next);
-      setExpanded(null);
-      setLocateError(null);
-      if (next.cc && !settings().unitPinned) {
-        const unit = unitForCountry(next.cc);
-        setSettings(s => ({ ...s, unit }));
-      }
-      setFitNonce(n => n + 1);
-    });
-  }
-
-  /**
-   * Centre on the device. Resolves false when it will not say where it is;
-   * `quiet` leaves the reason unshown, for the first visit's own fallbacks.
-   */
-  async function locateDevice(quiet = false): Promise<boolean> {
-    setLocating(true);
-    setLocateError(null);
-    const ticket = ++request;
-    try {
-      const point = await deviceLocation();
-      const place = await reverseGeocode(point).catch(() => null);
-      if (ticket === request) {
-        choose({ ...point, label: place?.label ?? 'Your location', cc: place?.cc ?? null, source: 'device' });
-      }
-      return true;
-    } catch (error) {
-      if (ticket === request && !quiet) {
-        setLocateError(error instanceof DeviceLocationError ? LOCATE_ERRORS[error.reason] : LOCATE_ERRORS.unavailable);
-      }
-      return false;
-    } finally {
-      setLocating(false);
-      if (!quiet) {
-        setLookedUp(true);
-      }
-    }
-  }
-
-  /** Take a centre the page picked itself, unless one is already showing. */
-  function settle(next: LocatorCenter | null) {
-    if (next && !center()) {
-      choose(next, false);
-    }
-  }
-
-  /**
-   * First visit: the edge's IP estimate fills in while the device is asked,
-   * so the list never waits on a permission prompt. Only with neither does
-   * the page fall back to its default place.
-   */
-  async function locateFirst() {
-    const guess = fetchApproximateLocation().then(approximateCenter);
-    void guess.then(settle);
-    if (!(await locateDevice(true))) {
-      settle((await guess) ?? DEFAULT_CENTER);
-    }
-    setLookedUp(true);
-  }
 
   function pickPlace(place: PlaceSuggestion) {
     // Before choosing: the effect that opens the store's event runs as soon as
@@ -255,6 +152,8 @@ export function EventLocatorPage() {
     setFitNonce(n => n + 1);
   };
   const setWindow = (windowDays: WindowDays) => setSettings(s => ({ ...s, windowDays }));
+  const setRadius = (radius: number) => setSettings(s => ({ ...s, radius }));
+  const refit = () => setFitNonce(n => n + 1);
   const toggleKind = (kind: EventKind) =>
     setSettings(s => ({ ...s, kinds: s.kinds.includes(kind) ? s.kinds.filter(k => k !== kind) : [...s.kinds, kind] }));
 
@@ -267,34 +166,46 @@ export function EventLocatorPage() {
   });
   onCleanup(() => clearTimeout(urlTimer));
 
-  let layout!: HTMLDivElement;
-  const { collapsed, phone, expand } = useCollapsingMap(() => layout);
-
-  const meta = () => {
+  /** "Austin, TX (approximate)": the centre, with a note when the page picked it. It fills the empty search box. */
+  const place = () => {
     const c = center();
-    if (!c) {
-      return lookedUp() ? 'Search a place to see the events around it.' : '';
-    }
-    return `${settings().radius} ${settings().unit} around ${c.label}${SOURCE_NOTES[c.source] ?? ''}`;
+    return c ? `${c.label}${SOURCE_NOTES[c.source] ?? ''}` : '';
+  };
+  const available = () => resolved(index)?.kinds ?? null;
+  /** Events the filters show now, or null before the area has loaded. */
+  const total = () => (center() && usable() ? placed().length : null);
+  // One set of filter props for the desktop panel, the phone sheet and both scope lines; getters keep them live.
+  const filters: LocatorFiltersProps = {
+    get kinds() {
+      return kinds();
+    },
+    get available() {
+      return available();
+    },
+    get windowDays() {
+      return settings().windowDays;
+    },
+    get unit() {
+      return settings().unit;
+    },
+    get radius() {
+      return settings().radius;
+    },
+    onToggleKind: toggleKind,
+    onWindow: setWindow,
+    onUnit: setUnit,
+    onRadiusInput: setRadius,
+    onRadiusCommit: refit
   };
 
   return (
     <>
-      <section class='hero'>
-        <h1>Events near you</h1>
-        <div class='hero-meta'>{meta()}</div>
-      </section>
-      <LocatorToolbar
-        kinds={kinds()}
-        available={resolved(index)?.kinds ?? null}
-        windowDays={settings().windowDays}
-        unit={settings().unit}
-        count={count()}
-        onToggleKind={toggleKind}
-        onWindow={setWindow}
-        onUnit={setUnit}
-      />
-      <div class='el-layout' ref={layout}>
+      <h1 class='sr-only'>Events near you</h1>
+      {/* The one live region for the result, mounted at every width (a region that appears with its text is not announced). */}
+      <p class='sr-only' aria-live='polite'>
+        {count()}
+      </p>
+      <div class='el-layout'>
         <div class='el-map-slot'>
           <MapPanel
             index={resolved(index) ?? null}
@@ -302,26 +213,23 @@ export function EventLocatorPage() {
             centerLabel={center()?.label ?? ''}
             centerCountry={center()?.cc ?? null}
             countries={countries()}
-            radius={settings().radius}
             radiusKm={radiusKm()}
-            unit={settings().unit}
             markers={markers()}
             highlighted={hovered()}
             fitKey={String(fitNonce())}
-            collapsed={collapsed()}
-            phone={phone()}
+            searchPlaceholder={place()}
             locating={locating()}
             locateError={locateError()}
-            onRadiusInput={radius => setSettings(s => ({ ...s, radius }))}
-            onRadiusCommit={() => setFitNonce(n => n + 1)}
             onPickPlace={pickPlace}
             onLocate={() => void locateDevice()}
             onMarker={(marker: VenueMarker) => reveal(marker.firstId)}
             onMarkerHover={setHovered}
-            onExpand={expand}
+            onFilters={() => setFiltersOpen(true)}
           />
         </div>
+        <FilterSeam {...filters} count={count()} onOpen={() => setFiltersOpen(true)} />
         <div class='el-results'>
+          <FilterBar {...filters} count={count()} />
           <Results
             index={index}
             loaded={loaded}
@@ -343,20 +251,28 @@ export function EventLocatorPage() {
             }}
             onLonger={() => setWindow(settings().windowDays === 7 ? 30 : null)}
           />
-          <Show when={resolved(index)}>
-            {i => (
-              <p class='el-credit'>
-                Listings from{' '}
-                <a href={i().source} target='_blank' rel='noopener'>
-                  Pokedata
-                </a>
-                , updated {monthDay(i().generatedAt.slice(0, 10))}.
-              </p>
-            )}
-          </Show>
+          <Credit index={resolved(index)} />
         </div>
       </div>
+      <FilterSheet {...filters} open={filtersOpen()} onClose={() => setFiltersOpen(false)} total={total()} />
     </>
+  );
+}
+
+/** Where the listings come from, and how fresh they are. */
+function Credit(props: { index: { source: string; generatedAt: string } | undefined }) {
+  return (
+    <Show when={props.index}>
+      {i => (
+        <p class='el-credit'>
+          Listings from{' '}
+          <a href={i().source} target='_blank' rel='noopener'>
+            Pokedata
+          </a>
+          , updated {monthDay(i().generatedAt.slice(0, 10))}.
+        </p>
+      )}
+    </Show>
   );
 }
 
