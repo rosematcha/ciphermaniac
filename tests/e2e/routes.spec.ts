@@ -133,7 +133,9 @@ test('archetype matchups show ranges for rows and the card lens', async ({ page 
   await expect(page.locator('.mu-gauge[title^="95% interval"]').first()).toBeVisible();
 
   await page.getByText('Compare with a specific card').click();
-  await page.getByRole('button', { name: /Shaymin/ }).click();
+  // Shaymin is not one of the suggested chips, so reach it through the search.
+  await page.getByRole('searchbox', { name: 'Search all cards' }).fill('Shaymin');
+  await page.locator('.r2-lens .fb-b-popover .item', { hasText: 'Shaymin' }).first().click();
   await expect(page.locator('.r2-lens-hint')).toContainText('95% interval');
 });
 
@@ -663,6 +665,9 @@ test.describe('theme', () => {
     // showing a dark-mode user a white page first.
     await page.addInitScript(() => localStorage.setItem('cm:mode', 'dark'));
     await page.goto('/tools');
+    // Let the route chunk land first: aborting it mid-load fires the preload
+    // recovery, whose own reload races this one and detaches the frame.
+    await expect(page.getByRole('heading', { level: 1, name: 'Tools' })).toBeVisible();
     await page.route('**/*.js', route => route.abort());
     await page.reload({ waitUntil: 'commit' });
     await expect(page.locator('body')).toHaveAttribute('data-mode', 'dark');
