@@ -1,9 +1,9 @@
 /* ============================================================
    Event locator (/events)
    Desktop: the map is sticky beside the list. Phones: the map sits on
-   top and shrinks to a strip as the list scrolls (useCollapsingMap
-   drives --el-map-h). The day headers read the same variable, so they
-   always park directly under the map.
+   top and scrolls up under the header until a strip of it is left, which
+   sticks. That is pure CSS, so it moves on the compositor with the page.
+   The day headers park under the strip (--el-strip).
    ============================================================ */
 
 /* ---------- Toolbar ---------- */
@@ -24,7 +24,7 @@
 
 /* ---------- Layout ---------- */
 .el-layout {
-  --el-map-h: 0px;
+  --el-strip: 0px;
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
   gap: 20px;
@@ -42,12 +42,14 @@
 }
 .el-map-frame {
   position: relative;
+  /* clip, not hidden: hidden would make the frame a scroll container and stop
+     the search row sticking to the page on phones. */
   height: calc(100dvh - var(--topnav-h) - 36px);
   min-height: 420px;
   max-height: 780px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow: clip;
   background: var(--surface-2);
 }
 .el-map-canvas {
@@ -57,7 +59,8 @@
 .el-results {
   min-width: 0;
 }
-.el-map-expand {
+.el-map-expand,
+.el-map-collapse {
   display: none;
 }
 
@@ -67,6 +70,7 @@
   inset: 0;
   overflow: hidden;
   touch-action: none;
+  -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
   cursor: grab;
@@ -177,12 +181,24 @@ body[data-mode='dark'] .lm-tile {
 }
 
 /* ---------- Map overlays: search, locate, radius ---------- */
-.el-search {
+.el-map-top {
   position: absolute;
   z-index: 5;
   top: 10px;
+  right: 10px;
   left: 10px;
-  width: min(400px, calc(100% - 72px));
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.el-map-top > * {
+  pointer-events: auto;
+}
+.el-search {
+  position: relative;
+  flex: 0 1 400px;
+  min-width: 0;
 }
 .el-search-row {
   display: flex;
@@ -319,10 +335,8 @@ body[data-mode='dark'] .lm-tile {
   color: var(--muted);
 }
 .el-locate {
-  position: absolute;
-  z-index: 4;
-  top: 10px;
-  right: 10px;
+  flex: none;
+  margin-left: auto;
   display: grid;
   place-items: center;
   width: var(--control-h);
@@ -382,7 +396,7 @@ body[data-mode='dark'] .lm-tile {
 /* ---------- List ---------- */
 .el-day-head {
   position: sticky;
-  top: calc(var(--topnav-h) + var(--el-map-h));
+  top: calc(var(--topnav-h) + var(--el-strip));
   z-index: 2;
   display: flex;
   align-items: baseline;
@@ -552,32 +566,46 @@ body[data-mode='dark'] .lm-tile {
 
 /* ---------- Phones and small tablets ---------- */
 @media (max-width: 900px) {
+  /* svh, not vh or innerHeight: it ignores the address bar and the keyboard,
+     so the map never resizes when either comes or goes. */
   .el-layout {
-    --el-map-full: 46vh;
-    --el-map-h: var(--el-map-full);
+    --el-map-full: 40svh;
+    --el-strip: 116px;
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
   }
-  /* Height shrinks with scroll; the margin grows by the same amount, so the
-     list below starts in the same place and the page never jumps. */
+  /* The slot sticks with its top above the header, so the header covers all
+     of the map but the bottom strip. */
   .el-map-slot {
-    top: var(--topnav-h);
+    top: calc(var(--topnav-h) + var(--el-strip) - var(--el-map-full));
     z-index: 5;
-    height: var(--el-map-h);
-    margin-bottom: calc(var(--el-map-full) - var(--el-map-h) + var(--space-3));
+    height: var(--el-map-full);
+    margin-bottom: var(--space-3);
   }
   .el-map-frame {
     height: 100%;
     min-height: 0;
     max-height: none;
   }
-  /* The map keeps its full height and is clipped to the strip, centred, so
-     it never re-lays out while the page scrolls. */
-  .el-map-canvas {
-    inset: auto 0;
-    top: 50%;
-    height: var(--el-map-full);
-    transform: translateY(-50%);
+  /* The search row rides down the map as it scrolls away, so it stays in the strip. */
+  .el-map-top {
+    position: sticky;
+    top: calc(var(--topnav-h) + 10px);
+    margin: 10px;
+  }
+  .el-search {
+    flex: 1 1 auto;
+  }
+  /* Once this line passes under the header the strip is too short for the
+     controls, and becomes a tap target (useCollapsingMap). */
+  .el-map-collapse {
+    position: absolute;
+    bottom: 190px;
+    left: 0;
+    display: block;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
   }
   .el-map-frame.collapsed .el-radius,
   .el-map-frame.collapsed .el-locate,
@@ -590,9 +618,6 @@ body[data-mode='dark'] .lm-tile {
     inset: 0;
     display: block;
     background: transparent;
-  }
-  .el-search {
-    width: calc(100% - 70px);
   }
   .el-radius {
     bottom: 26px;

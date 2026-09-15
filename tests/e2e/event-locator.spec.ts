@@ -138,14 +138,46 @@ test('a country with no listed events says so', async ({ page }, testInfo) => {
   await expect(page.locator('.empty-state')).toContainText('No events listed in Japan.');
 });
 
-test('on a phone the map shrinks to a strip as the list scrolls', async ({ page }, testInfo) => {
+test('on a phone the map scrolls away to a strip under the header', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'phones only');
   await openLocator(page);
   const slot = page.locator('.el-map-slot');
-  const before = (await slot.boundingBox())?.height ?? 0;
-  await page.mouse.wheel(0, 900);
+  const map = page.locator('.lm');
+  const height = (await map.boundingBox())?.height ?? 0;
   await page.evaluate(() => window.scrollTo(0, 900));
-  await expect.poll(async () => (await slot.boundingBox())?.height ?? 0).toBeLessThan(before - 50);
+  await expect(page.locator('.el-map-frame')).toHaveClass(/collapsed/);
+  const strip = await page.evaluate(() => {
+    const nav = document.querySelector('.topnav')?.getBoundingClientRect().bottom ?? 0;
+    return (document.querySelector('.el-map-slot')?.getBoundingClientRect().bottom ?? 0) - nav;
+  });
+  expect(strip).toBeGreaterThan(100);
+  expect(strip).toBeLessThan(130);
+  // The map itself never resizes, and the search row stays inside the strip.
+  expect((await map.boundingBox())?.height).toBe(height);
+  const search = await page.locator('.el-search-row').boundingBox();
+  const box = await slot.boundingBox();
+  expect(search && box && search.y + search.height).toBeLessThanOrEqual((box?.y ?? 0) + (box?.height ?? 0));
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('on a phone the map swallows long presses and tapped markers stay in the strip', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'phones only');
+  await openLocator(page);
+  const prevented = await page.evaluate(() => {
+    const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    document.querySelector('.lm')?.dispatchEvent(menu);
+    return menu.defaultPrevented;
+  });
+  expect(prevented).toBe(true);
+  await page.locator('.lm-marker').first().tap();
+  await expect(page.locator('.el-item.open')).toHaveCount(1);
+  await expect(page.locator('.el-map-frame')).toHaveClass(/collapsed/);
+  const inStrip = await page.evaluate(() => {
+    const slot = document.querySelector('.el-map-slot')?.getBoundingClientRect();
+    const nav = document.querySelector('.topnav')?.getBoundingClientRect().bottom ?? 0;
+    const tapped = [...document.querySelectorAll('.lm-marker')].map(m => m.getBoundingClientRect());
+    return tapped.some(r => slot && r.top >= nav && r.bottom <= slot.bottom);
+  });
+  expect(inStrip).toBe(true);
 });

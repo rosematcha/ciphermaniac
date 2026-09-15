@@ -5,7 +5,10 @@
  * midpoint also pans), the wheel zooms around the cursor, and a double click
  * zooms in a whole step. A mouse click that did not move becomes a pick.
  * Touch taps never pick: on a phone a tap on the map is nearly always a pan
- * that stopped short.
+ * that stopped short. For the same reason a double click only zooms when the
+ * press before it stayed put. The context menu is suppressed, because on
+ * Android a finger that rests before dragging would otherwise open it and
+ * cancel the drag.
  * @module pages/eventLocator/mapGestures
  */
 
@@ -103,6 +106,8 @@ export function attachGestures(el: HTMLElement, target: GestureTarget): () => vo
   const pointers = new Map<number, Point>();
   let press: Press | null = null;
   let pinch: Pinch | null = null;
+  /** Whether the last finished press moved: a synthesized double tap after a pan must not zoom. */
+  let lastMoved = false;
 
   const local = (e: { clientX: number; clientY: number }) => localPoint(el, e);
 
@@ -175,6 +180,7 @@ export function attachGestures(el: HTMLElement, target: GestureTarget): () => vo
       target.onPick(fromScreen(local(e), target.view(), target.size()));
     }
     if (pointers.size === 0) {
+      lastMoved = Boolean(press?.moved);
       press = null;
       pinch = null;
     }
@@ -189,7 +195,7 @@ export function attachGestures(el: HTMLElement, target: GestureTarget): () => vo
   };
 
   const onDouble = (e: MouseEvent) => {
-    if (isControl(e.target)) {
+    if (lastMoved || isControl(e.target)) {
       return;
     }
     const view = target.view();
@@ -202,6 +208,7 @@ export function attachGestures(el: HTMLElement, target: GestureTarget): () => vo
     ['pointerup', onUp],
     ['pointercancel', onUp],
     ['wheel', onWheel, { passive: false }],
-    ['dblclick', onDouble]
+    ['dblclick', onDouble],
+    ['contextmenu', (e: MouseEvent) => e.preventDefault()]
   ]);
 }

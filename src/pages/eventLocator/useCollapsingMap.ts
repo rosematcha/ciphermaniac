@@ -1,20 +1,18 @@
 import { createSignal, onCleanup, onMount } from 'solid-js';
 
 /**
- * Phones: the map starts at a bit under half the screen and shrinks to a
- * strip as the list scrolls up under it. The shrinking is a scroll-driven CSS
- * variable on the layout, read by both the map slot and the sticky day
- * headers below it, so the headers always park right under the map.
+ * Phones: the map sits on top of the list and scrolls up under the header
+ * until only a strip of its bottom edge is left, which then sticks. That is
+ * all CSS (a sticky slot with a negative offset), so the browser moves it on
+ * the compositor and it never lags the finger. The map element keeps one
+ * size the whole time.
  *
- * The map element itself never changes size (its container clips it), so the
- * map does no relayout while the page scrolls.
+ * This hook only answers whether the map has scrolled far enough that its
+ * controls would crowd the strip, from an IntersectionObserver on a marker
+ * placed that far above the map's bottom edge.
  */
 
 const PHONE = '(max-width: 900px)';
-const MAP_SHARE = 0.46;
-const STRIP_PX = 116;
-/** Below this the overlays would crowd the strip, so it becomes a tap target. */
-const COLLAPSED_PX = 190;
 const FALLBACK_TOPNAV_PX = 114;
 
 function topnavHeight(): number {
@@ -24,47 +22,38 @@ function topnavHeight(): number {
 
 export function useCollapsingMap(layout: () => HTMLElement | undefined) {
   const [collapsed, setCollapsed] = createSignal(false);
+  const [phone, setPhone] = createSignal(false);
 
   onMount(() => {
-    const phone = matchMedia(PHONE);
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const el = layout();
-      if (!el) {
+    const query = matchMedia(PHONE);
+    let observer: IntersectionObserver | undefined;
+    const watch = () => {
+      observer?.disconnect();
+      setPhone(query.matches);
+      setCollapsed(false);
+      const marker = layout()?.querySelector('.el-map-collapse');
+      if (!query.matches || !marker) {
         return;
       }
-      if (!phone.matches) {
-        el.style.removeProperty('--el-map-h');
-        el.style.removeProperty('--el-map-full');
-        setCollapsed(false);
-        return;
-      }
-      const full = Math.round(innerHeight * MAP_SHARE);
-      const scrolled = Math.max(0, topnavHeight() - el.getBoundingClientRect().top);
-      const height = Math.max(STRIP_PX, full - scrolled);
-      el.style.setProperty('--el-map-full', `${full}px`);
-      el.style.setProperty('--el-map-h', `${height}px`);
-      setCollapsed(height < COLLAPSED_PX);
+      const top = topnavHeight();
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          // Out of view below the fold is not collapsed; only above, under the header.
+          setCollapsed(Boolean(entry && !entry.isIntersecting && entry.boundingClientRect.top < top));
+        },
+        { rootMargin: `-${top}px 0px 0px 0px` }
+      );
+      observer.observe(marker);
     };
-    const schedule = () => {
-      if (!frame) {
-        frame = requestAnimationFrame(update);
-      }
-    };
-    update();
-    addEventListener('scroll', schedule, { passive: true });
-    addEventListener('resize', schedule);
-    phone.addEventListener('change', schedule);
+    watch();
+    query.addEventListener('change', watch);
     onCleanup(() => {
-      cancelAnimationFrame(frame);
-      removeEventListener('scroll', schedule);
-      removeEventListener('resize', schedule);
-      phone.removeEventListener('change', schedule);
+      observer?.disconnect();
+      query.removeEventListener('change', watch);
     });
   });
 
-  /** Scroll back up until the map is full height again. */
+  /** Scroll back up until the map is whole again. */
   const expand = () => {
     const el = layout();
     if (el) {
@@ -72,5 +61,5 @@ export function useCollapsingMap(layout: () => HTMLElement | undefined) {
     }
   };
 
-  return { collapsed, expand };
+  return { collapsed, phone, expand };
 }

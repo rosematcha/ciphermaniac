@@ -36,6 +36,12 @@ export interface LocatorMapProps {
   /** Map area covered by overlaid controls, kept clear when fitting. */
   insets: Insets;
   highlighted: string | null;
+  /**
+   * Height of the map's bottom edge that stays on screen when the page scrolls
+   * it away (phones). A tapped marker pans into it, so it is still in view once
+   * the list scrolls to the marker's event. Zero leaves the map where it is.
+   */
+  focusBand: number;
   onMarker: (marker: VenueMarker) => void;
   onMarkerHover: (key: string | null) => void;
   /** A mouse click on empty map. */
@@ -84,6 +90,13 @@ export function LocatorMap(props: LocatorMapProps) {
   const zoomBy = (step: number) => {
     const current = view();
     setView(zoomAround(current, size(), { x: size().width / 2, y: size().height / 2 }, current.zoom + step));
+  };
+
+  const tapMarker = (marker: VenueMarker) => {
+    if (props.focusBand > 0) {
+      setView(panBy(view(), 0, size().height - props.focusBand / 2 - screen(marker).y));
+    }
+    props.onMarker(marker);
   };
 
   const KEY_ACTIONS: Record<string, () => void> = {
@@ -169,7 +182,7 @@ export function LocatorMap(props: LocatorMapProps) {
               }}
               title={`${titleCase(marker.shop)} · ${marker.count} event${marker.count === 1 ? '' : 's'}`}
               onPointerDown={e => e.stopPropagation()}
-              onClick={() => props.onMarker(marker)}
+              onClick={() => tapMarker(marker)}
               onPointerEnter={() => props.onMarkerHover(marker.key)}
               onPointerLeave={() => props.onMarkerHover(null)}
             />

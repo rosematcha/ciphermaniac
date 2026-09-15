@@ -233,7 +233,7 @@ export function EventLocatorPage() {
   onCleanup(() => clearTimeout(urlTimer));
 
   let layout!: HTMLDivElement;
-  const { collapsed, expand } = useCollapsingMap(() => layout);
+  const { collapsed, phone, expand } = useCollapsingMap(() => layout);
 
   const meta = () => {
     const c = center();
@@ -274,6 +274,7 @@ export function EventLocatorPage() {
             highlighted={hovered()}
             fitKey={String(fitNonce())}
             collapsed={collapsed()}
+            phone={phone()}
             locating={locating()}
             locateError={locateError()}
             onRadiusInput={radius => setSettings(s => ({ ...s, radius }))}
