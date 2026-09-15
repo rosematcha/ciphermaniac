@@ -12,11 +12,12 @@
 # previous run are rewritten (tracked via players/_manifest.json). The first
 # run back-fills the entire dataset; subsequent runs are cheap.
 #
-# Triggers:
-#   - Daily at 13:00 UTC (after the meta builder at 12:00)
-#   - After Online Meta Report finishes (in case the daily slot is shifted)
+# Triggers (no schedule: output depends only on tournament data and identity
+# overrides, so a run with neither changed is a no-op):
+#   - After Ingest New Tournaments finishes (new events)
+#   - After Online Meta Report finishes (refreshed recent tournaments)
 #   - After a manual Download Tournament run completes
-#   - After a Refresh Tournaments Index run completes
+#   - Push to main touching identity overrides or aggregator code
 #   - Manual dispatch (with optional force_full_rebuild)
 # =============================================================================
 
@@ -24,19 +25,24 @@ name: (Daily Chore) Player Aggregator
 
 run-name: >-
   ${{ github.event_name == 'workflow_run' && format('Player Aggregator (post-{0})', github.event.workflow_run.name) ||
-      github.event_name == 'schedule' && 'Player Aggregator (daily)' ||
+      github.event_name == 'push' && 'Player Aggregator (code change)' ||
       format('Player Aggregator (force_full_rebuild={0})', inputs.force_full_rebuild || false) }}
 
 on:
-  schedule:
-    - cron: '0 13 * * *'
   workflow_run:
     workflows:
+      - '(Daily Chore) Ingest New Tournaments'
       - '(Daily Chore) Online Meta Report'
       - 'Download Tournament'
-      - 'Refresh Tournaments Index'
     types:
       - completed
+  push:
+    branches:
+      - main
+    paths:
+      - 'shared/onlineMeta/playerIdentity.ts'
+      - 'shared/onlineMeta/playerAggregator.ts'
+      - '.github/scripts/run-player-aggregator.ts'
   workflow_dispatch:
     inputs:
       force_full_rebuild:
