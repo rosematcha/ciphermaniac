@@ -62,7 +62,7 @@ test('thumbnails load same-origin, which is what keeps the export canvas untaint
 
 test('a tournament label drops its date prefix', () => {
   assert.equal(shortTournament('2026-05-08, Regional Championship LA'), 'Regional Championship LA');
-  assert.equal(shortTournament('Online - Last 14 Days'), 'Online ladder · last 14 days');
+  assert.equal(shortTournament('Online - Last 14 Days'), 'Online events');
   assert.equal(shortTournament('Something Else'), 'Something Else');
 });
 

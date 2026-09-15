@@ -46,6 +46,7 @@ export {
   classifyTournament,
   majorTournaments,
   prettyTournamentName,
+  shortTournamentName,
   tournamentDate
 } from '../../shared/data/tournamentKeys';
 export {

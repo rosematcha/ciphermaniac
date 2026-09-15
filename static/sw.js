@@ -20,7 +20,7 @@
  *
  * Bump VERSION to invalidate all SW caches.
  */
-const VERSION = 'v3'; // v3: drop stale-shell navigations (post-deploy blank page)
+const VERSION = 'v4'; // v4: event listings leave the JSON cache (see below)
 const JSON_CACHE = `cm-json-${VERSION}`;
 const ASSET_CACHE = `cm-assets-${VERSION}`;
 const SHELL_CACHE = `cm-shell-${VERSION}`;
@@ -144,11 +144,21 @@ self.addEventListener('fetch', event => {
     event.respondWith(navigationNetworkFirst(request));
     return;
   }
-  if (url.host === 'r2.ciphermaniac.com' && !url.pathname.startsWith('/card-images/')) {
+  // Event listings are not cached here: stale-while-revalidate would hand back an
+  // index days old that names a run the producer has since deleted. Their own
+  // six-hour HTTP cache is shorter than the day a run outlives its index.
+  if (
+    url.host === 'r2.ciphermaniac.com' &&
+    !url.pathname.startsWith('/card-images/') &&
+    !url.pathname.startsWith('/events/')
+  ) {
     event.respondWith(staleWhileRevalidate(request));
     return;
   }
-  if (url.origin === self.location.origin && (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/fonts/'))) {
+  if (
+    url.origin === self.location.origin &&
+    (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/fonts/'))
+  ) {
     event.respondWith(cacheFirst(request));
   }
 });

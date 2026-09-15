@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
-import { fetchTournamentsList, prettyTournamentName } from '../lib/data';
+import { fetchTournamentsList, prettyTournamentName, shortTournamentName } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
-import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
+import { ONLINE_META_DATE_LABEL, ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import { foldSearch } from '../utils/searchFold';
 
 /**
@@ -118,8 +118,8 @@ export function TournamentSelector() {
                   onClick={() => pick(t)}
                 >
                   <span class='primary'>{shortLabel(t)}</span>
-                  <Show when={t !== ONLINE_META_NAME}>
-                    <span class='secondary'>{datePart(t)}</span>
+                  <Show when={t === ONLINE_META_NAME} fallback={<span class='secondary'>{datePart(t)}</span>}>
+                    <span class='secondary'>{ONLINE_META_DATE_LABEL}</span>
                   </Show>
                 </button>
               )}
@@ -136,7 +136,7 @@ function shortLabel(key: string): string {
     return ONLINE_META_LABEL;
   }
   const m = key.match(/^\d{4}-\d{2}-\d{2},\s*(.+)$/);
-  return m ? m[1] : key;
+  return shortTournamentName(m ? m[1] : key);
 }
 
 function datePart(key: string): string {

@@ -422,23 +422,21 @@
 /* ---------- Bottom sheet ----------
    The structural .sheet* rules moved to styles/components.css: the
    BottomSheet component is shared, so its styles cannot live in one
-   page's stylesheet. Only the cards-specific .sheet-body .group rules
-   remain below, alongside their .cards-filter-panel twins. */
+   page's stylesheet. The sheet's groups, footer and apply button went
+   with them; what remains below is cards-only (captions, inline groups,
+   Clear) and the .cards-filter-panel twins. */
 
-/* Hairline-separated "filter room": bold labels, generous breathing space. */
-.sheet-body .group,
+/* The desktop panel's twin of the sheet's "filter room" (components.css). */
 .cards-filter-panel .group {
   padding-bottom: 18px;
   margin-bottom: 18px;
   border-bottom: 1px solid var(--rule);
 }
-.sheet-body .group:last-child,
 .cards-filter-panel .group:last-child {
   padding-bottom: 0;
   margin-bottom: 0;
   border-bottom: 0;
 }
-.sheet-body .group-label,
 .cards-filter-panel .group-label {
   font-size: 12px;
   font-weight: 600;
@@ -464,18 +462,6 @@
 .cards-filter-panel .group-inline .group-label {
   margin: 0;
 }
-.sheet-body .chips {
-  flex-wrap: wrap;
-}
-.sheet-foot {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--rule);
-  background: var(--surface);
-  flex-shrink: 0;
-}
 .sheet-clear {
   font: inherit;
   font-size: 13px;
@@ -486,12 +472,6 @@
   padding: 8px 4px;
   cursor: pointer;
   flex-shrink: 0;
-}
-.sheet-apply {
-  flex: 1 1 auto;
-  background: var(--accent);
-  color: var(--accent-fg);
-  border: 1px solid var(--accent-hover);
 }
 
 @media (max-width: 640px) {

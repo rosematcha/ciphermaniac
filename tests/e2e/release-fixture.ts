@@ -1,5 +1,5 @@
-import { composeRelease } from '../../shared/data/build/release';
-import tournaments from '../fixtures/e2e/reports/tournaments.json';
+import { composeRelease } from '../../shared/data/build/release.ts';
+import tournaments from '../fixtures/e2e/reports/tournaments.json' with { type: 'json' };
 
 const scopes = {
   catalogs: 'reports',

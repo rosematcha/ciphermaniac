@@ -73,7 +73,7 @@ test('snapshot dates render long-form, and survive being unparseable', () => {
 test('the empty state names the scope that was searched', () => {
   assert.match(emptyDescription('Online - Last 14 Days'), /rolling 14-day window/);
   const event = emptyDescription('2026-05-08, Regional Championship Los Angeles');
-  assert.match(event, /Regional Championship Los Angeles/);
+  assert.match(event, /Los Angeles Regionals/);
   assert.ok(!event.includes('2026-05-08'), 'the raw date prefix should not leak into copy');
 });
 

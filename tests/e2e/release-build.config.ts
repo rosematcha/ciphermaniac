@@ -1,6 +1,6 @@
 import { mergeConfig } from 'vite';
-import base from '../../vite.config';
-import { fixtureRelease } from './release-fixture';
+import base from '../../vite.config.ts';
+import { fixtureRelease } from './release-fixture.ts';
 
 export default mergeConfig(base, {
   plugins: [

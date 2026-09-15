@@ -48,8 +48,8 @@ function rounds(): NonNullable<PlayerProfile['rounds']> {
 }
 
 test('shortTournamentName folds the championship type after the city', () => {
-  assert.equal(shortTournamentName(A), 'Indianapolis Regional');
-  assert.equal(shortTournamentName(B), 'New Orleans International');
+  assert.equal(shortTournamentName(A), 'Indianapolis Regionals');
+  assert.equal(shortTournamentName(B), 'New Orleans Internationals');
   assert.equal(shortTournamentName('2025-08-15, World Championships 2025'), 'Worlds 2025');
   assert.equal(shortTournamentName('2026-06-06, Special Event Turin'), 'Turin Special Event');
   assert.equal(shortTournamentName('2026-01-01, Something Else'), 'Something Else');
@@ -216,5 +216,5 @@ test('careerSummary derives the record line, rates and median finish', () => {
   assert.equal(summary.day2Rate, 75);
   // Shares sorted: 0.001, 0.05, 0.1, 0.7 → upper median 0.1 → Top 10%.
   assert.equal(summary.medianFinish, 'Top 10%');
-  assert.equal(summary.titleEvent, 'Indianapolis Regional');
+  assert.equal(summary.titleEvent, 'Indianapolis Regionals');
 });

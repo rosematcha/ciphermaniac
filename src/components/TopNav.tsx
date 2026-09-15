@@ -11,6 +11,7 @@ const links: NavLink[] = [
   { href: '/archetypes', label: 'Archetypes' },
   { href: '/trends', label: 'Trends' },
   { href: '/players', label: 'Players' },
+  { href: '/events', label: 'Events' },
   {
     href: '/tools',
     label: 'Tools',

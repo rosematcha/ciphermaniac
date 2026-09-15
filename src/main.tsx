@@ -38,6 +38,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   '/trends': () => import('./pages/TrendsPage'),
   '/players': () => import('./pages/PlayersPage'),
   '/players/:id': () => import('./pages/PlayerProfilePage'),
+  '/events': () => import('./pages/EventLocatorPage'),
   '/feedback': () => import('./pages/FeedbackPage')
 };
 
@@ -56,6 +57,7 @@ const TrendsPage = lazy(() => import('./pages/TrendsPage').then(m => ({ default:
 const PlayersPage = lazy(() => import('./pages/PlayersPage').then(m => ({ default: m.PlayersPage })));
 const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage').then(m => ({ default: m.PlayerProfilePage })));
 const PlayerComparePage = lazy(() => import('./pages/PlayerComparePage').then(m => ({ default: m.PlayerComparePage })));
+const EventLocatorPage = lazy(() => import('./pages/EventLocatorPage').then(m => ({ default: m.EventLocatorPage })));
 const ToolsPage = lazy(() => import('./pages/ToolsPage').then(m => ({ default: m.ToolsPage })));
 const SocialGraphicsPage = lazy(() =>
   import('./pages/SocialGraphicsPage').then(m => ({ default: m.SocialGraphicsPage }))
@@ -115,6 +117,7 @@ render(
       <Route path='/players/:id' component={PlayerProfilePage} />
       <Route path='/standings' component={() => <Navigate href='/players' />} />
       <Route path='/standings/:id' component={StandingsPlayerRedirect} />
+      <Route path='/events' component={EventLocatorPage} />
       <Route path='/tools' component={ToolsPage} />
       <Route path='/tools/social-graphics' component={SocialGraphicsPage} />
       <Route path='/tools/in-loving-memory' component={InLovingMemoryPage} />
