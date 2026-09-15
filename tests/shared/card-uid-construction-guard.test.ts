@@ -26,7 +26,7 @@ const EXTENSIONS = ['.ts', '.tsx', '.mts', '.mjs', '.js'];
  * Adding an entry here should feel like a decision, not a formality.
  */
 const ALLOWED = new Map<string, string>([
-  ['shared/data/cardIdentity.ts', 'defines cardUid — the one constructor'],
+  ['shared/data/cardIdentity/identifiers.ts', 'defines cardUid — the one constructor'],
   [
     'shared/data/canonicalPrint.ts',
     'rebuilds a UID from a set-catalog print already normalized by the catalog, for rolling-canonical selection'
