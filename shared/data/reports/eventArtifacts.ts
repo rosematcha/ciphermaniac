@@ -195,8 +195,9 @@ function buildReportBundle(
   out.set(`${prefix}master.json`, master);
   out.set(`${prefix}decks.json`, decks);
 
-  const archetypeInputs = decks.map(deck => ({ cards: deck.cards, archetype: deck.archetype }));
-  const built = buildArchetypeReports(archetypeInputs, synonymDb, {
+  // Full rows, not just cards: the per-archetype decks.json slices are served
+  // as-is, and the archetype Lists and Filters tabs need pilot and finish.
+  const built = buildArchetypeReports(decks, synonymDb, {
     ...ARCHETYPE_BUILD_PROFILE,
     masterReport: master,
     resolveUid

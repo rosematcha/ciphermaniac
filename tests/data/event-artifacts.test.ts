@@ -59,6 +59,19 @@ test('archetype index + per-archetype files + cardUsage are generated and consis
   }
 });
 
+test('per-archetype decks.json keeps the full deck rows', () => {
+  const artifacts = buildEventArtifacts(labs);
+  const full = artifacts.get('decks.json') as { id: string }[];
+  const byId = new Map(full.map(row => [row.id, row]));
+  const index = artifacts.get('archetypes/index.json') as { name: string }[];
+  for (const entry of index) {
+    const rows = artifacts.get(`archetypes/${entry.name}/decks.json`) as { id: string }[];
+    for (const row of rows) {
+      assert.deepStrictEqual(row, byId.get(row.id), `slice row ${row.id} differs from decks.json`);
+    }
+  }
+});
+
 test('phase2 and topcut slices reuse the report bundle under a prefix', () => {
   const artifacts = buildEventArtifacts(labs);
   assert.ok(artifacts.has('slices/phase2/master.json'));
