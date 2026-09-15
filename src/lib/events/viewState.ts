@@ -11,7 +11,7 @@ import { DEFAULT_EVENT_KINDS, EVENT_KINDS, type EventKind } from '../../../share
 import { type DistanceUnit, fromKm, toKm } from './geo';
 
 /** How the centre was chosen. Decides what may be written into a link. */
-export type CenterSource = 'search' | 'map' | 'device' | 'approximate' | 'link';
+export type CenterSource = 'search' | 'map' | 'device' | 'approximate' | 'default' | 'link';
 
 export interface LocatorCenter {
   lat: number;
@@ -57,7 +57,7 @@ export const DEFAULT_SETTINGS: LocatorSettings = {
   windowDays: 30
 };
 
-const SOURCES: readonly CenterSource[] = ['search', 'map', 'device', 'approximate', 'link'];
+const SOURCES: readonly CenterSource[] = ['search', 'map', 'device', 'approximate', 'default', 'link'];
 const LABEL_LIMIT = 120;
 
 function isCoordinate(value: unknown, limit: number): value is number {
@@ -155,7 +155,7 @@ const EMPTY_PARAMS: LocatorParams = {
  * not carry that to whoever it is pasted to.
  */
 export function paramsFor(center: LocatorCenter | null, settings: LocatorSettings): LocatorParams {
-  if (!center || center.source === 'device' || center.source === 'approximate') {
+  if (!center || center.source === 'device' || center.source === 'approximate' || center.source === 'default') {
     return EMPTY_PARAMS;
   }
   return {
@@ -207,16 +207,15 @@ export function loadStored(storage: Storage | undefined = safeLocalStorage()): {
 }
 
 /**
- * Remember the centre and settings on this device. The IP estimate is not
- * remembered, so a visitor who travels gets a fresh one; a device fix is kept
- * at about a hundred metres.
+ * Remember the centre and settings on this device. Automatic defaults are not
+ * remembered; a chosen place or device fix is kept at about a hundred metres.
  */
 export function saveStored(
   center: LocatorCenter | null,
   settings: LocatorSettings,
   storage: Storage | undefined = safeLocalStorage()
 ): void {
-  if (center && center.source !== 'approximate') {
+  if (center && center.source !== 'approximate' && center.source !== 'default') {
     writeJson(storage, CENTER_KEY, {
       ...center,
       lat: Number(center.lat.toFixed(3)),

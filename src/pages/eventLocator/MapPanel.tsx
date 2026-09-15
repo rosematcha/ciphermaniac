@@ -33,7 +33,6 @@ export interface MapPanelProps {
   onRadiusInput: (radius: number) => void;
   onRadiusCommit: () => void;
   onPickPlace: (place: PlaceSuggestion) => void;
-  onPickPoint: (point: LatLon) => void;
   onLocate: () => void;
   onMarker: (marker: VenueMarker) => void;
   onMarkerHover: (key: string | null) => void;
@@ -55,7 +54,6 @@ export function MapPanel(props: MapPanelProps) {
           highlighted={props.highlighted}
           onMarker={props.onMarker}
           onMarkerHover={props.onMarkerHover}
-          onPick={props.onPickPoint}
         />
       </div>
       <div class='el-map-top'>

@@ -3,37 +3,28 @@
  *
  * One pointer drags, two pinch (zooming around their midpoint while the
  * midpoint also pans), the wheel zooms around the cursor, and a double click
- * zooms in a whole step. A mouse click that did not move becomes a pick.
- * Touch taps never pick: on a phone a tap on the map is nearly always a pan
- * that stopped short. For the same reason a double click only zooms when the
+ * zooms in a whole step. A double click only zooms when the
  * press before it stayed put. The context menu is suppressed, because on
  * Android a finger that rests before dragging would otherwise open it and
  * cancel the drag.
  * @module pages/eventLocator/mapGestures
  */
 
-import type { LatLon } from '../../lib/events/geo';
-import { fromScreen, type MapView, panBy, type Point, type Size, zoomAround } from '../../lib/events/mercator';
+import { type MapView, panBy, type Point, type Size, zoomAround } from '../../lib/events/mercator';
 
 export interface GestureTarget {
   view: () => MapView;
   setView: (view: MapView) => void;
   size: () => Size;
-  onPick: (point: LatLon) => void;
 }
 
 const CLICK_SLOP_PX = 5;
-const CLICK_MS = 500;
 const WHEEL_PX_PER_ZOOM = 300;
 
 interface Press {
   x: number;
   y: number;
-  time: number;
   moved: boolean;
-  mouse: boolean;
-  /** False when this press only dismissed the open search box. */
-  pickable: boolean;
 }
 
 interface Pinch {
@@ -93,11 +84,6 @@ function localPoint(el: HTMLElement, e: { clientX: number; clientY: number }): P
   return { x: e.clientX - box.left, y: e.clientY - box.top };
 }
 
-/** True while the search box is open: a press on the map then only dismisses it. */
-function isDismissingSearch(): boolean {
-  return Boolean(document.querySelector('.el-search.open'));
-}
-
 /**
  * Wire gestures onto the map element.
  * @returns A function that removes every listener
@@ -132,10 +118,7 @@ export function attachGestures(el: HTMLElement, target: GestureTarget): () => vo
     if (pointers.size === 1) {
       press = {
         ...local(e),
-        time: e.timeStamp,
-        moved: false,
-        mouse: e.pointerType === 'mouse',
-        pickable: !isDismissingSearch()
+        moved: false
       };
       return;
     }
@@ -168,16 +151,6 @@ export function attachGestures(el: HTMLElement, target: GestureTarget): () => vo
     }
     if (pointers.size === 1) {
       pinch = null;
-    }
-    const tap =
-      press &&
-      !press.moved &&
-      press.mouse &&
-      press.pickable &&
-      e.type === 'pointerup' &&
-      e.timeStamp - press.time < CLICK_MS;
-    if (pointers.size === 0 && tap) {
-      target.onPick(fromScreen(local(e), target.view(), target.size()));
     }
     if (pointers.size === 0) {
       lastMoved = Boolean(press?.moved);

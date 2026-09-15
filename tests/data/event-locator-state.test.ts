@@ -99,8 +99,8 @@ test('a shared link carries a chosen place, its radius, and its unit', () => {
   assert.deepEqual([settings.radius, settings.unit, settings.unitPinned], [75, 'km', true]);
 });
 
-test("a link never carries the visitor's own position", () => {
-  for (const source of ['device', 'approximate'] as const) {
+test("a link never carries the visitor's own position or the automatic default", () => {
+  for (const source of ['device', 'approximate', 'default'] as const) {
     const params = paramsFor({ ...SEARCHED, source }, DEFAULT_SETTINGS);
     assert.deepEqual(Object.values(params).filter(Boolean), [], source);
   }
@@ -116,11 +116,13 @@ test('malformed link parameters are ignored', () => {
   assert.deepEqual(settings, DEFAULT_SETTINGS);
 });
 
-test('storage remembers chosen places, but not the IP estimate', () => {
+test('storage remembers chosen places, but not automatic defaults', () => {
   const storage = new MemoryStorage();
   saveStored(SEARCHED, DEFAULT_SETTINGS, storage);
   assert.deepEqual(loadStored(storage).center, { ...SEARCHED, lat: 30.267, lon: -97.743 });
   saveStored({ ...SEARCHED, label: 'Guessed', source: 'approximate' }, DEFAULT_SETTINGS, storage);
+  assert.equal(loadStored(storage).center?.label, 'Austin, TX');
+  saveStored({ ...SEARCHED, label: 'Fallback', source: 'default' }, DEFAULT_SETTINGS, storage);
   assert.equal(loadStored(storage).center?.label, 'Austin, TX');
   storage.setItem('cm:events:settings', '{not json');
   assert.deepEqual(loadStored(storage).settings, DEFAULT_SETTINGS);

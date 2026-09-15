@@ -17,9 +17,9 @@ import { fetchLocatorEvents, fetchLocatorIndex } from '../lib/data/eventLocator'
 import { latestValue, resolved } from '../lib/resource';
 import { filterEvents, groupByDay, type VenueMarker, venueMarkers } from '../lib/events/filter';
 import { monthDay } from '../lib/events/format';
-import { type DistanceUnit, type LatLon, toKm, unitForCountry } from '../lib/events/geo';
+import { type DistanceUnit, toKm, unitForCountry } from '../lib/events/geo';
 import { reverseGeocode } from '../lib/events/geocode';
-import { approximateLabel, deviceLocation, DeviceLocationError, fetchApproximateLocation } from '../lib/events/locate';
+import { deviceLocation, DeviceLocationError } from '../lib/events/locate';
 import type { PlaceSuggestion } from '../lib/events/search';
 import {
   centerFromParams,
@@ -48,6 +48,13 @@ const LOCATE_ERRORS: Record<DeviceLocationError['reason'], string> = {
   unavailable: 'Couldn’t get a location. Try searching instead.'
 };
 const URL_WRITE_DELAY_MS = 300;
+const DEFAULT_CENTER: LocatorCenter = {
+  lat: 40.691872,
+  lon: -89.592178,
+  label: '201 SW Jefferson Ave, Peoria, IL 61602',
+  cc: 'US',
+  source: 'default'
+};
 
 function countText(total: number, cups: number): string {
   const events = `${total} event${total === 1 ? '' : 's'}`;
@@ -68,7 +75,7 @@ export function EventLocatorPage() {
   const [pendingShop, setPendingShop] = createSignal<string | null>(null);
   const [fitNonce, setFitNonce] = createSignal(0);
   const today = useToday();
-  // Newest location request wins: an older map click or lookup that resolves late is dropped.
+  // Newest location request wins: an older device lookup that resolves late is dropped.
   let request = 0;
 
   const [index, { refetch: retryIndex }] = createResource(fetchLocatorIndex);
@@ -120,19 +127,9 @@ export function EventLocatorPage() {
   onMount(() => {
     document.title = 'Events — Ciphermaniac';
     if (!initialCenter) {
-      void startFromApproximateLocation();
+      void locateDevice(true);
     }
   });
-
-  /** Open on the edge's estimate, unless the visitor has chosen a place while it was on its way. */
-  async function startFromApproximateLocation() {
-    const ticket = ++request;
-    const location = await fetchApproximateLocation();
-    if (location && !center() && ticket === request) {
-      choose({ ...location, label: approximateLabel(location), source: 'approximate' });
-    }
-    setLookedUp(true);
-  }
 
   function choose(next: LocatorCenter) {
     request++;
@@ -148,7 +145,7 @@ export function EventLocatorPage() {
     });
   }
 
-  async function locateDevice() {
+  async function locateDevice(useDefaultOnFailure = false) {
     setLocating(true);
     setLocateError(null);
     const ticket = ++request;
@@ -161,25 +158,18 @@ export function EventLocatorPage() {
       choose({ ...point, label: place?.label ?? 'Your location', cc: place?.cc ?? null, source: 'device' });
     } catch (error) {
       if (ticket === request) {
-        setLocateError(error instanceof DeviceLocationError ? LOCATE_ERRORS[error.reason] : LOCATE_ERRORS.unavailable);
+        if (useDefaultOnFailure && !center()) {
+          choose(DEFAULT_CENTER);
+        } else {
+          setLocateError(
+            error instanceof DeviceLocationError ? LOCATE_ERRORS[error.reason] : LOCATE_ERRORS.unavailable
+          );
+        }
       }
     } finally {
       setLocating(false);
+      setLookedUp(true);
     }
-  }
-
-  async function pickPoint(point: LatLon) {
-    const ticket = ++request;
-    const place = await reverseGeocode(point).catch(() => null);
-    if (ticket !== request) {
-      return;
-    }
-    choose({
-      ...point,
-      label: place?.label ?? `${point.lat.toFixed(2)}, ${point.lon.toFixed(2)}`,
-      cc: place?.cc ?? null,
-      source: 'map'
-    });
   }
 
   function pickPlace(place: PlaceSuggestion) {
@@ -280,7 +270,6 @@ export function EventLocatorPage() {
             onRadiusInput={radius => setSettings(s => ({ ...s, radius }))}
             onRadiusCommit={() => setFitNonce(n => n + 1)}
             onPickPlace={pickPlace}
-            onPickPoint={point => void pickPoint(point)}
             onLocate={() => void locateDevice()}
             onMarker={(marker: VenueMarker) => reveal(marker.firstId)}
             onMarkerHover={setHovered}

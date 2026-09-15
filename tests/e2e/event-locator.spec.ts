@@ -25,7 +25,9 @@ const PHOTON: Record<string, unknown[]> = {
   ]
 };
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ context, page }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: AUSTIN.lat, longitude: AUSTIN.lon });
   await page.clock.setFixedTime(new Date('2026-09-15T12:00:00'));
   await page.route('**/*', route => {
     const request = route.request();
@@ -37,6 +39,11 @@ test.beforeEach(async ({ page }) => {
       });
     }
     if (url.hostname === 'photon.komoot.io') {
+      if (url.pathname === '/reverse') {
+        return route.fulfill({
+          json: { features: [{ properties: { city: 'Austin', state: 'Texas', countrycode: 'US' } }] }
+        });
+      }
       const query = (url.searchParams.get('q') ?? '').toLowerCase();
       return route.fulfill({ json: { features: PHOTON[query] ?? [] } });
     }
@@ -61,9 +68,9 @@ async function openLocator(page: Page, path = '/events'): Promise<void> {
   expect(errors).toEqual([]);
 }
 
-test('opens on the approximate location and lists what is near it, by day', async ({ page }) => {
+test('asks for device location on first open and lists what is near it, by day', async ({ page }) => {
   await openLocator(page);
-  await expect(page.locator('.hero-meta')).toHaveText('50 mi around Austin, TX (approximate)');
+  await expect(page.locator('.hero-meta')).toHaveText('50 mi around Austin, TX');
   // San Antonio is 75 miles out, so five of the six fixture events are in range.
   await expect(page.locator('.el-row')).toHaveCount(5);
   await expect(page.locator('.el-count')).toHaveText('5 events, 2 Cups');
@@ -71,6 +78,12 @@ test('opens on the approximate location and lists what is near it, by day', asyn
   await expect(page.locator('.el-day-head').first()).toContainText('Tomorrow');
   await expect(page.locator('.lm-marker')).toHaveCount(4);
   await expect(page.locator('.lm-credit')).toHaveText('© OpenStreetMap contributors');
+});
+
+test('falls back to the Peoria address when location access is denied', async ({ context, page }) => {
+  await context.clearPermissions();
+  await page.goto('/events', { waitUntil: 'load' });
+  await expect(page.locator('.hero-meta')).toHaveText('50 mi around 201 SW Jefferson Ave, Peoria, IL 61602');
 });
 
 test('the Locals setting adds casual weekly events and is remembered', async ({ page }) => {
@@ -120,6 +133,20 @@ test('searching a store name finds the store and opens its next event', async ({
   // A place the visitor chose goes into the link.
   await expect(page).toHaveURL(/near=Dragon/);
   await expect(page).toHaveURL(/lat=30\.359/);
+
+  await page.reload();
+  await expect(page.locator('.hero-meta')).toHaveText("50 mi around Dragon's Lair Austin, Austin");
+});
+
+test('clicking empty map space does not move the search center', async ({ page }) => {
+  await openLocator(page);
+  const map = page.locator('.lm');
+  const box = await map.boundingBox();
+  if (!box) {
+    throw new Error('map has no bounding box');
+  }
+  await page.mouse.click(box.x + box.width * 0.8, box.y + box.height * 0.7);
+  await expect(page.locator('.hero-meta')).toHaveText('50 mi around Austin, TX');
 });
 
 test("the visitor's own position never goes into the link", async ({ page }) => {

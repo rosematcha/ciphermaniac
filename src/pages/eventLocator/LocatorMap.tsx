@@ -44,8 +44,6 @@ export interface LocatorMapProps {
   focusBand: number;
   onMarker: (marker: VenueMarker) => void;
   onMarkerHover: (key: string | null) => void;
-  /** A mouse click on empty map. */
-  onPick: (point: LatLon) => void;
 }
 
 /** A map of listed stores around the search centre. The list beside it is the accessible equivalent. */
@@ -69,7 +67,7 @@ export function LocatorMap(props: LocatorMapProps) {
       }
     });
     observer.observe(el);
-    const detach = attachGestures(el, { view, setView, size, onPick: point => props.onPick(point) });
+    const detach = attachGestures(el, { view, setView, size });
     onCleanup(() => {
       observer.disconnect();
       detach();
