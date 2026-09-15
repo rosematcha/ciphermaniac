@@ -196,6 +196,7 @@ body[data-mode='dark'] .lm-tile {
 }
 .el-search-row:focus-within {
   border-color: var(--accent);
+  box-shadow: var(--shadow-1), var(--focus-ring);
 }
 .el-search-icon,
 .el-option-icon {
@@ -221,8 +222,9 @@ body[data-mode='dark'] .lm-tile {
   font: inherit;
   font-size: var(--text-base);
 }
-.el-search-input:focus,
-.el-search-input:focus-visible {
+/* The row carries the focus ring (above), as bordered fields do site-wide. */
+.el-search-row .el-search-input:focus,
+.el-search-row .el-search-input:focus-visible {
   outline: none;
 }
 .el-search-input::placeholder {
