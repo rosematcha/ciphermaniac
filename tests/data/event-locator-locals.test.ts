@@ -9,11 +9,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { addDays, buildLocalsArtifacts, expandLocals, weekdayOf } from '../../shared/events/locals.ts';
-import type { LocalsCell } from '../../shared/events/types.ts';
-import { rawLocalEvent } from '../__utils__/pokedata.ts';
+import type { LocalsCell, LocalSlot } from '../../shared/events/types.ts';
+import { rawLocalEvent, rawLocalSeries } from '../__utils__/pokedata.ts';
 
+/** A Tuesday. The three-week window runs through Tuesday 2026-10-06. */
 const NOW = new Date('2026-09-15T12:00:00Z');
 const SOURCE = 'https://pokedata.ovh/events/';
+const WEDNESDAYS = ['2026-09-16', '2026-09-23', '2026-09-30'];
 
 function build(raw: unknown[]) {
   return buildLocalsArtifacts(raw, {
@@ -24,16 +26,8 @@ function build(raw: unknown[]) {
   });
 }
 
-/** The same slot on consecutive weeks, each with its own GUID as Pokedata lists them. */
-function weekly(league: string, dates: string[], overrides: Record<string, unknown> = {}) {
-  return dates.map((date, i) =>
-    rawLocalEvent({
-      league,
-      date,
-      guid: `${league.padStart(8, '0')}-0000-4000-8000-${String(i).padStart(12, '0')}`,
-      ...overrides
-    })
-  );
+function slots(raw: unknown[], cell = '30_-100', venue = 0): LocalSlot[] {
+  return build(raw).cells.get(cell)?.venues[venue]?.slots ?? [];
 }
 
 test('dates and weekdays', () => {
@@ -43,8 +37,8 @@ test('dates and weekdays', () => {
   assert.equal(weekdayOf('2026-09-20'), 0, 'Sunday');
 });
 
-test('a slot seen on consecutive weeks is one weekly record with no dates', () => {
-  const { index, cells, stats } = build(weekly('42', ['2026-09-16', '2026-09-23', '2026-09-30']));
+test('a slot listed on every week of the window is one weekly record with no dates', () => {
+  const { index, cells, stats } = build(rawLocalSeries('42', WEDNESDAYS));
   const cell = cells.get('30_-100');
   assert.equal(cell?.venues.length, 1);
   const venue = cell?.venues[0];
@@ -60,44 +54,56 @@ test('a slot seen on consecutive weeks is one weekly record with no dates', () =
   assert.equal(stats.weekly, 1);
 });
 
-test('a store with two slots a week keeps both, by weekday then time', () => {
-  const { cells } = build([
-    ...weekly('42', ['2026-09-16', '2026-09-23'], { when: '2026-09-16 19:30:00', name: 'Wednesday Standard' }),
-    ...weekly('42', ['2026-09-20', '2026-09-27'], { when: '2026-09-20 15:00:00', name: 'Sunday Standard' }),
-    ...weekly('42', ['2026-09-20', '2026-09-27'], { when: '2026-09-20 11:00:00', name: 'Sunday Juniors' })
+test('a store with several slots a week keeps each, by weekday then time', () => {
+  const listed = slots([
+    ...rawLocalSeries('42', ['2026-09-16', '2026-09-23', '2026-09-30'], { name: 'Wednesday Standard' }),
+    ...rawLocalSeries('42', ['2026-09-20', '2026-09-27', '2026-10-04'], {
+      time: '15:00:00',
+      name: 'Sunday Standard'
+    }),
+    ...rawLocalSeries('42', ['2026-09-20', '2026-09-27', '2026-10-04'], { time: '11:00:00', name: 'Sunday Juniors' })
   ]);
-  const slots = cells.get('30_-100')?.venues[0]?.slots.map(slot => [slot.weekday, slot.time, slot.name]);
-  assert.deepEqual(slots, [
-    [0, '11:00', 'Sunday Juniors'],
-    [0, '15:00', 'Sunday Standard'],
-    [3, '19:30', 'Wednesday Standard']
-  ]);
+  assert.deepEqual(
+    listed.map(slot => [slot.weekday, slot.time, slot.name]),
+    [
+      [0, '11:00', 'Sunday Juniors'],
+      [0, '15:00', 'Sunday Standard'],
+      [3, '19:30', 'Wednesday Standard']
+    ]
+  );
 });
 
-test('a slot that does not repeat weekly keeps its listed dates', () => {
-  const { cells, stats } = build([
-    ...weekly('42', ['2026-09-16', '2026-09-30']),
-    ...weekly('43', ['2026-09-17'], { latitude: '30.3', name: '' })
-  ]);
-  const [biweekly, once] = cells.get('30_-100')?.venues ?? [];
-  assert.deepEqual(biweekly?.slots[0]?.dates, ['2026-09-16', '2026-09-30']);
-  assert.deepEqual(once?.slots[0]?.dates, ['2026-09-17']);
-  assert.equal(once?.slots[0]?.name, 'Local', 'not weekly, so not "Weekly local"');
-  assert.equal(stats.weekly, 0);
+test('a series that starts late or stops early in the window says so, and never invents a week', () => {
+  const [late] = slots(rawLocalSeries('42', ['2026-09-23', '2026-09-30']));
+  assert.deepEqual([late?.from, late?.until, late?.dates], ['2026-09-23', undefined, undefined]);
+  const [early] = slots(rawLocalSeries('42', ['2026-09-16', '2026-09-23']));
+  assert.deepEqual([early?.from, early?.until, early?.dates], [undefined, '2026-09-23', undefined]);
+  const [once] = slots(rawLocalSeries('42', ['2026-09-23']));
+  assert.deepEqual([once?.from, once?.until], ['2026-09-23', '2026-09-23']);
+  // Tuesday 2026-10-06 is the window's last day, so a Tuesday series listed through it is complete.
+  const [tuesdays] = slots(rawLocalSeries('42', ['2026-09-15', '2026-09-22', '2026-09-29', '2026-10-06']));
+  assert.deepEqual(tuesdays, { weekday: 2, time: '19:30', name: 'Weekly local', fee: '$5' });
+});
+
+test('a slot that skips a week keeps its listed dates', () => {
+  const [skipping] = slots(rawLocalSeries('42', ['2026-09-16', '2026-09-30']));
+  assert.deepEqual(skipping?.dates, ['2026-09-16', '2026-09-30']);
+  assert.equal(skipping?.from, undefined);
+  assert.equal(build(rawLocalSeries('42', ['2026-09-16', '2026-09-30'])).stats.weekly, 0);
 });
 
 test('a name that changes week to week settles on the usual one', () => {
-  const { cells } = build([
-    ...weekly('42', ['2026-09-16'], { name: 'Liga 16 septiembre' }),
-    ...weekly('42', ['2026-09-23', '2026-09-30'], { name: 'Liga semanal' })
+  const [slot] = slots([
+    ...rawLocalSeries('42', ['2026-09-16'], { name: 'Liga 16 septiembre' }),
+    ...rawLocalSeries('42', ['2026-09-23', '2026-09-30'], { name: 'Liga semanal' })
   ]);
-  assert.equal(cells.get('30_-100')?.venues[0]?.slots[0]?.name, 'Liga semanal');
+  assert.equal(slot?.name, 'Liga semanal');
 });
 
 test('stores are grouped by league ID, and records without one are skipped', () => {
   const { index, stats } = build([
-    ...weekly('42', ['2026-09-16']),
-    ...weekly('42', ['2026-09-16'], { shop: 'TEST GAMES (RENAMED)' }),
+    ...rawLocalSeries('42', ['2026-09-16']),
+    ...rawLocalSeries('42', ['2026-09-16'], { shop: 'TEST GAMES (RENAMED)' }),
     rawLocalEvent({ league: '' }),
     rawLocalEvent({ league: 'abc' }),
     rawLocalEvent({ date: '2026-09-13' }),
@@ -108,16 +114,16 @@ test('stores are grouped by league ID, and records without one are skipped', () 
   assert.equal(stats.past, 1);
 });
 
-test('the same slot is one venue record, and venues shard into cells', () => {
+test('venues shard into cells', () => {
   const { index, cells } = build([
-    ...weekly('42', ['2026-09-16', '2026-09-23']),
-    ...weekly('7', ['2026-09-16', '2026-09-23'], { latitude: '51.5074', longitude: '-0.1278', country_code: 'GB' })
+    ...rawLocalSeries('42', WEDNESDAYS),
+    ...rawLocalSeries('7', WEDNESDAYS, { latitude: '51.5074', longitude: '-0.1278', country_code: 'GB' })
   ]);
   assert.deepEqual([...cells.keys()], ['30_-100', '50_-5']);
   assert.equal(index.total, 2);
 });
 
-function cell(overrides: Partial<LocalsCell['venues'][number]> = {}): LocalsCell {
+function cell(slot: LocalSlot = { weekday: 3, time: '19:30', name: 'Weekly local', fee: '$5' }): LocalsCell {
   return {
     version: 1,
     key: '30_-100',
@@ -131,12 +137,14 @@ function cell(overrides: Partial<LocalsCell['venues'][number]> = {}): LocalsCell
         cc: 'US',
         lat: 30.2672,
         lon: -97.7431,
-        slots: [{ weekday: 3, time: '19:30', name: 'Weekly local', fee: '$5' }],
-        ...overrides
+        slots: [slot]
       }
     ]
   };
 }
+
+const dates = (cells: LocalsCell[], today: string, horizon = 21) =>
+  expandLocals(cells, today, horizon).map(e => e.date);
 
 test('a weekly slot expands to every matching date from today through the horizon', () => {
   const events = expandLocals([cell()], '2026-09-15', 21);
@@ -145,7 +153,7 @@ test('a weekly slot expands to every matching date from today through the horizo
     ['2026-09-16', '2026-09-23', '2026-09-30']
   );
   const [first] = events;
-  assert.equal(first?.id, '42-2026-09-16-19:30');
+  assert.equal(first?.id, '42-2026-09-16-1930');
   assert.equal(first?.kind, 'local');
   assert.equal(first?.time, '19:30');
   assert.equal(first?.fee, '$5');
@@ -154,20 +162,18 @@ test('a weekly slot expands to every matching date from today through the horizo
   assert.equal('slots' in (first ?? {}), false);
 });
 
-test('a slot on today expands from today, and one with no time has a stable ID', () => {
-  const events = expandLocals([cell({ slots: [{ weekday: 2, time: '', name: 'Local' }] })], '2026-09-15', 7);
+test('from and until bound a weekly slot, and a slot on today expands from today', () => {
+  const bounded = cell({ weekday: 3, time: '19:30', name: 'Weekly local', from: '2026-09-23', until: '2026-09-30' });
+  assert.deepEqual(dates([bounded], '2026-09-15'), ['2026-09-23', '2026-09-30']);
+  assert.deepEqual(dates([bounded], '2026-09-24'), ['2026-09-30'], 'a from in the past is just today');
+  const today = cell({ weekday: 2, time: '', name: 'Weekly local' });
   assert.deepEqual(
-    events.map(event => event.id),
+    expandLocals([today], '2026-09-15', 7).map(event => event.id),
     ['42-2026-09-15-tba', '42-2026-09-22-tba']
   );
 });
 
 test('listed dates expand as listed, less the past', () => {
-  const dated = cell({
-    slots: [{ weekday: 3, time: '19:30', name: 'Local', dates: ['2026-09-09', '2026-09-16', '2026-09-30'] }]
-  });
-  assert.deepEqual(
-    expandLocals([dated], '2026-09-15', 21).map(event => event.date),
-    ['2026-09-16', '2026-09-30']
-  );
+  const dated = cell({ weekday: 3, time: '19:30', name: 'Local', dates: ['2026-09-09', '2026-09-16', '2026-09-30'] });
+  assert.deepEqual(dates([dated], '2026-09-15'), ['2026-09-16', '2026-09-30']);
 });

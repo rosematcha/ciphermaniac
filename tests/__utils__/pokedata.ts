@@ -113,6 +113,26 @@ export function rawLocalEvent(overrides: RawPokedataEvent = {}): RawPokedataEven
   return { ...LOCAL_BASE, ...overrides };
 }
 
+/**
+ * The same local on each of the given dates, each with its own GUID as
+ * Pokedata lists them. `time` (`HH:MM:SS`) sets the start on every date.
+ */
+export function rawLocalSeries(
+  league: string,
+  dates: string[],
+  { time = '19:30:00', ...overrides }: RawPokedataEvent & { time?: string } = {}
+): RawPokedataEvent[] {
+  return dates.map((date, i) =>
+    rawLocalEvent({
+      league,
+      date,
+      when: `${date} ${time}`,
+      guid: `${league.padStart(8, '0')}-0000-4000-8000-${String(i).padStart(12, '0')}`,
+      ...overrides
+    })
+  );
+}
+
 /** A page body as the API returns it. */
 export function pageBody(events: RawPokedataEvent[], totalItems: number, totalPages: number, page = 1): string {
   return JSON.stringify({

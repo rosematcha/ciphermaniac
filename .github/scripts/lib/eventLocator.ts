@@ -11,7 +11,6 @@
  * @module .github/scripts/lib/eventLocator
  */
 
-import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
@@ -20,6 +19,7 @@ import {
   type LocatorArtifacts,
   shrinkProblem
 } from '../../../shared/events/build.ts';
+import { semanticHash } from '../../../shared/data/hash.ts';
 import { buildLocalsArtifacts, type LocalsArtifacts, type LocalsBuildStats } from '../../../shared/events/locals.ts';
 import {
   LOCALS_INDEX_KEY,
@@ -151,12 +151,10 @@ export interface LocalsRunResult {
   stats: LocalsBuildStats;
 }
 
-/** Content hash of a cell, short enough to sit in the index for every cell. */
+/** Content hash of a cell (canonical, so key order cannot churn it), short enough for the index. */
 export function cellHash(cell: LocalsCell): string {
-  return createHash('sha1').update(JSON.stringify(cell)).digest('hex').slice(0, 16);
+  return semanticHash(cell).slice(0, 16);
 }
-
-const withoutStamp = (index: LocalsIndex) => JSON.stringify({ ...index, updatedAt: '' });
 
 /**
  * Write the locals cells whose content changed, then the index if anything
@@ -175,7 +173,8 @@ export async function publishLocals(
   );
   await runLimited(changed, UPLOAD_CONCURRENCY, ([key, cell]) => publisher.write(localsCellPath(key), cell));
   const removed = Object.keys(previous?.cells ?? {}).filter(key => !artifacts.cells.has(key));
-  if (changed.length || removed.length || !previous || withoutStamp(previous) !== withoutStamp(artifacts.index)) {
+  // A changed or dropped cell changes the index too, since it lists every hash.
+  if (!previous || semanticHash(previous) !== semanticHash(artifacts.index)) {
     await publisher.write(LOCALS_INDEX_KEY, artifacts.index);
   }
   for (const key of removed) {

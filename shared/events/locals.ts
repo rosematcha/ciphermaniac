@@ -5,16 +5,18 @@
  * GUID, about a thousand a day for months ahead. Stores run the same slot
  * every week, and a store's league ID is stable across weeks, so the locator
  * keeps one record per store with its weekday-and-time slots inside. A slot
- * seen on consecutive weeks is weekly and carries no dates; any other pattern
- * keeps the dates it was listed on.
+ * listed on every week it could be is weekly and carries no dates; one that
+ * starts or stops partway through the window says where; one that skips
+ * weeks keeps the dates it was listed on.
  *
  * Pure, like ./build: the producer fetches and writes, and every rule about
  * what ships lives here where tests can reach it.
  * @module shared/events/locals
  */
 
-import { CELL_DEGREES, cellKeyFor } from './cells';
-import { LOCAL_FALLBACK_NAME, normalizeEvent, type SkipReason } from './normalize';
+import { isoDay, pastCutoff } from './build';
+import { CELL_DEGREES, shardByCell } from './cells';
+import { normalizeEvent, type SkipReason } from './normalize';
 import type { LocalsCell, LocalsIndex, LocalSlot, LocalVenue, LocatorEvent } from './types';
 
 export type LocalSkipReason = SkipReason | 'league';
@@ -46,8 +48,6 @@ export interface LocalsBuildOptions {
 
 const DAY_MS = 86_400_000;
 const WEEK_DAYS = 7;
-/** Name for a slot with no store-given name that is not weekly either. */
-const IRREGULAR_FALLBACK_NAME = 'Local';
 
 function dayNumber(date: string): number {
   return Date.parse(`${date}T00:00:00Z`) / DAY_MS;
@@ -62,9 +62,14 @@ export function weekdayOf(date: string): number {
   return new Date(dayNumber(date) * DAY_MS).getUTCDay();
 }
 
-interface Occurrence {
-  league: string;
-  event: LocatorEvent;
+/** The first date on or after `date` that falls on `weekday`. */
+function nextOnWeekday(date: string, weekday: number): string {
+  return addDays(date, (weekday - weekdayOf(date) + WEEK_DAYS) % WEEK_DAYS);
+}
+
+/** The last date on or before `date` that falls on `weekday`. */
+function lastOnWeekday(date: string, weekday: number): string {
+  return addDays(date, -((weekdayOf(date) - weekday + WEEK_DAYS) % WEEK_DAYS));
 }
 
 function leagueOf(record: unknown): string {
@@ -93,15 +98,15 @@ function collect(raw: unknown[], cutoff: string): { byLeague: Map<string, Locato
       skip(result.reason);
       continue;
     }
-    const occurrence: Occurrence = { league: leagueOf(record), event: result.event };
+    const league = leagueOf(record);
     if (result.event.kind !== 'local') {
       skip('kind');
-    } else if (!occurrence.league) {
+    } else if (!league) {
       skip('league');
     } else if (result.event.date < cutoff) {
       stats.past++;
     } else {
-      byLeague.set(occurrence.league, [...(byLeague.get(occurrence.league) ?? []), result.event]);
+      byLeague.set(league, [...(byLeague.get(league) ?? []), result.event]);
       stats.kept++;
     }
   }
@@ -125,50 +130,60 @@ function mode(values: string[]): string {
   return best;
 }
 
-function isWeekly(dates: string[]): boolean {
-  return (
-    dates.length >= 2 &&
-    dates.every((date, i) => i === 0 || dayNumber(date) - dayNumber(dates[i - 1] ?? date) === WEEK_DAYS)
-  );
+/** The producer's window: the dates a listing could fall on. */
+interface Window {
+  start: string;
+  end: string;
 }
 
-/** One slot from every occurrence of it: dates ascending, name by majority. */
-function slotOf(occurrences: LocatorEvent[]): LocalSlot {
-  const dates = [...new Set(occurrences.map(event => event.date))].sort();
-  const weekly = isWeekly(dates);
-  const first = occurrences[0] as LocatorEvent;
-  const named = mode(occurrences.map(event => event.name));
-  const name = !weekly && named === LOCAL_FALLBACK_NAME ? IRREGULAR_FALLBACK_NAME : named;
-  const fee = occurrences.find(event => event.fee)?.fee;
+/** No skipped weeks between the first and last listed date. */
+function isConsecutive(dates: string[]): boolean {
+  return dates.every((date, i) => i === 0 || dayNumber(date) - dayNumber(dates[i - 1] ?? date) === WEEK_DAYS);
+}
+
+/**
+ * How a slot recurs. Listed on every week it could be inside the window:
+ * weekly, with `from` or `until` where the listing starts late or stops
+ * early. Any skipped week: the dates as listed.
+ */
+function recurrence(dates: string[], weekday: number, window: Window): Pick<LocalSlot, 'from' | 'until' | 'dates'> {
+  if (!isConsecutive(dates)) {
+    return { dates };
+  }
+  const first = dates[0] as string;
+  const last = dates[dates.length - 1] as string;
   return {
-    weekday: weekdayOf(first.date),
-    time: first.time,
-    name,
-    ...(fee ? { fee } : {}),
-    ...(weekly ? {} : { dates })
+    ...(first > nextOnWeekday(window.start, weekday) ? { from: first } : {}),
+    ...(last < lastOnWeekday(window.end, weekday) ? { until: last } : {})
   };
 }
 
-function venueOf(league: string, occurrences: LocatorEvent[]): LocalVenue {
+/** One slot from every occurrence of it: name by majority, fee from the first that has one. */
+function slotOf(occurrences: LocatorEvent[], window: Window): LocalSlot {
+  const dates = [...new Set(occurrences.map(event => event.date))].sort();
+  const first = occurrences[0] as LocatorEvent;
+  const weekday = weekdayOf(first.date);
+  const fee = occurrences.find(event => event.fee)?.fee;
+  return {
+    weekday,
+    time: first.time,
+    name: mode(occurrences.map(event => event.name)),
+    ...(fee ? { fee } : {}),
+    ...recurrence(dates, weekday, window)
+  };
+}
+
+function venueOf(league: string, occurrences: LocatorEvent[], window: Window): LocalVenue {
   const bySlot = new Map<string, LocatorEvent[]>();
   for (const event of occurrences) {
     const key = `${weekdayOf(event.date)}|${event.time}`;
     bySlot.set(key, [...(bySlot.get(key) ?? []), event]);
   }
-  const slots = [...bySlot.values()].map(slotOf).sort((a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time));
+  const slots = [...bySlot.values()]
+    .map(events => slotOf(events, window))
+    .sort((a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time));
   const { shop, address, city, region, cc, lat, lon } = occurrences[0] as LocatorEvent;
   return { id: league, shop, address, city, region, cc, lat, lon, slots };
-}
-
-function buildCells(venues: LocalVenue[]): Map<string, LocalsCell> {
-  const cells = new Map<string, LocalsCell>();
-  for (const venue of venues) {
-    const key = cellKeyFor(venue.lat, venue.lon);
-    const cell = cells.get(key) ?? { version: 1 as const, key, venues: [] };
-    cell.venues.push(venue);
-    cells.set(key, cell);
-  }
-  return new Map([...cells.entries()].sort(([a], [b]) => a.localeCompare(b)));
 }
 
 /**
@@ -177,13 +192,14 @@ function buildCells(venues: LocalVenue[]): Map<string, LocalsCell> {
  * @param options - Clock, attribution, horizon, and cell hashing
  */
 export function buildLocalsArtifacts(raw: unknown[], options: LocalsBuildOptions): LocalsArtifacts {
-  // Yesterday in UTC: the earliest date still "today" somewhere on Earth.
-  const cutoff = new Date(options.now.getTime() - DAY_MS).toISOString().slice(0, 10);
-  const { byLeague, stats } = collect(raw, cutoff);
+  const { byLeague, stats } = collect(raw, pastCutoff(options.now));
+  const window = { start: isoDay(options.now), end: addDays(isoDay(options.now), options.horizonDays) };
   const venues = [...byLeague.entries()]
-    .map(([league, occurrences]) => venueOf(league, occurrences))
+    .map(([league, occurrences]) => venueOf(league, occurrences, window))
     .sort((a, b) => a.id.localeCompare(b.id));
-  const cells = buildCells(venues);
+  const cells = new Map(
+    [...shardByCell(venues)].map(([key, cellVenues]) => [key, { version: 1 as const, key, venues: cellVenues }])
+  );
   stats.venues = venues.length;
   for (const venue of venues) {
     stats.slots += venue.slots.length;
@@ -207,15 +223,13 @@ export function buildLocalsArtifacts(raw: unknown[], options: LocalsBuildOptions
   return { index, cells, stats };
 }
 
-/** Dates of a weekly slot from today through the horizon. */
-function weeklyDates(today: string, horizonDays: number, weekday: number): string[] {
-  const last = addDays(today, horizonDays);
+/** Dates of a weekly slot from today through the horizon, inside its `from` and `until`. */
+function weeklyDates(slot: LocalSlot, today: string, horizonDays: number): string[] {
+  const start = slot.from && slot.from > today ? slot.from : today;
+  const horizon = addDays(today, horizonDays);
+  const end = slot.until && slot.until < horizon ? slot.until : horizon;
   const dates: string[] = [];
-  for (
-    let date = addDays(today, (weekday - weekdayOf(today) + WEEK_DAYS) % WEEK_DAYS);
-    date <= last;
-    date = addDays(date, WEEK_DAYS)
-  ) {
+  for (let date = nextOnWeekday(start, slot.weekday); date <= end; date = addDays(date, WEEK_DAYS)) {
     dates.push(date);
   }
   return dates;
@@ -224,7 +238,8 @@ function weeklyDates(today: string, horizonDays: number, weekday: number): strin
 function occurrenceOf(venue: LocalVenue, slot: LocalSlot, date: string): LocatorEvent {
   const { slots: _slots, id, ...place } = venue;
   return {
-    id: `${id}-${date}-${slot.time || 'tba'}`,
+    // No colon: the ID becomes a calendar file name.
+    id: `${id}-${date}-${slot.time.replace(':', '') || 'tba'}`,
     kind: 'local',
     name: slot.name,
     date,
@@ -247,9 +262,7 @@ export function expandLocals(cells: readonly LocalsCell[], today: string, horizo
   for (const cell of cells) {
     for (const venue of cell.venues) {
       for (const slot of venue.slots) {
-        const dates = slot.dates
-          ? slot.dates.filter(date => date >= today)
-          : weeklyDates(today, horizonDays, slot.weekday);
+        const dates = slot.dates ? slot.dates.filter(date => date >= today) : weeklyDates(slot, today, horizonDays);
         events.push(...dates.map(date => occurrenceOf(venue, slot, date)));
       }
     }

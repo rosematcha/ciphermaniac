@@ -28,7 +28,7 @@ const BARE_DOMAIN = /^[\w-]+(\.[\w-]+)+(\/|$)/;
 const DETAILS_LIMIT = 600;
 const COORDINATE_DIGITS = 5;
 /** Name for a local whose store gave it none. */
-export const LOCAL_FALLBACK_NAME = 'Weekly local';
+const LOCAL_FALLBACK_NAME = 'Weekly local';
 
 /** Single-line text: whitespace collapsed, trimmed. Numbers are stringified. */
 function text(value: unknown): string {

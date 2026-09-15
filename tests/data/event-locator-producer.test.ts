@@ -17,7 +17,7 @@ import {
 } from '../../.github/scripts/lib/pokedata.ts';
 import { cellHash, type Publisher, runEventLocator, runLocalsLocator } from '../../.github/scripts/lib/eventLocator.ts';
 import type { LocalsCell, LocalsIndex, LocatorIndex } from '../../shared/events/types.ts';
-import { pageBody, rawEventWithId, rawLocalEvent } from '../__utils__/pokedata.ts';
+import { pageBody, rawEventWithId, rawLocalEvent, rawLocalSeries } from '../__utils__/pokedata.ts';
 
 const PHP_FATAL =
   '<br />\n<b>Fatal error</b>:  Uncaught TypeError: mysqli::real_escape_string(): Argument #1 ($string) must be of type string';
@@ -139,6 +139,21 @@ test('the locals pull stops at the first page past the horizon and drops what is
   assert.deepEqual(requested, [0, 1]);
   assert.equal(events.length, 150);
   assert.ok(events.every(event => (event as { date: string }).date <= '2026-10-06'));
+});
+
+test('a locals page is retried like a sanctioned one, and a feed out of date order fails the pull', async () => {
+  const answers = [respond('busy', 503), respond(PHP_FATAL), respond(JSON.stringify(localsOn('2026-09-16', 3)))];
+  const events = await fetchLocalEvents({ fetch: async () => answers.shift()!, sleep: noSleep });
+  assert.equal(events.length, 3);
+
+  const pages = [JSON.stringify(localsOn('2026-09-20', LOCAL_PAGE_SIZE)), JSON.stringify(localsOn('2026-09-18', 3))];
+  await assert.rejects(
+    fetchLocalEvents({
+      fetch: async (_input, init) => respond(pages[JSON.parse(String(init?.body)).page as number] ?? '[]'),
+      sleep: noSleep
+    }),
+    /not sorted by date: page 1 starts 2026-09-18, after 2026-09-20/
+  );
 });
 
 test('a short locals page ends the pull before the horizon', async () => {
@@ -290,16 +305,8 @@ test('allow_shrink publishes a real drop but never an empty generation', async (
 });
 
 /** The same weekly slot on three weeks, as Pokedata lists it. */
-function weeklyLocal(league: string, overrides: Record<string, unknown> = {}) {
-  return ['2026-09-16', '2026-09-23', '2026-09-30'].map((date, i) =>
-    rawLocalEvent({
-      league,
-      date,
-      guid: `${league.padStart(8, '0')}-0000-4000-8000-${String(i).padStart(12, '0')}`,
-      ...overrides
-    })
-  );
-}
+const weeklyLocal = (league: string, overrides: Record<string, unknown> = {}) =>
+  rawLocalSeries(league, ['2026-09-16', '2026-09-23', '2026-09-30'], overrides);
 
 // eslint-disable-next-line camelcase -- Pokedata's field name
 const LONDON = { latitude: '51.5074', longitude: '-0.1278', country_code: 'GB' };
@@ -344,10 +351,7 @@ test('a run whose locals did not change writes nothing', async () => {
 test('only the cells that changed are rewritten; a cell with no locals left is deleted after the index', async () => {
   const first = await localsRun([...weeklyLocal('42'), ...weeklyLocal('7', LONDON)], null);
   const previous = first.store.get('events/locals/v1/index.json') as LocalsIndex;
-  const second = await localsRun(
-    [...weeklyLocal('42'), ...weeklyLocal('43', { when: '2026-09-16 20:00:00' })],
-    previous
-  );
+  const second = await localsRun([...weeklyLocal('42'), ...weeklyLocal('43', { time: '20:00:00' })], previous);
   assert.deepEqual(second.writes, ['events/locals/v1/cells/30_-100.json', 'events/locals/v1/index.json']);
   assert.deepEqual(second.removes, ['events/locals/v1/cells/50_-5.json']);
   assert.deepEqual(second.result.removed, ['50_-5']);

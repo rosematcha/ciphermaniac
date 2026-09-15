@@ -130,7 +130,10 @@ export interface LocatorPlaces {
 
 /**
  * One recurring slot at a store: a weekday and a start time. Weekly unless
- * `dates` is present, in which case those are the only dates listed.
+ * `dates` is present, in which case those are the only dates listed. A weekly
+ * slot listed from partway through the producer's window, or only up to
+ * partway, says so with `from` and `until`, so the browser never shows a week
+ * the store did not list.
  */
 export interface LocalSlot {
   /** 0 is Sunday, as `Date#getUTCDay`. */
@@ -139,7 +142,11 @@ export interface LocalSlot {
   time: string;
   name: string;
   fee?: string;
-  /** Listed dates, `YYYY-MM-DD`, for a slot that does not repeat every week. */
+  /** First listed date, `YYYY-MM-DD`, when the series starts after the window does. */
+  from?: string;
+  /** Last listed date, `YYYY-MM-DD`, when the series ends before the window does. */
+  until?: string;
+  /** Listed dates, `YYYY-MM-DD`, for a slot that skips weeks. */
   dates?: string[];
 }
 
