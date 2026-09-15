@@ -12,17 +12,18 @@ import {
 } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
 import { cellKeyFor, cellsForCircle } from '../../shared/events/cells';
-import type { EventKind } from '../../shared/events/types';
+import type { ApproximateLocation, EventKind } from '../../shared/events/types';
 import { fetchLocatorEvents, fetchLocatorIndex } from '../lib/data/eventLocator';
 import { latestValue, resolved } from '../lib/resource';
 import { filterEvents, groupByDay, type VenueMarker, venueMarkers } from '../lib/events/filter';
 import { monthDay } from '../lib/events/format';
 import { type DistanceUnit, toKm, unitForCountry } from '../lib/events/geo';
 import { reverseGeocode } from '../lib/events/geocode';
-import { deviceLocation, DeviceLocationError } from '../lib/events/locate';
+import { approximateLabel, deviceLocation, DeviceLocationError, fetchApproximateLocation } from '../lib/events/locate';
 import type { PlaceSuggestion } from '../lib/events/search';
 import {
   centerFromParams,
+  type CenterSource,
   convertRadius,
   loadStored,
   type LocatorCenter,
@@ -55,6 +56,22 @@ const DEFAULT_CENTER: LocatorCenter = {
   cc: 'US',
   source: 'default'
 };
+/** Centres the page picked itself say so after the place name. */
+const SOURCE_NOTES: Partial<Record<CenterSource, string>> = {
+  approximate: ' (approximate)'
+};
+
+function approximateCenter(location: ApproximateLocation | null): LocatorCenter | null {
+  return location
+    ? {
+        lat: location.lat,
+        lon: location.lon,
+        label: approximateLabel(location),
+        cc: location.cc ?? null,
+        source: 'approximate'
+      }
+    : null;
+}
 
 function countText(total: number, cups: number): string {
   const events = `${total} event${total === 1 ? '' : 's'}`;
@@ -127,12 +144,18 @@ export function EventLocatorPage() {
   onMount(() => {
     document.title = 'Events — Ciphermaniac';
     if (!initialCenter) {
-      void locateDevice(true);
+      void locateFirst();
     }
   });
 
-  function choose(next: LocatorCenter) {
-    request++;
+  /**
+   * Move the search. A centre the visitor chose cancels any device lookup in
+   * flight; one the page picked for itself (`supersede` false) does not.
+   */
+  function choose(next: LocatorCenter, supersede = true) {
+    if (supersede) {
+      request++;
+    }
     batch(() => {
       setCenter(next);
       setExpanded(null);
@@ -145,31 +168,53 @@ export function EventLocatorPage() {
     });
   }
 
-  async function locateDevice(useDefaultOnFailure = false) {
+  /**
+   * Centre on the device. Resolves false when it will not say where it is;
+   * `quiet` leaves the reason unshown, for the first visit's own fallbacks.
+   */
+  async function locateDevice(quiet = false): Promise<boolean> {
     setLocating(true);
     setLocateError(null);
     const ticket = ++request;
     try {
       const point = await deviceLocation();
       const place = await reverseGeocode(point).catch(() => null);
-      if (ticket !== request) {
-        return;
-      }
-      choose({ ...point, label: place?.label ?? 'Your location', cc: place?.cc ?? null, source: 'device' });
-    } catch (error) {
       if (ticket === request) {
-        if (useDefaultOnFailure && !center()) {
-          choose(DEFAULT_CENTER);
-        } else {
-          setLocateError(
-            error instanceof DeviceLocationError ? LOCATE_ERRORS[error.reason] : LOCATE_ERRORS.unavailable
-          );
-        }
+        choose({ ...point, label: place?.label ?? 'Your location', cc: place?.cc ?? null, source: 'device' });
       }
+      return true;
+    } catch (error) {
+      if (ticket === request && !quiet) {
+        setLocateError(error instanceof DeviceLocationError ? LOCATE_ERRORS[error.reason] : LOCATE_ERRORS.unavailable);
+      }
+      return false;
     } finally {
       setLocating(false);
-      setLookedUp(true);
+      if (!quiet) {
+        setLookedUp(true);
+      }
     }
+  }
+
+  /** Take a centre the page picked itself, unless one is already showing. */
+  function settle(next: LocatorCenter | null) {
+    if (next && !center()) {
+      choose(next, false);
+    }
+  }
+
+  /**
+   * First visit: the edge's IP estimate fills in while the device is asked,
+   * so the list never waits on a permission prompt. Only with neither does
+   * the page fall back to its default place.
+   */
+  async function locateFirst() {
+    const guess = fetchApproximateLocation().then(approximateCenter);
+    void guess.then(settle);
+    if (!(await locateDevice(true))) {
+      settle((await guess) ?? DEFAULT_CENTER);
+    }
+    setLookedUp(true);
   }
 
   function pickPlace(place: PlaceSuggestion) {
@@ -230,7 +275,7 @@ export function EventLocatorPage() {
     if (!c) {
       return lookedUp() ? 'Search a place to see the events around it.' : '';
     }
-    return `${settings().radius} ${settings().unit} around ${c.label}${c.source === 'approximate' ? ' (approximate)' : ''}`;
+    return `${settings().radius} ${settings().unit} around ${c.label}${SOURCE_NOTES[c.source] ?? ''}`;
   };
 
   return (
@@ -339,7 +384,8 @@ const WIDER = [100, 250];
 
 function Results(props: ResultsProps) {
   const failed = () => Boolean(props.index.error || props.loaded.error);
-  const loading = () => !resolved(props.index) || (props.center && !props.hasEvents);
+  // No centre yet means the first lookup is still out: that is loading, not an empty result.
+  const loading = () => !resolved(props.index) || !props.center || !props.hasEvents;
   return (
     <Show
       when={!failed()}

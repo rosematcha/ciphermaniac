@@ -80,10 +80,29 @@ test('asks for device location on first open and lists what is near it, by day',
   await expect(page.locator('.lm-credit')).toHaveText('© OpenStreetMap contributors');
 });
 
-test('falls back to the Peoria address when location access is denied', async ({ context, page }) => {
+test('without device location it shows the edge estimate, marked approximate', async ({ context, page }) => {
   await context.clearPermissions();
   await page.goto('/events', { waitUntil: 'load' });
+  await expect(page.locator('.hero-meta')).toHaveText('50 mi around Austin, TX (approximate)');
+});
+
+test('with no location at all it falls back to the Peoria address', async ({ context, page }) => {
+  await context.clearPermissions();
+  await page.route('**/api/locate', route => route.fulfill({ status: 503, body: 'Unavailable in fixtures' }));
+  await page.goto('/events', { waitUntil: 'load' });
   await expect(page.locator('.hero-meta')).toHaveText('50 mi around 201 SW Jefferson Ave, Peoria, IL 61602');
+});
+
+test('while the location prompt is open it shows loading, never an empty result', async ({ page }) => {
+  // A prompt nobody answers: the device never calls back.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition: () => undefined } });
+  });
+  await page.route('**/api/locate', route => route.fulfill({ status: 503, body: 'Unavailable in fixtures' }));
+  await page.goto('/events', { waitUntil: 'load' });
+  await expect(page.locator('.el-skeleton').first()).toBeVisible();
+  await page.waitForTimeout(1000);
+  await expect(page.locator('.empty-state')).toHaveCount(0);
 });
 
 test('the Locals setting adds casual weekly events and is remembered', async ({ page }) => {
