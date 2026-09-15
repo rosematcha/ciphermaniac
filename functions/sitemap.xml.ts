@@ -37,6 +37,7 @@ const STATIC_ROUTES: Array<{ path: string; changefreq: ChangeFreq; priority: num
   { path: '/trends', changefreq: 'daily', priority: 0.9 },
   { path: '/players', changefreq: 'daily', priority: 0.8 },
   { path: '/tournaments', changefreq: 'daily', priority: 0.7 },
+  { path: '/events', changefreq: 'daily', priority: 0.7 },
   { path: '/tools', changefreq: 'monthly', priority: 0.6 },
   { path: '/tools/deck-box-labels', changefreq: 'monthly', priority: 0.5 },
   { path: '/tools/meta-binder', changefreq: 'weekly', priority: 0.6 },

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-15T10:00:00.000Z",
+  "key": "25_-100",
+  "events": [
+    {
+      "id": "26-09-000006",
+      "kind": "challenge",
+      "name": "San Antonio Challenge",
+      "date": "2026-09-17",
+      "time": "18:30",
+      "shop": "RUN GOOD TCG",
+      "address": "1 ALAMO PLAZA, SAN ANTONIO, TX 78205, US",
+      "city": "San Antonio",
+      "region": "Texas",
+      "cc": "US",
+      "lat": 29.4241,
+      "lon": -98.4936,
+      "url": "https://www.pokemon.com/us/pokemon-trainer-club/play-pokemon-tournaments/26-09-000006/",
+      "fee": "5"
+    }
+  ]
+}

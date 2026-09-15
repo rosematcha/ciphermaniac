@@ -411,7 +411,7 @@ test('keyboard focus opens the Tools menu', async ({ page }, testInfo) => {
   // Tab in from the neighbouring link: :focus-visible only matches when the
   // browser saw a keyboard interaction, which a bare focus() does not give us.
   const nav = page.locator('.topnav');
-  await nav.getByRole('link', { name: 'Players', exact: true }).focus();
+  await nav.getByRole('link', { name: 'Events', exact: true }).focus();
   await page.keyboard.press('Tab');
   await expect(nav.getByRole('link', { name: 'Tools', exact: true })).toBeFocused();
   await expect(menu).toBeVisible();

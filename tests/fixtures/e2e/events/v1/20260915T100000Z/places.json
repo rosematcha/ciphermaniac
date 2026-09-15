@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-15T10:00:00.000Z",
+  "cities": [
+    {
+      "name": "Austin",
+      "region": "Texas",
+      "cc": "US",
+      "lat": 30.34,
+      "lon": -97.76,
+      "count": 4
+    },
+    {
+      "name": "Round Rock",
+      "region": "Texas",
+      "cc": "US",
+      "lat": 30.508,
+      "lon": -97.679,
+      "count": 1
+    },
+    {
+      "name": "San Antonio",
+      "region": "Texas",
+      "cc": "US",
+      "lat": 29.424,
+      "lon": -98.494,
+      "count": 1
+    }
+  ],
+  "venues": [
+    {
+      "shop": "DRAGON'S LAIR AUSTIN",
+      "city": "Austin",
+      "region": "Texas",
+      "cc": "US",
+      "lat": 30.359,
+      "lon": -97.734,
+      "count": 1,
+      "next": "2026-09-19"
+    },
+    {
+      "shop": "CARD TRADERS OF AUSTIN",
+      "city": "Austin",
+      "region": "Texas",
+      "cc": "US",
+      "lat": 30.44,
+      "lon": -97.771,
+      "count": 2,
+      "next": "2026-09-16"
+    },
+    {
+      "shop": "SPACE GOBLIN COLLECTIBLES",
+      "city": "Austin",
+      "region": "Texas",
+      "cc": "US",
+      "lat": 30.202,
+      "lon": -97.806,
+      "count": 1,
+      "next": "2026-09-20"
+    },
+    {
+      "shop": "WYLDER GAMING",
+      "city": "Round Rock",
+      "region": "Texas",
+      "cc": "US",
+      "lat": 30.508,
+      "lon": -97.679,
+      "count": 1,
+      "next": "2026-09-26"
+    },
+    {
+      "shop": "RUN GOOD TCG",
+      "city": "San Antonio",
+      "region": "Texas",
+      "cc": "US",
+      "lat": 29.424,
+      "lon": -98.494,
+      "count": 1,
+      "next": "2026-09-17"
+    }
+  ]
+}
