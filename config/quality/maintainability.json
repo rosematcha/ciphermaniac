@@ -122,10 +122,6 @@
     "complexity:2e08257337c40dfbca704e24bb57b988166c5d640b6effc3b0fefc41e82ec724:Function 'chooseCanonicalPrint' has a complexity of 16. Maximum allowed is 12.",
     "complexity:43532683e044611d067bf223835c5d25fe219de10c60e68b78ea5c6da836e761:Function 'resolveCanonicalUidAt' has a complexity of 13. Maximum allowed is 12."
   ],
-  "shared/data/cardIdentity.ts": [
-    "complexity:d226990ca51d65f38ca8f46a1fa8dbb7a6c7f2ce4749f6f35cac45ff7065e5df:Function 'normalizeSynonymDatabase' has a complexity of 16. Maximum allowed is 12.",
-    "complexity:0c19c55a1843ab25e681762a13ae3fb7b31626a3b89ecb2035b59f09e55a4da9:Function 'aggregateCanonicalCardsPerDeck' has a complexity of 13. Maximum allowed is 12."
-  ],
   "shared/data/cardTypesDatabase.ts": [
     "max-depth:5eafd58058e91a6d399555eff9184f004ad2fe850f55ce5949174624c1440965:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:84e9afb22fa27038b5503e62e0f65884c2e2e6841b8b4a0adab0632f14751c7a:Function 'enrichCardWithType' has a complexity of 23. Maximum allowed is 12."
