@@ -11,7 +11,12 @@
  */
 
 import { createDataClient } from './client';
+import { expandLocals } from '../../../shared/events/locals';
 import {
+  LOCALS_INDEX_KEY,
+  type LocalsCell,
+  localsCellPath,
+  type LocalsIndex,
   LOCATOR_INDEX_KEY,
   type LocatorCell,
   locatorCellPath,
@@ -53,4 +58,30 @@ export async function fetchLocatorEvents(index: LocatorIndex, cells: readonly st
     wanted.map(key => client.fetchJson<LocatorCell>(`/${locatorCellPath(index.generation, key)}`))
   );
   return loaded.flatMap(cell => (cell && cell.version === 1 ? cell.events : []));
+}
+
+/** The locals index, or null when none has been published. */
+export async function fetchLocalsIndex(): Promise<LocalsIndex | null> {
+  const index = await client.fetchJsonOptional<LocalsIndex>(`/${LOCALS_INDEX_KEY}`);
+  if (index) {
+    assertVersion(index, 'locals index');
+  }
+  return index;
+}
+
+/**
+ * Every local in the given cells from today through the index's horizon,
+ * expanded from the stores' weekly slots. Locals cells sit at stable paths
+ * and are deleted when a cell empties, so a cell the index still lists but
+ * that is gone is an empty area, not an error.
+ */
+export async function fetchLocalEvents(
+  index: LocalsIndex,
+  cells: readonly string[],
+  today: string
+): Promise<LocatorEvent[]> {
+  const wanted = cells.filter(key => index.cells[key]);
+  const loaded = await Promise.all(wanted.map(key => client.fetchJsonOptional<LocalsCell>(`/${localsCellPath(key)}`)));
+  const present = loaded.filter((cell): cell is LocalsCell => Boolean(cell && cell.version === 1));
+  return expandLocals(present, today, index.horizonDays);
 }

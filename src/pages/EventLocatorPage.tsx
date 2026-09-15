@@ -2,7 +2,7 @@ import { createEffect, createMemo, createResource, createSignal, For, on, onClea
 import { useSearchParams } from '@solidjs/router';
 import { cellKeyFor, cellsForCircle } from '../../shared/events/cells';
 import type { EventKind } from '../../shared/events/types';
-import { fetchLocatorEvents, fetchLocatorIndex } from '../lib/data/eventLocator';
+import { fetchLocalEvents, fetchLocalsIndex, fetchLocatorEvents, fetchLocatorIndex } from '../lib/data/eventLocator';
 import { latestValue, resolved } from '../lib/resource';
 import { filterEvents, groupByDay, type VenueMarker, venueMarkers } from '../lib/events/filter';
 import { monthDay } from '../lib/events/format';
@@ -65,6 +65,10 @@ export function EventLocatorPage() {
   });
 
   const [index, { refetch: retryIndex }] = createResource(fetchLocatorIndex);
+  // Locals are their own artifact, off by default, so nothing about them is
+  // fetched until the Locals filter is on. The chip is offered regardless.
+  const localsOn = createMemo(() => settings().kinds.includes('local'));
+  const [localsIndex, { refetch: retryLocalsIndex }] = createResource(localsOn, on => (on ? fetchLocalsIndex() : null));
   const radiusKm = () => toKm(settings().radius, settings().unit);
   const cellKey = createMemo(() => {
     const c = center();
@@ -78,6 +82,23 @@ export function EventLocatorPage() {
     },
     async ({ i, key }) => ({ cells: key.split(' '), events: await fetchLocatorEvents(i, key.split(' ')) })
   );
+  const kinds = createMemo(() => new Set<EventKind>(settings().kinds));
+  // The locals cells around the search, expanded from weekly slots into the dates around today.
+  const [locals, { refetch: retryLocals }] = createResource(
+    () => {
+      const li = resolved(localsIndex);
+      const key = cellKey();
+      return li && key ? { li, key, today: today() } : false;
+    },
+    async ({ li, key, today: day }) => ({
+      cells: key.split(' '),
+      events: await fetchLocalEvents(li, key.split(' '), day)
+    })
+  );
+  const coversCentre = (value: { cells: string[] } | undefined) => {
+    const c = center();
+    return Boolean(value && c && value.cells.includes(cellKeyFor(c.lat, c.lon)));
+  };
   /**
    * The loaded listings, when they cover the current centre. While a radius
    * grows the old ones stay up (no skeleton flash); a jump elsewhere waits for
@@ -85,18 +106,21 @@ export function EventLocatorPage() {
    */
   const usable = () => {
     const value = latestValue(loaded);
-    const c = center();
-    return value && c && value.cells.includes(cellKeyFor(c.lat, c.lon)) ? value.events : undefined;
+    return coversCentre(value) ? value?.events : undefined;
+  };
+  /** Locals for the current centre, once they have arrived; none while they load or are off. */
+  const usableLocals = () => {
+    const value = latestValue(locals);
+    return localsOn() && coversCentre(value) ? (value?.events ?? []) : [];
   };
 
-  const kinds = createMemo(() => new Set<EventKind>(settings().kinds));
   const placed = createMemo(() => {
     const c = center();
     const events = usable();
     if (!c || !events) {
       return [];
     }
-    return filterEvents(events, {
+    return filterEvents([...events, ...usableLocals()], {
       center: c,
       radiusKm: radiusKm(),
       kinds: kinds(),
@@ -171,7 +195,23 @@ export function EventLocatorPage() {
     const c = center();
     return c ? `${c.label}${SOURCE_NOTES[c.source] ?? ''}` : '';
   };
-  const available = () => resolved(index)?.kinds ?? null;
+  /** Kinds with any events anywhere. Locals are offered before their index is fetched. */
+  const available = () => {
+    const kindsListed = resolved(index)?.kinds;
+    return kindsListed ? { ...kindsListed, local: resolved(localsIndex)?.total ?? 1 } : null;
+  };
+  const localsFailed = () => localsOn() && Boolean(localsIndex.error || locals.error);
+  const retry = () => {
+    if (index.error) {
+      void retryIndex();
+    } else if (loaded.error) {
+      void retryEvents();
+    } else if (localsIndex.error) {
+      void retryLocalsIndex();
+    } else {
+      void retryLocals();
+    }
+  };
   /** Events the filters show now, or null before the area has loaded. */
   const total = () => (center() && usable() ? placed().length : null);
   // One set of filter props for the desktop panel, the phone sheet and both scope lines; getters keep them live.
@@ -232,7 +272,7 @@ export function EventLocatorPage() {
           <FilterBar {...filters} count={count()} />
           <Results
             index={index}
-            loaded={loaded}
+            loaded={{ error: loaded.error || localsFailed() }}
             hasEvents={Boolean(usable())}
             center={center()}
             lookedUp={lookedUp()}
@@ -242,7 +282,7 @@ export function EventLocatorPage() {
             today={today()}
             expanded={expanded()}
             hovered={hovered()}
-            onRetry={() => void (index.error ? retryIndex() : retryEvents())}
+            onRetry={retry}
             onToggle={id => setExpanded(current => (current === id ? null : id))}
             onHover={setHovered}
             onWiden={radius => {

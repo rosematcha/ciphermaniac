@@ -7,7 +7,7 @@
  * @module shared/events/build
  */
 
-import { CELL_DEGREES, cellKeyFor } from './cells';
+import { CELL_DEGREES, shardByCell } from './cells';
 import { normalizeEvent, type SkipReason } from './normalize';
 import {
   EVENT_KINDS,
@@ -64,8 +64,13 @@ export function generationId(now: Date): string {
     .replace(/[-:]/g, '');
 }
 
-function isoDay(date: Date): string {
+export function isoDay(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+/** Yesterday in UTC: the earliest date still "today" somewhere on Earth. Listings before it are past. */
+export function pastCutoff(now: Date): string {
+  return isoDay(new Date(now.getTime() - 24 * 60 * 60 * 1000));
 }
 
 function compareEvents(a: LocatorEvent, b: LocatorEvent): number {
@@ -105,14 +110,12 @@ function collectEvents(raw: unknown[], cutoff: string): { events: LocatorEvent[]
 }
 
 function buildCells(events: LocatorEvent[], generatedAt: string): Map<string, LocatorCell> {
-  const cells = new Map<string, LocatorCell>();
-  for (const event of events) {
-    const key = cellKeyFor(event.lat, event.lon);
-    const cell = cells.get(key) ?? { version: 1 as const, generatedAt, key, events: [] };
-    cell.events.push(event);
-    cells.set(key, cell);
-  }
-  return new Map([...cells.entries()].sort(([a], [b]) => a.localeCompare(b)));
+  return new Map(
+    [...shardByCell(events)].map(([key, cellEvents]) => [
+      key,
+      { version: 1 as const, generatedAt, key, events: cellEvents }
+    ])
+  );
 }
 
 function buildCities(events: LocatorEvent[]): LocatorCity[] {
@@ -194,8 +197,7 @@ function countKinds(events: LocatorEvent[]): Record<EventKind, number> {
  */
 export function buildLocatorArtifacts(raw: unknown[], options: BuildOptions): LocatorArtifacts {
   const generatedAt = options.now.toISOString();
-  // Yesterday in UTC: the earliest date still "today" somewhere on Earth.
-  const cutoff = isoDay(new Date(options.now.getTime() - 24 * 60 * 60 * 1000));
+  const cutoff = pastCutoff(options.now);
   const { events, stats } = collectEvents(raw, cutoff);
   const cells = buildCells(events, generatedAt);
   const index: LocatorIndex = {

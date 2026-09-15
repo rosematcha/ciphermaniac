@@ -21,11 +21,14 @@ const EVENT_ID = /^\d{2}-\d{2}-\d{6}$/;
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const WALL_TIME = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/;
+const MIDNIGHT = '00:00';
 const CLOCK = /^(\d{2}):(\d{2})/;
 const EMAIL = /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/;
 const BARE_DOMAIN = /^[\w-]+(\.[\w-]+)+(\/|$)/;
 const DETAILS_LIMIT = 600;
 const COORDINATE_DIGITS = 5;
+/** Name for a local whose store gave it none. */
+const LOCAL_FALLBACK_NAME = 'Weekly local';
 
 /** Single-line text: whitespace collapsed, trimmed. Numbers are stringified. */
 function text(value: unknown): string {
@@ -114,6 +117,20 @@ function coordinates(latValue: unknown, lonValue: unknown): { lat: number; lon: 
 function clock(value: unknown): string {
   const match = CLOCK.exec(text(value));
   return match && Number(match[1]) < 24 && Number(match[2]) < 60 ? `${match[1]}:${match[2]}` : '';
+}
+
+/**
+ * A local's start, from Pokedata's `when` (`YYYY-MM-DD HH:MM:SS`). Locals have
+ * no `time` field, and a midnight `when` is a store that listed no time.
+ */
+function localClock(value: unknown): string {
+  const match = WALL_TIME.exec(text(value));
+  const time = match ? clock(match[2]) : '';
+  return time === MIDNIGHT ? '' : time;
+}
+
+function startClock(raw: RawEvent, kind: EventKind): string {
+  return kind === 'local' ? localClock(raw.when) : clock(raw.time);
 }
 
 /** A real calendar date: shape and value (no 2026-02-30). */
@@ -205,7 +222,8 @@ type OptionalFields = Omit<Partial<LocatorEvent>, 'divisionFees'> & { divisionFe
 /** Every optional field, present only when it has a usable value. */
 function optionalFields(raw: RawEvent): OptionalFields {
   const candidates: OptionalFields = {
-    fee: fee(raw.Admission),
+    // Sanctioned events list admission; locals list a cost.
+    fee: fee(raw.Admission) ?? fee(raw.cost),
     divisionFees: divisionFees(raw),
     regOpens: wallTime(raw.Registration_start),
     regCloses: wallTime(raw.Registration_end),
@@ -239,7 +257,7 @@ export function normalizeEvent(raw: RawEvent): NormalizeResult {
   if (!id) {
     return skip('id');
   }
-  const name = text(raw.name) || text(raw.Name) || (kind === 'local' ? 'Weekly local' : '');
+  const name = text(raw.name) || text(raw.Name) || (kind === 'local' ? LOCAL_FALLBACK_NAME : '');
   if (!name) {
     return skip('name');
   }
@@ -260,7 +278,7 @@ export function normalizeEvent(raw: RawEvent): NormalizeResult {
     kind,
     name,
     date,
-    time: clock(raw.time),
+    time: startClock(raw, kind),
     shop: text(raw.shop),
     address: text(raw.street_address),
     city: text(raw.city),

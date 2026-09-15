@@ -59,22 +59,6 @@
       "fee": "5"
     },
     {
-      "id": "10000000-0000-4000-8000-000000000001",
-      "kind": "local",
-      "name": "Weekly local",
-      "date": "2026-09-20",
-      "time": "18:30",
-      "shop": "DRAGON'S LAIR AUSTIN",
-      "address": "2438 W ANDERSON LN, AUSTIN, TX 78757, US",
-      "city": "Austin",
-      "region": "Texas",
-      "cc": "US",
-      "lat": 30.3585,
-      "lon": -97.7336,
-      "fee": "5",
-      "details": "Casual weekly play. Contact the store to confirm the schedule."
-    },
-    {
       "id": "26-09-000004",
       "kind": "cup",
       "name": "Round Rock League Cup",

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "key": "30_-100",
+  "venues": [
+    {
+      "id": "6238620",
+      "shop": "DRAGON'S LAIR AUSTIN",
+      "address": "2438 W ANDERSON LN, AUSTIN, TX 78757, US",
+      "city": "Austin",
+      "region": "Texas",
+      "cc": "US",
+      "lat": 30.3585,
+      "lon": -97.7336,
+      "slots": [
+        {
+          "weekday": 0,
+          "time": "18:30",
+          "name": "Weekly local",
+          "fee": "5"
+        }
+      ]
+    }
+  ]
+}

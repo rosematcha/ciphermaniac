@@ -139,12 +139,15 @@ test('the Locals setting adds casual weekly events and is remembered', async ({ 
   await expect(locals).toHaveAttribute('aria-pressed', 'false');
   await locals.click();
   await expect(locals).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.el-row')).toHaveCount(6);
-  await expect(page.locator('.el-count')).toHaveText('6 events, 2 Cups');
-  await expect(page.locator('.el-item', { hasText: 'Weekly local' })).toBeVisible();
+  // The fixture store runs one weekly slot on Sundays: three of them fall inside the three-week horizon.
+  await expect(page.locator('.el-row')).toHaveCount(8);
+  await expect(page.locator('.el-count')).toHaveText('8 events, 2 Cups');
+  await expect(page.locator('.el-item', { hasText: 'Weekly local' })).toHaveCount(3);
+  await expect(page.locator('.el-day-head', { hasText: 'Sun, Sep 20' })).toBeVisible();
+  await expect(page.locator('.el-day-head', { hasText: 'Sun, Oct 4' })).toBeVisible();
   await page.reload();
   await expect((await filters(page)).getByRole('button', { name: 'Locals' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.el-row')).toHaveCount(6);
+  await expect(page.locator('.el-row')).toHaveCount(8);
 });
 
 test("the store's own registration leads, and pokemon.com carries the details", async ({ page }) => {

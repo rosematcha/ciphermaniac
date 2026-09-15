@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "updatedAt": "2026-09-15T10:00:00.000Z",
+  "source": "https://pokedata.ovh/events/",
+  "cellDegrees": 5,
+  "horizonDays": 21,
+  "cells": {
+    "30_-100": {
+      "slots": 1,
+      "hash": "fixture"
+    }
+  },
+  "total": 1,
+  "venues": 1
+}

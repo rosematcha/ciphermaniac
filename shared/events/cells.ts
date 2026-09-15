@@ -33,6 +33,16 @@ export function cellKeyFor(lat: number, lon: number): string {
   return `${cellEdge(clampLatitude(lat))}_${cellEdge(wrapLongitude(lon))}`;
 }
 
+/** Items grouped by the cell holding each one, keys sorted. */
+export function shardByCell<T extends { lat: number; lon: number }>(items: readonly T[]): Map<string, T[]> {
+  const cells = new Map<string, T[]>();
+  for (const item of items) {
+    const key = cellKeyFor(item.lat, item.lon);
+    cells.set(key, [...(cells.get(key) ?? []), item]);
+  }
+  return new Map([...cells.entries()].sort(([a], [b]) => a.localeCompare(b)));
+}
+
 /**
  * Degrees of longitude to either side of the centre that the circle can reach.
  *
