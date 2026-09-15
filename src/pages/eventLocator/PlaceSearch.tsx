@@ -200,6 +200,10 @@ export function PlaceSearch(props: PlaceSearchProps) {
     setActive(-1);
   };
 
+  // Phones open the search full screen; the page underneath must not scroll with it.
+  createEffect(() => document.documentElement.classList.toggle('el-search-lock', open()));
+  onCleanup(() => document.documentElement.classList.remove('el-search-lock'));
+
   function choose(option: Option | undefined) {
     if (!option) {
       return;

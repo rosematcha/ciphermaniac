@@ -478,9 +478,6 @@ body[data-mode='dark'] .lm-tile {
   color: var(--muted);
   font-size: var(--text-sm);
 }
-.el-venue-dist {
-  display: none;
-}
 .el-dist,
 .el-fee {
   color: var(--muted);
@@ -629,15 +626,31 @@ body[data-mode='dark'] .lm-tile {
 }
 
 @media (max-width: 640px) {
+  /* Distance keeps its own cell under the badge, clear of the venue's ellipsis. */
   .el-row {
     grid-template-columns: 54px minmax(0, 1fr) auto;
+    grid-template-areas: 'time main kind' 'time main dist';
+    row-gap: 2px;
   }
-  .el-dist,
+  .el-time {
+    grid-area: time;
+  }
+  .el-main {
+    grid-area: main;
+  }
+  .el-kind {
+    grid-area: kind;
+    justify-self: end;
+  }
+  .el-dist {
+    grid-area: dist;
+  }
   .el-fee {
     display: none;
   }
-  .el-venue-dist {
-    display: inline;
+  .el-skeleton .el-row {
+    grid-template-columns: 54px minmax(0, 1fr);
+    grid-template-areas: 'time main';
   }
   .el-details {
     padding-left: 6px;
@@ -692,5 +705,38 @@ body[data-mode='dark'] .lm-tile {
   }
   .el-search.open .el-option-label {
     font-size: var(--text-body);
+  }
+  .el-search.open .el-search-panel {
+    overscroll-behavior: contain;
+  }
+  html.el-search-lock {
+    overflow: hidden;
+  }
+}
+
+/* Touch: every control on and under the map clears 44px. Map dots stay small;
+   a tap near one opens it (LocatorMap), without stealing taps from neighbours. */
+@media (max-width: 900px), (pointer: coarse) {
+  .lm-zoom button,
+  .el-locate {
+    width: 44px;
+    height: 44px;
+  }
+  .el-search-row {
+    height: 44px;
+  }
+  .el-search-clear,
+  .el-search-cancel {
+    min-width: 44px;
+  }
+  .el-radius {
+    min-height: 44px;
+    padding-block: 0;
+  }
+  .el-radius input {
+    height: 44px;
+  }
+  .el-actions .btn {
+    min-height: 44px;
   }
 }

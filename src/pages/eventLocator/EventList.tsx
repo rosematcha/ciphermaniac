@@ -88,7 +88,6 @@ function EventRow(props: {
           <span class='el-venue'>
             {titleCase(props.event.shop)}
             <Show when={props.event.city}> · {titleCase(props.event.city)}</Show>
-            <span class='el-venue-dist'> · {distance()}</span>
           </span>
         </span>
         <span class={`badge el-kind ${props.event.kind}`}>{KIND_LABEL[props.event.kind]}</span>

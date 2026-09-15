@@ -105,6 +105,17 @@ test('while the location prompt is open it shows loading, never an empty result'
   await expect(page.locator('.empty-state')).toHaveCount(0);
 });
 
+test('on a phone every row shows its distance in full', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'phones only');
+  await openLocator(page);
+  const hidden = await page.$$eval(
+    '.el-dist',
+    cells =>
+      cells.filter(cell => cell.getBoundingClientRect().width === 0 || cell.scrollWidth > cell.clientWidth).length
+  );
+  expect(hidden).toBe(0);
+});
+
 test('the Locals setting adds casual weekly events and is remembered', async ({ page }) => {
   await openLocator(page);
   const locals = page.getByRole('button', { name: 'Locals' });
