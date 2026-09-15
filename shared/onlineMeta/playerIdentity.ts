@@ -39,7 +39,10 @@ export const PLAYER_IDENTITY_OVERRIDES: readonly PlayerIdentityOverride[] = [
   { canonicalId: '45677', aliasIds: ['17712'], displayName: 'Reese Lundquist' },
   // Olive used the original account (169); Olivia's active account (25523)
   // owns the combined career and the name she now uses.
-  { canonicalId: '25523', aliasIds: ['169'], displayName: 'Olivia Battaglia' }
+  { canonicalId: '25523', aliasIds: ['169'], displayName: 'Olivia Battaglia' },
+  // Christopher's current account (29589) owns the combined career; the
+  // earlier German account (3068) is the same player.
+  { canonicalId: '29589', aliasIds: ['3068'] }
 ];
 
 const CANONICAL_BY_ALIAS = new Map<string, string>();
