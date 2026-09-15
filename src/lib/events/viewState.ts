@@ -45,7 +45,9 @@ export type LocatorParams = {
 
 export const RADIUS_MIN = 5;
 export const RADIUS_MAX = 250;
-export const RADIUS_STEP = 5;
+/** Human-friendly radii with progressively larger gaps at longer distances. */
+export const RADIUS_CHOICES = [5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100, 125, 150, 200, 250] as const;
+export const RADIUS_SLIDER_MAX = RADIUS_CHOICES.length - 1;
 export const WINDOW_CHOICES: readonly WindowDays[] = [7, 30, null];
 export const DEFAULT_SETTINGS: LocatorSettings = {
   radius: 50,
@@ -66,12 +68,15 @@ function isCountry(value: unknown): value is string {
   return typeof value === 'string' && /^[A-Z]{2}$/.test(value);
 }
 
-/** Snapped to the slider's step and clamped to its range. */
+/** Snapped to the nearest logarithmically spaced slider value. */
 export function clampRadius(value: number): number {
   if (!Number.isFinite(value)) {
     return DEFAULT_SETTINGS.radius;
   }
-  return Math.min(RADIUS_MAX, Math.max(RADIUS_MIN, Math.round(value / RADIUS_STEP) * RADIUS_STEP));
+  const bounded = Math.min(RADIUS_MAX, Math.max(RADIUS_MIN, value));
+  return RADIUS_CHOICES.reduce((closest, choice) =>
+    Math.abs(choice - bounded) < Math.abs(closest - bounded) ? choice : closest
+  );
 }
 
 /** The same reach in another unit, snapped to the slider. */

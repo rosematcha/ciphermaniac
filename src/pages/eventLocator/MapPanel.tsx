@@ -2,7 +2,7 @@ import { Show } from 'solid-js';
 import type { VenueMarker } from '../../lib/events/filter';
 import type { DistanceUnit, LatLon } from '../../lib/events/geo';
 import type { PlaceSuggestion } from '../../lib/events/search';
-import { RADIUS_MAX, RADIUS_MIN, RADIUS_STEP } from '../../lib/events/viewState';
+import { clampRadius, RADIUS_CHOICES, RADIUS_SLIDER_MAX } from '../../lib/events/viewState';
 import type { Insets } from '../../lib/events/mercator';
 import type { LocatorIndex } from '../../../shared/events/types';
 import { LocatorMap } from './LocatorMap';
@@ -91,12 +91,12 @@ export function MapPanel(props: MapPanelProps) {
           <span>Within</span>
           <input
             type='range'
-            min={RADIUS_MIN}
-            max={RADIUS_MAX}
-            step={RADIUS_STEP}
-            value={props.radius}
+            min={0}
+            max={RADIUS_SLIDER_MAX}
+            step={1}
+            value={RADIUS_CHOICES.findIndex(choice => choice === clampRadius(props.radius))}
             aria-valuetext={`${props.radius} ${props.unit}`}
-            onInput={e => props.onRadiusInput(Number(e.currentTarget.value))}
+            onInput={e => props.onRadiusInput(RADIUS_CHOICES[Number(e.currentTarget.value)] ?? RADIUS_CHOICES[0])}
             onChange={() => props.onRadiusCommit()}
           />
           <output>

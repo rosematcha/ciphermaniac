@@ -50,11 +50,12 @@ const SEARCHED: LocatorCenter = { lat: 30.26721, lon: -97.74312, label: 'Austin,
 
 test('the radius snaps to the slider and stays in range', () => {
   assert.equal(clampRadius(52), 50);
-  assert.equal(clampRadius(53), 55);
+  assert.equal(clampRadius(53), 50);
+  assert.equal(clampRadius(68), 75);
   assert.equal(clampRadius(1), 5);
   assert.equal(clampRadius(900), 250);
   assert.equal(clampRadius(Number.NaN), DEFAULT_SETTINGS.radius);
-  assert.equal(convertRadius(50, 'mi', 'km'), 80);
+  assert.equal(convertRadius(50, 'mi', 'km'), 75);
   assert.equal(convertRadius(100, 'km', 'mi'), 60);
   assert.equal(convertRadius(40, 'km', 'km'), 40);
 });
