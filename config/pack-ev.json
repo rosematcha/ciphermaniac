@@ -1,0 +1,509 @@
+{
+  "_comment": "Pack-EV model for the sets /tools/pack-ev covers. Pull rates are TCGplayer Authentication Center measurements (one article per set, linked in `source`) entered as decimals, per pack, per slot. Each slot resolves to exactly one outcome: the outcome without a `chance` takes whatever the named rates leave. Card pools are resolved against the set's TCGCSV group at build time, so adding a set means a group id, its sealed product ids, and its published rates — never a card list. Bulk rates are Safari Zone Collectibles' posted buylist; `threshold` is the market price a card has to clear before it counts as more than bulk.",
+  "threshold": 1,
+  "bulk": {
+    "commonUncommon": 0.035,
+    "reverse": 0.05,
+    "rare": 0.05,
+    "doubleRare": 0.6,
+    "hit": 0.05
+  },
+  "bulkSource": {
+    "label": "Safari Zone Collectibles",
+    "url": "https://app.tcgbulk.com/buyer/safari-zone-collectibles"
+  },
+  "sets": [
+    {
+      "code": "PBL",
+      "name": "Pitch Black",
+      "groupId": 24688,
+      "source": {
+        "label": "TCGplayer: Pitch Black Pull Rates",
+        "url": "https://www.tcgplayer.com/content/article/Pok%C3%A9mon-TCG-Pitch-Black-Pull-Rates/069a5fda-2d1f-44a1-97de-b6dcdc5abfb8/",
+        "sampleSize": 4000
+      },
+      "sealed": [
+        { "kind": "box", "label": "Booster Box", "id": 692939, "packs": 36, "primary": true },
+        { "kind": "etb", "label": "Elite Trainer Box", "id": 692947, "packs": 9 },
+        { "kind": "bundle", "label": "Booster Bundle", "id": 692942, "packs": 6 },
+        { "kind": "pack", "label": "Single Pack", "id": 692944, "packs": 1 }
+      ],
+      "slots": [
+        {
+          "label": "Commons",
+          "count": 4,
+          "outcomes": [
+            { "label": "Common", "pool": { "rarities": ["Common"], "printing": "normal", "bulk": "commonUncommon" } }
+          ]
+        },
+        {
+          "label": "Uncommons",
+          "count": 3,
+          "outcomes": [
+            {
+              "label": "Uncommon",
+              "pool": { "rarities": ["Uncommon"], "printing": "normal", "bulk": "commonUncommon" }
+            }
+          ]
+        },
+        {
+          "label": "Rare slot",
+          "outcomes": [
+            {
+              "label": "Double Rare",
+              "chance": 0.2102,
+              "pool": { "rarities": ["Double Rare"], "printing": "holofoil", "bulk": "doubleRare" }
+            },
+            {
+              "label": "Ultra Rare",
+              "chance": 0.083,
+              "pool": { "rarities": ["Ultra Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            { "label": "Rare", "pool": { "rarities": ["Rare"], "printing": "holofoil", "bulk": "rare" } }
+          ]
+        },
+        {
+          "label": "First reverse holo",
+          "outcomes": [
+            {
+              "label": "Reverse holo",
+              "pool": { "rarities": ["Common", "Uncommon", "Rare"], "printing": "reverse", "bulk": "reverse" }
+            }
+          ]
+        },
+        {
+          "label": "Second reverse holo",
+          "outcomes": [
+            {
+              "label": "Mega Hyper Rare",
+              "chance": 0.0009,
+              "pool": { "rarities": ["Mega Hyper Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Special Illustration Rare",
+              "chance": 0.0125,
+              "pool": { "rarities": ["Special Illustration Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Illustration Rare",
+              "chance": 0.1101,
+              "pool": { "rarities": ["Illustration Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Reverse holo",
+              "pool": { "rarities": ["Common", "Uncommon", "Rare"], "printing": "reverse", "bulk": "reverse" }
+            }
+          ]
+        },
+        {
+          "label": "Energy",
+          "outcomes": [{ "label": "Basic Energy", "flat": "commonUncommon" }]
+        }
+      ]
+    },
+    {
+      "code": "DRI",
+      "name": "Destined Rivals",
+      "groupId": 24269,
+      "source": {
+        "label": "TCGplayer: Destined Rivals Pull Rates",
+        "url": "https://www.tcgplayer.com/content/article/Pok%C3%A9mon-TCG-Destined-Rivals-Pull-Rates/43ba832e-44c9-45a4-ae2e-594df2defdda/",
+        "sampleSize": 8000
+      },
+      "sealed": [
+        { "kind": "box", "label": "Booster Box", "id": 624679, "packs": 36, "primary": true },
+        { "kind": "etb", "label": "Elite Trainer Box", "id": 624676, "packs": 9 },
+        { "kind": "bundle", "label": "Booster Bundle", "id": 625670, "packs": 6 },
+        { "kind": "pack", "label": "Single Pack", "id": 624683, "packs": 1 }
+      ],
+      "slots": [
+        {
+          "label": "Commons",
+          "count": 4,
+          "outcomes": [
+            { "label": "Common", "pool": { "rarities": ["Common"], "printing": "normal", "bulk": "commonUncommon" } }
+          ]
+        },
+        {
+          "label": "Uncommons",
+          "count": 3,
+          "outcomes": [
+            {
+              "label": "Uncommon",
+              "pool": { "rarities": ["Uncommon"], "printing": "normal", "bulk": "commonUncommon" }
+            }
+          ]
+        },
+        {
+          "label": "Rare slot",
+          "outcomes": [
+            {
+              "label": "Double Rare",
+              "chance": 0.1983,
+              "pool": { "rarities": ["Double Rare"], "printing": "holofoil", "bulk": "doubleRare" }
+            },
+            {
+              "label": "Ultra Rare",
+              "chance": 0.0639,
+              "pool": { "rarities": ["Ultra Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            { "label": "Rare", "pool": { "rarities": ["Rare"], "printing": "holofoil", "bulk": "rare" } }
+          ]
+        },
+        {
+          "label": "First reverse holo",
+          "outcomes": [
+            {
+              "label": "Reverse holo",
+              "pool": { "rarities": ["Common", "Uncommon", "Rare"], "printing": "reverse", "bulk": "reverse" }
+            }
+          ]
+        },
+        {
+          "label": "Second reverse holo",
+          "outcomes": [
+            {
+              "label": "Hyper Rare",
+              "chance": 0.0067,
+              "pool": { "rarities": ["Hyper Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Special Illustration Rare",
+              "chance": 0.0106,
+              "pool": { "rarities": ["Special Illustration Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Illustration Rare",
+              "chance": 0.0829,
+              "pool": { "rarities": ["Illustration Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Reverse holo",
+              "pool": { "rarities": ["Common", "Uncommon", "Rare"], "printing": "reverse", "bulk": "reverse" }
+            }
+          ]
+        },
+        {
+          "label": "Energy",
+          "outcomes": [{ "label": "Basic Energy", "flat": "commonUncommon" }]
+        }
+      ]
+    },
+    {
+      "code": "PRE",
+      "name": "Prismatic Evolutions",
+      "groupId": 23821,
+      "source": {
+        "label": "TCGplayer: Prismatic Evolutions Pull Rates",
+        "url": "https://www.tcgplayer.com/content/article/Pok%C3%A9mon-TCG-Prismatic-Evolutions-Pull-Rates/d94889ea-f76a-4a13-b74d-5b0b071220a7/",
+        "sampleSize": 1200
+      },
+      "sealed": [
+        { "kind": "etb", "label": "Elite Trainer Box", "id": 593355, "packs": 9, "primary": true },
+        { "kind": "bundle", "label": "Booster Bundle", "id": 600518, "packs": 6 },
+        { "kind": "pack", "label": "Single Pack", "id": 593294, "packs": 1 }
+      ],
+      "slots": [
+        {
+          "label": "Commons",
+          "count": 4,
+          "outcomes": [
+            {
+              "label": "Common",
+              "pool": {
+                "rarities": ["Common"],
+                "printing": "normal",
+                "pattern": "base",
+                "bulk": "commonUncommon"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Uncommons",
+          "count": 3,
+          "outcomes": [
+            {
+              "label": "Uncommon",
+              "pool": {
+                "rarities": ["Uncommon"],
+                "printing": "normal",
+                "pattern": "base",
+                "bulk": "commonUncommon"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Rare slot",
+          "outcomes": [
+            {
+              "label": "Double Rare",
+              "chance": 0.1651,
+              "pool": { "rarities": ["Double Rare"], "printing": "holofoil", "bulk": "doubleRare" }
+            },
+            {
+              "label": "Ultra Rare",
+              "chance": 0.0746,
+              "pool": { "rarities": ["Ultra Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Rare",
+              "pool": { "rarities": ["Rare"], "printing": "holofoil", "pattern": "base", "bulk": "rare" }
+            }
+          ]
+        },
+        {
+          "label": "First reverse holo",
+          "outcomes": [
+            {
+              "label": "Poké Ball pattern",
+              "chance": 0.331,
+              "pool": {
+                "rarities": ["Common", "Uncommon", "Rare"],
+                "printing": "holofoil",
+                "pattern": "pokeball",
+                "bulk": "reverse"
+              }
+            },
+            {
+              "label": "ACE SPEC Rare",
+              "chance": 0.0468,
+              "pool": { "rarities": ["ACE SPEC Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Reverse holo",
+              "pool": {
+                "rarities": ["Common", "Uncommon", "Rare"],
+                "printing": "reverse",
+                "pattern": "base",
+                "bulk": "reverse"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Second reverse holo",
+          "outcomes": [
+            {
+              "label": "Hyper Rare",
+              "chance": 0.0056,
+              "pool": { "rarities": ["Hyper Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Special Illustration Rare",
+              "chance": 0.0222,
+              "pool": { "rarities": ["Special Illustration Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Master Ball pattern",
+              "chance": 0.0492,
+              "pool": {
+                "rarities": ["Common", "Uncommon", "Rare"],
+                "printing": "holofoil",
+                "pattern": "masterball",
+                "bulk": "reverse"
+              }
+            },
+            {
+              "label": "Reverse holo",
+              "pool": {
+                "rarities": ["Common", "Uncommon", "Rare"],
+                "printing": "reverse",
+                "pattern": "base",
+                "bulk": "reverse"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Energy",
+          "outcomes": [{ "label": "Basic Energy", "flat": "commonUncommon" }]
+        }
+      ]
+    },
+    {
+      "code": "TWM",
+      "name": "Twilight Masquerade",
+      "groupId": 23473,
+      "source": {
+        "label": "TCGplayer: Twilight Masquerade Pull Rates",
+        "url": "https://www.tcgplayer.com/content/article/Pok%C3%A9mon-TCG-Twilight-Masquerade-Pull-Rates/f3eea967-e5fb-4108-8655-bb1c89587628/",
+        "sampleSize": 8000
+      },
+      "sealed": [
+        { "kind": "box", "label": "Booster Box", "id": 543846, "packs": 36, "primary": true },
+        { "kind": "etb", "label": "Elite Trainer Box", "id": 543845, "packs": 9 },
+        { "kind": "bundle", "label": "Booster Bundle", "id": 543852, "packs": 6 },
+        { "kind": "pack", "label": "Single Pack", "id": 543843, "packs": 1 }
+      ],
+      "slots": [
+        {
+          "label": "Commons",
+          "count": 4,
+          "outcomes": [
+            { "label": "Common", "pool": { "rarities": ["Common"], "printing": "normal", "bulk": "commonUncommon" } }
+          ]
+        },
+        {
+          "label": "Uncommons",
+          "count": 3,
+          "outcomes": [
+            {
+              "label": "Uncommon",
+              "pool": { "rarities": ["Uncommon"], "printing": "normal", "bulk": "commonUncommon" }
+            }
+          ]
+        },
+        {
+          "label": "Rare slot",
+          "outcomes": [
+            {
+              "label": "Double Rare",
+              "chance": 0.1693,
+              "pool": { "rarities": ["Double Rare"], "printing": "holofoil", "bulk": "doubleRare" }
+            },
+            {
+              "label": "Ultra Rare",
+              "chance": 0.0661,
+              "pool": { "rarities": ["Ultra Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            { "label": "Rare", "pool": { "rarities": ["Rare"], "printing": "holofoil", "bulk": "rare" } }
+          ]
+        },
+        {
+          "label": "First reverse holo",
+          "outcomes": [
+            {
+              "label": "ACE SPEC Rare",
+              "chance": 0.0506,
+              "pool": { "rarities": ["ACE SPEC Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Reverse holo",
+              "pool": { "rarities": ["Common", "Uncommon", "Rare"], "printing": "reverse", "bulk": "reverse" }
+            }
+          ]
+        },
+        {
+          "label": "Second reverse holo",
+          "outcomes": [
+            {
+              "label": "Hyper Rare",
+              "chance": 0.0068,
+              "pool": { "rarities": ["Hyper Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Special Illustration Rare",
+              "chance": 0.0117,
+              "pool": { "rarities": ["Special Illustration Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Illustration Rare",
+              "chance": 0.0773,
+              "pool": { "rarities": ["Illustration Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Reverse holo",
+              "pool": { "rarities": ["Common", "Uncommon", "Rare"], "printing": "reverse", "bulk": "reverse" }
+            }
+          ]
+        },
+        {
+          "label": "Energy",
+          "outcomes": [{ "label": "Basic Energy", "flat": "commonUncommon" }]
+        }
+      ]
+    },
+    {
+      "code": "MEW",
+      "name": "Pokémon 151",
+      "groupId": 23237,
+      "source": {
+        "label": "TCGplayer: Scarlet & Violet—151 Pull Rates",
+        "url": "https://www.tcgplayer.com/content/article/Pok%C3%A9mon-TCG-Scarlet-Violet%E2%80%94151-Pull-Rates/b237df74-fbb0-40d0-9e13-d69ee6e804d9/",
+        "sampleSize": 1500
+      },
+      "sealed": [
+        { "kind": "etb", "label": "Elite Trainer Box", "id": 503313, "packs": 9, "primary": true },
+        { "kind": "bundle", "label": "Booster Bundle", "id": 502000, "packs": 6 },
+        { "kind": "pack", "label": "Single Pack", "id": 504467, "packs": 1 }
+      ],
+      "slots": [
+        {
+          "label": "Commons",
+          "count": 4,
+          "outcomes": [
+            { "label": "Common", "pool": { "rarities": ["Common"], "printing": "normal", "bulk": "commonUncommon" } }
+          ]
+        },
+        {
+          "label": "Uncommons",
+          "count": 3,
+          "outcomes": [
+            {
+              "label": "Uncommon",
+              "pool": { "rarities": ["Uncommon"], "printing": "normal", "bulk": "commonUncommon" }
+            }
+          ]
+        },
+        {
+          "label": "Rare slot",
+          "outcomes": [
+            {
+              "label": "Double Rare",
+              "chance": 0.1328,
+              "pool": { "rarities": ["Double Rare"], "printing": "holofoil", "bulk": "doubleRare" }
+            },
+            {
+              "label": "Ultra Rare",
+              "chance": 0.0644,
+              "pool": { "rarities": ["Ultra Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            { "label": "Rare", "pool": { "rarities": ["Rare"], "printing": "holofoil", "bulk": "rare" } }
+          ]
+        },
+        {
+          "label": "First reverse holo",
+          "outcomes": [
+            {
+              "label": "Reverse holo",
+              "pool": { "rarities": ["Common", "Uncommon", "Rare"], "printing": "reverse", "bulk": "reverse" }
+            }
+          ]
+        },
+        {
+          "label": "Second reverse holo",
+          "outcomes": [
+            {
+              "label": "Hyper Rare",
+              "chance": 0.0194,
+              "pool": { "rarities": ["Hyper Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Special Illustration Rare",
+              "chance": 0.0311,
+              "pool": { "rarities": ["Special Illustration Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Illustration Rare",
+              "chance": 0.085,
+              "pool": { "rarities": ["Illustration Rare"], "printing": "holofoil", "bulk": "hit" }
+            },
+            {
+              "label": "Reverse holo",
+              "pool": { "rarities": ["Common", "Uncommon", "Rare"], "printing": "reverse", "bulk": "reverse" }
+            }
+          ]
+        },
+        {
+          "label": "Energy",
+          "outcomes": [
+            { "label": "Foil Energy", "chance": 0.2483, "flat": "commonUncommon" },
+            { "label": "Basic Energy", "flat": "commonUncommon" }
+          ]
+        }
+      ]
+    }
+  ]
+}
