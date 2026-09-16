@@ -3,7 +3,9 @@
    Page chrome uses the global Stamp tokens.
    The exported canvas (`.sg-canvas`) declares its own scoped
    token set so it can be exported in light or dark independent
-   of the page's `data-mode`.
+   of the page's `data-mode`. The values mirror the global ones
+   and have to be updated alongside them — the drift check
+   exempts this sheet, so nothing else will catch it.
    ============================================================ */
 
 .sg-page {
@@ -112,7 +114,6 @@
   opacity: 0.4;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
 }
 
 .sg-stage {
@@ -154,31 +155,31 @@
   background: var(--sg-bg);
   padding: 36px 44px 32px;
   border: 1px solid var(--sg-border);
-  box-shadow: 6px 6px 0 0 var(--sg-border);
   display: grid;
   gap: 24px;
   /* Light is the default */
-  --sg-bg: #f4ecdb;
-  --sg-surface: #fbf5e6;
-  --sg-surface-2: #ebe0c8;
-  --sg-fg: #1f1a13;
-  --sg-muted: #6e6450;
-  --sg-border: #2f2a22;
-  --sg-rule: #d8ccab;
-  --sg-accent: #e07b4a;
-  --sg-numeral-stroke: #e07b4a;
+  --sg-bg: #f1eee8;
+  --sg-surface: #faf8f4;
+  --sg-surface-2: #e6e1d8;
+  --sg-fg: #1d1913;
+  --sg-muted: #6a6055;
+  --sg-border: #8a7f74;
+  --sg-rule: #d7d1c7;
+  /* Words take the ink; the big outlined numerals keep the brighter fill. */
+  --sg-accent: #8c5900;
+  --sg-numeral-stroke: #b70;
 }
 
 .sg-canvas[data-mode='dark'] {
-  --sg-bg: #1a1816;
-  --sg-surface: #25221f;
-  --sg-surface-2: #2f2c28;
-  --sg-fg: #f1e7d3;
-  --sg-muted: #a4998a;
-  --sg-border: #3a3733;
-  --sg-rule: #2c2925;
-  --sg-accent: #f08a55;
-  --sg-numeral-stroke: #f08a55;
+  --sg-bg: #181514;
+  --sg-surface: #211f1d;
+  --sg-surface-2: #2b2827;
+  --sg-fg: #ede8e6;
+  --sg-muted: #9e9792;
+  --sg-border: #373533;
+  --sg-rule: #262422;
+  --sg-accent: #ea1;
+  --sg-numeral-stroke: #ea1;
 }
 
 /* ---- Head ---- */
@@ -249,7 +250,6 @@
   position: relative;
   background: var(--sg-surface);
   border: 1px solid var(--sg-border);
-  box-shadow: 4px 4px 0 0 var(--sg-border);
   display: grid;
   grid-template-rows: auto auto;
   overflow: hidden;
@@ -403,7 +403,6 @@
   min-height: 100px;
   background: var(--sg-surface);
   border: 1px solid var(--sg-border);
-  box-shadow: 3px 3px 0 0 var(--sg-border);
   overflow: hidden;
 }
 .sg-row-rank {
@@ -478,7 +477,6 @@
   position: relative;
   background: var(--sg-surface);
   border: 1px solid var(--sg-border);
-  box-shadow: 3px 3px 0 0 var(--sg-border);
   overflow: hidden;
   display: grid;
   grid-template-rows: auto auto;
