@@ -23,7 +23,10 @@ export default defineConfig({
         // Keep entry + chunk filenames predictable so cache busting is by hash only.
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash][extname]'
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        // The embedded release manifest grows with every event, so it ships in a
+        // chunk of its own and is budgeted apart from the code (see check-bundle-budget).
+        codeSplitting: { groups: [{ name: 'release', test: /shared[\\/]generated[\\/]release/ }] }
       }
     }
   },
