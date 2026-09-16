@@ -33,6 +33,8 @@ export interface DivisionFees {
 export interface LocatorEvent {
   /** Play! Pokémon event ID, or the upstream GUID for an unsanctioned local. */
   id: string;
+  /** Stable Play! Pokémon league identity, shared by scheduled events and weekly locals. */
+  leagueId?: string;
   kind: EventKind;
   name: string;
   /** Venue-local calendar date, `YYYY-MM-DD`. */

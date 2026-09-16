@@ -1,25 +1,12 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { buildLocalsArtifacts, expandLocals } from '../../shared/events/locals.ts';
-import { cellHash, zoneAt } from '../../.github/scripts/lib/eventLocator.ts';
-
-// Captured from Pokedata's locals table on 2026-09-16, league IDs
-// 6238620, 6243233, and 25098755. Keep the source's conflicting entries:
-// a regression test must not silently replace them with an expected schedule.
-const raw: unknown[] = JSON.parse(
-  readFileSync(new URL('../fixtures/events/san-antonio-locals.json', import.meta.url), 'utf8')
-);
+import { expandLocals } from '../../shared/events/locals.ts';
+import { filterEvents } from '../../src/lib/events/filter.ts';
+import { sanAntonioLocals, sanAntonioScheduled } from '../__utils__/sanAntonioEvents.ts';
 
 function eventsFor(league: string) {
-  const artifacts = buildLocalsArtifacts(raw, {
-    now: new Date('2026-09-16T17:00:00Z'),
-    source: 'https://pokedata.ovh/events/',
-    horizonDays: 21,
-    hash: cellHash,
-    zoneAt
-  });
+  const artifacts = sanAntonioLocals();
   return expandLocals([...artifacts.cells.values()], '2026-09-16', 21)
     .filter(event => event.id.startsWith(`${league}-`))
     .map(event => [event.date, event.time, ...(event.reportedTimes ? [event.reportedTimes] : [])]);
@@ -49,4 +36,25 @@ test('Time2Play conflicting Sunday starts form one unresolved session per date',
     ['2026-09-27', '', ['13:00', '14:30']],
     ['2026-10-04', '', ['13:00', '14:30']]
   ]);
+});
+
+test('San Antonio combines the real scheduled feed with locals without duplicating Combat Power on challenge day', () => {
+  const artifacts = sanAntonioLocals();
+  const locals = expandLocals([...artifacts.cells.values()], '2026-09-16', 21);
+  const events = filterEvents([...sanAntonioScheduled, ...locals], {
+    center: { lat: 29.4928, lon: -98.552 },
+    radiusKm: 50,
+    kinds: new Set(['cup', 'challenge', 'prerelease', 'local']),
+    windowDays: 30,
+    today: '2026-09-16'
+  });
+  const cp = events.filter(event => event.shop === 'CP COLLECTIBLES');
+  assert.deepEqual(
+    cp.filter(event => event.date === '2026-09-23').map(event => [event.kind, event.time]),
+    [['challenge', '19:30']]
+  );
+  assert.ok(cp.some(event => event.date === '2026-09-30' && event.kind === 'local'));
+  assert.ok(cp.some(event => event.date === '2026-09-20' && event.time === '15:00'));
+  assert.equal(events.filter(event => event.shop === 'TIME2PLAY').length, 3);
+  assert.equal(events.filter(event => event.shop === 'THE POKEHIVE WONDERLAND MALL').length, 3);
 });
