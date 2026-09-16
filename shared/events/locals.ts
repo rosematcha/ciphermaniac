@@ -16,7 +16,7 @@
 
 import { isoDay, pastCutoff } from './build';
 import { CELL_DEGREES, shardByCell } from './cells';
-import { normalizeEvent, type SkipReason } from './normalize';
+import { isUtcLocal, normalizeEvent, type SkipReason, type ZoneLookup } from './normalize';
 import type { LocalsCell, LocalsIndex, LocalSlot, LocalVenue, LocatorEvent } from './types';
 
 export type LocalSkipReason = SkipReason | 'league';
@@ -26,6 +26,10 @@ export interface LocalsBuildStats {
   /** Occurrences that made it into a slot. */
   kept: number;
   past: number;
+  /** Past the window's last day once moved to venue-local time. */
+  later: number;
+  /** Unnamed records of a session the store also listed as an event. */
+  doubles: number;
   skipped: Partial<Record<LocalSkipReason, number>>;
   venues: number;
   slots: number;
@@ -44,10 +48,14 @@ export interface LocalsBuildOptions {
   horizonDays: number;
   /** Content hash of a cell, recorded in the index so unchanged cells are not rewritten. */
   hash: (cell: LocalsCell) => string;
+  /** The time zone at a venue, for the records Pokedata lists in UTC. */
+  zoneAt: ZoneLookup;
 }
 
 const DAY_MS = 86_400_000;
 const WEEK_DAYS = 7;
+/** How close to a listed event's start an unnamed record the same day is still the same session. */
+const SAME_SESSION_MINUTES = 120;
 
 function dayNumber(date: string): number {
   return Date.parse(`${date}T00:00:00Z`) / DAY_MS;
@@ -78,11 +86,29 @@ function leagueOf(record: unknown): string {
   return /^\d+$/.test(league) ? league : '';
 }
 
-function collect(raw: unknown[], cutoff: string): { byLeague: Map<string, LocatorEvent[]>; stats: LocalsBuildStats } {
+/** The producer's window: the dates a listing could fall on. */
+interface Window {
+  start: string;
+  end: string;
+}
+
+interface Occurrence {
+  event: LocatorEvent;
+  /** Listed as an event on pokemon.com, rather than one of the unnamed UTC records. */
+  listed: boolean;
+}
+
+function collect(
+  raw: unknown[],
+  window: Window,
+  options: LocalsBuildOptions
+): { byLeague: Map<string, Occurrence[]>; stats: LocalsBuildStats } {
   const stats: LocalsBuildStats = {
     received: raw.length,
     kept: 0,
     past: 0,
+    later: 0,
+    doubles: 0,
     skipped: {},
     venues: 0,
     slots: 0,
@@ -91,9 +117,11 @@ function collect(raw: unknown[], cutoff: string): { byLeague: Map<string, Locato
   const skip = (reason: LocalSkipReason) => {
     stats.skipped[reason] = (stats.skipped[reason] ?? 0) + 1;
   };
-  const byLeague = new Map<string, LocatorEvent[]>();
+  const cutoff = pastCutoff(options.now);
+  const byLeague = new Map<string, Occurrence[]>();
   for (const record of raw) {
-    const result = normalizeEvent(record && typeof record === 'object' ? (record as Record<string, unknown>) : {});
+    const fields = record && typeof record === 'object' ? (record as Record<string, unknown>) : {};
+    const result = normalizeEvent(fields, options.zoneAt);
     if (!result.ok) {
       skip(result.reason);
       continue;
@@ -105,12 +133,37 @@ function collect(raw: unknown[], cutoff: string): { byLeague: Map<string, Locato
       skip('league');
     } else if (result.event.date < cutoff) {
       stats.past++;
+    } else if (result.event.date > window.end) {
+      stats.later++;
     } else {
-      byLeague.set(league, [...(byLeague.get(league) ?? []), result.event]);
-      stats.kept++;
+      byLeague.set(league, [...(byLeague.get(league) ?? []), { event: result.event, listed: !isUtcLocal(fields) }]);
     }
   }
   return { byLeague, stats };
+}
+
+function minutesOf(time: string): number {
+  const [hours = 0, minutes = 0] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function isSameSession(a: LocatorEvent, b: LocatorEvent): boolean {
+  if (a.date !== b.date) {
+    return false;
+  }
+  return !a.time || !b.time || Math.abs(minutesOf(a.time) - minutesOf(b.time)) <= SAME_SESSION_MINUTES;
+}
+
+/**
+ * Stores often list one session twice: as an event on pokemon.com, and as an
+ * unnamed record at the same time or a little before it. The listed event
+ * carries the name and fee, so it stands and the unnamed record goes.
+ */
+function withoutDoubles(occurrences: Occurrence[]): LocatorEvent[] {
+  const listed = occurrences.filter(occurrence => occurrence.listed).map(occurrence => occurrence.event);
+  return occurrences
+    .filter(occurrence => occurrence.listed || !listed.some(event => isSameSession(event, occurrence.event)))
+    .map(occurrence => occurrence.event);
 }
 
 /** The most common value, earliest seen breaking ties. */
@@ -128,12 +181,6 @@ function mode(values: string[]): string {
     }
   }
   return best;
-}
-
-/** The producer's window: the dates a listing could fall on. */
-interface Window {
-  start: string;
-  end: string;
 }
 
 /** No skipped weeks between the first and last listed date. */
@@ -189,13 +236,18 @@ function venueOf(league: string, occurrences: LocatorEvent[], window: Window): L
 /**
  * Build the locals artifacts from raw Pokedata locals records.
  * @param raw - Records from the locals table, within the producer's horizon
- * @param options - Clock, attribution, horizon, and cell hashing
+ * @param options - Clock, attribution, horizon, cell hashing, and venue time zones
  */
 export function buildLocalsArtifacts(raw: unknown[], options: LocalsBuildOptions): LocalsArtifacts {
-  const { byLeague, stats } = collect(raw, pastCutoff(options.now));
   const window = { start: isoDay(options.now), end: addDays(isoDay(options.now), options.horizonDays) };
+  const { byLeague, stats } = collect(raw, window, options);
   const venues = [...byLeague.entries()]
-    .map(([league, occurrences]) => venueOf(league, occurrences, window))
+    .map(([league, occurrences]) => {
+      const events = withoutDoubles(occurrences);
+      stats.kept += events.length;
+      stats.doubles += occurrences.length - events.length;
+      return venueOf(league, events, window);
+    })
     .sort((a, b) => a.id.localeCompare(b.id));
   const cells = new Map(
     [...shardByCell(venues)].map(([key, cellVenues]) => [key, { version: 1 as const, key, venues: cellVenues }])
