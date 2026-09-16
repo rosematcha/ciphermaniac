@@ -32,36 +32,38 @@ export function SetDetail(props: SetDetailProps) {
 
   return (
     <>
-      <dl class='packev-band'>
-        <div class='packev-stat is-lead'>
-          <dd>{money(props.payload.ev.perPack)}</dd>
-          <dt>A pack, opened</dt>
-        </div>
-        <Show when={costPerPack()}>
-          {cost => (
-            <div class='packev-stat'>
-              <dd>{money(cost())}</dd>
-              <dt>A pack, sealed</dt>
-            </div>
-          )}
-        </Show>
-        <Show when={primary()?.price}>
-          <div class='packev-stat'>
-            <dd>{money(props.payload.ev.perPack * (primary()?.packs ?? 1))}</dd>
-            <dt>
-              {primary()?.label}, {primary()?.packs} packs
-            </dt>
+      <Section title={props.payload.name}>
+        <dl class='packev-band'>
+          <div class='packev-stat is-lead'>
+            <dd>{money(props.payload.ev.perPack)}</dd>
+            <dt>A pack, opened</dt>
           </div>
-        </Show>
-        <Show when={returnPercent(props.payload.ev.perPack, costPerPack())}>
-          {percent => (
+          <Show when={costPerPack()}>
+            {cost => (
+              <div class='packev-stat'>
+                <dd>{money(cost())}</dd>
+                <dt>A pack, sealed</dt>
+              </div>
+            )}
+          </Show>
+          <Show when={primary()?.price}>
             <div class='packev-stat'>
-              <dd class={percent() < 100 ? 'is-down' : 'is-up'}>{percent()}%</dd>
-              <dt>Of what you paid</dt>
+              <dd>{money(props.payload.ev.perPack * (primary()?.packs ?? 1))}</dd>
+              <dt>
+                {primary()?.label}, {primary()?.packs} packs
+              </dt>
             </div>
-          )}
-        </Show>
-      </dl>
+          </Show>
+          <Show when={returnPercent(props.payload.ev.perPack, costPerPack())}>
+            {percent => (
+              <div class='packev-stat'>
+                <dd class={percent() < 100 ? 'is-down' : 'is-up'}>{percent()}%</dd>
+                <dt>Of what you paid</dt>
+              </div>
+            )}
+          </Show>
+        </dl>
+      </Section>
 
       <Section title='Where the value sits'>
         <div class='table-wrap'>
@@ -169,7 +171,7 @@ export function SetDetail(props: SetDetailProps) {
       </Section>
 
       <Section title='Open some packs'>
-        <PackOpener payload={props.payload} costPerPack={costPerPack()} primary={primary()} />
+        <PackOpener payload={props.payload} costPerPack={costPerPack()} />
       </Section>
     </>
   );

@@ -3,9 +3,7 @@
  *
  * EV is one number and the median rip is nothing like it: a set's value piles
  * up in a handful of cards you will almost certainly not see in 36 packs. So
- * the tool opens packs as well as averaging them, and reports the spread
- * (median, 10th/90th percentile, how often a box beats its own price) from a
- * Monte Carlo run over this code.
+ * the tool opens packs as well as averaging them.
  *
  * Everything is driven off a prepared model so the hot loop does no filtering:
  * pools, per-card values and special packs are resolved once, then a run is two
@@ -188,62 +186,4 @@ export function openPack(pack: PreparedPack, rng: Rng): Pull[] {
     return [...drawSlots(special.kept, rng), ...special.draw(rng)];
   }
   return drawSlots(pack.slots, rng);
-}
-
-/** Total value of `packs` packs. */
-export function openPacksValue(pack: PreparedPack, packs: number, rng: Rng): number {
-  let total = 0;
-  for (let opened = 0; opened < packs; opened += 1) {
-    for (const pull of openPack(pack, rng)) {
-      total += pull.value;
-    }
-  }
-  return total;
-}
-
-export interface OpeningSpread {
-  runs: number;
-  packs: number;
-  mean: number;
-  median: number;
-  /** 10th and 90th percentile of total value across runs. */
-  low: number;
-  high: number;
-  /** Share of runs whose contents beat `cost`, 0..1. Null when cost is unknown. */
-  beatsCost: number | null;
-}
-
-function percentile(sorted: number[], fraction: number): number {
-  const index = Math.min(sorted.length - 1, Math.max(0, Math.round(fraction * (sorted.length - 1))));
-  return sorted[index];
-}
-
-/**
- * Open `packs` packs `runs` times and describe the spread of outcomes.
- *
- * Runs are independent draws with replacement — a real box is sampled without
- * replacement from a print run, but the print run is millions of packs deep, so
- * the difference is far smaller than the pull rates' own error bars.
- */
-export function simulateSpread(
-  pack: PreparedPack,
-  options: { packs: number; runs: number; cost: number | null },
-  rng: Rng
-): OpeningSpread {
-  const totals: number[] = [];
-  for (let run = 0; run < options.runs; run += 1) {
-    totals.push(openPacksValue(pack, options.packs, rng));
-  }
-  totals.sort((a, b) => a - b);
-  const mean = totals.reduce((sum, value) => sum + value, 0) / totals.length;
-  const { cost } = options;
-  return {
-    runs: options.runs,
-    packs: options.packs,
-    mean,
-    median: percentile(totals, 0.5),
-    low: percentile(totals, 0.1),
-    high: percentile(totals, 0.9),
-    beatsCost: cost === null ? null : totals.filter(total => total > cost).length / totals.length
-  };
 }

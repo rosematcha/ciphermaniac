@@ -44,17 +44,6 @@ export function oddsLabel(chance: number): string {
   return `1 in ${Math.round(1 / chance)}`;
 }
 
-/**
- * A share of runs, as a percentage.
- *
- * Keeps a decimal under 10% — the difference between "beat the box price 4% of
- * the time" and "0.4%" is the whole answer, and both round to the same integer.
- */
-export function shareLabel(fraction: number): string {
-  const percent = fraction * 100;
-  return `${percent < 10 ? percent.toFixed(1) : Math.round(percent)}%`;
-}
-
 /** What you get back per dollar spent, as a whole-number percentage. */
 export function returnPercent(value: number, cost: number | null): number | null {
   if (cost === null || cost <= 0) {

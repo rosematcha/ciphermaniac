@@ -17,7 +17,6 @@ import {
   rate,
   returnPercent,
   sealedRows,
-  shareLabel,
   slotRows
 } from '../../src/pages/packEv/model.ts';
 import type { PackEvSetPayload, SealedProduct, SlotEv } from '../../shared/packEv/types.ts';
@@ -50,11 +49,6 @@ test('odds read as the pull-rate articles write them', () => {
   // Past a fifth of packs, "1 in 3" is a clumsier way to say a third.
   assert.equal(oddsLabel(0.331), '33% of packs');
   assert.equal(oddsLabel(0), '—');
-});
-
-test('a share of runs keeps a decimal while it is small', () => {
-  assert.equal(shareLabel(0.042), '4.2%');
-  assert.equal(shareLabel(0.5), '50%');
 });
 
 test('return is what the contents give back per dollar, or nothing to compare', () => {

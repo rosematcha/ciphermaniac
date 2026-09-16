@@ -1,18 +1,25 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
-import { openPack, preparePack, type Pull, simulateSpread } from '../../../shared/packEv/simulate';
-import type { PackEvSetPayload, SealedProduct } from '../../../shared/packEv/types';
-import { money, shareLabel } from './model';
+import { openPack, preparePack, type Pull } from '../../../shared/packEv/simulate';
+import type { PackEvSetPayload } from '../../../shared/packEv/types';
+import { money } from './model';
 
 interface PackOpenerProps {
   payload: PackEvSetPayload;
   /** What the packs would have cost, per pack. Null when nothing is priced. */
   costPerPack: number | null;
-  /** The product the box simulation opens. */
-  primary: SealedProduct | null;
 }
 
-/** Runs behind a button, so a slow phone never pays for it on load. */
-const SPREAD_RUNS = 4000;
+/**
+ * What the buttons open. Fixed pack counts rather than the set's own sealed
+ * list, so every set rips the same way: a bundle is 6, a box 36, and a case is
+ * six boxes whether or not the set was ever sold in one.
+ */
+const PRODUCTS = [
+  { label: 'pack', packs: 1 },
+  { label: 'bundle', packs: 6 },
+  { label: 'box', packs: 36 },
+  { label: 'case', packs: 216 }
+] as const;
 
 interface OpenedState {
   packs: number;
@@ -30,8 +37,7 @@ const EMPTY: OpenedState = { packs: 0, value: 0, hits: [] };
  * modern set sits in a handful of cards, so the median rip is well under the
  * mean and the mean is carried by boxes you will not open. Sampling it is the
  * only honest way to show that, so this opens real packs off the same slot
- * model the EV table averages, and reports the spread over thousands of boxes
- * next to the one you just opened.
+ * model the EV table averages, and keeps a running tally against their cost.
  */
 export function PackOpener(props: PackOpenerProps) {
   // The whole payload, not a hand-picked subset of it: a field left out here
@@ -39,9 +45,6 @@ export function PackOpener(props: PackOpenerProps) {
   const pack = createMemo(() => preparePack(props.payload));
   const [opened, setOpened] = createSignal<OpenedState>(EMPTY);
   const [last, setLast] = createSignal<Pull[]>([]);
-  const [spread, setSpread] = createSignal<ReturnType<typeof simulateSpread> | null>(null);
-
-  const boxPacks = () => props.primary?.packs ?? 36;
   const spent = () => (props.costPerPack === null ? null : opened().packs * props.costPerPack);
 
   function rip(packs: number) {
@@ -66,20 +69,16 @@ export function PackOpener(props: PackOpenerProps) {
     }));
   }
 
-  function runSpread() {
-    const cost = props.costPerPack === null ? null : props.costPerPack * boxPacks();
-    setSpread(simulateSpread(pack(), { packs: boxPacks(), runs: SPREAD_RUNS, cost }, Math.random));
-  }
-
   return (
     <div class='packev-opener'>
       <div class='packev-row'>
-        <button type='button' class='btn btn-secondary' onClick={() => rip(1)}>
-          Open a pack
-        </button>
-        <button type='button' class='btn btn-secondary' onClick={() => rip(boxPacks())}>
-          Open {boxPacks()} packs
-        </button>
+        <For each={PRODUCTS}>
+          {product => (
+            <button type='button' class='btn btn-secondary' onClick={() => rip(product.packs)}>
+              Open a {product.label}
+            </button>
+          )}
+        </For>
         <button
           type='button'
           class='btn btn-ghost'
@@ -157,25 +156,6 @@ export function PackOpener(props: PackOpenerProps) {
           </tbody>
         </table>
       </Show>
-
-      <div class='packev-row'>
-        <button type='button' class='btn btn-secondary' onClick={runSpread}>
-          Simulate {SPREAD_RUNS.toLocaleString('en-US')} × {boxPacks()} packs
-        </button>
-        <Show when={spread()}>
-          {result => (
-            <span>
-              Median {money(result().median)} · middle 80% {money(result().low)} to {money(result().high)} · mean{' '}
-              {money(result().mean)}
-              <Show when={result().beatsCost !== null}>
-                {' '}
-                · beat the {props.primary?.label.toLowerCase() ?? 'sealed'} price {shareLabel(result().beatsCost ?? 0)}{' '}
-                of the time
-              </Show>
-            </span>
-          )}
-        </Show>
-      </div>
     </div>
   );
 }
