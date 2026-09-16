@@ -106,7 +106,7 @@
   opacity: 1;
 }
 .mb-summary-price b {
-  color: var(--accent);
+  color: var(--accent-ink);
   margin-right: 0;
 }
 /* Sits after the total, which is a <b> with no trailing space of its own. */
@@ -254,7 +254,7 @@
 }
 .mb-card-price {
   margin-left: 6px;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 @media (max-width: 860px) {

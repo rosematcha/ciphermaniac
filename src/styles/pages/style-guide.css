@@ -256,7 +256,7 @@
   white-space: nowrap;
 }
 .stg-ruling-open .stg-ruling-status {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .stg-ruling-found {

@@ -99,7 +99,7 @@
   color: var(--fg);
 }
 .ilm-summary-headline em {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-style: italic;
   font-weight: 800;
 }
@@ -268,7 +268,7 @@
 .ilm-card-pct {
   font-size: 13px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
   letter-spacing: -0.015em;

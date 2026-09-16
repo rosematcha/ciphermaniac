@@ -95,7 +95,7 @@ button {
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration: none;
 }
 a:hover { text-decoration: underline; }

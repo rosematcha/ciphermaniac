@@ -471,7 +471,7 @@ body:not(.tl-labels) .tl-ico {
   opacity: 1;
 }
 .tl-edit:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
   border-color: var(--accent);
 }
 .tl-edit svg {
@@ -491,7 +491,7 @@ body:not(.tl-labels) .tl-ico {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: var(--accent);
+  color: var(--accent-ink);
   background: none;
   border: 0;
   cursor: pointer;
@@ -755,7 +755,7 @@ body:not(.tl-labels) .tl-ico {
 }
 .tl-list li b mark {
   background: none;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 700;
 }
 .tl-list li span {
@@ -810,7 +810,7 @@ body:not(.tl-labels) .tl-ico {
     border-color var(--ms-fast);
 }
 .tl-add:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
   border-color: var(--accent);
 }
 

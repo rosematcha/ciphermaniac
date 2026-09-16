@@ -104,7 +104,7 @@
   background: var(--surface-2);
 }
 .au-name a:hover {
-  color: var(--accent-hover);
+  color: var(--accent-ink-hover);
 }
 .au-chevron {
   font: inherit;
@@ -204,7 +204,7 @@
   text-overflow: ellipsis;
 }
 .au-dist-link {
-  color: var(--accent-hover);
+  color: var(--accent-ink-hover);
   text-decoration: none;
 }
 .au-dist-link:hover {
@@ -463,7 +463,7 @@
   font: inherit;
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent-hover);
+  color: var(--accent-ink-hover);
   background: none;
   border: 0;
   padding: 8px 4px;

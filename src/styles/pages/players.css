@@ -195,7 +195,7 @@
 /* Win rate is the figure the page is about, so it carries the accent — the
    same lead-stat move as the card page's inclusion rate. */
 .player-stat.is-lead dd {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 /* The Day 2 rate rides in its own label rather than beside the count, where
    "35 81%" read as one mangled number. */
@@ -304,7 +304,7 @@
   transition: color var(--ms-fast);
 }
 .history-deck a:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 /* Three states and only two of them print, so the column reads as sparse marks
    rather than forty repetitions of its own header. Right-aligned: left-aligned
@@ -368,7 +368,7 @@
     font-weight: 600;
   }
   .finish-share.is-cut {
-    color: var(--accent);
+    color: var(--accent-ink);
   }
   /* The name column absorbs whatever the other three leave, and truncates
      rather than pushing them off the screen. `max-width: 0` with `width: 100%`
@@ -466,7 +466,7 @@
   color: var(--fg);
 }
 .round-opp a:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .round-deck {
   display: inline-flex;
@@ -527,7 +527,7 @@
   text-align: left;
 }
 .deck-group-head:hover .deck-group-name {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .deck-group-head .row-caret {
   font-size: 11px;
