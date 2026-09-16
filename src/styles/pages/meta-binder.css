@@ -1,8 +1,8 @@
 /* ============================================================
    Meta Binder — /tools/meta-binder
    Card tiles follow the same treatment as .card-tile on /cards
-   and the In Loving Memory grid: no border box, rounded art with
-   the house offset shadow, contain rather than crop.
+   and the In Loving Memory grid: no border box, rounded art,
+   contain rather than crop.
    ============================================================ */
 
 .mb-page {
@@ -79,7 +79,6 @@
   background: var(--surface);
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
 }
 
 .mb-summary-stat {
@@ -180,9 +179,6 @@
   pointer-events: none;
   content-visibility: visible;
 }
-.mb-card-skeleton .mb-card-img {
-  box-shadow: none;
-}
 .mb-card-skeleton .skeleton {
   display: inline-block;
   vertical-align: middle;
@@ -194,13 +190,8 @@
   background: var(--surface-2);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: var(--shadow-1);
   display: grid;
   place-items: center;
-  transition: box-shadow var(--ms-fast) var(--ease-base);
-}
-.mb-card:hover .mb-card-img {
-  box-shadow: var(--shadow-2);
 }
 .mb-card-img img {
   position: absolute;
@@ -281,8 +272,5 @@
   }
   .mb-card:hover {
     transform: none;
-  }
-  .mb-card:hover .mb-card-img {
-    box-shadow: var(--shadow-1);
   }
 }

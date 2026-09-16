@@ -162,7 +162,6 @@
   max-height: 100%;
   background: #fff;
   border: var(--border-width) solid var(--border);
-  box-shadow: var(--shadow-1);
 }
 
 .lm-paper canvas {
@@ -524,7 +523,6 @@
   background: var(--surface);
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
 }
 
 .lm-picker-results li {

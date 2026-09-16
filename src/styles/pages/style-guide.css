@@ -3,7 +3,7 @@
 
    Layout only. Every specimen on the page is drawn by the real
    component class from components.css; nothing here restates a
-   colour, a shadow or a radius that a token already owns.
+   colour or a radius that a token already owns.
 
    Prefixed stg- because this sheet shares the global namespace
    with every other page sheet (see the "Class namespacing"
@@ -88,14 +88,6 @@
   height: 12px;
   background: var(--accent);
   border-radius: 1px;
-}
-.stg-swatch-shadow {
-  width: 28px;
-  height: 20px;
-  margin: 2px 6px 6px 2px;
-  background: var(--surface);
-  border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-sm);
 }
 /* Runs the base duration and curve on loop so the timing is legible, not just
    quoted. Suppressed under prefers-reduced-motion by the global rule. */
@@ -239,7 +231,6 @@
   background: var(--surface);
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   padding: var(--space-3) var(--space-4) var(--space-4);
 }
 

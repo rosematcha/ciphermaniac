@@ -16,7 +16,7 @@ export interface TokenSpec {
   note?: string;
 }
 
-export type TokenKind = 'color' | 'shape' | 'space' | 'shadow' | 'motion' | 'value';
+export type TokenKind = 'color' | 'shape' | 'space' | 'motion' | 'value';
 
 export interface TokenGroup {
   title: string;
@@ -104,16 +104,6 @@ export const TOKEN_GROUPS: TokenGroup[] = [
     ]
   },
   {
-    title: 'Elevation',
-    kind: 'shadow',
-    note: 'A flat offset in ink — no blur, ever. Only --shadow-ink changes between modes; in dark it lands on the next surface tier instead of on ink.',
-    tokens: [
-      { name: '--shadow-1', note: 'At rest' },
-      { name: '--shadow-2', note: 'Hover / raised' },
-      { name: '--shadow-press', note: 'Active' }
-    ]
-  },
-  {
     title: 'Motion',
     kind: 'motion',
     note: 'Three durations, two curves, no bounce. Never animate a layout property.',
@@ -171,9 +161,9 @@ export const RULINGS: Ruling[] = [
   {
     element: 'Blurred shadow',
     found:
-      'The fanned archetype thumbnail draws a soft blurred shadow under each card. It is the only blur left in the codebase; everything else is a flat offset.',
+      'The fanned archetype thumbnail draws a soft blurred shadow under each card. It is now the only box-shadow left in the codebase outside the focus ring.',
     ruling:
-      'Unresolved. It reads as physical depth on a fan of real cards, which is arguably the point — but it is the lone exception to the signature.',
+      'Unresolved. It reads as physical depth on a fan of real cards, which is arguably the point — but the system otherwise draws no shadows at all.',
     status: 'open',
     sites: ['components.css:683 (.card-stack-slot)']
   },
