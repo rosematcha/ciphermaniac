@@ -26,6 +26,22 @@ export function entryFiles(manifest, entry) {
   return files;
 }
 
+/** The embedded release manifest's chunk: data that grows with every event, budgeted apart from code. */
+const RELEASE_CHUNK = 'release';
+
+/** Files of the release chunk, taken out of the code measurements and measured on their own. */
+export function splitRelease(manifest, files) {
+  const release = new Set(
+    Object.values(manifest)
+      .filter(chunk => chunk.name === RELEASE_CHUNK)
+      .map(chunk => chunk.file)
+  );
+  return {
+    code: new Set([...files].filter(file => !release.has(file))),
+    release: new Set([...files].filter(file => release.has(file)))
+  };
+}
+
 export function compressedSizes(directory, files) {
   const sizes = { js: 0, css: 0 };
   for (const file of files) {
