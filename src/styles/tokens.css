@@ -6,12 +6,16 @@
 
 :root,
 body[data-mode="light"] {
-  /* Palette */
-  --bg: #f3ebe3;
-  --surface: #faf5f0;
-  --surface-2: #e8dfd5;
-  --border: #2e2821;
-  --rule: #d8cfc4;
+  /* Palette. The ground is a neutral warm stone, not a pink cream: the cream
+     end of "warm paper" is the saturated corner every generated UI lands in.
+     --border is a mid warm grey rather than ink: the lightest value on this
+     hue that still holds 3:1 against --bg, --surface AND --surface-2
+     (WCAG 1.4.11), so it reads as a drawn edge, not a printed outline. */
+  --bg: #f1eee8;
+  --surface: #faf8f4;
+  --surface-2: #e6e1d8;
+  --border: #8a7f74;
+  --rule: #d7d1c7;
   --fg: #1d1913;
   --muted: #6a6055;
   --accent: #b70;
