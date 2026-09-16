@@ -327,8 +327,8 @@ function DataSpecimens() {
 function SurfaceSpecimens() {
   return (
     <div class='stg-grid'>
-      <Spec selector='.stats-panel' rule='1px border, --radius-md, surface fill. Hairlines inside.' wide>
-        <div class='stats-panel'>
+      <Spec selector='.stats-list' rule='Hairline-ruled rows, label left, value right.' wide>
+        <div class='stats-list'>
           <div class='stat-row'>
             <span class='stat-label'>Decks</span>
             <span class='stat-value num'>842</span>

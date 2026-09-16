@@ -149,7 +149,7 @@
 }
 /* A wide specimen is one that only reads correctly at full measure — a panel,
    a table, a hero. Stack and stretch rather than shrink-to-fit, which was
-   squeezing .stats-panel until its label and value collided. */
+   squeezing .stats-list until its label and value collided. */
 .stg-spec-wide .stg-spec-stage {
   flex-direction: column;
   align-items: stretch;
