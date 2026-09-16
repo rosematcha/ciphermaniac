@@ -180,17 +180,22 @@ const CHECKS: Check[] = [
     return found;
   },
 
-  // Ruling: "Micro-label". One uppercase recipe, at 0.08em.
+  // Ruling: "Micro-label". One uppercase recipe, tracked by --tracking-micro.
+  // The literal is still accepted in the two canvas-export sheets, whose type
+  // is drawn into downloadable images rather than rendered as site chrome.
   rule => {
     if (decl(rule.body, 'text-transform') !== 'uppercase') {
       return [];
     }
     const tracking = decl(rule.body, 'letter-spacing');
-    if (!tracking || tracking === '0.08em') {
+    if (!tracking || tracking === 'var(--tracking-micro)' || tracking === '0.08em') {
       return [];
     }
     return [
-      { rule: 'micro-label', message: `uppercase label at ${tracking} — the house recipe is .label-micro at 0.08em` }
+      {
+        rule: 'micro-label',
+        message: `uppercase label at ${tracking} — the house recipe is .label-micro at var(--tracking-micro)`
+      }
     ];
   },
 

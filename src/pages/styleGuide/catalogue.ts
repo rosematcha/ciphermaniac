@@ -87,7 +87,8 @@ export const TOKEN_GROUPS: TokenGroup[] = [
       { name: '--text-body', note: 'Page body, h3' },
       { name: '--text-lg', note: 'h2' },
       { name: '--text-xl', note: 'Wordmark' },
-      { name: '--text-2xl', note: 'KPI value' }
+      { name: '--text-2xl', note: 'KPI value' },
+      { name: '--tracking-micro', note: 'Uppercase micro-label tracking' }
     ]
   },
   {
@@ -152,7 +153,7 @@ export const RULINGS: Ruling[] = [
   {
     element: 'Eyebrow line',
     found:
-      'The home page latest-event callout opens with .callout-eyebrow — a 10.5px all-caps label sitting above its heading, tracked at 0.14em. The house rules forbid eyebrow lines, and it is now the only uppercase label off the 0.08em recipe.',
+      'The home page latest-event callout opens with .callout-eyebrow — a 10.5px all-caps label sitting above its heading, tracked at 0.14em. The house rules forbid eyebrow lines, and it is now the only uppercase label off the --tracking-micro recipe.',
     ruling:
       'Unresolved. The rule says remove it; the callout may need something in that slot to say what it is. Decide before the callout is touched again.',
     status: 'open',

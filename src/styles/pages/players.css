@@ -185,7 +185,7 @@
 .player-stat dt {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   text-transform: uppercase;
   color: var(--muted);
   overflow: hidden;
@@ -423,7 +423,7 @@
 }
 .rounds-phase {
   font-size: 10.5px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   text-transform: uppercase;
   color: var(--muted);
   font-weight: 600;
@@ -489,7 +489,7 @@
 .rounds-drop {
   color: var(--negative);
   font-size: 10.5px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   text-transform: uppercase;
   font-weight: 600;
   padding-top: 8px;
@@ -618,7 +618,7 @@
 /* ---------- Profile: matchups tab ---------- */
 .profile-h3 {
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   text-transform: uppercase;
   color: var(--muted);
   font-weight: 600;
@@ -665,7 +665,7 @@
 .phase-figure dt {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   text-transform: uppercase;
   color: var(--muted);
 }

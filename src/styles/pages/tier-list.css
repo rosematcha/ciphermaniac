@@ -367,7 +367,7 @@ body:not(.tl-labels) .tl-ico {
   padding: 7px 12px;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   color: var(--muted);
   font-weight: 600;
   border-bottom: 1px solid var(--rule);
@@ -507,7 +507,7 @@ body:not(.tl-labels) .tl-ico {
 .tl-legend {
   font-size: 10.5px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   color: var(--muted);
   font-weight: 600;
 }
@@ -577,7 +577,7 @@ body:not(.tl-labels) .tl-ico {
 .tl-pop header b {
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   color: var(--muted);
 }
 .tl-pop .x {
