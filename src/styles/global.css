@@ -29,6 +29,10 @@ html {
 
 main.page {
   flex: 1 0 auto;
+  /* `.page` centres itself with `margin: 0 auto`, and auto cross-axis margins
+     beat flex stretch, so as a child of the `#root` column it would size to its
+     content and jump width as each route loaded. */
+  width: 100%;
   /* Data-heavy routes fill this reservation while their late resources land,
      keeping the footer outside the shifting part of the first viewport. */
   min-height: 100dvh;
