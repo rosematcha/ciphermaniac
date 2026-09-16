@@ -12,6 +12,12 @@ html, body {
   overscroll-behavior-y: contain;
 }
 
+body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
 html {
   /* Reserve the scrollbar track even on short pages. Skeletons are shorter
      than the content that replaces them, so a page that loads across the
@@ -21,18 +27,21 @@ html {
   scrollbar-gutter: stable;
 }
 
-/* The footer starts below the fold, always. It sits under content that grows as
-   late data lands, so anywhere inside the first screen it would be shoved down
-   on every arrival — measured at 0.18 CLS on /cards, twelve times the budget,
-   from one footer. Off-screen it moves just as much and costs nothing. A full
-   viewport of main also gives short routes a floor instead of a footer parked
-   under two lines of text. */
 main.page {
+  flex: 1 0 auto;
+  /* Data-heavy routes fill this reservation while their late resources land,
+     keeping the footer outside the shifting part of the first viewport. */
   min-height: 100dvh;
   /* A hidden tooltip bubble still counts toward scrollable overflow, so one near
      the right edge widened phone layouts past the viewport. `clip` stops that
      without making main a scroll container, which would break sticky headers. */
   overflow-x: clip;
+}
+
+/* Feedback is complete at first paint until a visitor chooses a form type, so
+   it does not need the loading reservation used by data-backed routes. */
+main.page:has(> .feedback-page) {
+  min-height: 0;
 }
 
 body {
