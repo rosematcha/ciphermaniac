@@ -6,11 +6,6 @@ import '../styles/pages/tools.css';
 // what anyone comes here to do.
 const secondary: { href: string; name: string; desc: string }[] = [
   {
-    href: '/tools/pack-ev',
-    name: 'Pack EV',
-    desc: 'Weigh what a pack holds against what the sealed product costs, then rip a few'
-  },
-  {
     href: '/tools/meta-binder',
     name: 'Meta Binder',
     desc: 'Work out which cards you need to own to build the decks people are playing'
@@ -92,6 +87,41 @@ export function ToolsPage() {
             <div class='arche-name'>Deck Box Label Maker</div>
             <div class='arche-stats'>
               <span class='arche-wr'>Design a deck box label and print it on a thermal label printer</span>
+            </div>
+          </A>
+
+          <A class='arche' href='/tools/pack-ev'>
+            <div class='arche-thumb' aria-hidden='true'>
+              <svg viewBox='0 0 100 80'>
+                <rect
+                  x='18'
+                  y='14'
+                  width='28'
+                  height='40'
+                  rx='2'
+                  fill='currentColor'
+                  opacity='0.18'
+                  transform='rotate(-12 32 34)'
+                />
+                <rect x='36' y='12' width='28' height='40' rx='2' fill='currentColor' opacity='0.3' />
+                <rect
+                  x='54'
+                  y='14'
+                  width='28'
+                  height='40'
+                  rx='2'
+                  fill='currentColor'
+                  opacity='0.5'
+                  transform='rotate(12 68 34)'
+                />
+                <rect x='20' y='62' width='60' height='4' fill='currentColor' opacity='0.4' />
+              </svg>
+            </div>
+            <div class='arche-name'>Pack EV</div>
+            <div class='arche-stats'>
+              <span class='arche-wr'>
+                Weigh what a pack holds against what the sealed product costs, then rip a few
+              </span>
             </div>
           </A>
         </div>

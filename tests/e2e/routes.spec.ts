@@ -275,14 +275,15 @@ test('the tools index links to the card wall', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Card Wall/i })).toHaveAttribute('href', '/tools/card-wall');
 });
 
-test('the tools index features the tier list and label maker as tiles', async ({ page }) => {
+test('the tools index features the tier list, label maker and pack EV as tiles', async ({ page }) => {
   await gotoClean(page, '/tools');
   const featured = page.locator('.tools-featured .arche');
-  await expect(featured).toHaveCount(2);
+  await expect(featured).toHaveCount(3);
   await expect(featured.nth(0)).toHaveAttribute('href', '/tools/tier-list');
   await expect(featured.nth(1)).toHaveAttribute('href', '/tools/deck-box-labels');
+  await expect(featured.nth(2)).toHaveAttribute('href', '/tools/pack-ev');
   // Everything else is a plain row, not a tile.
-  await expect(page.locator('.tools-more-item')).toHaveCount(5);
+  await expect(page.locator('.tools-more-item')).toHaveCount(4);
 });
 
 test('pack EV sets a pack opened against a pack sealed, and opens packs', async ({ page }) => {
@@ -333,6 +334,7 @@ test('hovering the Tools nav item reveals the two headline tools', async ({ page
     'href',
     '/tools/deck-box-labels'
   );
+  await expect(menu.getByRole('link', { name: 'Pack EV' })).toHaveAttribute('href', '/tools/pack-ev');
 });
 
 test('a narrow desktop viewport uses the compact two-tier header', async ({ page }, testInfo) => {
