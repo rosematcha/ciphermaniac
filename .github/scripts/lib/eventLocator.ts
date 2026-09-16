@@ -37,8 +37,8 @@ import { LOCALS_HORIZON_DAYS, POKEDATA_SITE, type PokedataPull } from './pokedat
 import { createR2Client, createReportsBinding, getJsonResult, putJson } from './r2.mjs';
 import type { R2Config } from './env.ts';
 
-/** Live data: the same six-hour client cache as every other daily artifact. */
-export const LOCATOR_CACHE_CONTROL = 'public, max-age=21600';
+/** Live schedules should pick up corrections within five minutes. */
+export const LOCATOR_CACHE_CONTROL = 'public, max-age=300';
 const UPLOAD_CONCURRENCY = 8;
 
 export interface Publisher {

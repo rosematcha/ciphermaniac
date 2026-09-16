@@ -29,6 +29,7 @@ test('a complete listing keeps every field the locator shows', () => {
   const event = normalized();
   assert.deepEqual(event, {
     id: '26-09-000001',
+    leagueId: '1000001',
     kind: 'cup',
     name: 'Test Games League Cup',
     date: '2026-09-20',

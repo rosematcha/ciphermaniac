@@ -33,12 +33,16 @@ export interface DivisionFees {
 export interface LocatorEvent {
   /** Play! Pokémon event ID, or the upstream GUID for an unsanctioned local. */
   id: string;
+  /** Stable Play! Pokémon league identity, shared by scheduled events and weekly locals. */
+  leagueId?: string;
   kind: EventKind;
   name: string;
   /** Venue-local calendar date, `YYYY-MM-DD`. */
   date: string;
   /** Venue-local start time, `HH:MM`, or `''` when the listing has none. */
   time: string;
+  /** Conflicting source times for one unnamed session; `time` stays empty. */
+  reportedTimes?: string[];
   /** Store name as listed (usually upper case). */
   shop: string;
   address: string;
@@ -140,6 +144,8 @@ export interface LocalSlot {
   weekday: number;
   /** Venue-local start, `HH:MM`, or `''` when the store listed none. */
   time: string;
+  /** Conflicting source times, without guessing which is the actual start. */
+  reportedTimes?: string[];
   name: string;
   fee?: string;
   /** First listed date, `YYYY-MM-DD`, when the series starts after the window does. */

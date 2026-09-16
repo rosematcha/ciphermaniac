@@ -276,6 +276,7 @@ type OptionalFields = Omit<Partial<LocatorEvent>, 'divisionFees'> & { divisionFe
 /** Every optional field, present only when it has a usable value. */
 function optionalFields(raw: RawEvent): OptionalFields {
   const candidates: OptionalFields = {
+    leagueId: /^\d+$/.test(text(raw.league)) ? text(raw.league) : undefined,
     // Sanctioned events list admission; locals list a cost.
     fee: fee(raw.Admission) ?? fee(raw.cost),
     divisionFees: divisionFees(raw),

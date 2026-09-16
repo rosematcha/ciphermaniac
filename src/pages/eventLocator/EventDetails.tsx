@@ -1,7 +1,7 @@
 import { Show } from 'solid-js';
 import type { LocatorEvent } from '../../../shared/events/types';
 import { calendarFileName, eventCalendar } from '../../lib/events/calendar';
-import { addressLine, formatFee, formatWallTime, titleCase } from '../../lib/events/format';
+import { addressLine, formatClock, formatFee, formatWallTime, titleCase } from '../../lib/events/format';
 
 /** Third-party links from store-entered data: no referrer, no endorsement. */
 const STORE_LINK_REL = 'noopener noreferrer nofollow ugc';
@@ -63,6 +63,18 @@ export function EventDetails(props: { event: LocatorEvent; id: string }) {
   return (
     <div class='el-details' id={props.id}>
       <dl class='el-facts'>
+        <Show when={event().reportedTimes}>
+          {times => (
+            <div>
+              <dt>Conflicting times</dt>
+              <dd>
+                {times()
+                  .map(time => formatClock(time, event().cc))
+                  .join(' / ')}
+              </dd>
+            </div>
+          )}
+        </Show>
         <div>
           <dt>Store</dt>
           <dd>
@@ -132,7 +144,12 @@ export function EventDetails(props: { event: LocatorEvent; id: string }) {
         <a class='btn btn-ghost' href={directionsUrl(event())} target='_blank' rel='noopener noreferrer'>
           Directions
         </a>
-        <button type='button' class='btn btn-ghost' onClick={() => downloadCalendar(event())}>
+        <button
+          type='button'
+          class='btn btn-ghost'
+          disabled={Boolean(event().reportedTimes)}
+          onClick={() => downloadCalendar(event())}
+        >
           Add to calendar
         </button>
       </div>

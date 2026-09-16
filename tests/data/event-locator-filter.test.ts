@@ -122,3 +122,49 @@ test('markers are one per store, flag Cups, and point at the soonest event', () 
   assert.deepEqual([shopA?.count, shopA?.hasCup, shopA?.firstId], [2, true, 'first']);
   assert.equal(markers.find(m => m.shop === 'SHOP B')?.hasCup, false);
 });
+
+test('scheduled events replace overlapping locals before kind filtering', () => {
+  for (const kind of ['cup', 'challenge', 'prerelease'] as const) {
+    const scheduled = event('scheduled', { kind, time: '19:30' });
+    const local = event('local', { kind: 'local', time: '19:00' });
+    assert.deepEqual(
+      filterEvents([local, scheduled], query({ kinds: new Set(['local', kind]) })).map(e => e.id),
+      ['scheduled']
+    );
+    assert.deepEqual(filterEvents([local, scheduled], query({ kinds: new Set(['local']) })), []);
+  }
+});
+
+test('deduplication preserves other stores, dates, and separate sessions', () => {
+  const scheduled = event('scheduled', { leagueId: '42', time: '19:30' });
+  const locals = [
+    event('morning', { leagueId: '42', kind: 'local', time: '10:00' }),
+    event('tomorrow', { leagueId: '42', kind: 'local', date: '2026-09-17' }),
+    event('other-league', { leagueId: '43', kind: 'local' }),
+    event('other-shop-same-mall', { shop: 'SHOP B', kind: 'local' }),
+    event('other-location', { lat: 30.28, kind: 'local' }),
+    event('other-country', { cc: 'CA', kind: 'local' }),
+    event('missing-shop', { shop: '', kind: 'local' })
+  ];
+  assert.deepEqual(
+    new Set(filterEvents([scheduled, ...locals], query({ kinds: new Set(['local']) })).map(e => e.id)),
+    new Set(locals.map(e => e.id))
+  );
+});
+
+test('stable league IDs match renamed shops, while older artifacts match normalized names and coordinates', () => {
+  const scheduled = event('scheduled', { leagueId: '42' });
+  const renamed = event('renamed', { leagueId: '42', shop: 'NEW NAME', kind: 'local' });
+  const old = event('old', { shop: '  shop   a ', kind: 'local' });
+  assert.deepEqual(filterEvents([scheduled, renamed, old], query({ kinds: new Set(['local']) })), []);
+});
+
+test('unknown and conflicting times cannot advertise a competing weekly session', () => {
+  const scheduled = event('scheduled');
+  const unknown = event('unknown', { kind: 'local', time: '' });
+  const conflict = event('conflict', { kind: 'local', time: '', reportedTimes: ['13:00', '18:00'] });
+  assert.deepEqual(filterEvents([scheduled, unknown, conflict], query({ kinds: new Set(['local']) })), []);
+  assert.deepEqual(filterEvents([event('untimed', { time: '' }), unknown], query({ kinds: new Set(['local']) })), []);
+  const earlier = event('earlier', { kind: 'local', time: '', reportedTimes: ['10:00', '11:30'] });
+  assert.equal(filterEvents([scheduled, earlier], query({ kinds: new Set(['local']) })).length, 1);
+});

@@ -10,7 +10,7 @@
  * @module src/lib/data/eventLocator
  */
 
-import { createDataClient } from './client';
+import { createDataClient, FETCH_TTL_MS } from './client';
 import { expandLocals } from '../../../shared/events/locals';
 import {
   LOCALS_INDEX_KEY,
@@ -28,6 +28,11 @@ import {
 
 const client = createDataClient({ resolvePath: path => path });
 
+/** Bound index staleness even when an older response has a six-hour HTTP lifetime. */
+function indexPath(key: string): string {
+  return `/${key}?refresh=${Math.floor(Date.now() / FETCH_TTL_MS)}`;
+}
+
 function assertVersion(payload: { version?: unknown } | null, what: string): void {
   if (!payload || payload.version !== 1) {
     throw new Error(`Unexpected ${what} format`);
@@ -35,7 +40,7 @@ function assertVersion(payload: { version?: unknown } | null, what: string): voi
 }
 
 export async function fetchLocatorIndex(): Promise<LocatorIndex> {
-  const index = await client.fetchJson<LocatorIndex>(`/${LOCATOR_INDEX_KEY}`);
+  const index = await client.fetchJson<LocatorIndex>(indexPath(LOCATOR_INDEX_KEY));
   assertVersion(index, 'event index');
   return index;
 }
@@ -62,7 +67,7 @@ export async function fetchLocatorEvents(index: LocatorIndex, cells: readonly st
 
 /** The locals index, or null when none has been published. */
 export async function fetchLocalsIndex(): Promise<LocalsIndex | null> {
-  const index = await client.fetchJsonOptional<LocalsIndex>(`/${LOCALS_INDEX_KEY}`);
+  const index = await client.fetchJsonOptional<LocalsIndex>(indexPath(LOCALS_INDEX_KEY));
   if (index) {
     assertVersion(index, 'locals index');
   }
@@ -81,7 +86,11 @@ export async function fetchLocalEvents(
   today: string
 ): Promise<LocatorEvent[]> {
   const wanted = cells.filter(key => index.cells[key]);
-  const loaded = await Promise.all(wanted.map(key => client.fetchJsonOptional<LocalsCell>(`/${localsCellPath(key)}`)));
+  const loaded = await Promise.all(
+    wanted.map(key =>
+      client.fetchJsonOptional<LocalsCell>(`/${localsCellPath(key)}?hash=${encodeURIComponent(index.cells[key]!.hash)}`)
+    )
+  );
   const present = loaded.filter((cell): cell is LocalsCell => Boolean(cell && cell.version === 1));
-  return expandLocals(present, today, index.horizonDays);
+  return expandLocals(present, today, index.horizonDays, index.updatedAt.slice(0, 10));
 }
