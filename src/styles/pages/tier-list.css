@@ -232,10 +232,13 @@ body.tl-rowdrag {
   transition: none;
   cursor: grabbing;
   will-change: transform;
-  filter: drop-shadow(4px 5px 0 var(--border));
 }
-body[data-mode='dark'] .tl-item.tl-dragging {
-  filter: drop-shadow(4px 5px 0 rgba(0, 0, 0, 0.55));
+/* The chip in hand takes the accent edge and fill rather than a cast shadow,
+   which is also what marks the slot it will drop into. `transform` belongs to
+   the drag maths, so the cue has to be colour. */
+.tl-item.tl-dragging > .tl-ico {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
 }
 /* The gap the drop will land in. */
 .tl-slot {
@@ -253,9 +256,6 @@ body.tl-drag-active .tl-item:not(.tl-dragging) {
 }
 
 /* item — sprite chip */
-/* The offset shadow is the system's panel signature. Repeating it on forty
-   tiles turned the tray into a sticker sheet, so tiles keep the ink border
-   and give the shadow back to the panels that own it. */
 .tl-ico {
   display: flex;
   align-items: center;
