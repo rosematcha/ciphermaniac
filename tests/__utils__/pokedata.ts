@@ -75,7 +75,8 @@ export function rawEventWithId(serial: number, overrides: RawPokedataEvent = {})
 /**
  * The field set of Pokedata's locals table, which is a different endpoint
  * with a smaller record: no `time`, `Admission`, or `Display_id`. The start
- * is only in `when`, and the entry fee is `cost`.
+ * is only in `when`, and the entry fee is `cost`. This is the unnamed kind,
+ * with no event ID in its URL, whose `when` is UTC; see {@link rawListedLocal}.
  */
 const LOCAL_BASE: RawPokedataEvent = {
   type: 'nonpremier TCG',
@@ -111,6 +112,16 @@ const LOCAL_BASE: RawPokedataEvent = {
 /** A Friendly TCG listing from the locals table; override any field. */
 export function rawLocalEvent(overrides: RawPokedataEvent = {}): RawPokedataEvent {
   return { ...LOCAL_BASE, ...overrides };
+}
+
+/** A local the store listed as an event on pokemon.com: named, with an event ID, in venue wall time. */
+export function rawListedLocal(serial: number, overrides: RawPokedataEvent = {}): RawPokedataEvent {
+  return rawLocalEvent({
+    name: 'Test Games Weekly',
+    pokemon_url: `https://www.pokemon.com/us/pokemon-trainer-club/play-pokemon-tournaments/26-09-${String(serial).padStart(6, '0')}/`,
+    guid: `20000000-0000-4000-8000-${String(serial).padStart(12, '0')}`,
+    ...overrides
+  });
 }
 
 /**

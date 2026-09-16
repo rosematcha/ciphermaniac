@@ -16,7 +16,7 @@
 
 import { isoDay, pastCutoff } from './build';
 import { CELL_DEGREES, shardByCell } from './cells';
-import { normalizeEvent, type SkipReason } from './normalize';
+import { normalizeEvent, type SkipReason, type ZoneLookup } from './normalize';
 import type { LocalsCell, LocalsIndex, LocalSlot, LocalVenue, LocatorEvent } from './types';
 
 export type LocalSkipReason = SkipReason | 'league';
@@ -26,6 +26,8 @@ export interface LocalsBuildStats {
   /** Occurrences that made it into a slot. */
   kept: number;
   past: number;
+  /** Past the window's last day once moved to venue-local time. */
+  later: number;
   skipped: Partial<Record<LocalSkipReason, number>>;
   venues: number;
   slots: number;
@@ -44,6 +46,8 @@ export interface LocalsBuildOptions {
   horizonDays: number;
   /** Content hash of a cell, recorded in the index so unchanged cells are not rewritten. */
   hash: (cell: LocalsCell) => string;
+  /** The time zone at a venue, for the records Pokedata lists in UTC. */
+  zoneAt: ZoneLookup;
 }
 
 const DAY_MS = 86_400_000;
@@ -78,11 +82,22 @@ function leagueOf(record: unknown): string {
   return /^\d+$/.test(league) ? league : '';
 }
 
-function collect(raw: unknown[], cutoff: string): { byLeague: Map<string, LocatorEvent[]>; stats: LocalsBuildStats } {
+/** The producer's window: the dates a listing could fall on. */
+interface Window {
+  start: string;
+  end: string;
+}
+
+function collect(
+  raw: unknown[],
+  window: Window,
+  options: LocalsBuildOptions
+): { byLeague: Map<string, LocatorEvent[]>; stats: LocalsBuildStats } {
   const stats: LocalsBuildStats = {
     received: raw.length,
     kept: 0,
     past: 0,
+    later: 0,
     skipped: {},
     venues: 0,
     slots: 0,
@@ -91,9 +106,11 @@ function collect(raw: unknown[], cutoff: string): { byLeague: Map<string, Locato
   const skip = (reason: LocalSkipReason) => {
     stats.skipped[reason] = (stats.skipped[reason] ?? 0) + 1;
   };
+  const cutoff = pastCutoff(options.now);
   const byLeague = new Map<string, LocatorEvent[]>();
   for (const record of raw) {
-    const result = normalizeEvent(record && typeof record === 'object' ? (record as Record<string, unknown>) : {});
+    const fields = record && typeof record === 'object' ? (record as Record<string, unknown>) : {};
+    const result = normalizeEvent(fields, options.zoneAt);
     if (!result.ok) {
       skip(result.reason);
       continue;
@@ -105,6 +122,8 @@ function collect(raw: unknown[], cutoff: string): { byLeague: Map<string, Locato
       skip('league');
     } else if (result.event.date < cutoff) {
       stats.past++;
+    } else if (result.event.date > window.end) {
+      stats.later++;
     } else {
       byLeague.set(league, [...(byLeague.get(league) ?? []), result.event]);
       stats.kept++;
@@ -128,12 +147,6 @@ function mode(values: string[]): string {
     }
   }
   return best;
-}
-
-/** The producer's window: the dates a listing could fall on. */
-interface Window {
-  start: string;
-  end: string;
 }
 
 /** No skipped weeks between the first and last listed date. */
@@ -189,11 +202,11 @@ function venueOf(league: string, occurrences: LocatorEvent[], window: Window): L
 /**
  * Build the locals artifacts from raw Pokedata locals records.
  * @param raw - Records from the locals table, within the producer's horizon
- * @param options - Clock, attribution, horizon, and cell hashing
+ * @param options - Clock, attribution, horizon, cell hashing, and venue time zones
  */
 export function buildLocalsArtifacts(raw: unknown[], options: LocalsBuildOptions): LocalsArtifacts {
-  const { byLeague, stats } = collect(raw, pastCutoff(options.now));
   const window = { start: isoDay(options.now), end: addDays(isoDay(options.now), options.horizonDays) };
+  const { byLeague, stats } = collect(raw, window, options);
   const venues = [...byLeague.entries()]
     .map(([league, occurrences]) => venueOf(league, occurrences, window))
     .sort((a, b) => a.id.localeCompare(b.id));

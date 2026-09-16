@@ -13,6 +13,7 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { find as findZones } from 'geo-tz/now';
 import {
   buildLocatorArtifacts,
   type BuildStats,
@@ -21,6 +22,7 @@ import {
 } from '../../../shared/events/build.ts';
 import { semanticHash } from '../../../shared/data/hash.ts';
 import { buildLocalsArtifacts, type LocalsArtifacts, type LocalsBuildStats } from '../../../shared/events/locals.ts';
+import type { ZoneLookup } from '../../../shared/events/normalize.ts';
 import {
   LOCALS_INDEX_KEY,
   type LocalsCell,
@@ -136,6 +138,7 @@ export interface LocalsRunOptions {
   fetchLocals: () => Promise<unknown[]>;
   publisher: Publisher;
   now?: () => Date;
+  zoneAt?: ZoneLookup;
   horizonDays?: number;
   allowShrink?: boolean;
   log?: (message: string) => void;
@@ -150,6 +153,9 @@ export interface LocalsRunResult {
   unchanged: number;
   stats: LocalsBuildStats;
 }
+
+/** The venue's time zone from its coordinates; a point at sea gets the nautical zone. */
+export const zoneAt: ZoneLookup = (lat, lon) => findZones(lat, lon)[0] ?? 'UTC';
 
 /** Content hash of a cell (canonical, so key order cannot churn it), short enough for the index. */
 export function cellHash(cell: LocalsCell): string {
@@ -187,7 +193,7 @@ function describeLocalsStats(stats: LocalsBuildStats): string {
   const skipped = Object.entries(stats.skipped)
     .map(([reason, count]) => `${reason} ${count}`)
     .join(', ');
-  return `${stats.slots} slots (${stats.weekly} weekly) at ${stats.venues} stores from ${stats.kept} of ${stats.received} listings (past ${stats.past}${skipped ? `, skipped: ${skipped}` : ''})`;
+  return `${stats.slots} slots (${stats.weekly} weekly) at ${stats.venues} stores from ${stats.kept} of ${stats.received} listings (past ${stats.past}, later ${stats.later}${skipped ? `, skipped: ${skipped}` : ''})`;
 }
 
 /**
@@ -202,7 +208,8 @@ export async function runLocalsLocator(options: LocalsRunOptions): Promise<Local
     now: now(),
     source: POKEDATA_SITE,
     horizonDays: options.horizonDays ?? LOCALS_HORIZON_DAYS,
-    hash: cellHash
+    hash: cellHash,
+    zoneAt: options.zoneAt ?? zoneAt
   });
   log(describeLocalsStats(artifacts.stats));
   const previous = await publisher.read<LocalsIndex>(LOCALS_INDEX_KEY);

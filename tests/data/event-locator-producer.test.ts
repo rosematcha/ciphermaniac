@@ -119,12 +119,12 @@ function localsOn(date: string, count: number): unknown[] {
   return Array.from({ length: count }, (_, i) => rawLocalEvent({ date, guid: `${date}-${i}` }));
 }
 
-test('the locals pull stops at the first page past the horizon and drops what is past it', async () => {
+test('the locals pull stops at the first page a day past the horizon and drops what is past that', async () => {
   const now = () => new Date('2026-09-15T12:00:00Z');
-  assert.equal(localsCutoff(now(), 21), '2026-10-06');
+  assert.equal(localsCutoff(now(), 21), '2026-10-07', 'UTC dates run a day ahead of evenings in the Americas');
   const pages = [
     JSON.stringify(localsOn('2026-09-20', LOCAL_PAGE_SIZE)),
-    JSON.stringify([...localsOn('2026-10-06', 50), ...localsOn('2026-10-07', 50)])
+    JSON.stringify([...localsOn('2026-10-07', 50), ...localsOn('2026-10-08', 50)])
   ];
   const requested: number[] = [];
   const events = await fetchLocalEvents({
@@ -138,7 +138,7 @@ test('the locals pull stops at the first page past the horizon and drops what is
   });
   assert.deepEqual(requested, [0, 1]);
   assert.equal(events.length, 150);
-  assert.ok(events.every(event => (event as { date: string }).date <= '2026-10-06'));
+  assert.ok(events.every(event => (event as { date: string }).date <= '2026-10-07'));
 });
 
 test('a locals page is retried like a sanctioned one, and a feed out of date order fails the pull', async () => {

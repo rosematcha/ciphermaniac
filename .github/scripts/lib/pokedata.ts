@@ -151,9 +151,14 @@ function assertSorted(page: unknown[], previousLast: string | null, pageNumber: 
   return dateOf(page.at(-1)) ?? previousLast;
 }
 
-/** `YYYY-MM-DD` of the last day inside the horizon, in UTC. */
+/**
+ * `YYYY-MM-DD` of the last date to pull, in UTC: a day past the horizon.
+ * Records listed in UTC carry a UTC date, a day ahead of the venue's for an
+ * evening west of Greenwich, and the build trims to the horizon once every
+ * record is on its venue's calendar.
+ */
 export function localsCutoff(now: Date, horizonDays: number): string {
-  return new Date(now.getTime() + horizonDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return new Date(now.getTime() + (horizonDays + 1) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 /**
