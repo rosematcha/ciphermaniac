@@ -1,7 +1,9 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
+import { CardImage } from '../../components/CardImage';
+import { Segmented } from '../../components/Segmented';
 import { openPack, preparePack, type Pull } from '../../../shared/packEv/simulate';
 import type { PackEvSetPayload } from '../../../shared/packEv/types';
-import { money } from './model';
+import { artNumber, mergePulls, money, type PullStack, sortStacks, type StackSort } from './model';
 
 interface PackOpenerProps {
   payload: PackEvSetPayload;
@@ -21,14 +23,81 @@ const PRODUCTS = [
   { label: 'case', packs: 216 }
 ] as const;
 
+const SORTS: { value: Exclude<StackSort, 'count'>; label: string }[] = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'value', label: 'Value' }
+];
+
 interface OpenedState {
   packs: number;
   value: number;
-  /** Everything above the bulk floor, newest first. */
-  hits: Pull[];
+  /** Rips so far, so a stack knows which one touched it last. */
+  rips: number;
+  hits: PullStack[];
+  bulk: PullStack[];
 }
 
-const EMPTY: OpenedState = { packs: 0, value: 0, hits: [] };
+const EMPTY: OpenedState = { packs: 0, value: 0, rips: 0, hits: [], bulk: [] };
+
+interface StackTileProps {
+  stack: PullStack;
+  set: string;
+  size: 'sm' | 'xs';
+  caption: boolean;
+}
+
+/**
+ * One stack of identical prints: the art, a ×N badge, and what one copy is
+ * worth. Art is hotlinked from Limitless — a case puts hundreds of unplayed
+ * prints on screen, and none of them should cost us storage or a Function call.
+ */
+function StackTile(props: StackTileProps) {
+  const card = () => props.stack.pull.card;
+  return (
+    <figure class='packev-tile'>
+      <Show when={card()} fallback={<div class='packev-art packev-art-blank'>{props.stack.pull.outcome}</div>}>
+        {found => (
+          <CardImage
+            class='packev-art'
+            set={props.set}
+            number={artNumber(found().number)}
+            size={props.size}
+            alt={found().name}
+            hotlink
+          />
+        )}
+      </Show>
+      <Show when={props.stack.count > 1}>
+        <b class='packev-badge'>×{props.stack.count}</b>
+      </Show>
+      <Show when={props.caption}>
+        <figcaption>
+          <span>{card()?.name ?? props.stack.pull.outcome}</span>
+          <span class='packev-price'>{money(props.stack.pull.value)}</span>
+        </figcaption>
+      </Show>
+    </figure>
+  );
+}
+
+function tally(opened: OpenedState, packs: number, pulls: Pull[]): OpenedState {
+  const rips = opened.rips + 1;
+  return {
+    packs: opened.packs + packs,
+    value: opened.value + pulls.reduce((sum, pull) => sum + pull.value, 0),
+    rips,
+    hits: mergePulls(
+      opened.hits,
+      pulls.filter(pull => pull.notable),
+      rips
+    ),
+    bulk: mergePulls(
+      opened.bulk,
+      pulls.filter(pull => !pull.notable),
+      rips
+    )
+  };
+}
 
 /**
  * The pack opener.
@@ -38,35 +107,28 @@ const EMPTY: OpenedState = { packs: 0, value: 0, hits: [] };
  * mean and the mean is carried by boxes you will not open. Sampling it is the
  * only honest way to show that, so this opens real packs off the same slot
  * model the EV table averages, and keeps a running tally against their cost.
+ * Hits land in a grid of stacked prints; everything at the bulk floor goes in a
+ * drawer beneath it.
  */
 export function PackOpener(props: PackOpenerProps) {
   // The whole payload, not a hand-picked subset of it: a field left out here
   // (special packs, once) silently opens a different pack than the table prices.
   const pack = createMemo(() => preparePack(props.payload));
   const [opened, setOpened] = createSignal<OpenedState>(EMPTY);
-  const [last, setLast] = createSignal<Pull[]>([]);
+  const [sort, setSort] = createSignal<Exclude<StackSort, 'count'>>('value');
   const spent = () => (props.costPerPack === null ? null : opened().packs * props.costPerPack);
+  const net = () => opened().value - (spent() ?? 0);
+  const hits = createMemo(() => sortStacks(opened().hits, sort()));
+  const bulk = createMemo(() => sortStacks(opened().bulk, 'count'));
+  const bulkCards = createMemo(() => opened().bulk.reduce((sum, entry) => sum + entry.count, 0));
 
   function rip(packs: number) {
     const prepared = pack();
-    let value = 0;
-    const hits: Pull[] = [];
-    let latest: Pull[] = [];
+    const pulls: Pull[] = [];
     for (let index = 0; index < packs; index += 1) {
-      latest = openPack(prepared, Math.random);
-      for (const pull of latest) {
-        value += pull.value;
-        if (pull.notable) {
-          hits.push(pull);
-        }
-      }
+      pulls.push(...openPack(prepared, Math.random));
     }
-    setLast(latest);
-    setOpened(current => ({
-      packs: current.packs + packs,
-      value: current.value + value,
-      hits: [...hits.reverse(), ...current.hits].slice(0, 60)
-    }));
+    setOpened(current => tally(current, packs, pulls));
   }
 
   return (
@@ -79,15 +141,7 @@ export function PackOpener(props: PackOpenerProps) {
             </button>
           )}
         </For>
-        <button
-          type='button'
-          class='btn btn-ghost'
-          onClick={() => {
-            setOpened(EMPTY);
-            setLast([]);
-          }}
-          disabled={opened().packs === 0}
-        >
+        <button type='button' class='btn btn-ghost' onClick={() => setOpened(EMPTY)} disabled={opened().packs === 0}>
           Clear
         </button>
       </div>
@@ -108,53 +162,37 @@ export function PackOpener(props: PackOpenerProps) {
               <dt>Spent</dt>
             </div>
             <div class='packev-stat'>
-              <dd class={opened().value >= (spent() ?? 0) ? 'is-up' : 'is-down'}>
-                {opened().value >= (spent() ?? 0) ? '+' : '−'}
-                {money(Math.abs(opened().value - (spent() ?? 0)))}
+              <dd class={net() >= 0 ? 'is-up' : 'is-down'}>
+                {net() >= 0 ? '+' : '−'}
+                {money(Math.abs(net()))}
               </dd>
               <dt>Against cost</dt>
             </div>
           </Show>
         </dl>
-      </Show>
 
-      <Show when={last().length > 0}>
-        <div class='packev-row packev-lastpack'>
-          <For each={last()}>
-            {pull => (
-              <span classList={{ 'is-hit': pull.notable }}>
-                {pull.card ? pull.card.name : pull.outcome}
-                <Show when={pull.notable}> · {money(pull.value)}</Show>
-              </span>
-            )}
-          </For>
-        </div>
-      </Show>
+        <Show when={hits().length > 0}>
+          <div class='packev-row'>
+            <Segmented options={SORTS} selected={sort()} onSelect={setSort} ariaLabel='Sort pulls' />
+          </div>
+          <div class='packev-grid'>
+            <For each={hits()}>{entry => <StackTile stack={entry} set={props.payload.code} size='sm' caption />}</For>
+          </div>
+        </Show>
 
-      <Show when={opened().hits.length > 0}>
-        <table class='data'>
-          <thead>
-            <tr>
-              <th>Hit</th>
-              <th>Rarity</th>
-              <th class='num'>Market</th>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={opened().hits}>
-              {hit => (
-                <tr>
-                  <td class='cardname'>
-                    {hit.card?.name}
-                    <span class='packev-aside'>{hit.card?.number}</span>
-                  </td>
-                  <td class='muted-cell'>{hit.outcome}</td>
-                  <td class='num'>{money(hit.value)}</td>
-                </tr>
-              )}
+        <details class='packev-bulk'>
+          <summary>
+            Bulk pile
+            <span class='packev-aside'>
+              {bulkCards()} cards · {bulk().length} different
+            </span>
+          </summary>
+          <div class='packev-grid is-tiny'>
+            <For each={bulk()}>
+              {entry => <StackTile stack={entry} set={props.payload.code} size='xs' caption={false} />}
             </For>
-          </tbody>
-        </table>
+          </div>
+        </details>
       </Show>
     </div>
   );

@@ -292,8 +292,13 @@ test('pack EV sets a pack opened against a pack sealed, and opens packs', async 
   // Fixture: a trimmed Twilight Masquerade — $356.09 across 36 packs.
   await expect(band).toContainText('$9.89');
   await expect(page.locator('main')).toContainText('Pinsir');
-  await page.getByRole('button', { name: 'Open a pack' }).click();
-  await expect(page.locator('.packev-lastpack span')).toHaveCount(11);
+  await page.getByRole('button', { name: 'Open a box' }).click();
+  const opener = page.locator('.packev-opener');
+  await expect(opener.locator('.packev-band')).toContainText('36');
+  // Eleven cards a pack land somewhere: stacked as hits, or in the bulk pile.
+  await expect(opener.locator('.packev-bulk summary')).toContainText(/\d+ cards/);
+  await opener.locator('.packev-bulk summary').click();
+  await expect(opener.locator('.packev-grid.is-tiny .packev-tile').first()).toBeVisible();
 });
 
 test('a tier list tile carries a placeholder until its art paints', async ({ page }) => {
