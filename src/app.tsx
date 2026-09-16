@@ -14,12 +14,12 @@ import { useScrollRestoration } from './lib/scrollRestore';
  */
 function ChunkFallback() {
   return (
-    <section class='hero' aria-hidden='true'>
+    <div aria-hidden='true'>
       <Skeleton width='220px' height='28px' />
-      <div class='hero-meta'>
+      <div>
         <Skeleton width='320px' height='13px' />
       </div>
-    </section>
+    </div>
   );
 }
 
