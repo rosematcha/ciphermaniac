@@ -275,14 +275,30 @@ test('the tools index links to the card wall', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Card Wall/i })).toHaveAttribute('href', '/tools/card-wall');
 });
 
-test('the tools index features the tier list and label maker as tiles', async ({ page }) => {
+test('the tools index features the tier list, label maker and pack EV as tiles', async ({ page }) => {
   await gotoClean(page, '/tools');
   const featured = page.locator('.tools-featured .arche');
-  await expect(featured).toHaveCount(2);
+  await expect(featured).toHaveCount(3);
   await expect(featured.nth(0)).toHaveAttribute('href', '/tools/tier-list');
   await expect(featured.nth(1)).toHaveAttribute('href', '/tools/deck-box-labels');
+  await expect(featured.nth(2)).toHaveAttribute('href', '/tools/pack-ev');
   // Everything else is a plain row, not a tile.
   await expect(page.locator('.tools-more-item')).toHaveCount(4);
+});
+
+test('pack EV sets a pack opened against a pack sealed, and opens packs', async ({ page }) => {
+  await gotoClean(page, '/tools/pack-ev');
+  const band = page.locator('.packev-band').first();
+  // Fixture: a trimmed Twilight Masquerade — $356.09 across 36 packs.
+  await expect(band).toContainText('$9.89');
+  await expect(page.locator('main')).toContainText('Pinsir');
+  await page.getByRole('button', { name: 'Open a box' }).click();
+  const opener = page.locator('.packev-opener');
+  await expect(opener.locator('.packev-band')).toContainText('36');
+  // Eleven cards a pack land somewhere: stacked as hits, or in the bulk pile.
+  await expect(opener.locator('.packev-bulk summary')).toContainText(/\d+ cards/);
+  await opener.locator('.packev-bulk summary').click();
+  await expect(opener.locator('.packev-grid.is-tiny .packev-tile').first()).toBeVisible();
 });
 
 test('a tier list tile carries a placeholder until its art paints', async ({ page }) => {
@@ -323,6 +339,7 @@ test('hovering the Tools nav item reveals the two headline tools', async ({ page
     'href',
     '/tools/deck-box-labels'
   );
+  await expect(menu.getByRole('link', { name: 'Pack EV' })).toHaveAttribute('href', '/tools/pack-ev');
 });
 
 test('a narrow desktop viewport uses the compact two-tier header', async ({ page }, testInfo) => {

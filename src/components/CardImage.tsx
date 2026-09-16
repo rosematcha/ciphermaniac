@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
-import { buildAttempts, buildSrcset, type CardImageSize, R2_CARD_IMAGES } from './cardImage/sources';
+import { type ArtSource, buildAttempts, buildSrcset, type CardImageSize, R2_CARD_IMAGES } from './cardImage/sources';
 
 /**
  * Our R2 bucket serves the same art re-encoded as WebP at ~25% of the PNG
@@ -75,6 +75,14 @@ interface CardImageProps {
    */
   skipR2?: boolean;
   /**
+   * Load straight from Limitless's CDN, with the proxy as the fallback.
+   *
+   * For surfaces that put hundreds of unplayed cards on screen at once — the
+   * pack opener's bulk pile — where our R2 copies don't exist and every proxy
+   * miss would be a Function invocation we pay for. Implies `skipR2`.
+   */
+  hotlink?: boolean;
+  /**
    * Rendered-width hint (standard img `sizes` syntax). When set, the browser
    * picks the cheapest sufficient tier from a srcset capped at the preferred
    * `size` — so a phone grid never downloads LG, and 1x screens drop to XS.
@@ -134,7 +142,7 @@ export function preloadCardImage(
   }
   // Must mirror CardImage's source choice, or the preload warms a URL the
   // render never requests and the "cache hit" is a second round trip.
-  const url = buildAttempts(set, number, size, r2Ready() && !skipR2)[0];
+  const url = buildAttempts(set, number, size, r2Ready() && !skipR2 ? 'r2' : 'proxy')[0];
   if (!url) {
     return Promise.resolve();
   }
@@ -158,8 +166,13 @@ export function CardImage(props: CardImageProps) {
   // print.
 
   const r2Probed = r2Ready();
-  const useR2 = createMemo(() => r2Probed && props.skipR2 !== true);
-  const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', useR2()));
+  const source = createMemo<ArtSource>(() => {
+    if (props.hotlink) {
+      return 'hotlink';
+    }
+    return r2Probed && props.skipR2 !== true ? 'r2' : 'proxy';
+  });
+  const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', source()));
   const [attemptIndex, setAttemptIndex] = createSignal(0);
   const [errored, setErrored] = createSignal(false);
   const [loaded, setLoaded] = createSignal(false);
@@ -204,7 +217,7 @@ export function CardImage(props: CardImageProps) {
         src={src()}
         srcset={
           props.sizes && attemptIndex() === 0
-            ? buildSrcset(props.set, props.number, props.size ?? 'sm', useR2())
+            ? buildSrcset(props.set, props.number, props.size ?? 'sm', source())
             : undefined
         }
         sizes={props.sizes && attemptIndex() === 0 ? props.sizes : undefined}

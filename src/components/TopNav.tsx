@@ -15,11 +15,12 @@ const links: NavLink[] = [
   {
     href: '/tools',
     label: 'Tools',
-    // Shortcut to the two tools worth deep-linking. Desktop hover only; on
-    // phones the menu is hidden and /tools does the work.
+    // Shortcut to the headline tools, the same ones /tools gives tiles.
+    // Desktop hover only; on phones the menu is hidden and /tools does the work.
     menu: [
       { href: '/tools/tier-list', label: 'Tier List Maker' },
-      { href: '/tools/deck-box-labels', label: 'Deck Box Label Maker' }
+      { href: '/tools/deck-box-labels', label: 'Deck Box Label Maker' },
+      { href: '/tools/pack-ev', label: 'Pack EV' }
     ]
   }
 ];

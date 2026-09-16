@@ -1,0 +1,602 @@
+{
+  "code": "TWM",
+  "name": "Twilight Masquerade",
+  "groupId": 23473,
+  "releasedOn": "2024-05-24",
+  "generatedAt": "2026-09-16T14:30:00.000Z",
+  "source": {
+    "label": "TCGplayer: Twilight Masquerade Pull Rates",
+    "url": "https://www.tcgplayer.com/content/article/Pok%C3%A9mon-TCG-Twilight-Masquerade-Pull-Rates/f3eea967-e5fb-4108-8655-bb1c89587628/",
+    "sampleSize": 8000
+  },
+  "bulkSource": {
+    "label": "Safari Zone Collectibles",
+    "url": "https://app.tcgbulk.com/buyer/safari-zone-collectibles"
+  },
+  "threshold": 1,
+  "bulk": {
+    "commonUncommon": 0.035,
+    "reverse": 0.05,
+    "rare": 0.05,
+    "doubleRare": 0.6,
+    "hit": 0.05
+  },
+  "slots": [
+    {
+      "label": "Commons",
+      "count": 4,
+      "outcomes": [
+        {
+          "label": "Common",
+          "pool": {
+            "rarities": [
+              "Common"
+            ],
+            "printing": "normal",
+            "bulk": "commonUncommon"
+          }
+        }
+      ]
+    },
+    {
+      "label": "Uncommons",
+      "count": 3,
+      "outcomes": [
+        {
+          "label": "Uncommon",
+          "pool": {
+            "rarities": [
+              "Uncommon"
+            ],
+            "printing": "normal",
+            "bulk": "commonUncommon"
+          }
+        }
+      ]
+    },
+    {
+      "label": "Rare slot",
+      "outcomes": [
+        {
+          "label": "Double Rare",
+          "chance": 0.1693,
+          "pool": {
+            "rarities": [
+              "Double Rare"
+            ],
+            "printing": "holofoil",
+            "bulk": "doubleRare"
+          }
+        },
+        {
+          "label": "Ultra Rare",
+          "chance": 0.0661,
+          "pool": {
+            "rarities": [
+              "Ultra Rare"
+            ],
+            "printing": "holofoil",
+            "bulk": "hit"
+          }
+        },
+        {
+          "label": "Rare",
+          "pool": {
+            "rarities": [
+              "Rare"
+            ],
+            "printing": "holofoil",
+            "bulk": "rare"
+          }
+        }
+      ]
+    },
+    {
+      "label": "First reverse holo",
+      "outcomes": [
+        {
+          "label": "ACE SPEC Rare",
+          "chance": 0.0506,
+          "pool": {
+            "rarities": [
+              "ACE SPEC Rare"
+            ],
+            "printing": "holofoil",
+            "bulk": "hit"
+          }
+        },
+        {
+          "label": "Reverse holo",
+          "pool": {
+            "rarities": [
+              "Common",
+              "Uncommon",
+              "Rare"
+            ],
+            "printing": "reverse",
+            "bulk": "reverse"
+          }
+        }
+      ]
+    },
+    {
+      "label": "Second reverse holo",
+      "outcomes": [
+        {
+          "label": "Hyper Rare",
+          "chance": 0.0068,
+          "pool": {
+            "rarities": [
+              "Hyper Rare"
+            ],
+            "printing": "holofoil",
+            "bulk": "hit"
+          }
+        },
+        {
+          "label": "Special Illustration Rare",
+          "chance": 0.0117,
+          "pool": {
+            "rarities": [
+              "Special Illustration Rare"
+            ],
+            "printing": "holofoil",
+            "bulk": "hit"
+          }
+        },
+        {
+          "label": "Illustration Rare",
+          "chance": 0.0773,
+          "pool": {
+            "rarities": [
+              "Illustration Rare"
+            ],
+            "printing": "holofoil",
+            "bulk": "hit"
+          }
+        },
+        {
+          "label": "Reverse holo",
+          "pool": {
+            "rarities": [
+              "Common",
+              "Uncommon",
+              "Rare"
+            ],
+            "printing": "reverse",
+            "bulk": "reverse"
+          }
+        }
+      ]
+    },
+    {
+      "label": "Energy",
+      "outcomes": [
+        {
+          "label": "Basic Energy",
+          "flat": "commonUncommon"
+        }
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "id": 550045,
+      "name": "Tangela",
+      "number": "001/167",
+      "rarity": "Common",
+      "prices": {
+        "reverse": 0.19,
+        "normal": 0.15
+      }
+    },
+    {
+      "id": 550046,
+      "name": "Tangrowth",
+      "number": "002/167",
+      "rarity": "Common",
+      "prices": {
+        "reverse": 0.19,
+        "normal": 0.11
+      }
+    },
+    {
+      "id": 550047,
+      "name": "Pinsir",
+      "number": "003/167",
+      "rarity": "Common",
+      "prices": {
+        "normal": 0.13,
+        "reverse": 0.2
+      }
+    },
+    {
+      "id": 550049,
+      "name": "Ariados",
+      "number": "005/167",
+      "rarity": "Uncommon",
+      "prices": {
+        "reverse": 0.19,
+        "normal": 0.12
+      }
+    },
+    {
+      "id": 550051,
+      "name": "Sunflora",
+      "number": "007/167",
+      "rarity": "Uncommon",
+      "prices": {
+        "reverse": 0.21,
+        "normal": 0.06
+      }
+    },
+    {
+      "id": 550052,
+      "name": "Heracross",
+      "number": "008/167",
+      "rarity": "Uncommon",
+      "prices": {
+        "reverse": 0.21,
+        "normal": 0.16
+      }
+    },
+    {
+      "id": 550063,
+      "name": "Iron Leaves",
+      "number": "019/167",
+      "rarity": "Rare",
+      "prices": {
+        "holofoil": 0.2,
+        "reverse": 0.3
+      }
+    },
+    {
+      "id": 550066,
+      "name": "Sinistcha",
+      "number": "022/167",
+      "rarity": "Rare",
+      "prices": {
+        "holofoil": 0.16,
+        "reverse": 0.29
+      }
+    },
+    {
+      "id": 550067,
+      "name": "Sinistcha ex",
+      "number": "023/167",
+      "rarity": "Double Rare",
+      "prices": {
+        "holofoil": 0.85
+      }
+    },
+    {
+      "id": 550068,
+      "name": "Teal Mask Ogerpon",
+      "number": "024/167",
+      "rarity": "Rare",
+      "prices": {
+        "reverse": 0.24,
+        "holofoil": 0.2
+      }
+    },
+    {
+      "id": 550069,
+      "name": "Teal Mask Ogerpon ex",
+      "number": "025/167",
+      "rarity": "Double Rare",
+      "prices": {
+        "holofoil": 3.12
+      }
+    },
+    {
+      "id": 550073,
+      "name": "Magcargo ex",
+      "number": "029/167",
+      "rarity": "Double Rare",
+      "prices": {
+        "holofoil": 0.75
+      }
+    },
+    {
+      "id": 550196,
+      "name": "Hyper Aroma",
+      "number": "152/167",
+      "rarity": "ACE SPEC Rare",
+      "prices": {
+        "holofoil": 0.39
+      }
+    },
+    {
+      "id": 550206,
+      "name": "Scoop Up Cyclone",
+      "number": "162/167",
+      "rarity": "ACE SPEC Rare",
+      "prices": {
+        "holofoil": 0.36
+      }
+    },
+    {
+      "id": 550207,
+      "name": "Secret Box",
+      "number": "163/167",
+      "rarity": "ACE SPEC Rare",
+      "prices": {
+        "holofoil": 5.08
+      }
+    },
+    {
+      "id": 550212,
+      "name": "Pinsir",
+      "number": "168/167",
+      "rarity": "Illustration Rare",
+      "prices": {
+        "holofoil": 15.69
+      }
+    },
+    {
+      "id": 550213,
+      "name": "Sunflora",
+      "number": "169/167",
+      "rarity": "Illustration Rare",
+      "prices": {
+        "holofoil": 9.02
+      }
+    },
+    {
+      "id": 550214,
+      "name": "Dipplin",
+      "number": "170/167",
+      "rarity": "Illustration Rare",
+      "prices": {
+        "holofoil": 12.73
+      }
+    },
+    {
+      "id": 550233,
+      "name": "Sinistcha ex",
+      "number": "189/167",
+      "rarity": "Ultra Rare",
+      "prices": {
+        "holofoil": 1.62
+      }
+    },
+    {
+      "id": 550234,
+      "name": "Teal Mask Ogerpon ex",
+      "number": "190/167",
+      "rarity": "Ultra Rare",
+      "prices": {
+        "holofoil": 4.84
+      }
+    },
+    {
+      "id": 550235,
+      "name": "Magcargo ex",
+      "number": "191/167",
+      "rarity": "Ultra Rare",
+      "prices": {
+        "holofoil": 1.74
+      }
+    },
+    {
+      "id": 550254,
+      "name": "Sinistcha ex",
+      "number": "210/167",
+      "rarity": "Special Illustration Rare",
+      "prices": {
+        "holofoil": 34.36
+      }
+    },
+    {
+      "id": 550255,
+      "name": "Teal Mask Ogerpon ex",
+      "number": "211/167",
+      "rarity": "Special Illustration Rare",
+      "prices": {
+        "holofoil": 19.85
+      }
+    },
+    {
+      "id": 550256,
+      "name": "Hearthflame Mask Ogerpon ex",
+      "number": "212/167",
+      "rarity": "Special Illustration Rare",
+      "prices": {
+        "holofoil": 11.5
+      }
+    },
+    {
+      "id": 550265,
+      "name": "Teal Mask Ogerpon ex",
+      "number": "221/167",
+      "rarity": "Hyper Rare",
+      "prices": {
+        "holofoil": 8.85
+      }
+    },
+    {
+      "id": 550266,
+      "name": "Bloodmoon Ursaluna ex",
+      "number": "222/167",
+      "rarity": "Hyper Rare",
+      "prices": {
+        "holofoil": 7.37
+      }
+    },
+    {
+      "id": 550267,
+      "name": "Buddy-Buddy Poffin",
+      "number": "223/167",
+      "rarity": "Hyper Rare",
+      "prices": {
+        "holofoil": 11.69
+      }
+    }
+  ],
+  "sealed": [
+    {
+      "kind": "box",
+      "label": "Booster Box",
+      "id": 543846,
+      "packs": 36,
+      "primary": true,
+      "price": 356.09,
+      "url": "https://www.tcgplayer.com/product/543846/pokemon-sv06-twilight-masquerade-twilight-masquerade-booster-box"
+    },
+    {
+      "kind": "etb",
+      "label": "Elite Trainer Box",
+      "id": 543845,
+      "packs": 9,
+      "price": 102.6,
+      "url": "https://www.tcgplayer.com/product/543845/pokemon-sv06-twilight-masquerade-twilight-masquerade-elite-trainer-box"
+    },
+    {
+      "kind": "bundle",
+      "label": "Booster Bundle",
+      "id": 543852,
+      "packs": 6,
+      "price": 73.57,
+      "url": "https://www.tcgplayer.com/product/543852/pokemon-sv06-twilight-masquerade-twilight-masquerade-booster-bundle"
+    },
+    {
+      "kind": "pack",
+      "label": "Single Pack",
+      "id": 543843,
+      "packs": 1,
+      "price": 9.09,
+      "url": "https://www.tcgplayer.com/product/543843/pokemon-sv06-twilight-masquerade-twilight-masquerade-booster-pack"
+    }
+  ],
+  "ev": {
+    "perPack": 2.206980333333333,
+    "slots": [
+      {
+        "label": "Commons",
+        "count": 4,
+        "outcomes": [
+          {
+            "label": "Common",
+            "chance": 1,
+            "poolSize": 3,
+            "averageValue": 0.035,
+            "contribution": 0.14
+          }
+        ],
+        "contribution": 0.14
+      },
+      {
+        "label": "Uncommons",
+        "count": 3,
+        "outcomes": [
+          {
+            "label": "Uncommon",
+            "chance": 1,
+            "poolSize": 3,
+            "averageValue": 0.035,
+            "contribution": 0.10500000000000001
+          }
+        ],
+        "contribution": 0.10500000000000001
+      },
+      {
+        "label": "Rare slot",
+        "count": 1,
+        "outcomes": [
+          {
+            "label": "Double Rare",
+            "chance": 0.1693,
+            "poolSize": 3,
+            "averageValue": 1.4400000000000002,
+            "contribution": 0.24379200000000004
+          },
+          {
+            "label": "Ultra Rare",
+            "chance": 0.0661,
+            "poolSize": 3,
+            "averageValue": 2.733333333333333,
+            "contribution": 0.18067333333333332
+          },
+          {
+            "label": "Rare",
+            "chance": 0.7646,
+            "poolSize": 3,
+            "averageValue": 0.05000000000000001,
+            "contribution": 0.03823000000000001
+          }
+        ],
+        "contribution": 0.46269533333333335
+      },
+      {
+        "label": "First reverse holo",
+        "count": 1,
+        "outcomes": [
+          {
+            "label": "ACE SPEC Rare",
+            "chance": 0.0506,
+            "poolSize": 3,
+            "averageValue": 1.7266666666666666,
+            "contribution": 0.08736933333333333
+          },
+          {
+            "label": "Reverse holo",
+            "chance": 0.9494,
+            "poolSize": 9,
+            "averageValue": 0.049999999999999996,
+            "contribution": 0.04747
+          }
+        ],
+        "contribution": 0.1348393333333333
+      },
+      {
+        "label": "Second reverse holo",
+        "count": 1,
+        "outcomes": [
+          {
+            "label": "Hyper Rare",
+            "chance": 0.0068,
+            "poolSize": 3,
+            "averageValue": 9.303333333333333,
+            "contribution": 0.06326266666666666
+          },
+          {
+            "label": "Special Illustration Rare",
+            "chance": 0.0117,
+            "poolSize": 3,
+            "averageValue": 21.903333333333336,
+            "contribution": 0.256269
+          },
+          {
+            "label": "Illustration Rare",
+            "chance": 0.0773,
+            "poolSize": 3,
+            "averageValue": 12.479999999999999,
+            "contribution": 0.9647039999999998
+          },
+          {
+            "label": "Reverse holo",
+            "chance": 0.9042,
+            "poolSize": 9,
+            "averageValue": 0.049999999999999996,
+            "contribution": 0.04520999999999999
+          }
+        ],
+        "contribution": 1.3294456666666665
+      },
+      {
+        "label": "Energy",
+        "count": 1,
+        "outcomes": [
+          {
+            "label": "Basic Energy",
+            "chance": 1,
+            "poolSize": 0,
+            "averageValue": 0.035,
+            "contribution": 0.035
+          }
+        ],
+        "contribution": 0.035
+      }
+    ]
+  }
+}
