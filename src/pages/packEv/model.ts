@@ -8,6 +8,7 @@
  * @module src/pages/packEv/model
  */
 
+import type { Pull } from '../../../shared/packEv/simulate';
 import type { PackEvSetPayload, SealedProduct, SlotEv } from '../../../shared/packEv/types';
 
 /** Dollars, always to the cent — these are prices, not estimates. */
@@ -128,4 +129,59 @@ export function priceDate(generatedAt: string): string {
     return '';
   }
   return parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Identical prints from every pack opened so far, counted once. */
+export interface PullStack {
+  key: string;
+  pull: Pull;
+  count: number;
+  /** Which rip last added a copy; the newest-first sort reads it. */
+  last: number;
+}
+
+export type StackSort = 'newest' | 'value' | 'count';
+
+/** A print is its product and its printing; flat outcomes (basic energy) stack by name. */
+function stackKey(pull: Pull): string {
+  return pull.card ? `${pull.card.id}:${pull.printing}` : `flat:${pull.outcome}`;
+}
+
+/**
+ * Fold a rip's pulls into the running stacks.
+ *
+ * Stacks rather than raw pulls because a case is 2,376 cards: a grid of every
+ * copy would be unreadable and unbounded, while distinct prints top out at the
+ * size of the set.
+ */
+export function mergePulls(stacks: PullStack[], pulls: Pull[], rip: number): PullStack[] {
+  const byKey = new Map(stacks.map(entry => [entry.key, entry]));
+  for (const pull of pulls) {
+    const key = stackKey(pull);
+    const existing = byKey.get(key);
+    byKey.set(
+      key,
+      existing ? { ...existing, count: existing.count + 1, last: rip } : { key, pull, count: 1, last: rip }
+    );
+  }
+  return [...byKey.values()];
+}
+
+const SORT_KEYS: Record<StackSort, (stack: PullStack) => number> = {
+  value: stack => stack.pull.value,
+  newest: stack => stack.last,
+  // Bulk is all worth the same few cents, so value would only group it by class;
+  // a pile reads biggest stack first.
+  count: stack => stack.count
+};
+
+/** Most valuable, most recent, or most copies first; ties go to the bigger, then pricier, stack. */
+export function sortStacks(stacks: PullStack[], by: StackSort): PullStack[] {
+  const primary = SORT_KEYS[by];
+  return [...stacks].sort((a, b) => primary(b) - primary(a) || b.count - a.count || b.pull.value - a.pull.value);
+}
+
+/** The collector number without its set total: `188/167` is `188`, the form card art is keyed by. */
+export function artNumber(number: string): string {
+  return number.split('/')[0];
 }

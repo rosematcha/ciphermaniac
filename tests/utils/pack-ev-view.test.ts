@@ -10,6 +10,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  artNumber,
+  mergePulls,
   money,
   oddsLabel,
   priceDate,
@@ -17,8 +19,10 @@ import {
   rate,
   returnPercent,
   sealedRows,
-  slotRows
+  slotRows,
+  sortStacks
 } from '../../src/pages/packEv/model.ts';
+import type { Pull } from '../../shared/packEv/simulate.ts';
 import type { PackEvSetPayload, SealedProduct, SlotEv } from '../../shared/packEv/types.ts';
 
 function sealed(over: Partial<SealedProduct> & { id: number }): SealedProduct {
@@ -110,4 +114,59 @@ test('slot rows lead with the money and name the slot once', () => {
 test('the price date is the day the job ran, and a bad stamp prints nothing', () => {
   assert.match(priceDate('2026-09-16T15:42:43.969Z'), /16 Sep(t)? 2026/);
   assert.equal(priceDate('not a date'), '');
+});
+
+function pull(id: number, value: number, printing: Pull['printing'] = 'holofoil'): Pull {
+  return {
+    slot: 'Rare slot',
+    outcome: 'Illustration Rare',
+    card: { id, name: `Card ${id}`, number: `${id}/167`, rarity: 'Illustration Rare', prices: {} },
+    printing,
+    value,
+    notable: value > 1
+  };
+}
+
+const ENERGY: Pull = {
+  slot: 'Energy',
+  outcome: 'Basic Energy',
+  card: null,
+  printing: null,
+  value: 0.035,
+  notable: false
+};
+
+test('identical prints stack across rips; a different printing is its own stack', () => {
+  const first = mergePulls([], [pull(1, 50), pull(2, 5), pull(1, 50), ENERGY], 1);
+  const stacks = mergePulls(first, [pull(2, 5), pull(2, 0.2, 'reverse'), ENERGY], 2);
+  const byKey = Object.fromEntries(stacks.map(entry => [entry.key, [entry.count, entry.last]]));
+  assert.deepEqual(byKey, {
+    '1:holofoil': [2, 1],
+    '2:holofoil': [2, 2],
+    '2:reverse': [1, 2],
+    'flat:Basic Energy': [2, 2]
+  });
+});
+
+test('stacks sort by value, or by the rip that last touched them', () => {
+  const stacks = mergePulls(mergePulls([], [pull(1, 50), pull(3, 5)], 1), [pull(2, 12), pull(3, 5)], 2);
+  assert.deepEqual(
+    sortStacks(stacks, 'value').map(entry => entry.pull.card?.id),
+    [1, 2, 3]
+  );
+  // Rip 2 touched cards 2 and 3; the bigger stack leads the tie.
+  assert.deepEqual(
+    sortStacks(stacks, 'newest').map(entry => entry.pull.card?.id),
+    [3, 2, 1]
+  );
+  // A bulk pile reads biggest stack first; value breaks the tie.
+  assert.deepEqual(
+    sortStacks(stacks, 'count').map(entry => entry.pull.card?.id),
+    [3, 1, 2]
+  );
+});
+
+test('card art is keyed by the number without its set total', () => {
+  assert.equal(artNumber('188/167'), '188');
+  assert.equal(artNumber('SWSH001'), 'SWSH001');
 });
