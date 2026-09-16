@@ -10,7 +10,7 @@ import test from 'node:test';
 
 import { addDays, buildLocalsArtifacts, expandLocals, weekdayOf } from '../../shared/events/locals.ts';
 import type { LocalsCell, LocalSlot } from '../../shared/events/types.ts';
-import { rawLocalEvent, rawLocalSeries } from '../__utils__/pokedata.ts';
+import { rawListedLocal, rawLocalEvent, rawLocalSeries } from '../__utils__/pokedata.ts';
 
 /** A Tuesday. The three-week window runs through Tuesday 2026-10-06. */
 const NOW = new Date('2026-09-15T12:00:00Z');
@@ -135,6 +135,23 @@ test('the window ends on the venue calendar: a last evening dated a day later in
     { weekday: 2, time: '19:30', name: 'Weekly local', fee: '$5' }
   ]);
   assert.equal(stats.later, 1);
+});
+
+test('an unnamed record of a session the store also listed as an event gives way to the listed one', () => {
+  const evenings = rawLocalSeries('42', ['2026-09-17', '2026-09-24', '2026-10-01'], { time: '00:00:00' });
+  const listed = rawListedLocal(1, { league: '42', date: '2026-09-16', when: '2026-09-16 19:30:00' });
+  const lunchtimes = rawLocalSeries('42', ['2026-09-16', '2026-09-23', '2026-09-30'], { time: '17:00:00' });
+  const { cells, stats } = build([...evenings, listed, ...lunchtimes], CENTRAL);
+  assert.deepEqual(
+    cells.get('30_-100')?.venues[0]?.slots.map(slot => [slot.time, slot.name, slot.from, slot.until]),
+    [
+      ['12:00', 'Weekly local', undefined, undefined],
+      ['19:00', 'Weekly local', '2026-09-23', undefined],
+      ['19:30', 'Test Games Weekly', undefined, '2026-09-16']
+    ]
+  );
+  assert.equal(stats.doubles, 1);
+  assert.equal(stats.kept, 6);
 });
 
 test('stores are grouped by league ID, and records without one are skipped', () => {
