@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { computePackEv } from '../../shared/packEv/ev.ts';
-import { openPack, openPacksValue, preparePack, simulateSpread } from '../../shared/packEv/simulate.ts';
+import { openPack, type PreparedPack, preparePack } from '../../shared/packEv/simulate.ts';
 import type { BulkRates, PackCard, PackSlot } from '../../shared/packEv/types.ts';
 
 /** Deterministic PRNG so a failure is reproducible. */
@@ -52,6 +52,15 @@ const SLOTS: PackSlot[] = [
 
 const INPUTS = { cards: CARDS, slots: SLOTS, bulk: BULK, threshold: 1 };
 
+/** Total value of `packs` openings. */
+function openedValue(pack: PreparedPack, packs: number, rng: () => number): number {
+  let total = 0;
+  for (let opened = 0; opened < packs; opened += 1) {
+    total += openPack(pack, rng).reduce((sum, pull) => sum + pull.value, 0);
+  }
+  return total;
+}
+
 test('a pack holds one card per slot draw, energy included', () => {
   const pulls = openPack(preparePack(INPUTS), mulberry32(7));
   assert.equal(pulls.length, 5);
@@ -91,17 +100,8 @@ test('a roll past the last named chance falls through to the remainder outcome',
 test('sampled value converges on the EV table', () => {
   const expected = computePackEv(INPUTS).perPack;
   const packs = 20_000;
-  const sampled = openPacksValue(preparePack(INPUTS), packs, mulberry32(99)) / packs;
+  const sampled = openedValue(preparePack(INPUTS), packs, mulberry32(99)) / packs;
   assert.ok(Math.abs(sampled - expected) < 0.5, `sampled ${sampled} vs expected ${expected}`);
-});
-
-test('the spread reports percentiles and how often a run beats its cost', () => {
-  const spread = simulateSpread(preparePack(INPUTS), { packs: 10, runs: 400, cost: 0 }, mulberry32(5));
-  assert.equal(spread.runs, 400);
-  assert.equal(spread.beatsCost, 1);
-  assert.ok(spread.low <= spread.median && spread.median <= spread.high);
-  const noCost = simulateSpread(preparePack(INPUTS), { packs: 2, runs: 50, cost: null }, mulberry32(5));
-  assert.equal(noCost.beatsCost, null);
 });
 
 const WITH_GOD_PACK = {
@@ -150,11 +150,6 @@ test('an ordinary roll in a set with god packs opens an ordinary pack', () => {
 test('sampled value converges on the EV table with god packs in the mix', () => {
   const expected = computePackEv(WITH_GOD_PACK).perPack;
   const packs = 20_000;
-  const sampled = openPacksValue(preparePack(WITH_GOD_PACK), packs, mulberry32(21)) / packs;
+  const sampled = openedValue(preparePack(WITH_GOD_PACK), packs, mulberry32(21)) / packs;
   assert.ok(Math.abs(sampled - expected) < 1.5, `sampled ${sampled} vs expected ${expected}`);
-});
-
-test('most runs miss the mean, because one card carries it', () => {
-  const spread = simulateSpread(preparePack(INPUTS), { packs: 4, runs: 2_000, cost: null }, mulberry32(11));
-  assert.ok(spread.median < spread.mean, `median ${spread.median} should trail mean ${spread.mean}`);
 });

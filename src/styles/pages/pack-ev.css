@@ -8,7 +8,7 @@
 .packev-band {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  margin: var(--space-4) 0;
+  margin: 0;
   border-top: var(--border-width) solid var(--border);
   border-bottom: var(--border-width) solid var(--border);
   font-variant-numeric: tabular-nums;
@@ -97,7 +97,23 @@
 
 /* Where every figure above came from. Sources, not prose. */
 .packev-method {
+  margin: 0;
   padding-left: var(--space-4);
   color: var(--muted);
   font-size: var(--text-sm);
+}
+
+/* Two across on a phone. Each row starts flush left with no divider, and the
+   second row takes a hairline so the band still reads as one ruled object. */
+@media (max-width: 640px) {
+  .packev-band {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .packev-stat:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .packev-stat:nth-child(n + 3) {
+    border-top: var(--border-width) solid var(--rule);
+  }
 }

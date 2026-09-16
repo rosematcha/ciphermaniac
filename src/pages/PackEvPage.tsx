@@ -10,14 +10,6 @@ import { money, priceDate, rate, returnPercent } from './packEv/model';
 import '../styles/pages/pack-ev.css';
 
 /**
- * Pack EV (/tools/pack-ev).
- *
- * Answers one question per set: is a pack worth more opened or sealed? The
- * daily job publishes the card list, the market prices and the published pull
- * rates; this page puts the resulting per-pack value against what the sealed
- * product costs, and lets you rip packs against the same model.
- */
-/**
  * True once a read has settled without data: a transport failure, or a 404
  * (`fetchJsonOptional` resolves those to null). Either way the skeleton must
  * give way to a message rather than wait forever.
@@ -26,6 +18,14 @@ function settledEmpty<T>(resource: Resource<T | null>): boolean {
   return resource.state === 'errored' || (resource.state === 'ready' && resource() === null);
 }
 
+/**
+ * Pack EV (/tools/pack-ev).
+ *
+ * Answers one question per set: is a pack worth more opened or sealed? The
+ * daily job publishes the card list, the market prices and the published pull
+ * rates; this page puts the resulting per-pack value against what the sealed
+ * product costs, and lets you rip packs against the same model.
+ */
 export function PackEvPage() {
   const [index] = createResource(fetchPackEvIndex);
   const [params, setParams] = useSearchParams<{ set?: string }>();
@@ -120,27 +120,29 @@ export function PackEvPage() {
           <Match when={detail()}>
             {loaded => (
               <>
-                <h2>{loaded().name}</h2>
                 <SetDetail payload={loaded()} />
-                <ul class='packev-method'>
-                  <li>
-                    Pull rates:{' '}
-                    <a href={loaded().source.url} target='_blank' rel='noopener noreferrer'>
-                      {loaded().source.label}
-                    </a>
-                    , over {loaded().source.sampleSize.toLocaleString('en-US')} packs
-                  </li>
-                  <li>Prices: TCGplayer market, via TCGCSV</li>
-                  <li>
-                    Under {money(loaded().threshold)} a card counts as bulk: {rate(loaded().bulk.commonUncommon)} common
-                    or uncommon, {rate(loaded().bulk.reverse)} reverse or rare, {rate(loaded().bulk.doubleRare)} ex (
-                    <a href={loaded().bulkSource.url} target='_blank' rel='noopener noreferrer'>
-                      {loaded().bulkSource.label}
-                    </a>
-                    )
-                  </li>
-                  <li>Sealed products are counted as packs only — no promo, sleeves or dice</li>
-                </ul>
+                <section>
+                  <ul class='packev-method'>
+                    <li>
+                      Pull rates:{' '}
+                      <a href={loaded().source.url} target='_blank' rel='noopener noreferrer'>
+                        {loaded().source.label}
+                      </a>
+                      , over {loaded().source.sampleSize.toLocaleString('en-US')} packs
+                    </li>
+                    <li>Prices: TCGplayer market, via TCGCSV</li>
+                    <li>
+                      Under {money(loaded().threshold)} a card counts as bulk: {rate(loaded().bulk.commonUncommon)}{' '}
+                      common or uncommon, {rate(loaded().bulk.reverse)} reverse or rare,{' '}
+                      {rate(loaded().bulk.doubleRare)} ex (
+                      <a href={loaded().bulkSource.url} target='_blank' rel='noopener noreferrer'>
+                        {loaded().bulkSource.label}
+                      </a>
+                      )
+                    </li>
+                    <li>Sealed products are counted as packs only — no promo, sleeves or dice</li>
+                  </ul>
+                </section>
               </>
             )}
           </Match>
