@@ -15,6 +15,7 @@
  */
 
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 /**
@@ -140,6 +141,10 @@ function toBody(data) {
  * adaptive client-side rate limiter would throttle the healthy bulk reads these
  * producers run in tight loops.
  *
+ * The request handler carries its own timeouts: without them a stalled socket
+ * never rejects, so the SDK's retry budget (and `withR2Retry` above it) never
+ * gets a chance to run and a producer can hang until the CI job timeout.
+ *
  * @param {{ accountId: string, accessKeyId: string, secretAccessKey: string }} creds
  * @returns {S3Client}
  */
@@ -149,7 +154,8 @@ export function createR2Client({ accountId, accessKeyId, secretAccessKey }) {
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId, secretAccessKey },
     maxAttempts: 4,
-    retryMode: 'standard'
+    retryMode: 'standard',
+    requestHandler: new NodeHttpHandler({ connectionTimeout: 5000, requestTimeout: 30000 })
   });
 }
 
