@@ -33,11 +33,9 @@ import { fetchCardFacets } from '../lib/data/cardFacets';
 import { sortByDeckOrder } from '../lib/cardOrder';
 import '../styles/pages/archetype.css';
 
-type ArchTab = 'core' | 'tech' | 'cards' | 'matchups' | 'advanced';
+type ArchTab = 'cards' | 'matchups' | 'advanced';
 
 const TAB_OPTIONS: { value: ArchTab; label: string }[] = [
-  { value: 'core', label: 'Core list' },
-  { value: 'tech', label: 'Tech choices' },
   { value: 'cards', label: 'All cards' },
   { value: 'matchups', label: 'Matchups' },
   { value: 'advanced', label: 'Filters' }
@@ -113,12 +111,16 @@ export function ArchetypePage() {
   // Land a shared filter link straight on the Filters tab, or a matrix deep-link
   // straight on the Matchups tab.
   const sharedFilters = Boolean(searchParams.b || searchParams.s || searchParams.t);
-  const TAB_VALUES: readonly ArchTab[] = ['core', 'tech', 'cards', 'matchups', 'advanced'];
-  const sharedTab =
-    typeof searchParams.tab === 'string' && (TAB_VALUES as readonly string[]).includes(searchParams.tab)
-      ? (searchParams.tab as ArchTab)
+  const TAB_VALUES: readonly ArchTab[] = ['cards', 'matchups', 'advanced'];
+  // 'core' and 'tech' were separate tabs before the card tiers were merged into
+  // one page; old links land on the combined list rather than nothing.
+  const rawTab = typeof searchParams.tab === 'string' ? searchParams.tab : '';
+  const sharedTab = (TAB_VALUES as readonly string[]).includes(rawTab)
+    ? (rawTab as ArchTab)
+    : rawTab === 'core' || rawTab === 'tech'
+      ? ('cards' as ArchTab)
       : null;
-  const [tab, setTab] = createSignal<ArchTab>(sharedTab ?? (sharedFilters ? 'advanced' : 'core'));
+  const [tab, setTab] = createSignal<ArchTab>(sharedTab ?? (sharedFilters ? 'advanced' : 'cards'));
   const [viewMode, setViewMode] = createPersistentViewMode('cm:cardsView');
   const [cardSort, setCardSort] = createPersistentSignal<CardSort>('cm:archetypeCardSort', 'usage', v =>
     v === 'deck' || v === 'usage' ? v : null
@@ -268,6 +270,7 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
   const techCards = createMemo(() =>
     orderedCards().filter(i => (i.pct ?? 0) < CORE_THRESHOLD && (i.pct ?? 0) >= TECH_THRESHOLD)
   );
+  const fringeCards = createMemo(() => orderedCards().filter(i => (i.pct ?? 0) < TECH_THRESHOLD));
 
   const sharePct = () => {
     const p = props.indexEntry?.percent;
@@ -453,44 +456,34 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
           </Show>
         </div>
 
-        <Show when={props.tab === 'tech'}>
-          <p class='arche-tab-note'>
-            <span>
-              Cards in {TECH_THRESHOLD} to {CORE_THRESHOLD} percent of lists
-            </span>
-            <InfoTip marker='i' label='What counts as a tech card'>
-              Cards in {TECH_THRESHOLD} to {CORE_THRESHOLD} percent of lists. Below {TECH_THRESHOLD} percent a card is
-              closer to a one-off experiment than a tech choice.
-            </InfoTip>
-          </p>
-        </Show>
-
-        <Show when={props.tab === 'core'}>
-          <CardList
-            title='Cards in ≥ 90% of lists'
-            items={coreCards()}
-            viewMode={props.viewMode}
-            emptyMessage='No core cards above 90% inclusion in this archetype yet.'
-          />
-        </Show>
-
-        <Show when={props.tab === 'tech'}>
-          <CardList
-            title='Cards in 30–90% of lists'
-            items={techCards()}
-            viewMode={props.viewMode}
-            emptyMessage='No tech-tier cards in this archetype yet.'
-          />
-        </Show>
-
         <Show when={props.tab === 'cards'}>
-          <CardList
-            title='All cards observed'
-            items={orderedCards()}
-            viewMode={props.viewMode}
-            emptyMessage='No cards in this report.'
-            initialLimit={60}
-          />
+          <Show when={orderedCards().length > 0} fallback={<EmptyState title='No cards in this report.' />}>
+            <Show when={coreCards().length > 0}>
+              <CardList
+                title='Cards in ≥ 90% of lists'
+                items={coreCards()}
+                viewMode={props.viewMode}
+                emptyMessage='No core cards above 90% inclusion in this archetype yet.'
+              />
+            </Show>
+            <Show when={techCards().length > 0}>
+              <CardList
+                title='Cards in 30–90% of lists'
+                items={techCards()}
+                viewMode={props.viewMode}
+                emptyMessage='No tech-tier cards in this archetype yet.'
+              />
+            </Show>
+            <Show when={fringeCards().length > 0}>
+              <CardList
+                title='All other cards'
+                items={fringeCards()}
+                viewMode={props.viewMode}
+                emptyMessage='No other cards in this report.'
+                initialLimit={60}
+              />
+            </Show>
+          </Show>
         </Show>
 
         <Show when={props.tab === 'matchups'}>
