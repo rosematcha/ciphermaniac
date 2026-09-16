@@ -104,6 +104,56 @@ test('the spread reports percentiles and how often a run beats its cost', () => 
   assert.equal(noCost.beatsCost, null);
 });
 
+const WITH_GOD_PACK = {
+  ...INPUTS,
+  specialPacks: [
+    {
+      label: 'God pack',
+      odds: 2,
+      keepSlots: ['Energy'],
+      draws: [
+        { kind: 'cards' as const, cards: [{ name: 'Chase', rarity: 'Hyper Rare' }] },
+        {
+          kind: 'random' as const,
+          count: 2,
+          pool: { rarities: ['Hyper Rare'], printing: 'holofoil' as const, bulk: 'hit' as const }
+        }
+      ]
+    }
+  ]
+};
+
+test('a god pack roll replaces every slot it does not keep', () => {
+  const pack = preparePack(WITH_GOD_PACK);
+  // First roll picks the special pack; the kept energy slot takes one roll,
+  // then each random draw takes one.
+  const rolls = [0, 0, 0, 0.99];
+  let index = 0;
+  const pulls = openPack(pack, () => rolls[index++]);
+  assert.deepEqual(
+    pulls.map(pull => [pull.slot, pull.card?.name ?? pull.outcome]),
+    [
+      ['Energy', 'Basic Energy'],
+      ['God pack', 'Chase'],
+      ['God pack', 'Chase'],
+      ['God pack', 'Lesser Chase']
+    ]
+  );
+  assert.equal(pulls[1].notable, true);
+});
+
+test('an ordinary roll in a set with god packs opens an ordinary pack', () => {
+  const ordinary = openPack(preparePack(WITH_GOD_PACK), () => 0.99);
+  assert.equal(ordinary.length, 5);
+});
+
+test('sampled value converges on the EV table with god packs in the mix', () => {
+  const expected = computePackEv(WITH_GOD_PACK).perPack;
+  const packs = 20_000;
+  const sampled = openPacksValue(preparePack(WITH_GOD_PACK), packs, mulberry32(21)) / packs;
+  assert.ok(Math.abs(sampled - expected) < 1.5, `sampled ${sampled} vs expected ${expected}`);
+});
+
 test('most runs miss the mean, because one card carries it', () => {
   const spread = simulateSpread(preparePack(INPUTS), { packs: 4, runs: 2_000, cost: null }, mulberry32(11));
   assert.ok(spread.median < spread.mean, `median ${spread.median} should trail mean ${spread.mean}`);

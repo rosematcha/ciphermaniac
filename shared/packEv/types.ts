@@ -20,12 +20,13 @@
 export type Printing = 'normal' | 'holofoil' | 'reverse';
 
 /**
- * Special foil patterns that are their own TCGplayer product rather than a
- * printing of the base card. Prismatic Evolutions is the only set here with
- * any: every common/uncommon/rare has a Poké Ball pattern print, and the
- * Pokémon among them also have a Master Ball pattern print.
+ * A print that is its own TCGplayer product rather than a printing of the base
+ * card, named by the parenthetical TCGplayer gives it, slugged:
+ * `poke-ball-pattern`, `master-ball-pattern` (Prismatic Evolutions),
+ * `energy-symbol-pattern`, `dusk-ball` and friends (Ascended Heroes),
+ * `151-metal-card`. Pools take base prints unless they name one of these.
  */
-export type FoilPattern = 'pokeball' | 'masterball';
+export type FoilPattern = string;
 
 export interface PackCard {
   /** TCGplayer product id — stable, and what the product URL is built from. */
@@ -56,10 +57,11 @@ export interface PoolSpec {
   rarities: string[];
   printing: Printing;
   /**
-   * `base` (the default) excludes the Poké Ball / Master Ball products, which
-   * would otherwise triple the size of every Prismatic Evolutions pool.
+   * `base` (the default) excludes every variant product — the Poké Ball and
+   * Master Ball patterns would otherwise triple each Prismatic Evolutions pool,
+   * and a metal card is not something a pack contains.
    */
-  pattern?: FoilPattern | 'base';
+  pattern?: FoilPattern;
   /** Bulk floor applied to every card in the pool. */
   bulk: BulkClass;
 }
@@ -68,10 +70,12 @@ export interface SlotOutcome {
   label: string;
   /**
    * Probability this slot resolves to this outcome, per pack. Exactly one
-   * outcome in a slot omits it and takes the remainder — that is always the
-   * boring one (a plain rare, a plain reverse holo).
+   * outcome in a slot sets neither this nor `odds` and takes the remainder —
+   * always the boring one (a plain rare, a plain reverse holo).
    */
   chance?: number;
+  /** The same rate as "1 in N packs", the way pull rates are quoted. */
+  odds?: number;
   /** The cards this outcome draws from. Omitted only when `flat` is set. */
   pool?: PoolSpec;
   /**
@@ -86,6 +90,37 @@ export interface PackSlot {
   /** Cards drawn from this slot per pack. Defaults to 1. */
   count?: number;
   outcomes: SlotOutcome[];
+}
+
+/**
+ * One specific base print, by the name and rarity TCGplayer lists it under
+ * (collector numbers differ between prints of the same card, names don't).
+ */
+export interface CardRef {
+  name: string;
+  rarity: string;
+}
+
+/** What a special pack holds in place of the slots it replaces. */
+export type SpecialDraw =
+  /** Every card listed. */
+  | { kind: 'cards'; cards: CardRef[] }
+  /** One group, chosen uniformly — a demigod pack is one starter's line. */
+  | { kind: 'oneOf'; groups: CardRef[][] }
+  /** `count` uniform draws from a pool. */
+  | { kind: 'random'; count: number; pool: PoolSpec };
+
+/**
+ * A god pack (or demigod pack): a rare whole-pack replacement.
+ *
+ * The slots named in `keepSlots` are still drawn as normal; every other slot
+ * is replaced by the draws. Rates are per pack, quoted as "1 in N".
+ */
+export interface SpecialPack {
+  label: string;
+  odds: number;
+  keepSlots: string[];
+  draws: SpecialDraw[];
 }
 
 /** A sealed product, and how many packs you have to open to get through it. */
@@ -129,6 +164,7 @@ export interface PackEvSetConfig {
   source: PullRateSource;
   sealed: SealedProductConfig[];
   slots: PackSlot[];
+  specialPacks?: SpecialPack[];
 }
 
 /** `config/pack-ev.json`, as the builder reads it. */
@@ -190,6 +226,7 @@ export interface PackEvSetPayload {
   threshold: number;
   bulk: BulkRates;
   slots: PackSlot[];
+  specialPacks?: SpecialPack[];
   cards: PackCard[];
   sealed: SealedProduct[];
   /** EV as the job computed it, from exactly the fields above. */

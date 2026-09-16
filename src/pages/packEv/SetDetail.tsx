@@ -28,17 +28,7 @@ export function SetDetail(props: SetDetailProps) {
   });
   const rows = createMemo(() => slotRows(props.payload.ev.slots));
   const sealed = createMemo(() => sealedRows(props.payload));
-  const cards = createMemo(() =>
-    topCardContributions(
-      {
-        cards: props.payload.cards,
-        slots: props.payload.slots,
-        bulk: props.payload.bulk,
-        threshold: props.payload.threshold
-      },
-      TOP_CARDS
-    )
-  );
+  const cards = createMemo(() => topCardContributions(props.payload, TOP_CARDS));
 
   return (
     <>

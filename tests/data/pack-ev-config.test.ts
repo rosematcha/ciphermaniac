@@ -59,6 +59,39 @@ test('a pack is ten cards plus the energy, the way the boxes describe it', () =>
   }
 });
 
+function drawCardCount(draw: NonNullable<(typeof config.sets)[number]['specialPacks']>[number]['draws'][number]) {
+  if (draw.kind === 'cards') {
+    return draw.cards.length;
+  }
+  return draw.kind === 'oneOf' ? draw.groups[0].length : draw.count;
+}
+
+test('a special pack is still a whole pack: kept slots plus draws make eleven cards', () => {
+  for (const set of config.sets) {
+    const counts = new Map(set.slots.map(slot => [slot.label, slot.count ?? 1]));
+    for (const special of set.specialPacks ?? []) {
+      const where = `${set.code} ${special.label}`;
+      assert.ok(special.odds > 1, `${where} odds`);
+      const kept = special.keepSlots.reduce((sum, label) => {
+        assert.ok(counts.has(label), `${where} keeps unknown slot ${label}`);
+        return sum + (counts.get(label) ?? 0);
+      }, 0);
+      const drawn = special.draws.reduce((sum, draw) => sum + drawCardCount(draw), 0);
+      assert.equal(kept + drawn, 11, `${where} holds ${kept + drawn} cards`);
+    }
+  }
+});
+
+test('a demigod pack offers groups of the same size', () => {
+  for (const set of config.sets) {
+    for (const draw of (set.specialPacks ?? []).flatMap(special => special.draws)) {
+      if (draw.kind === 'oneOf') {
+        assert.equal(new Set(draw.groups.map(group => group.length)).size, 1, `${set.code} uneven groups`);
+      }
+    }
+  }
+});
+
 test('exactly one sealed product is the one the set is bought by', () => {
   for (const set of config.sets) {
     const ids = set.sealed.map(product => product.id);
