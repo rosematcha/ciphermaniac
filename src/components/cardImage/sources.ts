@@ -23,6 +23,25 @@ import { isJokeArt } from '../../lib/jokeMode';
 
 export type CardImageSize = 'xs' | 'sm' | 'lg';
 
+/**
+ * Where the first attempt comes from.
+ *
+ * `r2`: our WebP re-encodes. `proxy`: the same-origin `/thumbnails` Function.
+ * `hotlink`: Limitless's CDN directly, for surfaces that show hundreds of cards
+ * nobody plays (the pack opener's bulk pile) — neither our storage nor our
+ * Function quota should carry those. Hotlinking was once bot-blocked in real
+ * browsers (see the note above), so every mode keeps the proxy chain behind it:
+ * a hotlink that gets challenged falls through to the proxy rather than to the
+ * placeholder.
+ */
+export type ArtSource = 'r2' | 'proxy' | 'hotlink';
+
+const LIMITLESS_CDN = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
+
+function cdnTierUrl(setU: string, num: string, size: CardImageSize): string {
+  return `${LIMITLESS_CDN}/${setU}/${setU}_${num}_R_EN_${size.toUpperCase()}.png`;
+}
+
 /** Rendered width of each tier, for srcset descriptors. */
 export const TIER_WIDTH: Record<CardImageSize, number> = { xs: 136, sm: 274, lg: 460 };
 
@@ -57,7 +76,7 @@ export function buildSrcset(
   set: string,
   number: string | number,
   preferredSize: CardImageSize,
-  useR2: boolean
+  source: ArtSource
 ): string {
   const setU = String(set).toUpperCase();
   const joke = jokeArtUrl(setU, number);
@@ -75,9 +94,10 @@ export function buildSrcset(
     return ptcgioSrcset(setU, num) ?? '';
   }
   const tiers: CardImageSize[] = preferredSize === 'lg' ? ['xs', 'sm', 'lg'] : ['xs', 'sm'];
-  // R2 WebP when ready, else the same-origin proxy — never hotlink the CDN in
-  // srcset, since that's the path the browser bot-blocks.
-  const urlFor = useR2 ? r2TierUrl : thumbTierUrl;
+  // R2 WebP when ready, the CDN when the caller asked to hotlink, else the
+  // same-origin proxy. A failed srcset pick drops to the attempt chain, which
+  // still ends at the proxy.
+  const urlFor = { r2: r2TierUrl, hotlink: cdnTierUrl, proxy: thumbTierUrl }[source];
   return tiers.map(t => `${urlFor(setU, num, t)} ${TIER_WIDTH[t]}w`).join(', ');
 }
 
@@ -85,7 +105,7 @@ export function buildAttempts(
   set: string,
   number: string | number,
   preferredSize: CardImageSize,
-  useR2: boolean
+  source: ArtSource
 ): string[] {
   const setU = String(set).toUpperCase();
   const joke = jokeArtUrl(setU, number);
@@ -123,14 +143,16 @@ export function buildAttempts(
   }
 
   // 1. R2 WebP (preferred tier) when the pipeline has run — lightest, our domain.
-  if (useR2) {
+  //    Or the CDN itself, when the caller hotlinks: no storage, no Function.
+  if (source === 'r2') {
     push(r2TierUrl(setU, padded, preferredSize));
+  } else if (source === 'hotlink') {
+    push(cdnTierUrl(setU, padded, preferredSize));
   }
   // 2. Same-origin proxy for each tier. This is the reliable browser-facing
   //    source: it dodges the CDN's browser-rejected bot cookie, and the proxy
-  //    normalizes the number itself, so one URL per tier suffices. No direct-CDN
-  //    tail after this — those hotlinks are bot-blocked in real browsers, so the
-  //    chain ends here and falls to the placeholder.
+  //    normalizes the number itself, so one URL per tier suffices. The chain
+  //    ends here and falls to the placeholder.
   for (const size of sizeChain) {
     push(thumbTierUrl(setU, padded, size));
   }
