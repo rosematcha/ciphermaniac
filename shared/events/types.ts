@@ -39,6 +39,8 @@ export interface LocatorEvent {
   date: string;
   /** Venue-local start time, `HH:MM`, or `''` when the listing has none. */
   time: string;
+  /** Conflicting source times for one unnamed session; `time` stays empty. */
+  reportedTimes?: string[];
   /** Store name as listed (usually upper case). */
   shop: string;
   address: string;
@@ -140,6 +142,8 @@ export interface LocalSlot {
   weekday: number;
   /** Venue-local start, `HH:MM`, or `''` when the store listed none. */
   time: string;
+  /** Conflicting source times, without guessing which is the actual start. */
+  reportedTimes?: string[];
   name: string;
   fee?: string;
   /** First listed date, `YYYY-MM-DD`, when the series starts after the window does. */

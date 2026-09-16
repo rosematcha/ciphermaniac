@@ -28,7 +28,7 @@ export interface LocalsBuildStats {
   past: number;
   /** Past the window's last day once moved to venue-local time. */
   later: number;
-  /** Unnamed records of a session the store also listed as an event. */
+  /** Redundant unnamed records collapsed into another listing of the same session. */
   doubles: number;
   skipped: Partial<Record<LocalSkipReason, number>>;
   venues: number;
@@ -161,9 +161,33 @@ function isSameSession(a: LocatorEvent, b: LocatorEvent): boolean {
  */
 function withoutDoubles(occurrences: Occurrence[]): LocatorEvent[] {
   const listed = occurrences.filter(occurrence => occurrence.listed).map(occurrence => occurrence.event);
-  return occurrences
-    .filter(occurrence => occurrence.listed || !listed.some(event => isSameSession(event, occurrence.event)))
-    .map(occurrence => occurrence.event);
+  const kept = occurrences.filter(
+    occurrence => occurrence.listed || !listed.some(event => isSameSession(event, occurrence.event))
+  );
+  const unnamed = kept.filter(occurrence => !occurrence.listed && occurrence.event.name === 'Weekly local');
+  const distinct = kept.filter(occurrence => occurrence.listed || occurrence.event.name !== 'Weekly local');
+  return [...distinct.map(occurrence => occurrence.event), ...groupUnnamed(unnamed.map(item => item.event))];
+}
+
+/** Nearby unnamed starts can be registration, a stale schedule, or a duplicate. Preserve the ambiguity. */
+function groupUnnamed(events: LocatorEvent[]): LocatorEvent[] {
+  const groups: LocatorEvent[][] = [];
+  const sorted = [...events].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  for (const event of sorted) {
+    const group = groups.at(-1);
+    const first = group?.[0];
+    // An unknown time cannot establish proximity, and groups never chain past two hours.
+    if (first?.time && event.time && isSameSession(first, event)) {
+      group?.push(event);
+    } else {
+      groups.push([event]);
+    }
+  }
+  return groups.map(group => {
+    const first = group[0] as LocatorEvent;
+    const times = [...new Set(group.map(event => event.time))];
+    return times.length > 1 ? { ...first, time: '', reportedTimes: times } : first;
+  });
 }
 
 /** The most common value, earliest seen breaking ties. */
@@ -214,6 +238,7 @@ function slotOf(occurrences: LocatorEvent[], window: Window): LocalSlot {
   return {
     weekday,
     time: first.time,
+    ...(first.reportedTimes ? { reportedTimes: first.reportedTimes } : {}),
     name: mode(occurrences.map(event => event.name)),
     ...(fee ? { fee } : {}),
     ...recurrence(dates, weekday, window)
@@ -223,7 +248,7 @@ function slotOf(occurrences: LocatorEvent[], window: Window): LocalSlot {
 function venueOf(league: string, occurrences: LocatorEvent[], window: Window): LocalVenue {
   const bySlot = new Map<string, LocatorEvent[]>();
   for (const event of occurrences) {
-    const key = `${weekdayOf(event.date)}|${event.time}`;
+    const key = `${weekdayOf(event.date)}|${event.time}|${event.reportedTimes?.join(',') ?? ''}`;
     bySlot.set(key, [...(bySlot.get(key) ?? []), event]);
   }
   const slots = [...bySlot.values()]
@@ -275,10 +300,9 @@ export function buildLocalsArtifacts(raw: unknown[], options: LocalsBuildOptions
   return { index, cells, stats };
 }
 
-/** Dates of a weekly slot from today through the horizon, inside its `from` and `until`. */
-function weeklyDates(slot: LocalSlot, today: string, horizonDays: number): string[] {
+/** Dates of a weekly slot through the published horizon, inside its `from` and `until`. */
+function weeklyDates(slot: LocalSlot, today: string, horizon: string): string[] {
   const start = slot.from && slot.from > today ? slot.from : today;
-  const horizon = addDays(today, horizonDays);
   const end = slot.until && slot.until < horizon ? slot.until : horizon;
   const dates: string[] = [];
   for (let date = nextOnWeekday(start, slot.weekday); date <= end; date = addDays(date, WEEK_DAYS)) {
@@ -291,11 +315,12 @@ function occurrenceOf(venue: LocalVenue, slot: LocalSlot, date: string): Locator
   const { slots: _slots, id, ...place } = venue;
   return {
     // No colon: the ID becomes a calendar file name.
-    id: `${id}-${date}-${slot.time.replace(':', '') || 'tba'}`,
+    id: `${id}-${date}-${(slot.reportedTimes?.join('-') || slot.time).replaceAll(':', '') || 'tba'}`,
     kind: 'local',
     name: slot.name,
     date,
     time: slot.time,
+    ...(slot.reportedTimes ? { reportedTimes: slot.reportedTimes } : {}),
     ...place,
     ...(slot.fee ? { fee: slot.fee } : {})
   };
@@ -303,18 +328,27 @@ function occurrenceOf(venue: LocalVenue, slot: LocalSlot, date: string): Locator
 
 /**
  * Every dated local from today through the horizon, in the shape the rest of
- * the locator reads. Weekly slots recur from today; listed dates are kept as
- * listed, less the past.
+ * the locator reads. Neither weekly slots nor explicit dates extend beyond
+ * the published window.
  * @param cells - The locals cells around the visitor
  * @param today - The visitor's local date, `YYYY-MM-DD`
  * @param horizonDays - The index's horizon
+ * @param asOf - The index's publication date; a stale listing cannot invent later weeks
  */
-export function expandLocals(cells: readonly LocalsCell[], today: string, horizonDays: number): LocatorEvent[] {
+export function expandLocals(
+  cells: readonly LocalsCell[],
+  today: string,
+  horizonDays: number,
+  asOf = today
+): LocatorEvent[] {
   const events: LocatorEvent[] = [];
+  const horizon = addDays(asOf, horizonDays);
   for (const cell of cells) {
     for (const venue of cell.venues) {
       for (const slot of venue.slots) {
-        const dates = slot.dates ? slot.dates.filter(date => date >= today) : weeklyDates(slot, today, horizonDays);
+        const dates = slot.dates
+          ? slot.dates.filter(date => date >= today && date <= horizon)
+          : weeklyDates(slot, today, horizon);
         events.push(...dates.map(date => occurrenceOf(venue, slot, date)));
       }
     }

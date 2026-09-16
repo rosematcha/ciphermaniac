@@ -82,7 +82,9 @@ function EventRow(props: {
         aria-controls={eventPanelId(props.event.id)}
         onClick={() => props.onToggle(props.event.id)}
       >
-        <span class='el-time'>{formatClock(props.event.time, props.event.cc) || '—'}</span>
+        <span class='el-time'>
+          {props.event.reportedTimes ? 'Unclear' : formatClock(props.event.time, props.event.cc) || '—'}
+        </span>
         <span class='el-main'>
           <span class='el-name'>{titleCase(props.event.name)}</span>
           <span class='el-venue'>
