@@ -104,7 +104,7 @@
   height: 26px;
 }
 .topnav-word:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration: none;
 }
 .topnav-links {
@@ -121,7 +121,7 @@
   transition: color var(--ms-fast) var(--ease-base);
 }
 .topnav-link:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration: none;
 }
 .topnav-link.active::after {
@@ -599,7 +599,7 @@
   line-height: 1.45;
 }
 .snapshot-banner-label {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -1222,7 +1222,7 @@ table.data {
   display: inline-block;
   margin-left: 4px;
   font-size: 10.5px;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 /* The inactive column's mark still occupies its slot; only the glyph goes. */
 .data th .sort-mark.is-idle {
@@ -1265,7 +1265,7 @@ table.data {
 .data th.sortable button.th-sort:not(:has(.sort-mark))::after {
   content: '▼';
   font-size: 9px;
-  color: var(--accent);
+  color: var(--accent-ink);
   visibility: hidden;
 }
 .data th.sortable[aria-sort='ascending'] button.th-sort:not(:has(.sort-mark))::after {
@@ -1292,7 +1292,7 @@ table.data {
   background: var(--surface-2);
 }
 .data tbody tr.is-link .cardname:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .data td.num,
 .data th.num {
@@ -1725,7 +1725,7 @@ tr.row-expansion > td {
   border-color: var(--accent);
 }
 .tournament-row .active-marker {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--tracking-micro);
@@ -1902,7 +1902,7 @@ tr.row-expansion > td {
 }
 .callout-cut-strip-row .cut-deck {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2090,7 +2090,7 @@ tr.row-expansion > td {
 }
 .story-card-climbed .story-card-tag,
 .story-card-climbed .story-card-symbol {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .story-card-subject {
@@ -2292,13 +2292,13 @@ tr.row-expansion > td {
    it carries the accent and a touch more weight in both the desktop rail and
    the mobile split rail — mirroring the accent price value below it. */
 .stats-list .stat-row--lead .stat-value {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 15px;
 }
 /* Market price row: the value doubles as the TCGplayer link when we have a
    product id, so it takes the accent like other links in the rail. */
 .stats-list .stat-value .price-link {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 700;
   text-decoration: none;
 }
@@ -2320,7 +2320,7 @@ tr.row-expansion > td {
   margin: -4px -4px;
 }
 .info-tip-marker {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 700;
   line-height: 1;
   font-size: 1.05em;
@@ -3468,7 +3468,7 @@ tr.row-expansion > td {
   gap: 6px;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
-  color: var(--accent);
+  color: var(--accent-ink);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -3930,7 +3930,7 @@ tr.row-expansion > td {
 }
 .r2-krow.is-link:hover .cardname,
 .r2-rrow.is-link:hover .cardname {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .r2-krow.is-link:focus-visible,
 .r2-rrow.is-link:focus-visible {
@@ -3949,7 +3949,7 @@ tr.row-expansion > td {
   font: inherit;
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-ink);
   cursor: pointer;
   padding: 6px 8px;
 }
@@ -3973,7 +3973,7 @@ tr.row-expansion > td {
   font: inherit;
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-ink);
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -4015,7 +4015,7 @@ tr.row-expansion > td {
 }
 .r2-lens-plus,
 .mu-lens-plus {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 700;
   font-size: 14px;
   line-height: 1;
@@ -4166,7 +4166,7 @@ tr.row-expansion > td {
   background: var(--surface-2);
 }
 .r2-lensrow.is-link:hover .cardname {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .r2-lensrow .mu-name {
   gap: 7px;

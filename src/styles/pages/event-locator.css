@@ -294,7 +294,7 @@ body[data-mode='dark'] .lm-tile {
 }
 .el-search-cancel {
   display: none;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: var(--text-base);
   font-weight: 600;
 }
@@ -331,7 +331,7 @@ body[data-mode='dark'] .lm-tile {
   stroke: var(--accent);
 }
 .el-option.locate .el-option-label {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .el-option-main {
   display: grid;
@@ -454,7 +454,7 @@ body[data-mode='dark'] .lm-tile {
 }
 .el-day.weekend .el-day-head,
 .el-day.weekend .el-when {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .el-list {
   margin: 0;

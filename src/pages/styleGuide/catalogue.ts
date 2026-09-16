@@ -49,8 +49,14 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   {
     title: 'Accent',
     kind: 'color',
-    note: 'Burnt orange, held to roughly 10% of any screen. Links, meaningful fills, active state.',
-    tokens: [{ name: '--accent' }, { name: '--accent-hover' }, { name: '--accent-fg', note: 'Text on an accent fill' }]
+    note: 'Marigold, held to roughly 10% of any screen. Two values: --accent fills, draws borders and marks state; --accent-ink is the same hue for anything set as words, dark enough to clear 4.5:1 on every light surface. In dark mode they are the same colour.',
+    tokens: [
+      { name: '--accent', note: 'Fills, borders, bars, active state' },
+      { name: '--accent-hover' },
+      { name: '--accent-ink', note: 'Any accent used as text' },
+      { name: '--accent-ink-hover' },
+      { name: '--accent-fg', note: 'Text on an accent fill' }
+    ]
   },
   {
     title: 'Sentiment',

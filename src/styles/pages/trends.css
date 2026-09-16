@@ -346,7 +346,7 @@
   text-decoration: none;
 }
 .trends-deck-head h3 a:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .trends-deck-usage {
   margin-left: auto;
