@@ -193,7 +193,7 @@ function describeLocalsStats(stats: LocalsBuildStats): string {
   const skipped = Object.entries(stats.skipped)
     .map(([reason, count]) => `${reason} ${count}`)
     .join(', ');
-  return `${stats.slots} slots (${stats.weekly} weekly) at ${stats.venues} stores from ${stats.kept} of ${stats.received} listings (past ${stats.past}, later ${stats.later}${skipped ? `, skipped: ${skipped}` : ''})`;
+  return `${stats.slots} slots (${stats.weekly} weekly) at ${stats.venues} stores from ${stats.kept} of ${stats.received} listings (past ${stats.past}, later ${stats.later}, doubles ${stats.doubles}${skipped ? `, skipped: ${skipped}` : ''})`;
 }
 
 /**
