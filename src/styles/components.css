@@ -1,7 +1,8 @@
 /* ============================================================
    Component styles
    Every selector below is a stable component class; no nesting.
-   Stamp's identity moves live here: ink-border + 3px flat offset shadow.
+   Stamp's identity moves live here: a drawn 1px edge, hairline-ruled rows,
+   and flat fills. No shadows, no gradients, no glass.
    ============================================================ */
 
 /* ---------- Page wrapper ---------- */
@@ -150,7 +151,6 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-1);
   opacity: 0;
   visibility: hidden;
   transition:
@@ -226,7 +226,6 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   padding: 4px;
   z-index: 60;
   max-height: 70vh;
@@ -512,7 +511,6 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   padding: 10px;
   z-index: 60;
   display: grid;
@@ -705,7 +703,6 @@
     background var(--ms-fast) var(--ease-base),
     color var(--ms-fast) var(--ease-base),
     transform var(--ms-fast) var(--ease-spring),
-    box-shadow var(--ms-fast) var(--ease-base),
     border-color var(--ms-fast) var(--ease-base);
   text-decoration: none;
 }
@@ -754,7 +751,6 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   display: grid;
   place-items: center;
   gap: 12px;
@@ -873,7 +869,6 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 16px 16px 14px;
-  box-shadow: var(--shadow-1);
   display: grid;
   gap: 10px;
   cursor: pointer;
@@ -881,14 +876,12 @@
   position: relative;
   transition:
     transform var(--ms-base) var(--ease-base),
-    box-shadow var(--ms-base) var(--ease-base),
     border-color var(--ms-base) var(--ease-base);
   text-decoration: none;
 }
 .arche:hover {
   text-decoration: none;
-  transform: translate(-1px, -1px);
-  box-shadow: var(--shadow-2);
+  border-color: var(--fg);
 }
 .arche:active {
   transform: translateY(0) scale(0.99);
@@ -1138,7 +1131,6 @@
      scroll container, so sticky `thead` cells can park against the viewport /
      topnav instead of this box. */
   overflow: clip;
-  box-shadow: var(--shadow-1);
 }
 @media (max-width: 640px) {
   /* On phone widths, dense data tables stay scannable via horizontal scroll
@@ -1403,7 +1395,6 @@ tr.row-expansion > td {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface-2);
-  box-shadow: var(--shadow-1);
   overflow: hidden;
   line-height: 0;
   animation: card-hover-in var(--ms-fast) ease-out;
@@ -1704,7 +1695,6 @@ tr.row-expansion > td {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   font-size: 13px;
-  box-shadow: var(--shadow-1);
 }
 .tournament-row .date {
   font-size: 11px;
@@ -1726,13 +1716,10 @@ tr.row-expansion > td {
   width: 100%;
   cursor: pointer;
   text-align: left;
-  transition:
-    transform var(--ms-base) var(--ease-base),
-    box-shadow var(--ms-base) var(--ease-base);
+  transition: border-color var(--ms-base) var(--ease-base);
 }
 .tournament-row-clickable:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: var(--shadow-2);
+  border-color: var(--fg);
 }
 .tournament-row-clickable.active {
   border-color: var(--accent);
@@ -1747,14 +1734,11 @@ tr.row-expansion > td {
 .tournament-row-link {
   text-decoration: none;
   color: var(--fg);
-  transition:
-    transform var(--ms-base) var(--ease-base),
-    box-shadow var(--ms-base) var(--ease-base);
+  transition: border-color var(--ms-base) var(--ease-base);
 }
 .tournament-row-link:hover {
   text-decoration: none;
-  transform: translate(-1px, -1px);
-  box-shadow: var(--shadow-2);
+  border-color: var(--fg);
 }
 /* Loading rows are real rows with the ink taken out: each keeps placeholder
    text, so it is exactly as tall as the row it stands in for at any width. */
@@ -1797,9 +1781,9 @@ tr.row-expansion > td {
 /* ---------- Home: latest-event callout ----------
    Appears at the very top of the home page when a major has finished within
    the last 14 days. Built from the same surface primitives as the rest of
-   Stamp: 1px ink border, 3px flat ink-shadow, no fancy effects. Identity
-   comes from the eyebrow + the typographic hierarchy + the winning deck's
-   archetype card stack as a visual anchor. */
+   Stamp: 1px border on a surface fill, no fancy effects. Identity comes from
+   the typographic hierarchy + the winning deck's archetype card stack as a
+   visual anchor. */
 .home-callout-wrap {
   margin-bottom: var(--section-gap, 42px);
 }
@@ -1807,7 +1791,6 @@ tr.row-expansion > td {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   padding: 0;
   display: grid;
   gap: 0;
@@ -2041,7 +2024,7 @@ tr.row-expansion > td {
 }
 
 /* Story card — mirrors `.arche` from the design system: thumb on top,
-   bordered, ink-offset shadow, hover lifts to expose the offset. */
+   bordered, hover darkens the edge to `--fg`. */
 .story-card {
   display: grid;
   grid-template-rows: auto auto auto 1fr;
@@ -2051,30 +2034,13 @@ tr.row-expansion > td {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   text-decoration: none;
   color: var(--fg);
-  transition:
-    transform var(--ms-base) var(--ease-base),
-    box-shadow var(--ms-base) var(--ease-base);
+  transition: border-color var(--ms-base) var(--ease-base);
   min-width: 0;
 }
 .story-card:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: var(--shadow-2);
-}
-.story-card:active {
-  transform: translate(0, 0);
-  box-shadow: var(--shadow-press);
-}
-body[data-mode='dark'] .story-card {
-  box-shadow: var(--shadow-1);
-}
-body[data-mode='dark'] .story-card:hover {
-  box-shadow: var(--shadow-2);
-}
-body[data-mode='dark'] .story-card:active {
-  box-shadow: var(--shadow-press);
+  border-color: var(--fg);
 }
 
 .story-card-art {
@@ -2272,7 +2238,6 @@ body[data-mode='dark'] .story-card:active {
   aspect-ratio: 5 / 7;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-1);
 }
 .card-image-real img {
   width: 100%;
@@ -2371,7 +2336,6 @@ body[data-mode='dark'] .story-card:active {
   color: var(--fg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-1);
   padding: 8px 10px;
   font-size: 12px;
   font-weight: 400;
@@ -2445,7 +2409,6 @@ body[data-mode='dark'] .story-card:active {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 16px 20px;
-  box-shadow: var(--shadow-1);
 }
 .dist-row {
   display: grid;
@@ -2486,7 +2449,6 @@ body[data-mode='dark'] .story-card:active {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 16px 18px;
-  box-shadow: var(--shadow-1);
 }
 .chart {
   width: 100%;
@@ -2559,7 +2521,6 @@ body[data-mode='dark'] .story-card:active {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-1);
   padding: 8px 10px;
   font-size: 12px;
   pointer-events: none;
@@ -2723,12 +2684,7 @@ body[data-mode='dark'] .story-card:active {
   padding-top: 140%; /* 7 / 5 = 1.4 → 140% */
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: var(--shadow-1);
   background: var(--surface-2);
-  transition: box-shadow var(--ms-fast) var(--ease-base);
-}
-.card-tile:hover .card-tile-card {
-  box-shadow: var(--shadow-2);
 }
 
 /* The image fills the 5:7 box absolutely. object-fit: contain shows the full
@@ -2868,9 +2824,6 @@ body[data-mode='dark'] .story-card:active {
   pointer-events: none;
   content-visibility: visible;
 }
-.card-tile-skeleton .card-tile-card {
-  box-shadow: none;
-}
 .card-tile-name-row {
   display: flex;
   justify-content: space-between;
@@ -2921,7 +2874,6 @@ body[data-mode='dark'] .story-card:active {
   background: var(--surface);
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   padding: 16px 18px;
   display: grid;
   gap: 6px;
@@ -3056,7 +3008,6 @@ body[data-mode='dark'] .story-card:active {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   padding: 18px 20px 16px;
 }
 .fb-controls {
@@ -3196,7 +3147,6 @@ body[data-mode='dark'] .story-card:active {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   padding: 4px;
   z-index: 10;
   max-height: 50vh;
@@ -3663,15 +3613,8 @@ body[data-mode='dark'] .story-card:active {
    :active is kept — that's the legitimate touch feedback.
    ============================================================ */
 @media (hover: none) {
-  .arche:hover,
-  .card-tile:hover,
-  .story-card:hover {
+  .card-tile:hover {
     transform: none;
-  }
-  .arche:hover,
-  .card-tile:hover .card-tile-card,
-  .story-card:hover {
-    box-shadow: var(--shadow-1);
   }
   /* Re-apply the base CardStack fan so :hover doesn't leave slots reshuffled. */
   :is(.arche, .story-card):hover .card-stack-1 .card-stack-slot {
@@ -4415,7 +4358,6 @@ body[data-mode='dark'] .story-card:active {
   border-bottom: 0;
   border-top-left-radius: var(--radius-md);
   border-top-right-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   transform: translateY(100%);
   transition: transform var(--ms-base) var(--ease-base);
   will-change: transform;

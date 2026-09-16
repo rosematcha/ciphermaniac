@@ -31,19 +31,16 @@
   color: var(--fg);
   text-align: left;
   transition:
-    transform var(--ms-fast) var(--ease-base),
-    box-shadow var(--ms-fast) var(--ease-base),
+    border-color var(--ms-fast) var(--ease-base),
     background var(--ms-fast) var(--ease-base);
 }
 .ilm-arche:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: var(--shadow-1);
+  border-color: var(--fg);
 }
 .ilm-arche[aria-checked='true'] {
   background: var(--accent);
   color: var(--accent-fg);
   border-color: var(--accent);
-  box-shadow: var(--shadow-1);
 }
 .ilm-arche-thumb {
   width: 56px;
@@ -94,7 +91,6 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
 }
 .ilm-summary-headline {
   font-size: 22px;
@@ -181,8 +177,8 @@
   }
 }
 /* Matches .card-tile on /cards: no border box around the art, just the card
-   itself on the page with the house offset shadow. The 1px ink outline this
-   used to carry read as a hard black rectangle around every tile. */
+   itself on the page. The 1px ink outline this used to carry read as a hard
+   black rectangle around every tile. */
 .ilm-card {
   display: grid;
   grid-template-rows: auto auto;
@@ -201,9 +197,6 @@
   pointer-events: none;
   content-visibility: visible;
 }
-.ilm-card-skeleton .ilm-card-img {
-  box-shadow: none;
-}
 .ilm-card-skeleton .skeleton {
   display: inline-block;
   vertical-align: middle;
@@ -214,13 +207,8 @@
   background: var(--surface-2);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: var(--shadow-1);
   display: grid;
   place-items: center;
-  transition: box-shadow var(--ms-fast) var(--ease-base);
-}
-.ilm-card:hover .ilm-card-img {
-  box-shadow: var(--shadow-2);
 }
 /* `contain`, not `cover`: cropping the art to fill the box cut the card frame
    off and made every tile look mis-scaled. */
@@ -347,8 +335,5 @@
 
   .ilm-card:hover {
     transform: none;
-  }
-  .ilm-card:hover .ilm-card-img {
-    box-shadow: var(--shadow-1);
   }
 }

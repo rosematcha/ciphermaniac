@@ -3,8 +3,8 @@
 
    The stage is a canvas, so nothing in here styles the wall
    itself; it styles the frame around it and the controls
-   underneath, in the same flat-border/offset-shadow language as
-   the rest of the site. The stage background is painted by the
+   underneath, in the same flat-border language as the rest of
+   the site. The stage background is painted by the
    renderer (cream / ink / black) and deliberately does NOT
    follow the site theme — it's the output, not the UI.
    ============================================================ */
@@ -27,7 +27,6 @@
   overflow: hidden;
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   /* Behind the canvas until the first paint lands. */
   background: var(--surface-2);
 }
@@ -74,7 +73,6 @@
   background: var(--surface);
   border: var(--border-width) solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
 }
 
 .cw-presets {

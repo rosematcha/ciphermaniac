@@ -126,10 +126,12 @@ const CHECKS: Check[] = [
     ];
   },
 
-  // Ruling: "Offset shadow". Three tiers, and the ink is never restated.
+  // Ruling: "No shadow". Depth is drawn with an edge and a fill, never cast.
+  // The focus ring, hairlines and state rings are box-shadows by mechanism, not
+  // elevation, and keep their own checks.
   rule => {
     const value = decl(rule.body, 'box-shadow');
-    if (!value || value === 'none' || value.includes('var(--shadow') || value.includes('var(--focus-ring')) {
+    if (!value || value === 'none' || value.includes('var(--focus-ring')) {
       return [];
     }
     if (/^\s*inset\b/.test(value) || value.includes('0 0 0')) {
@@ -138,16 +140,16 @@ const CHECKS: Check[] = [
     if (/-?\d+px\s+-?\d+px\s+0\s+0/.test(value)) {
       return [
         {
-          rule: 'shadow-token',
-          message: `hardcoded flat offset shadow "${value}" — use --shadow-1 / --shadow-2 / --shadow-press`
+          rule: 'offset-shadow',
+          message: `flat offset shadow "${value}" — the system casts no shadows; use the border and a surface tier`
         }
       ];
     }
-    // A shadow's third length is its blur radius. The system has none.
+    // A shadow's third length is its blur radius.
     const lengths = value.split(/\s+/).filter(part => /^-?\d*\.?\d+(px|rem|em)?$/.test(part));
     const blur = lengths[2];
     if (blur !== undefined && Number.parseFloat(blur) !== 0) {
-      return [{ rule: 'no-blur-shadow', message: `blurred shadow "${value}" — the system is flat offsets only` }];
+      return [{ rule: 'no-blur-shadow', message: `blurred shadow "${value}" — the system draws no shadows` }];
     }
     return [];
   },

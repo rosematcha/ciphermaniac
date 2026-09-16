@@ -81,22 +81,6 @@ body[data-mode="light"] {
   --focus-width: 2px;
   --focus-offset: 2px;
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
-
-  /* Signature: 1px ink border + flat offset shadow in the same ink.
-     Only --shadow-ink flips between modes; the tiers below resolve it. */
-  --shadow-ink: var(--border);
-}
-
-/* Declared on `body` as well as `:root` so they resolve against whichever
-   --shadow-ink the mode block on <body> put there. Substitution happens where
-   a custom property is DECLARED, so tiers pinned only to :root would freeze
-   the light-mode ink and never darken. */
-:root,
-body,
-.topnav {
-  --shadow-press: 1px 1px 0 0 var(--shadow-ink);
-  --shadow-1: 3px 3px 0 0 var(--shadow-ink);
-  --shadow-2: 4px 4px 0 0 var(--shadow-ink);
 }
 
 /* The topnav is dark in both modes, so it takes this block whatever the body
@@ -119,9 +103,6 @@ body[data-mode="dark"],
   --chart-1: #ff9c4a;
   --chart-2: #6bb6ff;
   --chart-3: #7ed68a;
-
-  /* In dark mode the offset shadow lands on the next surface tier, not on ink */
-  --shadow-ink: var(--surface-2);
 }
 
 @media (max-width: 900px) {
@@ -153,6 +134,5 @@ body[data-mode="dark"],
     --chart-1: #ff9c4a;
     --chart-2: #6bb6ff;
     --chart-3: #7ed68a;
-    --shadow-ink: var(--surface-2);
   }
 }
