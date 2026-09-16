@@ -4,6 +4,7 @@
  */
 
 import type { EventKind, LocatorEvent } from '../../../shared/events/types';
+import { withoutOverlappingLocals } from '../../../shared/events/sessions';
 import { distanceKm, type LatLon } from './geo';
 import { daysBetween } from './format';
 
@@ -49,7 +50,7 @@ function inWindow(event: LocatorEvent, query: LocatorQuery): boolean {
  */
 export function filterEvents(events: readonly LocatorEvent[], query: LocatorQuery): PlacedEvent[] {
   const placed: PlacedEvent[] = [];
-  for (const event of events) {
+  for (const event of withoutOverlappingLocals(events)) {
     if (!query.kinds.has(event.kind) || !inWindow(event, query)) {
       continue;
     }

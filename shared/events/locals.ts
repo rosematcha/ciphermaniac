@@ -316,6 +316,7 @@ function occurrenceOf(venue: LocalVenue, slot: LocalSlot, date: string): Locator
   return {
     // No colon: the ID becomes a calendar file name.
     id: `${id}-${date}-${(slot.reportedTimes?.join('-') || slot.time).replaceAll(':', '') || 'tba'}`,
+    leagueId: id,
     kind: 'local',
     name: slot.name,
     date,
