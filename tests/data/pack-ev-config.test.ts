@@ -1,0 +1,81 @@
+/**
+ * The shipped pack model, checked for the mistakes a hand-edited config makes.
+ *
+ * `config/pack-ev.json` is transcribed from one TCGplayer article per set. A
+ * decimal in the wrong place, a slot with two remainder outcomes, or a sealed
+ * product id pasted twice all produce a page that looks fine and lies, so they
+ * are caught here rather than in production.
+ */
+
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { resolveChances } from '../../shared/packEv/ev.ts';
+import type { PackEvConfig } from '../../shared/packEv/types.ts';
+import rawConfig from '../../config/pack-ev.json';
+
+const config = rawConfig as unknown as PackEvConfig;
+
+test('every set is distinct and cites the article its rates came from', () => {
+  const codes = config.sets.map(set => set.code);
+  assert.equal(new Set(codes).size, codes.length);
+  for (const set of config.sets) {
+    assert.match(set.source.url, /^https:\/\/www\.tcgplayer\.com\//, `${set.code} pull-rate source`);
+    assert.ok(set.source.sampleSize > 0, `${set.code} sample size`);
+    assert.ok(set.groupId > 0, `${set.code} group id`);
+  }
+});
+
+test('every slot resolves: at most one remainder outcome, and no slot over 100%', () => {
+  for (const set of config.sets) {
+    for (const slot of set.slots) {
+      const chances = resolveChances(slot.outcomes);
+      assert.equal(chances.length, slot.outcomes.length, `${set.code} ${slot.label}`);
+      const total = chances.reduce((sum, chance) => sum + chance, 0);
+      assert.ok(Math.abs(total - 1) < 1e-9, `${set.code} ${slot.label} sums to ${total}`);
+    }
+  }
+});
+
+test('each outcome draws from a pool or is flat bulk, never both and never neither', () => {
+  for (const set of config.sets) {
+    for (const slot of set.slots) {
+      for (const outcome of slot.outcomes) {
+        const where = `${set.code} ${slot.label} / ${outcome.label}`;
+        assert.notEqual(Boolean(outcome.pool), Boolean(outcome.flat), where);
+        if (outcome.pool) {
+          assert.ok(outcome.pool.rarities.length > 0, where);
+          assert.ok(config.bulk[outcome.pool.bulk] !== undefined, `${where} bulk class`);
+        }
+      }
+    }
+  }
+});
+
+test('a pack is ten cards plus the energy, the way the boxes describe it', () => {
+  for (const set of config.sets) {
+    const cards = set.slots.reduce((sum, slot) => sum + (slot.count ?? 1), 0);
+    assert.equal(cards, 11, `${set.code} draws ${cards} cards a pack`);
+  }
+});
+
+test('exactly one sealed product is the one the set is bought by', () => {
+  for (const set of config.sets) {
+    const ids = set.sealed.map(product => product.id);
+    assert.equal(new Set(ids).size, ids.length, `${set.code} repeats a product id`);
+    const primary = set.sealed.filter(product => product.primary);
+    assert.equal(primary.length, 1, `${set.code} has ${primary.length} primary products`);
+    assert.ok(primary[0].packs > 1, `${set.code} primary product should hold packs`);
+    for (const product of set.sealed) {
+      assert.ok(product.packs > 0, `${set.code} ${product.label}`);
+    }
+  }
+});
+
+test('the bulk rates are the posted buylist, not placeholders', () => {
+  assert.match(config.bulkSource.url, /^https:\/\//);
+  assert.equal(config.threshold, 1);
+  for (const [tier, rate] of Object.entries(config.bulk)) {
+    assert.ok(rate > 0 && rate < config.threshold, `${tier} rate ${rate}`);
+  }
+});
