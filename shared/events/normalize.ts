@@ -15,9 +15,23 @@ type RawEvent = Record<string, unknown>;
 
 export type SkipReason = 'kind' | 'cancelled' | 'id' | 'name' | 'date' | 'coordinates' | 'country';
 
+interface Point {
+  lat: number;
+  lon: number;
+}
+
+interface Start {
+  date: string;
+  time: string;
+}
+
+/** IANA time zone at a point, e.g. `America/Chicago`. */
+export type ZoneLookup = (lat: number, lon: number) => string;
+
 export type NormalizeResult = { ok: true; event: LocatorEvent } | { ok: false; reason: SkipReason };
 
 const EVENT_ID = /^\d{2}-\d{2}-\d{6}$/;
+const EVENT_PAGE_ID = /\/play-pokemon-tournaments\/\d{2}-\d{2}-\d{6}\/?$/;
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const WALL_TIME = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/;
@@ -119,18 +133,58 @@ function clock(value: unknown): string {
   return match && Number(match[1]) < 24 && Number(match[2]) < 60 ? `${match[1]}:${match[2]}` : '';
 }
 
+/** The sanctioned listing has no UTC locals to move; the locals build passes a real lookup. */
+const UTC: ZoneLookup = () => 'UTC';
+
 /**
- * A local's start, from Pokedata's `when` (`YYYY-MM-DD HH:MM:SS`). Locals have
- * no `time` field, and a midnight `when` is a store that listed no time.
+ * Pokedata's locals table holds two kinds of record. One a store listed as
+ * an event on pokemon.com has a name, an event ID in its URL, and a `when` in
+ * the venue's wall time. One without an event ID has no name either, and its
+ * `when` and `date` are UTC: its starts move an hour across daylight saving,
+ * where the listed events' do not.
  */
-function localClock(value: unknown): string {
-  const match = WALL_TIME.exec(text(value));
-  const time = match ? clock(match[2]) : '';
-  return time === MIDNIGHT ? '' : time;
+export function isUtcLocal(raw: RawEvent): boolean {
+  return !EVENT_PAGE_ID.test(text(raw.pokemon_url));
 }
 
-function startClock(raw: RawEvent, kind: EventKind): string {
-  return kind === 'local' ? localClock(raw.when) : clock(raw.time);
+const zoneFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** A UTC `YYYY-MM-DDTHH:MM` as wall time in `zone`, same shape. */
+function inZone(utc: string, zone: string): string {
+  const format =
+    zoneFormats.get(zone) ??
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: zone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    });
+  zoneFormats.set(zone, format);
+  const parts = Object.fromEntries(format.formatToParts(new Date(`${utc}Z`)).map(part => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+/**
+ * A local's venue-local date and start, from Pokedata's `when`
+ * (`YYYY-MM-DD HH:MM:SS`), moved out of UTC when the record is in UTC. Locals
+ * have no `time` field, and a venue-local midnight is a store that listed no
+ * time. A `when` that cannot be read leaves the listed date and no time.
+ */
+function localStart(raw: RawEvent, place: Point, zoneAt: ZoneLookup): Start {
+  const when = wallTime(raw.when);
+  if (!when) {
+    return { date: text(raw.date), time: '' };
+  }
+  const [date = '', time = ''] = (isUtcLocal(raw) ? inZone(when, zoneAt(place.lat, place.lon)) : when).split('T');
+  return { date, time: time === MIDNIGHT ? '' : time };
+}
+
+/** The listing's date and start. Sanctioned events list both; locals derive them from `when`. */
+function start(raw: RawEvent, kind: EventKind, place: Point, zoneAt: ZoneLookup = UTC): Start {
+  return kind === 'local' ? localStart(raw, place, zoneAt) : { date: text(raw.date), time: clock(raw.time) };
 }
 
 /** A real calendar date: shape and value (no 2026-02-30). */
@@ -243,9 +297,10 @@ function skip(reason: SkipReason): NormalizeResult {
 /**
  * Normalize one Pokedata record.
  * @param raw - A record from the Pokedata `events` array
+ * @param zoneAt - The time zone at a venue, for locals listed in UTC
  * @returns The event, or the reason it was skipped
  */
-export function normalizeEvent(raw: RawEvent): NormalizeResult {
+export function normalizeEvent(raw: RawEvent, zoneAt?: ZoneLookup): NormalizeResult {
   const kind = eventKindOf(raw.type);
   if (!kind) {
     return skip('kind');
@@ -261,13 +316,13 @@ export function normalizeEvent(raw: RawEvent): NormalizeResult {
   if (!name) {
     return skip('name');
   }
-  const date = text(raw.date);
-  if (!isCalendarDate(date)) {
-    return skip('date');
-  }
   const place = coordinates(raw.latitude, raw.longitude);
   if (!place) {
     return skip('coordinates');
+  }
+  const { date, time } = start(raw, kind, place, zoneAt);
+  if (!isCalendarDate(date)) {
+    return skip('date');
   }
   const cc = text(raw.country_code).toUpperCase();
   if (!/^[A-Z]{2}$/.test(cc)) {
@@ -278,7 +333,7 @@ export function normalizeEvent(raw: RawEvent): NormalizeResult {
     kind,
     name,
     date,
-    time: startClock(raw, kind),
+    time,
     shop: text(raw.shop),
     address: text(raw.street_address),
     city: text(raw.city),

@@ -17,12 +17,14 @@ const NOW = new Date('2026-09-15T12:00:00Z');
 const SOURCE = 'https://pokedata.ovh/events/';
 const WEDNESDAYS = ['2026-09-16', '2026-09-23', '2026-09-30'];
 
-function build(raw: unknown[]) {
+/** Venues on UTC unless a test says otherwise, so a record's `when` is its wall time. */
+function build(raw: unknown[], { now = NOW, zone = 'UTC' } = {}) {
   return buildLocalsArtifacts(raw, {
-    now: NOW,
+    now,
     source: SOURCE,
     horizonDays: 21,
-    hash: cell => `h${cell.venues.length}`
+    hash: cell => `h${cell.venues.length}`,
+    zoneAt: () => zone
   });
 }
 
@@ -100,13 +102,48 @@ test('a name that changes week to week settles on the usual one', () => {
   assert.equal(slot?.name, 'Liga semanal');
 });
 
+const CENTRAL = { zone: 'America/Chicago' };
+
+function centralSlots(raw: unknown[], options = {}): LocalSlot[] {
+  return build(raw, { ...CENTRAL, ...options }).cells.get('30_-100')?.venues[0]?.slots ?? [];
+}
+
+test('a series listed in UTC lands on the weekday and time at the venue', () => {
+  const thursdaysUtc = rawLocalSeries('42', ['2026-09-17', '2026-09-24', '2026-10-01'], { time: '00:30:00' });
+  assert.deepEqual(centralSlots(thursdaysUtc), [{ weekday: 3, time: '19:30', name: 'Weekly local', fee: '$5' }]);
+});
+
+test('a UTC series stays one slot across the end of daylight saving', () => {
+  const saturdays = [
+    ...rawLocalSeries('42', ['2026-10-24', '2026-10-31'], { time: '20:00:00' }),
+    ...rawLocalSeries('42', ['2026-11-07'], { time: '21:00:00' })
+  ];
+  const listed = centralSlots(saturdays, { now: new Date('2026-10-20T12:00:00Z') });
+  assert.deepEqual(
+    listed.map(slot => [slot.weekday, slot.time, slot.until]),
+    [[6, '15:00', undefined]]
+  );
+});
+
+test('the window ends on the venue calendar: a last evening dated a day later in UTC is inside it', () => {
+  // Tuesday evenings through the window's last day, Tuesday 2026-10-06, and one past it.
+  const tuesdaysUtc = rawLocalSeries('42', ['2026-09-16', '2026-09-23', '2026-09-30', '2026-10-07', '2026-10-14'], {
+    time: '00:30:00'
+  });
+  const { cells, stats } = build(tuesdaysUtc, CENTRAL);
+  assert.deepEqual(cells.get('30_-100')?.venues[0]?.slots, [
+    { weekday: 2, time: '19:30', name: 'Weekly local', fee: '$5' }
+  ]);
+  assert.equal(stats.later, 1);
+});
+
 test('stores are grouped by league ID, and records without one are skipped', () => {
   const { index, stats } = build([
     ...rawLocalSeries('42', ['2026-09-16']),
     ...rawLocalSeries('42', ['2026-09-16'], { shop: 'TEST GAMES (RENAMED)' }),
     rawLocalEvent({ league: '' }),
     rawLocalEvent({ league: 'abc' }),
-    rawLocalEvent({ date: '2026-09-13' }),
+    rawLocalEvent({ date: '2026-09-13', when: '2026-09-13 19:30:00' }),
     rawLocalEvent({ type: 'League Cup', name: 'A Cup', Display_id: '26-09-000001' })
   ]);
   assert.equal(index.venues, 1);

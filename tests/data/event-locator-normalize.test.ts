@@ -10,8 +10,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { details, eventKindOf, normalizeEvent, safeUrl } from '../../shared/events/normalize.ts';
-import { rawEvent, rawLocalEvent } from '../__utils__/pokedata.ts';
+import { details, eventKindOf, isUtcLocal, normalizeEvent, safeUrl } from '../../shared/events/normalize.ts';
+import { rawEvent, rawListedLocal, rawLocalEvent } from '../__utils__/pokedata.ts';
 
 function normalized(overrides = {}) {
   const result = normalizeEvent(rawEvent(overrides));
@@ -113,6 +113,42 @@ test('a local takes its start from `when` and its fee from `cost`, the fields it
   assert.equal(local({ when: '' }).time, '');
   assert.equal(local({ cost: '' }).fee, undefined);
   assert.equal(local({ cost: '0' }).fee, undefined);
+});
+
+const CHICAGO = () => 'America/Chicago';
+
+function localIn(zoneAt: () => string, overrides = {}, listed = false) {
+  const result = normalizeEvent(listed ? rawListedLocal(1, overrides) : rawLocalEvent(overrides), zoneAt);
+  assert.ok(result.ok, `expected the local to normalize, got ${JSON.stringify(result)}`);
+  return [result.event.date, result.event.time];
+}
+
+test('an unnamed local lists its start in UTC, and moves to the venue date and wall time', () => {
+  assert.equal(isUtcLocal(rawLocalEvent()), true);
+  assert.equal(isUtcLocal(rawListedLocal(1)), false);
+  // A Wednesday evening is a Thursday in UTC.
+  assert.deepEqual(localIn(CHICAGO, { date: '2026-09-17', when: '2026-09-17 00:30:00' }), ['2026-09-16', '19:30']);
+  // A Saturday afternoon either side of the end of daylight saving.
+  assert.deepEqual(localIn(CHICAGO, { date: '2026-10-31', when: '2026-10-31 20:00:00' }), ['2026-10-31', '15:00']);
+  assert.deepEqual(localIn(CHICAGO, { date: '2026-11-07', when: '2026-11-07 21:00:00' }), ['2026-11-07', '15:00']);
+  assert.deepEqual(
+    localIn(() => 'Australia/Sydney', { when: '2026-09-20 08:30:00' }),
+    ['2026-09-20', '18:30']
+  );
+});
+
+test('midnight UTC is an evening start; only a venue-local midnight is a store that listed no time', () => {
+  assert.deepEqual(localIn(CHICAGO, { date: '2026-09-18', when: '2026-09-18 00:00:00' }), ['2026-09-17', '19:00']);
+  assert.deepEqual(localIn(CHICAGO, { date: '2026-09-20', when: '2026-09-20 05:00:00' }), ['2026-09-20', '']);
+  assert.deepEqual(localIn(CHICAGO, { date: '2026-09-20', when: '' }), ['2026-09-20', '']);
+});
+
+test('a local listed as an event keeps the wall time it was listed with', () => {
+  assert.deepEqual(localIn(CHICAGO, { date: '2026-09-16', when: '2026-09-16 19:30:00' }, true), [
+    '2026-09-16',
+    '19:30'
+  ]);
+  assert.deepEqual(localIn(CHICAGO, { date: '2026-09-16', when: '2026-09-16 00:00:00' }, true), ['2026-09-16', '']);
 });
 
 test('the capitalized Name stands in when the lowercase name is missing', () => {
