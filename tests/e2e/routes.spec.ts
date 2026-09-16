@@ -282,7 +282,17 @@ test('the tools index features the tier list and label maker as tiles', async ({
   await expect(featured.nth(0)).toHaveAttribute('href', '/tools/tier-list');
   await expect(featured.nth(1)).toHaveAttribute('href', '/tools/deck-box-labels');
   // Everything else is a plain row, not a tile.
-  await expect(page.locator('.tools-more-item')).toHaveCount(4);
+  await expect(page.locator('.tools-more-item')).toHaveCount(5);
+});
+
+test('pack EV sets a pack opened against a pack sealed, and opens packs', async ({ page }) => {
+  await gotoClean(page, '/tools/pack-ev');
+  const band = page.locator('.packev-band').first();
+  // Fixture: a trimmed Twilight Masquerade — $356.09 across 36 packs.
+  await expect(band).toContainText('$9.89');
+  await expect(page.locator('main')).toContainText('Pinsir');
+  await page.getByRole('button', { name: 'Open a pack' }).click();
+  await expect(page.locator('.packev-lastpack span')).toHaveCount(11);
 });
 
 test('a tier list tile carries a placeholder until its art paints', async ({ page }) => {

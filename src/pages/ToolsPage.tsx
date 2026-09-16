@@ -6,6 +6,11 @@ import '../styles/pages/tools.css';
 // what anyone comes here to do.
 const secondary: { href: string; name: string; desc: string }[] = [
   {
+    href: '/tools/pack-ev',
+    name: 'Pack EV',
+    desc: 'Weigh what a pack holds against what the sealed product costs, then rip a few'
+  },
+  {
     href: '/tools/meta-binder',
     name: 'Meta Binder',
     desc: 'Work out which cards you need to own to build the decks people are playing'
