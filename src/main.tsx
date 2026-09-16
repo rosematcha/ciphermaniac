@@ -70,6 +70,7 @@ const MetaBinderPage = lazy(() => import('./pages/MetaBinderPage').then(m => ({ 
 const TierListPage = lazy(() => import('./pages/TierListPage').then(m => ({ default: m.TierListPage })));
 const CardWallPage = lazy(() => import('./pages/CardWallPage').then(m => ({ default: m.CardWallPage })));
 const EarningsPage = lazy(() => import('./pages/EarningsPage').then(m => ({ default: m.EarningsPage })));
+const PackEvPage = lazy(() => import('./pages/PackEvPage').then(m => ({ default: m.PackEvPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const FeedbackPage = lazy(() => import('./pages/FeedbackPage').then(m => ({ default: m.FeedbackPage })));
 // Unlinked reference route: the design system rendered through the real
@@ -126,6 +127,7 @@ render(
       <Route path='/tools/card-wall' component={CardWallPage} />
       <Route path='/tools/tier-list' component={TierListPage} />
       <Route path='/tools/earnings' component={EarningsPage} />
+      <Route path='/tools/pack-ev' component={PackEvPage} />
       {/* The section shipped as /toys before it was made public — keep the old
           paths working for anyone who bookmarked or shared one. */}
       <Route path='/toys' component={() => <Navigate href='/tools' />} />

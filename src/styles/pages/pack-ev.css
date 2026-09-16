@@ -1,0 +1,103 @@
+/* Pack EV (/tools/pack-ev). */
+
+/* ---------- The headline band ----------
+   Same recipe as the player profile's career band: value over label, ink rules
+   top and bottom, hairlines between. The comparison this page exists for — a
+   pack opened against a pack sealed — is two figures side by side, and a box
+   around them would be the card the rest of the site does without. */
+.packev-band {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin: var(--space-4) 0;
+  border-top: var(--border-width) solid var(--border);
+  border-bottom: var(--border-width) solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.packev-stat {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 3px;
+  margin: 0;
+  padding: 11px 16px;
+  border-left: var(--border-width) solid var(--rule);
+}
+.packev-stat:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.packev-stat dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.packev-stat dt {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* What a pack is actually worth is the figure the page is about. */
+.packev-stat.is-lead dd {
+  color: var(--accent-ink);
+}
+
+/* A return under what you paid is the finding, not a warning: the figure takes
+   the negative ink and nothing else changes. */
+.packev-band .is-up {
+  color: var(--positive);
+}
+.packev-band .is-down,
+.data td.is-down {
+  color: var(--negative);
+}
+
+/* The index table doubles as the set picker: five sets is a list worth reading
+   in full, and a row of tabs above the same five names would say it twice. */
+.packev-index tr.is-selected {
+  background: var(--surface-2);
+}
+
+/* Quiet identifiers riding beside a name or a figure: the primary product, a
+   collector number, a slot's card count. */
+.packev-aside {
+  margin-left: var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+/* The slot column groups its outcomes: the rule marks where the next slot
+   starts, so the blank cells below a slot name read as "same slot". */
+.packev-slots tr.is-slot-start td {
+  border-top: var(--border-width) solid var(--rule);
+}
+
+/* ---------- Opener ---------- */
+.packev-opener {
+  display: grid;
+  gap: var(--space-3);
+}
+.packev-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+/* The pack as it comes out of the wrapper, the hits picked out. It is a
+   receipt, not a table — the detail lives below it. */
+.packev-lastpack {
+  color: var(--muted);
+}
+.packev-lastpack .is-hit {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* Where every figure above came from. Sources, not prose. */
+.packev-method {
+  padding-left: var(--space-4);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
