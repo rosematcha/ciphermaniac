@@ -314,3 +314,29 @@ test('a phone on its side puts the map beside the list, with its controls clear'
   });
   expect(hit).toBe('Zoom in');
 });
+
+test('conflicting local times appear once and cannot export a guessed calendar start', async ({ page }) => {
+  await page.route('**/events/locals/v1/cells/*.json*', async route => {
+    const response = await route.fetch();
+    const cell = await response.json();
+    for (const venue of cell.venues) {
+      for (const slot of venue.slots) {
+        slot.time = '';
+        slot.reportedTimes = ['13:00', '14:30'];
+      }
+    }
+    await route.fulfill({ json: cell });
+  });
+  await openLocator(page);
+  const dialog = await filters(page);
+  await dialog.getByRole('button', { name: 'Locals' }).click();
+  await page.keyboard.press('Escape');
+  const locals = page.locator('.el-item', { hasText: 'Weekly local' });
+  await expect(locals).toHaveCount(3);
+  const first = locals.first();
+  await expect(first.locator('.el-time')).toHaveText('Unclear');
+  await first.locator('.el-row').click();
+  await expect(first.locator('.el-facts')).toContainText('Conflicting times');
+  await expect(first.locator('.el-facts')).toContainText('1:00 pm / 2:30 pm');
+  await expect(first.getByRole('button', { name: 'Add to calendar' })).toBeDisabled();
+});

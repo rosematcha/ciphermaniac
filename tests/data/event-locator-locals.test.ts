@@ -231,3 +231,57 @@ test('listed dates expand as listed, less the past', () => {
   const dated = cell({ weekday: 3, time: '19:30', name: 'Local', dates: ['2026-09-09', '2026-09-16', '2026-09-30'] });
   assert.deepEqual(dates([dated], '2026-09-15'), ['2026-09-16', '2026-09-30']);
 });
+
+test('unnamed conflicts group only nearby starts on the same date without chaining', () => {
+  const raw = ['13:00:00', '14:30:00', '16:00:00', '19:00:00'].flatMap(time =>
+    rawLocalSeries('42', WEDNESDAYS, { time })
+  );
+  const { cells } = build(raw);
+  const listed = cells.get('30_-100')?.venues[0]?.slots;
+  assert.deepEqual(
+    listed?.map(slot => [slot.time, slot.reportedTimes]),
+    [
+      ['', ['13:00', '14:30']],
+      ['16:00', undefined],
+      ['19:00', undefined]
+    ]
+  );
+  const expanded = expandLocals([...cells.values()], '2026-09-15', 21);
+  assert.equal(expanded.length, 9);
+  assert.deepEqual(expanded[0]?.reportedTimes, ['13:00', '14:30']);
+  assert.equal(new Set(expanded.map(event => event.id)).size, 9);
+});
+
+test('named events at nearby times remain separate', () => {
+  const raw = ['13:00:00', '14:30:00'].flatMap((time, i) =>
+    WEDNESDAYS.map(date => rawListedLocal(i + 1, { league: '42', date, when: `${date} ${time}` }))
+  );
+  assert.deepEqual(
+    slots(raw).map(slot => slot.time),
+    ['13:00', '14:30']
+  );
+});
+
+test('identical unnamed starts deduplicate without inventing a conflict, unknown starts stay unknown', () => {
+  const raw = ['13:00:00', '13:00:00', '00:00:00'].flatMap(time => rawLocalSeries('42', WEDNESDAYS, { time }));
+  assert.deepEqual(
+    slots(raw).map(slot => [slot.time, slot.reportedTimes]),
+    [
+      ['', undefined],
+      ['13:00', undefined]
+    ]
+  );
+});
+
+test('an aging index never extends a weekly slot beyond the dates the producer actually fetched', () => {
+  assert.deepEqual(expandLocals([cell()], '2026-10-01', 21, '2026-09-15'), []);
+  assert.deepEqual(
+    expandLocals([cell()], '2026-09-29', 21, '2026-09-15').map(event => event.date),
+    ['2026-09-30']
+  );
+  const dated = cell({ weekday: 3, time: '19:30', name: 'Weekly local', dates: ['2026-09-30', '2026-10-14'] });
+  assert.deepEqual(
+    expandLocals([dated], '2026-09-29', 21, '2026-09-15').map(event => event.date),
+    ['2026-09-30']
+  );
+});

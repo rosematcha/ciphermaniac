@@ -266,3 +266,81 @@ test('device location failures come back as a reason the page can explain', asyn
   } as unknown as Geolocation;
   assert.deepEqual(await deviceLocation(working), { lat: 1.5, lon: 2.5 });
 });
+
+test('a corrected locals cell bypasses the cached body when its index hash changes', async () => {
+  const requests: URL[] = [];
+  const venue = {
+    id: '6243233',
+    shop: 'THE POKEHIVE',
+    address: '',
+    city: 'Balcones Heights',
+    region: 'Texas',
+    cc: 'US',
+    lat: 29.4928,
+    lon: -98.552
+  };
+  mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
+    const url = new URL(String(input));
+    requests.push(url);
+    const corrected = url.searchParams.get('hash') === 'corrected';
+    return new Response(
+      JSON.stringify({
+        version: 1,
+        key: '25_-100',
+        venues: [
+          {
+            ...venue,
+            slots: [{ weekday: corrected ? 5 : 6, time: corrected ? '19:30' : '00:30', name: 'Weekly local' }]
+          }
+        ]
+      })
+    );
+  });
+  const listing: LocalsIndex = {
+    version: 1,
+    updatedAt: '2026-09-16T16:51:26Z',
+    source: '',
+    cellDegrees: 5,
+    horizonDays: 7,
+    cells: { '25_-100': { slots: 1, hash: 'old' } },
+    total: 1,
+    venues: 1
+  };
+  const before = await fetchLocalEvents(listing, ['25_-100'], '2026-09-16');
+  listing.cells['25_-100'] = { slots: 1, hash: 'corrected' };
+  const after = await fetchLocalEvents(listing, ['25_-100'], '2026-09-16');
+  await fetchLocalEvents(listing, ['25_-100'], '2026-09-16');
+  assert.deepEqual(
+    before.map(event => [event.date, event.time]),
+    [['2026-09-19', '00:30']]
+  );
+  assert.deepEqual(
+    after.map(event => [event.date, event.time]),
+    [['2026-09-18', '19:30']]
+  );
+  assert.deepEqual(
+    requests.map(url => url.searchParams.get('hash')),
+    ['old', 'corrected']
+  );
+});
+
+test('both indexes escape old HTTP cache entries within five minutes', async () => {
+  let now = Date.parse('2026-09-16T18:00:00Z');
+  mock.method(Date, 'now', () => now);
+  const requested: string[] = [];
+  mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
+    requested.push(String(input));
+    return new Response(JSON.stringify({ version: 1 }));
+  });
+  await fetchLocalsIndex();
+  await fetchLocatorIndex();
+  await fetchLocalsIndex();
+  await fetchLocatorIndex();
+  assert.equal(requested.length, 2, 'repeated reads still share the client cache');
+  now += 300_000;
+  await fetchLocalsIndex();
+  await fetchLocatorIndex();
+  assert.equal(requested.length, 4);
+  assert.notEqual(requested[0], requested[2]);
+  assert.notEqual(requested[1], requested[3]);
+});
