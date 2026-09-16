@@ -29,23 +29,30 @@ html {
 
 main.page {
   flex: 1 0 auto;
+  min-height: 0;
+  transition: min-height 0s 300ms;
   /* `.page` centres itself with `margin: 0 auto`, and auto cross-axis margins
      beat flex stretch, so as a child of the `#root` column it would size to its
      content and jump width as each route loaded. */
   width: 100%;
-  /* Data-heavy routes fill this reservation while their late resources land,
-     keeping the footer outside the shifting part of the first viewport. */
-  min-height: 100dvh;
   /* A hidden tooltip bubble still counts toward scrollable overflow, so one near
      the right edge widened phone layouts past the viewport. `clip` stops that
      without making main a scroll container, which would break sticky headers. */
   overflow-x: clip;
 }
 
-/* Feedback is complete at first paint until a visitor chooses a form type, so
-   it does not need the loading reservation used by data-backed routes. */
-main.page:has(> .feedback-page) {
-  min-height: 0;
+/* Keep the footer outside the shifting viewport while route data is still
+   represented by skeletons. The floor disappears with the loading state. */
+main.page:has(.skeleton) {
+  min-height: 100dvh;
+  transition-delay: 0s;
+}
+main.page + .site-footer {
+  transition: visibility 0s 350ms;
+}
+main.page:has(.skeleton) + .site-footer {
+  visibility: hidden;
+  transition-delay: 0s;
 }
 
 body {

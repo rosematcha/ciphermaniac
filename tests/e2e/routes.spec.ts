@@ -389,14 +389,22 @@ test('the footer keeps its links on their own row without overflowing narrow vie
   expect(footer.scrollWidth).toBeLessThanOrEqual(footer.clientWidth);
 });
 
-test('the footer fits in the viewport on a short page', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await gotoClean(page, '/feedback');
-
-  const footer = page.locator('.site-footer');
-  await expect(footer).toBeInViewport();
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(1000);
-  await expect.poll(() => footer.evaluate(element => Math.round(element.getBoundingClientRect().bottom))).toBe(1000);
+test('short pages fill one viewport without adding empty scroll space', async ({ page }) => {
+  for (const viewport of [
+    { width: 1440, height: 1000 },
+    { width: 390, height: 844 }
+  ]) {
+    await page.setViewportSize(viewport);
+    for (const path of ['/feedback', '/not-a-real-route']) {
+      await gotoClean(page, path);
+      const footer = page.locator('.site-footer');
+      await expect(footer).toBeInViewport();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight)).toBe(viewport.height);
+      await expect
+        .poll(() => footer.evaluate(element => Math.round(element.getBoundingClientRect().bottom)))
+        .toBe(viewport.height);
+    }
+  }
 });
 
 test('the Tools menu closes once the pointer leaves, even after a click', async ({ page }, testInfo) => {
