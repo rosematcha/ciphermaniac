@@ -40,7 +40,8 @@ export function TopNav() {
   return (
     <header class='topnav'>
       <A href='/' class='topnav-word'>
-        Ciphermaniac
+        <img class='topnav-logo' src='/logo.svg' alt='' width='22' height='26' />
+        <span>Ciphermaniac</span>
       </A>
       <nav class='topnav-links' aria-label='Primary'>
         <For each={links}>

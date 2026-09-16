@@ -10,10 +10,12 @@
    ============================================================ */
 
 /* ---------- Layout ---------- */
+.page:has(> .el-layout) {
+  max-width: clamp(1180px, 78vw, 1800px);
+}
 .el-layout {
-  --el-bar-h: 48px;
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  grid-template-columns: 3fr 4fr;
   gap: 20px;
   align-items: start;
   margin-top: var(--space-3);
@@ -59,7 +61,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  height: var(--el-bar-h);
+  height: 48px;
   padding: 0 6px;
   background: var(--bg);
   border-bottom: 1px solid var(--rule);
@@ -432,7 +434,7 @@ body[data-mode='dark'] .lm-tile {
 /* ---------- List ---------- */
 .el-day-head {
   position: sticky;
-  top: calc(var(--topnav-h) + var(--el-bar-h));
+  top: calc(var(--topnav-h) + 48px);
   z-index: 2;
   display: flex;
   align-items: baseline;
@@ -611,17 +613,12 @@ body[data-mode='dark'] .lm-tile {
   }
   .el-layout {
     position: fixed;
-    z-index: 1;
-    top: var(--topnav-h);
-    right: 0;
-    bottom: 0;
-    left: 0;
+    inset: var(--topnav-h) 0 0;
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0;
     margin: 0;
-    background: var(--bg);
   }
   .el-map-slot {
     position: relative;
@@ -670,6 +667,44 @@ body[data-mode='dark'] .lm-tile {
   }
   .el-day-head {
     top: 0;
+  }
+  /* Under 16px, iOS zooms the page when the field takes focus. */
+  .el-search-input {
+    font-size: 16px;
+  }
+  .el-search.open {
+    position: fixed;
+    z-index: 70;
+    inset: var(--topnav-h) 0 0;
+    display: flex;
+    flex-direction: column;
+    padding: 10px var(--space-3);
+    background: var(--bg);
+  }
+  .el-search.open .el-search-row {
+    box-shadow: none;
+  }
+  .el-search.open .el-search-cancel {
+    display: block;
+  }
+  .el-search.open .el-search-panel {
+    flex: 1;
+    max-height: none;
+    margin-top: var(--space-2);
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+  .el-search.open .el-option {
+    min-height: 52px;
+    padding: 10px 6px;
+  }
+  .el-search.open .el-option-label {
+    font-size: var(--text-body);
+  }
+  html.el-search-lock {
+    overflow: hidden;
   }
 }
 
@@ -726,54 +761,6 @@ body[data-mode='dark'] .lm-tile {
   }
   .el-facts dt:not(:first-child) {
     margin-top: var(--space-2);
-  }
-}
-
-/* Search takes the whole screen while open, anywhere the map is too short to
-   hold its list: phones and small tablets. */
-@media (max-width: 900px) {
-  /* Under 16px, iOS zooms the page when the field takes focus. */
-  .el-search-input {
-    font-size: 16px;
-  }
-  .el-search.open {
-    position: fixed;
-    z-index: 70;
-    top: var(--topnav-h);
-    right: 0;
-    bottom: 0;
-    left: 0;
-    display: flex;
-    flex-direction: column;
-    width: auto;
-    padding: 10px var(--space-3);
-    background: var(--bg);
-  }
-  .el-search.open .el-search-row {
-    box-shadow: none;
-  }
-  .el-search.open .el-search-cancel {
-    display: block;
-  }
-  .el-search.open .el-search-panel {
-    flex: 1;
-    max-height: none;
-    margin-top: var(--space-2);
-    padding: 0;
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-    overscroll-behavior: contain;
-  }
-  .el-search.open .el-option {
-    min-height: 52px;
-    padding: 10px 6px;
-  }
-  .el-search.open .el-option-label {
-    font-size: var(--text-body);
-  }
-  html.el-search-lock {
-    overflow: hidden;
   }
 }
 

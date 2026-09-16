@@ -88,9 +88,8 @@
   "shared/data/adapters/labsSource.ts": [
     "max-params:b57b2d6ab0dab59ca961672260eed1c437e452e4888f6d6f44e26d4df3839595:Function 'deriveOutcome' has too many parameters (5). Maximum allowed is 4.",
     "complexity:b57b2d6ab0dab59ca961672260eed1c437e452e4888f6d6f44e26d4df3839595:Function 'deriveOutcome' has a complexity of 16. Maximum allowed is 12.",
-    "max-lines-per-function:8860c1523de4a2f0af60b7afc42205ab180c9c8fa974592cdd198dd844b1afc4:Function 'labsSourceToNormalized' has too many lines (131). Maximum allowed is 100.",
-    "complexity:8860c1523de4a2f0af60b7afc42205ab180c9c8fa974592cdd198dd844b1afc4:Function 'labsSourceToNormalized' has a complexity of 19. Maximum allowed is 12.",
-    "complexity:4d2876cf12f380f372ceaebf0cf1fd31abdd986c7422e561c08ff7a0e7496471:Arrow function has a complexity of 14. Maximum allowed is 12.",
+    "max-lines-per-function:3f1d5e7186bbc64400c1208dac18abb0b4f7f239ce206e0ec865f6bfcaadcab4:Function 'labsSourceToNormalized' has too many lines (106). Maximum allowed is 100.",
+    "complexity:3f1d5e7186bbc64400c1208dac18abb0b4f7f239ce206e0ec865f6bfcaadcab4:Function 'labsSourceToNormalized' has a complexity of 19. Maximum allowed is 12.",
     "complexity:3287638f680aafa3f7879713b243950ef7be7634fae05d496ba9e97e3b5c14cd:Function 'buildDeckCards' has a complexity of 20. Maximum allowed is 12."
   ],
   "shared/data/analysis/archetypeTrends.ts": [

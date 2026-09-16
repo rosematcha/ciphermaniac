@@ -890,9 +890,12 @@ function TournamentRowsSkeleton(props: { count: number }) {
 /**
  * Upcoming row: an external link when Limitless gives us one, otherwise a
  * plain row — never a `#` anchor that opens an empty tab.
+ *
+ * The organizer's own event page (venue, schedule, registration) is more use
+ * than the Limitless tournament stub, so it wins when both exist.
  */
 function UpcomingRow(props: { event: UpcomingEvent }) {
-  const href = () => props.event.limitlessUrl ?? props.event.externalUrl ?? null;
+  const href = () => props.event.externalUrl ?? props.event.limitlessUrl ?? null;
   const cells = (
     <>
       <DateCell date={parseISODate(props.event.date)} />

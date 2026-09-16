@@ -241,6 +241,49 @@ function deriveOutcome(
  * @param options.synonymDb - Synonym database for canonicalization (or null)
  * @returns A normalized event in canonical storage order
  */
+function buildParticipantRecord(
+  standing: LabsSourceStanding
+): Pick<Participant, 'record' | 'opwPct' | 'oopwPct' | 'points'> {
+  return {
+    record: { wins: standing.wins ?? 0, losses: standing.losses ?? 0, ties: standing.ties ?? 0 },
+    opwPct: toFraction100(standing.opw),
+    oopwPct: toFraction100(standing.oopw),
+    points: standing.points ?? null
+  };
+}
+
+function buildParticipant(
+  standing: LabsSourceStanding,
+  idByTp: Map<string, string>,
+  deckIdByParticipant: Map<string, string>
+): Participant {
+  const participantId = idByTp.get(`${standing.tpId}`)!;
+  const dropped = standing.dropped === true;
+  const icons = Array.isArray(standing.icons) ? standing.icons : [];
+  const dropRound = dropped ? (standing.dropRound ?? null) : null;
+  return {
+    participantId,
+    playerRef: standing.playerId ?? null,
+    name: standing.name,
+    country: standing.country ?? null,
+    placement: standing.placement ?? null,
+    ...buildParticipantRecord(standing),
+    icons,
+    dropRound,
+    labsDeckId: standing.labsDeckId ?? null,
+    deckName: standing.deckName ?? null,
+    flags: {
+      madePhase2: standing.madePhase2 === true,
+      madeTopCut: standing.madeTopCut === true,
+      dropped,
+      dqed: standing.dqed === true,
+      late: standing.late === true,
+      decklistPublished: standing.decklistPublished === true
+    },
+    deckId: deckIdByParticipant.get(participantId) ?? null
+  };
+}
+
 export function labsSourceToNormalized(
   source: LabsSourceEvent,
   options: { synonymDb?: SynonymDatabase | null } = {}
@@ -283,34 +326,9 @@ export function labsSourceToNormalized(
     });
   decks.sort((a, b) => (a.deckId < b.deckId ? -1 : a.deckId > b.deckId ? 1 : 0));
 
-  const participants: Participant[] = source.standings.map(standing => {
-    const participantId = idByTp.get(`${standing.tpId}`)!;
-    const dropped = standing.dropped === true;
-    return {
-      participantId,
-      playerRef: standing.playerId ?? null,
-      name: standing.name,
-      country: standing.country ?? null,
-      placement: standing.placement ?? null,
-      record: { wins: standing.wins ?? 0, losses: standing.losses ?? 0, ties: standing.ties ?? 0 },
-      opwPct: toFraction100(standing.opw),
-      oopwPct: toFraction100(standing.oopw),
-      points: standing.points ?? null,
-      icons: Array.isArray(standing.icons) ? standing.icons : [],
-      dropRound: dropped ? (standing.dropRound ?? null) : null,
-      labsDeckId: standing.labsDeckId ?? null,
-      deckName: standing.deckName ?? null,
-      flags: {
-        madePhase2: standing.madePhase2 === true,
-        madeTopCut: standing.madeTopCut === true,
-        dropped,
-        dqed: standing.dqed === true,
-        late: standing.late === true,
-        decklistPublished: standing.decklistPublished === true
-      },
-      deckId: deckIdByParticipant.get(participantId) ?? null
-    };
-  });
+  const participants: Participant[] = source.standings
+    .map(standing => buildParticipant(standing, idByTp, deckIdByParticipant))
+    .sort((a, b) => (a.participantId < b.participantId ? -1 : a.participantId > b.participantId ? 1 : 0));
 
   const matches: Match[] = (source.matches ?? []).map(row => {
     const p1 = idByTp.get(`${row.p1Id}`);

@@ -88,11 +88,19 @@
   z-index: 50;
 }
 .topnav-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.04em;
   color: var(--fg);
   transition: color var(--ms-fast) var(--ease-base);
+}
+.topnav-logo {
+  display: block;
+  width: 22px;
+  height: 26px;
 }
 .topnav-word:hover {
   color: var(--accent);
