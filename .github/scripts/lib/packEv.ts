@@ -13,7 +13,7 @@
  * @module .github/scripts/lib/packEv
  */
 
-import { computePackEv, selectPool } from '../../../shared/packEv/ev.ts';
+import { computePackEv, resolveRef, selectPool } from '../../../shared/packEv/ev.ts';
 import type {
   FoilPattern,
   PackCard,
@@ -39,10 +39,8 @@ const PRINTING_BY_SUBTYPE: Record<string, Printing> = {
   'Reverse Holofoil': 'reverse'
 };
 
-const PATTERN_BY_SUFFIX: { suffix: string; pattern: FoilPattern }[] = [
-  { suffix: '(Poke Ball Pattern)', pattern: 'pokeball' },
-  { suffix: '(Master Ball Pattern)', pattern: 'masterball' }
-];
+/** A trailing parenthetical: how TCGplayer names a variant product. */
+const VARIANT_SUFFIX = /\s*\(([^)]+)\)\s*$/;
 
 export interface TcgcsvExtendedField {
   name: string;
@@ -121,10 +119,7 @@ function buildPriceIndex(prices: TcgcsvPrice[]): PriceIndex {
  * the name a pull is rendered with.
  */
 export function cardDisplayName(rawName: string, number: string): string {
-  let name = rawName;
-  for (const { suffix } of PATTERN_BY_SUFFIX) {
-    name = name.replace(suffix, '');
-  }
+  let name = rawName.replace(VARIANT_SUFFIX, '');
   const numbered = ` - ${number}`;
   if (name.endsWith(numbered)) {
     name = name.slice(0, -numbered.length);
@@ -132,8 +127,20 @@ export function cardDisplayName(rawName: string, number: string): string {
   return name.trim();
 }
 
-function patternOf(name: string): FoilPattern | undefined {
-  return PATTERN_BY_SUFFIX.find(entry => name.includes(entry.suffix))?.pattern;
+/**
+ * The variant a product is, slugged from its parenthetical: "(Poke Ball
+ * Pattern)" is `poke-ball-pattern`, "(151 Metal Card)" is `151-metal-card`.
+ * Any parenthetical counts. Ascended Heroes alone has seven ball and symbol
+ * patterns, and a variant misread as a base print would join every base pool.
+ */
+export function patternOf(name: string): FoilPattern | undefined {
+  const match = VARIANT_SUFFIX.exec(name);
+  return match
+    ? match[1]
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+    : undefined;
 }
 
 /** Every product with a collector number and a rarity — i.e. the cards. */
@@ -191,6 +198,32 @@ function assertPoolsResolve(set: PackEvSetConfig, cards: PackCard[]): void {
   }
 }
 
+/**
+ * Fail the run when a special pack names something the set doesn't have: a
+ * card that isn't in the group, a slot that doesn't exist, an empty pool. A god
+ * pack valued as bulk would understate the set without a trace.
+ */
+function assertSpecialPacksResolve(set: PackEvSetConfig, cards: PackCard[]): void {
+  const slotLabels = new Set(set.slots.map(slot => slot.label));
+  for (const special of set.specialPacks ?? []) {
+    const where = `${set.code}: ${special.label}`;
+    const missingSlot = special.keepSlots.find(label => !slotLabels.has(label));
+    if (missingSlot) {
+      throw new Error(`${where} keeps a slot the set has no "${missingSlot}" for`);
+    }
+    for (const draw of special.draws) {
+      const refs = draw.kind === 'cards' ? draw.cards : draw.kind === 'oneOf' ? draw.groups.flat() : [];
+      const missing = refs.find(ref => !resolveRef(cards, ref));
+      if (missing) {
+        throw new Error(`${where} names ${missing.name} (${missing.rarity}), which is not in the set`);
+      }
+      if (draw.kind === 'random' && selectPool(cards, draw.pool).length === 0) {
+        throw new Error(`${where} draws from an empty ${draw.pool.rarities.join(' / ')} pool`);
+      }
+    }
+  }
+}
+
 export interface SetSources {
   products: TcgcsvProduct[];
   prices: TcgcsvPrice[];
@@ -208,7 +241,9 @@ export function buildSetPayload(
   const prices = buildPriceIndex(sources.prices);
   const cards = toCards(sources.products, prices);
   assertPoolsResolve(set, cards);
-  const inputs = { cards, slots: set.slots, bulk: config.bulk, threshold: config.threshold };
+  assertSpecialPacksResolve(set, cards);
+  const specialPacks = set.specialPacks ?? [];
+  const inputs = { cards, slots: set.slots, specialPacks, bulk: config.bulk, threshold: config.threshold };
   return {
     code: set.code,
     name: set.name,
@@ -220,6 +255,7 @@ export function buildSetPayload(
     threshold: config.threshold,
     bulk: config.bulk,
     slots: set.slots,
+    ...(specialPacks.length ? { specialPacks } : {}),
     cards,
     sealed: toSealed(set, sources.products, prices),
     ev: computePackEv(inputs)

@@ -9,8 +9,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { cardValue, computePackEv, resolveChances, selectPool, topCardContributions } from '../../shared/packEv/ev.ts';
-import type { BulkRates, PackCard, PackSlot } from '../../shared/packEv/types.ts';
+import {
+  cardValue,
+  computePackEv,
+  refTerms,
+  resolveChances,
+  selectPool,
+  SPECIAL_PACKS_LABEL,
+  topCardContributions
+} from '../../shared/packEv/ev.ts';
+import type { BulkRates, PackCard, PackSlot, SpecialPack } from '../../shared/packEv/types.ts';
 
 const BULK: BulkRates = { commonUncommon: 0.035, reverse: 0.05, rare: 0.05, doubleRare: 0.6, hit: 0.05 };
 
@@ -132,4 +140,79 @@ test('a print both reverse slots can draw is one row, carrying both slots', () =
   // Half of each slot's draws, twice over.
   assert.equal(rows[0].chance, 1);
   assert.equal(rows[0].contribution, 12);
+});
+
+test('a rate can be quoted as 1 in N', () => {
+  assert.deepEqual(resolveChances([{ label: 'SIR', odds: 80 }, { label: 'Reverse holo' }]), [1 / 80, 1 - 1 / 80]);
+});
+
+const ORDINARY = 4.035 + 0.2 + 0.0495 + 0.035;
+
+test('a special pack keeps its named slots, adds its cards, and counts at the margin', () => {
+  const godPack: SpecialPack = {
+    label: 'God pack',
+    odds: 100,
+    keepSlots: ['Energy'],
+    draws: [
+      {
+        kind: 'cards',
+        cards: [
+          { name: 'Card 4', rarity: 'Hyper Rare' },
+          { name: 'Card 1', rarity: 'Common' }
+        ]
+      }
+    ]
+  };
+  const ev = computePackEv({ ...INPUTS, specialPacks: [godPack] });
+  const special = ev.slots[ev.slots.length - 1];
+  assert.equal(special.label, SPECIAL_PACKS_LABEL);
+  // Energy kept at bulk, a $30 hyper rare, and a bulk common.
+  assert.equal(special.outcomes[0].averageValue.toFixed(4), (0.035 + 30 + 0.035).toFixed(4));
+  assert.equal(special.outcomes[0].chance, 0.01);
+  // The pack's EV moves by the difference a god pack makes, not by its whole value.
+  assert.equal(ev.perPack.toFixed(6), (ORDINARY + 0.01 * (30.07 - ORDINARY)).toFixed(6));
+});
+
+test('a demigod pack averages its groups, and a random draw counts every card it takes', () => {
+  const demigod: SpecialPack = {
+    label: 'Demigod pack',
+    odds: 1000,
+    keepSlots: [],
+    draws: [
+      {
+        kind: 'oneOf',
+        groups: [[{ name: 'Card 4', rarity: 'Hyper Rare' }], [{ name: 'Card 5', rarity: 'Hyper Rare' }]]
+      }
+    ]
+  };
+  const lucky: SpecialPack = {
+    label: 'God pack',
+    odds: 500,
+    keepSlots: [],
+    draws: [{ kind: 'random', count: 2, pool: { rarities: ['Hyper Rare'], printing: 'holofoil', bulk: 'hit' } }]
+  };
+  const ev = computePackEv({ ...INPUTS, specialPacks: [demigod, lucky] });
+  const [groupRow, randomRow] = ev.slots[ev.slots.length - 1].outcomes;
+  assert.equal(groupRow.averageValue, 20);
+  assert.equal(randomRow.averageValue, 40);
+});
+
+test('special-pack cards join the card list at the special pack rate, merged with their slot rows', () => {
+  const godPack: SpecialPack = {
+    label: 'God pack',
+    odds: 100,
+    keepSlots: [],
+    draws: [{ kind: 'cards', cards: [{ name: 'Card 4', rarity: 'Hyper Rare' }] }]
+  };
+  const rows = topCardContributions({ ...INPUTS, specialPacks: [godPack] }, 10);
+  const chase = rows.find(row => row.card.id === 4);
+  // Half the 1% slot outcome, plus the 1% god pack.
+  assert.equal(chase?.chance.toFixed(4), (0.005 + 0.01).toFixed(4));
+});
+
+test('named cards are priced by rarity: commons plain, hits holo', () => {
+  assert.deepEqual(refTerms('Common'), { printing: 'normal', bulk: 'commonUncommon' });
+  assert.deepEqual(refTerms('Rare'), { printing: 'holofoil', bulk: 'rare' });
+  assert.deepEqual(refTerms('Double Rare'), { printing: 'holofoil', bulk: 'doubleRare' });
+  assert.deepEqual(refTerms('Special Illustration Rare'), { printing: 'holofoil', bulk: 'hit' });
 });

@@ -15,6 +15,7 @@ import {
   buildSetPayload,
   cardDisplayName,
   PACK_EV_INDEX_KEY,
+  patternOf,
   runPackEv,
   type TcgcsvPrice,
   type TcgcsvProduct
@@ -89,6 +90,67 @@ test('the collector number and the foil-pattern suffix leave the display name', 
   assert.equal(cardDisplayName('Pinsir - 003/167', '003/167'), 'Pinsir');
   assert.equal(cardDisplayName('Exeggcute (Poke Ball Pattern)', '001/131'), 'Exeggcute');
   assert.equal(cardDisplayName('Tangela', '001/167'), 'Tangela');
+  assert.equal(cardDisplayName('Psyduck (Dusk Ball)', '051/217'), 'Psyduck');
+});
+
+test('any parenthetical is a variant, so no variant joins a base pool', () => {
+  assert.equal(patternOf('Exeggcute (Poke Ball Pattern)'), 'poke-ball-pattern');
+  assert.equal(patternOf('Psyduck (Energy Symbol Pattern)'), 'energy-symbol-pattern');
+  assert.equal(patternOf('Mew ex (151 Metal Card)'), '151-metal-card');
+  assert.equal(patternOf('Tangela'), undefined);
+});
+
+test('a special pack that names a card the set lacks fails the run', () => {
+  const godPack = {
+    label: 'God pack',
+    odds: 2000,
+    keepSlots: ['Rare slot'],
+    draws: [{ kind: 'cards' as const, cards: [{ name: 'Greninja ex', rarity: 'Special Illustration Rare' }] }]
+  };
+  // Resolves: Greninja ex is in the group, under its display name.
+  const payload = buildSetPayload(CONFIG, { ...SET, specialPacks: [godPack] }, SOURCES, 'now');
+  assert.equal(payload.specialPacks?.length, 1);
+  assert.throws(
+    () =>
+      buildSetPayload(
+        CONFIG,
+        {
+          ...SET,
+          specialPacks: [{ ...godPack, draws: [{ kind: 'cards', cards: [{ name: 'Umbreon ex', rarity: 'SIR' }] }] }]
+        },
+        SOURCES,
+        'now'
+      ),
+    /Umbreon ex/
+  );
+  assert.throws(
+    () => buildSetPayload(CONFIG, { ...SET, specialPacks: [{ ...godPack, keepSlots: ['Energy'] }] }, SOURCES, 'now'),
+    /Energy/
+  );
+  assert.throws(
+    () =>
+      buildSetPayload(
+        CONFIG,
+        {
+          ...SET,
+          specialPacks: [
+            {
+              ...godPack,
+              draws: [
+                {
+                  kind: 'random',
+                  count: 3,
+                  pool: { rarities: ['Mega Attack Rare'], printing: 'holofoil', bulk: 'hit' }
+                }
+              ]
+            }
+          ]
+        },
+        SOURCES,
+        'now'
+      ),
+    /Mega Attack Rare/
+  );
 });
 
 test('cards are the products with a number and a rarity, priced per printing', () => {
@@ -99,7 +161,7 @@ test('cards are the products with a number and a rarity, priced per printing', (
   );
   const tangela = payload.cards[0];
   assert.deepEqual(tangela.prices, { normal: 0.15, reverse: 0.19 });
-  assert.equal(payload.cards[2].pattern, 'pokeball');
+  assert.equal(payload.cards[2].pattern, 'poke-ball-pattern');
   assert.equal(payload.cards[0].pattern, undefined);
   // A null market price is not a printing.
   assert.deepEqual(payload.cards[3].prices, { holofoil: 352.38 });

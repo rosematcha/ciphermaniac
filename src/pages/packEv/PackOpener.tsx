@@ -34,14 +34,9 @@ const EMPTY: OpenedState = { packs: 0, value: 0, hits: [] };
  * next to the one you just opened.
  */
 export function PackOpener(props: PackOpenerProps) {
-  const pack = createMemo(() =>
-    preparePack({
-      cards: props.payload.cards,
-      slots: props.payload.slots,
-      bulk: props.payload.bulk,
-      threshold: props.payload.threshold
-    })
-  );
+  // The whole payload, not a hand-picked subset of it: a field left out here
+  // (special packs, once) silently opens a different pack than the table prices.
+  const pack = createMemo(() => preparePack(props.payload));
   const [opened, setOpened] = createSignal<OpenedState>(EMPTY);
   const [last, setLast] = createSignal<Pull[]>([]);
   const [spread, setSpread] = createSignal<ReturnType<typeof simulateSpread> | null>(null);
