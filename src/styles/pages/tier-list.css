@@ -22,7 +22,6 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   overflow: hidden;
 }
 .tl-row {
@@ -233,10 +232,13 @@ body.tl-rowdrag {
   transition: none;
   cursor: grabbing;
   will-change: transform;
-  filter: drop-shadow(4px 5px 0 var(--border));
 }
-body[data-mode='dark'] .tl-item.tl-dragging {
-  filter: drop-shadow(4px 5px 0 rgba(0, 0, 0, 0.55));
+/* The chip in hand takes the accent edge and fill rather than a cast shadow,
+   which is also what marks the slot it will drop into. `transform` belongs to
+   the drag maths, so the cue has to be colour. */
+.tl-item.tl-dragging > .tl-ico {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
 }
 /* The gap the drop will land in. */
 .tl-slot {
@@ -254,9 +256,6 @@ body.tl-drag-active .tl-item:not(.tl-dragging) {
 }
 
 /* item — sprite chip */
-/* The offset shadow is the system's panel signature. Repeating it on forty
-   tiles turned the tray into a sticker sheet, so tiles keep the ink border
-   and give the shadow back to the panels that own it. */
 .tl-ico {
   display: flex;
   align-items: center;
@@ -362,14 +361,13 @@ body:not(.tl-labels) .tl-ico {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
 }
 .tl-tray h4 {
   margin: 0;
   padding: 7px 12px;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   color: var(--muted);
   font-weight: 600;
   border-bottom: 1px solid var(--rule);
@@ -429,7 +427,6 @@ body:not(.tl-labels) .tl-ico {
   color: var(--fg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-1);
   cursor: pointer;
 }
 .tl-btn.primary {
@@ -439,9 +436,6 @@ body:not(.tl-labels) .tl-ico {
 .tl-btn.warn {
   border-color: var(--negative);
   color: var(--negative);
-}
-body[data-mode='dark'] .tl-btn {
-  box-shadow: var(--shadow-1);
 }
 
 /* On/off in this app is a `.chip`: filled with the accent when it is on. The
@@ -477,7 +471,7 @@ body[data-mode='dark'] .tl-btn {
   opacity: 1;
 }
 .tl-edit:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
   border-color: var(--accent);
 }
 .tl-edit svg {
@@ -497,7 +491,7 @@ body[data-mode='dark'] .tl-btn {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: var(--accent);
+  color: var(--accent-ink);
   background: none;
   border: 0;
   cursor: pointer;
@@ -513,7 +507,7 @@ body[data-mode='dark'] .tl-btn {
 .tl-legend {
   font-size: 10.5px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   color: var(--muted);
   font-weight: 600;
 }
@@ -574,7 +568,6 @@ body[data-mode='dark'] .tl-btn {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
 }
 .tl-pop header {
   display: flex;
@@ -584,7 +577,7 @@ body[data-mode='dark'] .tl-btn {
 .tl-pop header b {
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   color: var(--muted);
 }
 .tl-pop .x {
@@ -706,10 +699,10 @@ body[data-mode='dark'] .tl-btn {
   border: 1px solid var(--rule);
   background: var(--surface-2);
 }
-/* No dark-mode overrides for these: `--shadow-1` already resolves to the
-   offset on `--surface-2` there, and `--border` is the border. Restating both
-   by hand is how the popover and the typeahead ended up outlined in `--muted`
-   — #a4998a against a #25221f fill, which reads as a white halo, not an edge. */
+/* No dark-mode overrides for these: `--border` already carries the mode's
+   edge. Restating it by hand is how the popover and the typeahead ended up
+   outlined in `--muted` — #a4998a against a #25221f fill, which reads as a
+   white halo, not an edge. */
 
 .tl-list {
   position: absolute;
@@ -725,7 +718,6 @@ body[data-mode='dark'] .tl-btn {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
 }
 .tl-list[hidden] {
   display: none;
@@ -763,7 +755,7 @@ body[data-mode='dark'] .tl-btn {
 }
 .tl-list li b mark {
   background: none;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 700;
 }
 .tl-list li span {
@@ -787,7 +779,6 @@ body[data-mode='dark'] .tl-btn {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
 }
 .tl-pal i {
   display: block;
@@ -819,7 +810,7 @@ body[data-mode='dark'] .tl-btn {
     border-color var(--ms-fast);
 }
 .tl-add:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
   border-color: var(--accent);
 }
 
@@ -1261,7 +1252,6 @@ body[data-mode='dark'] .tl-btn {
   object-fit: contain;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
   background: var(--surface);
 }
 .tl-shot-bar {

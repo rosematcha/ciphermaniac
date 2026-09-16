@@ -24,7 +24,7 @@
 .trends-dir {
   margin: 0 0 8px;
   font-size: 10.5px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-micro);
   text-transform: uppercase;
   font-weight: 700;
   color: var(--muted);
@@ -346,7 +346,7 @@
   text-decoration: none;
 }
 .trends-deck-head h3 a:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .trends-deck-usage {
   margin-left: auto;

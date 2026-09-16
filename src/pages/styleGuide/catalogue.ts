@@ -16,7 +16,7 @@ export interface TokenSpec {
   note?: string;
 }
 
-export type TokenKind = 'color' | 'shape' | 'space' | 'shadow' | 'motion' | 'value';
+export type TokenKind = 'color' | 'shape' | 'space' | 'motion' | 'value';
 
 export interface TokenGroup {
   title: string;
@@ -49,8 +49,14 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   {
     title: 'Accent',
     kind: 'color',
-    note: 'Burnt orange, held to roughly 10% of any screen. Links, meaningful fills, active state.',
-    tokens: [{ name: '--accent' }, { name: '--accent-hover' }, { name: '--accent-fg', note: 'Text on an accent fill' }]
+    note: 'Marigold, held to roughly 10% of any screen. Two values: --accent fills, draws borders and marks state; --accent-ink is the same hue for anything set as words, dark enough to clear 4.5:1 on every light surface. In dark mode they are the same colour.',
+    tokens: [
+      { name: '--accent', note: 'Fills, borders, bars, active state' },
+      { name: '--accent-hover' },
+      { name: '--accent-ink', note: 'Any accent used as text' },
+      { name: '--accent-ink-hover' },
+      { name: '--accent-fg', note: 'Text on an accent fill' }
+    ]
   },
   {
     title: 'Sentiment',
@@ -87,7 +93,8 @@ export const TOKEN_GROUPS: TokenGroup[] = [
       { name: '--text-body', note: 'Page body, h3' },
       { name: '--text-lg', note: 'h2' },
       { name: '--text-xl', note: 'Wordmark' },
-      { name: '--text-2xl', note: 'KPI value' }
+      { name: '--text-2xl', note: 'KPI value' },
+      { name: '--tracking-micro', note: 'Uppercase micro-label tracking' }
     ]
   },
   {
@@ -101,16 +108,6 @@ export const TOKEN_GROUPS: TokenGroup[] = [
       { name: '--space-5' },
       { name: '--space-6' },
       { name: '--section-gap', note: 'Between top-level sections' }
-    ]
-  },
-  {
-    title: 'Elevation',
-    kind: 'shadow',
-    note: 'A flat offset in ink — no blur, ever. Only --shadow-ink changes between modes; in dark it lands on the next surface tier instead of on ink.',
-    tokens: [
-      { name: '--shadow-1', note: 'At rest' },
-      { name: '--shadow-2', note: 'Hover / raised' },
-      { name: '--shadow-press', note: 'Active' }
     ]
   },
   {
@@ -162,7 +159,7 @@ export const RULINGS: Ruling[] = [
   {
     element: 'Eyebrow line',
     found:
-      'The home page latest-event callout opens with .callout-eyebrow — a 10.5px all-caps label sitting above its heading, tracked at 0.14em. The house rules forbid eyebrow lines, and it is now the only uppercase label off the 0.08em recipe.',
+      'The home page latest-event callout opens with .callout-eyebrow — a 10.5px all-caps label sitting above its heading, tracked at 0.14em. The house rules forbid eyebrow lines, and it is now the only uppercase label off the --tracking-micro recipe.',
     ruling:
       'Unresolved. The rule says remove it; the callout may need something in that slot to say what it is. Decide before the callout is touched again.',
     status: 'open',
@@ -171,9 +168,9 @@ export const RULINGS: Ruling[] = [
   {
     element: 'Blurred shadow',
     found:
-      'The fanned archetype thumbnail draws a soft blurred shadow under each card. It is the only blur left in the codebase; everything else is a flat offset.',
+      'The fanned archetype thumbnail draws a soft blurred shadow under each card. It is now the only box-shadow left in the codebase outside the focus ring.',
     ruling:
-      'Unresolved. It reads as physical depth on a fan of real cards, which is arguably the point — but it is the lone exception to the signature.',
+      'Unresolved. It reads as physical depth on a fan of real cards, which is arguably the point — but the system otherwise draws no shadows at all.',
     status: 'open',
     sites: ['components.css:683 (.card-stack-slot)']
   },

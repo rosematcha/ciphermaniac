@@ -35,7 +35,7 @@
   font-weight: 600;
 }
 .tools-more-item:hover .tools-more-name {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .tools-more-desc {
   font-size: 13px;

@@ -41,15 +41,6 @@
   white-space: nowrap;
 }
 
-/* Tech-tab caveat note, shown beside the tab controls. */
-.arche-tab-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
 /* Deck-count stat on the gallery card. Renamed from the orphaned `.arche-wr`
    in components.css (see cleanup note); mirrors those rules so HomePage cards,
    which pull in this sheet via ArchetypeCard, keep the muted treatment. */

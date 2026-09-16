@@ -74,9 +74,6 @@ function TokenSwatch(props: { kind: TokenKind; name: string }) {
       <Match when={props.kind === 'space'}>
         <span class='stg-swatch-space' style={{ width: `var(${props.name})` }} />
       </Match>
-      <Match when={props.kind === 'shadow'}>
-        <span class='stg-swatch-shadow' style={{ 'box-shadow': `var(${props.name})` }} />
-      </Match>
       <Match when={props.kind === 'motion'}>
         <span class='stg-swatch-motion' />
       </Match>
@@ -330,8 +327,8 @@ function DataSpecimens() {
 function SurfaceSpecimens() {
   return (
     <div class='stg-grid'>
-      <Spec selector='.stats-panel' rule='1px ink border, --radius-md, --shadow-1. Hairlines inside.' wide>
-        <div class='stats-panel'>
+      <Spec selector='.stats-list' rule='Hairline-ruled rows, label left, value right.' wide>
+        <div class='stats-list'>
           <div class='stat-row'>
             <span class='stat-label'>Decks</span>
             <span class='stat-value num'>842</span>
