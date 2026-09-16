@@ -12,7 +12,7 @@ html, body {
   overscroll-behavior-y: contain;
 }
 
-body {
+#root {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;

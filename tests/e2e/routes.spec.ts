@@ -396,6 +396,7 @@ test('the footer fits in the viewport on a short page', async ({ page }) => {
   const footer = page.locator('.site-footer');
   await expect(footer).toBeInViewport();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(1000);
+  await expect.poll(() => footer.evaluate(element => Math.round(element.getBoundingClientRect().bottom))).toBe(1000);
 });
 
 test('the Tools menu closes once the pointer leaves, even after a click', async ({ page }, testInfo) => {
