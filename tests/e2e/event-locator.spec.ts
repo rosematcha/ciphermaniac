@@ -97,6 +97,26 @@ test('asks for device location on first open and lists what is near it, by day',
   await expect(page.locator('.lm-credit')).toHaveText('© OpenStreetMap contributors');
 });
 
+test('the desktop workspace grows fluidly on a wide display', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'desktop workspace behavior');
+  await page.setViewportSize({ width: 2000, height: 1000 });
+  await openLocator(page);
+
+  const layout = await page.locator('.page').evaluate(element => {
+    const map = element.querySelector<HTMLElement>('.el-map-slot')!.getBoundingClientRect();
+    const results = element.querySelector<HTMLElement>('.el-results')!.getBoundingClientRect();
+    return {
+      pageWidth: element.getBoundingClientRect().width,
+      mapWidth: map.width,
+      mapShare: map.width / (map.width + results.width)
+    };
+  });
+
+  expect(layout.pageWidth).toBeCloseTo(1560, 0);
+  expect(layout.mapWidth).toBeGreaterThan(600);
+  expect(layout.mapShare).toBeCloseTo(3 / 7, 2);
+});
+
 test('without device location it shows the edge estimate, marked approximate', async ({ context, page }) => {
   await context.clearPermissions();
   await page.goto('/events', { waitUntil: 'load' });
