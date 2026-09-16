@@ -389,6 +389,16 @@ test('the footer keeps its links on their own row without overflowing narrow vie
   expect(footer.scrollWidth).toBeLessThanOrEqual(footer.clientWidth);
 });
 
+test('the footer fits in the viewport on a short page', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await gotoClean(page, '/feedback');
+
+  const footer = page.locator('.site-footer');
+  await expect(footer).toBeInViewport();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(1000);
+  await expect.poll(() => footer.evaluate(element => Math.round(element.getBoundingClientRect().bottom))).toBe(1000);
+});
+
 test('the Tools menu closes once the pointer leaves, even after a click', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
