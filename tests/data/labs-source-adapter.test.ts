@@ -91,6 +91,17 @@ test('adapter output passes the contract validator', () => {
   assert.deepStrictEqual(result.ok ? [] : result.errors, []);
 });
 
+test('participants are canonicalized independently of standings order', () => {
+  const input = source();
+  input.standings.reverse();
+  const event = labsSourceToNormalized(input);
+  assert.deepStrictEqual(
+    event.participants.map(participant => participant.participantId),
+    [...event.participants.map(participant => participant.participantId)].sort()
+  );
+  assert.ok(validateNormalizedEvent(event).ok);
+});
+
 test('opw fraction is converted to a 0-100 percentage', () => {
   const event = labsSourceToNormalized(source());
   const alice = event.participants.find(p => p.name === 'Alice');
