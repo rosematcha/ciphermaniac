@@ -288,6 +288,9 @@ test('the tools index features the tier list, label maker and pack EV as tiles',
 
 test('pack EV sets a pack opened against a pack sealed, and opens packs', async ({ page }) => {
   await gotoClean(page, '/tools/pack-ev');
+  // Nothing is open until a set is picked.
+  await expect(page.locator('.packev-band')).toHaveCount(0);
+  await page.locator('.packev-index tbody tr').first().click();
   const band = page.locator('.packev-band').first();
   // Fixture: a trimmed Twilight Masquerade, whose $9.09 single undercuts the box's $9.89 a pack.
   await expect(band).toContainText('$9.09');

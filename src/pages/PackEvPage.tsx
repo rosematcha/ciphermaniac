@@ -19,7 +19,7 @@ function settledEmpty<T>(resource: Resource<T | null>): boolean {
 }
 
 /**
- * Pack EV (/tools/pack-ev).
+ * Pack Value Simulator (/tools/pack-ev).
  *
  * Answers one question per set: is a pack worth more opened or sealed? The
  * daily job publishes the card list, the market prices and the published pull
@@ -31,14 +31,13 @@ export function PackEvPage() {
   const [params, setParams] = useSearchParams<{ set?: string }>();
 
   onMount(() => {
-    document.title = 'Pack EV — Ciphermaniac';
+    document.title = 'Pack Value Simulator — Ciphermaniac';
   });
 
   const sets = () => resolved(index)?.sets ?? [];
   const selected = createMemo(() => {
     const wanted = params.set?.toUpperCase();
-    const rows = sets();
-    return rows.find(row => row.code === wanted)?.code ?? rows[0]?.code ?? null;
+    return sets().find(row => row.code === wanted)?.code ?? null;
   });
   const [payload] = createResource(selected, fetchPackEvSet);
   const detail = () => resolved(payload);
@@ -46,7 +45,7 @@ export function PackEvPage() {
   return (
     <>
       <section class='hero'>
-        <h1>Pack EV</h1>
+        <h1>Pack Value Simulator</h1>
         <div class='hero-meta'>
           <Show when={resolved(index)}>
             {loaded => <>Market prices from TCGplayer, {priceDate(loaded().generatedAt)}</>}
@@ -71,82 +70,76 @@ export function PackEvPage() {
               <thead>
                 <tr>
                   <th>Set</th>
-                  <th class='num'>A pack, opened</th>
-                  <th class='num'>A pack, sealed</th>
-                  <th class='num'>Return</th>
+                  <th class='num'>Market</th>
+                  <th class='num'>Avg. return</th>
                 </tr>
               </thead>
               <tbody>
                 <For each={sets()}>
-                  {row => (
-                    <tr
-                      class='is-link'
-                      classList={{ 'is-selected': row.code === selected() }}
-                      aria-current={row.code === selected() ? 'true' : undefined}
-                      tabIndex={0}
-                      onClick={() => setParams({ set: row.code }, { replace: true })}
-                      onKeyDown={event => {
-                        if (event.key === 'Enter') {
-                          setParams({ set: row.code }, { replace: true });
-                        }
-                      }}
-                    >
-                      <td>
-                        <span class='cardname'>{row.name}</span>
-                        <span class='packev-aside'>{row.cheapestLabel}</span>
-                      </td>
-                      <td class='num'>{money(row.evPerPack)}</td>
-                      <td class='num'>{row.costPerPack === null ? '—' : money(row.costPerPack)}</td>
-                      <td
-                        class='num'
-                        classList={{ 'is-down': (returnPercent(row.evPerPack, row.costPerPack) ?? 100) < 100 }}
+                  {row => {
+                    const percent = () => returnPercent(row.evPerPack, row.costPerPack);
+                    return (
+                      <tr
+                        class='is-link'
+                        classList={{ 'is-selected': row.code === selected() }}
+                        aria-current={row.code === selected() ? 'true' : undefined}
+                        tabIndex={0}
+                        onClick={() => setParams({ set: row.code }, { replace: true })}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter') {
+                            setParams({ set: row.code }, { replace: true });
+                          }
+                        }}
                       >
-                        {returnPercent(row.evPerPack, row.costPerPack) === null
-                          ? '—'
-                          : `${returnPercent(row.evPerPack, row.costPerPack)}%`}
-                      </td>
-                    </tr>
-                  )}
+                        <td class='cardname'>{row.name}</td>
+                        <td class='num'>{row.costPerPack === null ? '—' : money(row.costPerPack)}</td>
+                        <td class='num' classList={{ 'is-down': (percent() ?? 100) < 100 }}>
+                          {percent() === null ? '—' : `${percent()}%`}
+                        </td>
+                      </tr>
+                    );
+                  }}
                 </For>
               </tbody>
             </table>
           </div>
         </Section>
 
-        <Switch fallback={<Skeleton width='100%' height='320px' />}>
-          <Match when={settledEmpty(payload)}>
-            <EmptyState title='No data for this set.' />
-          </Match>
-          <Match when={detail()}>
-            {loaded => (
-              <>
-                <SetDetail payload={loaded()} />
-                <section>
-                  <ul class='packev-method'>
-                    <li>
-                      Pull rates:{' '}
-                      <a href={loaded().source.url} target='_blank' rel='noopener noreferrer'>
-                        {loaded().source.label}
-                      </a>
-                      , over {loaded().source.sampleSize.toLocaleString('en-US')} packs
-                    </li>
-                    <li>Prices: TCGplayer market, via TCGCSV</li>
-                    <li>
-                      Under {money(loaded().threshold)} a card counts as bulk: {rate(loaded().bulk.commonUncommon)}{' '}
-                      common or uncommon, {rate(loaded().bulk.reverse)} reverse or rare,{' '}
-                      {rate(loaded().bulk.doubleRare)} ex (
-                      <a href={loaded().bulkSource.url} target='_blank' rel='noopener noreferrer'>
-                        {loaded().bulkSource.label}
-                      </a>
-                      )
-                    </li>
-                    <li>Sealed products are counted as packs only — no promo, sleeves or dice</li>
-                  </ul>
-                </section>
-              </>
-            )}
-          </Match>
-        </Switch>
+        <Show when={selected()}>
+          <Switch fallback={<Skeleton width='100%' height='320px' />}>
+            <Match when={settledEmpty(payload)}>
+              <EmptyState title='No data for this set.' />
+            </Match>
+            <Match when={detail()}>
+              {loaded => (
+                <>
+                  <SetDetail payload={loaded()} />
+                  <section>
+                    <dl class='glossary packev-method'>
+                      <dt>Pull rates</dt>
+                      <dd>
+                        <a href={loaded().source.url} target='_blank' rel='noopener noreferrer'>
+                          {loaded().source.label}
+                        </a>
+                        , {loaded().source.sampleSize.toLocaleString('en-US')} packs
+                      </dd>
+                      <dt>Prices</dt>
+                      <dd>TCGplayer market, via TCGCSV</dd>
+                      <dt>Bulk under {money(loaded().threshold)}</dt>
+                      <dd>
+                        {rate(loaded().bulk.commonUncommon)} common or uncommon, {rate(loaded().bulk.reverse)} reverse
+                        or rare, {rate(loaded().bulk.doubleRare)} ex, from{' '}
+                        <a href={loaded().bulkSource.url} target='_blank' rel='noopener noreferrer'>
+                          {loaded().bulkSource.label}
+                        </a>
+                      </dd>
+                    </dl>
+                  </section>
+                </>
+              )}
+            </Match>
+          </Switch>
+        </Show>
       </Show>
     </>
   );

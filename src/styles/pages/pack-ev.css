@@ -1,13 +1,13 @@
-/* Pack EV (/tools/pack-ev). */
+/* Pack Value Simulator (/tools/pack-ev). */
 
 /* ---------- The headline band ----------
    Same recipe as the player profile's career band: value over label, ink rules
    top and bottom, hairlines between. The comparison this page exists for — a
-   pack opened against a pack sealed — is two figures side by side, and a box
+   pack sealed against a pack opened — is two figures side by side, and a box
    around them would be the card the rest of the site does without. */
 .packev-band {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   margin: 0;
   border-top: var(--border-width) solid var(--border);
   border-bottom: var(--border-width) solid var(--border);
@@ -65,18 +65,12 @@
   background: var(--surface-2);
 }
 
-/* Quiet identifiers riding beside a name or a figure: the primary product, a
-   collector number, a slot's card count. */
+/* Quiet identifiers riding beside a name or a figure: a collector number, the
+   bulk pile's counts. */
 .packev-aside {
   margin-left: var(--space-2);
   color: var(--muted);
   font-size: var(--text-sm);
-}
-
-/* The slot column groups its outcomes: the rule marks where the next slot
-   starts, so the blank cells below a slot name read as "same slot". */
-.packev-slots tr.is-slot-start td {
-  border-top: var(--border-width) solid var(--rule);
 }
 
 /* ---------- Opener ---------- */
@@ -174,25 +168,27 @@
   margin-bottom: var(--space-3);
 }
 
-/* Where every figure above came from. Sources, not prose. */
+/* Where every figure above came from: the site's glossary list, set small
+   under a hairline so it reads as the page's footnote. */
 .packev-method {
   margin: 0;
-  padding-left: var(--space-4);
-  color: var(--muted);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--rule);
   font-size: var(--text-sm);
 }
 
-/* Two across on a phone. Each row starts flush left with no divider, and the
-   second row takes a hairline so the band still reads as one ruled object. */
+/* The opener's four figures go two across on a phone; the set's three still fit
+   in a row. Each row starts flush left with no divider, and the second row
+   takes a hairline so the band still reads as one ruled object. */
 @media (max-width: 640px) {
-  .packev-band {
+  .packev-opener .packev-band {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .packev-stat:nth-child(odd) {
+  .packev-opener .packev-stat:nth-child(odd) {
     padding-left: 0;
     border-left: 0;
   }
-  .packev-stat:nth-child(n + 3) {
+  .packev-opener .packev-stat:nth-child(n + 3) {
     border-top: var(--border-width) solid var(--rule);
   }
   .packev-grid {
