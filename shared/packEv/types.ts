@@ -38,6 +38,12 @@ export interface PackCard {
   rarity: string;
   /** Absent on the base print. */
   pattern?: FoilPattern;
+  /**
+   * From one of the set's `reprintGroupIds`: printed with its original set's
+   * collector number (Classic Collection Charizard is `4/102`), so art keyed by
+   * this set's code and that number would be some other card.
+   */
+  reprint?: true;
   /** Market price per printing. A printing this product doesn't have is absent. */
   prices: Partial<Record<Printing, number>>;
 }
@@ -139,7 +145,7 @@ export interface SealedProduct {
 export interface PullRateSource {
   url: string;
   label: string;
-  /** Packs TCGplayer's authentication centre opened to measure the rates. */
+  /** Packs opened to measure the rates. */
   sampleSize: number;
 }
 
@@ -156,6 +162,8 @@ export interface PackEvSetConfig {
   code: string;
   name: string;
   groupId: number;
+  /** TCGCSV groups for subsets that come in this set's packs but are listed apart. */
+  reprintGroupIds?: number[];
   source: PullRateSource;
   sealed: SealedProductConfig[];
   slots: PackSlot[];

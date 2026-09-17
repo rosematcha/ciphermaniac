@@ -149,8 +149,14 @@ export function patternOf(name: string): FoilPattern | undefined {
     : undefined;
 }
 
-/** Every product with a collector number and a rarity — i.e. the cards. */
-export function toCards(products: TcgcsvProduct[], prices: PriceIndex): PackCard[] {
+/**
+ * Every product with a collector number and a rarity — i.e. the cards.
+ *
+ * A reprint group has no foil variants to split out: its parentheticals are
+ * the original cards' names ("Gengar (Prime)", "Darkrai & Cresselia Legend
+ * (Top)"), so they stay in the name and the card stays in its pool.
+ */
+export function toCards(products: TcgcsvProduct[], prices: PriceIndex, reprint = false): PackCard[] {
   const cards: PackCard[] = [];
   for (const product of products) {
     const fields = extended(product);
@@ -159,13 +165,14 @@ export function toCards(products: TcgcsvProduct[], prices: PriceIndex): PackCard
     if (!number || !rarity) {
       continue;
     }
-    const pattern = patternOf(product.name);
+    const pattern = reprint ? undefined : patternOf(product.name);
     cards.push({
       id: product.productId,
-      name: cardDisplayName(product.name, number),
+      name: reprint ? product.name : cardDisplayName(product.name, number),
       number,
       rarity,
       ...(pattern ? { pattern } : {}),
+      ...(reprint ? { reprint } : {}),
       prices: prices.get(product.productId) ?? {}
     });
   }
@@ -230,11 +237,26 @@ function assertSpecialPacksResolve(set: PackEvSetConfig, cards: PackCard[]): voi
   }
 }
 
-export interface SetSources {
+/** Everything TCGCSV lists for one or more groups. */
+export interface GroupListing {
   products: TcgcsvProduct[];
   prices: TcgcsvPrice[];
+}
+
+export interface SetSources extends GroupListing {
   /** TCGplayer's publish date for the group, or null when it has none. */
   releasedOn: string | null;
+  /** The set's `reprintGroupIds`, listed together. */
+  reprints?: GroupListing;
+}
+
+/** The set's own cards, then its reprints, flagged so nothing keys their art off this set. */
+function setCards(sources: SetSources): PackCard[] {
+  const own = toCards(sources.products, buildPriceIndex(sources.prices));
+  const reprints = sources.reprints
+    ? toCards(sources.reprints.products, buildPriceIndex(sources.reprints.prices), true)
+    : [];
+  return [...own, ...reprints];
 }
 
 /** One set's published payload, built from its config and its TCGCSV group. */
@@ -245,7 +267,7 @@ export function buildSetPayload(
   generatedAt: string
 ): PackEvSetPayload {
   const prices = buildPriceIndex(sources.prices);
-  const cards = toCards(sources.products, prices);
+  const cards = setCards(sources);
   assertPoolsResolve(set, cards);
   assertSpecialPacksResolve(set, cards);
   const specialPacks = set.specialPacks ?? [];
@@ -278,6 +300,28 @@ function indexEntry(payload: PackEvSetPayload): PackEvIndexEntry {
     costPerPack: cheapest?.costPerPack ?? null,
     cheapestLabel: cheapest?.product.label ?? ''
   };
+}
+
+async function fetchGroup(groupId: number, fetchJson: FetchJson): Promise<GroupListing> {
+  const base = `${TCGCSV_CATEGORY_URL}/${groupId}`;
+  return {
+    products: await fetchResults<TcgcsvProduct>(`${base}/products`, fetchJson),
+    prices: await fetchResults<TcgcsvPrice>(`${base}/prices`, fetchJson)
+  };
+}
+
+/** Every reprint group a set names, as one listing; undefined when it names none. */
+async function fetchReprints(set: PackEvSetConfig, fetchJson: FetchJson): Promise<GroupListing | undefined> {
+  if (!set.reprintGroupIds?.length) {
+    return undefined;
+  }
+  const listing: GroupListing = { products: [], prices: [] };
+  for (const groupId of set.reprintGroupIds) {
+    const group = await fetchGroup(groupId, fetchJson);
+    listing.products.push(...group.products);
+    listing.prices.push(...group.prices);
+  }
+  return listing;
 }
 
 /** YYYY-MM-DD out of TCGCSV's `2024-05-24T00:00:00`. */
@@ -314,11 +358,10 @@ export async function runPackEv(options: RunPackEvOptions): Promise<PackEvIndex>
 
   const payloads: PackEvSetPayload[] = [];
   for (const set of config.sets) {
-    const base = `${TCGCSV_CATEGORY_URL}/${set.groupId}`;
-    const products = await fetchResults<TcgcsvProduct>(`${base}/products`, fetchJson);
-    const prices = await fetchResults<TcgcsvPrice>(`${base}/prices`, fetchJson);
+    const own = await fetchGroup(set.groupId, fetchJson);
+    const reprints = await fetchReprints(set, fetchJson);
     const releasedOn = publishedDate(groupsById.get(set.groupId));
-    payloads.push(buildSetPayload(config, set, { products, prices, releasedOn }, generatedAt));
+    payloads.push(buildSetPayload(config, set, { ...own, releasedOn, reprints }, generatedAt));
   }
 
   for (const payload of payloads) {

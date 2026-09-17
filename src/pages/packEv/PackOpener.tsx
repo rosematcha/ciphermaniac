@@ -6,7 +6,16 @@ import { openPack, preparePack, type Pull } from '../../../shared/packEv/simulat
 import type { PackEvSetPayload } from '../../../shared/packEv/types';
 import { attention, callout, juice, kick, staggerDelay } from './juice';
 import { createCount } from './tween';
-import { artNumber, isChase, mergePulls, money, type PullStack, sortStacks, type StackSort } from './model';
+import {
+  artNumber,
+  isChase,
+  mergePulls,
+  money,
+  productImage,
+  type PullStack,
+  sortStacks,
+  type StackSort
+} from './model';
 
 interface PackOpenerProps {
   payload: PackEvSetPayload;
@@ -101,14 +110,19 @@ function StackTile(props: StackTileProps) {
     <figure class='packev-tile' ref={figure}>
       <Show when={card()} fallback={<div class='packev-art packev-art-blank'>{props.stack.pull.outcome}</div>}>
         {found => (
-          <CardImage
-            class='packev-art'
-            set={props.set}
-            number={artNumber(found().number)}
-            size={props.size}
-            alt={found().name}
-            hotlink
-          />
+          <Show
+            when={!found().reprint}
+            fallback={<img class='packev-art' src={productImage(found().id)} alt={found().name} loading='lazy' />}
+          >
+            <CardImage
+              class='packev-art'
+              set={props.set}
+              number={artNumber(found().number)}
+              size={props.size}
+              alt={found().name}
+              hotlink
+            />
+          </Show>
         )}
       </Show>
       <Show when={props.stack.count > 1}>

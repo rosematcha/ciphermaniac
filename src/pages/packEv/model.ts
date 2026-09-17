@@ -113,3 +113,11 @@ export function isChase(pull: Pull): boolean {
 export function artNumber(number: string): string {
   return number.split('/')[0];
 }
+
+/**
+ * TCGplayer's own product photo, for a reprint: Limitless files those under
+ * their original sets, if at all, so this is the one image source that has them.
+ */
+export function productImage(id: number): string {
+  return `https://tcgplayer-cdn.tcgplayer.com/product/${id}_200w.jpg`;
+}
