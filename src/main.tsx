@@ -35,10 +35,12 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   '/cards/:set/:number': () => import('./pages/CardPage'),
   '/archetypes': () => import('./pages/ArchetypesIndexPage'),
   '/archetypes/:slug': () => import('./pages/ArchetypePage'),
+  '/tournaments': () => import('./pages/TournamentsIndexPage'),
   '/trends': () => import('./pages/TrendsPage'),
   '/players': () => import('./pages/PlayersPage'),
   '/players/:id': () => import('./pages/PlayerProfilePage'),
   '/events': () => import('./pages/EventLocatorPage'),
+  '/about': () => import('./pages/AboutPage'),
   '/feedback': () => import('./pages/FeedbackPage')
 };
 
