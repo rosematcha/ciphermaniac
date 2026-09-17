@@ -70,6 +70,12 @@ export interface PoolSpec {
   pattern?: FoilPattern;
   /** Bulk floor applied to every card in the pool. */
   bulk: BulkClass;
+  /**
+   * What a card counts at while TCGplayer has no market price for it, in place
+   * of the bulk floor: a chase too rare to have sold yet. The first market
+   * price replaces it.
+   */
+  unpriced?: number;
 }
 
 export interface SlotOutcome {

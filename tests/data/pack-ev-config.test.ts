@@ -112,6 +112,17 @@ test('every set sells a single pack, and no sealed product is listed twice', () 
   }
 });
 
+test('an unpriced stand-in is worth more than bulk, or it would be pointless', () => {
+  for (const set of config.sets) {
+    for (const outcome of set.slots.flatMap(slot => slot.outcomes)) {
+      const unpriced = outcome.pool?.unpriced;
+      if (unpriced !== undefined) {
+        assert.ok(unpriced > config.threshold, `${set.code} ${outcome.label} stand-in ${unpriced}`);
+      }
+    }
+  }
+});
+
 test('the bulk rates are the posted buylist, not placeholders', () => {
   assert.match(config.bulkSource.url, /^https:\/\//);
   assert.equal(config.threshold, 1);

@@ -61,6 +61,27 @@ function openedValue(pack: PreparedPack, packs: number, rng: () => number): numb
   return total;
 }
 
+test('an unpriced pull carries its stand-in value and counts as a hit', () => {
+  const pack = preparePack({
+    ...INPUTS,
+    cards: [{ id: 9, name: 'Mew', number: 'R/RGB', rarity: 'Holo Rare', prices: {} }],
+    slots: [
+      {
+        label: 'Rare slot',
+        outcomes: [
+          {
+            label: 'RGB Rare',
+            pool: { rarities: ['Holo Rare'], printing: 'holofoil', bulk: 'hit', unpriced: 5000 }
+          }
+        ]
+      }
+    ]
+  });
+  const [pull] = openPack(pack, () => 0);
+  assert.equal(pull.value, 5000);
+  assert.equal(pull.notable, true);
+});
+
 test('a pack holds one card per slot draw, energy included', () => {
   const pulls = openPack(preparePack(INPUTS), mulberry32(7));
   assert.equal(pulls.length, 5);
