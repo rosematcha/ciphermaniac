@@ -1,5 +1,5 @@
 {
-  "_comment": "Pack-EV model for the sets /tools/pack-ev covers. Rates are per pack, per slot, quoted as \"1 in N\" (`odds`) or as a decimal (`chance`); each slot resolves to exactly one outcome, and the outcome that names neither takes whatever the named rates leave. Slot placement follows TCGplayer's pull-rate article for each set (linked in `source`). `specialPacks` are god and demigod packs: at their own rate a pack keeps `keepSlots` and replaces every other slot with `draws` — named cards (`cards`), one group of named cards (`oneOf`), or uniform draws from a pool (`random`). Card pools and named cards resolve against the set's TCGCSV group at build time; variant products (anything TCGplayer names with a parenthetical) only join a pool that names their `pattern`. Bulk rates are Safari Zone Collectibles' posted buylist; `threshold` is the market price a card has to clear before it counts as more than bulk.",
+  "_comment": "Pack-EV model for the sets /tools/pack-ev covers. Rates are per pack, per slot, quoted as \"1 in N\" (`odds`) or as a decimal (`chance`); each slot resolves to exactly one outcome, and the outcome that names neither takes whatever the named rates leave. Slot placement follows the pull-rate count linked in each set's `source`: TCGplayer's article where one exists, a community count where it doesn't yet. `specialPacks` are god and demigod packs: at their own rate a pack keeps `keepSlots` and replaces every other slot with `draws` — named cards (`cards`), one group of named cards (`oneOf`), or uniform draws from a pool (`random`). Card pools and named cards resolve against the set's TCGCSV group at build time, plus any `reprintGroupIds` (subsets TCGplayer lists as their own group, like the 30th Celebration Classic Collection); variant products (anything TCGplayer names with a parenthetical) only join a pool that names their `pattern`. Bulk rates are Safari Zone Collectibles' posted buylist; `threshold` is the market price a card has to clear before it counts as more than bulk.",
   "threshold": 1,
   "bulk": {
     "commonUncommon": 0.035,
@@ -13,6 +13,155 @@
     "url": "https://app.tcgbulk.com/buyer/safari-zone-collectibles"
   },
   "sets": [
+    {
+      "code": "30C",
+      "name": "30th Celebration",
+      "groupId": 24722,
+      "reprintGroupIds": [24837],
+      "source": {
+        "label": "r/PokemonTCG: Tommy13's 30th Celebration Pull Rates",
+        "url": "https://www.reddit.com/r/PokemonTCG/comments/1whk28a/i_recorded_30th_pull_rate_on_over_4000_pack/",
+        "sampleSize": 4063
+      },
+      "sealed": [
+        {
+          "kind": "etb",
+          "label": "Elite Trainer Box",
+          "id": 704143,
+          "packs": 9
+        },
+        {
+          "kind": "bundle",
+          "label": "Booster Bundle",
+          "id": 704171,
+          "packs": 6
+        },
+        {
+          "kind": "pack",
+          "label": "Single Pack",
+          "id": 696613,
+          "packs": 1
+        }
+      ],
+      "slots": [
+        {
+          "label": "Commons",
+          "count": 2,
+          "outcomes": [
+            {
+              "label": "Common",
+              "pool": {
+                "rarities": ["Common"],
+                "printing": "holofoil",
+                "bulk": "commonUncommon"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Third common",
+          "outcomes": [
+            {
+              "label": "Classic Collection",
+              "odds": 10,
+              "pool": {
+                "rarities": ["Classic Collection"],
+                "printing": "holofoil",
+                "bulk": "hit"
+              }
+            },
+            {
+              "label": "Illustration Rare",
+              "odds": 5,
+              "pool": {
+                "rarities": ["Illustration Rare"],
+                "printing": "holofoil",
+                "bulk": "hit"
+              }
+            },
+            {
+              "label": "Common",
+              "pool": {
+                "rarities": ["Common"],
+                "printing": "holofoil",
+                "bulk": "commonUncommon"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Rare slot",
+          "outcomes": [
+            {
+              "label": "RGB Rare",
+              "odds": 4063,
+              "pool": {
+                "rarities": ["Holo Rare"],
+                "printing": "holofoil",
+                "bulk": "hit"
+              }
+            },
+            {
+              "label": "Futuristic Rare",
+              "odds": 100,
+              "pool": {
+                "rarities": ["Futuristic Rare"],
+                "printing": "holofoil",
+                "bulk": "hit"
+              }
+            },
+            {
+              "label": "Special Illustration Rare",
+              "odds": 20,
+              "pool": {
+                "rarities": ["Special Illustration Rare"],
+                "printing": "holofoil",
+                "bulk": "hit"
+              }
+            },
+            {
+              "label": "Double Rare",
+              "odds": 4,
+              "pool": {
+                "rarities": ["Double Rare"],
+                "printing": "holofoil",
+                "bulk": "doubleRare"
+              }
+            },
+            {
+              "label": "Rare",
+              "pool": {
+                "rarities": ["Rare"],
+                "printing": "holofoil",
+                "bulk": "rare"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Pikachu",
+          "outcomes": [
+            {
+              "label": "Pikachu Rare",
+              "pool": {
+                "rarities": ["Pikachu Rare"],
+                "printing": "holofoil",
+                "bulk": "rare"
+              }
+            }
+          ]
+        },
+        {
+          "label": "Energy",
+          "outcomes": [
+            {
+              "label": "Foil Energy",
+              "flat": "commonUncommon"
+            }
+          ]
+        }
+      ]
+    },
     {
       "code": "PBL",
       "name": "Pitch Black",
