@@ -15,6 +15,7 @@ import {
   buildSetPayload,
   cardDisplayName,
   PACK_EV_INDEX_KEY,
+  PACK_EV_PREFIX,
   patternOf,
   runPackEv,
   type TcgcsvPrice,
@@ -219,7 +220,7 @@ test('a run publishes one payload per set plus the index', async () => {
     now: () => new Date('2026-09-16T12:00:00.000Z')
   });
 
-  assert.deepEqual([...written.keys()], ['reports/pack-ev/TWM.json', PACK_EV_INDEX_KEY]);
+  assert.deepEqual([...written.keys()], [`${PACK_EV_PREFIX}TWM.json`, PACK_EV_INDEX_KEY]);
   assert.equal(index.sets.length, 1);
   assert.equal(index.sets[0].releasedOn, '2024-05-24');
   // A $9.09 single undercuts the box's $356.09 across 36 packs, so the single sets the cost.

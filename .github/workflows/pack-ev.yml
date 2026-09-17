@@ -65,5 +65,5 @@ jobs:
           {
             echo "## Pack EV"
             echo ""
-            echo "Rebuilt reports/pack-ev from TCGCSV"
+            echo "Rebuilt reports/pack-ev/v2 from TCGCSV"
           } >> "$GITHUB_STEP_SUMMARY"
