@@ -122,8 +122,15 @@ interface PlayerAggregateManifestV2 extends PlayerAggregateManifest {
   identityRevision?: string;
 }
 
-function sliceFingerprint(meta: MetaRow | null): string {
-  return meta?.fetchedAt ?? meta?.generatedAt ?? '';
+/**
+ * Resolves a tournament's content fingerprint from outside its meta.json. The
+ * CI runner reads events from content-addressed immutable roots whose meta
+ * carries no `fetchedAt`/`generatedAt`, so the root itself is the fingerprint.
+ */
+export type FingerprintOf = (key: string) => string | undefined;
+
+function sliceFingerprint(key: string, meta: MetaRow | null, fingerprintOf?: FingerprintOf): string {
+  return fingerprintOf?.(key) ?? meta?.fetchedAt ?? meta?.generatedAt ?? '';
 }
 
 const DATE_PREFIX = /^(\d{4}-\d{2}-\d{2})/;
@@ -195,7 +202,11 @@ function median(values: number[]): number | null {
   return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
 }
 
-async function loadTournamentSlice(env: unknown, key: string): Promise<TournamentSlice | null> {
+async function loadTournamentSlice(
+  env: unknown,
+  key: string,
+  fingerprintOf?: FingerprintOf
+): Promise<TournamentSlice | null> {
   const base = `reports/${key}`;
   const [participantsR, decksR, metaR, matchesR] = await Promise.all([
     getJsonResult<ParticipantRow[]>(env, `${base}/players.json`),
@@ -244,7 +255,7 @@ async function loadTournamentSlice(env: unknown, key: string): Promise<Tournamen
     decks: Array.isArray(decks) ? decks : [],
     matches: Array.isArray(matches) ? matches : [],
     totalPlayers: Number.isFinite(totalPlayers) ? Number(totalPlayers) : null,
-    fingerprint: sliceFingerprint(meta)
+    fingerprint: sliceFingerprint(key, meta, fingerprintOf)
   };
 }
 
@@ -253,14 +264,18 @@ async function loadTournamentSlice(env: unknown, key: string): Promise<Tournamen
  * no-change fast path. Corrupt/transport error → throw (aborts the run rather
  * than risk skipping a real change).
  */
-async function loadFingerprint(env: unknown, key: string): Promise<string> {
+async function loadFingerprint(env: unknown, key: string, fingerprintOf?: FingerprintOf): Promise<string> {
+  const known = fingerprintOf?.(key);
+  if (known !== undefined) {
+    return known;
+  }
   const metaR = await getJsonResult<MetaRow>(env, `reports/${key}/meta.json`);
   if (metaR.status === 'error') {
     throw new Error(`[playerAggregator] Failed to load reports/${key}/meta.json for fingerprint`, {
       cause: metaR.error
     });
   }
-  return sliceFingerprint(metaR.status === 'ok' ? metaR.value : null);
+  return sliceFingerprint(key, metaR.status === 'ok' ? metaR.value : null);
 }
 
 interface Accumulator {
@@ -497,7 +512,7 @@ async function tryFastPath(
   env: unknown,
   tournamentList: string[],
   previousManifest: PlayerAggregateManifestV2 | null,
-  sliceConcurrency: number
+  options: { sliceConcurrency: number; fingerprintOf?: FingerprintOf }
 ): Promise<BuildPlayerAggregatesResult | null> {
   const prevSorted = previousManifest?.tournamentKeys ? [...previousManifest.tournamentKeys].sort() : null;
   if (!previousManifest || !prevSorted || !arrayEquals([...tournamentList].sort(), prevSorted)) {
@@ -508,8 +523,8 @@ async function tryFastPath(
   if (!prevFingerprints) {
     return null;
   }
-  const current = await runWithConcurrency(tournamentList, sliceConcurrency, (key: string) =>
-    loadFingerprint(env, key)
+  const current = await runWithConcurrency(tournamentList, options.sliceConcurrency, (key: string) =>
+    loadFingerprint(env, key, options.fingerprintOf)
   );
   if (!tournamentList.every((key, i) => (prevFingerprints[key] ?? '') === current[i])) {
     console.info('[playerAggregator] Tournament set unchanged but content fingerprints differ; rebuilding');
@@ -982,12 +997,18 @@ function orphanDeleteKeys(prevPlayers: Record<string, string[]>, manifestPlayers
  * fingerprints short-circuits entirely, and within a rebuild only players whose
  * events changed are rewritten.
  * @param env - Storage binding
- * @param options - Concurrency limits, and `forceFullRebuild` to ignore the manifest
+ * @param options - Concurrency limits, `forceFullRebuild` to ignore the manifest, and
+ *   `fingerprintOf` to fingerprint tournaments by something other than their meta
  * @returns Counts describing what this run scanned and wrote
  */
 export async function buildPlayerAggregates(
   env: unknown,
-  options: { concurrency?: number; r2Concurrency?: number; forceFullRebuild?: boolean } = {}
+  options: {
+    concurrency?: number;
+    r2Concurrency?: number;
+    forceFullRebuild?: boolean;
+    fingerprintOf?: FingerprintOf;
+  } = {}
 ): Promise<BuildPlayerAggregatesResult> {
   const sliceConcurrency = Math.max(1, options.concurrency ?? 4);
   const writeConcurrency = Math.max(1, options.r2Concurrency ?? 6);
@@ -1002,7 +1023,10 @@ export async function buildPlayerAggregates(
     ? null
     : await getJson<PlayerAggregateManifestV2>(env, MANIFEST_KEY);
 
-  const reused = await tryFastPath(env, tournamentList, previousManifest, sliceConcurrency);
+  const reused = await tryFastPath(env, tournamentList, previousManifest, {
+    sliceConcurrency,
+    fingerprintOf: options.fingerprintOf
+  });
   if (reused) {
     return reused;
   }
@@ -1012,7 +1036,7 @@ export async function buildPlayerAggregates(
   // from a partial slice set (P-05). A genuinely-missing/empty slice returns
   // null and is counted as skipped (legitimate).
   const slices = await runWithConcurrency(tournamentList, sliceConcurrency, (key: string) =>
-    loadTournamentSlice(env, key)
+    loadTournamentSlice(env, key, options.fingerprintOf)
   );
 
   const accs = new Map<string, Accumulator>();
