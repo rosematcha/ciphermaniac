@@ -19,11 +19,14 @@ import type { PackEvIndex, PackEvSetPayload } from '../../../shared/packEv/types
 
 const client = createDataClient({ resolvePath: path => path });
 
+/** Matches the job's `PACK_EV_PREFIX`; the fetch test holds the two together. */
+const PREFIX = '/reports/pack-ev/v2/';
+
 /** Null until the job has run for the first time. */
 export function fetchPackEvIndex(): Promise<PackEvIndex | null> {
-  return client.fetchJsonOptional<PackEvIndex>('/reports/pack-ev/index.json');
+  return client.fetchJsonOptional<PackEvIndex>(`${PREFIX}index.json`);
 }
 
 export function fetchPackEvSet(code: string): Promise<PackEvSetPayload | null> {
-  return client.fetchJsonOptional<PackEvSetPayload>(`/reports/pack-ev/${encodeURIComponent(code)}.json`);
+  return client.fetchJsonOptional<PackEvSetPayload>(`${PREFIX}${encodeURIComponent(code)}.json`);
 }

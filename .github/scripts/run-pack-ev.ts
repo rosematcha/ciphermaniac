@@ -4,7 +4,7 @@
  * Pack-EV producer for /tools/pack-ev.
  *
  * Reads:   config/pack-ev.json (slot model and pull rates), TCGCSV
- * Writes:  reports/pack-ev/{SET}.json, reports/pack-ev/index.json
+ * Writes:  reports/pack-ev/v2/{SET}.json, reports/pack-ev/v2/index.json
  *
  * Without R2 (local development), write to a directory instead:
  *   npx tsx .github/scripts/run-pack-ev.ts --out .cache/pack-ev

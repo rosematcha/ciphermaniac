@@ -28,7 +28,12 @@ import type {
 } from '../../../shared/packEv/types.ts';
 
 const TCGCSV_CATEGORY_URL = 'https://tcgcsv.com/tcgplayer/3';
-export const PACK_EV_PREFIX = 'reports/pack-ev/';
+/**
+ * Versioned so a change to the artifact's shape moves every key at once: v1's
+ * copies sit in edge, browser and service-worker caches for hours after a
+ * rerun, and a page reading a field v1 never had would render against them.
+ */
+export const PACK_EV_PREFIX = 'reports/pack-ev/v2/';
 export const PACK_EV_INDEX_KEY = `${PACK_EV_PREFIX}index.json`;
 /** Same six-hour window the daily price artifacts use; this rebuilds daily. */
 export const PACK_EV_CACHE_CONTROL = 'public, max-age=21600';
