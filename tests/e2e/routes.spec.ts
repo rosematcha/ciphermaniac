@@ -71,6 +71,28 @@ test('a card page renders usage for its card', async ({ page }) => {
   await expect(page.locator('body')).toContainText("Boss's Orders");
 });
 
+test('card prices deep-link to the selected product through our TCGplayer affiliate account', async ({ page }) => {
+  await gotoClean(page, '/cards/MEG/114');
+  const price = page.locator('.price-link');
+  await expect(price).toHaveText('$0.24 →');
+  const target = new URL((await price.getAttribute('href'))!);
+  expect(target.origin).toBe('https://partner.tcgplayer.com');
+  expect(target.pathname).toBe('/c/6491809/1780961/21018');
+  expect(target.searchParams.get('u')).toBe('https://www.tcgplayer.com/product/654453');
+  await expect(price).toHaveAttribute('rel', /\bsponsored\b/);
+  await expect(price).toHaveAttribute('title', /may earn a commission/);
+});
+
+test('prices without a shopping destination remain plain text', async ({ page }) => {
+  await page.route('**/prices.json', route =>
+    route.fulfill({ json: { cardPrices: { "Boss's Orders::MEG::114": { price: 0.24 } } } })
+  );
+  await gotoClean(page, '/cards/MEG/114');
+  await expect(page.locator('.stat-value--price')).toContainText('$0.24');
+  await expect(page.locator('.price-link')).toHaveCount(0);
+  await expect(page.locator('.stat-value--price a')).toHaveCount(0);
+});
+
 test('a variant card URL resolves to its canonical card', async ({ page }) => {
   // TWM/130 is a Dragapult ex reprint; PRE/073 is the cluster's canonical print.
   // The URL does NOT change here, and that is correct: the 301 lives in the edge
