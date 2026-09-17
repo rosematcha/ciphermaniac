@@ -63,7 +63,7 @@ permissions:
 jobs:
   build-players:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     # workflow_run fires even for failed upstream runs — only continue when the
     # upstream succeeded (manual + schedule always proceed).

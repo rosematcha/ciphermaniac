@@ -98,6 +98,32 @@ test('P-04: rerun rewrites profiles when tournament content changes under the sa
   assert.equal(profile.summary.bestPlacement, 4, 'corrected placement must be persisted');
 });
 
+test('P-04: an external fingerprint stands in for a meta without fetch timestamps', async () => {
+  const KEY = '2026-01-20, Regional Immutable';
+  const store: Record<string, string> = {
+    'reports/tournaments.json': JSON.stringify([KEY]),
+    [`reports/${KEY}/players.json`]: JSON.stringify([playerRow()]),
+    [`reports/${KEY}/decks.json`]: JSON.stringify([]),
+    [`reports/${KEY}/meta.json`]: JSON.stringify({ name: 'Regional Immutable', updatedAt: null })
+  };
+  const env = makeEnv(store);
+  const roots: Record<string, string> = { [KEY]: '/releases/v1/events/immutable/aaaaaaaaaaaa' };
+  const fingerprintOf = (key: string) => roots[key];
+
+  await buildPlayerAggregates(env, { fingerprintOf });
+  const manifest = JSON.parse(store['players/_manifest.json']);
+  assert.equal(manifest.fingerprints[KEY], roots[KEY], 'the manifest must record the external fingerprint');
+
+  const unchanged = await buildPlayerAggregates(env, { fingerprintOf });
+  assert.equal(unchanged.skippedNoChanges, true, 'an unchanged root must take the fast path');
+
+  store[`reports/${KEY}/players.json`] = JSON.stringify([playerRow({ placement: 4 })]);
+  roots[KEY] = '/releases/v1/events/immutable/bbbbbbbbbbbb';
+  const moved = await buildPlayerAggregates(env, { fingerprintOf });
+  assert.equal(moved.skippedNoChanges, false, 'a new root must defeat the fast path');
+  assert.equal(JSON.parse(store['players/1/profile.json']).summary.bestPlacement, 4);
+});
+
 test('P-04: legacy manifest without fingerprints forces a rebuild', async () => {
   const KEY = '2026-02-01, Regional Bar';
   const store: Record<string, string> = {
