@@ -98,7 +98,8 @@
               "pool": {
                 "rarities": ["Holo Rare"],
                 "printing": "holofoil",
-                "bulk": "hit"
+                "bulk": "hit",
+                "unpriced": 5000
               }
             },
             {

@@ -59,6 +59,18 @@ export function cardValue(card: PackCard, printing: Printing, bulkRate: number, 
   return price;
 }
 
+/**
+ * What a card drawn from a pool is worth: `cardValue` at the pool's printing
+ * and bulk class, except that a card with no market price yet counts at the
+ * pool's stand-in when it names one.
+ */
+export function poolCardValue(card: PackCard, spec: PoolSpec, inputs: EvInputs): number {
+  if (spec.unpriced !== undefined && typeof card.prices[spec.printing] !== 'number') {
+    return spec.unpriced;
+  }
+  return cardValue(card, spec.printing, inputs.bulk[spec.bulk], inputs.threshold);
+}
+
 /** Cards an outcome can draw. `pattern` defaults to the base print. */
 export function selectPool(cards: PackCard[], spec: PoolSpec): PackCard[] {
   const wanted = spec.pattern ?? 'base';
@@ -108,8 +120,7 @@ function poolAverage(spec: PoolSpec, inputs: EvInputs): { poolSize: number; aver
   if (pool.length === 0) {
     return { poolSize: 0, averageValue: 0 };
   }
-  const bulkRate = inputs.bulk[spec.bulk];
-  const total = pool.reduce((sum, card) => sum + cardValue(card, spec.printing, bulkRate, inputs.threshold), 0);
+  const total = pool.reduce((sum, card) => sum + poolCardValue(card, spec, inputs), 0);
   return { poolSize: pool.length, averageValue: total / pool.length };
 }
 
@@ -221,7 +232,7 @@ function poolCardRows(spec: PoolSpec, chance: number, inputs: EvInputs): CardCon
   const { printing } = spec;
   const perCard = chance / pool.length;
   return pool
-    .map(card => ({ card, printing, value: cardValue(card, printing, bulkRate, inputs.threshold) }))
+    .map(card => ({ card, printing, value: poolCardValue(card, spec, inputs) }))
     .filter(row => row.value > bulkRate)
     .map(row => ({ ...row, chance: perCard, contribution: perCard * row.value }));
 }

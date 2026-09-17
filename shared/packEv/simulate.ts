@@ -11,7 +11,7 @@
  * @module shared/packEv/simulate
  */
 
-import { cardValue, type EvInputs, refTerms, resolveChances, resolveRef, selectPool } from './ev';
+import { cardValue, type EvInputs, poolCardValue, refTerms, resolveChances, resolveRef, selectPool } from './ev';
 import type { CardRef, PackCard, PackSlot, PoolSpec, Printing, SpecialDraw } from './types';
 
 /** One card out of one pack. `card` is null for the basic energy slot. */
@@ -62,7 +62,7 @@ export interface PreparedPack {
 function preparePool(spec: PoolSpec, inputs: EvInputs): PreparedPool {
   const pool = selectPool(inputs.cards, spec);
   const bulkRate = inputs.bulk[spec.bulk];
-  const values = pool.map(card => cardValue(card, spec.printing, bulkRate, inputs.threshold));
+  const values = pool.map(card => poolCardValue(card, spec, inputs));
   return { pool, values, printing: spec.printing, bulkRate };
 }
 
