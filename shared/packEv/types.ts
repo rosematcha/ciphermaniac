@@ -125,7 +125,7 @@ export interface SpecialPack {
 
 /** A sealed product, and how many packs you have to open to get through it. */
 export interface SealedProduct {
-  kind: 'box' | 'etb' | 'bundle' | 'pack';
+  kind: 'case' | 'box' | 'etb' | 'bundle' | 'pack';
   label: string;
   /** TCGplayer product id. */
   id: number;
@@ -133,11 +133,6 @@ export interface SealedProduct {
   /** Market price, or null when TCGplayer has no market price for it. */
   price: number | null;
   url: string;
-  /**
-   * True for the product this set is normally bought by — the booster box,
-   * or the Elite Trainer Box for the sets that never got one.
-   */
-  primary?: boolean;
 }
 
 /** Where the pull rates came from, so the page can cite it. */
@@ -239,9 +234,10 @@ export interface PackEvIndexEntry {
   name: string;
   releasedOn: string | null;
   evPerPack: number;
-  /** The primary product's cost per pack, or null when it has no market price. */
+  /** The cheapest product's cost per pack, or null when nothing is priced. */
   costPerPack: number | null;
-  primaryLabel: string;
+  /** That product's label, or empty when nothing is priced. */
+  cheapestLabel: string;
 }
 
 export interface PackEvIndex {

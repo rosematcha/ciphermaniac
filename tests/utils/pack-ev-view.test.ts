@@ -15,7 +15,6 @@ import {
   money,
   oddsLabel,
   priceDate,
-  primaryProduct,
   rate,
   returnPercent,
   sealedRows,
@@ -32,7 +31,7 @@ function sealed(over: Partial<SealedProduct> & { id: number }): SealedProduct {
 const PAYLOAD: Pick<PackEvSetPayload, 'ev' | 'sealed'> = {
   ev: { perPack: 3.25, slots: [] },
   sealed: [
-    sealed({ id: 1, label: 'Booster Box', packs: 36, price: 356.09, primary: true }),
+    sealed({ id: 1, label: 'Booster Box', packs: 36, price: 356.09 }),
     sealed({ id: 2, kind: 'pack', label: 'Single Pack', packs: 1, price: 9.09 }),
     sealed({ id: 3, kind: 'bundle', label: 'Booster Bundle', packs: 6, price: null })
   ]
@@ -73,12 +72,6 @@ test('sealed rows rank by cost per pack, with unpriced products last', () => {
   // No market price means no comparison, not a zero.
   assert.equal(rows[2].costPerPack, null);
   assert.equal(rows[2].returnPercent, null);
-});
-
-test('the primary product is the one the set is bought by', () => {
-  assert.equal(primaryProduct(PAYLOAD)?.label, 'Booster Box');
-  assert.equal(primaryProduct({ sealed: [sealed({ id: 9, label: 'Only Product' })] })?.label, 'Only Product');
-  assert.equal(primaryProduct({ sealed: [] }), null);
 });
 
 test('slot rows lead with the money and name the slot once', () => {

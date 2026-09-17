@@ -59,7 +59,7 @@ const SET: PackEvSetConfig = {
   groupId: 23473,
   source: { url: 'https://example.invalid/rates', label: 'Pull rates', sampleSize: 8000 },
   sealed: [
-    { kind: 'box', label: 'Booster Box', id: 1, packs: 36, primary: true },
+    { kind: 'box', label: 'Booster Box', id: 1, packs: 36 },
     { kind: 'pack', label: 'Single Pack', id: 2, packs: 1 }
   ],
   slots: [
@@ -174,7 +174,6 @@ test('sealed products carry their market price and their TCGplayer URL', () => {
     label: 'Booster Box',
     id: 1,
     packs: 36,
-    primary: true,
     price: 356.09,
     url: 'https://www.tcgplayer.com/product/1'
   });
@@ -223,9 +222,9 @@ test('a run publishes one payload per set plus the index', async () => {
   assert.deepEqual([...written.keys()], ['reports/pack-ev/TWM.json', PACK_EV_INDEX_KEY]);
   assert.equal(index.sets.length, 1);
   assert.equal(index.sets[0].releasedOn, '2024-05-24');
-  assert.equal(index.sets[0].primaryLabel, 'Booster Box');
-  // Cost per pack comes off the primary product: $356.09 across 36 packs.
-  assert.equal(index.sets[0].costPerPack?.toFixed(2), '9.89');
+  // A $9.09 single undercuts the box's $356.09 across 36 packs, so the single sets the cost.
+  assert.equal(index.sets[0].cheapestLabel, 'Single Pack');
+  assert.equal(index.sets[0].costPerPack, 9.09);
   // 1.17% of a $352 card, plus the remainder of the slot in bulk commons.
   assert.equal(index.sets[0].evPerPack.toFixed(3), (0.0117 * 352.38 + 0.9883 * 0.035).toFixed(3));
 });

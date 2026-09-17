@@ -13,6 +13,7 @@
  * @module .github/scripts/lib/packEv
  */
 
+import { cheapestPerPack } from '../../../shared/packEv/cost.ts';
 import { computePackEv, resolveRef, selectPool } from '../../../shared/packEv/ev.ts';
 import type {
   FoilPattern,
@@ -263,14 +264,14 @@ export function buildSetPayload(
 }
 
 function indexEntry(payload: PackEvSetPayload): PackEvIndexEntry {
-  const primary = payload.sealed.find(product => product.primary) ?? payload.sealed[0];
+  const cheapest = cheapestPerPack(payload.sealed);
   return {
     code: payload.code,
     name: payload.name,
     releasedOn: payload.releasedOn,
     evPerPack: payload.ev.perPack,
-    costPerPack: primary?.price === null || primary === undefined ? null : primary.price / primary.packs,
-    primaryLabel: primary?.label ?? ''
+    costPerPack: cheapest?.costPerPack ?? null,
+    cheapestLabel: cheapest?.product.label ?? ''
   };
 }
 
