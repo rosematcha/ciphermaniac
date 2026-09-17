@@ -434,6 +434,18 @@ test('the footer keeps its links on their own row without overflowing narrow vie
   expect(footer.scrollWidth).toBeLessThanOrEqual(footer.clientWidth);
 });
 
+test('the footer spans the page column instead of shrinking to its content', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'the wide row only exists above 900px');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoClean(page, '/about');
+
+  const widths = await page.evaluate(() => ({
+    page: Math.round(document.querySelector('main.page')!.getBoundingClientRect().width),
+    footer: Math.round(document.querySelector('.site-footer')!.getBoundingClientRect().width)
+  }));
+  expect(widths.footer).toBe(widths.page);
+});
+
 test('short pages fill one viewport without adding empty scroll space', async ({ page }) => {
   for (const viewport of [
     { width: 1440, height: 1000 },

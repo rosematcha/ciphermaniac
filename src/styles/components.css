@@ -401,6 +401,10 @@
 .site-footer {
   max-width: 1180px;
   margin: 0 auto;
+  /* Same trap as `main.page`: auto margins beat the `#root` column's stretch,
+     so without this the footer shrinks to its content and the note's
+     push-apart margin has no room to work. */
+  width: 100%;
   padding: var(--space-4) 32px var(--space-6);
   border-top: 1px solid var(--rule);
   display: flex;
