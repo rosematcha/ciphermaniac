@@ -52,8 +52,10 @@ import { CardImage } from '../components/CardImage';
 import { InfoTip } from '../components/InfoTip';
 import { mapWithConcurrency } from '../lib/concurrency';
 import { isJokeMode, JOKE_PARAM } from '../lib/jokeMode';
+import { tcgplayerAffiliateUrl } from '../utils/tcgplayer';
 
 const CONVERSION_INTRO = 'Share of the Day 1 decks playing this card that advanced to Day 2.';
+const AFFILIATE_DISCLOSURE = 'Ciphermaniac may earn a commission from purchases through this TCGplayer link.';
 
 /**
  * /cards/[set]/[number] — full page detail for a single card.
@@ -473,9 +475,10 @@ function CardPageBody(props: {
                   <Show when={props.priceEntry?.tcgPlayerId} fallback={<>${props.priceEntry!.price!.toFixed(2)}</>}>
                     <a
                       class='price-link'
-                      href={`https://www.tcgplayer.com/product/${props.priceEntry!.tcgPlayerId}`}
+                      href={tcgplayerAffiliateUrl(`https://www.tcgplayer.com/product/${props.priceEntry!.tcgPlayerId}`)}
                       target='_blank'
-                      rel='noopener'
+                      rel='noopener sponsored'
+                      title={AFFILIATE_DISCLOSURE}
                     >
                       ${props.priceEntry!.price!.toFixed(2)} →
                     </a>
