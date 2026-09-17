@@ -644,21 +644,6 @@
   font-weight: 600;
   letter-spacing: 0;
 }
-/* A whole `.right` slot whose text arrives with the section's data: hold its
-   width from the start rather than growing into it. */
-.section-meta-slot {
-  display: inline-block;
-  min-width: 284px;
-  /* Caps the reservation at whatever the slot actually has. Below the width
-     where 284px fits, the head is going to wrap either way; what matters is
-     that it never pushes the row wider than the page. */
-  max-width: 100%;
-  opacity: 0;
-  transition: opacity var(--ms-base) var(--ease-base);
-}
-.section-meta-slot.is-ready {
-  opacity: 1;
-}
 /* A count that arrives with the data, sitting inside running text. Reserving a
    few digits keeps the line's length — and so where it wraps — stable between
    the empty state and the loaded one. Pairs with `.num`'s tabular figures, so
@@ -2463,25 +2448,6 @@ tr.row-expansion > td {
   stroke: var(--rule);
   stroke-width: 1;
 }
-.chart-legend {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-  font-size: 12px;
-}
-.chart-legend .leg {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-}
-.chart-legend .leg::before {
-  content: '';
-  width: 12px;
-  height: 2px;
-  display: inline-block;
-}
 
 /* ---------- Archetype trend chart (Trends page) ---------- */
 .trend-chart {
@@ -2572,38 +2538,6 @@ tr.row-expansion > td {
 /* On touch devices, the chart tooltip + crosshair are driven by tap-to-pin
    (see TrendsPage.tsx). The visibility of these elements is already gated by
    the `hoverData()` memo, so no media-query hide is needed. */
-
-.trend-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 16px;
-  margin-top: 14px;
-  font-size: 12px;
-}
-/* Legend entries are buttons (click to hide/show a series), so the shared rule
-   strips the native chrome as well as laying out the swatch. */
-.trend-legend .leg {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--fg);
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  cursor: pointer;
-  transition: opacity var(--ms-fast) var(--ease-base);
-}
-.trend-legend .leg::before {
-  content: '';
-  width: 14px;
-  height: 2px;
-  background: var(--leg-color, var(--accent));
-  display: inline-block;
-  border-radius: 1px;
-}
 
 /* ---------- Archetype Pokémon icons ----------
    Compact Limitless sprite(s) shown beside an archetype name (list view,
@@ -2861,96 +2795,6 @@ tr.row-expansion > td {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* ---------- Trends / movers ---------- */
-.movers {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-@media (max-width: 760px) {
-  .movers {
-    grid-template-columns: 1fr;
-  }
-}
-.mover-col {
-  background: var(--surface);
-  border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px 18px;
-  display: grid;
-  gap: 6px;
-  /* Pack rows at the top: the grid otherwise stretches them apart when one
-     column holds fewer entries than the other (price movers can be lopsided). */
-  align-content: start;
-}
-.mover-col h3 {
-  font-size: 11px;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 700;
-  margin: 0 0 8px;
-}
-.mover-col h3.up {
-  color: var(--positive);
-}
-.mover-col h3.down {
-  color: var(--negative);
-}
-.mover-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  gap: 12px;
-  align-items: baseline;
-  padding: 7px 0;
-  font-size: 13px;
-  border-bottom: 1px solid var(--rule);
-  cursor: pointer;
-  color: var(--fg);
-  text-decoration: none;
-}
-.mover-row:hover {
-  text-decoration: none;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-}
-.mover-row:last-child {
-  border-bottom: 0;
-}
-.mover-row .rank {
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-  font-size: 11px;
-  min-width: 22px;
-}
-.mover-row .name {
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mover-row .set {
-  font-size: 11px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-/* Stacks the pp change over the "start -> end%" base, so the number reads as a
-   share change rather than a raw percent. */
-.mover-row .delta {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  line-height: 1.2;
-}
-.mover-row .delta.up {
-  color: var(--positive);
-}
-.mover-row .delta.down {
-  color: var(--negative);
 }
 
 /* ---------- About / prose ---------- */
