@@ -1,20 +1,21 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { CardImage } from '../../components/CardImage';
 import { Segmented } from '../../components/Segmented';
+import { cheapestCost } from '../../../shared/packEv/cost';
 import { openPack, preparePack, type Pull } from '../../../shared/packEv/simulate';
 import type { PackEvSetPayload } from '../../../shared/packEv/types';
 import { artNumber, mergePulls, money, type PullStack, sortStacks, type StackSort } from './model';
 
 interface PackOpenerProps {
   payload: PackEvSetPayload;
-  /** What the packs would have cost, per pack. Null when nothing is priced. */
-  costPerPack: number | null;
 }
 
 /**
  * What the buttons open. Fixed pack counts rather than the set's own sealed
  * list, so every set rips the same way: a bundle is 6, a box 36, and a case is
- * six boxes whether or not the set was ever sold in one.
+ * six boxes whether or not the set was ever sold in one. Each rip is charged
+ * the cheapest way to buy that many packs, so six 151 singles price a bundle
+ * that sells above them.
  */
 const PRODUCTS = [
   { label: 'pack', packs: 1 },
@@ -31,13 +32,15 @@ const SORTS: { value: Exclude<StackSort, 'count'>; label: string }[] = [
 interface OpenedState {
   packs: number;
   value: number;
+  /** What the rips cost, or null once one of them couldn't be priced. */
+  spent: number | null;
   /** Rips so far, so a stack knows which one touched it last. */
   rips: number;
   hits: PullStack[];
   bulk: PullStack[];
 }
 
-const EMPTY: OpenedState = { packs: 0, value: 0, rips: 0, hits: [], bulk: [] };
+const EMPTY: OpenedState = { packs: 0, value: 0, spent: 0, rips: 0, hits: [], bulk: [] };
 
 interface StackTileProps {
   stack: PullStack;
@@ -80,11 +83,12 @@ function StackTile(props: StackTileProps) {
   );
 }
 
-function tally(opened: OpenedState, packs: number, pulls: Pull[]): OpenedState {
+function tally(opened: OpenedState, packs: number, cost: number | null, pulls: Pull[]): OpenedState {
   const rips = opened.rips + 1;
   return {
     packs: opened.packs + packs,
     value: opened.value + pulls.reduce((sum, pull) => sum + pull.value, 0),
+    spent: opened.spent === null || cost === null ? null : opened.spent + cost,
     rips,
     hits: mergePulls(
       opened.hits,
@@ -116,7 +120,7 @@ export function PackOpener(props: PackOpenerProps) {
   const pack = createMemo(() => preparePack(props.payload));
   const [opened, setOpened] = createSignal<OpenedState>(EMPTY);
   const [sort, setSort] = createSignal<Exclude<StackSort, 'count'>>('value');
-  const spent = () => (props.costPerPack === null ? null : opened().packs * props.costPerPack);
+  const spent = () => opened().spent;
   const net = () => opened().value - (spent() ?? 0);
   const hits = createMemo(() => sortStacks(opened().hits, sort()));
   const bulk = createMemo(() => sortStacks(opened().bulk, 'count'));
@@ -128,7 +132,8 @@ export function PackOpener(props: PackOpenerProps) {
     for (let index = 0; index < packs; index += 1) {
       pulls.push(...openPack(prepared, Math.random));
     }
-    setOpened(current => tally(current, packs, pulls));
+    const cost = cheapestCost(props.payload.sealed, packs);
+    setOpened(current => tally(current, packs, cost, pulls));
   }
 
   return (

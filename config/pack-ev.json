@@ -24,11 +24,16 @@
       },
       "sealed": [
         {
+          "kind": "case",
+          "label": "Booster Box Case",
+          "id": 692941,
+          "packs": 216
+        },
+        {
           "kind": "box",
           "label": "Booster Box",
           "id": 692939,
-          "packs": 36,
-          "primary": true
+          "packs": 36
         },
         {
           "kind": "etb",
@@ -184,11 +189,16 @@
       },
       "sealed": [
         {
+          "kind": "case",
+          "label": "Booster Box Case",
+          "id": 684445,
+          "packs": 216
+        },
+        {
           "kind": "box",
           "label": "Booster Box",
           "id": 684444,
-          "packs": 36,
-          "primary": true
+          "packs": 36
         },
         {
           "kind": "etb",
@@ -347,8 +357,7 @@
           "kind": "etb",
           "label": "Elite Trainer Box",
           "id": 668496,
-          "packs": 9,
-          "primary": true
+          "packs": 9
         },
         {
           "kind": "bundle",
@@ -536,11 +545,16 @@
       },
       "sealed": [
         {
+          "kind": "case",
+          "label": "Booster Box Case",
+          "id": 655281,
+          "packs": 216
+        },
+        {
           "kind": "box",
           "label": "Booster Box",
           "id": 654137,
-          "packs": 36,
-          "primary": true
+          "packs": 36
         },
         {
           "kind": "etb",
@@ -696,11 +710,16 @@
       },
       "sealed": [
         {
+          "kind": "case",
+          "label": "Booster Box Case",
+          "id": 624678,
+          "packs": 216
+        },
+        {
           "kind": "box",
           "label": "Booster Box",
           "id": 624679,
-          "packs": 36,
-          "primary": true
+          "packs": 36
         },
         {
           "kind": "etb",
@@ -856,11 +875,16 @@
       },
       "sealed": [
         {
+          "kind": "case",
+          "label": "Booster Box Case",
+          "id": 614449,
+          "packs": 216
+        },
+        {
           "kind": "box",
           "label": "Booster Box",
           "id": 610931,
-          "packs": 36,
-          "primary": true
+          "packs": 36
         },
         {
           "kind": "etb",
@@ -1019,8 +1043,7 @@
           "kind": "etb",
           "label": "Elite Trainer Box",
           "id": 593355,
-          "packs": 9,
-          "primary": true
+          "packs": 9
         },
         {
           "kind": "bundle",
@@ -1244,11 +1267,16 @@
       },
       "sealed": [
         {
+          "kind": "case",
+          "label": "Booster Box Case",
+          "id": 544384,
+          "packs": 216
+        },
+        {
           "kind": "box",
           "label": "Booster Box",
           "id": 543846,
-          "packs": 36,
-          "primary": true
+          "packs": 36
         },
         {
           "kind": "etb",
@@ -1416,8 +1444,7 @@
           "kind": "etb",
           "label": "Elite Trainer Box",
           "id": 503313,
-          "packs": 9,
-          "primary": true
+          "packs": 9
         },
         {
           "kind": "bundle",

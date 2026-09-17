@@ -13,6 +13,7 @@
  * @module .github/scripts/lib/packEv
  */
 
+import { cheapestPerPack } from '../../../shared/packEv/cost.ts';
 import { computePackEv, resolveRef, selectPool } from '../../../shared/packEv/ev.ts';
 import type {
   FoilPattern,
@@ -27,7 +28,12 @@ import type {
 } from '../../../shared/packEv/types.ts';
 
 const TCGCSV_CATEGORY_URL = 'https://tcgcsv.com/tcgplayer/3';
-export const PACK_EV_PREFIX = 'reports/pack-ev/';
+/**
+ * Versioned so a change to the artifact's shape moves every key at once: v1's
+ * copies sit in edge, browser and service-worker caches for hours after a
+ * rerun, and a page reading a field v1 never had would render against them.
+ */
+export const PACK_EV_PREFIX = 'reports/pack-ev/v2/';
 export const PACK_EV_INDEX_KEY = `${PACK_EV_PREFIX}index.json`;
 /** Same six-hour window the daily price artifacts use; this rebuilds daily. */
 export const PACK_EV_CACHE_CONTROL = 'public, max-age=21600';
@@ -263,14 +269,14 @@ export function buildSetPayload(
 }
 
 function indexEntry(payload: PackEvSetPayload): PackEvIndexEntry {
-  const primary = payload.sealed.find(product => product.primary) ?? payload.sealed[0];
+  const cheapest = cheapestPerPack(payload.sealed);
   return {
     code: payload.code,
     name: payload.name,
     releasedOn: payload.releasedOn,
     evPerPack: payload.ev.perPack,
-    costPerPack: primary?.price === null || primary === undefined ? null : primary.price / primary.packs,
-    primaryLabel: primary?.label ?? ''
+    costPerPack: cheapest?.costPerPack ?? null,
+    cheapestLabel: cheapest?.product.label ?? ''
   };
 }
 

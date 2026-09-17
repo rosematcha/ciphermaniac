@@ -93,7 +93,7 @@ export function PackEvPage() {
                     >
                       <td>
                         <span class='cardname'>{row.name}</span>
-                        <span class='packev-aside'>{row.primaryLabel}</span>
+                        <span class='packev-aside'>{row.cheapestLabel}</span>
                       </td>
                       <td class='num'>{money(row.evPerPack)}</td>
                       <td class='num'>{row.costPerPack === null ? '—' : money(row.costPerPack)}</td>

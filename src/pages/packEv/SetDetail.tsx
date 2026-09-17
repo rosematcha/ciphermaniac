@@ -1,9 +1,10 @@
 import { createMemo, For, Show } from 'solid-js';
 import { Section } from '../../components/Section';
+import { cheapestPerPack } from '../../../shared/packEv/cost';
 import { topCardContributions } from '../../../shared/packEv/ev';
 import type { PackEvSetPayload } from '../../../shared/packEv/types';
 import { PackOpener } from './PackOpener';
-import { money, oddsLabel, primaryProduct, returnPercent, sealedRows, slotRows } from './model';
+import { money, oddsLabel, returnPercent, sealedRows, slotRows } from './model';
 
 /** Cards worth naming. Past a dozen the tail is all sub-dollar contributions. */
 const TOP_CARDS = 12;
@@ -21,11 +22,7 @@ interface SetDetailProps {
  * list and the opener all read the same slot model and the same prices.
  */
 export function SetDetail(props: SetDetailProps) {
-  const primary = createMemo(() => primaryProduct(props.payload));
-  const costPerPack = createMemo(() => {
-    const product = primary();
-    return product?.price ? product.price / product.packs : null;
-  });
+  const costPerPack = createMemo(() => cheapestPerPack(props.payload.sealed)?.costPerPack ?? null);
   const rows = createMemo(() => slotRows(props.payload.ev.slots));
   const sealed = createMemo(() => sealedRows(props.payload));
   const cards = createMemo(() => topCardContributions(props.payload, TOP_CARDS));
@@ -45,14 +42,6 @@ export function SetDetail(props: SetDetailProps) {
                 <dt>A pack, sealed</dt>
               </div>
             )}
-          </Show>
-          <Show when={primary()?.price}>
-            <div class='packev-stat'>
-              <dd>{money(props.payload.ev.perPack * (primary()?.packs ?? 1))}</dd>
-              <dt>
-                {primary()?.label}, {primary()?.packs} packs
-              </dt>
-            </div>
           </Show>
           <Show when={returnPercent(props.payload.ev.perPack, costPerPack())}>
             {percent => (
@@ -171,7 +160,7 @@ export function SetDetail(props: SetDetailProps) {
       </Section>
 
       <Section title='Open some packs'>
-        <PackOpener payload={props.payload} costPerPack={costPerPack()} />
+        <PackOpener payload={props.payload} />
       </Section>
     </>
   );

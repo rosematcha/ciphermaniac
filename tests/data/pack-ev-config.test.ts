@@ -92,13 +92,15 @@ test('a demigod pack offers groups of the same size', () => {
   }
 });
 
-test('exactly one sealed product is the one the set is bought by', () => {
+test('every set sells a single pack, and no sealed product is listed twice', () => {
   for (const set of config.sets) {
     const ids = set.sealed.map(product => product.id);
     assert.equal(new Set(ids).size, ids.length, `${set.code} repeats a product id`);
-    const primary = set.sealed.filter(product => product.primary);
-    assert.equal(primary.length, 1, `${set.code} has ${primary.length} primary products`);
-    assert.ok(primary[0].packs > 1, `${set.code} primary product should hold packs`);
+    // The single is what lets every opener button be priced whatever else is listed.
+    assert.ok(
+      set.sealed.some(product => product.packs === 1),
+      `${set.code} has no single pack`
+    );
     for (const product of set.sealed) {
       assert.ok(product.packs > 0, `${set.code} ${product.label}`);
     }
