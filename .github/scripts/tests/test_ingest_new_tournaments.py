@@ -1,7 +1,8 @@
 """Unit tests for ingest-new-tournaments' pure helpers (no network/credentials).
 
-Covers the two decisions that decide whether an event is ever ingested: which
-codes the labs index publishes, and which codes R2 already holds. Getting either
+Covers the decisions that decide whether an event is ever ingested: which codes
+the labs index publishes, which codes R2 already holds, and how the two are
+reconciled. Getting either
 wrong reproduces the original failure — tournaments published upstream that no
 scheduled job ever notices.
 """
@@ -61,7 +62,17 @@ class _FakeClient:
         return {"Body": _Body(self._values[Key])}
 
 
-class FetchPublishedCodesTest(unittest.TestCase):
+def _entry(code: str, name: str, dates: str) -> str:
+    """One labs index card, shaped like the live markup."""
+    return (
+        f'<li><a href="/{code}/standings" class="flex"><img src="regional.png" alt="regional logo"/>'
+        f'<div class="flex flex-col gap-1"><div class="font-bold text-xl">{name}</div>'
+        f'<div class="flex gap-2 items-center"><!--[--><img src="PL.png" title="PL" alt="PL"/><!--]-->'
+        f" {dates} <!--[!--><!--]--></div></div></a></li>"
+    )
+
+
+class ParsePublishedEventsTest(unittest.TestCase):
     def test_extracts_codes_ascending_and_deduped(self):
         html = (
             '<a href="/0071/standings">Worlds</a>'
@@ -69,22 +80,43 @@ class FetchPublishedCodesTest(unittest.TestCase):
             '<a href="/0058/standings">Houston again</a>'
             '<a href="/tournaments/517">not a labs code</a>'
         )
-        codes = ingest_module.fetch_published_codes(_FakeSession(html))
-        self.assertEqual(codes, ["0058", "0071"])
+        self.assertEqual(list(ingest_module.parse_published_events(html)), ["0058", "0071"])
 
     def test_returns_empty_when_index_has_no_links(self):
-        self.assertEqual(ingest_module.fetch_published_codes(_FakeSession("<html></html>")), [])
+        self.assertEqual(ingest_module.parse_published_events("<html></html>"), {})
+
+    def test_names_each_entry_the_way_download_tournament_names_its_folder(self):
+        html = (
+            _entry("0007", "Regional Championship Gdańsk", "November 2–3, 2024")
+            + _entry("0012", "Special Event Bogot&aacute;", "May 31–June 1, 2025")
+            + _entry("0013", "Regional Championship Lille", "sometime soon")
+        )
+        self.assertEqual(
+            ingest_module.parse_published_events(html),
+            {
+                "0007": "2024-11-02, Regional Championship Gdańsk",
+                "0012": "2025-05-31, Special Event Bogotá",
+                "0013": None,
+            },
+        )
+
+    def test_fetch_reads_the_labs_index(self):
+        html = _entry("0071", "World Championship San Francisco", "August 28–30, 2026")
+        self.assertEqual(
+            ingest_module.fetch_published_events(_FakeSession(html)),
+            {"0071": "2026-08-28, World Championship San Francisco"},
+        )
 
 
-class FetchIngestedCodesTest(unittest.TestCase):
+class FetchEventCodesTest(unittest.TestCase):
     def test_reads_labs_code_from_every_folder_meta(self):
         client = self.client_with_metas([{"labsCode": "0054"}, {"labsCode": " 0031 "}])
-        codes = ingest_module.fetch_ingested_codes(client, "bucket")
-        self.assertEqual(codes, {"0054", "0031"})
+        codes = ingest_module.fetch_event_codes(client, "bucket")
+        self.assertEqual(codes, {"2026-01-01, Event 0": "0054", "2026-01-02, Event 1": "0031"})
 
-    def test_ignores_folders_without_a_usable_code(self):
+    def test_maps_folders_without_a_usable_code_to_none(self):
         client = self.client_with_metas([{}, {"labsCode": ""}, {"labsCode": 58}])
-        self.assertEqual(ingest_module.fetch_ingested_codes(client, "bucket"), set())
+        self.assertEqual(set(ingest_module.fetch_event_codes(client, "bucket").values()), {None})
 
     @staticmethod
     def client_with_metas(metas):
@@ -103,6 +135,44 @@ class FetchIngestedCodesTest(unittest.TestCase):
             {f"{root.lstrip('/')}/meta.json": meta for root, meta in zip(events.values(), metas, strict=True)}
         )
         return _FakeClient(values)
+
+
+class PlanIngestTest(unittest.TestCase):
+    def test_skips_events_held_under_their_real_code(self):
+        plan = ingest_module.plan_ingest({"0001": "2024-09-13, Baltimore"}, {"2024-09-13, Baltimore": "0001"})
+        self.assertEqual(plan, ingest_module.IngestPlan(missing=[], refresh=[], renamed={}))
+
+    def test_queues_new_events_ahead_of_converted_refreshes(self):
+        published = {
+            "0006": "2024-10-19, Lille",
+            "0072": "2026-09-19, Pittsburgh",
+            "0073": None,
+        }
+        events = {"2024-10-19, Lille": "hipLille"}
+        plan = ingest_module.plan_ingest(published, events)
+        self.assertEqual(plan.missing, ["0072", "0073"])
+        self.assertEqual(plan.refresh, ["0006"])
+
+    def test_matches_a_renamed_converted_event_by_start_date_without_refreshing_it(self):
+        published = {"0035": "2025-08-15, World Championship Anaheim"}
+        events = {"2025-08-15, World Championships 2025": "hips2025"}
+        plan = ingest_module.plan_ingest(published, events)
+        self.assertEqual(plan.renamed, {"0035": "2025-08-15, World Championships 2025"})
+        self.assertEqual(plan.missing + plan.refresh, [])
+
+    def test_a_shared_start_date_is_not_enough_to_claim_a_converted_event(self):
+        published = {"0002": "2024-09-28, Dortmund", "0003": "2024-09-28, Joinville Renamed"}
+        events = {"2024-09-28, Dortmund Old": None, "2024-09-28, Joinville": None}
+        plan = ingest_module.plan_ingest(published, events)
+        self.assertEqual(plan.missing, ["0002", "0003"])
+        self.assertEqual(plan.renamed, {})
+
+    def test_an_exact_folder_match_outranks_a_date_match(self):
+        published = {"0002": "2024-09-28, Dortmund Renamed", "0003": "2024-09-28, Joinville"}
+        events = {"2024-09-28, Joinville": "Joinville"}
+        plan = ingest_module.plan_ingest(published, events)
+        self.assertEqual(plan.refresh, ["0003"])
+        self.assertEqual(plan.missing, ["0002"])
 
 
 class ParseEnvTest(unittest.TestCase):
