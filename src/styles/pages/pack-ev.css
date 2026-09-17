@@ -28,6 +28,8 @@
 }
 .packev-stat dd {
   margin: 0;
+  /* Figures bump in place each rip; scale from where the text starts. */
+  transform-origin: left center;
   font-size: var(--text-xl);
   font-weight: 700;
   white-space: nowrap;
@@ -101,6 +103,16 @@
   position: relative;
   margin: 0;
   min-width: 0;
+}
+/* The chase call-out's sweep over the art; juice.ts paints and runs it. */
+.packev-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  aspect-ratio: 63 / 88;
+  border-radius: var(--radius-lg);
+  opacity: 0;
+  pointer-events: none;
 }
 .packev-art {
   width: 100%;

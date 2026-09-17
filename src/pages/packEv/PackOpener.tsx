@@ -1,10 +1,11 @@
-import { createMemo, createSignal, For, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, on, onMount, Show } from 'solid-js';
 import { CardImage } from '../../components/CardImage';
 import { Segmented } from '../../components/Segmented';
 import { cheapestCost } from '../../../shared/packEv/cost';
 import { openPack, preparePack, type Pull } from '../../../shared/packEv/simulate';
 import type { PackEvSetPayload } from '../../../shared/packEv/types';
-import { artNumber, mergePulls, money, type PullStack, sortStacks, type StackSort } from './model';
+import { callout, juice, kick, staggerDelay } from './juice';
+import { artNumber, isChase, mergePulls, money, type PullStack, sortStacks, type StackSort } from './model';
 
 interface PackOpenerProps {
   payload: PackEvSetPayload;
@@ -47,6 +48,10 @@ interface StackTileProps {
   set: string;
   size: 'sm' | 'xs';
   caption: boolean;
+  /** The rip in progress; a stack it created pops in, one it added to bumps. */
+  rip: number;
+  /** Place in the grid, which staggers the pops like a deal. */
+  index: number;
 }
 
 /**
@@ -56,8 +61,22 @@ interface StackTileProps {
  */
 function StackTile(props: StackTileProps) {
   const card = () => props.stack.pull.card;
+  let figure!: HTMLElement;
+  // Stacks are immutable, so the grid only mounts a tile when a rip touched it.
+  onMount(() => {
+    const big = props.size === 'sm';
+    const delay = staggerDelay(props.index);
+    juice(
+      figure,
+      { scale: big ? 0.11 : 0.08, rotation: kick(big ? 5 : 3), pop: props.stack.first === props.rip },
+      delay
+    );
+    if (isChase(props.stack.pull)) {
+      callout(figure, delay);
+    }
+  });
   return (
-    <figure class='packev-tile'>
+    <figure class='packev-tile' ref={figure}>
       <Show when={card()} fallback={<div class='packev-art packev-art-blank'>{props.stack.pull.outcome}</div>}>
         {found => (
           <CardImage
@@ -124,6 +143,19 @@ export function PackOpener(props: PackOpenerProps) {
   const net = () => opened().value - (spent() ?? 0);
   const hits = createMemo(() => sortStacks(opened().hits, sort()));
   const bulk = createMemo(() => sortStacks(opened().bulk, 'count'));
+  let band: HTMLDListElement | undefined;
+  // The totals take a bump of their own each rip, the way Balatro's score does.
+  createEffect(
+    on(
+      () => opened().rips,
+      () => {
+        for (const figure of band?.querySelectorAll('dd') ?? []) {
+          juice(figure, { scale: 0.2, rotation: kick(2), pop: false });
+        }
+      },
+      { defer: true }
+    )
+  );
   const bulkCards = createMemo(() => opened().bulk.reduce((sum, entry) => sum + entry.count, 0));
 
   function rip(packs: number) {
@@ -152,7 +184,7 @@ export function PackOpener(props: PackOpenerProps) {
       </div>
 
       <Show when={opened().packs > 0}>
-        <dl class='packev-band'>
+        <dl class='packev-band' ref={band}>
           <div class='packev-stat'>
             <dd>{opened().packs}</dd>
             <dt>Packs opened</dt>
@@ -181,7 +213,18 @@ export function PackOpener(props: PackOpenerProps) {
             <Segmented options={SORTS} selected={sort()} onSelect={setSort} ariaLabel='Sort pulls' />
           </div>
           <div class='packev-grid'>
-            <For each={hits()}>{entry => <StackTile stack={entry} set={props.payload.code} size='sm' caption />}</For>
+            <For each={hits()}>
+              {(entry, index) => (
+                <StackTile
+                  stack={entry}
+                  set={props.payload.code}
+                  size='sm'
+                  caption
+                  rip={opened().rips}
+                  index={index()}
+                />
+              )}
+            </For>
           </div>
         </Show>
 
@@ -194,7 +237,16 @@ export function PackOpener(props: PackOpenerProps) {
           </summary>
           <div class='packev-grid is-tiny'>
             <For each={bulk()}>
-              {entry => <StackTile stack={entry} set={props.payload.code} size='xs' caption={false} />}
+              {(entry, index) => (
+                <StackTile
+                  stack={entry}
+                  set={props.payload.code}
+                  size='xs'
+                  caption={false}
+                  rip={opened().rips}
+                  index={index()}
+                />
+              )}
             </For>
           </div>
         </details>

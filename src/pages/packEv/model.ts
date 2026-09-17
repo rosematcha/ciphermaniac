@@ -131,6 +131,8 @@ export interface PullStack {
   key: string;
   pull: Pull;
   count: number;
+  /** Which rip opened the first copy, so a tile can tell a new stack from another copy. */
+  first: number;
   /** Which rip last added a copy; the newest-first sort reads it. */
   last: number;
 }
@@ -156,7 +158,7 @@ export function mergePulls(stacks: PullStack[], pulls: Pull[], rip: number): Pul
     const existing = byKey.get(key);
     byKey.set(
       key,
-      existing ? { ...existing, count: existing.count + 1, last: rip } : { key, pull, count: 1, last: rip }
+      existing ? { ...existing, count: existing.count + 1, last: rip } : { key, pull, count: 1, first: rip, last: rip }
     );
   }
   return [...byKey.values()];
@@ -174,6 +176,15 @@ const SORT_KEYS: Record<StackSort, (stack: PullStack) => number> = {
 export function sortStacks(stacks: PullStack[], by: StackSort): PullStack[] {
   const primary = SORT_KEYS[by];
   return [...stacks].sort((a, b) => primary(b) - primary(a) || b.count - a.count || b.pull.value - a.pull.value);
+}
+
+/** Rarities that open like an edition in Balatro: a second, bigger spring and a sheen. */
+const CHASE_RARITY = /special illustration|hyper|secret/iu;
+/** A price that earns the same call-out whatever its rarity says. */
+const CHASE_VALUE = 50;
+
+export function isChase(pull: Pull): boolean {
+  return pull.value >= CHASE_VALUE || CHASE_RARITY.test(pull.card?.rarity ?? '');
 }
 
 /** The collector number without its set total: `188/167` is `188`, the form card art is keyed by. */
