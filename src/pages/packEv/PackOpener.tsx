@@ -1,10 +1,11 @@
-import { createEffect, createMemo, createSignal, For, on, onMount, Show } from 'solid-js';
+import { createMemo, createSignal, For, onMount, Show } from 'solid-js';
 import { CardImage } from '../../components/CardImage';
 import { Segmented } from '../../components/Segmented';
 import { cheapestCost } from '../../../shared/packEv/cost';
 import { openPack, preparePack, type Pull } from '../../../shared/packEv/simulate';
 import type { PackEvSetPayload } from '../../../shared/packEv/types';
-import { callout, juice, kick, staggerDelay } from './juice';
+import { attention, callout, juice, kick, staggerDelay } from './juice';
+import { createCount } from './tween';
 import { artNumber, isChase, mergePulls, money, type PullStack, sortStacks, type StackSort } from './model';
 
 interface PackOpenerProps {
@@ -37,11 +38,32 @@ interface OpenedState {
   spent: number | null;
   /** Rips so far, so a stack knows which one touched it last. */
   rips: number;
+  /** What the latest rip made or lost against its cost, or null when it couldn't be priced. */
+  delta: RipDelta | null;
   hits: PullStack[];
   bulk: PullStack[];
 }
 
-const EMPTY: OpenedState = { packs: 0, value: 0, spent: 0, rips: 0, hits: [], bulk: [] };
+interface RipDelta {
+  amount: number;
+}
+
+const EMPTY: OpenedState = { packs: 0, value: 0, spent: 0, rips: 0, delta: null, hits: [], bulk: [] };
+
+function signed(amount: number): string {
+  return `${amount >= 0 ? '+' : '−'}${money(Math.abs(amount))}`;
+}
+
+/** A rip's delta: popped in on mount, and remounted each rip because each rip makes a new one. */
+function Attention(props: { delta: RipDelta }) {
+  let mark!: HTMLElement;
+  onMount(() => attention(mark));
+  return (
+    <small class={`packev-delta ${props.delta.amount >= 0 ? 'is-up' : 'is-down'}`} ref={mark} aria-hidden='true'>
+      {signed(props.delta.amount)}
+    </small>
+  );
+}
 
 interface StackTileProps {
   stack: PullStack;
@@ -104,9 +126,11 @@ function StackTile(props: StackTileProps) {
 
 function tally(opened: OpenedState, packs: number, cost: number | null, pulls: Pull[]): OpenedState {
   const rips = opened.rips + 1;
+  const value = pulls.reduce((sum, pull) => sum + pull.value, 0);
   return {
     packs: opened.packs + packs,
-    value: opened.value + pulls.reduce((sum, pull) => sum + pull.value, 0),
+    value: opened.value + value,
+    delta: cost === null ? null : { amount: value - cost },
     spent: opened.spent === null || cost === null ? null : opened.spent + cost,
     rips,
     hits: mergePulls(
@@ -141,21 +165,12 @@ export function PackOpener(props: PackOpenerProps) {
   const [sort, setSort] = createSignal<Exclude<StackSort, 'count'>>('value');
   const spent = () => opened().spent;
   const net = () => opened().value - (spent() ?? 0);
+  const shownPacks = createCount(() => opened().packs);
+  const shownValue = createCount(() => opened().value);
+  const shownSpent = createCount(() => spent() ?? 0);
+  const shownNet = createCount(net);
   const hits = createMemo(() => sortStacks(opened().hits, sort()));
   const bulk = createMemo(() => sortStacks(opened().bulk, 'count'));
-  let band: HTMLDListElement | undefined;
-  // The totals take a bump of their own each rip, the way Balatro's score does.
-  createEffect(
-    on(
-      () => opened().rips,
-      () => {
-        for (const figure of band?.querySelectorAll('dd') ?? []) {
-          juice(figure, { scale: 0.2, rotation: kick(2), pop: false });
-        }
-      },
-      { defer: true }
-    )
-  );
   const bulkCards = createMemo(() => opened().bulk.reduce((sum, entry) => sum + entry.count, 0));
 
   function rip(packs: number) {
@@ -184,24 +199,26 @@ export function PackOpener(props: PackOpenerProps) {
       </div>
 
       <Show when={opened().packs > 0}>
-        <dl class='packev-band' ref={band}>
+        <dl class='packev-band'>
           <div class='packev-stat'>
-            <dd>{opened().packs}</dd>
+            <dd>{Math.round(shownPacks())}</dd>
             <dt>Packs opened</dt>
           </div>
           <div class='packev-stat'>
-            <dd>{money(opened().value)}</dd>
+            <dd>{money(shownValue())}</dd>
             <dt>Pulled</dt>
           </div>
           <Show when={spent() !== null}>
             <div class='packev-stat'>
-              <dd>{money(spent() ?? 0)}</dd>
+              <dd>{money(shownSpent())}</dd>
               <dt>Spent</dt>
             </div>
             <div class='packev-stat'>
               <dd class={net() >= 0 ? 'is-up' : 'is-down'}>
-                {net() >= 0 ? '+' : '−'}
-                {money(Math.abs(net()))}
+                {signed(shownNet())}
+                <Show when={opened().delta} keyed>
+                  {delta => <Attention delta={delta} />}
+                </Show>
               </dd>
               <dt>Against cost</dt>
             </div>
