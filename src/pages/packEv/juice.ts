@@ -82,7 +82,7 @@ export function staggerDelay(index: number): number {
   return Math.min(index * STAGGER_MS, STAGGER_CAP_MS);
 }
 
-function prefersReducedMotion(): boolean {
+export function prefersReducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
@@ -128,6 +128,27 @@ export function callout(element: Element, delay = 0): void {
       opacity: [0, 1, 0]
     },
     { duration: SHEEN_MS, delay: start, easing: 'ease-out', pseudoElement: '::after' }
+  );
+}
+
+/** How long a rip's delta holds before it fades, per `attention_text`. */
+const ATTENTION_HOLD_MS = 700;
+const ATTENTION_FADE_MS = 300;
+
+/**
+ * Pop a rip's delta in beside its figure, hold it, and fade it out, the way
+ * `ease_dollars` flashes "+$5" over the money readout. Under reduced motion it
+ * simply stays until the next rip replaces it.
+ */
+export function attention(element: Element): void {
+  if (!canAnimate(element)) {
+    return;
+  }
+  const { frames, duration } = juiceFrames({ scale: 0.2, rotation: kick(6), pop: true });
+  element.animate(frames, { duration, fill: 'backwards' });
+  element.animate(
+    { opacity: [1, 0] },
+    { duration: ATTENTION_FADE_MS, delay: duration + ATTENTION_HOLD_MS, fill: 'forwards' }
   );
 }
 

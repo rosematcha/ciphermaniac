@@ -28,8 +28,6 @@
 }
 .packev-stat dd {
   margin: 0;
-  /* Figures bump in place each rip; scale from where the text starts. */
-  transform-origin: left center;
   font-size: var(--text-xl);
   font-weight: 700;
   white-space: nowrap;
@@ -48,6 +46,10 @@
 
 /* A return under what you paid is the finding, not a warning: the figure takes
    the negative ink and nothing else changes. */
+/* A rip's delta, flashed at the end of the label of the figure it moved. */
+.packev-delta {
+  float: right;
+}
 .packev-band .is-up {
   color: var(--positive);
 }
