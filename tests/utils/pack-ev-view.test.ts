@@ -16,6 +16,7 @@ import {
   mergePulls,
   money,
   priceDate,
+  productImage,
   rate,
   returnPercent,
   sortStacks
@@ -99,6 +100,10 @@ test('stacks sort by value, or by the rip that last touched them', () => {
 test('card art is keyed by the number without its set total', () => {
   assert.equal(artNumber('188/167'), '188');
   assert.equal(artNumber('SWSH001'), 'SWSH001');
+});
+
+test('a reprint shows its TCGplayer product photo, keyed by product id', () => {
+  assert.equal(productImage(714372), 'https://tcgplayer-cdn.tcgplayer.com/product/714372_200w.jpg');
 });
 
 test('special illustration, hyper, and secret rares are chases, as is anything pricey', () => {

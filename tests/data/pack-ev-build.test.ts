@@ -168,6 +168,78 @@ test('cards are the products with a number and a rarity, priced per printing', (
   assert.deepEqual(payload.cards[3].prices, { holofoil: 352.38 });
 });
 
+/** A Classic Collection-style subset: its own group, numbered for the set it was first printed in. */
+const REPRINTS = {
+  products: [
+    product(50, 'Charizard', { Number: '4/102', Rarity: 'Classic Collection' }),
+    product(51, 'Gengar (Prime)', { Number: '94/102', Rarity: 'Classic Collection' })
+  ],
+  prices: [
+    { productId: 50, subTypeName: 'Holofoil', marketPrice: 192.5 },
+    { productId: 51, subTypeName: 'Holofoil', marketPrice: 97.5 }
+  ]
+};
+
+const WITH_REPRINTS: PackEvSetConfig = {
+  ...SET,
+  reprintGroupIds: [24837],
+  slots: [
+    {
+      label: 'Third common',
+      outcomes: [
+        {
+          label: 'Classic Collection',
+          odds: 10,
+          pool: { rarities: ['Classic Collection'], printing: 'holofoil', bulk: 'hit' }
+        },
+        { label: 'Common', pool: { rarities: ['Common'], printing: 'normal', bulk: 'commonUncommon' } }
+      ]
+    }
+  ]
+};
+
+test('reprint groups join the card list flagged, so their art is never keyed off this set', () => {
+  const payload = buildSetPayload(CONFIG, WITH_REPRINTS, { ...SOURCES, reprints: REPRINTS }, 'now');
+  const charizard = payload.cards.find(card => card.id === 50);
+  assert.deepEqual(charizard, {
+    id: 50,
+    name: 'Charizard',
+    number: '4/102',
+    rarity: 'Classic Collection',
+    prices: { holofoil: 192.5 },
+    reprint: true
+  });
+  assert.deepEqual(
+    payload.cards.filter(card => card.reprint).map(card => card.id),
+    [50, 51],
+    "the set's own cards are not reprints"
+  );
+  // A reprint's parenthetical is its original name, not a foil pattern that would drop it from the pool.
+  const gengar = payload.cards.find(card => card.id === 51);
+  assert.equal(gengar?.name, 'Gengar (Prime)');
+  assert.equal(gengar?.pattern, undefined);
+  assert.equal(payload.ev.perPack.toFixed(3), (0.1 * 145 + 0.9 * 0.035).toFixed(3));
+});
+
+test('a run fetches every reprint group a set names', async () => {
+  const fetched: string[] = [];
+  const index = await runPackEv({
+    config: { ...CONFIG, sets: [WITH_REPRINTS] },
+    fetchJson: async url => {
+      fetched.push(url);
+      if (url.endsWith('/groups')) {
+        return { success: true, results: [] };
+      }
+      const listing = url.includes('/24837/') ? REPRINTS : { products: PRODUCTS, prices: PRICES };
+      return { success: true, results: url.endsWith('/products') ? listing.products : listing.prices };
+    },
+    publisher: { write: async () => {} }
+  });
+  assert.ok(fetched.includes('https://tcgcsv.com/tcgplayer/3/24837/products'));
+  assert.ok(fetched.includes('https://tcgcsv.com/tcgplayer/3/24837/prices'));
+  assert.equal(index.sets[0].evPerPack.toFixed(3), (0.1 * 145 + 0.9 * 0.035).toFixed(3));
+});
+
 test('sealed products carry their market price and their TCGplayer URL', () => {
   const payload = buildSetPayload(CONFIG, SET, SOURCES, '2026-09-16T00:00:00.000Z');
   assert.deepEqual(payload.sealed[0], {
