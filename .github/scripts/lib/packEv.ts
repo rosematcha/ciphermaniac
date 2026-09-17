@@ -284,6 +284,7 @@ export function buildSetPayload(
     bulk: config.bulk,
     slots: set.slots,
     ...(specialPacks.length ? { specialPacks } : {}),
+    ...(set.rips ? { rips: set.rips } : {}),
     cards,
     sealed: toSealed(set, sources.products, prices),
     ev: computePackEv(inputs)

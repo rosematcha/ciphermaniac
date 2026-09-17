@@ -240,6 +240,15 @@ test('a run fetches every reprint group a set names', async () => {
   assert.equal(index.sets[0].evPerPack.toFixed(3), (0.1 * 145 + 0.9 * 0.035).toFixed(3));
 });
 
+test("a set's own opener buttons ride along in the payload, and a set without them sends none", () => {
+  const rips = [
+    { label: 'pack', packs: 1 },
+    { label: 'sticker collection', packs: 3 }
+  ];
+  assert.deepEqual(buildSetPayload(CONFIG, { ...SET, rips }, SOURCES, 'now').rips, rips);
+  assert.equal('rips' in buildSetPayload(CONFIG, SET, SOURCES, 'now'), false);
+});
+
 test('sealed products carry their market price and their TCGplayer URL', () => {
   const payload = buildSetPayload(CONFIG, SET, SOURCES, '2026-09-16T00:00:00.000Z');
   assert.deepEqual(payload.sealed[0], {

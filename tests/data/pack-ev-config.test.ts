@@ -112,6 +112,18 @@ test('every set sells a single pack, and no sealed product is listed twice', () 
   }
 });
 
+test('opener buttons open a whole number of packs, starting from a single', () => {
+  for (const set of config.sets) {
+    const rips = set.rips ?? [];
+    for (const rip of rips) {
+      assert.ok(Number.isInteger(rip.packs) && rip.packs > 0, `${set.code} ${rip.label}`);
+    }
+    if (rips.length) {
+      assert.equal(rips[0].packs, 1, `${set.code} opens a single pack first`);
+    }
+  }
+});
+
 test('an unpriced stand-in is worth more than bulk, or it would be pointless', () => {
   for (const set of config.sets) {
     for (const outcome of set.slots.flatMap(slot => slot.outcomes)) {

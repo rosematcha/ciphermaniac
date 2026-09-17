@@ -137,7 +137,7 @@ export interface SpecialPack {
 
 /** A sealed product, and how many packs you have to open to get through it. */
 export interface SealedProduct {
-  kind: 'case' | 'box' | 'etb' | 'bundle' | 'pack';
+  kind: 'case' | 'box' | 'etb' | 'bundle' | 'collection' | 'pack';
   label: string;
   /** TCGplayer product id. */
   id: number;
@@ -174,6 +174,14 @@ export interface PackEvSetConfig {
   sealed: SealedProductConfig[];
   slots: PackSlot[];
   specialPacks?: SpecialPack[];
+  /** The opener's buttons, when the default pack, bundle, box and case don't suit the set. */
+  rips?: RipSize[];
+}
+
+/** One opener button: `Open a {label}` rips `packs` packs. */
+export interface RipSize {
+  label: string;
+  packs: number;
 }
 
 /** `config/pack-ev.json`, as the builder reads it. */
@@ -236,6 +244,7 @@ export interface PackEvSetPayload {
   bulk: BulkRates;
   slots: PackSlot[];
   specialPacks?: SpecialPack[];
+  rips?: RipSize[];
   cards: PackCard[];
   sealed: SealedProduct[];
   /** EV as the job computed it, from exactly the fields above. */

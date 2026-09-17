@@ -3,7 +3,7 @@ import { CardImage } from '../../components/CardImage';
 import { Segmented } from '../../components/Segmented';
 import { cheapestCost } from '../../../shared/packEv/cost';
 import { openPack, preparePack, type Pull } from '../../../shared/packEv/simulate';
-import type { PackEvSetPayload } from '../../../shared/packEv/types';
+import type { PackEvSetPayload, RipSize } from '../../../shared/packEv/types';
 import { attention, callout, juice, kick, staggerDelay } from './juice';
 import { createCount } from './tween';
 import {
@@ -24,16 +24,17 @@ interface PackOpenerProps {
 /**
  * What the buttons open. Fixed pack counts rather than the set's own sealed
  * list, so every set rips the same way: a bundle is 6, a box 36, and a case is
- * six boxes whether or not the set was ever sold in one. Each rip is charged
- * the cheapest way to buy that many packs, so six 151 singles price a bundle
- * that sells above them.
+ * six boxes whether or not the set was ever sold in one. A set whose packs are
+ * really bought some other way names its own (`rips`). Each rip is charged the
+ * cheapest way to buy that many packs, so six 151 singles price a bundle that
+ * sells above them.
  */
-const PRODUCTS = [
+const PRODUCTS: RipSize[] = [
   { label: 'pack', packs: 1 },
   { label: 'bundle', packs: 6 },
   { label: 'box', packs: 36 },
   { label: 'case', packs: 216 }
-] as const;
+];
 
 const SORTS: { value: Exclude<StackSort, 'count'>; label: string }[] = [
   { value: 'newest', label: 'Newest' },
@@ -200,7 +201,7 @@ export function PackOpener(props: PackOpenerProps) {
   return (
     <div class='packev-opener'>
       <div class='packev-row'>
-        <For each={PRODUCTS}>
+        <For each={props.payload.rips ?? PRODUCTS}>
           {product => (
             <button type='button' class='btn btn-secondary' onClick={() => rip(product.packs)}>
               Open a {product.label}

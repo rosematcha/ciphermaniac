@@ -37,11 +37,29 @@
           "packs": 6
         },
         {
+          "kind": "collection",
+          "label": "Tech Sticker Collection [Lucario]",
+          "id": 704146,
+          "packs": 3
+        },
+        {
+          "kind": "collection",
+          "label": "Tech Sticker Collection [Alolan Exeggutor]",
+          "id": 704145,
+          "packs": 3
+        },
+        {
           "kind": "pack",
           "label": "Single Pack",
           "id": 696613,
           "packs": 1
         }
+      ],
+      "rips": [
+        { "label": "pack", "packs": 1 },
+        { "label": "sticker collection", "packs": 3 },
+        { "label": "box", "packs": 36 },
+        { "label": "case", "packs": 216 }
       ],
       "slots": [
         {
