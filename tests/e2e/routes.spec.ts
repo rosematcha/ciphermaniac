@@ -289,12 +289,14 @@ test('the tools index features the tier list, label maker and pack EV as tiles',
 test('pack EV sets a pack opened against a pack sealed, and opens packs', async ({ page }) => {
   await gotoClean(page, '/tools/pack-ev');
   const band = page.locator('.packev-band').first();
-  // Fixture: a trimmed Twilight Masquerade — $356.09 across 36 packs.
-  await expect(band).toContainText('$9.89');
+  // Fixture: a trimmed Twilight Masquerade, whose $9.09 single undercuts the box's $9.89 a pack.
+  await expect(band).toContainText('$9.09');
   await expect(page.locator('main')).toContainText('Pinsir');
   await page.getByRole('button', { name: 'Open a box' }).click();
   const opener = page.locator('.packev-opener');
   await expect(opener.locator('.packev-band')).toContainText('36');
+  // Thirty-six singles, not the $356.09 box.
+  await expect(opener.locator('.packev-band')).toContainText('$327.24');
   // Eleven cards a pack land somewhere: stacked as hits, or in the bulk pile.
   await expect(opener.locator('.packev-bulk summary')).toContainText(/\d+ cards/);
   await opener.locator('.packev-bulk summary').click();

@@ -78,11 +78,6 @@ export function sealedRows(payload: Pick<PackEvSetPayload, 'ev' | 'sealed'>): Se
   return rows.sort((a, b) => (a.costPerPack ?? Infinity) - (b.costPerPack ?? Infinity));
 }
 
-/** The product the set is normally bought by — the box, or the ETB where there is none. */
-export function primaryProduct(payload: Pick<PackEvSetPayload, 'sealed'>): SealedProduct | null {
-  return payload.sealed.find(product => product.primary) ?? payload.sealed[0] ?? null;
-}
-
 export interface SlotRow {
   key: string;
   /** Set only on the first row of a slot, so the column reads as a group. */
