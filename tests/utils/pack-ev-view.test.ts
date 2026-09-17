@@ -11,6 +11,7 @@ import test from 'node:test';
 
 import {
   artNumber,
+  isChase,
   mergePulls,
   money,
   oddsLabel,
@@ -132,12 +133,12 @@ const ENERGY: Pull = {
 test('identical prints stack across rips; a different printing is its own stack', () => {
   const first = mergePulls([], [pull(1, 50), pull(2, 5), pull(1, 50), ENERGY], 1);
   const stacks = mergePulls(first, [pull(2, 5), pull(2, 0.2, 'reverse'), ENERGY], 2);
-  const byKey = Object.fromEntries(stacks.map(entry => [entry.key, [entry.count, entry.last]]));
+  const byKey = Object.fromEntries(stacks.map(entry => [entry.key, [entry.count, entry.first, entry.last]]));
   assert.deepEqual(byKey, {
-    '1:holofoil': [2, 1],
-    '2:holofoil': [2, 2],
-    '2:reverse': [1, 2],
-    'flat:Basic Energy': [2, 2]
+    '1:holofoil': [2, 1, 1],
+    '2:holofoil': [2, 1, 2],
+    '2:reverse': [1, 2, 2],
+    'flat:Basic Energy': [2, 1, 2]
   });
 });
 
@@ -162,4 +163,17 @@ test('stacks sort by value, or by the rip that last touched them', () => {
 test('card art is keyed by the number without its set total', () => {
   assert.equal(artNumber('188/167'), '188');
   assert.equal(artNumber('SWSH001'), 'SWSH001');
+});
+
+test('special illustration, hyper, and secret rares are chases, as is anything pricey', () => {
+  const card = (rarity: string, value: number): Pull => ({
+    ...pull(9, value),
+    card: { id: 9, name: 'Card 9', number: '9/167', rarity, prices: {} }
+  });
+  assert.equal(isChase(card('Special Illustration Rare', 20)), true);
+  assert.equal(isChase(card('Hyper Rare', 8)), true);
+  assert.equal(isChase(card('Secret Rare', 8)), true);
+  assert.equal(isChase(card('Illustration Rare', 12)), false);
+  assert.equal(isChase(card('Double Rare', 60)), true);
+  assert.equal(isChase(ENERGY), false);
 });
