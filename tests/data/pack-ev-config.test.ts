@@ -1,7 +1,7 @@
 /**
  * The shipped pack model, checked for the mistakes a hand-edited config makes.
  *
- * `config/pack-ev.json` is transcribed from one TCGplayer article per set. A
+ * `config/pack-ev.json` is transcribed from one pull-rate count per set. A
  * decimal in the wrong place, a slot with two remainder outcomes, or a sealed
  * product id pasted twice all produce a page that looks fine and lies, so they
  * are caught here rather than in production.
@@ -16,11 +16,11 @@ import rawConfig from '../../config/pack-ev.json';
 
 const config = rawConfig as unknown as PackEvConfig;
 
-test('every set is distinct and cites the article its rates came from', () => {
+test('every set is distinct and cites the count its rates came from', () => {
   const codes = config.sets.map(set => set.code);
   assert.equal(new Set(codes).size, codes.length);
   for (const set of config.sets) {
-    assert.match(set.source.url, /^https:\/\/www\.tcgplayer\.com\//, `${set.code} pull-rate source`);
+    assert.match(set.source.url, /^https:\/\//, `${set.code} pull-rate source`);
     assert.ok(set.source.sampleSize > 0, `${set.code} sample size`);
     assert.ok(set.groupId > 0, `${set.code} group id`);
   }
@@ -52,10 +52,15 @@ test('each outcome draws from a pool or is flat bulk, never both and never neith
   }
 });
 
-test('a pack is ten cards plus the energy, the way the boxes describe it', () => {
+/** Cards a pack holds, energy included, the way the boxes describe it. 30th Celebration packs are half size. */
+function packSize(code: string): number {
+  return code === '30C' ? 6 : 11;
+}
+
+test('a pack holds its cards plus the energy, the way the boxes describe it', () => {
   for (const set of config.sets) {
     const cards = set.slots.reduce((sum, slot) => sum + (slot.count ?? 1), 0);
-    assert.equal(cards, 11, `${set.code} draws ${cards} cards a pack`);
+    assert.equal(cards, packSize(set.code), `${set.code} draws ${cards} cards a pack`);
   }
 });
 
@@ -66,7 +71,7 @@ function drawCardCount(draw: NonNullable<(typeof config.sets)[number]['specialPa
   return draw.kind === 'oneOf' ? draw.groups[0].length : draw.count;
 }
 
-test('a special pack is still a whole pack: kept slots plus draws make eleven cards', () => {
+test('a special pack is still a whole pack: kept slots plus draws fill it', () => {
   for (const set of config.sets) {
     const counts = new Map(set.slots.map(slot => [slot.label, slot.count ?? 1]));
     for (const special of set.specialPacks ?? []) {
@@ -77,7 +82,7 @@ test('a special pack is still a whole pack: kept slots plus draws make eleven ca
         return sum + (counts.get(label) ?? 0);
       }, 0);
       const drawn = special.draws.reduce((sum, draw) => sum + drawCardCount(draw), 0);
-      assert.equal(kept + drawn, 11, `${where} holds ${kept + drawn} cards`);
+      assert.equal(kept + drawn, packSize(set.code), `${where} holds ${kept + drawn} cards`);
     }
   }
 });

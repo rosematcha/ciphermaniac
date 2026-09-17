@@ -106,7 +106,7 @@ test('a reprint shows its TCGplayer product photo, keyed by product id', () => {
   assert.equal(productImage(714372), 'https://tcgplayer-cdn.tcgplayer.com/product/714372_200w.jpg');
 });
 
-test('special illustration, hyper, and secret rares are chases, as is anything pricey', () => {
+test('special illustration, hyper, secret, and futuristic rares are chases, as is anything pricey', () => {
   const card = (rarity: string, value: number): Pull => ({
     ...pull(9, value),
     card: { id: 9, name: 'Card 9', number: '9/167', rarity, prices: {} }
@@ -114,6 +114,7 @@ test('special illustration, hyper, and secret rares are chases, as is anything p
   assert.equal(isChase(card('Special Illustration Rare', 20)), true);
   assert.equal(isChase(card('Hyper Rare', 8)), true);
   assert.equal(isChase(card('Secret Rare', 8)), true);
+  assert.equal(isChase(card('Futuristic Rare', 30)), true);
   assert.equal(isChase(card('Illustration Rare', 12)), false);
   assert.equal(isChase(card('Double Rare', 60)), true);
   assert.equal(isChase(ENERGY), false);

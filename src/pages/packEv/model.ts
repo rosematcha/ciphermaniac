@@ -101,7 +101,7 @@ export function sortStacks(stacks: PullStack[], by: StackSort): PullStack[] {
 }
 
 /** Rarities that open like an edition in Balatro: a second, bigger spring and a sheen. */
-const CHASE_RARITY = /special illustration|hyper|secret/iu;
+const CHASE_RARITY = /special illustration|hyper|secret|futuristic/iu;
 /** A price that earns the same call-out whatever its rarity says. */
 const CHASE_VALUE = 50;
 
