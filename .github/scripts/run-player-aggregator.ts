@@ -82,7 +82,10 @@ async function main() {
   const result = await buildPlayerAggregates({ REPORTS: productionBinding } as any, {
     concurrency: 6,
     r2Concurrency: 8,
-    forceFullRebuild: FORCE_FULL_REBUILD
+    forceFullRebuild: FORCE_FULL_REBUILD,
+    // Immutable event metas carry no fetch timestamp; the content-addressed
+    // root changes exactly when the event's content does.
+    fingerprintOf: key => sources[key]
   });
 
   const ms = Date.now() - t0;
