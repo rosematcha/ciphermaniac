@@ -14,6 +14,13 @@ for the difference (oldest first, so a partial run still leaves a
 chronologically contiguous dataset). Each ingest registers an immutable event
 for the next production release.
 
+Events converted from the legacy reports carry a made-up `labsCode` and
+placeholder metadata. They are matched to their labs entry by folder name
+(start date + event name) and re-downloaded in place, but only after every
+genuinely new event. A converted event whose name labs has since changed is
+matched by start date alone and left as is, since re-downloading it would land
+under a new folder and duplicate the event.
+
 Environment:
   R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME
   DRY_RUN         - list what would be ingested without downloading (default false)
@@ -23,11 +30,14 @@ Environment:
 
 from __future__ import annotations
 
+import html
 import os
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
+from typing import NamedTuple
 
 import requests
 
@@ -37,6 +47,30 @@ import r2  # noqa: E402
 
 LABS_INDEX_URL = "https://labs.limitlesstcg.com/"
 LABS_CODE_PATTERN = re.compile(r'href="/(\d{4})/standings"')
+LABS_NAME_PATTERN = re.compile(r'<div class="font-bold text-xl">(.*?)</div>', re.S)
+# Start month and day, then the year that closes the range ("November 2–3, 2024").
+LABS_DATE_PATTERN = re.compile(r"\b([A-Z][a-z]+) (\d{1,2})\b[^<]*?(\d{4})\b")
+LABS_CODE_FORMAT = re.compile(r"\d{4}")
+MONTHS = {
+    name: index
+    for index, name in enumerate(
+        [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ],
+        start=1,
+    )
+}
 DEFAULT_MAX_INGEST = 5
 
 
@@ -63,33 +97,103 @@ def parse_int_env(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
-def fetch_published_codes(session: requests.Session) -> list[str]:
-    """Every 4-digit labs code linked from the labs index, ascending."""
+def entry_folder(entry_html: str) -> str | None:
+    """The folder download-tournament.py would name a labs index entry, or None."""
+    name_match = LABS_NAME_PATTERN.search(entry_html)
+    if not name_match:
+        return None
+    date_match = LABS_DATE_PATTERN.search(entry_html, name_match.end())
+    month = MONTHS.get(date_match[1]) if date_match else None
+    if not month:
+        return None
+    try:
+        start = date(int(date_match[3]), month, int(date_match[2]))
+    except ValueError:
+        return None
+    name = re.sub(r'[<>:"/\\|?*]', "", html.unescape(name_match[1]).strip())
+    return f"{start.isoformat()}, {name}"
+
+
+def parse_published_events(index_html: str) -> dict[str, str | None]:
+    """Every 4-digit labs code linked from the labs index, ascending, with its folder name."""
+    links = list(LABS_CODE_PATTERN.finditer(index_html))
+    events: dict[str, str | None] = {}
+    for position, link in enumerate(links):
+        end = links[position + 1].start() if position + 1 < len(links) else len(index_html)
+        folder = entry_folder(index_html[link.end() : end])
+        if events.get(link[1]) is None:
+            events[link[1]] = folder
+    return dict(sorted(events.items()))
+
+
+def fetch_published_events(session: requests.Session) -> dict[str, str | None]:
+    """The labs index's codes and folder names; see `parse_published_events`."""
     response = session.get(LABS_INDEX_URL, timeout=30)
     response.raise_for_status()
-    codes = sorted(set(LABS_CODE_PATTERN.findall(response.text)))
-    return codes
+    return parse_published_events(response.text)
 
 
-def fetch_ingested_codes(r2_client, bucket_name: str) -> set[str]:
+def fetch_event_codes(r2_client, bucket_name: str) -> dict[str, str | None]:
     """
-    Labs codes already in R2, read from each immutable event's meta.json.
+    Each immutable production or pending event's folder → the `labsCode` in its meta.
 
-    Folder names carry no code, so the meta is the only authority. Folders whose
-    meta is missing or codeless are ignored — the worst case is re-downloading
-    an event, which is idempotent, rather than skipping one forever.
+    Folder names carry no code, so the meta is the only authority. A missing or
+    blank code maps to None.
     """
     _, sources = r2.load_event_sources(r2_client, bucket_name)
-    codes: set[str] = set()
-    for root in sources.values():
+    codes: dict[str, str | None] = {}
+    for folder, root in sources.items():
         result = r2.read_json(r2_client, bucket_name, f"{root.lstrip('/')}/meta.json")
         if result.status != "found":
             raise RuntimeError(f"Unable to read immutable event meta: {result.status}")
         meta = result.value
         code = meta.get("labsCode") if isinstance(meta, dict) else None
-        if isinstance(code, str) and code.strip():
-            codes.add(code.strip())
+        codes[folder] = (code.strip() or None) if isinstance(code, str) else None
     return codes
+
+
+class IngestPlan(NamedTuple):
+    """What to download: new events first, then converted events to refresh in place."""
+
+    missing: list[str]
+    refresh: list[str]
+    # labs code → converted folder it was matched to by start date alone.
+    renamed: dict[str, str]
+
+
+def unique_date_match(folder: str | None, candidates: set[str]) -> str | None:
+    """The only candidate folder sharing `folder`'s start date, if exactly one does."""
+    if not folder:
+        return None
+    start = folder.split(",", 1)[0]
+    same_day = [candidate for candidate in candidates if candidate.split(",", 1)[0] == start]
+    return same_day[0] if len(same_day) == 1 else None
+
+
+def plan_ingest(published: dict[str, str | None], events: dict[str, str | None]) -> IngestPlan:
+    """Classify each published code not yet held under its real labs code."""
+    held = {code for code in events.values() if code and LABS_CODE_FORMAT.fullmatch(code)}
+    converted = {folder for folder, code in events.items() if not (code and LABS_CODE_FORMAT.fullmatch(code))}
+    plan = IngestPlan(missing=[], refresh=[], renamed={})
+    unplaced: list[str] = []
+    for code, folder in published.items():
+        if code in held:
+            continue
+        if folder in converted:
+            converted.discard(folder)
+            plan.refresh.append(code)
+        else:
+            unplaced.append(code)
+    # Exact folder matches go first so a renamed event can only claim a folder
+    # no other labs entry already owns.
+    for code in unplaced:
+        match = unique_date_match(published[code], converted)
+        if match:
+            converted.discard(match)
+            plan.renamed[code] = match
+        else:
+            plan.missing.append(code)
+    return plan
 
 
 def ingest(code: str, anonymize: bool) -> None:
@@ -117,24 +221,28 @@ def main() -> int:
     r2_client = r2.make_r2_client(r2_account_id, r2_access_key_id, r2_secret_access_key)
     session = requests.Session()
 
-    published = fetch_published_codes(session)
+    published = fetch_published_events(session)
     if not published:
         print("[ingest] Error: labs index returned no tournament codes")
         return 1
-    ingested = fetch_ingested_codes(r2_client, bucket_name)
-    missing = [code for code in published if code not in ingested]
+    plan = plan_ingest(published, fetch_event_codes(r2_client, bucket_name))
+    pending = plan.missing + plan.refresh
 
-    print(f"[ingest] labs published: {len(published)} (latest {published[-1]})")
-    print(f"[ingest] already ingested: {len(ingested)}")
-    print(f"[ingest] missing: {len(missing)}{' -> ' + ', '.join(missing) if missing else ''}")
+    print(f"[ingest] labs published: {len(published)} (latest {list(published)[-1]})")
+    print(f"[ingest] missing: {len(plan.missing)}{' -> ' + ', '.join(plan.missing) if plan.missing else ''}")
+    print(
+        f"[ingest] converted, to refresh: {len(plan.refresh)}{' -> ' + ', '.join(plan.refresh) if plan.refresh else ''}"
+    )
+    for code, folder in plan.renamed.items():
+        print(f"[ingest] {code} matched converted '{folder}' by start date; not refreshed")
 
-    if not missing:
+    if not pending:
         print("[ingest] Nothing to ingest")
         return 0
 
-    batch = missing[:max_ingest]
-    if len(missing) > len(batch):
-        print(f"[ingest] Ingesting the {len(batch)} oldest this run (MAX_INGEST={max_ingest})")
+    batch = pending[:max_ingest]
+    if len(pending) > len(batch):
+        print(f"[ingest] Ingesting {len(batch)} this run, new events first (MAX_INGEST={max_ingest})")
 
     if dry_run:
         print(f"[ingest] Dry run: would ingest {', '.join(batch)}")
