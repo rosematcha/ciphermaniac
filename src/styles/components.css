@@ -2950,16 +2950,18 @@ tr.row-expansion > td {
 }
 
 /* ---------- About / prose ---------- */
-.prose {
+/* The About page is one reading column, so it sits in the middle of the page
+   rather than against the left edge of a 1180px frame built for tables. */
+.about-column {
   max-width: 66ch;
+  margin-inline: auto;
+}
+.prose {
   display: grid;
   gap: 16px;
   font-size: 15px;
   line-height: 1.7;
   color: var(--fg);
-}
-.prose h2 {
-  margin-top: 24px;
 }
 .prose ul {
   padding-left: 24px;
@@ -2973,7 +2975,7 @@ tr.row-expansion > td {
 .prose a {
   font-weight: 500;
 }
-/* Glossary definition list on the About page ("Reading the numbers"). */
+/* Glossary definition list (the Pack EV method notes). */
 .glossary {
   display: grid;
   grid-template-columns: max-content 1fr;
