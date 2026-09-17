@@ -1,13 +1,14 @@
-import { createMemo, createSignal, For, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { CardImage } from '../../components/CardImage';
 import { Segmented } from '../../components/Segmented';
 import { cheapestCost } from '../../../shared/packEv/cost';
-import { openPack, preparePack, type Pull } from '../../../shared/packEv/simulate';
+import { openPack, possibleHits, preparePack, type Pull } from '../../../shared/packEv/simulate';
 import type { PackEvSetPayload, RipSize } from '../../../shared/packEv/types';
 import { attention, callout, juice, kick, staggerDelay } from './juice';
 import { createCount } from './tween';
 import {
   artNumber,
+  hitsToWarm,
   isChase,
   mergePulls,
   money,
@@ -16,6 +17,7 @@ import {
   sortStacks,
   type StackSort
 } from './model';
+import { warmHits, whenShown } from './warm';
 
 interface PackOpenerProps {
   payload: PackEvSetPayload;
@@ -188,6 +190,17 @@ export function PackOpener(props: PackOpenerProps) {
   const bulk = createMemo(() => sortStacks(opened().bulk, 'count'));
   const bulkCards = createMemo(() => opened().bulk.reduce((sum, entry) => sum + entry.count, 0));
 
+  // Hit art is warmed once the opener is on screen, so a reader who stops at
+  // the EV table never downloads it.
+  let root!: HTMLDivElement;
+  const [shown, setShown] = createSignal(false);
+  onMount(() => onCleanup(whenShown(root, () => setShown(true))));
+  createEffect(() => {
+    if (shown()) {
+      onCleanup(warmHits(props.payload.code, hitsToWarm(possibleHits(pack()))));
+    }
+  });
+
   function rip(packs: number) {
     const prepared = pack();
     const pulls: Pull[] = [];
@@ -199,7 +212,7 @@ export function PackOpener(props: PackOpenerProps) {
   }
 
   return (
-    <div class='packev-opener'>
+    <div class='packev-opener' ref={root}>
       <div class='packev-row'>
         <For each={props.payload.rips ?? PRODUCTS}>
           {product => (

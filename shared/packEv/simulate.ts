@@ -27,6 +27,15 @@ export interface Pull {
 
 type Rng = () => number;
 
+/** What a draw can produce, before a roll picks one. */
+type Candidate = Pick<Pull, 'card' | 'value' | 'notable'>;
+
+/** A card some pack can put among the hits, at the most any printing of it is worth. */
+export interface PossibleHit {
+  card: PackCard;
+  value: number;
+}
+
 /** A pool with its per-card values resolved, ready to draw from. */
 interface PreparedPool {
   pool: PackCard[];
@@ -48,10 +57,15 @@ interface PreparedSlot {
   outcomes: PreparedOutcome[];
 }
 
-interface PreparedSpecial {
+interface PreparedDraw {
+  draw: (rng: Rng) => Pull[];
+  /** Everything the draw can produce, so the hits a pack can hold are listable without opening any. */
+  candidates: Candidate[];
+}
+
+interface PreparedSpecial extends PreparedDraw {
   cumulative: number;
   kept: PreparedSlot[];
-  draw: (rng: Rng) => Pull[];
 }
 
 export interface PreparedPack {
@@ -80,10 +94,17 @@ function prepareSlot(slot: PackSlot, inputs: EvInputs): PreparedSlot {
   return { label: slot.label, count: slot.count ?? 1, outcomes };
 }
 
-function drawFromPool(pool: PreparedPool, rng: Rng): { card: PackCard; value: number; notable: boolean } {
-  const index = Math.min(pool.pool.length - 1, Math.floor(rng() * pool.pool.length));
+function poolCandidate(pool: PreparedPool, index: number): Candidate & { card: PackCard } {
   const value = pool.values[index];
   return { card: pool.pool[index], value, notable: value > pool.bulkRate };
+}
+
+function poolCandidates(pool: PreparedPool): Candidate[] {
+  return pool.pool.map((_, index) => poolCandidate(pool, index));
+}
+
+function drawFromPool(pool: PreparedPool, rng: Rng): Candidate & { card: PackCard } {
+  return poolCandidate(pool, Math.min(pool.pool.length - 1, Math.floor(rng() * pool.pool.length)));
 }
 
 /** A named card as a pull; a reference the set doesn't carry pulls as bulk. */
@@ -95,24 +116,30 @@ function refPull(ref: CardRef, label: string, inputs: EvInputs): Pull {
   return { slot: label, outcome: ref.rarity, card, printing, value, notable: value > bulkRate };
 }
 
-function prepareDraw(draw: SpecialDraw, label: string, inputs: EvInputs): (rng: Rng) => Pull[] {
+function prepareDraw(draw: SpecialDraw, label: string, inputs: EvInputs): PreparedDraw {
   if (draw.kind === 'cards') {
     const pulls = draw.cards.map(ref => refPull(ref, label, inputs));
-    return () => [...pulls];
+    return { draw: () => [...pulls], candidates: pulls };
   }
   if (draw.kind === 'oneOf') {
     const groups = draw.groups.map(group => group.map(ref => refPull(ref, label, inputs)));
-    return rng => [...groups[Math.min(groups.length - 1, Math.floor(rng() * groups.length))]];
+    return {
+      draw: rng => [...groups[Math.min(groups.length - 1, Math.floor(rng() * groups.length))]],
+      candidates: groups.flat()
+    };
   }
   const pool = preparePool(draw.pool, inputs);
   const outcome = draw.pool.rarities.join(' / ');
-  return rng =>
-    Array.from({ length: draw.count }, () => ({
-      slot: label,
-      outcome,
-      printing: pool.printing,
-      ...drawFromPool(pool, rng)
-    }));
+  return {
+    draw: rng =>
+      Array.from({ length: draw.count }, () => ({
+        slot: label,
+        outcome,
+        printing: pool.printing,
+        ...drawFromPool(pool, rng)
+      })),
+    candidates: poolCandidates(pool)
+  };
 }
 
 /** Resolve pools, per-card values and special packs once, for repeated openings. */
@@ -126,7 +153,8 @@ export function preparePack(inputs: EvInputs): PreparedPack {
     return {
       cumulative: running,
       kept: slots.filter(slot => kept.has(slot.label)),
-      draw: (rng: Rng) => draws.flatMap(drawOne => drawOne(rng))
+      draw: (rng: Rng) => draws.flatMap(prepared => prepared.draw(rng)),
+      candidates: draws.flatMap(prepared => prepared.candidates)
     };
   });
   return { slots, specials };
@@ -186,4 +214,23 @@ export function openPack(pack: PreparedPack, rng: Rng): Pull[] {
     return [...drawSlots(special.kept, rng), ...special.draw(rng)];
   }
   return drawSlots(pack.slots, rng);
+}
+
+/**
+ * Every card any pack can put among the hits, once each: the opener warms
+ * their art before a rip lands them. A card is its product, so its printings
+ * collapse into one entry at the best of their values — they share the art.
+ */
+export function possibleHits(pack: PreparedPack): PossibleHit[] {
+  const candidates = [
+    ...pack.slots.flatMap(slot => slot.outcomes.flatMap(outcome => poolCandidates(outcome))),
+    ...pack.specials.flatMap(special => special.candidates)
+  ];
+  const best = new Map<number, PossibleHit>();
+  for (const { card, value, notable } of candidates) {
+    if (card && notable && value > (best.get(card.id)?.value ?? -Infinity)) {
+      best.set(card.id, { card, value });
+    }
+  }
+  return [...best.values()];
 }
