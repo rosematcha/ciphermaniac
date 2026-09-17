@@ -11,6 +11,7 @@ import test from 'node:test';
 
 import {
   artNumber,
+  hitsToWarm,
   isChase,
   lossPercent,
   mergePulls,
@@ -21,7 +22,7 @@ import {
   returnPercent,
   sortStacks
 } from '../../src/pages/packEv/model.ts';
-import type { Pull } from '../../shared/packEv/simulate.ts';
+import type { PossibleHit, Pull } from '../../shared/packEv/simulate.ts';
 test('money is always to the cent; buylist rates keep their tenth', () => {
   assert.equal(money(3.2), '$3.20');
   assert.equal(money(356.094), '$356.09');
@@ -118,4 +119,23 @@ test('special illustration, hyper, secret, and futuristic rares are chases, as i
   assert.equal(isChase(card('Illustration Rare', 12)), false);
   assert.equal(isChase(card('Double Rare', 60)), true);
   assert.equal(isChase(ENERGY), false);
+});
+
+test('hit art warms chases first, then the most valuable, sixty at most', () => {
+  const hit = (id: number, rarity: string, value: number): PossibleHit => ({
+    card: { id, name: `Card ${id}`, number: `${id}/167`, rarity, prices: {} },
+    value
+  });
+  assert.deepEqual(
+    hitsToWarm([
+      hit(1, 'Illustration Rare', 30),
+      hit(2, 'Hyper Rare', 8),
+      hit(3, 'Double Rare', 60),
+      hit(4, 'Illustration Rare', 45)
+    ]).map(entry => entry.card.id),
+    [3, 2, 4, 1]
+  );
+  const warmed = hitsToWarm(Array.from({ length: 130 }, (_, id) => hit(id, 'Illustration Rare', id / 10)));
+  assert.equal(warmed.length, 60);
+  assert.deepEqual([warmed[0].card.id, warmed[59].card.id], [129, 70]);
 });

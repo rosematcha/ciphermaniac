@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { computePackEv } from '../../shared/packEv/ev.ts';
-import { openPack, type PreparedPack, preparePack } from '../../shared/packEv/simulate.ts';
+import { openPack, possibleHits, type PreparedPack, preparePack } from '../../shared/packEv/simulate.ts';
 import type { BulkRates, PackCard, PackSlot } from '../../shared/packEv/types.ts';
 
 /** Deterministic PRNG so a failure is reproducible. */
@@ -173,4 +173,43 @@ test('sampled value converges on the EV table with god packs in the mix', () => 
   const packs = 20_000;
   const sampled = openedValue(preparePack(WITH_GOD_PACK), packs, mulberry32(21)) / packs;
   assert.ok(Math.abs(sampled - expected) < 1.5, `sampled ${sampled} vs expected ${expected}`);
+});
+
+test('the possible hits are every card any pack can clear bulk with, once each at its best printing', () => {
+  const pack = preparePack({
+    ...INPUTS,
+    cards: [
+      CARDS[0],
+      { id: 3, name: 'Chase', number: '011/010', rarity: 'Hyper Rare', prices: { holofoil: 100, reverse: 150 } },
+      { id: 4, name: 'Lesser Chase', number: '012/010', rarity: 'Hyper Rare', prices: { holofoil: 20 } },
+      { id: 5, name: 'Promo', number: '013/010', rarity: 'Special Illustration Rare', prices: { holofoil: 40 } }
+    ],
+    slots: [
+      ...SLOTS,
+      {
+        label: 'Reverse chase',
+        outcomes: [{ label: 'Hyper Rare', pool: { rarities: ['Hyper Rare'], printing: 'reverse', bulk: 'reverse' } }]
+      }
+    ],
+    // The promo is only reachable through the god pack.
+    specialPacks: [
+      {
+        label: 'God pack',
+        odds: 2,
+        keepSlots: ['Energy'],
+        draws: [{ kind: 'cards', cards: [{ name: 'Promo', rarity: 'Special Illustration Rare' }] }]
+      }
+    ]
+  });
+  // Bulk never appears, and Lesser Chase's unpriced reverse doesn't undercut its holo.
+  assert.deepEqual(
+    possibleHits(pack)
+      .map(hit => [hit.card.name, hit.value])
+      .sort(([a], [b]) => String(a).localeCompare(String(b))),
+    [
+      ['Chase', 150],
+      ['Lesser Chase', 20],
+      ['Promo', 40]
+    ]
+  );
 });

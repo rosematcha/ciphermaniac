@@ -8,7 +8,7 @@
  * @module src/pages/packEv/model
  */
 
-import type { Pull } from '../../../shared/packEv/simulate';
+import type { PossibleHit, Pull } from '../../../shared/packEv/simulate';
 
 /** Dollars, always to the cent — these are prices, not estimates. */
 export function money(value: number): string {
@@ -105,8 +105,20 @@ const CHASE_RARITY = /special illustration|hyper|secret|futuristic/iu;
 /** A price that earns the same call-out whatever its rarity says. */
 const CHASE_VALUE = 50;
 
-export function isChase(pull: Pull): boolean {
+export function isChase(pull: Pick<Pull, 'card' | 'value'>): boolean {
   return pull.value >= CHASE_VALUE || CHASE_RARITY.test(pull.card?.rarity ?? '');
+}
+
+/**
+ * How many hits the opener warms ahead of a rip. Hit art is ~60 KB, so this
+ * holds the download to a few MB: all of an ordinary set, and the top of one
+ * like Prismatic Evolutions, which can land 130 different hits.
+ */
+const WARM_HITS = 60;
+
+/** The hits worth warming: chases first, since they land with a call-out, then the most valuable. */
+export function hitsToWarm(hits: PossibleHit[]): PossibleHit[] {
+  return [...hits].sort((a, b) => Number(isChase(b)) - Number(isChase(a)) || b.value - a.value).slice(0, WARM_HITS);
 }
 
 /** The collector number without its set total: `188/167` is `188`, the form card art is keyed by. */
