@@ -12,6 +12,7 @@ import test from 'node:test';
 import {
   cardValue,
   computePackEv,
+  poolCardValue,
   refTerms,
   resolveChances,
   selectPool,
@@ -60,6 +61,28 @@ test('a card counts at market only once it clears the threshold', () => {
   assert.equal(cardValue(card({ id: 9, prices: { normal: 1 } }), 'normal', BULK.commonUncommon, 1), 0.035);
   // A printing TCGplayer has no market price for falls back to bulk, not zero.
   assert.equal(cardValue(CARDS[2], 'normal', BULK.rare, 1), 0.05);
+});
+
+test("an unpriced card counts at its pool's stand-in until TCGplayer prices it", () => {
+  const unsold = card({ id: 7, rarity: 'Holo Rare' });
+  const pool = { rarities: ['Holo Rare'], printing: 'holofoil' as const, bulk: 'hit' as const, unpriced: 5000 };
+  assert.equal(poolCardValue(unsold, pool, INPUTS), 5000);
+  // A market price replaces the stand-in outright, bulk floor and all.
+  assert.equal(poolCardValue({ ...unsold, prices: { holofoil: 900 } }, pool, INPUTS), 900);
+  assert.equal(poolCardValue({ ...unsold, prices: { holofoil: 0.5 } }, pool, INPUTS), BULK.hit);
+  // Without a stand-in, unpriced is still bulk.
+  assert.equal(poolCardValue(unsold, { ...pool, unpriced: undefined }, INPUTS), BULK.hit);
+
+  const inputs = {
+    ...INPUTS,
+    cards: [unsold],
+    slots: [{ label: 'Rare slot', outcomes: [{ label: 'RGB Rare', chance: 0.001, pool }] }]
+  };
+  assert.equal(computePackEv(inputs).perPack.toFixed(4), (0.001 * 5000).toFixed(4));
+  assert.deepEqual(
+    topCardContributions(inputs, 1).map(row => row.value),
+    [5000]
+  );
 });
 
 test('pools match on rarity and keep the special foil patterns apart', () => {

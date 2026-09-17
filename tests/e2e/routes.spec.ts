@@ -288,6 +288,9 @@ test('the tools index features the tier list, label maker and pack EV as tiles',
 
 test('pack EV sets a pack opened against a pack sealed, and opens packs', async ({ page }) => {
   await gotoClean(page, '/tools/pack-ev');
+  // Nothing is open until a set is picked.
+  await expect(page.locator('.packev-band')).toHaveCount(0);
+  await page.locator('.packev-index tbody tr').first().click();
   const band = page.locator('.packev-band').first();
   // Fixture: a trimmed Twilight Masquerade, whose $9.09 single undercuts the box's $9.89 a pack.
   await expect(band).toContainText('$9.09');
@@ -301,6 +304,29 @@ test('pack EV sets a pack opened against a pack sealed, and opens packs', async 
   await expect(opener.locator('.packev-bulk summary')).toContainText(/\d+ cards/);
   await opener.locator('.packev-bulk summary').click();
   await expect(opener.locator('.packev-grid.is-tiny .packev-tile').first()).toBeVisible();
+});
+
+test('pack EV warms hit art before a rip, at the URLs the hit tiles request', async ({ page }) => {
+  const warmed: string[] = [];
+  await page.route('https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/**', route => {
+    warmed.push(route.request().url());
+    return route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>'
+    });
+  });
+  await gotoClean(page, '/tools/pack-ev');
+  await page.locator('.packev-index tbody tr').first().click();
+  const opener = page.locator('.packev-opener');
+  await opener.scrollIntoViewIfNeeded();
+  await expect.poll(() => warmed.length).toBeGreaterThan(0);
+  expect(warmed.every(url => url.endsWith('_R_EN_SM.png'))).toBe(true);
+
+  await page.getByRole('button', { name: 'Open a case' }).click();
+  const hitArt = opener.locator('.packev-grid:not(.is-tiny) img');
+  await expect(hitArt.first()).toBeVisible();
+  const sources = await hitArt.evaluateAll(images => images.map(image => (image as HTMLImageElement).src));
+  expect(sources.filter(source => !warmed.includes(source))).toEqual([]);
 });
 
 test('a tier list tile carries a placeholder until its art paints', async ({ page }) => {

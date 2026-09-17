@@ -91,7 +91,43 @@ interface CardImageProps {
   sizes?: string;
 }
 
-/** Natural pixel width of each CDN tier, for srcset w-descriptors. */
+/** The props that pick where art is loaded from, shared with the preloaders. */
+type SourceOptions = Pick<CardImageProps, 'skipR2' | 'hotlink'>;
+
+/** Hotlink when asked, R2 once probed unless skipped, else the proxy. */
+function artSource(r2Probed: boolean, options: SourceOptions): ArtSource {
+  if (options.hotlink) {
+    return 'hotlink';
+  }
+  return r2Probed && options.skipR2 !== true ? 'r2' : 'proxy';
+}
+
+/**
+ * Warms the browser cache for one image URL. Deliberately never attached to
+ * the document: assigning .src starts the fetch and populates the same HTTP +
+ * decoded-bitmap caches a real element will hit.
+ *
+ * Resolves once the bitmap is actually ready to paint, not merely downloaded:
+ * `decode()` covers the fetch *and* the decode, which is the difference
+ * between a caller being able to reveal fully-formed art and revealing an
+ * empty frame that fills in a beat later (see CardHoverPreview).
+ *
+ * Never rejects. A 404 or decode failure resolves like any other outcome —
+ * callers gate presentation on this, so a hard failure must let them proceed
+ * and fall through to the element's own retry chain rather than hang.
+ * @param url - Exactly the URL the eventual render requests.
+ * @returns Resolves when the image is decoded, or when it has definitively failed.
+ */
+export function preloadImage(url: string): Promise<void> {
+  if (typeof window === 'undefined') {
+    return Promise.resolve();
+  }
+  const img = new Image();
+  // As on the rendered <img>.
+  img.referrerPolicy = 'no-referrer';
+  img.src = url;
+  return img.decode().catch(() => undefined);
+}
 
 /**
  * Renders a Pokémon TCG card image. Source preference, most to least:
@@ -115,43 +151,24 @@ interface CardImageProps {
 /**
  * Warms the browser cache for one card's art at a given tier, using the same
  * source preference the component itself would pick — so the subsequent
- * `<CardImage>` render is a cache hit rather than a fresh round trip.
- *
- * Resolves once the bitmap is actually ready to paint, not merely downloaded:
- * `decode()` covers the fetch *and* the decode, which is the difference
- * between a caller being able to reveal fully-formed art and revealing an
- * empty frame that fills in a beat later (see CardHoverPreview).
- *
- * Never rejects. A 404 or decode failure resolves like any other outcome —
- * callers gate presentation on this, so a hard failure must let them proceed
- * and fall through to `CardImage`'s own retry chain rather than hang.
+ * `<CardImage>` render is a cache hit rather than a fresh round trip. Settles
+ * like {@link preloadImage}.
  * @param set - Card set code.
  * @param number - Collector number.
  * @param size - Tier to warm; must match what the eventual render requests.
- * @param skipR2 - Mirror {@link CardImageProps.skipR2} for the eventual render.
+ * @param options - The eventual render's `skipR2` and `hotlink`.
  * @returns Resolves when the art is decoded, or when it has definitively failed.
  */
 export function preloadCardImage(
   set: string,
   number: string | number,
   size: CardImageSize,
-  skipR2 = false
+  options: SourceOptions = {}
 ): Promise<void> {
-  if (typeof window === 'undefined') {
-    return Promise.resolve();
-  }
   // Must mirror CardImage's source choice, or the preload warms a URL the
   // render never requests and the "cache hit" is a second round trip.
-  const url = buildAttempts(set, number, size, r2Ready() && !skipR2 ? 'r2' : 'proxy')[0];
-  if (!url) {
-    return Promise.resolve();
-  }
-  // Deliberately never attached to the document; assigning .src starts the
-  // fetch and populates the same HTTP + decoded-bitmap caches the real
-  // element will hit.
-  const img = new Image();
-  img.src = url;
-  return img.decode().catch(() => undefined);
+  const url = buildAttempts(set, number, size, artSource(r2Ready(), options))[0];
+  return url ? preloadImage(url) : Promise.resolve();
 }
 
 export function CardImage(props: CardImageProps) {
@@ -166,12 +183,7 @@ export function CardImage(props: CardImageProps) {
   // print.
 
   const r2Probed = r2Ready();
-  const source = createMemo<ArtSource>(() => {
-    if (props.hotlink) {
-      return 'hotlink';
-    }
-    return r2Probed && props.skipR2 !== true ? 'r2' : 'proxy';
-  });
+  const source = createMemo(() => artSource(r2Probed, props));
   const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', source()));
   const [attemptIndex, setAttemptIndex] = createSignal(0);
   const [errored, setErrored] = createSignal(false);

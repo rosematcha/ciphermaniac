@@ -34,6 +34,8 @@ import type {
 interface ParticipantRow {
   tpId?: number | string;
   playerId?: number | string | null;
+  /** Career id on immutable events, whose `playerId` is the event-scoped participant id. */
+  playerRef?: number | string | null;
   name?: string;
   country?: string | null;
   placement?: number | null;
@@ -178,6 +180,21 @@ function normalizePlayerId(raw: unknown): string | null {
   return s;
 }
 
+/**
+ * Immutable events key a participant by an event-scoped id (`labs:0001:12`) and
+ * carry the career id as `playerRef`; their decks and match rows use the
+ * event-scoped id. Recast that as the legacy tpId convention (event id in
+ * `tpId`, career id in `playerId`) so careers group across events and the
+ * per-event join detection picks the event-scoped key for decks and rounds.
+ */
+function toCareerParticipant(participant: ParticipantRow): ParticipantRow {
+  const careerId = normalizePlayerId(participant.playerRef);
+  if (!careerId) {
+    return participant;
+  }
+  return { ...participant, tpId: normalizePlayerId(participant.playerId) ?? undefined, playerId: careerId };
+}
+
 function extractDate(key: string, meta: MetaRow | null): string | null {
   const m = key.match(DATE_PREFIX);
   if (m) {
@@ -251,7 +268,7 @@ async function loadTournamentSlice(
   return {
     key,
     date,
-    participants,
+    participants: participants.map(toCareerParticipant),
     decks: Array.isArray(decks) ? decks : [],
     matches: Array.isArray(matches) ? matches : [],
     totalPlayers: Number.isFinite(totalPlayers) ? Number(totalPlayers) : null,

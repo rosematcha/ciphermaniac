@@ -38,6 +38,12 @@ export interface PackCard {
   rarity: string;
   /** Absent on the base print. */
   pattern?: FoilPattern;
+  /**
+   * From one of the set's `reprintGroupIds`: printed with its original set's
+   * collector number (Classic Collection Charizard is `4/102`), so art keyed by
+   * this set's code and that number would be some other card.
+   */
+  reprint?: true;
   /** Market price per printing. A printing this product doesn't have is absent. */
   prices: Partial<Record<Printing, number>>;
 }
@@ -64,6 +70,12 @@ export interface PoolSpec {
   pattern?: FoilPattern;
   /** Bulk floor applied to every card in the pool. */
   bulk: BulkClass;
+  /**
+   * What a card counts at while TCGplayer has no market price for it, in place
+   * of the bulk floor: a chase too rare to have sold yet. The first market
+   * price replaces it.
+   */
+  unpriced?: number;
 }
 
 export interface SlotOutcome {
@@ -125,7 +137,7 @@ export interface SpecialPack {
 
 /** A sealed product, and how many packs you have to open to get through it. */
 export interface SealedProduct {
-  kind: 'case' | 'box' | 'etb' | 'bundle' | 'pack';
+  kind: 'case' | 'box' | 'etb' | 'bundle' | 'collection' | 'pack';
   label: string;
   /** TCGplayer product id. */
   id: number;
@@ -139,7 +151,7 @@ export interface SealedProduct {
 export interface PullRateSource {
   url: string;
   label: string;
-  /** Packs TCGplayer's authentication centre opened to measure the rates. */
+  /** Packs opened to measure the rates. */
   sampleSize: number;
 }
 
@@ -156,10 +168,20 @@ export interface PackEvSetConfig {
   code: string;
   name: string;
   groupId: number;
+  /** TCGCSV groups for subsets that come in this set's packs but are listed apart. */
+  reprintGroupIds?: number[];
   source: PullRateSource;
   sealed: SealedProductConfig[];
   slots: PackSlot[];
   specialPacks?: SpecialPack[];
+  /** The opener's buttons, when the default pack, bundle, box and case don't suit the set. */
+  rips?: RipSize[];
+}
+
+/** One opener button: `Open a {label}` rips `packs` packs. */
+export interface RipSize {
+  label: string;
+  packs: number;
 }
 
 /** `config/pack-ev.json`, as the builder reads it. */
@@ -222,6 +244,7 @@ export interface PackEvSetPayload {
   bulk: BulkRates;
   slots: PackSlot[];
   specialPacks?: SpecialPack[];
+  rips?: RipSize[];
   cards: PackCard[];
   sealed: SealedProduct[];
   /** EV as the job computed it, from exactly the fields above. */
