@@ -214,13 +214,13 @@ export function PackOpener(props: PackOpenerProps) {
               <dt>Spent</dt>
             </div>
             <div class='packev-stat'>
-              <dd class={net() >= 0 ? 'is-up' : 'is-down'}>
-                {signed(shownNet())}
+              <dd class={net() >= 0 ? 'is-up' : 'is-down'}>{signed(shownNet())}</dd>
+              <dt>
+                Against cost
                 <Show when={opened().delta} keyed>
                   {delta => <Attention delta={delta} />}
                 </Show>
-              </dd>
-              <dt>Against cost</dt>
+              </dt>
             </div>
           </Show>
         </dl>
