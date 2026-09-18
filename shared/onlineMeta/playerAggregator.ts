@@ -122,6 +122,7 @@ interface PlayerAggregateManifestV2 extends PlayerAggregateManifest {
   names?: Record<string, string>;
   /** {@link IDENTITY_OVERRIDES_REVISION} at last successful build. */
   identityRevision?: string;
+  builderRevision?: string;
 }
 
 /**
@@ -410,18 +411,28 @@ function currentName(acc: Accumulator): string {
  * `IDENTITY_OVERRIDES_REVISION` for the override half. Naming them here is not
  * enough on its own; the run has to decide to write them.
  */
-function buildRounds(acc: Accumulator, accs: Map<string, Accumulator>): Record<string, PlayerRound[]> {
+function buildRounds(
+  acc: Accumulator,
+  accs: Map<string, Accumulator>,
+  names: Record<string, string>
+): Record<string, PlayerRound[]> {
   const rounds: Record<string, PlayerRound[]> = {};
   for (const [tournamentId, played] of acc.rounds) {
     rounds[tournamentId] = played.map(round => {
       const opponent = round.opponentId ? accs.get(round.opponentId) : undefined;
-      return opponent ? { ...round, opponentName: currentName(opponent) } : round;
+      const name = opponent ? currentName(opponent) : names[round.opponentId ?? ''];
+      return name ? { ...round, opponentName: name } : round;
     });
   }
   return rounds;
 }
 
-function buildProfile(acc: Accumulator, accs: Map<string, Accumulator>, generatedAt: string): PlayerProfile {
+function buildProfile(
+  acc: Accumulator,
+  accs: Map<string, Accumulator>,
+  generatedAt: string,
+  names: Record<string, string>
+): PlayerProfile {
   const tournaments = [...acc.entries].sort((a, b) => b.tournamentDate.localeCompare(a.tournamentDate));
 
   const wins = tournaments.reduce((s, e) => s + e.wins, 0);
@@ -467,7 +478,7 @@ function buildProfile(acc: Accumulator, accs: Map<string, Accumulator>, generate
     archetypeNames,
     archetypes: buildArchetypes(tournaments),
     tournaments,
-    rounds: buildRounds(acc, accs)
+    rounds: buildRounds(acc, accs, names)
   };
 }
 
@@ -529,8 +540,11 @@ async function tryFastPath(
   env: unknown,
   tournamentList: string[],
   previousManifest: PlayerAggregateManifestV2 | null,
-  options: { sliceConcurrency: number; fingerprintOf?: FingerprintOf }
+  options: { sliceConcurrency: number; fingerprintOf?: FingerprintOf; builderRevision?: string }
 ): Promise<BuildPlayerAggregatesResult | null> {
+  if (previousManifest?.builderRevision !== options.builderRevision) {
+    return null;
+  }
   const prevSorted = previousManifest?.tournamentKeys ? [...previousManifest.tournamentKeys].sort() : null;
   if (!previousManifest || !prevSorted || !arrayEquals([...tournamentList].sort(), prevSorted)) {
     return null;
@@ -561,7 +575,6 @@ async function tryFastPath(
     tournaments: tournamentList.length
   });
   const index = (await getJson<PlayerIndexEntry[]>(env, INDEX_KEY)) ?? [];
-  await writeSlimIndex(env, index);
   return {
     index,
     profileCount: Object.keys(previousManifest.players).length,
@@ -676,11 +689,7 @@ function matchJoinKey(participant: ParticipantRow, joinByTpId: boolean): string 
  * dropped rather than attributed to the wrong career (the two id namespaces
  * overlap numerically, so a wrong convention would otherwise misfile rounds).
  */
-function accumulateMatches(accs: Map<string, Accumulator>, slice: TournamentSlice): void {
-  if (!slice.matches.length) {
-    return;
-  }
-  const joinByTpId = matchesJoinByTpId(slice);
+function matchLookups(slice: TournamentSlice, joinByTpId: boolean) {
   const participantsByKey = new Map<string, ParticipantRow>();
   const opponents = new Map<string, OpponentLookup>();
   for (const participant of slice.participants) {
@@ -693,6 +702,23 @@ function accumulateMatches(accs: Map<string, Accumulator>, slice: TournamentSlic
     opponents.set(key, { careerId: rawId ? canonicalPlayerId(rawId) : null, placement: participant.placement ?? null });
   }
 
+  return { participantsByKey, opponents };
+}
+
+function includedPlayer(raw: unknown, affected?: Set<string>): string | null {
+  const id = normalizePlayerId(raw);
+  if (!id || (affected && !affected.has(canonicalPlayerId(id)))) {
+    return null;
+  }
+  return id;
+}
+
+function accumulateMatches(accs: Map<string, Accumulator>, slice: TournamentSlice, affected?: Set<string>): void {
+  if (!slice.matches.length) {
+    return;
+  }
+  const joinByTpId = matchesJoinByTpId(slice);
+  const { participantsByKey, opponents } = matchLookups(slice, joinByTpId);
   const roundsByKey = new Map<string, PlayerRound[]>();
   for (const row of slice.matches) {
     const key = normalizePlayerId(row.playerId);
@@ -712,7 +738,7 @@ function accumulateMatches(accs: Map<string, Accumulator>, slice: TournamentSlic
   }
 
   for (const [key, rounds] of roundsByKey) {
-    const rawId = normalizePlayerId(participantsByKey.get(key)!.playerId);
+    const rawId = includedPlayer(participantsByKey.get(key)!.playerId, affected);
     if (!rawId) {
       continue;
     }
@@ -800,7 +826,47 @@ function toTournamentEntry(
 }
 
 /** Fold one tournament's participants and decks into the per-player accumulators. */
-function accumulateSlice(accs: Map<string, Accumulator>, slice: TournamentSlice): void {
+function accumulateParticipant(
+  input: {
+    participant: ParticipantRow;
+    slice: TournamentSlice;
+    rawPlayerId: string;
+    decksByJoinKey: Map<string, DeckRow>;
+    joinByTpId: boolean;
+  },
+  accs: Map<string, Accumulator>
+): void {
+  const { participant, slice, rawPlayerId, decksByJoinKey, joinByTpId } = input;
+  // The career accumulates under the canonical id, but the deck join is
+  // slice-local and must use the id this tournament actually recorded.
+  const acc = ensureAcc(accs, canonicalPlayerId(rawPlayerId));
+  const joinedDeck = joinDeck(participant, rawPlayerId, decksByJoinKey, joinByTpId);
+
+  const archetypeLabel = joinedDeck?.archetype ?? participant.deckName ?? null;
+  const archetypeInfo = archetypeBase(archetypeLabel ?? undefined);
+  if (archetypeInfo) {
+    acc.archetypeNames.set(archetypeInfo.base, archetypeInfo.displayName);
+  }
+
+  acc.entries.push(toTournamentEntry(participant, slice, archetypeInfo?.base ?? null, joinedDeck));
+
+  // Stashed for the separate decks.json. Never cross-attribute.
+  const cards = toPlayerDeckCards(joinedDeck?.cards);
+  if (cards.length) {
+    acc.decks.set(slice.key, cards);
+  }
+
+  const nameSeen = countObservation(acc.names, participant.name, slice.date);
+  if (isNewer(nameSeen, acc.latestName)) {
+    acc.latestName = { name: nameSeen!.value, date: nameSeen!.date };
+  }
+  const countrySeen = countObservation(acc.countries, participant.country, slice.date);
+  if (isNewer(countrySeen, acc.latestCountry)) {
+    acc.latestCountry = { country: countrySeen!.value, date: countrySeen!.date };
+  }
+}
+
+function accumulateSlice(accs: Map<string, Accumulator>, slice: TournamentSlice, affected?: Set<string>): void {
   const joinByTpId = detectJoinsByTpId(slice);
 
   const decksByJoinKey = new Map<string, DeckRow>();
@@ -812,40 +878,14 @@ function accumulateSlice(accs: Map<string, Accumulator>, slice: TournamentSlice)
   }
 
   for (const participant of slice.participants) {
-    const rawPlayerId = normalizePlayerId(participant.playerId);
+    const rawPlayerId = includedPlayer(participant.playerId, affected);
     if (!rawPlayerId) {
       continue;
     }
 
-    // The career accumulates under the canonical id, but the deck join is
-    // slice-local and must use the id this tournament actually recorded.
-    const acc = ensureAcc(accs, canonicalPlayerId(rawPlayerId));
-    const joinedDeck = joinDeck(participant, rawPlayerId, decksByJoinKey, joinByTpId);
-
-    const archetypeLabel = joinedDeck?.archetype ?? participant.deckName ?? null;
-    const archetypeInfo = archetypeBase(archetypeLabel ?? undefined);
-    if (archetypeInfo) {
-      acc.archetypeNames.set(archetypeInfo.base, archetypeInfo.displayName);
-    }
-
-    acc.entries.push(toTournamentEntry(participant, slice, archetypeInfo?.base ?? null, joinedDeck));
-
-    // Stashed for the separate decks.json. Never cross-attribute.
-    const cards = toPlayerDeckCards(joinedDeck?.cards);
-    if (cards.length) {
-      acc.decks.set(slice.key, cards);
-    }
-
-    const nameSeen = countObservation(acc.names, participant.name, slice.date);
-    if (isNewer(nameSeen, acc.latestName)) {
-      acc.latestName = { name: nameSeen!.value, date: nameSeen!.date };
-    }
-    const countrySeen = countObservation(acc.countries, participant.country, slice.date);
-    if (isNewer(countrySeen, acc.latestCountry)) {
-      acc.latestCountry = { country: countrySeen!.value, date: countrySeen!.date };
-    }
+    accumulateParticipant({ participant, slice, rawPlayerId, decksByJoinKey, joinByTpId }, accs);
   }
-  accumulateMatches(accs, slice);
+  accumulateMatches(accs, slice, affected);
 }
 
 /** Everything one pass over the accumulators produces. */
@@ -909,13 +949,29 @@ function facedRenamed(acc: Accumulator, renamed: Set<string>): boolean {
  * names as published today, so a rename has to rewrite every profile that names
  * the renamed player, not only the profiles whose own events moved.
  */
+function addIndexEntry(index: PlayerIndexEntry[], profile: PlayerProfile, acc: Accumulator): void {
+  if (profile.summary.eventCount >= INDEX_MIN_EVENTS) {
+    index.push({
+      playerId: profile.playerId,
+      name: profile.name,
+      country: acc.latestCountry?.country ?? profile.countries[0],
+      eventCount: profile.summary.eventCount,
+      wins: profile.summary.wins,
+      losses: profile.summary.losses,
+      day2s: profile.summary.day2s,
+      topCuts: profile.summary.topCuts,
+      tournamentWins: profile.summary.tournamentWins,
+      lastEventDate: profile.summary.lastEventDate
+    });
+  }
+}
+
 function planWrites(
   accs: Map<string, Accumulator>,
   generatedAt: string,
-  prevPlayers: Record<string, string[]>,
-  changedTournaments: Set<string>,
-  prevNames: Record<string, string> | undefined
+  previous: { players: Record<string, string[]>; changed: Set<string>; names?: Record<string, string> }
 ): WritePlan {
+  const { players: prevPlayers, changed: changedTournaments, names: prevNames } = previous;
   const plan: WritePlan = {
     index: [],
     profileWrites: [],
@@ -928,26 +984,14 @@ function planWrites(
     plan.manifestNames[acc.playerId] = currentName(acc);
   }
   const renamed = renamedSince(accs, prevNames, plan.manifestNames);
+  const names = { ...prevNames, ...plan.manifestNames };
 
   for (const acc of accs.values()) {
-    const profile = buildProfile(acc, accs, generatedAt);
+    const profile = buildProfile(acc, accs, generatedAt, names);
     const tournamentKeys = profile.tournaments.map(entry => entry.tournamentId).sort();
     plan.manifestPlayers[acc.playerId] = tournamentKeys;
 
-    if (profile.summary.eventCount >= INDEX_MIN_EVENTS) {
-      plan.index.push({
-        playerId: profile.playerId,
-        name: profile.name,
-        country: acc.latestCountry?.country ?? profile.countries[0],
-        eventCount: profile.summary.eventCount,
-        wins: profile.summary.wins,
-        losses: profile.summary.losses,
-        day2s: profile.summary.day2s,
-        topCuts: profile.summary.topCuts,
-        tournamentWins: profile.summary.tournamentWins,
-        lastEventDate: profile.summary.lastEventDate
-      });
-    }
+    addIndexEntry(plan.index, profile, acc);
 
     const prevKeys = prevPlayers[acc.playerId];
     const keysUnchanged = prevKeys && arrayEquals(tournamentKeys, [...prevKeys].sort());
@@ -1018,110 +1062,188 @@ function orphanDeleteKeys(prevPlayers: Record<string, string[]>, manifestPlayers
  *   `fingerprintOf` to fingerprint tournaments by something other than their meta
  * @returns Counts describing what this run scanned and wrote
  */
-export async function buildPlayerAggregates(
-  env: unknown,
-  options: {
-    concurrency?: number;
-    r2Concurrency?: number;
-    forceFullRebuild?: boolean;
-    fingerprintOf?: FingerprintOf;
-  } = {}
-): Promise<BuildPlayerAggregatesResult> {
-  const sliceConcurrency = Math.max(1, options.concurrency ?? 4);
-  const writeConcurrency = Math.max(1, options.r2Concurrency ?? 6);
+interface AggregateOptions {
+  concurrency?: number;
+  r2Concurrency?: number;
+  forceFullRebuild?: boolean;
+  fingerprintOf?: FingerprintOf;
+  builderRevision?: string;
+}
 
-  const tournamentList = await getJson<string[]>(env, 'reports/tournaments.json');
-  if (!Array.isArray(tournamentList) || !tournamentList.length) {
-    console.warn('[playerAggregator] reports/tournaments.json missing or empty');
-    return emptyAggregateResult();
-  }
-
-  const previousManifest = options.forceFullRebuild
-    ? null
-    : await getJson<PlayerAggregateManifestV2>(env, MANIFEST_KEY);
-
-  const reused = await tryFastPath(env, tournamentList, previousManifest, {
-    sliceConcurrency,
-    fingerprintOf: options.fingerprintOf
-  });
-  if (reused) {
-    return reused;
-  }
-
-  // A transport/corrupt failure in loadTournamentSlice throws and propagates
-  // here, aborting the whole run — we never publish player aggregates built
-  // from a partial slice set (P-05). A genuinely-missing/empty slice returns
-  // null and is counted as skipped (legitimate).
-  const slices = await runWithConcurrency(tournamentList, sliceConcurrency, (key: string) =>
-    loadTournamentSlice(env, key, options.fingerprintOf)
-  );
-
-  const accs = new Map<string, Accumulator>();
-  const loadedTournamentKeys: string[] = [];
-  const fingerprints: Record<string, string> = {};
-  let skipped = 0;
-  let scanned = 0;
-
+function affectedPlayers(
+  previous: PlayerAggregateManifestV2,
+  changed: Set<string>,
+  slices: TournamentSlice[]
+): Set<string> {
+  const primary = new Set<string>();
   for (const slice of slices) {
-    if (!slice) {
-      skipped += 1;
-      continue;
+    for (const participant of slice.participants) {
+      const id = normalizePlayerId(participant.playerId);
+      if (id) {
+        primary.add(canonicalPlayerId(id));
+      }
     }
-    scanned += 1;
-    loadedTournamentKeys.push(slice.key);
-    fingerprints[slice.key] = slice.fingerprint;
-    accumulateSlice(accs, slice);
   }
-
-  const generatedAt = new Date().toISOString();
-  const prevPlayers = previousManifest?.players ?? {};
-  const changedTournaments = changedTournamentKeys(loadedTournamentKeys, previousManifest?.fingerprints, fingerprints);
-
-  const plan = planWrites(accs, generatedAt, prevPlayers, changedTournaments, previousManifest?.names);
-  const orphanDeletes = orphanDeleteKeys(prevPlayers, plan.manifestPlayers);
-
-  plan.index.sort((first, second) => {
-    if (second.lastEventDate !== first.lastEventDate) {
-      return second.lastEventDate.localeCompare(first.lastEventDate);
+  for (const [id, events] of Object.entries(previous.players)) {
+    if (events.some(event => changed.has(event))) {
+      primary.add(id);
     }
-    return second.eventCount - first.eventCount;
-  });
+  }
+  // A changed attendee may be renamed. Include their historical opponents so
+  // every embedded opponent name is corrected, even outside the changed event.
+  const relatedEvents = new Set([...primary].flatMap(id => previous.players[id] ?? []));
+  const affected = new Set(primary);
+  for (const [id, events] of Object.entries(previous.players)) {
+    if (events.some(event => relatedEvents.has(event))) {
+      affected.add(id);
+    }
+  }
+  return affected;
+}
 
-  // Publication order (Theme A / P-24): write bodies FIRST, then delete stale
-  // bodies, then the index that points at them, then the manifest last. A
-  // failure mid-run must never leave the index/manifest referencing objects
-  // that don't exist yet.
-  await batchPutJson(env, [...plan.profileWrites, ...plan.deckWrites], writeConcurrency);
-  await batchDelete(env, [...plan.deckDeletes, ...orphanDeletes], writeConcurrency);
+async function loadBuildSlices(
+  env: unknown,
+  keys: string[],
+  previous: PlayerAggregateManifestV2 | null,
+  options: AggregateOptions
+) {
+  const load = (key: string) => loadTournamentSlice(env, key, options.fingerprintOf);
+  const concurrency = options.concurrency ?? 4;
+  const incremental =
+    previous?.names &&
+    previous.fingerprints &&
+    options.fingerprintOf &&
+    previous.identityRevision === IDENTITY_OVERRIDES_REVISION &&
+    previous.builderRevision === options.builderRevision;
+  if (!incremental) {
+    return { slices: await runWithConcurrency(keys, concurrency, load), affected: undefined };
+  }
+  const changed = new Set(
+    [...keys, ...previous.tournamentKeys].filter(key => previous.fingerprints?.[key] !== options.fingerprintOf?.(key))
+  );
+  const changedSlices = await runWithConcurrency(
+    keys.filter(key => changed.has(key)),
+    concurrency,
+    load
+  );
+  const affected = affectedPlayers(
+    previous,
+    changed,
+    changedSlices.filter((slice): slice is TournamentSlice => slice !== null)
+  );
+  const needed = new Set([...affected].flatMap(id => previous.players[id] ?? []));
+  const remaining = keys.filter(key => !changed.has(key) && needed.has(key));
+  return { slices: [...changedSlices, ...(await runWithConcurrency(remaining, concurrency, load))], affected };
+}
+
+function preserveUnchanged(
+  plan: WritePlan,
+  previous: PlayerAggregateManifestV2,
+  affected: Set<string>,
+  index: PlayerIndexEntry[]
+): void {
+  const target = plan;
+  target.index.push(...index.filter(entry => !affected.has(entry.playerId)));
+  for (const [id, events] of Object.entries(previous.players)) {
+    if (!affected.has(id)) {
+      target.manifestPlayers[id] = events;
+      target.manifestNames[id] = previous.names![id];
+    }
+  }
+}
+
+async function publishPlayerPlan(
+  env: unknown,
+  plan: WritePlan,
+  previous: PlayerAggregateManifestV2 | null,
+  options: { manifest: PlayerAggregateManifestV2; concurrency: number }
+): Promise<void> {
+  const { manifest, concurrency } = options;
+  plan.index.sort((a, b) => b.lastEventDate.localeCompare(a.lastEventDate) || b.eventCount - a.eventCount);
+  await batchPutJson(env, [...plan.profileWrites, ...plan.deckWrites], concurrency);
+  await batchDelete(
+    env,
+    [...plan.deckDeletes, ...orphanDeleteKeys(previous?.players ?? {}, plan.manifestPlayers)],
+    concurrency
+  );
   await putJson(env, INDEX_KEY, plan.index);
   await writeSlimIndex(env, plan.index);
+  await putJson(env, MANIFEST_KEY, manifest);
+}
 
+function foldSlices(
+  slices: (TournamentSlice | null)[],
+  keys: string[],
+  previous: PlayerAggregateManifestV2 | null,
+  affected?: Set<string>
+) {
+  const accs = new Map<string, Accumulator>();
+  const fingerprints: Record<string, string> = { ...previous?.fingerprints };
+  for (const key of Object.keys(fingerprints)) {
+    if (!keys.includes(key)) {
+      delete fingerprints[key];
+    }
+  }
+  let scanned = 0;
+  for (const slice of slices) {
+    if (!slice) {
+      continue;
+    }
+    scanned++;
+    fingerprints[slice.key] = slice.fingerprint;
+    accumulateSlice(accs, slice, affected);
+  }
+  return { accs, fingerprints, scanned };
+}
+
+async function rebuildPlayers(
+  env: unknown,
+  keys: string[],
+  previous: PlayerAggregateManifestV2 | null,
+  options: AggregateOptions
+): Promise<BuildPlayerAggregatesResult> {
+  const { slices, affected } = await loadBuildSlices(env, keys, previous, options);
+  const { accs, fingerprints, scanned } = foldSlices(slices, keys, affected ? previous : null, affected);
+  const generatedAt = new Date().toISOString();
+  const priorFingerprints = previous?.builderRevision === options.builderRevision ? previous?.fingerprints : undefined;
+  const changed = changedTournamentKeys(Object.keys(fingerprints), priorFingerprints, fingerprints);
+  const plan = planWrites(accs, generatedAt, { players: previous?.players ?? {}, changed, names: previous?.names });
+  if (affected && previous) {
+    preserveUnchanged(plan, previous, affected, (await getJson<PlayerIndexEntry[]>(env, INDEX_KEY)) ?? []);
+  }
   const manifest: PlayerAggregateManifestV2 = {
     generatedAt,
-    // Only successfully-loaded slices: a transient R2 fetch failure must not
-    // be cached as "covered" — next run's fast-path needs to retry it.
-    tournamentKeys: loadedTournamentKeys.slice().sort(),
+    tournamentKeys: Object.keys(fingerprints).sort(),
     players: plan.manifestPlayers,
     fingerprints,
     names: plan.manifestNames,
-    identityRevision: IDENTITY_OVERRIDES_REVISION
+    identityRevision: IDENTITY_OVERRIDES_REVISION,
+    builderRevision: options.builderRevision
   };
-  await putJson(env, MANIFEST_KEY, manifest);
-
-  console.info('[playerAggregator] Built player aggregates', {
-    profiles: accs.size,
-    profilesWritten: plan.profileWrites.length,
-    deckFilesWritten: plan.deckWrites.length,
-    tournamentsScanned: scanned,
-    tournamentsSkipped: skipped
-  });
-
+  await publishPlayerPlan(env, plan, previous, { manifest, concurrency: options.r2Concurrency ?? 6 });
   return {
     index: plan.index,
-    profileCount: accs.size,
+    profileCount: Object.keys(plan.manifestPlayers).length,
     profilesWritten: plan.profileWrites.length,
     tournamentsScanned: scanned,
-    tournamentsSkipped: skipped,
+    tournamentsSkipped: slices.length - scanned,
     skippedNoChanges: false
   };
+}
+
+export async function buildPlayerAggregates(
+  env: unknown,
+  options: AggregateOptions = {}
+): Promise<BuildPlayerAggregatesResult> {
+  const keys = await getJson<string[]>(env, 'reports/tournaments.json');
+  if (!Array.isArray(keys) || !keys.length) {
+    return emptyAggregateResult();
+  }
+  const previous = options.forceFullRebuild ? null : await getJson<PlayerAggregateManifestV2>(env, MANIFEST_KEY);
+  const reused = await tryFastPath(env, keys, previous, {
+    sliceConcurrency: options.concurrency ?? 4,
+    fingerprintOf: options.fingerprintOf,
+    builderRevision: options.builderRevision
+  });
+  return reused ?? rebuildPlayers(env, keys, previous, options);
 }
