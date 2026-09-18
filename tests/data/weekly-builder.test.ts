@@ -266,6 +266,18 @@ describe('buildWeeklyReport movers', () => {
     assert.equal(report.movers.rising[0].share, 100);
     assert.equal(report.movers.rising[0].set, 'POR');
   });
+
+  it('does not read a new printing replacing an old one as a mover', () => {
+    const synonymDb = { synonyms: { 'Ultra Ball::30C::128': 'Ultra Ball::MEG::131' }, canonicals: {} };
+    const decks = [
+      ...lists(10, 1, 'A', [card('Ultra Ball', '30C', '128')]),
+      ...lists(10, 8, 'A', [card('Ultra Ball', 'MEG', '131')])
+    ];
+    const report = buildWeeklyReport(decks, { ...LOOSE, synonymDb: synonymDb as never });
+    assert.deepEqual(report.movers, { rising: [], falling: [] });
+    const swapped = report.decks.flatMap(deck => [...deck.added, ...deck.cut]);
+    assert.deepEqual(swapped, []);
+  });
 });
 
 describe('buildWeeklyReport edge cases', () => {

@@ -32,7 +32,7 @@ import {
 import { loadCardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
 import { fetchLimitlessJson } from './lib/onlineFetch';
 import type { DiagnosticsCollector, TrendHistory, TrendSeriesEntry } from '../../shared/onlineMeta/types.ts';
-import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
+import { requireSynonymDatabase, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import onlineExclusions from '../../config/online-exclusions.json';
 
 const TRENDS_FOLDER = 'Trends - Last 30 Days';
@@ -146,14 +146,11 @@ function trimTrendSeries(series: TrendSeriesEntry[] = [], limit = MAX_ARCHETYPES
   return series.slice(0, max);
 }
 
-/** The synonym database, or the empty one when the asset is missing. */
-async function loadSynonymDatabase(reportsBinding: R2Binding): Promise<SynonymDatabase> {
-  const object = await reportsBinding.get('assets/card-synonyms.json');
-  if (!object) {
-    console.warn('[trends] Card synonyms not found; card identities stay raw');
-    return EMPTY_DATABASE;
-  }
-  const db = (await object.json()) as SynonymDatabase;
+/** The synonym database. It lives at the bucket root, outside the reports prefix. */
+async function loadSynonymDatabase(): Promise<SynonymDatabase> {
+  const key = 'assets/card-synonyms.json';
+  const object = await reports.get(key);
+  const db = requireSynonymDatabase(object ? await object.json() : null, key);
   console.log(`[trends] Card synonyms: ${Object.keys(db.synonyms ?? {}).length} entries`);
   return db;
 }
@@ -313,7 +310,7 @@ async function main() {
   });
   // This week against last, from the same decks. The floors match the daily
   // chart's: a day under MIN_DAY_DECKS plots as a gap here too.
-  const synonymDb = await loadSynonymDatabase(env.REPORTS);
+  const synonymDb = await loadSynonymDatabase();
   const weekly = buildWeeklyReport(decks, {
     windowEnd: window.end,
     dailyDays: lookbackDays,
