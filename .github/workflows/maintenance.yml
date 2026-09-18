@@ -1,0 +1,71 @@
+name: Maintenance
+on:
+  schedule:
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Maintenance operation
+        type: choice
+        options: [prune, reconcile-events, price-history, print-prices, bootstrap]
+        default: prune
+      apply:
+        description: Apply the operation (otherwise preview)
+        type: boolean
+        default: false
+      days:
+        description: Price-history window in days
+        type: string
+        default: '90'
+      dates:
+        description: Print-price dates, comma separated (blank selects event dates)
+        type: string
+        default: ''
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  deployments: write
+concurrency:
+  group: r2-bucket-writers
+  queue: max
+  cancel-in-progress: false
+jobs:
+  maintenance:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_TOKEN: ${{ github.token }}
+      OPERATION: ${{ inputs.operation || 'prune' }}
+      APPLY: ${{ github.event_name == 'schedule' && 'true' || inputs.apply && 'true' || 'false' }}
+      DAYS: ${{ inputs.days || '90' }}
+      DATES: ${{ inputs.dates }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: ./.github/actions/setup
+        with:
+          python: 'true'
+      - name: Require verified main commit
+        run: npx tsx .github/scripts/require-verified-code.ts
+      - name: Install archive support for price backfills
+        if: env.APPLY == 'true' && (env.OPERATION == 'price-history' || env.OPERATION == 'print-prices')
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full
+      - name: Run selected maintenance operation
+        run: npx tsx .github/scripts/run-data-pipeline.ts maintenance
+      - name: Publish completed repairs
+        if: env.APPLY == 'true' && env.OPERATION != 'prune' && env.OPERATION != 'bootstrap'
+        uses: ./.github/actions/publish
+      - name: Upload retention plan
+        if: always() && env.OPERATION == 'prune'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: retention-plan
+          path: retention-plan.json
+          if-no-files-found: ignore

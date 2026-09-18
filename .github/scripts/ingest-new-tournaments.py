@@ -205,6 +205,14 @@ def ingest(code: str, anonymize: bool) -> None:
     subprocess.run([sys.executable, script_path], env=env, check=True)
 
 
+def is_recent_event(folder: str | None, today: date | None = None) -> bool:
+    """Daily discovery ingests recent majors; historical repair is explicit."""
+    if not folder:
+        raise ValueError("Published tournament has no date; refusing to guess ingestion scope")
+    age = ((today or date.today()) - date.fromisoformat(folder.split(",", 1)[0])).days
+    return 0 <= age <= 30
+
+
 def main() -> int:
     r2_account_id = os.environ.get("R2_ACCOUNT_ID")
     r2_access_key_id = os.environ.get("R2_ACCESS_KEY_ID")
@@ -226,7 +234,12 @@ def main() -> int:
         print("[ingest] Error: labs index returned no tournament codes")
         return 1
     plan = plan_ingest(published, fetch_event_codes(r2_client, bucket_name))
-    pending = plan.missing + plan.refresh
+    reconcile = parse_bool_env("RECONCILE_EVENTS", False)
+    recent = [code for code in plan.missing if is_recent_event(published.get(code))]
+    pending = plan.missing + plan.refresh if reconcile else recent
+    historical = len(plan.missing) - len(recent) + len(plan.refresh)
+    if historical and not reconcile:
+        print(f"[ingest] {historical} historical/reconciliation events deferred to Maintenance")
 
     print(f"[ingest] labs published: {len(published)} (latest {list(published)[-1]})")
     print(f"[ingest] missing: {len(plan.missing)}{' -> ' + ', '.join(plan.missing) if plan.missing else ''}")

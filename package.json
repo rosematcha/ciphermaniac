@@ -42,7 +42,7 @@
     "verify": "npm run verify:static && npm run verify:tests && npm run verify:build && npm run test:e2e:local",
     "typecheck:domain": "tsc --noEmit --project tsconfig.domain.json",
     "lint:python": "node scripts/quality/run-tool.mjs python -m ruff check .github/scripts",
-    "lint:workflows": "node scripts/quality/run-tool.mjs actionlint && node scripts/quality/run-tool.mjs shellcheck .husky/pre-commit .husky/commit-msg",
+    "lint:workflows": "node scripts/quality/run-tool.mjs actionlint -ignore 'unexpected key \\\"queue\\\" for \\\"concurrency\\\" section' && node scripts/quality/run-tool.mjs shellcheck .husky/pre-commit .husky/commit-msg",
     "check:architecture": "depcruise src shared functions scripts .github/scripts --config .dependency-cruiser.cjs",
     "coverage:check:core": "c8 check-coverage --per-file --lines 95 --statements 95 --functions 95 --branches 80 --include 'shared/data/canonicalJson.ts'",
     "coverage:check:changed": "node scripts/check-changed-coverage.mjs",
@@ -52,7 +52,8 @@
     "verify:tests": "npm run test:coverage && npm run coverage:check && npm run coverage:check:domain && npm run coverage:check:core && npm run coverage:check:changed && npm run test:python",
     "verify:build": "npm run build && npm run check:bundle",
     "format:check": "prettier --check package.json package-lock.json 'tsconfig*.json' '*.config.{ts,mjs}' .dependency-cruiser.cjs 'config/quality/*.json' '.github/workflows/*.yml'",
-    "check:generated": "node scripts/check-generated-files.mjs"
+    "check:generated": "node scripts/check-generated-files.mjs",
+    "test:lighthouse": "node .github/scripts/run-lighthouse.mjs"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.928.0",

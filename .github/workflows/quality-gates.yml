@@ -1,104 +1,68 @@
-name: Quality Gates
-
-# Runs the same command a developer runs locally: `npm run verify`. The steps
-# below only exist to install the two runtimes it needs and to keep the failure
-# output attributable to a stage — CI must not maintain its own idea of what
-# "verified" means, or the local command drifts into meaning less than the
-# remote one.
-
+name: CI
 on:
-  workflow_dispatch:
-    inputs:
-      prepare_only:
-        description: 'Verify and prepare R2 and Pages without deploying'
-        type: boolean
-        default: true
   pull_request:
   push:
-    branches:
-      - main
-
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
-
 jobs:
   quality-gates:
+    name: quality-gates
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    concurrency:
+      group: verify-${{ github.ref }}
+      cancel-in-progress: true
     env:
       QUALITY_BASE: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
     steps:
-      - name: Checkout
-        # actions/checkout@v5.0.0
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
           fetch-depth: 0
-
-      - name: Setup Node
-        # actions/setup-node@v5.0.0
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+      - uses: ./.github/actions/setup
         with:
-          node-version-file: .node-version
-          cache: npm
-
-      - name: Setup Python
-        # actions/setup-python@v6.0.0
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
-        with:
-          python-version: '3.11.16'
-          cache: pip
-          cache-dependency-path: .github/scripts/requirements-quality.txt
-
-      - name: Install Node dependencies
-        run: npm ci
-
-      - name: Install Python dependencies
-        run: pip install --require-hashes -r .github/scripts/requirements-quality.txt
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Security audit
-        run: npm audit --omit=dev --audit-level=high
-
-      - name: Verify
-        run: npm run verify
-
+          python: 'true'
+      - run: npx playwright install --with-deps chromium
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run verify
+  lighthouse:
+    name: lighthouse
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: lighthouse-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: ./.github/actions/setup
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:lighthouse
   deploy:
-    needs: quality-gates
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: [quality-gates, lighthouse]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:
       group: r2-bucket-writers
+      queue: max
       cancel-in-progress: false
     permissions:
       contents: read
+      actions: read
+      checks: read
       deployments: write
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v5
-        with:
-          node-version-file: .node-version
-          cache: npm
-      - run: npm ci
-      - name: Prepare metadata and embed the current production release
-        env:
-          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: ./.github/actions/setup
+      - name: Embed current immutable data release
         run: npx tsx .github/scripts/prepare-deployment.ts
-      - name: Build production bundle
-        run: npm run verify:build
-      - name: Deploy verified code
-        if: github.event_name == 'push' || !inputs.prepare_only
-        # cloudflare/wrangler-action@v3.14.1
-        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=ciphermaniac --branch=main --commit-hash=${{ github.sha }}
+      - uses: ./.github/actions/deploy

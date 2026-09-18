@@ -5,11 +5,24 @@
  * is still a normal optional miss because not every searched player has one.
  */
 
-import { dataClient } from './client';
+import { createDataClient, dataClient } from './client';
 import { decodeSlimIndex } from '../../../shared/playerTypes.js';
 import type { PlayerDecks, PlayerIndexEntry, PlayerIndexSlimEntry, PlayerProfile } from '../../types';
 
+import { EMBEDDED_RELEASE } from '../../../shared/generated/release';
+import { createPlayerBodyReader } from './playerBodyReader';
+import { coerceManifest } from '../../../shared/releaseManifest';
+
 const { fetchJsonOptional } = dataClient;
+const immutableClient = createDataClient({ resolvePath: path => path });
+const release = coerceManifest(EMBEDDED_RELEASE);
+
+const fetchPlayerBody = createPlayerBodyReader({
+  routed: release?.dependencies.playerLayout === 'routes-v1',
+  legacy: fetchPlayerJson,
+  routes: path => dataClient.fetchJson<Record<string, string>>(path),
+  immutable: path => immutableClient.fetchJson(path)
+});
 
 // In dev, serve from the local public/ tree (populated by
 // `npx tsx scripts/build-players-local.ts`) so we don't need a deploy.
@@ -51,7 +64,7 @@ export async function fetchPlayerIndexSlim(): Promise<PlayerIndexSlimEntry[] | n
 }
 
 export function fetchPlayerProfile(playerId: string): Promise<PlayerProfile | null> {
-  return fetchPlayerJson<PlayerProfile>(`/players/${encodeURIComponent(playerId)}/profile.json`);
+  return fetchPlayerBody<PlayerProfile>(playerId, 'profile');
 }
 
 /**
@@ -59,5 +72,5 @@ export function fetchPlayerProfile(playerId: string): Promise<PlayerProfile | nu
  * a tournament row is expanded, so most profile views never download it.
  */
 export function fetchPlayerDecks(playerId: string): Promise<PlayerDecks | null> {
-  return fetchPlayerJson<PlayerDecks>(`/players/${encodeURIComponent(playerId)}/decks.json`);
+  return fetchPlayerBody<PlayerDecks>(playerId, 'decks');
 }

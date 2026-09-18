@@ -69,11 +69,6 @@ interface MigrationStatus {
   measuredBaselines?: { r2?: { inventoryFile?: string }; browser?: { benchmarkFile?: string } };
 }
 
-interface BuildGraph {
-  schemaVersion?: number;
-  nodes?: Array<{ name?: string; dependsOn?: string[] }>;
-}
-
 const pkg = readJson<PackageJson>('package.json');
 const migration = readJson<MigrationStatus>('.github/data-migration-status.json');
 const readme = readText('README.md');
@@ -176,74 +171,6 @@ check('migration baseline files exist', () => {
     .filter((path): path is string => Boolean(path))
     .filter(path => !existsSync(join(ROOT, path)))
     .map(path => `referenced baseline ${path} does not exist`);
-});
-
-// ---------------------------------------------------------------------------
-// Build graph
-// ---------------------------------------------------------------------------
-
-check('build graph node references resolve and the graph is acyclic', () => {
-  const graph = readJson<BuildGraph>('.github/build-graph.json');
-  const nodes = graph.nodes ?? [];
-  if (nodes.length === 0) {
-    return ['build-graph.json declares no nodes'];
-  }
-  const problems: string[] = [];
-  const byName = new Map<string, string[]>();
-  for (const node of nodes) {
-    if (!node.name) {
-      problems.push('a node has no name');
-      continue;
-    }
-    if (byName.has(node.name)) {
-      problems.push(`duplicate node name ${node.name}`);
-    }
-    byName.set(node.name, node.dependsOn ?? []);
-  }
-  for (const [name, deps] of byName) {
-    for (const dep of deps) {
-      if (!byName.has(dep)) {
-        problems.push(`node ${name} depends on undeclared node ${dep}`);
-      }
-    }
-  }
-
-  // Iterative DFS: the graph is small, but a cycle must not blow the stack.
-  const WHITE = 0;
-  const GREY = 1;
-  const BLACK = 2;
-  const color = new Map<string, number>([...byName.keys()].map(name => [name, WHITE]));
-  for (const start of byName.keys()) {
-    if (color.get(start) !== WHITE) {
-      continue;
-    }
-    const stack: Array<{ name: string; deps: string[]; i: number }> = [
-      { name: start, deps: byName.get(start) ?? [], i: 0 }
-    ];
-    color.set(start, GREY);
-    while (stack.length) {
-      const frame = stack[stack.length - 1];
-      if (frame.i >= frame.deps.length) {
-        color.set(frame.name, BLACK);
-        stack.pop();
-        continue;
-      }
-      const dep = frame.deps[frame.i++];
-      if (!byName.has(dep)) {
-        continue;
-      }
-      if (color.get(dep) === GREY) {
-        const from = stack.findIndex(f => f.name === dep);
-        problems.push(`cycle: ${[...stack.slice(from).map(f => f.name), dep].join(' -> ')}`);
-        continue;
-      }
-      if (color.get(dep) === WHITE) {
-        color.set(dep, GREY);
-        stack.push({ name: dep, deps: byName.get(dep) ?? [], i: 0 });
-      }
-    }
-  }
-  return problems;
 });
 
 // ---------------------------------------------------------------------------

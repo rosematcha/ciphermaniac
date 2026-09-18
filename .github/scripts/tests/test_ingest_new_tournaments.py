@@ -10,6 +10,7 @@ scheduled job ever notices.
 import importlib.util
 import json
 import unittest
+from datetime import date
 from pathlib import Path
 
 
@@ -24,6 +25,17 @@ def _load_module():
 
 
 ingest_module = _load_module()
+
+
+class IngestionScopeTest(unittest.TestCase):
+    def test_daily_discovery_accepts_only_recent_events(self):
+        today = date(2026, 9, 18)
+        self.assertTrue(ingest_module.is_recent_event("2026-09-01, Regional", today))
+        self.assertFalse(ingest_module.is_recent_event("2024-11-30, Regional", today))
+
+    def test_missing_date_fails_closed(self):
+        with self.assertRaises(ValueError):
+            ingest_module.is_recent_event(None, date(2026, 9, 18))
 
 
 class _FakeResponse:

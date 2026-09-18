@@ -1,0 +1,17 @@
+name: Deploy verified application
+description: Deploy a verified code revision with an embedded immutable data release
+runs:
+  using: composite
+  steps:
+    - name: Recheck code approval immediately before deployment
+      shell: bash
+      run: npx tsx .github/scripts/require-verified-code.ts
+    - name: Build and enforce bundle budget
+      shell: bash
+      run: npm run verify:build
+    - name: Deploy to production
+      uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65
+      with:
+        apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+        command: pages deploy dist --project-name=ciphermaniac --branch=main --commit-hash=${{ github.sha }}

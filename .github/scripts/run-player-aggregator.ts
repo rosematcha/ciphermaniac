@@ -19,6 +19,7 @@ import process from 'node:process';
 import { createR2Client, createReportsBinding } from './lib/r2.mjs';
 import { buildPlayerAggregates } from '../../shared/onlineMeta/playerAggregator.ts';
 import { loadEventSources } from './lib/build/productionRelease.ts';
+import { builderRevision, PLAYER_BUILD_FILES } from './lib/build/revision';
 import { buildTournamentCatalog } from './event-cli.ts';
 
 function parseBoolean(value: string | undefined, fallback = false): boolean {
@@ -83,6 +84,7 @@ async function main() {
     concurrency: 6,
     r2Concurrency: 8,
     forceFullRebuild: FORCE_FULL_REBUILD,
+    builderRevision: await builderRevision(PLAYER_BUILD_FILES),
     // Immutable event metas carry no fetch timestamp; the content-addressed
     // root changes exactly when the event's content does.
     fingerprintOf: key => sources[key]

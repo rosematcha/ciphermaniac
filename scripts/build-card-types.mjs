@@ -886,7 +886,14 @@ async function findMasterReports(dir) {
  * @returns {Promise<Set<string>>}
  */
 async function collectAllCards() {
-  console.log('📦 Collecting cards from all reports...');
+  if (process.env.CARD_TYPES_INPUT) {
+    const cards = JSON.parse(await fs.readFile(process.env.CARD_TYPES_INPUT, 'utf8'));
+    if (!Array.isArray(cards) || cards.some(card => typeof card !== 'string' || !/^[^:]+::[^:]+$/.test(card))) {
+      throw new Error('Invalid card discovery input');
+    }
+    return new Set(cards);
+  }
+  console.log('Collecting cards from all reports...');
 
   const allCards = new Set();
   const jsonFiles = await findMasterReports(REPORTS_BASE_PATH);
