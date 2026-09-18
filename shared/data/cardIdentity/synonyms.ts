@@ -6,6 +6,22 @@ export interface SynonymDatabase {
 
 export const EMPTY_DATABASE: SynonymDatabase = { synonyms: {}, canonicals: {} };
 
+/**
+ * The synonym database a pipeline job read, or a thrown error when it is
+ * missing or empty. Jobs that merge printings must not fall back to raw
+ * identities: every reprint would then read as a brand-new card.
+ * @param data - The parsed asset, or null when the read found nothing
+ * @param source - Where it was read from, for the error message
+ * @returns The database
+ */
+export function requireSynonymDatabase(data: unknown, source: string): SynonymDatabase {
+  const synonyms = (data as Partial<SynonymDatabase> | null)?.synonyms;
+  if (!synonyms || typeof synonyms !== 'object' || Object.keys(synonyms).length === 0) {
+    throw new Error(`Card synonyms missing or empty at ${source}`);
+  }
+  return data as SynonymDatabase;
+}
+
 export function getCanonicalCardFromData(database: SynonymDatabase | null, identifier: string): string {
   if (!database || !identifier) {
     return identifier;

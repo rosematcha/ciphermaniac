@@ -16,6 +16,7 @@ import { assertCanonicalRoutesSound } from '../../shared/data/canonicalCardRoute
 import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult } from './lib/r2.mjs';
 import { loadEventSources, productionScopeKey } from './lib/build/productionRelease.ts';
+import { newSetCodes, parseSetCardList } from './lib/setSeeds.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -183,6 +184,30 @@ async function collectAllCards(release, sources, tournaments) {
       onlineIncluded
     }
   };
+}
+
+/**
+ * Add every card of each new set to the scrape, played or not. A new set's
+ * cards mostly have no deck appearances yet, so without this their reprint
+ * clusters (Mew ex 30C 66/152/158) never reach the synonym database.
+ * @param {Map<string, Set<string>>} cardsByName
+ */
+async function seedNewSets(cardsByName) {
+  const today = new Date().toISOString().slice(0, 10);
+  for (const setCode of newSetCodes(today)) {
+    const resp = await requestWithRetries(`https://limitlesstcg.com/cards/${setCode}?display=list`, 2);
+    const cards = resp ? parseSetCardList(await resp.text(), setCode) : [];
+    if (!cards.length) {
+      throw new Error(`No card list for new set ${setCode} on Limitless`);
+    }
+    for (const { name, number } of cards) {
+      if (!cardsByName.has(name)) {
+        cardsByName.set(name, new Set());
+      }
+      cardsByName.get(name).add(`${setCode}::${normalizeCardNumber(number)}`);
+    }
+    log(`  Seeded ${cards.length} cards from new set ${setCode}`);
+  }
 }
 
 function buildNumberVariants(number) {
@@ -670,6 +695,7 @@ async function main() {
   // merge below protects existing mappings, but a mass source failure still
   // means this run's fresh clusters are untrustworthy — fail loudly (P-06).
   assertSourceCoverage(stats, fullRewrite);
+  await seedNewSets(cardsByName);
 
   // Generate canonical synonyms (fresh clusters from this run's data)
   let synonymsData = await generateSynonyms(cardsByName);

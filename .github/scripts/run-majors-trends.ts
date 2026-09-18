@@ -36,7 +36,7 @@ import {
   type MajorsWindowResult
 } from '../../src/lib/majorsTrends.ts';
 import type { ArchetypeIndexEntry } from '../../src/types/index.ts';
-import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
+import { requireSynonymDatabase, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { loadEventSources } from './lib/build/productionRelease.ts';
 import { buildTournamentCatalog } from './event-cli.ts';
 
@@ -94,8 +94,8 @@ async function fetchJsonSafe<T>(key: string): Promise<T | null> {
 
 /** Load the synonym DB the same way the browser does (see src/utils/cardSynonyms.ts). */
 async function loadSynonymDatabase(): Promise<SynonymDatabase> {
-  const data = await fetchJsonSafe<SynonymDatabase>('assets/card-synonyms.json');
-  return data ?? EMPTY_DATABASE;
+  const key = 'assets/card-synonyms.json';
+  return requireSynonymDatabase(await fetchJsonSafe<SynonymDatabase>(key), key);
 }
 
 /**

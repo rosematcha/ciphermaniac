@@ -527,6 +527,14 @@ class ResolveGroupIdsTest(unittest.TestCase):
         mappings, _ = update_prices.resolve_group_ids(["BRS"], self.GROUPS, self.NAME_INDEX, {"BRS": 999})
         self.assertEqual(mappings["BRS"], 999)
 
+    def test_shared_abbreviation_prefers_the_group_named_like_the_set(self):
+        groups = [
+            {"groupId": 24722, "abbreviation": "30C", "name": "ME: 30th Celebration"},
+            {"groupId": 24837, "abbreviation": "30C", "name": "ME: 30th Celebration Classic Collection"},
+        ]
+        mappings, _ = update_prices.resolve_group_ids(["30C"], groups, {"30th celebration": "30C"}, {})
+        self.assertEqual(mappings["30C"], 24722)
+
     def test_unmapped_is_reported_not_fatal(self):
         mappings, unmapped = update_prices.resolve_group_ids(["ZZZ"], self.GROUPS, self.NAME_INDEX, {})
         self.assertEqual(mappings, {})

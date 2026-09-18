@@ -27,6 +27,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { isMissingObject } from './cdnObject';
 import { loadEventSources, productionScopeKey } from '../.github/scripts/lib/build/productionRelease';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -241,7 +242,7 @@ async function fetchSourcePng(url: string): Promise<SourceFetch> {
   for (let attempt = 1; attempt <= SOURCE_FETCH_RETRIES; attempt++) {
     try {
       const res = await fetch(url);
-      if (res.status === 404) {
+      if (await isMissingObject(res)) {
         return { kind: 'missing' };
       }
       if (res.ok) {

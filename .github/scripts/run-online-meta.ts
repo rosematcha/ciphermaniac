@@ -25,7 +25,7 @@ import { buildArchetypeReports } from '../../shared/data/archetypes/build.js';
 import { onlineArchetypeOptions } from '../../shared/data/reports/onlineArtifacts.js';
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.js';
 import { buildCardSuccessIndex } from '../../shared/data/reports/cardSuccess.js';
-import type { SynonymDatabase } from '../../shared/data/cardIdentity.js';
+import { requireSynonymDatabase, type SynonymDatabase } from '../../shared/data/cardIdentity.js';
 import { fetchLimitlessJson } from './lib/onlineFetch';
 import {
   compileExclusions,
@@ -248,14 +248,9 @@ async function loadCardTypesDatabase(): Promise<CardTypesDatabase | null> {
 
 async function loadCardSynonyms(): Promise<SynonymDatabase> {
   const key = 'assets/card-synonyms.json';
-  const data = await readJson<SynonymDatabase>(key);
-  if (data) {
-    const count = Object.keys(data.synonyms || {}).length;
-    console.log(`[online-meta] Loaded card synonyms (${count} entries) from ${key}`);
-    return data;
-  }
-  console.warn('[online-meta] Card synonyms not found; continuing without canonicalization');
-  return { synonyms: {}, canonicals: {} } as SynonymDatabase;
+  const data = requireSynonymDatabase(await readJson<SynonymDatabase>(key), key);
+  console.log(`[online-meta] Loaded card synonyms (${Object.keys(data.synonyms).length} entries) from ${key}`);
+  return data;
 }
 
 // ============================================================================
