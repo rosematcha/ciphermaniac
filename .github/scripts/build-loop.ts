@@ -324,6 +324,15 @@ function assertRequiredArtifacts(captures: Array<{ scope: ReleaseScope; objects:
   }
 }
 
+export async function assertNoIncompleteProducers(load: <T>(key: string) => Promise<T | null>): Promise<void> {
+  for (const producer of ['daily', 'assets']) {
+    const state = await load<ProducerState>(`build/v1/producers/${producer}.json`);
+    if (state && state.status !== 'complete') {
+      throw new Error(`${producer} producer is incomplete; refusing partial publication`);
+    }
+  }
+}
+
 async function emitPlan(input: {
   argv: string[];
   roots: Record<ReleaseScope, string>;
@@ -347,6 +356,7 @@ async function emitPlan(input: {
   if (process.env.GITHUB_OUTPUT) {
     await appendFile(process.env.GITHUB_OUTPUT, `changed=${changed}\n`);
   }
+  await writeFile('dependencies.json', JSON.stringify(manifest.dependencies));
   await writeFile(
     'release-plan.json',
     JSON.stringify(
@@ -394,6 +404,7 @@ async function main(): Promise<void> {
     inputFingerprint(sources),
     'Major events and players'
   );
+  await assertNoIncompleteProducers(load);
   const eventFolders = Object.keys(sources).sort().slice(0, limit);
   if (!argv.includes('--allow-shrink') && limit === Infinity) {
     await assertNoEventRegression(eventFolders, load);

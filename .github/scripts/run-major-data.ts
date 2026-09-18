@@ -21,11 +21,12 @@ export async function runMajorData(): Promise<void> {
   };
   const { sources } = await loadEventSources({ read });
   const inputs = inputFingerprint(sources);
-  const revision = await builderRevision([
+  const codeRevision = await builderRevision([
     ...PLAYER_BUILD_FILES,
     '.github/scripts/run-majors-trends.ts',
     'src/lib/majorsTrends.ts'
   ]);
+  const revision = inputFingerprint({ codeRevision, synonyms: await read('assets/card-synonyms.json') });
   const key = 'build/v1/producers/majors.json';
   const previous = await read<ProducerState>(key);
   if (

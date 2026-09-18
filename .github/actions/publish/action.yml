@@ -1,0 +1,25 @@
+name: Publish immutable release
+description: Capture changed scopes, validate the candidate and activate it atomically
+runs:
+  using: composite
+  steps:
+    - name: Capture scopes and report changes
+      id: capture
+      shell: bash
+      run: npx tsx .github/scripts/build-loop.ts --write --emit-roots roots.json --emit-events events.json
+    - name: Compose candidate release
+      if: steps.capture.outputs.changed == 'true'
+      shell: bash
+      run: |
+        npx tsx .github/scripts/publish-release.ts           --roots roots.json --events events.json --dependencies dependencies.json           --release-id "$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA::7}"           --published-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"           --manifest-out release-manifest.json --module-out shared/generated/release.ts
+    - name: Validate candidate release
+      if: steps.capture.outputs.changed == 'true'
+      shell: bash
+      run: npx tsx scripts/verify-release.ts production 0 --manifest release-manifest.json
+    - name: Deploy validated candidate
+      if: steps.capture.outputs.changed == 'true'
+      uses: ./.github/actions/deploy
+    - name: Promote tooling pointer
+      if: steps.capture.outputs.changed == 'true'
+      shell: bash
+      run: npx tsx .github/scripts/update-channel.ts --manifest release-manifest.json

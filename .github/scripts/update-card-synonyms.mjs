@@ -5,6 +5,7 @@
  * Creates canonical mappings for card reprints across all sets.
  */
 
+import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { appendFile, mkdir, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -725,7 +726,17 @@ async function main() {
   await saveSynonyms(synonymsData);
 
   // Upload to R2
-  await uploadToR2(synonymsData);
+  const semantic = data =>
+    canonicalStringify({
+      synonyms: data?.synonyms ?? {},
+      canonicals: data?.canonicals ?? {},
+      prints: data?.prints ?? {}
+    });
+  if (semantic(synonymsData) !== semantic(previous)) {
+    await uploadToR2(synonymsData);
+  } else {
+    log('Semantic card data unchanged; keeping the published database');
+  }
 
   log(`\n${'='.repeat(60)}`);
   log('Summary');
