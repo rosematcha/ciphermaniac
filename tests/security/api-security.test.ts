@@ -372,6 +372,29 @@ test('Thumbnail API: accepts trainer gallery card numbers', async () => {
   restoreFetch();
 });
 
+test('Thumbnail API: accepts the lone type letter of an unnumbered basic Energy', async () => {
+  const requested: string[] = [];
+  mockFetch({
+    predicate: url => {
+      const urlStr = typeof url === 'string' ? url : (url as Request).url;
+      if (urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com')) {
+        requested.push(urlStr);
+        return true;
+      }
+      return false;
+    },
+    status: 200,
+    headers: { 'Content-Type': 'image/png' },
+    body: 'fake-image-data'
+  });
+
+  const response = await ThumbnailModule.onRequest({ request: makeThumbnailRequest('/thumbnails/sm/TEU/000P') });
+  assert.strictEqual(response.status, 200, 'Should accept a bare Energy letter');
+  assert.ok(requested[0].endsWith('/TEU/TEU_P_R_EN_SM.png'), `Should keep the letter unpadded, got ${requested[0]}`);
+
+  restoreFetch();
+});
+
 test('Thumbnail API: lowercases variant suffixes', async () => {
   const requested: string[] = [];
   mockFetch({
