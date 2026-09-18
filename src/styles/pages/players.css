@@ -128,11 +128,8 @@
   }
 }
 
-/* ---------- Profile: the career band ----------
-   Six figures, value over label, in one ruled band. The rules do the
-   separating — six of anything set inline ran together into a sentence, and a
-   framed scorecard would be the box the rest of the site does without. A phone
-   folds the same band into two columns of label / value rows.
+/* ---------- Profile: identity row ----------
+   The career band under it is the shared .stat-band (components.css).
    Shared with the index hero, which uses the identity row alone. */
 .player-ident {
   display: flex;
@@ -146,77 +143,21 @@
   flex: none;
   padding: 7px 12px;
 }
-/* Ink top and bottom, hairlines between: the band is Stamp's ink rule doing
-   the framing a box would otherwise do. In hairline the whole thing went soft
-   against the paper and stopped reading as one object. */
-.player-stats {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  margin: 18px 0 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  font-variant-numeric: tabular-nums;
-}
-.player-stat {
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-end;
-  gap: 3px;
-  min-width: 0;
-  padding: 11px 16px;
-  border-left: 1px solid var(--rule);
-}
-.player-stat:first-child {
-  padding-left: 0;
-  border-left: 0;
-}
-.player-stat dd,
-.player-stat dt {
-  margin: 0;
-}
-.player-stat dd {
-  color: var(--fg);
-  font-size: clamp(17px, 1.7vw, 21px);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-.player-stat dt {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* Win rate is the figure the page is about, so it carries the accent — the
-   same lead-stat move as the card page's inclusion rate. */
-.player-stat.is-lead dd {
-  color: var(--accent-ink);
-}
-/* The Day 2 rate rides in its own label rather than beside the count, where
-   "35 81%" read as one mangled number. */
-.player-stat small {
-  font-size: inherit;
-  font-weight: 500;
-  opacity: 0.75;
-}
 .player-tabs .tabs {
   margin-bottom: 20px;
 }
-/* Three across before the record's ten tabular digits start colliding. */
-@media (max-width: 900px) {
+/* Three across before the record's ten tabular digits start colliding. Stops
+   where the shared band's phone fold takes over. */
+@media (min-width: 641px) and (max-width: 900px) {
   .player-stats {
+    grid-auto-flow: row;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .player-stat:nth-child(3n + 1) {
+  .player-stats .stat-band-item:nth-child(3n + 1) {
     padding-left: 0;
     border-left: 0;
   }
-  .player-stat:nth-child(-n + 3) {
+  .player-stats .stat-band-item:nth-child(-n + 3) {
     border-bottom: 1px solid var(--rule);
   }
 }
@@ -226,39 +167,6 @@
   }
   .player-compare {
     margin-top: 12px;
-  }
-  .player-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 24px;
-    margin-top: 14px;
-    border-top: 0;
-    border-bottom: 0;
-  }
-  .player-stat {
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 9px 0;
-    border-left: 0;
-    border-bottom: 1px solid var(--rule);
-  }
-  .player-stat:nth-child(3n + 1) {
-    padding-left: 0;
-  }
-  .player-stat dd {
-    font-size: 14px;
-  }
-  .player-stat dt {
-    font-size: 11px;
-    letter-spacing: 0.04em;
-  }
-}
-/* Two columns stop fitting "median finish" somewhere under 380px, and a
-   truncated label is a label that says nothing. One column below that. */
-@media (max-width: 380px) {
-  .player-stats {
-    grid-template-columns: 1fr;
   }
 }
 
