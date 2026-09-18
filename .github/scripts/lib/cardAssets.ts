@@ -6,6 +6,7 @@ import { builderRevision } from './build/revision';
 import { loadEventSources } from './build/productionRelease';
 import { boolEnv } from './env';
 import { inputFingerprint } from './build/provenance';
+import { newSetCodes } from './setSeeds';
 
 type Store = ReturnType<typeof pipelineStore>;
 
@@ -82,8 +83,12 @@ async function synonyms(store: Store): Promise<void> {
     )
   ].sort();
   await completedStage(store, 'synonyms', {
-    inputs: { sources, onlineCards },
-    revision: await builderRevision(['.github/scripts/update-card-synonyms.mjs']),
+    inputs: { sources, onlineCards, newSets: newSetCodes(new Date().toISOString().slice(0, 10)) },
+    revision: await builderRevision([
+      '.github/scripts/update-card-synonyms.mjs',
+      '.github/scripts/lib/setSeeds.ts',
+      '.github/scripts/data/set-catalog.json'
+    ]),
     force: boolEnv('FORCE_REFRESH'),
     run: async () => {
       run('.github/scripts/update-card-synonyms.mjs');
