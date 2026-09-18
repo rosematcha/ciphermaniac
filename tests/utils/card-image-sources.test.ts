@@ -112,3 +112,9 @@ test('a UVU number with no bundled art resolves normally, path traversal include
     assert.ok(attempts.length > 0);
   }
 });
+
+test('an unnumbered basic Energy (000P) resolves to its bare type letter', () => {
+  const attempts = buildAttempts('TEU', '000P', 'lg', 'hotlink');
+  assert.ok(attempts[0].endsWith('/TEU/TEU_P_R_EN_LG.png'), attempts[0]);
+  assert.equal(attempts[1], `${PROXY}/lg/TEU/P`);
+});

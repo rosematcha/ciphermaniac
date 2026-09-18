@@ -21,8 +21,10 @@ const LIMITLESS_CDN_BASE = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com
 const PTCGIO_BASE = 'https://images.pokemontcg.io';
 // Validation patterns
 const SET_CODE_PATTERN = /^[A-Z0-9]{2,8}$/;
-// Plain numbers (123, 18a) or letter-prefixed gallery numbers (TG24, GG05, SV107).
-const CARD_NUMBER_PATTERN = /^(?:[0-9]+[A-Za-z]*|[A-Za-z]{1,4}[0-9]+)$/;
+// Plain numbers (123, 18a), letter-prefixed gallery numbers (TG24, GG05, SV107),
+// or the lone type letter SUM/TEU/SSH/BRS give their unnumbered basic Energy
+// (stored as 000P, filed on the CDN as TEU_P).
+const CARD_NUMBER_PATTERN = /^(?:[0-9]+[A-Za-z]*|[A-Za-z]{1,4}[0-9]+|[A-Za-z])$/;
 // pokemontcg.io set ids (base1, ecard2, xyp) and file stems (94, XY27, 94_hires).
 const PTCGIO_SET_ID_PATTERN = /^[a-z][a-z0-9]{1,11}$/;
 const PTCGIO_FILE_PATTERN = /^[A-Za-z]{0,4}[0-9]+[A-Za-z]?(?:_hires)?$/;

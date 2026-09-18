@@ -275,6 +275,11 @@ class BareNumberTest(unittest.TestCase):
     def test_passes_through_unparseable_numbers(self):
         self.assertEqual(build._bare_number("TG24"), "TG24")
 
+    def test_strips_padding_from_a_lone_energy_letter(self):
+        self.assertEqual(build._bare_number("000P"), "P")
+        self.assertEqual(build._cdn_number("000P"), "P")
+        self.assertEqual(build._cdn_number("068A"), "068A")
+
 
 class SummariseTest(unittest.TestCase):
     def test_counts_prints_arts_and_collapsed_duplicates(self):
