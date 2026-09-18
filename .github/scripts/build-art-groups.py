@@ -165,8 +165,15 @@ def signature(prints: Iterable[str]) -> str:
 
 def _bare_number(number: str) -> str:
     """``090`` -> ``90``, ``068A`` -> ``68A``. Limitless card pages are unpadded."""
+    number = _cdn_number(number)
     digits = re.match(r"^0*(\d+)(.*)$", number)
     return f"{digits.group(1)}{digits.group(2)}" if digits else number
+
+
+def _cdn_number(number: str) -> str:
+    """``000P`` -> ``P``: the unnumbered basic Energy of SUM/TEU/SSH/BRS are
+    filed under their type letter alone (TEU_P_R_EN_LG.png)."""
+    return re.sub(r"^0+(?=[A-Za-z]+$)", "", number)
 
 
 def _get(session, url: str, **kwargs):
@@ -199,7 +206,7 @@ def fetch_art(session, set_code: str, number: str) -> Optional[bytes]:
     knows — so that page is scraped for the real URL rather than a set-id table
     being hand-maintained here.
     """
-    direct = _get(session, f"{LIMITLESS_CDN}/{set_code}/{set_code}_{number}_R_EN_LG.png")
+    direct = _get(session, f"{LIMITLESS_CDN}/{set_code}/{set_code}_{_cdn_number(number)}_R_EN_LG.png")
     if direct is not None:
         return direct.content
     page = _get(session, LIMITLESS_CARD_PAGE.format(set=set_code, number=_bare_number(number)),
