@@ -1,33 +1,34 @@
 import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, type JSX, onMount, Show } from 'solid-js';
 import {
   fetchArchetype,
   fetchArchetypes,
   fetchOnlineTrendReport,
   fetchPrices,
   fetchRotationIndex,
+  getArchetypeIconMap,
   normalizeArchetypeKey,
-  prettyTournamentName,
+  resolveArchetypeIcons,
   snapshotDateForArchetype,
   snapshotSourceKey,
   type TrendTimelinePoint
 } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
-import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
+import { ONLINE_META_NAME } from '../lib/constants';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
 import { Tabs } from '../components/Tabs';
 import { Segmented } from '../components/Segmented';
 import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '../components/Skeleton';
-import { InfoTip } from '../components/InfoTip';
+import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { CardList, type ViewMode } from '../components/CardList';
 import { AdvancedPanel } from '../components/AdvancedPanel';
 import { MatchupsPanel } from '../components/MatchupsPanel';
 import { createPersistentSignal, createPersistentViewMode } from '../lib/persistentSignal';
 import { latestValue, resolved } from '../lib/resource';
-import { fetchArchetypeWinRate } from '../lib/archetypeWinRate';
+import { fetchArchetypeWinRate, type WinRateAggregate } from '../lib/archetypeWinRate';
 import { matchPointWilson, sampleTier } from '../lib/confidence';
-import { formatPlusMinus, formatRange } from '../components/matchupsPanel/model';
+import { formatRange } from '../components/matchupsPanel/model';
 import { estimateDeckCost } from '../lib/deckCost';
 import { fetchCardFacets } from '../lib/data/cardFacets';
 import { sortByDeckOrder } from '../lib/cardOrder';
@@ -293,8 +294,6 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
     }
     return Math.round((count * 100) / pct);
   });
-  const scopeLabel = () =>
-    props.tournament === ONLINE_META_NAME ? ONLINE_META_LABEL : prettyTournamentName(props.tournament);
 
   // Aggregate event win rate — same source the Matchups tab uses.
   const [winRate] = createResource(
@@ -302,7 +301,12 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
     ({ t, slug, label }) => fetchArchetypeWinRate(t, slug, label)
   );
   const wr = () => resolved(winRate);
-  const wrGames = () => wr()?.games ?? 0;
+
+  const iconSlugs = () =>
+    resolveArchetypeIcons(
+      { name: props.slug, label: props.label, icons: props.indexEntry?.icons },
+      getArchetypeIconMap()
+    );
 
   // Typical-list cost from card prices; null (renders nothing) when coverage is thin.
   const [prices] = createResource(fetchPrices);
@@ -345,91 +349,20 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
         </div>
       </Show>
       <section class='hero'>
-        <h1>{props.label}</h1>
-        <div class='hero-meta'>
-          <span>{props.report.deckTotal.toLocaleString()} decks</span>
-          <Show when={sharePct()}>
-            <span class='dot'>·</span>
-            <span class='arche-stat'>
-              <span>
-                {sharePct()}%<Show when={metaTotal()}>{total => <> of {total().toLocaleString()}</>}</Show> in{' '}
-                {scopeLabel()}
-              </span>
-              <InfoTip marker='i' label='Meta share'>
-                This archetype's share of all decks in the report.
-              </InfoTip>
-            </span>
+        <h1 class='arche-title'>
+          <ArchetypeIcons slugs={iconSlugs()} size={30} />
+          <span>{props.label}</span>
+        </h1>
+        {/* Every cell renders from first paint and fills in as its request
+            lands, so a late win rate or price never reflows the band. */}
+        <dl class='stat-band arche-band'>
+          <ShareStat share={sharePct()} total={metaTotal()} decks={props.report.deckTotal} />
+          <WinRateStat loading={winRate.loading} agg={wr()} />
+          <Show when={trendEligible()}>
+            <TrendStat loading={trendReport.loading} points={trendTimeline()} />
           </Show>
-          {/* Win rate comes from its own request, and it sits in the middle of a
-              line that wraps on a phone — inserting it on arrival pushed the
-              cost chip onto a second row and took the tabs and the whole card
-              list down with it. The slot holds its width from first paint and
-              only collapses if the request comes back with no games, which
-              trades a shift on every archetype for one on the few without
-              recorded matches. */}
-          <Show when={winRate.loading || wrGames() > 0}>
-            <span class='arche-stat-slot' classList={{ 'is-pending': winRate.loading }}>
-              <span class='dot'>·</span>
-              <span class='arche-stat' classList={{ 'is-muted': wrGames() > 0 && sampleTier(wrGames()) !== 'solid' }}>
-                <Show when={wr()} keyed>
-                  {agg => (
-                    <>
-                      <span
-                        class='arche-stat-lead'
-                        title={
-                          matchPointWilson(agg.wins, agg.ties, agg.games)
-                            ? `95% interval ${formatRange(matchPointWilson(agg.wins, agg.ties, agg.games))}`
-                            : undefined
-                        }
-                      >
-                        {sampleTier(agg.games) === 'thin' || agg.winRate === null ? '—' : `${agg.winRate.toFixed(1)}%`}{' '}
-                        <span class='wr-uncertainty'>
-                          {sampleTier(agg.games) === 'thin'
-                            ? ''
-                            : formatPlusMinus(matchPointWilson(agg.wins, agg.ties, agg.games))}
-                        </span>{' '}
-                        win rate · {agg.games.toLocaleString()} games
-                      </span>
-                      <InfoTip marker='i' label='Win rate'>
-                        Match win rate across all recorded games, mirrors excluded. Ties count as one third of a win.
-                      </InfoTip>
-                    </>
-                  )}
-                </Show>
-              </span>
-            </span>
-          </Show>
-          {/* Reserved on the same terms as the win-rate chip above: prices are a
-              separate file, and on a phone this arriving took the hero to a
-              second line. */}
-          <Show when={prices.loading || deckCost() !== null}>
-            <span class='arche-stat-slot arche-stat-slot-cost' classList={{ 'is-pending': prices.loading }}>
-              <span class='dot'>·</span>
-              <span class='arche-stat'>
-                <Show when={deckCost()} keyed>
-                  {cost => (
-                    <>
-                      <span class='arche-stat-lead'>≈ ${Math.round(cost.cost).toLocaleString()} typical list</span>
-                      <InfoTip marker='i' label='Typical list cost'>
-                        Market price of a typical list: cards in at least half of lists, at their most common copy
-                        count. TCGPlayer prices.
-                      </InfoTip>
-                    </>
-                  )}
-                </Show>
-              </span>
-            </span>
-          </Show>
-        </div>
-        {/* The timeline arrives on a second request, and letting the sparkline
-            appear from nothing pushed every tab and card below it down a row.
-            Eligible archetypes hold the space; ineligible scopes (an event, a
-            snapshot) never render it, so they pay nothing. */}
-        <Show when={trendEligible()}>
-          <Show when={trendTimeline()} keyed fallback={<UsageSparklinePending />}>
-            {points => <UsageSparkline points={points} />}
-          </Show>
-        </Show>
+          <CostStat loading={prices.loading} cost={deckCost()?.cost ?? null} />
+        </dl>
       </section>
 
       <section>
@@ -525,92 +458,111 @@ function formatSnapshotDate(raw: string | null): string {
     : d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-/**
- * Inline 30-day usage sparkline for the archetype hero: the archetype's daily
- * meta-share trajectory with a start-to-end delta chip. The line breaks at any
- * day the archetype dropped out of the report (no interpolation across gaps),
- * mirroring the Trends chart. Purely presentational, so the SVG is aria-hidden
- * and the delta is restated as text for screen readers.
- */
-/**
- * Stand-in that holds the sparkline's space until its timeline lands.
- *
- * Built from the same three children at the same widths rather than given a
- * fixed height: the row wraps below about 440px, so any single min-height is
- * wrong at one width or the other. Matching the shape means it wraps where the
- * real one will, at every width, without a breakpoint to keep in sync.
- */
-function UsageSparklinePending() {
+/** One figure in the hero's stat band: a skeleton until its data lands. */
+function Stat(props: {
+  label: JSX.Element;
+  loading?: boolean;
+  lead?: boolean;
+  muted?: boolean;
+  children: JSX.Element;
+}) {
   return (
-    <div class='arche-spark' aria-hidden='true'>
-      <span class='arche-spark-label'>Usage, last 30 days</span>
-      <Skeleton width={`${SPARK_W}px`} height={`${SPARK_H}px`} />
-      <span class='arche-spark-delta'>
-        <Skeleton width='151px' height='1em' />
-      </span>
+    <div class='stat-band-item' classList={{ 'is-lead': props.lead, 'is-muted': props.muted }}>
+      <dt>{props.label}</dt>
+      <dd>
+        <Show when={!props.loading} fallback={<Skeleton width='64px' height='1em' />}>
+          {props.children}
+        </Show>
+      </dd>
     </div>
   );
 }
 
-/** Sparkline canvas size, shared with the pending stand-in above. */
-const SPARK_W = 132;
-const SPARK_H = 30;
-
-function UsageSparkline(props: { points: TrendTimelinePoint[] }) {
-  const W = SPARK_W;
-  const H = SPARK_H;
-  const PAD = 3;
-  const shares = createMemo(() => props.points.map(p => p.share));
-  const start = () => shares()[0];
-  const end = () => shares()[shares().length - 1];
-  const deltaPp = () => end() - start();
-  // Scale y to the series' own min/max with a little headroom, so a small deck's
-  // 1–3% movement is still legible rather than pinned flat against a 0–100 axis.
-  const bounds = createMemo(() => {
-    const ys = shares();
-    const lo = Math.min(...ys);
-    const hi = Math.max(...ys);
-    const pad = Math.max(0.25, (hi - lo) * 0.15);
-    return { lo: lo - pad, hi: hi + pad };
-  });
-  const x = (i: number) => PAD + (i / (props.points.length - 1)) * (W - 2 * PAD);
-  const y = (share: number) => {
-    const { lo, hi } = bounds();
-    const t = hi === lo ? 0.5 : (share - lo) / (hi - lo);
-    return H - PAD - t * (H - 2 * PAD);
-  };
-  // Break the path into segments at missing days so a gap never draws a
-  // straight interpolated line. A day counts as present when it has decks.
-  const segments = createMemo(() => {
-    const segs: string[] = [];
-    let cur: string[] = [];
-    props.points.forEach((p, i) => {
-      if (p.decks > 0) {
-        cur.push(`${cur.length === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.share).toFixed(1)}`);
-      } else if (cur.length) {
-        segs.push(cur.join(' '));
-        cur = [];
-      }
-    });
-    if (cur.length) {
-      segs.push(cur.join(' '));
-    }
-    return segs;
-  });
-  const deltaClass = () => (Math.abs(deltaPp()) < 0.1 ? 'flat' : deltaPp() > 0 ? 'up' : 'down');
-  const deltaText = () => `${deltaPp() > 0 ? '+' : deltaPp() < 0 ? '' : '±'}${deltaPp().toFixed(1)} pp`;
-
+/** Meta share, with its denominator in the label; the deck count when the scope has no share. */
+function ShareStat(props: { share: string | null; total: number | null; decks: number }) {
   return (
-    <div class='arche-spark'>
-      <span class='arche-spark-label'>Usage, last 30 days</span>
-      <svg class='arche-spark-svg' width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden='true'>
-        <For each={segments()}>{d => <path class='arche-spark-line' d={d} fill='none' />}</For>
-        <circle class='arche-spark-dot' cx={x(props.points.length - 1)} cy={y(end())} r='2.4' />
-      </svg>
-      <span class='arche-spark-delta' classList={{ [deltaClass()]: true }}>
-        {start().toFixed(1)}% → {end().toFixed(1)}%<span class='arche-spark-chip'>{deltaText()}</span>
-      </span>
-    </div>
+    <Show when={props.share} fallback={<Stat label='decks'>{props.decks.toLocaleString()}</Stat>}>
+      {share => (
+        <Stat
+          lead
+          label={
+            <>
+              meta share <Show when={props.total}>{total => <small>· of {total().toLocaleString()}</small>}</Show>
+            </>
+          }
+        >
+          {share()}%
+        </Stat>
+      )}
+    </Show>
+  );
+}
+
+/**
+ * Match win rate with the game count in the label. A thin sample shows a dash,
+ * and anything short of solid is muted; the 95% interval is on hover.
+ */
+function WinRateStat(props: { loading: boolean; agg: WinRateAggregate | undefined }) {
+  const games = () => props.agg?.games ?? 0;
+  const interval = () => {
+    const ci = props.agg ? matchPointWilson(props.agg.wins, props.agg.ties, props.agg.games) : null;
+    return ci ? `95% interval ${formatRange(ci)}` : undefined;
+  };
+  const value = () => {
+    const rate = props.agg?.winRate;
+    return rate === null || rate === undefined || sampleTier(games()) === 'thin' ? '—' : `${rate.toFixed(1)}%`;
+  };
+  return (
+    <Stat
+      loading={props.loading}
+      muted={games() > 0 && sampleTier(games()) !== 'solid'}
+      label={
+        <>
+          win rate{' '}
+          <Show when={games() > 0}>
+            <small>· {games().toLocaleString()} games</small>
+          </Show>
+        </>
+      }
+    >
+      <span title={interval()}>{value()}</span>
+    </Stat>
+  );
+}
+
+/** Change in meta share across the online trend window, in percentage points. */
+function TrendStat(props: { loading: boolean; points: TrendTimelinePoint[] | null }) {
+  const delta = () => {
+    const pts = props.points;
+    return pts ? pts[pts.length - 1].share - pts[0].share : null;
+  };
+  return (
+    <Stat loading={props.loading} label='30-day trend'>
+      <Show when={delta() !== null} fallback='—'>
+        <span class={deltaClass(delta()!)}>{formatDelta(delta()!)}</span>
+      </Show>
+    </Stat>
+  );
+}
+
+function deltaClass(d: number): string {
+  if (Math.abs(d) < 0.1) {
+    return 'arche-delta';
+  }
+  return d > 0 ? 'arche-delta is-up' : 'arche-delta is-down';
+}
+
+function formatDelta(d: number): string {
+  const sign = d > 0 ? '+' : d < 0 ? '−' : '±';
+  return `${sign}${Math.abs(d).toFixed(1)} pp`;
+}
+
+/** Market price of a typical list; a dash when price coverage is too thin to say. */
+function CostStat(props: { loading: boolean; cost: number | null }) {
+  return (
+    <Stat loading={props.loading} label='typical list'>
+      {props.cost === null ? '—' : `$${Math.round(props.cost).toLocaleString()}`}
+    </Stat>
   );
 }
 
@@ -618,9 +570,11 @@ function ArchetypeSkeleton() {
   return (
     <>
       <section class='hero'>
-        <Skeleton width='280px' height='32px' />
-        <div style={{ 'margin-top': '6px' }}>
-          <Skeleton width='220px' height='13px' />
+        <Skeleton width='280px' height='44px' />
+        {/* Stands in for the stat band, so the page doesn't drop a row when
+            the report lands. */}
+        <div style={{ 'margin-top': '18px' }}>
+          <Skeleton height='65px' />
         </div>
       </section>
       <section>
