@@ -105,7 +105,35 @@ async function retainedRoots(store: Store, now: number): Promise<Set<string>> {
     }
     keep.add(prefix);
   }
+  await protectPlayerReferences(store, keep);
   return keep;
+}
+
+export async function protectPlayerReferences(store: Pick<Store, 'readOptional'>, keep: Set<string>): Promise<void> {
+  const pending = [...keep].filter(root => root.startsWith('releases/v1/players/'));
+  const visited = new Set<string>();
+  while (pending.length) {
+    const root = pending.pop()!;
+    if (visited.has(root)) {
+      continue;
+    }
+    visited.add(root);
+    const references = await store.readOptional(`${root}_references.json`);
+    if (references === null) {
+      continue;
+    }
+    if (!Array.isArray(references)) {
+      throw new Error(`Invalid player references: ${root}`);
+    }
+    for (const reference of references) {
+      if (typeof reference !== 'string' || !/^\/releases\/v1\/players\/[a-f0-9]{12,64}$/.test(reference)) {
+        throw new Error(`Invalid player generation reference: ${root}`);
+      }
+      const prefix = `${reference.slice(1)}/`;
+      keep.add(prefix);
+      pending.push(prefix);
+    }
+  }
 }
 
 async function obsoleteObjects(store: Store): Promise<StoredObject[]> {

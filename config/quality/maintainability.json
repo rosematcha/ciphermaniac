@@ -151,12 +151,7 @@
   ],
   "shared/onlineMeta/playerAggregator.ts": [
     "complexity:b15e1ac0762a68f9b01d8d0f06f977f1e392247a9f9741c19b341be305a03d06:Async function 'loadTournamentSlice' has a complexity of 21. Maximum allowed is 12.",
-    "complexity:117f8267e71af84b569ee047d8abc40792b299ac45bd0959f89da0d95ec89fb3:Function 'toPlayerRound' has a complexity of 13. Maximum allowed is 12.",
-    "complexity:96643bc63c30e632977f7885af7dec4d6fe09e238a8b7d40395a7f43b78c1ad7:Function 'accumulateMatches' has a complexity of 16. Maximum allowed is 12.",
-    "complexity:7789fa937abc2c77eceb2d0342bb29e31f136ccd0c260cbe0dcb56b8f6e42e82:Function 'accumulateSlice' has a complexity of 16. Maximum allowed is 12.",
-    "max-params:ac2c392c90c887a497f41111a2b2ab918e9903d4fecf99a5ebeb7222d6a4a1c4:Function 'planWrites' has too many parameters (5). Maximum allowed is 4.",
-    "complexity:ac2c392c90c887a497f41111a2b2ab918e9903d4fecf99a5ebeb7222d6a4a1c4:Function 'planWrites' has a complexity of 13. Maximum allowed is 12.",
-    "complexity:a740b98e1244026ccfcd55b590fdb21166b944fa41f79d20efbdaedd7322de0f:Async function 'buildPlayerAggregates' has a complexity of 14. Maximum allowed is 12."
+    "complexity:117f8267e71af84b569ee047d8abc40792b299ac45bd0959f89da0d95ec89fb3:Function 'toPlayerRound' has a complexity of 13. Maximum allowed is 12."
   ],
   "shared/onlineMeta/snapshotGenerator.ts": [
     "max-lines-per-function:5a20d40c02f7c231b6f0d102512b4792a623e16a43443d2e79cddecb591a32a6:Async function 'runRotationSnapshot' has too many lines (108). Maximum allowed is 100."

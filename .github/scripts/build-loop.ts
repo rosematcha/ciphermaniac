@@ -16,7 +16,7 @@
  */
 
 import { requireEnv } from './lib/env.ts';
-import { writeFile } from 'node:fs/promises';
+import { appendFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { CopyObjectCommand, HeadObjectCommand, ListObjectsV2Command, type S3Client } from '@aws-sdk/client-s3';
 import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
@@ -25,6 +25,8 @@ import { sha256HexString } from '../../shared/data/hash.ts';
 import { buildTournamentCatalog } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson, withR2Retry } from './lib/r2.mjs';
 import { loadEventSources } from './lib/build/productionRelease.ts';
+import { capturePlayers, type PlayerInventory } from './lib/build/playerCapture';
+import { assertProducerComplete, inputFingerprint, type ProducerState } from './lib/build/provenance';
 
 const CACHE = 'public, max-age=31536000, immutable';
 
@@ -129,6 +131,7 @@ async function captureScope(options: {
           Bucket: bucket,
           Key: target,
           CopySource: encodedCopySource(bucket, object.sourceKey),
+          CopySourceIfMatch: object.etag,
           MetadataDirective: 'REPLACE',
           ContentType: 'application/json',
           CacheControl: CACHE
@@ -221,7 +224,7 @@ async function discoverCapturedScopes(
   const [online, trends, players, snapshots, assets, priceShards, priceGlobals, majors] = await Promise.all([
     list('reports/Online - Last 14 Days/', 'reports/Online - Last 14 Days/'),
     list('reports/Trends - Last 30 Days/', 'reports/Trends - Last 30 Days/'),
-    list('players/', 'players/', key => key !== 'players/_manifest.json'),
+    list('players/', 'players/', key => !key.startsWith('players/_')),
     list('reports/Snapshots/', 'reports/Snapshots/'),
     list('assets/', 'assets/', key => !key.startsWith('assets/print-prices/')),
     list('reports/price-history/', 'reports/'),
@@ -248,6 +251,62 @@ async function discoverCapturedScopes(
   ];
 }
 
+async function capturePlayerScope(options: {
+  client: S3Client;
+  bucket: string;
+  objects: ScopeObject[];
+  previousRoot: string;
+  write: boolean;
+  load: <T>(key: string) => Promise<T | null>;
+  publish: (key: string, value: unknown) => Promise<void>;
+  written: string[];
+}): Promise<string> {
+  const { client, bucket, objects, previousRoot, write, load, publish, written } = options;
+  let previous = await load<PlayerInventory>(`${previousRoot.slice(1)}/_inventory.json`);
+  if (!previous) {
+    // Bootstrap reuse from the already immutable production tree without recopying it.
+    const existing = await listJsonObjects({
+      client,
+      bucket,
+      prefix: `${previousRoot.slice(1)}/`,
+      relativeTo: `${previousRoot.slice(1)}/`
+    });
+    previous = Object.fromEntries(
+      existing.map(object => [
+        object.relativeKey,
+        { etag: object.etag, size: object.size, path: `${previousRoot}/${object.relativeKey}` }
+      ])
+    );
+  }
+  const result = await capturePlayers({
+    objects,
+    previous,
+    write,
+    store: {
+      read: load,
+      write: publish,
+      copy: async (object, target) => {
+        await withR2Retry(() =>
+          client.send(
+            new CopyObjectCommand({
+              Bucket: bucket,
+              Key: target,
+              CopySource: encodedCopySource(bucket, object.sourceKey),
+              CopySourceIfMatch: object.etag,
+              MetadataDirective: 'REPLACE',
+              ContentType: 'application/json',
+              CacheControl: CACHE
+            })
+          )
+        );
+        written.push(target);
+      }
+    }
+  });
+  console.log(JSON.stringify({ scope: 'players', copied: result.copied, reused: result.reused }));
+  return result.root;
+}
+
 function assertRequiredArtifacts(captures: Array<{ scope: ReleaseScope; objects: ScopeObject[] }>): void {
   const required: Partial<Record<ReleaseScope, string[]>> = {
     online: ['master.json', 'meta.json', 'decks.json', 'cardUsage.json', 'archetypes/index.json'],
@@ -265,6 +324,39 @@ function assertRequiredArtifacts(captures: Array<{ scope: ReleaseScope; objects:
   }
 }
 
+async function emitPlan(input: {
+  argv: string[];
+  roots: Record<ReleaseScope, string>;
+  events: Record<string, string>;
+  manifest: ReturnType<typeof composeRelease>;
+  release: ReturnType<typeof composeRelease>;
+  written: string[];
+}): Promise<void> {
+  const { argv, roots, events, manifest, release, written } = input;
+  const arg = (flag: string) => (argv.includes(flag) ? argv[argv.indexOf(flag) + 1] : undefined);
+  if (arg('--emit-roots')) {
+    await writeFile(arg('--emit-roots')!, JSON.stringify(roots, null, 2));
+  }
+  if (arg('--emit-events')) {
+    await writeFile(arg('--emit-events')!, JSON.stringify(events, null, 2));
+  }
+
+  const changed =
+    canonicalStringify({ roots, events, dependencies: manifest.dependencies }) !==
+    canonicalStringify({ roots: release.roots, events: release.events, dependencies: release.dependencies });
+  if (process.env.GITHUB_OUTPUT) {
+    await appendFile(process.env.GITHUB_OUTPUT, `changed=${changed}\n`);
+  }
+  await writeFile(
+    'release-plan.json',
+    JSON.stringify(
+      { changed, roots, events, dependencies: manifest.dependencies, objectsWritten: written.length },
+      null,
+      2
+    )
+  );
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const write = argv.includes('--write');
@@ -272,7 +364,6 @@ async function main(): Promise<void> {
     throw new Error('--gc is unsafe for shared release roots; use prune-releases.ts');
   }
   const limit = argv.includes('--limit') ? Number(argv[argv.indexOf('--limit') + 1]) : Infinity;
-  const arg = (f: string): string | undefined => (argv.indexOf(f) >= 0 ? argv[argv.indexOf(f) + 1] : undefined);
 
   const bucket = requireEnv('R2_BUCKET_NAME');
   const client = createR2Client({
@@ -297,7 +388,12 @@ async function main(): Promise<void> {
   const gen = (obj: unknown): string => sha256HexString(canonicalStringify(obj)).slice(0, 12);
 
   // ---- Discover scopes ----
-  const { sources } = await loadEventSources({ read: load });
+  const { sources, release } = await loadEventSources({ read: load });
+  assertProducerComplete(
+    await load<ProducerState>('build/v1/producers/majors.json'),
+    inputFingerprint(sources),
+    'Major events and players'
+  );
   const eventFolders = Object.keys(sources).sort().slice(0, limit);
   if (!argv.includes('--allow-shrink') && limit === Infinity) {
     await assertNoEventRegression(eventFolders, load);
@@ -321,7 +417,30 @@ async function main(): Promise<void> {
   const captures = await discoverCapturedScopes(client, bucket);
   assertRequiredArtifacts(captures);
   for (const capture of captures) {
-    roots[capture.scope] = await captureScope({ client, bucket, ...capture, write, written, gen });
+    const before = written.length;
+    const started = Date.now();
+    roots[capture.scope] =
+      capture.scope === 'players'
+        ? await capturePlayerScope({
+            client,
+            bucket,
+            objects: capture.objects,
+            previousRoot: release.roots.players,
+            write,
+            load,
+            publish,
+            written
+          })
+        : await captureScope({ client, bucket, ...capture, write, written, gen });
+    console.log(
+      JSON.stringify({
+        scope: capture.scope,
+        changed: roots[capture.scope] !== release.roots[capture.scope],
+        objects: capture.objects.length,
+        written: written.length - before,
+        durationMs: Date.now() - started
+      })
+    );
   }
 
   // ---- Compose + validate manifest ----
@@ -330,16 +449,11 @@ async function main(): Promise<void> {
     releaseId,
     publishedAt: '1970-01-01T00:00:00Z',
     roots: roots as Record<ReleaseScope, string>,
-    events
+    events,
+    dependencies: { playerLayout: 'routes-v1' }
   });
 
-  if (arg('--emit-roots')) {
-    await writeFile(arg('--emit-roots')!, JSON.stringify(roots, null, 2));
-  }
-  if (arg('--emit-events')) {
-    await writeFile(arg('--emit-events')!, JSON.stringify(events, null, 2));
-  }
-
+  await emitPlan({ argv, roots: roots as Record<ReleaseScope, string>, events, manifest, release, written });
   console.log('[build-loop] ===== SUMMARY =====');
   console.log(`  events built    : ${Object.keys(events).length}`);
   console.log(`  scope roots     : ${Object.keys(roots).length}/7 ${Object.keys(roots).sort().join(', ')}`);
