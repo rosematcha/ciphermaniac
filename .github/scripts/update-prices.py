@@ -89,8 +89,9 @@ NUMBER_PREFIX_ALIASES = {
     'BWP': ('BW',)
 }
 
-# TCGCSV splits the SWSH Trainer/Galarian Galleries into their own groups,
-# while our UIDs keep them in the parent set (TG/GG card numbers). Prints in
+# TCGCSV splits the SWSH Trainer/Galarian Galleries and the BW/XY Radiant
+# Collections into their own groups, while our UIDs keep them in the parent
+# set (TG/GG/RC card numbers). Prints in
 # these groups are fetched in addition to the set's primary group; the primary
 # group wins on any UID both carry.
 SUPPLEMENTAL_GROUP_IDS = {
@@ -98,7 +99,9 @@ SUPPLEMENTAL_GROUP_IDS = {
     'ASR': (3068,),   # Astral Radiance Trainer Gallery
     'LOR': (3172,),   # Lost Origin Trainer Gallery
     'SIT': (17674,),  # Silver Tempest Trainer Gallery
-    'CRZ': (17689,)   # Crown Zenith Galarian Gallery
+    'CRZ': (17689,),  # Crown Zenith Galarian Gallery
+    'GEN': (1729,),   # Generations Radiant Collection
+    'LTR': (1465,)    # Legendary Treasures Radiant Collection
 }
 
 
@@ -530,6 +533,16 @@ def build_catalog_name_index(catalog):
     return index
 
 
+def _resolve_group_id(set_code, abbrev_gids, manual_map, by_name_code):
+    """One set's group ID, or None. See ``resolve_group_ids`` for the order."""
+    named = by_name_code.get(set_code)
+    if abbrev_gids:
+        # Two groups can share an abbreviation (30C is both the set and its
+        # Classic Collection); the one named like the set wins.
+        return named if named in abbrev_gids else abbrev_gids[-1]
+    return manual_map.get(set_code, named)
+
+
 def resolve_group_ids(set_codes, groups, catalog_name_index, manual_map):
     """Resolve set codes to TCGCSV group IDs (pure).
 
@@ -549,7 +562,7 @@ def resolve_group_ids(set_codes, groups, catalog_name_index, manual_map):
             continue
         abbrev = group.get("abbreviation")
         if abbrev:
-            by_abbrev[abbrev] = gid
+            by_abbrev.setdefault(abbrev, []).append(gid)
         code = catalog_name_index.get(_group_name_tail(group.get("name") or ""))
         if code:
             by_name_code.setdefault(code, gid)
@@ -557,14 +570,11 @@ def resolve_group_ids(set_codes, groups, catalog_name_index, manual_map):
     mappings = {}
     unmapped = []
     for set_code in set_codes:
-        if set_code in by_abbrev:
-            mappings[set_code] = by_abbrev[set_code]
-        elif set_code in manual_map:
-            mappings[set_code] = manual_map[set_code]
-        elif set_code in by_name_code:
-            mappings[set_code] = by_name_code[set_code]
-        else:
+        gid = _resolve_group_id(set_code, by_abbrev.get(set_code), manual_map, by_name_code)
+        if gid is None:
             unmapped.append(set_code)
+        else:
+            mappings[set_code] = gid
 
     return mappings, sorted(unmapped)
 
