@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertVerifiedCode } from '../../.github/scripts/require-verified-code';
+import { assertVerifiedCode, getVerificationState } from '../../.github/scripts/require-verified-code';
 
 const sha = 'a'.repeat(40);
 const successfulChecks = ['quality-gates', 'lighthouse'].map(name => ({
@@ -29,4 +29,17 @@ test('deployment accepts the current main commit only after both required checks
 test('similarly named checks from another app cannot authorize deployment', () => {
   const spoofed = successfulChecks.map(check => ({ ...check, app: { slug: 'third-party' } }));
   assert.throws(() => assertVerifiedCode(sha, sha, spoofed), /quality-gates/);
+});
+
+test('verification distinguishes checks that are pending from checks that failed', () => {
+  assert.equal(getVerificationState(sha, sha, successfulChecks), 'success');
+  assert.equal(getVerificationState(sha, sha, successfulChecks.slice(0, 1)), 'pending');
+  assert.equal(
+    getVerificationState(
+      sha,
+      sha,
+      successfulChecks.map(check => ({ ...check, conclusion: check.name === 'lighthouse' ? 'failure' : 'success' }))
+    ),
+    'failure'
+  );
 });

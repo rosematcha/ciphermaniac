@@ -6,6 +6,7 @@
       "url": ["http://localhost:4173/", "http://localhost:4173/cards", "http://localhost:4173/trends"],
       "numberOfRuns": 3,
       "settings": {
+        "chromeFlags": ["--no-sandbox"],
         "skipAudits": ["uses-http2"]
       }
     },
