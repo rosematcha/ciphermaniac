@@ -58,8 +58,7 @@
     "max-depth:7f75f128cd06cf5456cb5fddb1e465b3cca755f31077a59d4c29f8f90935a89f:Blocks are nested too deeply (4). Maximum allowed is 3."
   ],
   "scripts/check-repo-metadata.ts": [
-    "complexity:c21af4540805551014039cae8f8f692027449d1c8236f2bab58e70f3b7533633:Arrow function has a complexity of 14. Maximum allowed is 12.",
-    "complexity:c4a579222e29f3fcd1dbbaf93502ad12da8dcfb345811d8713b851dc344959ba:Arrow function has a complexity of 19. Maximum allowed is 12."
+    "complexity:c21af4540805551014039cae8f8f692027449d1c8236f2bab58e70f3b7533633:Arrow function has a complexity of 14. Maximum allowed is 12."
   ],
   "scripts/convert-card-images.ts": [
     "complexity:78665e1fbeb60a5c63466ea7ee7b5c1a945729b04e7f9de66b33ebd89e1b5d29:Async function 'main' has a complexity of 13. Maximum allowed is 12."

@@ -26,7 +26,7 @@ import { onlineArchetypeOptions } from '../../shared/data/reports/onlineArtifact
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.js';
 import { buildCardSuccessIndex } from '../../shared/data/reports/cardSuccess.js';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.js';
-import { fetchLimitlessJson } from '../../shared/api/limitless.js';
+import { fetchLimitlessJson } from './lib/onlineFetch';
 import {
   compileExclusions,
   DEFAULT_MIN_FIELD_PLAYERS,

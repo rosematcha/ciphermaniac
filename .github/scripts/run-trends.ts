@@ -30,7 +30,7 @@ import {
   utcDayWindow
 } from '../../shared/onlineMeta/index.ts';
 import { loadCardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
-import { fetchLimitlessJson } from '../../shared/api/limitless.ts';
+import { fetchLimitlessJson } from './lib/onlineFetch';
 import type { DiagnosticsCollector, TrendHistory, TrendSeriesEntry } from '../../shared/onlineMeta/types.ts';
 import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import onlineExclusions from '../../config/online-exclusions.json';

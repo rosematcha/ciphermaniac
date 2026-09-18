@@ -1,0 +1,24 @@
+name: Pipeline setup
+description: Install the repository runtimes and locked dependencies
+inputs:
+  python:
+    description: Install Python and the locked producer and quality dependencies
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+      with:
+        node-version-file: .node-version
+        cache: npm
+    - shell: bash
+      run: npm ci
+    - if: inputs.python == 'true'
+      uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+      with:
+        python-version-file: .python-version
+        cache: pip
+        cache-dependency-path: .github/scripts/requirements-quality.txt
+    - if: inputs.python == 'true'
+      shell: bash
+      run: pip install --require-hashes -r .github/scripts/requirements-quality.txt

@@ -23,7 +23,7 @@
 #   - Manual dispatch
 # =============================================================================
 
-name: (Daily Chore) Event Locator
+name: Event Locator
 
 on:
   schedule:
@@ -36,10 +36,9 @@ on:
         type: boolean
         default: false
 
-# All R2 bucket writers share one concurrency group so producers and repair
-# jobs can never mutate the bucket at the same time (DB-MASTER-PLAN Phase 0).
 concurrency:
-  group: r2-bucket-writers
+  group: event-locator
+  queue: max
   cancel-in-progress: false
 
 permissions:
@@ -52,20 +51,8 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - name: Checkout
-        # actions/checkout@v5.0.0
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-
-      - name: Setup Node
-        # actions/setup-node@v5.0.0
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
-        with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: ./.github/actions/setup
       - name: Publish event listings
         run: npx tsx .github/scripts/run-event-locator.ts
         env:
