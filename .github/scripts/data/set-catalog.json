@@ -2,6 +2,12 @@
   "_comment": "Set catalog for pipeline scripts. sets is ordered newest-first and drives release-order comparisons. Sets from SSH onward carry a standard-legality window: legalFrom is the tournament-legality date (two weeks after release) and legalUntil is the rotation date that removed the set (null = still legal); the window is [legalFrom, legalUntil). Sets without a window were never standard-legal during the dataset era. standardLegalSets is the current-date view of those windows and must be updated together with them when a new set releases and at each rotation (a unit test pins the two in sync). promoSets are deprioritized when choosing canonical prints.",
   "sets": [
     {
+      "code": "30C",
+      "name": "30th Celebration",
+      "legalFrom": "2026-09-30",
+      "legalUntil": null
+    },
+    {
       "code": "CRI",
       "name": "Chaos Rising",
       "legalFrom": "2026-06-05",
