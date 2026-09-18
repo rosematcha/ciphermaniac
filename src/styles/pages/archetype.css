@@ -11,6 +11,9 @@
   align-items: center;
   gap: 10px;
 }
+.arche-title .arche-icons {
+  flex: none;
+}
 /* A thin-sample win rate is shown, but not with the weight of a solid one. */
 .arche-band .stat-band-item.is-muted dd {
   opacity: 0.55;
@@ -26,6 +29,19 @@
 @media (max-width: 640px) {
   .arche-band .stat-band-item dt small {
     display: none;
+  }
+  /* A long name wraps on a phone, and sprites centred on both lines sat
+     beside nothing. Smaller, and on the first line with the name's start. */
+  .arche-title {
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .arche-title .arche-icons {
+    margin-top: calc((1lh - 24px) / 2);
+  }
+  .arche-title .arche-icon {
+    width: 24px;
+    height: 24px;
   }
 }
 .wr-uncertainty {
