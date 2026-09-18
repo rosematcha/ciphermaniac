@@ -584,6 +584,103 @@
   opacity: 0.4;
 }
 
+/* ---------- Stat band ----------
+   A hero's figures, value over label, in one ruled band: the player profile's
+   career figures and the archetype page's. The rules do the separating — a row
+   of figures set inline ran together into a sentence, and a framed scorecard
+   would be the box the rest of the site does without. Ink top and bottom,
+   hairlines between. A phone folds it into two columns of label / value rows.
+   dt comes before dd so the list stays valid; column-reverse puts the figure
+   first. */
+.stat-band {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  margin: 18px 0 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.stat-band-item {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 3px;
+  min-width: 0;
+  padding: 11px 16px;
+  border-left: 1px solid var(--rule);
+}
+.stat-band-item:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.stat-band-item dd,
+.stat-band-item dt {
+  margin: 0;
+}
+.stat-band-item dd {
+  color: var(--fg);
+  font-size: clamp(17px, 1.7vw, 21px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.stat-band-item dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The figure a page is about carries the accent. */
+.stat-band-item.is-lead dd {
+  color: var(--accent-ink);
+}
+/* Secondary detail rides in the label rather than beside the figure, where
+   two numbers side by side read as one mangled one. */
+.stat-band-item small {
+  font-size: inherit;
+  font-weight: 500;
+  opacity: 0.75;
+}
+@media (max-width: 640px) {
+  .stat-band {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+    margin-top: 14px;
+    border-top: 0;
+    border-bottom: 0;
+  }
+  .stat-band-item,
+  .stat-band-item:first-child {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 0;
+    border-left: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .stat-band-item dd {
+    font-size: 14px;
+  }
+  .stat-band-item dt {
+    letter-spacing: 0.04em;
+  }
+}
+/* Two columns stop fitting the longer labels somewhere under 380px, and a
+   truncated label is a label that says nothing. One column below that. */
+@media (max-width: 380px) {
+  .stat-band {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- Snapshot banner ----------
    "You are looking at frozen data" — on the archetype page for a historical
    event, on the card page for a rotated card. Shared because both render it
