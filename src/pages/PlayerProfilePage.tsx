@@ -116,30 +116,30 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
         </div>
         {/* dt before dd keeps the list valid; the band flips them so the figure
             reads first and the label sits under it. */}
-        <dl class='player-stats'>
-          <div class='player-stat'>
+        <dl class='stat-band player-stats'>
+          <div class='stat-band-item'>
             <dt>record</dt>
             <dd>{summary().record}</dd>
           </div>
-          <div class='player-stat is-lead'>
+          <div class='stat-band-item is-lead'>
             <dt>win rate</dt>
             <dd>{summary().winRate == null ? '—' : `${summary().winRate}%`}</dd>
           </div>
-          <div class='player-stat'>
+          <div class='stat-band-item'>
             <dt>
               Day 2s <small>· {summary().day2Rate}%</small>
             </dt>
             <dd>{s().day2s}</dd>
           </div>
-          <div class='player-stat'>
+          <div class='stat-band-item'>
             <dt>top cuts</dt>
             <dd>{s().topCuts}</dd>
           </div>
-          <div class='player-stat'>
+          <div class='stat-band-item'>
             <dt>{s().tournamentWins === 1 ? 'title' : 'titles'}</dt>
             <dd>{s().tournamentWins}</dd>
           </div>
-          <div class='player-stat'>
+          <div class='stat-band-item'>
             <dt>median finish</dt>
             <dd>{summary().medianFinish}</dd>
           </div>
