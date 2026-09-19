@@ -9,9 +9,10 @@ import { afterEach, test } from 'node:test';
 
 import { liveKeys } from '../../shared/live/tick.ts';
 import type { LiveEvent } from '../../shared/live/types.ts';
-import { fetchLiveIndex, fetchLiveRound } from '../../src/lib/data/live.ts';
+import { LIVE_SCHEDULE_KEY } from '../../shared/live/schedule.ts';
+import { fetchLiveIndex, fetchLiveRound, fetchLiveSchedule } from '../../src/lib/data/live.ts';
 
-const EVENT = { labsCode: '9999' } as LiveEvent;
+const EVENT = { slug: 'test-2027' } as LiveEvent;
 const realFetch = globalThis.fetch;
 const requested: { url: string; cache?: RequestCache }[] = [];
 
@@ -28,14 +29,20 @@ afterEach(() => {
 });
 
 test('the index is read from the key the poller publishes, revalidating', async () => {
-  stubFetch(200, { labsCode: '9999', round: 3 });
-  assert.equal((await fetchLiveIndex('9999'))?.round, 3);
+  stubFetch(200, { slug: 'test-2027', round: 3 });
+  assert.equal((await fetchLiveIndex('test-2027'))?.round, 3);
   assert.ok(requested[0].url.endsWith(`/${liveKeys.index(EVENT)}`), requested[0].url);
   assert.equal(requested[0].cache, 'no-cache');
 });
 
 test('a round is read from its own file, and one not posted is null', async () => {
   stubFetch(404, {});
-  assert.equal(await fetchLiveRound('9999', 4), null);
+  assert.equal(await fetchLiveRound('test-2027', 4), null);
   assert.ok(requested[0].url.endsWith(`/${liveKeys.round(EVENT, 4)}`), requested[0].url);
+});
+
+test('the schedule is read from the key the poller publishes', async () => {
+  stubFetch(200, { generatedAt: '2026-09-19T00:00:00Z', events: [] });
+  assert.deepEqual((await fetchLiveSchedule())?.events, []);
+  assert.ok(requested[0].url.endsWith(`/${LIVE_SCHEDULE_KEY}`), requested[0].url);
 });
