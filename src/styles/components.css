@@ -6,6 +6,49 @@
    ============================================================ */
 
 /* ---------- Page wrapper ---------- */
+/* Live banner: one line under the nav while a listed event is on, held to the
+   page measure. The whole strip is the link. */
+.live-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 8px max(32px, calc((100% - 1180px) / 2 + 32px));
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 13px;
+  text-decoration: none;
+}
+.live-banner:hover {
+  text-decoration: none;
+}
+.live-banner:hover .live-banner-name {
+  text-decoration: underline;
+}
+.live-banner-mark {
+  color: var(--accent-ink);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+}
+.live-banner-name {
+  font-weight: 500;
+}
+.live-banner-meta {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.live-player-row {
+  margin-top: var(--space-4);
+}
+@media (max-width: 640px) {
+  .live-banner {
+    padding-inline: max(var(--space-3), env(safe-area-inset-left)) max(var(--space-3), env(safe-area-inset-right));
+  }
+}
+
 .page {
   max-width: 1180px;
   margin: 0 auto;

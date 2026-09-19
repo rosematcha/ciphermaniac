@@ -1,5 +1,6 @@
 import { ErrorBoundary, type ParentComponent, Suspense } from 'solid-js';
 import { useIsRouting } from '@solidjs/router';
+import { LiveBanner } from './components/LiveBanner';
 import { SiteFooter } from './components/SiteFooter';
 import { Skeleton } from './components/Skeleton';
 import { TopNav } from './components/TopNav';
@@ -38,6 +39,7 @@ export const App: ParentComponent = props => {
           cases that still take time (lazy chunk download on slow networks). */}
       <div class='route-progress' classList={{ active: isRouting() }} aria-hidden='true' />
       <TopNav />
+      <LiveBanner />
       <main class='page'>
         <ErrorBoundary
           fallback={(err, reset) => (
