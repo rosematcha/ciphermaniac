@@ -57,3 +57,19 @@ test('a device keeps one reporter ID', async () => {
   assert.equal(liveVoterId(), first);
   assert.equal(stored.get('cm-live-voter'), first);
 });
+
+test("a device's own reports are stored per event and seat, changed in place, and taken back", async () => {
+  const { parseStoredReports, reportKey, useMyReports } = await import('../../src/lib/liveReports.ts');
+  const { mine, remember } = useMyReports();
+  const key = reportKey('test-2027', 'ada lovelace|GB');
+  remember(key, 'Dragapult');
+  remember(key, 'Dragapult Dusknoir');
+  assert.deepEqual(mine(), { [key]: 'Dragapult Dusknoir' });
+  assert.deepEqual(parseStoredReports(stored.get('cm-live-reports') ?? null), { [key]: 'Dragapult Dusknoir' });
+  remember(key, null);
+  assert.deepEqual(mine(), {});
+  for (const raw of [null, 'not json', '[1,2]', '"text"']) {
+    assert.deepEqual(parseStoredReports(raw), {});
+  }
+  assert.deepEqual(parseStoredReports('{"a":"Dragapult","b":3}'), { a: 'Dragapult' });
+});

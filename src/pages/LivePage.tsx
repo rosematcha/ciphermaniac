@@ -11,6 +11,7 @@ import {
   recordLabel,
   seatKey
 } from '../../shared/live/view';
+import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { Chip, ChipGroup, SearchInput } from '../components/Chip';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
@@ -20,10 +21,11 @@ import { fetchArchetypeLabels, fetchOnlineArchetypes, fetchPlayerIndexSlim } fro
 import { fetchLiveIndex, fetchLiveReports, fetchLiveRound, submitDeckReport } from '../lib/data/live';
 import { debounced } from '../lib/debounce';
 import { liveVoterId, useLiveFollows } from '../lib/liveFollows';
+import { reportKey, useMyReports } from '../lib/liveReports';
 import { createPolled } from '../lib/livePoll';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { latestValue, resolved } from '../lib/resource';
-import { LiveDeck, type ReportedDeck } from './live/LiveDeck';
+import { deckIcons, type ReportedDeck } from './live/LiveDeck';
 import { LiveRun, type RunPlayer } from './live/LiveRun';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/players.css';
@@ -76,20 +78,30 @@ export function LivePage() {
   const indexed = createMemo(() =>
     [...(resolved(archetypes) ?? [])].sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0))
   );
-  const labels = createMemo(() =>
-    reportableArchetypes(
-      indexed().map(entry => entry.label),
-      resolved(iconLabels) ?? []
-    )
-  );
-  const iconsByLabel = createMemo(() => new Map(indexed().map(entry => [entry.label, entry.icons])));
+  // Every reportable deck, the online meta's first; the index's own icons beat
+  // the icon map's for a label both carry.
+  const decks = createMemo<ReportedDeck[]>(() => {
+    const byLabel = new Map(indexed().map(entry => [entry.label, entry]));
+    return reportableArchetypes([...byLabel.keys()], resolved(iconLabels) ?? []).map(label => ({
+      label,
+      icons: byLabel.get(label)?.icons,
+      percent: byLabel.get(label)?.percent
+    }));
+  });
+  const deckByLabel = createMemo(() => new Map(decks().map(deck => [deck.label, deck])));
   const deckOf = (seat: RunPlayer): ReportedDeck | undefined => {
     const key = seatKey(seat);
     const label = key in reported() ? reported()[key] : latestValue(reports)?.decks[key];
-    return label ? { label, icons: iconsByLabel().get(label) } : undefined;
+    return label ? (deckByLabel().get(label) ?? { label }) : undefined;
   };
-  const reportDeck = async (seat: RunPlayer, archetype: string) => {
+  const { mine, remember } = useMyReports();
+  const myDeck = (seat: RunPlayer): ReportedDeck | undefined => {
+    const label = mine()[reportKey(params.slug, seatKey(seat))];
+    return label ? (deckByLabel().get(label) ?? { label }) : undefined;
+  };
+  const reportDeck = async (seat: RunPlayer, archetype: string | null) => {
     const shown = await submitDeckReport({ slug: params.slug, seat: seatKey(seat), archetype, voter: liveVoterId() });
+    remember(reportKey(params.slug, seatKey(seat)), archetype);
     setReported(current => ({ ...current, [seatKey(seat)]: shown }));
   };
 
@@ -179,9 +191,10 @@ export function LivePage() {
             playerId={profileOf()({ ...runPlayer()!, wins: 0, losses: 0, ties: 0, points: 0 })}
             hrefFor={runHref}
             closeHref={runHref(null)}
-            labels={labels()}
+            decks={decks()}
             leading={indexed().length}
             deckOf={deckOf}
+            mine={myDeck(runPlayer()!)}
             onReport={archetype => reportDeck(runPlayer()!, archetype)}
           />
         </Show>
@@ -259,17 +272,19 @@ function MatchRow(props: {
   );
 }
 
+/** Icon, name, record: the reported deck's sprites lead, in a slot every row keeps so names line up. */
 function SeatCell(props: { seat: LiveSeat; href: string; deck?: ReportedDeck }) {
   return (
-    <span class='players-ident'>
+    <span class='arche-name-cell'>
+      <span title={props.deck?.label}>
+        <ArchetypeIcons slugs={props.deck ? deckIcons(props.deck) : []} size={22} reserveSlot />
+      </span>
       <Show when={props.seat.result}>
         {result => <b class={`round-outcome ${result()}`}>{RESULT_LETTER[result()]}</b>}
       </Show>
       <A href={props.href} class='cardname'>
         {props.seat.name}
       </A>
-      <span class='players-country'>{props.seat.country}</span>
-      <Show when={props.deck}>{deck => <LiveDeck deck={deck()} iconsOnly />}</Show>
       <span class='muted-cell'>
         {recordLabel(props.seat)}
         {props.seat.dropped ? ' · dropped' : ''}

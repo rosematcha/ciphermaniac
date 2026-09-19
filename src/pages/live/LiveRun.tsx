@@ -25,12 +25,14 @@ interface LiveRunProps {
   playerId: string | null;
   hrefFor: (seat: RunPlayer) => string;
   closeHref: string;
-  /** Reportable archetype labels; the first `leading` are the online meta's. */
-  labels: readonly string[];
+  /** Reportable archetypes; the first `leading` are the online meta's. */
+  decks: readonly ReportedDeck[];
   leading: number;
   /** The archetype reported for a seat, if one leads. */
   deckOf: (seat: RunPlayer) => ReportedDeck | undefined;
-  onReport: (archetype: string) => Promise<void>;
+  /** What this device has reported for the player. */
+  mine?: ReportedDeck;
+  onReport: (archetype: string | null) => Promise<void>;
 }
 
 /**
@@ -61,8 +63,8 @@ export function LiveRun(props: LiveRunProps) {
           <Show when={props.playerId}>
             <A href={`/players/${encodeURIComponent(props.playerId!)}`}>Career</A>
           </Show>
-          <Show when={props.labels.length > 0}>
-            <DeckReporter labels={props.labels} leading={props.leading} onReport={props.onReport} />
+          <Show when={props.decks.length > 0}>
+            <DeckReporter decks={props.decks} leading={props.leading} mine={props.mine} onReport={props.onReport} />
           </Show>
           <button
             type='button'

@@ -45,9 +45,31 @@
   align-items: center;
   gap: var(--space-3);
 }
-.live-deck-select {
+/* The deck report: the shared Combo, standing for sprites rather than card art.
+   Sprites are not thumbnails, so the list's frame and crop come off, and the
+   field leaves room for a pair of them. */
+.live-deck-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: left;
+}
+.live-deck-picker .tl-picker .search {
+  padding-left: 48px;
+}
+.live-deck-picker :is(.tl-combo-lead, .tl-list li) img {
   width: auto;
-  max-width: 180px;
+  aspect-ratio: auto;
+  object-fit: contain;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.live-deck-picker .tl-list li {
+  grid-template-columns: 46px 1fr auto;
+}
+.live-deck {
+  gap: 8px;
 }
 .live-player-row {
   margin-top: var(--space-4);
@@ -4447,4 +4469,129 @@ tr.row-expansion > td {
   background: var(--accent);
   color: var(--accent-fg);
   border: 1px solid var(--accent-hover);
+}
+
+/* ---------- Combo typeahead (components/Combo.tsx) ----------
+   First written for the tier list, hence the prefix; the live page's deck
+   report uses it too. */
+.tl-combo {
+  position: relative;
+}
+.tl-combo .search {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+/* The picker stands for the card the board is showing — thumbnail in the
+   field, name as the value — so it sits where the format select sits on the
+   other tab and matches its height and caret. It used to be that name beside
+   a separate search box: two controls for one decision, and a phone stacked
+   them into rows of their own. */
+.tl-picker .search {
+  height: 34px;
+  padding: 0 28px 0 30px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  border-radius: var(--radius-sm);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    right 13px center,
+    right 8px center;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+}
+/* Typing reads as typing, not as the chosen name. */
+.tl-picker .search[aria-expanded='true'] {
+  font-weight: 500;
+}
+.tl-combo-lead {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  pointer-events: none;
+}
+.tl-combo-lead img {
+  width: 17px;
+  height: 24px;
+  object-fit: cover;
+  border-radius: 2px;
+  border: 1px solid var(--rule);
+  background: var(--surface-2);
+}
+/* No dark-mode overrides for these: `--border` already carries the mode's
+   edge. Restating it by hand is how the popover and the typeahead ended up
+   outlined in `--muted` — #a4998a against a #25221f fill, which reads as a
+   white halo, not an edge. */
+
+.tl-list {
+  position: absolute;
+  z-index: 60;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 296px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.tl-list[hidden] {
+  display: none;
+}
+.tl-list li {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 9px;
+  align-items: center;
+  padding: 5px 7px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+}
+.tl-list li[aria-selected='true'] {
+  background: var(--surface-2);
+}
+/* The row the box already stands for. */
+.tl-list li.cur {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.tl-list li.cur b {
+  font-weight: 700;
+}
+.tl-list li img {
+  width: 26px;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  border-radius: 2px;
+  border: 1px solid var(--rule);
+  background: var(--surface-2);
+}
+.tl-list li b {
+  font-weight: 500;
+}
+.tl-list li b mark {
+  background: none;
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.tl-list li span {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.tl-list .none {
+  display: block;
+  padding: 8px;
+  color: var(--muted);
+  font-size: 13px;
 }
