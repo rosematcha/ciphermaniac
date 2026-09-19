@@ -74,6 +74,7 @@ const CardWallPage = lazy(() => import('./pages/CardWallPage').then(m => ({ defa
 const EarningsPage = lazy(() => import('./pages/EarningsPage').then(m => ({ default: m.EarningsPage })));
 const PackEvPage = lazy(() => import('./pages/PackEvPage').then(m => ({ default: m.PackEvPage })));
 const LivePage = lazy(() => import('./pages/LivePage').then(m => ({ default: m.LivePage })));
+const LiveSeatPage = lazy(() => import('./pages/live/LiveSeatPage').then(m => ({ default: m.LiveSeatPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
 const FeedbackPage = lazy(() => import('./pages/FeedbackPage').then(m => ({ default: m.FeedbackPage })));
 // Unlinked reference route: the design system rendered through the real
@@ -122,6 +123,7 @@ render(
       <Route path='/standings' component={() => <Navigate href='/players' />} />
       <Route path='/standings/:id' component={StandingsPlayerRedirect} />
       <Route path='/live/:slug' component={LivePage} />
+      <Route path='/live/:slug/player/:seat' component={LiveSeatPage} />
       <Route path='/events' component={EventLocatorPage} />
       <Route path='/tools' component={ToolsPage} />
       <Route path='/tools/social-graphics' component={SocialGraphicsPage} />

@@ -1,17 +1,22 @@
 import { A } from '@solidjs/router';
-import { createMemo, type JSX, Show } from 'solid-js';
+import { type JSX, lazy, Show } from 'solid-js';
 import type { LiveEvent } from '../../shared/live/types';
-import { findSeat, recordLabel, type SeatView } from '../../shared/live/view';
-import { fetchLiveIndex, fetchLiveRound } from '../lib/data/live';
+import { fetchLiveIndex } from '../lib/data/live';
 import { createPolled } from '../lib/livePoll';
 import { latestValue } from '../lib/resource';
 import { WhileEventOn } from './LiveBanner';
 
+/**
+ * The run drags in the deck reporter and the typeahead behind it. A career page
+ * is opened far more often on a day with no event than on one with, so none of
+ * that belongs in the profile's own bundle.
+ */
+const PlayerRun = lazy(() => import('../pages/live/PlayerRun').then(m => ({ default: m.PlayerRun })));
+
 /** A tournament row that leads to the live page, in the list's own markup. */
-function LiveRow(props: { event: LiveEvent; query?: string; detail: JSX.Element; aside?: JSX.Element }) {
-  const href = () => `/live/${props.event.slug}${props.query ?? ''}`;
+function LiveRow(props: { event: LiveEvent; detail: JSX.Element; aside?: JSX.Element }) {
   return (
-    <A class='tournament-row tournament-row-link' href={href()}>
+    <A class='tournament-row tournament-row-link' href={`/live/${props.event.slug}`}>
       <span class='date'>Live</span>
       <span class='name'>
         {props.event.name} <span class='muted-cell'>· {props.detail}</span>
@@ -41,37 +46,13 @@ function EventRow(props: { event: LiveEvent }) {
   );
 }
 
-function pairingLabel(round: number, view: SeatView): string {
-  const versus = view.opponent ? `vs ${view.opponent.name}, table ${view.match.table}` : 'no opponent';
-  return `Round ${round} ${versus}`;
-}
-
-/** A player's current pairing, on their profile, when they are in the event that is on. */
-export function LivePlayerRow(props: { name: string; countries: readonly string[] }) {
-  return (
-    <WhileEventOn>{event => <PlayerRow event={event} name={props.name} countries={props.countries} />}</WhileEventOn>
-  );
-}
-
-function PlayerRow(props: { event: LiveEvent; name: string; countries: readonly string[] }) {
-  const index = createPolled(() => props.event.slug, fetchLiveIndex);
-  const round = createPolled(
-    () => latestValue(index)?.round,
-    n => fetchLiveRound(props.event.slug, n)
-  );
-  const seat = createMemo(() => findSeat(latestValue(round)?.matches ?? [], props.name, props.countries));
-  return (
-    <Show when={seat()}>
-      {view => (
-        <div class='tournament-list live-player-row'>
-          <LiveRow
-            event={props.event}
-            query={`?player=${encodeURIComponent(view().seat.name)}&cc=${encodeURIComponent(view().seat.country)}`}
-            detail={pairingLabel(latestValue(round)!.round, view())}
-            aside={recordLabel(view().seat)}
-          />
-        </div>
-      )}
-    </Show>
-  );
+/**
+ * A player's run at the event that is on, on their career page.
+ *
+ * This is where the run lives now — the live page used to open it inline above
+ * a seven-hundred-row table, which on a phone meant the list jumped out from
+ * under the finger that tapped it.
+ */
+export function LivePlayerRun(props: { playerId: string; name: string; countries: readonly string[] }) {
+  return <WhileEventOn>{event => <PlayerRun event={event} {...props} />}</WhileEventOn>;
 }

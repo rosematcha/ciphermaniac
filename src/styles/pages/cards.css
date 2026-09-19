@@ -293,14 +293,9 @@
 .filters-btn--labeled {
   align-self: stretch;
   padding: 0 13px;
-  gap: 7px;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
-  color: var(--muted);
-}
-.filters-btn--labeled:hover {
-  color: var(--fg);
 }
 /* Open (but unfiltered) reads as pressed: the panel below is its extension. */
 .filters-btn--labeled.is-open:not(.is-active) {
@@ -338,84 +333,16 @@
   flex: 1 1 auto;
   min-width: 0;
 }
-.filters-btn {
-  flex-shrink: 0;
-  color: var(--fg);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition:
-    background var(--ms-fast),
-    border-color var(--ms-fast),
-    color var(--ms-fast);
-}
-.filters-btn svg {
-  flex-shrink: 0;
-}
 /* Mobile trigger is a square icon-only button; the desktop one carries a label
-   and sizes to its content (see `.filters-btn--labeled`). */
-.control-row .filters-btn {
+   and sizes to its content (see `.filters-btn--labeled`).
+
+   `:not(.is-active)` rather than source order: the base rules moved to
+   components.css when the live page started sharing them, and that file loads
+   before this lazy route chunk — so the active state's `width: auto` would
+   otherwise lose to this and leave the funnel and its count 22px to share. */
+.control-row .filters-btn:not(.is-active) {
   width: 46px;
 }
-.filters-btn:hover {
-  background: var(--surface-2);
-}
-.filters-btn:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
-}
-/* Active state: fill with the accent and widen to seat the count numeral inline
-   next to the funnel — no floating corner badge. */
-.filters-btn.is-active {
-  width: auto;
-  padding: 0 12px;
-  background: var(--accent);
-  border-color: var(--accent-hover);
-  color: var(--accent-fg);
-}
-.filters-btn .fb-count {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--accent-fg);
-  line-height: 1;
-}
-
-/* Closed-state summary: removable mini-chips for each active facet. */
-.filter-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-.mini-chip {
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
-  padding: 3px 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-  color: var(--fg);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.mini-chip:hover {
-  border-color: var(--muted);
-}
-.mini-chip .mc-x {
-  color: var(--muted);
-  font-weight: 700;
-}
-
 /* ---------- Bottom sheet ----------
    The structural .sheet* rules moved to styles/components.css: the
    BottomSheet component is shared, so its styles cannot live in one
@@ -458,17 +385,6 @@
 .sheet-body .group-inline .group-label,
 .cards-filter-panel .group-inline .group-label {
   margin: 0;
-}
-.sheet-clear {
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--accent-ink-hover);
-  background: none;
-  border: 0;
-  padding: 8px 4px;
-  cursor: pointer;
-  flex-shrink: 0;
 }
 
 @media (max-width: 640px) {

@@ -9,4 +9,8 @@ Disallow: /toys/social-graphics
 # Design system reference for whoever is building the site.
 Disallow: /style
 
+# One page per seat per event, and the round files behind them are pruned a few
+# days later. Live URLs are for sharing, not for an index.
+Disallow: /live/
+
 Sitemap: https://ciphermaniac.com/sitemap.xml
