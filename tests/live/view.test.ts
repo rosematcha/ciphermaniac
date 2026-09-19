@@ -12,8 +12,11 @@ import {
   filterMatches,
   findSeat,
   foldName,
+  followedMatches,
   matchStatus,
-  recordLabel
+  playerRun,
+  recordLabel,
+  seatKey
 } from '../../shared/live/view.ts';
 
 function seat(name: string, country = 'US'): LiveSeat {
@@ -75,4 +78,36 @@ test('a seat links to a career only when exactly one known player has the name',
   assert.equal(profileOf(seat('Eric Chen')), null);
   assert.equal(profileOf(seat('Grace Hopper')), '4');
   assert.equal(profileOf(seat('Nobody Known')), null);
+});
+
+test('a run follows one player through the posted rounds, oldest first, skipping unposted ones', () => {
+  const rounds = [
+    { round: 2, updatedAt: '', unreadable: 0, matches: [MATCHES[3]] },
+    null,
+    {
+      round: 1,
+      updatedAt: '',
+      unreadable: 0,
+      matches: [{ table: 9, seats: [seat('Barbara Liskov'), seat('Alan Turing', 'GB')], complete: true }]
+    },
+    { round: 3, updatedAt: '', unreadable: 0, matches: [MATCHES[0]] }
+  ];
+  const run = playerRun(rounds, 'Barbara Liskov', ['US']);
+  assert.deepEqual(
+    run.map(entry => [entry.round, entry.view?.opponent?.name ?? null, entry.view?.match.table ?? null]),
+    [
+      [1, 'Alan Turing', 9],
+      [2, null, 0],
+      [3, null, null]
+    ]
+  );
+});
+
+test('follows are kept by folded name and country, and pick out their tables', () => {
+  assert.equal(seatKey(seat('José Núñez', 'MX')), 'jose nunez|MX');
+  const follows = new Set([seatKey(seat('Grace Hopper')), seatKey(seat('Nobody Here'))]);
+  assert.deepEqual(
+    followedMatches(MATCHES, follows).map(match => match.table),
+    [2]
+  );
 });
