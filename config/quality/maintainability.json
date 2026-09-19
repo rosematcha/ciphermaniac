@@ -288,9 +288,6 @@
   "src/pages/socialGraphics/model.ts": [
     "complexity:ef17683d80b0001d52123f5bf2cc5ae3b127eb085f4e97166ecf85afa6e6ec89:Function 'collapseEvolutions' has a complexity of 13. Maximum allowed is 12."
   ],
-  "src/pages/tierList/model.ts": [
-    "max-params:b82956608727c7c700e3e71b4825bdf99bc982960f7dad68cc5c4455d9dbb0ba:Function 'rankByQuery' has too many parameters (5). Maximum allowed is 4."
-  ],
   "src/utils/buildState.ts": [
     "complexity:99609732abd341ba5c8493777e3bd9b00e691d43537fb67190fc66d20c634a0d:Function 'decodeBuildState' has a complexity of 19. Maximum allowed is 12."
   ],

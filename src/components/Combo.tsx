@@ -1,5 +1,7 @@
 /**
- * Typeahead used by the card picker and both custom-archetype pickers.
+ * Typeahead used by the tier list's card and custom-archetype pickers, and by
+ * the live page's deck report. Its styles (`.tl-combo`, `.tl-list`) are global
+ * and keep the prefix of the page they were first written for.
  *
  * Keyboard first: Down opens and walks the list, Enter takes the active
  * option, Escape closes without changing anything. The list is only ever
@@ -18,11 +20,11 @@
  * the whole of `options` and shows the best few. A caller with a long tail can
  * therefore keep the tail findable without making it the first thing anyone
  * sees.
- * @module pages/tierList/Combo
+ * @module components/Combo
  */
 
 import { createEffect, createMemo, createSignal, createUniqueId, For, type JSX, Show } from 'solid-js';
-import { rankByQuery, SUGGESTION_LIMIT } from './model';
+import { rankByQuery, SUGGESTION_LIMIT } from '../lib/rankByQuery';
 
 interface ComboProps<T> {
   /** Placeholder and accessible name; the box carries no visible label. */
@@ -75,7 +77,7 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
     if (!q) {
       return [...(props.browse ?? props.options.slice(0, SUGGESTION_LIMIT))];
     }
-    return rankByQuery(props.options, q, props.label, props.weight);
+    return rankByQuery(props.options, q, props.label, { weight: props.weight });
   });
   const optionId = (i: number): string => `${listId}-${i}`;
   const stands = (): boolean => props.selected !== undefined;
