@@ -18,6 +18,7 @@ export interface D1Like {
 
 export interface VoteStore {
   votesBy: (slug: string, voter: string) => Promise<number>;
+  /** Records the report, replacing this device's earlier one for the seat; a null archetype removes it. */
   record: (report: DeckReport, at: number) => Promise<void>;
   tally: (slug: string, seat: string) => Promise<ArchetypeTally[]>;
 }
@@ -32,6 +33,13 @@ export function createVoteStore(db: D1Like): VoteStore {
       return row?.n ?? 0;
     },
     async record(report, at) {
+      if (report.archetype === null) {
+        await db
+          .prepare('DELETE FROM votes WHERE slug = ? AND seat = ? AND voter = ?')
+          .bind(report.slug, report.seat, report.voter)
+          .run();
+        return;
+      }
       await db
         .prepare(
           'INSERT INTO votes (slug, seat, voter, archetype, at) VALUES (?, ?, ?, ?, ?) ' +

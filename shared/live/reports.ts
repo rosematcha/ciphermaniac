@@ -18,8 +18,8 @@ export interface DeckReport {
   slug: string;
   /** Seat key, `foldedname|CC` (`shared/live/view.ts`). */
   seat: string;
-  /** Archetype display label, e.g. `Rocket's Honchkrow`. */
-  archetype: string;
+  /** Archetype display label, e.g. `Rocket's Honchkrow`; null takes this device's report back. */
+  archetype: string | null;
   /** Random ID minted on the reporter's device; nothing about the person. */
   voter: string;
 }
@@ -45,15 +45,16 @@ export function parseDeckReport(body: unknown): DeckReport | null {
     return null;
   }
   const fields = body as Record<string, unknown>;
-  const report = {} as DeckReport;
-  for (const [field, pattern] of Object.entries(FIELD_PATTERNS) as [keyof DeckReport, RegExp][]) {
+  const report: Record<string, string | null> = {};
+  for (const [field, pattern] of Object.entries(FIELD_PATTERNS)) {
     const value = fields[field];
-    if (typeof value !== 'string' || !pattern.test(value)) {
+    const retraction = field === 'archetype' && value === null;
+    if (!retraction && (typeof value !== 'string' || !pattern.test(value))) {
       return null;
     }
-    report[field] = value;
+    report[field] = retraction ? null : (value as string);
   }
-  return report;
+  return report as unknown as DeckReport;
 }
 
 /** The archetype more than half the reports name, if any. */

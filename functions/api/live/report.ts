@@ -11,6 +11,9 @@
  * The archetype has to be one the site already names, by label: the online
  * index or the archetype icon map.
  *
+ * A device has one report per seat: reporting again replaces it, and a null
+ * archetype takes it back.
+ *
  * A reporter is a random ID from their own device. It stops honest double
  * counting and nothing more, so floods are met by the per-IP limiter and a cap
  * on how many seats one ID can report in an event.
@@ -123,7 +126,7 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
   if (!(await isLiveEvent(env.REPORTS, report.slug))) {
     return jsonError('No such live event', 404);
   }
-  if (!(await isKnownArchetype(env.REPORTS, report.archetype))) {
+  if (report.archetype !== null && !(await isKnownArchetype(env.REPORTS, report.archetype))) {
     return jsonError('Unknown archetype', 400);
   }
 

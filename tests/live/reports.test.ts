@@ -18,6 +18,13 @@ test('a well-formed report parses, and carries nothing extra along', () => {
   assert.equal(parseDeckReport({ ...REPORT, archetype: "Rocket's Honchkrow" })?.archetype, "Rocket's Honchkrow");
 });
 
+test('a null archetype is a report taken back; a missing one is not a report', () => {
+  assert.deepEqual(parseDeckReport({ ...REPORT, archetype: null }), { ...REPORT, archetype: null });
+  const { archetype: _dropped, ...rest } = REPORT;
+  assert.equal(parseDeckReport(rest), null);
+  assert.equal(parseDeckReport({ ...REPORT, seat: null }), null);
+});
+
 test('anything else is not a report', () => {
   const bad: unknown[] = [
     null,
