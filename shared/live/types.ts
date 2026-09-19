@@ -46,7 +46,8 @@ export interface LiveRoundParse {
 
 /** An event the poller should watch. Days are the dates RK9 lists, `YYYY-MM-DD`. */
 export interface LiveEvent {
-  slug: string;
+  /** Limitless Labs event code, the key the rest of the site knows the event by. */
+  labsCode: string;
   name: string;
   rk9Id: string;
   /** RK9's pod number for the division; Masters has been pod 2. */
@@ -55,7 +56,7 @@ export interface LiveEvent {
   lastDay: string;
 }
 
-/** Poller bookkeeping for one event; not read by the frontend. */
+/** Poller bookkeeping for one event, held by the runner between steps. */
 export interface LiveState {
   round: number;
   roundComplete: boolean;
@@ -77,9 +78,12 @@ export interface LiveRound {
 }
 
 export interface LiveIndex {
-  slug: string;
+  labsCode: string;
   name: string;
   round: number;
+  matches: number;
+  /** Hash of the round's matches; changes whenever `r{round}.json` does. */
+  hash: string;
   /** Matches in the current round without a confirmed result. */
   playing: number;
   updatedAt: string;

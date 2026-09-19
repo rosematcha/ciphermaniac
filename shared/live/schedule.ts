@@ -8,7 +8,7 @@ import type { LiveEvent } from './types';
 
 export const LIVE_EVENTS: LiveEvent[] = [
   {
-    slug: '2027-baltimore',
+    labsCode: '0072',
     name: 'Baltimore Regional Championships',
     rk9Id: 'BA001-nEN1xl5ZJLGtFk',
     pod: 2,
