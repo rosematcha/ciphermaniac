@@ -45,9 +45,13 @@ function fakeDb(votes: Vote[]): D1Like {
           return Promise.resolve({ results: [...counts].map(([archetype, n]) => ({ archetype, votes: n })) as T[] });
         },
         run: () => {
-          assert.match(sql, /ON CONFLICT \(slug, seat, voter\) DO UPDATE/);
           const [slug, seat, voter, archetype] = args as string[];
           const existing = votes.find(vote => vote.slug === slug && vote.seat === seat && vote.voter === voter);
+          if (sql.startsWith('DELETE')) {
+            votes.splice(0, votes.length, ...votes.filter(vote => vote !== existing));
+            return Promise.resolve();
+          }
+          assert.match(sql, /ON CONFLICT \(slug, seat, voter\) DO UPDATE/);
           if (existing) {
             existing.archetype = archetype;
           } else {
@@ -97,7 +101,7 @@ function post(body: unknown, env = { REPORTS: fakeBucket(files), LIVE_DB: fakeDb
   return onRequestPost({ request, env });
 }
 
-const report = (archetype: string, n: number, seat = SEAT) => ({ slug: SLUG, seat, archetype, voter: voter(n) });
+const report = (archetype: string | null, n: number, seat = SEAT) => ({ slug: SLUG, seat, archetype, voter: voter(n) });
 const published = () => (JSON.parse(files.get(`live/v1/${SLUG}/reports.json`) ?? '{"decks":{}}') as LiveReports).decks;
 
 test('a single report is shown', async () => {
@@ -120,6 +124,17 @@ test('a device changing its mind replaces its vote rather than adding one', asyn
   await post(report('Gardevoir', 1));
   assert.equal(votes.length, 1);
   assert.deepEqual(published(), { [SEAT]: 'Gardevoir' });
+});
+
+test('a device can take its report back, which leaves the seat to everyone else', async () => {
+  await post(report('Dragapult', 1));
+  await post(report('Gardevoir', 2));
+  const response = await post(report(null, 1));
+  assert.deepEqual(await response.json(), { archetype: 'Gardevoir' });
+  assert.deepEqual(published(), { [SEAT]: 'Gardevoir' });
+  await post(report(null, 2));
+  assert.deepEqual(published(), {});
+  assert.equal(votes.length, 0);
 });
 
 test('other seats already published are kept', async () => {
