@@ -32,7 +32,9 @@ export const liveReportsKey = (slug: string): string => `live/v1/${slug}/reports
 const FIELD_PATTERNS: Record<keyof DeckReport, RegExp> = {
   slug: /^[a-z0-9-]{3,40}$/,
   seat: /^[^|\n]{1,80}\|[A-Z]{0,3}$/,
-  archetype: /^[\w-]{1,60}$/,
+  // Index names are slugs, but not plain ones: `Rocket's_Honchkrow`. Membership
+  // in the index is the real check; this only keeps the junk out early.
+  archetype: /^[^\s<>"]{1,60}$/,
   voter: /^[0-9a-f-]{16,40}$/
 };
 
