@@ -40,6 +40,11 @@
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+.live-run-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
 .live-player-row {
   margin-top: var(--space-4);
 }
