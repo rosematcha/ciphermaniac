@@ -6,7 +6,7 @@
  * @module shared/live/view
  */
 
-import type { LiveMatch, LiveSeat } from './types';
+import type { LiveMatch, LiveRound, LiveSeat } from './types';
 
 /** Lower-cased and stripped of diacritics, the way the players search folds names. */
 export function foldName(value: string): string {
@@ -80,4 +80,32 @@ export function createProfileLookup(players: readonly NamedPlayer[]): (seat: Liv
     const contradicts = player?.country && seat.country && player.country !== seat.country;
     return player && !contradicts ? player.playerId : null;
   };
+}
+
+/** Identity of a seat across rounds and events: folded name and country. */
+export function seatKey(seat: Pick<LiveSeat, 'name' | 'country'>): string {
+  return `${foldName(seat.name)}|${seat.country}`;
+}
+
+export interface RunRound {
+  round: number;
+  /** Null when the player is not in the round, or cannot be told from a namesake. */
+  view: SeatView | null;
+}
+
+/** One player's path through the rounds posted so far, oldest first. */
+export function playerRun(
+  rounds: readonly (LiveRound | null)[],
+  name: string,
+  countries: readonly string[]
+): RunRound[] {
+  return rounds
+    .filter((round): round is LiveRound => round !== null)
+    .map(round => ({ round: round.round, view: findSeat(round.matches, name, countries) }))
+    .sort((a, b) => a.round - b.round);
+}
+
+/** Matches with at least one followed seat. */
+export function followedMatches(matches: readonly LiveMatch[], follows: ReadonlySet<string>): readonly LiveMatch[] {
+  return matches.filter(match => match.seats.some(seat => follows.has(seatKey(seat))));
 }

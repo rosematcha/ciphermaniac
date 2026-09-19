@@ -9,7 +9,7 @@ import { WhileEventOn } from './LiveBanner';
 
 /** A tournament row that leads to the live page, in the list's own markup. */
 function LiveRow(props: { event: LiveEvent; query?: string; detail: JSX.Element; aside?: JSX.Element }) {
-  const href = () => `/live/${props.event.slug}${props.query ? `?q=${encodeURIComponent(props.query)}` : ''}`;
+  const href = () => `/live/${props.event.slug}${props.query ?? ''}`;
   return (
     <A class='tournament-row tournament-row-link' href={href()}>
       <span class='date'>Live</span>
@@ -66,7 +66,7 @@ function PlayerRow(props: { event: LiveEvent; name: string; countries: readonly 
         <div class='tournament-list live-player-row'>
           <LiveRow
             event={props.event}
-            query={props.name}
+            query={`?player=${encodeURIComponent(view().seat.name)}&cc=${encodeURIComponent(view().seat.country)}`}
             detail={pairingLabel(latestValue(round)!.round, view())}
             aside={recordLabel(view().seat)}
           />
