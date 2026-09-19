@@ -7,18 +7,27 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { LiveMatch, LiveSeat } from '../../shared/live/types.ts';
+import { aliasedPlayerId, seatNamesFor } from '../../shared/live/seatAliases.ts';
 import {
   createProfileLookup,
+  filterByDeck,
+  filterByStatus,
   filterMatches,
+  filterStandings,
   findSeat,
+  findSeats,
   foldName,
   followedMatches,
   isDecided,
   matchStatus,
+  parseSeatSlug,
   playerRun,
   recordLabel,
   seatKey,
-  seatOutcome
+  seatMatchesSlug,
+  seatOutcome,
+  seatSlug,
+  standings
 } from '../../shared/live/view.ts';
 
 function seat(name: string, country = 'US'): LiveSeat {
@@ -37,22 +46,22 @@ test('names fold case, accents and spacing away', () => {
 });
 
 test('a player is found with their opponent', () => {
-  const view = findSeat(MATCHES, 'jose nunez', ['MX']);
+  const view = findSeat(MATCHES, ['jose nunez'], ['MX']);
   assert.equal(view?.match.table, 1);
   assert.equal(view?.opponent?.name, 'Ada Lovelace');
 });
 
 test('a bye has no opponent', () => {
-  assert.equal(findSeat(MATCHES, 'Barbara Liskov', ['US'])?.opponent, undefined);
+  assert.equal(findSeat(MATCHES, ['Barbara Liskov'], ['US'])?.opponent, undefined);
 });
 
 test('a name shared inside the round matches nobody', () => {
-  assert.equal(findSeat(MATCHES, 'Eric Chen', ['US']), null);
+  assert.equal(findSeat(MATCHES, ['Eric Chen'], ['US']), null);
 });
 
 test('a contradicting country rules a seat out; an unknown one does not', () => {
-  assert.equal(findSeat(MATCHES, 'Ada Lovelace', ['US']), null);
-  assert.equal(findSeat(MATCHES, 'Ada Lovelace', [])?.match.table, 1);
+  assert.equal(findSeat(MATCHES, ['Ada Lovelace'], ['US']), null);
+  assert.equal(findSeat(MATCHES, ['Ada Lovelace'], [])?.match.table, 1);
 });
 
 test('the search keeps tables where either seat matches', () => {
@@ -75,10 +84,10 @@ test('a seat links to a career only when exactly one known player has the name',
     { playerId: '3', name: 'Eric Chen', country: 'US' },
     { playerId: '4', name: 'Grace Hopper' }
   ]);
-  assert.equal(profileOf(seat('ADA LOVELACE', 'GB')), '1');
+  assert.equal(profileOf(seat('ADA LOVELACE', 'GB'))?.playerId, '1');
   assert.equal(profileOf(seat('Ada Lovelace', 'US')), null);
   assert.equal(profileOf(seat('Eric Chen')), null);
-  assert.equal(profileOf(seat('Grace Hopper')), '4');
+  assert.deepEqual(profileOf(seat('Grace Hopper')), { playerId: '4', name: 'Grace Hopper' });
   assert.equal(profileOf(seat('Nobody Known')), null);
 });
 
@@ -94,7 +103,7 @@ test('a run follows one player through the posted rounds, oldest first, skipping
     },
     { round: 3, updatedAt: '', unreadable: 0, matches: [MATCHES[0]] }
   ];
-  const run = playerRun(rounds, 'Barbara Liskov', ['US']);
+  const run = playerRun(rounds, ['Barbara Liskov'], ['US']);
   assert.deepEqual(
     run.map(entry => [entry.round, entry.view?.opponent?.name ?? null, entry.view?.match.table ?? null]),
     [
@@ -138,4 +147,113 @@ test('a confirmed result stands; a submitted one is shown provisionally for both
 
 test('a table is decided once a result is confirmed or submitted', () => {
   assert.deepEqual(MATCHES.map(isDecided), [false, true, true, true]);
+});
+
+test('an all-digit query is a table number as well as a name fragment', () => {
+  assert.deepEqual(
+    filterMatches(MATCHES, '3').map(match => match.table),
+    [3]
+  );
+  assert.deepEqual(
+    filterMatches(MATCHES, '99').map(match => match.table),
+    []
+  );
+});
+
+test('the status filter splits the tables still on from the ones settled', () => {
+  assert.deepEqual(
+    filterByStatus(MATCHES, 'playing').map(match => match.table),
+    [1]
+  );
+  assert.deepEqual(
+    filterByStatus(MATCHES, 'decided').map(match => match.table),
+    [2, 3, 0]
+  );
+  assert.equal(filterByStatus(MATCHES, 'all').length, MATCHES.length);
+});
+
+test('the deck filter keeps a table where either seat is on the archetype', () => {
+  const deckOf = (ref: { name: string }) => (ref.name === 'Alan Turing' ? 'Dragapult' : undefined);
+  assert.deepEqual(
+    filterByDeck(MATCHES, 'Dragapult', deckOf).map(match => match.table),
+    [3]
+  );
+});
+
+test('an aliased seat resolves to the career its registered name hides', () => {
+  const profileOf = createProfileLookup(
+    [
+      { playerId: '9397', name: 'Caitlin White', country: 'CA' },
+      { playerId: '1', name: 'Ada Lovelace', country: 'GB' }
+    ],
+    aliasedPlayerId
+  );
+  assert.deepEqual(profileOf({ name: 'Cali White', country: 'CA' }), {
+    playerId: '9397',
+    name: 'Caitlin White'
+  });
+  // The alias pins its country; a seat from anywhere else is a different person.
+  assert.equal(profileOf({ name: 'Cali White', country: 'US' }), null);
+  assert.equal(profileOf(seat('Ada Lovelace', 'GB'))?.playerId, '1');
+});
+
+test('a career is searched for under every name its player registers with', () => {
+  assert.deepEqual(seatNamesFor('9397', 'Caitlin White'), ['Caitlin White', 'Cali White']);
+  assert.deepEqual(seatNamesFor('1', 'Ada Lovelace'), ['Ada Lovelace']);
+  const round = [{ table: 7, seats: [seat('Cali White', 'CA'), seat('Ada Lovelace', 'GB')], complete: false }];
+  assert.equal(findSeat(round, seatNamesFor('9397', 'Caitlin White'), ['CA'])?.match.table, 7);
+});
+
+test('the seat key stays on the registered name, so follows and reports survive an alias', () => {
+  assert.equal(seatKey({ name: 'Cali White', country: 'CA' }), 'cali white|CA');
+});
+
+test('a seat slug round-trips its name and country, and the country is optional', () => {
+  assert.equal(seatSlug({ name: 'José Núñez', country: 'MX' }), 'jose-nunez-mx');
+  assert.deepEqual(parseSeatSlug('jose-nunez-mx'), { name: 'jose nunez', country: 'MX' });
+  assert.equal(seatSlug({ name: 'Ada Lovelace', country: '' }), 'ada-lovelace');
+  assert.deepEqual(parseSeatSlug(''), null);
+  assert.ok(seatMatchesSlug({ name: 'JOSÉ  Núñez', country: 'MX' }, 'jose-nunez-mx'));
+});
+
+test('two seats sharing a name are both returned, so a page can say which is which', () => {
+  assert.deepEqual(
+    findSeats(MATCHES, ['Eric Chen'], ['US']).map(view => view.match.table),
+    [2, 3]
+  );
+});
+
+test('standings fold this round into the record RK9 posted going into it', () => {
+  const round: LiveMatch[] = [
+    {
+      table: 1,
+      seats: [
+        { name: 'Winner', country: 'US', wins: 6, losses: 0, ties: 0, points: 18, result: 'win' },
+        { name: 'Loser', country: 'US', wins: 5, losses: 1, ties: 0, points: 15, result: 'loss' }
+      ],
+      complete: true
+    },
+    {
+      table: 2,
+      seats: [
+        { name: 'Ongoing', country: 'US', wins: 5, losses: 1, ties: 0, points: 15 },
+        { name: 'Other', country: 'US', wins: 5, losses: 1, ties: 0, points: 15 }
+      ],
+      complete: false
+    }
+  ];
+  const table = standings(round);
+  assert.deepEqual(
+    table.map(row => [row.seat.name, recordLabel(row), row.points, row.place]),
+    [
+      ['Winner', '7-0-0', 21, 1],
+      ['Loser', '5-2-0', 15, 2],
+      ['Ongoing', '5-1-0', 15, 2],
+      ['Other', '5-1-0', 15, 2]
+    ]
+  );
+  assert.deepEqual(
+    filterStandings(table, 'win').map(row => row.seat.name),
+    ['Winner']
+  );
 });
