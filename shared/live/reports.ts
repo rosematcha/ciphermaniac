@@ -2,7 +2,9 @@
  * Crowd-sourced deck reports for a live event. Lists are not public until an
  * event ends, so viewers say what a player is on; an archetype is shown for a
  * seat once more than half of that seat's reports agree on it, which a single
- * report does. Archetypes are picked from the site's own index, never typed.
+ * report does. Archetypes are picked from the site's own lists, never typed:
+ * the online meta's index, and the archetype icon map, which is far longer and
+ * names the decks a regional sees that the online meta does not.
  * @module shared/live/reports
  */
 
@@ -16,7 +18,7 @@ export interface DeckReport {
   slug: string;
   /** Seat key, `foldedname|CC` (`shared/live/view.ts`). */
   seat: string;
-  /** Archetype index `name`. */
+  /** Archetype display label, e.g. `Rocket's Honchkrow`. */
   archetype: string;
   /** Random ID minted on the reporter's device; nothing about the person. */
   voter: string;
@@ -32,9 +34,8 @@ export const liveReportsKey = (slug: string): string => `live/v1/${slug}/reports
 const FIELD_PATTERNS: Record<keyof DeckReport, RegExp> = {
   slug: /^[a-z0-9-]{3,40}$/,
   seat: /^[^|\n]{1,80}\|[A-Z]{0,3}$/,
-  // Index names are slugs, but not plain ones: `Rocket's_Honchkrow`. Membership
-  // in the index is the real check; this only keeps the junk out early.
-  archetype: /^[^\s<>"]{1,60}$/,
+  // Membership in the site's lists is the real check; this only keeps junk out early.
+  archetype: /^[^<>"\n]{1,60}$/,
   voter: /^[0-9a-f-]{16,40}$/
 };
 
@@ -59,4 +60,13 @@ export function parseDeckReport(body: unknown): DeckReport | null {
 export function leadingArchetype(tallies: readonly ArchetypeTally[]): string | null {
   const total = tallies.reduce((sum, tally) => sum + tally.votes, 0);
   return tallies.find(tally => tally.votes * 2 > total)?.archetype ?? null;
+}
+
+/** Labels a report may name: the online index's, then the rest of the icon map's, without repeats. */
+export function reportableArchetypes(indexLabels: readonly string[], iconMapLabels: readonly string[]): string[] {
+  const seen = new Set<string>();
+  return [...indexLabels, ...[...iconMapLabels].sort((a, b) => a.localeCompare(b))].filter(label => {
+    const key = label.toLowerCase();
+    return !seen.has(key) && Boolean(seen.add(key));
+  });
 }

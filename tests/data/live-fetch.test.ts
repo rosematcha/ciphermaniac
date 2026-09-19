@@ -68,3 +68,9 @@ test('a report is posted to the endpoint, and its answer is what the seat now sh
   stubFetch(429, { error: 'Too many reports' });
   await assert.rejects(submitDeckReport(report), /429/);
 });
+
+test('every label in the archetype icon map is offered for reports', async () => {
+  const { fetchArchetypeLabels } = await import('../../src/lib/data/archetypes.ts');
+  stubFetch(200, { Ceruledge: ['ceruledge'], "Ethan's Typhlosion": ['typhlosion'] });
+  assert.deepEqual(await fetchArchetypeLabels(), ['Ceruledge', "Ethan's Typhlosion"]);
+});

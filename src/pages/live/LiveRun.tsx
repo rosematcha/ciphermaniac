@@ -5,8 +5,7 @@ import { matchStatus, playerRun, recordLabel, type RunRound, seatKey } from '../
 import { Section } from '../../components/Section';
 import { Skeleton } from '../../components/Skeleton';
 import { fetchLiveRound } from '../../lib/data/live';
-import type { ArchetypeIndexEntry } from '../../types';
-import { DeckReporter, LiveDeck } from './LiveDeck';
+import { DeckReporter, LiveDeck, type ReportedDeck } from './LiveDeck';
 import { useLiveFollows } from '../../lib/liveFollows';
 import { latestValue } from '../../lib/resource';
 
@@ -26,9 +25,11 @@ interface LiveRunProps {
   playerId: string | null;
   hrefFor: (seat: RunPlayer) => string;
   closeHref: string;
-  archetypes: readonly ArchetypeIndexEntry[];
+  /** Reportable archetype labels; the first `leading` are the online meta's. */
+  labels: readonly string[];
+  leading: number;
   /** The archetype reported for a seat, if one leads. */
-  deckOf: (seat: RunPlayer) => ArchetypeIndexEntry | undefined;
+  deckOf: (seat: RunPlayer) => ReportedDeck | undefined;
   onReport: (archetype: string) => Promise<void>;
 }
 
@@ -55,13 +56,13 @@ export function LiveRun(props: LiveRunProps) {
       title={props.player.name}
       right={
         <span class='live-run-actions'>
-          <Show when={props.deckOf(props.player)}>{entry => <LiveDeck entry={entry()} />}</Show>
+          <Show when={props.deckOf(props.player)}>{deck => <LiveDeck deck={deck()} />}</Show>
           <Show when={latest()}>{seat => <span>{recordLabel(seat())}</span>}</Show>
           <Show when={props.playerId}>
             <A href={`/players/${encodeURIComponent(props.playerId!)}`}>Career</A>
           </Show>
-          <Show when={props.archetypes.length > 0}>
-            <DeckReporter archetypes={props.archetypes} onReport={props.onReport} />
+          <Show when={props.labels.length > 0}>
+            <DeckReporter labels={props.labels} leading={props.leading} onReport={props.onReport} />
           </Show>
           <button
             type='button'
@@ -89,7 +90,7 @@ export function LiveRun(props: LiveRunProps) {
 function RunRow(props: {
   round: RunRound;
   hrefFor: (seat: RunPlayer) => string;
-  deckOf: (seat: RunPlayer) => ArchetypeIndexEntry | undefined;
+  deckOf: (seat: RunPlayer) => ReportedDeck | undefined;
 }) {
   const view = () => props.round.view;
   const opponent = (): LiveSeat | undefined => view()?.opponent;
@@ -105,7 +106,7 @@ function RunRow(props: {
         </Show>
       </span>
       <Show when={opponent() && props.deckOf(opponent()!)} fallback={<span class='round-deck' />}>
-        {entry => <LiveDeck entry={entry()} />}
+        {deck => <LiveDeck deck={deck()} />}
       </Show>
       <span class='round-finish'>
         <Show when={view()}>

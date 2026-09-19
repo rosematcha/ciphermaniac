@@ -1,7 +1,7 @@
 import { A, useParams, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
+import { reportableArchetypes } from '../../shared/live/reports';
 import type { LiveMatch, LiveSeat } from '../../shared/live/types';
-import type { ArchetypeIndexEntry } from '../types';
 import {
   createProfileLookup,
   filterMatches,
@@ -16,14 +16,14 @@ import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { Section } from '../components/Section';
 import { Skeleton } from '../components/Skeleton';
-import { fetchOnlineArchetypes, fetchPlayerIndexSlim } from '../lib/data';
+import { fetchArchetypeLabels, fetchOnlineArchetypes, fetchPlayerIndexSlim } from '../lib/data';
 import { fetchLiveIndex, fetchLiveReports, fetchLiveRound, submitDeckReport } from '../lib/data/live';
 import { debounced } from '../lib/debounce';
 import { liveVoterId, useLiveFollows } from '../lib/liveFollows';
 import { createPolled } from '../lib/livePoll';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { latestValue, resolved } from '../lib/resource';
-import { LiveDeck } from './live/LiveDeck';
+import { LiveDeck, type ReportedDeck } from './live/LiveDeck';
 import { LiveRun, type RunPlayer } from './live/LiveRun';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/players.css';
@@ -71,11 +71,22 @@ export function LivePage() {
   const reports = createPolled(() => params.slug, fetchLiveReports);
   const [archetypes] = createResource(fetchOnlineArchetypes);
   const [reported, setReported] = createSignal<Record<string, string | null>>({});
-  const archetypeByName = createMemo(() => new Map((resolved(archetypes) ?? []).map(entry => [entry.name, entry])));
-  const deckOf = (seat: RunPlayer): ArchetypeIndexEntry | undefined => {
+  const [iconLabels] = createResource(fetchArchetypeLabels);
+  // Most played first; the index's own icons beat the icon map's for a label both carry.
+  const indexed = createMemo(() =>
+    [...(resolved(archetypes) ?? [])].sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0))
+  );
+  const labels = createMemo(() =>
+    reportableArchetypes(
+      indexed().map(entry => entry.label),
+      resolved(iconLabels) ?? []
+    )
+  );
+  const iconsByLabel = createMemo(() => new Map(indexed().map(entry => [entry.label, entry.icons])));
+  const deckOf = (seat: RunPlayer): ReportedDeck | undefined => {
     const key = seatKey(seat);
-    const name = key in reported() ? reported()[key] : latestValue(reports)?.decks[key];
-    return name ? archetypeByName().get(name) : undefined;
+    const label = key in reported() ? reported()[key] : latestValue(reports)?.decks[key];
+    return label ? { label, icons: iconsByLabel().get(label) } : undefined;
   };
   const reportDeck = async (seat: RunPlayer, archetype: string) => {
     const shown = await submitDeckReport({ slug: params.slug, seat: seatKey(seat), archetype, voter: liveVoterId() });
@@ -168,7 +179,8 @@ export function LivePage() {
             playerId={profileOf()({ ...runPlayer()!, wins: 0, losses: 0, ties: 0, points: 0 })}
             hrefFor={runHref}
             closeHref={runHref(null)}
-            archetypes={resolved(archetypes) ?? []}
+            labels={labels()}
+            leading={indexed().length}
             deckOf={deckOf}
             onReport={archetype => reportDeck(runPlayer()!, archetype)}
           />
@@ -228,7 +240,7 @@ export function LivePage() {
 function MatchRow(props: {
   match: LiveMatch;
   hrefFor: (seat: RunPlayer) => string;
-  deckOf: (seat: RunPlayer) => ArchetypeIndexEntry | undefined;
+  deckOf: (seat: RunPlayer) => ReportedDeck | undefined;
 }) {
   return (
     <tr>
@@ -247,7 +259,7 @@ function MatchRow(props: {
   );
 }
 
-function SeatCell(props: { seat: LiveSeat; href: string; deck?: ArchetypeIndexEntry }) {
+function SeatCell(props: { seat: LiveSeat; href: string; deck?: ReportedDeck }) {
   return (
     <span class='players-ident'>
       <Show when={props.seat.result}>
@@ -257,7 +269,7 @@ function SeatCell(props: { seat: LiveSeat; href: string; deck?: ArchetypeIndexEn
         {props.seat.name}
       </A>
       <span class='players-country'>{props.seat.country}</span>
-      <Show when={props.deck}>{entry => <LiveDeck entry={entry()} iconsOnly />}</Show>
+      <Show when={props.deck}>{deck => <LiveDeck deck={deck()} iconsOnly />}</Show>
       <span class='muted-cell'>
         {recordLabel(props.seat)}
         {props.seat.dropped ? ' · dropped' : ''}

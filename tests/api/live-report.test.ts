@@ -1,6 +1,6 @@
 /**
  * POST /api/live/report, against an in-memory D1 and R2. The rules under test:
- * only known archetypes at an event that is on, one vote per device per seat
+ * only archetypes the site names, at an event that is on, one vote per device per seat
  * (a second vote replaces the first), and a seat shows an archetype only while
  * more than half its reports agree.
  */
@@ -82,7 +82,8 @@ beforeEach(() => {
         events: [{ slug: SLUG, name: 'Test', kind: 'regional', rk9Id: 'T1', pod: 2, firstDay: today, lastDay: today }]
       })
     ],
-    [ARCHETYPE_INDEX_KEY, JSON.stringify([{ name: 'Dragapult' }, { name: 'Gardevoir' }])]
+    [ARCHETYPE_INDEX_KEY, JSON.stringify([{ name: 'Dragapult', label: 'Dragapult' }])],
+    ['assets/archetype-icons.json', JSON.stringify({ Gardevoir: ['gardevoir'], "Ethan's Typhlosion": ['typhlosion'] })]
   ]);
 });
 
@@ -127,8 +128,13 @@ test('other seats already published are kept', async () => {
   assert.deepEqual(published(), { [SEAT]: 'Dragapult', 'grace hopper|US': 'Gardevoir' });
 });
 
+test('an archetype named only by the icon map is reportable, apostrophe and all', async () => {
+  const response = await post(report("Ethan's Typhlosion", 1));
+  assert.deepEqual(await response.json(), { archetype: "Ethan's Typhlosion" });
+});
+
 test('an archetype outside the index, an event that is not on, and a malformed body are refused', async () => {
-  assert.equal((await post(report('Made_Up_Deck', 1))).status, 400);
+  assert.equal((await post(report('Made Up Deck', 1))).status, 400);
   assert.equal((await post({ ...report('Dragapult', 1), slug: 'elsewhere-2027' })).status, 404);
   assert.equal((await post('not json')).status, 400);
   assert.equal((await post({ ...report('Dragapult', 1), note: 'x'.repeat(2000) })).status, 400);
