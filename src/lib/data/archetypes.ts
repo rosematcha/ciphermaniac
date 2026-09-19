@@ -59,6 +59,12 @@ export async function loadArchetypeIconMap(
   setArchetypeIconMap(map);
 }
 
+/** Every archetype label the icon map names; far more than any one tournament's index. */
+export async function fetchArchetypeLabels(): Promise<string[]> {
+  const value = await fetchJson<unknown>('/assets/archetype-icons.json');
+  return value && typeof value === 'object' ? Object.keys(value) : [];
+}
+
 /** The archetype → Pokémon icon-slug map, keyed by normalized archetype name. */
 export function getArchetypeIconMap(): Map<string, string[]> {
   return archetypeIconMap();

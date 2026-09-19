@@ -17,7 +17,7 @@
 import { createEffect, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
 import { CardImage } from '../../components/CardImage';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
-import { Combo, splitMatch } from './Combo';
+import { Combo, splitMatch } from '../../components/Combo';
 import { Icon } from './icons';
 import { SWATCHES, type SwatchTone } from './palette';
 import type { CustomArchetype, Tier } from './model';

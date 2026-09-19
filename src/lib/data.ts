@@ -28,6 +28,7 @@ export type { MasterPayload } from './data/reports';
 export {
   fetchArchetype,
   fetchArchetypes,
+  fetchArchetypeLabels,
   fetchOnlineArchetypes,
   getArchetypeIconMap,
   normalizeArchetypeKey,

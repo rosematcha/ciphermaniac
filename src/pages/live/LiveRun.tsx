@@ -5,6 +5,7 @@ import { matchStatus, playerRun, recordLabel, type RunRound, seatKey } from '../
 import { Section } from '../../components/Section';
 import { Skeleton } from '../../components/Skeleton';
 import { fetchLiveRound } from '../../lib/data/live';
+import { DeckReporter, LiveDeck, type ReportedDeck } from './LiveDeck';
 import { useLiveFollows } from '../../lib/liveFollows';
 import { latestValue } from '../../lib/resource';
 
@@ -24,6 +25,14 @@ interface LiveRunProps {
   playerId: string | null;
   hrefFor: (seat: RunPlayer) => string;
   closeHref: string;
+  /** Reportable archetypes; the first `leading` are the online meta's. */
+  decks: readonly ReportedDeck[];
+  leading: number;
+  /** The archetype reported for a seat, if one leads. */
+  deckOf: (seat: RunPlayer) => ReportedDeck | undefined;
+  /** What this device has reported for the player. */
+  mine?: ReportedDeck;
+  onReport: (archetype: string | null) => Promise<void>;
 }
 
 /**
@@ -49,9 +58,13 @@ export function LiveRun(props: LiveRunProps) {
       title={props.player.name}
       right={
         <span class='live-run-actions'>
+          <Show when={props.deckOf(props.player)}>{deck => <LiveDeck deck={deck()} />}</Show>
           <Show when={latest()}>{seat => <span>{recordLabel(seat())}</span>}</Show>
           <Show when={props.playerId}>
             <A href={`/players/${encodeURIComponent(props.playerId!)}`}>Career</A>
+          </Show>
+          <Show when={props.decks.length > 0}>
+            <DeckReporter decks={props.decks} leading={props.leading} mine={props.mine} onReport={props.onReport} />
           </Show>
           <button
             type='button'
@@ -69,14 +82,18 @@ export function LiveRun(props: LiveRunProps) {
     >
       <Show when={run()} fallback={<Skeleton height='120px' />}>
         <ol class='rounds'>
-          <For each={run()}>{round => <RunRow round={round} hrefFor={props.hrefFor} />}</For>
+          <For each={run()}>{round => <RunRow round={round} hrefFor={props.hrefFor} deckOf={props.deckOf} />}</For>
         </ol>
       </Show>
     </Section>
   );
 }
 
-function RunRow(props: { round: RunRound; hrefFor: (seat: RunPlayer) => string }) {
+function RunRow(props: {
+  round: RunRound;
+  hrefFor: (seat: RunPlayer) => string;
+  deckOf: (seat: RunPlayer) => ReportedDeck | undefined;
+}) {
   const view = () => props.round.view;
   const opponent = (): LiveSeat | undefined => view()?.opponent;
   return (
@@ -90,9 +107,9 @@ function RunRow(props: { round: RunRound; hrefFor: (seat: RunPlayer) => string }
           {seat => <A href={props.hrefFor(seat())}>{seat().name}</A>}
         </Show>
       </span>
-      <span class='round-deck'>
-        <Show when={opponent()}>{seat => <span>{recordLabel(seat())}</span>}</Show>
-      </span>
+      <Show when={opponent() && props.deckOf(opponent()!)} fallback={<span class='round-deck' />}>
+        {deck => <LiveDeck deck={deck()} />}
+      </Show>
       <span class='round-finish'>
         <Show when={view()}>
           {current => (matchStatus(current().match) === 'final' ? current().match.table || '' : 'Playing')}

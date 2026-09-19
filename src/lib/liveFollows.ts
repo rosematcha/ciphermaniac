@@ -1,6 +1,7 @@
 import { type Accessor, createSignal } from 'solid-js';
 
 const STORAGE_KEY = 'cm-live-follows';
+const VOTER_KEY = 'cm-live-voter';
 
 /** Stored follows, or none for anything that is not a list of seat keys. */
 export function parseStoredFollows(raw: string | null): string[] {
@@ -46,4 +47,22 @@ export function useLiveFollows(): { follows: Accessor<ReadonlySet<string>>; togg
       }
     }
   };
+}
+
+/**
+ * This device's reporter ID for deck reports: random, minted on first use, and
+ * tied to nothing. Without storage every report gets a fresh one.
+ */
+export function liveVoterId(): string {
+  try {
+    const stored = localStorage.getItem(VOTER_KEY);
+    if (stored) {
+      return stored;
+    }
+    const minted = crypto.randomUUID();
+    localStorage.setItem(VOTER_KEY, minted);
+    return minted;
+  } catch {
+    return crypto.randomUUID();
+  }
 }

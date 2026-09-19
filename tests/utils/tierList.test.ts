@@ -16,7 +16,6 @@ import {
   distribute,
   encodeShare,
   makeTier,
-  rankByQuery,
   type Tier,
   type TierItem,
   withAddedTier,
@@ -28,6 +27,7 @@ import {
   withRenamedPlacement,
   withTierOrder
 } from '../../src/pages/tierList/model';
+import { rankByQuery } from '../../src/lib/rankByQuery.ts';
 
 // ---------------------------------------------------------------------------
 // Palette
@@ -399,12 +399,7 @@ const CARDS: Card[] = [
 ];
 
 test('a prefix match outranks a match anywhere else', () => {
-  const hits = rankByQuery(
-    CARDS,
-    'r',
-    c => c.name,
-    c => c.arts
-  );
+  const hits = rankByQuery(CARDS, 'r', c => c.name, { weight: c => c.arts });
   assert.equal(hits[0]!.name, 'Rare Candy', 'the heaviest prefix match leads');
   assert.deepEqual(
     hits.map(c => c.name),
@@ -413,12 +408,7 @@ test('a prefix match outranks a match anywhere else', () => {
 });
 
 test('within a group the card with more arts comes first', () => {
-  const hits = rankByQuery(
-    CARDS,
-    'r',
-    c => c.name,
-    c => c.arts
-  );
+  const hits = rankByQuery(CARDS, 'r', c => c.name, { weight: c => c.arts });
   assert.ok(hits.indexOf(CARDS[1]!) < hits.indexOf(CARDS[0]!), 'Rare Candy (14) before Riolu (8)');
 });
 
@@ -434,14 +424,5 @@ test('matching is case-insensitive and honours the limit', () => {
     rankByQuery(CARDS, 'CANDY', c => c.name).map(c => c.name),
     ['Rare Candy']
   );
-  assert.equal(
-    rankByQuery(
-      CARDS,
-      'r',
-      c => c.name,
-      c => c.arts,
-      2
-    ).length,
-    2
-  );
+  assert.equal(rankByQuery(CARDS, 'r', c => c.name, { weight: c => c.arts, limit: 2 }).length, 2);
 });

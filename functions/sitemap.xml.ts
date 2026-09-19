@@ -1,8 +1,7 @@
 import { loadCardSynonyms } from '../shared/data/cardSynonyms.js';
 import { loadCardTypesDatabase } from '../shared/data/cardTypesDatabase.js';
 import { parseCardUid } from '../shared/data/cardIdentity.js';
-import { resolveScopePath } from '../shared/data/build/release.js';
-import { EMBEDDED_RELEASE } from '../shared/generated/release.js';
+import { ARCHETYPE_INDEX_KEY } from './lib/api/archetypeIndexKey.js';
 
 interface Env {
   REPORTS?: { get: (key: string) => Promise<{ text(): Promise<string> } | null> };
@@ -25,10 +24,6 @@ interface UrlEntry {
   changefreq?: ChangeFreq;
   priority?: number;
 }
-
-const ARCHETYPE_INDEX_KEY = EMBEDDED_RELEASE
-  ? resolveScopePath(EMBEDDED_RELEASE, 'online', 'archetypes/index.json').replace(/^\/+/, '')
-  : 'reports/Online - Last 14 Days/archetypes/index.json';
 
 const STATIC_ROUTES: Array<{ path: string; changefreq: ChangeFreq; priority: number }> = [
   { path: '/', changefreq: 'daily', priority: 1.0 },

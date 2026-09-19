@@ -1,5 +1,6 @@
 import { A, useParams, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, For, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
+import { reportableArchetypes } from '../../shared/live/reports';
 import type { LiveMatch, LiveSeat } from '../../shared/live/types';
 import {
   createProfileLookup,
@@ -7,20 +8,24 @@ import {
   followedMatches,
   matchStatus,
   type MatchStatus,
-  recordLabel
+  recordLabel,
+  seatKey
 } from '../../shared/live/view';
+import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { Chip, ChipGroup, SearchInput } from '../components/Chip';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { Section } from '../components/Section';
 import { Skeleton } from '../components/Skeleton';
-import { fetchPlayerIndexSlim } from '../lib/data';
-import { fetchLiveIndex, fetchLiveRound } from '../lib/data/live';
+import { fetchArchetypeLabels, fetchOnlineArchetypes, fetchPlayerIndexSlim } from '../lib/data';
+import { fetchLiveIndex, fetchLiveReports, fetchLiveRound, submitDeckReport } from '../lib/data/live';
 import { debounced } from '../lib/debounce';
-import { useLiveFollows } from '../lib/liveFollows';
+import { liveVoterId, useLiveFollows } from '../lib/liveFollows';
+import { reportKey, useMyReports } from '../lib/liveReports';
 import { createPolled } from '../lib/livePoll';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { latestValue, resolved } from '../lib/resource';
+import { deckIcons, type ReportedDeck } from './live/LiveDeck';
 import { LiveRun, type RunPlayer } from './live/LiveRun';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/players.css';
@@ -63,6 +68,43 @@ export function LivePage() {
   const query = () => searchParams.q ?? '';
   const setQuery = (q: string) => setSearchParams({ q: q || undefined, page: undefined }, { replace: true });
   const debouncedQuery = debounced(query, 150);
+  // Reported decks: the published picks, plus whatever this visitor's own
+  // report came back as, so a report shows at once rather than a poll later.
+  const reports = createPolled(() => params.slug, fetchLiveReports);
+  const [archetypes] = createResource(fetchOnlineArchetypes);
+  const [reported, setReported] = createSignal<Record<string, string | null>>({});
+  const [iconLabels] = createResource(fetchArchetypeLabels);
+  // Most played first; the index's own icons beat the icon map's for a label both carry.
+  const indexed = createMemo(() =>
+    [...(resolved(archetypes) ?? [])].sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0))
+  );
+  // Every reportable deck, the online meta's first; the index's own icons beat
+  // the icon map's for a label both carry.
+  const decks = createMemo<ReportedDeck[]>(() => {
+    const byLabel = new Map(indexed().map(entry => [entry.label, entry]));
+    return reportableArchetypes([...byLabel.keys()], resolved(iconLabels) ?? []).map(label => ({
+      label,
+      icons: byLabel.get(label)?.icons,
+      percent: byLabel.get(label)?.percent
+    }));
+  });
+  const deckByLabel = createMemo(() => new Map(decks().map(deck => [deck.label, deck])));
+  const deckOf = (seat: RunPlayer): ReportedDeck | undefined => {
+    const key = seatKey(seat);
+    const label = key in reported() ? reported()[key] : latestValue(reports)?.decks[key];
+    return label ? (deckByLabel().get(label) ?? { label }) : undefined;
+  };
+  const { mine, remember } = useMyReports();
+  const myDeck = (seat: RunPlayer): ReportedDeck | undefined => {
+    const label = mine()[reportKey(params.slug, seatKey(seat))];
+    return label ? (deckByLabel().get(label) ?? { label }) : undefined;
+  };
+  const reportDeck = async (seat: RunPlayer, archetype: string | null) => {
+    const shown = await submitDeckReport({ slug: params.slug, seat: seatKey(seat), archetype, voter: liveVoterId() });
+    remember(reportKey(params.slug, seatKey(seat)), archetype);
+    setReported(current => ({ ...current, [seatKey(seat)]: shown }));
+  };
+
   const { follows } = useLiveFollows();
   const followingOnly = () => searchParams.following === '1';
   const filtered = createMemo(() => {
@@ -149,6 +191,11 @@ export function LivePage() {
             playerId={profileOf()({ ...runPlayer()!, wins: 0, losses: 0, ties: 0, points: 0 })}
             hrefFor={runHref}
             closeHref={runHref(null)}
+            decks={decks()}
+            leading={indexed().length}
+            deckOf={deckOf}
+            mine={myDeck(runPlayer()!)}
+            onReport={archetype => reportDeck(runPlayer()!, archetype)}
           />
         </Show>
 
@@ -188,7 +235,9 @@ export function LivePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    <For each={pageItems()}>{match => <MatchRow match={match} hrefFor={runHref} />}</For>
+                    <For each={pageItems()}>
+                      {match => <MatchRow match={match} hrefFor={runHref} deckOf={deckOf} />}
+                    </For>
                   </tbody>
                 </table>
               </div>
@@ -201,7 +250,11 @@ export function LivePage() {
   );
 }
 
-function MatchRow(props: { match: LiveMatch; hrefFor: (seat: RunPlayer) => string }) {
+function MatchRow(props: {
+  match: LiveMatch;
+  hrefFor: (seat: RunPlayer) => string;
+  deckOf: (seat: RunPlayer) => ReportedDeck | undefined;
+}) {
   return (
     <tr>
       <td class='num muted-cell players-rank'>{props.match.table || '—'}</td>
@@ -209,7 +262,7 @@ function MatchRow(props: { match: LiveMatch; hrefFor: (seat: RunPlayer) => strin
         {i => (
           <td class='players-name'>
             <Show when={props.match.seats[i]} fallback={<span class='muted-cell'>Bye</span>}>
-              {seat => <SeatCell seat={seat()} href={props.hrefFor(seat())} />}
+              {seat => <SeatCell seat={seat()} href={props.hrefFor(seat())} deck={props.deckOf(seat())} />}
             </Show>
           </td>
         )}
@@ -219,16 +272,19 @@ function MatchRow(props: { match: LiveMatch; hrefFor: (seat: RunPlayer) => strin
   );
 }
 
-function SeatCell(props: { seat: LiveSeat; href: string }) {
+/** Icon, name, record: the reported deck's sprites lead, in a slot every row keeps so names line up. */
+function SeatCell(props: { seat: LiveSeat; href: string; deck?: ReportedDeck }) {
   return (
-    <span class='players-ident'>
+    <span class='arche-name-cell'>
+      <span title={props.deck?.label}>
+        <ArchetypeIcons slugs={props.deck ? deckIcons(props.deck) : []} size={22} reserveSlot />
+      </span>
       <Show when={props.seat.result}>
         {result => <b class={`round-outcome ${result()}`}>{RESULT_LETTER[result()]}</b>}
       </Show>
       <A href={props.href} class='cardname'>
         {props.seat.name}
       </A>
-      <span class='players-country'>{props.seat.country}</span>
       <span class='muted-cell'>
         {recordLabel(props.seat)}
         {props.seat.dropped ? ' · dropped' : ''}

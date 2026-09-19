@@ -38,7 +38,7 @@ import { installRowSortable } from '../lib/tierList/rowSortable';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { interEmbedCss } from '../utils/fontEmbed';
 import { Actions, DockStrip } from './tierList/Actions';
-import { Combo, splitMatch } from './tierList/Combo';
+import { Combo, splitMatch } from '../components/Combo';
 import { type CanonicalOption, Editor, type EditorTarget, type SpriteOption } from './tierList/Editor';
 import { QuickRank } from './tierList/QuickRank';
 import { animateRows, collapseRow } from './tierList/rowMotion';

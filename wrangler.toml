@@ -16,6 +16,12 @@ id = "c43f84feaa1049488390313c619610d8"
 bucket_name = "ciphermaniac-reports"
 binding = "REPORTS"
 
+# D1 binding for live-event deck reports (schema: config/d1/live.sql)
+[[d1_databases]]
+binding = "LIVE_DB"
+database_name = "ciphermaniac-live"
+database_id = "ad51e340-8a8f-418e-98aa-f074c0bf28e4"
+
 # Production environment configuration
 [env.production]
 
@@ -28,6 +34,12 @@ id = "c43f84feaa1049488390313c619610d8"
 [[env.production.r2_buckets]]
 bucket_name = "ciphermaniac-reports"
 binding = "REPORTS"
+
+# D1 binding for production
+[[env.production.d1_databases]]
+binding = "LIVE_DB"
+database_name = "ciphermaniac-live"
+database_id = "ad51e340-8a8f-418e-98aa-f074c0bf28e4"
 
 # Environment variables (set these in Cloudflare dashboard)
 [env.production.vars]
