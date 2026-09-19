@@ -41,8 +41,8 @@ export interface TickResult {
 export const LIVE_CACHE_CONTROL = 'public, max-age=30';
 
 export const liveKeys = {
-  index: (event: LiveEvent): string => `live/v1/${event.labsCode}/index.json`,
-  round: (event: LiveEvent, round: number): string => `live/v1/${event.labsCode}/r${round}.json`
+  index: (event: LiveEvent): string => `live/v1/${event.slug}/index.json`,
+  round: (event: LiveEvent, round: number): string => `live/v1/${event.slug}/r${round}.json`
 };
 
 const IDLE_SINCE = new Date(0).toISOString();
@@ -78,7 +78,8 @@ function isDue(state: LiveState, now: Date): boolean {
 
 function buildIndex(event: LiveEvent, round: LiveRound, hash: string): LiveIndex {
   return {
-    labsCode: event.labsCode,
+    slug: event.slug,
+    rk9Id: event.rk9Id,
     name: event.name,
     round: round.round,
     matches: round.matches.length,
