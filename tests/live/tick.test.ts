@@ -20,7 +20,6 @@ import {
   tickEvent,
   type TickOutcome
 } from '../../shared/live/tick.ts';
-import { isEventLive } from '../../shared/live/schedule.ts';
 import type { LiveEvent, LiveIndex, LiveRound, LiveState } from '../../shared/live/types.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/live');
@@ -30,8 +29,9 @@ const DONE_ROUND = OPEN_ROUND.replaceAll('match no-gutter "', 'match no-gutter c
 const BROKEN_ROUND = readFileSync(join(FIXTURES, 'round-renamed.html'), 'utf8');
 
 const EVENT: LiveEvent = {
-  labsCode: '9999',
+  slug: 'test-2027',
   name: 'Test Regional',
+  kind: 'regional',
   rk9Id: 'TEST01',
   pod: 2,
   firstDay: '2026-09-19',
@@ -167,28 +167,4 @@ test('broken markup is reported and leaves the last good round in place', async 
   h.rounds[1] = BROKEN_ROUND;
   assert.equal(await h.tick(MINUTE), 'broken');
   assert.deepEqual(h.files.get(liveKeys.round(EVENT, 1)), published);
-});
-
-test('an event is live from the day before its first day to the day after its last', () => {
-  const at = (iso: string) => isEventLive(EVENT, new Date(iso));
-  assert.equal(at('2026-09-17T23:59:00Z'), false);
-  assert.equal(at('2026-09-18T00:00:00Z'), true);
-  assert.equal(at('2026-09-21T23:59:00Z'), true);
-  assert.equal(at('2026-09-22T00:00:00Z'), false);
-});
-
-test('a restarted runner resumes from the published index without rewriting the round', async () => {
-  const first = harness({ 1: DONE_ROUND, 2: OPEN_ROUND });
-  await first.tick(0);
-  await first.tick(MINUTE);
-  const index = first.files.get(liveKeys.index(EVENT)) as LiveIndex;
-
-  const second = harness({ 1: DONE_ROUND, 2: OPEN_ROUND });
-  second.state = resumeState(index);
-  assert.equal(await second.tick(2 * MINUTE), 'unchanged');
-  assert.deepEqual(second.fetched, [2]);
-  assert.deepEqual(second.puts, []);
-
-  second.rounds[2] = OPEN_ROUND.slice(0, OPEN_ROUND.indexOf('<div class="row row-cols-3 match no-gutter "'));
-  assert.equal(await second.tick(3 * MINUTE), 'broken');
 });

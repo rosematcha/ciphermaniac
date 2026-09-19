@@ -44,11 +44,18 @@ export interface LiveRoundParse {
   truncated: boolean;
 }
 
+export type LiveEventKind = 'regional' | 'international' | 'worlds';
+
 /** An event the poller should watch. Days are the dates RK9 lists, `YYYY-MM-DD`. */
 export interface LiveEvent {
-  /** Limitless Labs event code, the key the rest of the site knows the event by. */
-  labsCode: string;
+  /**
+   * RK9's event slug without its `pokemon-` prefix, e.g. `brisbane-2027`. Known
+   * weeks ahead, unlike a Limitless Labs code, which only exists once the event
+   * is under way; `rk9Id` is what joins a live event to its Labs import later.
+   */
+  slug: string;
   name: string;
+  kind: LiveEventKind;
   rk9Id: string;
   /** RK9's pod number for the division; Masters has been pod 2. */
   pod: number;
@@ -78,7 +85,8 @@ export interface LiveRound {
 }
 
 export interface LiveIndex {
-  labsCode: string;
+  slug: string;
+  rk9Id: string;
   name: string;
   round: number;
   matches: number;
@@ -87,4 +95,10 @@ export interface LiveIndex {
   /** Matches in the current round without a confirmed result. */
   playing: number;
   updatedAt: string;
+}
+
+/** `live/v1/schedule.json`: the events worth following, soonest first. */
+export interface LiveSchedule {
+  generatedAt: string;
+  events: LiveEvent[];
 }
