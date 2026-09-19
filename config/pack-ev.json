@@ -114,7 +114,7 @@
               "label": "RGB Rare",
               "odds": 4063,
               "pool": {
-                "rarities": ["Holo Rare"],
+                "rarities": ["RBG Rare", "RGB Rare"],
                 "printing": "holofoil",
                 "bulk": "hit",
                 "unpriced": 5000
