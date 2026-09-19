@@ -40,20 +40,10 @@
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.live-run-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-3);
-}
 /* The deck report: the shared Combo, standing for sprites rather than card art.
    Sprites are not thumbnails, so the list's frame and crop come off, and the
-   field leaves room for a pair of them. */
-.live-deck-picker {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  text-align: left;
-}
+   field leaves room for a pair of them. The picker's own box lives in
+   pages/live.css with the rest of the run. */
 .live-deck-picker .tl-picker .search {
   padding-left: 48px;
 }
@@ -70,9 +60,6 @@
 }
 .live-deck {
   gap: 8px;
-}
-.live-player-row {
-  margin-top: var(--space-4);
 }
 @media (max-width: 640px) {
   .live-banner {
@@ -1243,6 +1230,10 @@
   transition:
     border-color var(--ms-fast),
     box-shadow var(--ms-fast);
+}
+.search::-webkit-search-cancel-button {
+  appearance: none;
+  -webkit-appearance: none;
 }
 .search::placeholder {
   color: var(--muted);
@@ -4294,6 +4285,12 @@ tr.row-expansion > td {
     align-items: center;
   }
 
+  /* iOS Safari zooms the viewport on any focused input under 16px, so every
+     visit that starts by searching starts by pinching back out. */
+  .search {
+    font-size: 16px;
+  }
+
   .chip {
     min-height: 44px;
     display: inline-flex;
@@ -4469,6 +4466,96 @@ tr.row-expansion > td {
   background: var(--accent);
   color: var(--accent-fg);
   border: 1px solid var(--accent-hover);
+}
+
+/* ---------- Filter trigger and the strip of what it set ----------
+   Written for the cards index, now shared with the live page: the square
+   icon button that opens the filter room, and the removable chips that say
+   what is set while it is closed. */
+.filters-btn {
+  flex-shrink: 0;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition:
+    background var(--ms-fast),
+    border-color var(--ms-fast),
+    color var(--ms-fast);
+}
+.filters-btn svg {
+  flex-shrink: 0;
+}
+.filters-btn:hover {
+  background: var(--surface-2);
+}
+.filters-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+/* Active state: fill with the accent and widen to seat the count numeral inline
+   next to the funnel — no floating corner badge. */
+.filters-btn.is-active {
+  width: auto;
+  padding: 0 12px;
+  background: var(--accent);
+  border-color: var(--accent-hover);
+  color: var(--accent-fg);
+}
+.filters-btn .fb-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-fg);
+  line-height: 1;
+}
+
+/* Closed-state summary: removable mini-chips for each active facet. */
+.filter-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.mini-chip {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--fg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.mini-chip:hover {
+  border-color: var(--muted);
+}
+.mini-chip .mc-x {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* The sheet footer's quiet half, beside `.sheet-apply`. */
+.sheet-clear {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-ink-hover);
+  background: none;
+  border: 0;
+  padding: 8px 4px;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 /* ---------- Combo typeahead (components/Combo.tsx) ----------

@@ -153,7 +153,10 @@ function RunRow(props: {
           )}
         </Show>
       </span>
-      <Show when={opponent() && props.reports.deckOf(opponent()!)}>
+      {/* The placeholder holds the row's fourth grid cell: without it the
+          finish column slides left whenever no deck is known, so rows of one
+          run land in different columns. It collapses on a phone. */}
+      <Show when={opponent() && props.reports.deckOf(opponent()!)} fallback={<span class='round-deck' />}>
         {deck => <LiveDeck deck={deck()} class='round-deck' />}
       </Show>
       <span class='round-finish'>{finish()}</span>

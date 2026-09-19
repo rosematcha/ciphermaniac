@@ -1,0 +1,492 @@
+/* Live event pages: /live/:slug, /live/:slug/player/:seat, and the run block
+   on a career page.
+
+   Its own sheet rather than more rules in players.css. The live tables are not
+   the players index — they are a pairings list with two name columns and a
+   phone layout of their own — and borrowing that page's classes meant every
+   retune of the players table silently restyled this one. */
+
+/* ---------- Control bar ----------
+   Search, the round, and everything else behind one trigger. One row at every
+   width; the fifteen round chips it replaces took five. */
+.live-bar {
+  position: sticky;
+  top: var(--topnav-h);
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  background: var(--bg);
+}
+.live-bar .search {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* `‹ R8 ›`. The label is the third button: it opens the full round list, so a
+   jump from R2 to R13 is still one press rather than eleven. */
+.round-step {
+  flex: none;
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+.round-step button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  /* Less the wrapper's own 1px borders, so the stepper matches the search
+     beside it rather than standing 2px proud of it. */
+  min-height: calc(var(--control-h) - 2px);
+  transition: background var(--ms-fast) var(--ease-base);
+}
+.round-step button:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.round-step button:disabled {
+  color: var(--muted);
+  opacity: 0.4;
+  cursor: default;
+}
+.round-step-arrow {
+  width: 28px;
+  font-size: 15px;
+  line-height: 1;
+}
+.round-step-label {
+  min-width: 40px;
+  padding: 0 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  border-left: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+}
+/* A pinned round is not the one the event is on, and the hero says otherwise
+   two lines up; the accent edge is what reconciles them at a glance. */
+.round-step-label.is-pinned {
+  box-shadow: none;
+  background: var(--surface-2);
+  color: var(--accent-ink);
+}
+
+.live-filters-btn {
+  flex: none;
+  /* The square trigger's size lives with the cards index's own control row, so
+     this bar has to state it: without one the button rendered 30 by 20. */
+  width: var(--control-h);
+  height: var(--control-h);
+}
+/* Desktop: the filters are a panel under their button, not a bottom sheet. */
+.live-filters-panel {
+  position: absolute;
+  top: calc(100% - 4px);
+  right: 0;
+  z-index: 30;
+  width: 320px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 640px), (pointer: coarse) {
+  /* The whole bar is one 44px row under a finger: a 28px arrow is a miss
+     waiting to happen, and the three controls have to read as one strip. */
+  .live-bar .search,
+  .live-bar .filters-btn {
+    min-height: 44px;
+  }
+  .live-bar .filters-btn {
+    width: 44px;
+    height: 44px;
+  }
+  /* Less the stepper's own 1px borders, which sit outside the buttons. */
+  .round-step button {
+    min-height: 42px;
+  }
+  .round-step-arrow {
+    width: 40px;
+  }
+}
+
+/* ---------- Tables ---------- */
+.live-table .data th,
+.live-table .data td {
+  height: var(--row-height, 34px);
+  padding: 0 10px;
+  font-size: 13px;
+}
+.live-table .data th {
+  font-size: 10.5px;
+}
+/* Table number / rank: three or four tabular digits, never more. */
+.live-table-col {
+  width: 46px;
+}
+/* The sprite slot is held open so names line up down the column — in CSS, not
+   as a prop, because a phone gives the 38px to the name instead. */
+.live-seat-icons {
+  flex: none;
+  display: inline-flex;
+  min-width: 38px;
+}
+.live-seat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.live-seat .cardname {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg);
+}
+.live-seat-record,
+.live-seat-inline {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+/* A dropped player is marked on their record rather than beside their name:
+   the word pushed the record a hundred pixels out of line with every other
+   row's, and on a long name it ate the name instead. */
+.live-seat-record.is-dropped,
+.live-seat-inline.is-dropped {
+  color: var(--negative);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+/* Record and points live in their own columns until a phone drops them. */
+.live-seat-inline {
+  display: none;
+}
+
+/* Follow from the row. Until now the only follow toggle was inside an open
+   run, so the "following only" filter had nothing to filter by. */
+.live-follow {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  /* --border is a hairline colour: on the dark ground it reads as nothing at
+     all, and this is the only mark saying who is followed. */
+  color: var(--muted);
+  /* Quiet at rest rather than absent — hidden until hover, nobody learns the
+     row can be followed, and the "following only" filter stays empty forever. */
+  opacity: 0.35;
+  cursor: pointer;
+  transition:
+    opacity var(--ms-fast) var(--ease-base),
+    color var(--ms-fast) var(--ease-base);
+}
+.live-follow svg {
+  fill: none;
+}
+tr:hover .live-follow,
+.live-follow:focus-visible,
+.live-follow.is-on {
+  opacity: 1;
+}
+.live-follow:hover:not(.is-on) {
+  color: var(--fg);
+}
+.live-follow.is-on {
+  color: var(--accent);
+}
+.live-follow.is-on svg {
+  fill: currentColor;
+}
+
+/* ---------- A player's run ---------- */
+.live-run {
+  display: grid;
+  gap: 14px;
+}
+.live-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  font-size: 13px;
+}
+.live-run-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.live-run-record {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.live-run-meta .live-deck {
+  white-space: nowrap;
+}
+.live-run-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+/* The reporter's own box; its list styles stay in components.css. */
+.live-deck-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: left;
+}
+/* The reporter used to carry a hard 280px, which is three quarters of a phone's
+   content width and ran straight off the right edge. */
+.live-deck-picker .tl-combo {
+  width: 280px;
+}
+.live-run-record,
+.live-run-actions .live-deck {
+  white-space: nowrap;
+}
+.live-rounds {
+  max-width: 620px;
+}
+/* A submitted result is not a confirmed one. The colour used to be the whole
+   signal, which says nothing to a reader who cannot see it and nothing at all
+   on a phone, where the explanatory `title` does not exist. */
+.round-outcome.provisional {
+  color: var(--muted);
+}
+.round-outcome.provisional span {
+  font-size: 0.8em;
+  vertical-align: super;
+}
+
+.live-namesakes p {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.live-namesake-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+.live-namesake-list li {
+  padding: 6px 0;
+  border-top: 1px solid var(--rule);
+}
+
+/* The run's rows, at every width. The placement used to live in the phone
+   block only, so on a desktop a round whose opponent had a reported deck
+   pushed "Table 507" into the 46px track and wrapped it — rows of one run
+   ended up in different columns depending on whether a deck was known. */
+.live-rounds .round {
+  grid-template-columns: 30px 24px minmax(0, 1fr) max-content;
+}
+.live-rounds .round-deck {
+  grid-column: 3;
+  grid-row: 2;
+}
+.live-rounds .round-finish {
+  grid-column: 4;
+  grid-row: 1;
+  white-space: nowrap;
+}
+/* A round with no deck reported for the opponent keeps one line. */
+.live-rounds .round-deck:empty {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  /* Matches PHONE_QUERY in pages/live/LiveControls.tsx: below this the filters
+     are a sheet and the panel is never mounted.
+
+     The table restacks here too, and not at 640 as it first did. The four
+     columns need about 665px, so between 641 and 740 the status column was
+     clipped to "Play…" with no scrollbar to recover it — a band that covers a
+     landscape phone, a split screen and any narrowed desktop window. */
+  .live-filters-panel {
+    display: none;
+  }
+  /* Record and points are in the name cell here; the columns go. */
+  .live-wide-col {
+    display: none;
+  }
+  .live-seat-inline {
+    display: inline;
+  }
+  /* A row is two lines: your seat over your opponent's, the table number
+     spanning both, the status once for the match it belongs to. */
+  .live-table {
+    overflow-x: hidden;
+    background: none;
+    border: 0;
+    border-radius: 0;
+  }
+  .live-table .data,
+  .live-table .data thead,
+  .live-table .data tbody,
+  .live-table .data tr,
+  .live-table .data td {
+    display: block;
+    width: auto;
+  }
+  .live-table .data thead {
+    display: none;
+  }
+  .live-table .data tr {
+    display: grid;
+    /* 66px, not 58: "Submitted" is one of the two statuses worth spotting and
+       it was the one being clipped. */
+    grid-template-columns: 38px minmax(0, 1fr) 66px;
+    grid-template-areas:
+      'table player status'
+      'table opponent status';
+    align-items: center;
+    column-gap: 6px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .live-table .data td {
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .live-table .data td.live-table-col {
+    grid-area: table;
+    align-self: center;
+    text-align: left;
+    font-size: 13px;
+  }
+  .live-table .data td.live-seat-cell:nth-of-type(2) {
+    grid-area: player;
+  }
+  .live-table .data td.live-seat-cell:nth-of-type(3) {
+    grid-area: opponent;
+  }
+  /* One status for the match, in its own column beside both seats. "Final" is
+     nearly every row of a finished round, so it recedes; the two states worth
+     spotting — still playing, result in but unconfirmed — are the legible ones. */
+  .live-table .data td.live-status-cell {
+    grid-area: status;
+    align-self: center;
+    text-align: right;
+    font-size: 10.5px;
+    line-height: 1.2;
+    letter-spacing: var(--tracking-micro);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  /* Muted at 0.4 came out at 1.7:1 — decoration, not text. Still the quietest
+     thing in the row, but legible. */
+  .live-table .data td.live-status-cell[data-status='final'] {
+    opacity: 0.7;
+    font-weight: 500;
+  }
+  /* The opponent's line reads as the reply to the player's, which is what tells
+     the two apart once the header has scrolled away. */
+  .live-table .data td.live-seat-cell:nth-of-type(3) .live-seat::before,
+  .live-table .data td.live-seat-cell:nth-of-type(3) .live-bye::before {
+    content: 'vs';
+    flex: none;
+    width: 14px;
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-micro);
+  }
+  .live-table .data td.live-seat-cell:nth-of-type(3) .live-bye {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .live-table .data .live-seat {
+    gap: 5px;
+    min-height: 30px;
+    flex-wrap: nowrap;
+  }
+  /* The reserved sprite slot is 38px — a tenth of the viewport — held open for
+     a deck most seats never have reported. The name is worth more. */
+  /* Both seats reserve both slots, or the name's left edge moves row by row —
+     and in a nine-hundred-row list scanned by name, that edge is the only
+     anchor there is. The slots are given back entirely when the row has
+     neither a reported deck nor a result. */
+  .live-table .live-seat-icons {
+    min-width: 0;
+  }
+  .live-table tr.has-deck .live-seat-icons {
+    min-width: 26px;
+  }
+  .live-table tr.has-result .round-outcome {
+    min-width: 12px;
+    display: inline-block;
+  }
+  .live-table .live-seat-record {
+    font-size: 11px;
+  }
+  /* The name takes the slack so the records line up down the row's right edge. */
+  .live-table .live-seat .cardname {
+    flex: 1 1 auto;
+  }
+  .live-follow {
+    opacity: 1;
+    width: 36px;
+    height: 36px;
+    margin-left: 0;
+    color: var(--border);
+  }
+  .live-follow svg {
+    width: 16px;
+    height: 16px;
+  }
+  /* Standings keep their own two-column shape: place, then the player. */
+  .live-standings .data tr {
+    grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-areas: 'table player';
+    padding: 2px 0;
+  }
+  .live-standings .data td.num:not(.live-table-col) {
+    display: none;
+  }
+
+  .live-rounds .round {
+    grid-template-columns: 26px 24px minmax(0, 1fr) max-content;
+  }
+  .live-run-actions {
+    gap: 10px;
+  }
+  .live-run-meta {
+    flex: 1 1 100%;
+  }
+  .live-run-buttons {
+    flex: 1 1 100%;
+    margin-left: 0;
+    flex-wrap: nowrap;
+  }
+  .live-deck-picker {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .live-deck-picker .tl-combo {
+    width: 100%;
+  }
+}

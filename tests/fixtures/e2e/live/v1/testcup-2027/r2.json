@@ -1,0 +1,99 @@
+{
+  "round": 2,
+  "updatedAt": "2027-01-09T16:30:00.000Z",
+  "unreadable": 0,
+  "matches": [
+    {
+      "table": 1,
+      "seats": [
+        {
+          "name": "Ada Lovelace",
+          "country": "GB",
+          "wins": 1,
+          "losses": 0,
+          "ties": 0,
+          "points": 3,
+          "result": "win"
+        },
+        {
+          "name": "Cali White",
+          "country": "CA",
+          "wins": 1,
+          "losses": 0,
+          "ties": 0,
+          "points": 3,
+          "result": "loss"
+        }
+      ],
+      "complete": true
+    },
+    {
+      "table": 2,
+      "seats": [
+        {
+          "name": "Barbara Liskov",
+          "country": "US",
+          "wins": 1,
+          "losses": 0,
+          "ties": 0,
+          "points": 3
+        },
+        {
+          "name": "Katherine Johnson",
+          "country": "US",
+          "wins": 1,
+          "losses": 0,
+          "ties": 0,
+          "points": 3
+        }
+      ],
+      "complete": false,
+      "submitted": "p1"
+    },
+    {
+      "table": 3,
+      "seats": [
+        {
+          "name": "Grace Hopper",
+          "country": "US",
+          "wins": 0,
+          "losses": 1,
+          "ties": 0,
+          "points": 0
+        },
+        {
+          "name": "Alan Turing",
+          "country": "GB",
+          "wins": 0,
+          "losses": 1,
+          "ties": 0,
+          "points": 0
+        }
+      ],
+      "complete": false
+    },
+    {
+      "table": 4,
+      "seats": [
+        {
+          "name": "Jos\u00e9 N\u00fa\u00f1ez",
+          "country": "MX",
+          "wins": 0,
+          "losses": 1,
+          "ties": 0,
+          "points": 0,
+          "dropped": true
+        },
+        {
+          "name": "Margaret Hamilton",
+          "country": "US",
+          "wins": 0,
+          "losses": 1,
+          "ties": 0,
+          "points": 0
+        }
+      ],
+      "complete": false
+    }
+  ]
+}

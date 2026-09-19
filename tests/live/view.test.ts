@@ -20,7 +20,6 @@ import {
   followedMatches,
   isDecided,
   matchStatus,
-  parseSeatSlug,
   playerRun,
   recordLabel,
   seatKey,
@@ -208,12 +207,16 @@ test('the seat key stays on the registered name, so follows and reports survive 
   assert.equal(seatKey({ name: 'Cali White', country: 'CA' }), 'cali white|CA');
 });
 
-test('a seat slug round-trips its name and country, and the country is optional', () => {
-  assert.equal(seatSlug({ name: 'José Núñez', country: 'MX' }), 'jose-nunez-mx');
-  assert.deepEqual(parseSeatSlug('jose-nunez-mx'), { name: 'jose nunez', country: 'MX' });
-  assert.equal(seatSlug({ name: 'Ada Lovelace', country: '' }), 'ada-lovelace');
-  assert.deepEqual(parseSeatSlug(''), null);
-  assert.ok(seatMatchesSlug({ name: 'JOSÉ  Núñez', country: 'MX' }, 'jose-nunez-mx'));
+test('a seat slug folds the name and carries the country, and matches only its own seat', () => {
+  assert.equal(seatSlug({ name: 'José Núñez', country: 'MX' }), 'jose-nunez--mx');
+  assert.equal(seatSlug({ name: "Alan O'Neill-Jones Jr.", country: '' }), 'alan-o-neill-jones-jr');
+  assert.ok(seatMatchesSlug({ name: 'JOSÉ  Núñez', country: 'MX' }, 'jose-nunez--mx'));
+  // Same name, different country: a different person, and a different page.
+  assert.ok(!seatMatchesSlug({ name: 'José Núñez', country: 'ES' }, 'jose-nunez--mx'));
+  // A surname is not a country code, and the doubled separator says so.
+  assert.equal(seatSlug({ name: 'Alan Lee', country: '' }), 'alan-lee');
+  assert.equal(seatSlug({ name: 'Alan', country: 'LEE' }), 'alan--lee');
+  assert.ok(!seatMatchesSlug({ name: 'Alan', country: 'LEE' }, 'alan-lee'));
 });
 
 test('two seats sharing a name are both returned, so a page can say which is which', () => {
@@ -255,5 +258,72 @@ test('standings fold this round into the record RK9 posted going into it', () =>
   assert.deepEqual(
     filterStandings(table, 'win').map(row => row.seat.name),
     ['Winner']
+  );
+});
+
+test('folding is memoised without confusing one name for another', () => {
+  // The cache is keyed on the raw string, so repeated folds agree and distinct
+  // names stay distinct however often the search re-runs.
+  assert.equal(foldName('José Núñez'), foldName('José Núñez'));
+  assert.equal(foldName('José Núñez'), 'jose nunez');
+  assert.equal(foldName('Jose Nunez'), 'jose nunez');
+  assert.equal(foldName('Ada Lovelace'), 'ada lovelace');
+  assert.equal(foldName('José Núñez'), 'jose nunez');
+});
+
+test('a seat answers to the career name it is aliased to, as well as the printed one', () => {
+  const extra = (match: LiveMatch) => (match.table === 2 ? ['caitlin white'] : undefined);
+  const round: LiveMatch[] = [
+    { table: 1, seats: [seat('Ada Lovelace', 'GB'), seat('Grace Hopper')], complete: false },
+    { table: 2, seats: [seat('Cali White', 'CA'), seat('Alan Turing', 'GB')], complete: false }
+  ];
+  assert.deepEqual(
+    filterMatches(round, 'caitlin', extra).map(match => match.table),
+    [2]
+  );
+  assert.deepEqual(
+    filterMatches(round, 'cali', extra).map(match => match.table),
+    [2],
+    'the name RK9 prints still finds them'
+  );
+  assert.deepEqual(
+    filterMatches(round, 'caitlin').map(match => match.table),
+    []
+  );
+});
+
+test('standings search takes a table number and an aliased name too', () => {
+  const round: LiveMatch[] = [
+    { table: 7, seats: [seat('Cali White', 'CA'), seat('Alan Turing', 'GB')], complete: false }
+  ];
+  const rows = standings(round);
+  const extra = (match: LiveMatch) => (match.table === 7 ? ['caitlin white'] : undefined);
+  assert.equal(filterStandings(rows, '7').length, 2, 'a table number keeps both of its seats');
+  assert.deepEqual(
+    filterStandings(rows, 'caitlin', extra).map(row => row.seat.name),
+    ['Cali White', 'Alan Turing'],
+    'the alias is a property of the table, so it keeps the table'
+  );
+});
+
+test('a bye goes last among equal points, not first', () => {
+  const round: LiveMatch[] = [
+    {
+      table: 0,
+      seats: [{ name: 'Bye Taker', country: 'US', wins: 2, losses: 0, ties: 0, points: 6, result: 'win' }],
+      complete: true
+    },
+    {
+      table: 5,
+      seats: [
+        { name: 'Seated Winner', country: 'US', wins: 2, losses: 0, ties: 0, points: 6, result: 'win' },
+        { name: 'Seated Loser', country: 'US', wins: 0, losses: 2, ties: 0, points: 0, result: 'loss' }
+      ],
+      complete: true
+    }
+  ];
+  assert.deepEqual(
+    standings(round).map(row => row.seat.name),
+    ['Seated Winner', 'Bye Taker', 'Seated Loser']
   );
 });

@@ -16,9 +16,9 @@ export function deckIcons(deck: ReportedDeck): string[] {
 }
 
 /** A reported archetype the way the rest of the site writes one: sprites, then the name. */
-export function LiveDeck(props: { deck: ReportedDeck }) {
+export function LiveDeck(props: { deck: ReportedDeck; class?: string }) {
   return (
-    <span class='arche-name-cell live-deck'>
+    <span class={`arche-name-cell live-deck ${props.class ?? ''}`}>
       <ArchetypeIcons slugs={deckIcons(props.deck)} size={20} />
       <span>{props.deck.label}</span>
     </span>
@@ -69,7 +69,6 @@ export function DeckReporter(props: {
               selected={selected()}
               adorn={deck => <ArchetypeIcons slugs={deckIcons(deck)} size={20} />}
               onPick={setPending}
-              width='280px'
             >
               {(deck, query) => <DeckOption deck={deck} query={query} />}
             </Combo>

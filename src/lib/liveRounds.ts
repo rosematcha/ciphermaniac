@@ -25,11 +25,13 @@ function fetchArchivedRound(slug: string, round: number, read: RoundReader): Pro
   if (held) {
     return held;
   }
-  // A miss is not held: a round file can be a moment behind the index, and
-  // keeping the null would leave a gap in the run for the rest of the session.
+  // Only a settled round is kept. A miss means the file is a moment behind the
+  // index and keeping the null would leave a gap in the run for the session;
+  // an unconfirmed table means staff have not signed the round off yet, and
+  // that lag runs to half an hour — well past the next round's pairings.
   const pending = read(slug, round)
     .then(loaded => {
-      if (!loaded) {
+      if (!loaded || loaded.matches.some(match => !match.complete)) {
         archive.delete(key);
       }
       return loaded;

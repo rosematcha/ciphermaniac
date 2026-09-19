@@ -67,21 +67,37 @@ export function findSeats(
 }
 
 /**
+ * Names a seat answers to beyond the one printed on the pairing — the career
+ * name, for a seat the alias table corrects. Folded, and worked out once per
+ * round rather than per keystroke.
+ */
+export type ExtraNames = (match: LiveMatch) => readonly string[] | undefined;
+
+/**
  * Tables the query names. An all-digit query is a table number as well as a
  * name fragment: "what table is 412" is the question people ask at a venue, and
  * the table number is the first column on the page.
  * @param matches - The round's tables
  * @param query - Raw search text
+ * @param extra - Further folded names per table, e.g. an aliased seat's career name
  * @returns The matching tables, in their published order
  */
-export function filterMatches(matches: readonly LiveMatch[], query: string): readonly LiveMatch[] {
+export function filterMatches(matches: readonly LiveMatch[], query: string, extra?: ExtraNames): readonly LiveMatch[] {
   const q = foldName(query);
   if (!q) {
     return matches;
   }
-  const byTable = /^\d+$/.test(q);
-  return matches.filter(
-    match => (byTable && String(match.table) === q) || match.seats.some(seat => foldName(seat.name).includes(q))
+  return matches.filter(match => matchNamed(match, q, extra));
+}
+
+/** True when the table answers to the folded query, by number or by either seat. */
+function matchNamed(match: LiveMatch, q: string, extra?: ExtraNames): boolean {
+  if (/^\d+$/.test(q) && String(match.table) === q) {
+    return true;
+  }
+  return (
+    match.seats.some(seat => foldName(seat.name).includes(q)) ||
+    (extra?.(match)?.some(name => name.includes(q)) ?? false)
   );
 }
 
@@ -168,25 +184,29 @@ export function seatKey(seat: SeatRef): string {
 }
 
 /**
- * A seat as a URL segment: the folded name hyphenated, then the country. Lossy
- * on purpose — the page titles itself from the seat it resolves to, never from
- * the slug.
+ * A seat as a URL segment: the folded name hyphenated, then the country after a
+ * double hyphen.
+ *
+ * The doubled separator is what keeps the country segment honest. Folding
+ * collapses every run of non-alphanumerics to one hyphen, so `--` cannot occur
+ * inside a name — and with a single one, `alan-lee` would be both Alan Lee with
+ * no country and Alan from Lebanon.
  */
 export function seatSlug(seat: SeatRef): string {
   const name = foldName(seat.name)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-  return seat.country ? `${name}-${seat.country.toLowerCase()}` : name;
+  return seat.country ? `${name}--${seat.country.toLowerCase()}` : name;
 }
 
-/** The name and country a seat slug stands for, or null for anything that is not one. */
-export function parseSeatSlug(slug: string): SeatRef | null {
-  const match = /^(.*?)(?:-([a-z]{2,3}))?$/.exec(slug.toLowerCase());
-  const name = match?.[1]?.replace(/-+/g, ' ').trim();
-  return name ? { name, country: (match?.[2] ?? '').toUpperCase() } : null;
-}
-
-/** True when the seat is the one the slug names, folding both sides the same way. */
+/**
+ * True when the seat is the one the slug names.
+ *
+ * Deliberately one-way: a slug is folded and hyphenated, so reading a name and
+ * a country back out of it cannot be done — `alan-lee` is Alan Lee with no
+ * country just as plausibly as Alan from Lebanon. Matching seats against a
+ * freshly-made slug has no such ambiguity.
+ */
 export function seatMatchesSlug(seat: SeatRef, slug: string): boolean {
   return seatSlug(seat) === slug;
 }
@@ -297,7 +317,10 @@ export function standings(matches: readonly LiveMatch[]): Standing[] {
       });
     });
   }
-  rows.sort((a, b) => b.points - a.points || a.match.table - b.match.table);
+  // A bye is table 0, and it is not the top of its points bracket — it has no
+  // standing at all, so it goes last among equals rather than first.
+  const seatedAt = (row: Standing) => row.match.table || Number.MAX_SAFE_INTEGER;
+  rows.sort((a, b) => b.points - a.points || seatedAt(a) - seatedAt(b));
   let place = 0;
   let previous: number | null = null;
   rows.forEach((row, i) => {
@@ -310,8 +333,22 @@ export function standings(matches: readonly LiveMatch[]): Standing[] {
   return rows;
 }
 
-/** Standings rows whose player the query names. */
-export function filterStandings(rows: readonly Standing[], query: string): readonly Standing[] {
+/**
+ * Standings rows the query names, by player or by the table they are at.
+ * @param rows - Ranked rows
+ * @param query - Raw search text
+ * @param extra - Further folded names per table, as for {@link filterMatches}
+ * @returns The matching rows, in their ranked order
+ */
+export function filterStandings(rows: readonly Standing[], query: string, extra?: ExtraNames): readonly Standing[] {
   const q = foldName(query);
-  return q ? rows.filter(row => foldName(row.seat.name).includes(q)) : rows;
+  if (!q) {
+    return rows;
+  }
+  return rows.filter(
+    row =>
+      (/^\d+$/.test(q) && String(row.match.table) === q) ||
+      foldName(row.seat.name).includes(q) ||
+      (extra?.(row.match)?.some(name => name.includes(q)) ?? false)
+  );
 }
