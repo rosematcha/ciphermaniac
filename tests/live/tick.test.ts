@@ -1,5 +1,5 @@
 /**
- * Live polling step, driven with a fake clock, an in-memory store and canned
+ * Live polling step, driven with a fake clock, an in-memory publisher and canned
  * RK9 bodies. What matters: one fragment per step, writes only on change, a
  * finished round hands over to the next, and markup breakage never overwrites
  * the last good round.
@@ -14,10 +14,12 @@ import { fileURLToPath } from 'node:url';
 import {
   ACTIVE_WINDOW_MS,
   IDLE_INTERVAL_MS,
+  initialState,
   isEventLive,
   liveKeys,
-  type LiveStore,
-  tickEvent
+  resumeState,
+  tickEvent,
+  type TickOutcome
 } from '../../shared/live/tick.ts';
 import type { LiveEvent, LiveIndex, LiveRound, LiveState } from '../../shared/live/types.ts';
 
@@ -28,7 +30,7 @@ const DONE_ROUND = OPEN_ROUND.replaceAll('match no-gutter "', 'match no-gutter c
 const BROKEN_ROUND = readFileSync(join(FIXTURES, 'round-renamed.html'), 'utf8');
 
 const EVENT: LiveEvent = {
-  slug: 'test-regional',
+  labsCode: '9999',
   name: 'Test Regional',
   rk9Id: 'TEST01',
   pod: 2,
@@ -42,46 +44,44 @@ interface Harness {
   puts: string[];
   fetched: number[];
   rounds: Record<number, string>;
-  tick: (offsetMs: number) => ReturnType<typeof tickEvent>;
+  state: LiveState;
+  tick: (offsetMs: number) => Promise<TickOutcome>;
 }
 
 function harness(rounds: Record<number, string>): Harness {
-  const files = new Map<string, unknown>();
-  const puts: string[] = [];
-  const fetched: number[] = [];
-  const store: LiveStore = {
-    getJson: <T>(key: string) => Promise.resolve((files.get(key) as T | undefined) ?? null),
-    putJson: (key, value) => {
-      puts.push(key);
-      files.set(key, structuredClone(value));
-      return Promise.resolve();
-    }
-  };
   const self: Harness = {
-    files,
-    puts,
-    fetched,
+    files: new Map(),
+    puts: [],
+    fetched: [],
     rounds,
-    tick: offsetMs =>
-      tickEvent(EVENT, {
+    state: initialState(),
+    tick: async offsetMs => {
+      const result = await tickEvent(EVENT, self.state, {
         now: new Date(START + offsetMs),
-        store,
         hash: text => Promise.resolve(`${text.length}:${text}`),
+        publish: (key, value) => {
+          self.puts.push(key);
+          self.files.set(key, structuredClone(value));
+          return Promise.resolve();
+        },
         fetchRound: (_event, round) => {
-          fetched.push(round);
+          self.fetched.push(round);
           return Promise.resolve(self.rounds[round] ?? '');
         }
-      })
+      });
+      self.state = result.state;
+      return result.outcome;
+    }
   };
   return self;
 }
 
 const MINUTE = 60_000;
 
-test('the first poll publishes the round, its index and the state', async () => {
+test('the first poll publishes the round, then its index', async () => {
   const h = harness({ 1: OPEN_ROUND });
   assert.equal(await h.tick(0), 'written');
-  assert.deepEqual(h.puts, [liveKeys.round(EVENT, 1), liveKeys.index(EVENT), liveKeys.state(EVENT)]);
+  assert.deepEqual(h.puts, [liveKeys.round(EVENT, 1), liveKeys.index(EVENT)]);
   const index = h.files.get(liveKeys.index(EVENT)) as LiveIndex;
   assert.deepEqual([index.round, index.playing], [1, 3]);
   assert.equal((h.files.get(liveKeys.round(EVENT, 1)) as LiveRound).matches.length, 8);
@@ -98,14 +98,14 @@ test('an unchanged round inside the active window writes nothing', async () => {
 test('a finished round hands over to the next once RK9 posts it', async () => {
   const h = harness({ 1: DONE_ROUND });
   await h.tick(0);
-  assert.equal((h.files.get(liveKeys.state(EVENT)) as LiveState).roundComplete, true);
+  assert.equal(h.state.roundComplete, true);
 
   assert.equal(await h.tick(MINUTE), 'unchanged');
   h.rounds[2] = OPEN_ROUND;
   assert.equal(await h.tick(2 * MINUTE), 'written');
   assert.deepEqual(h.fetched, [1, 2, 1, 2]);
   assert.equal((h.files.get(liveKeys.index(EVENT)) as LiveIndex).round, 2);
-  assert.equal((h.files.get(liveKeys.state(EVENT)) as LiveState).roundComplete, false);
+  assert.equal(h.state.roundComplete, false);
 });
 
 test('a result corrected after the round finished is republished', async () => {
@@ -131,7 +131,7 @@ test('a body cut short cannot finish a round or replace the published one', asyn
   h.rounds[1] = OPEN_ROUND.slice(0, OPEN_ROUND.indexOf('<div class="row row-cols-3 match no-gutter "'));
   assert.equal(await h.tick(MINUTE), 'broken');
   assert.deepEqual(h.files.get(liveKeys.round(EVENT, 1)), published);
-  assert.equal((h.files.get(liveKeys.state(EVENT)) as LiveState).roundComplete, false);
+  assert.equal(h.state.roundComplete, false);
 });
 
 test('an event with nothing posted is polled at the idle interval from the start', async () => {
@@ -175,4 +175,20 @@ test('an event is live from the day before its first day to the day after its la
   assert.equal(at('2026-09-18T00:00:00Z'), true);
   assert.equal(at('2026-09-21T23:59:00Z'), true);
   assert.equal(at('2026-09-22T00:00:00Z'), false);
+});
+
+test('a restarted runner resumes from the published index without rewriting the round', async () => {
+  const first = harness({ 1: DONE_ROUND, 2: OPEN_ROUND });
+  await first.tick(0);
+  await first.tick(MINUTE);
+  const index = first.files.get(liveKeys.index(EVENT)) as LiveIndex;
+
+  const second = harness({ 1: DONE_ROUND, 2: OPEN_ROUND });
+  second.state = resumeState(index);
+  assert.equal(await second.tick(2 * MINUTE), 'unchanged');
+  assert.deepEqual(second.fetched, [2]);
+  assert.deepEqual(second.puts, []);
+
+  second.rounds[2] = OPEN_ROUND.slice(0, OPEN_ROUND.indexOf('<div class="row row-cols-3 match no-gutter "'));
+  assert.equal(await second.tick(3 * MINUTE), 'broken');
 });

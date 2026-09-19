@@ -1,11 +1,12 @@
 /**
- * One polling step for a live event, independent of where it runs.
+ * One polling step for a live event.
  *
- * The caller supplies the clock, the RK9 fetch and the store, so the same step
- * drives a Node loop, a Worker cron, and the tests. A step reads the current
- * round only; once that round is finished it watches for the next one, and
- * keeps rereading the finished round for corrections until the next is posted.
- * RK9 numbers rounds straight through day two and the top cut.
+ * The caller supplies the clock, the RK9 fetch and the publisher, and carries
+ * the returned state into the next step, so the same step drives the Node
+ * runner and the tests. A step reads the current round only; once that round is
+ * finished it watches for the next one, and keeps rereading the finished round
+ * for corrections until the next is posted. RK9 numbers rounds straight through
+ * day two and the top cut.
  *
  * Pacing comes from what the step observes rather than from venue time zones:
  * while results are changing it runs on every call, and once nothing has
@@ -21,14 +22,9 @@ export const ACTIVE_WINDOW_MS = 90 * 60 * 1000;
 /** Gap between polls once the active window has lapsed. */
 export const IDLE_INTERVAL_MS = 10 * 60 * 1000;
 
-export interface LiveStore {
-  getJson: <T>(key: string) => Promise<T | null>;
-  putJson: (key: string, value: unknown, cacheControl: string) => Promise<void>;
-}
-
 export interface TickDeps {
   now: Date;
-  store: LiveStore;
+  publish: (key: string, value: unknown) => Promise<void>;
   /** Body of a round fragment; `''` when RK9 has not posted the round. */
   fetchRound: (event: LiveEvent, round: number) => Promise<string>;
   hash: (text: string) => Promise<string>;
@@ -36,13 +32,17 @@ export interface TickDeps {
 
 export type TickOutcome = 'skipped' | 'not-posted' | 'unchanged' | 'written' | 'broken';
 
-const LIVE_CACHE = 'public, max-age=30';
-const STATE_CACHE = 'no-store';
+export interface TickResult {
+  outcome: TickOutcome;
+  state: LiveState;
+}
+
+/** Browsers poll the index; a minute-old round is as fresh as the source allows. */
+export const LIVE_CACHE_CONTROL = 'public, max-age=30';
 
 export const liveKeys = {
-  state: (event: LiveEvent): string => `live/v1/${event.slug}/state.json`,
-  index: (event: LiveEvent): string => `live/v1/${event.slug}/index.json`,
-  round: (event: LiveEvent, round: number): string => `live/v1/${event.slug}/r${round}.json`
+  index: (event: LiveEvent): string => `live/v1/${event.labsCode}/index.json`,
+  round: (event: LiveEvent, round: number): string => `live/v1/${event.labsCode}/r${round}.json`
 };
 
 export function isEventLive(event: LiveEvent, now: Date): boolean {
@@ -52,14 +52,25 @@ export function isEventLive(event: LiveEvent, now: Date): boolean {
   return now.getTime() >= from && now.getTime() < to;
 }
 
-/** Starts idle: an event with nothing posted is polled at the idle interval, not every call. */
-function initialState(): LiveState {
+const IDLE_SINCE = new Date(0).toISOString();
+
+/** Starts idle, so an event with nothing posted is polled at the idle interval. */
+export function initialState(): LiveState {
+  return { round: 1, roundComplete: false, hash: '', matchCount: 0, changedAt: IDLE_SINCE, checkedAt: '' };
+}
+
+/**
+ * State for a runner taking over mid-event, from the index the last one
+ * published. Carrying the hash and match count over keeps the shrink guard armed
+ * and spares a rewrite of a round that has not changed.
+ */
+export function resumeState(index: LiveIndex): LiveState {
   return {
-    round: 1,
-    roundComplete: false,
-    hash: '',
-    matchCount: 0,
-    changedAt: new Date(0).toISOString(),
+    round: index.round,
+    roundComplete: index.playing === 0,
+    hash: index.hash,
+    matchCount: index.matches,
+    changedAt: index.updatedAt,
     checkedAt: ''
   };
 }
@@ -72,11 +83,13 @@ function isDue(state: LiveState, now: Date): boolean {
   return active || now.getTime() - Date.parse(state.checkedAt) >= IDLE_INTERVAL_MS;
 }
 
-function buildIndex(event: LiveEvent, round: LiveRound): LiveIndex {
+function buildIndex(event: LiveEvent, round: LiveRound, hash: string): LiveIndex {
   return {
-    slug: event.slug,
+    labsCode: event.labsCode,
     name: event.name,
     round: round.round,
+    matches: round.matches.length,
+    hash,
     playing: round.matches.filter(match => !match.complete).length,
     updatedAt: round.updatedAt
   };
@@ -99,24 +112,6 @@ function rejectRound(parsed: LiveRoundParse, state: LiveState, round: number): Q
     return 'broken';
   }
   return parsed.matches.length === 0 ? 'not-posted' : null;
-}
-
-/**
- * A step with nothing new to publish. The state is only rewritten once polling
- * has gone idle, where `checkedAt` paces the next poll; during the active
- * window every call is due anyway, so the write would buy nothing.
- */
-async function settleQuietTick(
-  event: LiveEvent,
-  deps: TickDeps,
-  state: LiveState,
-  outcome: QuietOutcome
-): Promise<QuietOutcome> {
-  const idle = deps.now.getTime() - Date.parse(state.changedAt) >= ACTIVE_WINDOW_MS;
-  if (idle || !state.checkedAt) {
-    await deps.store.putJson(liveKeys.state(event), { ...state, checkedAt: deps.now.toISOString() }, STATE_CACHE);
-  }
-  return outcome;
 }
 
 interface RoundRead {
@@ -143,11 +138,13 @@ async function readCurrent(event: LiveEvent, deps: TickDeps, state: LiveState): 
   return readRound(event, deps, state.round);
 }
 
-async function publish(event: LiveEvent, deps: TickDeps, read: RoundRead, digest: string): Promise<void> {
+async function publish(event: LiveEvent, deps: TickDeps, read: RoundRead, digest: string): Promise<LiveState> {
   const { matches, rowsSkipped } = read.parsed;
   const updatedAt = deps.now.toISOString();
   const payload: LiveRound = { round: read.round, updatedAt, unreadable: rowsSkipped, matches };
-  const state: LiveState = {
+  await deps.publish(liveKeys.round(event, read.round), payload);
+  await deps.publish(liveKeys.index(event), buildIndex(event, payload, digest));
+  return {
     round: read.round,
     roundComplete: matches.every(match => match.complete),
     hash: digest,
@@ -155,26 +152,21 @@ async function publish(event: LiveEvent, deps: TickDeps, read: RoundRead, digest
     changedAt: updatedAt,
     checkedAt: updatedAt
   };
-  await deps.store.putJson(liveKeys.round(event, read.round), payload, LIVE_CACHE);
-  await deps.store.putJson(liveKeys.index(event), buildIndex(event, payload), LIVE_CACHE);
-  await deps.store.putJson(liveKeys.state(event), state, STATE_CACHE);
 }
 
-export async function tickEvent(event: LiveEvent, deps: TickDeps): Promise<TickOutcome> {
-  const state = (await deps.store.getJson<LiveState>(liveKeys.state(event))) ?? initialState();
+export async function tickEvent(event: LiveEvent, state: LiveState, deps: TickDeps): Promise<TickResult> {
   if (!isDue(state, deps.now)) {
-    return 'skipped';
+    return { outcome: 'skipped', state };
   }
-
+  const checked = { ...state, checkedAt: deps.now.toISOString() };
   const read = await readCurrent(event, deps, state);
   const rejected = rejectRound(read.parsed, state, read.round);
   if (rejected) {
-    return settleQuietTick(event, deps, state, rejected);
+    return { outcome: rejected, state: checked };
   }
   const digest = await deps.hash(JSON.stringify(read.parsed.matches));
   if (read.round === state.round && digest === state.hash) {
-    return settleQuietTick(event, deps, state, 'unchanged');
+    return { outcome: 'unchanged', state: checked };
   }
-  await publish(event, deps, read, digest);
-  return 'written';
+  return { outcome: 'written', state: await publish(event, deps, read, digest) };
 }
