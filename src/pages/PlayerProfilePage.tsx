@@ -2,6 +2,7 @@ import { A, useParams, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, Show } from 'solid-js';
 import { fetchPlayerDecks, fetchPlayerProfile } from '../lib/data';
 import { EmptyState } from '../components/EmptyState';
+import { LivePlayerRow } from '../components/LiveRow';
 import { Skeleton } from '../components/Skeleton';
 import { Tabs } from '../components/Tabs';
 import { resolved } from '../lib/resource';
@@ -144,6 +145,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
             <dd>{summary().medianFinish}</dd>
           </div>
         </dl>
+        <LivePlayerRow name={props.profile.name} countries={props.profile.countries} />
       </section>
 
       <section class='player-tabs'>

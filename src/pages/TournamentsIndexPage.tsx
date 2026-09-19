@@ -6,6 +6,7 @@ import { Section } from '../components/Section';
 import { ChipGroup, SearchInput } from '../components/Chip';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
+import { LiveEventRow } from '../components/LiveRow';
 import { Badge } from '../components/Badge';
 import { nameFromTournamentKey } from '../lib/format';
 import { latestValue } from '../lib/resource';
@@ -120,6 +121,7 @@ export function TournamentsIndexPage() {
             }
           >
             <div class='tournament-list'>
+              <LiveEventRow />
               <For each={tournaments()}>
                 {t => (
                   <button

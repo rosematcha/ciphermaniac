@@ -1,0 +1,50 @@
+# =============================================================================
+# Live Rounds
+# =============================================================================
+# Polls RK9 pairings once a minute while a listed event is on, and publishes:
+#   - live/v1/{labsCode}/r{round}.json (every table of the round)
+#   - live/v1/{labsCode}/index.json (current round; what the browser polls)
+# only when a round actually changes.
+#
+# One run polls for five and a half hours, under the six-hour job limit. The
+# hourly trigger leaves the next run queued behind it, so polling carries on
+# a few minutes after a run ends (GitHub may delay or drop a scheduled run), and the new run resumes from the
+# published index. With no event live a run exits in seconds.
+#
+# Deliberately outside the r2-bucket-writers group: it writes only under live/,
+# and holding that group for hours would stall every data job.
+#
+# Triggers:
+#   - Hourly, Thursday to Monday UTC (the poller's window around event days)
+#   - Manual dispatch
+# =============================================================================
+
+name: Live Rounds
+
+on:
+  schedule:
+    - cron: '7 * * * 4,5,6,0,1'
+  workflow_dispatch:
+
+concurrency:
+  group: live-rounds
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: ./.github/actions/setup
+      - name: Poll live rounds
+        run: npx tsx .github/scripts/run-live-rounds.ts
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
