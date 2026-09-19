@@ -1,7 +1,15 @@
 import { A } from '@solidjs/router';
 import { createMemo, createResource, For, Show } from 'solid-js';
 import type { LiveSeat } from '../../../shared/live/types';
-import { matchStatus, playerRun, recordLabel, type RunRound, seatKey } from '../../../shared/live/view';
+import {
+  matchStatus,
+  playerRun,
+  recordLabel,
+  type RunRound,
+  seatKey,
+  seatOutcome,
+  type SeatOutcome
+} from '../../../shared/live/view';
 import { Section } from '../../components/Section';
 import { Skeleton } from '../../components/Skeleton';
 import { fetchLiveRound } from '../../lib/data/live';
@@ -10,6 +18,7 @@ import { useLiveFollows } from '../../lib/liveFollows';
 import { latestValue } from '../../lib/resource';
 
 const RESULT_LETTER = { win: 'W', loss: 'L', tie: 'T' } as const;
+const PENDING = { submitted: 'Submitted', playing: 'Playing', final: '' } as const;
 
 export interface RunPlayer {
   name: string;
@@ -89,6 +98,21 @@ export function LiveRun(props: LiveRunProps) {
   );
 }
 
+/**
+ * W, L or T. A confirmed result takes its colour; one only submitted so far is
+ * set in plain ink, so the colour itself says staff have signed it off.
+ */
+export function OutcomeMark(props: { outcome: SeatOutcome }) {
+  return (
+    <b
+      class={`round-outcome ${props.outcome.provisional ? '' : props.outcome.result}`}
+      title={props.outcome.provisional ? 'Submitted, not yet confirmed' : undefined}
+    >
+      {RESULT_LETTER[props.outcome.result]}
+    </b>
+  );
+}
+
 function RunRow(props: {
   round: RunRound;
   hrefFor: (seat: RunPlayer) => string;
@@ -96,12 +120,16 @@ function RunRow(props: {
 }) {
   const view = () => props.round.view;
   const opponent = (): LiveSeat | undefined => view()?.opponent;
+  const outcome = () => {
+    const current = view();
+    return current ? seatOutcome(current.match, current.match.seats.indexOf(current.seat)) : null;
+  };
   return (
     <li class='round'>
       <span class='round-n'>R{props.round.round}</span>
-      <b class={`round-outcome ${view()?.seat.result ?? ''}`}>
-        {view()?.seat.result ? RESULT_LETTER[view()!.seat.result!] : '·'}
-      </b>
+      <Show when={outcome()} fallback={<b class='round-outcome'>·</b>}>
+        {current => <OutcomeMark outcome={current()} />}
+      </Show>
       <span class='round-opp'>
         <Show when={opponent()} fallback={<span class='muted-cell'>{view() ? 'No opponent' : 'Not found'}</span>}>
           {seat => <A href={props.hrefFor(seat())}>{seat().name}</A>}
@@ -112,7 +140,11 @@ function RunRow(props: {
       </Show>
       <span class='round-finish'>
         <Show when={view()}>
-          {current => (matchStatus(current().match) === 'final' ? current().match.table || '' : 'Playing')}
+          {current =>
+            matchStatus(current().match) === 'final'
+              ? current().match.table || ''
+              : PENDING[matchStatus(current().match)]
+          }
         </Show>
       </span>
     </li>

@@ -6,10 +6,12 @@ import {
   createProfileLookup,
   filterMatches,
   followedMatches,
-  matchStatus,
   type MatchStatus,
+  matchStatus,
   recordLabel,
-  seatKey
+  seatKey,
+  seatOutcome,
+  type SeatOutcome
 } from '../../shared/live/view';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { Chip, ChipGroup, SearchInput } from '../components/Chip';
@@ -26,14 +28,13 @@ import { createPolled } from '../lib/livePoll';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { latestValue, resolved } from '../lib/resource';
 import { deckIcons, type ReportedDeck } from './live/LiveDeck';
-import { LiveRun, type RunPlayer } from './live/LiveRun';
+import { LiveRun, OutcomeMark, type RunPlayer } from './live/LiveRun';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/players.css';
 
 const PAGE_SIZE = 50;
 
 const STATUS_LABEL: Record<MatchStatus, string> = { final: 'Final', submitted: 'Submitted', playing: 'Playing' };
-const RESULT_LETTER = { win: 'W', loss: 'L', tie: 'T' } as const;
 
 /**
  * /live/:slug — a listed event's pairings as RK9 posts them, a round at a time.
@@ -262,7 +263,14 @@ function MatchRow(props: {
         {i => (
           <td class='players-name'>
             <Show when={props.match.seats[i]} fallback={<span class='muted-cell'>Bye</span>}>
-              {seat => <SeatCell seat={seat()} href={props.hrefFor(seat())} deck={props.deckOf(seat())} />}
+              {seat => (
+                <SeatCell
+                  seat={seat()}
+                  outcome={seatOutcome(props.match, i)}
+                  href={props.hrefFor(seat())}
+                  deck={props.deckOf(seat())}
+                />
+              )}
             </Show>
           </td>
         )}
@@ -273,15 +281,13 @@ function MatchRow(props: {
 }
 
 /** Icon, name, record: the reported deck's sprites lead, in a slot every row keeps so names line up. */
-function SeatCell(props: { seat: LiveSeat; href: string; deck?: ReportedDeck }) {
+function SeatCell(props: { seat: LiveSeat; outcome: SeatOutcome | null; href: string; deck?: ReportedDeck }) {
   return (
     <span class='arche-name-cell'>
       <span title={props.deck?.label}>
         <ArchetypeIcons slugs={props.deck ? deckIcons(props.deck) : []} size={22} reserveSlot />
       </span>
-      <Show when={props.seat.result}>
-        {result => <b class={`round-outcome ${result()}`}>{RESULT_LETTER[result()]}</b>}
-      </Show>
+      <Show when={props.outcome}>{outcome => <OutcomeMark outcome={outcome()} />}</Show>
       <A href={props.href} class='cardname'>
         {props.seat.name}
       </A>
