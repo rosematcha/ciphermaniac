@@ -49,3 +49,11 @@ test('a follow is written through to storage, and an unfollow removes it', async
   toggle('ada lovelace|GB');
   assert.equal(stored.get('cm-live-follows'), '[]');
 });
+
+test('a device keeps one reporter ID', async () => {
+  const { liveVoterId } = await import('../../src/lib/liveFollows.ts');
+  const first = liveVoterId();
+  assert.match(first, /^[0-9a-f-]{36}$/);
+  assert.equal(liveVoterId(), first);
+  assert.equal(stored.get('cm-live-voter'), first);
+});

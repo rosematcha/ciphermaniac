@@ -5,6 +5,8 @@ import { matchStatus, playerRun, recordLabel, type RunRound, seatKey } from '../
 import { Section } from '../../components/Section';
 import { Skeleton } from '../../components/Skeleton';
 import { fetchLiveRound } from '../../lib/data/live';
+import type { ArchetypeIndexEntry } from '../../types';
+import { DeckReporter, LiveDeck } from './LiveDeck';
 import { useLiveFollows } from '../../lib/liveFollows';
 import { latestValue } from '../../lib/resource';
 
@@ -24,6 +26,10 @@ interface LiveRunProps {
   playerId: string | null;
   hrefFor: (seat: RunPlayer) => string;
   closeHref: string;
+  archetypes: readonly ArchetypeIndexEntry[];
+  /** The archetype reported for a seat, if one leads. */
+  deckOf: (seat: RunPlayer) => ArchetypeIndexEntry | undefined;
+  onReport: (archetype: string) => Promise<void>;
 }
 
 /**
@@ -49,9 +55,13 @@ export function LiveRun(props: LiveRunProps) {
       title={props.player.name}
       right={
         <span class='live-run-actions'>
+          <Show when={props.deckOf(props.player)}>{entry => <LiveDeck entry={entry()} />}</Show>
           <Show when={latest()}>{seat => <span>{recordLabel(seat())}</span>}</Show>
           <Show when={props.playerId}>
             <A href={`/players/${encodeURIComponent(props.playerId!)}`}>Career</A>
+          </Show>
+          <Show when={props.archetypes.length > 0}>
+            <DeckReporter archetypes={props.archetypes} onReport={props.onReport} />
           </Show>
           <button
             type='button'
@@ -69,14 +79,18 @@ export function LiveRun(props: LiveRunProps) {
     >
       <Show when={run()} fallback={<Skeleton height='120px' />}>
         <ol class='rounds'>
-          <For each={run()}>{round => <RunRow round={round} hrefFor={props.hrefFor} />}</For>
+          <For each={run()}>{round => <RunRow round={round} hrefFor={props.hrefFor} deckOf={props.deckOf} />}</For>
         </ol>
       </Show>
     </Section>
   );
 }
 
-function RunRow(props: { round: RunRound; hrefFor: (seat: RunPlayer) => string }) {
+function RunRow(props: {
+  round: RunRound;
+  hrefFor: (seat: RunPlayer) => string;
+  deckOf: (seat: RunPlayer) => ArchetypeIndexEntry | undefined;
+}) {
   const view = () => props.round.view;
   const opponent = (): LiveSeat | undefined => view()?.opponent;
   return (
@@ -90,9 +104,9 @@ function RunRow(props: { round: RunRound; hrefFor: (seat: RunPlayer) => string }
           {seat => <A href={props.hrefFor(seat())}>{seat().name}</A>}
         </Show>
       </span>
-      <span class='round-deck'>
-        <Show when={opponent()}>{seat => <span>{recordLabel(seat())}</span>}</Show>
-      </span>
+      <Show when={opponent() && props.deckOf(opponent()!)} fallback={<span class='round-deck' />}>
+        {entry => <LiveDeck entry={entry()} />}
+      </Show>
       <span class='round-finish'>
         <Show when={view()}>
           {current => (matchStatus(current().match) === 'final' ? current().match.table || '' : 'Playing')}
