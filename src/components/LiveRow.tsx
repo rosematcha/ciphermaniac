@@ -1,17 +1,11 @@
 import { A } from '@solidjs/router';
 import { createMemo, type JSX, Show } from 'solid-js';
-import { eventsOn } from '../../shared/live/schedule';
 import type { LiveEvent } from '../../shared/live/types';
 import { findSeat, recordLabel, type SeatView } from '../../shared/live/view';
 import { fetchLiveIndex, fetchLiveRound } from '../lib/data/live';
 import { createPolled } from '../lib/livePoll';
 import { latestValue } from '../lib/resource';
-
-/** Renders its child for the event that is on, and nothing on any other day. */
-export function WhileEventOn(props: { children: (event: LiveEvent) => JSX.Element }) {
-  const [event] = eventsOn(new Date());
-  return <Show when={event}>{on => props.children(on())}</Show>;
-}
+import { WhileEventOn } from './LiveBanner';
 
 /** A tournament row that leads to the live page, in the list's own markup. */
 function LiveRow(props: { event: LiveEvent; query?: string; detail: JSX.Element; aside?: JSX.Element }) {
