@@ -10,7 +10,14 @@ import { afterEach, test } from 'node:test';
 import { liveKeys } from '../../shared/live/tick.ts';
 import type { LiveEvent } from '../../shared/live/types.ts';
 import { LIVE_SCHEDULE_KEY } from '../../shared/live/schedule.ts';
-import { fetchLiveIndex, fetchLiveRound, fetchLiveSchedule } from '../../src/lib/data/live.ts';
+import { liveReportsKey } from '../../shared/live/reports.ts';
+import {
+  fetchLiveIndex,
+  fetchLiveReports,
+  fetchLiveRound,
+  fetchLiveSchedule,
+  submitDeckReport
+} from '../../src/lib/data/live.ts';
 
 const EVENT = { slug: 'test-2027' } as LiveEvent;
 const realFetch = globalThis.fetch;
@@ -45,4 +52,19 @@ test('the schedule is read from the key the poller publishes', async () => {
   stubFetch(200, { generatedAt: '2026-09-19T00:00:00Z', events: [] });
   assert.deepEqual((await fetchLiveSchedule())?.events, []);
   assert.ok(requested[0].url.endsWith(`/${LIVE_SCHEDULE_KEY}`), requested[0].url);
+});
+
+test('reports are read from the key the endpoint publishes', async () => {
+  stubFetch(200, { updatedAt: '', decks: { 'ada lovelace|GB': 'Dragapult' } });
+  assert.deepEqual((await fetchLiveReports('test-2027'))?.decks, { 'ada lovelace|GB': 'Dragapult' });
+  assert.ok(requested[0].url.endsWith(`/${liveReportsKey('test-2027')}`), requested[0].url);
+});
+
+test('a report is posted to the endpoint, and its answer is what the seat now shows', async () => {
+  const report = { slug: 'test-2027', seat: 'ada lovelace|GB', archetype: 'Dragapult', voter: 'a'.repeat(16) };
+  stubFetch(200, { archetype: null });
+  assert.equal(await submitDeckReport(report), null);
+  assert.equal(requested[0].url, '/api/live/report');
+  stubFetch(429, { error: 'Too many reports' });
+  await assert.rejects(submitDeckReport(report), /429/);
 });

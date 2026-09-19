@@ -10,6 +10,7 @@
  */
 
 import { createDataClient } from './client';
+import { type DeckReport, type LiveReports, liveReportsKey } from '../../../shared/live/reports';
 import { LIVE_SCHEDULE_KEY } from '../../../shared/live/schedule';
 import type { LiveIndex, LiveRound, LiveSchedule } from '../../../shared/live/types';
 
@@ -36,4 +37,22 @@ export function fetchLiveRound(slug: string, round: number): Promise<LiveRound |
 /** Null until the poller has published one. */
 export function fetchLiveSchedule(): Promise<LiveSchedule | null> {
   return client.fetchJsonOptional<LiveSchedule>(`/${LIVE_SCHEDULE_KEY}`);
+}
+
+/** Null until someone has reported a deck at the event. */
+export function fetchLiveReports(slug: string): Promise<LiveReports | null> {
+  return client.fetchJsonOptional<LiveReports>(`/${liveReportsKey(slug)}`);
+}
+
+/** The archetype now shown for the seat, which may not be the one just reported. */
+export async function submitDeckReport(report: DeckReport): Promise<string | null> {
+  const response = await fetch('/api/live/report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(report)
+  });
+  if (!response.ok) {
+    throw new Error(`Report failed (${response.status})`);
+  }
+  return ((await response.json()) as { archetype: string | null }).archetype;
 }

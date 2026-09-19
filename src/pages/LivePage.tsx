@@ -1,26 +1,29 @@
 import { A, useParams, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, For, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import type { LiveMatch, LiveSeat } from '../../shared/live/types';
+import type { ArchetypeIndexEntry } from '../types';
 import {
   createProfileLookup,
   filterMatches,
   followedMatches,
   matchStatus,
   type MatchStatus,
-  recordLabel
+  recordLabel,
+  seatKey
 } from '../../shared/live/view';
 import { Chip, ChipGroup, SearchInput } from '../components/Chip';
 import { EmptyState } from '../components/EmptyState';
 import { Pagination } from '../components/Pagination';
 import { Section } from '../components/Section';
 import { Skeleton } from '../components/Skeleton';
-import { fetchPlayerIndexSlim } from '../lib/data';
-import { fetchLiveIndex, fetchLiveRound } from '../lib/data/live';
+import { fetchOnlineArchetypes, fetchPlayerIndexSlim } from '../lib/data';
+import { fetchLiveIndex, fetchLiveReports, fetchLiveRound, submitDeckReport } from '../lib/data/live';
 import { debounced } from '../lib/debounce';
-import { useLiveFollows } from '../lib/liveFollows';
+import { liveVoterId, useLiveFollows } from '../lib/liveFollows';
 import { createPolled } from '../lib/livePoll';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { latestValue, resolved } from '../lib/resource';
+import { LiveDeck } from './live/LiveDeck';
 import { LiveRun, type RunPlayer } from './live/LiveRun';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/players.css';
@@ -63,6 +66,22 @@ export function LivePage() {
   const query = () => searchParams.q ?? '';
   const setQuery = (q: string) => setSearchParams({ q: q || undefined, page: undefined }, { replace: true });
   const debouncedQuery = debounced(query, 150);
+  // Reported decks: the published picks, plus whatever this visitor's own
+  // report came back as, so a report shows at once rather than a poll later.
+  const reports = createPolled(() => params.slug, fetchLiveReports);
+  const [archetypes] = createResource(fetchOnlineArchetypes);
+  const [reported, setReported] = createSignal<Record<string, string | null>>({});
+  const archetypeByName = createMemo(() => new Map((resolved(archetypes) ?? []).map(entry => [entry.name, entry])));
+  const deckOf = (seat: RunPlayer): ArchetypeIndexEntry | undefined => {
+    const key = seatKey(seat);
+    const name = key in reported() ? reported()[key] : latestValue(reports)?.decks[key];
+    return name ? archetypeByName().get(name) : undefined;
+  };
+  const reportDeck = async (seat: RunPlayer, archetype: string) => {
+    const shown = await submitDeckReport({ slug: params.slug, seat: seatKey(seat), archetype, voter: liveVoterId() });
+    setReported(current => ({ ...current, [seatKey(seat)]: shown }));
+  };
+
   const { follows } = useLiveFollows();
   const followingOnly = () => searchParams.following === '1';
   const filtered = createMemo(() => {
@@ -149,6 +168,9 @@ export function LivePage() {
             playerId={profileOf()({ ...runPlayer()!, wins: 0, losses: 0, ties: 0, points: 0 })}
             hrefFor={runHref}
             closeHref={runHref(null)}
+            archetypes={resolved(archetypes) ?? []}
+            deckOf={deckOf}
+            onReport={archetype => reportDeck(runPlayer()!, archetype)}
           />
         </Show>
 
@@ -188,7 +210,9 @@ export function LivePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    <For each={pageItems()}>{match => <MatchRow match={match} hrefFor={runHref} />}</For>
+                    <For each={pageItems()}>
+                      {match => <MatchRow match={match} hrefFor={runHref} deckOf={deckOf} />}
+                    </For>
                   </tbody>
                 </table>
               </div>
@@ -201,7 +225,11 @@ export function LivePage() {
   );
 }
 
-function MatchRow(props: { match: LiveMatch; hrefFor: (seat: RunPlayer) => string }) {
+function MatchRow(props: {
+  match: LiveMatch;
+  hrefFor: (seat: RunPlayer) => string;
+  deckOf: (seat: RunPlayer) => ArchetypeIndexEntry | undefined;
+}) {
   return (
     <tr>
       <td class='num muted-cell players-rank'>{props.match.table || '—'}</td>
@@ -209,7 +237,7 @@ function MatchRow(props: { match: LiveMatch; hrefFor: (seat: RunPlayer) => strin
         {i => (
           <td class='players-name'>
             <Show when={props.match.seats[i]} fallback={<span class='muted-cell'>Bye</span>}>
-              {seat => <SeatCell seat={seat()} href={props.hrefFor(seat())} />}
+              {seat => <SeatCell seat={seat()} href={props.hrefFor(seat())} deck={props.deckOf(seat())} />}
             </Show>
           </td>
         )}
@@ -219,7 +247,7 @@ function MatchRow(props: { match: LiveMatch; hrefFor: (seat: RunPlayer) => strin
   );
 }
 
-function SeatCell(props: { seat: LiveSeat; href: string }) {
+function SeatCell(props: { seat: LiveSeat; href: string; deck?: ArchetypeIndexEntry }) {
   return (
     <span class='players-ident'>
       <Show when={props.seat.result}>
@@ -229,6 +257,7 @@ function SeatCell(props: { seat: LiveSeat; href: string }) {
         {props.seat.name}
       </A>
       <span class='players-country'>{props.seat.country}</span>
+      <Show when={props.deck}>{entry => <LiveDeck entry={entry()} iconsOnly />}</Show>
       <span class='muted-cell'>
         {recordLabel(props.seat)}
         {props.seat.dropped ? ' · dropped' : ''}

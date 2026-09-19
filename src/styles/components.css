@@ -45,6 +45,10 @@
   align-items: center;
   gap: var(--space-3);
 }
+.live-deck-select {
+  width: auto;
+  max-width: 180px;
+}
 .live-player-row {
   margin-top: var(--space-4);
 }
