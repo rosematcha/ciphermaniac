@@ -7,8 +7,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { LIVE_EVENTS } from '../../shared/live/schedule.ts';
-import { isEventLive } from '../../shared/live/tick.ts';
+import { eventsOn, isEventLive, isEventOn, LIVE_EVENTS } from '../../shared/live/schedule.ts';
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -30,4 +29,15 @@ test('every listed event has an RK9 id and is live on each of its days', () => {
     assert.equal(isEventLive(event, new Date(`${event.firstDay}T12:00:00Z`)), true);
     assert.equal(isEventLive(event, new Date(`${event.lastDay}T12:00:00Z`)), true);
   }
+});
+
+test('the site advertises an event on its own days, in any time zone, and not around them', () => {
+  const [event] = LIVE_EVENTS;
+  const at = (iso: string) => eventsOn(new Date(iso)).includes(event);
+  assert.equal(at(`${event.firstDay}T12:00:00Z`), true);
+  // Saturday morning in Auckland is still Friday in UTC; Sunday night in Honolulu is already Monday.
+  assert.equal(isEventOn(event, new Date(Date.parse(`${event.firstDay}T00:00:00Z`) - 13 * 3_600_000)), true);
+  assert.equal(isEventOn(event, new Date(Date.parse(`${event.lastDay}T00:00:00Z`) + 35 * 3_600_000)), true);
+  assert.equal(isEventOn(event, new Date(Date.parse(`${event.firstDay}T00:00:00Z`) - 15 * 3_600_000)), false);
+  assert.equal(isEventOn(event, new Date(Date.parse(`${event.lastDay}T00:00:00Z`) + 37 * 3_600_000)), false);
 });

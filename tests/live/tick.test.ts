@@ -15,12 +15,12 @@ import {
   ACTIVE_WINDOW_MS,
   IDLE_INTERVAL_MS,
   initialState,
-  isEventLive,
   liveKeys,
   resumeState,
   tickEvent,
   type TickOutcome
 } from '../../shared/live/tick.ts';
+import { isEventLive } from '../../shared/live/schedule.ts';
 import type { LiveEvent, LiveIndex, LiveRound, LiveState } from '../../shared/live/types.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/live');
