@@ -2,11 +2,12 @@
  * Live round poller: one `tickEvent` per live event per minute, published to
  * `live/v1/{slug}/` on R2.
  *
- * Runs as a long GitHub Actions job rather than a Worker cron: parsing a
+ * Runs as a long-lived process rather than a Worker cron: parsing a
  * 3,000-player round costs more CPU than a free-plan Worker invocation allows.
- * The job stops itself short of the six-hour runner limit and the workflow's
- * queued run takes over, picking the round up from the published index. It
- * exits at once when no event is live.
+ * Normally a service on an always-on host restarts it whenever it exits; the
+ * Live Rounds workflow can run it too, as a fallback. It stops itself after
+ * LIVE_RUN_MINUTES (under the six-hour Actions limit by default) and exits at
+ * once when no event is live; the next run resumes from the published index.
  *
  * The events come from `live/v1/schedule.json`, which each run rebuilds from
  * RK9's event list when the published copy is more than half a day old.

@@ -92,7 +92,7 @@ export interface LiveIndex {
   matches: number;
   /** Hash of the round's matches; changes whenever `r{round}.json` does. */
   hash: string;
-  /** Matches in the current round without a confirmed result. */
+  /** Matches in the current round with no result, confirmed or submitted. */
   playing: number;
   updatedAt: string;
 }

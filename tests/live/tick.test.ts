@@ -83,7 +83,8 @@ test('the first poll publishes the round, then its index', async () => {
   assert.equal(await h.tick(0), 'written');
   assert.deepEqual(h.puts, [liveKeys.round(EVENT, 1), liveKeys.index(EVENT)]);
   const index = h.files.get(liveKeys.index(EVENT)) as LiveIndex;
-  assert.deepEqual([index.round, index.playing], [1, 3]);
+  // Two tables in the fixture have a submitted result, so only one is still playing.
+  assert.deepEqual([index.round, index.playing], [1, 1]);
   assert.equal((h.files.get(liveKeys.round(EVENT, 1)) as LiveRound).matches.length, 8);
 });
 

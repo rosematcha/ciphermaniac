@@ -13,10 +13,12 @@ import {
   findSeat,
   foldName,
   followedMatches,
+  isDecided,
   matchStatus,
   playerRun,
   recordLabel,
-  seatKey
+  seatKey,
+  seatOutcome
 } from '../../shared/live/view.ts';
 
 function seat(name: string, country = 'US'): LiveSeat {
@@ -110,4 +112,30 @@ test('follows are kept by folded name and country, and pick out their tables', (
     followedMatches(MATCHES, follows).map(match => match.table),
     [2]
   );
+});
+
+test('a confirmed result stands; a submitted one is shown provisionally for both seats', () => {
+  const confirmed: LiveMatch = {
+    table: 5,
+    seats: [
+      { ...seat('Ada Lovelace', 'GB'), result: 'win' },
+      { ...seat('Grace Hopper'), result: 'loss' }
+    ],
+    complete: true
+  };
+  assert.deepEqual(seatOutcome(confirmed, 0), { result: 'win', provisional: false });
+  const submitted: LiveMatch = {
+    table: 6,
+    seats: [seat('Alan Turing'), seat('Barbara Liskov')],
+    complete: false,
+    submitted: 'p2'
+  };
+  assert.deepEqual(seatOutcome(submitted, 0), { result: 'loss', provisional: true });
+  assert.deepEqual(seatOutcome(submitted, 1), { result: 'win', provisional: true });
+  assert.deepEqual(seatOutcome({ ...submitted, submitted: 'tie' }, 0), { result: 'tie', provisional: true });
+  assert.equal(seatOutcome({ ...submitted, submitted: undefined }, 0), null);
+});
+
+test('a table is decided once a result is confirmed or submitted', () => {
+  assert.deepEqual(MATCHES.map(isDecided), [false, true, true, true]);
 });
