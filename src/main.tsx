@@ -121,7 +121,7 @@ render(
       <Route path='/players/:id' component={PlayerProfilePage} />
       <Route path='/standings' component={() => <Navigate href='/players' />} />
       <Route path='/standings/:id' component={StandingsPlayerRedirect} />
-      <Route path='/live/:code' component={LivePage} />
+      <Route path='/live/:slug' component={LivePage} />
       <Route path='/events' component={EventLocatorPage} />
       <Route path='/tools' component={ToolsPage} />
       <Route path='/tools/social-graphics' component={SocialGraphicsPage} />

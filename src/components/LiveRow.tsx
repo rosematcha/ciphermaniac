@@ -9,7 +9,7 @@ import { WhileEventOn } from './LiveBanner';
 
 /** A tournament row that leads to the live page, in the list's own markup. */
 function LiveRow(props: { event: LiveEvent; query?: string; detail: JSX.Element; aside?: JSX.Element }) {
-  const href = () => `/live/${props.event.labsCode}${props.query ? `?q=${encodeURIComponent(props.query)}` : ''}`;
+  const href = () => `/live/${props.event.slug}${props.query ? `?q=${encodeURIComponent(props.query)}` : ''}`;
   return (
     <A class='tournament-row tournament-row-link' href={href()}>
       <span class='date'>Live</span>
@@ -27,7 +27,7 @@ export function LiveEventRow() {
 }
 
 function EventRow(props: { event: LiveEvent }) {
-  const index = createPolled(() => props.event.labsCode, fetchLiveIndex);
+  const index = createPolled(() => props.event.slug, fetchLiveIndex);
   return (
     <Show when={latestValue(index)}>
       {current => (
@@ -54,10 +54,10 @@ export function LivePlayerRow(props: { name: string; countries: readonly string[
 }
 
 function PlayerRow(props: { event: LiveEvent; name: string; countries: readonly string[] }) {
-  const index = createPolled(() => props.event.labsCode, fetchLiveIndex);
+  const index = createPolled(() => props.event.slug, fetchLiveIndex);
   const round = createPolled(
     () => latestValue(index)?.round,
-    n => fetchLiveRound(props.event.labsCode, n)
+    n => fetchLiveRound(props.event.slug, n)
   );
   const seat = createMemo(() => findSeat(latestValue(round)?.matches ?? [], props.name, props.countries));
   return (

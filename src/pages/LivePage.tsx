@@ -1,6 +1,5 @@
 import { A, useParams, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, For, Show } from 'solid-js';
-import { LIVE_EVENTS } from '../../shared/live/schedule';
 import type { LiveMatch, LiveSeat } from '../../shared/live/types';
 import { createProfileLookup, filterMatches, matchStatus, type MatchStatus, recordLabel } from '../../shared/live/view';
 import { ChipGroup, SearchInput } from '../components/Chip';
@@ -23,20 +22,19 @@ const STATUS_LABEL: Record<MatchStatus, string> = { final: 'Final', submitted: '
 const RESULT_LETTER = { win: 'W', loss: 'L', tie: 'T' } as const;
 
 /**
- * /live/:code — a listed event's pairings as RK9 posts them, a round at a time.
+ * /live/:slug — a listed event's pairings as RK9 posts them, a round at a time.
  * The index names the current round and is polled; the round itself is
  * refetched on the same beat, and older rounds are a chip away.
  */
 export function LivePage() {
-  const params = useParams<{ code: string }>();
+  const params = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams<{ q?: string; round?: string; page?: string }>();
-  const event = () => LIVE_EVENTS.find(candidate => candidate.labsCode === params.code);
 
-  const index = createPolled(() => params.code, fetchLiveIndex);
+  const index = createPolled(() => params.slug, fetchLiveIndex);
   const indexData = () => latestValue(index);
   const round = () => Number(searchParams.round) || indexData()?.round;
   const roundFile = createPolled(
-    () => (round() ? ([params.code, round()!] as const) : null),
+    () => (round() ? ([params.slug, round()!] as const) : null),
     ([code, n]) => fetchLiveRound(code, n)
   );
   const matches = () => latestValue(roundFile)?.matches;
@@ -68,13 +66,13 @@ export function LivePage() {
     );
 
   createEffect(() => {
-    document.title = `${event()?.name ?? 'Live'} — Ciphermaniac`;
+    document.title = `${indexData()?.name ?? 'Live'} — Ciphermaniac`;
   });
 
   return (
     <>
       <section class='hero'>
-        <h1>{event()?.name ?? 'Live rounds'}</h1>
+        <h1>{indexData()?.name ?? 'Live rounds'}</h1>
         <div class='hero-meta'>
           <Show when={indexData()} fallback={<Skeleton width='260px' height='13px' />}>
             {current => (
