@@ -3,19 +3,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { leadingArchetype, liveReportsKey, parseDeckReport } from '../../shared/live/reports.ts';
+import { leadingArchetype, liveReportsKey, parseDeckReport, reportableArchetypes } from '../../shared/live/reports.ts';
 
 const REPORT = {
   slug: 'baltimore-2027',
   seat: 'jose nunez|MX',
-  archetype: 'Dragapult_Dusknoir',
+  archetype: 'Dragapult Dusknoir',
   voter: '3f2c1a9e-0b7d-4c55-9a11-2b6f0e8d7c41'
 };
 
 test('a well-formed report parses, and carries nothing extra along', () => {
   assert.deepEqual(parseDeckReport({ ...REPORT, note: 'free text is not part of a report' }), REPORT);
   assert.deepEqual(parseDeckReport({ ...REPORT, seat: 'no country|' }), { ...REPORT, seat: 'no country|' });
-  assert.equal(parseDeckReport({ ...REPORT, archetype: "Rocket's_Honchkrow" })?.archetype, "Rocket's_Honchkrow");
+  assert.equal(parseDeckReport({ ...REPORT, archetype: "Rocket's Honchkrow" })?.archetype, "Rocket's Honchkrow");
 });
 
 test('anything else is not a report', () => {
@@ -25,7 +25,8 @@ test('anything else is not a report', () => {
     { ...REPORT, slug: '../etc' },
     { ...REPORT, seat: 'no separator' },
     { ...REPORT, seat: 'two|bars|US' },
-    { ...REPORT, archetype: 'Has Spaces <b>' },
+    { ...REPORT, archetype: 'Markup <b>' },
+    { ...REPORT, archetype: 'x'.repeat(61) },
     { ...REPORT, archetype: '' },
     { ...REPORT, voter: 'short' },
     { ...REPORT, voter: 42 },
@@ -65,4 +66,13 @@ test('an archetype leads with more than half the reports: one report does, a spl
 
 test('reports are published beside the event they belong to', () => {
   assert.equal(liveReportsKey('baltimore-2027'), 'live/v1/baltimore-2027/reports.json');
+});
+
+test('the picker offers the online index first, then the rest of the icon map by name, once each', () => {
+  assert.deepEqual(reportableArchetypes(['Slowking', 'Dragapult'], ['Ceruledge', 'dragapult', 'Alakazam']), [
+    'Slowking',
+    'Dragapult',
+    'Alakazam',
+    'Ceruledge'
+  ]);
 });

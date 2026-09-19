@@ -1,32 +1,38 @@
-import { createMemo, createSignal, For, Show } from 'solid-js';
+import { createSignal, For, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
-import type { ArchetypeIndexEntry } from '../../types';
+
+/** A reported archetype, by label, with the index's own icons when it has an entry there. */
+export interface ReportedDeck {
+  label: string;
+  icons?: string[];
+}
 
 /** A reported archetype: its sprites, and its name unless the cell is too tight for one. */
-export function LiveDeck(props: { entry: ArchetypeIndexEntry; iconsOnly?: boolean }) {
-  const slugs = () => resolveArchetypeIcons(props.entry, getArchetypeIconMap());
+export function LiveDeck(props: { deck: ReportedDeck; iconsOnly?: boolean }) {
+  const slugs = () => resolveArchetypeIcons(props.deck, getArchetypeIconMap());
   return (
-    <span class='round-deck' title={props.iconsOnly ? props.entry.label : undefined}>
+    <span class='round-deck' title={props.iconsOnly ? props.deck.label : undefined}>
       <ArchetypeIcons slugs={slugs()} size={16} />
-      <Show when={!props.iconsOnly}>
-        <span>{props.entry.label}</span>
+      <Show when={!props.iconsOnly || slugs().length === 0}>
+        <span>{props.deck.label}</span>
       </Show>
     </span>
   );
 }
 
 /**
- * Picks the deck a player is on from the archetype index, most played first.
- * A native select: thirty-odd options need no typeahead, and phones get their
- * own picker for free.
+ * Picks the deck a player is on: the online meta's archetypes first, most
+ * played first, then every other archetype the site names. A native select, so
+ * typing jumps to a name and phones get their own picker.
  */
 export function DeckReporter(props: {
-  archetypes: readonly ArchetypeIndexEntry[];
+  /** Labels, in the order to offer them; the first `leading` are the online meta's. */
+  labels: readonly string[];
+  leading: number;
   onReport: (archetype: string) => Promise<void>;
 }) {
   const [state, setState] = createSignal<'idle' | 'sending' | 'failed'>('idle');
-  const options = createMemo(() => [...props.archetypes].sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0)));
   let select: HTMLSelectElement | undefined;
   const report = async (archetype: string) => {
     setState('sending');
@@ -53,7 +59,12 @@ export function DeckReporter(props: {
       }}
     >
       <option value=''>{state() === 'failed' ? 'Report failed, try again' : 'Report deck...'}</option>
-      <For each={options()}>{entry => <option value={entry.name}>{entry.label}</option>}</For>
+      <optgroup label='Online meta'>
+        <For each={props.labels.slice(0, props.leading)}>{label => <option value={label}>{label}</option>}</For>
+      </optgroup>
+      <optgroup label='Everything else'>
+        <For each={props.labels.slice(props.leading)}>{label => <option value={label}>{label}</option>}</For>
+      </optgroup>
     </select>
   );
 }
