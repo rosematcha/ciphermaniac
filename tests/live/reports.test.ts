@@ -15,6 +15,7 @@ const REPORT = {
 test('a well-formed report parses, and carries nothing extra along', () => {
   assert.deepEqual(parseDeckReport({ ...REPORT, note: 'free text is not part of a report' }), REPORT);
   assert.deepEqual(parseDeckReport({ ...REPORT, seat: 'no country|' }), { ...REPORT, seat: 'no country|' });
+  assert.equal(parseDeckReport({ ...REPORT, archetype: "Rocket's_Honchkrow" })?.archetype, "Rocket's_Honchkrow");
 });
 
 test('anything else is not a report', () => {
