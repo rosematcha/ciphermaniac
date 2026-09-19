@@ -15,6 +15,7 @@
  */
 
 import { detectRoundBreakage, parseRk9Round } from './rk9Pairings';
+import { isDecided } from './view';
 import type { LiveEvent, LiveIndex, LiveRound, LiveRoundParse, LiveState } from './types';
 
 /** Still polling every call this long after the last observed change. */
@@ -84,7 +85,7 @@ function buildIndex(event: LiveEvent, round: LiveRound, hash: string): LiveIndex
     round: round.round,
     matches: round.matches.length,
     hash,
-    playing: round.matches.filter(match => !match.complete).length,
+    playing: round.matches.filter(match => !isDecided(match)).length,
     updatedAt: round.updatedAt
   };
 }

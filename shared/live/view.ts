@@ -6,7 +6,7 @@
  * @module shared/live/view
  */
 
-import type { LiveMatch, LiveRound, LiveSeat } from './types';
+import type { LiveMatch, LiveResult, LiveRound, LiveSeat } from './types';
 
 /** Lower-cased and stripped of diacritics, the way the players search folds names. */
 export function foldName(value: string): string {
@@ -108,4 +108,35 @@ export function playerRun(
 /** Matches with at least one followed seat. */
 export function followedMatches(matches: readonly LiveMatch[], follows: ReadonlySet<string>): readonly LiveMatch[] {
   return matches.filter(match => match.seats.some(seat => follows.has(seatKey(seat))));
+}
+
+export interface SeatOutcome {
+  result: LiveResult;
+  /** Reported by a player and not yet confirmed by staff. */
+  provisional: boolean;
+}
+
+/**
+ * How a seat's match went: the confirmed result, or else the one a player has
+ * submitted. Staff confirmation can lag a round by half an hour, and a
+ * submitted result is almost always the one confirmed.
+ */
+export function seatOutcome(match: LiveMatch, index: number): SeatOutcome | null {
+  const confirmed = match.seats[index]?.result;
+  if (confirmed) {
+    return { result: confirmed, provisional: false };
+  }
+  if (!match.submitted || match.complete) {
+    return null;
+  }
+  if (match.submitted === 'tie') {
+    return { result: 'tie', provisional: true };
+  }
+  const winner = match.submitted === 'p1' ? 0 : 1;
+  return { result: index === winner ? 'win' : 'loss', provisional: true };
+}
+
+/** A table whose result is known, confirmed or submitted. */
+export function isDecided(match: LiveMatch): boolean {
+  return match.complete || match.submitted !== undefined;
 }
