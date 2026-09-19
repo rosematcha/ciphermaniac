@@ -18,7 +18,8 @@ import { useLiveFollows } from '../../lib/liveFollows';
 import { latestValue } from '../../lib/resource';
 
 const RESULT_LETTER = { win: 'W', loss: 'L', tie: 'T' } as const;
-const PENDING = { submitted: 'Submitted', playing: 'Playing', final: '' } as const;
+/** Shared with the pairings table's status column. */
+export const STATUS_LABEL = { final: 'Final', submitted: 'Submitted', playing: 'Playing' } as const;
 
 export interface RunPlayer {
   name: string;
@@ -143,7 +144,7 @@ function RunRow(props: {
           {current =>
             matchStatus(current().match) === 'final'
               ? current().match.table || ''
-              : PENDING[matchStatus(current().match)]
+              : STATUS_LABEL[matchStatus(current().match)]
           }
         </Show>
       </span>

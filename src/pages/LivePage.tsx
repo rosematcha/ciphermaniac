@@ -6,7 +6,6 @@ import {
   createProfileLookup,
   filterMatches,
   followedMatches,
-  type MatchStatus,
   matchStatus,
   recordLabel,
   seatKey,
@@ -28,13 +27,11 @@ import { createPolled } from '../lib/livePoll';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { latestValue, resolved } from '../lib/resource';
 import { deckIcons, type ReportedDeck } from './live/LiveDeck';
-import { LiveRun, OutcomeMark, type RunPlayer } from './live/LiveRun';
+import { LiveRun, OutcomeMark, type RunPlayer, STATUS_LABEL } from './live/LiveRun';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/players.css';
 
 const PAGE_SIZE = 50;
-
-const STATUS_LABEL: Record<MatchStatus, string> = { final: 'Final', submitted: 'Submitted', playing: 'Playing' };
 
 /**
  * /live/:slug — a listed event's pairings as RK9 posts them, a round at a time.
