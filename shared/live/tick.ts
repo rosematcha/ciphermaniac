@@ -45,13 +45,6 @@ export const liveKeys = {
   round: (event: LiveEvent, round: number): string => `live/v1/${event.labsCode}/r${round}.json`
 };
 
-export function isEventLive(event: LiveEvent, now: Date): boolean {
-  const day = 24 * 60 * 60 * 1000;
-  const from = Date.parse(`${event.firstDay}T00:00:00Z`) - day;
-  const to = Date.parse(`${event.lastDay}T00:00:00Z`) + 2 * day;
-  return now.getTime() >= from && now.getTime() < to;
-}
-
 const IDLE_SINCE = new Date(0).toISOString();
 
 /** Starts idle, so an event with nothing posted is polled at the idle interval. */
