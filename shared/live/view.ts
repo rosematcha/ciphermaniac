@@ -236,7 +236,7 @@ export function playerRun(
 }
 
 export interface RunTail {
-  /** The last round the player is paired in. */
+  /** The last round the player is paired in, as that round's own file numbers it. */
   round: number;
   view: SeatView;
 }
@@ -245,39 +245,54 @@ export interface RunTail {
  * Where a player's event has got to, from the rounds published so far: their
  * current pairing, or the last one they had once they are out of the draw.
  *
- * A player is paired every round until they drop or miss the cut, so their
- * rounds are a run from the first one: a player absent from round one was
- * never in the event, and the last round that has them is a boundary the
- * search can halve for rather than walk back to. That keeps a profile page
- * during an event to one round file for a player still in, two for everyone
- * who is not at the event at all, and a handful for a run that has ended.
+ * A player is paired every round until they drop or miss the cut, so the rounds
+ * that carry their name are a run from the first one: a player absent from
+ * round one was never in the event, and the last round that has them is a
+ * boundary the search can halve for rather than walk back to. That keeps a
+ * profile page during an event to one round file for a player still in, two for
+ * everyone who is not at the event, and a handful for a run that has ended.
+ *
+ * The boundary is searched on the name alone, not on `findSeat`, because
+ * `findSeat` also refuses a name two players in one round share — a refusal
+ * mid-run would read as the run ending there. The seat itself is still taken
+ * the strict way, so a shared name yields no tail rather than a stranger's.
  */
 export async function lastSeatInEvent(
   current: number,
-  seatIn: (round: number) => Promise<SeatView | null>
+  readRound: (round: number) => Promise<LiveRound | null>,
+  names: readonly string[],
+  countries: readonly string[]
 ): Promise<RunTail | null> {
-  const latest = await seatIn(current);
+  const paired = async (n: number): Promise<LiveRound | null> => {
+    const round = await readRound(n);
+    return round && seatsNamed(round.matches, names, countries).length > 0 ? round : null;
+  };
+  const tail = (round: LiveRound): RunTail | null => {
+    const view = findSeat(round.matches, names, countries);
+    return view ? { round: round.round, view } : null;
+  };
+  const latest = await paired(current);
   if (latest) {
-    return { round: current, view: latest };
+    return tail(latest);
   }
-  const first = current > 1 ? await seatIn(1) : null;
+  const first = current > 1 ? await paired(1) : null;
   if (!first) {
     return null;
   }
-  let found: RunTail = { round: 1, view: first };
+  let found = first;
   let low = 2;
   let high = current - 1;
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
-    const view = await seatIn(mid);
-    if (view) {
-      found = { round: mid, view };
+    const round = await paired(mid);
+    if (round) {
+      found = round;
       low = mid + 1;
     } else {
       high = mid - 1;
     }
   }
-  return found;
+  return tail(found);
 }
 
 export interface RunSeatEntry {

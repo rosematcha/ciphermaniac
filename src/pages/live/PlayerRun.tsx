@@ -4,7 +4,6 @@ import { aliasedPlayerId, seatNamesFor } from '../../../shared/live/seatAliases'
 import type { LiveEvent } from '../../../shared/live/types';
 import {
   createProfileLookup,
-  findSeat,
   findSeats,
   lastSeatInEvent,
   recordLabel,
@@ -51,11 +50,8 @@ export function PlayerRun(props: PlayerRunProps) {
   // changes nothing must not re-run the search.
   const [ended] = createResource(
     () => (latestValue(round) && playing().length === 0 ? (current() ?? null) : null),
-    at =>
-      // eslint-disable-next-line solid/reactivity -- a fetcher reads props on each run, which is when they matter
-      lastSeatInEvent(at, async n =>
-        findSeat((await fetchLiveRound(props.event.slug, n))?.matches ?? [], names(), [...props.countries])
-      )
+    // eslint-disable-next-line solid/reactivity -- a fetcher reads props on each run, which is when they matter
+    at => lastSeatInEvent(at, n => fetchLiveRound(props.event.slug, n), names(), [...props.countries])
   );
   const seats = createMemo((): readonly SeatView[] => {
     const tail = playing().length > 0 ? null : latestValue(ended);

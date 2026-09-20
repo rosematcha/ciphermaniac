@@ -185,7 +185,7 @@ test('an archetype outside the index, an event that is not on, and a malformed b
   assert.equal((await post(report('Made Up Deck', 1))).status, 400);
   assert.equal((await post({ ...report('Dragapult', 1), slug: 'elsewhere-2027' })).status, 404);
   assert.equal((await post('not json')).status, 400);
-  assert.equal((await post({ ...report('Dragapult', 1), note: 'x'.repeat(8000) })).status, 400);
+  assert.equal((await post({ ...report('Dragapult', 1), note: 'x'.repeat(20_000) })).status, 400);
   assert.equal(votes.length, 0);
 });
 
@@ -285,4 +285,13 @@ test('a flood from one address is limited, and missing bindings are a clean 503'
   }
   assert.equal(last, 429);
   assert.equal((await post(report('Dragapult', 1), {} as never)).status, 503);
+});
+
+test('a batch costs the address one per report, not one per request', async () => {
+  const batch = (from: number) =>
+    post({ reports: Array.from({ length: 20 }, (_, i) => report('Dragapult', 1, `player ${from + i}|US`)) });
+  for (let sent = 0; sent < 60; sent += 20) {
+    assert.equal((await batch(sent)).status, 200, `after ${sent}`);
+  }
+  assert.equal((await post(report('Dragapult', 1, 'one more|US'))).status, 429);
 });

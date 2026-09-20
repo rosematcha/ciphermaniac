@@ -44,8 +44,8 @@ import { createRateLimiter } from '../../lib/api/rateLimiter.js';
 import { jsonError, jsonSuccess } from '../../lib/api/responses.js';
 import { createVoteStore, type D1Like, type VoteStore } from '../../lib/live/votes.js';
 
-/** A report is a couple of hundred bytes; this leaves a full batch room to spare. */
-const MAX_BODY_BYTES = 256 * MAX_REPORTS_PER_REQUEST;
+/** Every field of a report is length-bounded; 512 bytes each leaves a full batch room to spare. */
+const MAX_BODY_BYTES = 512 * MAX_REPORTS_PER_REQUEST;
 /**
  * A whole regional field and then some; past this an ID is not watching, it is
  * writing. Only new seats count against it: a device at the cap can still
@@ -67,10 +67,20 @@ function trusted(env: { TRUSTED_REPORTERS?: string }, ip: string): boolean {
   return (env.TRUSTED_REPORTERS ?? '').split(',').some(entry => entry.trim() === ip && ip !== 'unknown');
 }
 
-/** Whether this request may be served: a trusted address spends none of the per-IP allowance. */
-function withinRate(env: { TRUSTED_REPORTERS?: string }, request: Request): boolean {
-  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  return trusted(env, ip) || rateLimiter.check(ip).allowed;
+/**
+ * Spends `reports` of the address's allowance. A batch is charged per report
+ * rather than per request, so filling in a run is not two dozen reports for the
+ * price of one. A trusted address spends none of it.
+ */
+function withinRate(env: { TRUSTED_REPORTERS?: string }, ip: string, reports: number): boolean {
+  if (trusted(env, ip)) {
+    return true;
+  }
+  let allowed = true;
+  for (let i = 0; i < reports; i += 1) {
+    allowed = rateLimiter.check(ip).allowed && allowed;
+  }
+  return allowed;
 }
 
 interface Bucket {
@@ -195,13 +205,18 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
   if (!env.REPORTS || !env.LIVE_DB) {
     return jsonError('Reports are not available', 503);
   }
-  if (!withinRate(env, request)) {
+  // One unit before the body is even read, so a flood of junk is limited too.
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  if (!withinRate(env, ip, 1)) {
     return jsonError('Too many reports. Try again later.', 429);
   }
   const reports = parseDeckReports(await readBody(request));
   const first = reports?.[0];
   if (!reports || !first) {
     return jsonError('Not a deck report', 400);
+  }
+  if (!withinRate(env, ip, reports.length - 1)) {
+    return jsonError('Too many reports. Try again later.', 429);
   }
   const { slug, seat } = first;
   const refused = await refuse(env.REPORTS, slug, reports);

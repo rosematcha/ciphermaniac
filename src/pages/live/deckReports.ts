@@ -9,7 +9,7 @@
  */
 
 import { createMemo, createResource, createSignal } from 'solid-js';
-import { reportableArchetypes } from '../../../shared/live/reports';
+import { MAX_REPORTS_PER_REQUEST, reportableArchetypes } from '../../../shared/live/reports';
 import { seatKey, type SeatRef, type SeatReport } from '../../../shared/live/view';
 import { fetchArchetypeLabels, fetchOnlineArchetypes } from '../../lib/data';
 import { fetchLiveReports, submitDeckReports } from '../../lib/data/live';
@@ -62,16 +62,20 @@ export function useDeckReports(slug: () => string): DeckReports {
 
   const { mine, remember } = useMyReports();
   // One request whether it is a single seat or a whole run; the answer is what
-  // each seat now shows, which a lone report need not be.
+  // each seat now shows, which a lone report need not be. Longer than a request
+  // takes only if an event ever plays more rounds than a batch holds.
   const reportMany = async (entries: readonly SeatReport[]) => {
     const voter = liveVoterId();
-    const shown = await submitDeckReports(
-      entries.map(entry => ({ slug: slug(), seat: seatKey(entry.seat), archetype: entry.archetype, voter }))
-    );
-    for (const entry of entries) {
-      remember(reportKey(slug(), seatKey(entry.seat)), entry.archetype);
+    for (let from = 0; from < entries.length; from += MAX_REPORTS_PER_REQUEST) {
+      const batch = entries.slice(from, from + MAX_REPORTS_PER_REQUEST);
+      const shown = await submitDeckReports(
+        batch.map(entry => ({ slug: slug(), seat: seatKey(entry.seat), archetype: entry.archetype, voter }))
+      );
+      for (const entry of batch) {
+        remember(reportKey(slug(), seatKey(entry.seat)), entry.archetype);
+      }
+      setReported(current => ({ ...current, ...shown }));
     }
-    setReported(current => ({ ...current, ...shown }));
   };
   return {
     decks,
