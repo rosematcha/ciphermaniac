@@ -3,7 +3,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { leadingArchetype, liveReportsKey, parseDeckReport, reportableArchetypes } from '../../shared/live/reports.ts';
+import {
+  leadingArchetype,
+  liveReportsKey,
+  MAX_REPORTS_PER_REQUEST,
+  parseDeckReports,
+  reportableArchetypes
+} from '../../shared/live/reports.ts';
 
 const REPORT = {
   slug: 'baltimore-2027',
@@ -11,6 +17,10 @@ const REPORT = {
   archetype: 'Dragapult Dusknoir',
   voter: '3f2c1a9e-0b7d-4c55-9a11-2b6f0e8d7c41'
 };
+
+/** A lone report is a batch of one, so the single-report rules read through the same door. */
+const parseDeckReport = (body: unknown) => parseDeckReports(body)?.[0] ?? null;
+const seated = (seat: string) => ({ ...REPORT, seat });
 
 test('a well-formed report parses, and carries nothing extra along', () => {
   assert.deepEqual(parseDeckReport({ ...REPORT, note: 'free text is not part of a report' }), REPORT);
@@ -42,6 +52,25 @@ test('anything else is not a report', () => {
   for (const body of bad) {
     assert.equal(parseDeckReport(body), null, JSON.stringify(body));
   }
+});
+
+test('a batch is one device on one event, and is refused whole when it is not', () => {
+  const run = [seated('alice|US'), seated('bob|CA'), { ...seated('cleo|JP'), archetype: null }];
+  assert.deepEqual(parseDeckReports({ reports: run }), run);
+  assert.equal(parseDeckReports({ reports: [] }), null);
+  assert.equal(parseDeckReports({ reports: [seated('alice|US'), seated('alice|US')] }), null);
+  assert.equal(parseDeckReports({ reports: [REPORT, { ...seated('bob|CA'), slug: 'elsewhere-2027' }] }), null);
+  assert.equal(
+    parseDeckReports({ reports: [REPORT, { ...seated('bob|CA'), voter: REPORT.voter.replace('3', '4') }] }),
+    null
+  );
+  assert.equal(parseDeckReports({ reports: [REPORT, 'not a report'] }), null);
+});
+
+test('a batch longer than a run could be is refused', () => {
+  const run = (n: number) => ({ reports: Array.from({ length: n }, (_, i) => seated(`player ${i}|US`)) });
+  assert.equal(parseDeckReports(run(MAX_REPORTS_PER_REQUEST))?.length, MAX_REPORTS_PER_REQUEST);
+  assert.equal(parseDeckReports(run(MAX_REPORTS_PER_REQUEST + 1)), null);
 });
 
 test('an archetype leads with more than half the reports: one report does, a split does not', () => {
