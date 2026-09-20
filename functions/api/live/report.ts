@@ -40,6 +40,7 @@ import {
 import { isEventLive, LIVE_SCHEDULE_KEY } from '../../../shared/live/schedule.js';
 import type { LiveSchedule } from '../../../shared/live/types.js';
 import { ARCHETYPE_INDEX_KEY } from '../../lib/api/archetypeIndexKey.js';
+import { readJsonBody } from '../../lib/api/body.js';
 import { createRateLimiter } from '../../lib/api/rateLimiter.js';
 import { jsonError, jsonSuccess } from '../../lib/api/responses.js';
 import { createVoteStore, type D1Like, type VoteStore } from '../../lib/live/votes.js';
@@ -147,18 +148,6 @@ async function publishSeats(bucket: Bucket, slug: string, settled: ReadonlyMap<s
   });
 }
 
-async function readBody(request: Request): Promise<unknown> {
-  const text = await request.text();
-  if (text.length > MAX_BODY_BYTES) {
-    return null;
-  }
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return null;
-  }
-}
-
 /** Why the batch must be refused, if it must be; the checks a whole batch shares. */
 async function refuse(bucket: Bucket, slug: string, reports: readonly DeckReport[]): Promise<Response | null> {
   if (!(await isLiveEvent(bucket, slug))) {
@@ -201,6 +190,12 @@ async function settle(votes: VoteStore, reports: readonly DeckReport[]): Promise
   return settled;
 }
 
+/** The batch a request carries, or null when it is oversized or not a deck report. */
+async function readReports(request: Request): Promise<DeckReport[] | null> {
+  const body = await readJsonBody(request, MAX_BODY_BYTES);
+  return body.ok ? parseDeckReports(body.value) : null;
+}
+
 export async function onRequestPost({ request, env }: RequestContext): Promise<Response> {
   if (!env.REPORTS || !env.LIVE_DB) {
     return jsonError('Reports are not available', 503);
@@ -210,7 +205,7 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
   if (!withinRate(env, ip, 1)) {
     return jsonError('Too many reports. Try again later.', 429);
   }
-  const reports = parseDeckReports(await readBody(request));
+  const reports = await readReports(request);
   const first = reports?.[0];
   if (!reports || !first) {
     return jsonError('Not a deck report', 400);
