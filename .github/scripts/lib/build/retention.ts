@@ -76,7 +76,11 @@ export function recordGeneration(groups: Map<string, Generation>, object: Stored
   groups.set(prefix, group);
 }
 
-/** Identify every active release and the newest non-active release as one rollback. */
+/**
+ * Identify every active release and its rollback. A release newer than the
+ * active one was never promoted, or was rolled back from, so the newest release
+ * that predates the active one is kept beside it; normally they are the same.
+ */
 export function protectedReleaseIds(manifests: RetainedManifest[], activeIds: Set<string>, now: number): Set<string> {
   if (!Number.isFinite(now) || activeIds.size === 0) {
     throw new Error('Retention requires a valid clock and an active release');
@@ -87,8 +91,12 @@ export function protectedReleaseIds(manifests: RetainedManifest[], activeIds: Se
       throw new Error(`Active release manifest not found: ${id}`);
     }
   }
-  const rollback = ordered.find(manifest => !activeIds.has(manifest.releaseId));
-  return new Set([...activeIds, ...(rollback ? [rollback.releaseId] : [])]);
+  const inactive = ordered.filter(manifest => !activeIds.has(manifest.releaseId));
+  const activeSince = Math.min(
+    ...ordered.filter(manifest => activeIds.has(manifest.releaseId)).map(manifest => Date.parse(manifest.publishedAt))
+  );
+  const rollbacks = [inactive[0], inactive.find(manifest => Date.parse(manifest.publishedAt) < activeSince)];
+  return new Set([...activeIds, ...rollbacks.flatMap(manifest => (manifest ? [manifest.releaseId] : []))]);
 }
 
 /** Keep the immutable roots referenced by the active release and one rollback. */
