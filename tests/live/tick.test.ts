@@ -11,15 +11,8 @@ import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import {
-  ACTIVE_WINDOW_MS,
-  IDLE_INTERVAL_MS,
-  initialState,
-  liveKeys,
-  resumeState,
-  tickEvent,
-  type TickOutcome
-} from '../../shared/live/tick.ts';
+import { ACTIVE_WINDOW_MS, IDLE_INTERVAL_MS } from '../../shared/live/pace.ts';
+import { initialState, liveKeys, resumeState, tickEvent, type TickOutcome } from '../../shared/live/tick.ts';
 import type { LiveEvent, LiveIndex, LiveRound, LiveState } from '../../shared/live/types.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/live');
@@ -27,6 +20,10 @@ const OPEN_ROUND = readFileSync(join(FIXTURES, 'round.html'), 'utf8');
 /** The same round once staff have confirmed every table. */
 const DONE_ROUND = OPEN_ROUND.replaceAll('match no-gutter "', 'match no-gutter complete"');
 const BROKEN_ROUND = readFileSync(join(FIXTURES, 'round-renamed.html'), 'utf8');
+/** Top eight: four finished matches with no points printed. */
+const TOP_EIGHT = readFileSync(join(FIXTURES, 'round-top-cut.html'), 'utf8');
+/** The final: the top eight's first match alone. */
+const FINAL = TOP_EIGHT.slice(0, TOP_EIGHT.indexOf('<div class="row', 1));
 
 const EVENT: LiveEvent = {
   slug: 'test-2027',
@@ -168,4 +165,60 @@ test('broken markup is reported and leaves the last good round in place', async 
   h.rounds[1] = BROKEN_ROUND;
   assert.equal(await h.tick(MINUTE), 'broken');
   assert.deepEqual(h.files.get(liveKeys.round(EVENT, 1)), published);
+});
+
+test("round two's first publish is kept as the day's anchor, and never moves", async () => {
+  const h = harness({ 1: DONE_ROUND, 2: OPEN_ROUND });
+  await h.tick(0);
+  await h.tick(MINUTE);
+  const anchor = new Date(START + MINUTE).toISOString();
+  assert.equal((h.files.get(liveKeys.index(EVENT)) as LiveIndex).round2At, anchor);
+  h.rounds[2] = DONE_ROUND;
+  await h.tick(2 * MINUTE);
+  assert.equal((h.files.get(liveKeys.index(EVENT)) as LiveIndex).round2At, anchor);
+});
+
+test('a top cut round is marked, and the cut is sized from its first round', async () => {
+  const h = harness({ 14: DONE_ROUND, 15: TOP_EIGHT });
+  h.state = { ...h.state, round: 14, roundComplete: true, changedAt: new Date(START).toISOString() };
+  assert.equal(await h.tick(0), 'written');
+  assert.equal((h.files.get(liveKeys.round(EVENT, 15)) as LiveRound).topCut, true);
+  const index = h.files.get(liveKeys.index(EVENT)) as LiveIndex;
+  assert.deepEqual(index.cut, { from: 15, size: 8 });
+  assert.equal(index.finished, undefined);
+
+  h.rounds[16] = FINAL;
+  await h.tick(MINUTE);
+  assert.deepEqual((h.files.get(liveKeys.index(EVENT)) as LiveIndex).cut, { from: 15, size: 8 });
+});
+
+test('a decided final ends the event: published as finished, never polled again', async () => {
+  const h = harness({ 17: FINAL });
+  h.state = { ...h.state, round: 16, roundComplete: true, cut: { from: 15, size: 8 } };
+  assert.equal(await h.tick(0), 'written');
+  assert.equal((h.files.get(liveKeys.index(EVENT)) as LiveIndex).finished, true);
+  const fetched = h.fetched.length;
+  assert.equal(await h.tick(MINUTE), 'skipped');
+  assert.equal(await h.tick(3 * 24 * 60 * MINUTE), 'skipped');
+  assert.equal(h.fetched.length, fetched);
+});
+
+test('a runner taking over carries the cut, the anchor and the finish', () => {
+  const state = resumeState({
+    slug: EVENT.slug,
+    rk9Id: EVENT.rk9Id,
+    name: EVENT.name,
+    round: 17,
+    matches: 1,
+    hash: 'h',
+    playing: 0,
+    updatedAt: new Date(START).toISOString(),
+    cut: { from: 15, size: 8 },
+    round2At: new Date(START).toISOString(),
+    finished: true
+  });
+  assert.deepEqual(
+    [state.cut, state.round2At, state.finished],
+    [{ from: 15, size: 8 }, new Date(START).toISOString(), true]
+  );
 });

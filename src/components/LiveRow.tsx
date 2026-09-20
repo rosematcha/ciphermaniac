@@ -1,8 +1,8 @@
 import { A } from '@solidjs/router';
 import { type JSX, lazy, Show } from 'solid-js';
 import type { LiveEvent } from '../../shared/live/types';
-import { fetchLiveIndex } from '../lib/data/live';
-import { createPolled } from '../lib/livePoll';
+import { roundName } from '../../shared/live/rounds';
+import { createLiveIndex } from '../lib/livePoll';
 import { latestValue } from '../lib/resource';
 import { WhileEventOn } from './LiveBanner';
 
@@ -32,14 +32,14 @@ export function LiveEventRow() {
 }
 
 function EventRow(props: { event: LiveEvent }) {
-  const index = createPolled(() => props.event.slug, fetchLiveIndex);
+  const index = createLiveIndex(() => props.event.slug);
   return (
     <Show when={latestValue(index)}>
       {current => (
         <LiveRow
           event={props.event}
-          detail={`Round ${current().round}`}
-          aside={`${current().playing.toLocaleString()} tables playing`}
+          detail={current().finished ? 'Finished' : roundName(current().round, current().cut)}
+          aside={current().finished ? undefined : `${current().playing.toLocaleString()} tables playing`}
         />
       )}
     </Show>

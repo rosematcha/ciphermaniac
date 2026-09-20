@@ -42,7 +42,7 @@ async function openLive(page: import('@playwright/test').Page, path = LIVE): Pro
 test('the page opens on the round the event is on, with every table', async ({ page }) => {
   await openLive(page);
   await expect(page.locator('h1')).toHaveText('Test Cup Regional Championships');
-  await expect(page.locator('.hero-meta')).toContainText('Live: round 2');
+  await expect(page.locator('.hero-meta')).toContainText('Live: Round 2');
   await expect(page.locator('.live-table .data tbody tr')).toHaveCount(4);
   await expect(page.locator('.round-step-label')).toHaveText('R2');
   await expect(page.locator('.round-step-label')).not.toHaveClass(/is-pinned/);

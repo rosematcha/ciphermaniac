@@ -426,3 +426,30 @@ test('matching is case-insensitive and honours the limit', () => {
   );
   assert.equal(rankByQuery(CARDS, 'r', c => c.name, { weight: c => c.arts, limit: 2 }).length, 2);
 });
+
+/**
+ * The live page's deck picker: what the format is playing ranks above the icon
+ * map's tail of dead archetypes, however well the query fits the dead one.
+ */
+const DECKS = [
+  { name: 'Dragapult', played: true, share: 12 },
+  { name: 'Dragapult Hammers', played: true, share: 0 },
+  { name: 'Dragapult Dusknoir', played: true, share: 4 },
+  { name: 'Dragapult Charizard', played: false, share: 0 },
+  { name: 'Dragapult Pidgeot', played: false, share: 0 }
+];
+const deckTier = (d: (typeof DECKS)[number]): number => (d.played ? 0 : 1);
+
+test('a deck in play outranks a dead one whatever the match', () => {
+  assert.deepEqual(
+    rankByQuery(DECKS, 'dragapult', d => d.name, { weight: d => d.share, tier: deckTier }).map(d => d.name),
+    ['Dragapult', 'Dragapult Dusknoir', 'Dragapult Hammers', 'Dragapult Charizard', 'Dragapult Pidgeot']
+  );
+});
+
+test('a tier never drops an entry, so the tail stays findable', () => {
+  assert.deepEqual(
+    rankByQuery(DECKS, 'charizard', d => d.name, { tier: deckTier }).map(d => d.name),
+    ['Dragapult Charizard']
+  );
+});

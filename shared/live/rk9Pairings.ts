@@ -18,6 +18,10 @@
  *     <div id="cell-2-3-1204-2" class="col-5 text-center player player2 winner">...</div>
  *   </div>
  *
+ * Top cut rows are the same markup without the points: a seat there carries
+ * its Swiss record, frozen, and nothing else, which is also how a top cut round
+ * is told from a Swiss one.
+ *
  * The cell id carries the table number and the seat (1, 2, or 3 for the middle
  * column). A bye or an unpaired loss is table 0 with an empty second seat. While
  * a result awaits staff confirmation the reporting side carries a
@@ -39,7 +43,7 @@ const CELL_RE = /<div\b([^>]*)>([\s\S]*?)<\/div>/gi;
 const CELL_ID_RE = /\bid="cell-\d+-\d+-(\d+)-([123])"/i;
 const CLASS_RE = /\bclass="([^"]*)"/i;
 const NAME_RE = /<span\b[^>]*\bclass="(?:[^"]*\s)?name(?:\s[^"]*)?"[^>]*>([\s\S]*?)<\/span>/i;
-const RECORD_RE = /\((\d+)-(\d+)-(\d+)\)\s*(\d+)\s*pts/i;
+const RECORD_RE = /\((\d+)-(\d+)-(\d+)\)(?:\s*(\d+)\s*pts)?/i;
 const COUNTRY_RE = /\s*\[([A-Za-z]{2,3})\]$/;
 const SUBMITTED_RE = /\b(win|tie) submitted\b/i;
 /** A whole fragment closes its last cell and its last row. */
@@ -79,23 +83,32 @@ function readName(body: string): { name: string; country: string } | null {
   return name ? { name, country } : null;
 }
 
-function readSeat(cell: Cell): LiveSeat | null {
+interface ReadSeat {
+  seat: LiveSeat;
+  /** Whether RK9 printed the points, which it does in every Swiss round and no top cut one. */
+  scored: boolean;
+}
+
+function readSeat(cell: Cell): ReadSeat | null {
   const identity = readName(cell.body);
   const record = RECORD_RE.exec(cell.body);
   if (!identity || !record) {
     return null;
   }
-  const [wins, losses, ties, points] = record.slice(1).map(Number);
+  const [wins, losses, ties] = record.slice(1, 4).map(Number);
+  const scored = record[4] !== undefined;
   const resultClass = cell.classes.find(token => token in RESULT_BY_CLASS);
-  return {
+  const seat: LiveSeat = {
     ...identity,
     wins,
     losses,
     ties,
-    points,
+    // Unprinted in top cut, where it is still the Swiss record's worth.
+    points: scored ? Number(record[4]) : wins * 3 + ties,
     ...(resultClass ? { result: RESULT_BY_CLASS[resultClass] } : {}),
     ...(cell.classes.includes('dropped') ? { dropped: true as const } : {})
   };
+  return { seat, scored };
 }
 
 function readSubmitted(cells: Cell[]): LiveSubmitted | undefined {
@@ -116,38 +129,50 @@ function settleSolo(seat: LiveSeat, complete: boolean): LiveSeat {
   return complete && !seat.result ? { ...seat, result: 'loss' } : seat;
 }
 
-function readMatch(rowClasses: string, row: string): LiveMatch | null {
+interface ReadMatch {
+  match: LiveMatch;
+  scored: boolean;
+}
+
+function readMatch(rowClasses: string, row: string): ReadMatch | null {
   const cells = readCells(row);
   const players = cells.filter(cell => cell.seat !== 3 && cell.body.trim() !== '');
-  const seats = players.map(readSeat).filter((seat): seat is LiveSeat => seat !== null);
-  if (seats.length === 0 || seats.length !== players.length) {
+  const read = players.map(readSeat).filter((seat): seat is ReadSeat => seat !== null);
+  if (read.length === 0 || read.length !== players.length) {
     return null;
   }
+  const seats = read.map(entry => entry.seat);
   const complete = rowClasses.split(/\s+/).includes('complete');
   const submitted = complete ? undefined : readSubmitted(cells);
   return {
-    table: cells[0].table,
-    seats: seats.length === 1 ? [settleSolo(seats[0], complete)] : seats,
-    complete,
-    ...(submitted ? { submitted } : {})
+    match: {
+      table: cells[0].table,
+      seats: seats.length === 1 ? [settleSolo(seats[0], complete)] : seats,
+      complete,
+      ...(submitted ? { submitted } : {})
+    },
+    scored: read.some(entry => entry.scored)
   };
 }
 
 export function parseRk9Round(html: string): LiveRoundParse {
   const opens = [...html.matchAll(ROW_OPEN_RE)];
   const matches: LiveMatch[] = [];
+  let scored = false;
   opens.forEach((open, i) => {
     const row = html.slice(open.index + open[0].length, opens[i + 1]?.index ?? html.length);
-    const match = readMatch(open[1], row);
-    if (match) {
-      matches.push(match);
+    const read = readMatch(open[1], row);
+    if (read) {
+      matches.push(read.match);
+      scored ||= read.scored;
     }
   });
   return {
     matches,
     rowsSeen: opens.length,
     rowsSkipped: opens.length - matches.length,
-    truncated: opens.length > 0 && !FRAGMENT_END_RE.test(html)
+    truncated: opens.length > 0 && !FRAGMENT_END_RE.test(html),
+    topCut: matches.length > 0 && !scored
   };
 }
 

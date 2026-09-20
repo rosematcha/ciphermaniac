@@ -8,20 +8,16 @@
  * for corrections until the next is posted. RK9 numbers rounds straight through
  * day two and the top cut.
  *
- * Pacing comes from what the step observes rather than from venue time zones:
- * while results are changing it runs on every call, and once nothing has
- * changed for a while it skips calls until the idle interval has passed.
+ * Pacing is `shared/live/pace.ts`: every call while results are changing,
+ * spaced out once they stop, asleep overnight, and never again once the final
+ * has a result.
  * @module shared/live/tick
  */
 
+import { nextCheck } from './pace';
 import { detectRoundBreakage, parseRk9Round } from './rk9Pairings';
 import { isDecided } from './view';
-import type { LiveEvent, LiveIndex, LiveRound, LiveRoundParse, LiveState } from './types';
-
-/** Still polling every call this long after the last observed change. */
-export const ACTIVE_WINDOW_MS = 90 * 60 * 1000;
-/** Gap between polls once the active window has lapsed. */
-export const IDLE_INTERVAL_MS = 10 * 60 * 1000;
+import type { LiveCut, LiveEvent, LiveIndex, LiveRound, LiveRoundParse, LiveState } from './types';
 
 export interface TickDeps {
   now: Date;
@@ -65,19 +61,22 @@ export function resumeState(index: LiveIndex): LiveState {
     hash: index.hash,
     matchCount: index.matches,
     changedAt: index.updatedAt,
-    checkedAt: ''
+    checkedAt: '',
+    ...(index.cut ? { cut: index.cut } : {}),
+    ...(index.round2At ? { round2At: index.round2At } : {}),
+    ...(index.finished ? { finished: true } : {})
   };
 }
 
 function isDue(state: LiveState, now: Date): boolean {
   if (!state.checkedAt) {
-    return true;
+    return !state.finished;
   }
-  const active = now.getTime() - Date.parse(state.changedAt) < ACTIVE_WINDOW_MS;
-  return active || now.getTime() - Date.parse(state.checkedAt) >= IDLE_INTERVAL_MS;
+  const next = nextCheck(state, Date.parse(state.checkedAt));
+  return next !== null && now.getTime() >= next;
 }
 
-function buildIndex(event: LiveEvent, round: LiveRound, hash: string): LiveIndex {
+function buildIndex(event: LiveEvent, round: LiveRound, hash: string, state: LiveState): LiveIndex {
   return {
     slug: event.slug,
     rk9Id: event.rk9Id,
@@ -86,8 +85,19 @@ function buildIndex(event: LiveEvent, round: LiveRound, hash: string): LiveIndex
     matches: round.matches.length,
     hash,
     playing: round.matches.filter(match => !isDecided(match)).length,
-    updatedAt: round.updatedAt
+    updatedAt: round.updatedAt,
+    ...(state.cut ? { cut: state.cut } : {}),
+    ...(state.round2At ? { round2At: state.round2At } : {}),
+    ...(state.finished ? { finished: true } : {})
   };
+}
+
+/** The cut, from the first top cut round seen; two seats a match. */
+function cutFor(state: LiveState, read: RoundRead): LiveCut | undefined {
+  if (state.cut || !read.parsed.topCut) {
+    return state.cut;
+  }
+  return { from: read.round, size: read.parsed.matches.length * 2 };
 }
 
 type QuietOutcome = Exclude<TickOutcome, 'skipped' | 'written'>;
@@ -133,20 +143,38 @@ async function readCurrent(event: LiveEvent, deps: TickDeps, state: LiveState): 
   return readRound(event, deps, state.round);
 }
 
-async function publish(event: LiveEvent, deps: TickDeps, read: RoundRead, digest: string): Promise<LiveState> {
-  const { matches, rowsSkipped } = read.parsed;
+async function publish(
+  event: LiveEvent,
+  deps: TickDeps,
+  state: LiveState,
+  read: RoundRead & { digest: string }
+): Promise<LiveState> {
+  const { digest } = read;
+  const { matches, rowsSkipped, topCut } = read.parsed;
   const updatedAt = deps.now.toISOString();
-  const payload: LiveRound = { round: read.round, updatedAt, unreadable: rowsSkipped, matches };
-  await deps.publish(liveKeys.round(event, read.round), payload);
-  await deps.publish(liveKeys.index(event), buildIndex(event, payload, digest));
-  return {
+  const roundComplete = matches.every(match => match.complete);
+  const next: LiveState = {
     round: read.round,
-    roundComplete: matches.every(match => match.complete),
+    roundComplete,
     hash: digest,
     matchCount: matches.length,
     changedAt: updatedAt,
-    checkedAt: updatedAt
+    checkedAt: updatedAt,
+    cut: cutFor(state, read),
+    round2At: state.round2At ?? (read.round === 2 ? updatedAt : undefined),
+    // The final is the one top cut match; once it has a result there is no next round.
+    finished: topCut && matches.length === 1 && roundComplete
   };
+  const payload: LiveRound = {
+    round: read.round,
+    updatedAt,
+    ...(topCut ? { topCut: true as const } : {}),
+    unreadable: rowsSkipped,
+    matches
+  };
+  await deps.publish(liveKeys.round(event, read.round), payload);
+  await deps.publish(liveKeys.index(event), buildIndex(event, payload, digest, next));
+  return next;
 }
 
 export async function tickEvent(event: LiveEvent, state: LiveState, deps: TickDeps): Promise<TickResult> {
@@ -163,5 +191,5 @@ export async function tickEvent(event: LiveEvent, state: LiveState, deps: TickDe
   if (read.round === state.round && digest === state.hash) {
     return { outcome: 'unchanged', state: checked };
   }
-  return { outcome: 'written', state: await publish(event, deps, read, digest) };
+  return { outcome: 'written', state: await publish(event, deps, state, { ...read, digest }) };
 }

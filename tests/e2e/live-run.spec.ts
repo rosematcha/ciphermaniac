@@ -69,7 +69,7 @@ function round(n: number) {
 }
 
 /** Serves the event's artifacts, and keeps whatever the page posts to the report endpoint. */
-async function stubEvent(page: Page): Promise<{ posted: unknown[] }> {
+async function stubEvent(page: Page, index: Record<string, unknown> = {}): Promise<{ posted: unknown[] }> {
   const posted: unknown[] = [];
   await page.route('**/*', route => {
     const request = route.request();
@@ -105,7 +105,8 @@ async function stubEvent(page: Page): Promise<{ posted: unknown[] }> {
           matches: 1,
           hash: 'abc',
           playing: 0,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
+          ...index
         }
       });
     }
@@ -179,4 +180,18 @@ test('a player who dropped still has the live event on their profile', async ({ 
   await expect(run.locator('.live-rounds .round')).toHaveCount(DROPPED_AT, { timeout: 15_000 });
   await expect(run).toContainText(`Rival ${DROPPED_AT}`);
   await expect(run).not.toContainText('Not found');
+});
+
+test('a finished event names its top cut rounds, and says it is over', async ({ page }) => {
+  await stubEvent(page, { cut: { from: ROUNDS - 1, size: 4 }, finished: true });
+  await page.goto(`/live/${SLUG}`, { waitUntil: 'load' });
+  await expect(page.locator('.hero-meta')).toContainText('Finished', { timeout: 15_000 });
+  await expect(page.locator('.round-step-label')).toHaveText('Final');
+
+  await page.goto(`/live/${SLUG}?player=${encodeURIComponent(RUNNER)}&cc=US`, { waitUntil: 'load' });
+  const rows = page.locator('.live-rounds .round-n');
+  await expect(rows).toHaveCount(ROUNDS, { timeout: 15_000 });
+  await expect(rows.nth(ROUNDS - 3)).toHaveText(`R${ROUNDS - 2}`);
+  await expect(rows.nth(ROUNDS - 2)).toHaveText('Top 4');
+  await expect(rows.nth(ROUNDS - 1)).toHaveText('Final');
 });

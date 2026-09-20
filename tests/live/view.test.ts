@@ -8,6 +8,7 @@ import test from 'node:test';
 
 import type { LiveMatch, LiveSeat } from '../../shared/live/types.ts';
 import { aliasedPlayerId, seatNamesFor } from '../../shared/live/seatAliases.ts';
+import { roundName, roundShort } from '../../shared/live/rounds.ts';
 import {
   createProfileLookup,
   filterByDeck,
@@ -427,5 +428,22 @@ test('a bye goes last among equal points, not first', () => {
   assert.deepEqual(
     standings(round).map(row => row.seat.name),
     ['Seated Winner', 'Bye Taker', 'Seated Loser']
+  );
+});
+
+test('rounds are named for the top cut once it starts, each halving the cut', () => {
+  const cut = { from: 15, size: 8 };
+  assert.deepEqual(
+    [14, 15, 16, 17].map(round => roundName(round, cut)),
+    ['Round 14', 'Top 8', 'Top 4', 'Final']
+  );
+  assert.deepEqual(
+    [14, 15, 17].map(round => roundShort(round, cut)),
+    ['R14', 'Top 8', 'Final']
+  );
+  assert.equal(roundName(17), 'Round 17');
+  assert.deepEqual(
+    [15, 16, 19].map(round => roundShort(round, { from: 15, size: 32 })),
+    ['Top 32', 'Top 16', 'Final']
   );
 });

@@ -9,6 +9,13 @@ export interface ReportedDeck {
   icons?: string[];
   /** Share of the online meta, 0 to 100, for the decks that have one. */
   percent?: number | null;
+  /**
+   * Whether anyone is on this deck now: it is in the online meta, or someone
+   * at this event has been reported on it. The rest of the icon map is every
+   * archetype of the last two years, so without this the box offers a decade
+   * of dead decks on the same footing as the twelve in the room.
+   */
+  played?: boolean;
 }
 
 export function deckIcons(deck: ReportedDeck): string[] {
@@ -27,12 +34,11 @@ export function LiveDeck(props: { deck: ReportedDeck; class?: string }) {
 
 /**
  * The deck typeahead, wherever a deck is named: sprites in the field and in the
- * list, the online meta browsable before the long tail of the icon map.
+ * list, what the format is playing browsable and ranked first, the long tail of
+ * the icon map under a rule.
  */
 export function DeckCombo(props: {
   decks: readonly ReportedDeck[];
-  /** How many of `decks`, from the front, are the online meta's. */
-  leading: number;
   /** The deck the box stands for while it is not being typed in. */
   selected?: ReportedDeck;
   placeholder: string;
@@ -43,9 +49,10 @@ export function DeckCombo(props: {
     <Combo<ReportedDeck>
       placeholder={props.placeholder}
       options={props.decks}
-      browse={props.decks.slice(0, props.leading)}
+      browse={props.decks.filter(deck => deck.played)}
       label={deck => deck.label}
       weight={deck => deck.percent ?? 0}
+      tier={deck => (deck.played ? 0 : 1)}
       selected={props.selected}
       adorn={deck => <ArchetypeIcons slugs={deckIcons(deck)} size={20} />}
       onPick={props.onPick}
@@ -59,14 +66,12 @@ export function DeckCombo(props: {
 /**
  * This device's report for a player. Idle, the box stands for the deck you
  * reported, sprites and all; focused, it is a search over every archetype the
- * site names, the online meta's offered first. A pick is only sent once it is
+ * site names, the decks in play offered first. A pick is only sent once it is
  * confirmed, since the row under a finger is not always the row meant, and a
  * report can be changed or taken back afterwards.
  */
 export function DeckReporter(props: {
   decks: readonly ReportedDeck[];
-  /** How many of `decks`, from the front, are the online meta's. */
-  leading: number;
   /** What this device has reported for the player, if anything. */
   mine?: ReportedDeck;
   onReport: (archetype: string | null) => Promise<void>;
@@ -94,7 +99,6 @@ export function DeckReporter(props: {
             <DeckCombo
               placeholder={state() === 'failed' ? 'Report failed, try again' : 'Report deck...'}
               decks={props.decks}
-              leading={props.leading}
               selected={selected()}
               onPick={setPending}
             />

@@ -2,6 +2,7 @@ import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, Show } from 'solid-js';
 import type { LiveMatch } from '../../shared/live/types';
 import { aliasedPlayerId } from '../../shared/live/seatAliases';
+import { roundName } from '../../shared/live/rounds';
 import {
   createProfileLookup,
   filterByDeck,
@@ -19,10 +20,10 @@ import { Pagination } from '../components/Pagination';
 import { Section } from '../components/Section';
 import { Skeleton } from '../components/Skeleton';
 import { fetchPlayerIndexSlim } from '../lib/data';
-import { fetchLiveIndex, fetchLiveRound } from '../lib/data/live';
+import { fetchLiveRound } from '../lib/data/live';
 import { debounced } from '../lib/debounce';
 import { useLiveFollows } from '../lib/liveFollows';
-import { createPolled } from '../lib/livePoll';
+import { createLiveIndex, createPolled, liveDelay } from '../lib/livePoll';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { latestValue, resolved } from '../lib/resource';
 import { useDeckReports } from './live/deckReports';
@@ -63,7 +64,7 @@ export function LivePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams<LiveParams>();
 
-  const index = createPolled(() => params.slug, fetchLiveIndex);
+  const index = createLiveIndex(() => params.slug);
   const indexData = () => latestValue(index);
   const current = () => indexData()?.round ?? 0;
   // A pinned round stays pinned even once the event catches up with it, so a
@@ -75,7 +76,8 @@ export function LivePage() {
   const round = () => pinned() ?? current();
   const roundFile = createPolled(
     () => (round() ? ([params.slug, round()] as const) : null),
-    ([code, n]) => fetchLiveRound(code, n)
+    ([code, n]) => fetchLiveRound(code, n),
+    () => liveDelay(indexData())
   );
   const matches = () => latestValue(roundFile)?.matches;
 
@@ -87,7 +89,7 @@ export function LivePage() {
   );
   const profileOf = createMemo(() => createProfileLookup(resolved(players) ?? [], aliasedPlayerId));
 
-  const reports = useDeckReports(() => params.slug);
+  const reports = useDeckReports(() => params.slug, indexData);
   const present = (): SeatPresenter => ({
     slug: params.slug,
     profileOf: seat => profileOf()(seat),
@@ -118,6 +120,7 @@ export function LivePage() {
     query: query(),
     round: round(),
     current: current(),
+    cut: indexData()?.cut,
     pinned: pinned() !== null,
     view: view(),
     status: status(),
@@ -232,12 +235,22 @@ export function LivePage() {
                 {/* Always the round the event is on, said so. The table may be
                     showing a pinned round, and the two used to contradict each
                     other with nothing saying which was which. */}
-                <span>Live: round {live().round}</span>
-                <span class='dot'>·</span>
-                <span>
-                  {live().playing.toLocaleString()} of {live().matches.toLocaleString()} tables playing
-                </span>
-                <span class='dot'>·</span>
+                <Show
+                  when={!live().finished}
+                  fallback={
+                    <>
+                      <span>Finished</span>
+                      <span class='dot'>·</span>
+                    </>
+                  }
+                >
+                  <span>Live: {roundName(live().round, live().cut)}</span>
+                  <span class='dot'>·</span>
+                  <span>
+                    {live().playing.toLocaleString()} of {live().matches.toLocaleString()} tables playing
+                  </span>
+                  <span class='dot'>·</span>
+                </Show>
                 <span>updated {new Date(live().updatedAt).toLocaleTimeString([], { timeStyle: 'short' })}</span>
               </>
             )}
