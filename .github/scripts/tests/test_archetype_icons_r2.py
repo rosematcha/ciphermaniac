@@ -53,3 +53,18 @@ class ArchetypeIconsR2Tests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     icons.publish_icons(invalid)
             factory.assert_not_called()
+
+
+class DerivedIconTests(unittest.TestCase):
+    def test_derived_archetype_rides_on_its_parent(self):
+        merged = icons.apply_derived({"Dragapult": ["dragapult"], "Crustle": ["crustle"]})
+        self.assertEqual(merged["Dragapult Hammers"], ["dragapult", "crushing-hammer"])
+
+    def test_derived_archetype_leaves_with_its_parent(self):
+        stale = {"Crustle": ["crustle"], "Dragapult Hammers": ["dragapult", "crushing-hammer"]}
+        self.assertNotIn("Dragapult Hammers", icons.apply_derived(stale))
+
+    def test_derived_icons_are_not_shared_with_the_source_table(self):
+        merged = icons.apply_derived({"Dragapult": ["dragapult"]})
+        merged["Dragapult Hammers"].append("substitute")
+        self.assertEqual(icons.DERIVED_ICONS["Dragapult Hammers"][1], ["dragapult", "crushing-hammer"])
