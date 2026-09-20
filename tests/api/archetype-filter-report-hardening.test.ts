@@ -265,29 +265,17 @@ test('a network failure is 502, not an unhandled rejection', async () => {
   assert.equal(response.status, 502);
 });
 
-test('a missing archetype slice falls back to the full decks file', async () => {
+test('a missing online shard does not download a duplicate full corpus', async () => {
+  let requests = 0;
   const response = await withFetch(
-    (async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.includes('/archetypes/')) {
-        return new Response('not found', { status: 404 });
-      }
-      return new Response(JSON.stringify(DECKS), { status: 200, headers: { 'content-type': 'application/json' } });
+    (async () => {
+      requests++;
+      return new Response('not found', { status: 404 });
     }) as typeof globalThis.fetch,
     () => onRequestPost({ request: post(base()) })
   );
-  assert.equal(response.status, 200);
-});
-
-test('a broken slice fetch is reported even when the fallback is merely absent', async () => {
-  const response = await withFetch(
-    (async (input: RequestInfo | URL) =>
-      String(input).includes('/archetypes/')
-        ? new Response('boom', { status: 500 })
-        : new Response('not found', { status: 404 })) as typeof globalThis.fetch,
-    () => onRequestPost({ request: post(base()) })
-  );
-  assert.equal(response.status, 502);
+  assert.equal(response.status, 404);
+  assert.equal(requests, 1);
 });
 
 // ---------------------------------------------------------------------------

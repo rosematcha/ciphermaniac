@@ -25,7 +25,7 @@
 import { requireEnv } from './lib/env.ts';
 import process from 'node:process';
 import { writeFile } from 'node:fs/promises';
-import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
+import { createR2Client, getJsonResult, putJsonIfChanged } from './lib/r2.mjs';
 import { majorTournaments, tournamentDate } from '../../shared/data/tournamentKeys.ts';
 import type { MasterPayload } from '../../src/lib/data.ts';
 import { canonicalizeReport } from '../../src/lib/data/compat.ts';
@@ -184,7 +184,7 @@ async function main() {
   }
 
   const key = `${REPORTS_PREFIX}/${ARTIFACT_KEY}`;
-  await putJson(s3Client, R2_BUCKET, key, body, { cacheControl: CACHE_CONTROL });
+  await putJsonIfChanged(s3Client, R2_BUCKET, key, { value: body, cacheControl: CACHE_CONTROL });
   console.log(`[majors-trends] Uploaded ${key} (${body.length} bytes)`);
 }
 

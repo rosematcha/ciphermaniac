@@ -8,11 +8,6 @@
     "max-depth:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Async function 'main' has a complexity of 35. Maximum allowed is 12."
   ],
-  ".github/scripts/run-online-meta.ts": [
-    "max-lines-per-function:116f2bc568d02d7f4d4a169a087b1c4eb0299b7d5c1b0db68ce42cf17c2f43ba:Async function 'main' has too many lines (123). Maximum allowed is 100.",
-    "max-depth:116f2bc568d02d7f4d4a169a087b1c4eb0299b7d5c1b0db68ce42cf17c2f43ba:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "complexity:116f2bc568d02d7f4d4a169a087b1c4eb0299b7d5c1b0db68ce42cf17c2f43ba:Async function 'main' has a complexity of 22. Maximum allowed is 12."
-  ],
   ".github/scripts/run-trends.ts": [
     "max-lines-per-function:e9ea0ca234fd170f819db4a1c99fa57176530a6abd1d5d6af6ebc3fa20e7d81a:Async function 'main' has too many lines (161). Maximum allowed is 100.",
     "complexity:e9ea0ca234fd170f819db4a1c99fa57176530a6abd1d5d6af6ebc3fa20e7d81a:Async function 'main' has a complexity of 32. Maximum allowed is 12."
@@ -59,9 +54,6 @@
   ],
   "scripts/check-repo-metadata.ts": [
     "complexity:c21af4540805551014039cae8f8f692027449d1c8236f2bab58e70f3b7533633:Arrow function has a complexity of 14. Maximum allowed is 12."
-  ],
-  "scripts/convert-card-images.ts": [
-    "complexity:78665e1fbeb60a5c63466ea7ee7b5c1a945729b04e7f9de66b33ebd89e1b5d29:Async function 'main' has a complexity of 13. Maximum allowed is 12."
   ],
   "shared/analysis/archetypeClassifier.ts": [
     "complexity:c6663a8a044c6cb56eaea99f324e5480841a463f3f4782eba47df4312966604c:Function 'resolveArchetypeClassification' has a complexity of 44. Maximum allowed is 12."
@@ -151,9 +143,6 @@
   "shared/onlineMeta/playerAggregator.ts": [
     "complexity:b15e1ac0762a68f9b01d8d0f06f977f1e392247a9f9741c19b341be305a03d06:Async function 'loadTournamentSlice' has a complexity of 21. Maximum allowed is 12.",
     "complexity:117f8267e71af84b569ee047d8abc40792b299ac45bd0959f89da0d95ec89fb3:Function 'toPlayerRound' has a complexity of 13. Maximum allowed is 12."
-  ],
-  "shared/onlineMeta/snapshotGenerator.ts": [
-    "max-lines-per-function:5a20d40c02f7c231b6f0d102512b4792a623e16a43443d2e79cddecb591a32a6:Async function 'runRotationSnapshot' has too many lines (108). Maximum allowed is 100."
   ],
   "shared/onlineMeta/snapshotIndexBuilder.ts": [
     "complexity:bb8c1555cf3e31c337874aa6772752578b485b72df248969c0643512083c409f:Async function 'loadActiveSets' has a complexity of 17. Maximum allowed is 12.",

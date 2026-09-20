@@ -29,6 +29,8 @@ import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from 
 import sharp from 'sharp';
 import { isMissingObject } from './cdnObject';
 import { loadEventSources, productionScopeKey } from '../.github/scripts/lib/build/productionRelease';
+import { isNotFound, putJsonIfChanged } from '../.github/scripts/lib/r2.mjs';
+import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STATIC_BASE = join(ROOT, 'static');
@@ -135,8 +137,11 @@ async function getJsonFromR2(key: string): Promise<unknown | null> {
     const res = await s3Client.send(new GetObjectCommand({ Bucket: r2Bucket, Key: key }));
     const body = await res.Body?.transformToString();
     return body ? JSON.parse(body) : null;
-  } catch {
-    return null;
+  } catch (error) {
+    if (isNotFound(error)) {
+      return null;
+    }
+    throw error;
   }
 }
 
@@ -144,6 +149,9 @@ type JsonReader = (path: string) => Promise<unknown | null>;
 
 async function collectReportCards(cards: Map<string, CardRef>, root: string, readJson: JsonReader): Promise<void> {
   const master = (await readJson(`${root}master.json`)) as { items?: unknown } | null;
+  if (!master) {
+    throw new Error(`Required card inventory is missing: ${root}master.json`);
+  }
   collectFromItems(master?.items, cards);
   const archetypeIndex = (await readJson(`${root}archetypes/index.json`)) as
     { archetypes?: { thumbnails?: unknown }[] } | { thumbnails?: unknown }[] | null;
@@ -219,8 +227,11 @@ async function r2Has(key: string): Promise<boolean> {
   try {
     await s3Client.send(new HeadObjectCommand({ Bucket: r2Bucket, Key: key }));
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (isNotFound(error)) {
+      return false;
+    }
+    throw error;
   }
 }
 
@@ -306,7 +317,7 @@ async function convertCard(ref: CardRef): Promise<void> {
   }
 }
 
-async function main(): Promise<void> {
+async function discoverRequiredCards(): Promise<CardRef[]> {
   console.log(`Discovering cards${DRY_RUN ? ' (dry run)' : ''} via ${s3Client ? 'S3 API' : 'public HTTP'}...`);
   const cards = await discoverCards();
   console.log(`Found ${cards.length} unique cards (${cards.length * TIERS.length} tier objects).`);
@@ -318,7 +329,10 @@ async function main(): Promise<void> {
     );
     process.exit(1);
   }
+  return cards;
+}
 
+async function processCards(cards: CardRef[]): Promise<void> {
   let cursor = 0;
   async function worker(): Promise<void> {
     while (cursor < cards.length) {
@@ -331,7 +345,30 @@ async function main(): Promise<void> {
     }
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+}
 
+function expectedImageKeys(cards: CardRef[]): Set<string> {
+  return new Set([
+    'card-images/_ready',
+    ...cards.flatMap(ref => {
+      const set = ref.set.toUpperCase();
+      const number = paddedNumber(ref.number);
+      return TIERS.map(tier => `card-images/${set}/${set}_${number}_R_EN_${tier}.webp`);
+    })
+  ]);
+}
+
+async function pruneCardImages(cards: CardRef[]): Promise<void> {
+  if (DRY_RUN || !s3Client || !r2Bucket || stats.failed > 0) {
+    return;
+  }
+  const expected = expectedImageKeys(cards);
+  const stale = (await listR2Keys(s3Client, r2Bucket, 'card-images/')).filter(key => !expected.has(key));
+  await deleteR2Keys(s3Client, r2Bucket, stale);
+  console.log(`Removed ${stale.length} unreferenced card image object(s).`);
+}
+
+function logSummary(): void {
   const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
   console.log(
     `\nDone. uploaded=${stats.uploaded} skipped(existing)=${stats.skipped} ` +
@@ -339,22 +376,22 @@ async function main(): Promise<void> {
       `PNG ${mb(stats.pngBytes)}MB -> WebP ${mb(stats.webpBytes)}MB ` +
       `(${stats.pngBytes > 0 ? Math.round(100 - (stats.webpBytes / stats.pngBytes) * 100) : 0}% smaller)`
   );
+}
 
+async function writeReadyMarker(cards: CardRef[]): Promise<void> {
   // The marker gates CardImage's R2-first behavior; only write it when the
   // bucket actually has content and nothing hard-failed.
-  if (!DRY_RUN && s3Client && r2Bucket && stats.failed === 0 && (stats.uploaded > 0 || stats.skipped > 0)) {
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: r2Bucket,
-        Key: 'card-images/_ready',
-        Body: JSON.stringify({ generatedAt: new Date().toISOString(), cards: cards.length }),
-        ContentType: 'application/json',
-        CacheControl: 'public, max-age=86400'
-      })
-    );
-    console.log('Wrote card-images/_ready marker — CardImage will now prefer R2 WebP.');
+  if (DRY_RUN || !s3Client || !r2Bucket || stats.failed > 0 || (stats.uploaded === 0 && stats.skipped === 0)) {
+    return;
   }
+  const changed = await putJsonIfChanged(s3Client, r2Bucket, 'card-images/_ready', {
+    value: { cards: cards.length },
+    cacheControl: 'public, max-age=86400'
+  });
+  console.log(`${changed ? 'Wrote' : 'Kept'} card-images/_ready marker — CardImage will prefer R2 WebP.`);
+}
 
+function exitOnFailure(): void {
   // Unresolved transient failures mean the bucket is incomplete; surface a
   // non-zero exit so CI fails instead of silently shipping a partial run (the
   // _ready marker above is already withheld while failed > 0).
@@ -362,6 +399,15 @@ async function main(): Promise<void> {
     console.error(`\n${stats.failed} object(s) failed after retries — withholding _ready and exiting non-zero.`);
     process.exit(1);
   }
+}
+
+async function main(): Promise<void> {
+  const cards = await discoverRequiredCards();
+  await processCards(cards);
+  await pruneCardImages(cards);
+  logSummary();
+  await writeReadyMarker(cards);
+  exitOnFailure();
 }
 
 main().catch(err => {

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { S3Client } from '@aws-sdk/client-s3';
 
-import { createReportsBinding, getJsonResult, withR2Retry } from '../../.github/scripts/lib/r2.mjs';
+import { createReportsBinding, getJsonResult, putJsonIfChanged, withR2Retry } from '../../.github/scripts/lib/r2.mjs';
 
 /** Backoff small enough that exhausting every attempt stays sub-millisecond. */
 const FAST_RETRY = { baseDelayMs: 0, maxDelayMs: 0 };
@@ -273,4 +273,25 @@ test('createReportsBinding.get buffers the body so repeated reads do not refetch
   assert.equal(await obj.text(), '{"ok":true}');
   assert.deepEqual(await obj.json(), { ok: true });
   assert.equal(calls, 1);
+});
+
+test('putJsonIfChanged skips matching content and writes changed content once', async () => {
+  const commands: unknown[] = [];
+  const client = {
+    async send(command: unknown) {
+      commands.push(command);
+      return commands.length === 1 ? { Metadata: { sha256: 'wrong' } } : {};
+    }
+  } as unknown as S3Client;
+  assert.equal(await putJsonIfChanged(client, BUCKET, KEY, { value: { ok: true } }), true);
+  assert.equal(commands.length, 2);
+
+  const digest = (commands[1] as { input: { Metadata: { sha256: string } } }).input.Metadata.sha256;
+  const unchanged = stubClient(async () => ({ Metadata: { sha256: digest } }));
+  assert.equal(await putJsonIfChanged(unchanged, BUCKET, KEY, { value: { ok: true } }), false);
+});
+
+test('putJsonIfChanged does not turn a HEAD transport failure into a rewrite', async () => {
+  const client = stubClient(rejects(awsError({ name: 'AccessDenied', status: 403 })));
+  await assert.rejects(() => putJsonIfChanged(client, BUCKET, KEY, { value: { ok: true } }));
 });

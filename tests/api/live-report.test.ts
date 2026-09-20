@@ -126,6 +126,22 @@ test('a device changing its mind replaces its vote rather than adding one', asyn
   assert.deepEqual(published(), { [SEAT]: 'Gardevoir' });
 });
 
+test('an unchanged winning report does not rewrite R2', async () => {
+  let writes = 0;
+  const bucket = {
+    ...fakeBucket(files),
+    put: (key: string, value: string) => {
+      writes++;
+      files.set(key, value);
+      return Promise.resolve(undefined);
+    }
+  };
+  const env = { REPORTS: bucket, LIVE_DB: fakeDb(votes) };
+  await post(report('Dragapult', 1), env);
+  await post(report('Dragapult', 1), env);
+  assert.equal(writes, 1);
+});
+
 test('a device can take its report back, which leaves the seat to everyone else', async () => {
   await post(report('Dragapult', 1));
   await post(report('Gardevoir', 2));

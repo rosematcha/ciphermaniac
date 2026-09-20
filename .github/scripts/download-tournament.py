@@ -2301,24 +2301,6 @@ def update_tournaments_json(r2_client, bucket_name, tournament_name):
         return
 
 
-def build_slice_payloads(
-    base_path: str, slice_name: str, decks: List[Dict[str, Any]], r2_client, bucket_name, card_types_db=None
-):
-    slice_path = f"{base_path}/slices/{slice_name}"
-    master = generate_report_json(decks, len(decks), decks)
-    card_index = generate_card_index(decks)
-    archetype_data_map, archetype_index = build_archetype_reports(decks, master, card_types_db)
-
-    upload_to_r2(r2_client, bucket_name, f"{slice_path}/decks.json", decks)
-    upload_to_r2(r2_client, bucket_name, f"{slice_path}/master.json", master)
-    upload_to_r2(r2_client, bucket_name, f"{slice_path}/cardIndex.json", card_index)
-    upload_to_r2(r2_client, bucket_name, f"{slice_path}/archetypes/index.json", archetype_index)
-
-    for archetype_base, payload in archetype_data_map.items():
-        upload_to_r2(r2_client, bucket_name, f"{slice_path}/archetypes/{archetype_base}/cards.json", payload["cards"])
-        upload_to_r2(r2_client, bucket_name, f"{slice_path}/archetypes/{archetype_base}/decks.json", payload["decks"])
-
-
 def build_card_uid(card: Dict[str, Any]) -> str:
     name = str(card.get("name") or "Unknown Card").strip()
     set_code = str(card.get("set") or "").strip().upper()

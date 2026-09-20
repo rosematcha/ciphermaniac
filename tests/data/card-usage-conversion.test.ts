@@ -6,6 +6,7 @@ import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 import {
   cardUsageForCard,
   type CardUsagePayload,
+  fetchArchetypeDecks,
   fetchCardUsage,
   fetchConversionIndex,
   fetchDay2CardStats
@@ -131,6 +132,52 @@ test('fetchConversionIndex returns null on 404', async () => {
   mockFetch({ predicate: () => true, status: 404, body: null });
   try {
     assert.strictEqual(await fetchConversionIndex('missing-fixture'), null);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test('event archetype decks are filtered from the canonical deck corpus', async () => {
+  let requested = '';
+  mockFetch({
+    predicate: () => true,
+    handler: input => {
+      requested = String(input);
+      return {
+        status: 200,
+        body: [
+          { id: 'match', archetype: 'Dragapult Dusknoir', cards: [] },
+          { id: 'other', archetype: 'Gardevoir', cards: [] }
+        ]
+      };
+    }
+  });
+  try {
+    const decks = await fetchArchetypeDecks('canonical-deck-fixture', 'dragapult_dusknoir');
+    assert.deepEqual(
+      decks?.map(deck => deck.id),
+      ['match']
+    );
+    assert.match(requested, /canonical-deck-fixture\/decks\.json$/);
+    assert.doesNotMatch(requested, /\/archetypes\//);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test('online archetype decks retain the disjoint shard fast path', async () => {
+  let requested = '';
+  mockFetch({
+    predicate: () => true,
+    handler: input => {
+      requested = String(input);
+      return { status: 200, body: [{ id: 'online', archetype: 'Dragapult', cards: [] }] };
+    }
+  });
+  try {
+    const decks = await fetchArchetypeDecks('Online - Last 14 Days', 'Dragapult');
+    assert.equal(decks?.length, 1);
+    assert.match(requested, /\/archetypes\/Dragapult\/decks\.json$/);
   } finally {
     restoreFetch();
   }

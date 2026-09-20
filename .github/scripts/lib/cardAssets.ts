@@ -6,6 +6,7 @@ import { builderRevision } from './build/revision';
 import { loadEventSources } from './build/productionRelease';
 import { boolEnv } from './env';
 import { inputFingerprint } from './build/provenance';
+import { loadOnlineDecks } from './build/onlineDecks';
 import { newSetCodes } from './setSeeds';
 
 type Store = ReturnType<typeof pipelineStore>;
@@ -72,8 +73,8 @@ async function cardTypes(store: Store): Promise<void> {
 
 async function synonyms(store: Store): Promise<void> {
   const { sources } = await loadEventSources(store);
-  const online = await store.read<Array<{ cards?: Array<{ name?: string; set?: string; number?: string | number }> }>>(
-    'reports/Online - Last 14 Days/decks.json'
+  const online = await loadOnlineDecks<{ cards?: Array<{ name?: string; set?: string; number?: string | number }> }>(
+    store
   );
   const onlineCards = [
     ...new Set(
@@ -86,6 +87,7 @@ async function synonyms(store: Store): Promise<void> {
     inputs: { sources, onlineCards, newSets: newSetCodes(new Date().toISOString().slice(0, 10)) },
     revision: await builderRevision([
       '.github/scripts/update-card-synonyms.mjs',
+      '.github/scripts/lib/build/onlineDecks.ts',
       '.github/scripts/lib/setSeeds.ts',
       '.github/scripts/data/set-catalog.json'
     ]),

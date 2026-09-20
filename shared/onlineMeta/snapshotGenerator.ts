@@ -179,12 +179,9 @@ export async function runRotationSnapshot(
   // `deckTotal` above is the window's deck count (the snapshot's meta size);
   // card inclusion divides by the decks that actually carry a list.
   const masterReport = generateReportFromDecks(typedDecks, listedDeckCount(typedDecks), synonymDb);
-  const { archetypeFiles, archetypeIndex, minDecks, deckMap } = buildArchetypeReports(
-    typedDecks,
-    MIN_USAGE_PERCENT,
-    synonymDb,
-    { thumbnailConfig: ARCHETYPE_THUMBNAILS }
-  );
+  const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(typedDecks, MIN_USAGE_PERCENT, synonymDb, {
+    thumbnailConfig: ARCHETYPE_THUMBNAILS
+  });
 
   const meta = {
     name: snapshotKey,
@@ -206,24 +203,15 @@ export async function runRotationSnapshot(
   const baseWrites = [
     { key: `${reportBaseKey}/master.json`, data: masterReport },
     { key: `${reportBaseKey}/meta.json`, data: meta },
+    { key: `${reportBaseKey}/decks.json`, data: decks },
     { key: `${reportBaseKey}/archetypes/index.json`, data: archetypeIndex }
   ];
-  // Match the production folder layout written by `.github/scripts/run-online-meta.mjs`:
-  // `archetypes/{base}/cards.json` and `archetypes/{base}/decks.json`. The frontend
-  // (src/lib/data.ts fetchArchetype/fetchArchetypeDecks) reads from these paths.
   const archetypeWrites: { key: string; data: unknown }[] = [];
   for (const file of archetypeFiles as Array<{ base: string; data: unknown }>) {
     archetypeWrites.push({
       key: `${reportBaseKey}/archetypes/${file.base}/cards.json`,
       data: file.data
     });
-    const archetypeDecks = (deckMap as Map<string, unknown[]>).get(file.base);
-    if (archetypeDecks && archetypeDecks.length) {
-      archetypeWrites.push({
-        key: `${reportBaseKey}/archetypes/${file.base}/decks.json`,
-        data: archetypeDecks
-      });
-    }
   }
 
   await batchPutJson(env, [...baseWrites, ...archetypeWrites], r2Concurrency);

@@ -27,6 +27,7 @@ import { createR2Client, getJsonResult, putJson, withR2Retry } from './lib/r2.mj
 import { loadEventSources } from './lib/build/productionRelease.ts';
 import { capturePlayers, type PlayerInventory } from './lib/build/playerCapture';
 import { assertProducerComplete, inputFingerprint, type ProducerState } from './lib/build/provenance';
+import { isOnlineReportObject, staleCapturedReport } from './lib/build/capturedScope';
 
 const CACHE = 'public, max-age=31536000, immutable';
 
@@ -222,10 +223,14 @@ async function discoverCapturedScopes(
   const list = (prefix: string, relativeTo: string, include?: (key: string) => boolean) =>
     listJsonObjects({ client, bucket, prefix, relativeTo, include });
   const [online, trends, players, snapshots, assets, priceShards, priceGlobals, majors] = await Promise.all([
-    list('reports/Online - Last 14 Days/', 'reports/Online - Last 14 Days/'),
-    list('reports/Trends - Last 30 Days/', 'reports/Trends - Last 30 Days/'),
+    list('reports/Online - Last 14 Days/', 'reports/Online - Last 14 Days/', isOnlineReportObject),
+    Promise.all(
+      ['meta.json', 'trends.json', 'history.json'].map(relativeKey =>
+        describeObject(client, bucket, `reports/Trends - Last 30 Days/${relativeKey}`, relativeKey)
+      )
+    ).then(objects => objects.filter((object): object is ScopeObject => object !== null)),
     list('players/', 'players/', key => !key.startsWith('players/_')),
-    list('reports/Snapshots/', 'reports/Snapshots/'),
+    list('reports/Snapshots/', 'reports/Snapshots/', key => !staleCapturedReport(key)),
     list('assets/', 'assets/', key => !key.startsWith('assets/print-prices/')),
     list('reports/price-history/', 'reports/'),
     Promise.all(
@@ -281,6 +286,7 @@ async function capturePlayerScope(options: {
   const result = await capturePlayers({
     objects,
     previous,
+    previousRoot,
     write,
     store: {
       read: load,
@@ -309,7 +315,7 @@ async function capturePlayerScope(options: {
 
 function assertRequiredArtifacts(captures: Array<{ scope: ReleaseScope; objects: ScopeObject[] }>): void {
   const required: Partial<Record<ReleaseScope, string[]>> = {
-    online: ['master.json', 'meta.json', 'decks.json', 'cardUsage.json', 'archetypes/index.json'],
+    online: ['master.json', 'meta.json', 'decks/index.json', 'cardUsage.json', 'archetypes/index.json'],
     trends: ['trends.json', 'meta.json', 'majors-trends.json'],
     players: ['index.json', 'index-slim.json'],
     prices: ['prices.json'],
@@ -420,8 +426,11 @@ async function main(): Promise<void> {
   // ---- Catalog (fresh) ----
   const catalog = buildTournamentCatalog(Object.keys(events));
   const catalogRoot = `releases/v1/catalogs/${gen(catalog)}`;
-  await publish(`${catalogRoot}/tournaments.json`, catalog);
-  await publish(`${catalogRoot}/_complete.json`, { objectCount: 1 });
+  const catalogMarker = await load(`${catalogRoot}/_complete.json`);
+  if (!catalogMarker) {
+    await publish(`${catalogRoot}/tournaments.json`, catalog);
+    await publish(`${catalogRoot}/_complete.json`, { objectCount: 1 });
+  }
   roots.catalogs = `/${catalogRoot}`;
 
   // ---- Complete captured scopes ----

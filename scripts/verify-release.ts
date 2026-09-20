@@ -128,7 +128,7 @@ if (Number.isFinite(publishedAt)) {
 }
 
 const requiredArtifacts: Record<string, string[]> = {
-  online: ['master.json', 'meta.json', 'decks.json', 'cardUsage.json', 'archetypes/index.json'],
+  online: ['master.json', 'meta.json', 'decks/index.json', 'cardUsage.json', 'archetypes/index.json'],
   trends: ['trends.json', 'meta.json', 'majors-trends.json'],
   players: ['index.json', 'index-slim.json'],
   prices: ['prices.json'],

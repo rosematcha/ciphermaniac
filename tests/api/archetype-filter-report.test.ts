@@ -11,11 +11,54 @@ test('filter-report resolves deck reads through the embedded event release', () 
   const payload = { tournament: 'Event', archetype: 'Deck Name', slice: 'phase2' } as Parameters<
     typeof buildReportsPath
   >[0];
-  assert.equal(
-    buildReportsPath(payload, true, release),
-    '/releases/v1/events/Event/aaaaaaaaaaaa/slices/phase2/archetypes/Deck%20Name/decks.json'
-  );
+  assert.equal(buildReportsPath(payload, true, release), '/releases/v1/events/Event/aaaaaaaaaaaa/decks.json');
   assert.equal(buildReportsPath({ ...payload, tournament: 'Missing' }, false, release), null);
+  const snapshotRelease = {
+    roots: { snapshots: '/releases/v1/snapshots/bbbbbbbbbbbb' }
+  } as unknown as ReleaseManifest;
+  assert.equal(
+    buildReportsPath({ ...payload, tournament: 'snapshot:2026-04-10' }, true, snapshotRelease),
+    '/releases/v1/snapshots/bbbbbbbbbbbb/2026-04-10/decks.json'
+  );
+});
+
+test('event slices derive from flags in the canonical deck body', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify([
+        {
+          id: 'day-one',
+          archetype: 'Dragapult',
+          madePhase2: false,
+          cards: [{ name: 'Dreepy', set: 'TWM', number: '128', count: 4 }]
+        },
+        {
+          id: 'day-two',
+          archetype: 'Dragapult',
+          madePhase2: true,
+          cards: [{ name: 'Dreepy', set: 'TWM', number: '128', count: 4 }]
+        }
+      ]),
+      { status: 200, headers: { 'content-type': 'application/json' } }
+    )) as typeof fetch;
+  try {
+    const request = new Request('https://ciphermaniac.com/api/archetype/filter-report', {
+      method: 'POST',
+      body: JSON.stringify({
+        tournament: 'Event',
+        archetype: 'Dragapult',
+        successFilter: 'all',
+        filters: [],
+        slice: 'phase2'
+      })
+    });
+    const response = await onRequestPost({ request });
+    assert.equal(response.status, 200);
+    assert.equal(((await response.json()) as { deckTotal: number }).deckTotal, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('archetype filter-report endpoint returns filtered aggregate response', async () => {
@@ -165,12 +208,17 @@ test('archetype filter-report returns 400 for unparseable JSON body', async () =
 test('archetype filter-report handles phase2 slice in URL path', async () => {
   const originalFetch = globalThis.fetch;
   const fixtureDecks = [
-    { id: 'd1', archetype: 'Pikachu', cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 2 }] }
+    {
+      id: 'd1',
+      archetype: 'Pikachu',
+      madePhase2: true,
+      cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 2 }]
+    }
   ];
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
-    if (url.includes('/slices/phase2/')) {
+    if (url.endsWith('/decks.json')) {
       return new Response(JSON.stringify(fixtureDecks), {
         status: 200,
         headers: { 'content-type': 'application/json' }
@@ -203,11 +251,18 @@ test('archetype filter-report handles phase2 slice in URL path', async () => {
 
 test('archetype filter-report handles topcut slice in URL path', async () => {
   const originalFetch = globalThis.fetch;
-  const fixtureDecks = [{ id: 'd1', archetype: 'Pikachu', cards: [] }];
+  const fixtureDecks = [
+    {
+      id: 'd1',
+      archetype: 'Pikachu',
+      madeTopCut: true,
+      cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 2 }]
+    }
+  ];
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
-    if (url.includes('/slices/topcut/')) {
+    if (url.endsWith('/decks.json')) {
       return new Response(JSON.stringify(fixtureDecks), {
         status: 200,
         headers: { 'content-type': 'application/json' }
@@ -315,7 +370,7 @@ test('archetype filter-report applies success filter when provided', async () =>
   }
 });
 
-test('archetype filter-report falls back to all-decks path when archetype path returns null', async () => {
+test('regular events read the canonical all-decks path', async () => {
   const originalFetch = globalThis.fetch;
   const fixtureDecks = [{ id: 'd1', archetype: 'Pikachu', cards: [] }];
 

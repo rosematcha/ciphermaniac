@@ -20,6 +20,8 @@ import { requireEnv } from '../.github/scripts/lib/env.ts';
 import process from 'node:process';
 import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { readFile } from 'node:fs/promises';
+import { isNotFound } from '../.github/scripts/lib/r2.mjs';
+import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
 
 const SOURCE_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
 const DEST_PREFIX = 'pokemon-sprites/gen9';
@@ -86,8 +88,11 @@ async function alreadyMirrored(slug: string): Promise<boolean> {
   try {
     await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: `${DEST_PREFIX}/${slug}.png` }));
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (isNotFound(error)) {
+      return false;
+    }
+    throw error;
   }
 }
 
@@ -122,7 +127,12 @@ async function main() {
     );
     uploaded += 1;
   }
-  console.log(`Done: ${uploaded} uploaded, ${skipped} already mirrored, ${missing} missing at source.`);
+  const expected = new Set(slugs.map(slug => `${DEST_PREFIX}/${slug}.png`));
+  const stale = (await listR2Keys(s3Client, bucket, `${DEST_PREFIX}/`)).filter(key => !expected.has(key));
+  await deleteR2Keys(s3Client, bucket, stale);
+  console.log(
+    `Done: ${uploaded} uploaded, ${skipped} already mirrored, ${missing} missing at source, ${stale.length} removed.`
+  );
 }
 
 main().catch(error => {

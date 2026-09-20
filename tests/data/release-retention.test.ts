@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DeleteObjectsCommand, GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 import { createRetentionStore, pruneReleases } from '../../.github/scripts/prune-releases';
+import { staleCapturedReport } from '../../.github/scripts/lib/build/capturedScope';
 import {
   expiredGenerations,
   type Generation,
@@ -42,6 +43,8 @@ function fixture() {
   objects.push({ key: 'reports/event/tournament.db', size: 500, modified: OLD });
   objects.push({ key: 'reports/2026-01-01, Event/master.json', size: 250, modified: OLD });
   objects.push({ key: 'reports/tournaments.json', size: 50, modified: OLD });
+  objects.push({ key: 'live/v1/old-event/r1.json', size: 20, modified: OLD });
+  objects.push({ key: 'live/v1/schedule.json', size: 20, modified: OLD });
   const removed: string[] = [];
   const store = {
     async *list(prefix: string) {
@@ -107,11 +110,36 @@ test('old active releases and the last two releases survive even after a long pu
   assert.deepEqual([...keep].sort(), [ACTIVE, PREVIOUS].sort());
 });
 
+test('a publishing burst keeps one rollback rather than every recent release', () => {
+  const keep = protectedGenerations(
+    [
+      manifest('active', ACTIVE, NOW),
+      manifest('previous', PREVIOUS, NOW - 1_000),
+      manifest('recent', RECENT, NOW - 2_000)
+    ],
+    new Set(['active']),
+    NOW
+  );
+  assert.deepEqual([...keep].sort(), [ACTIVE, PREVIOUS].sort());
+});
+
+test('captured report cleanup is an explicit producer-contract allowlist', () => {
+  assert.equal(staleCapturedReport('reports/Trends - Last 30 Days/decks.json'), true);
+  assert.equal(staleCapturedReport('reports/Trends - Last 30 Days/trends.json'), false);
+  assert.equal(staleCapturedReport('reports/Online - Last 14 Days/archetypes/Legacy.json'), true);
+  assert.equal(staleCapturedReport('reports/Online - Last 14 Days/archetypes/Deck/cards.json'), false);
+  assert.equal(staleCapturedReport('reports/Online - Last 14 Days/decks.json'), true);
+  assert.equal(staleCapturedReport('reports/Online - Last 14 Days/decks/index.json'), false);
+  assert.equal(staleCapturedReport('reports/Snapshots/2026-01-01/archetypes/Deck/decks.json'), true);
+  assert.equal(staleCapturedReport('reports/Snapshots/2026-01-01/decks.json'), false);
+  assert.equal(staleCapturedReport('reports/Snapshots/2026-01-01/meta.json'), false);
+});
+
 test('dry run reports garbage without touching any objects', async () => {
   const f = fixture();
   const plan = await pruneReleases(f.store, NOW);
   assert.equal(plan.totalBytes, 500);
-  assert.equal(plan.reclaimBytes, 1000);
+  assert.equal(plan.reclaimBytes, 1030);
   assert.deepEqual(
     plan.generations.map(group => group.prefix),
     [EXPIRED, PENDING]
@@ -127,7 +155,9 @@ test('cleanup deletes old unreferenced generations and tournament databases whil
     `${PENDING}master.json`,
     'reports/event/tournament.db',
     'reports/2026-01-01, Event/master.json',
-    'reports/tournaments.json'
+    'reports/tournaments.json',
+    'build/v1/releases/expired.json',
+    'live/v1/old-event/r1.json'
   ]);
 });
 
@@ -136,14 +166,16 @@ test('shadow channels are obsolete and do not protect release roots', async () =
   f.bodies.set('channels/shadow.json', { releaseId: 'expired', manifest: '/build/v1/releases/expired.json' });
   f.objects.push({ key: 'channels/shadow.json', size: 10, modified: OLD });
   const plan = await pruneReleases(f.store, NOW, true);
-  assert.equal(plan.reclaimBytes, 1010);
+  assert.equal(plan.reclaimBytes, 1040);
   assert.deepEqual(f.removed, [
     `${EXPIRED}master.json`,
     `${PENDING}master.json`,
     'channels/shadow.json',
     'reports/event/tournament.db',
     'reports/2026-01-01, Event/master.json',
-    'reports/tournaments.json'
+    'reports/tournaments.json',
+    'build/v1/releases/expired.json',
+    'live/v1/old-event/r1.json'
   ]);
 });
 
@@ -153,12 +185,14 @@ test('pending production events remain protected until promotion', async () => {
     events: { '2026-01-01, Event': `/${PENDING.slice(0, -1)}` }
   });
   const plan = await pruneReleases(f.store, NOW, true);
-  assert.equal(plan.reclaimBytes, 900);
+  assert.equal(plan.reclaimBytes, 930);
   assert.deepEqual(f.removed, [
     `${EXPIRED}master.json`,
     'reports/event/tournament.db',
     'reports/2026-01-01, Event/master.json',
-    'reports/tournaments.json'
+    'reports/tournaments.json',
+    'build/v1/releases/expired.json',
+    'live/v1/old-event/r1.json'
   ]);
 });
 

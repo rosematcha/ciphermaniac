@@ -2,9 +2,8 @@
  * Tests for the new archetype folder structure
  *
  * Tests the changes that:
- * 1. Create per-archetype folders with cards.json and decks.json
- * 2. Update API to use new paths with legacy fallback
- * 3. Support archetype-specific deck fetching
+ * 1. Create per-archetype online folders with cards.json and deck shards
+ * 2. Support archetype-specific online deck fetching
  */
 
 import { describe, it } from 'node:test';
@@ -103,19 +102,6 @@ describe('Archetype Report Path Generation', () => {
         const path = `archetypes/${base}/cards.json`;
         assert.ok(path.includes(expected), `Path should contain ${expected}`);
       }
-    });
-  });
-
-  describe('Legacy fallback paths', () => {
-    it('should generate correct legacy path', () => {
-      const tournament = 'Online - Last 14 Days';
-      const archetype = 'Gardevoir';
-      const expectedLegacyPath = `reports/Online - Last 14 Days/archetypes/Gardevoir.json`;
-
-      const basePath = `reports/${tournament}`;
-      const legacyPath = `${basePath}/archetypes/${archetype}.json`;
-
-      assert.strictEqual(legacyPath, expectedLegacyPath);
     });
   });
 });
@@ -238,47 +224,6 @@ describe('Archetype Deck Filtering', () => {
 });
 
 // =============================================================================
-// Backward Compatibility Tests
-// =============================================================================
-
-describe('Backward Compatibility', () => {
-  it('should generate legacy flat file alongside new structure', () => {
-    const archetype = 'Gardevoir';
-
-    // New paths
-    const newCardsPath = `archetypes/${archetype}/cards.json`;
-    const newDecksPath = `archetypes/${archetype}/decks.json`;
-
-    // Legacy path
-    const legacyPath = `archetypes/${archetype}.json`;
-
-    // All three should be generated for backward compatibility
-    assert.strictEqual(newCardsPath, 'archetypes/Gardevoir/cards.json');
-    assert.strictEqual(newDecksPath, 'archetypes/Gardevoir/decks.json');
-    assert.strictEqual(legacyPath, 'archetypes/Gardevoir.json');
-  });
-
-  it('should prefer new path but fall back to legacy', async () => {
-    // Simulate the fallback logic
-    async function fetchWithFallback(newPath: string, legacyPath: string): Promise<{ path: string; data: any }> {
-      // Try new path first
-      const newPathExists = false; // Simulate new path not existing yet
-      if (newPathExists) {
-        return { path: newPath, data: { source: 'new' } };
-      }
-
-      // Fall back to legacy
-      return { path: legacyPath, data: { source: 'legacy' } };
-    }
-
-    const result = await fetchWithFallback('archetypes/Gardevoir/cards.json', 'archetypes/Gardevoir.json');
-
-    assert.strictEqual(result.path, 'archetypes/Gardevoir.json');
-    assert.strictEqual(result.data.source, 'legacy');
-  });
-});
-
-// =============================================================================
 // URL Encoding Tests
 // =============================================================================
 
@@ -378,16 +323,6 @@ describe('Archetype-Specific Deck Fetching', () => {
     assert.ok(expectedUrl.includes('/Gardevoir/'));
   });
 
-  it('should use main decks.json URL when no archetype is provided', () => {
-    const tournament = 'Online - Last 14 Days';
-
-    // Expected URL pattern for all decks
-    const expectedUrl = `https://r2.ciphermaniac.com/reports/${encodeURIComponent(tournament)}/decks.json`;
-
-    assert.ok(!expectedUrl.includes('/archetypes/'));
-    assert.ok(expectedUrl.endsWith('/decks.json'));
-  });
-
   it('should return only that archetype decks from archetype-specific file', () => {
     // Simulate what archetype-specific decks.json contains
     const archetypeSpecificDecks: MockDeck[] = [
@@ -398,21 +333,6 @@ describe('Archetype-Specific Deck Fetching', () => {
     // All decks should be for the target archetype
     assert.ok(archetypeSpecificDecks.every(deck => deck.archetype === 'Gardevoir'));
     assert.strictEqual(archetypeSpecificDecks.length, 2);
-  });
-
-  it('should still work with main decks.json when archetype file not found', () => {
-    // Simulate fallback scenario
-    const allDecks: MockDeck[] = [
-      createMockDeck('deck-1', 'Gardevoir', []),
-      createMockDeck('deck-2', 'Gardevoir', []),
-      createMockDeck('deck-3', 'Charizard Pidgeot', [])
-    ];
-
-    // Filter by archetype manually (simulating what happens in fallback)
-    const filteredDecks = allDecks.filter(deck => deck.archetype === 'Gardevoir');
-
-    assert.strictEqual(filteredDecks.length, 2);
-    assert.ok(filteredDecks.every(deck => deck.archetype === 'Gardevoir'));
   });
 });
 

@@ -275,8 +275,8 @@ export function reindexFromDecks(
  *
  * Produces, relative to the event folder: `master.json`,
  * `archetypes/<base>/cards.json`, `cardUsage.json`, `conversion.json` (only
- * when the event has a Day 2), and — when slice decks exist — the
- * `slices/{phase2,topcut}/` master + archetype cards. Deliberately untouched:
+ * when the event has a Day 2), and the `slices/{phase2,topcut}/` master +
+ * archetype cards derived from the canonical deck body. Deliberately untouched:
  * `decks.json` (authentic raw printings), `archetypes/index.json` (thumbnails/
  * icons need the richer Python config), `cardIndex.json` (name-keyed),
  * players/matches/meta.

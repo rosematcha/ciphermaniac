@@ -8,8 +8,8 @@
  * Why it exists: play rate says how many people sleeved a card, never whether
  * it won them anything. The Social Graphics "Fraudulent" view needs the second
  * half of that — a card can be everywhere on ladder and still be a trap — and
- * the only finish data for the online window lives in a 36 MB `decks.json` no
- * browser should download. This reduces it to ~50 KB.
+ * the raw finish data for the online window lives in deck shards no browser
+ * should have to aggregate. This reduces it to ~50 KB.
  *
  * Semantics:
  * - Success is a tag from the frozen {@link SUCCESS_TAG_POLICY}, not a raw

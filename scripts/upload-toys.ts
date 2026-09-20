@@ -15,7 +15,9 @@ import { requireEnv } from '../.github/scripts/lib/env.ts';
 import process from 'node:process';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { S3Client } from '@aws-sdk/client-s3';
+import { putObjectIfChanged } from '../.github/scripts/lib/r2.mjs';
+import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
 
 const TOYS_DIR = 'static/toys';
 const CACHE_CONTROL = 'public, max-age=21600';
@@ -45,26 +47,25 @@ function contentTypeFor(path: string): string {
 
 async function main() {
   const files = await readdir(TOYS_DIR, { recursive: true, withFileTypes: true });
-  let uploaded = 0;
+  const expected = new Set<string>();
+  let written = 0;
   for (const entry of files) {
     if (!entry.isFile() || entry.name.startsWith('.')) {
       continue;
     }
     const fullPath = join(entry.parentPath, entry.name);
     const key = `toys/${relative(TOYS_DIR, fullPath).split(sep).join('/')}`;
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: await readFile(fullPath),
-        ContentType: contentTypeFor(entry.name),
-        CacheControl: CACHE_CONTROL
-      })
-    );
-    uploaded += 1;
-    console.log(`  ✓ ${key}`);
+    expected.add(key);
+    const changed = await putObjectIfChanged(s3Client, bucket, key, {
+      body: await readFile(fullPath),
+      contentType: contentTypeFor(entry.name),
+      cacheControl: CACHE_CONTROL
+    });
+    written += changed ? 1 : 0;
   }
-  console.log(`Uploaded ${uploaded} files to ${bucket}/toys/`);
+  const stale = (await listR2Keys(s3Client, bucket, 'toys/')).filter(key => !expected.has(key));
+  await deleteR2Keys(s3Client, bucket, stale);
+  console.log(`Synced ${expected.size} toy files: ${written} written, ${stale.length} removed.`);
 }
 
 main().catch(error => {

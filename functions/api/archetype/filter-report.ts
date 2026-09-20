@@ -23,7 +23,7 @@ import {
 } from '../../../shared/clientSideFiltering.js';
 import { canonicalizeDeckCard } from '../../../shared/deckCardId.js';
 import { loadCardSynonyms } from '../../../shared/data/cardSynonyms.js';
-import { type ReleaseManifest, resolveEventPath } from '../../../shared/data/build/release.js';
+import { type ReleaseManifest, resolveEventPath, resolveScopePath } from '../../../shared/data/build/release.js';
 import type { ArchetypeFilterRequest, Deck, Filter, Operator } from '../../../shared/deckTypes.js';
 import { EMBEDDED_RELEASE } from '../../../shared/generated/release.js';
 
@@ -62,6 +62,8 @@ const VALID_SUCCESS_FILTERS = new Set(['all', ...SUCCESS_TAG_HIERARCHY]);
 const VALID_OPERATORS = new Set(QUANTITY_OPERATORS);
 
 const VALID_SLICES = new Set(['all', 'phase2', 'topcut']);
+const ONLINE_REPORT = 'Online - Last 14 Days';
+const SNAPSHOT_PREFIX = 'snapshot:';
 
 interface RequestContext {
   request: Request;
@@ -351,18 +353,24 @@ export function buildReportsPath(
   archetypeDecks = false,
   release: ReleaseManifest | null = EMBEDDED_RELEASE
 ): string | null {
-  const encodedTournament = encodeURIComponent(payload.tournament);
-  const slicePath = payload.slice && payload.slice !== 'all' ? `/slices/${payload.slice}` : '';
-  const relativePath = archetypeDecks
-    ? `${slicePath}/archetypes/${encodeURIComponent(payload.archetype)}/decks.json`
-    : `${slicePath}/decks.json`;
+  const sharded = payload.tournament === ONLINE_REPORT;
+  const relativePath =
+    sharded && archetypeDecks ? `archetypes/${encodeURIComponent(payload.archetype)}/decks.json` : 'decks.json';
   if (release) {
+    if (payload.tournament === ONLINE_REPORT) {
+      return resolveScopePath(release, 'online', relativePath);
+    }
+    if (payload.tournament.startsWith(SNAPSHOT_PREFIX)) {
+      const date = encodeURIComponent(payload.tournament.slice(SNAPSHOT_PREFIX.length));
+      return resolveScopePath(release, 'snapshots', `${date}/${relativePath}`);
+    }
     return resolveEventPath(release, payload.tournament, relativePath);
   }
-  if (archetypeDecks) {
-    return `/reports/${encodedTournament}${slicePath}/archetypes/${encodeURIComponent(payload.archetype)}/decks.json`;
+  if (payload.tournament.startsWith(SNAPSHOT_PREFIX)) {
+    const date = encodeURIComponent(payload.tournament.slice(SNAPSHOT_PREFIX.length));
+    return `/reports/Snapshots/${date}/${relativePath}`;
   }
-  return `/reports/${encodedTournament}${slicePath}/decks.json`;
+  return `/reports/${encodeURIComponent(payload.tournament)}/${relativePath}`;
 }
 
 /**
@@ -410,29 +418,22 @@ async function fetchDecksFromPath(request: Request, path: string): Promise<DeckF
 }
 
 async function loadDecks(request: Request, payload: ArchetypeFilterRequest): Promise<DeckFetch> {
-  // Try the small archetype-specific slice first; only fall back to the full
-  // (multi-MB) decks file when the slice is missing. Fetching both in parallel
-  // wasted bandwidth/CPU downloading the large file on every request.
-  const specificPath = buildReportsPath(payload, true);
-  if (!specificPath) {
+  const sharded = payload.tournament === ONLINE_REPORT;
+  const path = buildReportsPath(payload, sharded);
+  if (!path) {
     return { status: 'missing' };
   }
-  const specific = await fetchDecksFromPath(request, specificPath);
-  if (specific.status === 'ok') {
-    return specific;
+  return fetchDecksFromPath(request, path);
+}
+
+function decksForSlice(decks: Deck[], slice: ArchetypeFilterRequest['slice']): Deck[] {
+  if (slice === 'phase2') {
+    return decks.filter(deck => deck.madePhase2 === true);
   }
-  const fallbackPath = buildReportsPath(payload, false);
-  if (!fallbackPath) {
-    return { status: 'missing' };
+  if (slice === 'topcut') {
+    return decks.filter(deck => deck.madeTopCut === true);
   }
-  const fallback = await fetchDecksFromPath(request, fallbackPath);
-  // A genuinely absent per-archetype slice is normal; report the fallback's
-  // outcome. But if the slice fetch failed for an interesting reason and the
-  // fallback is merely missing, surface the interesting one.
-  if (fallback.status === 'missing' && specific.status !== 'missing') {
-    return specific;
-  }
-  return fallback;
+  return decks;
 }
 
 /** Map a failed deck load to a client response, logging the actionable detail. */
@@ -542,7 +543,7 @@ export async function onRequestPost({ request, env, waitUntil }: RequestContext)
   // the expensive order. Neither filter depends on canonical card IDs (they
   // match on placement tags and archetype name); the card-quantity filters
   // inside generateReportForFilters do, so canonicalize the survivors first.
-  const successScopedDecks = filterDecksBySuccess(decks, payload.successFilter);
+  const successScopedDecks = filterDecksBySuccess(decksForSlice(decks, payload.slice), payload.successFilter);
   const archetypeScopedDecks = filterDecks(successScopedDecks, payload.archetype, []);
 
   // loadCardSynonyms degrades to an empty DB on failure, in which case

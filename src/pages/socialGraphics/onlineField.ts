@@ -4,8 +4,8 @@
  *
  * Play rate is the reputation; this is whether the reputation was earned. The
  * counts come from `cardSuccess.json`, written by the online-meta cron beside
- * master.json, because the only other record of those finishes is a 36 MB
- * `decks.json` no browser should download.
+ * master.json, because the only other record of those finishes is the raw deck
+ * shard corpus no browser should download.
  *
  * Keys are re-mapped onto today's canonical print for the same reason the event
  * side is: the artifact is canonicalized when the cron runs, and a synonym

@@ -10,12 +10,16 @@ const previous = { '1/profile.json': { etag: 'one', size: 20, path: `${prior}/1/
 
 test('unchanged player bodies retain their immutable reference while changed bodies are copied', () => {
   const current = '/releases/v1/players/bbbbbbbbbbbb';
-  const plan = planPlayerCapture([object, { ...object, relativeKey: '2/profile.json' }], previous, current);
+  const plan = planPlayerCapture([object, { ...object, relativeKey: '2/profile.json' }], previous, current, prior);
   assert.equal(plan.copies.length, 1);
   assert.equal(plan.inventory['1/profile.json'].path, previous['1/profile.json'].path);
   assert.equal(plan.inventory['2/profile.json'].path, `${current}/2/profile.json`);
-  assert.equal(planPlayerCapture([{ ...object, etag: 'changed' }], previous, current).copies.length, 1);
-  assert.deepEqual(planPlayerCapture([], previous, current).inventory, {});
+  assert.equal(planPlayerCapture([{ ...object, etag: 'changed' }], previous, current, prior).copies.length, 1);
+  assert.deepEqual(planPlayerCapture([], previous, current, prior).inventory, {});
+  const transitive = {
+    '1/profile.json': { ...previous['1/profile.json'], path: '/releases/v1/players/older/1/profile.json' }
+  };
+  assert.equal(planPlayerCapture([object], transitive, current, prior).copies.length, 1);
 });
 
 test('capture commits routes and references only after all copies succeed; identical retries write nothing', async () => {
@@ -27,12 +31,15 @@ test('capture commits routes and references only after all copies succeed; ident
     },
     copy: async () => {}
   };
-  const result = await capturePlayers({ objects: [object], previous, store, write: true });
+  const result = await capturePlayers({ objects: [object], previous, previousRoot: prior, store, write: true });
   assert.equal(result.reused, 1);
   assert.equal(result.copied, 0);
   assert.deepEqual(bodies.get(`${result.root.slice(1)}/_references.json`), [prior]);
   assert.equal(bodies.size, 259);
-  assert.equal((await capturePlayers({ objects: [object], previous, store, write: true })).copied, 0);
+  assert.equal(
+    (await capturePlayers({ objects: [object], previous, previousRoot: prior, store, write: true })).copied,
+    0
+  );
   const failed = {
     ...store,
     copy: async () => {
@@ -40,11 +47,23 @@ test('capture commits routes and references only after all copies succeed; ident
     }
   };
   await assert.rejects(
-    capturePlayers({ objects: [{ ...object, etag: 'new' }], previous, store: failed, write: true }),
+    capturePlayers({
+      objects: [{ ...object, etag: 'new' }],
+      previous,
+      previousRoot: prior,
+      store: failed,
+      write: true
+    }),
     /transport/
   );
   assert.equal(bodies.size, 259);
-  await capturePlayers({ objects: [{ ...object, etag: 'new' }], previous, store: failed, write: false });
+  await capturePlayers({
+    objects: [{ ...object, etag: 'new' }],
+    previous,
+    previousRoot: prior,
+    store: failed,
+    write: false
+  });
 });
 
 test('retention protects transitive player references, handles cycles, and fails closed on bad references', async () => {
