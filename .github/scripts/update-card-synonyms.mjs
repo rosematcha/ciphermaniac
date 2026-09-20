@@ -14,7 +14,7 @@ import * as cheerio from 'cheerio';
 import { chooseCanonicalPrint } from '../../shared/data/canonicalPrint.ts';
 import { assertCanonicalRoutesSound } from '../../shared/data/canonicalCardRoute.ts';
 import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
-import { createR2Client, getJsonResult } from './lib/r2.mjs';
+import { createR2Client, getJsonResult, readJson } from './lib/r2.mjs';
 import { loadEventSources, productionScopeRoot } from './lib/build/productionRelease.ts';
 import { loadOnlineDecks } from './lib/build/onlineDecks.ts';
 import { newSetCodes, parseSetCardList } from './lib/setSeeds.ts';
@@ -65,15 +65,11 @@ async function loadPreviousSynonyms() {
   // transient scrape failure can never drop mappings unique to a missing
   // source (P-06). Returns null only when there is verifiably no prior DB — a
   // transport/corrupt read throws rather than silently discarding the DB.
-  const result = await getJsonResult(s3Client, R2_BUCKET_NAME, 'assets/card-synonyms.json');
-  if (result.status === 'transport' || result.status === 'corrupt') {
-    throw new Error(`Failed to load previous synonyms (${result.status})`, { cause: result.error });
-  }
-  if (result.status === 'missing') {
+  const data = await readJson(s3Client, R2_BUCKET_NAME, 'assets/card-synonyms.json');
+  if (data === null) {
     log('  No previous synonyms in R2; starting fresh');
     return null;
   }
-  const data = result.value;
   const synonyms = data?.synonyms && typeof data.synonyms === 'object' ? data.synonyms : {};
   const canonicals = data?.canonicals && typeof data.canonicals === 'object' ? data.canonicals : {};
   const prints = data?.prints && typeof data.prints === 'object' ? data.prints : {};
@@ -86,18 +82,7 @@ async function loadPreviousSynonyms() {
 async function loadTournamentDecks(release, sources, folder) {
   if (folder === ONLINE_META_FOLDER) {
     const root = productionScopeRoot(release, 'online');
-    return loadOnlineDecks(
-      {
-        async read(key) {
-          const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
-          if (result.status === 'transport' || result.status === 'corrupt') {
-            throw new Error(`Failed to load ${key} (${result.status})`, { cause: result.error });
-          }
-          return result.status === 'found' ? result.value : null;
-        }
-      },
-      root
-    );
+    return loadOnlineDecks({ read: key => readJson(s3Client, R2_BUCKET_NAME, key) }, root);
   }
   const key = `${sources[folder]?.replace(/^\/+/, '')}/decks.json`;
   const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
@@ -630,14 +615,7 @@ async function uploadToR2(data) {
 }
 
 async function readReleaseReference(key) {
-  const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
-  if (result.status === 'found') {
-    return result.value;
-  }
-  if (result.status === 'missing') {
-    return null;
-  }
-  throw new Error(`Failed to load production release reference ${key} (${result.status})`, { cause: result.error });
+  return readJson(s3Client, R2_BUCKET_NAME, key);
 }
 
 function assertSourceCoverage(stats, fullRewrite) {

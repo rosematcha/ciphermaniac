@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { r2Config } from './lib/env';
-import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
+import { createR2Client, putJson, readJson } from './lib/r2.mjs';
 import { loadEventSources } from './lib/build/productionRelease';
 import { builderRevision, PLAYER_BUILD_FILES } from './lib/build/revision';
 import { inputFingerprint, type ProducerState } from './lib/build/provenance';
@@ -9,16 +9,7 @@ import { inputFingerprint, type ProducerState } from './lib/build/provenance';
 export async function runMajorData(): Promise<void> {
   const config = r2Config();
   const client = createR2Client(config);
-  const read = async <T>(key: string): Promise<T | null> => {
-    const result = await getJsonResult<T>(client, config.bucket, key);
-    if (result.status === 'found') {
-      return result.value;
-    }
-    if (result.status === 'missing') {
-      return null;
-    }
-    throw new Error(`Cannot read ${key}: ${result.status}`);
-  };
+  const read = <T>(key: string) => readJson<T>(client, config.bucket, key);
   const { sources } = await loadEventSources({ read });
   const inputs = inputFingerprint(sources);
   const codeRevision = await builderRevision([

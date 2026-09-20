@@ -25,7 +25,7 @@
 import { requireEnv } from './lib/env.ts';
 import process from 'node:process';
 import { writeFile } from 'node:fs/promises';
-import { createR2Client, getJsonResult, putJsonIfChanged } from './lib/r2.mjs';
+import { createR2Client, putJsonIfChanged, readJson } from './lib/r2.mjs';
 import { majorTournaments, tournamentDate } from '../../shared/data/tournamentKeys.ts';
 import type { MasterPayload } from '../../src/lib/data.ts';
 import { canonicalizeReport } from '../../src/lib/data/compat.ts';
@@ -64,38 +64,19 @@ const s3Client = createR2Client({
   secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
 });
 
-/** GET + parse a JSON object from R2 by key. Returns null on 404, throws otherwise. */
-async function fetchJson<T>(key: string): Promise<T | null> {
-  const result = await getJsonResult<T>(s3Client, R2_BUCKET, key);
-  if (result.status === 'found') {
-    return result.value;
-  }
-  if (result.status === 'missing') {
-    return null;
-  }
-  throw new Error(`[majors-trends] read failed for ${key}`, { cause: result.error });
-}
-
 /**
  * Tolerate ONLY a verified-missing event (majors trends may publish partial
  * results when an event artifact is absent). A transport or corrupt read must
  * fail the run rather than silently drop an event from the artifact.
  */
-async function fetchJsonSafe<T>(key: string): Promise<T | null> {
-  const result = await getJsonResult<T>(s3Client, R2_BUCKET, key);
-  if (result.status === 'found') {
-    return result.value;
-  }
-  if (result.status === 'missing') {
-    return null;
-  }
-  throw new Error(`[majors-trends] read failed for ${key} (${result.status})`, { cause: result.error });
+function fetchJson<T>(key: string): Promise<T | null> {
+  return readJson<T>(s3Client, R2_BUCKET, key);
 }
 
 /** Load the synonym DB the same way the browser does (see src/utils/cardSynonyms.ts). */
 async function loadSynonymDatabase(): Promise<SynonymDatabase> {
   const key = 'assets/card-synonyms.json';
-  return requireSynonymDatabase(await fetchJsonSafe<SynonymDatabase>(key), key);
+  return requireSynonymDatabase(await fetchJson<SynonymDatabase>(key), key);
 }
 
 /**
@@ -117,8 +98,8 @@ async function buildSnapshot(
   }
   // S3 object keys use the raw folder name; the SDK handles URL-encoding.
   const [rawMaster, rawArchetypes] = await Promise.all([
-    fetchJsonSafe<MasterPayload>(`${root}/master.json`),
-    fetchJsonSafe<ArchetypeIndexEntry[]>(`${root}/archetypes/index.json`)
+    fetchJson<MasterPayload>(`${root}/master.json`),
+    fetchJson<ArchetypeIndexEntry[]>(`${root}/archetypes/index.json`)
   ]);
   return {
     tournament,

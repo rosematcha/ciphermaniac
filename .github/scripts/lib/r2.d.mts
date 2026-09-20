@@ -70,6 +70,14 @@ export declare function getJsonResult<T = unknown>(
   options?: GetJsonOptions
 ): Promise<JsonReadResult<T>>;
 
+/** The value, or null on a verified 404; a corrupt or failed read throws. */
+export declare function readJson<T = unknown>(
+  client: S3Client,
+  bucket: string,
+  key: string,
+  options?: GetJsonOptions
+): Promise<T | null>;
+
 export declare function putJson(
   client: S3Client,
   bucket: string,

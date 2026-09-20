@@ -15,7 +15,7 @@
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { createR2Client, getJsonResult, putJsonIfChanged } from './lib/r2.mjs';
+import { createR2Client, putJsonIfChanged, readJson as readR2Json } from './lib/r2.mjs';
 import type { CardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 import onlineExclusions from '../../config/online-exclusions.json';
@@ -174,15 +174,8 @@ async function putJson(key: string, data: unknown): Promise<void> {
   publishedKeys.add(key);
 }
 
-async function readJson<T = unknown>(key: string): Promise<T | null> {
-  const result = await getJsonResult<T>(s3Client, R2_BUCKET_NAME, key);
-  if (result.status === 'found') {
-    return result.value;
-  }
-  if (result.status === 'missing') {
-    return null;
-  }
-  throw result.error;
+function readJson<T = unknown>(key: string): Promise<T | null> {
+  return readR2Json<T>(s3Client, R2_BUCKET_NAME, key);
 }
 
 async function listKeys(prefix: string): Promise<string[]> {

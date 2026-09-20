@@ -1,7 +1,7 @@
 import { DeleteObjectsCommand, ListObjectsV2Command, type S3Client } from '@aws-sdk/client-s3';
 import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { createR2Client, getJsonResult, withR2Retry } from './lib/r2.mjs';
+import { createR2Client, getJsonResult, readJson, withR2Retry } from './lib/r2.mjs';
 import { r2Config } from './lib/env';
 import { staleCapturedReport } from './lib/build/capturedScope';
 import {
@@ -54,16 +54,7 @@ export function createRetentionStore(client: S3Client, bucket: string): Store {
       }
       return result.value;
     },
-    async readOptional(key) {
-      const result = await getJsonResult(client, bucket, key);
-      if (result.status === 'missing') {
-        return null;
-      }
-      if (result.status !== 'found') {
-        throw new Error(`Cannot read retention reference ${key}: ${result.status}`);
-      }
-      return result.value;
-    },
+    readOptional: key => readJson(client, bucket, key),
     async remove(keys) {
       const result = await withR2Retry(() =>
         client.send(new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: keys.map(Key => ({ Key })) } }))

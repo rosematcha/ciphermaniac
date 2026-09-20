@@ -25,7 +25,7 @@ import { buildSchedule, isEventLive, isScheduleStale, LIVE_SCHEDULE_KEY } from '
 import { initialState, LIVE_CACHE_CONTROL, liveKeys, resumeState, tickEvent } from '../../shared/live/tick.ts';
 import type { LiveEvent, LiveIndex, LiveSchedule, LiveState } from '../../shared/live/types.ts';
 import { intEnv, r2Config } from './lib/env.ts';
-import { createR2Client, getJsonResult, putJson } from './lib/r2.mjs';
+import { createR2Client, putJson, readJson } from './lib/r2.mjs';
 
 const POLL_MS = 60_000;
 const FETCH_TIMEOUT_MS = 30_000;
@@ -57,17 +57,8 @@ function r2Publisher(): Publisher {
   const config = r2Config({ defaultBucket: 'ciphermaniac-reports' });
   const client = createR2Client(config);
   return {
-    async read<T>(key: string): Promise<T | null> {
-      const result = await getJsonResult<T>(client, config.bucket, key);
-      if (result.status === 'found') {
-        return result.value;
-      }
-      if (result.status === 'missing') {
-        return null;
-      }
-      // Resuming from round 1 on a failed read would republish stale rounds.
-      throw new Error(`Could not read ${key} (${result.status})`, { cause: result.error });
-    },
+    // A failed read throws: resuming from round 1 would republish stale rounds.
+    read: <T>(key: string) => readJson<T>(client, config.bucket, key),
     write: (key, value) => putJson(client, config.bucket, key, value, { cacheControl: LIVE_CACHE_CONTROL })
   };
 }

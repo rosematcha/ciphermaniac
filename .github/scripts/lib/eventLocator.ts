@@ -34,7 +34,7 @@ import {
   locatorPlacesPath
 } from '../../../shared/events/types.ts';
 import { LOCALS_HORIZON_DAYS, POKEDATA_SITE, type PokedataPull } from './pokedata.ts';
-import { createR2Client, createReportsBinding, getJsonResult, putJson } from './r2.mjs';
+import { createR2Client, createReportsBinding, putJson, readJson } from './r2.mjs';
 import type { R2Config } from './env.ts';
 
 /** Live schedules should pick up corrections within five minutes. */
@@ -254,18 +254,9 @@ export function createR2Publisher(config: R2Config): Publisher {
   const client = createR2Client(config);
   const binding = createReportsBinding(client, config.bucket);
   return {
-    async read<T>(key: string) {
-      const result = await getJsonResult<T>(client, config.bucket, key);
-      if (result.status === 'found') {
-        return result.value;
-      }
-      if (result.status === 'missing') {
-        return null;
-      }
-      // Publishing blind would skip the shrink guard; a corrupt index is
-      // worth a human look before anything replaces it.
-      throw new Error(`Could not read ${key} (${result.status})`, { cause: result.error });
-    },
+    // A failed read throws: publishing blind would skip the shrink guard, and
+    // a corrupt index is worth a human look before anything replaces it.
+    read: <T>(key: string) => readJson<T>(client, config.bucket, key),
     write: (key, value) =>
       putJson(client, config.bucket, key, value, {
         cacheControl: LOCATOR_CACHE_CONTROL,
