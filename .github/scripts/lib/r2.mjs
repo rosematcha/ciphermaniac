@@ -14,7 +14,14 @@
  * already resolved, so a mid-stream drop escapes its retry middleware.
  */
 
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client
+} from '@aws-sdk/client-s3';
+import { createHash } from 'node:crypto';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { setTimeout as sleep } from 'node:timers/promises';
 
@@ -25,7 +32,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
  * @param {unknown} error
  * @returns {boolean}
  */
-function isNotFound(error) {
+export function isNotFound(error) {
   const meta = /** @type {{ name?: string; $metadata?: { httpStatusCode?: number } }} */ (error);
   return meta?.name === 'NoSuchKey' || meta?.$metadata?.httpStatusCode === 404;
 }
@@ -220,6 +227,50 @@ export async function putJson(client, bucket, key, value, options = {}) {
   );
 }
 
+/** Write JSON only when its exact serialized body differs from the stored object. */
+export async function putJsonIfChanged(client, bucket, key, { value, ...options }) {
+  const body = typeof value === 'string' ? value : JSON.stringify(value);
+  return putObjectIfChanged(client, bucket, key, {
+    body,
+    ...options,
+    contentType: options.contentType ?? 'application/json'
+  });
+}
+
+/** Write an object only when its exact bytes differ from the stored object. */
+export async function putObjectIfChanged(client, bucket, key, { body, ...options }) {
+  const hashBody = body instanceof ArrayBuffer ? new Uint8Array(body) : body;
+  const digest = createHash('sha256').update(hashBody).digest('hex');
+  try {
+    const current = await withR2Retry(
+      () => client.send(new HeadObjectCommand({ Bucket: bucket, Key: key })),
+      options.retry
+    );
+    if (current.Metadata?.sha256 === digest) {
+      return false;
+    }
+  } catch (error) {
+    if (!isNotFound(error)) {
+      throw error;
+    }
+  }
+  await withR2Retry(
+    () =>
+      client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: body,
+          ContentType: options.contentType,
+          CacheControl: options.cacheControl,
+          Metadata: { sha256: digest }
+        })
+      ),
+    options.retry
+  );
+  return true;
+}
+
 /**
  * Cloudflare-style `{ get, put, delete }` binding backed by the S3 client. Get
  * returns an R2ObjectBody-like `{ text, json }` (or null on a verified 404);
@@ -268,19 +319,12 @@ export function createReportsBinding(client, bucket, options = {}) {
      * @param {{ httpMetadata?: { contentType?: string, cacheControl?: string } }} [opts]
      */
     async put(key, data, opts) {
-      await withR2Retry(
-        () =>
-          client.send(
-            new PutObjectCommand({
-              Bucket: bucket,
-              Key: key,
-              Body: toBody(data),
-              ContentType: opts?.httpMetadata?.contentType ?? 'application/json',
-              CacheControl: opts?.httpMetadata?.cacheControl
-            })
-          ),
+      await putObjectIfChanged(client, bucket, key, {
+        body: toBody(data),
+        contentType: opts?.httpMetadata?.contentType ?? 'application/json',
+        cacheControl: opts?.httpMetadata?.cacheControl,
         retry
-      );
+      });
     },
     /**
      * @param {string} key

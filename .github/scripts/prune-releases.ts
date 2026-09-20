@@ -3,16 +3,21 @@ import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { createR2Client, getJsonResult, withR2Retry } from './lib/r2.mjs';
 import { r2Config } from './lib/env';
+import { staleCapturedReport } from './lib/build/capturedScope';
 import {
   expiredGenerations,
   type Generation,
+  GENERATION_GRACE_MS,
   generationPrefix,
   protectedGenerations,
+  protectedReleaseIds,
   recordGeneration,
   type RetainedManifest,
   retentionManifest,
   type StoredObject
 } from './lib/build/retention';
+
+const LIVE_RETENTION_MS = 30 * 86_400_000;
 
 interface Store {
   list(prefix: string): AsyncIterable<StoredObject>;
@@ -87,7 +92,7 @@ async function activeManifest(store: Store): Promise<RetainedManifest> {
   return manifest;
 }
 
-async function retainedRoots(store: Store, now: number): Promise<Set<string>> {
+async function retainedState(store: Store, now: number): Promise<{ roots: Set<string>; releaseIds: Set<string> }> {
   const active = await activeManifest(store);
   const manifests = new Map([[active.releaseId, active]]);
   for (const prefix of ['build/v1/releases/', 'releases/v1/manifests/']) {
@@ -96,7 +101,10 @@ async function retainedRoots(store: Store, now: number): Promise<Set<string>> {
       manifests.set(manifest.releaseId, manifest);
     }
   }
-  const keep = protectedGenerations([...manifests.values()], new Set([active.releaseId]), now);
+  const values = [...manifests.values()];
+  const activeIds = new Set([active.releaseId]);
+  const keep = protectedGenerations(values, activeIds, now);
+  const releaseIds = protectedReleaseIds(values, activeIds, now);
   const pending = (await store.readOptional('pending-events.json')) as { events?: Record<string, string> } | null;
   for (const root of Object.values(pending?.events ?? {})) {
     const prefix = `${root.replace(/^\/+/, '')}/`;
@@ -106,7 +114,7 @@ async function retainedRoots(store: Store, now: number): Promise<Set<string>> {
     keep.add(prefix);
   }
   await protectPlayerReferences(store, keep);
-  return keep;
+  return { roots: keep, releaseIds };
 }
 
 export async function protectPlayerReferences(store: Pick<Store, 'readOptional'>, keep: Set<string>): Promise<void> {
@@ -136,7 +144,24 @@ export async function protectPlayerReferences(store: Pick<Store, 'readOptional'>
   }
 }
 
-async function obsoleteObjects(store: Store): Promise<StoredObject[]> {
+function isLegacyMutableObject(key: string): boolean {
+  return (
+    /^reports\/\d{4}-\d{2}-\d{2},[^/]+\//.test(key) ||
+    key === 'reports/tournaments.json' ||
+    key.endsWith('/tournament.db') ||
+    staleCapturedReport(key)
+  );
+}
+
+function releaseIdForKey(key: string, prefix: string): string {
+  return key.slice(prefix.length).replace(/\.json$/, '');
+}
+
+function isExpiredLiveObject(object: StoredObject, now: number): boolean {
+  return object.key !== 'live/v1/schedule.json' && object.modified <= now - LIVE_RETENTION_MS;
+}
+
+async function obsoleteObjects(store: Store, retainedReleaseIds: Set<string>, now: number): Promise<StoredObject[]> {
   const objects: StoredObject[] = [];
   for (const prefix of ['channels/', 'build/v1/channels/']) {
     for await (const object of store.list(prefix)) {
@@ -144,11 +169,20 @@ async function obsoleteObjects(store: Store): Promise<StoredObject[]> {
     }
   }
   for await (const object of store.list('reports/')) {
-    if (
-      /^reports\/\d{4}-\d{2}-\d{2},[^/]+\//.test(object.key) ||
-      object.key === 'reports/tournaments.json' ||
-      object.key.endsWith('/tournament.db')
-    ) {
+    if (isLegacyMutableObject(object.key)) {
+      objects.push(object);
+    }
+  }
+  for (const prefix of ['build/v1/releases/', 'releases/v1/manifests/']) {
+    for await (const object of store.list(prefix)) {
+      const id = releaseIdForKey(object.key, prefix);
+      if (!retainedReleaseIds.has(id)) {
+        objects.push(object);
+      }
+    }
+  }
+  for await (const object of store.list('live/v1/')) {
+    if (isExpiredLiveObject(object, now)) {
       objects.push(object);
     }
   }
@@ -171,7 +205,7 @@ async function removeKeys(store: Store, keys: string[]): Promise<void> {
 async function inventoryGeneration(store: Store, generation: Generation, now: number): Promise<string[]> {
   const keys: string[] = [];
   for await (const object of store.list(generation.prefix)) {
-    if (!object.key.startsWith(generation.prefix) || object.modified >= now - 7 * 86_400_000) {
+    if (!object.key.startsWith(generation.prefix) || object.modified >= now - GENERATION_GRACE_MS) {
       throw new Error(`Generation changed during cleanup: ${generation.prefix}`);
     }
     keys.push(object.key);
@@ -203,13 +237,13 @@ export async function pruneReleases(
   generations: Generation[];
   obsolete: StoredObject[];
 }> {
-  const keep = await retainedRoots(store, now);
+  const retained = await retainedState(store, now);
   const groups = new Map<string, Generation>();
   for await (const object of store.list('releases/v1/')) {
     recordGeneration(groups, object);
   }
-  const generations = expiredGenerations(groups.values(), keep, now);
-  const obsolete = await obsoleteObjects(store);
+  const generations = expiredGenerations(groups.values(), retained.roots, now);
+  const obsolete = await obsoleteObjects(store, retained.releaseIds, now);
   const plan = {
     totalBytes: [...groups.values()].reduce((sum, group) => sum + group.bytes, 0),
     reclaimBytes:
@@ -219,9 +253,9 @@ export async function pruneReleases(
   };
   if (write) {
     // Re-read production after the inventory; an unexpected promotion cancels deletion.
-    const freshKeep = await retainedRoots(store, now);
+    const fresh = await retainedState(store, now);
     for (const group of generations) {
-      if (freshKeep.has(group.prefix)) {
+      if (fresh.roots.has(group.prefix)) {
         throw new Error(`Release became active during cleanup: ${group.prefix}`);
       }
     }

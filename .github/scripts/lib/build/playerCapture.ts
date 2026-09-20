@@ -20,12 +20,22 @@ interface CaptureStore {
   copy(object: CapturedObject, target: string): Promise<void>;
 }
 
-export function planPlayerCapture(objects: CapturedObject[], previous: PlayerInventory, root: string) {
+export function planPlayerCapture(
+  objects: CapturedObject[],
+  previous: PlayerInventory,
+  root: string,
+  previousRoot: string
+) {
   const inventory: PlayerInventory = {};
   const copies: Array<{ object: CapturedObject; target: string }> = [];
   for (const object of objects) {
     const prior = previous[object.relativeKey];
-    const reusable = playerObjectPath(object.relativeKey) && prior?.etag === object.etag && prior.size === object.size;
+    const belongsToPrevious = prior?.path.startsWith(`${previousRoot}/`) === true;
+    const reusable =
+      playerObjectPath(object.relativeKey) &&
+      belongsToPrevious &&
+      prior?.etag === object.etag &&
+      prior.size === object.size;
     const path = reusable ? prior.path : `${root}/${object.relativeKey}`;
     inventory[object.relativeKey] = { etag: object.etag, size: object.size, path };
     if (!reusable) {
@@ -53,11 +63,12 @@ export async function capturePlayers(options: {
   previous: PlayerInventory;
   store: CaptureStore;
   write: boolean;
+  previousRoot: string;
 }): Promise<{ root: string; copied: number; reused: number }> {
-  const { objects, previous, store, write } = options;
+  const { objects, previous, store, write, previousRoot } = options;
   const generation = inputFingerprint(objects.map(({ relativeKey, etag, size }) => ({ relativeKey, etag, size })));
   const root = `/releases/v1/players/${generation}`;
-  const { inventory, copies } = planPlayerCapture(objects, previous, root);
+  const { inventory, copies } = planPlayerCapture(objects, previous, root, previousRoot);
   const result = { root, copied: copies.length, reused: objects.length - copies.length };
   if (!write || (await store.read(`${root.slice(1)}/_complete.json`))) {
     return { ...result, copied: 0 };

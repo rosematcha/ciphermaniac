@@ -15,13 +15,13 @@
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { createR2Client, getJsonResult, putJson as putJsonR2 } from './lib/r2.mjs';
+import { createR2Client, getJsonResult, putJsonIfChanged } from './lib/r2.mjs';
 import type { CardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 import onlineExclusions from '../../config/online-exclusions.json';
 import { generateArchetypeTrends, MIN_MATCHUP_GAMES } from '../../shared/data/analysis/archetypeTrends.js';
 import { generateReportFromDecks, listedDeckCount } from '../../shared/data/reports/cardReport.js';
-import { buildArchetypeReports } from '../../shared/data/archetypes/build.js';
+import { type ArchetypeBuildResult, buildArchetypeReports } from '../../shared/data/archetypes/build.js';
 import { onlineArchetypeOptions } from '../../shared/data/reports/onlineArtifacts.js';
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.js';
 import { buildCardSuccessIndex } from '../../shared/data/reports/cardSuccess.js';
@@ -35,6 +35,8 @@ import {
   utcDayWindow
 } from '../../shared/onlineMeta/index.js';
 import type { DiagnosticsCollector, GatheredDeck, OnlineTournamentSummary } from '../../shared/onlineMeta/types.js';
+import { partitionDecks } from './lib/build/deckShards';
+import { isOnlineReportRelativeKey } from './lib/build/capturedScope';
 
 const WINDOW_DAYS = 14;
 const CACHE_REFRESH_LOOKBACK_DAYS = 30;
@@ -78,7 +80,6 @@ const R2_REPORTS_PREFIX = process.env.R2_REPORTS_PREFIX || 'reports';
 // Feature flags - default to true if not specified
 const GENERATE_MASTER = process.env.GENERATE_MASTER !== 'false';
 const GENERATE_ARCHETYPES = process.env.GENERATE_ARCHETYPES !== 'false';
-const GENERATE_DECKS = process.env.GENERATE_DECKS !== 'false';
 
 const s3Client = createR2Client({
   accountId: R2_ACCOUNT_ID,
@@ -166,9 +167,11 @@ async function gatherPairingsData(
 // ============================================================================
 
 const REPORTS_CACHE_CONTROL = 'public, max-age=21600';
+const publishedKeys = new Set<string>();
 
 async function putJson(key: string, data: unknown): Promise<void> {
-  await putJsonR2(s3Client, R2_BUCKET_NAME, key, data, { cacheControl: REPORTS_CACHE_CONTROL });
+  await putJsonIfChanged(s3Client, R2_BUCKET_NAME, key, { value: data, cacheControl: REPORTS_CACHE_CONTROL });
+  publishedKeys.add(key);
 }
 
 async function readJson<T = unknown>(key: string): Promise<T | null> {
@@ -233,6 +236,26 @@ async function deletePrefix(prefix: string): Promise<{ keys: number; deleted: nu
     keys: keys.length,
     deleted
   };
+}
+
+async function removeSupersededOnlineObjects(basePath: string): Promise<number> {
+  const existing = await listKeys(`${basePath}/`);
+  const archetypePrefix = `${basePath}/archetypes/`;
+  const deckIndexPrefix = `${basePath}/decks/`;
+  const stale = existing.filter(key => {
+    const relative = key.slice(`${basePath}/`.length);
+    if (!isOnlineReportRelativeKey(relative)) {
+      return true;
+    }
+    if (GENERATE_ARCHETYPES && key.startsWith(deckIndexPrefix)) {
+      return !publishedKeys.has(key);
+    }
+    if (GENERATE_ARCHETYPES && key.startsWith(archetypePrefix)) {
+      return !publishedKeys.has(key);
+    }
+    return GENERATE_MASTER && key === `${basePath}/cardSuccess.json` && !publishedKeys.has(key);
+  });
+  return deleteKeys(stale);
 }
 
 async function loadCardTypesDatabase(): Promise<CardTypesDatabase | null> {
@@ -383,6 +406,121 @@ function buildMeta(
 // Main Function
 // ============================================================================
 
+interface TrendBuildInput {
+  archetypes: ArchetypeBuildResult;
+  tournaments: OnlineTournamentSummary[];
+  synonymDb: SynonymDatabase;
+  pairingsData: PairingData[];
+}
+
+function buildArchetypeTrends(input: TrendBuildInput): Map<string, unknown> {
+  const trendsByBase = new Map<string, unknown>();
+  if (!GENERATE_ARCHETYPES) {
+    return trendsByBase;
+  }
+  const failures: string[] = [];
+  for (const file of input.archetypes.files) {
+    const decks = input.archetypes.decksByBase.get(file.base);
+    if (!decks) {
+      continue;
+    }
+    try {
+      const archetypeName = file.displayName || file.base.replace(/_/g, ' ');
+      trendsByBase.set(
+        file.base,
+        generateArchetypeTrends(
+          decks as unknown as Parameters<typeof generateArchetypeTrends>[0],
+          input.tournaments,
+          input.synonymDb,
+          { pairingsData: input.pairingsData, archetypeName }
+        )
+      );
+    } catch (error) {
+      failures.push(`${file.base}: ${(error as Error)?.message || error}`);
+    }
+  }
+  if (failures.length) {
+    throw new Error(`Trend generation failed for ${failures.length} archetype(s): ${failures.join('; ')}`);
+  }
+  return trendsByBase;
+}
+
+interface PublishInput {
+  basePath: string;
+  reportDecks: GatheredDeck[];
+  masterReport: unknown;
+  cardSuccess: ReturnType<typeof buildCardSuccessIndex>;
+  archetypes: ArchetypeBuildResult;
+  trendsByBase: Map<string, unknown>;
+  meta: unknown;
+}
+
+async function publishMaster(input: PublishInput): Promise<void> {
+  if (!GENERATE_MASTER) {
+    console.log('[online-meta] Skipping master.json (GENERATE_MASTER=false)');
+    return;
+  }
+  console.log('[online-meta] Uploading master.json...');
+  await putJson(`${input.basePath}/master.json`, input.masterReport);
+  if (!input.cardSuccess) {
+    console.log('[online-meta] Skipping cardSuccess.json (no deck met the field-size floor)');
+    return;
+  }
+  console.log(
+    `[online-meta] Uploading cardSuccess.json (${input.cardSuccess.successTotal}/${input.cardSuccess.deckTotal} decks ${input.cardSuccess.tag})...`
+  );
+  await putJson(`${input.basePath}/cardSuccess.json`, input.cardSuccess);
+}
+
+async function publishArchetypes(input: PublishInput): Promise<void> {
+  if (!GENERATE_ARCHETYPES) {
+    console.log('[online-meta] Skipping archetype reports (GENERATE_ARCHETYPES=false)');
+    return;
+  }
+  const { files, index, decksByBase } = input.archetypes;
+  console.log('[online-meta] Uploading archetype reports...');
+  await putJson(`${input.basePath}/archetypes/index.json`, index);
+  await putJson(`${input.basePath}/cardUsage.json`, buildCardUsageIndex(files));
+  for (const file of files) {
+    await putJson(`${input.basePath}/archetypes/${file.base}/cards.json`, file.data);
+    const trends = input.trendsByBase.get(file.base);
+    if (trends) {
+      await putJson(`${input.basePath}/archetypes/${file.base}/trends.json`, trends);
+    }
+  }
+  const deckShards = partitionDecks(
+    input.reportDecks,
+    files.map(file => ({ base: file.base, decks: (decksByBase.get(file.base) ?? []) as GatheredDeck[] }))
+  );
+  for (const shard of deckShards) {
+    await putJson(`${input.basePath}/${shard.path}`, shard.decks);
+  }
+  await putJson(`${input.basePath}/decks/index.json`, deckShards.map(shard => shard.path).sort());
+  const removed = await removeSupersededOnlineObjects(input.basePath);
+  console.log(`[online-meta] Removed ${removed} superseded or duplicate object(s)`);
+}
+
+async function publishReport(input: PublishInput): Promise<void> {
+  if (CLEAN_MONTH_CACHE) {
+    console.log(
+      `[online-meta] CLEAN_MONTH_CACHE=true: deleting existing ${input.basePath} artifacts before rebuild...`
+    );
+    const deleted = await deletePrefix(`${input.basePath}/`);
+    console.log(`[online-meta] Deleted ${deleted.deleted}/${deleted.keys} objects from ${input.basePath}/`);
+  }
+  await publishMaster(input);
+  await publishArchetypes(input);
+  console.log('[online-meta] Uploading meta.json (pointer, written last)...');
+  await putJson(`${input.basePath}/meta.json`, input.meta);
+  const components = [
+    GENERATE_MASTER ? 'master' : null,
+    GENERATE_ARCHETYPES ? `${input.archetypes.files.length} archetypes` : null
+  ];
+  console.log(
+    `[online-meta] Uploaded ${components.filter(Boolean).join(' + ')} to ${R2_BUCKET_NAME}/${input.basePath}`
+  );
+}
+
 async function main(): Promise<void> {
   const now = new Date();
   const basePath = `${R2_REPORTS_PREFIX}/${TARGET_FOLDER}`;
@@ -418,51 +556,19 @@ async function main(): Promise<void> {
   // quirk), 0.5% deck floor, fraction percent, deckCount-desc ordering,
   // thumbnails + signature cards on index entries. The "Other" bucket stays in
   // the denominator but gets no page.
-  const {
-    files: archetypeFiles,
-    index: archetypeIndex,
-    minDecks,
-    decksByBase
-  } = buildArchetypeReports(
+  const archetypes = buildArchetypeReports(
     reportDecks as unknown as Parameters<typeof buildArchetypeReports>[0],
     synonymDb,
     onlineArchetypeOptions(ARCHETYPE_THUMBNAILS, cardTypesDb, masterReport)
   );
 
-  const meta = buildMeta(now, window, window.fetchWindowDays, { minDecks, pairingsFailures });
+  const meta = buildMeta(now, window, window.fetchWindowDays, { minDecks: archetypes.minDecks, pairingsFailures });
 
   // Pre-generate every archetype's trends BEFORE any destructive step. Trend
   // generation is pure/in-memory, so a failure here signals a real bug — surface
   // it now, while the previous report is still intact, rather than publishing
   // new decks alongside stale (or missing) trends (P-31).
-  const trendsByBase = new Map<string, unknown>();
-  if (GENERATE_ARCHETYPES) {
-    const trendFailures: string[] = [];
-    for (const file of archetypeFiles) {
-      const archetypeDecks = decksByBase.get(file.base);
-      if (!archetypeDecks) {
-        continue;
-      }
-      try {
-        const archetypeName = file.displayName || file.base.replace(/_/g, ' ');
-        const trends = generateArchetypeTrends(
-          archetypeDecks as unknown as Parameters<typeof generateArchetypeTrends>[0],
-          reportTournaments,
-          synonymDb,
-          {
-            pairingsData,
-            archetypeName
-          }
-        );
-        trendsByBase.set(file.base, trends);
-      } catch (err) {
-        trendFailures.push(`${file.base}: ${(err as Error)?.message || err}`);
-      }
-    }
-    if (trendFailures.length) {
-      throw new Error(`Trend generation failed for ${trendFailures.length} archetype(s): ${trendFailures.join('; ')}`);
-    }
-  }
+  const trendsByBase = buildArchetypeTrends({ archetypes, tournaments: reportTournaments, synonymDb, pairingsData });
 
   // Per-card finish rates, computed with the trends above and for the same
   // reason (P-31): it is pure, in-memory work, so a bug here must surface while
@@ -472,96 +578,7 @@ async function main(): Promise<void> {
     synonymDb
   );
 
-  // Everything needed for a complete report is now in hand. In clean mode it is
-  // finally safe to clear the old artifacts (P-03): a fetch outage, empty window,
-  // or trend bug above already aborted without touching production.
-  if (CLEAN_MONTH_CACHE) {
-    console.log(`[online-meta] CLEAN_MONTH_CACHE=true: deleting existing ${basePath} artifacts before rebuild...`);
-    const deleted = await deletePrefix(`${basePath}/`);
-    console.log(`[online-meta] Deleted ${deleted.deleted}/${deleted.keys} objects from ${basePath}/`);
-  }
-
-  // Conditionally upload based on feature flags. meta.json — the pointer the UI
-  // reads first — is written LAST so a partial upload never advertises a report
-  // whose bodies are missing (P-03).
-  if (GENERATE_MASTER) {
-    console.log('[online-meta] Uploading master.json...');
-    await putJson(`${basePath}/master.json`, masterReport);
-    // Finish rates ride with master: same population, same canonical keys, and
-    // the only other place this window's placements survive is the 36 MB
-    // decks.json that no browser should be asked to download.
-    if (cardSuccess) {
-      console.log(
-        `[online-meta] Uploading cardSuccess.json (${cardSuccess.successTotal}/${cardSuccess.deckTotal} decks ${cardSuccess.tag})...`
-      );
-      await putJson(`${basePath}/cardSuccess.json`, cardSuccess);
-    } else {
-      console.log('[online-meta] Skipping cardSuccess.json (no deck met the field-size floor)');
-    }
-  } else {
-    console.log('[online-meta] Skipping master.json (GENERATE_MASTER=false)');
-  }
-
-  if (GENERATE_DECKS) {
-    console.log('[online-meta] Uploading decks.json...');
-    await putJson(`${basePath}/decks.json`, reportDecks);
-  } else {
-    console.log('[online-meta] Skipping decks.json (GENERATE_DECKS=false)');
-  }
-
-  if (GENERATE_ARCHETYPES) {
-    console.log('[online-meta] Uploading archetype reports (new folder structure)...');
-    await putJson(`${basePath}/archetypes/index.json`, archetypeIndex);
-    await putJson(`${basePath}/cardUsage.json`, buildCardUsageIndex(archetypeFiles));
-
-    for (const file of archetypeFiles) {
-      // Upload cards.json for each archetype (e.g., archetypes/Gardevoir/cards.json)
-
-      await putJson(`${basePath}/archetypes/${file.base}/cards.json`, file.data);
-
-      // Upload decks.json for each archetype (e.g., archetypes/Gardevoir/decks.json)
-      const archetypeDecks = decksByBase.get(file.base);
-      if (archetypeDecks) {
-        await putJson(`${basePath}/archetypes/${file.base}/decks.json`, archetypeDecks);
-
-        // Upload the trends.json pre-generated above.
-        const trends = trendsByBase.get(file.base);
-        if (trends) {
-          await putJson(`${basePath}/archetypes/${file.base}/trends.json`, trends);
-        }
-      }
-    }
-
-    // Also upload legacy flat files for backward compatibility during migration
-    // These can be removed in the future after all consumers are updated
-    console.log('[online-meta] Uploading legacy archetype files for backward compatibility...');
-    for (const file of archetypeFiles) {
-      await putJson(`${basePath}/archetypes/${file.base}.json`, file.data);
-    }
-  } else {
-    console.log('[online-meta] Skipping archetype reports (GENERATE_ARCHETYPES=false)');
-  }
-
-  // Note: Online tournaments are NOT added to tournaments.json
-  // They are treated as a special case in the UI
-
-  // meta.json is the pointer the UI loads first — write it LAST so a partial
-  // upload never advertises a report whose bodies are missing (P-03).
-  console.log('[online-meta] Uploading meta.json (pointer, written last)...');
-  await putJson(`${basePath}/meta.json`, meta);
-
-  const uploadedComponents: string[] = [];
-  if (GENERATE_MASTER) {
-    uploadedComponents.push('master');
-  }
-  if (GENERATE_ARCHETYPES) {
-    uploadedComponents.push(`${archetypeFiles.length} archetypes`);
-  }
-  if (GENERATE_DECKS) {
-    uploadedComponents.push('decks');
-  }
-
-  console.log(`[online-meta] Uploaded ${uploadedComponents.join(' + ')} to ${R2_BUCKET_NAME}/${basePath}`);
+  await publishReport({ basePath, reportDecks, masterReport, cardSuccess, archetypes, trendsByBase, meta });
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;

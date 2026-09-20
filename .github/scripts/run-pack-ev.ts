@@ -14,7 +14,7 @@ import process from 'node:process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { r2Config } from './lib/env.ts';
-import { createR2Client, putJson } from './lib/r2.mjs';
+import { createR2Client, putJsonIfChanged } from './lib/r2.mjs';
 import { type FetchJson, PACK_EV_CACHE_CONTROL, type PackEvPublisher, runPackEv } from './lib/packEv.ts';
 import type { PackEvConfig } from '../../shared/packEv/types.ts';
 import rawConfig from '../../config/pack-ev.json';
@@ -47,11 +47,13 @@ function r2Publisher(): PackEvPublisher {
   const config = r2Config({ defaultBucket: 'ciphermaniac-reports' });
   const client = createR2Client(config);
   return {
-    write: (key, value) =>
-      putJson(client, config.bucket, key, value, {
+    async write(key, value) {
+      await putJsonIfChanged(client, config.bucket, key, {
+        value,
         cacheControl: PACK_EV_CACHE_CONTROL,
         contentType: 'application/json'
-      })
+      });
+    }
   };
 }
 

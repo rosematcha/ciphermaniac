@@ -81,6 +81,17 @@ class R2Binding {
   async put(key: string, data: unknown) {
     const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
     await reports.put(this.withPrefix(key), body);
+    if (key === HISTORY_KEY) {
+      await this.removeStaleTrendArtifacts();
+    }
+  }
+
+  private async removeStaleTrendArtifacts() {
+    const expected = new Set(
+      [`${TRENDS_FOLDER}/meta.json`, `${TRENDS_FOLDER}/trends.json`, HISTORY_KEY].map(key => this.withPrefix(key))
+    );
+    const stale = (await this.listKeys(`${TRENDS_FOLDER}/`)).filter(key => !expected.has(key));
+    await this.deleteKeys(stale);
   }
 
   async get(key: string) {

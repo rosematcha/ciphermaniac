@@ -173,11 +173,7 @@ function toDeckEntries(decks: DeckArtifactRow[]): DeckEntry[] {
   return decks.map(deck => ({ cards: deck.cards }));
 }
 
-/**
- * Build the report bundle shared by the full event and each slice: master
- * report, archetype index + per-archetype cards/decks files, and the card-usage
- * index. Returns bodies keyed by path relative to `prefix`.
- */
+/** Build the report bundle shared by the full event and each slice. */
 function buildReportBundle(
   decks: DeckArtifactRow[],
   synonymDb: SynonymDatabase | null,
@@ -193,7 +189,9 @@ function buildReportBundle(
     master.canonicalizedAt = canonicalization.asOfDate;
   }
   out.set(`${prefix}master.json`, master);
-  out.set(`${prefix}decks.json`, decks);
+  if (!prefix) {
+    out.set('decks.json', decks);
+  }
 
   const archetypeInputs = decks.map(deck => ({ cards: deck.cards, archetype: deck.archetype }));
   const built = buildArchetypeReports(archetypeInputs, synonymDb, {
@@ -207,7 +205,6 @@ function buildReportBundle(
       file.data.canonicalizedAt = canonicalization.asOfDate;
     }
     out.set(`${prefix}archetypes/${file.base}/cards.json`, file.data);
-    out.set(`${prefix}archetypes/${file.base}/decks.json`, built.decksByBase.get(file.base) ?? []);
   }
   const usage = buildCardUsageIndex(built.files);
   out.set(

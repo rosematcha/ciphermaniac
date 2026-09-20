@@ -28,7 +28,7 @@ installPreloadRecovery();
 // Warm the image origin marker at startup. The synonym database is intentionally
 // demand-loaded by card-facing data fetches; most routes never need its payload.
 probeR2Ready();
-loadArchetypeIconMap().catch(error => console.warn('Archetype icon metadata unavailable:', error));
+loadArchetypeIconMap().catch(error => console.warn(error));
 
 const routeLoaders: Record<string, () => Promise<unknown>> = {
   '/cards': () => import('./pages/CardsIndexPage'),

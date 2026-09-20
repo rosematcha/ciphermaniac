@@ -1,4 +1,6 @@
 const DAY_MS = 86_400_000;
+/** Let a just-published generation settle before it can be collected. */
+export const GENERATION_GRACE_MS = DAY_MS;
 const GENERATION =
   /^(releases\/v1\/(?:events\/[^/]+|catalogs|online|trends|players|prices|snapshots|assets)\/[a-f0-9]{12,64})\//;
 
@@ -74,8 +76,8 @@ export function recordGeneration(groups: Map<string, Generation>, object: Stored
   groups.set(prefix, group);
 }
 
-/** Keep active channels, a week of rollbacks, and at least the last two releases. */
-export function protectedGenerations(manifests: RetainedManifest[], activeIds: Set<string>, now: number): Set<string> {
+/** Identify every active release and the newest non-active release as one rollback. */
+export function protectedReleaseIds(manifests: RetainedManifest[], activeIds: Set<string>, now: number): Set<string> {
   if (!Number.isFinite(now) || activeIds.size === 0) {
     throw new Error('Retention requires a valid clock and an active release');
   }
@@ -85,9 +87,16 @@ export function protectedGenerations(manifests: RetainedManifest[], activeIds: S
       throw new Error(`Active release manifest not found: ${id}`);
     }
   }
+  const rollback = ordered.find(manifest => !activeIds.has(manifest.releaseId));
+  return new Set([...activeIds, ...(rollback ? [rollback.releaseId] : [])]);
+}
+
+/** Keep the immutable roots referenced by the active release and one rollback. */
+export function protectedGenerations(manifests: RetainedManifest[], activeIds: Set<string>, now: number): Set<string> {
+  const protectedIds = protectedReleaseIds(manifests, activeIds, now);
   const keep = new Set<string>();
-  ordered.forEach((manifest, index) => {
-    if (index >= 2 && !activeIds.has(manifest.releaseId) && Date.parse(manifest.publishedAt) < now - 7 * DAY_MS) {
+  manifests.forEach(manifest => {
+    if (!protectedIds.has(manifest.releaseId)) {
       return;
     }
     for (const root of [...Object.values(manifest.roots), ...Object.values(manifest.events)]) {
@@ -97,10 +106,10 @@ export function protectedGenerations(manifests: RetainedManifest[], activeIds: S
   return keep;
 }
 
-/** Only complete generations outside both the reference set and grace window qualify. */
+/** Only complete generations outside both the reference set and one-day settling window qualify. */
 export function expiredGenerations(groups: Iterable<Generation>, keep: Set<string>, now: number): Generation[] {
   if (!Number.isFinite(now) || keep.size === 0) {
     throw new Error('Refusing cleanup without protected generations');
   }
-  return [...groups].filter(group => !keep.has(group.prefix) && group.newest < now - 7 * DAY_MS);
+  return [...groups].filter(group => !keep.has(group.prefix) && group.newest < now - GENERATION_GRACE_MS);
 }

@@ -9,11 +9,12 @@
  */
 
 import { dataClient } from './client';
-import { tournamentPath } from './paths';
+import { ONLINE, tournamentPath } from './paths';
 import { cardUidOrName, getCanonicalCardFromData, itemUid, parseCardUid } from '../../../shared/data/cardIdentity.js';
 import { getSynonymDatabase } from '../../utils/cardSynonyms';
 import type { TournamentParticipant } from '../../types';
 import { fetchMaster, type MasterPayload } from './reports';
+import { normalizeArchetypeName } from '../../../shared/cardUtils.js';
 
 const { fetchJsonOptional } = dataClient;
 
@@ -44,6 +45,8 @@ export interface DeckRecord {
   cards: DeckCardRecord[];
   /** Whether this deck's pilot made the Day 2 cut. */
   madePhase2?: boolean;
+  /** Whether this deck's pilot made top cut. */
+  madeTopCut?: boolean;
 }
 
 function fetchDecks(tournament: string): Promise<DeckRecord[] | null> {
@@ -228,12 +231,14 @@ async function day2CardStatsFromDecks(tournament: string): Promise<Day2CardStat[
   return out;
 }
 
-/**
- * Per-archetype deck list. Used by the Advanced filter builder so the
- * full tournament `decks.json` (much larger) doesn't have to be paid for.
- */
-export function fetchArchetypeDecks(tournament: string, archetypeBase: string): Promise<DeckRecord[] | null> {
-  return fetchJsonOptional<DeckRecord[]>(
-    `${tournamentPath(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}/decks.json`
-  );
+/** Load a deck subset without storing a second copy of event deck bodies. */
+export async function fetchArchetypeDecks(tournament: string, archetypeBase: string): Promise<DeckRecord[] | null> {
+  if (tournament === ONLINE) {
+    return fetchJsonOptional<DeckRecord[]>(
+      `${tournamentPath(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}/decks.json`
+    );
+  }
+  const decks = await fetchDecks(tournament);
+  const normalizedBase = normalizeArchetypeName(archetypeBase);
+  return decks?.filter(deck => normalizeArchetypeName(deck.archetype) === normalizedBase) ?? null;
 }

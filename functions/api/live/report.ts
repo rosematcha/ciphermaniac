@@ -88,7 +88,11 @@ async function isKnownArchetype(bucket: Bucket, archetype: string): Promise<bool
 
 async function publishSeat(bucket: Bucket, slug: string, seat: string, archetype: string | null): Promise<void> {
   const key = liveReportsKey(slug);
-  const decks = { ...(await readJson<LiveReports>(bucket, key))?.decks };
+  const current = await readJson<LiveReports>(bucket, key);
+  if ((current?.decks[seat] ?? null) === archetype) {
+    return;
+  }
+  const decks = { ...current?.decks };
   if (archetype) {
     decks[seat] = archetype;
   } else {

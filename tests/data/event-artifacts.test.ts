@@ -44,10 +44,11 @@ test('archetype index + per-archetype files + cardUsage are generated and consis
   const artifacts = buildEventArtifacts(labs);
   const index = artifacts.get('archetypes/index.json') as { name: string }[];
   assert.ok(Array.isArray(index) && index.length > 0);
-  // Every index slug resolves to a cards.json body (index slugs resolve to bodies).
+  // Every index slug resolves to one aggregate body; deck subsets derive from
+  // the event's single canonical decks.json.
   for (const entry of index) {
     assert.ok(artifacts.has(`archetypes/${entry.name}/cards.json`), `no body for ${entry.name}`);
-    assert.ok(artifacts.has(`archetypes/${entry.name}/decks.json`));
+    assert.equal(artifacts.has(`archetypes/${entry.name}/decks.json`), false);
   }
   // cardUsage slugs are a subset of the archetype index slugs.
   const usage = artifacts.get('cardUsage.json') as { usage: Record<string, { slug: string }[]> };
@@ -64,6 +65,13 @@ test('phase2 and topcut slices reuse the report bundle under a prefix', () => {
   assert.ok(artifacts.has('slices/phase2/master.json'));
   assert.ok(artifacts.has('slices/phase2/archetypes/index.json'));
   assert.ok(artifacts.has('slices/topcut/master.json'));
+  assert.equal(artifacts.has('slices/phase2/decks.json'), false);
+  assert.equal(artifacts.has('slices/topcut/decks.json'), false);
+});
+
+test('an event publishes exactly one deck corpus', () => {
+  const deckBodies = [...buildEventArtifacts(labs).keys()].filter(path => path.endsWith('decks.json'));
+  assert.deepEqual(deckBodies, ['decks.json']);
 });
 
 test('online window omits match-derived and conversion artifacts', () => {

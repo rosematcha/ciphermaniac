@@ -244,4 +244,10 @@ test('P-29: pre-rotation window spans exactly windowDays dates and excludes the 
   // windowEnd is exclusive at the rotation day itself.
   assert.equal(result.windowEnd, '2026-04-10T00:00:00.000Z');
   assert.equal(result.windowStart, '2026-03-11T00:00:00.000Z');
+  assert.ok(store[`reports/Snapshots/${ROTATION}/decks.json`], 'snapshot writes one canonical deck corpus');
+  assert.equal(
+    Object.keys(store).some(key => /\/archetypes\/[^/]+\/decks\.json$/.test(key)),
+    false,
+    'snapshot does not duplicate decks per archetype'
+  );
 });

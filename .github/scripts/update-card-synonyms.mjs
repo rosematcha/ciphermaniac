@@ -16,6 +16,7 @@ import { assertCanonicalRoutesSound } from '../../shared/data/canonicalCardRoute
 import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult } from './lib/r2.mjs';
 import { loadEventSources, productionScopeKey } from './lib/build/productionRelease.ts';
+import { loadOnlineDecks } from './lib/build/onlineDecks.ts';
 import { newSetCodes, parseSetCardList } from './lib/setSeeds.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -83,10 +84,22 @@ async function loadPreviousSynonyms() {
 }
 
 async function loadTournamentDecks(release, sources, folder) {
-  const key =
-    folder === ONLINE_META_FOLDER
-      ? productionScopeKey(release, 'online', 'decks.json')
-      : `${sources[folder]?.replace(/^\/+/, '')}/decks.json`;
+  if (folder === ONLINE_META_FOLDER) {
+    const root = productionScopeKey(release, 'online', '').replace(/\/$/, '');
+    return loadOnlineDecks(
+      {
+        async read(key) {
+          const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
+          if (result.status === 'transport' || result.status === 'corrupt') {
+            throw new Error(`Failed to load ${key} (${result.status})`, { cause: result.error });
+          }
+          return result.status === 'found' ? result.value : null;
+        }
+      },
+      root
+    );
+  }
+  const key = `${sources[folder]?.replace(/^\/+/, '')}/decks.json`;
   const result = await getJsonResult(s3Client, R2_BUCKET_NAME, key);
   if (result.status === 'transport' || result.status === 'corrupt') {
     throw new Error(`Failed to load ${key} (${result.status})`, { cause: result.error });

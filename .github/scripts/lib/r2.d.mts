@@ -19,6 +19,14 @@ export interface PutJsonOptions {
   retry?: R2RetryOptions;
 }
 
+export interface PutJsonIfChangedOptions extends PutJsonOptions {
+  value: unknown;
+}
+
+export interface PutObjectIfChangedOptions extends PutJsonOptions {
+  body: string | ArrayBuffer | ArrayBufferView;
+}
+
 export interface GetJsonOptions {
   retry?: R2RetryOptions;
 }
@@ -69,6 +77,22 @@ export declare function putJson(
   value: unknown,
   options?: PutJsonOptions
 ): Promise<void>;
+
+export declare function putJsonIfChanged(
+  client: S3Client,
+  bucket: string,
+  key: string,
+  options: PutJsonIfChangedOptions
+): Promise<boolean>;
+
+export declare function putObjectIfChanged(
+  client: S3Client,
+  bucket: string,
+  key: string,
+  options: PutObjectIfChangedOptions
+): Promise<boolean>;
+
+export declare function isNotFound(error: unknown): boolean;
 
 export declare function createReportsBinding(
   client: S3Client,
