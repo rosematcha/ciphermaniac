@@ -7,7 +7,7 @@ on:
       operation:
         description: Maintenance operation
         type: choice
-        options: [prune, reconcile-events, price-history, print-prices, bootstrap]
+        options: [prune, inventory, reconcile-events, price-history, print-prices, bootstrap]
         default: prune
       apply:
         description: Apply the operation (otherwise preview)
@@ -60,7 +60,7 @@ jobs:
       - name: Run selected maintenance operation
         run: npx tsx .github/scripts/run-data-pipeline.ts maintenance
       - name: Publish completed repairs
-        if: env.APPLY == 'true' && env.OPERATION != 'prune' && env.OPERATION != 'bootstrap'
+        if: env.APPLY == 'true' && env.OPERATION != 'prune' && env.OPERATION != 'inventory' && env.OPERATION != 'bootstrap'
         uses: ./.github/actions/publish
       - name: Upload retention plan
         if: always() && env.OPERATION == 'prune'
@@ -68,4 +68,11 @@ jobs:
         with:
           name: retention-plan
           path: retention-plan.json
+          if-no-files-found: ignore
+      - name: Upload bucket inventory
+        if: always() && env.OPERATION == 'inventory'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: bucket-inventory
+          path: bucket-inventory.json
           if-no-files-found: ignore
