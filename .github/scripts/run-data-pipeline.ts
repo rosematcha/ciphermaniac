@@ -58,6 +58,10 @@ async function maintenance(): Promise<void> {
     node('prune-releases.ts', apply ? ['--write'] : []);
     return;
   }
+  if (operation === 'inventory') {
+    node('inventory-bucket.ts');
+    return;
+  }
   if (operation === 'reconcile-events') {
     process.env.RECONCILE_EVENTS = 'true';
     process.env.DRY_RUN = apply ? 'false' : 'true';

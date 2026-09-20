@@ -97,17 +97,32 @@ test('invalid manifests and missing active references fail closed', () => {
   assert.throws(() => expiredGenerations([], new Set(), NOW));
 });
 
-test('old active releases and the last two releases survive even after a long publishing outage', () => {
+test('an old active release keeps the releases on either side of it, however long publishing stalls', () => {
   const keep = protectedGenerations(
     [
       manifest('active', ACTIVE, OLD - 1000),
-      manifest('previous', PREVIOUS, OLD),
-      manifest('expired', EXPIRED, OLD - 2000)
+      manifest('newer', PREVIOUS, OLD),
+      manifest('older', EXPIRED, OLD - 2000),
+      manifest('oldest', RECENT, OLD - 3000)
     ],
     new Set(['active']),
     NOW
   );
-  assert.deepEqual([...keep].sort(), [ACTIVE, PREVIOUS].sort());
+  assert.deepEqual([...keep].sort(), [ACTIVE, PREVIOUS, EXPIRED].sort());
+});
+
+test('a release that was never promoted does not displace the last good one', () => {
+  const keep = protectedGenerations(
+    [
+      manifest('unpromoted', RECENT, NOW),
+      manifest('active', ACTIVE, NOW - 1_000),
+      manifest('previous', PREVIOUS, NOW - 2_000),
+      manifest('expired', EXPIRED, NOW - 3_000)
+    ],
+    new Set(['active']),
+    NOW
+  );
+  assert.deepEqual([...keep].sort(), [ACTIVE, PREVIOUS, RECENT].sort());
 });
 
 test('a publishing burst keeps one rollback rather than every recent release', () => {

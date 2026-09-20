@@ -28,9 +28,10 @@ import { fileURLToPath } from 'node:url';
 import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { isMissingObject } from './cdnObject';
-import { loadEventSources, productionScopeKey } from '../.github/scripts/lib/build/productionRelease';
+import { loadEventSources, productionScopeRoot } from '../.github/scripts/lib/build/productionRelease';
 import { isNotFound, putJsonIfChanged } from '../.github/scripts/lib/r2.mjs';
 import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
+import { withinPruneCeiling } from '../.github/scripts/lib/build/pruneCeiling';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STATIC_BASE = join(ROOT, 'static');
@@ -172,7 +173,7 @@ async function discoverViaS3(cards: Map<string, CardRef>): Promise<void> {
   const { release, sources } = await loadEventSources({ read });
   const prefixes = [
     ...Object.values(sources).map(root => `${root.replace(/^\/+/, '')}/`),
-    `${productionScopeKey(release, 'online', '')}/`
+    `${productionScopeRoot(release, 'online')}/`
   ];
   for (const prefix of prefixes) {
     await collectReportCards(cards, prefix, getJsonFromR2);
@@ -184,7 +185,7 @@ async function discoverViaHttp(cards: Map<string, CardRef>): Promise<void> {
   const read = async <T>(key: string): Promise<T | null> =>
     (await fetchJson(`${R2_BASE}/${encodeURI(key)}`)) as T | null;
   const { release, sources } = await loadEventSources({ read });
-  const roots = [...Object.values(sources), `/${productionScopeKey(release, 'online', '')}`];
+  const roots = [...Object.values(sources), `/${productionScopeRoot(release, 'online')}`];
   for (const root of roots) {
     await collectReportCards(cards, `${R2_BASE}/${encodeURI(root.replace(/^\/+/, ''))}/`, fetchJson);
   }
@@ -363,7 +364,14 @@ async function pruneCardImages(cards: CardRef[]): Promise<void> {
     return;
   }
   const expected = expectedImageKeys(cards);
-  const stale = (await listR2Keys(s3Client, r2Bucket, 'card-images/')).filter(key => !expected.has(key));
+  const listed = await listR2Keys(s3Client, r2Bucket, 'card-images/');
+  const stale = listed.filter(key => !expected.has(key));
+  if (!withinPruneCeiling(listed.length, stale.length)) {
+    console.log(
+      `::warning::Kept ${stale.length} of ${listed.length} card images: too many to be drift, check discovery.`
+    );
+    return;
+  }
   await deleteR2Keys(s3Client, r2Bucket, stale);
   console.log(`Removed ${stale.length} unreferenced card image object(s).`);
 }

@@ -15,7 +15,7 @@ import { chooseCanonicalPrint } from '../../shared/data/canonicalPrint.ts';
 import { assertCanonicalRoutesSound } from '../../shared/data/canonicalCardRoute.ts';
 import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult } from './lib/r2.mjs';
-import { loadEventSources, productionScopeKey } from './lib/build/productionRelease.ts';
+import { loadEventSources, productionScopeRoot } from './lib/build/productionRelease.ts';
 import { loadOnlineDecks } from './lib/build/onlineDecks.ts';
 import { newSetCodes, parseSetCardList } from './lib/setSeeds.ts';
 
@@ -85,7 +85,7 @@ async function loadPreviousSynonyms() {
 
 async function loadTournamentDecks(release, sources, folder) {
   if (folder === ONLINE_META_FOLDER) {
-    const root = productionScopeKey(release, 'online', '').replace(/\/$/, '');
+    const root = productionScopeRoot(release, 'online');
     return loadOnlineDecks(
       {
         async read(key) {
