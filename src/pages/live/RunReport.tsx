@@ -14,8 +14,7 @@
  */
 
 import { createSignal, For, Show } from 'solid-js';
-import { type RunSeatEntry, seatKey, type SeatRef } from '../../../shared/live/view';
-import type { SeatReport } from './deckReports';
+import { type RunSeatEntry, seatKey, type SeatRef, type SeatReport } from '../../../shared/live/view';
 import { DeckCombo, type ReportedDeck } from './LiveDeck';
 
 interface RunReportProps {

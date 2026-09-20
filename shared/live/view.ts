@@ -283,7 +283,13 @@ export async function lastSeatInEvent(
 export interface RunSeatEntry {
   /** The round the seat was met in; 0 for the player's own seat. */
   round: number;
-  seat: Pick<LiveSeat, 'name' | 'country'>;
+  seat: SeatRef;
+}
+
+/** One seat's deck, as a report leaves the run panel; a null archetype takes one back. */
+export interface SeatReport {
+  seat: SeatRef;
+  archetype: string | null;
 }
 
 /**
@@ -291,7 +297,7 @@ export interface RunSeatEntry {
  * order they were played. A seat met twice, as a cut can do, is listed once,
  * since a report names a seat rather than a round.
  */
-export function runSeats(player: Pick<LiveSeat, 'name' | 'country'>, run: readonly RunRound[]): RunSeatEntry[] {
+export function runSeats(player: SeatRef, run: readonly RunRound[]): RunSeatEntry[] {
   const seen = new Set([seatKey(player)]);
   const seats: RunSeatEntry[] = [{ round: 0, seat: player }];
   for (const { round, view } of run) {

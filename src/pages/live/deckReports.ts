@@ -10,7 +10,7 @@
 
 import { createMemo, createResource, createSignal } from 'solid-js';
 import { reportableArchetypes } from '../../../shared/live/reports';
-import { seatKey, type SeatRef } from '../../../shared/live/view';
+import { seatKey, type SeatRef, type SeatReport } from '../../../shared/live/view';
 import { fetchArchetypeLabels, fetchOnlineArchetypes } from '../../lib/data';
 import { fetchLiveReports, submitDeckReports } from '../../lib/data/live';
 import { liveVoterId } from '../../lib/liveFollows';
@@ -30,12 +30,6 @@ export interface DeckReports {
   report: (seat: SeatRef, archetype: string | null) => Promise<void>;
   /** Several seats in one request, as a whole run is reported. */
   reportMany: (entries: readonly SeatReport[]) => Promise<void>;
-}
-
-/** One seat's deck, as a report leaves a panel; a null archetype takes one back. */
-export interface SeatReport {
-  seat: SeatRef;
-  archetype: string | null;
 }
 
 /**
