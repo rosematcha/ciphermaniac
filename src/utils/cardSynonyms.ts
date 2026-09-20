@@ -51,7 +51,6 @@ async function loadSynonymData(): Promise<SynonymDatabase> {
   try {
     const loaded = await dataClient.fetchJsonOptional<SynonymDatabase>('/assets/card-synonyms.json');
     if (!loaded) {
-      console.warn('Card synonyms data not found, synonym resolution disabled');
       synonymPromise = null;
       return EMPTY_DATABASE;
     }
