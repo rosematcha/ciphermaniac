@@ -4,6 +4,7 @@ import {
   loadProductionRelease,
   productionEventKey,
   productionScopeKey,
+  productionScopeRoot,
   resolveLegacyEventKey
 } from '../../.github/scripts/lib/build/productionRelease.ts';
 import type { ReleaseManifest } from '../../shared/data/build/release.ts';
@@ -49,6 +50,7 @@ test('loads and validates the production pointer and manifest', async () => {
     productionScopeKey(manifest, 'catalogs', 'tournaments.json'),
     'releases/v1/catalogs/aaaaaaaaaaaa/tournaments.json'
   );
+  assert.equal(productionScopeRoot(manifest, 'catalogs'), 'releases/v1/catalogs/aaaaaaaaaaaa');
   assert.equal(
     resolveLegacyEventKey(manifest, 'reports/2026-01-01, Event/decks.json'),
     'releases/v1/events/2026-01-01, Event/cccccccccccc/decks.json'

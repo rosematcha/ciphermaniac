@@ -62,6 +62,11 @@ export function productionScopeKey(manifest: ReleaseManifest, scope: ReleaseScop
   return resolveScopePath(manifest, scope, relativePath).replace(/^\/+/, '');
 }
 
+/** A scope's generation root as a bucket key, without a trailing slash. */
+export function productionScopeRoot(manifest: ReleaseManifest, scope: ReleaseScope): string {
+  return productionScopeKey(manifest, scope, '').replace(/\/+$/, '');
+}
+
 export function resolveLegacyEventKey(manifest: ReleaseManifest, key: string): string {
   const normalized = key.replace(/^\/+/, '');
   if (normalized === 'reports/tournaments.json') {

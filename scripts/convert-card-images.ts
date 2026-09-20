@@ -28,7 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { isMissingObject } from './cdnObject';
-import { loadEventSources, productionScopeKey } from '../.github/scripts/lib/build/productionRelease';
+import { loadEventSources, productionScopeRoot } from '../.github/scripts/lib/build/productionRelease';
 import { isNotFound, putJsonIfChanged } from '../.github/scripts/lib/r2.mjs';
 import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
 
@@ -172,7 +172,7 @@ async function discoverViaS3(cards: Map<string, CardRef>): Promise<void> {
   const { release, sources } = await loadEventSources({ read });
   const prefixes = [
     ...Object.values(sources).map(root => `${root.replace(/^\/+/, '')}/`),
-    `${productionScopeKey(release, 'online', '')}/`
+    `${productionScopeRoot(release, 'online')}/`
   ];
   for (const prefix of prefixes) {
     await collectReportCards(cards, prefix, getJsonFromR2);
@@ -184,7 +184,7 @@ async function discoverViaHttp(cards: Map<string, CardRef>): Promise<void> {
   const read = async <T>(key: string): Promise<T | null> =>
     (await fetchJson(`${R2_BASE}/${encodeURI(key)}`)) as T | null;
   const { release, sources } = await loadEventSources({ read });
-  const roots = [...Object.values(sources), `/${productionScopeKey(release, 'online', '')}`];
+  const roots = [...Object.values(sources), `/${productionScopeRoot(release, 'online')}`];
   for (const root of roots) {
     await collectReportCards(cards, `${R2_BASE}/${encodeURI(root.replace(/^\/+/, ''))}/`, fetchJson);
   }
