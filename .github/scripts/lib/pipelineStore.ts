@@ -1,20 +1,11 @@
-import { createR2Client, getJsonResult, putJson } from './r2.mjs';
+import { createR2Client, putJson, readJson } from './r2.mjs';
 import { r2Config } from './env';
 import { inputFingerprint, type ProducerState } from './build/provenance';
 
 export function pipelineStore() {
   const config = r2Config();
   const client = createR2Client(config);
-  const read = async <T>(key: string): Promise<T | null> => {
-    const result = await getJsonResult<T>(client, config.bucket, key);
-    if (result.status === 'found') {
-      return result.value;
-    }
-    if (result.status === 'missing') {
-      return null;
-    }
-    throw new Error(`Cannot read ${key}: ${result.status}`);
-  };
+  const read = <T>(key: string) => readJson<T>(client, config.bucket, key);
   const write = (key: string, value: unknown) => putJson(client, config.bucket, key, value);
   return { read, write };
 }

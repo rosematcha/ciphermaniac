@@ -202,6 +202,30 @@ export async function getJsonResult(client, bucket, key, options = {}) {
 }
 
 /**
+ * Read and parse a JSON object for a caller that treats absence as an answer:
+ * the value, or null on a verified 404. A corrupt body or a transport failure
+ * throws, because every producer that reads "nothing there" goes on to rebuild
+ * or republish from scratch, and doing that on a failed read clobbers good data.
+ *
+ * @template T
+ * @param {S3Client} client
+ * @param {string} bucket
+ * @param {string} key
+ * @param {{ retry?: { attempts?: number, baseDelayMs?: number, maxDelayMs?: number } }} [options]
+ * @returns {Promise<T | null>}
+ */
+export async function readJson(client, bucket, key, options = {}) {
+  const result = await getJsonResult(client, bucket, key, options);
+  if (result.status === 'found') {
+    return result.value;
+  }
+  if (result.status === 'missing') {
+    return null;
+  }
+  throw new Error(`Could not read ${key} (${result.status})`, { cause: result.error });
+}
+
+/**
  * Write a JSON object. Transient transport failures are retried.
  *
  * @param {S3Client} client

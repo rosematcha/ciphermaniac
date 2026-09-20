@@ -30,7 +30,7 @@ import { buildConversionIndex } from '../../shared/data/reports/conversion.ts';
 import { type DeckEntry, generateReportFromDecks } from '../../shared/data/reports/cardReport.ts';
 import { makeRollingResolver } from '../../shared/data/canonicalPrint.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
-import { createR2Client, getJsonResult } from './lib/r2.mjs';
+import { createR2Client, readJson } from './lib/r2.mjs';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
 import { type ConditionalPointerStore, updatePointer } from '../../shared/data/build/channel.ts';
@@ -174,16 +174,7 @@ async function publishSource(input: string): Promise<void> {
     accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
     secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
   });
-  const read = async <T>(key: string): Promise<T | null> => {
-    const result = await getJsonResult<T>(client, bucket, key);
-    if (result.status === 'found') {
-      return result.value;
-    }
-    if (result.status === 'missing') {
-      return null;
-    }
-    throw new Error(`Cannot read event dependency ${key}: ${result.status}`, { cause: result.error });
-  };
+  const read = <T>(key: string) => readJson<T>(client, bucket, key);
   const synonymDb = await read<SynonymDatabase>('assets/card-synonyms.json');
   const candidate = labsSourceToNormalized(source, { synonymDb });
   const validated = validateNormalizedEvent(candidate);

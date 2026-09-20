@@ -18,6 +18,7 @@ async function daily(): Promise<void> {
   const store = pipelineStore();
   const revision = await builderRevision([
     '.github/scripts/run-online-meta.ts',
+    '.github/scripts/lib/onlineMeta.ts',
     '.github/scripts/run-trends.ts',
     '.github/scripts/update-prices.py',
     '.github/scripts/run-pack-ev.ts',

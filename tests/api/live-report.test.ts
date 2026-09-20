@@ -118,6 +118,13 @@ const fillVotes = (count: number) => {
 const shown = async (response: Response) => (await response.json()) as { archetype: string | null };
 const published = () => (JSON.parse(files.get(`live/v1/${SLUG}/reports.json`) ?? '{"decks":{}}') as LiveReports).decks;
 
+test('an oversized body is refused by its bytes, not its characters', async () => {
+  // 5,000 characters but 15,000 bytes: past the cap only when counted properly.
+  const response = await post({ ...report('Dragapult', 1), padding: 'あ'.repeat(5000) });
+  assert.equal(response.status, 400);
+  assert.deepEqual(published(), {});
+});
+
 test('a single report is shown', async () => {
   const response = await post(report('Dragapult', 1));
   assert.equal(response.status, 200);

@@ -20,7 +20,7 @@ import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.ts';
 import { buildArchetypeReports } from '../../shared/data/archetypes/build.ts';
 import { makeRollingResolver } from '../../shared/data/canonicalPrint.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
-import { createR2Client, getJsonResult } from './lib/r2.mjs';
+import { createR2Client, readJson } from './lib/r2.mjs';
 
 interface LegacyDeck {
   cards?: { name?: string; set?: string; number?: string | number; count?: number }[];
@@ -76,16 +76,7 @@ async function main(): Promise<void> {
   });
   const bucket = requireEnv('R2_BUCKET_NAME');
 
-  const load = async <T>(key: string): Promise<T | null> => {
-    const result = await getJsonResult<T>(client, bucket, key);
-    if (result.status === 'found') {
-      return result.value;
-    }
-    if (result.status === 'missing') {
-      return null;
-    }
-    throw new Error(`failed to read ${key}: ${result.status}`);
-  };
+  const load = <T>(key: string) => readJson<T>(client, bucket, key);
 
   const decks = await load<(LegacyDeck & { archetype?: string })[]>(`${base}/decks.json`);
   const legacyMaster = await load<{ deckTotal: number; items: LegacyReportItem[] }>(`${base}/master.json`);

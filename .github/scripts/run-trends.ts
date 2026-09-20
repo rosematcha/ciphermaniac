@@ -16,8 +16,8 @@
 
 import { requireEnv } from './lib/env.ts';
 import process from 'node:process';
-import { DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { createR2Client, createReportsBinding } from './lib/r2.mjs';
+import { deleteR2Keys, listR2Keys } from './lib/r2Inventory.mjs';
 import {
   appendTrendHistory,
   buildCardTrendReport,
@@ -98,47 +98,12 @@ class R2Binding {
     return reports.get(this.withPrefix(key));
   }
 
-  async listKeys(prefix: string) {
-    const keys: string[] = [];
-    let continuationToken: string | undefined;
-    do {
-      const response = await s3Client.send(
-        new ListObjectsV2Command({
-          Bucket: R2_BUCKET_NAME,
-          Prefix: this.withPrefix(prefix),
-          ContinuationToken: continuationToken
-        })
-      );
-      for (const object of response.Contents || []) {
-        if (object.Key) {
-          keys.push(object.Key);
-        }
-      }
-      continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
-    } while (continuationToken);
-    return keys;
+  listKeys(prefix: string) {
+    return listR2Keys(s3Client, R2_BUCKET_NAME, this.withPrefix(prefix));
   }
 
-  async deleteKeys(keys: string[]) {
-    if (!Array.isArray(keys) || !keys.length) {
-      return 0;
-    }
-    let deleted = 0;
-    for (let i = 0; i < keys.length; i += 1000) {
-      const chunk = keys.slice(i, i + 1000);
-
-      await s3Client.send(
-        new DeleteObjectsCommand({
-          Bucket: R2_BUCKET_NAME,
-          Delete: {
-            Objects: chunk.map(key => ({ Key: key })),
-            Quiet: true
-          }
-        })
-      );
-      deleted += chunk.length;
-    }
-    return deleted;
+  deleteKeys(keys: string[]) {
+    return deleteR2Keys(s3Client, R2_BUCKET_NAME, keys);
   }
 
   async deletePrefix(prefix: string) {

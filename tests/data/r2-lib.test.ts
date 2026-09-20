@@ -2,7 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { S3Client } from '@aws-sdk/client-s3';
 
-import { createReportsBinding, getJsonResult, putJsonIfChanged, withR2Retry } from '../../.github/scripts/lib/r2.mjs';
+import {
+  createReportsBinding,
+  getJsonResult,
+  putJsonIfChanged,
+  readJson,
+  withR2Retry
+} from '../../.github/scripts/lib/r2.mjs';
 
 /** Backoff small enough that exhausting every attempt stays sub-millisecond. */
 const FAST_RETRY = { baseDelayMs: 0, maxDelayMs: 0 };
@@ -294,4 +300,28 @@ test('putJsonIfChanged skips matching content and writes changed content once', 
 test('putJsonIfChanged does not turn a HEAD transport failure into a rewrite', async () => {
   const client = stubClient(rejects(awsError({ name: 'AccessDenied', status: 403 })));
   await assert.rejects(() => putJsonIfChanged(client, BUCKET, KEY, { value: { ok: true } }));
+});
+
+test('readJson returns the parsed value', async () => {
+  assert.deepEqual(await readJson(stubClient(found('{"a":1}')), BUCKET, KEY), { a: 1 });
+});
+
+test('readJson returns null only for a verified 404', async () => {
+  assert.equal(await readJson(stubClient(rejects(awsError({ name: 'NoSuchKey' }))), BUCKET, KEY), null);
+});
+
+test('readJson throws on a transport failure, keeping the cause', async () => {
+  const fault = awsError({ name: 'InternalError', status: 500 });
+  await assert.rejects(
+    readJson(stubClient(rejects(fault)), BUCKET, KEY, { retry: { attempts: 2, ...FAST_RETRY } }),
+    error => {
+      assert.match((error as Error).message, /reports\/thing\.json \(transport\)/);
+      assert.equal((error as Error).cause, fault);
+      return true;
+    }
+  );
+});
+
+test('readJson throws on a corrupt body rather than reading it as missing', async () => {
+  await assert.rejects(readJson(stubClient(found('{not json')), BUCKET, KEY), /\(corrupt\)/);
 });

@@ -3,17 +3,16 @@
     "max-params:930c6c06ca22dfdb28da868a03a725c83c405101ca3b0b1679f897e1cecc445b:Async function 'putJson' has too many parameters (5). Maximum allowed is 4."
   ],
   ".github/scripts/parity-check-event.ts": [
-    "max-lines-per-function:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Async function 'main' has too many lines (144). Maximum allowed is 100.",
-    "max-depth:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "max-depth:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "complexity:f0ab6105edd7ba377480d753fbe1543dddf41f6462a1e3a7fbefb88a69df9a79:Async function 'main' has a complexity of 35. Maximum allowed is 12."
+    "max-lines-per-function:33135001386db50649b4fee8c4065ebecdeecd7edbd47e9ac0de68c9fb438872:Async function 'main' has too many lines (135). Maximum allowed is 100.",
+    "max-depth:33135001386db50649b4fee8c4065ebecdeecd7edbd47e9ac0de68c9fb438872:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "max-depth:33135001386db50649b4fee8c4065ebecdeecd7edbd47e9ac0de68c9fb438872:Blocks are nested too deeply (4). Maximum allowed is 3.",
+    "complexity:33135001386db50649b4fee8c4065ebecdeecd7edbd47e9ac0de68c9fb438872:Async function 'main' has a complexity of 35. Maximum allowed is 12."
   ],
   ".github/scripts/run-trends.ts": [
     "max-lines-per-function:e9ea0ca234fd170f819db4a1c99fa57176530a6abd1d5d6af6ebc3fa20e7d81a:Async function 'main' has too many lines (161). Maximum allowed is 100.",
     "complexity:e9ea0ca234fd170f819db4a1c99fa57176530a6abd1d5d6af6ebc3fa20e7d81a:Async function 'main' has a complexity of 32. Maximum allowed is 12."
   ],
   ".github/scripts/update-card-synonyms.mjs": [
-    "complexity:1c79704bbb07e1d646b7f6e348528f662a7cd8ddf386a75f3373362835f3af7b:Async function 'loadPreviousSynonyms' has a complexity of 13. Maximum allowed is 12.",
     "max-depth:41054f0d6f75f666123ec34a0a1166ae9b0977deec1904f9a2834f2459d90b50:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:f73f3dfd0c8ead3891e04164a4c513498ade91f926093be8432f6043c41b156d:Arrow function has a complexity of 16. Maximum allowed is 12.",
     "max-depth:4b32b5440162677f0c1bddff7fa44a8022eba593d52d1ab2859421808c504265:Blocks are nested too deeply (4). Maximum allowed is 3.",
