@@ -35,8 +35,13 @@ function fakeDb(votes: Vote[]): D1Like {
           args = values;
           return statement;
         },
-        first: <T>() =>
-          Promise.resolve({ n: votes.filter(vote => vote.slug === args[0] && vote.voter === args[1]).length } as T),
+        first: <T>() => {
+          const mine = votes.filter(vote => vote.slug === args[1] && vote.voter === args[2]);
+          return Promise.resolve({
+            n: mine.length,
+            mine: mine.filter(vote => vote.seat === args[0]).length
+          } as T);
+        },
         all: <T>() => {
           const counts = new Map<string, number>();
           for (const vote of votes.filter(candidate => candidate.slug === args[0] && candidate.seat === args[1])) {
@@ -103,6 +108,12 @@ function post(body: unknown, env = { REPORTS: fakeBucket(files), LIVE_DB: fakeDb
 }
 
 const report = (archetype: string | null, n: number, seat = SEAT) => ({ slug: SLUG, seat, archetype, voter: voter(n) });
+/** Seats device 9 has already reported at the event. */
+const fillVotes = (count: number) => {
+  for (let i = 0; i < count; i += 1) {
+    votes.push({ slug: SLUG, seat: `player ${i}|US`, voter: voter(9), archetype: 'Dragapult' });
+  }
+};
 const published = () => (JSON.parse(files.get(`live/v1/${SLUG}/reports.json`) ?? '{"decks":{}}') as LiveReports).decks;
 
 test('a single report is shown', async () => {
@@ -174,9 +185,7 @@ test('an archetype outside the index, an event that is not on, and a malformed b
 });
 
 test('one device cannot report more seats than an event could plausibly need', async () => {
-  for (let i = 0; i < 150; i += 1) {
-    votes.push({ slug: SLUG, seat: `player ${i}|US`, voter: voter(9), archetype: 'Dragapult' });
-  }
+  fillVotes(1500);
   assert.equal((await post(report('Dragapult', 9))).status, 429);
 });
 
@@ -200,6 +209,15 @@ test('an empty list trusts nobody, the addressless least of all', async () => {
     last = (await post(report('Dragapult', i, `player ${i}|US`), bindings)).status;
   }
   assert.equal(last, 429);
+});
+
+test('a device at the cap can still change and take back the seats it has', async () => {
+  fillVotes(1500);
+  const seat = 'player 0|US';
+  assert.equal((await post(report('Gardevoir', 9, seat))).status, 200);
+  assert.deepEqual(published(), { [seat]: 'Gardevoir' });
+  assert.equal((await post(report(null, 9, seat))).status, 200);
+  assert.deepEqual(published(), {});
 });
 
 test('a flood from one address is limited, and missing bindings are a clean 503', async () => {

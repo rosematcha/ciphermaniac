@@ -12,7 +12,8 @@
  * index or the archetype icon map.
  *
  * A device has one report per seat: reporting again replaces it, and a null
- * archetype takes it back.
+ * archetype takes it back. Neither takes up a new seat, so the per-device cap
+ * never strands a device with reports it cannot fix.
  *
  * A reporter is a random ID from their own device. It stops honest double
  * counting and nothing more, so floods are met by the per-IP limiter and a cap
@@ -36,8 +37,12 @@ import { jsonError, jsonSuccess } from '../../lib/api/responses.js';
 import { createVoteStore, type D1Like } from '../../lib/live/votes.js';
 
 const MAX_BODY_BYTES = 1024;
-/** A whole top cut and then some; past this an ID is not watching, it is writing. */
-const MAX_SEATS_PER_VOTER = 150;
+/**
+ * A whole regional field and then some; past this an ID is not watching, it is
+ * writing. Only new seats count against it: a device at the cap can still
+ * correct or take back a seat it already reported.
+ */
+const MAX_SEATS_PER_VOTER = 1500;
 const REPORTS_CACHE_CONTROL = 'public, max-age=30';
 const ARCHETYPE_ICONS_KEY = 'assets/archetype-icons.json';
 
@@ -149,7 +154,8 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
   }
 
   const votes = createVoteStore(env.LIVE_DB);
-  if ((await votes.votesBy(report.slug, report.voter)) >= MAX_SEATS_PER_VOTER) {
+  const load = await votes.loadOf(report.slug, report.voter, report.seat);
+  if (!load.reported && load.seats >= MAX_SEATS_PER_VOTER) {
     return jsonError('Too many reports. Try again later.', 429);
   }
   await votes.record(report, Date.now());
