@@ -31,6 +31,7 @@ import { isMissingObject } from './cdnObject';
 import { loadEventSources, productionScopeRoot } from '../.github/scripts/lib/build/productionRelease';
 import { isNotFound, putJsonIfChanged } from '../.github/scripts/lib/r2.mjs';
 import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
+import { withinPruneCeiling } from '../.github/scripts/lib/build/pruneCeiling';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STATIC_BASE = join(ROOT, 'static');
@@ -363,7 +364,14 @@ async function pruneCardImages(cards: CardRef[]): Promise<void> {
     return;
   }
   const expected = expectedImageKeys(cards);
-  const stale = (await listR2Keys(s3Client, r2Bucket, 'card-images/')).filter(key => !expected.has(key));
+  const listed = await listR2Keys(s3Client, r2Bucket, 'card-images/');
+  const stale = listed.filter(key => !expected.has(key));
+  if (!withinPruneCeiling(listed.length, stale.length)) {
+    console.log(
+      `::warning::Kept ${stale.length} of ${listed.length} card images: too many to be drift, check discovery.`
+    );
+    return;
+  }
   await deleteR2Keys(s3Client, r2Bucket, stale);
   console.log(`Removed ${stale.length} unreferenced card image object(s).`);
 }
