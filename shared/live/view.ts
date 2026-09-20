@@ -235,6 +235,30 @@ export function playerRun(
     .sort((a, b) => a.round - b.round);
 }
 
+export interface RunSeatEntry {
+  /** The round the seat was met in; 0 for the player's own seat. */
+  round: number;
+  seat: Pick<LiveSeat, 'name' | 'country'>;
+}
+
+/**
+ * Every seat a run can name a deck for: the player, then each opponent in the
+ * order they were played. A seat met twice, as a cut can do, is listed once,
+ * since a report names a seat rather than a round.
+ */
+export function runSeats(player: Pick<LiveSeat, 'name' | 'country'>, run: readonly RunRound[]): RunSeatEntry[] {
+  const seen = new Set([seatKey(player)]);
+  const seats: RunSeatEntry[] = [{ round: 0, seat: player }];
+  for (const { round, view } of run) {
+    const opponent = view?.opponent;
+    if (opponent && !seen.has(seatKey(opponent))) {
+      seen.add(seatKey(opponent));
+      seats.push({ round, seat: opponent });
+    }
+  }
+  return seats;
+}
+
 /** Matches with at least one followed seat. */
 export function followedMatches(matches: readonly LiveMatch[], follows: ReadonlySet<string>): readonly LiveMatch[] {
   return matches.filter(match => match.seats.some(seat => follows.has(seatKey(seat))));

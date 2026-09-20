@@ -22,6 +22,7 @@ import {
   matchStatus,
   playerRun,
   recordLabel,
+  runSeats,
   seatKey,
   seatMatchesSlug,
   seatOutcome,
@@ -111,6 +112,46 @@ test('a run follows one player through the posted rounds, oldest first, skipping
       [3, null, null]
     ]
   );
+});
+
+test('the seats a run can report are the player and each opponent once, in round order', () => {
+  const turing = seat('Alan Turing', 'GB');
+  const rounds = [
+    {
+      round: 1,
+      updatedAt: '',
+      unreadable: 0,
+      matches: [{ table: 9, seats: [seat('Barbara Liskov'), turing], complete: true }]
+    },
+    { round: 2, updatedAt: '', unreadable: 0, matches: [MATCHES[3]] },
+    {
+      round: 3,
+      updatedAt: '',
+      unreadable: 0,
+      matches: [{ table: 4, seats: [seat('Barbara Liskov'), seat('Grace Hopper')], complete: true }]
+    },
+    {
+      round: 4,
+      updatedAt: '',
+      unreadable: 0,
+      matches: [{ table: 1, seats: [seat('Barbara Liskov'), turing], complete: true }]
+    }
+  ];
+  const player = { name: 'Barbara Liskov', country: 'US' };
+  const run = playerRun(rounds, player.name, [player.country]);
+  assert.deepEqual(
+    runSeats(player, run).map(entry => [entry.round, entry.seat.name]),
+    [
+      [0, 'Barbara Liskov'],
+      [1, 'Alan Turing'],
+      [3, 'Grace Hopper']
+    ]
+  );
+});
+
+test('a run with nobody in it still offers the player their own seat', () => {
+  const player = { name: 'Nobody Here', country: 'US' };
+  assert.deepEqual(runSeats(player, []), [{ round: 0, seat: player }]);
 });
 
 test('follows are kept by folded name and country, and pick out their tables', () => {

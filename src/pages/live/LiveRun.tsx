@@ -1,11 +1,12 @@
 import { A } from '@solidjs/router';
-import { createMemo, createResource, For, Show } from 'solid-js';
+import { createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import type { LiveSeat } from '../../../shared/live/types';
 import {
   matchStatus,
   playerRun,
   recordLabel,
   type RunRound,
+  runSeats,
   seatKey,
   type SeatOutcome,
   seatOutcome,
@@ -19,6 +20,7 @@ import { latestValue } from '../../lib/resource';
 import type { DeckReports } from './deckReports';
 import { DeckReporter, LiveDeck } from './LiveDeck';
 import { seatHref, seatName } from './links';
+import { RunReport } from './RunReport';
 
 const RESULT_LETTER = { win: 'W', loss: 'L', tie: 'T' } as const;
 /** Shared with the pairings table's status column. */
@@ -56,26 +58,62 @@ export function LiveRun(props: LiveRunProps) {
   });
   /** The seat as the data has it, not as a URL spelled it: follows and reports key off this. */
   const seat = () => [...(run() ?? [])].reverse().find(round => round.view)?.view?.seat;
+  const [filling, setFilling] = createSignal(false);
+  const seats = createMemo(() => {
+    const current = seat();
+    return current ? runSeats(current, run() ?? []) : [];
+  });
+  const shownFor = (entry: SeatRef) => props.reports.myDeck(entry) ?? props.reports.deckOf(entry);
 
   return (
     <div class='live-run'>
-      <Show when={seat()}>{current => <RunActions seat={current()} reports={props.reports} />}</Show>
+      <Show when={seat()}>
+        {current => (
+          <RunActions
+            seat={current()}
+            reports={props.reports}
+            filling={filling()}
+            onFill={seats().length > 1 ? () => setFilling(open => !open) : undefined}
+          />
+        )}
+      </Show>
       <Show when={run()} fallback={<Skeleton height='140px' />}>
-        <ol class='rounds live-rounds'>
-          <For each={run()}>
-            {round => <RunRow round={round} slug={props.slug} reports={props.reports} profileOf={props.profileOf} />}
-          </For>
-        </ol>
+        <Show
+          when={filling()}
+          fallback={
+            <ol class='rounds live-rounds'>
+              <For each={run()}>
+                {round => (
+                  <RunRow round={round} slug={props.slug} reports={props.reports} profileOf={props.profileOf} />
+                )}
+              </For>
+            </ol>
+          }
+        >
+          <RunReport
+            seats={seats()}
+            decks={props.reports.decks()}
+            leading={props.reports.leading()}
+            shownFor={shownFor}
+            onSubmit={props.reports.reportMany}
+            onClose={() => setFilling(false)}
+          />
+        </Show>
       </Show>
     </div>
   );
 }
 
-/** Record, reported deck, follow and report — one wrapping row, never a crushed line. */
-function RunActions(props: { seat: LiveSeat; reports: DeckReports }) {
+/**
+ * Record, reported deck, follow and report — one wrapping row, never a crushed
+ * line. While the whole run is being filled in, the single-seat reporter steps
+ * aside for the form's own Cancel.
+ */
+function RunActions(props: { seat: LiveSeat; reports: DeckReports; filling: boolean; onFill?: () => void }) {
   const { follows, toggle } = useLiveFollows();
   const key = () => seatKey(props.seat);
   const followed = () => follows().has(key());
+  const reportable = () => props.reports.decks().length > 0;
   return (
     <div class='live-run-actions'>
       <span class='live-run-meta'>
@@ -86,13 +124,20 @@ function RunActions(props: { seat: LiveSeat; reports: DeckReports }) {
         <button type='button' class='btn btn-secondary' aria-pressed={followed()} onClick={() => toggle(key())}>
           {followed() ? 'Following' : 'Follow'}
         </button>
-        <Show when={props.reports.decks().length > 0}>
+        <Show when={reportable() && !props.filling}>
           <DeckReporter
             decks={props.reports.decks()}
             leading={props.reports.leading()}
             mine={props.reports.myDeck(props.seat)}
             onReport={archetype => props.reports.report(props.seat, archetype)}
           />
+        </Show>
+        <Show when={reportable() && props.onFill}>
+          {fill => (
+            <button type='button' class='btn btn-secondary' onClick={() => fill()()}>
+              {props.filling ? 'Cancel' : 'Report run'}
+            </button>
+          )}
         </Show>
       </span>
     </div>
