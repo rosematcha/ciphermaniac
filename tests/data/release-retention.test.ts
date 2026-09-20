@@ -280,7 +280,7 @@ test('R2 storage adapter paginates and refuses truncated listings, missing reads
     for await (const object of store.list('')) {
       void object;
     }
-  }, /continuation/);
+  }, /truncated without a cursor/);
   responses.push({ Contents: [{}] });
   await assert.rejects(async () => {
     for await (const object of store.list('')) {

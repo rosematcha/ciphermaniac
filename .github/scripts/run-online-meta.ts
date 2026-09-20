@@ -14,8 +14,8 @@
 
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
-import { DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { createR2Client, putJsonIfChanged, readJson as readR2Json } from './lib/r2.mjs';
+import { deleteR2Keys, listR2Keys } from './lib/r2Inventory.mjs';
 import type { CardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
 import archetypeThumbnails from '../../public/assets/data/archetype-thumbnails.json';
 import onlineExclusions from '../../config/online-exclusions.json';
@@ -178,48 +178,12 @@ function readJson<T = unknown>(key: string): Promise<T | null> {
   return readR2Json<T>(s3Client, R2_BUCKET_NAME, key);
 }
 
-async function listKeys(prefix: string): Promise<string[]> {
-  const keys: string[] = [];
-  let continuationToken: string | undefined;
-  do {
-    const response = await s3Client.send(
-      new ListObjectsV2Command({
-        Bucket: R2_BUCKET_NAME,
-        Prefix: prefix,
-        ContinuationToken: continuationToken
-      })
-    );
-    for (const object of response.Contents || []) {
-      if (object.Key) {
-        keys.push(object.Key);
-      }
-    }
-    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
-  } while (continuationToken);
-  return keys;
+function listKeys(prefix: string): Promise<string[]> {
+  return listR2Keys(s3Client, R2_BUCKET_NAME, prefix);
 }
 
-async function deleteKeys(keys: string[]): Promise<number> {
-  if (!Array.isArray(keys) || !keys.length) {
-    return 0;
-  }
-
-  let deleted = 0;
-  for (let index = 0; index < keys.length; index += 1000) {
-    const chunk = keys.slice(index, index + 1000);
-
-    await s3Client.send(
-      new DeleteObjectsCommand({
-        Bucket: R2_BUCKET_NAME,
-        Delete: {
-          Objects: chunk.map(key => ({ Key: key })),
-          Quiet: true
-        }
-      })
-    );
-    deleted += chunk.length;
-  }
-  return deleted;
+function deleteKeys(keys: string[]): Promise<number> {
+  return deleteR2Keys(s3Client, R2_BUCKET_NAME, keys);
 }
 
 async function deletePrefix(prefix: string): Promise<{ keys: number; deleted: number }> {

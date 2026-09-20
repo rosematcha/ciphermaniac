@@ -18,12 +18,13 @@
 import { requireEnv } from './lib/env.ts';
 import { appendFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { CopyObjectCommand, HeadObjectCommand, ListObjectsV2Command, type S3Client } from '@aws-sdk/client-s3';
+import { CopyObjectCommand, HeadObjectCommand, type S3Client } from '@aws-sdk/client-s3';
 import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
 import { buildTournamentCatalog } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson, withR2Retry } from './lib/r2.mjs';
+import { listR2Objects } from './lib/r2Inventory.mjs';
 import { loadEventSources } from './lib/build/productionRelease.ts';
 import { capturePlayers, type PlayerInventory } from './lib/build/playerCapture';
 import { assertProducerComplete, inputFingerprint, type ProducerState } from './lib/build/provenance';
@@ -47,25 +48,17 @@ async function listJsonObjects(options: {
 }): Promise<ScopeObject[]> {
   const { client, bucket, prefix, relativeTo, include = () => true } = options;
   const objects: ScopeObject[] = [];
-  let continuationToken: string | undefined;
-  do {
-    const token = continuationToken;
-    const page = await withR2Retry(() =>
-      client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ContinuationToken: token }))
-    );
-    for (const object of page.Contents ?? []) {
-      const key = object.Key;
-      if (key?.endsWith('.json') && object.ETag && include(key)) {
-        objects.push({
-          sourceKey: key,
-          relativeKey: key.slice(relativeTo.length),
-          etag: object.ETag,
-          size: object.Size ?? 0
-        });
-      }
+  for await (const object of listR2Objects(client, bucket, prefix)) {
+    const key = object.Key;
+    if (key?.endsWith('.json') && object.ETag && include(key)) {
+      objects.push({
+        sourceKey: key,
+        relativeKey: key.slice(relativeTo.length),
+        etag: object.ETag,
+        size: object.Size ?? 0
+      });
     }
-    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
-  } while (continuationToken);
+  }
   return objects.sort((a, b) => a.relativeKey.localeCompare(b.relativeKey));
 }
 

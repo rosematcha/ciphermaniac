@@ -1,7 +1,8 @@
-import { DeleteObjectsCommand, ListObjectsV2Command, type S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectsCommand, type S3Client } from '@aws-sdk/client-s3';
 import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { createR2Client, getJsonResult, readJson, withR2Retry } from './lib/r2.mjs';
+import { listR2Objects } from './lib/r2Inventory.mjs';
 import { r2Config } from './lib/env';
 import { staleCapturedReport } from './lib/build/capturedScope';
 import {
@@ -29,23 +30,12 @@ interface Store {
 export function createRetentionStore(client: S3Client, bucket: string): Store {
   return {
     async *list(prefix) {
-      let token: string | undefined;
-      do {
-        const cursor = token;
-        const page = await withR2Retry(() =>
-          client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ContinuationToken: cursor }))
-        );
-        for (const object of page.Contents ?? []) {
-          if (!object.Key || object.Size === undefined || !object.LastModified) {
-            throw new Error('R2 listing returned incomplete metadata');
-          }
-          yield { key: object.Key, size: object.Size, modified: object.LastModified.getTime() };
+      for await (const object of listR2Objects(client, bucket, prefix)) {
+        if (!object.Key || object.Size === undefined || !object.LastModified) {
+          throw new Error('R2 listing returned incomplete metadata');
         }
-        token = page.IsTruncated ? page.NextContinuationToken : undefined;
-        if (page.IsTruncated && !token) {
-          throw new Error('R2 listing is truncated without a continuation token');
-        }
-      } while (token);
+        yield { key: object.Key, size: object.Size, modified: object.LastModified.getTime() };
+      }
     },
     async read(key) {
       const result = await getJsonResult(client, bucket, key);
