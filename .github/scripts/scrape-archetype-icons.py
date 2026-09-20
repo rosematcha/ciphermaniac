@@ -64,6 +64,28 @@ MANUAL_ICON_OVERRIDES: Dict[str, List[str]] = {
     "Other": ["substitute"],
 }
 
+# Builds players report as a deck of their own that Limitless indexes only under
+# the parent archetype's row. Each rides on that parent: it is added while the
+# parent is in the map and removed with it, so a name cannot outlive the deck it
+# describes. Value is (parent archetype, icons).
+DERIVED_ICONS: Dict[str, Tuple[str, List[str]]] = {
+    # Crushing Hammer is how most of the room builds Dragapult, and reports name
+    # it. The item has no Pokémon sprite, so the mirror takes this slug from
+    # Training Court instead of the Limitless CDN.
+    "Dragapult Hammers": ("Dragapult", ["dragapult", "crushing-hammer"]),
+}
+
+
+def apply_derived(mapping: Dict[str, List[str]]) -> Dict[str, List[str]]:
+    """Add each derived archetype whose parent is present, and drop the rest."""
+    result = dict(mapping)
+    for name, (parent, icons) in DERIVED_ICONS.items():
+        if parent in result:
+            result[name] = list(icons)
+        else:
+            result.pop(name, None)
+    return result
+
 # Shrouded Fable is the earliest format our tournament data covers, so it's the
 # floor for the cumulative scrape. Everything older on the selector (pre-SFA
 # 2024 sets like TEF/TWM, plus the 2023-and-earlier rotations) is dropped.
@@ -234,7 +256,7 @@ def main() -> int:
 
     # These are deliberately absent from the Limitless deck index, so every
     # refresh must restore their manual representative icon.
-    merged = {**merged, **MANUAL_ICON_OVERRIDES}
+    merged = apply_derived({**merged, **MANUAL_ICON_OVERRIDES})
 
     merged = {k: merged[k] for k in sorted(merged, key=str.lower)}
 

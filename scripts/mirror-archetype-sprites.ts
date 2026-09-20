@@ -24,6 +24,15 @@ import { isNotFound } from '../.github/scripts/lib/r2.mjs';
 import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
 
 const SOURCE_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
+/**
+ * Slugs that are not Pokémon and so are absent from the gen9 CDN. An archetype
+ * named for a card carries that card's icon (Dragapult Hammers, for Crushing
+ * Hammer), which we take from Training Court, the run tracker the community's
+ * matchup posts come from.
+ */
+const SOURCE_OVERRIDES: Record<string, string> = {
+  'crushing-hammer': 'https://www.trainingcourt.app/assets/sprites/crushing-hammer.png'
+};
 const DEST_PREFIX = 'pokemon-sprites/gen9';
 // Sprites for a given gen are effectively frozen once published.
 const CACHE_CONTROL = 'public, max-age=31536000, immutable';
@@ -110,7 +119,7 @@ async function main() {
       skipped += 1;
       continue;
     }
-    const res = await fetch(`${SOURCE_BASE}/${slug}.png`);
+    const res = await fetch(SOURCE_OVERRIDES[slug] ?? `${SOURCE_BASE}/${slug}.png`);
     if (!res.ok) {
       missing += 1;
       console.warn(`  ✗ ${slug} (${res.status} from source)`);
