@@ -100,7 +100,6 @@ export function LiveRun(props: LiveRunProps) {
           <RunReport
             seats={seats()}
             decks={props.reports.decks()}
-            leading={props.reports.leading()}
             shownFor={shownFor}
             onSubmit={props.reports.reportMany}
             onClose={() => setFilling(false)}
@@ -134,7 +133,6 @@ function RunActions(props: { seat: LiveSeat; reports: DeckReports; filling: bool
         <Show when={reportable() && !props.filling}>
           <DeckReporter
             decks={props.reports.decks()}
-            leading={props.reports.leading()}
             mine={props.reports.myDeck(props.seat)}
             onReport={archetype => props.reports.report(props.seat, archetype)}
           />

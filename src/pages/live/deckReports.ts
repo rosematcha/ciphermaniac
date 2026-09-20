@@ -20,9 +20,8 @@ import { latestValue, resolved } from '../../lib/resource';
 import type { ReportedDeck } from './LiveDeck';
 
 export interface DeckReports {
-  /** Every reportable archetype; the first `leading` are the online meta's, most played first. */
+  /** Every reportable archetype, the online meta's first and the ones in play flagged. */
   decks: () => ReportedDeck[];
-  leading: () => number;
   /** The archetype published for a seat, or the one this device just reported. */
   deckOf: (seat: SeatRef) => ReportedDeck | undefined;
   /** What this device has reported for a seat. */
@@ -48,12 +47,18 @@ export function useDeckReports(slug: () => string): DeckReports {
   const indexed = createMemo(() =>
     [...(resolved(archetypes) ?? [])].sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0))
   );
+  // A deck counts as played if the online meta has it or this event has already
+  // seen it, which is what puts the regional-only decks the online index never
+  // shows — Rocket's Honchkrow, Basic Box — in front of the icon map's long
+  // tail of dead archetypes.
   const decks = createMemo<ReportedDeck[]>(() => {
     const byLabel = new Map(indexed().map(entry => [entry.label, entry]));
+    const here = new Set(Object.values(latestValue(reports)?.decks ?? {}));
     return reportableArchetypes([...byLabel.keys()], resolved(iconLabels) ?? []).map(label => ({
       label,
       icons: byLabel.get(label)?.icons,
-      percent: byLabel.get(label)?.percent
+      percent: byLabel.get(label)?.percent,
+      played: byLabel.has(label) || here.has(label)
     }));
   });
   const deckByLabel = createMemo(() => new Map(decks().map(deck => [deck.label, deck])));
@@ -79,7 +84,6 @@ export function useDeckReports(slug: () => string): DeckReports {
   };
   return {
     decks,
-    leading: () => indexed().length,
     deckOf: seat => {
       const key = seatKey(seat);
       return known(key in reported() ? reported()[key] : latestValue(reports)?.decks[key]);

@@ -15,6 +15,11 @@
  * and "change it", the way a select is. Without `selected` the box only
  * searches and keeps what was typed, like `SearchInput` and `PokemonPicker`.
  *
+ * A `tier` splits the list in two: entries of a lower tier rank above the rest
+ * whatever the query, and the boundary between them is drawn as a rule, so a
+ * list of live archetypes followed by a tail of dead ones reads as two groups
+ * rather than one long one. A list that holds only one tier draws no rule.
+ *
  * Browsing and searching are separate lists. With nothing typed the box offers
  * `browse` in full and lets the user scroll it; once there is a query it ranks
  * the whole of `options` and shows the best few. A caller with a long tail can
@@ -40,6 +45,8 @@ interface ComboProps<T> {
   label: (item: T) => string;
   /** Higher sorts first among equally-good matches. */
   weight?: (item: T) => number;
+  /** Lower sorts first, ahead of match quality; a change between rows draws a divider. */
+  tier?: (item: T) => number;
   /**
    * The item the box stands for while it is not being typed in. Shown as the
    * value, marked in the list, and the row the keyboard starts on.
@@ -77,9 +84,15 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
     if (!q) {
       return [...(props.browse ?? props.options.slice(0, SUGGESTION_LIMIT))];
     }
-    return rankByQuery(props.options, q, props.label, { weight: props.weight });
+    return rankByQuery(props.options, q, props.label, { weight: props.weight, tier: props.tier });
   });
   const optionId = (i: number): string => `${listId}-${i}`;
+  /** Whether a row opens a new tier, and so wants the rule above it. Never the first row. */
+  const opensTier = (i: number): boolean => {
+    const at = props.tier;
+    const rows = results();
+    return at !== undefined && i > 0 && at(rows[i]) !== at(rows[i - 1]);
+  };
   const stands = (): boolean => props.selected !== undefined;
   /** The idle box shows what it stands for; an open one shows what is typed. */
   const shown = (): string => (open() || props.selected === undefined ? query() : props.label(props.selected));
@@ -185,18 +198,23 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
           <Show when={results().length > 0} fallback={<li class='none'>Nothing matches.</li>}>
             <For each={results()}>
               {(item, i) => (
-                <li
-                  role='option'
-                  id={optionId(i())}
-                  aria-selected={i() === active()}
-                  classList={{ cur: item === props.selected }}
-                  onMouseDown={e => {
-                    e.preventDefault();
-                    take(i());
-                  }}
-                >
-                  {props.children(item, query())}
-                </li>
+                <>
+                  <Show when={opensTier(i())}>
+                    <li class='sep' role='presentation' />
+                  </Show>
+                  <li
+                    role='option'
+                    id={optionId(i())}
+                    aria-selected={i() === active()}
+                    classList={{ cur: item === props.selected }}
+                    onMouseDown={e => {
+                      e.preventDefault();
+                      take(i());
+                    }}
+                  >
+                    {props.children(item, query())}
+                  </li>
+                </>
               )}
             </For>
           </Show>

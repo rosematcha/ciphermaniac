@@ -4697,6 +4697,16 @@ tr.row-expansion > td {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+/* Between the entries a list ranks first — the archetypes anyone is actually
+   playing — and the tail below them. Drawn only where the two meet, so a list
+   of one kind carries no rule. */
+.tl-list li.sep {
+  display: block;
+  padding: 0;
+  margin: 5px 7px;
+  border-top: 1px solid var(--rule);
+  cursor: default;
+}
 .tl-list .none {
   display: block;
   padding: 8px;

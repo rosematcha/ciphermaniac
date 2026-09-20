@@ -19,9 +19,8 @@ import { DeckCombo, type ReportedDeck } from './LiveDeck';
 
 interface RunReportProps {
   seats: readonly RunSeatEntry[];
-  /** Reportable archetypes; the first `leading` are the online meta's. */
+  /** Every archetype a report may name, the ones in play flagged. */
   decks: readonly ReportedDeck[];
-  leading: number;
   /** What is shown for a seat now: this device's report, else the published one. */
   shownFor: (seat: SeatRef) => ReportedDeck | undefined;
   onSubmit: (entries: readonly SeatReport[]) => Promise<void>;
@@ -65,7 +64,6 @@ export function RunReport(props: RunReportProps) {
                 <DeckCombo
                   placeholder={`Deck for ${entry.seat.name}`}
                   decks={props.decks}
-                  leading={props.leading}
                   selected={chosen(entry)}
                   onPick={deck => pick(entry, deck)}
                   width='100%'
