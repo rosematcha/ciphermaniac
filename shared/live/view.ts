@@ -235,6 +235,51 @@ export function playerRun(
     .sort((a, b) => a.round - b.round);
 }
 
+export interface RunTail {
+  /** The last round the player is paired in. */
+  round: number;
+  view: SeatView;
+}
+
+/**
+ * Where a player's event has got to, from the rounds published so far: their
+ * current pairing, or the last one they had once they are out of the draw.
+ *
+ * A player is paired every round until they drop or miss the cut, so their
+ * rounds are a run from the first one: a player absent from round one was
+ * never in the event, and the last round that has them is a boundary the
+ * search can halve for rather than walk back to. That keeps a profile page
+ * during an event to one round file for a player still in, two for everyone
+ * who is not at the event at all, and a handful for a run that has ended.
+ */
+export async function lastSeatInEvent(
+  current: number,
+  seatIn: (round: number) => Promise<SeatView | null>
+): Promise<RunTail | null> {
+  const latest = await seatIn(current);
+  if (latest) {
+    return { round: current, view: latest };
+  }
+  const first = current > 1 ? await seatIn(1) : null;
+  if (!first) {
+    return null;
+  }
+  let found: RunTail = { round: 1, view: first };
+  let low = 2;
+  let high = current - 1;
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const view = await seatIn(mid);
+    if (view) {
+      found = { round: mid, view };
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return found;
+}
+
 export interface RunSeatEntry {
   /** The round the seat was met in; 0 for the player's own seat. */
   round: number;

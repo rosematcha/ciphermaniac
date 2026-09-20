@@ -54,7 +54,14 @@ export function LiveRun(props: LiveRunProps) {
   );
   const run = createMemo(() => {
     const loaded = latestValue(rounds);
-    return loaded ? playerRun(loaded, props.names, props.countries) : undefined;
+    if (!loaded) {
+      return undefined;
+    }
+    // A player is paired every round until they are out, so the rounds after
+    // their last pairing are the event carrying on without them, not blanks.
+    const played = playerRun(loaded, props.names, props.countries);
+    const last = played.map(round => Boolean(round.view)).lastIndexOf(true);
+    return played.slice(0, last + 1);
   });
   /** The seat as the data has it, not as a URL spelled it: follows and reports key off this. */
   const seat = () => [...(run() ?? [])].reverse().find(round => round.view)?.view?.seat;

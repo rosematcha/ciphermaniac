@@ -19,6 +19,7 @@ import {
   foldName,
   followedMatches,
   isDecided,
+  lastSeatInEvent,
   matchStatus,
   playerRun,
   recordLabel,
@@ -112,6 +113,47 @@ test('a run follows one player through the posted rounds, oldest first, skipping
       [3, null, null]
     ]
   );
+});
+
+/** A player paired in rounds 1..`through`, and nobody in the rounds after it. */
+function eventWhere(through: number, dropped = false) {
+  const reads: number[] = [];
+  const seatIn = (round: number) => {
+    reads.push(round);
+    const player = { ...seat('Barbara Liskov'), dropped: dropped && round === through ? (true as const) : undefined };
+    const match: LiveMatch = { table: round, seats: [player, seat('Alan Turing', 'GB')], complete: true };
+    return Promise.resolve(round <= through ? { match, seat: player, opponent: match.seats[1] } : null);
+  };
+  return { reads, seatIn };
+}
+
+test('a player still paired is found in the current round alone', async () => {
+  const { reads, seatIn } = eventWhere(9);
+  const tail = await lastSeatInEvent(9, seatIn);
+  assert.equal(tail?.round, 9);
+  assert.deepEqual(reads, [9]);
+});
+
+test('a player never in the event costs the current round and the first, and nothing more', async () => {
+  const { reads, seatIn } = eventWhere(0);
+  assert.equal(await lastSeatInEvent(9, seatIn), null);
+  assert.deepEqual(reads, [9, 1]);
+});
+
+test('a run that has ended is found at its last round, without reading every round', async () => {
+  for (let through = 1; through <= 14; through += 1) {
+    const { reads, seatIn } = eventWhere(through, true);
+    const tail = await lastSeatInEvent(15, seatIn);
+    assert.equal(tail?.round, through, `through ${through}`);
+    assert.equal(tail?.view.seat.dropped, true);
+    assert.ok(reads.length <= 6, `through ${through} took ${reads.length} reads`);
+  }
+});
+
+test('a player absent from the only round posted is not in the event', async () => {
+  const { reads, seatIn } = eventWhere(0);
+  assert.equal(await lastSeatInEvent(1, seatIn), null);
+  assert.deepEqual(reads, [1]);
 });
 
 test('the seats a run can report are the player and each opponent once, in round order', () => {

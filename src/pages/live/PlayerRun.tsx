@@ -4,7 +4,9 @@ import { aliasedPlayerId, seatNamesFor } from '../../../shared/live/seatAliases'
 import type { LiveEvent } from '../../../shared/live/types';
 import {
   createProfileLookup,
+  findSeat,
   findSeats,
+  lastSeatInEvent,
   recordLabel,
   type SeatProfile,
   type SeatRef,
@@ -37,14 +39,28 @@ export interface PlayerRunProps {
  */
 export function PlayerRun(props: PlayerRunProps) {
   const index = createPolled(() => props.event.slug, fetchLiveIndex);
-  const round = createPolled(
-    () => latestValue(index)?.round,
-    n => fetchLiveRound(props.event.slug, n)
-  );
+  const current = () => latestValue(index)?.round;
+  const round = createPolled(current, n => fetchLiveRound(props.event.slug, n));
   // Every name this player registers under, so a seat RK9 prints differently
   // still finds them (`shared/live/seatAliases.ts`).
   const names = createMemo(() => seatNamesFor(props.playerId, props.name));
-  const seats = createMemo(() => findSeats(latestValue(round)?.matches ?? [], names(), [...props.countries]));
+  const playing = createMemo(() => findSeats(latestValue(round)?.matches ?? [], names(), [...props.countries]));
+  // A run that has ended is worth as much as one still going, so dropping out
+  // of the draw must not take it off the page. Only for a player the current
+  // round does not have, and keyed by the round number alone: a poll that
+  // changes nothing must not re-run the search.
+  const [ended] = createResource(
+    () => (latestValue(round) && playing().length === 0 ? (current() ?? null) : null),
+    at =>
+      // eslint-disable-next-line solid/reactivity -- a fetcher reads props on each run, which is when they matter
+      lastSeatInEvent(at, async n =>
+        findSeat((await fetchLiveRound(props.event.slug, n))?.matches ?? [], names(), [...props.countries])
+      )
+  );
+  const seats = createMemo((): readonly SeatView[] => {
+    const tail = playing().length > 0 ? null : latestValue(ended);
+    return tail ? [tail.view] : playing();
+  });
   const reports = useDeckReports(() => props.event.slug);
   // The opponents' careers, so their rows lead to a profile rather than a seat
   // page. A megabyte, so it waits until this player is actually in the event.
