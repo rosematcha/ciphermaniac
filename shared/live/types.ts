@@ -65,10 +65,20 @@ export interface LiveEvent {
   lastDay: string;
 }
 
+/** Where the top cut starts: its first round, and how many players it holds. */
+export interface LiveCut {
+  from: number;
+  size: number;
+}
+
 /** Poller bookkeeping for one event, held by the runner between steps. */
 export interface LiveState {
   round: number;
   roundComplete: boolean;
+  cut?: LiveCut;
+  /** When round two was first published; see `shared/live/pace.ts`. */
+  round2At?: string;
+  finished?: boolean;
   /** Hash of the last published matches. */
   hash: string;
   /** Matches in the last published round; a round never loses tables. */
@@ -81,6 +91,8 @@ export interface LiveState {
 export interface LiveRound {
   round: number;
   updatedAt: string;
+  /** A top cut round; its seats carry their frozen Swiss records. */
+  topCut?: true;
   /** Rows RK9 listed that could not be read, so a gap is visible rather than silent. */
   unreadable: number;
   matches: LiveMatch[];
@@ -97,6 +109,12 @@ export interface LiveIndex {
   /** Matches in the current round with no result, confirmed or submitted. */
   playing: number;
   updatedAt: string;
+  /** Present once the top cut has started. */
+  cut?: LiveCut;
+  /** When round two was first published, which pins the venue's day for pacing. */
+  round2At?: string;
+  /** The final has a result: the event is over and nothing more will be published. */
+  finished?: true;
 }
 
 /** `live/v1/schedule.json`: the events worth following, soonest first. */
