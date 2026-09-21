@@ -300,7 +300,7 @@ export function ArchetypeTrendChart(props: ArchetypeTrendChartProps) {
           </g>
           <For each={visibleSeries()}>
             {series => {
-              const color = colorOf(series.name);
+              const color = () => colorOf(series.name);
               const seg = createMemo(() => segmentsFor(series.points));
               const dim = () => props.highlight !== null && props.highlight !== series.name;
               return (
@@ -308,7 +308,7 @@ export function ArchetypeTrendChart(props: ArchetypeTrendChartProps) {
                   <path
                     d={seg().d}
                     fill='none'
-                    stroke={color}
+                    stroke={color()}
                     stroke-width='2'
                     stroke-linecap='round'
                     stroke-linejoin='round'
@@ -316,12 +316,12 @@ export function ArchetypeTrendChart(props: ArchetypeTrendChartProps) {
                   <Show
                     when={showDots()}
                     fallback={
-                      <For each={seg().isolated}>{pt => <circle cx={pt.x} cy={pt.y} r='3' fill={color} />}</For>
+                      <For each={seg().isolated}>{pt => <circle cx={pt.x} cy={pt.y} r='3' fill={color()} />}</For>
                     }
                   >
                     <For each={series.points}>
                       {(v, j) =>
-                        v === null ? null : <circle cx={x(props.days[j()].date)} cy={y(v)} r='3' fill={color} />
+                        v === null ? null : <circle cx={x(props.days[j()].date)} cy={y(v)} r='3' fill={color()} />
                       }
                     </For>
                   </Show>

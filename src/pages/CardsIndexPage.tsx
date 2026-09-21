@@ -257,7 +257,6 @@ export function CardsIndexPage() {
     }
   }
 
-  // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
   const { page, totalPages, pageItems, setPage } = createPagination(
     sorted,
     PAGE_SIZE,

@@ -22,6 +22,7 @@ export function createCount(target: Accessor<number>): Accessor<number> {
         setShown(to);
         return;
       }
+      // eslint-disable-next-line solid/reactivity -- a deliberate snapshot: the tween starts from where the number stood when the target changed
       const from = shown();
       const start = performance.now();
       const tick = (now: number) => {

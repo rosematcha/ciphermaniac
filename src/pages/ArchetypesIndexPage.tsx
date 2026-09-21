@@ -204,6 +204,7 @@ function ArchetypesListView(props: {
   const ariaSort = (col: SortCol): SortDir | 'none' => (sortCol() === col ? sortDir() : 'none');
 
   const sorted = createMemo(() => {
+    // eslint-disable-next-line solid/reactivity -- read here so the memo tracks it; `key` runs synchronously inside this same memo, never later
     const col = sortCol();
     const dir = sortDir() === 'ascending' ? 1 : -1;
     // Read the reactive inputs here in the memo body; the comparator below closes

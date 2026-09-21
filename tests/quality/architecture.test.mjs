@@ -16,7 +16,7 @@ function cruise(files) {
     return spawnSync(
       process.execPath,
       [
-        resolve('node_modules/dependency-cruiser/bin/dependency-cruise.mjs'),
+        resolve('node_modules/dependency-cruiser/bin/dependency-cruiser.mjs'),
         '--config',
         resolve('.dependency-cruiser.cjs'),
         'src'

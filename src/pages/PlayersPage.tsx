@@ -79,9 +79,7 @@ export function PlayersPage() {
     page => setParams({ page }, { replace: true })
   );
   // No resetOn list: setQuery and the sort setters already clear `page` themselves.
-  const { page, totalPages, pageItems: pageRows, setPage } =
-    // eslint-disable-next-line solid/reactivity -- createPagination reads `sorted` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
-    createPagination(sorted, PAGE_SIZE, undefined, pageParam);
+  const { page, totalPages, pageItems: pageRows, setPage } = createPagination(sorted, PAGE_SIZE, undefined, pageParam);
 
   const writeSort = (key: PlayerSortKey, dir: PlayerSortDir) =>
     setParams(
