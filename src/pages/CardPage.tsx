@@ -14,7 +14,7 @@ import {
   supportsConversion
 } from './cardPage/model';
 import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, For, on, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
 import {
   type Day2CardStat,
   fetchArchetype,
@@ -26,24 +26,20 @@ import {
   fetchPrices,
   fetchRotationIndex,
   findCardBySetNumberCanonical,
-  getArchetypeIconMap,
   PRICE_HISTORY_MIN_DAYS,
   priceHistorySpanDays,
   type PricePoint,
-  resolveArchetypeIcons,
   resolveCanonicalSetNumber,
   snapshotDateForCard,
   snapshotSourceKey
 } from '../lib/data';
-import { buildCanonicalCardId } from '../../shared/deckCardId';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { getCanonicalCardFromData, itemUid, type SynonymDatabase } from '../../shared/data/cardIdentity.js';
-import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { useTournament } from '../lib/tournamentContext';
 import '../styles/pages/cards.css';
 import { latestValue, resolved } from '../lib/resource';
 import { computeSparkBounds } from '../lib/sparkline';
-import type { CardDistributionEntry, CardItem } from '../types';
+import type { CardItem } from '../types';
 import { Badge } from '../components/Badge';
 import { buildPrintingRows, formatPrintPrice, type PrintingRow } from '../utils/printings';
 import { Skeleton } from '../components/Skeleton';
@@ -53,6 +49,10 @@ import { InfoTip } from '../components/InfoTip';
 import { mapWithConcurrency } from '../lib/concurrency';
 import { isJokeMode, JOKE_PARAM } from '../lib/jokeMode';
 import { tcgplayerAffiliateUrl } from '../utils/tcgplayer';
+import { decodeListIndex, fetchListIndex } from '../lib/data/lists';
+import { PlayedIn } from './cardPage/PlayedIn';
+import { pinReachable } from '../lib/stickyRail';
+import { type CardList, listsForCard, singleEvent } from './cardPage/playedInModel';
 
 const CONVERSION_INTRO = 'Share of the Day 1 decks playing this card that advanced to Day 2.';
 const AFFILIATE_DISCLOSURE = 'Ciphermaniac may earn a commission from purchases through this TCGplayer link.';
@@ -287,6 +287,21 @@ export function CardPage() {
   );
   const archetypeUsageData = () => resolved(archetypeUsage);
 
+  // The lists behind those rows. `lists.json` is one object per report, so it
+  // is fetched once per tournament and decoded once per synonym DB; snapshots
+  // and events built before it existed have none (null), and the block falls
+  // back to the copy split's deep links.
+  const [listIndex] = createResource(effectiveTournament, t => fetchListIndex(t).catch(() => null));
+  const listRecords = createMemo(() => {
+    const payload = resolved(listIndex);
+    return payload ? decodeListIndex(payload, db()) : null;
+  });
+  const cardLists = createMemo<CardList[] | null>(() => {
+    const records = listRecords();
+    return records ? listsForCard(records, globalCardUid()) : null;
+  });
+  const oneEvent = createMemo(() => singleEvent(listRecords() ?? []));
+
   // Day 1 → Day 2 conversion for the card, scoped to the active tournament.
   // Skipped for sources with no single Day 2 cut: Online Meta (rolling 14-day
   // window) and pre-rotation snapshots (frozen meta reports, no decks.json with
@@ -349,7 +364,11 @@ export function CardPage() {
           priceSeries={priceSeries()}
           conversion={conversionStat()}
           archetypeUsage={archetypeUsageData()}
-          archetypeUsageLoading={archetypeUsage.loading || archetypeIndex.loading}
+          archetypeUsageLoading={archetypeUsage.loading || archetypeIndex.loading || listIndex.loading}
+          lists={cardLists()}
+          oneEvent={oneEvent()}
+          cardUid={globalCardUid()}
+          tournament={effectiveTournament()}
           isSnapshot={isSnapshot()}
           snapshotDateLabel={snapshotDateLabel()}
           rankTotal={rankTotal()}
@@ -371,6 +390,10 @@ function CardPageBody(props: {
   conversion: Day2CardStat | undefined;
   archetypeUsage: ArchetypeUsageRow[] | null | undefined;
   archetypeUsageLoading: boolean;
+  lists: CardList[] | null;
+  oneEvent: boolean;
+  cardUid: string | null;
+  tournament: string;
   isSnapshot: boolean;
   snapshotDateLabel: string;
   rankTotal: number | null;
@@ -387,6 +410,17 @@ function CardPageBody(props: {
   const [searchParams] = useSearchParams();
   const joke = createMemo(() => isJokeMode(searchParams[JOKE_PARAM]));
   const printings = createMemo<PrintingRow[]>(() => buildPrintingRows(props.db, itemUid(props.card), joke()));
+
+  // The rail is sticky by its top edge; with thirteen printings it outgrows a
+  // laptop window, so pin it by whichever edge keeps all of it reachable.
+  let rail: HTMLDivElement | undefined;
+  onMount(() => {
+    if (!rail) {
+      return;
+    }
+    const navHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topnav-h')) || 0;
+    onCleanup(pinReachable(rail, () => navHeight() + 16));
+  });
   return (
     <>
       <div class='card-page-hero'>
@@ -421,7 +455,7 @@ function CardPageBody(props: {
       </Show>
 
       <div class='card-page-grid'>
-        <div class='card-page-left'>
+        <div class='card-page-left' ref={rail}>
           <CardHeroArt card={props.card} shown={props.previewPrint} />
 
           <div class='stats-list'>
@@ -499,7 +533,7 @@ function CardPageBody(props: {
         <div class='card-page-right'>
           <Show when={props.card.dist && props.card.dist.length > 0}>
             <div class='card-section'>
-              <h3>Copy count distribution</h3>
+              <h3>Copies per deck</h3>
               <div class='dist-block'>
                 <For each={props.card.dist}>
                   {d => (
@@ -518,22 +552,30 @@ function CardPageBody(props: {
             </div>
           </Show>
 
-          <div class='card-section'>
-            <h3>Where it's played</h3>
-            <Show when={!props.archetypeUsageLoading} fallback={<Skeleton height='220px' />}>
-              <Show
-                when={props.archetypeUsage && props.archetypeUsage.length > 0}
-                fallback={
+          <Show when={!props.archetypeUsageLoading} fallback={<Skeleton height='220px' />}>
+            <Show
+              when={props.archetypeUsage && props.archetypeUsage.length > 0}
+              fallback={
+                <div class='card-section'>
+                  <h3>Played in</h3>
                   <EmptyState
                     title='Not seen in any tracked archetype.'
                     description="This card appears in the master report but isn't currently associated with an archetype's deck list."
                   />
-                }
-              >
-                <ArchetypeUsageTable rows={props.archetypeUsage!} card={props.card} db={props.db} />
-              </Show>
+                </div>
+              }
+            >
+              <PlayedIn
+                rows={props.archetypeUsage!}
+                lists={props.lists}
+                oneEvent={props.oneEvent}
+                card={props.card}
+                cardUid={props.cardUid}
+                db={props.db}
+                tournament={props.tournament}
+              />
             </Show>
-          </div>
+          </Show>
         </div>
       </div>
     </>
@@ -697,126 +739,6 @@ function PriceSparkline(props: { points: PricePoint[] }) {
 function categoryToBadge(category: string): string {
   const main = category.split('/')[0] ?? category;
   return main.charAt(0).toUpperCase() + main.slice(1);
-}
-
-/**
- * Expandable per-archetype usage rows: every archetype that plays this card,
- * with its inclusion rate and most common copy count on the collapsed row, and
- * the full copy-count distribution behind a chevron — each bucket deep-linking
- * into that archetype's filter tab pre-set to the exact count. Sorted by the
- * raw number of decks running the card within each archetype, descending, so
- * popular decks outrank tiny ones with a higher inclusion rate.
- */
-function ArchetypeUsageTable(props: { rows: ArchetypeUsageRow[]; card: CardItem; db: SynonymDatabase | null }) {
-  const iconMap = getArchetypeIconMap;
-  const sorted = createMemo(() => {
-    // Rank by the raw number of players running the card in each archetype
-    // (found = pct × deckTotal), so a large deck's high count outweighs a tiny
-    // deck's high rate — 800/1000 Dragapult beats 9/10 Kangaskhan. Ties fall
-    // back to inclusion rate.
-    return [...props.rows].sort(
-      (a, b) => (b.item.found ?? 0) - (a.item.found ?? 0) || (b.item.pct ?? 0) - (a.item.pct ?? 0)
-    );
-  });
-  const [open, setOpen] = createSignal<Set<string>>(new Set());
-  const toggle = (name: string) =>
-    setOpen(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
-    });
-  // Filter deep links need the card's SET~NUMBER id; without set/number the
-  // expansion still renders, just without "view lists" links.
-  // Deep links target the archetype filter, whose rules key by the GLOBAL
-  // canonical printing (decks are canonicalized to global) — so resolve the
-  // card's rolling print to its cluster canonical before building the id.
-  const cardId = createMemo(() => buildCanonicalCardId(props.card, props.db));
-
-  return (
-    <div class='au-block'>
-      <For each={sorted()}>
-        {row => {
-          const inclusion = row.item.pct ?? 0;
-          // Row data is static once the row renders — compute the filtered dist
-          // and modal bucket once instead of re-running the reduce per accessor.
-          const dist = (row.item.dist ?? []).filter(d => d.copies !== undefined && (d.players ?? 0) > 0);
-          const modalBucket = dist.reduce<CardDistributionEntry | null>(
-            (m, d) => (m === null || (d.players ?? 0) > (m.players ?? 0) ? d : m),
-            null
-          );
-          const isOpen = () => open().has(row.entry.name);
-          const detailId = `au-detail-${row.entry.name.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-          return (
-            <div class='au-row' classList={{ 'is-open': isOpen() }}>
-              <div
-                class='au-head'
-                onClick={e => {
-                  if (!(e.target as HTMLElement).closest('a')) {
-                    toggle(row.entry.name);
-                  }
-                }}
-              >
-                <button
-                  type='button'
-                  class='au-chevron'
-                  aria-expanded={isOpen()}
-                  aria-controls={detailId}
-                  aria-label={`Copy counts in ${row.entry.label}`}
-                >
-                  ▶
-                </button>
-                <span class='au-name'>
-                  <ArchetypeIcons slugs={resolveArchetypeIcons(row.entry, iconMap())} size={20} reserveSlot />
-                  <A href={`/archetypes/${encodeURIComponent(row.entry.name)}`}>{row.entry.label}</A>
-                </span>
-                <span class='au-pct'>{fmtWholePct(inclusion)}</span>
-                <span class='au-modal'>
-                  <Show when={modalBucket} keyed>
-                    {m => (
-                      <>
-                        <span class='au-chip'>{m.copies}×</span>
-                        <span class='au-modal-share'>in {fmtWholePct(m.percent ?? 0)}</span>
-                      </>
-                    )}
-                  </Show>
-                </span>
-              </div>
-              <Show when={isOpen()}>
-                <div class='au-detail' id={detailId}>
-                  <For each={dist}>
-                    {d => (
-                      <div class='au-dist-line' classList={{ 'is-modal': d.copies === modalBucket?.copies }}>
-                        <span class='au-dist-copies'>{d.copies}× copies</span>
-                        <div class='au-dist-bar' aria-hidden='true'>
-                          <div class='au-dist-fill' style={{ width: `${Math.min(100, d.percent ?? 0)}%` }} />
-                        </div>
-                        <span class='au-dist-stat'>
-                          {fmtWholePct(d.percent ?? 0)} · {(d.players ?? 0).toLocaleString()} decks
-                          <Show when={cardId()}>
-                            {' · '}
-                            <A
-                              class='au-dist-link'
-                              href={`/archetypes/${encodeURIComponent(row.entry.name)}?b=${cardId()}:i:e:${d.copies}`}
-                            >
-                              view lists →
-                            </A>
-                          </Show>
-                        </span>
-                      </div>
-                    )}
-                  </For>
-                </div>
-              </Show>
-            </div>
-          );
-        }}
-      </For>
-    </div>
-  );
 }
 
 function CardPageSkeleton() {

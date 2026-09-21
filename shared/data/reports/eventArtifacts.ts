@@ -24,6 +24,7 @@ import {
   listedDeckCount
 } from './cardReport';
 import { buildCardUsageIndex } from './cardUsage';
+import { buildListIndex } from './listIndex';
 import { buildConversionIndex } from './conversion';
 import { buildCanonicalMatches, buildPlayerMatches } from './eventMatches';
 import { buildMatchupProfiles } from './matchupProfiles';
@@ -218,6 +219,19 @@ function buildReportBundle(
   return out;
 }
 
+/** The card page's lists: one compact object instead of a 20 MB decks.json. */
+function addListIndex(artifacts: Map<string, unknown>, event: NormalizedEvent, decks: DeckArtifactRow[]): void {
+  const listIndex = buildListIndex(decks, {
+    id: event.eventId,
+    name: event.meta.name,
+    date: event.meta.date,
+    players: event.meta.playerCount
+  });
+  if (listIndex !== null) {
+    artifacts.set('lists.json', listIndex);
+  }
+}
+
 /** A rolling-canonical binding for one event: the date plus its bound resolver. */
 interface EventCanonicalization {
   asOfDate: string;
@@ -306,6 +320,8 @@ export function buildEventArtifacts(
     }
     artifacts.set('conversion.json', conversion);
   }
+
+  addListIndex(artifacts, event, decks);
 
   // Matchup profiles are meaningful only where matches exist (Labs events).
   if (event.matches.length > 0) {

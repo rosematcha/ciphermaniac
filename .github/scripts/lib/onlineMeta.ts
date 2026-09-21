@@ -21,6 +21,7 @@ import { generateReportFromDecks, listedDeckCount } from '../../../shared/data/r
 import { type ArchetypeBuildResult, buildArchetypeReports } from '../../../shared/data/archetypes/build.js';
 import { onlineArchetypeOptions } from '../../../shared/data/reports/onlineArtifacts.js';
 import { buildCardUsageIndex } from '../../../shared/data/reports/cardUsage.js';
+import { buildListIndex } from '../../../shared/data/reports/listIndex.js';
 import { buildCardSuccessIndex } from '../../../shared/data/reports/cardSuccess.js';
 import { requireSynonymDatabase, type SynonymDatabase } from '../../../shared/data/cardIdentity.js';
 import type { fetchLimitlessJson } from './onlineFetch';
@@ -147,20 +148,23 @@ async function publish(run: Run, relativeKey: string, data: unknown): Promise<vo
 
 /**
  * Delete what this run superseded: anything in the folder that is no longer
- * part of the report's shape, and any archetype, deck shard or cardSuccess
- * object the run was responsible for rewriting but did not write.
+ * part of the report's shape, and any archetype, deck shard, list index or
+ * cardSuccess object the run was responsible for rewriting but did not write.
  */
 async function removeSupersededOnlineObjects(run: Run): Promise<number> {
   const { basePath, published } = run;
   const existing = await run.store.list(`${basePath}/`);
   const archetypePrefix = `${basePath}/archetypes/`;
-  const deckIndexPrefix = `${basePath}/decks/`;
+  const listIndexPrefix = `${basePath}/decks/`;
   const stale = existing.filter(key => {
     const relative = key.slice(`${basePath}/`.length);
     if (!isOnlineReportRelativeKey(relative)) {
       return true;
     }
-    if (key.startsWith(deckIndexPrefix) || key.startsWith(archetypePrefix)) {
+    if (key.startsWith(listIndexPrefix) || key.startsWith(archetypePrefix)) {
+      return !published.has(key);
+    }
+    if (run.generateArchetypes && key === `${basePath}/lists.json`) {
       return !published.has(key);
     }
     return run.generateMaster && key === `${basePath}/cardSuccess.json` && !published.has(key);
@@ -381,6 +385,10 @@ async function publishArchetypes(run: Run, input: PublishInput): Promise<void> {
   run.log('[online-meta] Uploading archetype reports...');
   await publish(run, 'archetypes/index.json', index);
   await publish(run, 'cardUsage.json', buildCardUsageIndex(files));
+  const listIndex = buildListIndex(input.reportDecks);
+  if (listIndex) {
+    await publish(run, 'lists.json', listIndex);
+  }
   for (const file of files) {
     await publish(run, `archetypes/${file.base}/cards.json`, file.data);
     const trends = input.trendsByBase.get(file.base);

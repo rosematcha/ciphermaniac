@@ -1,12 +1,10 @@
 import { A } from '@solidjs/router';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
-import { CardHoverPreview } from '../../components/CardHoverPreview';
+import { DeckBody } from '../../components/DeckBody';
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
-import { groupDeckByCategory } from '../../lib/deckGrouping';
-import { capitalize } from '../../lib/format';
 import type { PlayerDeckCard, PlayerRound, PlayerTournamentEntry } from '../../types';
 import { groupRoundsByPhase, OUTCOME_LETTER, outcomeTone } from './model';
 
@@ -142,50 +140,4 @@ function roundNote(round: PlayerRound): string {
     return 'Not paired';
   }
   return '—';
-}
-
-export function DeckBody(props: { cards: PlayerDeckCard[] }) {
-  const groups = createMemo(() => groupDeckByCategory(props.cards));
-
-  return (
-    <div class='deck-inline'>
-      <div class='deck-inline-groups'>
-        <For each={groups()}>
-          {group => (
-            <div class='deck-inline-group'>
-              <div class='deck-inline-group-head'>
-                {capitalize(group.label)}
-                <span class='deck-inline-group-count'>{group.total}</span>
-              </div>
-              <ul class='deck-inline-list'>
-                <For each={group.cards}>
-                  {c => (
-                    <li>
-                      <Show
-                        when={c.set && c.number}
-                        fallback={
-                          <span>
-                            <b>{c.count}×</b> {c.name}
-                          </span>
-                        }
-                      >
-                        <CardHoverPreview set={c.set!} number={c.number!}>
-                          <A href={`/cards/${c.set}/${c.number}`}>
-                            <b>{c.count}×</b> {c.name}{' '}
-                            <span class='muted-cell'>
-                              {c.set}/{c.number}
-                            </span>
-                          </A>
-                        </CardHoverPreview>
-                      </Show>
-                    </li>
-                  )}
-                </For>
-              </ul>
-            </div>
-          )}
-        </For>
-      </div>
-    </div>
-  );
 }

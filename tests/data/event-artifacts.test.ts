@@ -34,6 +34,7 @@ test('labs event produces the full artifact set', () => {
     'index.json',
     'meta.json',
     'cardUsage.json',
+    'lists.json',
     'archetypes/index.json'
   ]) {
     assert.ok(artifacts.has(key), `missing ${key}`);

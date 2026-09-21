@@ -122,7 +122,7 @@
     "complexity:63a103ed0129d72e2005f1d4854bd3824bcaccde7f4bc27e472b721d05e2e297:Function 'buildConversionIndex' has a complexity of 26. Maximum allowed is 12."
   ],
   "shared/data/reports/eventArtifacts.ts": [
-    "complexity:11756614c6fe3e4cc8263dd73ece003cd6e91970f88f74d6049230054e20c83b:Function 'buildEventArtifacts' has a complexity of 15. Maximum allowed is 12."
+    "complexity:c92556686427f91fc47d4606d9a0b5eecbc7f107e3c954123841dabd2f001d16:Function 'buildEventArtifacts' has a complexity of 15. Maximum allowed is 12."
   ],
   "shared/data/reports/eventMatches.ts": [
     "complexity:e8849f4badaa0653f988fa8e2d2f715b219ff97382c41a7e080616eadea2f574:Arrow function has a complexity of 19. Maximum allowed is 12.",
