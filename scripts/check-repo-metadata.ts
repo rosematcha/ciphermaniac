@@ -193,9 +193,9 @@ check('npm scripts named in README exist', () => {
 
 check('README Node requirement matches package.json engines', () => {
   const problems: string[] = [];
-  const prose = readme.match(/Requires Node (\d+)\+/);
+  const prose = readme.match(/(?:Requires|need) Node (\d+)/);
   if (!prose) {
-    problems.push('README has no "Requires Node <major>+" line');
+    problems.push('README has no "need Node <major>" line');
   } else if (Number(prose[1]) !== supportedNodeMajor) {
     problems.push(`README says Node ${prose[1]}+ but package.json engines.node requires ${supportedNodeMajor}+`);
   }
