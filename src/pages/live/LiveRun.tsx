@@ -1,6 +1,7 @@
 import { A } from '@solidjs/router';
 import { createMemo, createResource, createSignal, For, Show } from 'solid-js';
-import type { LiveSeat } from '../../../shared/live/types';
+import type { LiveCut, LiveSeat } from '../../../shared/live/types';
+import { roundShort } from '../../../shared/live/rounds';
 import {
   matchStatus,
   playerRun,
@@ -34,6 +35,8 @@ interface LiveRunProps {
   /** Rounds posted so far, and the index hash, which moves whenever the current round does. */
   rounds: number;
   version: string;
+  /** Where the top cut starts, so its rounds are named for it. */
+  cut?: LiveCut;
   reports: DeckReports;
   /** Career for an opponent's seat, so their row leads to the right page. */
   profileOf: (seat: SeatRef) => SeatProfile | null;
@@ -65,6 +68,8 @@ export function LiveRun(props: LiveRunProps) {
   });
   /** The seat as the data has it, not as a URL spelled it: follows and reports key off this. */
   const seat = () => [...(run() ?? [])].reverse().find(round => round.view)?.view?.seat;
+  /** Whether any round shown is a top cut one, whose name needs the wider column. */
+  const reachedCut = () => Boolean(props.cut && run()?.some(round => round.round >= props.cut!.from));
   const [filling, setFilling] = createSignal(false);
   const seats = createMemo(() => {
     const current = seat();
@@ -88,10 +93,16 @@ export function LiveRun(props: LiveRunProps) {
         <Show
           when={filling()}
           fallback={
-            <ol class='rounds live-rounds'>
+            <ol class='rounds live-rounds' classList={{ 'has-cut': reachedCut() }}>
               <For each={run()}>
                 {round => (
-                  <RunRow round={round} slug={props.slug} reports={props.reports} profileOf={props.profileOf} />
+                  <RunRow
+                    round={round}
+                    cut={props.cut}
+                    slug={props.slug}
+                    reports={props.reports}
+                    profileOf={props.profileOf}
+                  />
                 )}
               </For>
             </ol>
@@ -100,6 +111,7 @@ export function LiveRun(props: LiveRunProps) {
           <RunReport
             seats={seats()}
             decks={props.reports.decks()}
+            cut={reachedCut() ? props.cut : undefined}
             shownFor={shownFor}
             onSubmit={props.reports.reportMany}
             onClose={() => setFilling(false)}
@@ -170,6 +182,7 @@ export function OutcomeMark(props: { outcome: SeatOutcome }) {
 
 function RunRow(props: {
   round: RunRound;
+  cut?: LiveCut;
   slug: string;
   reports: DeckReports;
   profileOf: (seat: SeatRef) => SeatProfile | null;
@@ -190,7 +203,7 @@ function RunRow(props: {
   };
   return (
     <li class='round'>
-      <span class='round-n'>R{props.round.round}</span>
+      <span class='round-n'>{roundShort(props.round.round, props.cut)}</span>
       <Show when={outcome()} fallback={<b class='round-outcome'>·</b>}>
         {current => <OutcomeMark outcome={current()} />}
       </Show>

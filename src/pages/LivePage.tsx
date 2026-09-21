@@ -2,6 +2,7 @@ import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, Show } from 'solid-js';
 import type { LiveMatch } from '../../shared/live/types';
 import { aliasedPlayerId } from '../../shared/live/seatAliases';
+import { roundName } from '../../shared/live/rounds';
 import {
   createProfileLookup,
   filterByDeck,
@@ -119,6 +120,7 @@ export function LivePage() {
     query: query(),
     round: round(),
     current: current(),
+    cut: indexData()?.cut,
     pinned: pinned() !== null,
     view: view(),
     status: status(),
@@ -233,12 +235,22 @@ export function LivePage() {
                 {/* Always the round the event is on, said so. The table may be
                     showing a pinned round, and the two used to contradict each
                     other with nothing saying which was which. */}
-                <span>Live: round {live().round}</span>
-                <span class='dot'>·</span>
-                <span>
-                  {live().playing.toLocaleString()} of {live().matches.toLocaleString()} tables playing
-                </span>
-                <span class='dot'>·</span>
+                <Show
+                  when={!live().finished}
+                  fallback={
+                    <>
+                      <span>Finished</span>
+                      <span class='dot'>·</span>
+                    </>
+                  }
+                >
+                  <span>Live: {roundName(live().round, live().cut)}</span>
+                  <span class='dot'>·</span>
+                  <span>
+                    {live().playing.toLocaleString()} of {live().matches.toLocaleString()} tables playing
+                  </span>
+                  <span class='dot'>·</span>
+                </Show>
                 <span>updated {new Date(live().updatedAt).toLocaleTimeString([], { timeStyle: 'short' })}</span>
               </>
             )}

@@ -1,4 +1,6 @@
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import type { LiveCut } from '../../../shared/live/types';
+import { roundName, roundShort } from '../../../shared/live/rounds';
 import type { StatusFilter } from '../../../shared/live/view';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Chip, ChipGroup, SearchInput } from '../../components/Chip';
@@ -20,6 +22,8 @@ export interface LiveFilters {
   round: number;
   /** The round the event is actually on. */
   current: number;
+  /** Where the top cut starts, once it has. */
+  cut?: LiveCut;
   pinned: boolean;
   view: LiveView;
   status: StatusFilter;
@@ -191,7 +195,7 @@ function FilterGroups(props: ControlsProps) {
       <div class='group'>
         <p class='group-label'>Round</p>
         <ChipGroup
-          options={roundOptions(props.filters.current)}
+          options={roundOptions(props.filters.current, props.filters.cut)}
           selected={String(props.filters.round)}
           onSelect={value => props.on.setRound(Number(value))}
         />
@@ -257,10 +261,10 @@ function RoundStepper(props: { filters: LiveFilters; on: LiveFilterActions; open
         classList={{ 'is-pinned': props.filters.pinned }}
         aria-haspopup='dialog'
         aria-expanded={props.open ? 'true' : 'false'}
-        aria-label={`Round ${at()} of ${props.filters.current}; choose a round`}
+        aria-label={`${roundName(at(), props.filters.cut)}; choose a round`}
         onClick={() => props.onBrowse()}
       >
-        R{at()}
+        {roundShort(at(), props.filters.cut)}
       </button>
       <button
         type='button'
@@ -293,10 +297,10 @@ function FiltersIcon() {
   );
 }
 
-function roundOptions(current: number): { value: string; label: string }[] {
+function roundOptions(current: number, cut: LiveCut | undefined): { value: string; label: string }[] {
   return Array.from({ length: current }, (_, i) => ({
     value: String(i + 1),
-    label: i + 1 === current ? `R${i + 1} · live` : `R${i + 1}`
+    label: i + 1 === current ? `${roundShort(i + 1, cut)} · live` : roundShort(i + 1, cut)
   }));
 }
 
@@ -308,7 +312,10 @@ function countActive(filters: LiveFilters): number {
 function summary(filters: LiveFilters, on: LiveFilterActions): { label: string; clear: () => void }[] {
   const chips: { label: string; clear: () => void }[] = [];
   if (filters.pinned) {
-    chips.push({ label: `Round ${filters.round} · live is R${filters.current}`, clear: () => on.setRound(null) });
+    chips.push({
+      label: `${roundName(filters.round, filters.cut)} · live is ${roundShort(filters.current, filters.cut)}`,
+      clear: () => on.setRound(null)
+    });
   }
   if (filters.status !== 'all') {
     chips.push({ label: filters.status === 'playing' ? 'Playing' : 'Decided', clear: () => on.setStatus('all') });

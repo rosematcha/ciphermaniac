@@ -14,11 +14,14 @@
  */
 
 import { createSignal, For, Show } from 'solid-js';
+import type { LiveCut } from '../../../shared/live/types';
+import { roundShort } from '../../../shared/live/rounds';
 import { type RunSeatEntry, seatKey, type SeatRef, type SeatReport } from '../../../shared/live/view';
 import { DeckCombo, type ReportedDeck } from './LiveDeck';
 
 interface RunReportProps {
   seats: readonly RunSeatEntry[];
+  cut?: LiveCut;
   /** Every archetype a report may name, the ones in play flagged. */
   decks: readonly ReportedDeck[];
   /** What is shown for a seat now: this device's report, else the published one. */
@@ -53,12 +56,12 @@ export function RunReport(props: RunReportProps) {
   };
 
   return (
-    <div class='run-report'>
+    <div class='run-report' classList={{ 'has-cut': Boolean(props.cut) }}>
       <ol class='rounds'>
         <For each={props.seats}>
           {entry => (
             <li class='round run-report-row'>
-              <span class='round-n'>{entry.round === 0 ? 'Own' : `R${entry.round}`}</span>
+              <span class='round-n'>{entry.round === 0 ? 'Own' : roundShort(entry.round, props.cut)}</span>
               <span class='round-opp'>{entry.seat.name}</span>
               <span class='live-deck-picker'>
                 <DeckCombo

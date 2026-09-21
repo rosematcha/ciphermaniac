@@ -129,6 +129,7 @@ export function LiveSeatPage() {
               names={names()}
               countries={countries()}
               rounds={indexData()!.round}
+              cut={indexData()!.cut}
               version={indexData()!.hash}
               reports={reports}
               profileOf={found => profileOf()(found)}

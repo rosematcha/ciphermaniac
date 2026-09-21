@@ -83,6 +83,7 @@ export function PlayerRun(props: PlayerRunProps) {
               names={names()}
               countries={[...props.countries]}
               rounds={live().round}
+              cut={live().cut}
               version={live().hash}
               reports={reports}
               profileOf={(seat: SeatRef): SeatProfile | null => profileOf()(seat)}

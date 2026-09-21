@@ -315,6 +315,14 @@ tr:hover .live-follow,
 .live-rounds .round-deck:empty {
   display: none;
 }
+/* "Top 8" and "Final" need more room than "R14"; only a run that reached the
+   cut pays for it, so every other run keeps its tight first column. */
+.live-rounds.has-cut .round {
+  grid-template-columns: 42px 24px minmax(0, 1fr) max-content;
+}
+.live-rounds .round-n {
+  white-space: nowrap;
+}
 
 @media (max-width: 900px) {
   /* Matches PHONE_QUERY in pages/live/LiveControls.tsx: below this the filters
@@ -470,6 +478,9 @@ tr:hover .live-follow,
 
   .live-rounds .round {
     grid-template-columns: 26px 24px minmax(0, 1fr) max-content;
+  }
+  .live-rounds.has-cut .round {
+    grid-template-columns: 40px 22px minmax(0, 1fr) max-content;
   }
   .live-run-actions {
     gap: 10px;

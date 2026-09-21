@@ -68,6 +68,12 @@
   padding: 5px 0;
   border-bottom: 1px solid var(--rule);
 }
+.run-report.has-cut .round {
+  grid-template-columns: 42px minmax(0, 1fr) minmax(0, 300px);
+}
+.run-report .round-n {
+  white-space: nowrap;
+}
 .run-report .live-deck-picker {
   display: block;
 }
@@ -82,6 +88,9 @@
   }
   .run-report .round {
     grid-template-columns: 34px minmax(0, 1fr);
+  }
+  .run-report.has-cut .round {
+    grid-template-columns: 42px minmax(0, 1fr);
   }
   .run-report .live-deck-picker {
     grid-column: 1 / -1;
