@@ -521,11 +521,13 @@ test('keyboard focus opens the Tools menu', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
   const menu = page.locator('.topnav-item', { has: page.locator('a[href="/tools"]') }).locator('.topnav-menu');
-  // Tab in from the neighbouring link: :focus-visible only matches when the
+  // Shift-Tab back from the search box: :focus-visible only matches when the
   // browser saw a keyboard interaction, which a bare focus() does not give us.
+  // Not forward from Events: whether a bare focus() opens its own menu varies
+  // by browser build, and an open menu takes the next Tab.
   const nav = page.locator('.topnav');
-  await nav.getByRole('link', { name: 'Events', exact: true }).focus();
-  await page.keyboard.press('Tab');
+  await page.locator('.gsearch-input').focus();
+  await page.keyboard.press('Shift+Tab');
   await expect(nav.getByRole('link', { name: 'Tools', exact: true })).toBeFocused();
   await expect(menu).toBeVisible();
 });
