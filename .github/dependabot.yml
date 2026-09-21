@@ -8,6 +8,13 @@ updates:
       npm:
         patterns: ['*']
         update-types: [minor, patch]
+    ignore:
+      # typescript-eslint 8 cannot resolve against TypeScript 7; npm ci fails with ERESOLVE.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # Router 1.0 adds 489 gzip bytes to the initial shell, which has no room for it.
+      - dependency-name: '@solidjs/router'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: pip
     directory: /.github/scripts
     schedule:
@@ -15,6 +22,10 @@ updates:
     groups:
       pip:
         patterns: ['*']
+    ignore:
+      # numpy 2.5 needs Python 3.12; the workflows pin 3.11 in .python-version.
+      - dependency-name: numpy
+        versions: ['>=2.5']
   - package-ecosystem: github-actions
     directories: ['/', '/.github/actions/*']
     schedule:
