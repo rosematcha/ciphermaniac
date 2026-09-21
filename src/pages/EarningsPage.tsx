@@ -95,9 +95,7 @@ export function EarningsPage() {
     page => setParams({ page }, { replace: true })
   );
   // No resetOn list: setLens and setBasis already clear `page` themselves.
-  const { page, totalPages, pageItems, setPage } =
-    // eslint-disable-next-line solid/reactivity -- createPagination reads `rows` inside its own createMemo (a tracked scope); the analyzer can't see through the helper
-    createPagination(rows, PAGE_SIZE, undefined, pageParam);
+  const { page, totalPages, pageItems, setPage } = createPagination(rows, PAGE_SIZE, undefined, pageParam);
 
   const lensOptions = createMemo(() => {
     const season = currentSeason();

@@ -125,7 +125,7 @@ export function LocatorMap(props: LocatorMapProps) {
   const [view, setView] = createSignal<MapView>(WORLD_VIEW);
 
   const tiles = createMemo(() => (size().width > 0 ? visibleTiles(view(), size()) : []));
-  // eslint-disable-next-line solid/reactivity -- the memo is read inside the hook's own tracked scopes
+
   const stack = useTileStack(view, size, tiles);
   const screen = (point: LatLon) => toScreen(point, view(), size());
   const ringPx = () => (props.center ? props.radiusKm / kmPerPixel(props.center.lat, view().zoom) : 0);

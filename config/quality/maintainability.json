@@ -283,6 +283,6 @@
     "complexity:b3ca7afca01302b86cc3b0050e93221f76e9a433fde0cb3e3dd285493ddd2250:Function 'buildPrintingRows' has a complexity of 23. Maximum allowed is 12."
   ],
   "src/pages/trendsPage/ArchetypeTrendChart.tsx": [
-    "max-lines-per-function:5e74b012c088e5ea6d41750c3078913bcb1b2080bb736be589c2b223acc2f186:Function 'ArchetypeTrendChart' has too many lines (299). Maximum allowed is 250."
+    "max-lines-per-function:850eb5a003a8a382420f6d5c023c3fc9ecb1f3d63ec524823582137709456a4c:Function 'ArchetypeTrendChart' has too many lines (299). Maximum allowed is 250."
   ]
 }

@@ -54,7 +54,7 @@ export function PlayerRun(props: PlayerRunProps) {
   // changes nothing must not re-run the search.
   const [ended] = createResource(
     () => (latestValue(round) && playing().length === 0 ? (current() ?? null) : null),
-    // eslint-disable-next-line solid/reactivity -- a fetcher reads props on each run, which is when they matter
+
     at => lastSeatInEvent(at, n => fetchLiveRound(props.event.slug, n), names(), [...props.countries])
   );
   const seats = createMemo((): readonly SeatView[] => {

@@ -189,9 +189,7 @@ export function LivePage() {
     () => searchParams.page,
     page => setSearchParams({ page }, { replace: true })
   );
-  const { page, totalPages, pageItems, setPage } =
-    // eslint-disable-next-line solid/reactivity -- createPagination reads `rows` inside its own createMemo
-    createPagination(rows, PAGE_SIZE, undefined, pageParam);
+  const { page, totalPages, pageItems, setPage } = createPagination(rows, PAGE_SIZE, undefined, pageParam);
 
   /**
    * Whether a legacy `?player=` link can be sent on yet.
