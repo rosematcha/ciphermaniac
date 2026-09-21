@@ -55,7 +55,8 @@ test.beforeEach(async ({ context, page }) => {
     if (url.pathname.startsWith('/api/')) {
       return route.fulfill({ status: 503, body: 'Fixture only' });
     }
-    if (url.pathname.startsWith('/events/')) {
+    // Listings only: /events/locator itself is the page under test.
+    if (/^\/events\/(v1|locals)\//.test(url.pathname)) {
       return route.fulfill({ json: listing(url.pathname) });
     }
     return route.continue();
@@ -63,7 +64,7 @@ test.beforeEach(async ({ context, page }) => {
 });
 
 test('San Antonio shows venue-local times and scheduled events replace weekly sessions', async ({ page }, testInfo) => {
-  await page.goto('/events');
+  await page.goto('/events/locator');
   await expect(page.locator('.el-row').first()).toBeVisible();
   await page.getByRole('button', { name: 'Filters', exact: true }).click();
   await page.getByRole('dialog', { name: 'Filters' }).getByRole('button', { name: 'Locals', exact: true }).click();

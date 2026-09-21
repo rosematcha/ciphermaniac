@@ -36,7 +36,7 @@ const ROUTES = [
   '/cards/MEG/114',
   '/archetypes',
   '/archetypes/Dragapult',
-  '/tournaments',
+  '/events/majors',
   '/trends',
   '/players',
   '/players/1272',

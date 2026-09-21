@@ -25,7 +25,7 @@ export function isScopeAwarePath(pathname: string): boolean {
     pathname.startsWith('/cards/') ||
     pathname === '/archetypes' ||
     pathname.startsWith('/archetypes/') ||
-    pathname === '/tournaments'
+    pathname === '/events/majors'
   );
 }
 

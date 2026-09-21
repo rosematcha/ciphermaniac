@@ -60,7 +60,7 @@ test.beforeEach(async ({ context, page }) => {
   });
 });
 
-async function openLocator(page: Page, path = '/events'): Promise<void> {
+async function openLocator(page: Page, path = '/events/locator'): Promise<void> {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(path, { waitUntil: 'load' });
@@ -119,14 +119,14 @@ test('the desktop workspace grows fluidly on a wide display', async ({ page }, t
 
 test('without device location it shows the edge estimate, marked approximate', async ({ context, page }) => {
   await context.clearPermissions();
-  await page.goto('/events', { waitUntil: 'load' });
+  await page.goto('/events/locator', { waitUntil: 'load' });
   await expect(search(page)).toHaveAttribute('placeholder', 'Austin, TX (approximate)');
 });
 
 test('with no location at all it falls back to the Peoria address', async ({ context, page }) => {
   await context.clearPermissions();
   await page.route('**/api/locate', route => route.fulfill({ status: 503, body: 'Unavailable in fixtures' }));
-  await page.goto('/events', { waitUntil: 'load' });
+  await page.goto('/events/locator', { waitUntil: 'load' });
   await expect(search(page)).toHaveAttribute('placeholder', '201 SW Jefferson Ave, Peoria, IL 61602');
 });
 
@@ -136,7 +136,7 @@ test('while the location prompt is open it shows loading, never an empty result'
     Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition: () => undefined } });
   });
   await page.route('**/api/locate', route => route.fulfill({ status: 503, body: 'Unavailable in fixtures' }));
-  await page.goto('/events', { waitUntil: 'load' });
+  await page.goto('/events/locator', { waitUntil: 'load' });
   await expect(page.locator('.el-skeleton').first()).toBeVisible();
   await page.waitForTimeout(1000);
   await expect(page.locator('.empty-state')).toHaveCount(0);
@@ -234,7 +234,7 @@ test('League Cups alone narrows the list and the map', async ({ page }) => {
 });
 
 test('a shared link opens on its place and radius', async ({ page }) => {
-  await openLocator(page, '/events?near=San%20Antonio%2C%20TX&lat=29.424&lon=-98.494&cc=US&r=25&u=mi');
+  await openLocator(page, '/events/locator?near=San%20Antonio%2C%20TX&lat=29.424&lon=-98.494&cc=US&r=25&u=mi');
   await expect(search(page)).toHaveAttribute('placeholder', 'San Antonio, TX');
   await expect(page.locator('.el-row')).toHaveCount(1);
   await expect(page.locator('.el-row')).toContainText('San Antonio Challenge');

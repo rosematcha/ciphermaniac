@@ -2,6 +2,9 @@ name: Tournament Data
 on:
   schedule:
     - cron: '23 13 * * *'
+    # Watchdog: labs posts a major's lists a day or so after it ends. The watch
+    # job looks every half hour and only starts an ingest once one is final.
+    - cron: '8,38 * * * *'
   push:
     branches: [main]
     paths:
@@ -31,15 +34,38 @@ permissions:
   actions: read
   checks: read
   deployments: write
-concurrency:
-  group: r2-bucket-writers
-  queue: max
-  cancel-in-progress: false
 jobs:
+  watch:
+    if: github.event.schedule == '8,38 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      pending: ${{ steps.scan.outputs.pending }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: ./.github/actions/setup
+        with:
+          python: 'true'
+      - name: Look for finished majors
+        id: scan
+        run: python3 .github/scripts/ingest-new-tournaments.py
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'ciphermaniac-reports' }}
+          DRY_RUN: 'true'
   tournaments:
-    if: github.ref == 'refs/heads/main'
+    needs: watch
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/main' &&
+      (needs.watch.result == 'skipped' || needs.watch.outputs.pending != '')
     runs-on: ubuntu-latest
     timeout-minutes: 150
+    concurrency:
+      group: r2-bucket-writers
+      queue: max
+      cancel-in-progress: false
     env:
       R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}

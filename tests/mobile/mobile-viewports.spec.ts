@@ -23,7 +23,7 @@ const ROUTES = [
   "/archetypes/N's_Zoroark",
   '/trends',
   '/players',
-  '/tournaments',
+  '/events/majors',
   '/toys',
   '/toys/in-loving-memory',
   // The tier list docks its tray to the bottom edge on a phone; a fixed strip

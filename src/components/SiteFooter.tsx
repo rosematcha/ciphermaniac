@@ -14,7 +14,7 @@ import { prefetchRoute } from '../lib/prefetch';
 import { type Mode, mode, setMode } from '../lib/theme';
 
 const LINKS: { href: string; label: string }[] = [
-  { href: '/tournaments', label: 'Tournaments' },
+  { href: '/events/majors', label: 'Tournaments' },
   { href: '/about', label: 'About' }
 ];
 
