@@ -1,61 +1,18 @@
-<a href="https://ciphermaniac.com">
-  <p align="center">
-    <img src="public/assets/images/logo.svg" alt="Ciphermaniac Logo" width="120" height="120">
-  </p>
-</a>
+<p align="center">
+  <a href="https://ciphermaniac.com"><img src="static/logo.svg" alt="Ciphermaniac" width="96"></a>
+</p>
 
 <h1 align="center">Ciphermaniac</h1>
 
-<p align="center">
-  <strong>Pokémon TCG tournament data, visualized</strong>
-</p>
+<p align="center"><a href="https://ciphermaniac.com">ciphermaniac.com</a></p>
 
-<p align="center">
-  <a href="https://ciphermaniac.com">Live Site</a> •
-  <a href="#what-it-does">What It Does</a> •
-  <a href="#how-the-data-flows">How the Data Flows</a> •
-  <a href="#development">Development</a> •
-  <a href="#credits">Credits</a>
-</p>
+Ciphermaniac enables in-depth, responsive analysis of online Pokémon events, using daily static compiles of data rather than making constant real-time calls in service of speed. It also provides slicker interfaces for viewing trends in the game, player history, and events.
 
-<p align="center">
-  <a href="https://ciphermaniac.com"><img src="https://img.shields.io/badge/website-ciphermaniac.com-fee475?style=flat-square" alt="Website"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
-  <img src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?style=flat-square" alt="Node Version">
-  <img src="https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square" alt="TypeScript Strict">
-</p>
+## How it works
 
----
+Ciphermaniac serves pre-digested JSON readouts of event data. The [workflows README](.github/workflows/README.md) covers what each job does and when it runs. The data is yours to use however you like: read the [API documentation](https://r2.ciphermaniac.com/) for more details.
 
-Ciphermaniac answers the questions competitive Pokémon TCG players actually ask: who plays this card, how many copies, and is it trending up or down? Pick any card and see which decks run it. Browse archetypes, compare variants, and filter decklists by the exact cards they include or exclude.
-
-## What It Does
-
-- **Card pages** — usage across archetypes, average copy counts, a price history sparkline, and usage over time
-- **Archetype breakdowns** — core lists, tech choices, and side-by-side variant comparisons
-- **Meta trends** — archetype popularity shifts, rising and falling cards, and price movers
-- **Player profiles** — tournament results per player, with head-to-head comparison across shared events
-- **Flexible filtering** — stack multiple includes and excludes, down to specific copy counts
-- **Fast loads** — reports are precomputed and served as static artifacts, so pages render in under a second
-
-## How the Data Flows
-
-GitHub Actions collect and process everything on a schedule; the site itself never scrapes anything at request time.
-
-| Pipeline | What it does | When |
-|----------|--------------|------|
-| Online Meta Report | Aggregates the last 14 days of online tournaments from [PlayLimitless](https://play.limitlesstcg.com/) | Daily |
-| Daily Price Check | Pulls TCGPlayer market prices via [TCGCSV](https://tcgcsv.com/) and appends rolling price history | Daily |
-| Trends Report | Computes archetype popularity, card usage shifts, and price movers | Daily |
-| Player Aggregator | Builds per-player results and head-to-head data | Daily |
-| Card Metadata | Refreshes card synonyms, types, and WebP thumbnails | Daily / weekly |
-| Download Tournament | Scrapes Day 2 decklists from major events on [LimitlessTCG](https://limitlesstcg.com/) | On demand |
-
-Artifacts land in Cloudflare R2 (browsable at [r2.ciphermaniac.com](https://r2.ciphermaniac.com/)), and the site runs on Cloudflare Pages with Functions backed by KV and R2.
-
-**Stack:** SolidJS + TypeScript (strict) + Vite on the front end; Cloudflare Pages Functions on the back.
-
-## Development
+## Running it
 
 ```bash
 git clone https://github.com/rosematcha/ciphermaniac.git
@@ -64,51 +21,19 @@ npm install
 npm run dev
 ```
 
-Requires Node 22+.
+You'll need Node 22. `npm run dev` covers every page with live data and no credentials. Run `npm run dev:functions` in a second terminal if you need the `/api` endpoints.
 
-| Command | What it runs |
-|---------|--------------|
-| `npm run dev` | Vite dev server |
-| `npm run dev:functions` | Local Wrangler serving `functions/` at `:8788`, which `npm run dev` proxies `/api` to |
-| `npm run build` | Production build |
-| `npm run verify` | Everything CI runs: validate, knip, metadata check, build, tests, coverage gates |
-| `npm run validate` | Typecheck (frontend, backend, node) + ESLint |
-| `npm test` | Unit + API + Python + deterministic browser tests |
-| `npm run test:unit` | Node unit tests |
-| `npm run test:api` | Pages Functions tests |
-| `npm run test:python` | Python producer tests (`PYTHON=<path>` to pick an interpreter) |
-| `npm run test:e2e:local` | Playwright routes against fixture data (deterministic) |
-| `npm run test:e2e:live` | Playwright mobile suite against live R2 data |
-| `npm run test:coverage` | Coverage report over the domain and serving surface |
-| `npm run knip` | Dead code check |
+Before opening a PR, run `npm run verify`. It's everything CI runs: types, lint, dead code, build, and tests. The Python tests need `pip install -r .github/scripts/requirements.txt` first.
 
-`npm run dev` alone covers every page: route data comes straight from
-`r2.ciphermaniac.com`, and `/thumbnails` and `/sprites` proxy to production so
-canvas exports stay same-origin. It needs network access but no credentials.
-Run `npm run dev:functions` in a second terminal for the `/api` endpoints —
-feedback, the Limitless proxies, and upcoming tournaments. Wrangler simulates
-the R2 and KV bindings locally, so those stores start empty.
+## Supporting the site
 
-The Python tests need the pinned producer dependencies:
+I run Ciphermaniac as a personal side project, with absolutely no ads and operating completely out of my teacher's salary. If you've found the site to be helpful, I'd love your support via [my TCGPlayer affiliate link](https://partner.tcgplayer.com/c/6491809/1780961/21018) or [Ko-Fi](https://ko-fi.com/ciphermaniac).
 
-```bash
-pip install -r .github/scripts/requirements.txt
-```
+## Thanks to...
 
-CI runs `npm run verify` and nothing else, plus a Lighthouse performance budget on every push.
+- [LimitlessTCG](https://limitlesstcg.com/), [PlayLimitless](https://play.limitlesstcg.com/), and [Robin](https://x.com/limitless_robin), for providing tournament data, a slick online tournament portal, and fundamentally changing how the game is talked about and played.
+- [TCGCSV](https://tcgcsv.com/) and CptSpaceToaster, for providing CSV-formatted, publicly-accessible TCGPlayer market prices, especially as TCGPlayer locks down their API.
+- [TrainerHill](https://trainerhill.com) and Brad, for interface inspiration and extremely helpful support in early development.
+- [Pokédata.ovh](https://pokedata.ovh) and Julien, for incredible real-time data work on events past, present, and future.
 
-## Credits
-
-- **[LimitlessTCG](https://limitlesstcg.com)**, **[PlayLimitless](https://play.limitlesstcg.com)**, and **[Robin](https://x.com/limitless_robin)** — tournament data. The Limitless team's work is foundational to the Pokémon TCG community.
-- **[TrainerHill](https://trainerhill.com)** and **Brad** — deck archetype analysis and early development support.
-- **[TCGCSV](https://tcgcsv.com)** and **CptSpaceToaster** — TCGPlayer market prices in a usable form after TCGPlayer's API crackdown.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
-
----
-
-<p align="center">
-  <sub>Not affiliated with The Pokémon Company, Nintendo, Game Freak, Creatures Inc., or RK9.</sub>
-</p>
+MIT licensed. Ciphermaniac is not, and does not claim to be, affiliated with The Pokémon Company, Nintendo, Game Freak, Creatures Inc., or RK9.
