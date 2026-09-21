@@ -1,7 +1,7 @@
 // Storyline engine for the event callout on the home page. Each generator is
 // a pure function returning null or a `StoryCandidate` (Story + weight 0..100).
 // `buildStories` runs every generator, dedupes by subject, sorts by weight, and
-// returns the top 3. Pure module — JSON-serializable output so the cron can
+// returns the top 4. Pure module — JSON-serializable output so the cron can
 // pre-pick stories server-side later.
 //
 // Stories carry numbers, not verdicts: a subject, the one figure that made it
@@ -203,8 +203,8 @@ function rowIsOther(row: FieldRow): boolean {
   return isOtherArchetype(row.archetype?.name) || isOtherArchetype(row.label);
 }
 
-/** Run all storyline generators, dedupe by subject, return the top N (default 3). */
-export function buildStories(input: BuildStoriesInput, limit: number = 3): Story[] {
+/** Run all storyline generators, dedupe by subject, return the top N (default 4). */
+export function buildStories(input: BuildStoriesInput, limit: number = 4): Story[] {
   const ctx: StoryContext = { ...input, rows: input.rows.filter(r => !rowIsOther(r)) };
   const candidates = STORY_GENERATORS.map(g => g(ctx)).filter((c): c is StoryCandidate => c !== null);
   return pickStories(candidates, limit);
