@@ -130,6 +130,9 @@ def fetch_published_events(session: requests.Session) -> dict[str, str | None]:
     """The labs index's codes and folder names; see `parse_published_events`."""
     response = session.get(LABS_INDEX_URL, timeout=30)
     response.raise_for_status()
+    # Labs sends no charset, so requests would decode as Latin-1 and turn the
+    # en dash in "September 18–20" into letters that hide every date.
+    response.encoding = "utf-8"
     return parse_published_events(response.text)
 
 
@@ -206,9 +209,14 @@ def ingest(code: str, anonymize: bool) -> None:
 
 
 def is_recent_event(folder: str | None, today: date | None = None) -> bool:
-    """Daily discovery ingests recent majors; historical repair is explicit."""
+    """
+    Daily discovery ingests recent majors; historical repair is explicit.
+
+    An entry without a readable date is never recent: the ingestion scope cannot
+    be judged, so it waits for Maintenance instead of failing the whole scan.
+    """
     if not folder:
-        raise ValueError("Published tournament has no date; refusing to guess ingestion scope")
+        return False
     age = ((today or date.today()) - date.fromisoformat(folder.split(",", 1)[0])).days
     return 0 <= age <= 30
 

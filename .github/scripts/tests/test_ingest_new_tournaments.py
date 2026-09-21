@@ -33,14 +33,20 @@ class IngestionScopeTest(unittest.TestCase):
         self.assertTrue(ingest_module.is_recent_event("2026-09-01, Regional", today))
         self.assertFalse(ingest_module.is_recent_event("2024-11-30, Regional", today))
 
-    def test_missing_date_fails_closed(self):
-        with self.assertRaises(ValueError):
-            ingest_module.is_recent_event(None, date(2026, 9, 18))
+    def test_missing_date_is_deferred_rather_than_ingested(self):
+        self.assertFalse(ingest_module.is_recent_event(None, date(2026, 9, 18)))
 
 
 class _FakeResponse:
+    """Decodes like requests: Latin-1 unless the caller sets an encoding."""
+
     def __init__(self, text: str):
-        self.text = text
+        self._body = text.encode("utf-8")
+        self.encoding = "ISO-8859-1"
+
+    @property
+    def text(self) -> str:
+        return self._body.decode(self.encoding)
 
     def raise_for_status(self) -> None:
         return None
@@ -112,11 +118,16 @@ class ParsePublishedEventsTest(unittest.TestCase):
             },
         )
 
-    def test_fetch_reads_the_labs_index(self):
-        html = _entry("0071", "World Championship San Francisco", "August 28–30, 2026")
+    def test_fetch_reads_the_labs_index_as_utf8(self):
+        html = _entry("0071", "World Championship San Francisco", "August 28–30, 2026") + _entry(
+            "0072", "Regional Championship Gdańsk", "September 18–20, 2026"
+        )
         self.assertEqual(
             ingest_module.fetch_published_events(_FakeSession(html)),
-            {"0071": "2026-08-28, World Championship San Francisco"},
+            {
+                "0071": "2026-08-28, World Championship San Francisco",
+                "0072": "2026-09-18, Regional Championship Gdańsk",
+            },
         )
 
 
