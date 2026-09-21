@@ -10,7 +10,7 @@ runs:
       shell: bash
       run: npm run verify:build
     - name: Deploy to production
-      uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65
+      uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0
       with:
         apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}

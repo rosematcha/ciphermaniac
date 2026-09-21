@@ -17,7 +17,7 @@ jobs:
     env:
       QUALITY_BASE: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
@@ -34,7 +34,7 @@ jobs:
       group: lighthouse-${{ github.ref }}
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: ./.github/actions/setup
       - run: npx playwright install --with-deps chromium
       - run: npm run test:lighthouse
@@ -61,7 +61,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: ./.github/actions/setup
       - name: Embed current immutable data release
         run: npx tsx .github/scripts/prepare-deployment.ts
