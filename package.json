@@ -60,7 +60,7 @@
     "@eslint/js": "9.39.5",
     "@playwright/test": "^1.63.0",
     "@smithy/node-http-handler": "^4.12.1",
-    "@types/node": "^25.0.3",
+    "@types/node": "^26.6.1",
     "@typescript-eslint/eslint-plugin": "8.70.1",
     "@typescript-eslint/parser": "8.70.1",
     "c8": "^12.0.0",
