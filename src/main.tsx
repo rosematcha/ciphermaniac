@@ -1,5 +1,5 @@
 /* @refresh reload */
-import { lazy } from 'solid-js';
+import { type Component, lazy } from 'solid-js';
 import { render } from 'solid-js/web';
 import { Navigate, Route, Router, useParams } from '@solidjs/router';
 
@@ -46,41 +46,38 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
 
 configurePrefetch(routeLoaders);
 
-const CardsIndexPage = lazy(() => import('./pages/CardsIndexPage').then(m => ({ default: m.CardsIndexPage })));
-const CardPage = lazy(() => import('./pages/CardPage').then(m => ({ default: m.CardPage })));
-const ArchetypesIndexPage = lazy(() =>
-  import('./pages/ArchetypesIndexPage').then(m => ({ default: m.ArchetypesIndexPage }))
-);
-const ArchetypePage = lazy(() => import('./pages/ArchetypePage').then(m => ({ default: m.ArchetypePage })));
-const TournamentsIndexPage = lazy(() =>
-  import('./pages/TournamentsIndexPage').then(m => ({ default: m.TournamentsIndexPage }))
-);
-const TrendsPage = lazy(() => import('./pages/TrendsPage').then(m => ({ default: m.TrendsPage })));
-const PlayersPage = lazy(() => import('./pages/PlayersPage').then(m => ({ default: m.PlayersPage })));
-const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage').then(m => ({ default: m.PlayerProfilePage })));
-const PlayerComparePage = lazy(() => import('./pages/PlayerComparePage').then(m => ({ default: m.PlayerComparePage })));
-const EventLocatorPage = lazy(() => import('./pages/EventLocatorPage').then(m => ({ default: m.EventLocatorPage })));
-const ToolsPage = lazy(() => import('./pages/ToolsPage').then(m => ({ default: m.ToolsPage })));
-const SocialGraphicsPage = lazy(() =>
-  import('./pages/SocialGraphicsPage').then(m => ({ default: m.SocialGraphicsPage }))
-);
-const InLovingMemoryPage = lazy(() =>
-  import('./pages/InLovingMemoryPage').then(m => ({ default: m.InLovingMemoryPage }))
-);
-const LabelMakerPage = lazy(() => import('./pages/LabelMakerPage').then(m => ({ default: m.LabelMakerPage })));
-const MetaBinderPage = lazy(() => import('./pages/MetaBinderPage').then(m => ({ default: m.MetaBinderPage })));
-const TierListPage = lazy(() => import('./pages/TierListPage').then(m => ({ default: m.TierListPage })));
-const CardWallPage = lazy(() => import('./pages/CardWallPage').then(m => ({ default: m.CardWallPage })));
-const EarningsPage = lazy(() => import('./pages/EarningsPage').then(m => ({ default: m.EarningsPage })));
-const PackEvPage = lazy(() => import('./pages/PackEvPage').then(m => ({ default: m.PackEvPage })));
-const LivePage = lazy(() => import('./pages/LivePage').then(m => ({ default: m.LivePage })));
-const LiveSeatPage = lazy(() => import('./pages/live/LiveSeatPage').then(m => ({ default: m.LiveSeatPage })));
-const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
-const FeedbackPage = lazy(() => import('./pages/FeedbackPage').then(m => ({ default: m.FeedbackPage })));
+// Each page module exports its component by name; lazy() wants a default.
+function page<K extends string>(load: () => Promise<Record<K, Component>>, name: K): Component {
+  return lazy(() => load().then(m => ({ default: m[name] })));
+}
+
+const CardsIndexPage = page(() => import('./pages/CardsIndexPage'), 'CardsIndexPage');
+const CardPage = page(() => import('./pages/CardPage'), 'CardPage');
+const ArchetypesIndexPage = page(() => import('./pages/ArchetypesIndexPage'), 'ArchetypesIndexPage');
+const ArchetypePage = page(() => import('./pages/ArchetypePage'), 'ArchetypePage');
+const TournamentsIndexPage = page(() => import('./pages/TournamentsIndexPage'), 'TournamentsIndexPage');
+const TrendsPage = page(() => import('./pages/TrendsPage'), 'TrendsPage');
+const PlayersPage = page(() => import('./pages/PlayersPage'), 'PlayersPage');
+const PlayerProfilePage = page(() => import('./pages/PlayerProfilePage'), 'PlayerProfilePage');
+const PlayerComparePage = page(() => import('./pages/PlayerComparePage'), 'PlayerComparePage');
+const EventLocatorPage = page(() => import('./pages/EventLocatorPage'), 'EventLocatorPage');
+const ToolsPage = page(() => import('./pages/ToolsPage'), 'ToolsPage');
+const SocialGraphicsPage = page(() => import('./pages/SocialGraphicsPage'), 'SocialGraphicsPage');
+const InLovingMemoryPage = page(() => import('./pages/InLovingMemoryPage'), 'InLovingMemoryPage');
+const LabelMakerPage = page(() => import('./pages/LabelMakerPage'), 'LabelMakerPage');
+const MetaBinderPage = page(() => import('./pages/MetaBinderPage'), 'MetaBinderPage');
+const TierListPage = page(() => import('./pages/TierListPage'), 'TierListPage');
+const CardWallPage = page(() => import('./pages/CardWallPage'), 'CardWallPage');
+const EarningsPage = page(() => import('./pages/EarningsPage'), 'EarningsPage');
+const PackEvPage = page(() => import('./pages/PackEvPage'), 'PackEvPage');
+const LivePage = page(() => import('./pages/LivePage'), 'LivePage');
+const LiveSeatPage = page(() => import('./pages/live/LiveSeatPage'), 'LiveSeatPage');
+const AboutPage = page(() => import('./pages/AboutPage'), 'AboutPage');
+const FeedbackPage = page(() => import('./pages/FeedbackPage'), 'FeedbackPage');
 // Unlinked reference route: the design system rendered through the real
 // stylesheets, so it can't drift from them. Kept out of the nav and the
 // sitemap (static/robots.txt) — it's for building, not reading.
-const StyleGuidePage = lazy(() => import('./pages/StyleGuidePage').then(m => ({ default: m.StyleGuidePage })));
+const StyleGuidePage = page(() => import('./pages/StyleGuidePage'), 'StyleGuidePage');
 
 // Moved routes keep their query: /events?near=… and /tournaments?scope=… links
 // are out in the wild.
