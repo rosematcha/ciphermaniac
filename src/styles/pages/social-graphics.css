@@ -165,9 +165,8 @@
   --sg-muted: #6a6055;
   --sg-border: #8a7f74;
   --sg-rule: #d7d1c7;
-  /* Words take the ink; the big outlined numerals keep the brighter fill. */
+  /* Words take the ink; the marigold fill is too light for text on stone. */
   --sg-accent: #8c5900;
-  --sg-numeral-stroke: #b70;
 }
 
 .sg-canvas[data-mode='dark'] {
@@ -179,25 +178,38 @@
   --sg-border: #373533;
   --sg-rule: #262422;
   --sg-accent: #ea1;
-  --sg-numeral-stroke: #ea1;
 }
 
-/* ---- Head ---- */
+/* ---- Head ----
+   A dark band in both modes, like the site's topnav: it bleeds to the canvas
+   edges and takes the dark token set whatever the export mode. */
 
 .sg-head {
+  --sg-fg: #ede8e6;
+  --sg-muted: #9e9792;
   display: grid;
   grid-template-columns: auto 1fr auto;
-  align-items: end;
+  align-items: center;
   gap: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--sg-border);
+  margin: -37px -45px 0;
+  padding: 18px 44px;
+  background: #181514;
+  border-bottom: 1px solid #373533;
 }
 .sg-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.04em;
   color: var(--sg-fg);
   line-height: 1;
+}
+.sg-mark img {
+  display: block;
+  width: 24px;
+  height: 28px;
 }
 .sg-tournament {
   text-align: center;
@@ -277,39 +289,6 @@
 [data-cat='energy-basic'] > img {
   object-position: 50% 55%;
 }
-.sg-hero-img::after {
-  /* Subtle vignette so the numeral remains legible */
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--sg-bg) 65%, transparent) 100%);
-  pointer-events: none;
-}
-.sg-canvas[data-mode='dark'] .sg-hero-img::after {
-  background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--sg-bg) 88%, transparent) 100%);
-}
-
-/* The signature moment — outlined Inter Black "01" on the hero.
-   Sits inside the image area; parent .sg-hero-img has overflow:hidden
-   so any bleed off the corners gets clipped. */
-.sg-hero-numeral {
-  position: absolute;
-  bottom: -8px;
-  left: -12px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 900;
-  font-style: italic;
-  font-size: 260px;
-  line-height: 0.78;
-  letter-spacing: -0.06em;
-  color: transparent;
-  -webkit-text-stroke: 3px var(--sg-numeral-stroke);
-  text-stroke: 3px var(--sg-numeral-stroke);
-  z-index: 3;
-  pointer-events: none;
-  font-variant-numeric: tabular-nums;
-}
-
 .sg-hero-body {
   position: relative;
   z-index: 4;
@@ -487,21 +466,6 @@
   overflow: hidden;
   position: relative;
   border-bottom: 1px solid var(--sg-border);
-}
-.sg-cell-rank {
-  position: absolute;
-  top: -10px;
-  right: -2px;
-  font-size: 78px;
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.05em;
-  line-height: 0.78;
-  color: transparent;
-  -webkit-text-stroke: 2px var(--sg-numeral-stroke);
-  text-stroke: 2px var(--sg-numeral-stroke);
-  z-index: 2;
-  font-variant-numeric: tabular-nums;
 }
 .sg-cell-body {
   display: grid;

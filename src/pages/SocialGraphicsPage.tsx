@@ -265,7 +265,7 @@ export function SocialGraphicsPage() {
       const renderer = format === 'png' ? domToPng : domToJpeg;
       const dataUrl = await renderer(node, {
         scale: 1,
-        backgroundColor: theme() === 'dark' ? '#1a1816' : '#f4ecdb',
+        backgroundColor: theme() === 'dark' ? '#181514' : '#f1eee8',
         quality: format === 'jpg' ? 0.92 : undefined,
         font: { cssText: fontCssText }
       });
@@ -597,7 +597,10 @@ function SocialCanvas(props: CanvasProps) {
   return (
     <div id='sg-canvas' class='sg-canvas' data-mode={props.theme}>
       <div class='sg-head'>
-        <div class='sg-mark'>Ciphermaniac</div>
+        <div class='sg-mark'>
+          <img src='/logo.svg' alt='' width='24' height='28' />
+          Ciphermaniac
+        </div>
         <div class='sg-tournament'>
           <strong>{props.tournamentLabel}</strong>
         </div>
@@ -611,7 +614,6 @@ function SocialCanvas(props: CanvasProps) {
           <div class='sg-hero'>
             <div class='sg-hero-img' data-cat={hero()!.cat}>
               <CanvasImg item={hero()!} />
-              <div class='sg-hero-numeral'>{rankStr(hero()!.rank)}</div>
             </div>
             <div class='sg-hero-body'>
               <div>
@@ -671,7 +673,6 @@ function SocialCanvas(props: CanvasProps) {
               <div class='sg-cell'>
                 <div class='sg-cell-img' data-cat={c.cat}>
                   <CanvasImg item={c} />
-                  <div class='sg-cell-rank'>{rankStr(c.rank)}</div>
                 </div>
                 <div class='sg-cell-body'>
                   <div class='sg-cell-name' ref={el => fitText(el, () => c.name, NAME_FIT.cell)}>

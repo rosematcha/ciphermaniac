@@ -264,8 +264,8 @@
     "max-lines-per-function:35e49a3f84436d04ac765971d9bf884be1f943fad7f1029708ec3dafd960dbdf:Function 'LabelMakerPage' has too many lines (553). Maximum allowed is 250."
   ],
   "src/pages/SocialGraphicsPage.tsx": [
-    "max-lines-per-function:9c9d7ce275996f1d425e913a55375b5bbaf03c75c371852e9e62835a3f263eac:Function 'SocialGraphicsPage' has too many lines (304). Maximum allowed is 250.",
-    "complexity:9c9d7ce275996f1d425e913a55375b5bbaf03c75c371852e9e62835a3f263eac:Function 'SocialGraphicsPage' has a complexity of 24. Maximum allowed is 12."
+    "max-lines-per-function:3ad37711c8ffc05a9c75e4c4625ac31edbec15990776881f0af0a637b65f86d7:Function 'SocialGraphicsPage' has too many lines (304). Maximum allowed is 250.",
+    "complexity:3ad37711c8ffc05a9c75e4c4625ac31edbec15990776881f0af0a637b65f86d7:Function 'SocialGraphicsPage' has a complexity of 24. Maximum allowed is 12."
   ],
   "src/pages/TierListPage.tsx": [
     "max-lines-per-function:5def441bf8b96fd64a307e76c447cbbbff1b86339f1cb1c990bf1c8774c09949:Function 'TierListPage' has too many lines (484). Maximum allowed is 250."
