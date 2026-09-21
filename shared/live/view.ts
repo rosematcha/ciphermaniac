@@ -235,6 +235,96 @@ export function playerRun(
     .sort((a, b) => a.round - b.round);
 }
 
+export interface RunTail {
+  /** The last round the player is paired in, as that round's own file numbers it. */
+  round: number;
+  view: SeatView;
+}
+
+/**
+ * Where a player's event has got to, from the rounds published so far: their
+ * current pairing, or the last one they had once they are out of the draw.
+ *
+ * A player is paired every round until they drop or miss the cut, so the rounds
+ * that carry their name are a run from the first one: a player absent from
+ * round one was never in the event, and the last round that has them is a
+ * boundary the search can halve for rather than walk back to. That keeps a
+ * profile page during an event to one round file for a player still in, two for
+ * everyone who is not at the event, and a handful for a run that has ended.
+ *
+ * The boundary is searched on the name alone, not on `findSeat`, because
+ * `findSeat` also refuses a name two players in one round share — a refusal
+ * mid-run would read as the run ending there. The seat itself is still taken
+ * the strict way, so a shared name yields no tail rather than a stranger's.
+ */
+export async function lastSeatInEvent(
+  current: number,
+  readRound: (round: number) => Promise<LiveRound | null>,
+  names: readonly string[],
+  countries: readonly string[]
+): Promise<RunTail | null> {
+  const paired = async (n: number): Promise<LiveRound | null> => {
+    const round = await readRound(n);
+    return round && seatsNamed(round.matches, names, countries).length > 0 ? round : null;
+  };
+  const tail = (round: LiveRound): RunTail | null => {
+    const view = findSeat(round.matches, names, countries);
+    return view ? { round: round.round, view } : null;
+  };
+  const latest = await paired(current);
+  if (latest) {
+    return tail(latest);
+  }
+  const first = current > 1 ? await paired(1) : null;
+  if (!first) {
+    return null;
+  }
+  let found = first;
+  let low = 2;
+  let high = current - 1;
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const round = await paired(mid);
+    if (round) {
+      found = round;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return tail(found);
+}
+
+export interface RunSeatEntry {
+  /** The round the seat was met in; 0 for the player's own seat. */
+  round: number;
+  seat: SeatRef;
+}
+
+/** One seat's deck, as a report leaves the run panel; a null archetype takes one back. */
+export interface SeatReport {
+  seat: SeatRef;
+  archetype: string | null;
+}
+
+/**
+ * Every seat a run can name a deck for: the player, then each opponent in the
+ * order they were played. A seat met twice, as a cut can do, is listed once,
+ * since a report names a seat rather than a round.
+ */
+export function runSeats(player: SeatRef, run: readonly RunRound[]): RunSeatEntry[] {
+  const seen = new Set([seatKey(player)]);
+  const seats: RunSeatEntry[] = [{ round: 0, seat: player }];
+  for (const { round, view } of run) {
+    const opponent = view?.opponent;
+    if (opponent && !seen.has(seatKey(opponent))) {
+      seen.add(seatKey(opponent));
+      seats.push({ round, seat: opponent });
+    }
+  }
+  return seats;
+}
+
 /** Matches with at least one followed seat. */
 export function followedMatches(matches: readonly LiveMatch[], follows: ReadonlySet<string>): readonly LiveMatch[] {
   return matches.filter(match => match.seats.some(seat => follows.has(seatKey(seat))));

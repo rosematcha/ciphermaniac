@@ -26,6 +26,37 @@ export function LiveDeck(props: { deck: ReportedDeck; class?: string }) {
 }
 
 /**
+ * The deck typeahead, wherever a deck is named: sprites in the field and in the
+ * list, the online meta browsable before the long tail of the icon map.
+ */
+export function DeckCombo(props: {
+  decks: readonly ReportedDeck[];
+  /** How many of `decks`, from the front, are the online meta's. */
+  leading: number;
+  /** The deck the box stands for while it is not being typed in. */
+  selected?: ReportedDeck;
+  placeholder: string;
+  width?: string;
+  onPick: (deck: ReportedDeck) => void;
+}) {
+  return (
+    <Combo<ReportedDeck>
+      placeholder={props.placeholder}
+      options={props.decks}
+      browse={props.decks.slice(0, props.leading)}
+      label={deck => deck.label}
+      weight={deck => deck.percent ?? 0}
+      selected={props.selected}
+      adorn={deck => <ArchetypeIcons slugs={deckIcons(deck)} size={20} />}
+      onPick={props.onPick}
+      width={props.width}
+    >
+      {(deck, query) => <DeckOption deck={deck} query={query} />}
+    </Combo>
+  );
+}
+
+/**
  * This device's report for a player. Idle, the box stands for the deck you
  * reported, sprites and all; focused, it is a search over every archetype the
  * site names, the online meta's offered first. A pick is only sent once it is
@@ -60,18 +91,13 @@ export function DeckReporter(props: {
         when={pending()}
         fallback={
           <>
-            <Combo<ReportedDeck>
+            <DeckCombo
               placeholder={state() === 'failed' ? 'Report failed, try again' : 'Report deck...'}
-              options={props.decks}
-              browse={props.decks.slice(0, props.leading)}
-              label={deck => deck.label}
-              weight={deck => deck.percent ?? 0}
+              decks={props.decks}
+              leading={props.leading}
               selected={selected()}
-              adorn={deck => <ArchetypeIcons slugs={deckIcons(deck)} size={20} />}
               onPick={setPending}
-            >
-              {(deck, query) => <DeckOption deck={deck} query={query} />}
-            </Combo>
+            />
             <Show when={props.mine}>
               <button
                 type='button'

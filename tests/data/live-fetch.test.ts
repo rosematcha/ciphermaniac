@@ -16,7 +16,7 @@ import {
   fetchLiveReports,
   fetchLiveRound,
   fetchLiveSchedule,
-  submitDeckReport
+  submitDeckReports
 } from '../../src/lib/data/live.ts';
 
 const EVENT = { slug: 'test-2027' } as LiveEvent;
@@ -60,13 +60,14 @@ test('reports are read from the key the endpoint publishes', async () => {
   assert.ok(requested[0].url.endsWith(`/${liveReportsKey('test-2027')}`), requested[0].url);
 });
 
-test('a report is posted to the endpoint, and its answer is what the seat now shows', async () => {
-  const report = { slug: 'test-2027', seat: 'ada lovelace|GB', archetype: 'Dragapult', voter: 'a'.repeat(16) };
-  stubFetch(200, { archetype: null });
-  assert.equal(await submitDeckReport(report), null);
+test('reports are posted to the endpoint as one batch, and the answer is what each seat now shows', async () => {
+  const seats = ['ada lovelace|GB', 'grace hopper|US'];
+  const reports = seats.map(seat => ({ slug: 'test-2027', seat, archetype: 'Dragapult', voter: 'a'.repeat(16) }));
+  stubFetch(200, { archetypes: { [seats[0]]: null, [seats[1]]: 'Dragapult' } });
+  assert.deepEqual(await submitDeckReports(reports), { [seats[0]]: null, [seats[1]]: 'Dragapult' });
   assert.equal(requested[0].url, '/api/live/report');
   stubFetch(429, { error: 'Too many reports' });
-  await assert.rejects(submitDeckReport(report), /429/);
+  await assert.rejects(submitDeckReports(reports), /429/);
 });
 
 test('every label in the archetype icon map is offered for reports', async () => {

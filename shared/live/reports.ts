@@ -40,7 +40,7 @@ const FIELD_PATTERNS: Record<keyof DeckReport, RegExp> = {
 };
 
 /** The report in a request body, or null for anything that is not one. */
-export function parseDeckReport(body: unknown): DeckReport | null {
+function parseDeckReport(body: unknown): DeckReport | null {
   if (typeof body !== 'object' || body === null) {
     return null;
   }
@@ -55,6 +55,48 @@ export function parseDeckReport(body: unknown): DeckReport | null {
     report[field] = retraction ? null : (value as string);
   }
   return report as unknown as DeckReport;
+}
+
+/**
+ * Reports one request may carry. A run is swiss plus a cut and the player's own
+ * deck; well past that is not a run being filled in.
+ */
+export const MAX_REPORTS_PER_REQUEST = 24;
+
+function batchedReports(body: unknown): unknown[] | null {
+  if (typeof body !== 'object' || body === null) {
+    return null;
+  }
+  const { reports } = body as { reports?: unknown };
+  return Array.isArray(reports) ? reports : null;
+}
+
+/**
+ * The reports in a request body: one on its own, or a batch under `reports`,
+ * which is how a whole run is filled in at once. A batch is one device's word
+ * on one event, so every report in it carries the same slug and voter and names
+ * a seat once; anything else is refused whole rather than half applied.
+ */
+export function parseDeckReports(body: unknown): DeckReport[] | null {
+  const raw = batchedReports(body) ?? [body];
+  if (raw.length === 0 || raw.length > MAX_REPORTS_PER_REQUEST) {
+    return null;
+  }
+  const reports: DeckReport[] = [];
+  const seats = new Set<string>();
+  for (const entry of raw) {
+    const report = parseDeckReport(entry);
+    if (!report || seats.has(report.seat) || !sameSender(report, reports[0])) {
+      return null;
+    }
+    seats.add(report.seat);
+    reports.push(report);
+  }
+  return reports;
+}
+
+function sameSender(report: DeckReport, first: DeckReport | undefined): boolean {
+  return !first || (report.slug === first.slug && report.voter === first.voter);
 }
 
 /** The archetype more than half the reports name, if any. */

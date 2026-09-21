@@ -44,15 +44,19 @@ export function fetchLiveReports(slug: string): Promise<LiveReports | null> {
   return client.fetchJsonOptional<LiveReports>(`/${liveReportsKey(slug)}`);
 }
 
-/** The archetype now shown for the seat, which may not be the one just reported. */
-export async function submitDeckReport(report: DeckReport): Promise<string | null> {
+/**
+ * Reports one or more seats' decks in a single request, and answers with the
+ * archetype now shown for each seat, which may not be the one just reported:
+ * a seat only shows the archetype more than half its reports agree on.
+ */
+export async function submitDeckReports(reports: readonly DeckReport[]): Promise<Record<string, string | null>> {
   const response = await fetch('/api/live/report', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(report)
+    body: JSON.stringify({ reports })
   });
   if (!response.ok) {
     throw new Error(`Report failed (${response.status})`);
   }
-  return ((await response.json()) as { archetype: string | null }).archetype;
+  return ((await response.json()) as { archetypes: Record<string, string | null> }).archetypes;
 }

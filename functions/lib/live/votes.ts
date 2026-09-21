@@ -16,8 +16,17 @@ export interface D1Like {
   prepare: (sql: string) => D1Statement;
 }
 
+/** What one device has already reported at an event. */
+export interface VoterLoad {
+  /** Seats this device has a report on. */
+  seats: number;
+  /** How many of the seats asked about are among them, so a change is not a new seat. */
+  held: number;
+}
+
 export interface VoteStore {
-  votesBy: (slug: string, voter: string) => Promise<number>;
+  /** The device's load at the event, and how much of it the given seats already are. */
+  loadOf: (slug: string, voter: string, seats: readonly string[]) => Promise<VoterLoad>;
   /** Records the report, replacing this device's earlier one for the seat; a null archetype removes it. */
   record: (report: DeckReport, at: number) => Promise<void>;
   tally: (slug: string, seat: string) => Promise<ArchetypeTally[]>;
@@ -25,12 +34,15 @@ export interface VoteStore {
 
 export function createVoteStore(db: D1Like): VoteStore {
   return {
-    async votesBy(slug, voter) {
+    async loadOf(slug, voter, seats) {
       const row = await db
-        .prepare('SELECT COUNT(*) AS n FROM votes WHERE slug = ? AND voter = ?')
-        .bind(slug, voter)
-        .first<{ n: number }>();
-      return row?.n ?? 0;
+        .prepare(
+          `SELECT COUNT(*) AS n, SUM(CASE WHEN seat IN (${seats.map(() => '?').join(', ')}) THEN 1 ELSE 0 END) AS mine ` +
+            'FROM votes WHERE slug = ? AND voter = ?'
+        )
+        .bind(...seats, slug, voter)
+        .first<{ n: number; mine: number | null }>();
+      return { seats: row?.n ?? 0, held: row?.mine ?? 0 };
     },
     async record(report, at) {
       if (report.archetype === null) {
