@@ -238,7 +238,7 @@ export function HomePage() {
         </div>
       </Section>
 
-      <Section title='Recent major tournaments' right={<A href='/tournaments'>View all →</A>}>
+      <Section title='Recent major tournaments' right={<A href='/events/majors'>View all →</A>}>
         <Show when={tournamentsListData()} fallback={<TournamentRowsSkeleton count={RECENT_MAJORS_COUNT} />}>
           <Show when={recentMajors().length > 0} fallback={<EmptyState title='No recent majors.' />}>
             <div class='tournament-list'>

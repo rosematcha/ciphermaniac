@@ -265,7 +265,7 @@ export function LivePage() {
             title='No rounds posted yet.'
             description='Pairings appear here once the first round is posted.'
             actions={
-              <A href='/tournaments' class='btn btn-secondary'>
+              <A href='/events/majors' class='btn btn-secondary'>
                 Tournaments
               </A>
             }

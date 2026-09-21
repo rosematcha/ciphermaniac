@@ -35,11 +35,11 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   '/cards/:set/:number': () => import('./pages/CardPage'),
   '/archetypes': () => import('./pages/ArchetypesIndexPage'),
   '/archetypes/:slug': () => import('./pages/ArchetypePage'),
-  '/tournaments': () => import('./pages/TournamentsIndexPage'),
+  '/events/majors': () => import('./pages/TournamentsIndexPage'),
   '/trends': () => import('./pages/TrendsPage'),
   '/players': () => import('./pages/PlayersPage'),
   '/players/:id': () => import('./pages/PlayerProfilePage'),
-  '/events': () => import('./pages/EventLocatorPage'),
+  '/events/locator': () => import('./pages/EventLocatorPage'),
   '/about': () => import('./pages/AboutPage'),
   '/feedback': () => import('./pages/FeedbackPage')
 };
@@ -82,6 +82,12 @@ const FeedbackPage = lazy(() => import('./pages/FeedbackPage').then(m => ({ defa
 // sitemap (static/robots.txt) — it's for building, not reading.
 const StyleGuidePage = lazy(() => import('./pages/StyleGuidePage').then(m => ({ default: m.StyleGuidePage })));
 
+// Moved routes keep their query: /events?near=… and /tournaments?scope=… links
+// are out in the wild.
+function redirectKeepingQuery(to: string) {
+  return () => <Navigate href={({ location }) => `${to}${location.search}`} />;
+}
+
 // Legacy /standings/:id links redirect to the equivalent /players/:id profile.
 function StandingsPlayerRedirect() {
   const params = useParams();
@@ -115,7 +121,7 @@ render(
       <Route path='/cards/:set/:number' component={CardPage} />
       <Route path='/archetypes' component={ArchetypesIndexPage} />
       <Route path='/archetypes/:slug' component={ArchetypePage} />
-      <Route path='/tournaments' component={TournamentsIndexPage} />
+      <Route path='/tournaments' component={redirectKeepingQuery('/events/majors')} />
       <Route path='/trends' component={TrendsPage} />
       <Route path='/players' component={PlayersPage} />
       <Route path='/players/compare' component={PlayerComparePage} />
@@ -124,7 +130,9 @@ render(
       <Route path='/standings/:id' component={StandingsPlayerRedirect} />
       <Route path='/live/:slug' component={LivePage} />
       <Route path='/live/:slug/player/:seat' component={LiveSeatPage} />
-      <Route path='/events' component={EventLocatorPage} />
+      <Route path='/events' component={redirectKeepingQuery('/events/locator')} />
+      <Route path='/events/majors' component={TournamentsIndexPage} />
+      <Route path='/events/locator' component={EventLocatorPage} />
       <Route path='/tools' component={ToolsPage} />
       <Route path='/tools/social-graphics' component={SocialGraphicsPage} />
       <Route path='/tools/in-loving-memory' component={InLovingMemoryPage} />

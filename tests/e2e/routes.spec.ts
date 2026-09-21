@@ -288,8 +288,26 @@ test('compare asks for two players before it compares anything', async ({ page }
 });
 
 test('tournaments index renders the catalog', async ({ page }) => {
-  await gotoClean(page, '/tournaments');
+  await gotoClean(page, '/events/majors');
   await expect(page.locator('main')).toBeVisible();
+});
+
+test('old tournaments and events paths redirect, keeping their query', async ({ page }) => {
+  await gotoClean(page, '/tournaments?from=home');
+  await expect(page).toHaveURL(/\/events\/majors\?from=home$/);
+  await gotoClean(page, '/events?r=25');
+  await expect(page).toHaveURL(/\/events\/locator\?r=25$/);
+});
+
+test('the events tab opens a menu of majors and the locator', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
+  await gotoClean(page, '/events/majors');
+  const tab = page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Events', exact: true });
+  await expect(tab).toHaveAttribute('href', '/events/locator');
+  await expect(tab).toHaveClass(/active/);
+  await tab.hover();
+  await expect(page.getByRole('link', { name: 'Major Events' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Event Locator' })).toHaveAttribute('href', '/events/locator');
 });
 
 test('the tools index links to the card wall', async ({ page }) => {
@@ -380,7 +398,7 @@ test('hovering the Tools nav item reveals the two headline tools', async ({ page
   // Desktop affordance only — compact headers get the /tools page instead.
   test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
-  const menu = page.locator('.topnav-menu');
+  const menu = page.locator('.topnav-item', { has: page.locator('a[href="/tools"]') }).locator('.topnav-menu');
   await expect(menu).toBeHidden();
   await page.locator('.topnav').getByRole('link', { name: 'Tools', exact: true }).hover();
   await expect(menu).toBeVisible();
@@ -489,7 +507,7 @@ test('short pages fill one viewport without adding empty scroll space', async ({
 test('the Tools menu closes once the pointer leaves, even after a click', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
-  const menu = page.locator('.topnav-menu');
+  const menu = page.locator('.topnav-item', { has: page.locator('a[href="/tools"]') }).locator('.topnav-menu');
   const tools = page.locator('.topnav').getByRole('link', { name: 'Tools', exact: true });
   await tools.click();
   await expect(page).toHaveURL(/\/tools$/);
@@ -502,7 +520,7 @@ test('the Tools menu closes once the pointer leaves, even after a click', async 
 test('keyboard focus opens the Tools menu', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
-  const menu = page.locator('.topnav-menu');
+  const menu = page.locator('.topnav-item', { has: page.locator('a[href="/tools"]') }).locator('.topnav-menu');
   // Tab in from the neighbouring link: :focus-visible only matches when the
   // browser saw a keyboard interaction, which a bare focus() does not give us.
   const nav = page.locator('.topnav');

@@ -4,14 +4,30 @@ import { GlobalSearch } from './GlobalSearch';
 import { TournamentSelector } from './TournamentSelector';
 import { prefetchRoute } from '../lib/prefetch';
 
-type NavLink = { href: string; label: string; menu?: { href: string; label: string }[] };
+type NavLink = {
+  href: string;
+  label: string;
+  // Path prefix that lights the tab, when it differs from `href`.
+  section?: string;
+  menu?: { href: string; label: string }[];
+};
 
 const links: NavLink[] = [
   { href: '/cards', label: 'Cards' },
   { href: '/archetypes', label: 'Archetypes' },
   { href: '/trends', label: 'Trends' },
   { href: '/players', label: 'Players' },
-  { href: '/events', label: 'Events' },
+  {
+    // No events index: the tab itself opens the locator, which is also all
+    // phones reach from here (majors stay linked from the footer and home).
+    href: '/events/locator',
+    label: 'Events',
+    section: '/events',
+    menu: [
+      { href: '/events/majors', label: 'Major Events' },
+      { href: '/events/locator', label: 'Event Locator' }
+    ]
+  },
   {
     href: '/tools',
     label: 'Tools',
@@ -51,7 +67,7 @@ export function TopNav() {
               <A
                 href={l.href}
                 class='topnav-link'
-                classList={{ active: isActive(l.href) }}
+                classList={{ active: isActive(l.section ?? l.href) }}
                 onMouseEnter={() => prefetchRoute(l.href)}
                 onFocus={() => prefetchRoute(l.href)}
               >
