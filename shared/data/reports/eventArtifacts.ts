@@ -74,6 +74,8 @@ export interface PlayerArtifactRow {
   dropped: boolean;
   dropRound: number | null;
   decklistPublished: boolean;
+  /** Archetype display name, so readers can place a player without decks.json. */
+  deckName: string | null;
 }
 
 /** Flatten a normalized deck's cards to the canonical serving shape. */
@@ -144,6 +146,7 @@ export function buildDecksArtifact(event: NormalizedEvent): DeckArtifactRow[] {
 
 /** Build the `players.json` serving rows, sorted by (placement, name). */
 export function buildPlayersArtifact(event: NormalizedEvent): PlayerArtifactRow[] {
+  const archetypeByParticipant = new Map(event.decks.map(deck => [deck.participantId, deck.archetype.displayName]));
   const rows: PlayerArtifactRow[] = event.participants.map(p => ({
     playerId: p.participantId,
     playerRef: p.playerRef ?? null,
@@ -158,7 +161,8 @@ export function buildPlayersArtifact(event: NormalizedEvent): PlayerArtifactRow[
     madeTopCut: p.flags.madeTopCut === true,
     dropped: p.flags.dropped === true,
     dropRound: p.dropRound ?? null,
-    decklistPublished: p.flags.decklistPublished === true
+    decklistPublished: p.flags.decklistPublished === true,
+    deckName: archetypeByParticipant.get(p.participantId) ?? p.deckName ?? null
   }));
   rows.sort(
     (a, b) =>

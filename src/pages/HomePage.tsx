@@ -754,18 +754,23 @@ function StoryBody(props: {
   hasDay2: boolean;
 }) {
   const storylines = useStorylines();
+  // Deck-level stories (conversion, cut mirror) join players to archetypes by
+  // deckName. An event whose players.json lacks it reads as one "—" deck, so
+  // those stories stay off rather than show nonsense.
+  const deckNamesKnown = () => props.standings.some(p => p.deckName);
   const stories = createMemo(() => {
     const sl = storylines();
     if (!sl) {
       return [];
     }
+    const known = deckNamesKnown();
     return sl.buildStories({
       rows: props.fieldRows,
       excludeArchetype: props.winnerArchetype,
-      hasDay2: props.hasDay2,
+      hasDay2: known && props.hasDay2,
       winner: props.winner,
       standings: props.standings,
-      topCutParticipants: props.topCutParticipants,
+      topCutParticipants: known ? props.topCutParticipants : [],
       cutLine: props.cutLine,
       totalTopCut: props.totalTopCut,
       lookupArchetype: props.lookupArchetype
