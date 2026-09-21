@@ -37,6 +37,59 @@ class IngestionScopeTest(unittest.TestCase):
         self.assertFalse(ingest_module.is_recent_event(None, date(2026, 9, 18)))
 
 
+class _JsonSession:
+    """Answers each labs tournament request with the record for its numeric id."""
+
+    def __init__(self, records):
+        self._records = records
+        self.urls = []
+
+    def get(self, url: str, timeout: int = 0):  # noqa: ARG002
+        self.urls.append(url)
+        record = self._records.get(int(url.split("id=")[1].split("&")[0]))
+        return _JsonResponse({"ok": record is not None, "message": record})
+
+
+class _JsonResponse:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self):
+        return self._payload
+
+
+class ReadinessTest(unittest.TestCase):
+    def test_final_needs_completion_and_published_lists(self):
+        session = _JsonSession(
+            {
+                72: {"completed": 1, "decklists": 1},
+                73: {"completed": 1, "decklists": 0},
+                74: {"completed": 0, "decklists": 1},
+            }
+        )
+        self.assertTrue(ingest_module.is_final(session, "0072"))
+        self.assertFalse(ingest_module.is_final(session, "0073"))
+        self.assertFalse(ingest_module.is_final(session, "0074"))
+        self.assertFalse(ingest_module.is_final(session, "0075"))
+        self.assertIn("tournament?id=72&division=MA", session.urls[0])
+
+    def test_daily_pending_holds_back_running_and_historical_events(self):
+        recent = date.today().isoformat()
+        published = {
+            "0040": "2024-11-30, Regional Championship Sacramento",
+            "0071": None,
+            "0072": f"{recent}, Regional Championship Baltimore",
+            "0073": f"{recent}, Special Event Lille",
+        }
+        plan = ingest_module.IngestPlan(missing=["0040", "0071", "0072", "0073"], refresh=[], renamed={})
+        session = _JsonSession({72: {"completed": 1, "decklists": 1}, 73: {"completed": 0, "decklists": 0}})
+        self.assertEqual(ingest_module.daily_pending(plan, published, session), ["0072"])
+        self.assertEqual(len(session.urls), 2)
+
+
 class _FakeResponse:
     """Decodes like requests: Latin-1 unless the caller sets an encoding."""
 

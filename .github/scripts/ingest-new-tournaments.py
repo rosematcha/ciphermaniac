@@ -14,6 +14,10 @@ for the difference (oldest first, so a partial run still leaves a
 chronologically contiguous dataset). Each ingest registers an immutable event
 for the next production release.
 
+Labs lists a major while it is still running. A recent event is only ingested
+once its labs record is `completed` with `decklists` published, usually the day
+after it ends; until then it is reported as waiting and retried on the next run.
+
 Events converted from the legacy reports carry a made-up `labsCode` and
 placeholder metadata. They are matched to their labs entry by folder name
 (start date + event name) and re-downloaded in place, but only after every
@@ -26,6 +30,7 @@ Environment:
   DRY_RUN         - list what would be ingested without downloading (default false)
   MAX_INGEST      - cap per run so a first run cannot fan out unbounded (default 5)
   ANONYMIZE       - forwarded to download-tournament.py (default false)
+  GITHUB_OUTPUT   - when set, receives `pending=<codes>`, the batch this run would ingest
 """
 
 from __future__ import annotations
@@ -46,6 +51,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import r2  # noqa: E402
 
 LABS_INDEX_URL = "https://labs.limitlesstcg.com/"
+LABS_TOURNAMENT_URL = "https://mew.limitlesstcg.com/labs/data/tcg/tournament?id={id}&division=MA"
 LABS_CODE_PATTERN = re.compile(r'href="/(\d{4})/standings"')
 LABS_NAME_PATTERN = re.compile(r'<div class="font-bold text-xl">(.*?)</div>', re.S)
 # Start month and day, then the year that closes the range ("November 2–3, 2024").
@@ -221,6 +227,36 @@ def is_recent_event(folder: str | None, today: date | None = None) -> bool:
     return 0 <= age <= 30
 
 
+def is_final(session: requests.Session, code: str) -> bool:
+    """Whether labs has finished the event and published its lists."""
+    response = session.get(LABS_TOURNAMENT_URL.format(id=int(code)), timeout=30)
+    response.raise_for_status()
+    payload = response.json()
+    record = payload.get("message") if isinstance(payload, dict) and payload.get("ok") else None
+    return isinstance(record, dict) and bool(record.get("completed")) and bool(record.get("decklists"))
+
+
+def daily_pending(plan: IngestPlan, published: dict[str, str | None], session: requests.Session) -> list[str]:
+    """Recent missing events that labs has finalised; the rest wait for a later run or Maintenance."""
+    recent = [code for code in plan.missing if is_recent_event(published.get(code))]
+    deferred = len(plan.missing) - len(recent) + len(plan.refresh)
+    if deferred:
+        print(f"[ingest] {deferred} historical/reconciliation events deferred to Maintenance")
+    final = [code for code in recent if is_final(session, code)]
+    for code in recent:
+        if code not in final:
+            print(f"[ingest] {code} ({published[code]}) is not final on labs yet; waiting")
+    return final
+
+
+def write_output(name: str, value: str) -> None:
+    """Expose a value to later workflow jobs when running under GitHub Actions."""
+    path = os.environ.get("GITHUB_OUTPUT")
+    if path:
+        with open(path, "a", encoding="utf-8") as output:
+            output.write(f"{name}={value}\n")
+
+
 def main() -> int:
     r2_account_id = os.environ.get("R2_ACCOUNT_ID")
     r2_access_key_id = os.environ.get("R2_ACCESS_KEY_ID")
@@ -242,13 +278,6 @@ def main() -> int:
         print("[ingest] Error: labs index returned no tournament codes")
         return 1
     plan = plan_ingest(published, fetch_event_codes(r2_client, bucket_name))
-    reconcile = parse_bool_env("RECONCILE_EVENTS", False)
-    recent = [code for code in plan.missing if is_recent_event(published.get(code))]
-    pending = plan.missing + plan.refresh if reconcile else recent
-    historical = len(plan.missing) - len(recent) + len(plan.refresh)
-    if historical and not reconcile:
-        print(f"[ingest] {historical} historical/reconciliation events deferred to Maintenance")
-
     print(f"[ingest] labs published: {len(published)} (latest {list(published)[-1]})")
     print(f"[ingest] missing: {len(plan.missing)}{' -> ' + ', '.join(plan.missing) if plan.missing else ''}")
     print(
@@ -257,11 +286,14 @@ def main() -> int:
     for code, folder in plan.renamed.items():
         print(f"[ingest] {code} matched converted '{folder}' by start date; not refreshed")
 
+    reconcile = parse_bool_env("RECONCILE_EVENTS", False)
+    pending = plan.missing + plan.refresh if reconcile else daily_pending(plan, published, session)
+    batch = pending[:max_ingest]
+    write_output("pending", " ".join(batch))
     if not pending:
         print("[ingest] Nothing to ingest")
         return 0
 
-    batch = pending[:max_ingest]
     if len(pending) > len(batch):
         print(f"[ingest] Ingesting {len(batch)} this run, new events first (MAX_INGEST={max_ingest})")
 
