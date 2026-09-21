@@ -14,8 +14,8 @@ import {
 } from '../../../shared/live/view';
 import { Section } from '../../components/Section';
 import { fetchPlayerIndexSlim } from '../../lib/data';
-import { fetchLiveIndex, fetchLiveRound } from '../../lib/data/live';
-import { createPolled } from '../../lib/livePoll';
+import { fetchLiveRound } from '../../lib/data/live';
+import { createLiveIndex, createPolled, liveDelay } from '../../lib/livePoll';
 import { latestValue, resolved } from '../../lib/resource';
 import { useDeckReports } from './deckReports';
 import { LiveRun } from './LiveRun';
@@ -37,9 +37,13 @@ export interface PlayerRunProps {
  * with no event than on one with.
  */
 export function PlayerRun(props: PlayerRunProps) {
-  const index = createPolled(() => props.event.slug, fetchLiveIndex);
+  const index = createLiveIndex(() => props.event.slug);
   const current = () => latestValue(index)?.round;
-  const round = createPolled(current, n => fetchLiveRound(props.event.slug, n));
+  const round = createPolled(
+    current,
+    n => fetchLiveRound(props.event.slug, n),
+    () => liveDelay(latestValue(index))
+  );
   // Every name this player registers under, so a seat RK9 prints differently
   // still finds them (`shared/live/seatAliases.ts`).
   const names = createMemo(() => seatNamesFor(props.playerId, props.name));
@@ -57,7 +61,10 @@ export function PlayerRun(props: PlayerRunProps) {
     const tail = playing().length > 0 ? null : latestValue(ended);
     return tail ? [tail.view] : playing();
   });
-  const reports = useDeckReports(() => props.event.slug);
+  const reports = useDeckReports(
+    () => props.event.slug,
+    () => latestValue(index)
+  );
   // The opponents' careers, so their rows lead to a profile rather than a seat
   // page. A megabyte, so it waits until this player is actually in the event.
   const [players] = createResource(

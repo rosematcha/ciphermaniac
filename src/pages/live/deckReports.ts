@@ -10,11 +10,12 @@
 
 import { createMemo, createResource, createSignal } from 'solid-js';
 import { MAX_REPORTS_PER_REQUEST, reportableArchetypes } from '../../../shared/live/reports';
+import type { LiveIndex } from '../../../shared/live/types';
 import { seatKey, type SeatRef, type SeatReport } from '../../../shared/live/view';
 import { fetchArchetypeLabels, fetchOnlineArchetypes } from '../../lib/data';
 import { fetchLiveReports, submitDeckReports } from '../../lib/data/live';
 import { liveVoterId } from '../../lib/liveFollows';
-import { createPolled } from '../../lib/livePoll';
+import { createPolled, liveDelay } from '../../lib/livePoll';
 import { reportKey, useMyReports } from '../../lib/liveReports';
 import { latestValue, resolved } from '../../lib/resource';
 import type { ReportedDeck } from './LiveDeck';
@@ -34,10 +35,11 @@ export interface DeckReports {
 /**
  * Deck reports for one event.
  * @param slug - Event slug accessor
+ * @param index - The event's index, whose pace the reports are read at
  * @returns The reportable archetypes and the read/write pair for a seat
  */
-export function useDeckReports(slug: () => string): DeckReports {
-  const reports = createPolled(slug, fetchLiveReports);
+export function useDeckReports(slug: () => string, index: () => LiveIndex | null | undefined): DeckReports {
+  const reports = createPolled(slug, fetchLiveReports, () => liveDelay(index()));
   const [archetypes] = createResource(fetchOnlineArchetypes);
   const [iconLabels] = createResource(fetchArchetypeLabels);
   // Reported here and not published yet, so a report shows at once rather than a poll later.

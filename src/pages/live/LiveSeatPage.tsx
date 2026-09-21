@@ -7,8 +7,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { Section } from '../../components/Section';
 import { Skeleton } from '../../components/Skeleton';
 import { fetchPlayerIndexSlim } from '../../lib/data';
-import { fetchLiveIndex } from '../../lib/data/live';
-import { createPolled } from '../../lib/livePoll';
+import { createLiveIndex, createPolled, liveDelay } from '../../lib/livePoll';
 import { fetchPostedRounds } from '../../lib/liveRounds';
 import { latestValue, resolved } from '../../lib/resource';
 import { useDeckReports } from './deckReports';
@@ -42,7 +41,7 @@ function latestSeat(rounds: readonly (LiveRound | null)[], slug: string): LiveSe
 export function LiveSeatPage() {
   const params = useParams<{ slug: string; seat: string }>();
 
-  const index = createPolled(() => params.slug, fetchLiveIndex);
+  const index = createLiveIndex(() => params.slug);
   const indexData = () => latestValue(index);
   // Every posted round, not just the one being played: someone who dropped
   // after round five has no seat in round six, and their page would otherwise
@@ -50,7 +49,8 @@ export function LiveSeatPage() {
   // per poll, and `LiveRun` reads the same rounds back out of it.
   const rounds = createPolled(
     () => (indexData()?.round ? ([params.slug, indexData()!.round] as const) : null),
-    ([slug, current]) => fetchPostedRounds(slug, current)
+    ([slug, current]) => fetchPostedRounds(slug, current),
+    () => liveDelay(indexData())
   );
 
   // The seat as the round file spells it, which is what follows and deck
@@ -67,7 +67,7 @@ export function LiveSeatPage() {
     return found ? profileOf()(found) : null;
   };
 
-  const reports = useDeckReports(() => params.slug);
+  const reports = useDeckReports(() => params.slug, indexData);
   const names = () => [seat()?.name ?? ''].filter(Boolean);
   const countries = () => [seat()?.country ?? ''].filter(Boolean);
 

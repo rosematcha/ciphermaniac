@@ -2,8 +2,7 @@ import { A, useLocation } from '@solidjs/router';
 import { createMemo, type JSX, Show } from 'solid-js';
 import { eventsOn } from '../../shared/live/schedule';
 import type { LiveEvent } from '../../shared/live/types';
-import { fetchLiveIndex } from '../lib/data/live';
-import { createPolled } from '../lib/livePoll';
+import { createLiveIndex } from '../lib/livePoll';
 import { useLiveSchedule } from '../lib/liveSchedule';
 import { latestValue } from '../lib/resource';
 
@@ -29,7 +28,7 @@ export function LiveBanner() {
 
 function Banner(props: { event: LiveEvent }) {
   const location = useLocation();
-  const index = createPolled(() => props.event.slug, fetchLiveIndex);
+  const index = createLiveIndex(() => props.event.slug);
   return (
     <Show when={!location.pathname.startsWith('/live/')}>
       <A class='live-banner' href={`/live/${props.event.slug}`}>

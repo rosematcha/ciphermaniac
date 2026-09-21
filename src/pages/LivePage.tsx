@@ -19,10 +19,10 @@ import { Pagination } from '../components/Pagination';
 import { Section } from '../components/Section';
 import { Skeleton } from '../components/Skeleton';
 import { fetchPlayerIndexSlim } from '../lib/data';
-import { fetchLiveIndex, fetchLiveRound } from '../lib/data/live';
+import { fetchLiveRound } from '../lib/data/live';
 import { debounced } from '../lib/debounce';
 import { useLiveFollows } from '../lib/liveFollows';
-import { createPolled } from '../lib/livePoll';
+import { createLiveIndex, createPolled, liveDelay } from '../lib/livePoll';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { latestValue, resolved } from '../lib/resource';
 import { useDeckReports } from './live/deckReports';
@@ -63,7 +63,7 @@ export function LivePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams<LiveParams>();
 
-  const index = createPolled(() => params.slug, fetchLiveIndex);
+  const index = createLiveIndex(() => params.slug);
   const indexData = () => latestValue(index);
   const current = () => indexData()?.round ?? 0;
   // A pinned round stays pinned even once the event catches up with it, so a
@@ -75,7 +75,8 @@ export function LivePage() {
   const round = () => pinned() ?? current();
   const roundFile = createPolled(
     () => (round() ? ([params.slug, round()] as const) : null),
-    ([code, n]) => fetchLiveRound(code, n)
+    ([code, n]) => fetchLiveRound(code, n),
+    () => liveDelay(indexData())
   );
   const matches = () => latestValue(roundFile)?.matches;
 
@@ -87,7 +88,7 @@ export function LivePage() {
   );
   const profileOf = createMemo(() => createProfileLookup(resolved(players) ?? [], aliasedPlayerId));
 
-  const reports = useDeckReports(() => params.slug);
+  const reports = useDeckReports(() => params.slug, indexData);
   const present = (): SeatPresenter => ({
     slug: params.slug,
     profileOf: seat => profileOf()(seat),
