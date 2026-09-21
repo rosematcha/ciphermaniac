@@ -16,7 +16,9 @@
  *
  * A reporter is a random ID from their own device. It stops honest double
  * counting and nothing more, so floods are met by the per-IP limiter and a cap
- * on how many seats one ID can report in an event.
+ * on how many seats one ID can report in an event. An address listed in
+ * `TRUSTED_REPORTERS` skips the limiter: the site's own jobs fill in whole runs
+ * from one address and are not a flood. Every other rule still applies to them.
  */
 
 import {
@@ -47,6 +49,16 @@ export function _resetRateLimitStore(): void {
   rateLimiter.reset();
 }
 
+function trusted(env: { TRUSTED_REPORTERS?: string }, ip: string): boolean {
+  return (env.TRUSTED_REPORTERS ?? '').split(',').some(entry => entry.trim() === ip && ip !== 'unknown');
+}
+
+/** Whether this request may be served: a trusted address spends none of the per-IP allowance. */
+function withinRate(env: { TRUSTED_REPORTERS?: string }, request: Request): boolean {
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  return trusted(env, ip) || rateLimiter.check(ip).allowed;
+}
+
 interface Bucket {
   get: (key: string) => Promise<{ text: () => Promise<string> } | null>;
   put: (key: string, value: string, options: { httpMetadata: Record<string, string> }) => Promise<unknown>;
@@ -55,6 +67,8 @@ interface Bucket {
 interface Env {
   REPORTS?: Bucket;
   LIVE_DB?: D1Like;
+  /** Comma-separated addresses the per-IP limit does not apply to; unset trusts nobody. */
+  TRUSTED_REPORTERS?: string;
 }
 
 interface RequestContext {
@@ -120,7 +134,7 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
   if (!env.REPORTS || !env.LIVE_DB) {
     return jsonError('Reports are not available', 503);
   }
-  if (!rateLimiter.check(request.headers.get('CF-Connecting-IP') ?? 'unknown').allowed) {
+  if (!withinRate(env, request)) {
     return jsonError('Too many reports. Try again later.', 429);
   }
   const report = parseDeckReport(await readBody(request));

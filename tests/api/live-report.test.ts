@@ -93,9 +93,10 @@ beforeEach(() => {
 
 const voter = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
-function post(body: unknown, env = { REPORTS: fakeBucket(files), LIVE_DB: fakeDb(votes) }) {
+function post(body: unknown, env = { REPORTS: fakeBucket(files), LIVE_DB: fakeDb(votes) }, from?: string) {
   const request = new Request('https://ciphermaniac.com/api/live/report', {
     method: 'POST',
+    headers: from ? { 'CF-Connecting-IP': from } : undefined,
     body: typeof body === 'string' ? body : JSON.stringify(body)
   });
   return onRequestPost({ request, env });
@@ -177,6 +178,28 @@ test('one device cannot report more seats than an event could plausibly need', a
     votes.push({ slug: SLUG, seat: `player ${i}|US`, voter: voter(9), archetype: 'Dragapult' });
   }
   assert.equal((await post(report('Dragapult', 9))).status, 429);
+});
+
+test('a trusted address is not rate limited, and its neighbours still are', async () => {
+  const bindings = { REPORTS: fakeBucket(files), LIVE_DB: fakeDb(votes), TRUSTED_REPORTERS: '2a01:4f9::1, 10.0.0.1' };
+  let last = 200;
+  for (let i = 0; i < 61; i += 1) {
+    last = (await post(report('Dragapult', i, `player ${i}|US`), bindings, '2a01:4f9::1')).status;
+  }
+  assert.equal(last, 200);
+  for (let i = 0; i < 61; i += 1) {
+    last = (await post(report('Dragapult', i, `other ${i}|US`), bindings, '203.0.113.7')).status;
+  }
+  assert.equal(last, 429, 'an address the list does not name is limited as before');
+});
+
+test('an empty list trusts nobody, the addressless least of all', async () => {
+  const bindings = { REPORTS: fakeBucket(files), LIVE_DB: fakeDb(votes), TRUSTED_REPORTERS: '' };
+  let last = 200;
+  for (let i = 0; i < 61; i += 1) {
+    last = (await post(report('Dragapult', i, `player ${i}|US`), bindings)).status;
+  }
+  assert.equal(last, 429);
 });
 
 test('a flood from one address is limited, and missing bindings are a clean 503', async () => {
