@@ -2,7 +2,7 @@ const ONLINE_PREFIX = 'reports/Online - Last 14 Days/';
 const TRENDS_PREFIX = 'reports/Trends - Last 30 Days/';
 const SNAPSHOT_DECK_SHARD = /^reports\/Snapshots\/[^/]+\/archetypes\/[^/]+\/decks\.json$/;
 
-const ONLINE_ROOT_FILES = new Set(['master.json', 'meta.json', 'cardSuccess.json', 'cardUsage.json']);
+const ONLINE_ROOT_FILES = new Set(['master.json', 'meta.json', 'cardSuccess.json', 'cardUsage.json', 'lists.json']);
 const TRENDS_FILES = new Set(['meta.json', 'trends.json', 'history.json']);
 
 export function isOnlineReportRelativeKey(relative: string): boolean {

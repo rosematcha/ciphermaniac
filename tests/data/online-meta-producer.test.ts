@@ -107,7 +107,14 @@ test('publishes the whole report, with meta.json written last', async () => {
   assert.equal(meta.deckTotal, 16);
   assert.equal(meta.tournamentCount, 1);
   const report = bucket.report();
-  for (const key of ['master.json', 'meta.json', 'cardUsage.json', 'archetypes/index.json', 'decks/index.json']) {
+  for (const key of [
+    'master.json',
+    'meta.json',
+    'cardUsage.json',
+    'lists.json',
+    'archetypes/index.json',
+    'decks/index.json'
+  ]) {
     assert.ok(report.includes(key), `missing ${key}`);
   }
   assert.ok(report.includes('archetypes/Dragapult/cards.json'));
@@ -223,6 +230,19 @@ test('a stale cardSuccess.json is swept when no deck meets the floor, and kept w
   assert.deepEqual(kept.removed, []);
   assert.ok(!kept.writes.includes(`${BASE}/master.json`));
   assert.ok(kept.writes.includes(`${BASE}/archetypes/index.json`));
+});
+
+test('lists.json indexes every listed deck, and a master-only run leaves it alone', async () => {
+  const bucket = seeded();
+  await runOnlineMeta(options(bucket.store));
+  const lists = bucket.objects.get(`${BASE}/lists.json`) as { decks: unknown[]; events: unknown[][] };
+  assert.equal(lists.decks.length, 16);
+  assert.deepEqual(lists.events, [['t1', 'Weekly', '2026-08-20', 16]]);
+
+  const kept = seeded({ [`${BASE}/lists.json`]: { old: true } });
+  await runOnlineMeta(options(kept.store, { generateArchetypes: false }));
+  assert.deepEqual(kept.removed, []);
+  assert.ok(!kept.writes.includes(`${BASE}/lists.json`));
 });
 
 test('a store failure mid-publish never reaches meta.json', async () => {
