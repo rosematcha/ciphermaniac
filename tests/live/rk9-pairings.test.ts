@@ -28,7 +28,24 @@ const byTable = (table: number) => round.matches.filter(match => match.table ===
 test('every row of the round parses', () => {
   assert.equal(round.rowsSeen, 8);
   assert.equal(round.rowsSkipped, 0);
+  assert.equal(round.topCut, false);
   assert.equal(detectRoundBreakage(round), undefined);
+});
+
+test('a top cut round, which prints no points, parses and says so', () => {
+  const cut = parseRk9Round(fixture('round-top-cut'));
+  assert.equal(cut.rowsSeen, 4);
+  assert.equal(cut.rowsSkipped, 0);
+  assert.equal(cut.topCut, true);
+  assert.equal(detectRoundBreakage(cut), undefined);
+  assert.deepEqual(cut.matches[0], {
+    table: 518,
+    complete: true,
+    seats: [
+      { name: 'Ada Lovelace', country: 'US', wins: 12, losses: 1, ties: 2, points: 38, result: 'loss' },
+      { name: 'Grace Hopper', country: 'US', wins: 12, losses: 1, ties: 2, points: 38, result: 'win' }
+    ]
+  });
 });
 
 test('a confirmed match carries names, countries, records and results', () => {
@@ -84,7 +101,7 @@ test('a submitted result names its side without becoming a result', () => {
 
 test('an empty body is a round that is not posted, not breakage', () => {
   const empty = parseRk9Round('');
-  assert.deepEqual(empty, { matches: [], rowsSeen: 0, rowsSkipped: 0, truncated: false });
+  assert.deepEqual(empty, { matches: [], rowsSeen: 0, rowsSkipped: 0, truncated: false, topCut: false });
   assert.equal(detectRoundBreakage(empty), undefined);
 });
 

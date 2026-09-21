@@ -42,6 +42,8 @@ export interface LiveRoundParse {
   rowsSkipped: number;
   /** Rows were present but the body does not end where a whole fragment does. */
   truncated: boolean;
+  /** No row printed points, which only a top cut round leaves off. */
+  topCut: boolean;
 }
 
 export type LiveEventKind = 'regional' | 'international' | 'worlds';
