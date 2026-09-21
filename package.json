@@ -96,7 +96,7 @@
   "author": "Ciphermaniac",
   "license": "MIT",
   "dependencies": {
-    "@solidjs/router": "^0.15.0",
+    "@solidjs/router": "^0.16.3",
     "modern-screenshot": "^4.7.0",
     "solid-js": "^1.9.3"
   },
