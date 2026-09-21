@@ -12,9 +12,9 @@ updates:
       # typescript-eslint 8 cannot resolve against TypeScript 7; npm ci fails with ERESOLVE.
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
-      # Router 1.0 adds 489 gzip bytes to the initial shell, which has no room for it.
+      # Router 0.16 adds 587 gzip bytes to the initial shell (1.0 adds 489), which has no room for it.
       - dependency-name: '@solidjs/router'
-        update-types: ['version-update:semver-major']
+        versions: ['>=0.16']
   - package-ecosystem: pip
     directory: /.github/scripts
     schedule:
