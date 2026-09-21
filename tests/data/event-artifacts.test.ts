@@ -117,6 +117,18 @@ test('players.json is sorted by placement then name', () => {
   }
 });
 
+test("players.json names each player's archetype, matching decks.json", () => {
+  const players = buildPlayersArtifact(labs);
+  const archetypeByPlayer = new Map(buildDecksArtifact(labs).map(deck => [deck.playerId, deck.archetype]));
+  assert.ok(archetypeByPlayer.size > 0);
+  for (const player of players) {
+    const expected = archetypeByPlayer.get(player.playerId);
+    if (expected !== undefined) {
+      assert.strictEqual(player.deckName, expected);
+    }
+  }
+});
+
 test('index.json reports consistent counts', () => {
   const artifacts = buildEventArtifacts(labs) as Map<
     string,
