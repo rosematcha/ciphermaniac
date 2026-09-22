@@ -50,6 +50,20 @@ const DAY_MS = 86_400_000;
 /** `SET::NUMBER` (padded, as in card-types.json) to regulation mark. */
 export type RegulationMarks = Record<string, string | null | undefined>;
 
+/** A legality window for a set the catalog doesn't date. */
+export interface SetWindow {
+  code: string;
+  legalFrom: string;
+  legalUntil: string | null;
+}
+
+interface SetDates {
+  legalFrom?: string;
+  legalUntil?: string | null;
+}
+
+type SetLookup = Map<string, SetDates>;
+
 interface Print {
   uid: string;
   name: string;
@@ -73,9 +87,9 @@ function shiftDate(iso: string, days: number): string {
   return new Date(Date.parse(`${iso}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 }
 
-function toPrint(uid: string, marks: RegulationMarks): Print | null {
+function toPrint(uid: string, marks: RegulationMarks, sets: SetLookup): Print | null {
   const parsed = parseCardUid(uid);
-  const entry = parsed ? SET_BY_CODE.get(parsed.set) : undefined;
+  const entry = parsed ? sets.get(parsed.set) : undefined;
   if (!parsed || !entry?.legalFrom) {
     return null;
   }
@@ -122,13 +136,21 @@ function isIntroduction(print: Print, cluster: Print[]): boolean {
 
 /**
  * Build a resolver from any printing's UID and an event date to the set that
- * earns the credit, or null when no printing was legal then.
+ * earns the credit, or null when no printing was legal then. `extraSets` dates
+ * sets the catalog leaves undated (Sun & Moon sets still legal when the first
+ * Sword & Shield sets came out), so a reprint of one of their cards is not
+ * mistaken for a card new to Standard. They can earn credit but are never ranked.
  */
 export function createAttributor(
   db: SynonymDatabase,
-  marks: RegulationMarks
+  marks: RegulationMarks,
+  extraSets: SetWindow[] = []
 ): { canonical: (uid: string) => string; credit: (canonical: string, date: string) => Credit | null } {
   const clusterIndex = buildClusterIndex(db);
+  const sets: SetLookup = new Map<string, SetDates>([
+    ...SET_BY_CODE,
+    ...extraSets.map(set => [set.code, set] as const)
+  ]);
   const clusters = new Map<string, Print[]>();
   const cache = new Map<string, Credit | null>();
 
@@ -136,7 +158,7 @@ export function createAttributor(
     let prints = clusters.get(canonical);
     if (!prints) {
       prints = [...new Set(clusterIndex.get(canonical) ?? [canonical])]
-        .map(uid => toPrint(uid, marks))
+        .map(uid => toPrint(uid, marks, sets))
         .filter((print): print is Print => print !== null);
       clusters.set(canonical, prints);
     }
@@ -272,8 +294,8 @@ function isRankedSet<T extends { code: string; legalFrom?: string }>(entry: T): 
  * Feed events oldest first, one at a time (a major's decks run to several MB),
  * then `finish` for the payload.
  */
-export function createSetImpactBuilder(db: SynonymDatabase, marks: RegulationMarks) {
-  const attributor = createAttributor(db, marks);
+export function createSetImpactBuilder(db: SynonymDatabase, marks: RegulationMarks, extraSets: SetWindow[] = []) {
+  const attributor = createAttributor(db, marks, extraSets);
   const events: SetImpactEvent[] = [];
   const perEvent: EventSetTotals[] = [];
   const cards = new Map<string, CardTotals>();

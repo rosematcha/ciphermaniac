@@ -205,3 +205,15 @@ test('the builder sums cards per set and projects rotation from the dominant mar
     [...payload.sets.map(set => set.legalFrom)].sort()
   );
 });
+
+test('an extra window marks a reprint of a card still legal from an undated set', () => {
+  const db: SynonymDatabase = { synonyms: { 'Switch::SSH::183': 'Switch::CEC::209' }, canonicals: {} };
+  const plain = createAttributor(db, {});
+  assert.equal(plain.credit('Switch::CEC::209', '2022-05-07')?.isNew, true);
+  const dated = createAttributor(db, {}, [{ code: 'CEC', legalFrom: '2019-11-15', legalUntil: '2022-02-25' }]);
+  const switchCard = dated.credit('Switch::CEC::209', '2022-05-07');
+  assert.equal(switchCard?.set, 'SSH');
+  assert.equal(switchCard?.isNew, false);
+  // Before the rotation the dated set is the older legal print, and earns the credit.
+  assert.equal(dated.credit('Switch::CEC::209', '2021-06-01')?.set, 'CEC');
+});
