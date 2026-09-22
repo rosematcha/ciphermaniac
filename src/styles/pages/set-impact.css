@@ -115,4 +115,30 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  /* The name alone fits; the code only pushed it into an ellipsis. */
+  .set-impact-code {
+    display: none;
+  }
+
+  .set-impact-table .data th,
+  .set-impact-table .data td {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .set-impact-table .data th.sortable button.th-sort {
+    padding: 0 10px;
+  }
+
+  /* Each toggle takes the full width with even halves, rather than two
+     ragged pills stacked at their content widths. */
+  .set-impact-controls .segmented {
+    display: flex;
+    width: 100%;
+  }
+
+  .set-impact-controls .segmented button {
+    flex: 1;
+  }
 }
