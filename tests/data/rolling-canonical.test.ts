@@ -98,7 +98,7 @@ describe('set catalog legality windows', () => {
   // Pinned to the date the windows were authored. When a rotation or set
   // release updates standardLegalSets, the windows must move with it (and
   // this pin date advances) — the two views of legality may never diverge.
-  const PINNED_TODAY = '2026-07-14';
+  const PINNED_TODAY = '2026-09-22';
 
   it('derive standardLegalSets exactly', () => {
     const derived = SET_CATALOG.filter(entry => isSetLegalAt(entry.code, PINNED_TODAY)).map(entry => entry.code);

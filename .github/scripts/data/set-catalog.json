@@ -8,6 +8,12 @@
       "legalUntil": null
     },
     {
+      "code": "PBL",
+      "name": "Pitch Black",
+      "legalFrom": "2026-07-31",
+      "legalUntil": null
+    },
+    {
       "code": "CRI",
       "name": "Chaos Rising",
       "legalFrom": "2026-06-05",
@@ -701,6 +707,7 @@
     }
   ],
   "standardLegalSets": [
+    "PBL",
     "CRI",
     "POR",
     "ASC",
