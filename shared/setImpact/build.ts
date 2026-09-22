@@ -7,7 +7,7 @@
  * Legality follows the regulation mark printed on each card, since that is
  * what rotates; PRE's G-mark reprints left in April 2026 while PRE stayed.
  * Producer-only: this pulls in the set catalog.
- * @module shared/setImpact
+ * @module shared/setImpact/build
  */
 
 import {
@@ -17,8 +17,8 @@ import {
   getReleaseIndex,
   PROMO_SETS,
   SET_CATALOG
-} from './data/canonicalPrint';
-import { cardUid, parseCardUid, type SynonymDatabase } from './data/cardIdentity';
+} from '../data/canonicalPrint';
+import { cardUid, parseCardUid, type SynonymDatabase } from '../data/cardIdentity';
 import type {
   SetImpactAttribution,
   SetImpactCard,
@@ -27,7 +27,7 @@ import type {
   SetImpactPayload,
   SetImpactRotation,
   SetImpactSet
-} from './setImpactTypes';
+} from './types';
 
 /**
  * Each April rotation removes the oldest regulation mark. Future dates assume

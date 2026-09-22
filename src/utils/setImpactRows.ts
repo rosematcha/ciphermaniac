@@ -10,7 +10,7 @@ import type {
   SetImpactCard,
   SetImpactMetric,
   SetImpactPayload
-} from '../../shared/setImpactTypes';
+} from '../../shared/setImpact/types';
 
 export interface SetImpactRow {
   code: string;

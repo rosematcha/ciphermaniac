@@ -14,7 +14,7 @@ import {
   setImpactRows,
   sortSetImpactRows
 } from '../../src/utils/setImpactRows.ts';
-import type { SetImpactPayload, SetImpactSet } from '../../shared/setImpactTypes.ts';
+import type { SetImpactPayload, SetImpactSet } from '../../shared/setImpact/types.ts';
 
 function set(over: Partial<SetImpactSet> & Pick<SetImpactSet, 'code'>): SetImpactSet {
   return {

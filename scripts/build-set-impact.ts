@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import { requireSynonymDatabase, type SynonymDatabase } from '../shared/data/cardIdentity';
-import { createSetImpactBuilder, type ImpactDeck, type RegulationMarks } from '../shared/setImpact';
+import { createSetImpactBuilder, type ImpactDeck, type RegulationMarks } from '../shared/setImpact/build';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE_DIR = join(ROOT, '.cache', 'set-impact');

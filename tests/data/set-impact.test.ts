@@ -19,7 +19,7 @@ import {
   type ImpactDeck,
   placementWeight,
   type RegulationMarks
-} from '../../shared/setImpact.ts';
+} from '../../shared/setImpact/build.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 
 const DB: SynonymDatabase = {

@@ -4,7 +4,7 @@
  * `scripts/build-set-impact.ts` writes this shape to `static/set-impact.json`
  * and the /tools/set-impact page reads it. The type lives here so producer and
  * consumer can't drift.
- * @module shared/setImpactTypes
+ * @module shared/setImpact/types
  */
 
 /**

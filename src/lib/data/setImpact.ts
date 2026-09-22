@@ -6,7 +6,7 @@
  * @module src/lib/data/setImpact
  */
 
-import type { SetImpactPayload } from '../../../shared/setImpactTypes.js';
+import type { SetImpactPayload } from '../../../shared/setImpact/types.js';
 
 const SET_IMPACT_PATH = '/set-impact.json';
 

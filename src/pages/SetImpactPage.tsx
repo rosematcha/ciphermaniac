@@ -7,7 +7,7 @@ import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
-import type { SetImpactAttribution, SetImpactMetric, SetImpactPayload } from '../../shared/setImpactTypes';
+import type { SetImpactAttribution, SetImpactMetric, SetImpactPayload } from '../../shared/setImpact/types';
 import {
   defaultDirection,
   formatShare,
