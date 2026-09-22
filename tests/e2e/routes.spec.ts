@@ -337,8 +337,8 @@ test('set impact ranks sets by lifetime and keeps its toggles in the URL', async
   const lifetimes = await page.locator('.set-impact-value').allTextContents();
   const values = lifetimes.map(Number);
   expect(values).toEqual([...values].sort((a, b) => b - a));
-  await page.getByRole('tab', { name: 'New to Standard' }).click();
-  await expect(page).toHaveURL(/[?&]attr=new/);
+  await page.getByRole('tab', { name: 'Keeps it legal' }).click();
+  await expect(page).toHaveURL(/[?&]attr=legal/);
   await page.getByRole('button', { name: /^Set/ }).click();
   const names = await page.locator('td.set-impact-name').allTextContents();
   expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));

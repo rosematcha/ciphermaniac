@@ -7,7 +7,7 @@ import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
-import type { SetImpactAttribution, SetImpactMetric, SetImpactPayload } from '../../shared/setImpact/types';
+import type { SetImpactAttribution, SetImpactMetric } from '../../shared/setImpact/types';
 import {
   defaultDirection,
   formatShare,
@@ -21,8 +21,8 @@ import {
 import '../styles/pages/set-impact.css';
 
 const ATTRIBUTION_OPTIONS: { value: SetImpactAttribution; label: string }[] = [
-  { value: 'legal', label: 'Keeps it legal' },
-  { value: 'new', label: 'New to Standard' }
+  { value: 'new', label: 'New to Standard' },
+  { value: 'legal', label: 'Keeps it legal' }
 ];
 const METRIC_OPTIONS: { value: SetImpactMetric; label: string }[] = [
   { value: 'linear', label: 'Every deck' },
@@ -37,7 +37,7 @@ export function SetImpactPage() {
   // Both toggles live in the URL so a shared link lands on the same view; the
   // defaults are omitted to keep the bare path canonical.
   const [params, setParams] = useSearchParams<{ attr?: string; metric?: string }>();
-  const attribution = (): SetImpactAttribution => (params.attr === 'new' ? 'new' : 'legal');
+  const attribution = (): SetImpactAttribution => (params.attr === 'legal' ? 'legal' : 'new');
   const metric = (): SetImpactMetric => (params.metric === 'weighted' ? 'weighted' : 'linear');
 
   const [sortColumn, setSortColumn] = createSignal<SetImpactSortColumn>('lifetime');
@@ -66,9 +66,6 @@ export function SetImpactPage() {
     <>
       <section class='hero'>
         <h1>Set Impact</h1>
-        <div class='hero-meta'>
-          <HeroMeta payload={data()} />
-        </div>
       </section>
 
       <Section>
@@ -76,7 +73,7 @@ export function SetImpactPage() {
           <Segmented<SetImpactAttribution>
             options={ATTRIBUTION_OPTIONS}
             selected={attribution()}
-            onSelect={next => setParams({ attr: next === 'legal' ? undefined : next }, { replace: true })}
+            onSelect={next => setParams({ attr: next === 'new' ? undefined : next }, { replace: true })}
             ariaLabel='Credit reprints to'
           />
           <Segmented<SetImpactMetric>
@@ -101,35 +98,6 @@ export function SetImpactPage() {
           <p class='set-impact-note'>* Predicted.</p>
         </Show>
       </Section>
-    </>
-  );
-}
-
-/** Counts in reserved slots, so the line doesn't grow when the data lands. */
-function HeroMeta(props: { payload: SetImpactPayload | undefined }) {
-  const span = () => {
-    const events = props.payload?.events ?? [];
-    return events.length ? `${monthYear(events[0].date)} to ${monthYear(events[events.length - 1].date)}` : '';
-  };
-  return (
-    <>
-      <span>
-        <span class='num-slot' style={{ 'min-width': '2ch' }}>
-          {props.payload?.sets.length ?? ''}
-        </span>{' '}
-        sets
-      </span>
-      <span class='dot'>·</span>
-      <span>
-        <span class='num-slot' style={{ 'min-width': '2ch' }}>
-          {props.payload?.events.length ?? ''}
-        </span>{' '}
-        majors
-      </span>
-      <span class='dot'>·</span>
-      <span class='num-slot' style={{ 'min-width': '15ch' }}>
-        {span()}
-      </span>
     </>
   );
 }
