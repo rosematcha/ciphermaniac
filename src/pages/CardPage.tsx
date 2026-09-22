@@ -14,7 +14,7 @@ import {
   supportsConversion
 } from './cardPage/model';
 import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, For, on, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
 import {
   type Day2CardStat,
   fetchArchetype,
@@ -51,6 +51,7 @@ import { isJokeMode, JOKE_PARAM } from '../lib/jokeMode';
 import { tcgplayerAffiliateUrl } from '../utils/tcgplayer';
 import { decodeListIndex, fetchListIndex } from '../lib/data/lists';
 import { PlayedIn } from './cardPage/PlayedIn';
+import { pinReachable } from '../lib/stickyRail';
 import { type CardList, listsForCard } from './cardPage/playedInModel';
 
 const CONVERSION_INTRO = 'Share of the Day 1 decks playing this card that advanced to Day 2.';
@@ -406,6 +407,17 @@ function CardPageBody(props: {
   const [searchParams] = useSearchParams();
   const joke = createMemo(() => isJokeMode(searchParams[JOKE_PARAM]));
   const printings = createMemo<PrintingRow[]>(() => buildPrintingRows(props.db, itemUid(props.card), joke()));
+
+  // The rail is sticky by its top edge; with thirteen printings it outgrows a
+  // laptop window, so pin it by whichever edge keeps all of it reachable.
+  let rail: HTMLDivElement | undefined;
+  onMount(() => {
+    if (!rail) {
+      return;
+    }
+    const navHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topnav-h')) || 0;
+    onCleanup(pinReachable(rail, () => navHeight() + 16));
+  });
   return (
     <>
       <div class='card-page-hero'>
@@ -440,7 +452,7 @@ function CardPageBody(props: {
       </Show>
 
       <div class='card-page-grid'>
-        <div class='card-page-left'>
+        <div class='card-page-left' ref={rail}>
           <CardHeroArt card={props.card} shown={props.previewPrint} />
 
           <div class='stats-list'>
