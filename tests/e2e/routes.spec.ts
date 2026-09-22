@@ -323,7 +323,52 @@ test('the tools index features the tier list, label maker and pack EV as tiles',
   await expect(featured.nth(1)).toHaveAttribute('href', '/tools/deck-box-labels');
   await expect(featured.nth(2)).toHaveAttribute('href', '/tools/pack-ev');
   // Everything else is a plain row, not a tile.
-  await expect(page.locator('.tools-more-item')).toHaveCount(4);
+  await expect(page.locator('.tools-more-item')).toHaveCount(5);
+  await expect(page.locator('.tools-more-item', { hasText: 'Set Impact' })).toHaveAttribute(
+    'href',
+    '/tools/set-impact'
+  );
+});
+
+test('set impact ranks sets by lifetime and keeps its toggles in the URL', async ({ page }) => {
+  await gotoClean(page, '/tools/set-impact');
+  const rows = page.locator('.set-impact-table tbody tr');
+  await expect(rows.first()).toBeVisible();
+  // Ranked sets lead in order; sets seen at too few majors follow, greyed.
+  const lifetimes = await page.locator('tr:not(.is-unranked) .set-impact-value').allTextContents();
+  const values = lifetimes.map(Number);
+  expect(values).toEqual([...values].sort((a, b) => b - a));
+  await expect(page.locator('tr.is-unranked').first()).toBeVisible();
+  const last = page.locator('.set-impact-table tbody tr.is-link').last();
+  await expect(last).toHaveClass(/is-unranked/);
+  await page.getByRole('tab', { name: 'Keeps it legal' }).click();
+  await expect(page).toHaveURL(/[?&]attr=legal/);
+  await page.getByRole('button', { name: /^Set/ }).click();
+  const names = await page.locator('td.set-impact-name').allTextContents();
+  expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+});
+
+test('set impact explains its figures without sorting on a tap', async ({ page }) => {
+  await gotoClean(page, '/tools/set-impact');
+  const tip = page.locator('th .info-tip:visible').first();
+  await tip.click();
+  await expect(tip.locator('.info-tip-bubble')).toBeVisible();
+  await expect(page.locator('th[aria-sort="descending"]')).toHaveClass(/set-impact-lifetime/);
+});
+
+test('set impact opens a picked set in the panel', async ({ page }) => {
+  await gotoClean(page, '/tools/set-impact');
+  const panel = page.locator('.set-impact-panel:visible, .set-impact-inline:visible').first();
+  const first = await page.locator('.set-impact-pick').first().textContent();
+  await expect(panel.locator('h2')).toContainText((first ?? '').trim().split(/\s+[A-Z0-9]{2,4}$/)[0]);
+  const third = page.locator('.set-impact-pick').nth(2);
+  const name = ((await third.textContent()) ?? '').trim();
+  await third.click();
+  await expect(third).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.set-impact-panel:visible h2, .set-impact-inline:visible h2').first()).toContainText(
+    name.replace(/\s+[A-Z0-9]{2,4}$/, '')
+  );
+  await expect(page.locator('.set-impact-card:visible').first()).toBeVisible();
 });
 
 test('pack EV sets a pack opened against a pack sealed, and opens packs', async ({ page }) => {

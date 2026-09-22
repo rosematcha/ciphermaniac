@@ -42,7 +42,8 @@ const ROUTES = [
   '/players/1272',
   '/tools/tier-list',
   '/tools/earnings',
-  '/tools/meta-binder'
+  '/tools/meta-binder',
+  '/tools/set-impact'
 ];
 
 /**
