@@ -146,8 +146,8 @@ test('the fold shows six and only hides five or more', () => {
 });
 
 test('a single-event report is detected so rows can drop the event column', () => {
-  const lists = listsForCard(records(), BOSS);
-  assert.equal(singleEvent(lists), false);
-  assert.equal(singleEvent(lists.filter(l => l.record.event?.id === 't1')), true);
+  const all = records();
+  assert.equal(singleEvent(all), false);
+  assert.equal(singleEvent(all.filter(r => r.event?.id === 't1')), true);
   assert.equal(singleEvent([]), true);
 });

@@ -127,8 +127,12 @@ export function foldedCount(total: number): number {
   return total < VISIBLE_GROUPS + MIN_HIDDEN_GROUPS ? total : VISIBLE_GROUPS;
 }
 
-/** True when every list was played at the same event, so naming it per row says nothing. */
-export function singleEvent(lists: readonly CardList[]): boolean {
-  const ids = new Set(lists.map(l => l.record.event?.id ?? ''));
+/**
+ * True when the whole report is one event, so naming it per row says nothing.
+ * Judged on every list in the report, not the card's: a niche card played
+ * twice at one weekly still needs its rows to say where.
+ */
+export function singleEvent(records: readonly ListRecord[]): boolean {
+  const ids = new Set(records.map(r => r.event?.id ?? ''));
   return ids.size <= 1;
 }

@@ -19,14 +19,15 @@ import {
   foldedCount,
   LISTS_PER_GROUP,
   LISTS_PER_GROUP_MORE,
-  type PlayedInGroup,
-  singleEvent
+  type PlayedInGroup
 } from './playedInModel';
 
 interface PlayedInProps {
   rows: ArchetypeUsageRow[];
   /** Every list running the card, or null when the report has no list index. */
   lists: CardList[] | null;
+  /** Whether the report is a single event (the rows then drop the event column). */
+  oneEvent: boolean;
   card: CardItem;
   cardUid: string | null;
   db: SynonymDatabase | null;
@@ -61,7 +62,6 @@ export function PlayedIn(props: PlayedInProps) {
   const shown = createMemo(() => (unfolded() ? groups() : groups().slice(0, foldedCount(groups().length))));
   const hidden = createMemo(() => groups().length - foldedCount(groups().length));
   const open = useToggleSet<string>();
-  const oneEvent = createMemo(() => props.lists !== null && singleEvent(props.lists));
 
   return (
     <div class='card-section'>
@@ -81,7 +81,7 @@ export function PlayedIn(props: PlayedInProps) {
               open={open.has(group.usage.entry.name)}
               onToggle={() => open.toggle(group.usage.entry.name)}
               hasLists={props.lists !== null}
-              oneEvent={oneEvent()}
+              oneEvent={props.oneEvent}
               card={props.card}
               cardUid={props.cardUid}
               db={props.db}

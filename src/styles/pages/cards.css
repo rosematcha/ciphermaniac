@@ -540,11 +540,11 @@
   box-shadow: var(--focus-ring);
 }
 /* The archetype row's open state must not turn the chevrons of the lists
-   inside it. */
-.pi-list .au-chevron {
+   inside it; the list's own state does. */
+.au-row.is-open .pi-list .au-chevron {
   transform: none;
 }
-.pi-list.is-open .au-chevron {
+.au-row.is-open .pi-list.is-open .au-chevron {
   transform: rotate(90deg);
 }
 .pi-place {
@@ -602,11 +602,11 @@
   padding-left: 7px;
   margin-left: -9px;
 }
-.deck-inline-list a {
+.pi-list-body .deck-inline-list a {
   color: var(--fg);
   text-decoration: none;
 }
-.deck-inline-list a:hover {
+.pi-list-body .deck-inline-list a:hover {
   color: var(--accent-ink-hover);
 }
 .pi-list-foot {

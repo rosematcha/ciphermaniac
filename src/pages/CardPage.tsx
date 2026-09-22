@@ -52,7 +52,7 @@ import { tcgplayerAffiliateUrl } from '../utils/tcgplayer';
 import { decodeListIndex, fetchListIndex } from '../lib/data/lists';
 import { PlayedIn } from './cardPage/PlayedIn';
 import { pinReachable } from '../lib/stickyRail';
-import { type CardList, listsForCard } from './cardPage/playedInModel';
+import { type CardList, listsForCard, singleEvent } from './cardPage/playedInModel';
 
 const CONVERSION_INTRO = 'Share of the Day 1 decks playing this card that advanced to Day 2.';
 const AFFILIATE_DISCLOSURE = 'Ciphermaniac may earn a commission from purchases through this TCGplayer link.';
@@ -300,6 +300,7 @@ export function CardPage() {
     const records = listRecords();
     return records ? listsForCard(records, globalCardUid()) : null;
   });
+  const oneEvent = createMemo(() => singleEvent(listRecords() ?? []));
 
   // Day 1 → Day 2 conversion for the card, scoped to the active tournament.
   // Skipped for sources with no single Day 2 cut: Online Meta (rolling 14-day
@@ -365,6 +366,7 @@ export function CardPage() {
           archetypeUsage={archetypeUsageData()}
           archetypeUsageLoading={archetypeUsage.loading || archetypeIndex.loading || listIndex.loading}
           lists={cardLists()}
+          oneEvent={oneEvent()}
           cardUid={globalCardUid()}
           tournament={effectiveTournament()}
           isSnapshot={isSnapshot()}
@@ -389,6 +391,7 @@ function CardPageBody(props: {
   archetypeUsage: ArchetypeUsageRow[] | null | undefined;
   archetypeUsageLoading: boolean;
   lists: CardList[] | null;
+  oneEvent: boolean;
   cardUid: string | null;
   tournament: string;
   isSnapshot: boolean;
@@ -565,6 +568,7 @@ function CardPageBody(props: {
               <PlayedIn
                 rows={props.archetypeUsage!}
                 lists={props.lists}
+                oneEvent={props.oneEvent}
                 card={props.card}
                 cardUid={props.cardUid}
                 db={props.db}
