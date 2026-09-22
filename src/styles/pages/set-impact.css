@@ -51,13 +51,35 @@
   gap: 3px;
 }
 
-.set-impact-thumbs .card-img {
+/* Each thumbnail is a fixed box, so neither the art arriving nor CardImage's
+   fallback (padded, with a set and number) can resize the row around it. */
+.set-impact-thumbs a {
+  flex: none;
   display: block;
   width: 26px;
   height: 36px;
-  object-fit: cover;
+  overflow: hidden;
   border-radius: 2px;
   background: var(--surface-2);
+}
+
+.set-impact-thumbs .card-img,
+.set-impact-thumbs .card-image-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.set-impact-thumbs .card-img {
+  object-fit: cover;
+}
+
+/* Too small for the set and number to read; the empty frame says it all. */
+.set-impact-thumbs .card-image-fallback {
+  padding: 0;
+}
+
+.set-impact-thumbs .card-image-fallback-inner {
+  display: none;
 }
 
 /* What the asterisk on a rotation date means. */
