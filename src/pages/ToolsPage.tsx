@@ -21,6 +21,11 @@ const secondary: { href: string; name: string; desc: string }[] = [
     desc: 'Rank players by prize money, across a career or inside a single season'
   },
   {
+    href: '/tools/set-impact',
+    name: 'Set Impact',
+    desc: 'How much of every major each set supplied over its time in Standard'
+  },
+  {
     href: '/tools/in-loving-memory',
     name: 'In Loving Memory',
     desc: 'Every Day-2 decklist from rotated archetypes, frozen at the end of their run'

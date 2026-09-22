@@ -323,7 +323,25 @@ test('the tools index features the tier list, label maker and pack EV as tiles',
   await expect(featured.nth(1)).toHaveAttribute('href', '/tools/deck-box-labels');
   await expect(featured.nth(2)).toHaveAttribute('href', '/tools/pack-ev');
   // Everything else is a plain row, not a tile.
-  await expect(page.locator('.tools-more-item')).toHaveCount(4);
+  await expect(page.locator('.tools-more-item')).toHaveCount(5);
+  await expect(page.locator('.tools-more-item', { hasText: 'Set Impact' })).toHaveAttribute(
+    'href',
+    '/tools/set-impact'
+  );
+});
+
+test('set impact ranks sets by lifetime and keeps its toggles in the URL', async ({ page }) => {
+  await gotoClean(page, '/tools/set-impact');
+  const rows = page.locator('.set-impact-table tbody tr');
+  await expect(rows.first()).toBeVisible();
+  const lifetimes = await page.locator('.set-impact-value').allTextContents();
+  const values = lifetimes.map(Number);
+  expect(values).toEqual([...values].sort((a, b) => b - a));
+  await page.getByRole('tab', { name: 'New to Standard' }).click();
+  await expect(page).toHaveURL(/[?&]attr=new/);
+  await page.getByRole('button', { name: /^Set/ }).click();
+  const names = await page.locator('td.set-impact-name').allTextContents();
+  expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
 });
 
 test('pack EV sets a pack opened against a pack sealed, and opens packs', async ({ page }) => {

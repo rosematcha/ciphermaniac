@@ -1,0 +1,96 @@
+/* Set Impact table (/tools/set-impact). */
+
+/* Attribution and metric toggles share a row and wrap together. */
+.set-impact-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.set-impact-table .data td.set-impact-name {
+  white-space: nowrap;
+}
+
+.set-impact-code {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+}
+
+/* The lifetime figure with its bar, so the ranking reads without the digits. */
+.set-impact-table .data .set-impact-lifetime {
+  width: 26%;
+}
+
+.set-impact-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.set-impact-track {
+  flex: 1;
+  display: flex;
+  height: 8px;
+}
+
+.set-impact-fill {
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.set-impact-value {
+  min-width: 4ch;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-impact-thumbs {
+  display: flex;
+  gap: 3px;
+}
+
+.set-impact-thumbs .card-img {
+  display: block;
+  width: 26px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: var(--surface-2);
+}
+
+/* What the asterisk on a rotation date means. */
+.set-impact-note {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+/* A phone keeps the set, its per-major figure and its lifetime; the dates,
+   counts and art are on the desktop table. */
+@media (max-width: 640px) {
+  .set-impact-table .data .set-impact-wide,
+  .set-impact-note {
+    display: none;
+  }
+
+  /* Fixed layout so the name takes what the figures leave and truncates,
+     rather than wrapping every row to three lines. */
+  .set-impact-table .data {
+    table-layout: fixed;
+  }
+
+  .set-impact-table .data .num {
+    width: 76px;
+  }
+
+  .set-impact-table .data .set-impact-lifetime {
+    width: 34%;
+  }
+
+  .set-impact-table .data td.set-impact-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
