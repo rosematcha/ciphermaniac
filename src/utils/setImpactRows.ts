@@ -25,8 +25,22 @@ export interface SetImpactRow {
   /** perMajor × years; null when the rotation is unknown. */
   lifetime: number | null;
   /** Cards credited under the attribution, most played first. */
-  cards: Array<SetImpactCard & { share: number }>;
+  cards: Array<SetImpactCard & { share: number; staple: boolean }>;
+  /** Per-major figure at each event the set was legal for, oldest first. */
+  series: number[];
+  /** Dates of the first and last majors seen while the set was legal. */
+  seenFrom: string | null;
+  seenUntil: string | null;
+  /** Share of the set's legal years those majors span; the rest of the lifetime is projected. */
+  coverage: number | null;
+  /** Part of perMajor that comes from staples. */
+  staples: number;
 }
+
+/** A card in at least this share of decks is a staple. */
+export const STAPLE_SHARE = 0.4;
+
+const YEAR_MS = 365.25 * 86_400_000;
 
 export type SetImpactSortColumn = 'name' | 'legalFrom' | 'rotatesOn' | 'majors' | 'perMajor' | 'years' | 'lifetime';
 
@@ -41,7 +55,14 @@ export function setImpactRows(
   metric: SetImpactMetric
 ): SetImpactRow[] {
   return payload.sets.map(set => {
-    const perMajor = mean(set.series[attribution][metric]);
+    const series = set.series[attribution][metric];
+    const perMajor = mean(series);
+    const cards = set.cards
+      .filter(card => attribution === 'legal' || card.isNew)
+      .map(card => ({ ...card, share: card[metric], staple: card.linear >= STAPLE_SHARE }))
+      .sort((a, b) => b.share - a.share);
+    const seenFrom = payload.events[set.events[0]]?.date ?? null;
+    const seenUntil = payload.events[set.events[set.events.length - 1]]?.date ?? null;
     return {
       code: set.code,
       name: set.name,
@@ -52,12 +73,22 @@ export function setImpactRows(
       perMajor,
       years: set.legalYears,
       lifetime: set.legalYears === null ? null : perMajor * set.legalYears,
-      cards: set.cards
-        .filter(card => attribution === 'legal' || card.isNew)
-        .map(card => ({ ...card, share: card[metric] }))
-        .sort((a, b) => b.share - a.share)
+      cards,
+      series,
+      seenFrom,
+      seenUntil,
+      coverage: coverageOf(set.legalFrom, seenFrom, seenUntil, set.legalYears),
+      staples: cards.filter(card => card.staple).reduce((sum, card) => sum + card.share, 0)
     };
   });
+}
+
+function coverageOf(legalFrom: string, from: string | null, until: string | null, years: number | null): number | null {
+  if (!from || !until || !years) {
+    return null;
+  }
+  const start = from < legalFrom ? legalFrom : from;
+  return Math.min(1, Math.max(0, (Date.parse(until) - Date.parse(start)) / YEAR_MS / years));
 }
 
 const SORT_KEYS: Record<SetImpactSortColumn, (row: SetImpactRow) => string | number | null> = {

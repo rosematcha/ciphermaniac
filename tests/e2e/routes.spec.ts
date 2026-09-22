@@ -344,6 +344,21 @@ test('set impact ranks sets by lifetime and keeps its toggles in the URL', async
   expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
 });
 
+test('set impact opens a picked set in the panel', async ({ page }) => {
+  await gotoClean(page, '/tools/set-impact');
+  const panel = page.locator('.set-impact-panel:visible, .set-impact-inline:visible').first();
+  const first = await page.locator('.set-impact-pick').first().textContent();
+  await expect(panel.locator('h2')).toContainText((first ?? '').trim().split(/\s+[A-Z0-9]{2,4}$/)[0]);
+  const third = page.locator('.set-impact-pick').nth(2);
+  const name = ((await third.textContent()) ?? '').trim();
+  await third.click();
+  await expect(third).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.set-impact-panel:visible h2, .set-impact-inline:visible h2').first()).toContainText(
+    name.replace(/\s+[A-Z0-9]{2,4}$/, '')
+  );
+  await expect(page.locator('.set-impact-card:visible').first()).toBeVisible();
+});
+
 test('pack EV sets a pack opened against a pack sealed, and opens packs', async ({ page }) => {
   await gotoClean(page, '/tools/pack-ev');
   // Nothing is open until a set is picked.

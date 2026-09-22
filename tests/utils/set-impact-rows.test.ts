@@ -109,3 +109,30 @@ test('shares are whole percents and dates read as month and year', () => {
   assert.equal(monthYear('2026-04-10'), 'Apr 2026');
   assert.equal(monthYear('2025-01-01'), 'Jan 2025');
 });
+
+test('a row carries its series, the span seen, coverage and staples', () => {
+  const payload: SetImpactPayload = {
+    ...PAYLOAD,
+    events: [
+      { date: '2024-01-01', name: 'A', players: 100 },
+      { date: '2025-07-02', name: 'B', players: 100 }
+    ]
+  };
+  const [aaa, bbb] = setImpactRows(payload, 'legal', 'linear');
+  assert.deepEqual(aaa.series, [1, 3]);
+  assert.equal(aaa.seenFrom, '2024-01-01');
+  assert.equal(aaa.seenUntil, '2025-07-02');
+  // Eighteen months of a three-year life.
+  assert.ok(Math.abs((aaa.coverage ?? 0) - 0.5) < 0.01);
+  // Reprint is in 90% of decks, a staple; Debut at 30% is not.
+  assert.deepEqual(
+    aaa.cards.map(card => [card.name, card.staple]),
+    [
+      ['Reprint', true],
+      ['Debut', false]
+    ]
+  );
+  assert.equal(aaa.staples, 0.9);
+  // No rotation date, no coverage.
+  assert.equal(bbb.coverage, null);
+});

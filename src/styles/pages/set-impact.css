@@ -116,6 +116,14 @@
     text-overflow: ellipsis;
   }
 
+  .set-impact-pick {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
   /* The name alone fits; the code only pushed it into an ellipsis. */
   .set-impact-code {
     display: none;
@@ -140,5 +148,201 @@
 
   .set-impact-controls .segmented button {
     flex: 1;
+  }
+}
+
+/* ---------- Table and detail panel ----------
+   The panel sits beside the table and stays in view while the table scrolls.
+   A phone has no room beside, so it opens under the picked row instead. */
+.set-impact-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.set-impact-panel {
+  position: sticky;
+  top: calc(var(--topnav-h) + var(--space-3));
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--rule);
+}
+
+.set-impact-table .data tr.is-selected td {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* The name is the row's button; it reads as plain text. */
+.set-impact-pick {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.set-impact-inline {
+  display: none;
+}
+
+.set-impact-detail h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.set-impact-span {
+  margin: 2px 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.set-impact-figures {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 0 var(--space-3);
+  border-top: 1px solid var(--fg);
+  border-bottom: 1px solid var(--rule);
+}
+
+.set-impact-figures div {
+  padding: 6px var(--space-4) 6px 0;
+}
+
+.set-impact-figures dt {
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.set-impact-figures dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-impact-spark {
+  display: block;
+  width: 100%;
+  height: 56px;
+}
+
+.set-impact-spark polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.set-impact-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.set-impact-cards {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.set-impact-card {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 80px 36px;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 3px 0;
+  font-size: var(--text-base);
+  color: var(--fg);
+}
+
+.set-impact-card:hover {
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+
+.set-impact-card-art {
+  display: block;
+  width: 22px;
+  height: 31px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--surface-2);
+}
+
+.set-impact-card-art .card-img,
+.set-impact-card-art .card-image-fallback {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  object-fit: cover;
+}
+
+.set-impact-card-art .card-image-fallback-inner {
+  display: none;
+}
+
+.set-impact-card-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.set-impact-tag {
+  margin-left: 6px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+
+.set-impact-card-track {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--muted) 15%, transparent);
+}
+
+.set-impact-card-fill {
+  display: block;
+  height: 100%;
+  background: color-mix(in srgb, var(--accent) 55%, var(--surface));
+}
+
+.set-impact-card-fill.is-staple {
+  background: var(--accent);
+}
+
+.set-impact-card-share {
+  text-align: right;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.set-impact-more {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .set-impact-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .set-impact-panel {
+    display: none;
+  }
+
+  .set-impact-inline {
+    display: table-row;
+  }
+
+  .set-impact-table .data .set-impact-inline td {
+    padding: var(--space-3) 10px var(--space-4);
+    white-space: normal;
+    background: var(--surface);
   }
 }

@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { A, useSearchParams } from '@solidjs/router';
 import { fetchSetImpact } from '../lib/data/setImpact';
 import { resolved } from '../lib/resource';
@@ -7,11 +7,11 @@ import { Segmented } from '../components/Segmented';
 import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
+import { SetPanel } from './setImpact/SetPanel';
 import type { SetImpactAttribution, SetImpactMetric } from '../../shared/setImpact/types';
 import {
   defaultDirection,
   formatShare,
-  monthYear,
   type SetImpactRow,
   setImpactRows,
   type SetImpactSortColumn,
@@ -29,6 +29,23 @@ const METRIC_OPTIONS: { value: SetImpactMetric; label: string }[] = [
   { value: 'weighted', label: 'Weighted by finish' }
 ];
 const THUMBNAILS = 4;
+/** Must match the phone breakpoint in set-impact.css, which hides the wide columns. */
+const PHONE_QUERY = '(max-width: 640px)';
+const WIDE_COLUMNS = 2;
+
+/**
+ * The columns a row spans. Cells hidden with display: none leave the table's
+ * grid, so the panel row has to span only the columns still showing, or the
+ * table grows phantom columns and squeezes the rest.
+ */
+function createVisibleColumns(): () => number {
+  const query = window.matchMedia(PHONE_QUERY);
+  const [phone, setPhone] = createSignal(query.matches);
+  const update = () => setPhone(query.matches);
+  query.addEventListener('change', update);
+  onCleanup(() => query.removeEventListener('change', update));
+  return () => COLUMNS.length + 1 - (phone() ? WIDE_COLUMNS : 0);
+}
 
 export function SetImpactPage() {
   const [payload] = createResource(fetchSetImpact);
@@ -57,6 +74,10 @@ export function SetImpactPage() {
       ? sortSetImpactRows(setImpactRows(loaded, attribution(), metric()), sortColumn(), sortDirection())
       : [];
   });
+
+  // The panel shows the picked set, or the table's first row until one is picked.
+  const [picked, setPicked] = createSignal<string | null>(null);
+  const selected = () => rows().find(row => row.code === picked()) ?? rows()[0];
 
   onMount(() => {
     document.title = 'Set Impact — Ciphermaniac';
@@ -94,8 +115,26 @@ export function SetImpactPage() {
             </Show>
           }
         >
-          <ImpactTable rows={rows()} sortColumn={sortColumn()} sortDirection={sortDirection()} onSort={toggleSort} />
-          <p class='set-impact-note'>* Predicted.</p>
+          <div class='set-impact-layout'>
+            <div>
+              <ImpactTable
+                rows={rows()}
+                sortColumn={sortColumn()}
+                sortDirection={sortDirection()}
+                onSort={toggleSort}
+                selected={selected()?.code ?? null}
+                onSelect={setPicked}
+              />
+              <p class='set-impact-note'>* Predicted.</p>
+            </div>
+            <Show when={selected()}>
+              {row => (
+                <aside class='set-impact-panel'>
+                  <SetPanel row={row()} />
+                </aside>
+              )}
+            </Show>
+          </div>
         </Show>
       </Section>
     </>
@@ -104,11 +143,8 @@ export function SetImpactPage() {
 
 const COLUMNS: { column: SetImpactSortColumn; label: string; class: string }[] = [
   { column: 'name', label: 'Set', class: 'set-impact-name' },
-  { column: 'legalFrom', label: 'Legal', class: 'set-impact-wide' },
-  { column: 'rotatesOn', label: 'Rotates', class: 'set-impact-wide' },
   { column: 'majors', label: 'Majors', class: 'num set-impact-wide' },
   { column: 'perMajor', label: 'Per major', class: 'num' },
-  { column: 'years', label: 'Years', class: 'num set-impact-wide' },
   { column: 'lifetime', label: 'Lifetime', class: 'num set-impact-lifetime' }
 ];
 
@@ -117,8 +153,11 @@ function ImpactTable(props: {
   sortColumn: SetImpactSortColumn;
   sortDirection: SortDirection;
   onSort: (column: SetImpactSortColumn) => void;
+  selected: string | null;
+  onSelect: (code: string) => void;
 }) {
   const maxLifetime = () => Math.max(0, ...props.rows.map(row => row.lifetime ?? 0));
+  const span = createVisibleColumns();
   return (
     <div class='table-wrap set-impact-table'>
       <table class='data'>
@@ -147,48 +186,78 @@ function ImpactTable(props: {
           </tr>
         </thead>
         <tbody>
-          <For each={props.rows}>{row => <ImpactRow row={row} maxLifetime={maxLifetime()} />}</For>
+          <For each={props.rows}>
+            {row => (
+              <ImpactRow
+                row={row}
+                maxLifetime={maxLifetime()}
+                span={span()}
+                selected={props.selected === row.code}
+                onSelect={() => props.onSelect(row.code)}
+              />
+            )}
+          </For>
         </tbody>
       </table>
     </div>
   );
 }
 
-function ImpactRow(props: { row: SetImpactRow; maxLifetime: number }) {
+/**
+ * One set. The whole row picks it for the panel; the name is also a button so
+ * the pick is reachable from the keyboard. On a phone the panel opens as a row
+ * under the set instead of beside the table.
+ */
+function ImpactRow(props: {
+  row: SetImpactRow;
+  maxLifetime: number;
+  span: number;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const width = () => (props.maxLifetime > 0 ? ((props.row.lifetime ?? 0) / props.maxLifetime) * 100 : 0);
   return (
-    <tr>
-      <td class='set-impact-name'>
-        {props.row.name} <span class='set-impact-code'>{props.row.code}</span>
-      </td>
-      <td class='muted-cell set-impact-wide'>{monthYear(props.row.legalFrom)}</td>
-      <td class='muted-cell set-impact-wide'>
-        {props.row.rotatesOn ? monthYear(props.row.rotatesOn) : '—'}
-        {props.row.rotationPredicted ? '*' : ''}
-      </td>
-      <td class='num set-impact-wide'>{props.row.majors}</td>
-      <td class='num'>{props.row.perMajor.toFixed(1)}</td>
-      <td class='num set-impact-wide'>{props.row.years?.toFixed(1) ?? '—'}</td>
-      <td class='num set-impact-lifetime'>
-        <div class='set-impact-bar'>
-          <div class='set-impact-track'>
-            <div class='set-impact-fill' style={{ width: `${width()}%` }} />
+    <>
+      <tr class='is-link' classList={{ 'is-selected': props.selected }} onClick={() => props.onSelect()}>
+        <td class='set-impact-name'>
+          <button type='button' class='set-impact-pick' aria-pressed={props.selected}>
+            {props.row.name} <span class='set-impact-code'>{props.row.code}</span>
+          </button>
+        </td>
+        <td class='num set-impact-wide'>{props.row.majors}</td>
+        <td class='num'>{props.row.perMajor.toFixed(1)}</td>
+        <td class='num set-impact-lifetime'>
+          <div class='set-impact-bar'>
+            <div class='set-impact-track'>
+              <div class='set-impact-fill' style={{ width: `${width()}%` }} />
+            </div>
+            <span class='set-impact-value'>{props.row.lifetime?.toFixed(1) ?? '—'}</span>
           </div>
-          <span class='set-impact-value'>{props.row.lifetime?.toFixed(1) ?? '—'}</span>
-        </div>
-      </td>
-      <td class='set-impact-wide'>
-        <div class='set-impact-thumbs'>
-          <For each={props.row.cards.slice(0, THUMBNAILS)}>
-            {card => (
-              <A href={`/cards/${card.set}/${card.number}`} title={`${card.name} · ${formatShare(card.share)}`}>
-                <CardImage set={card.set} number={card.number} size='xs' alt={card.name} />
-              </A>
-            )}
-          </For>
-        </div>
-      </td>
-    </tr>
+        </td>
+        <td class='set-impact-wide'>
+          <div class='set-impact-thumbs'>
+            <For each={props.row.cards.slice(0, THUMBNAILS)}>
+              {card => (
+                <A
+                  href={`/cards/${card.set}/${card.number}`}
+                  title={`${card.name} · ${formatShare(card.share)}`}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <CardImage set={card.set} number={card.number} size='xs' alt={card.name} />
+                </A>
+              )}
+            </For>
+          </div>
+        </td>
+      </tr>
+      <Show when={props.selected}>
+        <tr class='set-impact-inline'>
+          <td colspan={props.span}>
+            <SetPanel row={props.row} />
+          </td>
+        </tr>
+      </Show>
+    </>
   );
 }
 
