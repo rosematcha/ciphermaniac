@@ -1,5 +1,16 @@
 import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, type JSX, onMount, Show } from 'solid-js';
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  ErrorBoundary,
+  type JSX,
+  lazy,
+  onMount,
+  Show,
+  Suspense
+} from 'solid-js';
 import {
   fetchArchetype,
   fetchArchetypes,
@@ -32,12 +43,14 @@ import { formatRange } from '../components/matchupsPanel/model';
 import { estimateDeckCost } from '../lib/deckCost';
 import { fetchCardFacets } from '../lib/data/cardFacets';
 import { sortByDeckOrder } from '../lib/cardOrder';
+import { createListsState, ListsControls } from './archetypePage/listsControls';
 import '../styles/pages/archetype.css';
 
-type ArchTab = 'cards' | 'matchups' | 'advanced';
+type ArchTab = 'cards' | 'lists' | 'matchups' | 'advanced';
 
 const TAB_OPTIONS: { value: ArchTab; label: string }[] = [
   { value: 'cards', label: 'All cards' },
+  { value: 'lists', label: 'Lists' },
   { value: 'matchups', label: 'Matchups' },
   { value: 'advanced', label: 'Filters' }
 ];
@@ -56,6 +69,9 @@ const SORT_OPTIONS: { value: CardSort; label: string }[] = [
   { value: 'usage', label: 'Usage' },
   { value: 'deck', label: 'Deck order' }
 ];
+
+// The Lists tab's body (table, filmstrip, deck) loads with the tab, not the page.
+const ListsTab = lazy(() => import('./archetypePage/ListsTab'));
 
 const CORE_THRESHOLD = 90;
 const TECH_THRESHOLD = 30;
@@ -112,7 +128,7 @@ export function ArchetypePage() {
   // Land a shared filter link straight on the Filters tab, or a matrix deep-link
   // straight on the Matchups tab.
   const sharedFilters = Boolean(searchParams.b || searchParams.s || searchParams.t);
-  const TAB_VALUES: readonly ArchTab[] = ['cards', 'matchups', 'advanced'];
+  const TAB_VALUES: readonly ArchTab[] = ['cards', 'lists', 'matchups', 'advanced'];
   // 'core' and 'tech' were separate tabs before the card tiers were merged into
   // one page; old links land on the combined list rather than nothing.
   const rawTab = typeof searchParams.tab === 'string' ? searchParams.tab : '';
@@ -337,6 +353,25 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
     return points.length >= 2 ? points : null;
   });
 
+  // Lists load the first time the tab opens (the online index is ~1.4 MB raw)
+  // and then stay, so switching tabs back and forth never refetches.
+  const listsState = createListsState();
+  const [listsWanted, setListsWanted] = createSignal(false);
+  createEffect(() => {
+    if (props.tab === 'lists') {
+      setListsWanted(true);
+    }
+  });
+  const [archetypeLists] = createResource(
+    () => (listsWanted() ? { t: props.tournament, names: [props.slug, props.label] } : null),
+    ({ t, names }) => import('./archetypePage/loadLists').then(m => m.fetchArchetypeLists(t, names)).catch(() => [])
+  );
+  const listsData = () => latestValue(archetypeLists);
+  const bothVenues = createMemo(() => {
+    const venues = new Set((listsData() ?? []).map(l => l.venue));
+    return venues.size > 1;
+  });
+
   return (
     <>
       <Show when={props.snapshotDate}>
@@ -369,7 +404,12 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
         <div class='arche-toolbar'>
           <Tabs options={TAB_OPTIONS} selected={props.tab} onSelect={props.onTabChange} />
           {/* Grid/List only affects the card views; the Matchups tab has its own layout. */}
-          <Show when={props.tab !== 'matchups'}>
+          <Show when={props.tab === 'lists'}>
+            <div class='arche-toolbar-controls'>
+              <ListsControls state={listsState} bothVenues={bothVenues()} />
+            </div>
+          </Show>
+          <Show when={props.tab !== 'matchups' && props.tab !== 'lists'}>
             <div class='arche-toolbar-controls'>
               <Show when={props.tab !== 'advanced'}>
                 <Segmented<CardSort>
@@ -417,6 +457,16 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
               />
             </Show>
           </Show>
+        </Show>
+
+        <Show when={props.tab === 'lists'}>
+          {/* Its own boundaries: loading the chunk shows the tab's skeleton, not
+              the app's, and a failed chunk costs the tab, not the page. */}
+          <ErrorBoundary fallback={<p class='muted'>Couldn't load the lists.</p>}>
+            <Suspense fallback={<Skeleton height='320px' />}>
+              <ListsTab label={props.label} lists={listsData()} state={listsState} />
+            </Suspense>
+          </ErrorBoundary>
         </Show>
 
         <Show when={props.tab === 'matchups'}>

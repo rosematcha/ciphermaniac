@@ -1,6 +1,7 @@
 import { A } from '@solidjs/router';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
+import { CopyDeckButton } from '../../components/CopyDeckButton';
 import { DeckBody } from '../../components/DeckBody';
 import { Segmented } from '../../components/Segmented';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
@@ -8,7 +9,6 @@ import { ONLINE } from '../../lib/data/paths';
 import type { ListRecord } from '../../lib/data/lists';
 import { buildCanonicalCardId } from '../../../shared/deckCardId';
 import type { SynonymDatabase } from '../../../shared/data/cardIdentity.js';
-import { buildPtcglDeck } from '../../utils/ptcglExport';
 import { ordinal, shortDate } from '../../lib/format';
 import type { CardItem } from '../../types';
 import { type ArchetypeUsageRow, formatWholePct as fmtWholePct } from './model';
@@ -330,24 +330,9 @@ function Finish(props: { record: ListRecord }) {
 }
 
 function ListFooter(props: { record: ListRecord; archetype: { name: string; label: string }; tournament: string }) {
-  const [copied, setCopied] = createSignal(false);
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  async function copy() {
-    const { text } = buildPtcglDeck(props.record.cards);
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      clearTimeout(timer);
-      timer = setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  }
   return (
     <div class='pi-list-foot'>
-      <button type='button' class='btn btn-secondary' onClick={() => void copy()}>
-        {copied() ? 'Copied' : 'Copy for PTCGL'}
-      </button>
+      <CopyDeckButton cards={props.record.cards} />
       <A href={`/archetypes/${encodeURIComponent(props.archetype.name)}`}>{props.archetype.label} →</A>
       <Show when={props.tournament === ONLINE && props.record.event}>
         <a

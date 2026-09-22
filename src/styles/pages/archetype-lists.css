@@ -1,0 +1,315 @@
+/* ---------- Lists tab ----------
+   Every list of the archetype, identical 60s folded into one row, best finish
+   first. Columns have fixed widths so opening a row or changing a filter never
+   moves anything; on a phone the table becomes two-line rows. */
+.lists-techs-btn {
+  height: var(--control-h);
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+}
+.lists-techs-btn.is-on {
+  border-color: var(--fg);
+}
+.lists-techs {
+  margin-bottom: 14px;
+}
+.lists-frames {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+}
+.lists-frame {
+  flex: 0 0 56px;
+  aspect-ratio: 5 / 7;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-2);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity var(--ms-fast) var(--ease-base);
+}
+.lists-frame:hover,
+.lists-frame.is-picked {
+  opacity: 1;
+}
+.lists-frame.is-picked,
+.lists-frame:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.lists-frame .card-img,
+.lists-frame .card-image-fallback,
+.lists-odd-card .card-img,
+.lists-odd-card .card-image-fallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  padding: 0;
+  font-size: 7px;
+}
+.lists-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.lists-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.lists-head .count,
+.lists-same h3 .count {
+  margin-left: 4px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.lists-note,
+.lists-empty,
+.lists-showing {
+  font-size: 12px;
+  color: var(--muted);
+}
+.lists-empty {
+  margin: 12px 0;
+}
+.lists-linkbtn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-ink-hover);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.lists-linkbtn:hover {
+  text-decoration: underline;
+}
+
+.lists-table .data {
+  table-layout: fixed;
+}
+.lists-col-finish {
+  width: 116px;
+}
+.lists-col-pilot {
+  width: 24%;
+}
+.lists-col-techs {
+  width: 156px;
+}
+.lists-table.is-one-event .lists-col-pilot {
+  width: auto;
+}
+.lists-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lists-finish {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lists-finish b {
+  font-weight: 700;
+}
+.lists-of {
+  font-size: 12px;
+  color: var(--muted);
+}
+.lists-pilot {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lists-event-name {
+  font-size: 13px;
+}
+.lists-date {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.lists-row.is-open > td {
+  background: var(--surface-2);
+}
+.lists-row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.lists-none {
+  color: var(--muted);
+}
+.lists-odd {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  vertical-align: middle;
+}
+.lists-odd-card {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface-2);
+}
+.lists-odd-count {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  padding: 0 3px;
+  font-size: 9px;
+  line-height: 13px;
+  font-weight: 700;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+.lists-odd-more {
+  margin-left: 3px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.lists-detail > td {
+  height: auto;
+  padding: 10px 14px 14px;
+  white-space: normal;
+  background: var(--surface);
+}
+.lists-body .deck-inline-list a {
+  color: var(--fg);
+  text-decoration: none;
+}
+.lists-body .deck-inline-list a:hover {
+  color: var(--accent-ink-hover);
+}
+/* The marked slots: the same edge the card page uses for its card. */
+.lists-body .deck-inline-list .is-marked {
+  font-weight: 700;
+  box-shadow: inset 2px 0 0 var(--accent);
+  padding-left: 7px;
+  margin-left: -9px;
+}
+.lists-body-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 14px;
+  font-size: 12px;
+}
+.lists-body-foot .btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.lists-body-foot a {
+  color: var(--accent-ink-hover);
+}
+/* Pilots who ran the same 60: ruled rows under the deck, laid out like the table's. */
+.lists-same {
+  margin-top: 16px;
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+.lists-same h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.lists-same-row {
+  display: grid;
+  grid-template-columns: 102px minmax(0, 24%) minmax(0, 1fr);
+  gap: 14px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+.lists-same-row .lists-event {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lists-same .lists-linkbtn {
+  margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+  .lists-table thead {
+    display: none;
+  }
+  .lists-table .data,
+  .lists-table tbody {
+    display: block;
+  }
+  .lists-table tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 10px;
+    row-gap: 2px;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .lists-table td {
+    display: block;
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .lists-table td.lists-event {
+    grid-column: 1 / 3;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .lists-table td.lists-techs-cell {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+  .lists-table .lists-event-name {
+    font-size: 12px;
+  }
+  .lists-table tr.lists-detail,
+  .lists-table tr.lists-foot {
+    display: block;
+    padding: 0;
+  }
+  .lists-detail > td {
+    padding: 10px 12px 14px;
+  }
+  .lists-foot > td {
+    padding: 10px 12px;
+    text-align: center;
+  }
+
+  .lists-same-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 2px;
+  }
+  .lists-same-row .lists-event {
+    grid-column: 1 / -1;
+    font-size: 12px;
+    color: var(--muted);
+  }
+}
+.lists-foot > td {
+  text-align: center;
+}
