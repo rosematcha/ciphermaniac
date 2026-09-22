@@ -427,3 +427,252 @@
     text-overflow: ellipsis;
   }
 }
+
+/* ---------- Played in (CardPage) ----------
+   One row per archetype: inclusion, usual copies, its best finish, list count.
+   Opening a row shows the copy split and then the lists themselves, each of
+   which opens to the full decklist. Rows use the .au-* idiom above; the finish
+   control sits beside the heading. */
+.pi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.pi-head h3 {
+  margin-bottom: 0;
+}
+.card-section h3 .count {
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0;
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+/* Hover bleeds to the block's edge instead of stopping at its padding, so the
+   band reads as the row and not as a box inside it. Applies to the copy-split
+   rows too. */
+.au-head,
+.pi-list-head {
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.au-row.is-open > .au-head {
+  background: var(--surface-2);
+}
+.au-head.pi-arch {
+  grid-template-columns: 18px minmax(0, 1fr) 44px 92px minmax(0, 1.1fr) 76px;
+}
+.au-head.pi-arch.no-lists {
+  grid-template-columns: 18px minmax(0, 1fr) 44px 92px;
+}
+.pi-teaser {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pi-teaser b {
+  color: var(--fg);
+}
+.pi-teaser.is-hidden {
+  visibility: hidden;
+}
+.pi-count {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pi-fold {
+  padding: 10px 0 6px;
+  border-top: 1px solid var(--rule);
+}
+.pi-linkbtn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-ink-hover);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.pi-linkbtn:hover {
+  text-decoration: underline;
+}
+
+/* The lists under an opened archetype. */
+.pi-lists {
+  border-top: 1px solid var(--rule);
+  margin-bottom: 4px;
+}
+.pi-list {
+  border-bottom: 1px solid var(--rule);
+}
+.pi-list:last-of-type {
+  border-bottom: 0;
+}
+.pi-list-head {
+  display: grid;
+  grid-template-columns: 18px 78px minmax(0, 1fr) minmax(0, 1.6fr) 34px;
+  gap: 10px;
+  align-items: center;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--ms-fast);
+}
+.pi-list-head:hover,
+.pi-list.is-open > .pi-list-head {
+  background: var(--surface-2);
+}
+.pi-list-head:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+/* The archetype row's open state must not turn the chevrons of the lists
+   inside it. */
+.pi-list .au-chevron {
+  transform: none;
+}
+.pi-list.is-open .au-chevron {
+  transform: rotate(90deg);
+}
+.pi-place {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pi-place b {
+  font-weight: 700;
+}
+.pi-of {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 5px;
+}
+.pi-player {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pi-cc {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+  margin-left: 6px;
+}
+.pi-event {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  align-items: baseline;
+  color: var(--muted);
+  font-size: 12px;
+}
+.pi-event-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pi-date {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.pi-copies {
+  justify-self: end;
+}
+.pi-list-body {
+  padding: 8px 0 14px 28px;
+}
+.deck-inline-list .is-marked {
+  font-weight: 700;
+  box-shadow: inset 2px 0 0 var(--accent);
+  padding-left: 7px;
+  margin-left: -9px;
+}
+.deck-inline-list a {
+  color: var(--fg);
+  text-decoration: none;
+}
+.deck-inline-list a:hover {
+  color: var(--accent-ink-hover);
+}
+.pi-list-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 14px;
+  font-size: 12px;
+}
+.pi-list-foot .btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.pi-list-foot a {
+  color: var(--accent-ink-hover);
+}
+.pi-lists-foot {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0 6px 28px;
+}
+.pi-showing {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 760px) {
+  .au-head.pi-arch {
+    grid-template-columns: 14px minmax(0, 1fr) 40px 40px;
+    row-gap: 2px;
+  }
+  .au-head.pi-arch .au-modal-share {
+    display: none;
+  }
+  .au-head.pi-arch .pi-teaser {
+    grid-column: 2 / 5;
+    grid-row: 2;
+  }
+  .au-head.pi-arch .pi-count {
+    display: none;
+  }
+  .pi-list-head {
+    grid-template-columns: 60px minmax(0, 1fr) 34px;
+    row-gap: 2px;
+  }
+  .pi-list-head > .au-chevron {
+    display: none;
+  }
+  .pi-list-head .pi-place {
+    grid-row: 1 / span 2;
+    align-self: start;
+  }
+  .pi-list-head .pi-of {
+    display: block;
+    margin-left: 0;
+    font-size: 11px;
+  }
+  .pi-list-head .pi-event {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+  .pi-list-body,
+  .pi-lists-foot {
+    padding-left: 0;
+  }
+}
