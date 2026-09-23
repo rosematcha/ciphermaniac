@@ -334,9 +334,13 @@ test('set impact ranks sets by lifetime and keeps its toggles in the URL', async
   await gotoClean(page, '/tools/set-impact');
   const rows = page.locator('.set-impact-table tbody tr');
   await expect(rows.first()).toBeVisible();
-  const lifetimes = await page.locator('.set-impact-value').allTextContents();
+  // Ranked sets lead in order; sets seen at too few majors follow, greyed.
+  const lifetimes = await page.locator('tr:not(.is-unranked) .set-impact-value').allTextContents();
   const values = lifetimes.map(Number);
   expect(values).toEqual([...values].sort((a, b) => b - a));
+  await expect(page.locator('tr.is-unranked').first()).toBeVisible();
+  const last = page.locator('.set-impact-table tbody tr.is-link').last();
+  await expect(last).toHaveClass(/is-unranked/);
   await page.getByRole('tab', { name: 'Keeps it legal' }).click();
   await expect(page).toHaveURL(/[?&]attr=legal/);
   await page.getByRole('button', { name: /^Set/ }).click();

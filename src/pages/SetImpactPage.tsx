@@ -9,10 +9,11 @@ import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
 import { SetPanel } from './setImpact/SetPanel';
 import { Note, NOTES } from './setImpact/notes';
-import type { SetImpactAttribution, SetImpactMetric } from '../../shared/setImpact/types';
+import type { SetImpactAttribution } from '../../shared/setImpact/types';
 import {
   defaultDirection,
   formatShare,
+  MIN_MAJORS,
   type SetImpactRow,
   setImpactRows,
   type SetImpactSortColumn,
@@ -24,10 +25,6 @@ import '../styles/pages/set-impact.css';
 const ATTRIBUTION_OPTIONS: { value: SetImpactAttribution; label: string }[] = [
   { value: 'new', label: 'New to Standard' },
   { value: 'legal', label: 'Keeps it legal' }
-];
-const METRIC_OPTIONS: { value: SetImpactMetric; label: string }[] = [
-  { value: 'linear', label: 'Top 8 decks' },
-  { value: 'weighted', label: 'Weighted by placing' }
 ];
 const THUMBNAILS = 4;
 /** Must match the phone breakpoint in set-impact.css, which hides the wide columns. */
@@ -52,11 +49,10 @@ export function SetImpactPage() {
   const [payload] = createResource(fetchSetImpact);
   const data = () => resolved(payload);
 
-  // Both toggles live in the URL so a shared link lands on the same view; the
-  // defaults are omitted to keep the bare path canonical.
-  const [params, setParams] = useSearchParams<{ attr?: string; metric?: string }>();
+  // The toggle lives in the URL so a shared link lands on the same view; the
+  // default is omitted to keep the bare path canonical.
+  const [params, setParams] = useSearchParams<{ attr?: string }>();
   const attribution = (): SetImpactAttribution => (params.attr === 'legal' ? 'legal' : 'new');
-  const metric = (): SetImpactMetric => (params.metric === 'weighted' ? 'weighted' : 'linear');
 
   const [sortColumn, setSortColumn] = createSignal<SetImpactSortColumn>('lifetime');
   const [sortDirection, setSortDirection] = createSignal<SortDirection>('descending');
@@ -71,9 +67,7 @@ export function SetImpactPage() {
 
   const rows = createMemo(() => {
     const loaded = data();
-    return loaded
-      ? sortSetImpactRows(setImpactRows(loaded, attribution(), metric()), sortColumn(), sortDirection())
-      : [];
+    return loaded ? sortSetImpactRows(setImpactRows(loaded, attribution()), sortColumn(), sortDirection()) : [];
   });
 
   // The panel shows the picked set, or the table's first row until one is picked.
@@ -101,15 +95,6 @@ export function SetImpactPage() {
             />
             <Note text={NOTES.attribution} />
           </div>
-          <div class='set-impact-control'>
-            <Segmented<SetImpactMetric>
-              options={METRIC_OPTIONS}
-              selected={metric()}
-              onSelect={next => setParams({ metric: next === 'linear' ? undefined : next }, { replace: true })}
-              ariaLabel='Count decks'
-            />
-            <Note text={NOTES.metric} />
-          </div>
         </div>
       </Section>
 
@@ -132,7 +117,7 @@ export function SetImpactPage() {
                 selected={selected()?.code ?? null}
                 onSelect={setPicked}
               />
-              <p class='set-impact-note'>* Predicted.</p>
+              <p class='set-impact-note'>* Predicted. Greyed sets were seen at fewer than {MIN_MAJORS} majors.</p>
             </div>
             <Show when={selected()}>
               {row => (
@@ -163,7 +148,7 @@ function ImpactTable(props: {
   selected: string | null;
   onSelect: (code: string) => void;
 }) {
-  const maxLifetime = () => Math.max(0, ...props.rows.map(row => row.lifetime ?? 0));
+  const maxLifetime = () => Math.max(0, ...props.rows.filter(row => row.ranked).map(row => row.lifetime));
   const span = createVisibleColumns();
   return (
     <div class='table-wrap set-impact-table'>
@@ -227,10 +212,14 @@ function ImpactRow(props: {
   selected: boolean;
   onSelect: () => void;
 }) {
-  const width = () => (props.maxLifetime > 0 ? ((props.row.lifetime ?? 0) / props.maxLifetime) * 100 : 0);
+  const width = () => (props.maxLifetime > 0 ? Math.min(100, (props.row.lifetime / props.maxLifetime) * 100) : 0);
   return (
     <>
-      <tr class='is-link' classList={{ 'is-selected': props.selected }} onClick={() => props.onSelect()}>
+      <tr
+        class='is-link'
+        classList={{ 'is-selected': props.selected, 'is-unranked': !props.row.ranked }}
+        onClick={() => props.onSelect()}
+      >
         <td class='set-impact-name'>
           <button type='button' class='set-impact-pick' aria-pressed={props.selected}>
             {props.row.name} <span class='set-impact-code'>{props.row.code}</span>
@@ -243,7 +232,7 @@ function ImpactRow(props: {
             <div class='set-impact-track'>
               <div class='set-impact-fill' style={{ width: `${width()}%` }} />
             </div>
-            <span class='set-impact-value'>{props.row.lifetime?.toFixed(1) ?? '—'}</span>
+            <span class='set-impact-value'>{props.row.lifetime.toFixed(1)}</span>
           </div>
         </td>
         <td class='set-impact-wide'>

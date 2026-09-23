@@ -1,6 +1,6 @@
 /* Set Impact table (/tools/set-impact). */
 
-/* Attribution and metric toggles share a row and wrap together. */
+/* The attribution toggle and its note. */
 .set-impact-controls {
   display: flex;
   flex-wrap: wrap;
@@ -171,6 +171,17 @@
   top: calc(var(--topnav-h) + var(--space-3));
   padding-left: var(--space-4);
   border-left: 1px solid var(--rule);
+}
+
+/* Too few majors to rank: the figures stay readable but step back. */
+.set-impact-table .data tr.is-unranked td,
+.set-impact-table .data tr.is-unranked .set-impact-value {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.set-impact-table .data tr.is-unranked .set-impact-fill {
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
 }
 
 .set-impact-table .data tr.is-selected td {

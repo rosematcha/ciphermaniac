@@ -23,7 +23,6 @@ import type {
   SetImpactAttribution,
   SetImpactCard,
   SetImpactEvent,
-  SetImpactMetric,
   SetImpactPayload,
   SetImpactRotation,
   SetImpactSet
@@ -192,28 +191,13 @@ export function createAttributor(
   };
 }
 
-/**
- * ln(field / placement). Over a whole field this averages to 1, so the
- * weighted view only moves a card that places better or worse than the field.
- * A deck without a placement weighs 1.
- */
-export function placementWeight(placement: number | null | undefined, field: number): number {
-  if (!placement || placement < 1) {
-    return 1;
-  }
-  return Math.log(field / Math.min(placement, field));
-}
-
 export interface ImpactDeck {
-  placement?: number | null;
   cards: Array<{ name: string; set?: string | null; number?: string | number | null }>;
 }
 
 export interface ImpactEventInput extends SetImpactEvent {
   decks: ImpactDeck[];
 }
-
-type Shares = Record<SetImpactMetric, number>;
 
 function deckCanonicals(deck: ImpactDeck, canonical: (uid: string) => string): Set<string> {
   const ids = new Set<string>();
@@ -226,43 +210,56 @@ function deckCanonicals(deck: ImpactDeck, canonical: (uid: string) => string): S
   return ids;
 }
 
-/** Share of the field running each card, by canonical UID. */
-export function cardShares(event: ImpactEventInput, canonical: (uid: string) => string): Map<string, Shares> {
-  const placed = Math.max(0, ...event.decks.map(deck => deck.placement ?? 0));
-  const field = Math.max(event.players, placed, event.decks.length);
-  const totals = new Map<string, Shares>();
-  let weightSum = 0;
+/** Share of the decks running each card, by canonical UID. */
+export function cardShares(event: ImpactEventInput, canonical: (uid: string) => string): Map<string, number> {
+  const totals = new Map<string, number>();
   for (const deck of event.decks) {
-    const weight = placementWeight(deck.placement, field);
-    weightSum += weight;
     for (const id of deckCanonicals(deck, canonical)) {
-      const shares = totals.get(id) ?? { linear: 0, weighted: 0 };
-      shares.linear += 1;
-      shares.weighted += weight;
-      totals.set(id, shares);
+      totals.set(id, (totals.get(id) ?? 0) + 1);
     }
   }
-  for (const shares of totals.values()) {
-    shares.linear /= event.decks.length || 1;
-    shares.weighted /= weightSum || 1;
+  for (const [id, count] of totals) {
+    totals.set(id, count / (event.decks.length || 1));
   }
   return totals;
 }
 
-interface CardTotals extends Credit, Shares {}
+/**
+ * How far a major's top 8 stands for the format around it. Majors run a week
+ * or three apart in season, so a set's whole life is covered then; a summer or
+ * a pandemic leaves a hole the neighbouring majors don't fill.
+ */
+export const MAJOR_REACH_DAYS = 45;
 
-type EventSetTotals = Map<string, Record<SetImpactAttribution, Shares>>;
+/**
+ * Years each major stands for within a legal window: half the gap to each
+ * neighbour, the window's edge for the first and last, at most `reach` days
+ * either side. Sums to the years of the window that majors cover.
+ */
+export function majorWeights(
+  dates: string[],
+  legalFrom: string,
+  legalUntil: string | null,
+  reach = MAJOR_REACH_DAYS
+): number[] {
+  const times = dates.map(date => Date.parse(date));
+  const from = Date.parse(legalFrom);
+  const until = legalUntil === null ? Number.POSITIVE_INFINITY : Date.parse(legalUntil);
+  const span = reach * DAY_MS;
+  return times.map((time, i) => {
+    const lower = Math.max(i === 0 ? from : (times[i - 1] + time) / 2, time - span);
+    const upper = Math.min(i === times.length - 1 ? until : (time + times[i + 1]) / 2, time + span);
+    return Math.max(0, upper - lower) / DAY_MS / 365.25;
+  });
+}
+
+interface CardTotals extends Credit {
+  share: number;
+}
+
+type EventSetTotals = Map<string, Record<SetImpactAttribution, number>>;
 
 const round = (value: number): number => Math.round(value * 10_000) / 10_000;
-
-function emptySetTotals(): Record<SetImpactAttribution, Shares> {
-  return { legal: { linear: 0, weighted: 0 }, new: { linear: 0, weighted: 0 } };
-}
-
-function addShares(target: Shares, shares: Shares): void {
-  target.linear += shares.linear;
-  target.weighted += shares.weighted;
-}
 
 /** The mark most of a set's own printings carry, and when it rotates. */
 function predictedRotation(code: string, marks: RegulationMarks): SetImpactRotation | undefined {
@@ -315,6 +312,13 @@ function isRankedSet<T extends { code: string; legalFrom?: string }>(entry: T): 
   return Boolean(entry.legalFrom) && !PROMO_SETS.has(entry.code) && !ENERGY_SETS.has(entry.code);
 }
 
+interface RankableEntry {
+  code: string;
+  name: string;
+  legalFrom: string;
+  legalUntil?: string | null;
+}
+
 /**
  * Feed events oldest first, one at a time (a major's decks run to several MB),
  * then `finish` for the payload.
@@ -326,56 +330,57 @@ export function createSetImpactBuilder(db: SynonymDatabase, marks: RegulationMar
   const cards = new Map<string, CardTotals>();
   const unattributed = new Map<string, number>();
 
-  const credit = (id: string, date: string, shares: Shares, setTotals: EventSetTotals): void => {
+  const credit = (id: string, date: string, share: number, setTotals: EventSetTotals): void => {
     const earned = attributor.credit(id, date);
     if (!earned) {
-      unattributed.set(id, (unattributed.get(id) ?? 0) + shares.linear);
+      unattributed.set(id, (unattributed.get(id) ?? 0) + share);
       return;
     }
-    const totals = setTotals.get(earned.set) ?? emptySetTotals();
-    addShares(totals.legal, shares);
+    const totals = setTotals.get(earned.set) ?? { legal: 0, new: 0 };
+    totals.legal += share;
     if (earned.isNew) {
-      addShares(totals.new, shares);
+      totals.new += share;
     }
     setTotals.set(earned.set, totals);
-    const card = cards.get(earned.uid) ?? { ...earned, linear: 0, weighted: 0 };
-    addShares(card, shares);
+    const card = cards.get(earned.uid) ?? { ...earned, share: 0 };
+    card.share += share;
     cards.set(earned.uid, card);
   };
 
   const addEvent = (event: ImpactEventInput): void => {
     const setTotals: EventSetTotals = new Map();
-    for (const [id, shares] of cardShares(event, attributor.canonical)) {
-      credit(id, event.date, shares, setTotals);
+    for (const [id, share] of cardShares(event, attributor.canonical)) {
+      credit(id, event.date, share, setTotals);
     }
     events.push({ date: event.date, name: event.name, players: event.players });
     perEvent.push(setTotals);
   };
 
-  const buildSet = (entry: { code: string; name: string; legalFrom: string; legalUntil?: string | null }) => {
+  /** The majors at which this printing was the one earning the card's credit. */
+  const creditedMajors = (card: CardTotals, indexes: number[]): number => {
+    const canonical = attributor.canonical(card.uid);
+    return indexes.filter(index => attributor.credit(canonical, events[index].date)?.uid === card.uid).length;
+  };
+
+  const setCards = (entry: RankableEntry, indexes: number[]): SetImpactCard[] =>
+    [...cards.values()]
+      .filter(card => card.set === entry.code)
+      .map(card => {
+        const majors = creditedMajors(card, indexes);
+        const { name, set, number, isNew } = card;
+        return { name, set, number, isNew, share: round(card.share / (majors || 1)), majors };
+      })
+      .sort((a, b) => b.share - a.share || a.name.localeCompare(b.name));
+
+  const buildSet = (entry: RankableEntry): SetImpactSet | null => {
     const indexes = events.flatMap((event, index) =>
       entry.legalFrom <= event.date && (!entry.legalUntil || event.date < entry.legalUntil) ? [index] : []
     );
     if (indexes.length === 0) {
       return null;
     }
-    const totalsAt = (index: number) => perEvent[index].get(entry.code) ?? emptySetTotals();
-    const seriesFor = (attribution: SetImpactAttribution) => ({
-      linear: indexes.map(index => round(totalsAt(index)[attribution].linear)),
-      weighted: indexes.map(index => round(totalsAt(index)[attribution].weighted))
-    });
+    const totalsAt = (index: number) => perEvent[index].get(entry.code) ?? { legal: 0, new: 0 };
     const rotation = rotationOf(entry, marks);
-    const setCards: SetImpactCard[] = [...cards.values()]
-      .filter(card => card.set === entry.code)
-      .map(({ name, set, number, isNew, linear, weighted }) => ({
-        name,
-        set,
-        number,
-        isNew,
-        linear: round(linear / indexes.length),
-        weighted: round(weighted / indexes.length)
-      }))
-      .sort((a, b) => b.linear - a.linear || a.name.localeCompare(b.name));
     return {
       code: entry.code,
       name: entry.name,
@@ -383,9 +388,17 @@ export function createSetImpactBuilder(db: SynonymDatabase, marks: RegulationMar
       ...rotation,
       legalYears: yearsBetween(entry.legalFrom, rotation.rotatesOn),
       events: indexes,
-      series: { legal: seriesFor('legal'), new: seriesFor('new') },
-      cards: setCards
-    } satisfies SetImpactSet;
+      weights: majorWeights(
+        indexes.map(index => events[index].date),
+        entry.legalFrom,
+        rotation.rotatesOn
+      ).map(round),
+      series: {
+        legal: indexes.map(index => round(totalsAt(index).legal)),
+        new: indexes.map(index => round(totalsAt(index).new))
+      },
+      cards: setCards(entry, indexes)
+    };
   };
 
   const finish = (generatedAt: string): SetImpactPayload => ({

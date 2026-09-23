@@ -272,10 +272,7 @@ export function cutToTop(decks: LimitlessDeck[], cut = TOP_CUT): LimitlessDeck[]
 
 /** Limitless decks in the shape the Set Impact builder reads. */
 export function toImpactDecks(decks: LimitlessDeck[]): ImpactDeck[] {
-  return decks.map(deck => ({
-    placement: deck.place,
-    cards: deck.cards.map(([name, set, number]) => ({ name, set, number }))
-  }));
+  return decks.map(deck => ({ cards: deck.cards.map(([name, set, number]) => ({ name, set, number })) }));
 }
 
 /**

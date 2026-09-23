@@ -1,9 +1,9 @@
 /**
  * How much each set has shaped the game, measured across every major.
  *
- * `scripts/build-set-impact.ts` writes this shape to `static/set-impact.json`
- * and the /tools/set-impact page reads it. The type lives here so producer and
- * consumer can't drift.
+ * `scripts/build-set-impact-limitless.ts` writes this shape to
+ * `static/set-impact.json` and the /tools/set-impact page reads it. The type
+ * lives here so producer and consumer can't drift.
  * @module shared/setImpact/types
  */
 
@@ -16,14 +16,6 @@
  *   Standard. A reprint of a card that was already legal credits nobody.
  */
 export type SetImpactAttribution = 'legal' | 'new';
-
-/**
- * - `linear`: every deck counts once.
- * - `weighted`: each deck counts ln(field / placement), which averages to 1
- *   over a field, so a card that places like the field scores as it does in
- *   `linear`, and one that wins scores higher.
- */
-export type SetImpactMetric = 'linear' | 'weighted';
 
 export interface SetImpactRotation {
   /** Regulation mark removed by this rotation. */
@@ -47,9 +39,14 @@ export interface SetImpactCard {
   number: string;
   /** False when this printing reprinted a card already in Standard. */
   isNew: boolean;
-  /** Mean share of decks running the card, over the set's legal events. */
-  linear: number;
-  weighted: number;
+  /**
+   * Mean share of decks running the card, over the majors at which this
+   * printing was the one credited (under `legal`, a reprint only takes over
+   * once the older printing rotates).
+   */
+  share: number;
+  /** How many of the set's majors this printing was credited at. */
+  majors: number;
 }
 
 export interface SetImpactSet {
@@ -64,10 +61,16 @@ export interface SetImpactSet {
   /** Indexes into `events` of the majors held while the set was legal. */
   events: number[];
   /**
+   * Years each of those majors stands for: half the gap to its neighbours, at
+   * most `MAJOR_REACH_DAYS` each side, clipped to the legal window. Summed,
+   * the years of the set's life that majors actually cover.
+   */
+  weights: number[];
+  /**
    * Per legal event, the summed share of decks running each credited card:
    * the number of distinct cards from this set in the average deck.
    */
-  series: Record<SetImpactAttribution, Record<SetImpactMetric, number[]>>;
+  series: Record<SetImpactAttribution, number[]>;
   /** Every card credited to the set at least once, most played first. */
   cards: SetImpactCard[];
 }

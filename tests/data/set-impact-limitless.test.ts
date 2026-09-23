@@ -155,7 +155,7 @@ test('every event is cut to its top 8', () => {
 
 test('Limitless decks convert to builder decks', () => {
   assert.deepEqual(toImpactDecks([{ place: 3, cards: [['Quick Ball', 'SSH', '179', 4]] }]), [
-    { placement: 3, cards: [{ name: 'Quick Ball', set: 'SSH', number: '179' }] }
+    { cards: [{ name: 'Quick Ball', set: 'SSH', number: '179' }] }
   ]);
 });
 

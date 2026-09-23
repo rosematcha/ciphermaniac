@@ -17,7 +17,7 @@ import {
   createAttributor,
   createSetImpactBuilder,
   type ImpactDeck,
-  placementWeight,
+  majorWeights,
   type RegulationMarks
 } from '../../shared/setImpact/build.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
@@ -105,22 +105,23 @@ test('a printing from a set that was never legal credits nobody', () => {
   assert.equal(credit('Ultra Ball::DEX::102', '2013-01-01'), null);
 });
 
-test('placement weight is ln(field / place) and averages to about 1', () => {
-  assert.equal(placementWeight(1, 100), Math.log(100));
-  assert.equal(placementWeight(100, 100), 0);
-  assert.equal(placementWeight(150, 100), 0);
-  assert.equal(placementWeight(null, 100), 1);
-  const field = 2000;
-  let sum = 0;
-  for (let place = 1; place <= field; place++) {
-    sum += placementWeight(place, field);
-  }
-  assert.ok(Math.abs(sum / field - 1) < 0.01);
+test('a major stands for the time around it, up to the reach, within the legal window', () => {
+  const year = (days: number) => days / 365.25;
+  // Ten days apart: each takes half the gap, plus the reach on the outside.
+  assert.deepEqual(majorWeights(['2024-06-01', '2024-06-11'], '2024-01-01', '2025-01-01', 30), [year(35), year(35)]);
+  // A gap wider than twice the reach leaves the middle uncovered.
+  const [first, second] = majorWeights(['2024-06-01', '2024-12-01'], '2024-01-01', '2025-01-01', 30);
+  assert.ok(Math.abs(first - year(60)) < 1e-9);
+  assert.ok(Math.abs(second - year(60)) < 1e-9);
+  // The window's edges clip the reach: a major on the set's first legal day
+  // reaches back nowhere, and a set with no rotation reaches forward the full reach.
+  assert.deepEqual(majorWeights(['2024-01-01'], '2024-01-01', '2024-01-11', 30), [year(10)]);
+  assert.deepEqual(majorWeights(['2024-01-01'], '2024-01-01', null, 30), [year(30)]);
+  assert.deepEqual(majorWeights([], '2024-01-01', null), []);
 });
 
-function deck(placement: number, ...cards: string[]): ImpactDeck {
+function deck(...cards: string[]): ImpactDeck {
   return {
-    placement,
     cards: cards.map(uid => {
       const [name, set, number] = uid.split('::');
       return { name, set, number };
@@ -136,57 +137,58 @@ test('card shares count a deck once per card and skip basic energy', () => {
       name: 'Test',
       players: 4,
       decks: [
-        deck(1, 'Ultra Ball::MEG::131', 'Ultra Ball::BRS::150', 'Fire Energy::SVE::002'),
-        deck(2, 'Ultra Ball::MEG::131'),
-        deck(3, 'Counter Catcher::CIN::091'),
-        deck(4, 'Counter Catcher::CIN::091')
+        deck('Ultra Ball::MEG::131', 'Ultra Ball::BRS::150', 'Fire Energy::SVE::002'),
+        deck('Ultra Ball::MEG::131'),
+        deck('Counter Catcher::CIN::091'),
+        deck('Counter Catcher::CIN::091')
       ]
     },
     attributor.canonical
   );
   assert.deepEqual([...shares.keys()].sort(), ['Counter Catcher::CIN::091', 'Ultra Ball::MEG::131']);
-  assert.equal(shares.get('Ultra Ball::MEG::131')?.linear, 0.5);
-  // The winners' card outweighs the one that finished 3rd and 4th.
-  const ball = shares.get('Ultra Ball::MEG::131')?.weighted ?? 0;
-  const catcher = shares.get('Counter Catcher::CIN::091')?.weighted ?? 0;
-  assert.ok(ball > 0.5 && catcher < 0.5);
-  assert.ok(Math.abs(ball + catcher - 1) < 1e-9);
+  assert.equal(shares.get('Ultra Ball::MEG::131'), 0.5);
+  assert.equal(shares.get('Counter Catcher::CIN::091'), 0.5);
 });
 
-test('the builder sums cards per set and projects rotation from the dominant mark', () => {
+test('the builder sums cards per set, weighs its majors and projects rotation from the dominant mark', () => {
   const builder = createSetImpactBuilder(DB, MARKS);
   builder.addEvent({
     date: '2024-09-13',
     name: 'Before',
     players: 2,
-    decks: [deck(1, 'Ultra Ball::MEG::131', 'Counter Catcher::CIN::091'), deck(2, 'Counter Catcher::CIN::091')]
+    decks: [deck('Ultra Ball::MEG::131', 'Counter Catcher::CIN::091'), deck('Counter Catcher::CIN::091')]
   });
   builder.addEvent({
     date: '2025-10-10',
     name: 'After',
     players: 2,
-    decks: [deck(1, 'Ultra Ball::MEG::131'), deck(2, 'Budew::PRE::004')]
+    decks: [deck('Ultra Ball::MEG::131'), deck('Budew::PRE::004')]
   });
   const payload = builder.finish('2026-09-22T00:00:00.000Z');
   const byCode = new Map(payload.sets.map(set => [set.code, set]));
 
   const brs = byCode.get('BRS');
   assert.deepEqual(brs?.events, [0]);
-  assert.deepEqual(brs?.series.legal.linear, [0.5]);
-  assert.deepEqual(brs?.series.new.linear, [0.5]);
+  assert.deepEqual(brs?.series.legal, [0.5]);
+  assert.deepEqual(brs?.series.new, [0.5]);
 
   const svi = byCode.get('SVI');
   assert.deepEqual(svi?.events, [0, 1]);
-  assert.deepEqual(svi?.series.legal.linear, [0, 0.5]);
-  // Only the winner ran it, and last place weighs nothing.
-  assert.deepEqual(svi?.series.legal.weighted, [0, 1]);
-  assert.deepEqual(svi?.series.new.linear, [0, 0]);
+  assert.deepEqual(svi?.series.legal, [0, 0.5]);
+  assert.deepEqual(svi?.series.new, [0, 0]);
+  // Two majors a year apart, each standing for 45 days either side.
+  assert.deepEqual(svi?.weights, [0.2464, 0.2464]);
+  // SVI's Ultra Ball only took over once BRS rotated: its share is over that
+  // one major, not diluted over both.
   assert.deepEqual(svi?.cards, [
-    { name: 'Ultra Ball', set: 'SVI', number: '196', isNew: false, linear: 0.25, weighted: 0.5 }
+    { name: 'Ultra Ball', set: 'SVI', number: '196', isNew: false, share: 0.5, majors: 1 }
   ]);
 
   const par = byCode.get('PAR');
-  assert.deepEqual(par?.series.legal.linear, [1, 0]);
+  assert.deepEqual(par?.series.legal, [1, 0]);
+  assert.deepEqual(par?.cards, [
+    { name: 'Counter Catcher', set: 'PAR', number: '160', isNew: true, share: 0.5, majors: 2 }
+  ]);
   assert.equal(par?.rotatesOn, '2026-04-10');
   assert.equal(par?.rotationPredicted, false);
 
@@ -228,7 +230,7 @@ test('a promo window credits last and never ranks', () => {
     date: '2022-05-07',
     name: 'X',
     players: 1,
-    decks: [{ placement: 1, cards: [{ name: "Boss's Orders", set: 'SP', number: '250' }] }]
+    decks: [{ cards: [{ name: "Boss's Orders", set: 'SP', number: '250' }] }]
   });
   assert.equal(
     builder.finish('2026-09-22T00:00:00.000Z').sets.some(set => set.code === 'SP'),

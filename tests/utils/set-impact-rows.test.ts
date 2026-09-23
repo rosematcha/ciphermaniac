@@ -1,7 +1,7 @@
 /**
- * The Set Impact table's rows: averaging a set's majors, multiplying by its
- * years in Standard, filtering reprints for the new-to-Standard view, and
- * sorting with unknown rotations last.
+ * The Set Impact table's rows: averaging a set's majors, integrating them
+ * over the time they cover, filtering reprints for the new-to-Standard view,
+ * and sorting with thin sets and unknown rotations last.
  */
 
 import assert from 'node:assert/strict';
@@ -10,6 +10,7 @@ import test from 'node:test';
 import {
   defaultDirection,
   formatShare,
+  MIN_MAJORS,
   monthYear,
   setImpactRows,
   sortSetImpactRows
@@ -24,14 +25,15 @@ function set(over: Partial<SetImpactSet> & Pick<SetImpactSet, 'code'>): SetImpac
     rotationPredicted: true,
     legalYears: 3,
     events: [0, 1],
-    series: {
-      legal: { linear: [1, 3], weighted: [2, 4] },
-      new: { linear: [0.5, 0.5], weighted: [1, 1] }
-    },
+    // The first major stands for half a year, the second for a whole one.
+    weights: [0.5, 1],
+    series: { legal: [1, 3], new: [0.5, 0.5] },
     cards: [],
     ...over
   };
 }
+
+const FULL = Array.from({ length: MIN_MAJORS }, (_, i) => i);
 
 const PAYLOAD: SetImpactPayload = {
   generatedAt: '2026-09-22T00:00:00.000Z',
@@ -41,8 +43,9 @@ const PAYLOAD: SetImpactPayload = {
     set({
       code: 'AAA',
       cards: [
-        { name: 'Reprint', set: 'AAA', number: '001', isNew: false, linear: 0.9, weighted: 0.2 },
-        { name: 'Debut', set: 'AAA', number: '002', isNew: true, linear: 0.3, weighted: 0.6 }
+        { name: 'Reprint', set: 'AAA', number: '001', isNew: false, share: 0.9, majors: 2 },
+        // Credited at one of the two majors: half its share reaches the set's figure.
+        { name: 'Debut', set: 'AAA', number: '002', isNew: true, share: 0.3, majors: 1 }
       ]
     }),
     set({ code: 'BBB', legalFrom: '2025-01-01', legalYears: null, rotatesOn: null }),
@@ -50,49 +53,69 @@ const PAYLOAD: SetImpactPayload = {
       code: 'CCC',
       legalFrom: '2023-01-01',
       legalYears: 1,
-      series: { legal: { linear: [9], weighted: [9] }, new: { linear: [9], weighted: [9] } },
-      events: [0]
+      events: FULL,
+      weights: FULL.map(() => 0.1),
+      series: { legal: FULL.map(() => 0.25), new: FULL.map(() => 0.25) }
     })
   ]
 };
 
-test('a row averages its majors and multiplies by its years', () => {
-  const [aaa, bbb] = setImpactRows(PAYLOAD, 'legal', 'linear');
+test('a row averages its majors and integrates them over the time they cover', () => {
+  const [aaa, bbb, ccc] = setImpactRows(PAYLOAD, 'legal');
   assert.equal(aaa.perMajor, 2);
-  assert.equal(aaa.lifetime, 6);
+  assert.equal(aaa.lifetime, 3.5);
   assert.equal(aaa.majors, 2);
-  assert.equal(bbb.lifetime, null);
-  assert.equal(setImpactRows(PAYLOAD, 'new', 'weighted')[0].lifetime, 3);
+  // No rotation date still gives a lifetime to date, just no coverage.
+  assert.equal(bbb.lifetime, 3.5);
+  assert.equal(bbb.coverage, null);
+  assert.ok(Math.abs(ccc.lifetime - 0.2) < 1e-9);
+  assert.equal(setImpactRows(PAYLOAD, 'new')[0].lifetime, 0.75);
 });
 
-test('cards follow the metric, and new-to-Standard drops reprints', () => {
-  const legal = setImpactRows(PAYLOAD, 'legal', 'weighted')[0].cards;
+test('only a set seen at enough majors ranks', () => {
+  const [aaa, , ccc] = setImpactRows(PAYLOAD, 'legal');
+  assert.equal(aaa.ranked, false);
+  assert.equal(ccc.ranked, true);
+});
+
+test('cards carry their share and contribution, and new-to-Standard drops reprints', () => {
+  const legal = setImpactRows(PAYLOAD, 'legal')[0].cards;
   assert.deepEqual(
-    legal.map(card => [card.name, card.share]),
+    legal.map(card => [card.name, card.share, card.contribution]),
     [
-      ['Debut', 0.6],
-      ['Reprint', 0.2]
+      ['Reprint', 0.9, 0.9],
+      ['Debut', 0.3, 0.15]
     ]
   );
   assert.deepEqual(
-    setImpactRows(PAYLOAD, 'new', 'linear')[0].cards.map(card => card.name),
+    setImpactRows(PAYLOAD, 'new')[0].cards.map(card => card.name),
     ['Debut']
   );
 });
 
-test('sorting puts unknown values last in either direction', () => {
-  const rows = setImpactRows(PAYLOAD, 'legal', 'linear');
+test('figures sort ranked sets first, then unknown values last in either direction', () => {
+  const rows = setImpactRows(PAYLOAD, 'legal');
+  // AAA and BBB tie on lifetime; the older set breaks the tie.
   assert.deepEqual(
     sortSetImpactRows(rows, 'lifetime', 'descending').map(row => row.code),
     ['CCC', 'AAA', 'BBB']
   );
   assert.deepEqual(
     sortSetImpactRows(rows, 'lifetime', 'ascending').map(row => row.code),
-    ['AAA', 'CCC', 'BBB']
+    ['CCC', 'AAA', 'BBB']
   );
+  assert.deepEqual(
+    sortSetImpactRows(rows, 'years', 'descending').map(row => row.code),
+    ['CCC', 'AAA', 'BBB']
+  );
+  // Names and dates ignore the floor.
   assert.deepEqual(
     sortSetImpactRows(rows, 'legalFrom', 'ascending').map(row => row.code),
     ['CCC', 'AAA', 'BBB']
+  );
+  assert.deepEqual(
+    sortSetImpactRows(rows, 'name', 'descending').map(row => row.code),
+    ['CCC', 'BBB', 'AAA']
   );
 });
 
@@ -118,12 +141,13 @@ test('a row carries its series, the span seen, coverage and staples', () => {
       { date: '2025-07-02', name: 'B', players: 100 }
     ]
   };
-  const [aaa, bbb] = setImpactRows(payload, 'legal', 'linear');
+  const [aaa, , ccc] = setImpactRows(payload, 'legal');
   assert.deepEqual(aaa.series, [1, 3]);
   assert.equal(aaa.seenFrom, '2024-01-01');
   assert.equal(aaa.seenUntil, '2025-07-02');
-  // Eighteen months of a three-year life.
-  assert.ok(Math.abs((aaa.coverage ?? 0) - 0.5) < 0.01);
+  // The majors cover a year and a half of a three-year life.
+  assert.equal(aaa.coverage, 0.5);
+  assert.ok(Math.abs((ccc.coverage ?? 0) - 0.8) < 1e-9);
   // Reprint is in 90% of decks, a staple; Debut at 30% is not.
   assert.deepEqual(
     aaa.cards.map(card => [card.name, card.staple]),
@@ -133,6 +157,4 @@ test('a row carries its series, the span seen, coverage and staples', () => {
     ]
   );
   assert.equal(aaa.staples, 0.9);
-  // No rotation date, no coverage.
-  assert.equal(bbb.coverage, null);
 });

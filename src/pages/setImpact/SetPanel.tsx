@@ -19,7 +19,7 @@ export function SetPanel(props: { row: SetImpactRow }) {
         {props.row.rotationPredicted ? '*' : ''}
       </p>
       <dl class='set-impact-figures'>
-        <Figure label='Lifetime' note={NOTES.lifetime} value={props.row.lifetime?.toFixed(1) ?? '—'} />
+        <Figure label='Lifetime' note={NOTES.lifetime} value={props.row.lifetime.toFixed(1)} />
         <Figure label='Cards per deck' note={NOTES.perMajor} value={props.row.perMajor.toFixed(1)} />
         <Figure label='From staples' note={NOTES.staples} value={props.row.staples.toFixed(1)} />
         <Figure
@@ -42,7 +42,7 @@ export function SetPanel(props: { row: SetImpactRow }) {
       </ul>
       <Show when={rest().length > 0}>
         <p class='set-impact-more'>
-          {rest().length} more cards · {formatShare(rest().reduce((sum, card) => sum + card.share, 0))} of a deck
+          {rest().length} more cards · {formatShare(rest().reduce((sum, card) => sum + card.contribution, 0))} of a deck
           combined
         </p>
       </Show>
