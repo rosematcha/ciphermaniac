@@ -8,6 +8,7 @@ import { Skeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
 import { SetPanel } from './setImpact/SetPanel';
+import { Note, NOTES } from './setImpact/notes';
 import type { SetImpactAttribution, SetImpactMetric } from '../../shared/setImpact/types';
 import {
   defaultDirection,
@@ -25,8 +26,8 @@ const ATTRIBUTION_OPTIONS: { value: SetImpactAttribution; label: string }[] = [
   { value: 'legal', label: 'Keeps it legal' }
 ];
 const METRIC_OPTIONS: { value: SetImpactMetric; label: string }[] = [
-  { value: 'linear', label: 'Every deck' },
-  { value: 'weighted', label: 'Weighted by finish' }
+  { value: 'linear', label: 'Top 8 decks' },
+  { value: 'weighted', label: 'Weighted by placing' }
 ];
 const THUMBNAILS = 4;
 /** Must match the phone breakpoint in set-impact.css, which hides the wide columns. */
@@ -91,18 +92,24 @@ export function SetImpactPage() {
 
       <Section>
         <div class='set-impact-controls'>
-          <Segmented<SetImpactAttribution>
-            options={ATTRIBUTION_OPTIONS}
-            selected={attribution()}
-            onSelect={next => setParams({ attr: next === 'new' ? undefined : next }, { replace: true })}
-            ariaLabel='Credit reprints to'
-          />
-          <Segmented<SetImpactMetric>
-            options={METRIC_OPTIONS}
-            selected={metric()}
-            onSelect={next => setParams({ metric: next === 'linear' ? undefined : next }, { replace: true })}
-            ariaLabel='Count decks'
-          />
+          <div class='set-impact-control'>
+            <Segmented<SetImpactAttribution>
+              options={ATTRIBUTION_OPTIONS}
+              selected={attribution()}
+              onSelect={next => setParams({ attr: next === 'new' ? undefined : next }, { replace: true })}
+              ariaLabel='Credit reprints to'
+            />
+            <Note text={NOTES.attribution} />
+          </div>
+          <div class='set-impact-control'>
+            <Segmented<SetImpactMetric>
+              options={METRIC_OPTIONS}
+              selected={metric()}
+              onSelect={next => setParams({ metric: next === 'linear' ? undefined : next }, { replace: true })}
+              ariaLabel='Count decks'
+            />
+            <Note text={NOTES.metric} />
+          </div>
         </div>
       </Section>
 
@@ -141,11 +148,11 @@ export function SetImpactPage() {
   );
 }
 
-const COLUMNS: { column: SetImpactSortColumn; label: string; class: string }[] = [
+const COLUMNS: { column: SetImpactSortColumn; label: string; class: string; note?: string }[] = [
   { column: 'name', label: 'Set', class: 'set-impact-name' },
-  { column: 'majors', label: 'Majors', class: 'num set-impact-wide' },
-  { column: 'perMajor', label: 'Per major', class: 'num' },
-  { column: 'lifetime', label: 'Lifetime', class: 'num set-impact-lifetime' }
+  { column: 'majors', label: 'Majors', class: 'num set-impact-wide', note: NOTES.majors },
+  { column: 'perMajor', label: 'Cards per deck', class: 'num', note: NOTES.perMajor },
+  { column: 'lifetime', label: 'Lifetime', class: 'num set-impact-lifetime', note: NOTES.lifetime }
 ];
 
 function ImpactTable(props: {
@@ -169,20 +176,25 @@ function ImpactTable(props: {
                   class={`${col.class} sortable`}
                   aria-sort={props.sortColumn === col.column ? props.sortDirection : 'none'}
                 >
-                  <button type='button' class='th-sort' onClick={() => props.onSort(col.column)}>
-                    {col.label}
-                    <span
-                      class='sort-mark'
-                      classList={{ 'is-idle': props.sortColumn !== col.column }}
-                      aria-hidden='true'
-                    >
-                      {props.sortDirection === 'ascending' ? '▲' : '▼'}
-                    </span>
-                  </button>
+                  <div class='set-impact-th'>
+                    <button type='button' class='th-sort' onClick={() => props.onSort(col.column)}>
+                      {col.label}
+                      <span
+                        class='sort-mark'
+                        classList={{ 'is-idle': props.sortColumn !== col.column }}
+                        aria-hidden='true'
+                      >
+                        {props.sortDirection === 'ascending' ? '▲' : '▼'}
+                      </span>
+                    </button>
+                    <Show when={col.note}>{note => <Note text={note()} />}</Show>
+                  </div>
                 </th>
               )}
             </For>
-            <th class='set-impact-wide'>Most played</th>
+            <th class='set-impact-wide'>
+              Most played <Note text={NOTES.mostPlayed} />
+            </th>
           </tr>
         </thead>
         <tbody>

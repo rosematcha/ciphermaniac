@@ -1,6 +1,7 @@
 import { For, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import { CardImage } from '../../components/CardImage';
+import { Note, NOTES } from './notes';
 import { formatShare, monthYear, type SetImpactRow } from '../../utils/setImpactRows';
 
 const PANEL_CARDS = 10;
@@ -18,10 +19,14 @@ export function SetPanel(props: { row: SetImpactRow }) {
         {props.row.rotationPredicted ? '*' : ''}
       </p>
       <dl class='set-impact-figures'>
-        <Figure label='Lifetime' value={props.row.lifetime?.toFixed(1) ?? '—'} />
-        <Figure label='Per major' value={props.row.perMajor.toFixed(1)} />
-        <Figure label='Staples' value={props.row.staples.toFixed(1)} />
-        <Figure label='Seen' value={props.row.coverage === null ? '—' : `${Math.round(props.row.coverage * 100)}%`} />
+        <Figure label='Lifetime' note={NOTES.lifetime} value={props.row.lifetime?.toFixed(1) ?? '—'} />
+        <Figure label='Cards per deck' note={NOTES.perMajor} value={props.row.perMajor.toFixed(1)} />
+        <Figure label='From staples' note={NOTES.staples} value={props.row.staples.toFixed(1)} />
+        <Figure
+          label='Seen'
+          note={NOTES.seen}
+          value={props.row.coverage === null ? '—' : `${Math.round(props.row.coverage * 100)}%`}
+        />
       </dl>
       <Show when={props.row.series.length > 1}>
         <Spark values={props.row.series} />
@@ -45,10 +50,12 @@ export function SetPanel(props: { row: SetImpactRow }) {
   );
 }
 
-function Figure(props: { label: string; value: string }) {
+function Figure(props: { label: string; note: string; value: string }) {
   return (
     <div>
-      <dt>{props.label}</dt>
+      <dt>
+        {props.label} <Note text={props.note} />
+      </dt>
       <dd>{props.value}</dd>
     </div>
   );

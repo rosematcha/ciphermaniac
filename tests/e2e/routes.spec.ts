@@ -344,6 +344,14 @@ test('set impact ranks sets by lifetime and keeps its toggles in the URL', async
   expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
 });
 
+test('set impact explains its figures without sorting on a tap', async ({ page }) => {
+  await gotoClean(page, '/tools/set-impact');
+  const tip = page.locator('th .info-tip:visible').first();
+  await tip.click();
+  await expect(tip.locator('.info-tip-bubble')).toBeVisible();
+  await expect(page.locator('th[aria-sort="descending"]')).toHaveClass(/set-impact-lifetime/);
+});
+
 test('set impact opens a picked set in the panel', async ({ page }) => {
   await gotoClean(page, '/tools/set-impact');
   const panel = page.locator('.set-impact-panel:visible, .set-impact-inline:visible').first();

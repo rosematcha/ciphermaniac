@@ -141,9 +141,14 @@
 
   /* Each toggle takes the full width with even halves, rather than two
      ragged pills stacked at their content widths. */
-  .set-impact-controls .segmented {
+  .set-impact-control {
     display: flex;
     width: 100%;
+  }
+
+  .set-impact-controls .segmented {
+    display: flex;
+    flex: 1;
   }
 
   .set-impact-controls .segmented button {
@@ -345,4 +350,45 @@
     white-space: normal;
     background: var(--surface);
   }
+}
+
+.set-impact-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The table clips its overflow and the site header covers the top of the
+   page, so these notes open downward. */
+.set-impact-control .info-tip-bubble,
+.set-impact-table th .info-tip-bubble {
+  top: calc(100% + 7px);
+  bottom: auto;
+}
+
+.set-impact-control .info-tip-bubble::after,
+.set-impact-table th .info-tip-bubble::after {
+  top: auto;
+  bottom: 100%;
+}
+
+.set-impact-th {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  white-space: nowrap;
+}
+
+.set-impact-table th.num .set-impact-th {
+  justify-content: flex-end;
+}
+
+/* The note takes the header's right padding, so the button gives it up. */
+.set-impact-table .data th.sortable .set-impact-th:has(.info-tip) button.th-sort {
+  width: auto;
+  padding-right: 0;
+}
+
+.set-impact-th .info-tip {
+  margin-right: 10px;
 }
