@@ -217,3 +217,21 @@ test('an extra window marks a reprint of a card still legal from an undated set'
   // Before the rotation the dated set is the older legal print, and earns the credit.
   assert.equal(dated.credit('Switch::CEC::209', '2021-06-01')?.set, 'CEC');
 });
+
+test('a promo window credits last and never ranks', () => {
+  const db: SynonymDatabase = { synonyms: { "Boss's Orders::SP::250": "Boss's Orders::RCL::154" }, canonicals: {} };
+  const promos = [{ code: 'SP', legalFrom: '2019-11-15', legalUntil: '2025-04-11', promo: true }];
+  const attributor = createAttributor(db, {}, promos);
+  assert.equal(attributor.credit("Boss's Orders::RCL::154", '2022-05-07')?.set, 'RCL');
+  const builder = createSetImpactBuilder(db, {}, promos);
+  builder.addEvent({
+    date: '2022-05-07',
+    name: 'X',
+    players: 1,
+    decks: [{ placement: 1, cards: [{ name: "Boss's Orders", set: 'SP', number: '250' }] }]
+  });
+  assert.equal(
+    builder.finish('2026-09-22T00:00:00.000Z').sets.some(set => set.code === 'SP'),
+    false
+  );
+});

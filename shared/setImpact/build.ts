@@ -50,9 +50,13 @@ const DAY_MS = 86_400_000;
 /** `SET::NUMBER` (padded, as in card-types.json) to regulation mark. */
 export type RegulationMarks = Record<string, string | null | undefined>;
 
-/** A legality window for a set the catalog doesn't date. */
+/** A legality window for a set the catalog doesn't date (or dates differently). */
 export interface SetWindow {
   code: string;
+  /** Display name; falls back to the catalog's. */
+  name?: string;
+  /** A promo line: last choice for credit, never ranked. */
+  promo?: boolean;
   legalFrom: string;
   legalUntil: string | null;
 }
@@ -60,6 +64,7 @@ export interface SetWindow {
 interface SetDates {
   legalFrom?: string;
   legalUntil?: string | null;
+  promo?: boolean;
 }
 
 type SetLookup = Map<string, SetDates>;
@@ -102,7 +107,7 @@ function toPrint(uid: string, marks: RegulationMarks, sets: SetLookup): Print | 
     number: parsed.number,
     legalFrom: entry.legalFrom,
     until: rotation ? rotation.date : (entry.legalUntil ?? null),
-    promo: PROMO_SETS.has(parsed.set)
+    promo: PROMO_SETS.has(parsed.set) || Boolean(entry.promo)
   };
 }
 
@@ -137,9 +142,9 @@ function isIntroduction(print: Print, cluster: Print[]): boolean {
 /**
  * Build a resolver from any printing's UID and an event date to the set that
  * earns the credit, or null when no printing was legal then. `extraSets` dates
- * sets the catalog leaves undated (Sun & Moon sets still legal when the first
- * Sword & Shield sets came out), so a reprint of one of their cards is not
- * mistaken for a card new to Standard. They can earn credit but are never ranked.
+ * sets the catalog leaves undated (every set before Sword & Shield), so their
+ * cards can be credited and a reprint of one is not mistaken for a card new
+ * to Standard.
  */
 export function createAttributor(
   db: SynonymDatabase,
@@ -286,6 +291,26 @@ function yearsBetween(from: string, until: string | null): number | null {
   return until ? Math.round(((Date.parse(until) - Date.parse(from)) / DAY_MS / 365.25) * 100) / 100 : null;
 }
 
+/**
+ * Every dated set that can be ranked, oldest first: the catalog's, with extra
+ * windows filling in (or overriding) the dates. Promo and energy sets never rank.
+ */
+function rankableSets(extraSets: SetWindow[]) {
+  const extras = new Map(extraSets.map(set => [set.code, set]));
+  const merged = [
+    ...SET_CATALOG.map(entry => ({
+      ...entry,
+      ...extras.get(entry.code),
+      name: extras.get(entry.code)?.name ?? entry.name
+    })),
+    ...extraSets.filter(set => !SET_BY_CODE.has(set.code)).map(set => ({ ...set, name: set.name ?? set.code }))
+  ];
+  return merged
+    .filter(set => !('promo' in set && set.promo))
+    .filter(isRankedSet)
+    .sort((a, b) => a.legalFrom.localeCompare(b.legalFrom) || getReleaseIndex(b.code) - getReleaseIndex(a.code));
+}
+
 function isRankedSet<T extends { code: string; legalFrom?: string }>(entry: T): entry is T & { legalFrom: string } {
   return Boolean(entry.legalFrom) && !PROMO_SETS.has(entry.code) && !ENERGY_SETS.has(entry.code);
 }
@@ -367,10 +392,9 @@ export function createSetImpactBuilder(db: SynonymDatabase, marks: RegulationMar
     generatedAt,
     rotations: REGULATION_ROTATIONS,
     events,
-    sets: SET_CATALOG.filter(isRankedSet)
+    sets: rankableSets(extraSets)
       .map(buildSet)
       .filter((set): set is SetImpactSet => set !== null)
-      .reverse()
   });
 
   return { addEvent, finish, unattributed };
