@@ -2,10 +2,11 @@
  * Reading Limitless's Day 2 decklist database into Set Impact events.
  *
  * Limitless publishes the top of each event, not the field, and how deep it
- * goes varies (Bilbao 2022 lists 31 of 276 players, Baltimore 2026 559 of
- * 3,122). Shares taken over those lists as-is would compare an elite slice at
- * one event with a broad one at the next, so every event is cut to the same
- * placement percentile, and an event whose lists don't reach it is left out.
+ * goes varies: a Day 2 of hundreds today, often just a top 8 before 2020.
+ * Every event is cut to its top 8, the one depth every era publishes; on
+ * events that list deeper, a top 8 tracks the top 5% closely (r = 0.94 per
+ * set, no lean either way), only noisier, and averaging hundreds of events
+ * takes the noise out.
  * @module shared/setImpact/limitless
  */
 
@@ -31,19 +32,96 @@ export interface LimitlessEventInfo {
 }
 
 /**
- * Sun & Moon sets still legal when the first Sword & Shield sets came out, so
- * a Sword & Shield reprint of one of their cards is not new to Standard. The
- * rotations match Limitless's format labels: UPR-on events run to August
- * 2020, TEU-on to the start of 2022, and SSH-on from March 2022.
+ * Standard seasons before regulation marks took over, as the first legal set
+ * and the date the rotation to it took effect. Rotations followed Worlds; the
+ * dates from 2016 on match Limitless's own format labels (the last PRC-on
+ * event is August 2017, the first BKT-on September 2017, and so on). The
+ * later rows are the catalog's rotations, named by the format labels.
  */
-export const SUN_MOON_WINDOWS: SetWindow[] = [
-  ...['UPR', 'FLI', 'CES', 'DRM', 'LOT'].map(code => ({ code, legalFrom: '2018-02-02', legalUntil: '2020-08-14' })),
-  ...['TEU', 'DET', 'UNB', 'UNM', 'HIF', 'CEC'].map(code => ({
-    code,
-    legalFrom: '2019-02-01',
-    legalUntil: '2022-02-25'
-  }))
+export const STANDARD_SEASONS: Array<{ from: string; firstSet: string }> = [
+  { from: '2008-08-15', firstSet: 'DP' },
+  { from: '2010-09-01', firstSet: 'MD' },
+  { from: '2011-09-01', firstSet: 'HS' },
+  { from: '2012-09-01', firstSet: 'BLW' },
+  { from: '2013-09-01', firstSet: 'NXD' },
+  { from: '2014-09-01', firstSet: 'BCR' },
+  { from: '2015-09-01', firstSet: 'XY' },
+  { from: '2016-09-01', firstSet: 'PRC' },
+  { from: '2017-09-01', firstSet: 'BKT' },
+  { from: '2018-08-31', firstSet: 'SUM' },
+  { from: '2019-08-16', firstSet: 'UPR' },
+  { from: '2020-08-14', firstSet: 'TEU' },
+  { from: '2022-02-25', firstSet: 'SSH' },
+  { from: '2023-04-14', firstSet: 'BST' },
+  { from: '2024-04-05', firstSet: 'BRS' },
+  { from: '2025-04-11', firstSet: 'SVI' },
+  { from: '2026-04-10', firstSet: 'TEF' }
 ];
+
+/**
+ * Promo lines, dated by the eras they were printed for. Each card in a line
+ * really rotated with its own era's sets; this is the rough span, and it only
+ * decides credit (promos never rank), so a promo-only card is recognised as
+ * legal rather than making its event look like another format.
+ */
+export const PROMO_WINDOWS: SetWindow[] = [
+  { code: 'DPP', legalFrom: '2007-05-01', legalUntil: '2011-09-01', promo: true },
+  { code: 'HSP', legalFrom: '2010-02-01', legalUntil: '2012-09-01', promo: true },
+  { code: 'BWP', legalFrom: '2011-04-01', legalUntil: '2015-09-01', promo: true },
+  { code: 'XYP', legalFrom: '2014-02-01', legalUntil: '2018-08-31', promo: true },
+  { code: 'SMP', legalFrom: '2017-02-01', legalUntil: '2022-02-25', promo: true },
+  { code: 'SP', legalFrom: '2019-11-15', legalUntil: '2025-04-11', promo: true }
+];
+
+/** The first legal set of the Standard season a date falls in. */
+export function seasonFirstSet(date: string): string | null {
+  let first: string | null = null;
+  for (const season of STANDARD_SEASONS) {
+    if (season.from <= date) {
+      first = season.firstSet;
+    }
+  }
+  return first;
+}
+
+export interface LimitlessSet {
+  code: string;
+  name: string;
+  /** ISO release date; null for promo lines. */
+  released: string | null;
+}
+
+const DAY_MS = 86_400_000;
+const addDays = (iso: string, days: number): string =>
+  new Date(Date.parse(`${iso}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+
+/** Sets became tournament legal the second Friday after release. */
+export function secondFridayAfter(released: string): string {
+  const day = new Date(`${released}T00:00:00Z`).getUTCDay();
+  const toFriday = (5 - day + 7) % 7 || 7;
+  return addDays(released, toFriday + 7);
+}
+
+/**
+ * Legality windows for every set released before `before` (the first set our
+ * catalog dates): legal from its second Friday, and rotated by the first
+ * season whose opening set came out after it.
+ */
+export function eraWindows(sets: LimitlessSet[], before: string): SetWindow[] {
+  const released = new Map(sets.map(set => [set.code, set.released]));
+  const seasons = STANDARD_SEASONS.map(season => ({ ...season, released: released.get(season.firstSet) ?? null }));
+  return sets
+    .filter(
+      (set): set is LimitlessSet & { released: string } => Boolean(set.released) && (set.released as string) < before
+    )
+    .map(set => ({
+      code: set.code,
+      name: set.name,
+      legalFrom: secondFridayAfter(set.released),
+      legalUntil: seasons.find(season => season.released !== null && season.released > set.released)?.from ?? null
+    }))
+    .filter(window => window.legalUntil === null || window.legalFrom < window.legalUntil);
+}
 
 const MONTHS = [
   'January',
@@ -63,7 +141,8 @@ const MONTHS = [
 const decode = (text: string): string =>
   text
     .replace(/&amp;/g, '&')
-    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&apos;/g, "'")
     .replace(/&quot;/g, '"')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>');
@@ -90,9 +169,15 @@ export function parseEventInfo(id: number, html: string): LimitlessEventInfo {
   };
 }
 
+/** A card name as Limitless shows it, markup (the Prism Star glyph's span) removed. */
+export const cardName = (html: string): string =>
+  decode(html.replace(/<[^>]+>/g, ''))
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const PLACE = /data-target="decklist-\d+">\s*(\d+)(?:st|nd|rd|th)\b/;
 const CARD =
-  /class="decklist-card" data-set="([^"]*)" data-number="([^"]*)"[\s\S]*?card-count">(\d+)<\/span>\s*<span class="card-name">([^<]*)<\/span>/g;
+  /class="decklist-card" data-set="([^"]*)" data-number="([^"]*)"[\s\S]*?card-count">(\d+)<\/span>\s*<span class="card-name">([\s\S]*?)<\/span>\s*(?:<img|<\/a>)/g;
 
 /** Every list on a `/tournaments/{id}/decklists` page, with its placing. */
 export function parseDecklists(html: string): LimitlessDeck[] {
@@ -102,13 +187,29 @@ export function parseDecklists(html: string): LimitlessDeck[] {
     .map(part => {
       const place = PLACE.exec(part);
       const cards = [...part.matchAll(CARD)].map(([, set, number, count, name]): LimitlessCard => [
-        decode(name),
+        cardName(name),
         set,
         number,
         Number(count)
       ]);
       return { place: place ? Number(place[1]) : null, cards };
     });
+}
+
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Limitless's `/cards` set list: code, name and release date ("03 Feb 17"). */
+export function parseSetList(html: string): LimitlessSet[] {
+  return [...html.matchAll(/href="\/cards\/([A-Z0-9-]+)"[^>]*>([\s\S]*?)<\/tr>/g)].map(([, code, body]) => {
+    const text = decode(body.replace(/<[^>]+>|\s+/g, ' ')).trim();
+    const when = /(\d{2}) (\w{3}) (\d{2})/.exec(text);
+    const month = when ? MONTH_ABBR.indexOf(when[2]) : -1;
+    return {
+      code,
+      name: text.split(new RegExp(`\\s${code}(?:\\s|$)`))[0].trim(),
+      released: when && month >= 0 ? `20${when[3]}-${String(month + 1).padStart(2, '0')}-${when[1]}` : null
+    };
+  });
 }
 
 /** International printings on a `/cards/{set}/{number}` page, as `SET::NNN`. */
@@ -124,35 +225,33 @@ export function parsePrintTable(html: string): string[] {
   );
 }
 
-/** Should an event count at all: a dated, sized, international-format major. */
-export function isEligible(info: LimitlessEventInfo, isDatedSet: (code: string) => boolean, today: string): boolean {
-  const firstSet = info.format?.split('-')[0];
-  return Boolean(
-    info.date && info.date <= today && info.players && firstSet && isDatedSet(firstSet) && !/online/i.test(info.name)
-  );
-}
-
-export interface DepthOptions {
-  /** Share of the field kept at every event, by placing. */
-  depth: number;
-  /** An event must keep at least this many lists. */
-  minDecks: number;
-  /** Share of the kept placings that must have a list. */
-  minCoverage: number;
-}
-
 /**
- * The lists placing inside the top `depth` of the field, or null when the
- * event's lists don't reach that deep (or leave too many of those placings
- * without a list) and the event has to be left out.
+ * A Standard major we can place: dated, sized, not online, and either labelled
+ * with the season's own format (a BLW-on label mid-2018 is Expanded) or, for
+ * the unlabelled events before Limitless began labelling in late 2016, dated
+ * inside a known season.
  */
-export function cutToDepth(decks: LimitlessDeck[], players: number, options: DepthOptions): LimitlessDeck[] | null {
-  const cut = Math.ceil(players * options.depth);
-  if (cut < options.minDecks) {
-    return null;
+export function isStandardEvent(info: LimitlessEventInfo, today: string): boolean {
+  if (!info.date || info.date > today || !info.players || /online/i.test(info.name)) {
+    return false;
   }
+  const expected = seasonFirstSet(info.date);
+  if (!info.format) {
+    return info.date < LABELLED_SINCE && expected !== null;
+  }
+  return info.format.split('-')[0] === expected;
+}
+
+/** Limitless labels every event's format from this date. */
+const LABELLED_SINCE = '2016-09-01';
+
+/** Every era publishes at least its top 8. */
+export const TOP_CUT = 8;
+
+/** The lists placing in the top cut, or null when the event doesn't list all of them. */
+export function cutToTop(decks: LimitlessDeck[], cut = TOP_CUT): LimitlessDeck[] | null {
   const kept = decks.filter(deck => deck.place !== null && deck.place <= cut);
-  return kept.length >= cut * options.minCoverage ? kept : null;
+  return kept.length >= cut ? kept : null;
 }
 
 /** Limitless decks in the shape the Set Impact builder reads. */

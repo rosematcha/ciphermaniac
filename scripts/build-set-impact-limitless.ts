@@ -1,11 +1,13 @@
 /**
- * One-off: build `static/set-impact.json` from Limitless's Day 2 decklist
- * database (tournaments 261-577), which reaches back to 2022, instead of our
- * own event releases, which start at Baltimore 2024.
+ * One-off: build `static/set-impact.json` from every Standard major in
+ * Limitless's decklist database (tournaments 1-577, 2010 onward), instead of
+ * our own event releases, which start at Baltimore 2024.
  *
- * Every event is cut to the same placement percentile (DEPTH of the field) so
- * shares compare like with like; events whose lists don't reach that deep are
- * left out as incomplete. Cards Limitless lists that our synonym database
+ * Every event is cut to its top 8, the depth every era publishes. Sets before
+ * Sword & Shield are dated from Limitless's set list and the season table in
+ * shared/setImpact/limitless. An event where too many cards have no printing
+ * legal on its date is left out: its format isn't the Standard we think it
+ * is. Cards Limitless lists that our synonym database
  * doesn't know get their printings from their Limitless print table, the way
  * the synonyms job builds clusters, so older reprints still merge.
  *
@@ -21,18 +23,27 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import { cardUid, requireSynonymDatabase, type SynonymDatabase } from '../shared/data/cardIdentity';
-import { BASIC_ENERGY_NAMES, SET_CATALOG } from '../shared/data/canonicalPrint';
-import { createSetImpactBuilder, type RegulationMarks } from '../shared/setImpact/build';
+import { BASIC_ENERGY_NAMES } from '../shared/data/canonicalPrint';
 import {
-  cutToDepth,
+  createAttributor,
+  createSetImpactBuilder,
+  type RegulationMarks,
+  type SetWindow
+} from '../shared/setImpact/build';
+import {
+  cardName,
+  cutToTop,
+  eraWindows,
   extendSynonyms,
-  isEligible,
+  isStandardEvent,
+  type LimitlessCard,
   type LimitlessDeck,
   type LimitlessEventInfo,
   parseDecklists,
   parseEventInfo,
   parsePrintTable,
-  SUN_MOON_WINDOWS,
+  parseSetList,
+  PROMO_WINDOWS,
   toImpactDecks
 } from '../shared/setImpact/limitless';
 
@@ -41,12 +52,13 @@ const CACHE = join(ROOT, '.cache', 'limitless-day2');
 const OUT_PATH = join(ROOT, 'static', 'set-impact.json');
 const R2_BASE = 'https://r2.ciphermaniac.com';
 const LIMITLESS = 'https://limitlesstcg.com';
-const FIRST_EVENT = 261;
+const FIRST_EVENT = 1;
 const LAST_EVENT = 577;
-const DEPTH = { depth: 0.05, minDecks: 8, minCoverage: 0.95 };
+/** Share of card appearances that must have a legal printing for an event to count. */
+const MIN_LEGAL_SHARE = 0.95;
+/** The first set our catalog dates; older sets take Limitless's release dates. */
+const CATALOG_DATES_FROM = '2020-02-07';
 const HEADERS = { 'User-Agent': 'Mozilla/5.0 ciphermaniac-set-impact (one-off)' };
-
-const DATED_SETS = new Set(SET_CATALOG.filter(entry => entry.legalFrom).map(entry => entry.code));
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => {
@@ -95,7 +107,11 @@ async function eventDecks(id: number): Promise<LimitlessDeck[]> {
   const cachedEvent = await cached(`lists/${id}.json`, async () => ({
     decks: parseDecklists((await fetchText(`${LIMITLESS}/tournaments/${id}/decklists`)) ?? '')
   }));
-  return cachedEvent.decks;
+  // Lists cached before names were cleaned still carry markup.
+  return cachedEvent.decks.map(deck => ({
+    ...deck,
+    cards: deck.cards.map(([name, set, number, count]): LimitlessCard => [cardName(name), set, number, count])
+  }));
 }
 
 async function r2Json<T>(path: string): Promise<T> {
@@ -128,10 +144,10 @@ async function collectEvents(): Promise<KeptEvent[]> {
   let incomplete = 0;
   for (let id = FIRST_EVENT; id <= LAST_EVENT; id++) {
     const info = await eventInfo(id);
-    if (!isEligible(info, code => DATED_SETS.has(code), today)) {
+    if (!isStandardEvent(info, today)) {
       continue;
     }
-    const decks = cutToDepth(await eventDecks(id), info.players as number, DEPTH);
+    const decks = cutToTop(await eventDecks(id));
     if (!decks) {
       incomplete++;
       continue;
@@ -166,7 +182,8 @@ async function scrapeUnknownPrints(events: KeptEvent[], db: SynonymDatabase): Pr
       parsePrintTable((await fetchText(`${LIMITLESS}/cards/${set}/${number.replace(/^0+(?=\d)/, '')}`)) ?? '')
     );
     prints.forEach(print => covered.add(`${name}::${print}`));
-    if (prints.length > 1) {
+    // A card's own row carries no link, so its table lists only its other printings.
+    if (prints.some(print => print !== `${set}::${number}`)) {
       found.set(uid, prints);
     }
   }
@@ -174,11 +191,46 @@ async function scrapeUnknownPrints(events: KeptEvent[], db: SynonymDatabase): Pr
   return found;
 }
 
+async function setWindows(): Promise<SetWindow[]> {
+  const html = join(CACHE, 'sets.html');
+  if (!existsSync(html)) {
+    writeFileSync(html, (await fetchText(`${LIMITLESS}/cards`)) ?? '', 'utf8');
+  }
+  return [...eraWindows(parseSetList(readFileSync(html, 'utf8')), CATALOG_DATES_FROM), ...PROMO_WINDOWS];
+}
+
+/** Share of an event's card appearances (basic energy aside) with a legal printing that day. */
+function legalShare(event: KeptEvent, attributor: ReturnType<typeof createAttributor>): number {
+  let total = 0;
+  let legal = 0;
+  for (const deck of event.decks) {
+    for (const [name, set, number] of deck.cards) {
+      const uid = BASIC_ENERGY_NAMES.has(name) ? null : cardUid(name, set, number);
+      if (uid) {
+        total++;
+        legal += attributor.credit(attributor.canonical(uid), event.info.date) ? 1 : 0;
+      }
+    }
+  }
+  return total ? legal / total : 0;
+}
+
 async function main(): Promise<void> {
   const { db, marks } = await loadOurData();
-  const events = await collectEvents();
-  const extended = extendSynonyms(db, await scrapeUnknownPrints(events, db));
-  const builder = createSetImpactBuilder(extended, marks, SUN_MOON_WINDOWS);
+  const windows = await setWindows();
+  const collected = await collectEvents();
+  const extended = extendSynonyms(db, await scrapeUnknownPrints(collected, db));
+  const attributor = createAttributor(extended, marks, windows);
+  const events = collected.filter(event => {
+    const share = legalShare(event, attributor);
+    if (share < MIN_LEGAL_SHARE) {
+      console.log(
+        `[set-impact] Left out ${event.info.date} ${event.info.name}: ${(share * 100).toFixed(1)}% of cards legal`
+      );
+    }
+    return share >= MIN_LEGAL_SHARE;
+  });
+  const builder = createSetImpactBuilder(extended, marks, windows);
   for (const { info, decks } of events) {
     builder.addEvent({ date: info.date, name: info.name, players: info.players, decks: toImpactDecks(decks) });
   }
