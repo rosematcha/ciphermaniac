@@ -50,7 +50,7 @@ export const STAPLE_SHARE = 0.4;
 /** A set seen at fewer majors than this is shown but not ranked. */
 export const MIN_MAJORS = 8;
 
-export type SetImpactSortColumn = 'name' | 'legalFrom' | 'rotatesOn' | 'majors' | 'perMajor' | 'years' | 'lifetime';
+export type SetImpactSortColumn = 'name' | 'majors' | 'perMajor' | 'lifetime';
 
 export type SortDirection = 'ascending' | 'descending';
 
@@ -91,19 +91,16 @@ export function setImpactRows(payload: SetImpactPayload, attribution: SetImpactA
   });
 }
 
-const SORT_KEYS: Record<SetImpactSortColumn, (row: SetImpactRow) => string | number | null> = {
+const SORT_KEYS: Record<SetImpactSortColumn, (row: SetImpactRow) => string | number> = {
   name: row => row.name,
-  legalFrom: row => row.legalFrom,
-  rotatesOn: row => row.rotatesOn,
   majors: row => row.majors,
   perMajor: row => row.perMajor,
-  years: row => row.years,
   lifetime: row => row.lifetime
 };
 
-/** The way a column sorts on its first click: names and dates up, figures down. */
+/** The way a column sorts on its first click: names up, figures down. */
 export function defaultDirection(column: SetImpactSortColumn): SortDirection {
-  return ['name', 'legalFrom', 'rotatesOn'].includes(column) ? 'ascending' : 'descending';
+  return column === 'name' ? 'ascending' : 'descending';
 }
 
 function compareKeys(a: string | number, b: string | number): number {
@@ -112,7 +109,7 @@ function compareKeys(a: string | number, b: string | number): number {
 
 /**
  * Sorted copy. Unranked sets sort last in either direction when a figure is
- * the key, then unknown values, then the key itself.
+ * the key; ties fall back to the older set.
  */
 export function sortSetImpactRows(
   rows: SetImpactRow[],
@@ -121,17 +118,12 @@ export function sortSetImpactRows(
 ): SetImpactRow[] {
   const key = SORT_KEYS[column];
   const sign = direction === 'ascending' ? 1 : -1;
-  const figure = defaultDirection(column) === 'descending';
+  const figure = column !== 'name';
   return [...rows].sort((a, b) => {
     if (figure && a.ranked !== b.ranked) {
       return Number(b.ranked) - Number(a.ranked);
     }
-    const ka = key(a);
-    const kb = key(b);
-    if (ka === null || kb === null) {
-      return Number(ka === null) - Number(kb === null);
-    }
-    return compareKeys(ka, kb) * sign || a.legalFrom.localeCompare(b.legalFrom);
+    return compareKeys(key(a), key(b)) * sign || a.legalFrom.localeCompare(b.legalFrom);
   });
 }
 

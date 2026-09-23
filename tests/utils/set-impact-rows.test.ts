@@ -93,7 +93,7 @@ test('cards carry their share and contribution, and new-to-Standard drops reprin
   );
 });
 
-test('figures sort ranked sets first, then unknown values last in either direction', () => {
+test('figures sort ranked sets first in either direction', () => {
   const rows = setImpactRows(PAYLOAD, 'legal');
   // AAA and BBB tie on lifetime; the older set breaks the tie.
   assert.deepEqual(
@@ -105,23 +105,19 @@ test('figures sort ranked sets first, then unknown values last in either directi
     ['CCC', 'AAA', 'BBB']
   );
   assert.deepEqual(
-    sortSetImpactRows(rows, 'years', 'descending').map(row => row.code),
+    sortSetImpactRows(rows, 'majors', 'ascending').map(row => row.code),
     ['CCC', 'AAA', 'BBB']
   );
-  // Names and dates ignore the floor.
-  assert.deepEqual(
-    sortSetImpactRows(rows, 'legalFrom', 'ascending').map(row => row.code),
-    ['CCC', 'AAA', 'BBB']
-  );
+  // Names ignore the floor.
   assert.deepEqual(
     sortSetImpactRows(rows, 'name', 'descending').map(row => row.code),
     ['CCC', 'BBB', 'AAA']
   );
 });
 
-test('names and dates sort up first, figures down', () => {
+test('names sort up first, figures down', () => {
   assert.equal(defaultDirection('name'), 'ascending');
-  assert.equal(defaultDirection('rotatesOn'), 'ascending');
+  assert.equal(defaultDirection('majors'), 'descending');
   assert.equal(defaultDirection('lifetime'), 'descending');
 });
 
