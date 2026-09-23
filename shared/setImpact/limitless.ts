@@ -29,7 +29,16 @@ export interface LimitlessEventInfo {
   players: number | null;
   /** ISO date. */
   date: string | null;
+  /** Played on the online client; Limitless flags these with a client logo instead of a country. */
+  online: boolean;
 }
+
+/**
+ * The in-person gap: no major from Perth in March 2020 until Brisbane in
+ * March 2022. Online events count inside it, as the closest thing the game
+ * had, and never outside it.
+ */
+export const ONLINE_WINDOW = { from: '2020-03-15', until: '2022-03-12' };
 
 /**
  * Standard seasons before regulation marks took over, as the first legal set
@@ -155,6 +164,7 @@ function isoDate(day: string, month: string, year: string): string | null {
 /** The infobox of a `/tournaments/{id}` page. */
 export function parseEventInfo(id: number, html: string): LimitlessEventInfo {
   const heading = /class="infobox-heading">\s*([^<]*?)\s*</.exec(html);
+  const flag = /class="infobox-heading">[^]*?<img class="flag"[^>]*alt="([^"]*)"/.exec(html);
   const lineMatch = /infobox-line">([\s\S]*?)<\/div/.exec(html);
   const line = lineMatch ? lineMatch[1].replace(/<[^>]+>|\s+/g, ' ') : '';
   const format = /\/decks\/\?time=all&(?:amp;)?format=([A-Z0-9]+-[A-Z0-9]+)/.exec(html);
@@ -165,9 +175,12 @@ export function parseEventInfo(id: number, html: string): LimitlessEventInfo {
     name: heading ? decode(heading[1]) : '',
     format: format ? format[1] : null,
     players: players ? Number(players[1].replace(/,/g, '')) : null,
-    date: when ? isoDate(when[1], when[2], when[3]) : null
+    date: when ? isoDate(when[1], when[2], when[3]) : null,
+    online: flag !== null && ONLINE_CLIENTS.has(flag[1].toLowerCase())
   };
 }
+
+const ONLINE_CLIENTS = new Set(['ptcgo', 'ptcgl']);
 
 /** A card name as Limitless shows it, markup (the Prism Star glyph's span) removed. */
 export const cardName = (html: string): string =>
@@ -226,13 +239,16 @@ export function parsePrintTable(html: string): string[] {
 }
 
 /**
- * A Standard major we can place: dated, sized, not online, and either labelled
- * with the season's own format (a BLW-on label mid-2018 is Expanded) or, for
- * the unlabelled events before Limitless began labelling in late 2016, dated
- * inside a known season.
+ * A Standard major we can place: dated, sized, in person (or online inside
+ * the in-person gap), and either labelled with the season's own format (a
+ * BLW-on label mid-2018 is Expanded) or, for the unlabelled events before
+ * Limitless began labelling in late 2016, dated inside a known season.
  */
 export function isStandardEvent(info: LimitlessEventInfo, today: string): boolean {
-  if (!info.date || info.date > today || !info.players || /online/i.test(info.name)) {
+  if (!info.date || info.date > today || !info.players) {
+    return false;
+  }
+  if (info.online && (info.date < ONLINE_WINDOW.from || info.date >= ONLINE_WINDOW.until)) {
     return false;
   }
   const expected = seasonFirstSet(info.date);

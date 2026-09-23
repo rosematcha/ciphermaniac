@@ -3,7 +3,8 @@
  * Limitless's decklist database (tournaments 1-577, 2010 onward), instead of
  * our own event releases, which start at Baltimore 2024.
  *
- * Every event is cut to its top 8, the depth every era publishes. Sets before
+ * Every event is cut to its top 8, the depth every era publishes. Online
+ * events count only inside the 2020-2022 in-person gap. Sets before
  * Sword & Shield are dated from Limitless's set list and the season table in
  * shared/setImpact/limitless. An event where too many cards have no printing
  * legal on its date is left out: its format isn't the Standard we think it

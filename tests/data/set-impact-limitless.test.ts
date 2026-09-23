@@ -30,15 +30,22 @@ test('the infobox gives name, date, size and format', () => {
     name: 'Special Event Bilbao',
     format: 'SSH-BRS',
     players: 276,
-    date: '2022-05-07'
+    date: '2022-05-07',
+    online: false
   });
   assert.deepEqual(parseEventInfo(570, '<div class="infobox-heading">CL Chiba<'), {
     id: 570,
     name: 'CL Chiba',
     format: null,
     players: null,
-    date: null
+    date: null,
+    online: false
   });
+  // The client's logo stands where the country flag would be.
+  const online = `<div class="infobox-heading"> Players Cup Finals <img class="flag" src="x/ptcgo.png" alt="ptcgo"></div>
+    <div class="infobox-line"> 29th August 2020 • 16 Players • <a href="/decks/?time=all&amp;format=TEU-DAA">TEU - DAA</a></div>`;
+  assert.equal(parseEventInfo(288, online).online, true);
+  assert.equal(parseEventInfo(288, online.replace('alt="ptcgo"', 'alt="AU"')).online, false);
 });
 
 const card = (set: string, number: string, count: number, name: string) =>
@@ -77,7 +84,7 @@ test('the print table lists international printings only', () => {
 });
 
 test('events count only in the Standard of their day', () => {
-  const base = { id: 1, name: 'Regional X', format: 'SSH-BRS', players: 300, date: '2022-05-07' };
+  const base = { id: 1, name: 'Regional X', format: 'SSH-BRS', players: 300, date: '2022-05-07', online: false };
   const today = '2026-09-22';
   assert.equal(isStandardEvent(base, today), true);
   // A BLW-on label in 2018 is Expanded.
@@ -87,7 +94,11 @@ test('events count only in the Standard of their day', () => {
   assert.equal(isStandardEvent({ ...base, format: null, date: '2023-02-25' }, today), false);
   assert.equal(isStandardEvent({ ...base, players: null }, today), false);
   assert.equal(isStandardEvent({ ...base, date: '2027-02-19' }, today), false);
-  assert.equal(isStandardEvent({ ...base, name: 'Limitless Online Series' }, today), false);
+  // Online events count only while no in-person majors ran.
+  const online = { ...base, online: true, format: 'UPR-RCL' };
+  assert.equal(isStandardEvent({ ...online, date: '2020-06-13' }, today), true);
+  assert.equal(isStandardEvent({ ...online, date: '2020-03-07', format: 'UPR-SSH' }, today), false);
+  assert.equal(isStandardEvent({ ...base, online: true }, today), false);
 });
 
 test('seasons follow the rotation table', () => {
