@@ -1,6 +1,6 @@
 /**
- * Live round poller: one `tickEvent` per live event per minute, published to
- * `live/v1/{slug}/` on R2.
+ * Live round poller: `tickEvent` for every live event every few seconds, each
+ * deciding for itself whether a look is due, published to `live/v1/{slug}/` on R2.
  *
  * Runs as a long-lived process rather than a Worker cron: parsing a
  * 3,000-player round costs more CPU than a free-plan Worker invocation allows.
@@ -12,7 +12,10 @@
  * The events come from `live/v1/schedule.json`, which each run rebuilds from
  * RK9's event list when the published copy is more than half a day old.
  *
- * With `LIVE_OUT_DIR` set it writes to that directory instead of R2.
+ * With `LIVE_OUT_DIR` set it writes to that directory instead of R2. With
+ * `LIVE_NOTIFY_URL` set it POSTs `{ slug }` there after each publish, so the
+ * Discord bot can post a new round the moment it is out rather than on its next
+ * look. The notice carries no data: the bot still reads the round from R2.
  */
 
 import { createHash } from 'node:crypto';
@@ -27,7 +30,9 @@ import type { LiveEvent, LiveIndex, LiveSchedule, LiveState } from '../../shared
 import { intEnv, r2Config } from './lib/env.ts';
 import { createR2Client, putJson, readJson } from './lib/r2.mjs';
 
-const POLL_MS = 60_000;
+/** Probes run every ten seconds at the most, so a loop this short keeps them close to on time. */
+const LOOP_MS = 5_000;
+const NOTIFY_TIMEOUT_MS = 5_000;
 const FETCH_TIMEOUT_MS = 30_000;
 const RK9_EVENTS_URL = 'https://rk9.gg/events/pokemon';
 const USER_AGENT = 'Mozilla/5.0 (compatible; Ciphermaniac/1.0; +https://ciphermaniac.com)';
@@ -107,16 +112,47 @@ async function startingState(event: LiveEvent, publisher: Publisher): Promise<Li
   return index ? resumeState(index) : initialState();
 }
 
-async function pollEvent(event: LiveEvent, states: Map<string, LiveState>, publisher: Publisher): Promise<void> {
-  const now = new Date();
+/** Tells the bot a round is out. A failed notice only costs the bot's wait for its next look. */
+async function notify(url: string | undefined, slug: string): Promise<void> {
+  if (!url) {
+    return;
+  }
   try {
-    const state = states.get(event.slug) ?? (await startingState(event, publisher));
-    const result = await tickEvent(event, state, { now, publish: publisher.write, fetchRound, hash });
-    states.set(event.slug, result.state);
-    if (result.outcome !== 'skipped') {
-      console.log(`${now.toISOString()} ${event.slug} r${result.state.round} ${result.outcome}`);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug }),
+      signal: AbortSignal.timeout(NOTIFY_TIMEOUT_MS)
+    });
+    if (!response.ok) {
+      console.warn(`notify ${slug}: ${response.status}`);
     }
   } catch (error) {
+    console.warn(`notify ${slug} failed: ${String(error)}`);
+  }
+}
+
+/** Probes that find nothing run every ten seconds; logging them would bury everything else. */
+const QUIET_OUTCOMES = new Set(['skipped', 'probed']);
+
+async function pollEvent(event: LiveEvent, states: Map<string, LiveState>, publisher: Publisher): Promise<void> {
+  const now = new Date();
+  let state = states.get(event.slug);
+  try {
+    state ??= await startingState(event, publisher);
+    const result = await tickEvent(event, state, { now, publish: publisher.write, fetchRound, hash });
+    states.set(event.slug, result.state);
+    if (!QUIET_OUTCOMES.has(result.outcome)) {
+      console.log(`${now.toISOString()} ${event.slug} r${result.state.round} ${result.outcome}`);
+    }
+    if (result.outcome === 'written') {
+      await notify(process.env.LIVE_NOTIFY_URL, event.slug);
+    }
+  } catch (error) {
+    // A failed look still counts as one, so an RK9 outage is retried at the pace, not on every loop.
+    if (state) {
+      states.set(event.slug, { ...state, checkedAt: now.toISOString(), probedAt: now.toISOString() });
+    }
     console.warn(`${now.toISOString()} ${event.slug} failed: ${String(error)}`);
   }
 }
@@ -134,7 +170,7 @@ async function main(): Promise<void> {
       return;
     }
     await Promise.all(live.map(event => pollEvent(event, states, publisher)));
-    await sleep(POLL_MS);
+    await sleep(LOOP_MS);
   }
 }
 

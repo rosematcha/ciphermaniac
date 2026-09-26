@@ -4,7 +4,7 @@ import type { LiveIndex } from '../../shared/live/types';
 import { fetchLiveIndex } from './data/live';
 import { latestValue } from './resource';
 
-/** The poller publishes at most once a minute, so nothing newer can exist sooner. */
+/** Pages look once a minute at most; the poller's faster probes serve the Discord bot. */
 const POLL_MS = 60_000;
 /**
  * The longest a page waits between looks, however long the event sleeps. The
@@ -29,7 +29,10 @@ export function liveDelay(index: LiveIndex | null | undefined, now = Date.now())
     changedAt: index.updatedAt,
     roundComplete: index.playing === 0,
     round2At: index.round2At,
-    finished: index.finished
+    finished: index.finished,
+    round: index.round,
+    topCut: index.cut !== undefined && index.round >= index.cut.from,
+    playing: index.playing
   };
   const next = nextCheck(pace, now);
   return next === null ? null : Math.min(MAX_WAIT_MS, Math.max(POLL_MS, next - now));

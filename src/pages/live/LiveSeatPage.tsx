@@ -48,8 +48,8 @@ export function LiveSeatPage() {
   // be empty for the rest of the event. The archive means this is one request
   // per poll, and `LiveRun` reads the same rounds back out of it.
   const rounds = createPolled(
-    () => (indexData()?.round ? ([params.slug, indexData()!.round] as const) : null),
-    ([slug, current]) => fetchPostedRounds(slug, current),
+    () => (indexData()?.round ? ([params.slug, indexData()!.round, indexData()!.hash] as const) : null),
+    ([slug, current, version]) => fetchPostedRounds(slug, current, version),
     () => liveDelay(indexData())
   );
 

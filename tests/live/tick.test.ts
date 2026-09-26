@@ -11,8 +11,15 @@ import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { ACTIVE_WINDOW_MS, IDLE_INTERVAL_MS } from '../../shared/live/pace.ts';
-import { initialState, liveKeys, resumeState, tickEvent, type TickOutcome } from '../../shared/live/tick.ts';
+import { ACTIVE_WINDOW_MS, IDLE_INTERVAL_MS, PROBE_INTERVAL_MS, PROBE_WINDOW_MS } from '../../shared/live/pace.ts';
+import {
+  FIRST_ROUND_PROBE_MS,
+  initialState,
+  liveKeys,
+  resumeState,
+  tickEvent,
+  type TickOutcome
+} from '../../shared/live/tick.ts';
 import type { LiveEvent, LiveIndex, LiveRound, LiveState } from '../../shared/live/types.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/live');
@@ -45,7 +52,7 @@ interface Harness {
   tick: (offsetMs: number) => Promise<TickOutcome>;
 }
 
-function harness(rounds: Record<number, string>): Harness {
+function harness(rounds: Record<number, string>, event: LiveEvent = EVENT): Harness {
   const self: Harness = {
     files: new Map(),
     puts: [],
@@ -53,7 +60,7 @@ function harness(rounds: Record<number, string>): Harness {
     rounds,
     state: initialState(),
     tick: async offsetMs => {
-      const result = await tickEvent(EVENT, self.state, {
+      const result = await tickEvent(event, self.state, {
         now: new Date(START + offsetMs),
         hash: text => Promise.resolve(`${text.length}:${text}`),
         publish: (key, value) => {
@@ -132,11 +139,65 @@ test('a body cut short cannot finish a round or replace the published one', asyn
   assert.equal(h.state.roundComplete, false);
 });
 
-test('an event with nothing posted is polled at the idle interval from the start', async () => {
+test("on the first day's mornings, round one is probed every half minute and read every ten", async () => {
   const h = harness({});
+  assert.equal(await h.tick(0), 'not-posted');
+  assert.equal(await h.tick(FIRST_ROUND_PROBE_MS - 1), 'skipped');
+  assert.equal(await h.tick(FIRST_ROUND_PROBE_MS), 'probed');
+  assert.equal(await h.tick(IDLE_INTERVAL_MS), 'not-posted');
+  h.rounds[1] = OPEN_ROUND;
+  assert.equal(await h.tick(IDLE_INTERVAL_MS + FIRST_ROUND_PROBE_MS), 'written');
+  assert.deepEqual(h.fetched, [1, 1, 1, 1]);
+});
+
+test('before the first morning, an event with nothing posted is only read at the idle interval', async () => {
+  const h = harness({}, { ...EVENT, firstDay: '2026-09-21' });
   assert.equal(await h.tick(0), 'not-posted');
   assert.equal(await h.tick(MINUTE), 'skipped');
   assert.equal(await h.tick(IDLE_INTERVAL_MS), 'not-posted');
+});
+
+test('for ten minutes after a round finishes, only the next round is probed, every ten seconds', async () => {
+  const h = harness({ 1: DONE_ROUND });
+  await h.tick(0);
+  h.fetched.length = 0;
+  assert.equal(await h.tick(PROBE_INTERVAL_MS), 'probed');
+  assert.equal(await h.tick(PROBE_INTERVAL_MS + 1000), 'skipped');
+  assert.equal(await h.tick(2 * PROBE_INTERVAL_MS), 'probed');
+  assert.deepEqual(h.fetched, [2, 2]);
+  h.rounds[2] = OPEN_ROUND;
+  assert.equal(await h.tick(3 * PROBE_INTERVAL_MS), 'written');
+  assert.equal((h.files.get(liveKeys.index(EVENT)) as LiveIndex).round, 2);
+});
+
+test('once the probe window lapses, the next round waits for the minute read', async () => {
+  const h = harness({ 1: DONE_ROUND });
+  await h.tick(0);
+  await h.tick(PROBE_WINDOW_MS - 30_000);
+  h.fetched.length = 0;
+  assert.equal(await h.tick(PROBE_WINDOW_MS + PROBE_INTERVAL_MS), 'skipped');
+  assert.equal(await h.tick(PROBE_WINDOW_MS + 30_000), 'unchanged');
+  assert.deepEqual(h.fetched, [2, 1]);
+});
+
+test("a day one close RK9 never finished sleeps overnight, then the morning's round is probed for", async () => {
+  // Round eight left part-filled in the evening; round nine posted the next morning without it.
+  const h = harness({ 8: OPEN_ROUND });
+  const round2At = new Date(START - 8 * 60 * MINUTE).toISOString();
+  h.state = { ...h.state, round: 7, roundComplete: true, round2At, changedAt: new Date(START).toISOString() };
+  assert.equal(await h.tick(0), 'written');
+  assert.equal(await h.tick(ACTIVE_WINDOW_MS), 'unchanged');
+  const wake = START - 8 * 60 * MINUTE + 21 * 60 * MINUTE;
+  h.fetched.length = 0;
+  assert.equal(await h.tick(wake - START - MINUTE), 'skipped');
+  assert.deepEqual(h.fetched, []);
+  // The wake's read looks for round nine first, then rereads round eight.
+  assert.equal(await h.tick(wake - START), 'unchanged');
+  assert.deepEqual(h.fetched, [9, 8]);
+  assert.equal(await h.tick(wake - START + PROBE_INTERVAL_MS), 'probed');
+  h.rounds[9] = OPEN_ROUND;
+  assert.equal(await h.tick(wake - START + 2 * PROBE_INTERVAL_MS), 'written');
+  assert.equal((h.files.get(liveKeys.index(EVENT)) as LiveIndex).round, 9);
 });
 
 test('once nothing has changed for the active window, polls are spaced out', async () => {
@@ -145,7 +206,8 @@ test('once nothing has changed for the active window, polls are spaced out', asy
   assert.equal(await h.tick(ACTIVE_WINDOW_MS), 'unchanged');
   assert.equal(await h.tick(ACTIVE_WINDOW_MS + MINUTE), 'skipped');
   assert.equal(await h.tick(ACTIVE_WINDOW_MS + IDLE_INTERVAL_MS), 'unchanged');
-  assert.deepEqual(h.fetched, [1, 1, 1]);
+  // A round quiet this long may never be finished on RK9, so each read looks for the next round first.
+  assert.deepEqual(h.fetched, [1, 2, 1, 2, 1]);
 });
 
 test('a change while idle brings back per-minute polling', async () => {

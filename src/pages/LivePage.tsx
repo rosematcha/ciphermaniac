@@ -24,6 +24,7 @@ import { fetchLiveRound } from '../lib/data/live';
 import { debounced } from '../lib/debounce';
 import { useLiveFollows } from '../lib/liveFollows';
 import { createLiveIndex, createPolled, liveDelay } from '../lib/livePoll';
+import { roundVersion } from '../lib/liveRounds';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { latestValue, resolved } from '../lib/resource';
 import { useDeckReports } from './live/deckReports';
@@ -54,7 +55,7 @@ interface LiveParams extends Record<string, string | undefined> {
 /**
  * /live/:slug — a listed event's pairings as RK9 posts them, a round at a time,
  * or the same round ranked. The index names the current round and is polled;
- * the round itself is refetched on the same beat.
+ * the round itself is refetched on the same beat, under the index hash.
  *
  * A player's run is not here: it lives on their career page, or on their own
  * page under this event when the site knows no career for them.
@@ -75,8 +76,8 @@ export function LivePage() {
   };
   const round = () => pinned() ?? current();
   const roundFile = createPolled(
-    () => (round() ? ([params.slug, round()] as const) : null),
-    ([code, n]) => fetchLiveRound(code, n),
+    () => (round() ? ([params.slug, round(), roundVersion(indexData(), round())] as const) : null),
+    ([code, n, version]) => fetchLiveRound(code, n, version),
     () => liveDelay(indexData())
   );
   const matches = () => latestValue(roundFile)?.matches;

@@ -83,9 +83,13 @@ export interface LiveState {
   hash: string;
   /** Matches in the last published round; a round never loses tables. */
   matchCount: number;
+  /** Tables in the last published round without a result. */
+  playing?: number;
   changedAt: string;
-  /** `''` until the first poll. */
+  /** When the round was last read; `''` until the first poll. */
   checkedAt: string;
+  /** When RK9 was last probed for the next round. */
+  probedAt?: string;
 }
 
 export interface LiveRound {
