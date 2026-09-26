@@ -2,6 +2,8 @@ import { For, onMount } from 'solid-js';
 import { A } from '@solidjs/router';
 import '../styles/pages/tools.css';
 
+export { BotPage } from './BotPage';
+
 // The tools that get a plain row rather than a tile — fun to poke at, but not
 // what anyone comes here to do.
 const secondary: { href: string; name: string; desc: string }[] = [

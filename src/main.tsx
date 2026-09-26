@@ -62,7 +62,8 @@ const PlayerProfilePage = page(() => import('./pages/PlayerProfilePage'), 'Playe
 const PlayerComparePage = page(() => import('./pages/PlayerComparePage'), 'PlayerComparePage');
 const EventLocatorPage = page(() => import('./pages/EventLocatorPage'), 'EventLocatorPage');
 const ToolsPage = page(() => import('./pages/ToolsPage'), 'ToolsPage');
-const BotPage = page(() => import('./pages/BotPage'), 'BotPage');
+// Rides in the Tools chunk: its own chunk would add a preload entry to the app shell, which has no room for one.
+const BotPage = page(() => import('./pages/ToolsPage'), 'BotPage');
 const SocialGraphicsPage = page(() => import('./pages/SocialGraphicsPage'), 'SocialGraphicsPage');
 const InLovingMemoryPage = page(() => import('./pages/InLovingMemoryPage'), 'InLovingMemoryPage');
 const LabelMakerPage = page(() => import('./pages/LabelMakerPage'), 'LabelMakerPage');
