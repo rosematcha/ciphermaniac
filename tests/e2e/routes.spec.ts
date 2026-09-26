@@ -310,18 +310,30 @@ test('the events tab opens a menu of majors and the locator', async ({ page }, t
   await expect(page.getByRole('link', { name: 'Event Locator' })).toHaveAttribute('href', '/events/locator');
 });
 
+test('the Discord bot page links its button to the bot invite', async ({ page }) => {
+  await gotoClean(page, '/bot');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Pairings Discord Bot');
+  const add = page.getByRole('link', { name: 'Add to your server' });
+  await expect(add).toHaveAttribute(
+    'href',
+    /^https:\/\/discord\.com\/oauth2\/authorize\?client_id=1553452093715652768&/
+  );
+  await expect(add).toHaveAttribute('target', '_blank');
+});
+
 test('the tools index links to the card wall', async ({ page }) => {
   await gotoClean(page, '/tools');
   await expect(page.getByRole('link', { name: /Card Wall/i })).toHaveAttribute('href', '/tools/card-wall');
 });
 
-test('the tools index features the tier list, label maker and pack EV as tiles', async ({ page }) => {
+test('the tools index features the Discord bot, tier list, label maker and pack EV as tiles', async ({ page }) => {
   await gotoClean(page, '/tools');
   const featured = page.locator('.tools-featured .arche');
-  await expect(featured).toHaveCount(3);
-  await expect(featured.nth(0)).toHaveAttribute('href', '/tools/tier-list');
-  await expect(featured.nth(1)).toHaveAttribute('href', '/tools/deck-box-labels');
-  await expect(featured.nth(2)).toHaveAttribute('href', '/tools/pack-ev');
+  await expect(featured).toHaveCount(4);
+  await expect(featured.nth(0)).toHaveAttribute('href', '/bot');
+  await expect(featured.nth(1)).toHaveAttribute('href', '/tools/tier-list');
+  await expect(featured.nth(2)).toHaveAttribute('href', '/tools/deck-box-labels');
+  await expect(featured.nth(3)).toHaveAttribute('href', '/tools/pack-ev');
   // Everything else is a plain row, not a tile.
   await expect(page.locator('.tools-more-item')).toHaveCount(5);
   await expect(page.locator('.tools-more-item', { hasText: 'Set Impact' })).toHaveAttribute(
@@ -439,7 +451,7 @@ test('a tier list tile carries a placeholder until its art paints', async ({ pag
   expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 });
 
-test('hovering the Tools nav item reveals the two headline tools', async ({ page }, testInfo) => {
+test('hovering the Tools nav item reveals the headline tools, the Discord bot first', async ({ page }, testInfo) => {
   // Desktop affordance only — compact headers get the /tools page instead.
   test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
@@ -447,6 +459,8 @@ test('hovering the Tools nav item reveals the two headline tools', async ({ page
   await expect(menu).toBeHidden();
   await page.locator('.topnav').getByRole('link', { name: 'Tools', exact: true }).hover();
   await expect(menu).toBeVisible();
+  await expect(menu.getByRole('link').first()).toHaveText('Pairings Discord Bot');
+  await expect(menu.getByRole('link', { name: 'Pairings Discord Bot' })).toHaveAttribute('href', '/bot');
   await expect(menu.getByRole('link', { name: 'Tier List Maker' })).toHaveAttribute('href', '/tools/tier-list');
   await expect(menu.getByRole('link', { name: 'Deck Box Label Maker' })).toHaveAttribute(
     'href',
