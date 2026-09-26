@@ -30,8 +30,18 @@ export function fetchLiveIndex(slug: string): Promise<LiveIndex | null> {
   return client.fetchJsonOptional<LiveIndex>(`${PREFIX}${encodeURIComponent(slug)}/index.json`);
 }
 
-export function fetchLiveRound(slug: string, round: number): Promise<LiveRound | null> {
-  return client.fetchJsonOptional<LiveRound>(`${PREFIX}${encodeURIComponent(slug)}/r${round}.json`);
+/**
+ * A round file. The edge holds each file thirty seconds on its own clock, so an
+ * index just read can name a round whose plain URL still serves the copy from
+ * before it; a reader keyed on the index would then keep that copy until the
+ * round next changed, which for its last result is the next round. Read under
+ * the index hash (`roundVersion` in lib/liveRounds), the file is at a URL nothing older is cached
+ * under, and the poller writes a round before the index that names it.
+ * @param version - The index hash the round is read at; omitted for a round the event has left
+ */
+export function fetchLiveRound(slug: string, round: number, version?: string): Promise<LiveRound | null> {
+  const query = version ? `?v=${encodeURIComponent(version)}` : '';
+  return client.fetchJsonOptional<LiveRound>(`${PREFIX}${encodeURIComponent(slug)}/r${round}.json${query}`);
 }
 
 /** Null until the poller has published one. */

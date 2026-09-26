@@ -11,10 +11,10 @@
  */
 
 import { fetchLiveRound } from './data/live';
-import type { LiveRound } from '../../shared/live/types';
+import type { LiveIndex, LiveRound } from '../../shared/live/types';
 
-/** Reads one round file. A seam: the tests count calls through it. */
-export type RoundReader = (slug: string, round: number) => Promise<LiveRound | null>;
+/** Reads one round file, at an index hash when it has one. A seam: the tests count calls through it. */
+export type RoundReader = (slug: string, round: number, version?: string) => Promise<LiveRound | null>;
 
 const archive = new Map<string, Promise<LiveRound | null>>();
 
@@ -48,19 +48,26 @@ function fetchArchivedRound(slug: string, round: number, read: RoundReader): Pro
  * Every round posted so far, oldest first.
  * @param slug - Event slug
  * @param current - The round the index names
+ * @param version - The index hash, which the current round is read at (`fetchLiveRound`)
  * @param read - Round reader; defaults to the live data client
  * @returns One entry per round; null where the file is not there yet
  */
 export function fetchPostedRounds(
   slug: string,
   current: number,
+  version?: string,
   read: RoundReader = fetchLiveRound
 ): Promise<(LiveRound | null)[]> {
   return Promise.all(
     Array.from({ length: current }, (_, i) =>
-      i + 1 < current ? fetchArchivedRound(slug, i + 1, read) : read(slug, current)
+      i + 1 < current ? fetchArchivedRound(slug, i + 1, read) : read(slug, current, version)
     )
   );
+}
+
+/** The version to read a round at: the index hash while it is the current round, else none, since it no longer changes. */
+export function roundVersion(index: LiveIndex | null | undefined, round: number): string | undefined {
+  return index?.round === round ? index.hash : undefined;
 }
 
 /** Test seam: drops what the archive is holding. */

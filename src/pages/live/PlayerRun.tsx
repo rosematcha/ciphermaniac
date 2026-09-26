@@ -40,8 +40,11 @@ export function PlayerRun(props: PlayerRunProps) {
   const index = createLiveIndex(() => props.event.slug);
   const current = () => latestValue(index)?.round;
   const round = createPolled(
-    current,
-    n => fetchLiveRound(props.event.slug, n),
+    () => {
+      const at = latestValue(index);
+      return at?.round ? ([at.round, at.hash] as const) : null;
+    },
+    ([n, version]) => fetchLiveRound(props.event.slug, n, version),
     () => liveDelay(latestValue(index))
   );
   // Every name this player registers under, so a seat RK9 prints differently

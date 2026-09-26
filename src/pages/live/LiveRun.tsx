@@ -48,12 +48,12 @@ interface LiveRunProps {
  *
  * Every posted round is read, since a round file is the only place a pairing
  * lives. Finished rounds are held for the session, so a poll only refetches the
- * current one.
+ * current one, under the index hash.
  */
 export function LiveRun(props: LiveRunProps) {
   const [rounds] = createResource(
     () => [props.slug, props.rounds, props.version] as const,
-    ([slug, count]) => fetchPostedRounds(slug, count)
+    ([slug, count, version]) => fetchPostedRounds(slug, count, version)
   );
   const run = createMemo(() => {
     const loaded = latestValue(rounds);
