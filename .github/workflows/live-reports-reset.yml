@@ -1,0 +1,39 @@
+# =============================================================================
+# Live Reports Reset
+# =============================================================================
+# Empties the deck-report votes in D1 (`ciphermaniac-live`) every Tuesday,
+# between one weekend's events and the next. Votes are already counted per
+# event; this keeps a finished event's votes from sitting in the table. The
+# published live/v1/{slug}/reports.json files are left as they are.
+#
+# Triggers:
+#   - Tuesdays at 06:00 UTC
+#   - Manual dispatch
+# =============================================================================
+
+name: Live Reports Reset
+
+on:
+  schedule:
+    - cron: '0 6 * * 2'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  reset:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Clear deck-report votes
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          LIVE_DB_ID: ad51e340-8a8f-418e-98aa-f074c0bf28e4
+        run: >-
+          curl --fail-with-body --silent --show-error
+          -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$LIVE_DB_ID/query"
+          -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          -H 'Content-Type: application/json'
+          --data '{"sql":"DELETE FROM votes"}'
