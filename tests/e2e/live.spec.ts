@@ -8,7 +8,7 @@
  * that career.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 const SLUG = 'testcup-2027';
 const LIVE = `/live/${SLUG}`;
@@ -48,7 +48,7 @@ test('the page opens on the round the event is on, with every table', async ({ p
   await expect(page.locator('.round-step-label')).not.toHaveClass(/is-pinned/);
 });
 
-test('both live regionals appear in the site banner and tournament list', async ({ page }) => {
+async function stubRegionalSchedule(page: Page, tracked: ReadonlySet<string>): Promise<void> {
   const today = new Date().toISOString().slice(0, 10);
   const events = [
     { slug: 'brisbane-2027', name: 'Brisbane Regional Championships' },
@@ -64,10 +64,14 @@ test('both live regionals appear in the site banner and tournament list', async 
   await page.route('**/live/v1/schedule.json', route =>
     route.fulfill({ json: { generatedAt: new Date().toISOString(), events } })
   );
-  await page.route('**/live/v1/*/index.json', route =>
-    route.fulfill({
+  await page.route('**/live/v1/*/index.json', route => {
+    const slug = new URL(route.request().url()).pathname.split('/').at(-2) ?? '';
+    if (!tracked.has(slug)) {
+      return route.fulfill({ status: 404 });
+    }
+    return route.fulfill({
       json: {
-        slug: 'fixture',
+        slug,
         rk9Id: 'fixture',
         name: 'Fixture Regional',
         round: 2,
@@ -76,8 +80,12 @@ test('both live regionals appear in the site banner and tournament list', async 
         playing: 2,
         updatedAt: new Date().toISOString()
       }
-    })
-  );
+    });
+  });
+}
+
+test('both live regionals appear in the site banner and tournament list', async ({ page }) => {
+  await stubRegionalSchedule(page, new Set(['brisbane-2027', 'frankfurt-2027']));
   await page.goto('/events/majors', { waitUntil: 'load' });
   await expect(page.locator('.live-banner')).toHaveCount(2);
   await expect(page.locator('.live-banner').first()).toHaveAttribute('href', '/live/brisbane-2027');
@@ -85,6 +93,15 @@ test('both live regionals appear in the site banner and tournament list', async 
   await expect(page.locator('.tournament-row-link')).toHaveCount(2);
   await expect(page.locator('.tournament-row-link').first()).toContainText('Brisbane Regional Championships');
   await expect(page.locator('.tournament-row-link').last()).toContainText('Frankfurt Regional Championships');
+});
+
+test('a scheduled regional stays hidden until its tracking data exists', async ({ page }) => {
+  await stubRegionalSchedule(page, new Set(['brisbane-2027']));
+  await page.goto('/events/majors', { waitUntil: 'load' });
+  await expect(page.locator('.live-banner')).toHaveCount(1);
+  await expect(page.locator('.live-banner')).toContainText('Brisbane Regional Championships');
+  await expect(page.locator('.tournament-row-link')).toHaveCount(1);
+  await expect(page.locator('.tournament-row-link')).toContainText('Brisbane Regional Championships');
 });
 
 test('the control bar is one row, whatever the round count', async ({ page }) => {

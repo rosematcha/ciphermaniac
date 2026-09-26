@@ -22,9 +22,8 @@ export function WhileEventsOn(props: { children: (event: LiveEvent) => JSX.Eleme
 }
 
 /**
- * Site-wide strip while a scheduled event is on. Whether to show it is a date
- * check against the stored schedule, so on a return visit it is there from
- * first paint; the round fills in once the index lands. Off on the live page.
+ * Site-wide strip once a scheduled event has published a round. Off on the
+ * live page.
  */
 export function LiveBanner() {
   return <WhileEventsOn>{event => <Banner event={event} />}</WhileEventsOn>;
@@ -34,14 +33,14 @@ function Banner(props: { event: LiveEvent }) {
   const location = useLocation();
   const index = createLiveIndex(() => props.event.slug);
   return (
-    <Show when={!location.pathname.startsWith('/live/')}>
-      <A class='live-banner' href={`/live/${props.event.slug}`}>
-        <span class='live-banner-mark'>Live</span>
-        <span class='live-banner-name'>{props.event.name}</span>
-        <Show when={latestValue(index)}>
-          {current => <span class='live-banner-meta'>{liveStatus(current())}</span>}
-        </Show>
-      </A>
+    <Show when={location.pathname.startsWith('/live/') ? null : latestValue(index)}>
+      {current => (
+        <A class='live-banner' href={`/live/${props.event.slug}`}>
+          <span class='live-banner-mark'>Live</span>
+          <span class='live-banner-name'>{props.event.name}</span>
+          <span class='live-banner-meta'>{liveStatus(current())}</span>
+        </A>
+      )}
     </Show>
   );
 }
