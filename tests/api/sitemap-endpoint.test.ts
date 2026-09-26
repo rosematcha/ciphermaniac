@@ -76,7 +76,10 @@ test('sitemap cache key ignores query string (nonce cannot bypass cache)', async
 /** Route patterns declared in the SPA router, minus the `*` 404 catch-all. */
 function declaredRoutes(): string[] {
   const source = readFileSync(new URL('../../src/main.tsx', import.meta.url), 'utf-8');
-  return [...source.matchAll(/<Route\s+path='([^']+)'/g)].map(m => m[1]).filter(path => path !== '*');
+  // A route's path is one string, or an array of them for a component serving several paths.
+  return [...source.matchAll(/<Route\s+path=(?:'([^']+)'|\{\[([^\]]+)\]\})/g)]
+    .flatMap(m => (m[1] ? [m[1]] : [...(m[2] ?? '').matchAll(/'([^']+)'/g)].map(p => p[1])))
+    .filter(path => path !== '*');
 }
 
 /** `/cards/:set/:number` matches `/cards/TEF/123`; param segments match anything. */

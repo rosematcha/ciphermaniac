@@ -1,8 +1,7 @@
-import { For, onMount } from 'solid-js';
-import { A } from '@solidjs/router';
+import { For, onMount, Show } from 'solid-js';
+import { A, useLocation } from '@solidjs/router';
 import '../styles/pages/tools.css';
-
-export { BotPage } from './BotPage';
+import { BotPage } from './BotPage';
 
 // The tools that get a plain row rather than a tile — fun to poke at, but not
 // what anyone comes here to do.
@@ -34,7 +33,17 @@ const secondary: { href: string; name: string; desc: string }[] = [
   }
 ];
 
+/** The Tools route, which also serves /bot (see main.tsx). */
 export function ToolsPage() {
+  const location = useLocation();
+  return (
+    <Show when={location.pathname === '/bot'} fallback={<ToolsIndex />}>
+      <BotPage />
+    </Show>
+  );
+}
+
+function ToolsIndex() {
   onMount(() => {
     document.title = 'Tools — Ciphermaniac';
   });

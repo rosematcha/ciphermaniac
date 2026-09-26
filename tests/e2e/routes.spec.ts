@@ -1073,3 +1073,12 @@ test('the footer feedback link carries the page it was clicked from', async ({ p
   await expect(page).toHaveURL(/\/feedback\?from=%2Fcards$/);
   await expect(page.getByRole('radio', { name: /Something to say/ })).toBeVisible();
 });
+
+test('the Tools menu opens the bot page without a reload', async ({ page }) => {
+  await gotoClean(page, '/tools');
+  await page.locator('.tools-featured .arche').first().click();
+  await expect(page).toHaveURL(/\/bot$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Pairings Discord Bot');
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tools');
+});
