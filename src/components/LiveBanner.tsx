@@ -1,5 +1,5 @@
 import { A, useLocation } from '@solidjs/router';
-import { createMemo, createSignal, For, type JSX, onCleanup, Show } from 'solid-js';
+import { createSignal, For, type JSX, onCleanup, Show } from 'solid-js';
 import { eventsOn } from '../../shared/live/schedule';
 import type { LiveEvent, LiveIndex } from '../../shared/live/types';
 import { roundName } from '../../shared/live/rounds';
@@ -17,8 +17,7 @@ export function WhileEventsOn(props: { children: (event: LiveEvent) => JSX.Eleme
   const [now, setNow] = createSignal(Date.now());
   const timer = setInterval(() => setNow(Date.now()), 60_000);
   onCleanup(() => clearInterval(timer));
-  const events = createMemo(() => eventsOn(schedule()?.events ?? [], new Date(now())));
-  return <For each={events()}>{event => props.children(event)}</For>;
+  return <For each={eventsOn(schedule()?.events ?? [], new Date(now()))}>{event => props.children(event)}</For>;
 }
 
 /**
@@ -33,7 +32,7 @@ function Banner(props: { event: LiveEvent }) {
   const location = useLocation();
   const index = createLiveIndex(() => props.event.slug);
   return (
-    <Show when={location.pathname.startsWith('/live/') ? null : latestValue(index)}>
+    <Show when={!location.pathname.startsWith('/live/') && latestValue(index)}>
       {current => (
         <A class='live-banner' href={`/live/${props.event.slug}`}>
           <span class='live-banner-mark'>Live</span>
