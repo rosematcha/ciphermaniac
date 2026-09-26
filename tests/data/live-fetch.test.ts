@@ -11,13 +11,8 @@ import { liveKeys } from '../../shared/live/tick.ts';
 import type { LiveEvent, LiveIndex } from '../../shared/live/types.ts';
 import { LIVE_SCHEDULE_KEY } from '../../shared/live/schedule.ts';
 import { liveReportsKey } from '../../shared/live/reports.ts';
-import {
-  fetchLiveIndex,
-  fetchLiveReports,
-  fetchLiveRound,
-  fetchLiveSchedule,
-  submitDeckReports
-} from '../../src/lib/data/live.ts';
+import { fetchLiveIndex, fetchLiveRound, fetchLiveSchedule } from '../../src/lib/data/live.ts';
+import { fetchLiveReports, submitDeckReports } from '../../src/lib/data/liveReports.ts';
 import { roundVersion } from '../../src/lib/liveRounds.ts';
 
 const EVENT = { slug: 'test-2027' } as LiveEvent;

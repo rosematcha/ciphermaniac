@@ -13,7 +13,7 @@ import { MAX_REPORTS_PER_REQUEST, reportableArchetypes } from '../../../shared/l
 import type { LiveIndex } from '../../../shared/live/types';
 import { seatKey, type SeatRef, type SeatReport } from '../../../shared/live/view';
 import { fetchArchetypeLabels, fetchOnlineArchetypes } from '../../lib/data';
-import { type DeckReportAnswer, fetchLiveReports, submitDeckReports } from '../../lib/data/live';
+import { type DeckReportAnswer, fetchLiveReports, submitDeckReports } from '../../lib/data/liveReports';
 import { liveVoterId } from '../../lib/liveFollows';
 import { createPolled, liveDelay } from '../../lib/livePoll';
 import { reportKey, shownDeck, useMyReports } from '../../lib/liveReports';

@@ -10,14 +10,14 @@
  */
 
 import { createDataClient } from './client';
-import { type DeckReport, type LiveReports, liveReportsKey } from '../../../shared/live/reports';
 import { LIVE_SCHEDULE_KEY } from '../../../shared/live/schedule';
 import type { LiveIndex, LiveRound, LiveSchedule } from '../../../shared/live/types';
 
 /** Shorter than the poll interval, so a poll always refetches while two readers still share one request. */
 const SHARE_MS = 20_000;
 
-const client = createDataClient({
+/** Shared with the live-page-only readers (`./liveReports`), so every live read shares one cache. */
+export const liveClient = createDataClient({
   resolvePath: path => path,
   ttlMs: SHARE_MS,
   fetch: (input, init) => globalThis.fetch(input, { ...init, cache: 'no-cache' })
@@ -27,7 +27,7 @@ const PREFIX = '/live/v1/';
 
 /** Null until the poller has seen a round posted. */
 export function fetchLiveIndex(slug: string): Promise<LiveIndex | null> {
-  return client.fetchJsonOptional<LiveIndex>(`${PREFIX}${encodeURIComponent(slug)}/index.json`);
+  return liveClient.fetchJsonOptional<LiveIndex>(`${PREFIX}${encodeURIComponent(slug)}/index.json`);
 }
 
 /**
@@ -41,39 +41,10 @@ export function fetchLiveIndex(slug: string): Promise<LiveIndex | null> {
  */
 export function fetchLiveRound(slug: string, round: number, version?: string): Promise<LiveRound | null> {
   const query = version ? `?v=${encodeURIComponent(version)}` : '';
-  return client.fetchJsonOptional<LiveRound>(`${PREFIX}${encodeURIComponent(slug)}/r${round}.json${query}`);
+  return liveClient.fetchJsonOptional<LiveRound>(`${PREFIX}${encodeURIComponent(slug)}/r${round}.json${query}`);
 }
 
 /** Null until the poller has published one. */
 export function fetchLiveSchedule(): Promise<LiveSchedule | null> {
-  return client.fetchJsonOptional<LiveSchedule>(`/${LIVE_SCHEDULE_KEY}`);
-}
-
-/** Null until someone has reported a deck at the event. */
-export function fetchLiveReports(slug: string): Promise<LiveReports | null> {
-  return client.fetchJsonOptional<LiveReports>(`/${liveReportsKey(slug)}`);
-}
-
-export interface DeckReportAnswer {
-  /** The archetype each seat now shows, by seat key. */
-  archetypes: Record<string, string | null>;
-  /** When the published file that shows them was written; null if none has been. */
-  updatedAt: string | null;
-}
-
-/**
- * Reports one or more seats' decks in a single request, and answers with the
- * archetype now shown for each seat, which may not be the one just reported:
- * a seat only shows the archetype more than half its reports agree on.
- */
-export async function submitDeckReports(reports: readonly DeckReport[]): Promise<DeckReportAnswer> {
-  const response = await fetch('/api/live/report', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reports })
-  });
-  if (!response.ok) {
-    throw new Error(`Report failed (${response.status})`);
-  }
-  return (await response.json()) as DeckReportAnswer;
+  return liveClient.fetchJsonOptional<LiveSchedule>(`/${LIVE_SCHEDULE_KEY}`);
 }

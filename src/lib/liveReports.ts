@@ -1,6 +1,6 @@
 import { type Accessor, createSignal } from 'solid-js';
 import type { LiveReports } from '../../shared/live/reports';
-import type { DeckReportAnswer } from './data/live';
+import type { DeckReportAnswer } from './data/liveReports';
 
 const STORAGE_KEY = 'cm-live-reports';
 
