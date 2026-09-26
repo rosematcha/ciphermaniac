@@ -3,18 +3,23 @@
  *
  * The caller supplies the clock, the RK9 fetch and the publisher, and carries
  * the returned state into the next step, so the same step drives the Node
- * runner and the tests. A step reads the current round only; once that round is
- * finished it watches for the next one, and keeps rereading the finished round
- * for corrections until the next is posted. RK9 numbers rounds straight through
- * day two and the top cut.
+ * runner and the tests. A step is one of two looks. A read fetches the current
+ * round; once that round is finished, or has gone quiet, it looks for the next
+ * one first, and keeps rereading the current round for corrections until the
+ * next is posted. A probe fetches only the next round, which RK9 answers with
+ * an empty body until it is posted, so it can run every few seconds while a
+ * round is expected. RK9 numbers rounds straight through day two and the top
+ * cut.
  *
- * Pacing is `shared/live/pace.ts`: every call while results are changing,
- * spaced out once they stop, asleep overnight, and never again once the final
- * has a result.
+ * Pacing is `shared/live/pace.ts`: reads every minute while results are
+ * changing, spaced out once they stop, asleep overnight, and never again once
+ * the final has a result; probes in the minutes a new round is expected. Day
+ * one's first round has no anchor to expect it by, so it is probed every half
+ * minute through any hour the first day's morning could fall on.
  * @module shared/live/tick
  */
 
-import { nextCheck } from './pace';
+import { ACTIVE_WINDOW_MS, awaitsNextRound, type LivePace, nextCheck, PROBE_INTERVAL_MS } from './pace';
 import { detectRoundBreakage, parseRk9Round } from './rk9Pairings';
 import { isDecided } from './view';
 import type { LiveCut, LiveEvent, LiveIndex, LiveRound, LiveRoundParse, LiveState } from './types';
@@ -27,7 +32,8 @@ export interface TickDeps {
   hash: (text: string) => Promise<string>;
 }
 
-export type TickOutcome = 'skipped' | 'not-posted' | 'unchanged' | 'written' | 'broken';
+/** `probed`: a probe found no new round. */
+export type TickOutcome = 'skipped' | 'probed' | 'not-posted' | 'unchanged' | 'written' | 'broken';
 
 export interface TickResult {
   outcome: TickOutcome;
@@ -43,6 +49,15 @@ export const liveKeys = {
 };
 
 const IDLE_SINCE = new Date(0).toISOString();
+const HOUR = 60 * 60 * 1000;
+/** Gap between probes for day one's first round. */
+export const FIRST_ROUND_PROBE_MS = 30 * 1000;
+/**
+ * The first day's mornings, relative to its UTC midnight: from the first
+ * morning at UTC+14 to the last at UTC-10, the widest offsets RK9 events run in.
+ */
+const FIRST_MORNING_FROM = -14 * HOUR;
+const FIRST_MORNING_UNTIL = 24 * HOUR;
 
 /** Starts idle, so an event with nothing posted is polled at the idle interval. */
 export function initialState(): LiveState {
@@ -60,6 +75,7 @@ export function resumeState(index: LiveIndex): LiveState {
     roundComplete: index.playing === 0,
     hash: index.hash,
     matchCount: index.matches,
+    playing: index.playing,
     changedAt: index.updatedAt,
     checkedAt: '',
     ...(index.cut ? { cut: index.cut } : {}),
@@ -68,12 +84,46 @@ export function resumeState(index: LiveIndex): LiveState {
   };
 }
 
+function paceOf(state: LiveState): LivePace {
+  return { ...state, topCut: state.cut !== undefined && state.round >= state.cut.from };
+}
+
+/** Whether any round has been published; until one is, the current round is round one, unposted. */
+function isPosted(state: LiveState): boolean {
+  return state.round > 1 || state.hash !== '';
+}
+
 function isDue(state: LiveState, now: Date): boolean {
   if (!state.checkedAt) {
     return !state.finished;
   }
-  const next = nextCheck(state, Date.parse(state.checkedAt));
+  const next = nextCheck(paceOf(state), Date.parse(state.checkedAt));
   return next !== null && now.getTime() >= next;
+}
+
+function isFirstMorning(event: LiveEvent, now: number): boolean {
+  const since = now - Date.parse(`${event.firstDay}T00:00:00Z`);
+  return since >= FIRST_MORNING_FROM && since < FIRST_MORNING_UNTIL;
+}
+
+/** How often to probe for the next round now, or null while none is expected. */
+function probeInterval(event: LiveEvent, state: LiveState, now: number): number | null {
+  if (!isPosted(state)) {
+    return isFirstMorning(event, now) ? FIRST_ROUND_PROBE_MS : null;
+  }
+  return awaitsNextRound(paceOf(state), now) ? PROBE_INTERVAL_MS : null;
+}
+
+type Look = 'read' | 'probe';
+
+/** The look due now, if any. A read also looks for the next round, so it counts as a probe. */
+function dueLook(event: LiveEvent, state: LiveState, now: Date): Look | null {
+  if (isDue(state, now)) {
+    return 'read';
+  }
+  const interval = state.finished ? null : probeInterval(event, state, now.getTime());
+  const last = Math.max(Date.parse(state.checkedAt), Date.parse(state.probedAt ?? IDLE_SINCE));
+  return interval !== null && now.getTime() - last >= interval ? 'probe' : null;
 }
 
 function buildIndex(event: LiveEvent, round: LiveRound, hash: string, state: LiveState): LiveIndex {
@@ -129,12 +179,20 @@ async function readRound(event: LiveEvent, deps: TickDeps, round: number): Promi
 }
 
 /**
- * The round this step is about. After a finished round that is the next one as
- * soon as RK9 shows any sign of it; until then the finished round is reread,
- * because staff correct results after a round closes.
+ * Whether RK9 may have moved past the current round: it is finished, or has
+ * been quiet so long that its last results may never be filled in.
+ */
+function mayHaveMovedOn(state: LiveState, now: Date): boolean {
+  return isPosted(state) && (state.roundComplete || now.getTime() - Date.parse(state.changedAt) >= ACTIVE_WINDOW_MS);
+}
+
+/**
+ * The round a read is about. After a round RK9 may have moved past, that is the
+ * next one as soon as RK9 shows any sign of it; until then the current round is
+ * reread, because staff correct results after a round closes.
  */
 async function readCurrent(event: LiveEvent, deps: TickDeps, state: LiveState): Promise<RoundRead> {
-  if (state.roundComplete) {
+  if (mayHaveMovedOn(state, deps.now)) {
     const next = await readRound(event, deps, state.round + 1);
     if (next.parsed.rowsSeen > 0) {
       return next;
@@ -158,6 +216,7 @@ async function publish(
     roundComplete,
     hash: digest,
     matchCount: matches.length,
+    playing: matches.filter(match => !isDecided(match)).length,
     changedAt: updatedAt,
     checkedAt: updatedAt,
     cut: cutFor(state, read),
@@ -177,19 +236,36 @@ async function publish(
   return next;
 }
 
-export async function tickEvent(event: LiveEvent, state: LiveState, deps: TickDeps): Promise<TickResult> {
-  if (!isDue(state, deps.now)) {
-    return { outcome: 'skipped', state };
-  }
-  const checked = { ...state, checkedAt: deps.now.toISOString() };
-  const read = await readCurrent(event, deps, state);
+/** What a look's round means: nothing new, a bad read, or a round to publish. `state` has the look recorded. */
+async function settle(event: LiveEvent, deps: TickDeps, state: LiveState, read: RoundRead): Promise<TickResult> {
   const rejected = rejectRound(read.parsed, state, read.round);
   if (rejected) {
-    return { outcome: rejected, state: checked };
+    return { outcome: rejected, state };
   }
   const digest = await deps.hash(JSON.stringify(read.parsed.matches));
   if (read.round === state.round && digest === state.hash) {
-    return { outcome: 'unchanged', state: checked };
+    return { outcome: 'unchanged', state };
   }
   return { outcome: 'written', state: await publish(event, deps, state, { ...read, digest }) };
+}
+
+async function probe(event: LiveEvent, deps: TickDeps, state: LiveState): Promise<TickResult> {
+  const probed = { ...state, probedAt: deps.now.toISOString() };
+  const read = await readRound(event, deps, isPosted(state) ? state.round + 1 : state.round);
+  if (read.parsed.rowsSeen === 0) {
+    return { outcome: 'probed', state: probed };
+  }
+  return settle(event, deps, probed, read);
+}
+
+export async function tickEvent(event: LiveEvent, state: LiveState, deps: TickDeps): Promise<TickResult> {
+  const look = dueLook(event, state, deps.now);
+  if (look === 'probe') {
+    return probe(event, deps, state);
+  }
+  if (look === null) {
+    return { outcome: 'skipped', state };
+  }
+  const checked = { ...state, checkedAt: deps.now.toISOString() };
+  return settle(event, deps, checked, await readCurrent(event, deps, state));
 }
