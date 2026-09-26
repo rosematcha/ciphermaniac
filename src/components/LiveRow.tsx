@@ -4,7 +4,7 @@ import type { LiveEvent } from '../../shared/live/types';
 import { roundName } from '../../shared/live/rounds';
 import { createLiveIndex } from '../lib/livePoll';
 import { latestValue } from '../lib/resource';
-import { WhileEventOn } from './LiveBanner';
+import { WhileEventsOn } from './LiveBanner';
 
 /**
  * The run drags in the deck reporter and the typeahead behind it. A career page
@@ -26,9 +26,9 @@ function LiveRow(props: { event: LiveEvent; detail: JSX.Element; aside?: JSX.Ele
   );
 }
 
-/** The event that is on, for the top of the tournaments list. */
+/** Events that are on, for the top of the tournaments list. */
 export function LiveEventRow() {
-  return <WhileEventOn>{event => <EventRow event={event} />}</WhileEventOn>;
+  return <WhileEventsOn>{event => <EventRow event={event} />}</WhileEventsOn>;
 }
 
 function EventRow(props: { event: LiveEvent }) {
@@ -47,12 +47,12 @@ function EventRow(props: { event: LiveEvent }) {
 }
 
 /**
- * A player's run at the event that is on, on their career page.
+ * A player's run at each event that is on, on their career page.
  *
  * This is where the run lives now — the live page used to open it inline above
  * a seven-hundred-row table, which on a phone meant the list jumped out from
  * under the finger that tapped it.
  */
 export function LivePlayerRun(props: { playerId: string; name: string; countries: readonly string[] }) {
-  return <WhileEventOn>{event => <PlayerRun event={event} {...props} />}</WhileEventOn>;
+  return <WhileEventsOn>{event => <PlayerRun event={event} {...props} />}</WhileEventsOn>;
 }

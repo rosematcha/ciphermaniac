@@ -1,5 +1,5 @@
 import { A, useLocation } from '@solidjs/router';
-import { createMemo, type JSX, Show } from 'solid-js';
+import { createMemo, createSignal, For, type JSX, onCleanup, Show } from 'solid-js';
 import { eventsOn } from '../../shared/live/schedule';
 import type { LiveEvent, LiveIndex } from '../../shared/live/types';
 import { roundName } from '../../shared/live/rounds';
@@ -8,14 +8,17 @@ import { useLiveSchedule } from '../lib/liveSchedule';
 import { latestValue } from '../lib/resource';
 
 /**
- * Renders its child for the event that is on, and nothing on any other day.
+ * Renders its child for each event that is on, and nothing on any other day.
  * Lives here, in the app shell's own module, so the live rows can share it
  * without the shell importing them and their player matching.
  */
-export function WhileEventOn(props: { children: (event: LiveEvent) => JSX.Element }) {
+export function WhileEventsOn(props: { children: (event: LiveEvent) => JSX.Element }) {
   const schedule = useLiveSchedule();
-  const event = createMemo(() => eventsOn(schedule()?.events ?? [], new Date())[0]);
-  return <Show when={event()}>{on => props.children(on())}</Show>;
+  const [now, setNow] = createSignal(Date.now());
+  const timer = setInterval(() => setNow(Date.now()), 60_000);
+  onCleanup(() => clearInterval(timer));
+  const events = createMemo(() => eventsOn(schedule()?.events ?? [], new Date(now())));
+  return <For each={events()}>{event => props.children(event)}</For>;
 }
 
 /**
@@ -24,7 +27,7 @@ export function WhileEventOn(props: { children: (event: LiveEvent) => JSX.Elemen
  * first paint; the round fills in once the index lands. Off on the live page.
  */
 export function LiveBanner() {
-  return <WhileEventOn>{event => <Banner event={event} />}</WhileEventOn>;
+  return <WhileEventsOn>{event => <Banner event={event} />}</WhileEventsOn>;
 }
 
 function Banner(props: { event: LiveEvent }) {

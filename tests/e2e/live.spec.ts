@@ -48,6 +48,45 @@ test('the page opens on the round the event is on, with every table', async ({ p
   await expect(page.locator('.round-step-label')).not.toHaveClass(/is-pinned/);
 });
 
+test('both live regionals appear in the site banner and tournament list', async ({ page }) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const events = [
+    { slug: 'brisbane-2027', name: 'Brisbane Regional Championships' },
+    { slug: 'frankfurt-2027', name: 'Frankfurt Regional Championships' }
+  ].map(event => ({
+    ...event,
+    kind: 'regional',
+    rk9Id: event.slug,
+    pod: 2,
+    firstDay: today,
+    lastDay: today
+  }));
+  await page.route('**/live/v1/schedule.json', route =>
+    route.fulfill({ json: { generatedAt: new Date().toISOString(), events } })
+  );
+  await page.route('**/live/v1/*/index.json', route =>
+    route.fulfill({
+      json: {
+        slug: 'fixture',
+        rk9Id: 'fixture',
+        name: 'Fixture Regional',
+        round: 2,
+        matches: 4,
+        hash: 'fixture',
+        playing: 2,
+        updatedAt: new Date().toISOString()
+      }
+    })
+  );
+  await page.goto('/events/majors', { waitUntil: 'load' });
+  await expect(page.locator('.live-banner')).toHaveCount(2);
+  await expect(page.locator('.live-banner').first()).toHaveAttribute('href', '/live/brisbane-2027');
+  await expect(page.locator('.live-banner').last()).toHaveAttribute('href', '/live/frankfurt-2027');
+  await expect(page.locator('.tournament-row-link')).toHaveCount(2);
+  await expect(page.locator('.tournament-row-link').first()).toContainText('Brisbane Regional Championships');
+  await expect(page.locator('.tournament-row-link').last()).toContainText('Frankfurt Regional Championships');
+});
+
 test('the control bar is one row, whatever the round count', async ({ page }) => {
   await openLive(page);
   const bar = page.locator('.live-bar');
