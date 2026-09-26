@@ -126,12 +126,21 @@ function changedSeats(current: LiveReports | null, settled: ReadonlyMap<string, 
   return [...settled.keys()].filter(seat => (current?.decks[seat] ?? null) !== settled.get(seat));
 }
 
-async function publishSeats(bucket: Bucket, slug: string, settled: ReadonlyMap<string, string | null>): Promise<void> {
+/**
+ * Patches the settled seats into the published file.
+ * @returns The `updatedAt` of the file that now carries them, so a reporter can
+ * tell an edge copy from before the report from one that has it
+ */
+async function publishSeats(
+  bucket: Bucket,
+  slug: string,
+  settled: ReadonlyMap<string, string | null>
+): Promise<string | null> {
   const key = liveReportsKey(slug);
   const current = await readJson<LiveReports>(bucket, key);
   const changed = changedSeats(current, settled);
   if (changed.length === 0) {
-    return;
+    return current?.updatedAt ?? null;
   }
   const decks = { ...current?.decks };
   for (const seat of changed) {
@@ -146,6 +155,7 @@ async function publishSeats(bucket: Bucket, slug: string, settled: ReadonlyMap<s
   await bucket.put(key, JSON.stringify(reports), {
     httpMetadata: { contentType: 'application/json', cacheControl: REPORTS_CACHE_CONTROL }
   });
+  return reports.updatedAt;
 }
 
 /** Why the batch must be refused, if it must be; the checks a whole batch shares, read side by side. */
@@ -217,7 +227,7 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
     return jsonError('Too many reports. Try again later.', 429);
   }
   const settled = await settle(votes, reports);
-  await publishSeats(env.REPORTS, slug, settled);
+  const updatedAt = await publishSeats(env.REPORTS, slug, settled);
   // `archetype` is the first seat's, for the single-report callers this grew from.
-  return jsonSuccess({ archetype: settled.get(seat) ?? null, archetypes: Object.fromEntries(settled) });
+  return jsonSuccess({ archetype: settled.get(seat) ?? null, archetypes: Object.fromEntries(settled), updatedAt });
 }

@@ -13,17 +13,17 @@ import { MAX_REPORTS_PER_REQUEST, reportableArchetypes } from '../../../shared/l
 import type { LiveIndex } from '../../../shared/live/types';
 import { seatKey, type SeatRef, type SeatReport } from '../../../shared/live/view';
 import { fetchArchetypeLabels, fetchOnlineArchetypes } from '../../lib/data';
-import { fetchLiveReports, submitDeckReports } from '../../lib/data/live';
+import { type DeckReportAnswer, fetchLiveReports, submitDeckReports } from '../../lib/data/live';
 import { liveVoterId } from '../../lib/liveFollows';
 import { createPolled, liveDelay } from '../../lib/livePoll';
-import { reportKey, useMyReports } from '../../lib/liveReports';
+import { reportKey, shownDeck, useMyReports } from '../../lib/liveReports';
 import { latestValue, resolved } from '../../lib/resource';
 import type { ReportedDeck } from './LiveDeck';
 
 export interface DeckReports {
   /** Every reportable archetype, the online meta's first and the ones in play flagged. */
   decks: () => ReportedDeck[];
-  /** The archetype published for a seat, or the one this device just reported. */
+  /** The archetype published for a seat, or the endpoint's answer to this device's report until the published copy has it. */
   deckOf: (seat: SeatRef) => ReportedDeck | undefined;
   /** What this device has reported for a seat. */
   myDeck: (seat: SeatRef) => ReportedDeck | undefined;
@@ -31,6 +31,14 @@ export interface DeckReports {
   /** Several seats in one request, as a whole run is reported. */
   reportMany: (entries: readonly SeatReport[]) => Promise<void>;
 }
+
+/**
+ * The endpoint's answers to this session's reports, by event: every seat
+ * answered, and the time of the file carrying the latest. Held here rather than
+ * per page, so a report made on a career page still shows on the live page
+ * opened straight after it, before the edge has the file that carries it.
+ */
+const [answered, setAnswered] = createSignal<Record<string, DeckReportAnswer>>({});
 
 /**
  * Deck reports for one event.
@@ -42,8 +50,6 @@ export function useDeckReports(slug: () => string, index: () => LiveIndex | null
   const reports = createPolled(slug, fetchLiveReports, () => liveDelay(index()));
   const [archetypes] = createResource(fetchOnlineArchetypes);
   const [iconLabels] = createResource(fetchArchetypeLabels);
-  // Reported here and not published yet, so a report shows at once rather than a poll later.
-  const [reported, setReported] = createSignal<Record<string, string | null>>({});
 
   // Most played first; the index's own icons beat the icon map's for a label both carry.
   const indexed = createMemo(() =>
@@ -75,20 +81,23 @@ export function useDeckReports(slug: () => string, index: () => LiveIndex | null
     const voter = liveVoterId();
     for (let from = 0; from < entries.length; from += MAX_REPORTS_PER_REQUEST) {
       const batch = entries.slice(from, from + MAX_REPORTS_PER_REQUEST);
-      const shown = await submitDeckReports(
+      const answer = await submitDeckReports(
         batch.map(entry => ({ slug: slug(), seat: seatKey(entry.seat), archetype: entry.archetype, voter }))
       );
       for (const entry of batch) {
         remember(reportKey(slug(), seatKey(entry.seat)), entry.archetype);
       }
-      setReported(current => ({ ...current, ...shown }));
+      setAnswered(current => ({
+        ...current,
+        [slug()]: { ...answer, archetypes: { ...current[slug()]?.archetypes, ...answer.archetypes } }
+      }));
     }
   };
   return {
     decks,
     deckOf: seat => {
       const key = seatKey(seat);
-      return known(key in reported() ? reported()[key] : latestValue(reports)?.decks[key]);
+      return known(shownDeck(answered()[slug()], latestValue(reports), key));
     },
     myDeck: seat => known(mine()[reportKey(slug(), seatKey(seat))]),
     report: (seat, archetype) => reportMany([{ seat, archetype }]),

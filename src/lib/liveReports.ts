@@ -1,4 +1,6 @@
 import { type Accessor, createSignal } from 'solid-js';
+import type { LiveReports } from '../../shared/live/reports';
+import type { DeckReportAnswer } from './data/live';
 
 const STORAGE_KEY = 'cm-live-reports';
 
@@ -51,4 +53,21 @@ export function useMyReports(): {
       }
     }
   };
+}
+
+/**
+ * What a seat shows: the endpoint's answer to this session's reports while the
+ * published copy in hand is from before it, else the published copy. The file
+ * reaches a page through an edge that holds it thirty seconds, so the copy read
+ * just after a report, or by the next page the reporter opens, can predate it.
+ */
+export function shownDeck(
+  answer: DeckReportAnswer | undefined,
+  published: LiveReports | null | undefined,
+  seat: string
+): string | null | undefined {
+  if (answer && seat in answer.archetypes && !(published && published.updatedAt >= (answer.updatedAt ?? ''))) {
+    return answer.archetypes[seat];
+  }
+  return published?.decks[seat];
 }

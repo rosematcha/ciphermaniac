@@ -74,8 +74,12 @@ test('reports are read from the key the endpoint publishes', async () => {
 test('reports are posted to the endpoint as one batch, and the answer is what each seat now shows', async () => {
   const seats = ['ada lovelace|GB', 'grace hopper|US'];
   const reports = seats.map(seat => ({ slug: 'test-2027', seat, archetype: 'Dragapult', voter: 'a'.repeat(16) }));
-  stubFetch(200, { archetypes: { [seats[0]]: null, [seats[1]]: 'Dragapult' } });
-  assert.deepEqual(await submitDeckReports(reports), { [seats[0]]: null, [seats[1]]: 'Dragapult' });
+  const updatedAt = '2026-09-26T12:00:00.000Z';
+  stubFetch(200, { archetypes: { [seats[0]]: null, [seats[1]]: 'Dragapult' }, updatedAt });
+  assert.deepEqual(await submitDeckReports(reports), {
+    archetypes: { [seats[0]]: null, [seats[1]]: 'Dragapult' },
+    updatedAt
+  });
   assert.equal(requested[0].url, '/api/live/report');
   stubFetch(429, { error: 'Too many reports' });
   await assert.rejects(submitDeckReports(reports), /429/);
