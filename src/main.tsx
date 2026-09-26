@@ -62,6 +62,7 @@ const PlayerProfilePage = page(() => import('./pages/PlayerProfilePage'), 'Playe
 const PlayerComparePage = page(() => import('./pages/PlayerComparePage'), 'PlayerComparePage');
 const EventLocatorPage = page(() => import('./pages/EventLocatorPage'), 'EventLocatorPage');
 const ToolsPage = page(() => import('./pages/ToolsPage'), 'ToolsPage');
+const BotPage = page(() => import('./pages/BotPage'), 'BotPage');
 const SocialGraphicsPage = page(() => import('./pages/SocialGraphicsPage'), 'SocialGraphicsPage');
 const InLovingMemoryPage = page(() => import('./pages/InLovingMemoryPage'), 'InLovingMemoryPage');
 const LabelMakerPage = page(() => import('./pages/LabelMakerPage'), 'LabelMakerPage');
@@ -132,6 +133,7 @@ render(
       <Route path='/events/majors' component={TournamentsIndexPage} />
       <Route path='/events/locator' component={EventLocatorPage} />
       <Route path='/tools' component={ToolsPage} />
+      <Route path='/bot' component={BotPage} />
       <Route path='/tools/social-graphics' component={SocialGraphicsPage} />
       <Route path='/tools/in-loving-memory' component={InLovingMemoryPage} />
       <Route path='/tools/deck-box-labels' component={LabelMakerPage} />

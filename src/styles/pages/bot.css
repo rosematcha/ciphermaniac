@@ -1,0 +1,90 @@
+/* Pairings Discord Bot (/bot): the pitch on the left, a Discord message on the right. */
+.bot-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+  gap: var(--space-6);
+  align-items: start;
+}
+.bot-prose {
+  max-width: 52ch;
+}
+.bot-add {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 860px) {
+  .bot-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The preview is a picture of Discord, not site UI: it keeps Discord's own dark
+   palette in both modes and its embed side bar, so it reads as what lands in the
+   channel. The site's edge frames it like any other figure. */
+.bot-discord {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 0 14px;
+  margin: 0;
+  padding: 14px 16px 16px;
+  background: #313338;
+  color: #dbdee1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  line-height: 1.375;
+}
+.bot-discord-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+.bot-discord-body {
+  min-width: 0;
+}
+.bot-discord-who {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.bot-discord-name {
+  color: #f2f3f5;
+  font-weight: 600;
+}
+.bot-discord-app {
+  background: #5865f2;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 15px;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+}
+.bot-discord-time {
+  color: #949ba4;
+  font-size: 12px;
+}
+.bot-discord-head {
+  margin: 2px 0 4px;
+}
+.bot-discord-head strong {
+  color: #f2f3f5;
+}
+.bot-discord-link {
+  color: #00a8fc;
+}
+.bot-discord-embed {
+  max-width: 440px;
+  margin-top: 4px;
+  padding: 6px 12px 8px;
+  background: #2b2d31;
+  border-left: 4px solid #ea1;
+  border-radius: 4px;
+}
+.bot-discord-title {
+  color: #f2f3f5;
+  font-weight: 600;
+}
+.bot-discord-desc {
+  font-size: 13px;
+}

@@ -34,6 +34,7 @@ const STATIC_ROUTES: Array<{ path: string; changefreq: ChangeFreq; priority: num
   { path: '/events/majors', changefreq: 'daily', priority: 0.7 },
   { path: '/events/locator', changefreq: 'daily', priority: 0.7 },
   { path: '/tools', changefreq: 'monthly', priority: 0.6 },
+  { path: '/bot', changefreq: 'monthly', priority: 0.5 },
   { path: '/tools/deck-box-labels', changefreq: 'monthly', priority: 0.5 },
   { path: '/tools/meta-binder', changefreq: 'weekly', priority: 0.6 },
   { path: '/tools/card-wall', changefreq: 'monthly', priority: 0.4 },
