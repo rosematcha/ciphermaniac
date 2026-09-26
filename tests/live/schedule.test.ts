@@ -43,6 +43,14 @@ test('the site advertises an event on its own days, in any time zone, and not ar
   ]);
 });
 
+test('overlapping regionals are both on while their local days overlap', () => {
+  const brisbane = { ...EVENT, slug: 'brisbane-2027', firstDay: '2026-09-25', lastDay: '2026-09-26' };
+  const frankfurt = { ...EVENT, slug: 'frankfurt-2027', firstDay: '2026-09-26', lastDay: '2026-09-27' };
+  const schedule = [brisbane, frankfurt];
+  assert.deepEqual(eventsOn(schedule, new Date('2026-09-25T12:00:00Z')), schedule);
+  assert.deepEqual(eventsOn(schedule, new Date('2026-09-28T00:00:00Z')), [frankfurt]);
+});
+
 test('a schedule is rebuilt once it is half a day old, or missing', () => {
   assert.equal(isScheduleStale(null, NOW), true);
   assert.equal(isScheduleStale({ generatedAt: '2026-09-19T01:00:00Z', events: [] }, NOW), false);
