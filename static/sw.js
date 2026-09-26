@@ -7,6 +7,7 @@
  *     visits render from the last-seen data instantly while a background
  *     refresh updates the cache. Data changes ~daily, so briefly-stale is
  *     fine (same policy as the 6h HTTP cache, but instant and offline-safe).
+ *     Live files change by the minute, so they are left to the network.
  *  2. Same-origin /assets/ + /fonts/: cache-first. Bundle filenames are
  *     content-hashed and fonts are frozen, so these never go stale.
  *  3. Navigations: network-first on the app shell, cached copy only as the
@@ -147,10 +148,14 @@ self.addEventListener('fetch', event => {
   // Event listings are not cached here: stale-while-revalidate would hand back an
   // index days old that names a run the producer has since deleted. Their own
   // six-hour HTTP cache is shorter than the day a run outlives its index.
+  // Live rounds and deck reports are not either: every poll would be answered
+  // with the one before it, and a page keyed on the index hash would then hold
+  // a round's last result until the next round. The page revalidates them itself.
   if (
     url.host === 'r2.ciphermaniac.com' &&
     !url.pathname.startsWith('/card-images/') &&
-    !url.pathname.startsWith('/events/')
+    !url.pathname.startsWith('/events/') &&
+    !url.pathname.startsWith('/live/')
   ) {
     event.respondWith(staleWhileRevalidate(request));
     return;
