@@ -148,17 +148,18 @@ async function publishSeats(bucket: Bucket, slug: string, settled: ReadonlyMap<s
   });
 }
 
-/** Why the batch must be refused, if it must be; the checks a whole batch shares. */
+/** Why the batch must be refused, if it must be; the checks a whole batch shares, read side by side. */
 async function refuse(bucket: Bucket, slug: string, reports: readonly DeckReport[]): Promise<Response | null> {
-  if (!(await isLiveEvent(bucket, slug))) {
+  const named = reports.flatMap(report => (report.archetype === null ? [] : [report.archetype]));
+  const [live, known] = await Promise.all([
+    isLiveEvent(bucket, slug),
+    named.length > 0 ? knownArchetypes(bucket) : Promise.resolve([])
+  ]);
+  if (!live) {
     return jsonError('No such live event', 404);
   }
-  const named = reports.flatMap(report => (report.archetype === null ? [] : [report.archetype]));
-  if (named.length > 0) {
-    const known = await knownArchetypes(bucket);
-    if (named.some(archetype => !known.includes(archetype))) {
-      return jsonError('Unknown archetype', 400);
-    }
+  if (named.some(archetype => !known.includes(archetype))) {
+    return jsonError('Unknown archetype', 400);
   }
   return null;
 }
@@ -179,15 +180,8 @@ async function overSeatCap(votes: VoteStore, first: DeckReport, reports: readonl
 
 /** Records every report, then recounts each seat it touched. */
 async function settle(votes: VoteStore, reports: readonly DeckReport[]): Promise<Map<string, string | null>> {
-  const at = Date.now();
-  for (const report of reports) {
-    await votes.record(report, at);
-  }
-  const settled = new Map<string, string | null>();
-  for (const report of reports) {
-    settled.set(report.seat, leadingArchetype(await votes.tally(report.slug, report.seat)));
-  }
-  return settled;
+  const tallies = await votes.settle(reports, Date.now());
+  return new Map(reports.map((report, i) => [report.seat, leadingArchetype(tallies[i] ?? [])]));
 }
 
 /** The batch a request carries, or null when it is oversized or not a deck report. */

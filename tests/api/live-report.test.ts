@@ -26,9 +26,21 @@ interface Vote {
   archetype: string;
 }
 
+/** Round trips the fake database has been asked for: single statements and batches alike. */
+let trips = 0;
+
 /** Just enough D1 for the three statements the vote store prepares. */
 function fakeDb(votes: Vote[]): D1Like {
   return {
+    // In order, as D1 runs a batch; a write answers with no rows, as it does there.
+    batch: async statements => {
+      trips++;
+      const results: { results: unknown[] }[] = [];
+      for (const statement of statements) {
+        results.push(await statement.all());
+      }
+      return results;
+    },
     prepare: sql => {
       let args: unknown[] = [];
       const statement = {
@@ -37,18 +49,23 @@ function fakeDb(votes: Vote[]): D1Like {
           return statement;
         },
         first: <T>() => {
+          trips++;
           // `loadOf` binds the seats it asks about, then the slug and the voter.
           const seats = args.slice(0, -2) as string[];
           const [slug, voter] = args.slice(-2) as string[];
           const mine = votes.filter(vote => vote.slug === slug && vote.voter === voter);
           return Promise.resolve({ n: mine.length, mine: mine.filter(vote => seats.includes(vote.seat)).length } as T);
         },
-        all: <T>() => {
+        all: async <T>() => {
+          if (!sql.startsWith('SELECT')) {
+            await statement.run();
+            return { results: [] as T[] };
+          }
           const counts = new Map<string, number>();
           for (const vote of votes.filter(candidate => candidate.slug === args[0] && candidate.seat === args[1])) {
             counts.set(vote.archetype, (counts.get(vote.archetype) ?? 0) + 1);
           }
-          return Promise.resolve({ results: [...counts].map(([archetype, n]) => ({ archetype, votes: n })) as T[] });
+          return { results: [...counts].map(([archetype, n]) => ({ archetype, votes: n })) as T[] };
         },
         run: () => {
           const [slug, seat, voter, archetype] = args as string[];
@@ -83,6 +100,7 @@ let files: Map<string, string>;
 
 beforeEach(() => {
   _resetRateLimitStore();
+  trips = 0;
   votes = [];
   files = new Map([
     [
@@ -196,7 +214,7 @@ test('an archetype outside the index, an event that is not on, and a malformed b
   assert.equal(votes.length, 0);
 });
 
-test('a whole run goes in as one batch, in one rewrite of the published file', async () => {
+test('a whole run goes in as one batch, in one rewrite of the published file and two trips to D1', async () => {
   let writes = 0;
   const bucket = {
     ...fakeBucket(files),
@@ -222,6 +240,7 @@ test('a whole run goes in as one batch, in one rewrite of the published file', a
     }
   });
   assert.equal(writes, 1);
+  assert.equal(trips, 2, 'the seat cap, then every write and recount together');
   assert.equal(votes.length, 4);
 });
 
