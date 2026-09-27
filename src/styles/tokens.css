@@ -28,6 +28,12 @@ body[data-mode="light"] {
      needs no second value: its accent is already ~8:1 on every dark ground. */
   --accent-ink: #8c5900;
   --accent-ink-hover: #734900;
+  /* A fill that carries text (a primary button, a pressed chip) takes the bright
+     marigold in both modes: under dark text #bb7700 reads as brown. Its edge is
+     drawn in --accent, which keeps the 3:1 against --bg that the fill alone
+     misses. Dark mode's accent is already this value. */
+  --accent-fill: #ea1;
+  --accent-fill-hover: #fb3;
   --positive: #3a6a52;
   --negative: #c44e3a;
 

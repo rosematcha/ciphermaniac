@@ -38,7 +38,7 @@
   border-color: var(--fg);
 }
 .ilm-arche[aria-checked='true'] {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--accent-fg);
   border-color: var(--accent);
 }

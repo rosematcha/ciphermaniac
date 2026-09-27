@@ -890,11 +890,12 @@
   transform: scale(var(--press-scale));
 }
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--accent-fg);
+  border-color: var(--accent);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--accent-fill-hover);
 }
 .btn-secondary {
   background: var(--surface);
@@ -1298,7 +1299,7 @@
   transform: scale(0.94);
 }
 .chip[aria-pressed='true'] {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--accent-fg);
   border-color: var(--accent);
 }
@@ -1659,7 +1660,7 @@ tr.row-expansion > td {
   cursor: not-allowed;
 }
 .pagination button.active {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--accent-fg);
   border-color: var(--accent);
 }
@@ -4503,7 +4504,7 @@ tr.row-expansion > td {
 /* The footer's primary action ("Show 24 cards"), filling the row. */
 .sheet-apply {
   flex: 1 1 auto;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--accent-fg);
   border: 1px solid var(--accent-hover);
 }
@@ -4544,7 +4545,7 @@ tr.row-expansion > td {
 .filters-btn.is-active {
   width: auto;
   padding: 0 12px;
-  background: var(--accent);
+  background: var(--accent-fill);
   border-color: var(--accent-hover);
   color: var(--accent-fg);
 }

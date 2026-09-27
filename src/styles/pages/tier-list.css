@@ -430,8 +430,9 @@ body:not(.tl-labels) .tl-ico {
   cursor: pointer;
 }
 .tl-btn.primary {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--accent-fg);
+  border-color: var(--accent);
 }
 .tl-btn.warn {
   border-color: var(--negative);
