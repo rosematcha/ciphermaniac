@@ -103,12 +103,12 @@
   transform: scale(var(--press-scale));
 }
 .sg-btn.primary {
-  background: var(--accent);
+  background: var(--accent-fill);
   color: var(--accent-fg);
   border-color: var(--accent);
 }
 .sg-btn.primary:hover {
-  background: var(--accent-hover);
+  background: var(--accent-fill-hover);
 }
 .sg-btn[disabled] {
   opacity: 0.4;
