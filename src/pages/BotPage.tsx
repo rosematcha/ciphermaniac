@@ -79,7 +79,7 @@ export function BotPage() {
         <div class='hero'>
           <h1>Pairings Discord Bot</h1>
         </div>
-        <div class='prose bot-prose'>
+        <div class='prose'>
           <p>
             Follow players and the bot posts their pairings to your Discord server each round, usually within seconds of
             them going up on RK9. It shows the table number, the opponent, and the opponent's deck if Ciphermaniac has a
@@ -95,7 +95,7 @@ export function BotPage() {
         </a>
       </div>
       <DiscordPreview />
-      <div class='prose bot-prose bot-more'>
+      <div class='prose bot-more'>
         <h2>Setting it up</h2>
         <p>
           After you add the bot, it posts a Set up button. Anyone with Manage Server can use it to pick a channel for

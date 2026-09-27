@@ -15,9 +15,6 @@
 .bot-more {
   grid-area: more;
 }
-.bot-prose {
-  max-width: 52ch;
-}
 .bot-add {
   margin-top: var(--space-4);
 }
