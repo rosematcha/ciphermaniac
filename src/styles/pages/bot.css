@@ -1,9 +1,19 @@
-/* Pairings Discord Bot (/bot): the pitch on the left, a Discord message on the right. */
+/* Pairings Discord Bot (/bot): the pitch on the left, a Discord message on the right.
+   On a phone the message sits between the pitch and the details, not below both. */
 .bot-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+  grid-template-areas:
+    'intro preview'
+    'more preview';
   gap: var(--space-6);
   align-items: start;
+}
+.bot-intro {
+  grid-area: intro;
+}
+.bot-more {
+  grid-area: more;
 }
 .bot-prose {
   max-width: 52ch;
@@ -11,10 +21,14 @@
 .bot-add {
   margin-top: var(--space-4);
 }
+.bot-more h2:not(:first-child) {
+  margin-top: var(--space-2);
+}
 
 @media (max-width: 860px) {
   .bot-split {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'intro' 'preview' 'more';
   }
 }
 
@@ -22,6 +36,7 @@
    palette in both modes and its embed side bar, so it reads as what lands in the
    channel. The site's edge frames it like any other figure. */
 .bot-discord {
+  grid-area: preview;
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
   gap: 0 14px;
