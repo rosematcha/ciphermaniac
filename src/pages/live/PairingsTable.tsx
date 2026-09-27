@@ -2,7 +2,6 @@ import { A } from '@solidjs/router';
 import { For, Show } from 'solid-js';
 import type { LiveMatch, LiveSeat } from '../../../shared/live/types';
 import {
-  matchStatus,
   recordLabel,
   seatKey,
   type SeatOutcome,
@@ -14,7 +13,7 @@ import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { useLiveFollows } from '../../lib/liveFollows';
 import { deckIcons, type ReportedDeck } from './LiveDeck';
 import { seatHref, seatName } from './links';
-import { OutcomeMark, STATUS_LABEL } from './LiveRun';
+import { OutcomeMark } from './LiveRun';
 
 export interface SeatPresenter {
   slug: string;
@@ -23,8 +22,8 @@ export interface SeatPresenter {
 }
 
 /**
- * The round's tables. Four columns on a desktop; on a phone each row restacks
- * into two lines — your seat over your opponent's — because the four columns
+ * The round's tables. Three columns on a desktop; on a phone each row restacks
+ * into two lines — your seat over your opponent's — because the three columns
  * measure about 580px and a phone has 366, and the overflow put the opponent,
  * the whole point of a pairings page, behind a hidden scrollbar.
  */
@@ -37,7 +36,6 @@ export function PairingsTable(props: { matches: readonly LiveMatch[]; present: S
             <th class='num live-table-col'>Table</th>
             <th>Player</th>
             <th>Opponent</th>
-            <th class='num'>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -52,9 +50,8 @@ function MatchRow(props: { match: LiveMatch; present: SeatPresenter }) {
   // Both seats reserve the sprite slot when either has a deck, so the two names
   // in a row start at the same place; a row with no report gives the space back.
   const reserve = () => props.match.seats.some(seat => props.present.deckOf(seat));
-  const decided = () => props.match.seats.some((_, i) => seatOutcome(props.match, i));
   return (
-    <tr classList={{ 'has-deck': reserve(), 'has-result': decided() }}>
+    <tr classList={{ 'has-deck': reserve() }}>
       <td class='num muted-cell live-table-col'>{props.match.table || '—'}</td>
       <For each={[0, 1]}>
         {i => (
@@ -65,9 +62,6 @@ function MatchRow(props: { match: LiveMatch; present: SeatPresenter }) {
           </td>
         )}
       </For>
-      <td class='num muted-cell live-status-cell' data-status={matchStatus(props.match)}>
-        {STATUS_LABEL[matchStatus(props.match)]}
-      </td>
     </tr>
   );
 }

@@ -137,6 +137,7 @@ test('a whole run of decks is picked in the panel and sent as one request', asyn
   await page.goto(`/live/${SLUG}?player=${encodeURIComponent(RUNNER)}&cc=US`, { waitUntil: 'load' });
 
   const panel = page.locator('.live-run-actions');
+  test.skip(test.info().project.name === 'mobile', 'Run reporting remains available on desktop only.');
   await expect(panel.getByRole('button', { name: 'Report run' })).toBeVisible({ timeout: 15_000 });
   await panel.getByRole('button', { name: 'Report run' }).click();
 
@@ -168,6 +169,13 @@ test('a whole run of decks is picked in the panel and sent as one request', asyn
   expect(batch.reports.map(report => report.seat)).toEqual(['ryan ferry|US', 'opponent 1|US']);
   expect(batch.reports.every(report => report.slug === SLUG)).toBe(true);
   await expect(page.locator('.run-report')).toHaveCount(0);
+});
+
+test('reporting a whole run is hidden on mobile', async ({ page }) => {
+  test.skip(test.info().project.name !== 'mobile', 'This visibility check applies to mobile.');
+  await stubEvent(page);
+  await page.goto(`/live/${SLUG}?player=${encodeURIComponent(RUNNER)}&cc=US`, { waitUntil: 'load' });
+  await expect(page.locator('.live-run-actions').getByRole('button', { name: 'Report run' })).toBeHidden();
 });
 
 test('a player who dropped still has the live event on their profile', async ({ page }) => {

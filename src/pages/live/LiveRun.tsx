@@ -151,7 +151,7 @@ function RunActions(props: { seat: LiveSeat; reports: DeckReports; filling: bool
         </Show>
         <Show when={reportable() && props.onFill}>
           {fill => (
-            <button type='button' class='btn btn-secondary' onClick={() => fill()()}>
+            <button type='button' class='btn btn-secondary live-run-fill' onClick={() => fill()()}>
               {props.filling ? 'Cancel' : 'Report run'}
             </button>
           )}

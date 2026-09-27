@@ -118,6 +118,9 @@
   .round-step-arrow {
     width: 40px;
   }
+  .live-run-fill {
+    display: none;
+  }
 }
 
 /* ---------- Tables ---------- */
@@ -342,8 +345,7 @@ tr:hover .live-follow,
   .live-seat-inline {
     display: inline;
   }
-  /* A row is two lines: your seat over your opponent's, the table number
-     spanning both, the status once for the match it belongs to. */
+  /* A row is two lines: the table number spans both seats. */
   .live-table {
     overflow-x: hidden;
     background: none;
@@ -363,12 +365,10 @@ tr:hover .live-follow,
   }
   .live-table .data tr {
     display: grid;
-    /* 66px, not 58: "Submitted" is one of the two statuses worth spotting and
-       it was the one being clipped. */
-    grid-template-columns: 38px minmax(0, 1fr) 66px;
+    grid-template-columns: 38px minmax(0, 1fr);
     grid-template-areas:
-      'table player status'
-      'table opponent status';
+      'table player'
+      'table opponent';
     align-items: center;
     column-gap: 6px;
     padding: 5px 0;
@@ -390,42 +390,6 @@ tr:hover .live-follow,
   }
   .live-table .data td.live-seat-cell:nth-of-type(3) {
     grid-area: opponent;
-  }
-  /* One status for the match, in its own column beside both seats. "Final" is
-     nearly every row of a finished round, so it recedes; the two states worth
-     spotting — still playing, result in but unconfirmed — are the legible ones. */
-  .live-table .data td.live-status-cell {
-    grid-area: status;
-    align-self: center;
-    text-align: right;
-    font-size: 10.5px;
-    line-height: 1.2;
-    letter-spacing: var(--tracking-micro);
-    text-transform: uppercase;
-    font-weight: 600;
-  }
-  /* Muted at 0.4 came out at 1.7:1 — decoration, not text. Still the quietest
-     thing in the row, but legible. */
-  .live-table .data td.live-status-cell[data-status='final'] {
-    opacity: 0.7;
-    font-weight: 500;
-  }
-  /* The opponent's line reads as the reply to the player's, which is what tells
-     the two apart once the header has scrolled away. */
-  .live-table .data td.live-seat-cell:nth-of-type(3) .live-seat::before,
-  .live-table .data td.live-seat-cell:nth-of-type(3) .live-bye::before {
-    content: 'vs';
-    flex: none;
-    width: 14px;
-    font-size: 9px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-micro);
-  }
-  .live-table .data td.live-seat-cell:nth-of-type(3) .live-bye {
-    display: flex;
-    align-items: center;
-    gap: 5px;
   }
   .live-table .data .live-seat {
     gap: 5px;
