@@ -11,7 +11,7 @@ import { beforeEach, test } from 'node:test';
 
 import { _resetRateLimitStore, onRequestPost } from '../../functions/api/live/report.ts';
 import { ARCHETYPE_INDEX_KEY } from '../../functions/lib/api/archetypeIndexKey.ts';
-import type { D1Like } from '../../functions/lib/live/votes.ts';
+import type { D1Like } from '../../functions/lib/types.ts';
 import type { LiveReports } from '../../shared/live/reports.ts';
 import { LIVE_SCHEDULE_KEY } from '../../shared/live/schedule.ts';
 
