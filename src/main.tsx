@@ -132,7 +132,7 @@ render(
       <Route path='/events/majors' component={TournamentsIndexPage} />
       <Route path='/events/locator' component={EventLocatorPage} />
       {/* /bot is the Tools route too: a route of its own adds to the app shell, which has no room for one. */}
-      <Route path={['/tools', '/bot']} component={ToolsPage} />
+      <Route path='/tools' component={ToolsPage} />
       <Route path='/tools/social-graphics' component={SocialGraphicsPage} />
       <Route path='/tools/in-loving-memory' component={InLovingMemoryPage} />
       <Route path='/tools/deck-box-labels' component={LabelMakerPage} />

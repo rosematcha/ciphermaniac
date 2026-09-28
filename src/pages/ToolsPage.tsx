@@ -1,7 +1,6 @@
-import { For, onMount, Show } from 'solid-js';
-import { A, useLocation } from '@solidjs/router';
+import { For, onMount } from 'solid-js';
+import { A } from '@solidjs/router';
 import '../styles/pages/tools.css';
-import { BotPage } from './BotPage';
 
 // The tools that get a plain row rather than a tile — fun to poke at, but not
 // what anyone comes here to do.
@@ -33,17 +32,7 @@ const secondary: { href: string; name: string; desc: string }[] = [
   }
 ];
 
-/** The Tools route, which also serves /bot (see main.tsx). */
 export function ToolsPage() {
-  const location = useLocation();
-  return (
-    <Show when={location.pathname === '/bot'} fallback={<ToolsIndex />}>
-      <BotPage />
-    </Show>
-  );
-}
-
-function ToolsIndex() {
   onMount(() => {
     document.title = 'Tools — Ciphermaniac';
   });
@@ -60,24 +49,6 @@ function ToolsIndex() {
               listed. The route still works for anyone with the link, but it's
               an internal export tool, so it stays out of the index, the
               sitemap, and the crawlers (static/robots.txt). */}
-          <A class='arche' href='/bot'>
-            <div class='arche-thumb' aria-hidden='true'>
-              <svg viewBox='0 0 100 80'>
-                <rect x='14' y='14' width='72' height='10' rx='2' fill='currentColor' opacity='0.45' />
-                <rect x='14' y='30' width='3' height='14' fill='currentColor' opacity='0.5' />
-                <rect x='21' y='32' width='40' height='4' fill='currentColor' opacity='0.35' />
-                <rect x='21' y='39' width='28' height='3' fill='currentColor' opacity='0.2' />
-                <rect x='14' y='50' width='3' height='14' fill='currentColor' opacity='0.5' />
-                <rect x='21' y='52' width='44' height='4' fill='currentColor' opacity='0.35' />
-                <rect x='21' y='59' width='24' height='3' fill='currentColor' opacity='0.2' />
-              </svg>
-            </div>
-            <div class='arche-name'>Pairings Discord Bot</div>
-            <div class='arche-stats'>
-              <span class='arche-wr'>Stay on top of your regional performance, in real time</span>
-            </div>
-          </A>
-
           <A class='arche' href='/tools/tier-list'>
             <div class='arche-thumb' aria-hidden='true'>
               <svg viewBox='0 0 100 80'>
