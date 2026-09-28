@@ -9,19 +9,7 @@
  */
 
 import type { ArchetypeTally, DeckReport } from '../../../shared/live/reports.js';
-
-interface D1Statement {
-  bind: (...values: unknown[]) => D1Statement;
-  first: <T>() => Promise<T | null>;
-  all: <T>() => Promise<{ results: T[] }>;
-  run: () => Promise<unknown>;
-}
-
-export interface D1Like {
-  prepare: (sql: string) => D1Statement;
-  /** Runs the statements in order, in one transaction and one round trip. */
-  batch: (statements: D1Statement[]) => Promise<{ results?: unknown[] }[]>;
-}
+import type { D1Like, D1Statement } from '../types.js';
 
 /** What one device has already reported at an event. */
 export interface VoterLoad {

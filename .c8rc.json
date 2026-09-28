@@ -16,6 +16,7 @@
   "exclude": [
     "**/*.d.ts",
     "shared/**/types.ts",
+    "functions/**/types.ts",
     "src/types/**"
   ],
   "reporter": [

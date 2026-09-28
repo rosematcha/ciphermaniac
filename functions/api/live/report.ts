@@ -43,7 +43,8 @@ import { ARCHETYPE_INDEX_KEY } from '../../lib/api/archetypeIndexKey.js';
 import { readJsonBody } from '../../lib/api/body.js';
 import { createRateLimiter } from '../../lib/api/rateLimiter.js';
 import { jsonError, jsonSuccess } from '../../lib/api/responses.js';
-import { createVoteStore, type D1Like, type VoteStore } from '../../lib/live/votes.js';
+import type { D1Like } from '../../lib/types.js';
+import { createVoteStore, type VoteStore } from '../../lib/live/votes.js';
 
 /** Every field of a report is length-bounded; 512 bytes each leaves a full batch room to spare. */
 const MAX_BODY_BYTES = 512 * MAX_REPORTS_PER_REQUEST;
