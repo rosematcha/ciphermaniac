@@ -33,6 +33,11 @@ const COMMANDS = [
     does: "Change the name this server's updates use for a player. Leave the name blank to clear it."
   },
   { name: '/following', does: 'List who this server follows and where updates go.' },
+  {
+    name: '/hush',
+    does: "Stop updates from this weekend's events in this server. Pick an event to hush just that one. Updates start again at the next event."
+  },
+  { name: '/unhush', does: 'Resume updates from a hushed event, starting at the current round.' },
   { name: '/setup', does: 'Change the updates channel or add players.' }
 ];
 
@@ -117,7 +122,7 @@ export function BotPage() {
                 )}
               </For>
             </dl>
-            <p>Changing channels or follows requires Manage Server. A server can follow up to 100 players.</p>
+            <p>Changing channels, follows or hushes requires Manage Server. A server can follow up to 100 players.</p>
           </div>
           <div class='bot-part'>
             <h2>Permissions</h2>
