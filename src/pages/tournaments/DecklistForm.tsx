@@ -16,7 +16,7 @@ import { ErrorLine, Field } from './Field';
 import { emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
 import { SignIn } from './SignIn';
 
-function Form(props: { code: string }) {
+function Form(props: { code: string; archetypes: boolean }) {
   const [mine, { refetch }] = createResource(() => fetchDecklists(props.code).then(result => result.mine));
   const [profile, setProfile] = createSignal<PlayerProfile>(emptyProfile(latestValue(session)?.user));
   const [deck, setDeck] = createSignal('');
@@ -49,7 +49,7 @@ function Form(props: { code: string }) {
     setError(null);
     try {
       const saved = profile();
-      await submitDecklist(props.code, deck(), saved, archetype());
+      await submitDecklist(props.code, deck(), saved, props.archetypes ? archetype() : null);
       setSession(prev => (prev?.user ? { ...prev, user: { ...prev.user, ...saved } } : prev));
       setStatus('sent');
       void refetch();
@@ -76,14 +76,16 @@ function Form(props: { code: string }) {
           setProfile(value);
         }}
       />
-      <Field id='deck-archetype' label='Deck'>
-        <DeckCombo
-          decks={latestValue(deckOptions) ?? []}
-          selected={archetype() ? { label: archetype() as string } : undefined}
-          placeholder='Search archetypes'
-          onPick={picked => setArchetype(picked.label)}
-        />
-      </Field>
+      <Show when={props.archetypes}>
+        <Field id='deck-archetype' label='Deck'>
+          <DeckCombo
+            decks={latestValue(deckOptions) ?? []}
+            selected={archetype() ? { label: archetype() as string } : undefined}
+            placeholder='Search archetypes'
+            onPick={picked => setArchetype(picked.label)}
+          />
+        </Field>
+      </Show>
       <Field id='deck-list' label='Decklist'>
         <textarea
           id='deck-list'
@@ -120,7 +122,7 @@ function Form(props: { code: string }) {
   );
 }
 
-export function DecklistForm(props: { code: string }) {
+export function DecklistForm(props: { code: string; archetypes: boolean }) {
   return (
     <Show
       when={latestValue(session)?.user}
@@ -130,7 +132,7 @@ export function DecklistForm(props: { code: string }) {
         </Show>
       }
     >
-      <Form code={props.code} />
+      <Form code={props.code} archetypes={props.archetypes} />
     </Show>
   );
 }

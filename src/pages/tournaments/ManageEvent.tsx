@@ -9,7 +9,7 @@ import { POD_LABELS, type PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
 import { Tabs } from '../../components/Tabs';
 import { joinStaff, type Manage, signOut } from '../../lib/tournament/api';
-import { divisionLookup, namesById } from '../../lib/tournament/present';
+import { divisionLookup, namesById, shownDecks } from '../../lib/tournament/present';
 import { refreshSession, session } from './session';
 import { latestValue } from '../../lib/resource';
 import { DecklistsPanel } from './DecklistsPanel';
@@ -93,7 +93,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
               tournament={props.manage.tournament}
               pod={p}
               names={names()}
-              decks={props.manage.decks}
+              decks={shownDecks(props.manage)}
               divisionOf={divisionOf()}
             />
           )}

@@ -16,7 +16,7 @@ import { pairNextElimination, pairSwiss, pairTopCut } from './pairing.js';
 import type { Random } from './random.js';
 import {
   activeIds,
-  freeTables,
+  fixedTables,
   isReported,
   latestRound,
   pairingHistory,
@@ -56,6 +56,7 @@ export type Command =
   | { type: 'removePlayer'; id: string }
   | { type: 'dropPlayer'; id: string }
   | { type: 'undropPlayer'; id: string }
+  | { type: 'setFixedTable'; id: string; table: number | null }
   | { type: 'pairRound'; pod: PodCategory }
   | { type: 'repairRound'; pod: PodCategory; keepReported: boolean }
   | { type: 'deleteRound'; pod: PodCategory }
@@ -216,6 +217,36 @@ function dropPlayer(tournament: Tournament, id: string, ctx: CommandContext): Co
   }));
 }
 
+/**
+ * A drop can be taken back until the next round is paired. After that the
+ * player has missed a pairing, and letting them back in would hand them a
+ * loss they never played or a round they were never in.
+ */
+function undropPlayer(tournament: Tournament, id: string, ctx: CommandContext): CommandResult {
+  const player = tournament.players.find(p => p.id === id);
+  const pod = podOf(tournament, id);
+  const latest = pod ? (latestRound(pod)?.number ?? 0) : 0;
+  if (player?.droppedAfter != null && player.droppedAfter !== latest) {
+    return fail(`They dropped before round ${player.droppedAfter + 1} was paired, so they can’t come back now`);
+  }
+  return updatePlayer(tournament, id, p => ({ ...p, droppedAfter: null, modified: ctx.localTime }));
+}
+
+const MAX_TABLE = 9999;
+
+function setFixedTable(tournament: Tournament, id: string, table: number | null): CommandResult {
+  if (table !== null && (!Number.isInteger(table) || table < 1 || table > MAX_TABLE)) {
+    return fail('A table is a whole number from 1');
+  }
+  const holder = table === null ? undefined : tournament.players.find(p => p.fixedTable === table && p.id !== id);
+  if (holder) {
+    return fail(`Table ${table} is already fixed for ${holder.firstName} ${holder.lastName}`);
+  }
+  return updatePlayer(tournament, id, ({ fixedTable: _old, ...player }) =>
+    table === null ? player : { ...player, fixedTable: table }
+  );
+}
+
 function nextSwissRound(tournament: Tournament, pod: Pod, ctx: CommandContext): Round {
   const number = pod.rounds.length + 1;
   const points = pointsBefore(pod, number);
@@ -229,7 +260,11 @@ function nextSwissRound(tournament: Tournament, pod: Pod, ctx: CommandContext): 
     pairTime: ctx.localTime,
     startTime: '',
     clockStartedAt: null,
-    matches: toMatches(pairings, { firstTable: pod.startingTable, timestamp: ctx.localTime })
+    matches: toMatches(pairings, {
+      firstTable: pod.startingTable,
+      timestamp: ctx.localTime,
+      fixed: fixedTables(tournament)
+    })
   };
 }
 
@@ -262,7 +297,11 @@ function nextEliminationRound(tournament: Tournament, pod: Pod, latest: Round, c
     pairTime: ctx.localTime,
     startTime: '',
     clockStartedAt: null,
-    matches: toMatches(pairNextElimination(winners), { firstTable: pod.startingTable, timestamp: ctx.localTime })
+    matches: toMatches(pairNextElimination(winners), {
+      firstTable: pod.startingTable,
+      timestamp: ctx.localTime,
+      fixed: fixedTables(tournament)
+    })
   };
   return done(withPod(tournament, { ...pod, rounds: [...pod.rounds, round] }));
 }
@@ -305,10 +344,12 @@ function repairRound(tournament: Tournament, category: PodCategory, keepReported
     .filter(id => !seated.has(id))
     .map(id => ({ id, points: points.get(id) ?? 0 }));
   const pairings = pairSwiss(entrants, pairingHistory(pod, round.number), ctx.random);
-  const tables = freeTables(kept, pairings.length);
-  const fresh = toMatches(pairings, { firstTable: 1, timestamp: ctx.localTime }).map((match, i) =>
-    match.p2 === null ? match : { ...match, table: tables[i] ?? match.table }
-  );
+  const fresh = toMatches(pairings, {
+    firstTable: pod.startingTable,
+    timestamp: ctx.localTime,
+    fixed: fixedTables(tournament),
+    taken: new Set(kept.map(match => match.table))
+  });
   // Dropped players keep the missed-round entries they already had in this round.
   const stale = round.matches.filter(m => m.p2 === null && m.outcome === 'loss' && !entrants.some(e => e.id === m.p1));
   const matches = sortMatches([...kept, ...fresh, ...stale]);
@@ -479,7 +520,11 @@ function startTopCut(
     pairTime: ctx.localTime,
     startTime: '',
     clockStartedAt: null,
-    matches: toMatches(pairTopCut(seeds), { firstTable: pod.startingTable, timestamp: ctx.localTime })
+    matches: toMatches(pairTopCut(seeds), {
+      firstTable: pod.startingTable,
+      timestamp: ctx.localTime,
+      fixed: fixedTables(tournament)
+    })
   };
   return done(withPod(tournament, { ...closed, cut: size, rounds: [...closed.rounds, round] }));
 }
@@ -516,7 +561,8 @@ const HANDLERS: Handlers = {
     })),
   removePlayer: (t, c) => removePlayer(t, c.id),
   dropPlayer: (t, c, ctx) => dropPlayer(t, c.id, ctx),
-  undropPlayer: (t, c, ctx) => updatePlayer(t, c.id, p => ({ ...p, droppedAfter: null, modified: ctx.localTime })),
+  undropPlayer: (t, c, ctx) => undropPlayer(t, c.id, ctx),
+  setFixedTable: (t, c) => setFixedTable(t, c.id, c.table),
   pairRound: (t, c, ctx) => pairRound(t, c.pod, ctx),
   repairRound: (t, c, ctx) => repairRound(t, c.pod, c.keepReported, ctx),
   deleteRound: (t, c) => deleteRound(t, c.pod),

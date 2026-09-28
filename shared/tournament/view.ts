@@ -24,8 +24,11 @@ export interface PendingResult {
   at: number;
 }
 
-/** When the public can see what each player is on. */
-export type DeckVisibility = 'always' | 'after' | 'never';
+/**
+ * When the public can see what each player is on. 'off' turns archetypes
+ * off for the event altogether: nobody picks one, and no page shows one.
+ */
+export type DeckVisibility = 'always' | 'after' | 'off';
 
 export interface TournamentSettings {
   decklistsOpen: boolean;
@@ -51,7 +54,7 @@ export const DEFAULT_SETTINGS: TournamentSettings = {
 
 export const SETTINGS_LIMITS = { details: 1000, format: 40, archetype: 60 } as const;
 
-const VISIBILITIES: readonly DeckVisibility[] = ['always', 'after', 'never'];
+const VISIBILITIES: readonly DeckVisibility[] = ['always', 'after', 'off'];
 const STARTS_AT_RE = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})?$/;
 
 type SettingCheck = (value: unknown) => boolean;
@@ -79,6 +82,11 @@ export function readSettings(body: unknown, current: TournamentSettings): Tourna
     next[key] = value;
   }
   return next as unknown as TournamentSettings;
+}
+
+/** Whether the event tracks archetypes at all. */
+export function decksEnabled(settings: TournamentSettings): boolean {
+  return settings.deckVisibility !== 'off';
 }
 
 /** Whether the public may see players' archetypes now. */

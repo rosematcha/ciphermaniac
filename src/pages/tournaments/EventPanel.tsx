@@ -13,9 +13,9 @@ import { ErrorLine, Field } from './Field';
 import type { ManageState } from './manageState';
 
 const VISIBILITY_LABELS: Record<DeckVisibility, string> = {
-  always: 'Always',
-  after: 'After the event ends',
-  never: 'Never'
+  always: 'Shown to everyone',
+  after: 'Shown once the event ends',
+  off: 'Off'
 };
 
 function SettingsForm(props: { state: ManageState; manage: Manage }) {
@@ -50,7 +50,7 @@ function SettingsForm(props: { state: ManageState; manage: Manage }) {
             onInput={e => set('format', e.currentTarget.value)}
           />
         </Field>
-        <Field id='set-decks' label='Show decks publicly'>
+        <Field id='set-decks' label='Archetypes'>
           <select
             id='set-decks'
             class='tm-input'

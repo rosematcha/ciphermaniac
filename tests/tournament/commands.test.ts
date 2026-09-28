@@ -264,3 +264,36 @@ test('a report for a match that has since changed is refused', () => {
   );
   assert.equal(round(cleared).matches[0]?.timestamp, round(cleared).pairTime, 'an open match carries its pairing time');
 });
+
+test('a drop can be taken back until the next round is paired, not after', () => {
+  let t = run(withPlayers(4), { type: 'pairRound', pod: 'mixed' }, { type: 'dropPlayer', id: '100' });
+  t = run(t, { type: 'undropPlayer', id: '100' }, { type: 'dropPlayer', id: '100' });
+  t = run(reportAll(t), { type: 'pairRound', pod: 'mixed' });
+  assert.match(attempt(t, { type: 'undropPlayer', id: '100' }), /before round 2 was paired/);
+});
+
+test('static seating keeps a player at their table every round, re-pairs included', () => {
+  let t = run(withPlayers(8), { type: 'setFixedTable', id: '105', table: 3 });
+  t = run(t, { type: 'pairRound', pod: 'mixed' });
+  const at = (id: string) => round(t).matches.find(m => m.p1 === id || m.p2 === id)?.table;
+  assert.equal(at('105'), 3);
+  assert.deepEqual(
+    round(t).matches.map(m => m.table),
+    [1, 2, 3, 4],
+    'the others fill the tables left, in order'
+  );
+  t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'One', id: '990' } });
+  t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Two', id: '991' } });
+  t = run(t, { type: 'repairRound', pod: 'mixed', keepReported: true });
+  assert.equal(at('105'), 3);
+  t = run(reportAll(t), { type: 'pairRound', pod: 'mixed' });
+  assert.equal(at('105'), 3);
+});
+
+test('two players cannot share a fixed table, and one can be cleared', () => {
+  const t = run(withPlayers(2), { type: 'setFixedTable', id: '100', table: 5 });
+  assert.match(attempt(t, { type: 'setFixedTable', id: '101', table: 5 }), /already fixed for Player 1/);
+  assert.match(attempt(t, { type: 'setFixedTable', id: '101', table: 0 }), /whole number/);
+  const cleared = run(t, { type: 'setFixedTable', id: '100', table: null });
+  assert.equal(cleared.players[0]?.fixedTable, undefined);
+});

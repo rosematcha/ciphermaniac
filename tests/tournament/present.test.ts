@@ -13,7 +13,7 @@ import { emptyTournament } from '../../shared/tournament/create.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
 import { parseTdf } from '../../shared/tournament/tdf.ts';
 import type { Pod, Round, Tournament } from '../../shared/tournament/types.ts';
-import { assignKeys, publicTournament } from '../../shared/tournament/view.ts';
+import { assignKeys, DEFAULT_SETTINGS, publicTournament } from '../../shared/tournament/view.ts';
 import { tdfFilename, tdfText } from '../../src/lib/tournament/exportTdf.ts';
 import {
   clockLabel,
@@ -29,6 +29,7 @@ import {
   recordsBefore,
   roundLabel,
   seatMark,
+  shownDecks,
   shownOutcome,
   unseated
 } from '../../src/lib/tournament/present.ts';
@@ -178,4 +179,10 @@ test('the organizer’s and the public’s standings break exact ties the same w
     row => byKey.get(row.playerId) ?? ''
   );
   assert.deepEqual(shown, staff);
+});
+
+test('deck sprites are drawn only while the event tracks archetypes', () => {
+  const decks = { '1': 'Gardevoir' };
+  assert.deepEqual(shownDecks({ decks, settings: { ...DEFAULT_SETTINGS, deckVisibility: 'after' } }), decks);
+  assert.deepEqual(shownDecks({ decks, settings: { ...DEFAULT_SETTINGS, deckVisibility: 'off' } }), {});
 });

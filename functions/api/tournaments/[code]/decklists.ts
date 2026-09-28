@@ -12,6 +12,7 @@
 
 import { MAX_DECKLIST_CHARS, parseDecklist } from '../../../../shared/tournament/decklist.js';
 import { type PlayerProfile, readProfile } from '../../../../shared/tournament/profile.js';
+import { decksEnabled } from '../../../../shared/tournament/view.js';
 import { readJsonBody } from '../../../lib/api/body.js';
 import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
 import { jsonError } from '../../../lib/api/responses.js';
@@ -154,10 +155,12 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if (!access.row.settings.decklistsOpen) {
     return jsonError('Decklist submission is closed', 403);
   }
-  const submission = await readSubmission(context.request);
-  if (typeof submission === 'string') {
-    return jsonError(submission, 400);
+  const read = await readSubmission(context.request);
+  if (typeof read === 'string') {
+    return jsonError(read, 400);
   }
+  // With archetypes off for the event, the player's pick is not kept.
+  const submission = decksEnabled(access.row.settings) ? read : { ...read, archetype: null };
   const now = Date.now();
   await store(access, submission, now);
   const { profile, deck, archetype } = submission;

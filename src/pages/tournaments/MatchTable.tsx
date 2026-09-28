@@ -27,13 +27,22 @@ export interface MatchTableProps {
   extra?: (match: Match) => JSX.Element;
   /** Players picked for a swap, drawn as selected. */
   selected?: ReadonlySet<string>;
+  /** The result waiting for staff to confirm it, previewed in its row. */
+  confirming?: { table: number; p1: string; outcome: Outcome } | null;
 }
 
 const winnerOutcome = (seat: 1 | 2): Outcome => (seat === 1 ? 'p1' : 'p2');
 
 function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records: Map<string, string> }) {
   const id = () => (props.seat === 1 ? props.match.p1 : props.match.p2);
-  const shown = () => shownOutcome(props.match, props.pod, props.round, props.pending);
+  const previewing = () =>
+    props.confirming?.table === props.match.table && props.confirming.p1 === props.match.p1 ? props.confirming : null;
+  const shown = () => {
+    const preview = previewing();
+    return preview
+      ? { outcome: preview.outcome, unconfirmed: true }
+      : shownOutcome(props.match, props.pod, props.round, props.pending);
+  };
   const mark = () => seatMark(shown().outcome, props.seat);
   const name = (playerId: string) => (
     <>
@@ -101,7 +110,8 @@ export function MatchTable(props: MatchTableProps) {
             {match => (
               <tr
                 classList={{
-                  'is-open': shownOutcome(match, props.pod, props.round, props.pending).outcome === 'pending'
+                  'is-open': shownOutcome(match, props.pod, props.round, props.pending).outcome === 'pending',
+                  'is-confirming': props.confirming?.table === match.table && props.confirming.p1 === match.p1
                 }}
               >
                 <td class='num muted-cell tm-table-col'>{match.table || '—'}</td>

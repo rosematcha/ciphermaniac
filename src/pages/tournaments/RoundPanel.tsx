@@ -22,6 +22,7 @@ import {
   namesById,
   recommendedStructure,
   roundLabel,
+  shownDecks,
   STATUS_LABELS,
   unseated
 } from '../../lib/tournament/present';
@@ -208,6 +209,46 @@ function PairingActions(props: { state: ManageState; pod: Pod; round: Round | un
   );
 }
 
+interface Asking {
+  table: number;
+  p1: string;
+  outcome: Outcome;
+}
+
+function askingLabel(asking: Asking, match: Match, names: Map<string, string>): string {
+  const winner = asking.outcome === 'p1' ? match.p1 : asking.outcome === 'p2' ? match.p2 : null;
+  if (winner) {
+    return `${names.get(winner) ?? winner} wins`;
+  }
+  return OUTCOME_WORDS[asking.outcome] ?? '';
+}
+
+const OUTCOME_WORDS: Partial<Record<Outcome, string>> = {
+  tie: 'Tie',
+  'double-loss': 'Double loss',
+  pending: 'Clear the result'
+};
+
+/** The second press a result takes, in the row it is for, so a slip of the finger is not a result. */
+function ConfirmResult(props: { label: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <span class='tm-row-actions tm-confirm' role='group' aria-label='Confirm result'>
+      <span class='tm-confirm-label'>{props.label}?</span>
+      <button
+        type='button'
+        class='btn btn-primary tm-small'
+        ref={el => queueMicrotask(() => el.focus())}
+        onClick={() => props.onConfirm()}
+      >
+        Confirm
+      </button>
+      <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onCancel()}>
+        Cancel
+      </button>
+    </span>
+  );
+}
+
 export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod }) {
   const tom = () => props.manage.mode === 'tom';
   const latest = () => currentRound(props.pod);
@@ -219,14 +260,23 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const waiting = () => unseated(props.manage.tournament, props.pod);
   const active = () => activeIds(props.manage.tournament, props.pod).length;
   const isLatest = () => round()?.number === latest()?.number;
+  const [asking, setAsking] = createSignal<Asking | null>(null);
+  const isAsking = (match: Match) => asking()?.table === match.table && asking()?.p1 === match.p1;
   // A new round, or another division, starts on its current round again.
   createEffect(on([() => latest()?.number, () => props.pod.category], () => setPicked(null), { defer: true }));
 
   function report(match: Match, outcome: Outcome) {
+    setAsking({ table: match.table, p1: match.p1, outcome });
+  }
+
+  function confirm(match: Match) {
     const r = round();
-    if (!r) {
+    const choice = asking();
+    setAsking(null);
+    if (!r || !choice) {
       return;
     }
+    const { outcome } = choice;
     void props.state.send({
       type: 'reportResult',
       pod: props.pod.category,
@@ -294,13 +344,31 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               round={r()}
               matches={r().matches}
               names={names()}
-              decks={props.manage.decks}
+              decks={shownDecks(props.manage)}
               pending={props.manage.pending}
               selected={new Set(swapPick() ? [swapPick() as string] : [])}
               onReport={swapMode() ? undefined : report}
               onPlayer={swapMode() ? pickForSwap : undefined}
+              confirming={asking()}
               extra={match => (
-                <ResultExtras match={match} elimination={r().kind === 'elimination'} onReport={o => report(match, o)} />
+                <Show
+                  when={isAsking(match) && asking()}
+                  fallback={
+                    <ResultExtras
+                      match={match}
+                      elimination={r().kind === 'elimination'}
+                      onReport={o => report(match, o)}
+                    />
+                  }
+                >
+                  {choice => (
+                    <ConfirmResult
+                      label={askingLabel(choice(), match, names())}
+                      onConfirm={() => confirm(match)}
+                      onCancel={() => setAsking(null)}
+                    />
+                  )}
+                </Show>
               )}
             />
           </>

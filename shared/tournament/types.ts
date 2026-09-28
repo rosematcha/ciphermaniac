@@ -61,6 +61,11 @@ export interface Player {
   droppedAfter: number | null;
   /** Joined after the first round was paired; ranks below on-time players on the same points. */
   late?: boolean;
+  /**
+   * The table this player sits at every round, for a player who cannot move
+   * between tables. Their match takes that table; everyone else fills the rest.
+   */
+  fixedTable?: number;
   /** TOM's timestamps, kept so a round trip leaves them as they were. */
   created: string;
   modified: string;

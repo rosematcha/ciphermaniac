@@ -9,7 +9,7 @@ import { useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
-import type { TournamentView } from '../../../shared/tournament/view';
+import { decksEnabled, type TournamentView } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
@@ -248,7 +248,7 @@ function EventBody(props: { view: TournamentView }) {
         <DeckStats tournament={props.view.tournament} decks={props.view.decks} />
       </Show>
       <Show when={tab() === 'decklist'}>
-        <DecklistForm code={props.view.code} />
+        <DecklistForm code={props.view.code} archetypes={decksEnabled(props.view.settings)} />
       </Show>
       <Show when={open()}>
         {id => (

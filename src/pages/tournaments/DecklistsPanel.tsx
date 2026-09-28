@@ -6,6 +6,7 @@
 
 import { createResource, createSignal, For, Show } from 'solid-js';
 import { birthYear } from '../../../shared/tournament/divisions';
+import { decksEnabled } from '../../../shared/tournament/view';
 import { type Decklist, fetchDecklists, type Manage, saveSettings, setDeck } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import { DeckIcons } from './DeckIcons';
@@ -14,6 +15,7 @@ import type { ManageState } from './manageState';
 function DecklistRow(props: { state: ManageState; manage: Manage; list: Decklist; onChanged: () => void }) {
   const [open, setOpen] = createSignal(false);
   const inEvent = () => props.manage.tournament.players.some(p => p.id === props.list.popId);
+  const archetypes = () => decksEnabled(props.manage.settings);
   /** The player's word for their deck becomes the one the event shows; staff decide it is theirs. */
   function useDeck() {
     const { code } = props.manage;
@@ -43,12 +45,14 @@ function DecklistRow(props: { state: ManageState; manage: Manage; list: Decklist
         </td>
         <td class='num muted-cell'>{props.list.popId}</td>
         <td class='num muted-cell'>{birthYear(props.list.birthDate) ?? ''}</td>
-        <td>
-          <span class='tm-seat-inner'>
-            <DeckIcons label={props.list.archetype ?? undefined} />
-            <span>{props.list.archetype ?? ''}</span>
-          </span>
-        </td>
+        <Show when={archetypes()}>
+          <td>
+            <span class='tm-seat-inner'>
+              <DeckIcons label={props.list.archetype ?? undefined} />
+              <span>{props.list.archetype ?? ''}</span>
+            </span>
+          </td>
+        </Show>
         <td>
           <Show when={props.list.problems.length} fallback={<span class='muted-cell'>OK</span>}>
             <span class='tm-problem'>{props.list.problems.join('; ')}</span>
@@ -81,7 +85,7 @@ function DecklistRow(props: { state: ManageState; manage: Manage; list: Decklist
       </tr>
       <Show when={open()}>
         <tr class='tm-expansion'>
-          <td colSpan={6}>
+          <td colSpan={decksEnabled(props.manage.settings) ? 6 : 5}>
             <pre class='tm-decklist'>{props.list.deck}</pre>
           </td>
         </tr>
@@ -118,7 +122,9 @@ export function DecklistsPanel(props: { state: ManageState; manage: Manage }) {
                 <th>Player</th>
                 <th class='num'>Player ID</th>
                 <th class='num'>Born</th>
-                <th>Deck</th>
+                <Show when={decksEnabled(props.manage.settings)}>
+                  <th>Deck</th>
+                </Show>
                 <th>Check</th>
                 <th>
                   <span class='sr-only'>Actions</span>

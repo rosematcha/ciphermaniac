@@ -4,6 +4,7 @@
  */
 
 import {
+  decksEnabled,
   decksVisible,
   publicDecks,
   publicDivisions,
@@ -71,7 +72,7 @@ export function viewOf(access: Access): TournamentView {
     tournament: publicTournament(row.tournament, row.keys),
     pending: publicPending(row.pending, row.keys),
     divisions: publicDivisions(row.tournament, row.keys, Date.now()),
-    decks: role || decksVisible(row.settings) ? publicDecks(row.decks, row.keys) : {},
+    decks: decksVisible(row.settings) || (role && decksEnabled(row.settings)) ? publicDecks(row.decks, row.keys) : {},
     settings: row.settings,
     viewer: { role, me, signedIn: user !== null }
   };

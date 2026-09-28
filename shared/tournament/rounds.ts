@@ -57,34 +57,53 @@ export interface MatchStamp {
   /** First table to hand out. */
   firstTable: number;
   timestamp: string;
+  /** Players with a fixed table (see Player.fixedTable). */
+  fixed?: ReadonlyMap<string, number>;
+  /** Tables already in use this round, by matches a re-pair keeps. */
+  taken?: ReadonlySet<number>;
+}
+
+/** Each player's fixed table, for the players who have one. */
+export function fixedTables(tournament: Tournament): Map<string, number> {
+  return new Map(tournament.players.flatMap(p => (p.fixedTable ? [[p.id, p.fixedTable] as const] : [])));
+}
+
+/** The fixed table a pairing claims: player one's, else player two's, if still free. */
+function claimed(pairing: Pairing, stamp: MatchStamp, used: ReadonlySet<number>): number | undefined {
+  const tables = [stamp.fixed?.get(pairing.p1), pairing.p2 === null ? undefined : stamp.fixed?.get(pairing.p2)];
+  return tables.find((table): table is number => table !== undefined && !used.has(table));
 }
 
 /**
- * Pairings as matches on consecutive tables. A bye sits at no table and is
- * already decided; so is a Swiss pairing that has no opponent.
+ * Pairings as table-numbered matches, best at the lowest table. A match with
+ * a fixed-seat player takes that player's table; the rest fill the tables
+ * left, skipping any a kept match already holds. A bye sits at no table and
+ * is already decided.
  */
 export function toMatches(pairings: readonly Pairing[], stamp: MatchStamp): Match[] {
-  let table = stamp.firstTable;
-  return pairings.map(({ p1, p2 }) => {
-    if (p2 === null) {
-      return { table: 0, p1, p2: null, outcome: 'bye', timestamp: stamp.timestamp };
+  const used = new Set(stamp.taken ?? []);
+  const tables = pairings.map(pairing => {
+    const table = pairing.p2 === null ? 0 : claimed(pairing, stamp, used);
+    if (table) {
+      used.add(table);
     }
-    const match: Match = { table, p1, p2, outcome: 'pending', timestamp: stamp.timestamp };
-    table += 1;
-    return match;
+    return table;
   });
-}
-
-/** Tables 1..n that no match in `kept` holds, in order, for the matches being re-paired. */
-export function freeTables(kept: readonly Match[], count: number): number[] {
-  const taken = new Set(kept.map(match => match.table));
-  const tables: number[] = [];
-  for (let table = 1; tables.length < count; table += 1) {
-    if (!taken.has(table)) {
-      tables.push(table);
+  const reserved = new Set([...used, ...(stamp.fixed?.values() ?? [])]);
+  let next = stamp.firstTable;
+  const nextFree = () => {
+    while (reserved.has(next)) {
+      next += 1;
     }
-  }
-  return tables;
+    next += 1;
+    return next - 1;
+  };
+  const matches: Match[] = pairings.map(({ p1, p2 }, i) =>
+    p2 === null
+      ? { table: 0, p1, p2: null, outcome: 'bye' as const, timestamp: stamp.timestamp }
+      : { table: tables[i] ?? nextFree(), p1, p2, outcome: 'pending' as const, timestamp: stamp.timestamp }
+  );
+  return sortMatches(matches);
 }
 
 /** Tables first, the bye and missed-round entries last. */

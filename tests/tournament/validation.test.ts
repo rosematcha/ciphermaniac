@@ -26,6 +26,8 @@ test('reads every well-formed command', () => {
     { type: 'removePlayer', id: '1' },
     { type: 'dropPlayer', id: '1' },
     { type: 'undropPlayer', id: '1' },
+    { type: 'setFixedTable', id: '1', table: 4 },
+    { type: 'setFixedTable', id: '1', table: null },
     { type: 'pairRound', pod: 'mixed' },
     { type: 'repairRound', pod: 'junior', keepReported: false },
     { type: 'deleteRound', pod: 'masters' },
@@ -111,7 +113,7 @@ test('settings changes are checked field by field', () => {
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'always' }), true);
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'after' }), false);
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'after', finished: true }), true);
-  assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'never', finished: true }), false);
+  assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'off', finished: true }), false);
 });
 
 test('a player profile needs an ID, a name and a birth date', () => {

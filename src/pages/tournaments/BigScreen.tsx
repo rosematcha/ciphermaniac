@@ -4,7 +4,7 @@
  * a QR code to the event page. The site's chrome is hidden while it is up.
  */
 
-import { createMemo, For, onCleanup, onMount, Show } from 'solid-js';
+import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import type { Pod } from '../../../shared/tournament/types';
 import type { TournamentView } from '../../../shared/tournament/view';
 import { currentRound, namesById, recordsBefore, roundLabel } from '../../lib/tournament/present';
@@ -14,11 +14,11 @@ import { QrCode } from './QrCode';
 const STEP_MS = 40;
 const PAUSE_MS = 4000;
 
-/** Scrolls `el` down a pixel at a time, pausing at each end, while it overflows. */
-function autoScroll(el: HTMLElement): () => void {
+/** Scrolls `el` down a pixel at a time, pausing at each end, while it overflows and `on()` holds. */
+function autoScroll(el: HTMLElement, on: () => boolean): () => void {
   let pausedUntil = Date.now() + PAUSE_MS;
   const timer = setInterval(() => {
-    if (Date.now() < pausedUntil || el.scrollHeight <= el.clientHeight) {
+    if (!on() || Date.now() < pausedUntil || el.scrollHeight <= el.clientHeight) {
       return;
     }
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 1) {
@@ -64,12 +64,20 @@ function ScreenPairings(props: { view: TournamentView; pod: Pod }) {
   );
 }
 
+const SCROLL_KEY = 'cm-screen-autoscroll';
+
 export function BigScreen(props: { view: TournamentView }) {
   let scroller: HTMLDivElement | undefined;
   const url = () => `${location.origin}/t/${props.view.code}`;
+  const [scrolling, setScrolling] = createSignal(localStorage.getItem(SCROLL_KEY) !== 'off');
+  const toggleScroll = () => {
+    const next = !scrolling();
+    localStorage.setItem(SCROLL_KEY, next ? 'on' : 'off');
+    setScrolling(next);
+  };
   onMount(() => {
     document.body.classList.add('tm-screen-mode');
-    const stop = scroller ? autoScroll(scroller) : () => undefined;
+    const stop = scroller ? autoScroll(scroller, scrolling) : () => undefined;
     onCleanup(() => {
       stop();
       document.body.classList.remove('tm-screen-mode');
@@ -94,8 +102,16 @@ export function BigScreen(props: { view: TournamentView }) {
         <Show when={currentRound(props.view.tournament.pods[0])}>
           {round => <Clock round={round()} class='tm-screen-clock' />}
         </Show>
-        <QrCode text={url()} size={220} label='Event page QR code' />
+        <QrCode text={url()} label='Event page QR code' />
         <p class='tm-screen-url'>{url().replace(/^https?:\/\//, '')}</p>
+        <button
+          type='button'
+          class='btn btn-secondary tm-screen-toggle'
+          aria-pressed={scrolling()}
+          onClick={toggleScroll}
+        >
+          Auto scroll {scrolling() ? 'on' : 'off'}
+        </button>
       </aside>
     </div>
   );

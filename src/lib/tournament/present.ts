@@ -26,7 +26,7 @@ import {
   type Round,
   type Tournament
 } from '../../../shared/tournament/types';
-import type { PendingResult } from '../../../shared/tournament/view';
+import { decksEnabled, type PendingResult, type TournamentSettings } from '../../../shared/tournament/view';
 
 export function namesById(tournament: Tournament): Map<string, string> {
   return new Map(tournament.players.map(player => [player.id, playerName(player)]));
@@ -262,4 +262,9 @@ export function divisionLookup(tournament: Tournament): (id: string) => Division
   const season = seasonOf(parseTomDate(tournament.info.startDate) ?? new Date());
   const births = new Map(tournament.players.map(p => [p.id, p.birthDate]));
   return id => divisionFor(births.get(id) ?? '', season);
+}
+
+/** The archetypes to draw beside names: none when the event has them off. */
+export function shownDecks(manage: { decks: Record<string, string>; settings: TournamentSettings }) {
+  return decksEnabled(manage.settings) ? manage.decks : {};
 }
