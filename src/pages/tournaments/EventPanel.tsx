@@ -11,6 +11,7 @@ import { tdfFilename, tdfText } from '../../lib/tournament/exportTdf';
 import { downloadBlob } from '../../lib/download';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine, Field } from './Field';
+import { FormatSelect } from './FormatSelect';
 import type { ManageState } from './manageState';
 
 const VISIBILITY_LABELS: Record<DeckVisibility, string> = {
@@ -43,13 +44,7 @@ function SettingsForm(props: { state: ManageState; manage: Manage }) {
           />
         </Field>
         <Field id='set-format' label='Format'>
-          <input
-            id='set-format'
-            class='tm-input'
-            maxLength={SETTINGS_LIMITS.format}
-            value={draft().format}
-            onInput={e => set('format', e.currentTarget.value)}
-          />
+          <FormatSelect id='set-format' value={draft().format} onChange={value => set('format', value)} />
         </Field>
         <Field id='set-decks' label='Archetypes'>
           <select

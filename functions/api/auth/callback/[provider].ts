@@ -33,7 +33,7 @@ export async function onRequestGet({ request, env, params }: Context<'provider'>
     return jsonError('Sign-in is not available', 503);
   }
   if (!isProviderId(provider) || provider === 'dev' || !code || next === null) {
-    return redirectWithCookies('/account?signin=failed', [clearCookie(request, OAUTH_COOKIE)]);
+    return redirectWithCookies('/settings?signin=failed', [clearCookie(request, OAUTH_COOKIE)]);
   }
   try {
     const profile = await exchangeCode({ env, request, provider, code });
@@ -45,6 +45,6 @@ export async function onRequestGet({ request, env, params }: Context<'provider'>
     ]);
   } catch (error) {
     console.error('Sign-in failed', error);
-    return redirectWithCookies('/account?signin=failed', [clearCookie(request, OAUTH_COOKIE)]);
+    return redirectWithCookies('/settings?signin=failed', [clearCookie(request, OAUTH_COOKIE)]);
   }
 }

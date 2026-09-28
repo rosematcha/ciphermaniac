@@ -182,7 +182,7 @@ test('Google sign-in: state round-trips, the code is exchanged, a session begins
       env,
       params: { provider: 'google' }
     } as never);
-    assert.equal(wrong.headers.get('location'), '/account?signin=failed');
+    assert.equal(wrong.headers.get('location'), '/settings?signin=failed');
     const done = await callback.onRequestGet({
       request: request(`/api/auth/callback/google?code=c&state=${state}`, { cookie: oauthCookie }),
       env,
@@ -194,6 +194,33 @@ test('Google sign-in: state round-trips, the code is exchanged, a session begins
     assert.equal(who.json.user.email, 'gia@example.com');
   } finally {
     globalThis.fetch = realFetch;
+  }
+});
+
+test('a provider that refuses the code sends the browser back to Settings', async () => {
+  env.DISCORD_CLIENT_ID = 'id';
+  env.DISCORD_CLIENT_SECRET = 'secret';
+  const start = await login.onRequestGet({
+    request: request('/api/auth/login/discord?next=/host'),
+    env,
+    params: { provider: 'discord' }
+  } as never);
+  const state = new URL(start.headers.get('location') ?? '').searchParams.get('state') ?? '';
+  const oauthCookie = (start.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response('denied', { status: 401 })) as typeof fetch;
+  const log = console.error;
+  console.error = () => undefined;
+  try {
+    const done = await callback.onRequestGet({
+      request: request(`/api/auth/callback/discord?code=c&state=${state}`, { cookie: oauthCookie }),
+      env,
+      params: { provider: 'discord' }
+    } as never);
+    assert.equal(done.headers.get('location'), '/settings?signin=failed');
+  } finally {
+    globalThis.fetch = realFetch;
+    console.error = log;
   }
 });
 

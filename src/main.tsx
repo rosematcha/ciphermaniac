@@ -149,7 +149,7 @@ render(
       <Route path='/toys/social-graphics' component={() => <Navigate href='/tools/social-graphics' />} />
       <Route path='/toys/in-loving-memory' component={() => <Navigate href='/tools/in-loving-memory' />} />
       {/* One route for every tournament page: see TournamentsPage for why. */}
-      <Route path={['/host', '/host/:code', '/t/:code', '/account']} component={TournamentsPage} />
+      <Route path={['/host', '/host/:code', '/t/:code', '/settings', '/account']} component={TournamentsPage} />
       <Route path='/about' component={AboutPage} />
       <Route path='/feedback' component={FeedbackPage} />
       <Route path='/style' component={StyleGuidePage} />
