@@ -7,6 +7,7 @@
 
 import { useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { parseTomDate } from '../../../shared/tournament/divisions';
 import { swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
 import { decksEnabled, type TournamentView } from '../../../shared/tournament/view';
@@ -69,7 +70,9 @@ function YourMatch(props: { view: TournamentView; me: string }) {
         const records = () => recordsBefore(f().pod, f().round);
         return (
           <section class='tm-you' aria-label='Your match'>
-            <span class='tm-you-round'>{roundLabel(f().round)}</span>
+            <span class='tm-you-round'>
+              {names().get(props.me)} · {roundLabel(f().round)}
+            </span>
             <Show
               when={f().match.table}
               fallback={<strong>{f().match.outcome === 'bye' ? 'Bye' : 'Not paired'}</strong>}
@@ -122,8 +125,16 @@ function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
 }
 
 /** The tab the URL asks for if the event has it; before round 1, the decklist form when it is open. */
+/** Before round 1, the decklist form if it is open; once the event is closed, where everyone finished. */
+function defaultTab(view: TournamentView): Tab {
+  if (!hasPodData(view)) {
+    return 'decklist';
+  }
+  return view.settings.finished ? 'standings' : 'pairings';
+}
+
 function pickTab(tabs: readonly { value: Tab }[], wanted: string | undefined, view: TournamentView): Tab {
-  const choice = (wanted as Tab | undefined) ?? (hasPodData(view) ? 'pairings' : 'decklist');
+  const choice = (wanted as Tab | undefined) ?? defaultTab(view);
   return tabs.some(t => t.value === choice) ? choice : 'pairings';
 }
 
@@ -267,13 +278,28 @@ function EventBody(props: { view: TournamentView }) {
   );
 }
 
+/** One date format across the page: the organizer's start time, else TOM's start date. */
+function eventDate(startsAt: string, startDate: string): string {
+  if (startsAt) {
+    return new Date(startsAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  }
+  const tom = parseTomDate(startDate);
+  return tom ? tom.toLocaleDateString(undefined, { dateStyle: 'medium', timeZone: 'UTC' }) : '';
+}
+
+/** When the page last changed: a time today, a date before that. */
+function updatedLabel(at: number): string {
+  const date = new Date(at);
+  const today = new Date().toDateString() === date.toDateString();
+  return today
+    ? date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    : date.toLocaleDateString(undefined, { dateStyle: 'medium' });
+}
+
 function Hero(props: { view: TournamentView }) {
   const info = () => props.view.tournament.info;
   const settings = () => props.view.settings;
-  const when = () =>
-    settings().startsAt
-      ? new Date(settings().startsAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-      : info().startDate;
+  const when = () => eventDate(settings().startsAt, info().startDate);
   const place = () => [info().city, info().state].filter(Boolean).join(', ');
   return (
     <section class='hero'>
@@ -285,15 +311,17 @@ function Hero(props: { view: TournamentView }) {
             settings().format,
             place(),
             `${props.view.tournament.players.length} players`,
-            settings().finished ? 'Finished' : ''
+            settings().finished ? 'Finished' : '',
+            `Updated ${updatedLabel(props.view.updatedAt)}`
           ].filter(Boolean)}
         >
           {(part, i) => (
             <>
               <Show when={i() > 0}>
-                <span class='dot'>·</span>
+                {' '}
+                <span class='dot'>·</span>{' '}
               </Show>
-              {part}
+              <span class='tm-meta-part'>{part}</span>
             </>
           )}
         </For>
@@ -323,8 +351,10 @@ export function PublicEvent(props: { code: string }) {
     >
       {v => (
         <Show when={params.screen !== '1'} fallback={<BigScreen view={v()} />}>
-          <Hero view={v()} />
-          <EventBody view={v()} />
+          <div class='tm-page'>
+            <Hero view={v()} />
+            <EventBody view={v()} />
+          </div>
         </Show>
       )}
     </Show>

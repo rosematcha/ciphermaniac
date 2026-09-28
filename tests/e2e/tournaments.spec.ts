@@ -93,7 +93,9 @@ test('a signed-out organizer is offered sign-in, not a console', async ({ page }
 test('the big screen hides the site chrome and shows a QR code to the event', async ({ page }) => {
   await mockApi(page);
   await page.goto(`/t/${CODE}?screen=1`);
-  await expect(page.locator('.tm-screen-list li')).toHaveCount(4);
+  // One row per player, alphabetical by last name: seven players are in round 2.
+  await expect(page.locator('.tm-screen-list li')).toHaveCount(7);
+  await expect(page.locator('.tm-screen-name').first()).toHaveText('Frances Allen');
   await expect(page.locator('.topnav')).toBeHidden();
   await expect(page.getByRole('img', { name: 'Event page QR code' })).toBeVisible();
 });

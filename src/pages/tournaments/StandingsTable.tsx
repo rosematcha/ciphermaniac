@@ -28,7 +28,7 @@ export function StandingsTable(props: {
       {group => (
         <section class='tm-standings'>
           <Show when={group.division}>
-            <h3 class='tm-subhead'>{divisionHeading(group.division)}</h3>
+            <h2 class='tm-subhead'>{divisionHeading(group.division)}</h2>
           </Show>
           <div class='table-wrap'>
             <table class='data'>

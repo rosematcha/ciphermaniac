@@ -40,7 +40,7 @@ function DecklistRow(props: { state: ManageState; manage: Manage; list: Decklist
   return (
     <>
       <tr>
-        <td>
+        <td class='tm-nowrap'>
           {props.list.firstName} {props.list.lastName}
         </td>
         <td class='num muted-cell'>{props.list.popId}</td>

@@ -7,6 +7,7 @@
 
 import { A, useNavigate } from '@solidjs/router';
 import { createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { parseTomDate } from '../../../shared/tournament/divisions';
 import { parseTdf } from '../../../shared/tournament/tdf';
 import { createFromTdf, createSwiss, listTournaments, type TournamentSummary } from '../../lib/tournament/api';
 import { session } from './session';
@@ -17,6 +18,9 @@ import { SignIn } from './SignIn';
 
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
+const shortDate = (startDate: string) =>
+  parseTomDate(startDate)?.toLocaleDateString(undefined, { dateStyle: 'medium', timeZone: 'UTC' }) ?? '';
+
 function EventList(props: { events: readonly TournamentSummary[] }) {
   return (
     <div class='table-wrap'>
@@ -24,9 +28,13 @@ function EventList(props: { events: readonly TournamentSummary[] }) {
         <thead>
           <tr>
             <th>Event</th>
+            <th>Date</th>
             <th>Run in</th>
             <th class='num'>Players</th>
-            <th>Role</th>
+            <th>Status</th>
+            <th>
+              <span class='sr-only'>Public page</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -35,10 +43,17 @@ function EventList(props: { events: readonly TournamentSummary[] }) {
               <tr>
                 <td>
                   <A href={`/host/${event.code}`}>{event.name || event.code}</A>
+                  <Show when={event.role === 'staff'}>
+                    <span class='muted-cell tm-flag'>Staff</span>
+                  </Show>
                 </td>
-                <td>{event.mode === 'tom' ? 'TOM' : 'Swiss on this site'}</td>
+                <td class='muted-cell tm-nowrap'>{shortDate(event.startDate)}</td>
+                <td class='muted-cell'>{event.mode === 'tom' ? 'TOM' : 'Swiss'}</td>
                 <td class='num'>{event.players}</td>
-                <td class='muted-cell'>{event.role === 'owner' ? 'Organizer' : 'Staff'}</td>
+                <td class='muted-cell'>{event.finished ? 'Finished' : 'Open'}</td>
+                <td class='tm-extra-col'>
+                  <A href={`/t/${event.code}`}>Public page</A>
+                </td>
               </tr>
             )}
           </For>
@@ -67,7 +82,7 @@ function NewSwiss(props: { onCreated: (code: string) => void }) {
   }
   return (
     <form class='tm-form' onSubmit={event => void submit(event)}>
-      <h2>Run Swiss on this site</h2>
+      <h3>Run Swiss on this site</h3>
       <Field id='new-name' label='Event name'>
         <input
           id='new-name'
@@ -128,7 +143,7 @@ function ImportTom(props: { onCreated: (code: string) => void }) {
 
   return (
     <div class='tm-form'>
-      <h2>Follow an event run in TOM</h2>
+      <h3>Follow an event run in TOM</h3>
       <div class='tm-actions'>
         <Show
           when={canLinkFiles()}
@@ -169,7 +184,7 @@ export function HostIndex() {
     document.title = 'Run an event — Ciphermaniac';
   });
   return (
-    <>
+    <div class='tm-page'>
       <section class='hero'>
         <h1>Run an event</h1>
       </section>
@@ -177,17 +192,20 @@ export function HostIndex() {
         when={user()}
         fallback={<Show when={latestValue(session)}>{s => <SignIn providers={s().providers} next='/host' />}</Show>}
       >
-        <div class='tm-columns'>
-          <NewSwiss onCreated={opened} />
-          <ImportTom onCreated={opened} />
-        </div>
         <Show when={latestValue(events)?.length}>
-          <section class='tm-section'>
-            <h2>Your events</h2>
+          <section class='tm-section-block'>
+            <h2 class='tm-subhead'>Your events</h2>
             <EventList events={latestValue(events) ?? []} />
           </section>
         </Show>
+        <section class='tm-section-block'>
+          <h2 class='tm-subhead'>Start an event</h2>
+          <div class='tm-columns'>
+            <NewSwiss onCreated={opened} />
+            <ImportTom onCreated={opened} />
+          </div>
+        </section>
       </Show>
-    </>
+    </div>
   );
 }

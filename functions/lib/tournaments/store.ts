@@ -241,6 +241,9 @@ export interface TournamentSummary {
   name: string;
   role: Role;
   players: number;
+  /** MM/DD/YYYY, as TOM writes it; '' when unset. */
+  startDate: string;
+  finished: boolean;
   updatedAt: number;
 }
 
@@ -249,6 +252,8 @@ interface SummaryRow {
   mode: string;
   name: string | null;
   players: number | null;
+  start_date: string | null;
+  finished: number | null;
   owner_id: string;
   updated_at: number;
 }
@@ -258,7 +263,8 @@ export async function listTournaments(db: D1Like, userId: string): Promise<Tourn
   const { results } = await db
     .prepare(
       "SELECT code, mode, json_extract(state, '$.info.name') AS name, " +
-        "json_array_length(state, '$.players') AS players, owner_id, updated_at FROM tournaments " +
+        "json_array_length(state, '$.players') AS players, json_extract(state, '$.info.startDate') AS start_date, " +
+        "json_extract(settings, '$.finished') AS finished, owner_id, updated_at FROM tournaments " +
         'WHERE owner_id = ? OR code IN (SELECT code FROM staff WHERE user_id = ?) ORDER BY updated_at DESC LIMIT 200'
     )
     .bind(userId, userId)
@@ -269,6 +275,8 @@ export async function listTournaments(db: D1Like, userId: string): Promise<Tourn
     name: row.name ?? '',
     role: row.owner_id === userId ? 'owner' : 'staff',
     players: row.players ?? 0,
+    startDate: row.start_date ?? '',
+    finished: row.finished === 1,
     updatedAt: row.updated_at
   }));
 }

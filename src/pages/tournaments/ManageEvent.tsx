@@ -56,14 +56,17 @@ function Hero(props: { manage: Manage }) {
 }
 
 function Console(props: { state: ReturnType<typeof createManage>; manage: Manage }) {
-  const [tab, setTab] = createSignal<Tab>('round');
+  // In the URL, so a reload mid-event comes back to the same tab.
+  const [params, setParams] = useSearchParams<{ tab?: string }>();
+  const tab = (): Tab => (TABS.some(t => t.value === params.tab) ? (params.tab as Tab) : 'round');
+  const setTab = (value: Tab) => setParams({ tab: value === 'round' ? undefined : value }, { replace: true });
   const [podChoice, setPodChoice] = createSignal<PodCategory | null>(null);
   const pods = () => props.manage.tournament.pods;
   const pod = createMemo(() => pods().find(p => p.category === podChoice()) ?? pods()[0]);
   const names = createMemo(() => namesById(props.manage.tournament));
   const divisionOf = createMemo(() => divisionLookup(props.manage.tournament));
   return (
-    <>
+    <div class='tm-page'>
       <Hero manage={props.manage} />
       <Show when={props.manage.mode === 'tom'}>
         <TomSyncPanel manage={props.manage} onSynced={props.state.load} />
@@ -105,7 +108,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
       <Show when={tab() === 'event'}>
         <EventPanel state={props.state} manage={props.manage} />
       </Show>
-    </>
+    </div>
   );
 }
 

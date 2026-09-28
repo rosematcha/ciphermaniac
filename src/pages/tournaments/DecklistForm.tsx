@@ -12,6 +12,7 @@ import { session, setSession } from './session';
 import { latestValue } from '../../lib/resource';
 import { DeckCombo } from '../live/LiveDeck';
 import { deckOptions } from './deckOptions';
+import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine, Field } from './Field';
 import { emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
 import { SignIn } from './SignIn';
@@ -30,6 +31,7 @@ function Form(props: { code: string; archetypes: boolean }) {
     const existing = latestValue(mine);
     if (existing && !touched()) {
       setDeck(existing.deck);
+      setArchetype(existing.archetype);
       setProfile({
         popId: existing.popId,
         firstName: existing.firstName,
@@ -77,14 +79,16 @@ function Form(props: { code: string; archetypes: boolean }) {
         }}
       />
       <Show when={props.archetypes}>
-        <Field id='deck-archetype' label='Deck'>
+        {/* A wrapping label, since the picker's input takes no id. */}
+        <label class='tm-field'>
+          <span class='tm-label'>Deck</span>
           <DeckCombo
             decks={latestValue(deckOptions) ?? []}
             selected={archetype() ? { label: archetype() as string } : undefined}
             placeholder='Search archetypes'
             onPick={picked => setArchetype(picked.label)}
           />
-        </Field>
+        </label>
       </Show>
       <Field id='deck-list' label='Decklist'>
         <textarea
@@ -109,9 +113,12 @@ function Form(props: { code: string; archetypes: boolean }) {
           {latestValue(mine) ? 'Update decklist' : 'Submit decklist'}
         </button>
         <Show when={latestValue(mine)}>
-          <button type='button' class='btn btn-ghost' onClick={() => void withdraw()}>
-            Withdraw
-          </button>
+          <ConfirmAction
+            class='btn btn-ghost'
+            label='Withdraw'
+            question='Withdraw your decklist?'
+            onConfirm={() => void withdraw()}
+          />
         </Show>
         <Show when={status() === 'sent'}>
           <span class='muted'>Submitted</span>

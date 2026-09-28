@@ -157,7 +157,9 @@ export function clockLabel(round: Round, now: number): string {
 export interface DeckShare {
   label: string;
   players: number;
-  /** Match win rate over decided Swiss matches, ties counting half; null with none played. */
+  /** Decided matches the deck played, byes and missed rounds aside. */
+  matches: number;
+  /** Match win rate over those matches, ties counting half; null with none played. */
   winRate: number | null;
 }
 
@@ -203,7 +205,8 @@ export function deckBreakdown(tournament: Tournament, decks: Record<string, stri
   return [...counts]
     .map(([label, players]) => {
       const record = tally.get(label);
-      return { label, players, winRate: record && record.played > 0 ? record.won / record.played : null };
+      const played = record?.played ?? 0;
+      return { label, players, matches: played, winRate: record && played > 0 ? record.won / played : null };
     })
     .sort((a, b) => b.players - a.players || a.label.localeCompare(b.label));
 }

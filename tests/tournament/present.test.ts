@@ -121,8 +121,8 @@ test('the clock counts down and past zero', () => {
 test('the deck breakdown counts players and decided matches', () => {
   const decks = { '7200005': 'Dragapult ex', '7200007': 'Gardevoir ex', '7200001': 'Gardevoir ex' };
   const rows = deckBreakdown(CHALLENGE, decks);
-  assert.deepEqual(rows[0], { label: 'Gardevoir ex', players: 2, winRate: 1 });
-  assert.deepEqual(rows[1], { label: 'Dragapult ex', players: 1, winRate: 0 });
+  assert.deepEqual(rows[0], { label: 'Gardevoir ex', players: 2, matches: 2, winRate: 1 });
+  assert.deepEqual(rows[1], { label: 'Dragapult ex', players: 1, matches: 2, winRate: 0 });
   assert.deepEqual(deckBreakdown(CHALLENGE, {}), []);
 });
 

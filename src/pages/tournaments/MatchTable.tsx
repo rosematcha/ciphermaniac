@@ -2,10 +2,15 @@
  * A round's tables, for players and staff alike. Each row is the table, the
  * two players with the record they brought into the round, and the result
  * once there is one. Staff get the result controls: a player's name is the
- * button that reports them as the winner, which is one press at the table.
+ * button that reports them as the winner, which is one press at the table
+ * (and a second to confirm, see RoundPanel).
+ *
+ * On a phone a row restacks into two lines under its table number, as the
+ * site's live pairings do, so the opponent is never behind a sideways scroll.
  */
 
 import { For, type JSX, Show } from 'solid-js';
+import { sortMatches } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import type { PendingResult } from '../../../shared/tournament/view';
 import { recordsBefore, seatMark, shownOutcome } from '../../lib/tournament/present';
@@ -33,27 +38,29 @@ export interface MatchTableProps {
 
 const winnerOutcome = (seat: 1 | 2): Outcome => (seat === 1 ? 'p1' : 'p2');
 
+const isConfirming = (props: MatchTableProps, match: Match) =>
+  props.confirming?.table === match.table && props.confirming.p1 === match.p1;
+
 function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records: Map<string, string> }) {
   const id = () => (props.seat === 1 ? props.match.p1 : props.match.p2);
-  const previewing = () =>
-    props.confirming?.table === props.match.table && props.confirming.p1 === props.match.p1 ? props.confirming : null;
   const shown = () => {
-    const preview = previewing();
+    const preview = isConfirming(props, props.match) ? props.confirming : null;
     return preview
       ? { outcome: preview.outcome, unconfirmed: true }
       : shownOutcome(props.match, props.pod, props.round, props.pending);
   };
   const mark = () => seatMark(shown().outcome, props.seat);
-  const name = (playerId: string) => (
+  const name = (playerId: string) => props.names.get(playerId) ?? playerId;
+  const content = (playerId: string) => (
     <>
       <DeckIcons label={props.decks[playerId]} />
-      <span class='tm-name'>{props.names.get(playerId) ?? playerId}</span>
+      <span class='tm-name'>{name(playerId)}</span>
       <span class='muted-cell tm-record'>{props.records.get(playerId) ?? ''}</span>
     </>
   );
-  const pressable = () => props.onReport && props.match.p2 !== null;
+  const reportable = () => props.onReport && props.match.p2 !== null;
   return (
-    <td class='tm-seat' classList={{ 'is-me': id() === props.me, 'is-selected': props.selected?.has(id() ?? '') }}>
+    <td class='tm-seat' classList={{ 'is-selected': props.selected?.has(id() ?? '') }}>
       <Show
         when={id()}
         fallback={<span class='muted-cell'>{props.match.outcome === 'bye' ? 'Bye' : 'Missed round'}</span>}
@@ -62,23 +69,26 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
           <span class='tm-seat-inner'>
             <span class='tm-mark' classList={{ 'is-win': mark() === 'W', 'is-unconfirmed': shown().unconfirmed }}>
               {mark()}
+              <Show when={mark() && shown().unconfirmed}>
+                <span class='sr-only'> (not yet confirmed)</span>
+              </Show>
             </span>
             <Show
-              when={pressable()}
+              when={reportable()}
               fallback={
                 <button type='button' class='tm-seat-link' onClick={() => props.onPlayer?.(playerId())}>
-                  {name(playerId())}
+                  {content(playerId())}
                 </button>
               }
             >
               <button
                 type='button'
                 class='tm-seat-link'
-                aria-pressed={mark() === 'W'}
-                title='Report as the winner'
+                classList={{ 'is-winner': mark() === 'W' }}
+                aria-label={`Report ${name(playerId())} as the winner`}
                 onClick={() => props.onReport?.(props.match, winnerOutcome(props.seat))}
               >
-                {name(playerId())}
+                {content(playerId())}
               </button>
             </Show>
           </span>
@@ -90,8 +100,10 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
 
 export function MatchTable(props: MatchTableProps) {
   const records = () => recordsBefore(props.pod, props.round);
+  const hasDecks = () => Object.keys(props.decks).length > 0;
+  const mine = (match: Match) => props.me != null && (match.p1 === props.me || match.p2 === props.me);
   return (
-    <div class='table-wrap tm-matches'>
+    <div class='table-wrap tm-matches' classList={{ 'has-extra': Boolean(props.extra), 'has-decks': hasDecks() }}>
       <table class='data'>
         <thead>
           <tr>
@@ -106,14 +118,9 @@ export function MatchTable(props: MatchTableProps) {
           </tr>
         </thead>
         <tbody>
-          <For each={props.matches}>
+          <For each={sortMatches(props.matches)}>
             {match => (
-              <tr
-                classList={{
-                  'is-open': shownOutcome(match, props.pod, props.round, props.pending).outcome === 'pending',
-                  'is-confirming': props.confirming?.table === match.table && props.confirming.p1 === match.p1
-                }}
-              >
+              <tr classList={{ 'is-me': mine(match), 'is-confirming': isConfirming(props, match) }}>
                 <td class='num muted-cell tm-table-col'>{match.table || '—'}</td>
                 <SeatCell {...props} match={match} seat={1} records={records()} />
                 <SeatCell {...props} match={match} seat={2} records={records()} />

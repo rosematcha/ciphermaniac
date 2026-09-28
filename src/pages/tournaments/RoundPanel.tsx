@@ -1,44 +1,36 @@
 /**
- * The console's round view: the current round's tables with result entry,
- * and every action that moves the event on. What Slowpoke could not do lives
- * here: when a player is added after pairing, the panel says who is not
- * seated and re-pairs the round around the results already in.
+ * The console's round view: the round's tables with result entry, and the
+ * controls that move the event on (see RoundControls). What Slowpoke could not
+ * do lives here: when a player is added after pairing, the panel says who is
+ * not seated and re-pairs the round around the results already in.
+ *
+ * Results are entered by pressing the winner's name, then confirming in the
+ * row. The filter narrows the room to one table (type its number) or player,
+ * or to the tables still playing, so a result called out across the room is
+ * two keystrokes and two presses away.
  */
 
 import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
-import {
-  type Division,
-  DIVISION_LABELS,
-  DIVISIONS,
-  type Match,
-  type Outcome,
-  type Pod,
-  type Round
-} from '../../../shared/tournament/types';
+import { activeIds } from '../../../shared/tournament/rounds';
+import type { Match, Outcome, Pod } from '../../../shared/tournament/types';
 import type { Manage } from '../../lib/tournament/api';
-import { TOP_CUT_SIZES } from '../../../shared/tournament/commands';
 import {
   currentRound,
+  filterMatches,
   namesById,
-  recommendedStructure,
   roundLabel,
   shownDecks,
+  shownOutcome,
   STATUS_LABELS,
   unseated
 } from '../../lib/tournament/present';
-import { activeIds, roundComplete } from '../../../shared/tournament/rounds';
-import { Clock } from './Clock';
 import type { ManageState } from './manageState';
 import { MatchTable } from './MatchTable';
+import { champion, ChampionLine, ClockControls, PairingActions, RepairControl } from './RoundControls';
 
 function RoundPicker(props: { pod: Pod; selected: number; onSelect: (n: number) => void }) {
   return (
-    <select
-      class='tm-select'
-      aria-label='Round'
-      value={props.selected}
-      onChange={e => props.onSelect(Number(e.currentTarget.value))}
-    >
+    <select class='tm-select' aria-label='Round' onChange={e => props.onSelect(Number(e.currentTarget.value))}>
       <For each={props.pod.rounds}>
         {round => (
           <option value={round.number} selected={round.number === props.selected}>
@@ -55,20 +47,10 @@ function ResultExtras(props: { match: Match; elimination: boolean; onReport: (ou
     <Show when={props.match.p2 !== null}>
       <span class='tm-row-actions'>
         <Show when={!props.elimination}>
-          <button
-            type='button'
-            class='btn btn-ghost tm-small'
-            aria-pressed={props.match.outcome === 'tie'}
-            onClick={() => props.onReport('tie')}
-          >
+          <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onReport('tie')}>
             Tie
           </button>
-          <button
-            type='button'
-            class='btn btn-ghost tm-small'
-            aria-pressed={props.match.outcome === 'double-loss'}
-            onClick={() => props.onReport('double-loss')}
-          >
+          <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onReport('double-loss')}>
             Double loss
           </button>
         </Show>
@@ -82,145 +64,10 @@ function ResultExtras(props: { match: Match; elimination: boolean; onReport: (ou
   );
 }
 
-const combinedPod = (pod: Pod) => !(DIVISIONS as readonly string[]).includes(pod.category);
-
-function TopCutControl(props: { state: ManageState; pod: Pod; active: number }) {
-  // eslint-disable-next-line solid/reactivity -- a starting suggestion; the organizer's pick wins from then on
-  const [size, setSize] = createSignal(recommendedStructure(props.active).cut || 8);
-  const [division, setDivision] = createSignal<Division>('masters');
-  function start() {
-    const cut = { type: 'startTopCut' as const, pod: props.pod.category, size: size() };
-    void props.state.send(combinedPod(props.pod) ? { ...cut, division: division() } : cut);
-  }
-  return (
-    <span class='tm-inline-form'>
-      <Show when={combinedPod(props.pod)}>
-        <select
-          class='tm-select'
-          aria-label='Division to cut'
-          onChange={e => setDivision(e.currentTarget.value as Division)}
-        >
-          <For each={DIVISIONS}>
-            {d => (
-              <option value={d} selected={d === division()}>
-                {DIVISION_LABELS[d]}
-              </option>
-            )}
-          </For>
-        </select>
-      </Show>
-      <select
-        class='tm-select'
-        aria-label='Top cut size'
-        value={size()}
-        onChange={e => setSize(Number(e.currentTarget.value))}
-      >
-        <For each={TOP_CUT_SIZES.filter(n => n <= props.active)}>
-          {n => (
-            <option value={n} selected={n === size()}>
-              Top {n}
-            </option>
-          )}
-        </For>
-      </select>
-      <button type='button' class='btn btn-secondary' disabled={props.state.busy()} onClick={start}>
-        Start top cut
-      </button>
-    </span>
-  );
-}
-
-function ClockControls(props: { state: ManageState; pod: Pod; round: Round }) {
-  const send = (type: 'startClock' | 'stopClock') => props.state.send({ type, pod: props.pod.category });
-  const adjust = (seconds: number) => props.state.send({ type: 'adjustClock', pod: props.pod.category, seconds });
-  return (
-    <span class='tm-clock-controls'>
-      <Clock round={props.round} />
-      <Show
-        when={props.round.clockStartedAt != null}
-        fallback={
-          <button type='button' class='btn btn-secondary' onClick={() => void send('startClock')}>
-            Start clock
-          </button>
-        }
-      >
-        <button type='button' class='btn btn-secondary' onClick={() => void send('stopClock')}>
-          Pause clock
-        </button>
-      </Show>
-      <button type='button' class='btn btn-ghost' onClick={() => void adjust(60)}>
-        +1 min
-      </button>
-      <button type='button' class='btn btn-ghost' onClick={() => void adjust(-60)}>
-        −1 min
-      </button>
-    </span>
-  );
-}
-
-function PairingActions(props: { state: ManageState; pod: Pod; round: Round | undefined; active: number }) {
-  const [keep, setKeep] = createSignal(true);
-  const complete = () => !props.round || roundComplete(props.round);
-  const nothingReported = () => !props.round?.matches.some(m => m.p2 !== null && m.outcome !== 'pending');
-  const swissDone = () => props.round?.kind === 'swiss' && complete();
-  const pod = () => props.pod.category;
-  return (
-    <div class='tm-toolbar'>
-      <Show when={complete()}>
-        <button
-          type='button'
-          class='btn btn-primary'
-          disabled={props.state.busy()}
-          onClick={() => void props.state.send({ type: 'pairRound', pod: pod() })}
-        >
-          Pair {props.round ? 'next round' : 'round 1'}
-        </button>
-      </Show>
-      <Show when={swissDone() && props.active >= 4}>
-        <TopCutControl state={props.state} pod={props.pod} active={props.active} />
-      </Show>
-      <Show when={props.round?.kind === 'swiss' && !complete()}>
-        <span class='tm-inline-form'>
-          <button
-            type='button'
-            class='btn btn-secondary'
-            disabled={props.state.busy()}
-            onClick={() => void props.state.send({ type: 'repairRound', pod: pod(), keepReported: keep() })}
-          >
-            Re-pair round
-          </button>
-          <label class='tm-check'>
-            <input type='checkbox' checked={keep()} onChange={e => setKeep(e.currentTarget.checked)} />
-            <span>Keep reported results</span>
-          </label>
-        </span>
-      </Show>
-      <Show when={props.round && nothingReported()}>
-        <button
-          type='button'
-          class='btn btn-ghost'
-          disabled={props.state.busy()}
-          onClick={() => void props.state.send({ type: 'deleteRound', pod: pod() })}
-        >
-          Delete round
-        </button>
-      </Show>
-    </div>
-  );
-}
-
 interface Asking {
   table: number;
   p1: string;
   outcome: Outcome;
-}
-
-function askingLabel(asking: Asking, match: Match, names: Map<string, string>): string {
-  const winner = asking.outcome === 'p1' ? match.p1 : asking.outcome === 'p2' ? match.p2 : null;
-  if (winner) {
-    return `${names.get(winner) ?? winner} wins`;
-  }
-  return OUTCOME_WORDS[asking.outcome] ?? '';
 }
 
 const OUTCOME_WORDS: Partial<Record<Outcome, string>> = {
@@ -229,10 +76,24 @@ const OUTCOME_WORDS: Partial<Record<Outcome, string>> = {
   pending: 'Clear the result'
 };
 
+function askingLabel(asking: Asking, match: Match, names: Map<string, string>): string {
+  const winner = asking.outcome === 'p1' ? match.p1 : asking.outcome === 'p2' ? match.p2 : null;
+  return winner ? `${names.get(winner) ?? winner} wins` : (OUTCOME_WORDS[asking.outcome] ?? '');
+}
+
 /** The second press a result takes, in the row it is for, so a slip of the finger is not a result. */
 function ConfirmResult(props: { label: string; onConfirm: () => void; onCancel: () => void }) {
   return (
-    <span class='tm-row-actions tm-confirm' role='group' aria-label='Confirm result'>
+    <span
+      class='tm-row-actions tm-confirm'
+      role='group'
+      aria-label='Confirm result'
+      onKeyDown={e => {
+        if (e.key === 'Escape') {
+          props.onCancel();
+        }
+      }}
+    >
       <span class='tm-confirm-label'>{props.label}?</span>
       <button
         type='button'
@@ -249,21 +110,76 @@ function ConfirmResult(props: { label: string; onConfirm: () => void; onCancel: 
   );
 }
 
+/** Narrow the room: a table number or a name, and optionally only the tables still playing. */
+function RoomFilter(props: {
+  query: string;
+  openOnly: boolean;
+  onQuery: (value: string) => void;
+  onOpenOnly: (value: boolean) => void;
+  ref: (el: HTMLInputElement) => void;
+}) {
+  return (
+    <div class='tm-toolbar tm-filter-bar'>
+      <input
+        ref={props.ref}
+        class='search'
+        type='search'
+        placeholder='Table or player'
+        aria-label='Find a table or player'
+        value={props.query}
+        onInput={e => props.onQuery(e.currentTarget.value)}
+      />
+      <button
+        type='button'
+        class='chip'
+        aria-pressed={props.openOnly}
+        onClick={() => props.onOpenOnly(!props.openOnly)}
+      >
+        Open tables only
+      </button>
+      <span class='muted tm-hint'>Press a player to report their win</span>
+    </div>
+  );
+}
+
+function matchesQuery(match: Match, query: string, names: Map<string, string>): boolean {
+  const table = Number(query.trim());
+  return query.trim() && Number.isInteger(table)
+    ? match.table === table
+    : filterMatches([match], names, query).length > 0;
+}
+
 export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod }) {
   const tom = () => props.manage.mode === 'tom';
   const latest = () => currentRound(props.pod);
   const [picked, setPicked] = createSignal<number | null>(null);
   const [swapMode, setSwapMode] = createSignal(false);
   const [swapPick, setSwapPick] = createSignal<string | null>(null);
+  const [asking, setAsking] = createSignal<Asking | null>(null);
+  const [query, setQuery] = createSignal('');
+  const [openOnly, setOpenOnly] = createSignal(false);
+  let filterInput: HTMLInputElement | undefined;
   const round = createMemo(() => props.pod.rounds.find(r => r.number === picked()) ?? latest());
   const names = createMemo(() => namesById(props.manage.tournament));
-  const waiting = () => unseated(props.manage.tournament, props.pod);
+  const waiting = () => (tom() || latest()?.kind !== 'swiss' ? [] : unseated(props.manage.tournament, props.pod));
   const active = () => activeIds(props.manage.tournament, props.pod).length;
   const isLatest = () => round()?.number === latest()?.number;
-  const [asking, setAsking] = createSignal<Asking | null>(null);
+  const winner = () => champion(latest());
   const isAsking = (match: Match) => asking()?.table === match.table && asking()?.p1 === match.p1;
   // A new round, or another division, starts on its current round again.
   createEffect(on([() => latest()?.number, () => props.pod.category], () => setPicked(null), { defer: true }));
+
+  const shown = createMemo(() => {
+    const r = round();
+    if (!r) {
+      return [];
+    }
+    return r.matches.filter(
+      m =>
+        (!query().trim() || matchesQuery(m, query(), names())) &&
+        (!openOnly() || shownOutcome(m, props.pod, r, props.manage.pending).outcome === 'pending')
+    );
+  });
 
   function report(match: Match, outcome: Outcome) {
     setAsking({ table: match.table, p1: match.p1, outcome });
@@ -273,6 +189,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
     const r = round();
     const choice = asking();
     setAsking(null);
+    filterInput?.focus();
     if (!r || !choice) {
       return;
     }
@@ -302,16 +219,36 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   return (
     <div class='tm-panel'>
       <Show when={!tom()}>
-        <PairingActions state={props.state} pod={props.pod} round={latest()} active={active()} />
+        <PairingActions
+          state={props.state}
+          pod={props.pod}
+          round={latest()}
+          active={active()}
+          waiting={waiting().length > 0}
+        />
       </Show>
-      <Show when={!tom() && waiting().length > 0 && latest()?.kind === 'swiss'}>
-        <p class='tm-note' role='status'>
-          {waiting().length === 1 ? '1 player is' : `${waiting().length} players are`} not seated this round:{' '}
-          {waiting()
-            .map(id => names().get(id) ?? id)
-            .join(', ')}
-          . Re-pair the round to seat them.
-        </p>
+      <Show when={waiting().length > 0}>
+        <div class='tm-note tm-seat-note' role='status'>
+          <p>
+            Not seated this round:{' '}
+            <strong>
+              {waiting()
+                .map(id => names().get(id) ?? id)
+                .join(', ')}
+            </strong>
+          </p>
+          <RepairControl state={props.state} pod={props.pod} label='Re-pair to seat them' />
+        </div>
+      </Show>
+      <Show when={winner()}>
+        {id => (
+          <ChampionLine
+            state={props.state}
+            code={props.manage.code}
+            name={names().get(id()) ?? id()}
+            finished={props.manage.settings.finished}
+          />
+        )}
       </Show>
       <Show when={round()} fallback={<p class='muted'>No rounds yet.</p>}>
         {r => (
@@ -319,30 +256,37 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
             <div class='tm-round-head'>
               <RoundPicker pod={props.pod} selected={r().number} onSelect={setPicked} />
               <span class='muted'>{STATUS_LABELS[r().status]}</span>
-              <Show when={!tom() && isLatest()}>
+              <Show when={!tom() && isLatest() && r().kind === 'swiss' && r().status !== 'finished'}>
+                <button
+                  type='button'
+                  class='btn btn-ghost'
+                  aria-pressed={swapMode()}
+                  onClick={() => {
+                    setSwapMode(!swapMode());
+                    setSwapPick(null);
+                  }}
+                >
+                  {swapMode() ? 'Cancel swap' : 'Swap players'}
+                </button>
+              </Show>
+              <Show when={!tom() && isLatest() && r().status !== 'finished'}>
                 <ClockControls state={props.state} pod={props.pod} round={r()} />
-                <Show when={r().kind === 'swiss' && r().status !== 'finished'}>
-                  <button
-                    type='button'
-                    class='btn btn-ghost'
-                    aria-pressed={swapMode()}
-                    onClick={() => {
-                      setSwapMode(!swapMode());
-                      setSwapPick(null);
-                    }}
-                  >
-                    {swapMode() ? 'Cancel swap' : 'Swap players'}
-                  </button>
-                </Show>
               </Show>
             </div>
             <Show when={swapMode()}>
               <p class='tm-note'>Pick two players to trade seats.</p>
             </Show>
+            <RoomFilter
+              ref={el => (filterInput = el)}
+              query={query()}
+              openOnly={openOnly()}
+              onQuery={setQuery}
+              onOpenOnly={setOpenOnly}
+            />
             <MatchTable
               pod={props.pod}
               round={r()}
-              matches={r().matches}
+              matches={shown()}
               names={names()}
               decks={shownDecks(props.manage)}
               pending={props.manage.pending}
@@ -371,6 +315,9 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                 </Show>
               )}
             />
+            <Show when={shown().length === 0}>
+              <p class='muted tm-empty'>No tables match.</p>
+            </Show>
           </>
         )}
       </Show>

@@ -12,6 +12,7 @@ import { type Manage, setDeck } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import { DeckCombo } from '../live/LiveDeck';
 import { deckOptions } from './deckOptions';
+import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine, Field } from './Field';
 import type { ManageState } from './manageState';
 import { birthDateFor } from './ProfileFields';
@@ -41,6 +42,7 @@ function AddPlayer(props: { state: ManageState }) {
   }
   return (
     <form class='tm-form tm-add-player' onSubmit={event => void submit(event)}>
+      <h2 class='tm-subhead'>Add a player</h2>
       <div class='tm-grid-fields'>
         <Field id='add-first' label='First name'>
           <input id='add-first' class='tm-input' value={first()} onInput={e => setFirst(e.currentTarget.value)} />
@@ -102,7 +104,7 @@ function DeckCell(props: { state: ManageState; manage: Manage; player: Player })
           placeholder='Deck'
           onPick={deck => void pickDeck(deck.label)}
         />
-        <Show when={label()}>
+        <Show when={label()} fallback={<span />}>
           <button type='button' class='btn btn-ghost tm-small' onClick={() => void pickDeck(null)}>
             Clear
           </button>
@@ -156,9 +158,11 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
     <td class='tm-extra-col'>
       <span class='tm-row-actions'>
         <Show when={dropped() === null}>
-          <button type='button' class='btn btn-ghost tm-small' onClick={() => send('dropPlayer')}>
-            Drop
-          </button>
+          <ConfirmAction
+            label='Drop'
+            question={`Drop ${playerName(props.player)}?`}
+            onConfirm={() => send('dropPlayer')}
+          />
         </Show>
         <Show when={dropped() !== null && dropped() === latest()}>
           <button type='button' class='btn btn-ghost tm-small' onClick={() => send('undropPlayer')}>
@@ -168,9 +172,11 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
         <Show when={dropped() !== null && dropped() !== latest()}>
           <span class='muted-cell'>Dropped after round {dropped()}</span>
         </Show>
-        <button type='button' class='btn btn-ghost tm-small' onClick={() => send('removePlayer')}>
-          Remove
-        </button>
+        <ConfirmAction
+          label='Remove'
+          question={`Remove ${playerName(props.player)}?`}
+          onConfirm={() => send('removePlayer')}
+        />
       </span>
     </td>
   );
@@ -230,7 +236,7 @@ export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
           value={query()}
           onInput={e => setQuery(e.currentTarget.value)}
         />
-        <span class='muted num'>{props.manage.tournament.players.length} players</span>
+        <span class='muted num tm-count'>{props.manage.tournament.players.length} players</span>
       </div>
       <div class='table-wrap'>
         <table class='data'>

@@ -47,6 +47,8 @@ export interface TournamentSummary {
   name: string;
   role: 'owner' | 'staff';
   players: number;
+  startDate: string;
+  finished: boolean;
   updatedAt: number;
 }
 
