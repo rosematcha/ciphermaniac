@@ -15,6 +15,7 @@ import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
 import { manageView, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
 import { commandContext } from '../../../lib/tournaments/commandContext.js';
+import { publishView } from '../../../lib/tournaments/publish.js';
 import { type Changes, mutate, type TournamentRow } from '../../../lib/tournaments/store.js';
 
 function changesFor(row: TournamentRow, command: Command, localTime: unknown): Changes | string {
@@ -64,5 +65,6 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
+  await publishView(context.env.REPORTS, outcome.row);
   return privateJson(manageView({ ...access, row: outcome.row }));
 }

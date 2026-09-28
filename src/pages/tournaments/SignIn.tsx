@@ -17,7 +17,7 @@ export function SignIn(props: { providers: readonly Provider[]; next: string }) 
     <div class='tm-signin'>
       <For each={oauth()}>
         {provider => (
-          <a class='btn btn-secondary' href={signInUrl(provider, props.next)}>
+          <a class='btn btn-secondary' href={signInUrl(provider, props.next)} rel='external'>
             {PROVIDER_LABELS[provider]}
           </a>
         )}

@@ -8,9 +8,9 @@ import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show }
 import { POD_LABELS, type PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
 import { Tabs } from '../../components/Tabs';
-import { joinStaff, type Manage, signOut } from '../../lib/tournament/api';
+import { joinStaff, type Manage } from '../../lib/tournament/api';
 import { divisionLookup, namesById, shownDecks } from '../../lib/tournament/present';
-import { refreshSession, session } from './session';
+import { session } from './session';
 import { latestValue } from '../../lib/resource';
 import { DecklistsPanel } from './DecklistsPanel';
 import { EventPanel } from './EventPanel';
@@ -98,6 +98,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
               names={names()}
               decks={shownDecks(props.manage)}
               divisionOf={divisionOf()}
+              tiebreakers
             />
           )}
         </For>
@@ -117,18 +118,11 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
  * wrong account, so switching is one press away.
  */
 function Refused(props: { message: string | undefined; name: string | undefined }) {
-  async function switchAccount() {
-    await signOut().catch(() => undefined);
-    await refreshSession();
-  }
   return (
     <Show when={props.message}>
       <ErrorLine message={props.message} />
-      <p class='tm-actions muted'>
-        Signed in as {props.name}.
-        <button type='button' class='btn btn-ghost' onClick={() => void switchAccount()}>
-          Switch account
-        </button>
+      <p class='muted'>
+        Signed in as {props.name}. <A href='/settings'>Switch account in Settings</A>
       </p>
     </Show>
   );

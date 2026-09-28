@@ -143,6 +143,32 @@ test('a signed-in player saves their profile; a bad one is refused', async () =>
   assert.equal(anonymous.status, 401);
 });
 
+test('an account name is chosen independently of the player profile', async () => {
+  const cookie = await signIn('Organizer');
+  const renamed = await hit(
+    me.onRequestPatch as Handler,
+    '/api/me',
+    {},
+    { method: 'PATCH', cookie, body: { name: 'Reese' } }
+  );
+  assert.equal(renamed.json.user.name, 'Reese');
+  const bad = await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body: { name: '' } });
+  assert.equal(bad.status, 400);
+  const missing = await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body: {} });
+  assert.equal(missing.status, 400);
+  const anonymous = await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', body: { name: 'X' } });
+  assert.equal(anonymous.status, 401);
+  const foreign = await hit(
+    me.onRequestPatch as Handler,
+    '/api/me',
+    {},
+    { method: 'PATCH', cookie, origin: 'https://evil.test', body: { name: 'X' } }
+  );
+  assert.equal(foreign.status, 403);
+  const reread = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie });
+  assert.equal(reread.json.user.name, 'Reese');
+});
+
 test('the dev provider is refused in production', async () => {
   env.ENVIRONMENT = 'production';
   const refused = await hit(login.onRequestGet as Handler, '/api/auth/login/dev?name=x', { provider: 'dev' });
@@ -152,6 +178,13 @@ test('the dev provider is refused in production', async () => {
 test('an unconfigured provider says so rather than redirecting', async () => {
   const google = await hit(login.onRequestGet as Handler, '/api/auth/login/google', { provider: 'google' });
   assert.equal(google.status, 503);
+});
+
+test('linking a provider requires a signed-in account', async () => {
+  env.GOOGLE_CLIENT_ID = 'id';
+  env.GOOGLE_CLIENT_SECRET = 'secret';
+  const response = await hit(login.onRequestGet as Handler, '/api/auth/login/google?link=1', { provider: 'google' });
+  assert.equal(response.status, 401);
 });
 
 test('Google sign-in: state round-trips, the code is exchanged, a session begins', async () => {
@@ -182,7 +215,7 @@ test('Google sign-in: state round-trips, the code is exchanged, a session begins
       env,
       params: { provider: 'google' }
     } as never);
-    assert.equal(wrong.headers.get('location'), '/account?signin=failed');
+    assert.equal(wrong.headers.get('location'), '/settings?signin=failed');
     const done = await callback.onRequestGet({
       request: request(`/api/auth/callback/google?code=c&state=${state}`, { cookie: oauthCookie }),
       env,
@@ -192,8 +225,77 @@ test('Google sign-in: state round-trips, the code is exchanged, a session begins
     const session = done.headers.getSetCookie().find(value => value.startsWith('cm_session=')) ?? '';
     const who = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: session.split(';')[0] });
     assert.equal(who.json.user.email, 'gia@example.com');
+    assert.equal(who.json.user.name, 'Player');
+    assert.deepEqual(who.json.user.providers, ['google']);
   } finally {
     globalThis.fetch = realFetch;
+  }
+});
+
+test('a signed-in user links Google with a different email without changing their name', async () => {
+  env.GOOGLE_CLIENT_ID = 'id';
+  env.GOOGLE_CLIENT_SECRET = 'secret';
+  const sessionCookie = await signIn('Organizer');
+  const start = await login.onRequestGet({
+    request: request('/api/auth/login/google?next=/settings&link=1', { cookie: sessionCookie }),
+    env,
+    params: { provider: 'google' }
+  } as never);
+  const state = new URL(start.headers.get('location') ?? '').searchParams.get('state') ?? '';
+  const oauthCookie = (start.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  const realFetch = globalThis.fetch;
+  /* eslint-disable camelcase */
+  globalThis.fetch = (async (url: string | URL) =>
+    String(url).includes('token')
+      ? Response.json({ access_token: 'token' })
+      : Response.json({
+          sub: 'g-2',
+          name: 'Other Name',
+          email: 'different@example.com',
+          email_verified: true
+        })) as typeof fetch;
+  /* eslint-enable camelcase */
+  try {
+    const done = await callback.onRequestGet({
+      request: request(`/api/auth/callback/google?code=c&state=${state}`, {
+        cookie: `${oauthCookie}; ${sessionCookie}`
+      }),
+      env,
+      params: { provider: 'google' }
+    } as never);
+    assert.equal(done.headers.get('location'), '/settings');
+    const who = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: sessionCookie });
+    assert.equal(who.json.user.name, 'Organizer');
+    assert.deepEqual(who.json.user.providers.sort(), ['dev', 'google']);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('a provider that refuses the code sends the browser back to Settings', async () => {
+  env.DISCORD_CLIENT_ID = 'id';
+  env.DISCORD_CLIENT_SECRET = 'secret';
+  const start = await login.onRequestGet({
+    request: request('/api/auth/login/discord?next=/host'),
+    env,
+    params: { provider: 'discord' }
+  } as never);
+  const state = new URL(start.headers.get('location') ?? '').searchParams.get('state') ?? '';
+  const oauthCookie = (start.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response('denied', { status: 401 })) as typeof fetch;
+  const log = console.error;
+  console.error = () => undefined;
+  try {
+    const done = await callback.onRequestGet({
+      request: request(`/api/auth/callback/discord?code=c&state=${state}`, { cookie: oauthCookie }),
+      env,
+      params: { provider: 'discord' }
+    } as never);
+    assert.equal(done.headers.get('location'), '/settings?signin=failed');
+  } finally {
+    globalThis.fetch = realFetch;
+    console.error = log;
   }
 });
 
@@ -270,7 +372,8 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
   );
 
   const publicView = await view(code);
-  const text = JSON.stringify(publicView);
+  // Without the timestamps, whose digits can happen to contain an ID.
+  const text = JSON.stringify({ ...publicView, updatedAt: 0, version: 0 });
   assert.ok(!text.includes('999') && !text.includes('900'), 'no Player IDs');
   assert.ok(!text.includes('02/27/1990'), 'no birth dates');
   assert.equal(publicView.tournament.players.length, 6);
@@ -539,6 +642,72 @@ test('an event too large for one D1 row is refused with a message', async () => 
   assert.deepEqual([refused.status, refused.json.error], [413, 'This event is too large to store']);
 });
 
+test('every change publishes the public view to R2, and deleting the event removes it', async () => {
+  const objects = new Map<string, { body: string; cacheControl: string }>();
+  env.REPORTS = {
+    put: async (key, value, options) => {
+      objects.set(key, { body: value, cacheControl: options.httpMetadata.cacheControl ?? '' });
+    },
+    delete: async key => {
+      objects.delete(key);
+    }
+  };
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const key = `tournaments/v1/${code}.json`;
+  assert.ok(objects.has(key), 'published on creation');
+  await addPlayers(code, owner, 2);
+  await hit(decks.onRequestPut as Handler, '/decks', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { playerId: '900', archetype: 'Gardevoir' }
+  });
+  const published = JSON.parse(objects.get(key)?.body ?? '{}');
+  assert.equal(published.tournament.players.length, 2, 'a player just added is published');
+  const stable = JSON.stringify({ ...published, updatedAt: 0, version: 0 });
+  assert.ok(!stable.includes('900'), 'no Player IDs, not even for a player just added');
+  assert.ok(!('viewer' in published));
+  assert.deepEqual(published.decks, {}, 'decks stay hidden until the event allows them');
+  assert.equal(objects.get(key)?.cacheControl, 'public, max-age=5');
+  const staffView = await view(code, owner);
+  assert.deepEqual(Object.values(staffView.decks), ['Gardevoir'], 'staff see decks through the API');
+  await hit(settings.onRequestPut as Handler, '/settings', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { deckVisibility: 'always' }
+  });
+  assert.deepEqual(Object.values(JSON.parse(objects.get(key)?.body ?? '{}').decks), ['Gardevoir']);
+  await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
+  assert.ok(!objects.has(key), 'deleting the event unpublishes it');
+});
+
+test('a failed publish does not fail the change', async () => {
+  env.REPORTS = {
+    put: async () => {
+      throw new Error('R2 down');
+    },
+    delete: async () => {
+      throw new Error('R2 down');
+    }
+  };
+  const log = console.error;
+  console.error = () => undefined;
+  try {
+    const owner = await signIn('Organizer');
+    const code = await newSwiss(owner);
+    assert.equal(
+      (await send(code, owner, { type: 'addPlayer', player: { firstName: 'A', lastName: 'B' } })).status,
+      200
+    );
+    assert.equal(
+      (await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner })).status,
+      204
+    );
+  } finally {
+    console.error = log;
+  }
+});
+
 test('only the organizer deletes an event', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
@@ -556,4 +725,5 @@ test('only the organizer deletes an event', async () => {
 
 afterEach(() => {
   delete env.ENVIRONMENT;
+  delete env.REPORTS;
 });

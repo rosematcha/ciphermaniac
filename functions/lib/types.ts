@@ -16,3 +16,9 @@ export interface D1Like {
   /** Runs the statements in order, in one transaction and one round trip. */
   batch: (statements: D1Statement[]) => Promise<{ results?: unknown[] }[]>;
 }
+
+/** The slice of an R2 bucket binding the functions write with. */
+export interface PublishBucket {
+  put: (key: string, value: string, options: { httpMetadata: Record<string, string> }) => Promise<unknown>;
+  delete: (key: string) => Promise<unknown>;
+}

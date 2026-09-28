@@ -23,6 +23,7 @@ export interface User {
   firstName: string | null;
   lastName: string | null;
   birthDate: string | null;
+  providers?: string[];
 }
 
 interface UserRow {
@@ -78,7 +79,30 @@ export async function currentUser(db: D1Like, request: Request): Promise<User | 
     )
     .bind(await sha256(token), Date.now())
     .first<UserRow>();
-  return row ? userFromRow(row) : null;
+  if (!row) {
+    return null;
+  }
+  const identities = await db
+    .prepare('SELECT provider FROM identities WHERE user_id = ?')
+    .bind(row.id)
+    .all<{ provider: string }>();
+  return { ...userFromRow(row), providers: identities.results.map(identity => identity.provider) };
+}
+
+/** Attach a provider only when its identity is still free or already belongs to this user. */
+export async function linkIdentity(db: D1Like, profile: Profile, userId: string): Promise<boolean> {
+  const identity = await db
+    .prepare('SELECT user_id FROM identities WHERE provider = ? AND subject = ?')
+    .bind(profile.provider, profile.subject)
+    .first<{ user_id: string }>();
+  if (identity) {
+    return identity.user_id === userId;
+  }
+  await db
+    .prepare('INSERT INTO identities (provider, subject, user_id) VALUES (?, ?, ?)')
+    .bind(profile.provider, profile.subject, userId)
+    .run();
+  return true;
 }
 
 async function linkedUser(db: D1Like, profile: Profile): Promise<string | null> {
@@ -110,7 +134,13 @@ export async function upsertUser(db: D1Like, profile: Profile): Promise<string> 
           .bind(profile.avatar, profile.emailVerified ? profile.email : null, userId)
       : db
           .prepare('INSERT INTO users (id, name, email, avatar, created_at) VALUES (?, ?, ?, ?, ?)')
-          .bind(userId, profile.name, profile.emailVerified ? profile.email : null, profile.avatar, Date.now()),
+          .bind(
+            userId,
+            profile.provider === 'dev' ? profile.name : 'Player',
+            profile.emailVerified ? profile.email : null,
+            profile.avatar,
+            Date.now()
+          ),
     db
       .prepare('INSERT OR IGNORE INTO identities (provider, subject, user_id) VALUES (?, ?, ?)')
       .bind(profile.provider, profile.subject, userId)

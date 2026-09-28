@@ -151,11 +151,13 @@ self.addEventListener('fetch', event => {
   // Live rounds and deck reports are not either: every poll would be answered
   // with the one before it, and a page keyed on the index hash would then hold
   // a round's last result until the next round. The page revalidates them itself.
+  // Published tournament views are the same case: pairings polled every few seconds.
   if (
     url.host === 'r2.ciphermaniac.com' &&
     !url.pathname.startsWith('/card-images/') &&
     !url.pathname.startsWith('/events/') &&
-    !url.pathname.startsWith('/live/')
+    !url.pathname.startsWith('/live/') &&
+    !url.pathname.startsWith('/tournaments/')
   ) {
     event.respondWith(staleWhileRevalidate(request));
     return;

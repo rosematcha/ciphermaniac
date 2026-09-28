@@ -211,7 +211,9 @@ export async function mutate(
       return { error: version.message, status: 413 };
     }
     if (version !== null) {
-      return { row: { ...row, ...changes, version }, version };
+      // The keys as saved, so a player added by this change is already under a public key.
+      const keys = changes.tournament ? assignKeys(changes.tournament, row.keys) : row.keys;
+      return { row: { ...row, ...changes, keys, version, updatedAt: Date.now() }, version };
     }
   }
   return { error: 'Busy; try again', status: 409 };

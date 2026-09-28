@@ -14,11 +14,14 @@ import {
   deleteTournament,
   fetchDecklists,
   fetchManage,
+  fetchPublished,
   fetchSession,
   fetchView,
   joinStaff,
+  linkUrl,
   listTournaments,
   rotateStaffToken,
+  saveAccountName,
   saveProfile,
   saveSettings,
   sendCommand,
@@ -107,6 +110,14 @@ test('every call goes to its endpoint with its body', async () => {
   assert.deepEqual(sent[3]?.body, { mode: 'swiss', name: 'Cup', combined: false });
 });
 
+test('reads the published view from the data origin, and a missing one as null', async () => {
+  answer(200, { code: 'ABC', version: 3 });
+  assert.deepEqual(await fetchPublished('ABC'), { code: 'ABC', version: 3 });
+  assert.match(sent[0]?.url ?? '', /\/tournaments\/v1\/ABC\.json$/);
+  answer(404, { error: 'missing' });
+  assert.equal(await fetchPublished('ABC'), null);
+});
+
 test('a 204 answers null', async () => {
   answer(204, null);
   assert.equal(await fetchView('ABC', 3), null);
@@ -130,6 +141,13 @@ test('a failure carries the server’s message and status', async () => {
 test('sign-in links carry where to return and the dev name', () => {
   assert.equal(signInUrl('google', '/host'), '/api/auth/login/google?next=%2Fhost');
   assert.equal(signInUrl('dev', '/t/ABC', 'Pat'), '/api/auth/login/dev?next=%2Ft%2FABC&name=Pat');
+  assert.equal(linkUrl('discord'), '/api/auth/login/discord?next=%2Fsettings&link=1');
+});
+
+test('account name uses the account endpoint', async () => {
+  answer(200, { user: { name: 'Reese' } });
+  await saveAccountName('Reese');
+  assert.deepEqual(sent, [{ url: '/api/me', method: 'PATCH', body: { name: 'Reese' } }]);
 });
 
 // ---------- the TOM file link ----------

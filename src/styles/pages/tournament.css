@@ -25,6 +25,9 @@
 .tm-page .tabs {
   margin-bottom: var(--space-3);
 }
+.tm-page > .tm-toolbar {
+  margin-bottom: var(--space-3);
+}
 .tm-section-block {
   display: grid;
   gap: var(--space-3);
@@ -77,6 +80,10 @@
   display: grid;
   gap: 6px;
   min-width: 0;
+}
+.tm-profile-fields .tm-field {
+  grid-template-rows: auto var(--control-h) minmax(2lh, auto);
+  align-content: start;
 }
 .tm-label {
   font-size: var(--text-base);
@@ -235,12 +242,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   gap: var(--space-2);
   margin-top: var(--space-4);
 }
-.tm-account-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-3) 0 var(--space-5);
-}
 .tm-avatar {
   border-radius: 50%;
 }
@@ -395,11 +396,11 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 }
 /* The sprite slot is held open when anyone in the table has a deck, so names
    line up down the column (live.css does the same). */
-.tm-matches.has-decks .tm-seat-link .tm-deck,
-.tm-matches.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
+:is(.tm-matches, .tm-standings).has-decks .tm-seat-link .tm-deck,
+:is(.tm-matches, .tm-standings).has-decks .tm-seat-link:not(:has(.tm-deck))::before {
   min-width: 38px;
 }
-.tm-matches.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
+:is(.tm-matches, .tm-standings).has-decks .tm-seat-link:not(:has(.tm-deck))::before {
   content: '';
 }
 .tm-deck-cell {
@@ -571,6 +572,19 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
   .tm-record {
     margin-left: auto;
+  }
+  /* Standings keep their columns on a phone: a narrower rank, a narrower
+     sprite slot and tighter cells leave the points in view. */
+  .tm-standings .data th,
+  .tm-standings .data td {
+    padding: 0 8px;
+  }
+  .tm-standings .tm-table-col {
+    width: 36px;
+  }
+  .tm-standings.has-decks .tm-seat-link .tm-deck,
+  .tm-standings.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
+    min-width: 34px;
   }
 }
 /* Under a finger, every control is a 44px target. */
@@ -927,4 +941,35 @@ body.tm-screen-mode main.page {
     max-width: 240px;
     margin: 0 auto;
   }
+}
+
+/* ---------- Account ---------- */
+/* Quiet and right-aligned above the page: present on every tournament page,
+   never competing with the event's own heading. */
+.tm-account-strip {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base);
+}
+.tm-account-strip .dot {
+  opacity: 0.4;
+}
+.tm-account-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.tm-account-name {
+  font-weight: 600;
+  margin-right: auto;
+}
+.tm-account-name-input {
+  max-width: 20rem;
 }

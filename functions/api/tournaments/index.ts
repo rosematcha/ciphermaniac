@@ -12,7 +12,14 @@ import { jsonError } from '../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../lib/auth/env.js';
 import { currentUser } from '../../lib/auth/session.js';
 import { MAX_TOURNAMENT_BYTES, privateJson } from '../../lib/tournaments/access.js';
-import { createTournament, listTournaments, ownedCount, TooLarge } from '../../lib/tournaments/store.js';
+import { publishView } from '../../lib/tournaments/publish.js';
+import {
+  createTournament,
+  listTournaments,
+  loadTournament,
+  ownedCount,
+  TooLarge
+} from '../../lib/tournaments/store.js';
 import type { Tournament } from '../../../shared/tournament/types.js';
 
 export async function onRequestGet({ request, env }: Context): Promise<Response> {
@@ -71,6 +78,10 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
   }
   try {
     const code = await createTournament(db, { ownerId: user.id, mode, tournament });
+    const row = await loadTournament(db, code);
+    if (row) {
+      await publishView(env.REPORTS, row);
+    }
     return privateJson({ code }, 201);
   } catch (error) {
     if (error instanceof TooLarge) {

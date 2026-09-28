@@ -8,12 +8,15 @@ import type { Command } from '../../../shared/tournament/commands';
 import { tomDateTime } from '../../../shared/tournament/divisions';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import type { Tournament } from '../../../shared/tournament/types';
-import type {
-  PendingResult,
-  TournamentMode,
-  TournamentSettings,
-  TournamentView
+import {
+  type PendingResult,
+  type PublishedView,
+  publishedViewKey,
+  type TournamentMode,
+  type TournamentSettings,
+  type TournamentView
 } from '../../../shared/tournament/view';
+import { R2_ORIGIN } from '../constants';
 
 export class ApiError extends Error {
   constructor(
@@ -32,6 +35,7 @@ export interface Me {
   firstName: string | null;
   lastName: string | null;
   birthDate: string | null;
+  providers: Provider[];
 }
 
 export type Provider = 'google' | 'discord' | 'dev';
@@ -92,12 +96,17 @@ const json = (method: string, body: unknown): RequestInit => ({ method, body: JS
 export const fetchSession = () => call<Session>('/api/me');
 
 export const saveProfile = (profile: PlayerProfile) => call<{ user: Me }>('/api/me', json('PUT', profile));
+export const saveAccountName = (name: string) => call<{ user: Me }>('/api/me', json('PATCH', { name }));
 
 export const signOut = () => call<null>('/api/auth/logout', { method: 'POST' });
 
 export function signInUrl(provider: Provider, next: string, name?: string): string {
   const query = new URLSearchParams({ next, ...(name ? { name } : {}) });
   return `/api/auth/login/${provider}?${query}`;
+}
+
+export function linkUrl(provider: Exclude<Provider, 'dev'>): string {
+  return `/api/auth/login/${provider}?${new URLSearchParams({ next: '/settings', link: '1' })}`;
 }
 
 export const listTournaments = () => call<{ tournaments: TournamentSummary[] }>('/api/tournaments');
@@ -109,6 +118,16 @@ export const createFromTdf = (tournament: Tournament) =>
   call<{ code: string }>('/api/tournaments', json('POST', { mode: 'tom', tournament }));
 
 const base = (code: string) => `/api/tournaments/${encodeURIComponent(code)}`;
+
+/**
+ * The view published to R2 (see PublishedView), or null when it cannot be
+ * read: not published yet, or a data origin that does not carry it. Revalidated
+ * rather than cached, so a poll sees the edge's copy, which is seconds old.
+ */
+export async function fetchPublished(code: string): Promise<PublishedView | null> {
+  const response = await fetch(`${R2_ORIGIN}/${publishedViewKey(code)}`, { cache: 'no-cache' });
+  return response.ok ? ((await response.json()) as PublishedView) : null;
+}
 
 /** The public view, or null when it has not changed since `since`. */
 export const fetchView = (code: string, since?: number) =>
