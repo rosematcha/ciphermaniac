@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { applyCommand, type Command, type CommandContext, secondsLeft } from '../../shared/tournament/commands.ts';
-import { emptyTournament } from '../../shared/tournament/create.ts';
+import { DEFAULT_ROUND_MINUTES, emptyTournament } from '../../shared/tournament/create.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
 import { swissStandings } from '../../shared/tournament/standings.ts';
 import type { Pod, Round, Tournament } from '../../shared/tournament/types.ts';
@@ -217,11 +217,11 @@ test('the clock runs, stops and takes extra time', () => {
   const started = applyCommand(t, { type: 'startClock', pod: 'mixed' }, context(1, 0));
   assert.ok(started.ok);
   t = started.tournament;
-  assert.equal(secondsLeft(round(t), 60_000), 50 * 60 - 60);
+  assert.equal(secondsLeft(round(t), 60_000), DEFAULT_ROUND_MINUTES * 60 - 60);
   const stopped = applyCommand(t, { type: 'stopClock', pod: 'mixed' }, context(1, 120_000));
   assert.ok(stopped.ok);
   t = run(stopped.tournament, { type: 'adjustClock', pod: 'mixed', seconds: 180 });
-  assert.equal(secondsLeft(round(t), 999_999), 50 * 60 - 120 + 180);
+  assert.equal(secondsLeft(round(t), 999_999), DEFAULT_ROUND_MINUTES * 60 - 120 + 180);
 });
 
 test('a combined pod cuts one division at a time, seeded from that division', () => {
