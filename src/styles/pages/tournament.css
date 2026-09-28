@@ -81,6 +81,10 @@
   gap: 6px;
   min-width: 0;
 }
+.tm-profile-fields .tm-field {
+  grid-template-rows: auto var(--control-h) minmax(2lh, auto);
+  align-content: start;
+}
 .tm-label {
   font-size: var(--text-base);
   font-weight: 600;
@@ -965,4 +969,7 @@ body.tm-screen-mode main.page {
 .tm-account-name {
   font-weight: 600;
   margin-right: auto;
+}
+.tm-account-name-input {
+  max-width: 20rem;
 }

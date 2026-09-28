@@ -18,8 +18,10 @@ import {
   fetchSession,
   fetchView,
   joinStaff,
+  linkUrl,
   listTournaments,
   rotateStaffToken,
+  saveAccountName,
   saveProfile,
   saveSettings,
   sendCommand,
@@ -139,6 +141,13 @@ test('a failure carries the server’s message and status', async () => {
 test('sign-in links carry where to return and the dev name', () => {
   assert.equal(signInUrl('google', '/host'), '/api/auth/login/google?next=%2Fhost');
   assert.equal(signInUrl('dev', '/t/ABC', 'Pat'), '/api/auth/login/dev?next=%2Ft%2FABC&name=Pat');
+  assert.equal(linkUrl('discord'), '/api/auth/login/discord?next=%2Fsettings&link=1');
+});
+
+test('account name uses the account endpoint', async () => {
+  answer(200, { user: { name: 'Reese' } });
+  await saveAccountName('Reese');
+  assert.deepEqual(sent, [{ url: '/api/me', method: 'PATCH', body: { name: 'Reese' } }]);
 });
 
 // ---------- the TOM file link ----------

@@ -32,7 +32,7 @@ export function ProfileFields(props: {
   const set = (key: keyof PlayerProfile, value: string) => props.onChange({ ...props.value, [key]: value });
   const id = (key: string) => `${props.idPrefix}-${key}`;
   return (
-    <div class='tm-grid-fields'>
+    <div class='tm-grid-fields tm-profile-fields'>
       <Field id={id('first')} label='First name' error={props.errors.firstName}>
         <input
           id={id('first')}

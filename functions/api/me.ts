@@ -38,3 +38,24 @@ export async function onRequestPut({ request, env }: Context): Promise<Response>
     .run();
   return jsonResponse({ user: { ...user, ...profile } }, PRIVATE);
 }
+
+export async function onRequestPatch({ request, env }: Context): Promise<Response> {
+  if (!env.TOURNAMENT_DB || !sameOrigin(request)) {
+    return jsonError('Forbidden', 403);
+  }
+  const user = await currentUser(env.TOURNAMENT_DB, request);
+  if (!user) {
+    return jsonError('Sign in first', 401);
+  }
+  const body = await readJsonBody(request, 256);
+  const value: unknown =
+    body.ok && typeof body.value === 'object' && body.value !== null
+      ? (body.value as Record<string, unknown>).name
+      : null;
+  const name = typeof value === 'string' ? value.trim() : '';
+  if (!name || name.length > 40) {
+    return jsonError('Enter a name up to 40 characters', 400);
+  }
+  await env.TOURNAMENT_DB.prepare('UPDATE users SET name = ? WHERE id = ?').bind(name, user.id).run();
+  return jsonResponse({ user: { ...user, name } }, PRIVATE);
+}

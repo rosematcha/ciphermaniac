@@ -10,7 +10,7 @@
 import { cookie, OAUTH_COOKIE, redirectWithCookies, safeNext, SESSION_COOKIE } from '../../../lib/auth/cookies.js';
 import { type Context, param } from '../../../lib/auth/env.js';
 import { authorizeUrl, devLoginEnabled, devProfile, isProviderId } from '../../../lib/auth/oauth.js';
-import { createSession, randomToken, SESSION_SECONDS, upsertUser } from '../../../lib/auth/session.js';
+import { createSession, currentUser, randomToken, SESSION_SECONDS, upsertUser } from '../../../lib/auth/session.js';
 import { jsonError } from '../../../lib/api/responses.js';
 
 const STATE_SECONDS = 10 * 60;
@@ -34,10 +34,16 @@ export async function onRequestGet(context: Context<'provider'>): Promise<Respon
   if (provider === 'dev') {
     return devSignIn(context, next);
   }
+  const linking = new URL(context.request.url).searchParams.get('link') === '1';
+  if (linking && (!context.env.TOURNAMENT_DB || !(await currentUser(context.env.TOURNAMENT_DB, context.request)))) {
+    return jsonError('Sign in first', 401);
+  }
   const state = randomToken(16);
   const url = authorizeUrl(context.env, context.request, provider, state);
   if (!url) {
     return jsonError(`${provider} sign-in is not configured`, 503);
   }
-  return redirectWithCookies(url, [cookie(context.request, OAUTH_COOKIE, `${state} ${next}`, STATE_SECONDS)]);
+  return redirectWithCookies(url, [
+    cookie(context.request, OAUTH_COOKIE, `${state} ${next} ${linking ? 'link' : 'login'}`, STATE_SECONDS)
+  ]);
 }

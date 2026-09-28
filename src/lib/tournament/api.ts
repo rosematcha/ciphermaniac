@@ -35,6 +35,7 @@ export interface Me {
   firstName: string | null;
   lastName: string | null;
   birthDate: string | null;
+  providers: Provider[];
 }
 
 export type Provider = 'google' | 'discord' | 'dev';
@@ -95,12 +96,17 @@ const json = (method: string, body: unknown): RequestInit => ({ method, body: JS
 export const fetchSession = () => call<Session>('/api/me');
 
 export const saveProfile = (profile: PlayerProfile) => call<{ user: Me }>('/api/me', json('PUT', profile));
+export const saveAccountName = (name: string) => call<{ user: Me }>('/api/me', json('PATCH', { name }));
 
 export const signOut = () => call<null>('/api/auth/logout', { method: 'POST' });
 
 export function signInUrl(provider: Provider, next: string, name?: string): string {
   const query = new URLSearchParams({ next, ...(name ? { name } : {}) });
   return `/api/auth/login/${provider}?${query}`;
+}
+
+export function linkUrl(provider: Exclude<Provider, 'dev'>): string {
+  return `/api/auth/login/${provider}?${new URLSearchParams({ next: '/settings', link: '1' })}`;
 }
 
 export const listTournaments = () => call<{ tournaments: TournamentSummary[] }>('/api/tournaments');

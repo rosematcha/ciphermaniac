@@ -143,6 +143,32 @@ test('a signed-in player saves their profile; a bad one is refused', async () =>
   assert.equal(anonymous.status, 401);
 });
 
+test('an account name is chosen independently of the player profile', async () => {
+  const cookie = await signIn('Organizer');
+  const renamed = await hit(
+    me.onRequestPatch as Handler,
+    '/api/me',
+    {},
+    { method: 'PATCH', cookie, body: { name: 'Reese' } }
+  );
+  assert.equal(renamed.json.user.name, 'Reese');
+  const bad = await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body: { name: '' } });
+  assert.equal(bad.status, 400);
+  const missing = await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body: {} });
+  assert.equal(missing.status, 400);
+  const anonymous = await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', body: { name: 'X' } });
+  assert.equal(anonymous.status, 401);
+  const foreign = await hit(
+    me.onRequestPatch as Handler,
+    '/api/me',
+    {},
+    { method: 'PATCH', cookie, origin: 'https://evil.test', body: { name: 'X' } }
+  );
+  assert.equal(foreign.status, 403);
+  const reread = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie });
+  assert.equal(reread.json.user.name, 'Reese');
+});
+
 test('the dev provider is refused in production', async () => {
   env.ENVIRONMENT = 'production';
   const refused = await hit(login.onRequestGet as Handler, '/api/auth/login/dev?name=x', { provider: 'dev' });
@@ -152,6 +178,13 @@ test('the dev provider is refused in production', async () => {
 test('an unconfigured provider says so rather than redirecting', async () => {
   const google = await hit(login.onRequestGet as Handler, '/api/auth/login/google', { provider: 'google' });
   assert.equal(google.status, 503);
+});
+
+test('linking a provider requires a signed-in account', async () => {
+  env.GOOGLE_CLIENT_ID = 'id';
+  env.GOOGLE_CLIENT_SECRET = 'secret';
+  const response = await hit(login.onRequestGet as Handler, '/api/auth/login/google?link=1', { provider: 'google' });
+  assert.equal(response.status, 401);
 });
 
 test('Google sign-in: state round-trips, the code is exchanged, a session begins', async () => {
@@ -192,6 +225,48 @@ test('Google sign-in: state round-trips, the code is exchanged, a session begins
     const session = done.headers.getSetCookie().find(value => value.startsWith('cm_session=')) ?? '';
     const who = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: session.split(';')[0] });
     assert.equal(who.json.user.email, 'gia@example.com');
+    assert.equal(who.json.user.name, 'Player');
+    assert.deepEqual(who.json.user.providers, ['google']);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('a signed-in user links Google with a different email without changing their name', async () => {
+  env.GOOGLE_CLIENT_ID = 'id';
+  env.GOOGLE_CLIENT_SECRET = 'secret';
+  const sessionCookie = await signIn('Organizer');
+  const start = await login.onRequestGet({
+    request: request('/api/auth/login/google?next=/settings&link=1', { cookie: sessionCookie }),
+    env,
+    params: { provider: 'google' }
+  } as never);
+  const state = new URL(start.headers.get('location') ?? '').searchParams.get('state') ?? '';
+  const oauthCookie = (start.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  const realFetch = globalThis.fetch;
+  /* eslint-disable camelcase */
+  globalThis.fetch = (async (url: string | URL) =>
+    String(url).includes('token')
+      ? Response.json({ access_token: 'token' })
+      : Response.json({
+          sub: 'g-2',
+          name: 'Other Name',
+          email: 'different@example.com',
+          email_verified: true
+        })) as typeof fetch;
+  /* eslint-enable camelcase */
+  try {
+    const done = await callback.onRequestGet({
+      request: request(`/api/auth/callback/google?code=c&state=${state}`, {
+        cookie: `${oauthCookie}; ${sessionCookie}`
+      }),
+      env,
+      params: { provider: 'google' }
+    } as never);
+    assert.equal(done.headers.get('location'), '/settings');
+    const who = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: sessionCookie });
+    assert.equal(who.json.user.name, 'Organizer');
+    assert.deepEqual(who.json.user.providers.sort(), ['dev', 'google']);
   } finally {
     globalThis.fetch = realFetch;
   }

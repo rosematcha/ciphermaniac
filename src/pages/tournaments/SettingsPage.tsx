@@ -4,17 +4,30 @@
  */
 
 import { A, useNavigate, useSearchParams } from '@solidjs/router';
-import { createEffect, createSignal, onMount, Show } from 'solid-js';
+import { createEffect, createSignal, For, onMount, Show } from 'solid-js';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
-import { type Me, saveProfile, signOut } from '../../lib/tournament/api';
+import { linkUrl, type Me, saveAccountName, saveProfile, signOut } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import { ErrorLine } from './Field';
 import { emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
 import { refreshSession, session, setSession } from './session';
 import { SignIn } from './SignIn';
 
-function Account(props: { user: Me }) {
+function Account(props: { user: Me; providers: ('google' | 'discord' | 'dev')[] }) {
   const navigate = useNavigate();
+  // eslint-disable-next-line solid/reactivity -- the input edits a copy of the name it opened with
+  const [name, setName] = createSignal(props.user.name);
+  const [error, setError] = createSignal<string | null>(null);
+  async function saveName(event: Event) {
+    event.preventDefault();
+    try {
+      const result = await saveAccountName(name());
+      setSession(prev => (prev ? { ...prev, user: result.user } : prev));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
   async function leave() {
     await signOut().catch(() => undefined);
     await refreshSession();
@@ -34,6 +47,35 @@ function Account(props: { user: Me }) {
         <button type='button' class='btn btn-secondary' onClick={() => void leave()}>
           Sign out
         </button>
+      </div>
+      <form class='tm-actions' onSubmit={event => void saveName(event)}>
+        <label class='tm-label' for='account-name'>
+          Account name
+        </label>
+        <input
+          id='account-name'
+          class='tm-input tm-account-name-input'
+          maxlength='40'
+          value={name()}
+          onInput={event => setName(event.currentTarget.value)}
+        />
+        <button class='btn btn-secondary' type='submit'>
+          Save name
+        </button>
+      </form>
+      <ErrorLine message={error()} />
+      <div class='tm-actions'>
+        <For each={(['google', 'discord'] as const).filter(provider => props.providers.includes(provider))}>
+          {provider =>
+            props.user.providers?.includes(provider) ? (
+              <span class='muted'>{provider === 'google' ? 'Google' : 'Discord'} linked</span>
+            ) : (
+              <A class='btn btn-ghost' href={linkUrl(provider)}>
+                Link {provider === 'google' ? 'Google' : 'Discord'}
+              </A>
+            )
+          }
+        </For>
       </div>
     </section>
   );
@@ -99,7 +141,7 @@ function Profile(props: { user: Me }) {
 }
 
 export function SettingsPage() {
-  const [params] = useSearchParams<{ signin?: string }>();
+  const [params] = useSearchParams<{ signin?: string; link?: string }>();
   const current = () => latestValue(session);
   onMount(() => {
     document.title = 'Settings — Ciphermaniac';
@@ -114,13 +156,18 @@ export function SettingsPage() {
           Sign-in didn’t go through. Try again.
         </p>
       </Show>
+      <Show when={params.link === 'used'}>
+        <p class='tm-error' role='alert'>
+          That account is already linked to another user.
+        </p>
+      </Show>
       <Show
         when={current()?.user}
         fallback={<Show when={current()}>{s => <SignIn providers={s().providers} next='/settings' />}</Show>}
       >
         {user => (
           <>
-            <Account user={user()} />
+            <Account user={user()} providers={current()?.providers ?? []} />
             <Profile user={user()} />
           </>
         )}
