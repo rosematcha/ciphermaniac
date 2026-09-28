@@ -106,8 +106,25 @@ export interface TournamentView {
   /** Each public key's archetype label, when the organizer's deck visibility allows. */
   decks: Record<string, string>;
   settings: TournamentSettings;
-  viewer: { role: 'owner' | 'staff' | null; me: string | null; signedIn: boolean };
+  viewer: Viewer;
 }
+
+export interface Viewer {
+  role: 'owner' | 'staff' | null;
+  me: string | null;
+  signedIn: boolean;
+}
+
+/**
+ * The public view as it is published to R2 on every change, for anyone to
+ * read: the same as the API's answer without the part about who is asking.
+ * The page reads who it is once from the API and polls this file after, so a
+ * room full of players refreshing costs the functions nothing.
+ */
+export type PublishedView = Omit<TournamentView, 'viewer'>;
+
+/** Where an event's published view lives, in the bucket and under the data origin. */
+export const publishedViewKey = (code: string): string => `tournaments/v1/${code}.json`;
 
 /** POP ID to public key, adding keys for players seen for the first time. Keys never change once given. */
 export function assignKeys(tournament: Tournament, keys: Record<string, string>): Record<string, string> {

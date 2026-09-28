@@ -14,6 +14,7 @@ import {
   deleteTournament,
   fetchDecklists,
   fetchManage,
+  fetchPublished,
   fetchSession,
   fetchView,
   joinStaff,
@@ -105,6 +106,14 @@ test('every call goes to its endpoint with its body', async () => {
   const command = sent[7]?.body as { localTime: string };
   assert.match(command.localTime, /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/, 'stamped with the venue clock');
   assert.deepEqual(sent[3]?.body, { mode: 'swiss', name: 'Cup', combined: false });
+});
+
+test('reads the published view from the data origin, and a missing one as null', async () => {
+  answer(200, { code: 'ABC', version: 3 });
+  assert.deepEqual(await fetchPublished('ABC'), { code: 'ABC', version: 3 });
+  assert.match(sent[0]?.url ?? '', /\/tournaments\/v1\/ABC\.json$/);
+  answer(404, { error: 'missing' });
+  assert.equal(await fetchPublished('ABC'), null);
 });
 
 test('a 204 answers null', async () => {

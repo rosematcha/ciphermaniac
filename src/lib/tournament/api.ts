@@ -8,12 +8,15 @@ import type { Command } from '../../../shared/tournament/commands';
 import { tomDateTime } from '../../../shared/tournament/divisions';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import type { Tournament } from '../../../shared/tournament/types';
-import type {
-  PendingResult,
-  TournamentMode,
-  TournamentSettings,
-  TournamentView
+import {
+  type PendingResult,
+  type PublishedView,
+  publishedViewKey,
+  type TournamentMode,
+  type TournamentSettings,
+  type TournamentView
 } from '../../../shared/tournament/view';
+import { R2_ORIGIN } from '../constants';
 
 export class ApiError extends Error {
   constructor(
@@ -109,6 +112,16 @@ export const createFromTdf = (tournament: Tournament) =>
   call<{ code: string }>('/api/tournaments', json('POST', { mode: 'tom', tournament }));
 
 const base = (code: string) => `/api/tournaments/${encodeURIComponent(code)}`;
+
+/**
+ * The view published to R2 (see PublishedView), or null when it cannot be
+ * read: not published yet, or a data origin that does not carry it. Revalidated
+ * rather than cached, so a poll sees the edge's copy, which is seconds old.
+ */
+export async function fetchPublished(code: string): Promise<PublishedView | null> {
+  const response = await fetch(`${R2_ORIGIN}/${publishedViewKey(code)}`, { cache: 'no-cache' });
+  return response.ok ? ((await response.json()) as PublishedView) : null;
+}
 
 /** The public view, or null when it has not changed since `since`. */
 export const fetchView = (code: string, since?: number) =>

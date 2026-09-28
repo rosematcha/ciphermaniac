@@ -14,6 +14,7 @@ import { readJsonBody } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
 import { MAX_TOURNAMENT_BYTES, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
+import { publishView } from '../../../lib/tournaments/publish.js';
 import { mutate } from '../../../lib/tournaments/store.js';
 
 export async function onRequestPut(context: Context<'code'>): Promise<Response> {
@@ -39,5 +40,6 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
+  await publishView(context.env.REPORTS, outcome.row);
   return privateJson({ version: outcome.version, pending: outcome.row.pending });
 }

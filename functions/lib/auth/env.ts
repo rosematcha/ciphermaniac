@@ -1,10 +1,12 @@
 /** What every tournament and account function needs from its environment. */
 
-import type { D1Like } from '../types.js';
+import type { D1Like, PublishBucket } from '../types.js';
 import type { AuthEnv } from './oauth.js';
 
 export interface TournamentEnv extends AuthEnv {
   TOURNAMENT_DB?: D1Like;
+  /** The data bucket r2.ciphermaniac.com serves; event views are published to it. */
+  REPORTS?: PublishBucket;
 }
 
 export interface Context<Params extends string = never> {

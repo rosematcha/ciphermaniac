@@ -10,6 +10,7 @@ import {
   publicDivisions,
   publicPending,
   publicTournament,
+  type PublishedView,
   type TournamentView
 } from '../../../shared/tournament/view.js';
 import { jsonError, jsonResponse } from '../api/responses.js';
@@ -60,10 +61,8 @@ export async function openForStaff(context: Context<'code'>): Promise<Access | R
   return access.role ? access : jsonError('Only this event’s staff can do that', 403);
 }
 
-/** What the event's public page reads, shaped for the viewer. */
-export function viewOf(access: Access): TournamentView {
-  const { row, user, role } = access;
-  const me = user?.popId ? (row.keys[user.popId] ?? null) : null;
+/** What anyone may read about the event: what is published to R2, and the base of every API view. */
+export function publicViewOf(row: TournamentRow): PublishedView {
   return {
     code: row.code,
     mode: row.mode,
@@ -72,8 +71,19 @@ export function viewOf(access: Access): TournamentView {
     tournament: publicTournament(row.tournament, row.keys),
     pending: publicPending(row.pending, row.keys),
     divisions: publicDivisions(row.tournament, row.keys, Date.now()),
-    decks: decksVisible(row.settings) || (role && decksEnabled(row.settings)) ? publicDecks(row.decks, row.keys) : {},
-    settings: row.settings,
+    decks: decksVisible(row.settings) ? publicDecks(row.decks, row.keys) : {},
+    settings: row.settings
+  };
+}
+
+/** What the event's public page reads from the API, shaped for the viewer: staff see decks before the public does. */
+export function viewOf(access: Access): TournamentView {
+  const { row, user, role } = access;
+  const me = user?.popId ? (row.keys[user.popId] ?? null) : null;
+  const decks = role && decksEnabled(row.settings) ? publicDecks(row.decks, row.keys) : undefined;
+  return {
+    ...publicViewOf(row),
+    ...(decks ? { decks } : {}),
     viewer: { role, me, signedIn: user !== null }
   };
 }

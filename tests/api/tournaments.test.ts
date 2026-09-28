@@ -566,6 +566,71 @@ test('an event too large for one D1 row is refused with a message', async () => 
   assert.deepEqual([refused.status, refused.json.error], [413, 'This event is too large to store']);
 });
 
+test('every change publishes the public view to R2, and deleting the event removes it', async () => {
+  const objects = new Map<string, { body: string; cacheControl: string }>();
+  env.REPORTS = {
+    put: async (key, value, options) => {
+      objects.set(key, { body: value, cacheControl: options.httpMetadata.cacheControl ?? '' });
+    },
+    delete: async key => {
+      objects.delete(key);
+    }
+  };
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const key = `tournaments/v1/${code}.json`;
+  assert.ok(objects.has(key), 'published on creation');
+  await addPlayers(code, owner, 2);
+  await hit(decks.onRequestPut as Handler, '/decks', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { playerId: '900', archetype: 'Gardevoir' }
+  });
+  const published = JSON.parse(objects.get(key)?.body ?? '{}');
+  assert.equal(published.tournament.players.length, 2, 'a player just added is published');
+  assert.ok(!objects.get(key)?.body.includes('900'), 'no Player IDs, not even for a player just added');
+  assert.ok(!('viewer' in published));
+  assert.deepEqual(published.decks, {}, 'decks stay hidden until the event allows them');
+  assert.equal(objects.get(key)?.cacheControl, 'public, max-age=5');
+  const staffView = await view(code, owner);
+  assert.deepEqual(Object.values(staffView.decks), ['Gardevoir'], 'staff see decks through the API');
+  await hit(settings.onRequestPut as Handler, '/settings', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { deckVisibility: 'always' }
+  });
+  assert.deepEqual(Object.values(JSON.parse(objects.get(key)?.body ?? '{}').decks), ['Gardevoir']);
+  await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
+  assert.ok(!objects.has(key), 'deleting the event unpublishes it');
+});
+
+test('a failed publish does not fail the change', async () => {
+  env.REPORTS = {
+    put: async () => {
+      throw new Error('R2 down');
+    },
+    delete: async () => {
+      throw new Error('R2 down');
+    }
+  };
+  const log = console.error;
+  console.error = () => undefined;
+  try {
+    const owner = await signIn('Organizer');
+    const code = await newSwiss(owner);
+    assert.equal(
+      (await send(code, owner, { type: 'addPlayer', player: { firstName: 'A', lastName: 'B' } })).status,
+      200
+    );
+    assert.equal(
+      (await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner })).status,
+      204
+    );
+  } finally {
+    console.error = log;
+  }
+});
+
 test('only the organizer deletes an event', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
@@ -583,4 +648,5 @@ test('only the organizer deletes an event', async () => {
 
 afterEach(() => {
   delete env.ENVIRONMENT;
+  delete env.REPORTS;
 });

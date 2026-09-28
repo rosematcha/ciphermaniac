@@ -14,7 +14,7 @@ import { decksEnabled, type TournamentView } from '../../../shared/tournament/vi
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
-import { fetchView } from '../../lib/tournament/api';
+import { fetchPublished, fetchView } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import {
   currentMatchOf,
@@ -42,9 +42,19 @@ const POLL_MS = 10_000;
 function createView(code: () => string) {
   const [view, { mutate }] = createResource(code, c => fetchView(c).then(v => v as TournamentView));
   onMount(() => {
+    // Players read the published file, which costs the functions nothing;
+    // staff, who see decks before the public does, ask the API, as does
+    // anyone the file cannot reach (not published yet, or a local server).
     async function poll() {
       const current = latestValue(view);
       if (document.hidden || !current) {
+        return;
+      }
+      const published = current.viewer.role ? null : await fetchPublished(code()).catch(() => null);
+      if (published) {
+        if (published.version > current.version) {
+          mutate({ ...published, viewer: current.viewer });
+        }
         return;
       }
       const next = await fetchView(code(), current.version).catch(() => null);
