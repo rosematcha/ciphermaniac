@@ -62,6 +62,7 @@ public/assets/style-trends.css
 .env
 *.bak
 *.tmp
+sample.tdf
 
 # Dev stuff - keep organized in dev/ directory
 *.md
@@ -112,3 +113,6 @@ trends.json
 # Playwright artifacts
 test-results/
 /.cache
+
+# Local secrets for `wrangler pages dev`
+.dev.vars
