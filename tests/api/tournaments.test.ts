@@ -297,7 +297,8 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
   );
 
   const publicView = await view(code);
-  const text = JSON.stringify(publicView);
+  // Without the timestamps, whose digits can happen to contain an ID.
+  const text = JSON.stringify({ ...publicView, updatedAt: 0, version: 0 });
   assert.ok(!text.includes('999') && !text.includes('900'), 'no Player IDs');
   assert.ok(!text.includes('02/27/1990'), 'no birth dates');
   assert.equal(publicView.tournament.players.length, 6);
@@ -588,7 +589,8 @@ test('every change publishes the public view to R2, and deleting the event remov
   });
   const published = JSON.parse(objects.get(key)?.body ?? '{}');
   assert.equal(published.tournament.players.length, 2, 'a player just added is published');
-  assert.ok(!objects.get(key)?.body.includes('900'), 'no Player IDs, not even for a player just added');
+  const stable = JSON.stringify({ ...published, updatedAt: 0, version: 0 });
+  assert.ok(!stable.includes('900'), 'no Player IDs, not even for a player just added');
   assert.ok(!('viewer' in published));
   assert.deepEqual(published.decks, {}, 'decks stay hidden until the event allows them');
   assert.equal(objects.get(key)?.cacheControl, 'public, max-age=5');
