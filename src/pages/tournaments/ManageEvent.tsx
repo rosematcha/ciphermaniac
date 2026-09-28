@@ -8,9 +8,9 @@ import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show }
 import { POD_LABELS, type PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
 import { Tabs } from '../../components/Tabs';
-import { joinStaff, type Manage } from '../../lib/tournament/api';
+import { joinStaff, type Manage, signOut } from '../../lib/tournament/api';
 import { divisionLookup, namesById } from '../../lib/tournament/present';
-import { session } from './session';
+import { refreshSession, session } from './session';
 import { latestValue } from '../../lib/resource';
 import { DecklistsPanel } from './DecklistsPanel';
 import { EventPanel } from './EventPanel';
@@ -109,6 +109,28 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
   );
 }
 
+/**
+ * Why the console did not open, and who asked: a refusal is almost always the
+ * wrong account, so switching is one press away.
+ */
+function Refused(props: { message: string | undefined; name: string | undefined }) {
+  async function switchAccount() {
+    await signOut().catch(() => undefined);
+    await refreshSession();
+  }
+  return (
+    <Show when={props.message}>
+      <ErrorLine message={props.message} />
+      <p class='tm-actions muted'>
+        Signed in as {props.name}.
+        <button type='button' class='btn btn-ghost' onClick={() => void switchAccount()}>
+          Switch account
+        </button>
+      </p>
+    </Show>
+  );
+}
+
 export function ManageEvent(props: { code: string }) {
   const [params] = useSearchParams<{ invite?: string }>();
   const state = createManage(() => props.code);
@@ -156,7 +178,7 @@ export function ManageEvent(props: { code: string }) {
       }
     >
       <ErrorLine message={joinError()} />
-      <Show when={state.data()} fallback={<ErrorLine message={state.loadError()?.message} />}>
+      <Show when={state.data()} fallback={<Refused message={state.loadError()?.message} name={user()?.name} />}>
         {manage => <Console state={state} manage={manage()} />}
       </Show>
     </Show>
