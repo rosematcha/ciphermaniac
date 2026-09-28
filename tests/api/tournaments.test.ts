@@ -535,7 +535,7 @@ test('decklists come in only while open, and decks show as the visibility settin
   await hit(settings.onRequestPut as Handler, '/settings', at(code), {
     method: 'PUT',
     cookie: owner,
-    body: { decklistsOpen: true }
+    body: { decklistsOpen: true, deckVisibility: 'after' }
   });
   const badProfile = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
     method: 'PUT',
@@ -657,6 +657,11 @@ test('every change publishes the public view to R2, and deleting the event remov
   const key = `tournaments/v1/${code}.json`;
   assert.ok(objects.has(key), 'published on creation');
   await addPlayers(code, owner, 2);
+  await hit(settings.onRequestPut as Handler, '/settings', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { deckVisibility: 'after' }
+  });
   await hit(decks.onRequestPut as Handler, '/decks', at(code), {
     method: 'PUT',
     cookie: owner,

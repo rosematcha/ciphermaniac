@@ -45,7 +45,7 @@ export interface TournamentSettings {
 
 export const DEFAULT_SETTINGS: TournamentSettings = {
   decklistsOpen: false,
-  deckVisibility: 'after',
+  deckVisibility: 'off',
   details: '',
   format: 'Standard',
   startsAt: '',
