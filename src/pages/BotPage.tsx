@@ -101,36 +101,36 @@ export function BotPage() {
           </a>
         </div>
         <DiscordPreview />
-        <div class='bot-more'>
-          <div class='bot-part'>
-            <h2>Setting it up</h2>
-            <p>
-              After you add the bot, it posts a Set up button. Anyone with Manage Server can use it to pick a channel
-              for updates and paste in a list of players, one per line. Nothing else is needed. When the next event
-              starts, updates begin at whatever round is current.
-            </p>
-          </div>
-          <div class='bot-part'>
-            <h2>Commands</h2>
-            <dl class='glossary'>
-              <For each={COMMANDS}>
-                {command => (
-                  <>
-                    <dt>{command.name}</dt>
-                    <dd>{command.does}</dd>
-                  </>
-                )}
-              </For>
-            </dl>
-            <p>Changing channels, follows or hushes requires Manage Server. A server can follow up to 100 players.</p>
-          </div>
-          <div class='bot-part'>
-            <h2>Permissions</h2>
-            <p>
-              The bot asks for View Channel, Send Messages and Embed Links, and uses them only in the channel you
-              choose. Player names in updates never ping anyone.
-            </p>
-          </div>
+      </section>
+      <section class='bot-more'>
+        <div class='bot-part'>
+          <h2>Setting it up</h2>
+          <p>
+            After you add the bot, it posts a Set up button. Anyone with Manage Server can use it to pick a channel for
+            updates and paste in a list of players, one per line. Nothing else is needed. When the next event starts,
+            updates begin at whatever round is current.
+          </p>
+        </div>
+        <div class='bot-part'>
+          <h2>Commands</h2>
+          <dl class='glossary'>
+            <For each={COMMANDS}>
+              {command => (
+                <>
+                  <dt>{command.name}</dt>
+                  <dd>{command.does}</dd>
+                </>
+              )}
+            </For>
+          </dl>
+          <p>Changing channels, follows or hushes requires Manage Server. A server can follow up to 100 players.</p>
+        </div>
+        <div class='bot-part'>
+          <h2>Permissions</h2>
+          <p>
+            The bot asks for View Channel, Send Messages and Embed Links, and uses them only in the channel you choose.
+            Player names in updates never ping anyone.
+          </p>
         </div>
       </section>
     </>

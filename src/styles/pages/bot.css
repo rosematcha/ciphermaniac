@@ -1,22 +1,17 @@
-/* Pairings Discord Bot (/bot): the pitch on the left, a Discord message on the right,
-   held in view while the details scroll past so the column is never left empty.
-   On a phone the message sits between the pitch and the details, not below both. */
+/* Pairings Discord Bot (/bot): the pitch beside a Discord message, then the
+   details in one centered reading column below both. On a phone the message
+   sits between the pitch and the details. */
 .bot-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
-  grid-template-areas:
-    'intro preview'
-    'more preview';
   gap: var(--space-6);
-  align-items: start;
-}
-.bot-intro {
-  grid-area: intro;
+  align-items: center;
 }
 .bot-more {
-  grid-area: more;
   display: grid;
   gap: var(--space-6);
+  max-width: 66ch;
+  margin: calc(var(--space-6) + var(--space-5)) auto 0;
 }
 /* A heading sits closer to its own text than to the part before it. */
 .bot-part {
@@ -35,11 +30,9 @@
 @media (max-width: 860px) {
   .bot-split {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'intro' 'preview' 'more';
   }
-  /* Ahead of the base rule below, so it needs the extra class to win. */
-  .bot-split .bot-discord {
-    position: static;
+  .bot-more {
+    margin-top: var(--space-6);
   }
 }
 
@@ -47,9 +40,6 @@
    palette in both modes and its embed side bar, so it reads as what lands in the
    channel. The site's edge frames it like any other figure. */
 .bot-discord {
-  grid-area: preview;
-  position: sticky;
-  top: calc(var(--topnav-h) + var(--space-5));
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
   gap: 0 14px;
