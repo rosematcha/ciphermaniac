@@ -53,7 +53,7 @@ function DiscordPreview() {
           <span class='bot-discord-time'>Today at 12:04</span>
         </div>
         <div class='bot-discord-head'>
-          <strong>Peoria · Round 6</strong> · <span class='bot-discord-link'>live</span>
+          <strong>Peoria · Round 6</strong>
         </div>
         <For each={PREVIEW}>
           {row => (
