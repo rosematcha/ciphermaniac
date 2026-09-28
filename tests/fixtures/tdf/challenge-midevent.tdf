@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tournament type="2" stage="4" version="1.86" gametype="TRADING_CARD_GAME" mode="LEAGUECHALLENGE">
+	<data>
+		<name>Fixture Challenge &amp; Friends</name>
+		<id>26-09-000456</id>
+		<city>Shelbyville</city>
+		<state></state>
+		<country>United States</country>
+		<roundtime>30</roundtime>
+		<finalsroundtime>75</finalsroundtime>
+		<organizer popid="7000002" name="Fixture Organizer"/>
+		<startdate>10/03/2026</startdate>
+		<lessswiss>false</lessswiss>
+		<autotablenumber>true</autotablenumber>
+		<overflowtablestart>12</overflowtablestart>
+	</data>
+	<timeelapsed>2400</timeelapsed>
+	<players>
+		<player userid="7200001">
+			<firstname>Mary</firstname>
+			<lastname>Jackson</lastname>
+			<birthdate>02/27/1995</birthdate>
+			<starter>true</starter>
+			<creationdate>10/03/2026 12:00:01</creationdate>
+			<lastmodifieddate>10/03/2026 12:00:01</lastmodifieddate>
+		</player>
+		<player userid="7200002">
+			<firstname>Dorothy</firstname>
+			<lastname>Vaughan</lastname>
+			<birthdate>02/27/2016</birthdate>
+			<starter>true</starter>
+			<creationdate>10/03/2026 12:00:02</creationdate>
+			<lastmodifieddate>10/03/2026 12:00:02</lastmodifieddate>
+		</player>
+		<player userid="7200003">
+			<firstname>Alonzo</firstname>
+			<lastname>Church</lastname>
+			<birthdate>02/27/1990</birthdate>
+			<starter>true</starter>
+			<creationdate>10/03/2026 12:00:03</creationdate>
+			<lastmodifieddate>10/03/2026 12:40:00</lastmodifieddate>
+			<dropped>
+				<status>1</status>
+				<round>1</round>
+			</dropped>
+		</player>
+		<player userid="7200004">
+			<firstname>John</firstname>
+			<lastname>von Neumann</lastname>
+			<birthdate>02/27/1988</birthdate>
+			<starter>true</starter>
+			<creationdate>10/03/2026 12:00:04</creationdate>
+			<lastmodifieddate>10/03/2026 12:00:04</lastmodifieddate>
+		</player>
+		<player userid="7200005">
+			<firstname>Hedy</firstname>
+			<lastname>Lamarr</lastname>
+			<birthdate>02/27/1992</birthdate>
+			<starter>true</starter>
+			<creationdate>10/03/2026 12:00:05</creationdate>
+			<lastmodifieddate>10/03/2026 12:00:05</lastmodifieddate>
+		</player>
+		<player userid="7200006">
+			<firstname>Radia</firstname>
+			<lastname>Perlman</lastname>
+			<birthdate>02/27/1993</birthdate>
+			<starter>true</starter>
+			<creationdate>10/03/2026 12:00:06</creationdate>
+			<lastmodifieddate>10/03/2026 12:00:06</lastmodifieddate>
+		</player>
+		<player userid="7200008">
+			<firstname>Frances</firstname>
+			<lastname>Allen</lastname>
+			<birthdate>02/27/1991</birthdate>
+			<starter>true</starter>
+			<creationdate>10/03/2026 12:00:08</creationdate>
+			<lastmodifieddate>10/03/2026 12:00:08</lastmodifieddate>
+		</player>
+		<player userid="7200007">
+			<firstname>Late</firstname>
+			<lastname>Arrival</lastname>
+			<birthdate>02/27/1994</birthdate>
+			<starter>false</starter>
+			<creationdate>10/03/2026 12:41:00</creationdate>
+			<lastmodifieddate>10/03/2026 12:41:00</lastmodifieddate>
+		</player>
+	</players>
+	<pods>
+		<pod category="10" stage="0">
+			<poddata>
+				<startingtable>1</startingtable>
+				<playoff3rd4th>false</playoff3rd4th>
+				<subgroupcount>1</subgroupcount>
+				<additionalrounds>0</additionalrounds>
+				<blockedranges>
+				</blockedranges>
+			</poddata>
+			<subgroups>
+				<subgroup number="1">
+					<players>
+						<player userid="7200001" />
+						<player userid="7200002" />
+						<player userid="7200003" />
+						<player userid="7200004" />
+						<player userid="7200005" />
+						<player userid="7200006" />
+						<player userid="7200008" />
+						<player userid="7200007" />
+					</players>
+				</subgroup>
+			</subgroups>
+			<rounds>
+				<round number="1" type="2" stage="6" >
+					<timeleft>612</timeleft>
+					<pairtime>10/03/2026 12:05:00</pairtime>
+					<starttime>10/03/2026 12:06:00</starttime>
+					<matches>
+						<match outcome="1">
+							<player1 userid="7200001"/>
+							<player2 userid="7200002"/>
+							<timestamp>10/03/2026 12:30:00</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="3">
+							<player1 userid="7200003"/>
+							<player2 userid="7200004"/>
+							<timestamp>10/03/2026 12:31:00</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="10">
+							<player1 userid="7200005"/>
+							<player2 userid="7200006"/>
+							<timestamp>10/03/2026 12:32:00</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+						<match outcome="5">
+							<player userid="7200008"/>
+							<timestamp>10/03/2026 12:05:00</timestamp>
+							<tablenumber>0</tablenumber>
+						</match>
+						<match outcome="8">
+							<player userid="7200007"/>
+							<timestamp>10/03/2026 12:41:00</timestamp>
+							<tablenumber>0</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="2" type="2" stage="2" >
+					<timeleft>1800</timeleft>
+					<pairtime>10/03/2026 12:45:00</pairtime>
+					<starttime></starttime>
+					<matches>
+						<match outcome="5">
+							<player userid="7200002"/>
+							<timestamp>10/03/2026 12:45:00</timestamp>
+							<tablenumber>0</tablenumber>
+						</match>
+						<match outcome="0">
+							<player1 userid="7200001"/>
+							<player2 userid="7200004"/>
+							<timestamp>10/03/2026 12:45:00</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="7200005"/>
+							<player2 userid="7200007"/>
+							<timestamp>10/03/2026 12:50:00</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="0">
+							<player1 userid="7200006"/>
+							<player2 userid="7200008"/>
+							<timestamp>10/03/2026 12:45:00</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+					</matches>
+				</round>
+			</rounds>
+		</pod>
+	</pods>
+	<finalsoptions>
+	</finalsoptions>
+</tournament>

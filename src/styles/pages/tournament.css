@@ -1,0 +1,930 @@
+/* Tournament pages: /host, /host/:code, /t/:code, /account.
+
+   Built from the house parts (hero, .data tables, .btn, .search, .chip,
+   tabs) and only adds what those lack: form rows, the result marks in a
+   pairings row, the clock, the player sheet and the projector view. Fields
+   sit on the page background, so they take --surface, as /feedback's do. */
+
+.tm-narrow {
+  max-width: 640px;
+}
+
+/* ---------- Page rhythm ---------- */
+.tm-page .hero {
+  margin-bottom: var(--space-4);
+}
+/* A link in the meta line is set apart by more than its colour (WCAG 1.4.1). */
+.tm-page .hero-meta a {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+}
+.tm-page .hero-meta a:hover {
+  text-decoration-color: currentColor;
+}
+.tm-page .tabs {
+  margin-bottom: var(--space-3);
+}
+.tm-section-block {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+.tm-section-block:first-child {
+  margin-top: 0;
+}
+.tm-subhead {
+  font-size: var(--text-body);
+  font-weight: 600;
+  margin: 0;
+}
+.tm-standings > .tm-subhead {
+  margin: var(--space-4) 0 var(--space-2);
+}
+.tm-form h3 {
+  margin: 0;
+}
+
+.tm-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-5);
+}
+
+/* A grid child keeps its content's width by default, and a table's content is
+   as wide as it likes: without the minmax a phone pans the whole page. */
+.tm-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+.tm-empty {
+  padding: var(--space-3) 0;
+}
+
+/* ---------- Forms ---------- */
+.tm-form {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+.tm-grid-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+.tm-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.tm-label {
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+.tm-input,
+.tm-select {
+  width: 100%;
+  min-height: var(--control-h);
+  font: inherit;
+  font-size: var(--text-base);
+  color: var(--fg);
+  background: var(--surface);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  transition:
+    border-color var(--ms-fast) var(--ease-base),
+    box-shadow var(--ms-fast) var(--ease-base);
+}
+.tm-input:hover,
+.tm-select:hover {
+  border-color: var(--fg);
+}
+.tm-select {
+  width: auto;
+  padding-block: 0;
+}
+.tm-select-full {
+  width: 100%;
+}
+.tm-input:focus-visible,
+.tm-select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+body[data-mode='dark'] :is(.tm-input, .tm-select) {
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  body:not([data-mode]) :is(.tm-input, .tm-select) {
+    color-scheme: dark;
+  }
+}
+.tm-input[aria-invalid='true'] {
+  border-color: var(--negative);
+}
+.tm-textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+.tm-decklist-input {
+  min-height: 260px;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (max-width: 640px) {
+  /* Under 16px, iOS zooms the page when a field takes focus. */
+  .tm-input,
+  .tm-select {
+    font-size: 16px;
+  }
+}
+.tm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+.tm-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.tm-actions,
+.tm-toolbar,
+.tm-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tm-toolbar .search {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.tm-count,
+.tm-hint {
+  font-size: var(--text-base);
+}
+.tm-hint {
+  margin-left: auto;
+}
+.tm-link {
+  flex: 1 1 280px;
+  width: auto;
+  font-size: var(--text-sm);
+}
+/* The negative hue walked toward the ink, so 12px error text clears 4.5:1 on
+   the surface in both modes; the raw token sits at 4.4. */
+.tm-error,
+.tm-problem,
+.tm-problems {
+  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
+}
+.tm-error {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.tm-note {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  padding: 10px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.tm-seat-note {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+.tm-small {
+  min-height: 30px;
+  padding: 4px 9px;
+  font-size: var(--text-sm);
+}
+.tm-danger {
+  color: var(--negative);
+  border-color: var(--negative);
+}
+.tm-danger-text {
+  color: var(--negative);
+}
+.tm-danger-zone {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--rule);
+}
+/* A ghost button's padding would set it off the column every heading starts on. */
+.tm-danger-zone > .btn-ghost {
+  justify-self: start;
+  margin-left: -14px;
+}
+.tm-meta-part {
+  white-space: nowrap;
+}
+.tm-nowrap {
+  white-space: nowrap;
+}
+.tm-signin {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.tm-account-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-5);
+}
+.tm-avatar {
+  border-radius: 50%;
+}
+.tm-details {
+  margin-top: var(--space-2);
+  max-width: 70ch;
+  font-size: var(--text-body);
+  white-space: pre-line;
+}
+
+/* A disclosure that reads as a quiet button until opened. */
+.tm-disclosure > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.tm-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.tm-disclosure > summary::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--ms-fast) var(--ease-base);
+}
+.tm-disclosure[open] > summary::after {
+  transform: translateY(1px) rotate(-135deg);
+}
+.tm-disclosure > summary:hover {
+  background: var(--surface-2);
+}
+.tm-disclosure[open] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---------- Inline confirmation ---------- */
+.tm-confirm {
+  gap: var(--space-2);
+}
+.tm-confirm-label {
+  font-size: var(--text-base);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---------- Pairings and standings rows ---------- */
+.tm-table-col {
+  width: 64px;
+}
+.tm-wide-col {
+  width: 90px;
+}
+.tm-extra-col {
+  width: 1%;
+  white-space: nowrap;
+}
+.tm-seat-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+/* A name is a button (it opens the player, or for staff reports the win),
+   but it reads as text in the row until it is hovered. */
+.tm-seat-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 0 6px;
+  margin-left: -6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  text-align: left;
+  color: var(--fg);
+}
+.tm-seat-link:hover {
+  background: var(--surface-2);
+}
+.tm-seat-link.is-winner {
+  font-weight: 600;
+}
+.tm-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-record {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+}
+.tm-flag {
+  font-size: var(--text-xs);
+  margin-left: 6px;
+}
+/* The result, one letter wide, so every name in a column starts in line. */
+.tm-mark {
+  flex: none;
+  width: 14px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+.tm-mark.is-win {
+  color: var(--positive);
+}
+.tm-mark.is-unconfirmed {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.data tr.is-me td {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.data tr.is-confirming td {
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+.data td.is-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.data tr.is-dropped .tm-name {
+  color: var(--muted);
+}
+.tm-row-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+}
+.tm-deck {
+  display: inline-flex;
+  flex: none;
+}
+/* The sprite slot is held open when anyone in the table has a deck, so names
+   line up down the column (live.css does the same). */
+.tm-matches.has-decks .tm-seat-link .tm-deck,
+.tm-matches.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
+  min-width: 38px;
+}
+.tm-matches.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
+  content: '';
+}
+.tm-deck-cell {
+  min-width: 240px;
+  padding-block: 4px;
+}
+/* The picker and a slot for Clear, so every row's picker is the same width. */
+.tm-deck-pick {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: 4px;
+}
+.tm-fixed-cell {
+  width: 84px;
+}
+.tm-table-input {
+  width: 64px;
+  min-height: 32px;
+  padding: 4px 6px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.tm-table-input::placeholder {
+  color: var(--muted);
+}
+.tm-filter-bar .chip {
+  min-height: var(--control-h);
+}
+
+/* Desktop: fixed columns, so a row's confirm prompt never moves the names under
+   the pointer, and stacked division tables share one set of column edges. */
+@media (min-width: 641px) {
+  .tm-matches table.data,
+  .tm-standings table.data {
+    table-layout: fixed;
+  }
+  .tm-matches.has-extra th.tm-extra-col {
+    width: 270px;
+  }
+  .tm-standings th:nth-child(3),
+  .tm-standings th:nth-child(4) {
+    width: 90px;
+  }
+}
+
+.tm-standings + .tm-standings {
+  margin-top: var(--space-3);
+}
+.tm-problem {
+  font-size: var(--text-sm);
+}
+.tm-problems {
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--text-base);
+}
+.tm-expansion td {
+  height: auto;
+  padding-block: var(--space-2);
+}
+.tm-decklist {
+  margin: 0;
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+}
+.tm-deck-link {
+  color: var(--fg);
+  vertical-align: middle;
+}
+.tm-deck-link:hover {
+  color: var(--accent-ink);
+}
+.tm-share-col {
+  width: 140px;
+}
+.tm-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.tm-share-value {
+  min-width: 4ch;
+  text-align: right;
+}
+.tm-bar {
+  width: 80px;
+  height: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.tm-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 640px) {
+  .tm-wide-col {
+    display: none;
+  }
+  .tm-hint {
+    display: none;
+  }
+  .tm-seat-note {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* A pairing restacks to two lines under its table number, the result
+     controls on a third, as /live does: the opponent never scrolls away. */
+  .tm-matches {
+    overflow-x: hidden;
+  }
+  .tm-matches .data,
+  .tm-matches .data tbody,
+  .tm-matches .data tr,
+  .tm-matches .data td {
+    display: block;
+    width: auto;
+  }
+  .tm-matches .data thead {
+    display: none;
+  }
+  .tm-matches .data tr {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-areas:
+      'table player'
+      'table opponent'
+      'extra extra';
+    align-items: center;
+    column-gap: 6px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .tm-matches .data td {
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .tm-matches .data td.tm-table-col {
+    grid-area: table;
+    text-align: left;
+  }
+  .tm-matches .data td.tm-seat:nth-of-type(2) {
+    grid-area: player;
+  }
+  .tm-matches .data td.tm-seat:nth-of-type(3) {
+    grid-area: opponent;
+  }
+  .tm-matches .data td.tm-extra-col {
+    grid-area: extra;
+    padding-left: 40px;
+  }
+  .tm-matches .data td.tm-extra-col:empty,
+  .tm-matches .data td.tm-extra-col:not(:has(button)) {
+    display: none;
+  }
+  .tm-matches.has-decks .tm-seat-link .tm-deck,
+  .tm-matches.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
+    min-width: 26px;
+  }
+  .tm-seat-link {
+    flex: 1 1 auto;
+  }
+  .tm-seat-inner {
+    display: flex;
+  }
+  .tm-record {
+    margin-left: auto;
+  }
+}
+/* Under a finger, every control is a 44px target. */
+@media (max-width: 640px), (pointer: coarse) {
+  .tm-seat-link,
+  .tm-small,
+  .tm-check,
+  .tm-disclosure > summary,
+  .tm-filter-bar .chip {
+    min-height: 44px;
+  }
+  .tm-table-input {
+    min-height: 44px;
+  }
+}
+
+/* ---------- Round header and clock ---------- */
+.tm-actions-bar:empty {
+  display: none;
+}
+.tm-round-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.tm-round-head .tm-clock-group {
+  margin-left: auto;
+}
+.tm-clock {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tm-clock.is-paused {
+  color: var(--muted);
+}
+.tm-clock.is-over {
+  color: var(--negative);
+}
+/* The clock is one control, drawn as one: the time, then its three actions,
+   in the round stepper's bordered strip (live.css .round-step). */
+.tm-clock-group {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+.tm-clock-face {
+  display: inline-flex;
+  align-items: center;
+  min-width: 76px;
+  padding: 0 12px;
+}
+.tm-clock-group button {
+  min-height: calc(var(--control-h) - 2px);
+  padding: 0 12px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--fg);
+  border-left: 1px solid var(--rule);
+  transition: background var(--ms-fast) var(--ease-base);
+}
+.tm-clock-group button:hover {
+  background: var(--surface-2);
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .tm-clock-group button {
+    min-height: 42px;
+  }
+}
+
+/* ---------- Champion ---------- */
+.tm-champion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.tm-champion-label {
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+.tm-champion-name {
+  font-size: var(--text-xl);
+  letter-spacing: -0.015em;
+}
+.tm-champion .btn {
+  margin-left: auto;
+}
+
+/* ---------- TOM link ---------- */
+.tm-sync {
+  display: grid;
+  gap: var(--space-2);
+  padding: 10px 16px;
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.tm-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--positive);
+}
+
+/* ---------- Your match ---------- */
+.tm-you {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-3);
+  row-gap: 4px;
+  padding: 12px 16px;
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: var(--text-body);
+}
+.tm-you-round {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: var(--text-base);
+}
+.tm-you .tm-clock {
+  margin-left: auto;
+}
+
+/* ---------- Player sheet ---------- */
+.tm-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
+}
+.tm-sheet {
+  position: fixed;
+  top: var(--topnav-h);
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  width: min(400px, 100vw);
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+}
+.tm-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.tm-sheet-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Four figures do not fit across a 400px sheet; two by two they do. */
+.tm-sheet .stat-band {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0;
+}
+.tm-sheet .stat-band-item:nth-child(odd) {
+  padding-left: 0;
+  border-left: 0;
+}
+.tm-sheet .stat-band-item:nth-child(n + 3) {
+  border-top: 1px solid var(--rule);
+}
+.tm-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+.tm-history li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--row-height);
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-base);
+}
+@media (max-width: 640px) {
+  /* Pinned to both edges: 100vw counts the scrollbar gutter a phone never draws. */
+  .tm-sheet {
+    top: auto;
+    left: 0;
+    width: auto;
+    height: 75vh;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+}
+
+/* ---------- Big screen ----------
+   Read from across a room: sizes scale with the screen between two steps of
+   the type scale, and the clock is the largest thing on it. */
+body.tm-screen-mode .topnav,
+body.tm-screen-mode .site-footer,
+body.tm-screen-mode .live-banner {
+  display: none;
+}
+body.tm-screen-mode main.page {
+  max-width: none;
+  padding: 0;
+}
+.tm-screen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(200px, 18vw, 300px);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'head head'
+    'main side';
+  column-gap: var(--space-6);
+  row-gap: var(--space-4);
+  height: 100dvh;
+  padding: var(--space-5) var(--space-6);
+}
+.tm-screen-head {
+  grid-area: head;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.tm-screen-title {
+  font-size: clamp(var(--text-xl), 2.4vw, calc(var(--text-2xl) * 1.4));
+}
+.tm-screen-round {
+  margin-top: 4px;
+  font-size: clamp(var(--text-lg), 1.6vw, var(--text-2xl));
+  color: var(--muted);
+}
+.tm-screen-clock {
+  font-size: clamp(calc(var(--text-2xl) * 1.6), 6.5vw, calc(var(--text-2xl) * 4));
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+}
+.tm-screen-main {
+  grid-area: main;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.tm-screen-main::-webkit-scrollbar {
+  display: none;
+}
+/* Alphabetical, one row per player, flowing into columns on a wide screen. */
+.tm-screen-list {
+  list-style: none;
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  columns: 34rem auto;
+  column-gap: var(--space-6);
+}
+.tm-screen-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 2.6em minmax(0, 0.8fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: 0.35em 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: clamp(var(--text-lg), 1.7vw, var(--text-2xl));
+  break-inside: avoid;
+}
+.tm-screen-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-screen-record {
+  font-size: 0.7em;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tm-screen-table {
+  font-weight: 700;
+  text-align: right;
+  color: var(--accent-ink);
+}
+.tm-screen-opponent {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-screen-side {
+  grid-area: side;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: var(--space-2);
+}
+.tm-screen-code {
+  font-size: clamp(var(--text-xl), 2.4vw, calc(var(--text-2xl) * 1.4));
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.tm-screen-url {
+  font-size: var(--text-base);
+  color: var(--muted);
+  text-align: center;
+  word-break: break-all;
+}
+.tm-qr {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+/* For whoever is at the laptop: shown while the pointer moves, never to the room. */
+.tm-screen-toggle {
+  margin-top: var(--space-3);
+  opacity: 0;
+  transition: opacity var(--ms-base) var(--ease-base);
+}
+.tm-screen-toggle.is-shown,
+.tm-screen-toggle:focus-visible {
+  opacity: 1;
+}
+.tm-screen-toggle[aria-pressed='false'] {
+  color: var(--muted);
+}
+@media (max-width: 900px) {
+  .tm-screen {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'head'
+      'main'
+      'side';
+    height: auto;
+    padding: var(--space-4);
+  }
+  .tm-screen-side {
+    max-width: 240px;
+    margin: 0 auto;
+  }
+}

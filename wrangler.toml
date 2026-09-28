@@ -22,6 +22,12 @@ binding = "LIVE_DB"
 database_name = "ciphermaniac-live"
 database_id = "ad51e340-8a8f-418e-98aa-f074c0bf28e4"
 
+# D1 binding for accounts and organizer-run tournaments (schema: config/d1/tournaments.sql)
+[[d1_databases]]
+binding = "TOURNAMENT_DB"
+database_name = "ciphermaniac-tournaments"
+database_id = "a384bf93-4d0c-4560-b311-615cfb9bf334"
+
 # Production environment configuration
 [env.production]
 
@@ -41,6 +47,12 @@ binding = "LIVE_DB"
 database_name = "ciphermaniac-live"
 database_id = "ad51e340-8a8f-418e-98aa-f074c0bf28e4"
 
+# D1 binding for tournaments in production
+[[env.production.d1_databases]]
+binding = "TOURNAMENT_DB"
+database_name = "ciphermaniac-tournaments"
+database_id = "a384bf93-4d0c-4560-b311-615cfb9bf334"
+
 # Environment variables (set these in Cloudflare dashboard)
 [env.production.vars]
 ENVIRONMENT = "production"
@@ -56,6 +68,9 @@ ENVIRONMENT = "production"
 #
 # Required secrets (set via Cloudflare dashboard or wrangler secret):
 #   - POKEMON_TCG_API_KEY: API key for Pokemon TCG data
+#   - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET: Google sign-in (OAuth client, web type)
+#   - DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET: Discord sign-in (OAuth2 app)
+#   Redirect URIs: https://ciphermaniac.com/api/auth/callback/{google,discord}
 #   - (Add other secrets your app requires)
 #
 # No preview environment is configured. Add one only after its KV namespace

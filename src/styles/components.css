@@ -4645,6 +4645,11 @@ tr.row-expansion > td {
   display: flex;
   pointer-events: none;
 }
+/* A two-sprite archetype is wider than the one thumbnail the picker's padding
+   was set for, and ran over the name's first letter. */
+.tl-picker:has(.tl-combo-lead .arche-icon + .arche-icon) .search {
+  padding-left: 50px;
+}
 .tl-combo-lead img {
   width: 17px;
   height: 24px;
