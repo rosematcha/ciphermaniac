@@ -301,27 +301,29 @@ function Hero(props: { view: TournamentView }) {
   const settings = () => props.view.settings;
   const when = () => eventDate(settings().startsAt, info().startDate);
   const place = () => [info().city, info().state].filter(Boolean).join(', ');
+  const parts = () =>
+    [
+      when(),
+      settings().format,
+      place(),
+      `${props.view.tournament.players.length} players`,
+      settings().finished ? 'Finished' : '',
+      `Updated ${updatedLabel(props.view.updatedAt)}`
+    ].filter(Boolean);
   return (
     <section class='hero'>
       <h1>{info().name}</h1>
       <p class='hero-meta'>
-        <For
-          each={[
-            when(),
-            settings().format,
-            place(),
-            `${props.view.tournament.players.length} players`,
-            settings().finished ? 'Finished' : '',
-            `Updated ${updatedLabel(props.view.updatedAt)}`
-          ].filter(Boolean)}
-        >
+        <For each={parts()}>
           {(part, i) => (
             <>
-              <Show when={i() > 0}>
-                {' '}
-                <span class='dot'>·</span>{' '}
-              </Show>
-              <span class='tm-meta-part'>{part}</span>
+              {/* The dot trails the part before it, so a wrapped line never starts on one. */}
+              <span class='tm-meta-part'>
+                {part}
+                <Show when={i() < parts().length - 1}>
+                  <span class='dot'>·</span>
+                </Show>
+              </span>{' '}
             </>
           )}
         </For>

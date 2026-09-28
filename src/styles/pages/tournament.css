@@ -25,6 +25,9 @@
 .tm-page .tabs {
   margin-bottom: var(--space-3);
 }
+.tm-page > .tm-toolbar {
+  margin-bottom: var(--space-3);
+}
 .tm-section-block {
   display: grid;
   gap: var(--space-3);
@@ -389,11 +392,11 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 }
 /* The sprite slot is held open when anyone in the table has a deck, so names
    line up down the column (live.css does the same). */
-.tm-matches.has-decks .tm-seat-link .tm-deck,
-.tm-matches.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
+:is(.tm-matches, .tm-standings).has-decks .tm-seat-link .tm-deck,
+:is(.tm-matches, .tm-standings).has-decks .tm-seat-link:not(:has(.tm-deck))::before {
   min-width: 38px;
 }
-.tm-matches.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
+:is(.tm-matches, .tm-standings).has-decks .tm-seat-link:not(:has(.tm-deck))::before {
   content: '';
 }
 .tm-deck-cell {
@@ -565,6 +568,19 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
   .tm-record {
     margin-left: auto;
+  }
+  /* Standings keep their columns on a phone: a narrower rank, a narrower
+     sprite slot and tighter cells leave the points in view. */
+  .tm-standings .data th,
+  .tm-standings .data td {
+    padding: 0 8px;
+  }
+  .tm-standings .tm-table-col {
+    width: 36px;
+  }
+  .tm-standings.has-decks .tm-seat-link .tm-deck,
+  .tm-standings.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
+    min-width: 34px;
   }
 }
 /* Under a finger, every control is a 44px target. */

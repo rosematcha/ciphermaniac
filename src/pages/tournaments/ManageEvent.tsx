@@ -98,6 +98,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
               names={names()}
               decks={shownDecks(props.manage)}
               divisionOf={divisionOf()}
+              tiebreakers
             />
           )}
         </For>
