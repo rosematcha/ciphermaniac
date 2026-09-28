@@ -1,0 +1,118 @@
+/**
+ * A round's tables, for players and staff alike. Each row is the table, the
+ * two players with the record they brought into the round, and the result
+ * once there is one. Staff get the result controls: a player's name is the
+ * button that reports them as the winner, which is one press at the table.
+ */
+
+import { For, type JSX, Show } from 'solid-js';
+import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
+import type { PendingResult } from '../../../shared/tournament/view';
+import { recordsBefore, seatMark, shownOutcome } from '../../lib/tournament/present';
+import { DeckIcons } from './DeckIcons';
+
+export interface MatchTableProps {
+  pod: Pod;
+  round: Round;
+  matches: readonly Match[];
+  names: Map<string, string>;
+  decks: Record<string, string>;
+  pending: readonly PendingResult[];
+  /** The viewer's own player ID, whose row is marked. */
+  me?: string | null;
+  onPlayer?: (id: string) => void;
+  /** Staff only: report `outcome` for the match. */
+  onReport?: (match: Match, outcome: Outcome) => void;
+  /** Staff only: the extra cell at the end of each row. */
+  extra?: (match: Match) => JSX.Element;
+  /** Players picked for a swap, drawn as selected. */
+  selected?: ReadonlySet<string>;
+}
+
+const winnerOutcome = (seat: 1 | 2): Outcome => (seat === 1 ? 'p1' : 'p2');
+
+function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records: Map<string, string> }) {
+  const id = () => (props.seat === 1 ? props.match.p1 : props.match.p2);
+  const shown = () => shownOutcome(props.match, props.pod, props.round, props.pending);
+  const mark = () => seatMark(shown().outcome, props.seat);
+  const name = (playerId: string) => (
+    <>
+      <DeckIcons label={props.decks[playerId]} />
+      <span class='tm-name'>{props.names.get(playerId) ?? playerId}</span>
+      <span class='muted-cell tm-record'>{props.records.get(playerId) ?? ''}</span>
+    </>
+  );
+  const pressable = () => props.onReport && props.match.p2 !== null;
+  return (
+    <td class='tm-seat' classList={{ 'is-me': id() === props.me, 'is-selected': props.selected?.has(id() ?? '') }}>
+      <Show
+        when={id()}
+        fallback={<span class='muted-cell'>{props.match.outcome === 'bye' ? 'Bye' : 'Missed round'}</span>}
+      >
+        {playerId => (
+          <span class='tm-seat-inner'>
+            <span class='tm-mark' classList={{ 'is-win': mark() === 'W', 'is-unconfirmed': shown().unconfirmed }}>
+              {mark()}
+            </span>
+            <Show
+              when={pressable()}
+              fallback={
+                <button type='button' class='tm-seat-link' onClick={() => props.onPlayer?.(playerId())}>
+                  {name(playerId())}
+                </button>
+              }
+            >
+              <button
+                type='button'
+                class='tm-seat-link'
+                aria-pressed={mark() === 'W'}
+                title='Report as the winner'
+                onClick={() => props.onReport?.(props.match, winnerOutcome(props.seat))}
+              >
+                {name(playerId())}
+              </button>
+            </Show>
+          </span>
+        )}
+      </Show>
+    </td>
+  );
+}
+
+export function MatchTable(props: MatchTableProps) {
+  const records = () => recordsBefore(props.pod, props.round);
+  return (
+    <div class='table-wrap tm-matches'>
+      <table class='data'>
+        <thead>
+          <tr>
+            <th class='num tm-table-col'>Table</th>
+            <th>Player</th>
+            <th>Opponent</th>
+            <Show when={props.extra}>
+              <th class='tm-extra-col'>
+                <span class='sr-only'>Result</span>
+              </th>
+            </Show>
+          </tr>
+        </thead>
+        <tbody>
+          <For each={props.matches}>
+            {match => (
+              <tr
+                classList={{
+                  'is-open': shownOutcome(match, props.pod, props.round, props.pending).outcome === 'pending'
+                }}
+              >
+                <td class='num muted-cell tm-table-col'>{match.table || '—'}</td>
+                <SeatCell {...props} match={match} seat={1} records={records()} />
+                <SeatCell {...props} match={match} seat={2} records={records()} />
+                <Show when={props.extra}>{extra => <td class='tm-extra-col'>{extra()(match)}</td>}</Show>
+              </tr>
+            )}
+          </For>
+        </tbody>
+      </table>
+    </div>
+  );
+}

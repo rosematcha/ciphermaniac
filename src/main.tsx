@@ -79,6 +79,7 @@ const FeedbackPage = page(() => import('./pages/FeedbackPage'), 'FeedbackPage');
 // stylesheets, so it can't drift from them. Kept out of the nav and the
 // sitemap (static/robots.txt) — it's for building, not reading.
 const StyleGuidePage = page(() => import('./pages/StyleGuidePage'), 'StyleGuidePage');
+const TournamentsPage = page(() => import('./pages/TournamentsPage'), 'TournamentsPage');
 
 // Moved routes keep their query: /events?near=… and /tournaments?scope=… links
 // are out in the wild.
@@ -147,6 +148,8 @@ render(
       <Route path='/toys' component={() => <Navigate href='/tools' />} />
       <Route path='/toys/social-graphics' component={() => <Navigate href='/tools/social-graphics' />} />
       <Route path='/toys/in-loving-memory' component={() => <Navigate href='/tools/in-loving-memory' />} />
+      {/* One route for every tournament page: see TournamentsPage for why. */}
+      <Route path={['/host', '/host/:code', '/t/:code', '/account']} component={TournamentsPage} />
       <Route path='/about' component={AboutPage} />
       <Route path='/feedback' component={FeedbackPage} />
       <Route path='/style' component={StyleGuidePage} />

@@ -6,6 +6,11 @@ import '../styles/pages/tools.css';
 // what anyone comes here to do.
 const secondary: { href: string; name: string; desc: string }[] = [
   {
+    href: '/host',
+    name: 'Run an Event',
+    desc: 'Pair a Swiss event here, or follow one run in TOM'
+  },
+  {
     href: '/tools/meta-binder',
     name: 'Meta Binder',
     desc: 'Work out which cards you need to own to build the decks people are playing'

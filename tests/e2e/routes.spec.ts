@@ -323,7 +323,8 @@ test('the tools index features the tier list, label maker and pack EV as tiles',
   await expect(featured.nth(1)).toHaveAttribute('href', '/tools/deck-box-labels');
   await expect(featured.nth(2)).toHaveAttribute('href', '/tools/pack-ev');
   // Everything else is a plain row, not a tile.
-  await expect(page.locator('.tools-more-item')).toHaveCount(5);
+  await expect(page.locator('.tools-more-item')).toHaveCount(6);
+  await expect(page.locator('.tools-more-item', { hasText: 'Run an Event' })).toHaveAttribute('href', '/host');
   await expect(page.locator('.tools-more-item', { hasText: 'Set Impact' })).toHaveAttribute(
     'href',
     '/tools/set-impact'
