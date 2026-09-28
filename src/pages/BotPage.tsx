@@ -74,52 +74,60 @@ export function BotPage() {
   });
 
   return (
-    <section class='bot-split'>
-      <div class='bot-intro'>
-        <div class='hero'>
-          <h1>Pairings Discord Bot</h1>
+    <>
+      <section class='hero'>
+        <h1>Pairings Discord Bot</h1>
+      </section>
+      <section class='bot-split'>
+        <div class='bot-intro'>
+          <div class='prose'>
+            <p>
+              Follow players and the bot posts their pairings to your Discord server each round, usually within seconds
+              of them going up on RK9. It shows the table number, the opponent, and the opponent's deck if Ciphermaniac
+              has a report for it.
+            </p>
+            <p>
+              When the round ends, the bot edits that message to show each player's result and updated record. It also
+              marks who made Day 2 and who made top cut.
+            </p>
+          </div>
+          <a class='btn btn-primary bot-add' href={INVITE_URL} target='_blank' rel='noopener'>
+            Add to your server
+          </a>
         </div>
-        <div class='prose'>
-          <p>
-            Follow players and the bot posts their pairings to your Discord server each round, usually within seconds of
-            them going up on RK9. It shows the table number, the opponent, and the opponent's deck if Ciphermaniac has a
-            report for it.
-          </p>
-          <p>
-            When the round ends, the bot edits that message to show each player's result and updated record. It also
-            marks who made Day 2 and who made top cut.
-          </p>
+        <DiscordPreview />
+        <div class='bot-more'>
+          <div class='bot-part'>
+            <h2>Setting it up</h2>
+            <p>
+              After you add the bot, it posts a Set up button. Anyone with Manage Server can use it to pick a channel
+              for updates and paste in a list of players, one per line. Nothing else is needed. When the next event
+              starts, updates begin at whatever round is current.
+            </p>
+          </div>
+          <div class='bot-part'>
+            <h2>Commands</h2>
+            <dl class='glossary'>
+              <For each={COMMANDS}>
+                {command => (
+                  <>
+                    <dt>{command.name}</dt>
+                    <dd>{command.does}</dd>
+                  </>
+                )}
+              </For>
+            </dl>
+            <p>Changing channels or follows requires Manage Server. A server can follow up to 100 players.</p>
+          </div>
+          <div class='bot-part'>
+            <h2>Permissions</h2>
+            <p>
+              The bot asks for View Channel, Send Messages and Embed Links, and uses them only in the channel you
+              choose. Player names in updates never ping anyone.
+            </p>
+          </div>
         </div>
-        <a class='btn btn-primary bot-add' href={INVITE_URL} target='_blank' rel='noopener'>
-          Add to your server
-        </a>
-      </div>
-      <DiscordPreview />
-      <div class='prose bot-more'>
-        <h2>Setting it up</h2>
-        <p>
-          After you add the bot, it posts a Set up button. Anyone with Manage Server can use it to pick a channel for
-          updates and paste in a list of players, one per line. Nothing else is needed. When the next event starts,
-          updates begin at whatever round is current.
-        </p>
-        <h2>Commands</h2>
-        <dl class='glossary'>
-          <For each={COMMANDS}>
-            {command => (
-              <>
-                <dt>{command.name}</dt>
-                <dd>{command.does}</dd>
-              </>
-            )}
-          </For>
-        </dl>
-        <p>Changing channels or follows requires Manage Server. A server can follow up to 100 players.</p>
-        <h2>Permissions</h2>
-        <p>
-          The bot asks for View Channel, Send Messages and Embed Links, and uses them only in the channel you choose.
-          Player names in updates never ping anyone.
-        </p>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
