@@ -3,22 +3,25 @@
  *
  * GET — staff see every list; everyone signed in gets their own as `mine`.
  * PUT — a signed-in player submits or replaces theirs while submission is
- * open: { deck, profile, archetype? }. The profile (POP ID, name, birth date)
- * is what matches the list to the organizer's player list, and is saved to
- * the account so the next event needs only the deck. The archetype stays on
- * the list until staff apply it; anyone can type any Player ID.
+ * open: { deck, profile, archetype? }. The profile (POP ID, name, birth date;
+ * just the name at an unsanctioned event) is what matches the list to the
+ * organizer's player list, and is saved to the account so the next event
+ * needs only the deck. The archetype stays on the list until staff apply it;
+ * anyone can type any Player ID.
  * DELETE — a player withdraws theirs.
  */
 
 import { MAX_DECKLIST_CHARS, parseDecklist } from '../../../../shared/tournament/decklist.js';
+import { decklistPlayer } from '../../../../shared/tournament/identify.js';
 import { type PlayerProfile, readProfile } from '../../../../shared/tournament/profile.js';
-import { decksEnabled } from '../../../../shared/tournament/view.js';
+import { decksEnabled, isSanctioned } from '../../../../shared/tournament/view.js';
 import { readJsonBody } from '../../../lib/api/body.js';
 import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { type Access, open, privateJson } from '../../../lib/tournaments/access.js';
 import { archetypeLabel } from '../../../lib/tournaments/decks.js';
+import type { TournamentRow } from '../../../lib/tournaments/store.js';
 
 interface DecklistRow {
   user_id: string;
@@ -49,12 +52,12 @@ function fromRow(row: DecklistRow): Stored {
   };
 }
 
-function present(list: Stored, keys: Record<string, string>) {
+function present(list: Stored, row: TournamentRow) {
   return {
     ...list,
     problems: parseDecklist(list.deck).problems,
-    /** Whether the Player ID is on the event's player list yet. */
-    registered: Object.hasOwn(keys, list.popId)
+    /** Whether the player is on the event's player list yet. */
+    registered: decklistPlayer(row.tournament, list, isSanctioned(row)) !== undefined
   };
 }
 
@@ -81,8 +84,8 @@ export async function onRequestGet(context: Context<'code'>): Promise<Response> 
   ).all<DecklistRow>();
   const mine = results.find(row => row.user_id === access.userId);
   return privateJson({
-    decklists: access.role ? results.map(row => present(fromRow(row), access.row.keys)) : [],
-    mine: mine ? present(fromRow(mine), access.row.keys) : null
+    decklists: access.role ? results.map(row => present(fromRow(row), access.row)) : [],
+    mine: mine ? present(fromRow(mine), access.row) : null
   });
 }
 
@@ -93,14 +96,14 @@ interface Submission {
 }
 
 /** The submission in a request body, or why it is not one. */
-async function readSubmission(request: Request): Promise<Submission | string> {
+async function readSubmission(request: Request, sanctioned: boolean): Promise<Submission | string> {
   const body = await readJsonBody(request, MAX_DECKLIST_CHARS * 4 + 1024);
   const value = body.ok && typeof body.value === 'object' && body.value ? (body.value as Record<string, unknown>) : {};
-  const profile = readProfile(value.profile);
+  const profile = readProfile(value.profile, sanctioned);
   const deck = typeof value.deck === 'string' ? value.deck.trim() : '';
   const archetype = archetypeLabel(value.archetype ?? null);
   if (!profile) {
-    return 'Fill in your Player ID, name and birth year';
+    return sanctioned ? 'Fill in your Player ID, name and birth year' : 'Fill in your name';
   }
   if (!deck || deck.length > MAX_DECKLIST_CHARS) {
     return 'Paste a decklist';
@@ -108,7 +111,23 @@ async function readSubmission(request: Request): Promise<Submission | string> {
   return archetype === undefined ? 'Not an archetype' : { profile, deck, archetype };
 }
 
-/** Stores the list, and saves the profile to the account so the next event needs only the deck. */
+/**
+ * Saves what the player told us to their account, so the next event needs only
+ * the deck. An unsanctioned event asked only for the name, so the Player ID
+ * and birth year already there stay.
+ */
+function saveToAccount(access: Access & { userId: string }, profile: PlayerProfile) {
+  const { db, userId } = access;
+  return isSanctioned(access.row)
+    ? db
+        .prepare('UPDATE users SET pop_id = ?, first_name = ?, last_name = ?, birth_date = ? WHERE id = ?')
+        .bind(profile.popId, profile.firstName, profile.lastName, profile.birthDate, userId)
+    : db
+        .prepare('UPDATE users SET first_name = ?, last_name = ? WHERE id = ?')
+        .bind(profile.firstName, profile.lastName, userId);
+}
+
+/** Stores the list, and saves the profile to the account (see saveToAccount). */
 async function store(access: Access & { userId: string }, submission: Submission, now: number): Promise<void> {
   const { profile, deck } = submission;
   await access.db.batch([
@@ -130,9 +149,7 @@ async function store(access: Access & { userId: string }, submission: Submission
         submission.archetype,
         now
       ),
-    access.db
-      .prepare('UPDATE users SET pop_id = ?, first_name = ?, last_name = ?, birth_date = ? WHERE id = ?')
-      .bind(profile.popId, profile.firstName, profile.lastName, profile.birthDate, access.userId)
+    saveToAccount(access, profile)
   ]);
 }
 
@@ -155,7 +172,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if (!access.row.settings.decklistsOpen) {
     return jsonError('Decklist submission is closed', 403);
   }
-  const read = await readSubmission(context.request);
+  const read = await readSubmission(context.request, isSanctioned(access.row));
   if (typeof read === 'string') {
     return jsonError(read, 400);
   }
@@ -164,7 +181,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   const now = Date.now();
   await store(access, submission, now);
   const { profile, deck, archetype } = submission;
-  return privateJson({ decklist: present({ ...profile, deck, archetype, submittedAt: now }, access.row.keys) });
+  return privateJson({ decklist: present({ ...profile, deck, archetype, submittedAt: now }, access.row) });
 }
 
 export async function onRequestDelete(context: Context<'code'>): Promise<Response> {

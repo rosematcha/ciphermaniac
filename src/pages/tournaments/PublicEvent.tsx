@@ -10,7 +10,7 @@ import { createEffect, createMemo, createResource, createSignal, For, onCleanup,
 import { parseTomDate } from '../../../shared/tournament/divisions';
 import { swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
-import { decksEnabled, type TournamentView } from '../../../shared/tournament/view';
+import { decksEnabled, isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
@@ -31,6 +31,7 @@ import { DecklistForm } from './DecklistForm';
 import { DeckStats } from './DeckStats';
 import { ErrorLine } from './Field';
 import { MatchTable } from './MatchTable';
+import { PlayerMatch } from './PlayerMatch';
 import { PlayerSheet } from './PlayerSheet';
 import { StandingsTable } from './StandingsTable';
 
@@ -65,7 +66,14 @@ function createView(code: () => string) {
     const timer = setInterval(() => void poll(), POLL_MS);
     onCleanup(() => clearInterval(timer));
   });
-  return view;
+  /** Takes a fresher copy handed over by an action, such as a player's report. */
+  function take(published: PublishedView) {
+    const current = latestValue(view);
+    if (current && published.version >= current.version) {
+      mutate({ ...published, viewer: current.viewer });
+    }
+  }
+  return { view, take };
 }
 
 const meKey = (code: string) => `cm-tournament-me:${code}`;
@@ -194,7 +202,7 @@ function OpenPlayer(props: {
   );
 }
 
-function EventBody(props: { view: TournamentView }) {
+function EventBody(props: { view: TournamentView; onView: (view: PublishedView) => void }) {
   const [params, setParams] = useSearchParams<{ tab?: string }>();
   const [podChoice, setPodChoice] = createSignal<PodCategory | null>(null);
   const [roundChoice, setRoundChoice] = createSignal<number | null>(null);
@@ -211,7 +219,12 @@ function EventBody(props: { view: TournamentView }) {
 
   return (
     <>
-      <Show when={me()}>{id => <YourMatch view={props.view} me={id()} />}</Show>
+      <Show
+        when={props.view.settings.playerReporting}
+        fallback={<Show when={me()}>{id => <YourMatch view={props.view} me={id()} />}</Show>}
+      >
+        <PlayerMatch view={props.view} me={me()} onMe={setMe} onView={props.onView} />
+      </Show>
       <Tabs options={tabs()} selected={tab()} onSelect={value => setParams({ tab: value }, { replace: true })} />
       <Show when={pods().length > 1 && (tab() === 'pairings' || tab() === 'standings')}>
         <Segmented
@@ -269,7 +282,11 @@ function EventBody(props: { view: TournamentView }) {
         <DeckStats tournament={props.view.tournament} decks={props.view.decks} />
       </Show>
       <Show when={tab() === 'decklist'}>
-        <DecklistForm code={props.view.code} archetypes={decksEnabled(props.view.settings)} />
+        <DecklistForm
+          code={props.view.code}
+          archetypes={decksEnabled(props.view.settings)}
+          sanctioned={isSanctioned(props.view)}
+        />
       </Show>
       <Show when={open()}>
         {id => (
@@ -347,7 +364,7 @@ function Hero(props: { view: TournamentView }) {
 
 export function PublicEvent(props: { code: string }) {
   const [params] = useSearchParams<{ screen?: string }>();
-  const view = createView(() => props.code);
+  const { view, take } = createView(() => props.code);
   const current = () => latestValue(view);
   createEffect(() => {
     document.title = `${current()?.tournament.info.name ?? props.code} — Ciphermaniac`;
@@ -365,7 +382,7 @@ export function PublicEvent(props: { code: string }) {
         <Show when={params.screen !== '1'} fallback={<BigScreen view={v()} />}>
           <div class='tm-page'>
             <Hero view={v()} />
-            <EventBody view={v()} />
+            <EventBody view={v()} onView={take} />
           </div>
         </Show>
       )}

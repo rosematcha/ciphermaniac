@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS tournaments (
   mode TEXT NOT NULL,
   state TEXT NOT NULL,
   pending TEXT NOT NULL DEFAULT '[]',
+  -- Results players reported from the event's page and staff have not settled.
+  reports TEXT NOT NULL DEFAULT '[]',
   settings TEXT NOT NULL DEFAULT '{}',
   player_keys TEXT NOT NULL DEFAULT '{}',
   -- POP ID to the archetype each player is on, set by staff or with a decklist.

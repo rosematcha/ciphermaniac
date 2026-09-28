@@ -2,7 +2,7 @@
 
 import type { Tournament, TournamentInfo } from './types.js';
 
-export const DEFAULT_ROUND_MINUTES = 50;
+export const DEFAULT_ROUND_MINUTES = 30;
 export const DEFAULT_FINALS_MINUTES = 75;
 
 export function emptyTournament(info: Partial<TournamentInfo> & { name: string }, combined: boolean): Tournament {

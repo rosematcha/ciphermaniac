@@ -17,9 +17,11 @@ import {
   fetchPublished,
   fetchSession,
   fetchView,
+  identifyPlayer,
   joinStaff,
   linkUrl,
   listTournaments,
+  reportAsPlayer,
   rotateStaffToken,
   saveAccountName,
   saveProfile,
@@ -73,7 +75,7 @@ test('every call goes to its endpoint with its body', async () => {
   await fetchSession();
   await saveProfile(profile);
   await listTournaments();
-  await createSwiss('Cup', false);
+  await createSwiss({ name: 'Cup', combined: false });
   await createFromTdf(t);
   await fetchView('ABC', 3);
   await fetchManage('ABC');
@@ -108,6 +110,35 @@ test('every call goes to its endpoint with its body', async () => {
   const command = sent[7]?.body as { localTime: string };
   assert.match(command.localTime, /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/, 'stamped with the venue clock');
   assert.deepEqual(sent[3]?.body, { mode: 'swiss', name: 'Cup', combined: false });
+});
+
+test('a player identifies and reports through one endpoint, stamped with the venue clock', async () => {
+  answer(200, { key: '4' });
+  await identifyPlayer('ABC', { lastName: 'Oak' });
+  await reportAsPlayer('ABC', { popId: '12' }, 'win');
+  assert.deepEqual(
+    sent.map(s => `${s.method} ${s.url}`),
+    ['POST /api/tournaments/ABC/report', 'POST /api/tournaments/ABC/report']
+  );
+  const identified = sent[0]?.body as { lastName: string; localTime: string };
+  assert.equal(identified.lastName, 'Oak');
+  assert.match(
+    identified.localTime,
+    /^\d{2}\/\d{2}\/\d{4} /,
+    'identifying can settle a result, so it carries the clock too'
+  );
+  const reported = sent[1]?.body as { popId: string; result: string; localTime: string };
+  assert.deepEqual([reported.popId, reported.result], ['12', 'win']);
+  assert.match(reported.localTime, /^\d{2}\/\d{2}\/\d{4} /);
+});
+
+test('an error that says more than a message keeps the rest', async () => {
+  answer(404, { error: 'More than one player has that last name', ambiguous: true });
+  await assert.rejects(identifyPlayer('ABC', { lastName: 'Oak' }), (error: unknown) => {
+    assert.ok(error instanceof ApiError);
+    assert.equal(error.body?.ambiguous, true);
+    return true;
+  });
 });
 
 test('reads the published view from the data origin, and a missing one as null', async () => {

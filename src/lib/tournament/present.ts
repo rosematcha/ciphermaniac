@@ -6,6 +6,13 @@
  */
 
 import { secondsLeft } from '../../../shared/tournament/commands';
+import {
+  isDisputed,
+  isLocked,
+  type PlayerReport,
+  type PlayerResult,
+  reportsFor
+} from '../../../shared/tournament/reports';
 import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
 import {
   placeFinals,
@@ -270,4 +277,42 @@ export function divisionLookup(tournament: Tournament): (id: string) => Division
 /** The archetypes to draw beside names: none when the event has them off. */
 export function shownDecks(manage: { decks: Record<string, string>; settings: TournamentSettings }) {
   return decksEnabled(manage.settings) ? manage.decks : {};
+}
+
+export interface ReportState {
+  /** How the match went for the player, by their own report or the result that stands. */
+  chosen: PlayerResult | null;
+  /** Their report and their opponent's say different things. */
+  disputed: boolean;
+  /** Their report can no longer be changed from the page. */
+  locked: boolean;
+  /** The result stands: entered by staff, or reported alike by both and locked. */
+  final: boolean;
+}
+
+const asResult = (outcome: Outcome, seat: 1 | 2): PlayerResult => sideResult(outcome, seat) ?? 'loss';
+
+/** Where a player's own report of their match stands at `now` (see shared/tournament/reports.ts). */
+export function reportState(
+  at: { pod: Pod; round: Round; match: Match },
+  event: { pending: readonly PendingResult[]; reports: readonly PlayerReport[] },
+  me: string,
+  now: number
+): ReportState {
+  const { pod, round, match } = at;
+  const { pending, reports } = event;
+  const seat = match.p1 === me ? 1 : 2;
+  const shown = shownOutcome(match, pod, round, pending).outcome;
+  if (shown !== 'pending') {
+    return { chosen: asResult(shown, seat), disputed: false, locked: true, final: true };
+  }
+  const forMatch = reportsFor(reports, pod.category, round.number, match);
+  const mine = forMatch.find(report => report.by === me);
+  const theirs = forMatch.find(report => report.by !== me);
+  if (!mine) {
+    return { chosen: null, disputed: false, locked: false, final: false };
+  }
+  const locked = isLocked(mine, now);
+  const agreed = theirs?.outcome === mine.outcome && locked && isLocked(theirs, now);
+  return { chosen: asResult(mine.outcome, seat), disputed: isDisputed(forMatch), locked, final: agreed };
 }

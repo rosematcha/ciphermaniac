@@ -1,4 +1,5 @@
 import { type PlayerProfile, profileErrors } from '../../../shared/tournament/profile';
+import { Show } from 'solid-js';
 import { Field } from './Field';
 
 /**
@@ -17,15 +18,19 @@ export function emptyProfile(user?: Partial<Record<keyof PlayerProfile, string |
   };
 }
 
-export function profileProblems(profile: PlayerProfile) {
-  const errors = profileErrors(profile);
+export function profileProblems(profile: PlayerProfile, sanctioned = true) {
+  const errors = profileErrors(profile, sanctioned);
   return errors.birthDate ? { ...errors, birthDate: 'Enter a four-digit year' } : errors;
 }
 
-/** POP ID, name and birth year: what an organizer's player list knows a player by. */
+/**
+ * POP ID, name and birth year: what an organizer's player list knows a player
+ * by. An unsanctioned event knows them by name alone.
+ */
 export function ProfileFields(props: {
   idPrefix: string;
   value: PlayerProfile;
+  sanctioned?: boolean;
   errors: Partial<Record<keyof PlayerProfile, string>>;
   onChange: (profile: PlayerProfile) => void;
 }) {
@@ -51,25 +56,27 @@ export function ProfileFields(props: {
           onInput={e => set('lastName', e.currentTarget.value)}
         />
       </Field>
-      <Field id={id('pop')} label='Player ID' error={props.errors.popId}>
-        <input
-          id={id('pop')}
-          class='tm-input'
-          inputmode='numeric'
-          value={props.value.popId}
-          onInput={e => set('popId', e.currentTarget.value.replace(/\D/g, ''))}
-        />
-      </Field>
-      <Field id={id('year')} label='Birth year' error={props.errors.birthDate}>
-        <input
-          id={id('year')}
-          class='tm-input'
-          inputmode='numeric'
-          maxLength={4}
-          value={birthYearOf(props.value.birthDate)}
-          onInput={e => set('birthDate', birthDateFor(e.currentTarget.value))}
-        />
-      </Field>
+      <Show when={props.sanctioned !== false}>
+        <Field id={id('pop')} label='Player ID' error={props.errors.popId}>
+          <input
+            id={id('pop')}
+            class='tm-input'
+            inputmode='numeric'
+            value={props.value.popId}
+            onInput={e => set('popId', e.currentTarget.value.replace(/\D/g, ''))}
+          />
+        </Field>
+        <Field id={id('year')} label='Birth year' error={props.errors.birthDate}>
+          <input
+            id={id('year')}
+            class='tm-input'
+            inputmode='numeric'
+            maxLength={4}
+            value={birthYearOf(props.value.birthDate)}
+            onInput={e => set('birthDate', birthDateFor(e.currentTarget.value))}
+          />
+        </Field>
+      </Show>
     </div>
   );
 }

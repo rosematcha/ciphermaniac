@@ -1,11 +1,18 @@
 /**
  * The console's event tab: details players see, round times, deck
- * visibility, staff invites, the .tdf export, and closing or deleting the event.
+ * visibility, whether the event is sanctioned and whether players report
+ * their own results, staff invites, the .tdf export, and closing or deleting
+ * the event.
  */
 
 import { useNavigate } from '@solidjs/router';
 import { createSignal, For, Show } from 'solid-js';
-import { type DeckVisibility, SETTINGS_LIMITS, type TournamentSettings } from '../../../shared/tournament/view';
+import {
+  type DeckVisibility,
+  isSanctioned,
+  SETTINGS_LIMITS,
+  type TournamentSettings
+} from '../../../shared/tournament/view';
 import { deleteTournament, type Manage, rotateStaffToken, saveSettings } from '../../lib/tournament/api';
 import { tdfFilename, tdfText } from '../../lib/tournament/exportTdf';
 import { downloadBlob } from '../../lib/download';
@@ -28,8 +35,10 @@ function SettingsForm(props: { state: ManageState; manage: Manage }) {
   function save(event: Event) {
     event.preventDefault();
     const { code } = props.manage;
-    const { details, format, startsAt, deckVisibility } = draft();
-    void props.state.run(() => saveSettings(code, { details, format, startsAt, deckVisibility }));
+    const { details, format, startsAt, deckVisibility, sanctioned, playerReporting } = draft();
+    void props.state.run(() =>
+      saveSettings(code, { details, format, startsAt, deckVisibility, sanctioned, playerReporting })
+    );
   }
   return (
     <form class='tm-form' onSubmit={save}>
@@ -62,6 +71,24 @@ function SettingsForm(props: { state: ManageState; manage: Manage }) {
           </select>
         </Field>
       </div>
+      <Show when={props.manage.mode === 'swiss'}>
+        <label class='tm-check'>
+          <input
+            type='checkbox'
+            checked={draft().sanctioned}
+            onChange={e => set('sanctioned', e.currentTarget.checked)}
+          />
+          <span>Sanctioned: players give their Player ID and birth year, and the event exports a .tdf</span>
+        </label>
+      </Show>
+      <label class='tm-check'>
+        <input
+          type='checkbox'
+          checked={draft().playerReporting}
+          onChange={e => set('playerReporting', e.currentTarget.checked)}
+        />
+        <span>Players report their own results</span>
+      </label>
       <Field id='set-details' label='Details for players'>
         <textarea
           id='set-details'
@@ -132,6 +159,8 @@ function RoundTimes(props: { state: ManageState; manage: Manage }) {
 
 function StaffInvite(props: { state: ManageState; manage: Manage }) {
   const [copied, setCopied] = createSignal(false);
+  // Blurred until pressed, so the link stays off a screen being shared or projected.
+  const [revealed, setRevealed] = createSignal(false);
   function rotate() {
     const { code } = props.manage;
     void props.state.run(() => rotateStaffToken(code));
@@ -146,7 +175,15 @@ function StaffInvite(props: { state: ManageState; manage: Manage }) {
     <section class='tm-section-block'>
       <h2 class='tm-subhead'>Staff</h2>
       <div class='tm-actions'>
-        <input class='tm-input tm-link' readOnly value={link()} aria-label='Staff invite link' />
+        <input
+          class='tm-input tm-link tm-secret'
+          classList={{ 'is-hidden': !revealed() }}
+          readOnly
+          value={link()}
+          aria-label='Staff invite link'
+          title={revealed() ? undefined : 'Press to show'}
+          onFocus={() => setRevealed(true)}
+        />
         <button type='button' class='btn btn-secondary' onClick={() => void copy()}>
           {copied() ? 'Copied' : 'Copy invite link'}
         </button>
@@ -223,9 +260,11 @@ function Finish(props: { state: ManageState; manage: Manage }) {
             Reopen event
           </button>
         </Show>
-        <button type='button' class='btn btn-ghost' onClick={download}>
-          Download .tdf
-        </button>
+        <Show when={isSanctioned(props.manage)}>
+          <button type='button' class='btn btn-ghost' onClick={download}>
+            Download .tdf
+          </button>
+        </Show>
       </div>
     </section>
   );

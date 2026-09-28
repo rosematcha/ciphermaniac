@@ -1,19 +1,22 @@
 /**
  * /host: the events an organizer runs or staffs, and the two ways to start
  * one. A Swiss event is run entirely on the site. A TOM event starts from the
- * .tdf TOM saves to; on a browser that can hold a file, the file stays linked
- * so later saves reach the site without another upload.
+ * .tdf TOM saves to, on desktop where TOM runs; on a browser that can hold a
+ * file, the file stays linked so later saves reach the site without another
+ * upload. Either way the setup (EventSetup) asks the rest.
  */
 
 import { A, useNavigate } from '@solidjs/router';
-import { createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createResource, createSignal, For, Match, onMount, Show, Switch } from 'solid-js';
 import { parseTomDate } from '../../../shared/tournament/divisions';
 import { parseTdf } from '../../../shared/tournament/tdf';
+import type { Tournament } from '../../../shared/tournament/types';
 import { createFromTdf, createSwiss, listTournaments, type TournamentSummary } from '../../lib/tournament/api';
 import { session } from './session';
 import { canLinkFiles, pickTdf, rememberHandle, type TdfHandle } from '../../lib/tournament/tomLink';
 import { latestValue } from '../../lib/resource';
-import { ErrorLine, Field } from './Field';
+import { EventSetup, type Setup } from './EventSetup';
+import { ErrorLine } from './Field';
 import { SignIn } from './SignIn';
 
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
@@ -63,115 +66,125 @@ function EventList(props: { events: readonly TournamentSummary[] }) {
   );
 }
 
-function NewSwiss(props: { onCreated: (code: string) => void }) {
-  const [name, setName] = createSignal('');
-  const [combined, setCombined] = createSignal(true);
-  const [busy, setBusy] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
-  async function submit(event: Event) {
-    event.preventDefault();
-    setBusy(true);
-    setError(null);
+type Stage = { kind: 'choose' } | { kind: 'swiss' } | { kind: 'tom'; tournament: Tournament; handle: TdfHandle | null };
+
+/**
+ * Picking up a .tdf: the file is read and parsed first, so the setup only
+ * opens once it is known to be a tournament. Desktop only, where TOM runs.
+ */
+function LinkTdf(props: {
+  busy: boolean;
+  onRead: (tournament: Tournament, handle: TdfHandle | null) => void;
+  onError: (message: string) => void;
+}) {
+  function read(text: string, handle: TdfHandle | null) {
     try {
-      props.onCreated((await createSwiss(name(), combined())).code);
+      props.onRead(parseTdf(text), handle);
     } catch (err) {
-      setError(errorText(err));
-    } finally {
-      setBusy(false);
+      props.onError(errorText(err));
     }
   }
-  return (
-    <form class='tm-form' onSubmit={event => void submit(event)}>
-      <h3>Run Swiss on this site</h3>
-      <Field id='new-name' label='Event name'>
-        <input
-          id='new-name'
-          class='tm-input'
-          maxLength={120}
-          value={name()}
-          onInput={e => setName(e.currentTarget.value)}
-        />
-      </Field>
-      <label class='tm-check'>
-        <input type='checkbox' checked={combined()} onChange={e => setCombined(e.currentTarget.checked)} />
-        <span>Pair all age divisions together</span>
-      </label>
-      <div class='tm-actions'>
-        <button type='submit' class='btn btn-primary' disabled={busy() || !name().trim()}>
-          Create event
-        </button>
-      </div>
-      <ErrorLine message={error()} />
-    </form>
-  );
-}
-
-function ImportTom(props: { onCreated: (code: string) => void }) {
-  const [busy, setBusy] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
-
-  async function start(text: string, handle: TdfHandle | null) {
-    setBusy(true);
-    setError(null);
-    try {
-      const { code } = await createFromTdf(parseTdf(text));
-      if (handle) {
-        await rememberHandle(code, handle);
-      }
-      props.onCreated(code);
-    } catch (err) {
-      setError(errorText(err));
-    } finally {
-      setBusy(false);
-    }
+  async function readFile(file: File) {
+    read(await file.text(), null);
   }
-
-  async function startFromFile(file: File) {
-    await start(await file.text(), null);
-  }
-
   async function link() {
     try {
       const handle = await pickTdf();
-      await start(await (await handle.getFile()).text(), handle);
+      read(await (await handle.getFile()).text(), handle);
     } catch (err) {
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
-        setError(errorText(err));
+        props.onError(errorText(err));
       }
+    }
+  }
+  return (
+    <Show
+      when={canLinkFiles()}
+      fallback={
+        <label class='btn btn-secondary tm-desktop-only'>
+          Choose .tdf file
+          <input
+            type='file'
+            accept='.tdf'
+            class='sr-only'
+            disabled={props.busy}
+            onChange={e => {
+              const file = e.currentTarget.files?.[0];
+              if (file) {
+                void readFile(file);
+              }
+            }}
+          />
+        </label>
+      }
+    >
+      <button type='button' class='btn btn-secondary tm-desktop-only' disabled={props.busy} onClick={() => void link()}>
+        Link .tdf file
+      </button>
+    </Show>
+  );
+}
+
+/** Start an event, or on desktop follow one run in TOM; either way the setup asks the rest. */
+function StartEvent(props: { onCreated: (code: string) => void }) {
+  const [stage, setStage] = createSignal<Stage>({ kind: 'choose' });
+  const [busy, setBusy] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+  const back = () => {
+    setStage({ kind: 'choose' });
+    setError(null);
+  };
+
+  async function create(setup: Setup) {
+    const current = stage();
+    setBusy(true);
+    setError(null);
+    try {
+      if (current.kind === 'tom') {
+        const { code } = await createFromTdf(current.tournament, setup.settings);
+        if (current.handle) {
+          await rememberHandle(code, current.handle);
+        }
+        props.onCreated(code);
+      } else {
+        props.onCreated((await createSwiss(setup)).code);
+      }
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <div class='tm-form'>
-      <h3>Follow an event run in TOM</h3>
-      <div class='tm-actions'>
-        <Show
-          when={canLinkFiles()}
-          fallback={
-            <label class='btn btn-secondary'>
-              Choose .tdf file
-              <input
-                type='file'
-                accept='.tdf'
-                class='sr-only'
-                disabled={busy()}
-                onChange={e => {
-                  const file = e.currentTarget.files?.[0];
-                  if (file) {
-                    void startFromFile(file);
-                  }
-                }}
-              />
-            </label>
-          }
-        >
-          <button type='button' class='btn btn-secondary' disabled={busy()} onClick={() => void link()}>
-            Link .tdf file
+    <Switch>
+      <Match when={stage().kind === 'choose'}>
+        <div class='tm-actions'>
+          <button type='button' class='btn btn-primary' onClick={() => setStage({ kind: 'swiss' })}>
+            Start an event
           </button>
-        </Show>
-      </div>
-      <ErrorLine message={error()} />
-    </div>
+          <LinkTdf
+            busy={busy()}
+            onRead={(tournament, handle) => {
+              setError(null);
+              setStage({ kind: 'tom', tournament, handle });
+            }}
+            onError={setError}
+          />
+        </div>
+        <ErrorLine message={error()} />
+      </Match>
+      <Match when={stage().kind !== 'choose'}>
+        <EventSetup
+          mode={stage().kind === 'tom' ? 'tom' : 'swiss'}
+          tdfName={(stage() as Extract<Stage, { kind: 'tom' }>).tournament?.info.name}
+          busy={busy()}
+          error={error()}
+          onCreate={setup => void create(setup)}
+          onCancel={back}
+        />
+      </Match>
+    </Switch>
   );
 }
 
@@ -200,10 +213,7 @@ export function HostIndex() {
         </Show>
         <section class='tm-section-block'>
           <h2 class='tm-subhead'>Start an event</h2>
-          <div class='tm-columns'>
-            <NewSwiss onCreated={opened} />
-            <ImportTom onCreated={opened} />
-          </div>
+          <StartEvent onCreated={opened} />
         </section>
       </Show>
     </div>

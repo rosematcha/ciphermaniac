@@ -9,12 +9,14 @@
 
 import type { Tournament } from '../../../shared/tournament/types.js';
 import {
+  applyPending,
   assignKeys,
   DEFAULT_SETTINGS,
   type PendingResult,
   type TournamentMode,
   type TournamentSettings
 } from '../../../shared/tournament/view.js';
+import { type PlayerReport, pruneReports } from '../../../shared/tournament/reports.js';
 import { randomToken, type User } from '../auth/session.js';
 import type { D1Like } from '../types.js';
 
@@ -24,6 +26,8 @@ export interface TournamentRow {
   mode: TournamentMode;
   tournament: Tournament;
   pending: PendingResult[];
+  /** Results players reported and staff have not settled (see shared/tournament/reports.ts). */
+  reports: PlayerReport[];
   settings: TournamentSettings;
   keys: Record<string, string>;
   /** POP ID to archetype label. */
@@ -39,6 +43,7 @@ interface RawRow {
   mode: string;
   state: string;
   pending: string;
+  reports: string;
   settings: string;
   player_keys: string;
   decks: string;
@@ -56,6 +61,7 @@ function fromRaw(raw: RawRow): TournamentRow {
     mode: raw.mode === 'tom' ? 'tom' : 'swiss',
     tournament: JSON.parse(raw.state) as Tournament,
     pending: JSON.parse(raw.pending) as PendingResult[],
+    reports: JSON.parse(raw.reports) as PlayerReport[],
     settings: { ...DEFAULT_SETTINGS, ...(JSON.parse(raw.settings) as Partial<TournamentSettings>) },
     keys: JSON.parse(raw.player_keys) as Record<string, string>,
     decks: JSON.parse(raw.decks) as Record<string, string>,
@@ -99,6 +105,7 @@ export interface NewTournament {
   ownerId: string;
   mode: TournamentMode;
   tournament: Tournament;
+  settings?: TournamentSettings;
 }
 
 export async function createTournament(db: D1Like, input: NewTournament): Promise<string> {
@@ -119,7 +126,7 @@ export async function createTournament(db: D1Like, input: NewTournament): Promis
         input.ownerId,
         input.mode,
         stateJson(input.tournament),
-        JSON.stringify(DEFAULT_SETTINGS),
+        JSON.stringify(input.settings ?? DEFAULT_SETTINGS),
         JSON.stringify(assignKeys(input.tournament, {})),
         randomToken(16),
         now,
@@ -151,9 +158,25 @@ function stateJson(tournament: Tournament): string {
 export interface Changes {
   tournament?: Tournament;
   pending?: PendingResult[];
+  reports?: PlayerReport[];
   settings?: TournamentSettings;
   decks?: Record<string, string>;
   staffToken?: string;
+}
+
+/**
+ * The reports a change leaves: its own, or the row's less any whose match it
+ * settled or took away, since a result from staff settles a disputed match.
+ * Turning player reporting off drops them all.
+ */
+function reportsAfter(row: TournamentRow, changes: Changes): PlayerReport[] {
+  if (!(changes.settings ?? row.settings).playerReporting) {
+    return [];
+  }
+  const reports = changes.reports ?? row.reports;
+  return changes.tournament || changes.pending
+    ? pruneReports(applyPending(changes.tournament ?? row.tournament, changes.pending ?? row.pending), reports)
+    : reports;
 }
 
 /**
@@ -165,12 +188,13 @@ export async function saveTournament(db: D1Like, row: TournamentRow, changes: Ch
   const keys = changes.tournament ? assignKeys(tournament, row.keys) : row.keys;
   const result = (await db
     .prepare(
-      'UPDATE tournaments SET state = ?, pending = ?, settings = ?, player_keys = ?, decks = ?, staff_token = ?, ' +
-        'version = version + 1, updated_at = ? WHERE code = ? AND version = ?'
+      'UPDATE tournaments SET state = ?, pending = ?, reports = ?, settings = ?, player_keys = ?, decks = ?, ' +
+        'staff_token = ?, version = version + 1, updated_at = ? WHERE code = ? AND version = ?'
     )
     .bind(
       stateJson(tournament),
       JSON.stringify(changes.pending ?? row.pending),
+      JSON.stringify(reportsAfter(row, changes)),
       JSON.stringify(changes.settings ?? row.settings),
       JSON.stringify(keys),
       JSON.stringify(changes.decks ?? row.decks),
@@ -213,7 +237,8 @@ export async function mutate(
     if (version !== null) {
       // The keys as saved, so a player added by this change is already under a public key.
       const keys = changes.tournament ? assignKeys(changes.tournament, row.keys) : row.keys;
-      return { row: { ...row, ...changes, keys, version, updatedAt: Date.now() }, version };
+      const reports = reportsAfter(row, changes);
+      return { row: { ...row, ...changes, keys, reports, version, updatedAt: Date.now() }, version };
     }
   }
   return { error: 'Busy; try again', status: 409 };

@@ -48,12 +48,6 @@
   margin: 0;
 }
 
-.tm-columns {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--space-5);
-}
-
 /* A grid child keeps its content's width by default, and a table's content is
    as wide as it likes: without the minmax a phone pans the whole page. */
 .tm-panel {
@@ -185,6 +179,55 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   width: auto;
   font-size: var(--text-sm);
 }
+/* ---------- New event setup ---------- */
+.tm-setup {
+  max-width: 560px;
+}
+.tm-setup-rows {
+  display: grid;
+}
+.tm-setup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 8px 0;
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-base);
+}
+.tm-setup-row:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+.tm-setup-label {
+  font-weight: 600;
+}
+.tm-setup-control {
+  width: auto;
+  min-width: 0;
+  max-width: 60%;
+}
+.tm-setup-minutes {
+  width: 88px;
+}
+/* Linking a .tdf is for the computer TOM runs on. */
+@media (max-width: 640px), (pointer: coarse) {
+  .tm-desktop-only {
+    display: none;
+  }
+}
+.tm-secret {
+  transition:
+    color var(--ms-fast) var(--ease-base),
+    text-shadow var(--ms-fast) var(--ease-base);
+}
+/* Only the text is blurred: it goes transparent and is drawn again as a soft
+   halo, so the box and its border stay sharp. */
+.tm-secret.is-hidden {
+  color: transparent;
+  text-shadow: 0 0 7px var(--fg);
+  cursor: pointer;
+  user-select: none;
+}
 /* The negative hue walked toward the ink, so 12px error text clears 4.5:1 on
    the surface in both modes; the raw token sits at 4.4. */
 .tm-error,
@@ -310,6 +353,15 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 .tm-extra-col {
   width: 1%;
   white-space: nowrap;
+}
+/* What players reported sits on its own line above the result controls, and wraps. */
+.tm-report-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  white-space: normal;
+  font-size: var(--text-sm);
 }
 .tm-seat-inner {
   display: inline-flex;
@@ -721,6 +773,79 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   margin-left: auto;
 }
 
+/* ---------- A player's own match, where players report ---------- */
+.tm-report {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+.tm-report .tm-you-round {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tm-report-ask {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.tm-report-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+  width: 100%;
+}
+.tm-report-entry .tm-field {
+  flex: 1 1 180px;
+}
+.tm-report-table {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.tm-report-table-label {
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.tm-report-versus {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 420px;
+}
+.tm-report-versus .tm-clock {
+  margin-left: auto;
+}
+.tm-report-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 420px;
+  margin-top: var(--space-2);
+}
+.tm-report-choices .btn {
+  justify-content: center;
+  min-height: 44px;
+}
+/* Once fixed, the pressed answer stays at full strength (it is marked
+   aria-disabled rather than disabled) while the others fade. */
+.tm-report-choices .btn[aria-disabled='true'] {
+  cursor: default;
+}
+.tm-report-choices .btn.is-disputed {
+  border-color: var(--negative);
+  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
+}
+
 /* ---------- Player sheet ---------- */
 .tm-scrim {
   position: fixed;
@@ -865,6 +990,13 @@ body.tm-screen-mode main.page {
   border-bottom: 1px solid var(--rule);
   font-size: clamp(var(--text-lg), 1.7vw, var(--text-2xl));
   break-inside: avoid;
+}
+/* Before round 1 there is only the name to show, so the columns run narrower. */
+.tm-screen-registered {
+  columns: 18rem auto;
+}
+.tm-screen-registered li {
+  grid-template-columns: minmax(0, 1fr);
 }
 .tm-screen-name {
   font-weight: 700;

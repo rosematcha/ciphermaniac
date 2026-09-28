@@ -17,7 +17,14 @@ import { ErrorLine, Field } from './Field';
 import { emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
 import { SignIn } from './SignIn';
 
-function Form(props: { code: string; archetypes: boolean }) {
+interface FormProps {
+  code: string;
+  archetypes: boolean;
+  /** Unsanctioned, the form asks for the name alone. */
+  sanctioned: boolean;
+}
+
+function Form(props: FormProps) {
   const [mine, { refetch }] = createResource(() => fetchDecklists(props.code).then(result => result.mine));
   const [profile, setProfile] = createSignal<PlayerProfile>(emptyProfile(latestValue(session)?.user));
   const [deck, setDeck] = createSignal('');
@@ -44,14 +51,17 @@ function Form(props: { code: string; archetypes: boolean }) {
   async function submit(event: Event) {
     event.preventDefault();
     setTouched(true);
-    if (Object.keys(profileProblems(profile())).length > 0 || !deck().trim()) {
+    if (Object.keys(profileProblems(profile(), props.sanctioned)).length > 0 || !deck().trim()) {
       return;
     }
     setStatus('sending');
     setError(null);
     try {
-      const saved = profile();
-      await submitDecklist(props.code, deck(), saved, props.archetypes ? archetype() : null);
+      const sent = profile();
+      await submitDecklist(props.code, deck(), sent, props.archetypes ? archetype() : null);
+      // The account keeps what the server saved: the name alone at an unsanctioned event.
+      const { firstName, lastName } = sent;
+      const saved = props.sanctioned ? sent : { firstName, lastName };
       setSession(prev => (prev?.user ? { ...prev, user: { ...prev.user, ...saved } } : prev));
       setStatus('sent');
       void refetch();
@@ -72,7 +82,8 @@ function Form(props: { code: string; archetypes: boolean }) {
       <ProfileFields
         idPrefix='deck'
         value={profile()}
-        errors={touched() ? profileProblems(profile()) : {}}
+        sanctioned={props.sanctioned}
+        errors={touched() ? profileProblems(profile(), props.sanctioned) : {}}
         onChange={value => {
           setTouched(true);
           setProfile(value);
@@ -129,7 +140,7 @@ function Form(props: { code: string; archetypes: boolean }) {
   );
 }
 
-export function DecklistForm(props: { code: string; archetypes: boolean }) {
+export function DecklistForm(props: FormProps) {
   return (
     <Show
       when={latestValue(session)?.user}
@@ -139,7 +150,7 @@ export function DecklistForm(props: { code: string; archetypes: boolean }) {
         </Show>
       }
     >
-      <Form code={props.code} archetypes={props.archetypes} />
+      <Form code={props.code} archetypes={props.archetypes} sanctioned={props.sanctioned} />
     </Show>
   );
 }

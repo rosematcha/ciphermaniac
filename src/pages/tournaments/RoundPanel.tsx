@@ -7,10 +7,13 @@
  * Results are entered by pressing the winner's name, then confirming in the
  * row. The filter narrows the room to one table (type its number) or player,
  * or to the tables still playing, so a result called out across the room is
- * two keystrokes and two presses away.
+ * two keystrokes and two presses away. Where players report their own, each
+ * open match says what they reported, and staff accept a lone report or
+ * settle a dispute by entering the result as usual.
  */
 
 import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
+import { isDisputed, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
 import { activeIds } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod } from '../../../shared/tournament/types';
 import type { Manage } from '../../lib/tournament/api';
@@ -79,6 +82,40 @@ const OUTCOME_WORDS: Partial<Record<Outcome, string>> = {
 function askingLabel(asking: Asking, match: Match, names: Map<string, string>): string {
   const winner = asking.outcome === 'p1' ? match.p1 : asking.outcome === 'p2' ? match.p2 : null;
   return winner ? `${names.get(winner) ?? winner} wins` : (OUTCOME_WORDS[asking.outcome] ?? '');
+}
+
+/**
+ * What the players reported for an open match: one report, which staff can
+ * take as it is, or two that differ, which count for nothing until staff
+ * enter the result.
+ */
+function PlayerReports(props: {
+  reports: readonly PlayerReport[];
+  match: Match;
+  names: Map<string, string>;
+  onAccept: (outcome: Outcome) => void;
+}) {
+  const said = (report: PlayerReport) =>
+    `${props.names.get(report.by) ?? report.by}: ${askingLabel(report, props.match, props.names)}`;
+  return (
+    <Show when={props.reports[0]}>
+      {first => (
+        <Show
+          when={isDisputed(props.reports)}
+          fallback={
+            <span class='tm-report-note'>
+              <span class='muted-cell'>Reported: {askingLabel(first(), props.match, props.names)}</span>
+              <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onAccept(first().outcome)}>
+                Accept
+              </button>
+            </span>
+          }
+        >
+          <span class='tm-report-note tm-problem'>Reports differ. {props.reports.map(said).join('; ')}</span>
+        </Show>
+      )}
+    </Show>
+  );
 }
 
 /** The second press a result takes, in the row it is for, so a slip of the finger is not a result. */
@@ -298,11 +335,19 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                 <Show
                   when={isAsking(match) && asking()}
                   fallback={
-                    <ResultExtras
-                      match={match}
-                      elimination={r().kind === 'elimination'}
-                      onReport={o => report(match, o)}
-                    />
+                    <>
+                      <PlayerReports
+                        reports={reportsFor(props.manage.reports, props.pod.category, r().number, match)}
+                        match={match}
+                        names={names()}
+                        onAccept={o => report(match, o)}
+                      />
+                      <ResultExtras
+                        match={match}
+                        elimination={r().kind === 'elimination'}
+                        onReport={o => report(match, o)}
+                      />
+                    </>
                   }
                 >
                   {choice => (

@@ -6,7 +6,8 @@
 
 import { createResource, createSignal, For, Show } from 'solid-js';
 import { birthYear } from '../../../shared/tournament/divisions';
-import { decksEnabled } from '../../../shared/tournament/view';
+import { decklistPlayer } from '../../../shared/tournament/identify';
+import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
 import { type Decklist, fetchDecklists, type Manage, saveSettings, setDeck } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import { DeckIcons } from './DeckIcons';
@@ -14,13 +15,17 @@ import type { ManageState } from './manageState';
 
 function DecklistRow(props: { state: ManageState; manage: Manage; list: Decklist; onChanged: () => void }) {
   const [open, setOpen] = createSignal(false);
-  const inEvent = () => props.manage.tournament.players.some(p => p.id === props.list.popId);
+  const sanctioned = () => isSanctioned(props.manage);
+  const playerId = () => decklistPlayer(props.manage.tournament, props.list, sanctioned());
   const archetypes = () => decksEnabled(props.manage.settings);
   /** The player's word for their deck becomes the one the event shows; staff decide it is theirs. */
   function useDeck() {
     const { code } = props.manage;
-    const { popId, archetype } = props.list;
-    void props.state.run(() => setDeck(code, popId, archetype));
+    const id = playerId();
+    const { archetype } = props.list;
+    if (id) {
+      void props.state.run(() => setDeck(code, id, archetype));
+    }
   }
 
   async function add() {
@@ -29,8 +34,7 @@ function DecklistRow(props: { state: ManageState; manage: Manage; list: Decklist
       player: {
         firstName: props.list.firstName,
         lastName: props.list.lastName,
-        id: props.list.popId,
-        birthDate: props.list.birthDate
+        ...(sanctioned() ? { id: props.list.popId, birthDate: props.list.birthDate } : {})
       }
     });
     if (ok) {
@@ -43,8 +47,10 @@ function DecklistRow(props: { state: ManageState; manage: Manage; list: Decklist
         <td class='tm-nowrap'>
           {props.list.firstName} {props.list.lastName}
         </td>
-        <td class='num muted-cell'>{props.list.popId}</td>
-        <td class='num muted-cell'>{birthYear(props.list.birthDate) ?? ''}</td>
+        <Show when={sanctioned()}>
+          <td class='num muted-cell'>{props.list.popId}</td>
+          <td class='num muted-cell'>{birthYear(props.list.birthDate) ?? ''}</td>
+        </Show>
         <Show when={archetypes()}>
           <td>
             <span class='tm-seat-inner'>
@@ -68,13 +74,13 @@ function DecklistRow(props: { state: ManageState; manage: Manage; list: Decklist
             >
               {open() ? 'Hide' : 'View'}
             </button>
-            <Show when={props.manage.mode === 'swiss' && !inEvent()}>
+            <Show when={props.manage.mode === 'swiss' && !playerId()}>
               <button type='button' class='btn btn-secondary tm-small' onClick={() => void add()}>
                 Add to event
               </button>
             </Show>
             <Show
-              when={inEvent() && props.list.archetype && props.manage.decks[props.list.popId] !== props.list.archetype}
+              when={playerId() && props.list.archetype && props.manage.decks[playerId() ?? ''] !== props.list.archetype}
             >
               <button type='button' class='btn btn-ghost tm-small' onClick={useDeck}>
                 Use their deck
@@ -85,7 +91,7 @@ function DecklistRow(props: { state: ManageState; manage: Manage; list: Decklist
       </tr>
       <Show when={open()}>
         <tr class='tm-expansion'>
-          <td colSpan={decksEnabled(props.manage.settings) ? 6 : 5}>
+          <td colSpan={(archetypes() ? 4 : 3) + (sanctioned() ? 2 : 0)}>
             <pre class='tm-decklist'>{props.list.deck}</pre>
           </td>
         </tr>
@@ -120,8 +126,10 @@ export function DecklistsPanel(props: { state: ManageState; manage: Manage }) {
             <thead>
               <tr>
                 <th>Player</th>
-                <th class='num'>Player ID</th>
-                <th class='num'>Born</th>
+                <Show when={isSanctioned(props.manage)}>
+                  <th class='num'>Player ID</th>
+                  <th class='num'>Born</th>
+                </Show>
                 <Show when={decksEnabled(props.manage.settings)}>
                   <th>Deck</th>
                 </Show>

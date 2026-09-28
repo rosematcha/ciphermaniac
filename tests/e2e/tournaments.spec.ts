@@ -29,13 +29,14 @@ const VIEW: TournamentView = {
   updatedAt: 0,
   tournament: publicTournament(tdf, keys),
   pending: [],
+  reports: [],
   divisions: publicDivisions(tdf, keys, Date.UTC(2026, 9, 3)),
   decks: publicDecks({ '7200001': 'Gardevoir ex' }, keys),
   settings: { ...DEFAULT_SETTINGS, details: 'Doors at 11', deckVisibility: 'always' },
   viewer: { role: null, me: null, signedIn: false }
 };
 
-async function mockApi(page: Page) {
+async function mockApi(page: Page, view: TournamentView = VIEW) {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/api/**', route => {
@@ -44,7 +45,7 @@ async function mockApi(page: Page) {
       return route.fulfill({ json: { user: null, providers: ['google', 'discord'] } });
     }
     if (url.pathname === `/api/tournaments/${CODE}`) {
-      return url.searchParams.has('since') ? route.fulfill({ status: 204 }) : route.fulfill({ json: VIEW });
+      return url.searchParams.has('since') ? route.fulfill({ status: 204 }) : route.fulfill({ json: view });
     }
     return route.fulfill({ status: 404, json: { error: 'Not found' } });
   });
@@ -104,4 +105,14 @@ test('the big screen hides the site chrome and shows a QR code to the event', as
   await expect(page.locator('.tm-screen-name').first()).toHaveText('Frances Allen');
   await expect(page.locator('.topnav')).toBeHidden();
   await expect(page.getByRole('img', { name: 'Event page QR code' })).toBeVisible();
+});
+
+test('before round 1 the big screen lists everyone registered, by last name', async ({ page }) => {
+  const unpaired = { ...VIEW.tournament, pods: VIEW.tournament.pods.map(pod => ({ ...pod, rounds: [] })) };
+  await mockApi(page, { ...VIEW, tournament: unpaired });
+  await page.goto(`/t/${CODE}?screen=1`);
+  const players = VIEW.tournament.players.filter(p => p.droppedAfter === null);
+  await expect(page.locator('.tm-screen-registered li')).toHaveCount(players.length);
+  await expect(page.locator('.tm-screen-name').first()).toHaveText('Frances Allen');
+  await expect(page.locator('.tm-screen-round')).toHaveText(`${players.length} registered`);
 });

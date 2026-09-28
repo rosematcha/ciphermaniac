@@ -9,6 +9,8 @@
  */
 
 import { divisionFor, parseTomDate, seasonOf } from './divisions.js';
+import { shortLastNames } from './identify.js';
+import type { PlayerReport } from './reports.js';
 import type { Division, Outcome, Pod, PodCategory, Tournament } from './types.js';
 
 export type TournamentMode = 'swiss' | 'tom';
@@ -41,15 +43,25 @@ export interface TournamentSettings {
   startsAt: string;
   /** Set when the organizer closes the event; 'after' decks show from then. */
   finished: boolean;
+  /**
+   * A Play! Pokémon event: players are known by Player ID and birth year, and
+   * the event exports a .tdf. An unsanctioned one asks for names only.
+   */
+  sanctioned: boolean;
+  /** Players report their own results from the event's page (see shared/tournament/reports.ts). */
+  playerReporting: boolean;
 }
 
 export const DEFAULT_SETTINGS: TournamentSettings = {
   decklistsOpen: false,
-  deckVisibility: 'after',
+  deckVisibility: 'off',
   details: '',
   format: 'Standard',
   startsAt: '',
-  finished: false
+  finished: false,
+  // Events made before the choice existed asked for Player IDs, so they stay sanctioned.
+  sanctioned: true,
+  playerReporting: false
 };
 
 export const SETTINGS_LIMITS = { details: 1000, format: 40, archetype: 60 } as const;
@@ -62,6 +74,8 @@ type SettingCheck = (value: unknown) => boolean;
 const SETTING_CHECKS: { [K in keyof TournamentSettings]: SettingCheck } = {
   decklistsOpen: value => typeof value === 'boolean',
   finished: value => typeof value === 'boolean',
+  sanctioned: value => typeof value === 'boolean',
+  playerReporting: value => typeof value === 'boolean',
   deckVisibility: value => VISIBILITIES.includes(value as DeckVisibility),
   details: value => typeof value === 'string' && value.length <= SETTINGS_LIMITS.details,
   format: value => typeof value === 'string' && value.length <= SETTINGS_LIMITS.format,
@@ -84,6 +98,11 @@ export function readSettings(body: unknown, current: TournamentSettings): Tourna
   return next as unknown as TournamentSettings;
 }
 
+/** Whether players are known by Player ID and birth year: a TOM event always is. */
+export function isSanctioned(event: { mode: TournamentMode; settings: TournamentSettings }): boolean {
+  return event.mode === 'tom' || event.settings.sanctioned;
+}
+
 /** Whether the event tracks archetypes at all. */
 export function decksEnabled(settings: TournamentSettings): boolean {
   return settings.deckVisibility !== 'off';
@@ -101,6 +120,8 @@ export interface TournamentView {
   updatedAt: number;
   tournament: Tournament;
   pending: PendingResult[];
+  /** Results players reported that are not settled yet, so a player sees where theirs stands. */
+  reports: PlayerReport[];
   /** Each public key's age division, since the birth dates it comes from stay private. */
   divisions: Record<string, Division>;
   /** Each public key's archetype label, when the organizer's deck visibility allows. */
@@ -143,9 +164,14 @@ function eventSeason(tournament: Tournament, now: number): number {
   return seasonOf(parseTomDate(tournament.info.startDate) ?? new Date(now));
 }
 
-/** The public copy of the tournament, its players under `keys` (see assignKeys). */
-export function publicTournament(tournament: Tournament, keys: Record<string, string>): Tournament {
+/**
+ * The public copy of the tournament, its players under `keys` (see
+ * assignKeys). With `shortNames`, as for an unsanctioned event, last names go
+ * out shortened (see shortLastNames).
+ */
+export function publicTournament(tournament: Tournament, keys: Record<string, string>, shortNames = false): Tournament {
   const key = (id: string) => keys[id] ?? id;
+  const short = shortNames ? shortLastNames(tournament.players) : null;
   const pods: Pod[] = tournament.pods.map(pod => ({
     ...pod,
     playerIds: pod.playerIds.map(key),
@@ -163,6 +189,7 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
     players: tournament.players.map(player => ({
       ...player,
       id: key(player.id),
+      lastName: short?.get(player.id) ?? player.lastName,
       birthDate: '',
       created: '',
       modified: ''

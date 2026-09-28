@@ -9,7 +9,7 @@
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { afterEach, beforeEach, test } from 'node:test';
+import { afterEach, beforeEach, mock, test } from 'node:test';
 
 import * as callback from '../../functions/api/auth/callback/[provider].ts';
 import * as login from '../../functions/api/auth/login/[provider].ts';
@@ -20,11 +20,13 @@ import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts'
 import * as decks from '../../functions/api/tournaments/[code]/decks.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
 import * as manage from '../../functions/api/tournaments/[code]/manage.ts';
+import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import * as settings from '../../functions/api/tournaments/[code]/settings.ts';
 import * as staff from '../../functions/api/tournaments/[code]/staff.ts';
 import * as sync from '../../functions/api/tournaments/[code]/sync.ts';
 import * as tournaments from '../../functions/api/tournaments/index.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
+import { REPORT_WINDOW_MS } from '../../shared/tournament/reports.ts';
 import { parseTdf } from '../../shared/tournament/tdf.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { sqliteD1 } from '../__utils__/sqliteD1.ts';
@@ -35,6 +37,7 @@ let env: TournamentEnv;
 beforeEach(() => {
   env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true' };
   decklists._resetRateLimitStore();
+  report._resetRateLimitStore();
 });
 
 interface Call {
@@ -535,7 +538,7 @@ test('decklists come in only while open, and decks show as the visibility settin
   await hit(settings.onRequestPut as Handler, '/settings', at(code), {
     method: 'PUT',
     cookie: owner,
-    body: { decklistsOpen: true }
+    body: { decklistsOpen: true, deckVisibility: 'after' }
   });
   const badProfile = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
     method: 'PUT',
@@ -657,6 +660,11 @@ test('every change publishes the public view to R2, and deleting the event remov
   const key = `tournaments/v1/${code}.json`;
   assert.ok(objects.has(key), 'published on creation');
   await addPlayers(code, owner, 2);
+  await hit(settings.onRequestPut as Handler, '/settings', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { deckVisibility: 'after' }
+  });
   await hit(decks.onRequestPut as Handler, '/decks', at(code), {
     method: 'PUT',
     cookie: owner,
@@ -724,6 +732,197 @@ test('only the organizer deletes an event', async () => {
 });
 
 afterEach(() => {
+  mock.timers.reset();
   delete env.ENVIRONMENT;
   delete env.REPORTS;
+});
+
+function settle(code: string, cookie: string, change: Record<string, unknown>) {
+  return hit(settings.onRequestPut as Handler, '/settings', at(code), { method: 'PUT', cookie, body: change });
+}
+
+function playerSays(code: string, body: Record<string, unknown>) {
+  return hit(report.onRequestPost as Handler, '/report', at(code), {
+    method: 'POST',
+    body: { ...body, localTime: '10/10/2026 12:00:00' }
+  });
+}
+
+test('an event starts with the settings its setup chose', async () => {
+  const owner = await signIn('Organizer');
+  const created = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    {
+      method: 'POST',
+      cookie: owner,
+      body: {
+        mode: 'swiss',
+        name: 'Friday Locals',
+        combined: false,
+        roundTime: 25,
+        settings: { sanctioned: false, playerReporting: true, format: 'Expanded', finished: true }
+      }
+    }
+  );
+  assert.equal(created.status, 201);
+  const code = created.json.code as string;
+  const made = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  assert.equal(made.tournament.info.roundTime, 25);
+  assert.equal(made.tournament.combined, true, 'no birth years, so no divisions to split');
+  assert.equal(made.settings.sanctioned, false);
+  assert.equal(made.settings.playerReporting, true);
+  assert.equal(made.settings.format, 'Expanded');
+  assert.equal(made.settings.finished, false, 'an event does not start closed');
+  assert.equal(made.settings.deckVisibility, 'off');
+  const bad = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    { method: 'POST', cookie: owner, body: { mode: 'swiss', name: 'X', settings: { sanctioned: 'yes' } } }
+  );
+  assert.equal(bad.status, 400);
+});
+
+test('an unsanctioned event takes decklists by name and leaves the account’s Player ID alone', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { sanctioned: false, decklistsOpen: true });
+  await send(code, owner, { type: 'addPlayer', player: { firstName: 'Pat', lastName: 'Player' } });
+  const player = await signIn('Player');
+  const profile = { popId: '1234567', firstName: 'Pat', lastName: 'Player', birthDate: '02/27/2001' };
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profile });
+  const sent = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
+    method: 'PUT',
+    cookie: player,
+    body: { deck: '60 Basic {P} Energy SVE 5', profile: { firstName: 'Pat', lastName: 'player' } }
+  });
+  assert.equal(sent.status, 200);
+  assert.equal(sent.json.decklist.popId, '');
+  assert.equal(sent.json.decklist.registered, true, 'matched to the list by name');
+  const account = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: player });
+  assert.equal(account.json.user.popId, '1234567');
+});
+
+test('players report their own results: agreement stands once locked, disagreement waits for staff', async () => {
+  const owner = await signIn('Organizer');
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 4);
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const [first, second] = paired.json.tournament.pods[0].rounds[0].matches;
+  assert.equal((await playerSays(code, { popId: first.p1, result: 'win' })).status, 403, 'off until staff turn it on');
+  await settle(code, owner, { playerReporting: true });
+
+  const who = await playerSays(code, { popId: first.p1 });
+  assert.equal(who.status, 200);
+  assert.ok(who.json.key && who.json.key !== first.p1, 'a public key, never the Player ID');
+  assert.equal((await playerSays(code, { popId: '1' })).status, 404);
+  assert.equal((await playerSays(code, { popId: first.p1, result: 'forfeit' })).status, 400);
+
+  const one = await playerSays(code, { popId: first.p1, result: 'win' });
+  assert.equal(one.json.view.reports.length, 1);
+  assert.ok(!JSON.stringify(one.json.view.reports).includes(first.p1), 'reports go out under public keys');
+  const agreed = await playerSays(code, { popId: first.p2, result: 'loss' });
+  assert.equal(agreed.json.view.reports.length, 2, 'agreeing reports wait out the window');
+  assert.equal(agreed.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'pending');
+  const changed = await playerSays(code, { popId: first.p2, result: 'win' });
+  assert.equal(changed.json.view.reports.length, 2, 'a change replaces the report inside the window');
+  await playerSays(code, { popId: first.p2, result: 'loss' });
+
+  mock.timers.tick(REPORT_WINDOW_MS);
+  assert.match((await playerSays(code, { popId: first.p2, result: 'win' })).json.error, /already has a result/);
+  const settled = await playerSays(code, { popId: first.p1 });
+  assert.deepEqual(settled.json.view.reports, []);
+  assert.equal(settled.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'p1', 'once locked, it stands');
+
+  await playerSays(code, { popId: second.p1, result: 'win' });
+  const disputed = await playerSays(code, { popId: second.p2, result: 'win' });
+  assert.equal(disputed.json.view.reports.length, 2);
+  mock.timers.tick(REPORT_WINDOW_MS);
+  assert.match((await playerSays(code, { popId: second.p2, result: 'loss' })).json.error, /locked/);
+  assert.equal(
+    (await playerSays(code, { popId: second.p1 })).json.view.tournament.pods[0].rounds[0].matches[1].outcome,
+    'pending'
+  );
+  const staffView = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  assert.deepEqual(
+    staffView.reports.map((r: { by: string }) => r.by).sort(),
+    [second.p1, second.p2].sort(),
+    'staff see who said what'
+  );
+  const overridden = await send(code, owner, {
+    type: 'reportResult',
+    pod: 'mixed',
+    round: 1,
+    table: second.table,
+    p1: second.p1,
+    p2: second.p2,
+    outcome: 'p2'
+  });
+  assert.deepEqual(overridden.json.reports, [], 'a staff result settles the dispute');
+  assert.deepEqual((await view(code)).reports, []);
+
+  await send(code, owner, {
+    type: 'reportResult',
+    pod: 'mixed',
+    round: 1,
+    table: first.table,
+    p1: first.p1,
+    p2: first.p2,
+    outcome: 'pending'
+  });
+  assert.equal((await playerSays(code, { popId: first.p1, result: 'win' })).json.view.reports.length, 1);
+  const off = await settle(code, owner, { playerReporting: false });
+  assert.deepEqual(off.json.reports, [], 'turning reporting off drops what was waiting');
+});
+
+test('an unsanctioned event finds players by last name, asking for a first name when two share it', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { sanctioned: false, playerReporting: true });
+  for (const [firstName, lastName] of [
+    ['Gary', 'Oak'],
+    ['Daisy', 'Oak'],
+    ['Ash', 'Ketchum']
+  ]) {
+    await send(code, owner, { type: 'addPlayer', player: { firstName, lastName } });
+  }
+  const shared = await playerSays(code, { lastName: 'oak' });
+  assert.equal(shared.status, 404);
+  assert.equal(shared.json.ambiguous, true);
+  assert.equal((await playerSays(code, { lastName: 'Oak', firstName: 'Daisy' })).status, 200);
+  assert.equal((await playerSays(code, { lastName: 'Ketchum' })).status, 200);
+  const shown = (await view(code)).tournament.players.map(p => `${p.firstName} ${p.lastName}`).sort();
+  assert.deepEqual(shown, ['Ash K.', 'Daisy O.', 'Gary O.'], 'the public sees initials, never full last names');
+  const staffNames = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  assert.ok(staffNames.tournament.players.some((p: { lastName: string }) => p.lastName === 'Ketchum'));
+  const byId = await playerSays(code, { popId: '9000000000' });
+  assert.equal(byId.status, 404, 'no Player IDs at an unsanctioned event');
+});
+
+test('at a TOM event an agreed report becomes a pending result for TOM', async () => {
+  const owner = await signIn('Organizer');
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const created = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf, settings: { sanctioned: false } } }
+  );
+  const { code } = created.json;
+  await settle(code, owner, { playerReporting: true });
+  await playerSays(code, { popId: '7200001', result: 'tie' });
+  const both = await playerSays(code, { popId: '7200004', result: 'tie' });
+  assert.equal(both.status, 200, 'a TOM event goes by Player ID whatever its setting says');
+  mock.timers.tick(REPORT_WINDOW_MS);
+  const agreed = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })) as {
+    json: { pending: { outcome: string }[]; tournament: TournamentView['tournament'] };
+  };
+  assert.equal(agreed.json.pending.length, 1, 'the console’s next look settles it');
+  assert.equal(agreed.json.pending[0]?.outcome, 'tie');
+  const table = agreed.json.tournament.pods[0]?.rounds[1]?.matches.find(m => m.table === 1);
+  assert.equal(table?.outcome, 'pending', 'TOM’s copy is untouched');
 });

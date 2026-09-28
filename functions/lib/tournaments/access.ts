@@ -6,6 +6,7 @@
 import {
   decksEnabled,
   decksVisible,
+  isSanctioned,
   publicDecks,
   publicDivisions,
   publicPending,
@@ -13,6 +14,7 @@ import {
   type PublishedView,
   type TournamentView
 } from '../../../shared/tournament/view.js';
+import { publicReports } from '../../../shared/tournament/reports.js';
 import { jsonError, jsonResponse } from '../api/responses.js';
 import { type Context, param, sameOrigin } from '../auth/env.js';
 import { currentUser, type User } from '../auth/session.js';
@@ -68,8 +70,9 @@ export function publicViewOf(row: TournamentRow): PublishedView {
     mode: row.mode,
     version: row.version,
     updatedAt: row.updatedAt,
-    tournament: publicTournament(row.tournament, row.keys),
+    tournament: publicTournament(row.tournament, row.keys, !isSanctioned(row)),
     pending: publicPending(row.pending, row.keys),
+    reports: publicReports(row.reports, row.keys),
     divisions: publicDivisions(row.tournament, row.keys, Date.now()),
     decks: decksVisible(row.settings) ? publicDecks(row.decks, row.keys) : {},
     settings: row.settings
@@ -98,6 +101,7 @@ export function manageView(access: Access): Record<string, unknown> {
     updatedAt: row.updatedAt,
     tournament: row.tournament,
     pending: row.pending,
+    reports: row.reports,
     settings: row.settings,
     decks: row.decks,
     role,
