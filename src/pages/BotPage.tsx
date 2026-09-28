@@ -15,10 +15,10 @@ interface PreviewRow {
 
 /** An illustrative round, laid out the way the bot posts one: a header, then an embed per followed player. */
 const PREVIEW: PreviewRow[] = [
-  { name: 'Gabriel Smart', record: '5-0-0', table: 1, opponent: 'Alex Schemanske', deck: 'Dragapult Blaziken' },
-  { name: 'Brent Tonisson', record: '3-1-1', table: 38, opponent: 'Rune Heiremans', deck: 'Gardevoir' },
-  { name: 'Henry Chao', record: '2-3-0', table: 214, opponent: 'Piper Lepine', deck: "N's Zoroark" },
-  { name: 'Piper Lepine', record: '2-3-0', table: 214, opponent: 'Henry Chao' }
+  { name: 'Marcus Whitfield', record: '5-0-0', table: 1, opponent: 'Owen Castellano', deck: 'Dragapult Blaziken' },
+  { name: 'Devin Halvorsen', record: '3-1-1', table: 38, opponent: 'Tomas Verbeke', deck: 'Gardevoir' },
+  { name: 'Kevin Lau', record: '2-3-0', table: 214, opponent: 'Nora Beaulieu', deck: "N's Zoroark" },
+  { name: 'Nora Beaulieu', record: '2-3-0', table: 214, opponent: 'Kevin Lau' }
 ];
 
 /** The bot's slash commands, in the order a new server meets them. */
