@@ -112,6 +112,13 @@ export function BotPage() {
           </p>
         </div>
         <div class='bot-part'>
+          <h2>Permissions</h2>
+          <p>
+            The bot asks for View Channel, Send Messages and Embed Links, and uses them only in the channel you choose.
+            Player names in updates never ping anyone.
+          </p>
+        </div>
+        <div class='bot-part bot-commands'>
           <h2>Commands</h2>
           <dl class='glossary'>
             <For each={COMMANDS}>
@@ -124,13 +131,6 @@ export function BotPage() {
             </For>
           </dl>
           <p>Changing channels, follows or hushes requires Manage Server. A server can follow up to 100 players.</p>
-        </div>
-        <div class='bot-part'>
-          <h2>Permissions</h2>
-          <p>
-            The bot asks for View Channel, Send Messages and Embed Links, and uses them only in the channel you choose.
-            Player names in updates never ping anyone.
-          </p>
         </div>
       </section>
     </>
