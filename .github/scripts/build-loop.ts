@@ -179,6 +179,8 @@ export async function validateEventSources(
   sources: Record<string, string>,
   load: <T>(key: string) => Promise<T | null>
 ): Promise<Record<string, string>> {
+  const started = Date.now();
+  console.log(`[build-loop] validating ${Object.keys(sources).length} event generations`);
   await runConcurrent(Object.entries(sources), async ([folder, sourceRoot]) => {
     const root = sourceRoot.replace(/^\/+|\/+$/g, '');
     const [marker, decks, meta, master] = await Promise.all([
@@ -201,6 +203,7 @@ export async function validateEventSources(
       throw new Error(`Immutable event generation is incomplete: ${folder} -> ${sourceRoot}`);
     }
   });
+  console.log(`[build-loop] validated ${Object.keys(sources).length} events in ${Date.now() - started}ms`);
   return { ...sources };
 }
 
@@ -213,6 +216,8 @@ async function discoverCapturedScopes(
     objects: ScopeObject[];
   }>
 > {
+  const started = Date.now();
+  console.log('[build-loop] listing captured scopes from R2');
   const list = (prefix: string, relativeTo: string, include?: (key: string) => boolean) =>
     listJsonObjects({ client, bucket, prefix, relativeTo, include });
   const [online, trends, players, snapshots, assets, priceShards, priceGlobals, majors] = await Promise.all([
@@ -236,7 +241,7 @@ async function discoverCapturedScopes(
   if (majors) {
     trends.push(majors);
   }
-  return [
+  const captures: Array<{ scope: ReleaseScope; objects: ScopeObject[] }> = [
     { scope: 'online', objects: online },
     { scope: 'trends', objects: trends },
     { scope: 'players', objects: players },
@@ -247,6 +252,10 @@ async function discoverCapturedScopes(
     { scope: 'snapshots', objects: snapshots },
     { scope: 'assets', objects: assets }
   ];
+  console.log(
+    `[build-loop] listed scopes in ${Date.now() - started}ms: ${captures.map(({ scope, objects }) => `${scope}=${objects.length}`).join(', ')}`
+  );
+  return captures;
 }
 
 async function capturePlayerScope(options: {
@@ -260,8 +269,10 @@ async function capturePlayerScope(options: {
   written: string[];
 }): Promise<string> {
   const { client, bucket, objects, previousRoot, write, load, publish, written } = options;
+  console.log(`[players] loading previous inventory from ${previousRoot}`);
   let previous = await load<PlayerInventory>(`${previousRoot.slice(1)}/_inventory.json`);
   if (!previous) {
+    console.log('[players] inventory missing; listing previous generation to reconstruct it');
     // Bootstrap reuse from the already immutable production tree without recopying it.
     const existing = await listJsonObjects({
       client,
@@ -276,6 +287,7 @@ async function capturePlayerScope(options: {
       ])
     );
   }
+  console.log(`[players] previous inventory has ${Object.keys(previous).length} objects`);
   const result = await capturePlayers({
     objects,
     previous,
@@ -398,6 +410,7 @@ async function main(): Promise<void> {
 
   // ---- Discover scopes ----
   const { sources, release } = await loadEventSources({ read: load });
+  console.log(`[build-loop] loaded ${Object.keys(sources).length} event sources`);
   assertProducerComplete(
     await load<ProducerState>('build/v1/producers/majors.json'),
     inputFingerprint(sources),
@@ -432,6 +445,7 @@ async function main(): Promise<void> {
   for (const capture of captures) {
     const before = written.length;
     const started = Date.now();
+    console.log(`[build-loop] capturing ${capture.scope}: ${capture.objects.length} objects`);
     roots[capture.scope] =
       capture.scope === 'players'
         ? await capturePlayerScope({

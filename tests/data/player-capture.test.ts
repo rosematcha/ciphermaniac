@@ -12,6 +12,7 @@ test('unchanged player bodies retain their immutable reference while changed bod
   const current = '/releases/v1/players/bbbbbbbbbbbb';
   const plan = planPlayerCapture([object, { ...object, relativeKey: '2/profile.json' }], previous, current, prior);
   assert.equal(plan.copies.length, 1);
+  assert.deepEqual(plan.copyReasons, { other: 0, new: 1, olderRoot: 0, changed: 0 });
   assert.equal(plan.inventory['1/profile.json'].path, previous['1/profile.json'].path);
   assert.equal(plan.inventory['2/profile.json'].path, `${current}/2/profile.json`);
   assert.equal(planPlayerCapture([{ ...object, etag: 'changed' }], previous, current, prior).copies.length, 1);
@@ -20,6 +21,12 @@ test('unchanged player bodies retain their immutable reference while changed bod
     '1/profile.json': { ...previous['1/profile.json'], path: '/releases/v1/players/older/1/profile.json' }
   };
   assert.equal(planPlayerCapture([object], transitive, current, prior).copies.length, 1);
+  assert.deepEqual(planPlayerCapture([object], transitive, current, prior).copyReasons, {
+    other: 0,
+    new: 0,
+    olderRoot: 1,
+    changed: 0
+  });
 });
 
 test('capture commits routes and references only after all copies succeed; identical retries write nothing', async () => {
