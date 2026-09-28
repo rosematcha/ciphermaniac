@@ -26,7 +26,8 @@ import { buildTournamentCatalog } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson, withR2Retry } from './lib/r2.mjs';
 import { listR2Objects } from './lib/r2Inventory.mjs';
 import { loadEventSources } from './lib/build/productionRelease.ts';
-import { capturePlayers, type PlayerInventory } from './lib/build/playerCapture';
+import { capturePlayers, currentPlayerObjects, type PlayerInventory } from './lib/build/playerCapture';
+import type { PlayerAggregateManifest } from '../../shared/playerTypes';
 import { assertProducerComplete, inputFingerprint, type ProducerState } from './lib/build/provenance';
 import { isOnlineReportObject, staleCapturedReport } from './lib/build/capturedScope';
 
@@ -335,6 +336,23 @@ function assertRequiredArtifacts(captures: Array<{ scope: ReleaseScope; objects:
   }
 }
 
+async function selectCurrentPlayerScope(
+  captures: Array<{ scope: ReleaseScope; objects: ScopeObject[] }>,
+  load: <T>(key: string) => Promise<T | null>
+): Promise<void> {
+  const playerManifest = await load<PlayerAggregateManifest>('players/_manifest.json');
+  if (!playerManifest || !playerManifest.players || typeof playerManifest.players !== 'object') {
+    throw new Error('Player producer manifest is missing or invalid');
+  }
+  const playerScope = captures.find(capture => capture.scope === 'players');
+  if (!playerScope) {
+    throw new Error('Player scope is missing');
+  }
+  const listed = playerScope.objects.length;
+  playerScope.objects = currentPlayerObjects(playerScope.objects, playerManifest.players);
+  console.log(`[build-loop] selected ${playerScope.objects.length}/${listed} current player objects`);
+}
+
 export async function assertNoIncompleteProducers(load: <T>(key: string) => Promise<T | null>): Promise<void> {
   for (const producer of ['daily', 'assets']) {
     const state = await load<ProducerState>(`build/v1/producers/${producer}.json`);
@@ -441,6 +459,7 @@ async function main(): Promise<void> {
 
   // ---- Complete captured scopes ----
   const captures = await discoverCapturedScopes(client, bucket);
+  await selectCurrentPlayerScope(captures, load);
   assertRequiredArtifacts(captures);
   for (const capture of captures) {
     const before = written.length;
