@@ -1145,3 +1145,12 @@ test('the organizer sees who joined staff, and when, and removes one of them', a
   assert.deepEqual(removed.json.staff, []);
   assert.equal((await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: helper })).status, 403);
 });
+
+test('only the organizer shows decks sooner; staff can still hide them', async () => {
+  const { owner, code, helper } = await withHelper();
+  const put = (cookie: string, deckVisibility: string) =>
+    hit(settings.onRequestPut as Handler, '/settings', at(code), { method: 'PUT', cookie, body: { deckVisibility } });
+  assert.equal((await put(helper, 'always')).status, 403, 'staff cannot reveal decks early');
+  assert.equal((await put(owner, 'always')).status, 200);
+  assert.equal((await put(helper, 'after')).status, 200, 'but can hide them');
+});
