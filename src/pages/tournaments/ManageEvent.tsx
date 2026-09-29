@@ -12,17 +12,19 @@ import { joinStaff, type Manage } from '../../lib/tournament/api';
 import { divisionLookup, namesById, shownDecks } from '../../lib/tournament/present';
 import { session } from './session';
 import { latestValue } from '../../lib/resource';
-import { EventPanel } from './EventPanel';
 import { ErrorLine } from './Field';
 import { createManage } from './manageState';
-import { PlayersPanel } from './PlayersPanel';
 import { RoundPanel } from './RoundPanel';
 import { SignIn } from './SignIn';
-import { StandingsTable } from './StandingsTable';
 import { TomSyncPanel } from './TomSyncPanel';
 
-// Decklists are read before the event, not during it, so their tab loads when opened.
+// Pairings is the tab a running event lives on, so only it loads with the page;
+// the others load when opened (decklists are read before the event, the
+// players and event tabs mostly before it too, standings between rounds).
 const DecklistsPanel = lazy(() => import('./DecklistsPanel').then(m => ({ default: m.DecklistsPanel })));
+const PlayersPanel = lazy(() => import('./PlayersPanel').then(m => ({ default: m.PlayersPanel })));
+const StandingsTable = lazy(() => import('./StandingsTable').then(m => ({ default: m.StandingsTable })));
+const EventPanel = lazy(() => import('./EventPanel').then(m => ({ default: m.EventPanel })));
 
 type Tab = 'round' | 'players' | 'standings' | 'decklists' | 'event';
 
