@@ -26,6 +26,8 @@ export function EventSetup(props: {
   mode: 'swiss' | 'tom';
   /** The name the .tdf gave, shown instead of asked. */
   tdfName?: string;
+  /** Whether the imported event has a Play! Pokémon sanction ID. */
+  tdfSanctioned?: boolean;
   busy: boolean;
   error: string | null;
   onCreate: (setup: Setup) => void;
@@ -33,6 +35,7 @@ export function EventSetup(props: {
 }) {
   const [name, setName] = createSignal('');
   const [sanctioned, setSanctioned] = createSignal(false);
+  const [playToolsConfirmed, setPlayToolsConfirmed] = createSignal(false);
   const [combined, setCombined] = createSignal(true);
   const [format, setFormat] = createSignal('Standard');
   const [startsAt, setStartsAt] = createSignal('');
@@ -42,9 +45,14 @@ export function EventSetup(props: {
   const [decklists, setDecklists] = createSignal(false);
   const swiss = () => props.mode === 'swiss';
   const needsName = () => swiss() && !name().trim();
+  const needsPlayTools = () => (swiss() ? sanctioned() : props.tdfSanctioned);
+  const cannotCreate = () => props.busy || needsName() || (needsPlayTools() && !playToolsConfirmed());
 
   function submit(event: Event) {
     event.preventDefault();
+    if (cannotCreate()) {
+      return;
+    }
     props.onCreate({
       name: name().trim(),
       combined: combined() || !sanctioned(),
@@ -88,11 +96,34 @@ export function EventSetup(props: {
           <SettingRow label='Sanctioned'>
             <Toggle label='Sanctioned' value={sanctioned()} on='Yes' off='No' onChange={setSanctioned} />
           </SettingRow>
-          <Show when={sanctioned()}>
-            <SettingRow label='Divisions'>
-              <Toggle label='Divisions' value={combined()} on='Together' off='Apart' onChange={setCombined} />
-            </SettingRow>
-          </Show>
+        </Show>
+        <Show when={needsPlayTools()}>
+          <SettingRow label='Play! Tools'>
+            <div class='tm-field'>
+              <div class='tm-set-inline'>
+                <a href='https://play-tools.pokemon.com/' target='_blank' rel='noopener noreferrer'>
+                  Play! Tools
+                </a>
+                <a href='https://play-tools.pokemon.com/guide' target='_blank' rel='noopener noreferrer'>
+                  Sanctioning guide
+                </a>
+              </div>
+              <label class='tm-check'>
+                <input
+                  type='checkbox'
+                  required
+                  checked={playToolsConfirmed()}
+                  onChange={e => setPlayToolsConfirmed(e.currentTarget.checked)}
+                />
+                I’ve created this event in Play! Tools
+              </label>
+            </div>
+          </SettingRow>
+        </Show>
+        <Show when={swiss() && sanctioned()}>
+          <SettingRow label='Divisions'>
+            <Toggle label='Divisions' value={combined()} on='Together' off='Apart' onChange={setCombined} />
+          </SettingRow>
         </Show>
         <SettingRow label='Format' for='setup-format'>
           <FormatSelect id='setup-format' value={format()} onChange={setFormat} />
@@ -133,7 +164,7 @@ export function EventSetup(props: {
         <Show when={needsName()}>
           <span class='muted'>Name the event to create it</span>
         </Show>
-        <button type='submit' class='btn btn-primary' disabled={props.busy || needsName()}>
+        <button type='submit' class='btn btn-primary' disabled={cannotCreate()}>
           Create event
         </button>
         <button type='button' class='btn btn-ghost' onClick={() => props.onCancel()}>

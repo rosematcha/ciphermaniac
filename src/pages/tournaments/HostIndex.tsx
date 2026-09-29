@@ -275,6 +275,7 @@ function Organizer(props: { onOpened: (code: string) => void }) {
         <EventSetup
           mode={stage().kind === 'tom' ? 'tom' : 'swiss'}
           tdfName={(stage() as Extract<Stage, { kind: 'tom' }>).tournament?.info.name}
+          tdfSanctioned={Boolean((stage() as Extract<Stage, { kind: 'tom' }>).tournament?.info.sanctionId)}
           busy={busy()}
           error={error()}
           onCreate={setup => void create(setup)}
