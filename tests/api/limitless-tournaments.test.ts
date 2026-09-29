@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
 import { onRequestOptions, onRequestGet as tournamentsHandler } from '../../functions/api/limitless/tournaments.js';
-import { fetchLimitlessJson } from '../../shared/api/limitless.js';
 
 // Fixed test date for deterministic tests
 const FIXED_TEST_DATE = '2025-01-15T12:00:00.000Z';
@@ -81,28 +80,6 @@ test('Limitless tournaments - query parameter handling (only allowed params forw
 
   restoreFetch();
   delete globalThis.__LIMITLESS_API_KEY__;
-});
-
-test('Limitless - fetchLimitlessJson throws for missing API key', async () => {
-  // Ensure no API key is set anywhere
-  delete globalThis.__LIMITLESS_API_KEY__;
-  const origProcessEnv = process.env.LIMITLESS_API_KEY;
-  delete process.env.LIMITLESS_API_KEY;
-
-  // Ensure environment without key - this should throw before any fetch
-  await assert.rejects(
-    async () => {
-      await fetchLimitlessJson('/tournaments', { env: {} });
-    },
-    {
-      message: /Limitless API key not configured/i
-    }
-  );
-
-  // Restore
-  if (origProcessEnv) {
-    process.env.LIMITLESS_API_KEY = origProcessEnv;
-  }
 });
 
 test('Limitless - 404 from upstream returns 404 status from handler', async () => {

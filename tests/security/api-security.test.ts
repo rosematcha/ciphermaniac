@@ -220,20 +220,14 @@ test('Thumbnail API: rejects invalid size parameter', async () => {
   assert.ok(text.includes('Invalid size'), 'Error should mention invalid size');
 });
 
-test('Thumbnail API: rejects invalid set code format', async () => {
-  const request = makeThumbnailRequest('/thumbnails/sm/../TEF/123');
-  const response = await ThumbnailModule.onRequest({ request });
-  assert.ok([400, 404].includes(response.status), 'Should reject malformed set code');
-});
-
-test('Thumbnail API: rejects set code with invalid characters', async () => {
-  const request = makeThumbnailRequest('/thumbnails/sm/TOOLONGSETCODE/123');
-  const response = await ThumbnailModule.onRequest({ request });
-  assert.strictEqual(response.status, 400, 'Should reject set code > 8 chars');
-
-  const request2 = makeThumbnailRequest('/thumbnails/sm/X/123');
-  const response2 = await ThumbnailModule.onRequest({ request: request2 });
-  assert.strictEqual(response2.status, 400, 'Should reject set code < 2 chars');
+test('Thumbnail API: rejects set codes outside the length and character rules', async () => {
+  for (const setCode of ['TOOLONGSETCODE', 'X', 'TE-F']) {
+    const response = await ThumbnailModule.onRequest({
+      request: makeThumbnailRequest(`/thumbnails/sm/${setCode}/123`)
+    });
+    assert.strictEqual(response.status, 400, `Should reject ${setCode}`);
+    assert.match(await response.text(), /Invalid set code format/);
+  }
 });
 
 test('Thumbnail API: rejects invalid card number format', async () => {
@@ -242,18 +236,24 @@ test('Thumbnail API: rejects invalid card number format', async () => {
   assert.strictEqual(response.status, 400, 'Should reject invalid card number');
 });
 
-test('Thumbnail API: prevents path traversal attacks', async () => {
-  const traversalPaths = [
-    '/thumbnails/sm/../../etc/passwd',
-    '/thumbnails/sm/TEF/../../../secret/123',
-    '/thumbnails/sm/TEF/..%2F..%2Fetc/passwd'
-  ];
+test('Thumbnail API: rejects encoded path separators before fetching', async () => {
+  let fetches = 0;
+  mockFetch({
+    predicate: () => {
+      fetches += 1;
+      return true;
+    },
+    status: 200,
+    body: 'unexpected fetch'
+  });
+  const traversalPaths = ['/thumbnails/sm/TEF/..%2F..%2Fetc%2Fpasswd', '/thumbnails/sm/TE%2FF/123'];
 
   for (const path of traversalPaths) {
     const request = makeThumbnailRequest(path);
     const response = await ThumbnailModule.onRequest({ request });
-    assert.ok([400, 404].includes(response.status), `Path traversal attempt should be blocked: ${path}`);
+    assert.strictEqual(response.status, 400, `Path traversal attempt should be blocked: ${path}`);
   }
+  assert.strictEqual(fetches, 0);
 });
 
 test('Thumbnail API: OPTIONS preflight returns CORS headers', async () => {
@@ -264,8 +264,9 @@ test('Thumbnail API: OPTIONS preflight returns CORS headers', async () => {
 });
 
 test('Sprite API: rejects invalid slugs', async () => {
-  const response = await SpriteModule.onRequest({ request: makeThumbnailRequest('/sprites/../mew.png') });
+  const response = await SpriteModule.onRequest({ request: makeThumbnailRequest('/sprites/mew%2Fmeow.png') });
   assert.strictEqual(response.status, 400);
+  assert.match(await response.text(), /Invalid sprite slug/);
 });
 
 test('Sprite API: falls back and returns an immutable, CORS-open image', async () => {

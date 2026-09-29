@@ -26,16 +26,14 @@ test('Logger should not allow newline injection in logged messages', () => {
  * Card name sanitization in reports: generate a report containing a malicious card name and ensure
  * that generated UIDs or filenames do not include traversal sequences
  */
-test('Report generation sanitizes card names and prevents UID traversal', () => {
+test('Report generation sanitizes card names before publishing', () => {
   const deck = generateMockDeck({
     cards: [{ id: 'c1', name: 'EvilCard/..\\secret', count: 3, category: 'Other' }]
   } as any);
 
   const report = generateReportFromDecks([deck], 1, null);
-  // Ensure item names or uids do not contain path traversal pieces
-  for (const item of report.items) {
-    const name = (item.name || '').toString();
-    assert.equal(name.includes('..'), false, 'Report item names must not contain traversal sequences');
-    assert.equal(name.includes('/'), false, 'Report item names must not contain path separators');
-  }
+  assert.deepEqual(
+    report.items.map(item => item.name),
+    ['EvilCardsecret']
+  );
 });

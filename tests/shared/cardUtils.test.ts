@@ -151,6 +151,7 @@ test('sanitizeForPath removes path traversal sequences', () => {
   assert.strictEqual(sanitizeForPath('../../../etc/passwd'), 'etcpasswd');
   assert.strictEqual(sanitizeForPath('..'), '');
   assert.strictEqual(sanitizeForPath('dir/../file'), 'dirfile');
+  assert.strictEqual(sanitizeForPath(`${'A'.repeat(5000)}/../etc/passwd`), `${'A'.repeat(5000)}etcpasswd`);
 });
 
 test('sanitizeForPath removes null bytes', () => {
@@ -211,6 +212,7 @@ test('normalizeArchetypeName lowercases the result', () => {
   assert.strictEqual(normalizeArchetypeName('Charizard'), 'charizard');
   assert.strictEqual(normalizeArchetypeName('GHOLDENGO'), 'gholdengo');
   assert.strictEqual(normalizeArchetypeName('MiXeD CaSe'), 'mixed case');
+  assert.strictEqual(normalizeArchetypeName('Ünicode—Name'), 'ünicode—name');
 });
 
 test('normalizeArchetypeName trims whitespace', () => {

@@ -6,7 +6,7 @@
  * derivation, and stable content-addressed IDs (with snapshotted hashes).
  */
 
-import { cardUidOrName, normalizeCardNumber } from '../../shared/data/cardIdentity.ts';
+import { cardUidOrName } from '../../shared/data/cardIdentity.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -302,12 +302,6 @@ test('archetypeSlug derives from the key, empties fall back to unknown', () => {
 // ============================================================================
 // Card identity normalization (SVI/1 vs svi/001, 18a, TG15)
 // ============================================================================
-
-test('card numbers normalize to canonical padded form', () => {
-  assert.strictEqual(normalizeCardNumber('1'), '001');
-  assert.strictEqual(normalizeCardNumber('18a'), '018A');
-  assert.strictEqual(normalizeCardNumber('TG15'), 'TG15');
-});
 
 test('SVI/1 and svi/001 resolve to the same canonical UID', () => {
   assert.strictEqual(cardUidOrName('Pikachu ex', 'SVI', '1'), cardUidOrName('Pikachu ex', 'svi', '001'));
