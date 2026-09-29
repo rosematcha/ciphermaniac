@@ -161,7 +161,6 @@ export interface Changes {
   reports?: PlayerReport[];
   settings?: TournamentSettings;
   decks?: Record<string, string>;
-  staffToken?: string;
 }
 
 /**
@@ -181,14 +180,13 @@ function reportsAfter(row: TournamentRow, changes: Changes): PlayerReport[] {
 
 /** The columns a change writes, and their values: only what it changed. */
 function columnsFor(row: TournamentRow, changes: Changes): [string, string][] {
-  const { tournament, pending, settings, decks, staffToken } = changes;
+  const { tournament, pending, settings, decks } = changes;
   const columns: [string, string | false | undefined][] = [
     ['state', tournament && stateJson(tournament)],
     ['player_keys', tournament && JSON.stringify(assignKeys(tournament, row.keys))],
     ['pending', pending && JSON.stringify(pending)],
     ['settings', settings && JSON.stringify(settings)],
     ['decks', decks && JSON.stringify(decks)],
-    ['staff_token', staffToken],
     // Reports follow the results and the reporting setting, so any of those rewrites them.
     ['reports', (changes.reports ?? tournament ?? pending ?? settings) && JSON.stringify(reportsAfter(row, changes))]
   ];
@@ -281,11 +279,21 @@ export async function roleOf(db: D1Like, row: TournamentRow, user: User | null):
   return staff ? 'staff' : null;
 }
 
-export async function addStaff(db: D1Like, code: string, userId: string): Promise<void> {
-  await db
-    .prepare('INSERT OR IGNORE INTO staff (code, user_id, joined_at) VALUES (?, ?, ?)')
-    .bind(code, userId, Date.now())
-    .run();
+/**
+ * Joins the user to the event's staff if `token` is its invite token at the
+ * moment of writing: checked in the insert itself, so a join that read the
+ * old token cannot land after the organizer replaced it.
+ * @returns Whether the user joined
+ */
+export async function joinStaff(db: D1Like, code: string, userId: string, token: string): Promise<boolean> {
+  const result = (await db
+    .prepare(
+      'INSERT OR IGNORE INTO staff (code, user_id, joined_at) ' +
+        'SELECT code, ?, ? FROM tournaments WHERE code = ? AND staff_token = ?'
+    )
+    .bind(userId, Date.now(), code, token)
+    .run()) as { meta?: { changes?: number } };
+  return (result.meta?.changes ?? 0) === 1;
 }
 
 export interface StaffMember {
@@ -362,8 +370,17 @@ export async function listTournaments(db: D1Like, userId: string): Promise<Tourn
   }));
 }
 
-export async function clearStaff(db: D1Like, code: string): Promise<void> {
-  await db.prepare('DELETE FROM staff WHERE code = ?').bind(code).run();
+/**
+ * A new invite token and nobody on staff, in one transaction: no join can
+ * fall between the two and keep a place the old link gave.
+ */
+export async function rotateStaff(db: D1Like, code: string): Promise<void> {
+  await db.batch([
+    db
+      .prepare('UPDATE tournaments SET staff_token = ?, version = version + 1, updated_at = ? WHERE code = ?')
+      .bind(randomToken(16), Date.now(), code),
+    db.prepare('DELETE FROM staff WHERE code = ?').bind(code)
+  ]);
 }
 
 export async function ownedCount(db: D1Like, userId: string): Promise<number> {

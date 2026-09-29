@@ -30,6 +30,7 @@ import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { REPORT_WINDOW_MS } from '../../shared/tournament/reports.ts';
 import { parseTdf } from '../../shared/tournament/tdf.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
+import { rotateStaff } from '../../functions/lib/tournaments/store.ts';
 import { sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 const ORIGIN = 'https://cm.test';
@@ -1186,4 +1187,33 @@ test('a change reads the event once and writes only the columns it changed', asy
   const update = seen.find(sql => sql.startsWith('UPDATE tournaments')) ?? '';
   assert.match(update, /decks = \?/);
   assert.doesNotMatch(update, /state = |staff_token = |settings = /);
+});
+
+test('a join that read the old invite link cannot land after the organizer replaces it', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const { staffToken } = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  const helper = await signIn('Helper');
+  const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
+  // The organizer's new link lands after the join request read the event, just before it writes.
+  env.TOURNAMENT_DB = {
+    ...db,
+    prepare: sql => {
+      if (sql.startsWith('INSERT OR IGNORE INTO staff')) {
+        void rotateStaff(db, code);
+      }
+      return db.prepare(sql);
+    }
+  };
+  const joined = await hit(staff.onRequestPost as Handler, '/staff', at(code), {
+    method: 'POST',
+    cookie: helper,
+    body: { token: staffToken }
+  });
+  env.TOURNAMENT_DB = db;
+  assert.equal(joined.status, 403);
+  assert.equal(
+    (await send(code, helper, { type: 'addPlayer', player: { firstName: 'A', lastName: 'B' } })).status,
+    403
+  );
 });
