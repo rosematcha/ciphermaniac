@@ -85,7 +85,7 @@ test('every call goes to its endpoint with its body', async () => {
   await sendCommand('ABC', { type: 'pairRound', pod: 'mixed' });
   await syncTournament('ABC', t, 'rev');
   await setDeck('ABC', '1', 'Gardevoir ex');
-  await saveSettings('ABC', { decklistsOpen: true });
+  await saveSettings('ABC', { decklists: 'open' });
   await joinStaff('ABC', 'tok');
   await rotateStaffToken('ABC');
   await fetchDecklists('ABC');

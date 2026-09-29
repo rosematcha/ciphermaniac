@@ -32,8 +32,15 @@ export interface PendingResult {
  */
 export type DeckVisibility = 'always' | 'after' | 'off';
 
+/**
+ * Whether the event takes decklists: 'off' leaves them out altogether (no
+ * form for players, no tab for staff); 'open' and 'closed' say whether
+ * players can send one now.
+ */
+export type DecklistMode = 'off' | 'open' | 'closed';
+
 export interface TournamentSettings {
-  decklistsOpen: boolean;
+  decklists: DecklistMode;
   deckVisibility: DeckVisibility;
   /** The organizer's own notes for players: venue, prizes, schedule. */
   details: string;
@@ -53,7 +60,7 @@ export interface TournamentSettings {
 }
 
 export const DEFAULT_SETTINGS: TournamentSettings = {
-  decklistsOpen: false,
+  decklists: 'off',
   deckVisibility: 'off',
   details: '',
   format: 'Standard',
@@ -67,12 +74,13 @@ export const DEFAULT_SETTINGS: TournamentSettings = {
 export const SETTINGS_LIMITS = { details: 1000, format: 40, archetype: 60 } as const;
 
 const VISIBILITIES: readonly DeckVisibility[] = ['always', 'after', 'off'];
+const DECKLIST_MODES: readonly DecklistMode[] = ['off', 'open', 'closed'];
 const STARTS_AT_RE = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})?$/;
 
 type SettingCheck = (value: unknown) => boolean;
 
 const SETTING_CHECKS: { [K in keyof TournamentSettings]: SettingCheck } = {
-  decklistsOpen: value => typeof value === 'boolean',
+  decklists: value => DECKLIST_MODES.includes(value as DecklistMode),
   finished: value => typeof value === 'boolean',
   sanctioned: value => typeof value === 'boolean',
   playerReporting: value => typeof value === 'boolean',
@@ -82,13 +90,25 @@ const SETTING_CHECKS: { [K in keyof TournamentSettings]: SettingCheck } = {
   startsAt: value => typeof value === 'string' && STARTS_AT_RE.test(value)
 };
 
+/**
+ * A change or stored copy in today's words: the open or closed switch
+ * decklists had before they could be turned off, as a console loaded before
+ * then still sends it, reads as the decklists choice.
+ */
+function withoutLegacy(body: object): Record<string, unknown> {
+  const { decklistsOpen, ...rest } = body as Record<string, unknown>;
+  return typeof decklistsOpen === 'boolean' && rest.decklists === undefined
+    ? { ...rest, decklists: decklistsOpen ? 'open' : 'closed' }
+    : { ...rest, ...(decklistsOpen === undefined ? {} : { decklistsOpen }) };
+}
+
 /** A settings change out of a request body, laid over `current`; null when any field is malformed. */
 export function readSettings(body: unknown, current: TournamentSettings): TournamentSettings | null {
   if (typeof body !== 'object' || body === null) {
     return null;
   }
   const next: Record<string, unknown> = { ...current };
-  for (const [key, value] of Object.entries(body)) {
+  for (const [key, value] of Object.entries(withoutLegacy(body))) {
     const check = Object.hasOwn(SETTING_CHECKS, key) ? SETTING_CHECKS[key as keyof TournamentSettings] : undefined;
     if (!check?.(value)) {
       return null;
@@ -96,6 +116,20 @@ export function readSettings(body: unknown, current: TournamentSettings): Tourna
     next[key] = value;
   }
   return next as unknown as TournamentSettings;
+}
+
+/**
+ * Settings as stored, laid over the defaults. Events stored before decklists
+ * could be turned off kept an open or closed switch; they keep the tab.
+ */
+export function storedSettings(stored: Record<string, unknown>): TournamentSettings {
+  const { decklistsOpen: _old, ...current } = withoutLegacy(stored);
+  return { ...DEFAULT_SETTINGS, ...(current as Partial<TournamentSettings>) };
+}
+
+/** Whether players can send a decklist now. */
+export function decklistsOpen(settings: Pick<TournamentSettings, 'decklists'>): boolean {
+  return settings.decklists === 'open';
 }
 
 /** Whether players are known by Player ID and birth year: a TOM event always is. */

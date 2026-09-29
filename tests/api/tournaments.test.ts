@@ -539,16 +539,27 @@ test('decklists come in only while open, and decks show as the visibility settin
     profile: { popId: '777', firstName: 'Pat', lastName: 'Player', birthDate: '02/27/2001' },
     archetype: 'Gardevoir ex'
   };
+  const off = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
+    method: 'PUT',
+    cookie: player,
+    body: submission
+  });
+  assert.deepEqual([off.status, off.json.error], [403, 'This event does not take decklists'], 'off by default');
+  await hit(settings.onRequestPut as Handler, '/settings', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { decklists: 'closed' }
+  });
   const closed = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
     method: 'PUT',
     cookie: player,
     body: submission
   });
-  assert.equal(closed.status, 403);
+  assert.deepEqual([closed.status, closed.json.error], [403, 'Decklist submission is closed']);
   await hit(settings.onRequestPut as Handler, '/settings', at(code), {
     method: 'PUT',
     cookie: owner,
-    body: { decklistsOpen: true, deckVisibility: 'after' }
+    body: { decklists: 'open', deckVisibility: 'after' }
   });
   const badProfile = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
     method: 'PUT',
@@ -796,6 +807,7 @@ test('an event starts with the settings its setup chose', async () => {
   assert.equal(made.settings.format, 'Expanded');
   assert.equal(made.settings.finished, false, 'an event does not start closed');
   assert.equal(made.settings.deckVisibility, 'off');
+  assert.equal(made.settings.decklists, 'off');
   const bad = await hit(
     tournaments.onRequestPost as Handler,
     '/api/tournaments',
@@ -808,7 +820,7 @@ test('an event starts with the settings its setup chose', async () => {
 test('an unsanctioned event takes decklists by name and leaves the account’s Player ID alone', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
-  await settle(code, owner, { sanctioned: false, decklistsOpen: true });
+  await settle(code, owner, { sanctioned: false, decklists: 'open' });
   await send(code, owner, { type: 'addPlayer', player: { firstName: 'Pat', lastName: 'Player' } });
   const player = await signIn('Player');
   const profile = { popId: '1234567', firstName: 'Pat', lastName: 'Player', birthDate: '02/27/2001' };
@@ -983,7 +995,7 @@ function listOf(code: string, query: string) {
 test('a player with no account submits a list, reads it back with its device token, and withdraws it', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
-  await settle(code, owner, { decklistsOpen: true });
+  await settle(code, owner, { decklists: 'open' });
   const profile = { popId: '4242', firstName: 'Nia', lastName: 'Okafor', birthDate: '02/27/2001' };
   const sent = await submitAs(code, profile);
   assert.equal(sent.status, 200, 'no sign-in needed');
@@ -1032,12 +1044,12 @@ test('a player with no account submits a list, reads it back with its device tok
 test('a submitter is only added to an open Swiss event, and an unsanctioned one by name', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
-  await settle(code, owner, { decklistsOpen: true, finished: true });
+  await settle(code, owner, { decklists: 'open', finished: true });
   const closed = await submitAs(code, { popId: '5151', firstName: 'Ada', lastName: 'Byron', birthDate: '02/27/1990' });
   assert.deepEqual([closed.status, closed.json.registration], [200, 'not-added'], 'a closed event takes nobody new');
 
   const casual = await newSwiss(owner);
-  await settle(casual, owner, { decklistsOpen: true, sanctioned: false });
+  await settle(casual, owner, { decklists: 'open', sanctioned: false });
   const byName = await submitAs(casual, { firstName: 'Grace', lastName: 'Hopper' });
   assert.equal(byName.json.registration, 'added');
   const again = await submitAs(casual, { firstName: 'grace', lastName: 'HOPPER' }, { token: byName.json.token });
@@ -1051,7 +1063,7 @@ test('a submitter is only added to an open Swiss event, and an unsanctioned one 
 test('a signed-in player’s profile reads no list without the device token', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
-  await settle(code, owner, { decklistsOpen: true });
+  await settle(code, owner, { decklists: 'open' });
   const player = await signIn('Player');
   const profile = { popId: '6161', firstName: 'Lin', lastName: 'Park', birthDate: '02/27/2001' };
   const sent = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
@@ -1077,7 +1089,7 @@ test('a signed-in player’s profile reads no list without the device token', as
 test('names split differently are different players’ lists', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
-  await settle(code, owner, { decklistsOpen: true, sanctioned: false });
+  await settle(code, owner, { decklists: 'open', sanctioned: false });
   await submitAs(code, { firstName: 'Mary Ann', lastName: 'Smith' });
   await submitAs(code, { firstName: 'Mary', lastName: 'Ann Smith' });
   const staffLists = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
@@ -1087,7 +1099,7 @@ test('names split differently are different players’ lists', async () => {
 test('staff unlock a list for a player on a new device, who then takes it over', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
-  await settle(code, owner, { decklistsOpen: true });
+  await settle(code, owner, { decklists: 'open' });
   const profile = { popId: '7373', firstName: 'Ren', lastName: 'Aoki', birthDate: '02/27/2001' };
   await submitAs(code, profile);
   assert.equal((await submitAs(code, profile)).status, 409);
@@ -1232,9 +1244,9 @@ test('a join that read the old invite link cannot land after the organizer repla
 test('a list cannot be withdrawn once submission closes, even with its token', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
-  await settle(code, owner, { decklistsOpen: true });
+  await settle(code, owner, { decklists: 'open' });
   const sent = await submitAs(code, { popId: '4343', firstName: 'Ola', lastName: 'Nordmann', birthDate: '02/27/2001' });
-  await settle(code, owner, { decklistsOpen: false });
+  await settle(code, owner, { decklists: 'closed' });
   const withdrawn = await hit(
     decklists.onRequestDelete as Handler,
     `/decklists?popId=4343&token=${sent.json.token}`,
@@ -1402,7 +1414,7 @@ test('an idle console poll answers 204 to staff only, and a change or a due repo
 test('a field sending lists from one venue address is not turned away', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
-  await settle(code, owner, { decklistsOpen: true, sanctioned: false });
+  await settle(code, owner, { decklists: 'open', sanctioned: false });
   for (let i = 0; i < 40; i += 1) {
     const sent = await submitAs(code, { firstName: 'Player', lastName: `Number ${i}` });
     assert.equal(sent.status, 200, `player ${i + 1} of 40`);

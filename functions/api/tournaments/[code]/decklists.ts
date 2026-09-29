@@ -26,7 +26,12 @@
 import { MAX_DECKLIST_CHARS, parseDecklist } from '../../../../shared/tournament/decklist.js';
 import { decklistPlayer, nameKey } from '../../../../shared/tournament/identify.js';
 import { type PlayerProfile, readProfile } from '../../../../shared/tournament/profile.js';
-import { decksEnabled, isSanctioned } from '../../../../shared/tournament/view.js';
+import {
+  decklistsOpen,
+  decksEnabled,
+  isSanctioned,
+  type TournamentSettings
+} from '../../../../shared/tournament/view.js';
 import { readJsonBody } from '../../../lib/api/body.js';
 import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
 import { jsonError } from '../../../lib/api/responses.js';
@@ -297,6 +302,14 @@ async function register(
 const eventLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 150 });
 const addressLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 400 });
 
+/** Why a list cannot be sent or withdrawn now: the event takes none, or not any more. */
+function notTaking(settings: TournamentSettings): Response {
+  return jsonError(
+    settings.decklists === 'off' ? 'This event does not take decklists' : 'Decklist submission is closed',
+    403
+  );
+}
+
 /** @internal exposed for tests */
 export function _resetRateLimitStore(): void {
   eventLimiter.reset();
@@ -321,8 +334,8 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if (access instanceof Response) {
     return access;
   }
-  if (!access.row.settings.decklistsOpen) {
-    return jsonError('Decklist submission is closed', 403);
+  if (!decklistsOpen(access.row.settings)) {
+    return notTaking(access.row.settings);
   }
   const read = await readSubmission(context.request, isSanctioned(access.row));
   if (typeof read === 'string') {
@@ -355,8 +368,8 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
   if (access instanceof Response) {
     return access;
   }
-  if (!access.row.settings.decklistsOpen) {
-    return jsonError('Decklist submission is closed', 403);
+  if (!decklistsOpen(access.row.settings)) {
+    return notTaking(access.row.settings);
   }
   const key = claimFrom(context.request, isSanctioned(access.row));
   if (!key) {

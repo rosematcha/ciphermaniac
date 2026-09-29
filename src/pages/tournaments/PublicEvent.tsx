@@ -14,7 +14,13 @@ import { parseTomDate } from '../../../shared/tournament/divisions';
 import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
-import { decksEnabled, isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
+import {
+  decklistsOpen,
+  decksEnabled,
+  isSanctioned,
+  type PublishedView,
+  type TournamentView
+} from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
@@ -190,7 +196,7 @@ function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
     { value: 'pairings', label: 'Pairings' },
     { value: 'standings', label: 'Standings' },
     ...(Object.keys(view.decks).length ? [{ value: 'decks' as const, label: 'Decks' }] : []),
-    ...(view.settings.decklistsOpen ? [{ value: 'decklist' as const, label: 'Submit decklist' }] : [])
+    ...(decklistsOpen(view.settings) ? [{ value: 'decklist' as const, label: 'Submit decklist' }] : [])
   ];
 }
 

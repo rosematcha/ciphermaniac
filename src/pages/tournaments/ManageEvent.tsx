@@ -161,10 +161,14 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
   );
 }
 
+/** The console's tabs: Decklists only while the event takes them. */
+const tabsFor = (manage: Manage) => TABS.filter(t => t.value !== 'decklists' || manage.settings.decklists !== 'off');
+
 function Console(props: { state: ReturnType<typeof createManage>; manage: Manage }) {
   // In the URL, so a reload mid-event comes back to the same tab.
   const [params, setParams] = useSearchParams<{ tab?: string }>();
-  const tab = (): Tab => (TABS.some(t => t.value === params.tab) ? (params.tab as Tab) : 'round');
+  const tabs = () => tabsFor(props.manage);
+  const tab = (): Tab => (tabs().some(t => t.value === params.tab) ? (params.tab as Tab) : 'round');
   const setTab = (value: Tab) => setParams({ tab: value === 'round' ? undefined : value }, { replace: true });
   const [podChoice, setPodChoice] = createSignal<PodCategory | null>(null);
   const pods = () => props.manage.tournament.pods;
@@ -180,7 +184,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
   return (
     <div class='tm-page'>
       <Hero state={props.state} manage={props.manage} pod={pod()} tom={tom} />
-      <Tabs options={TABS} selected={tab()} onSelect={setTab} ariaLabel='Event sections' />
+      <Tabs options={tabs()} selected={tab()} onSelect={setTab} ariaLabel='Event sections' />
       <Show when={tom}>{link => <TomStrip link={link()} />}</Show>
       <Show when={pods().length > 1 && (tab() === 'round' || tab() === 'standings')}>
         <Segmented

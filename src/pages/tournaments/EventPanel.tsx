@@ -25,6 +25,7 @@ import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
 import type { ManageState } from './manageState';
+import { DecklistsSwitch } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
 /** A box of settings with its heading, and a foot with Save and whether anything is unsaved. */
@@ -103,12 +104,12 @@ function EventDetails(props: { state: ManageState; manage: Manage }) {
 
 type PlayerSettings = Pick<
   TournamentSettings,
-  'details' | 'format' | 'startsAt' | 'deckVisibility' | 'sanctioned' | 'playerReporting' | 'decklistsOpen'
+  'details' | 'format' | 'startsAt' | 'deckVisibility' | 'sanctioned' | 'playerReporting' | 'decklists'
 >;
 
 const pickPlayerSettings = (settings: TournamentSettings): PlayerSettings => {
-  const { details, format, startsAt, deckVisibility, sanctioned, playerReporting, decklistsOpen } = settings;
-  return { details, format, startsAt, deckVisibility, sanctioned, playerReporting, decklistsOpen };
+  const { details, format, startsAt, deckVisibility, sanctioned, playerReporting, decklists } = settings;
+  return { details, format, startsAt, deckVisibility, sanctioned, playerReporting, decklists };
 };
 
 function ForPlayers(props: { state: ManageState; manage: Manage }) {
@@ -157,13 +158,7 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
         <Toggle label='Player reporting' value={draft().playerReporting} onChange={v => set('playerReporting', v)} />
       </SettingRow>
       <SettingRow label='Decklists'>
-        <Toggle
-          label='Decklists'
-          value={draft().decklistsOpen}
-          on='Open'
-          off='Closed'
-          onChange={v => set('decklistsOpen', v)}
-        />
+        <DecklistsSwitch value={draft().decklists} onChange={v => set('decklists', v)} />
       </SettingRow>
       <SettingRow label='Details for players' for='set-details'>
         <textarea
