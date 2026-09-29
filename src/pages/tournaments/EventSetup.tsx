@@ -1,16 +1,18 @@
 /**
- * Setting up a new event on one screen: a name, then every other answer
- * shown at its default and changed in place. A Swiss event asks everything;
- * an event followed from TOM asks only what its .tdf does not say (the
- * name, sanctioning, divisions and round length all come from the file).
+ * Setting up a new event on one screen: a heading and the name, then one box
+ * of settings rows with every other answer at its default, changed in place.
+ * A Swiss event asks everything; an event followed from TOM asks only what
+ * its .tdf does not say (the name, sanctioning, divisions and round length all
+ * come from the file). The controls are the ones the console's Event tab
+ * uses, so a setting looks the same in both places.
  */
 
-import { createSignal, type JSX, Show } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 import { DEFAULT_ROUND_MINUTES } from '../../../shared/tournament/create';
 import type { DeckVisibility, TournamentSettings } from '../../../shared/tournament/view';
-import { Segmented } from '../../components/Segmented';
-import { ErrorLine, Field } from './Field';
+import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
+import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
 export interface Setup {
   name: string;
@@ -18,24 +20,6 @@ export interface Setup {
   roundTime: number;
   settings: Partial<TournamentSettings>;
 }
-
-type OnOff = 'on' | 'off';
-
-const ON_OFF = [
-  { value: 'on' as const, label: 'On' },
-  { value: 'off' as const, label: 'Off' }
-];
-
-function Row(props: { label: string; children: JSX.Element }) {
-  return (
-    <div class='tm-setup-row'>
-      <span class='tm-setup-label'>{props.label}</span>
-      {props.children}
-    </div>
-  );
-}
-
-const onOff = (value: boolean): OnOff => (value ? 'on' : 'off');
 
 export function EventSetup(props: {
   /** 'tom' when the event comes from a .tdf, whose own answers are not asked again. */
@@ -54,13 +38,13 @@ export function EventSetup(props: {
   const [startsAt, setStartsAt] = createSignal('');
   const [roundTime, setRoundTime] = createSignal(DEFAULT_ROUND_MINUTES);
   const [reporting, setReporting] = createSignal(false);
-  const [archetypes, setArchetypes] = createSignal(false);
+  const [archetypes, setArchetypes] = createSignal<DeckVisibility>('off');
   const [decklists, setDecklists] = createSignal(false);
   const swiss = () => props.mode === 'swiss';
+  const needsName = () => swiss() && !name().trim();
 
   function submit(event: Event) {
     event.preventDefault();
-    const deckVisibility: DeckVisibility = archetypes() ? 'after' : 'off';
     props.onCreate({
       name: name().trim(),
       combined: combined() || !sanctioned(),
@@ -68,7 +52,7 @@ export function EventSetup(props: {
       settings: {
         format: format(),
         startsAt: startsAt(),
-        deckVisibility,
+        deckVisibility: archetypes(),
         decklistsOpen: decklists(),
         playerReporting: reporting(),
         ...(swiss() ? { sanctioned: sanctioned() } : {})
@@ -77,110 +61,79 @@ export function EventSetup(props: {
   }
 
   return (
-    <form class='tm-form tm-setup' onSubmit={submit}>
-      <Show
-        when={swiss()}
-        fallback={
-          <h3>
-            <span class='tm-name'>{props.tdfName}</span>
-          </h3>
-        }
-      >
-        <Field id='setup-name' label='Event name'>
+    <form class='tm-setup' onSubmit={submit}>
+      <div class='tm-setup-head'>
+        <h2>New event</h2>
+        <Show
+          when={swiss()}
+          fallback={
+            <p class='tm-setup-file'>
+              <strong>{props.tdfName}</strong>
+            </p>
+          }
+        >
           <input
-            id='setup-name'
-            class='tm-input'
+            class='tm-input tm-setup-name'
             maxLength={120}
+            placeholder='Event name'
+            aria-label='Event name'
             value={name()}
             ref={el => queueMicrotask(() => el.focus())}
             onInput={e => setName(e.currentTarget.value)}
           />
-        </Field>
-      </Show>
-      <div class='tm-setup-rows'>
+        </Show>
+      </div>
+      <div class='tm-box'>
         <Show when={swiss()}>
-          <Row label='Sanctioned'>
-            <Segmented
-              options={[
-                { value: 'yes', label: 'Yes' },
-                { value: 'no', label: 'No' }
-              ]}
-              selected={sanctioned() ? 'yes' : 'no'}
-              onSelect={value => setSanctioned(value === 'yes')}
-              ariaLabel='Sanctioned'
-            />
-          </Row>
+          <SettingRow label='Sanctioned'>
+            <Toggle label='Sanctioned' value={sanctioned()} on='Yes' off='No' onChange={setSanctioned} />
+          </SettingRow>
           <Show when={sanctioned()}>
-            <Row label='Divisions'>
-              <Segmented
-                options={[
-                  { value: 'together', label: 'Together' },
-                  { value: 'apart', label: 'Apart' }
-                ]}
-                selected={combined() ? 'together' : 'apart'}
-                onSelect={value => setCombined(value === 'together')}
-                ariaLabel='Divisions'
-              />
-            </Row>
+            <SettingRow label='Divisions'>
+              <Toggle label='Divisions' value={combined()} on='Together' off='Apart' onChange={setCombined} />
+            </SettingRow>
           </Show>
         </Show>
-        <Row label='Format'>
-          <span class='tm-setup-control'>
-            <FormatSelect id='setup-format' value={format()} onChange={setFormat} />
-          </span>
-        </Row>
-        <Row label='Starts'>
+        <SettingRow label='Format' for='setup-format'>
+          <FormatSelect id='setup-format' value={format()} onChange={setFormat} />
+        </SettingRow>
+        <SettingRow label='Starts' for='setup-starts'>
           <input
-            class='tm-input tm-setup-control'
+            id='setup-starts'
+            class='tm-input'
             type='datetime-local'
-            aria-label='Starts'
             value={startsAt()}
             onInput={e => setStartsAt(e.currentTarget.value)}
           />
-        </Row>
+        </SettingRow>
         <Show when={swiss()}>
-          <Row label='Round minutes'>
+          <SettingRow label='Round minutes' for='setup-minutes'>
             <input
-              class='tm-input tm-setup-minutes'
+              id='setup-minutes'
+              class='tm-input tm-set-minutes'
               type='number'
               min='1'
               max='180'
-              aria-label='Round minutes'
               value={roundTime()}
               onInput={e => setRoundTime(Number(e.currentTarget.value))}
             />
-          </Row>
+          </SettingRow>
         </Show>
-        <Row label='Player reporting'>
-          <Segmented
-            options={ON_OFF}
-            selected={onOff(reporting())}
-            onSelect={value => setReporting(value === 'on')}
-            ariaLabel='Player reporting'
-          />
-        </Row>
-        <Row label='Archetypes'>
-          <Segmented
-            options={ON_OFF}
-            selected={onOff(archetypes())}
-            onSelect={value => setArchetypes(value === 'on')}
-            ariaLabel='Archetypes'
-          />
-        </Row>
-        <Row label='Decklists'>
-          <Segmented
-            options={[
-              { value: 'open', label: 'Open' },
-              { value: 'closed', label: 'Closed' }
-            ]}
-            selected={decklists() ? 'open' : 'closed'}
-            onSelect={value => setDecklists(value === 'open')}
-            ariaLabel='Decklists'
-          />
-        </Row>
+        <SettingRow label='Player reporting'>
+          <Toggle label='Player reporting' value={reporting()} onChange={setReporting} />
+        </SettingRow>
+        <SettingRow label='Archetypes' for='setup-archetypes'>
+          <ArchetypesSelect id='setup-archetypes' value={archetypes()} onChange={setArchetypes} />
+        </SettingRow>
+        <SettingRow label='Decklists'>
+          <Toggle label='Decklists' value={decklists()} on='Open' off='Closed' onChange={setDecklists} />
+        </SettingRow>
       </div>
-      <div class='tm-actions'>
-        <button type='submit' class='btn btn-primary' disabled={props.busy || (swiss() && !name().trim())}>
+      <div class='tm-setup-foot'>
+        <Show when={needsName()}>
+          <span class='muted'>Name the event to create it</span>
+        </Show>
+        <button type='submit' class='btn btn-primary' disabled={props.busy || needsName()}>
           Create event
         </button>
         <button type='button' class='btn btn-ghost' onClick={() => props.onCancel()}>
