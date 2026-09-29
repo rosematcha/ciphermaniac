@@ -7,8 +7,8 @@
  * locks (see shared/tournament/reports.ts). Before round 1 the strip says
  * they are registered; once the event ends, where they placed.
  *
- * Where players report, they say who they are once (Player ID, or at an
- * unsanctioned event their last name), and the device remembers it.
+ * The viewer says who they are once (see Identify), and the device
+ * remembers it; the page holds that (see PublicEvent).
  */
 
 import { createEffect, createSignal, For, Match, Show, Switch } from 'solid-js';
@@ -17,7 +17,7 @@ import type { PlayerResult } from '../../../shared/tournament/reports';
 import { recordLabel, sideResult } from '../../../shared/tournament/standings';
 import type { Pod, Round, Match as TableMatch } from '../../../shared/tournament/types';
 import { isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
-import { ApiError, identifyPlayer, reportAsPlayer } from '../../lib/tournament/api';
+import { identifyPlayer, reportAsPlayer } from '../../lib/tournament/api';
 import {
   currentMatchOf,
   divisionHeading,
@@ -29,18 +29,9 @@ import {
   shownOutcome
 } from '../../lib/tournament/present';
 import { Clock } from './Clock';
-import { ErrorLine, Field } from './Field';
+import { ErrorLine } from './Field';
+import { type Identified, IdentifyForm } from './Identify';
 import { createNow } from './now';
-
-const claimKey = (code: string) => `cm-tournament-player:${code}`;
-
-function storedClaim(code: string): PlayerClaim | null {
-  try {
-    return JSON.parse(localStorage.getItem(claimKey(code)) ?? 'null') as PlayerClaim | null;
-  } catch {
-    return null;
-  }
-}
 
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
@@ -54,8 +45,12 @@ const NOTES = {
 
 interface Props {
   view: TournamentView;
+  /** The viewer's player, once they have said who they are. */
   me: string | null;
-  onMe: (key: string | null) => void;
+  /** What they said, which reports carry; null until they say. */
+  claim: PlayerClaim | null;
+  onIdentified: (found: Identified) => void;
+  onForget: () => void;
   onView: (view: PublishedView) => void;
   onPlayer?: (id: string) => void;
   /** The start of round 1, formatted, or null when unset. */
@@ -68,69 +63,17 @@ interface Found {
   match: TableMatch;
 }
 
-/** "Which player are you?": a Player ID, or a last name, with the first name when two share it. */
-function WhichPlayer(props: Props & { onClaim: (claim: PlayerClaim) => void }) {
+/** "Which player are you?", where players report and a round is on. */
+function WhichPlayer(props: Props) {
   const sanctioned = () => isSanctioned(props.view);
-  const [value, setValue] = createSignal('');
-  const [first, setFirst] = createSignal('');
-  const [ambiguous, setAmbiguous] = createSignal(false);
-  const [error, setError] = createSignal<string | null>(null);
-  const [busy, setBusy] = createSignal(false);
-
-  async function find(event: Event) {
-    event.preventDefault();
-    const claim: PlayerClaim = sanctioned()
-      ? { popId: value().trim() }
-      : { lastName: value().trim(), ...(first().trim() ? { firstName: first().trim() } : {}) };
-    setBusy(true);
-    setError(null);
-    try {
-      const found = await identifyPlayer(props.view.code, claim);
-      props.onClaim(claim);
-      props.onMe(found.key);
-      props.onView(found.view);
-    } catch (err) {
-      setAmbiguous(err instanceof ApiError && err.body?.ambiguous === true);
-      setError(errorText(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <section class='tm-box tm-you tm-you-ask' aria-label='Your match'>
       <h2 class='tm-you-q'>Which player are you?</h2>
-      <form class='tm-you-find' onSubmit={event => void find(event)}>
-        <Field id='report-id' label={sanctioned() ? 'Player ID' : 'Last name'}>
-          <input
-            id='report-id'
-            class='tm-input'
-            inputmode={sanctioned() ? 'numeric' : undefined}
-            autocomplete={sanctioned() ? 'off' : 'family-name'}
-            value={value()}
-            onInput={e => setValue(sanctioned() ? e.currentTarget.value.replace(/\D/g, '') : e.currentTarget.value)}
-          />
-        </Field>
-        <Show when={ambiguous()}>
-          <Field id='report-first' label='First name'>
-            <input
-              id='report-first'
-              class='tm-input'
-              autocomplete='given-name'
-              value={first()}
-              onInput={e => setFirst(e.currentTarget.value)}
-            />
-          </Field>
-        </Show>
-        <button type='submit' class='btn btn-primary' disabled={busy() || !value().trim()}>
-          Find my match
-        </button>
-      </form>
+      <IdentifyForm view={props.view} idPrefix='report' submitLabel='Find my match' onFound={props.onIdentified} />
       <p class='tm-you-note muted'>
         Enter your {sanctioned() ? 'Player ID' : 'last name'} to see your table and report your result. This phone will
         remember you.
       </p>
-      <ErrorLine message={error()} />
     </section>
   );
 }
@@ -142,7 +85,7 @@ const CHOICES: { result: PlayerResult; label: string }[] = [
 ];
 
 /** The viewer's report of their match: where it stands, sending it, and settling it once both agree. */
-function createReport(props: Props & { me: string; claim: PlayerClaim | null }, found: () => Found | null) {
+function createReport(props: Props & { me: string }, found: () => Found | null) {
   const now = createNow();
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
@@ -338,7 +281,7 @@ function placeOf(view: TournamentView, me: string) {
   return rows.find(row => row.playerId === me) ?? null;
 }
 
-function MatchBox(props: Props & { me: string; claim: PlayerClaim | null; onForget: () => void }) {
+function MatchBox(props: Props & { me: string }) {
   const [open, setOpen] = createSignal(false);
   const found = () => (props.view.settings.finished ? null : currentMatchOf(props.view.tournament, props.me));
   // Props go through whole: spreading them into an object would read them once and lose later updates.
@@ -408,33 +351,18 @@ function MatchBox(props: Props & { me: string; claim: PlayerClaim | null; onForg
 /**
  * The viewer's match once the page knows who they are. Where players report
  * and a round is on, it first asks; elsewhere, a player marks themselves
- * from their player sheet and nothing shows until they do.
+ * from their player sheet (proving it the same way) and nothing shows until
+ * they do.
  */
 export function YourMatch(props: Props) {
-  // eslint-disable-next-line solid/reactivity -- read once for the event the page opened on
-  const [claim, setClaim] = createSignal(storedClaim(props.view.code));
-  function remember(next: PlayerClaim | null) {
-    if (next) {
-      localStorage.setItem(claimKey(props.view.code), JSON.stringify(next));
-    } else {
-      localStorage.removeItem(claimKey(props.view.code));
-    }
-    setClaim(next);
-  }
   const reporting = () => props.view.settings.playerReporting;
   const live = () => !props.view.settings.finished && props.view.tournament.pods.some(pod => pod.rounds.length > 0);
-  const forget = () => {
-    remember(null);
-    props.onMe(null);
-  };
   return (
     <Switch>
-      <Match when={reporting() && live() && (!claim() || !props.me)}>
-        <WhichPlayer {...props} onClaim={remember} />
+      <Match when={reporting() && live() && (!props.claim || !props.me)}>
+        <WhichPlayer {...props} />
       </Match>
-      <Match when={props.me}>
-        {me => <MatchBox {...props} me={me()} claim={reporting() ? claim() : null} onForget={forget} />}
-      </Match>
+      <Match when={props.me}>{me => <MatchBox {...props} me={me()} claim={reporting() ? props.claim : null} />}</Match>
     </Switch>
   );
 }

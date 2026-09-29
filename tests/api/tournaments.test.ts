@@ -880,6 +880,12 @@ test('players report their own results: agreement stands once locked, disagreeme
   assert.equal((await playerSays(code, { popId: first.p1, result: 'win' })).json.view.reports.length, 1);
   const off = await settle(code, owner, { playerReporting: false });
   assert.deepEqual(off.json.reports, [], 'turning reporting off drops what was waiting');
+  const marked = await playerSays(code, { popId: first.p1 });
+  assert.equal(marked.status, 200, 'a player still says who they are with reporting off');
+  assert.ok(marked.json.key);
+  const refused = await playerSays(code, { popId: first.p1, result: 'win' });
+  assert.equal(refused.status, 403, 'but reports go to staff');
+  assert.equal((await playerSays(code, { popId: '0000000' })).status, 404, 'a Player ID not in the event finds nobody');
 });
 
 test('an unsanctioned event finds players by last name, asking for a first name when two share it', async () => {

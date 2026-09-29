@@ -90,13 +90,20 @@
   font-size: var(--text-lg);
   font-weight: 600;
 }
-.tm-you-find {
+.tm-identify {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
   gap: 8px;
 }
-.tm-you-find .tm-field {
+.tm-identify > .tm-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+.tm-sheet-foot .tm-identify {
+  flex: 1;
+}
+.tm-identify .tm-field {
   flex: 1 1 220px;
   max-width: 420px;
 }
@@ -125,11 +132,11 @@
   }
   .tm-you-end .btn,
   .tm-you-who .btn,
-  .tm-you-find .btn {
+  .tm-identify .btn {
     min-height: 44px;
   }
-  .tm-you-find .tm-field,
-  .tm-you-find .btn {
+  .tm-identify .tm-field,
+  .tm-identify .btn {
     flex-basis: 100%;
     max-width: none;
   }

@@ -1,10 +1,11 @@
 /**
- * POST /api/tournaments/:code/report — a player at an event with player
- * reporting on says who they are: { popId } at a sanctioned event, or
- * { lastName, firstName? } at an unsanctioned one. Alone, that answers with
- * their public key and the event, so the page can follow their pairings.
- * With { result } ('win', 'loss' or 'tie') it also reports their current
- * match (see shared/tournament/reports.ts). Either way, results whose reports
+ * POST /api/tournaments/:code/report — a player says who they are: { popId }
+ * at a sanctioned event, or { lastName, firstName? } at an unsanctioned one.
+ * Alone, that answers with their public key and the event, so the page can
+ * follow their pairings; any event takes it, as it is how a player marks
+ * themselves. With { result } ('win', 'loss' or 'tie') it also reports their
+ * current match (see shared/tournament/reports.ts), where player reporting
+ * is on. Either way, results whose reports
  * have agreed and locked are written in first, so a player asking again once
  * their window closes sees the result stand.
  *
@@ -67,19 +68,15 @@ export function _resetRateLimitStore(): void {
   rateLimiter.reset();
 }
 
-/** The event, when this request may report to it; the refusal when it may not. */
-async function reportable(context: Context<'code'>): Promise<Access | Response> {
+/** The event, when this request may ask of it; the refusal when it may not. */
+async function reachable(context: Context<'code'>): Promise<Access | Response> {
   if (!sameOrigin(context.request)) {
     return jsonError('Forbidden', 403);
   }
   if (!rateLimiter.check(context.request.headers.get('CF-Connecting-IP') ?? 'unknown').allowed) {
     return jsonError('Too many reports from here. Try again shortly.', 429);
   }
-  const access = await open(context);
-  if (access instanceof Response || access.row.settings.playerReporting) {
-    return access;
-  }
-  return jsonError('Results at this event are reported to staff', 403);
+  return open(context);
 }
 
 /** Files the report and publishes what it changed. */
@@ -111,12 +108,15 @@ async function identify(context: Context<'code'>, access: Access, body: Body, id
 }
 
 export async function onRequestPost(context: Context<'code'>): Promise<Response> {
-  const access = await reportable(context);
+  const access = await reachable(context);
   if (access instanceof Response) {
     return access;
   }
   const read = await readJsonBody(context.request, 1024);
   const body: Body = read.ok && typeof read.value === 'object' && read.value ? (read.value as Body) : {};
+  if (body.result !== undefined && !access.row.settings.playerReporting) {
+    return jsonError('Results at this event are reported to staff', 403);
+  }
   const claim = claimOf(body);
   const found = findPlayer(access.row.tournament, isSanctioned(access.row), claim);
   if (!found.ok) {

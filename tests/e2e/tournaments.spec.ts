@@ -13,6 +13,7 @@ import { parseTdf } from '../../shared/tournament/tdf';
 import {
   assignKeys,
   DEFAULT_SETTINGS,
+  isSanctioned,
   publicDecks,
   publicDivisions,
   publicTournament,
@@ -44,6 +45,13 @@ async function mockApi(page: Page, view: TournamentView = VIEW) {
     if (url.pathname === '/api/me') {
       return route.fulfill({ json: { user: null, providers: ['google', 'discord'] } });
     }
+    if (url.pathname === `/api/tournaments/${CODE}/report`) {
+      const claim = route.request().postDataJSON() as { popId?: string; lastName?: string };
+      const player = tdf.players.find(p => p.id === claim.popId || p.lastName === claim.lastName);
+      return player
+        ? route.fulfill({ json: { key: keys[player.id], view } })
+        : route.fulfill({ status: 404, json: { error: 'No player by that name is in this event' } });
+    }
     if (url.pathname === `/api/tournaments/${CODE}`) {
       return url.searchParams.has('since') ? route.fulfill({ status: 204 }) : route.fulfill({ json: view });
     }
@@ -69,6 +77,17 @@ test('the public page shows the round, finds a player and opens their history @m
   await expect(sheet).toContainText('Hedy Lamarr');
   await expect(sheet.locator('.tm-history tbody tr')).toHaveCount(2);
   await sheet.getByRole('button', { name: 'This is me' }).click();
+  // Saying so takes proof: the Player ID at a sanctioned event, the last name at any other.
+  const hedy = tdf.players.find(p => p.lastName === 'Lamarr');
+  const [label, right, wrong] = isSanctioned(VIEW)
+    ? ['Player ID', hedy?.id ?? '', '7200001']
+    : ['Last name', 'Lamarr', 'Jackson'];
+  await sheet.getByLabel(label).fill(wrong);
+  await sheet.getByRole('button', { name: 'Confirm' }).click();
+  await expect(sheet.locator('.tm-error')).toContainText('isn’t this player’s');
+  await sheet.getByLabel(label).fill(right);
+  await sheet.getByRole('button', { name: 'Confirm' }).click();
+  await expect(sheet.getByRole('button', { name: 'This isn’t me' })).toBeVisible();
   await sheet.getByRole('button', { name: 'Close' }).click();
   await expect(page.locator('.tm-you-big')).toHaveText(/Table\s*2/);
   await expect(page.locator('.tm-you-who')).toContainText('Hedy Lamarr');

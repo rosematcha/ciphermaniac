@@ -13,6 +13,7 @@ import { createEffect, createMemo, createResource, createSignal, For, lazy, onCl
 import { parseTomDate } from '../../../shared/tournament/divisions';
 import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
+import type { PlayerClaim } from '../../../shared/tournament/identify';
 import { decksEnabled, isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
@@ -35,6 +36,7 @@ import { TournamentHero } from './Hero';
 import { MatchTable } from './MatchTable';
 import { createNow } from './now';
 import { PlayerSheet } from './PlayerSheet';
+import type { Identified } from './Identify';
 import { StandingsTable } from './StandingsTable';
 import { YourMatch } from './YourMatch';
 import '../../styles/pages/tournament-public.css';
@@ -85,6 +87,15 @@ function createView(code: () => string) {
 }
 
 const meKey = (code: string) => `cm-tournament-me:${code}`;
+const claimKey = (code: string) => `cm-tournament-player:${code}`;
+
+function storedClaim(code: string): PlayerClaim | null {
+  try {
+    return JSON.parse(localStorage.getItem(claimKey(code)) ?? 'null') as PlayerClaim | null;
+  } catch {
+    return null;
+  }
+}
 
 function hasPodData(view: TournamentView) {
   return view.tournament.pods.some(pod => pod.rounds.length > 0);
@@ -92,19 +103,29 @@ function hasPodData(view: TournamentView) {
 
 /**
  * Which player the viewer is: the one their profile's Player ID matches, or
- * the one they marked on this device.
+ * the one they proved on this device with a Player ID or last name (see
+ * Identify). A player marked on this device before proof was asked for is
+ * not taken on its word.
  */
-function createMe(view: () => TournamentView) {
-  const [chosen, setChosen] = createSignal(localStorage.getItem(meKey(view().code)));
-  const setMe = (id: string | null) => {
-    if (id) {
-      localStorage.setItem(meKey(view().code), id);
-    } else {
-      localStorage.removeItem(meKey(view().code));
-    }
-    setChosen(id);
-  };
-  return { me: () => view().viewer.me ?? chosen(), setMe };
+function createMe(view: () => TournamentView, onView: (view: PublishedView) => void) {
+  const code = () => view().code;
+  const stored = storedClaim(code());
+  const [claim, setClaim] = createSignal(stored);
+  const [chosen, setChosen] = createSignal(stored ? localStorage.getItem(meKey(code())) : null);
+  function identified(found: Identified) {
+    localStorage.setItem(meKey(code()), found.key);
+    localStorage.setItem(claimKey(code()), JSON.stringify(found.claim));
+    setChosen(found.key);
+    setClaim(found.claim);
+    onView(found.view);
+  }
+  function forget() {
+    localStorage.removeItem(meKey(code()));
+    localStorage.removeItem(claimKey(code()));
+    setChosen(null);
+    setClaim(null);
+  }
+  return { me: () => view().viewer.me ?? chosen(), claim, identified, forget };
 }
 
 function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
@@ -160,7 +181,8 @@ function OpenPlayer(props: {
   id: string;
   me: string | null;
   names: Map<string, string>;
-  onMe: (id: string | null) => void;
+  onIdentified: (found: Identified) => void;
+  onForget: () => void;
   onOpen: (id: string | null) => void;
 }) {
   const pod = () => props.view.tournament.pods.find(p => p.playerIds.includes(props.id)) ?? props.fallback;
@@ -177,6 +199,7 @@ function OpenPlayer(props: {
     <Show when={pod()}>
       {p => (
         <PlayerSheet
+          view={props.view}
           playerId={props.id}
           pod={p()}
           standing={standings(p()).find(row => row.playerId === props.id)}
@@ -185,7 +208,8 @@ function OpenPlayer(props: {
           records={new Map(standings(p()).map(row => [row.playerId, recordLabel(row.record)]))}
           decks={props.view.decks}
           isMe={props.me === props.id}
-          onMe={props.onMe}
+          onIdentified={props.onIdentified}
+          onForget={props.onForget}
           onClose={() => props.onOpen(null)}
           onPlayer={props.onOpen}
         />
@@ -237,7 +261,10 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
   const [roundChoice, setRoundChoice] = createSignal<number | null>(null);
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal<string | null>(null);
-  const { me, setMe } = createMe(() => props.view);
+  const { me, claim, identified, forget } = createMe(
+    () => props.view,
+    view => props.onView(view)
+  );
   const pods = () => props.view.tournament.pods;
   const myPod = () => pods().find(p => p.playerIds.includes(me() ?? ''))?.category ?? null;
   const pod = createMemo(() => pods().find(p => p.category === (podChoice() ?? myPod())) ?? pods()[0]);
@@ -280,7 +307,9 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
       <YourMatch
         view={props.view}
         me={me()}
-        onMe={setMe}
+        claim={claim()}
+        onIdentified={identified}
+        onForget={forget}
         onView={props.onView}
         onPlayer={setOpen}
         firstRound={firstRoundTime(props.view.settings.startsAt)}
@@ -346,7 +375,8 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
             fallback={pod()}
             id={id()}
             me={me()}
-            onMe={setMe}
+            onIdentified={identified}
+            onForget={forget}
             onOpen={setOpen}
             names={names()}
           />
