@@ -92,9 +92,8 @@ export type Registration = 'added' | 'matched' | 'not-added';
 
 /** Who a list belongs to, as a query string: the Player ID, or the name at an unsanctioned event. */
 function listOwner(profile: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>, token?: string): string {
-  const query = new URLSearchParams(
-    profile.popId ? { popId: profile.popId } : { firstName: profile.firstName, lastName: profile.lastName }
-  );
+  // All three go: the server reads the Player ID at a sanctioned event and the name at any other.
+  const query = new URLSearchParams({ popId: profile.popId, firstName: profile.firstName, lastName: profile.lastName });
   if (token) {
     query.set('token', token);
   }

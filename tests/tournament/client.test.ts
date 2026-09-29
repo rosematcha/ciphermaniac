@@ -108,8 +108,8 @@ test('every call goes to its endpoint with its body', async () => {
       'POST /api/tournaments/ABC/staff',
       'GET /api/tournaments/ABC/decklists',
       'PUT /api/tournaments/ABC/decklists',
-      'GET /api/tournaments/ABC/decklists?popId=1&token=tok',
-      'GET /api/tournaments/ABC/decklists?firstName=Ann&lastName=Lee&token=tok'
+      'GET /api/tournaments/ABC/decklists?popId=1&firstName=A&lastName=B&token=tok',
+      'GET /api/tournaments/ABC/decklists?popId=&firstName=Ann&lastName=Lee&token=tok'
     ]
   );
   const decklist = sent[14]?.body as { localTime: string };
@@ -162,7 +162,11 @@ test('a 204 answers null', async () => {
   assert.equal(await signOut(), null);
   assert.equal(await deleteTournament('ABC'), null);
   assert.equal(await withdrawDecklist('ABC', { popId: '12', firstName: 'A', lastName: 'B' }), null);
-  assert.equal(sent.at(-1)?.url, '/api/tournaments/ABC/decklists?popId=12', 'withdrawn by who sent it');
+  assert.equal(
+    sent.at(-1)?.url,
+    '/api/tournaments/ABC/decklists?popId=12&firstName=A&lastName=B',
+    'withdrawn by who sent it'
+  );
 });
 
 test('a failure carries the server’s message and status', async () => {

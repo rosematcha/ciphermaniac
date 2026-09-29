@@ -556,7 +556,9 @@ test('decklists come in only while open, and decks show as the visibility settin
   assert.equal(sent.json.registration, 'added', 'a submitter not on the list is added to it');
   assert.deepEqual([sent.json.decklist.registered, sent.json.decklist.fromList], [true, true]);
 
-  const mine = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: player });
+  const mine = await hit(decklists.onRequestGet as Handler, `/decklists?popId=777&token=${sent.json.token}`, at(code), {
+    cookie: player
+  });
   assert.deepEqual([mine.json.decklists.length, mine.json.mine.popId], [0, '777']);
   const all = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   assert.deepEqual([all.json.decklists.length, all.json.decklists[0].archetype], [1, 'Gardevoir ex']);
@@ -998,4 +1000,40 @@ test('a submitter is only added to an open Swiss event, and an unsanctioned one 
   assert.equal(roster.json.tournament.players.length, 1);
   const mine = await listOf(casual, `firstName=Grace&lastName=Hopper&token=${again.json.token}`);
   assert.equal(mine.json.mine.lastName, 'HOPPER');
+});
+
+test('a signed-in player’s profile reads no list without the device token', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklistsOpen: true });
+  const player = await signIn('Player');
+  const profile = { popId: '6161', firstName: 'Lin', lastName: 'Park', birthDate: '02/27/2001' };
+  const sent = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
+    method: 'PUT',
+    cookie: player,
+    body: { ...LIST, profile }
+  });
+  assert.equal(sent.status, 200);
+  // Anyone can put another player's details in their profile, so the profile alone must not read the list.
+  const bySession = await hit(decklists.onRequestGet as Handler, '/decklists?popId=6161', at(code), { cookie: player });
+  assert.equal(bySession.json.mine, null);
+  const byToken = await hit(
+    decklists.onRequestGet as Handler,
+    `/decklists?popId=6161&token=${sent.json.token}`,
+    at(code),
+    {
+      cookie: player
+    }
+  );
+  assert.equal(byToken.json.mine.lastName, 'Park');
+});
+
+test('names split differently are different players’ lists', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklistsOpen: true, sanctioned: false });
+  await submitAs(code, { firstName: 'Mary Ann', lastName: 'Smith' });
+  await submitAs(code, { firstName: 'Mary', lastName: 'Ann Smith' });
+  const staffLists = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
+  assert.equal(staffLists.json.decklists.length, 2);
 });

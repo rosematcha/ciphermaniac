@@ -82,7 +82,10 @@ function present(list: Stored, row: TournamentRow) {
 
 /** Who a list belongs to: the Player ID at a sanctioned event, the full name at an unsanctioned one. */
 export function identityKey(profile: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>, sanctioned: boolean) {
-  return sanctioned ? `pop:${profile.popId.trim()}` : `name:${nameKey(profile.firstName)} ${nameKey(profile.lastName)}`;
+  // The two names are kept apart, so "Mary Ann" + "Smith" and "Mary" + "Ann Smith" are two players.
+  return sanctioned
+    ? `pop:${profile.popId.trim()}`
+    : `name:${JSON.stringify([nameKey(profile.firstName), nameKey(profile.lastName)])}`;
 }
 
 /** The details a player gave in a query string, as the identity their list is kept under. */
@@ -102,38 +105,22 @@ async function sha256(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-/** The identity a signed-in player's saved profile gives, for reading their own list without a token. */
-async function accountKey(access: Access): Promise<string | null> {
-  if (!access.user) {
-    return null;
-  }
-  const saved = await access.db
-    .prepare('SELECT pop_id, first_name, last_name FROM users WHERE id = ?')
-    .bind(access.user.id)
-    .first<{ pop_id: string | null; first_name: string | null; last_name: string | null }>();
-  const profile = { popId: saved?.pop_id ?? '', firstName: saved?.first_name ?? '', lastName: saved?.last_name ?? '' };
-  const sanctioned = isSanctioned(access.row);
-  const complete = sanctioned ? Boolean(profile.popId) : Boolean(profile.firstName && profile.lastName);
-  return complete ? identityKey(profile, sanctioned) : null;
-}
-
-/** The asker's own list: by the details and device token they hold, or a signed-in player's profile. */
+/**
+ * The asker's own list, by the details and the device token they hold. Only
+ * the token reads a list back: a profile anyone can edit to someone else's
+ * details must not show that person's list.
+ */
 async function ownList(access: Access, request: Request): Promise<DecklistRow | null> {
   const claim = claimFrom(request, isSanctioned(access.row));
   const token = new URL(request.url).searchParams.get('token') ?? '';
-  const select = (key: string) =>
-    access.db
-      .prepare('SELECT * FROM decklists WHERE code = ? AND user_id = ?')
-      .bind(access.row.code, key)
-      .first<DecklistRow>();
-  if (claim && token) {
-    const row = await select(claim);
-    if (row?.owner_token && row.owner_token === (await sha256(token))) {
-      return row;
-    }
+  if (!claim || !token) {
+    return null;
   }
-  const account = await accountKey(access);
-  return account ? select(account) : null;
+  const row = await access.db
+    .prepare('SELECT * FROM decklists WHERE code = ? AND user_id = ?')
+    .bind(access.row.code, claim)
+    .first<DecklistRow>();
+  return row?.owner_token && row.owner_token === (await sha256(token)) ? row : null;
 }
 
 export async function onRequestGet(context: Context<'code'>): Promise<Response> {
@@ -218,6 +205,8 @@ async function store(access: Access, submission: Submission, tokenHash: string, 
   await access.db.batch(access.user ? [insert, saveToAccount(access, access.user.id, profile)] : [insert]);
 }
 
+const ALREADY_IN = 'Already on the player list';
+
 /**
  * Puts a submitter who is not on the player list onto it: a Swiss event the
  * organizer has not closed takes them as staff would add them, marked as
@@ -243,14 +232,23 @@ async function register(
     ...(isSanctioned(row) ? { id: profile.popId, birthDate: profile.birthDate } : {}),
     fromList: true
   };
+  // Checked again against the event as it is when written: a second submission
+  // may have added them meanwhile, or the organizer closed the event.
   const outcome = await mutateSettled(
     access.db,
     row.code,
-    current => commandChanges(current, { type: 'addPlayer', player }, submission.localTime),
+    current => {
+      if (decklistPlayer(current.tournament, profile, isSanctioned(current)) !== undefined) {
+        return ALREADY_IN;
+      }
+      return current.settings.finished
+        ? 'The event is closed'
+        : commandChanges(current, { type: 'addPlayer', player }, submission.localTime);
+    },
     submission.localTime
   );
   if ('error' in outcome) {
-    return { registration: 'not-added', row };
+    return { registration: outcome.error === ALREADY_IN ? 'matched' : 'not-added', row };
   }
   await publishView(context.env.REPORTS, outcome.row);
   return { registration: 'added', row: outcome.row };
@@ -309,7 +307,7 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
   if (access instanceof Response) {
     return access;
   }
-  const key = claimFrom(context.request, isSanctioned(access.row)) ?? (await accountKey(access));
+  const key = claimFrom(context.request, isSanctioned(access.row));
   if (!key) {
     return jsonError('Say whose list to withdraw', 400);
   }
