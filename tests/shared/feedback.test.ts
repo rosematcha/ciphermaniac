@@ -77,7 +77,13 @@ test('parseFeedback rejects empty and oversized text', () => {
   assert.deepEqual(parseFeedback(valid({ page: 'a'.repeat(501) })), { ok: false, error: 'Page is too long' });
 });
 
-test('parseFeedback rejects reply details without a known method and a handle', () => {
+test('parseFeedback accepts every contact method and rejects reply details without one and a handle', () => {
+  for (const method of ['email', 'twitter', 'bluesky', 'discord']) {
+    assert.deepEqual(value(parseFeedback(valid({ reply: { method, handle: 'reese' } }))).reply, {
+      method,
+      handle: 'reese'
+    });
+  }
   const replies = [
     { method: 'fax', handle: 'x' },
     { method: 'email', handle: '  ' },
@@ -92,15 +98,6 @@ test('parseFeedback rejects reply details without a known method and a handle', 
       { ok: false, error: 'Invalid reply details' },
       JSON.stringify(reply)
     );
-  }
-});
-
-test('parseFeedback accepts every contact method', () => {
-  for (const method of ['email', 'twitter', 'bluesky', 'discord']) {
-    assert.deepEqual(value(parseFeedback(valid({ reply: { method, handle: 'reese' } }))).reply, {
-      method,
-      handle: 'reese'
-    });
   }
 });
 
@@ -162,13 +159,14 @@ test('formatFeedbackEmail strips scripts and control characters but keeps ordina
   const { text } = formatFeedbackEmail(
     {
       type: 'say',
-      message: 'Hi <script>alert(1)</script> R&D x < 5 and <script src=x> done\u0007',
+      message: 'Hi <script>alert(1)</script> R&D x < 5 and <script src=x> done\u0007 反馈: 👍🏽 — 漢字',
       reply: { method: 'email', handle: 'a@b.co\nBcc: c@d.co' }
     },
     AT
   );
   assert.ok(!/<\/?script/i.test(text));
   assert.ok(text.includes('R&D x < 5'));
+  assert.ok(text.includes('反馈: 👍🏽 — 漢字'), 'non-ASCII text is not a control character');
   assert.ok(!text.includes(String.fromCharCode(7)), 'control characters are stripped');
   assert.equal(text.match(/\[script removed\]/g)?.length, 2);
   // A single-line field cannot smuggle a new header line.

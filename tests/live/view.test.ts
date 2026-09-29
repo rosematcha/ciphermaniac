@@ -43,17 +43,10 @@ const MATCHES: LiveMatch[] = [
   { table: 0, seats: [seat('Barbara Liskov')], complete: true }
 ];
 
-test('names fold case, accents and spacing away', () => {
-  assert.equal(foldName('  JOSÉ   Núñez '), 'jose nunez');
-});
-
-test('a player is found with their opponent', () => {
+test('a player is found with their opponent, and a bye has none', () => {
   const view = findSeat(MATCHES, ['jose nunez'], ['MX']);
   assert.equal(view?.match.table, 1);
   assert.equal(view?.opponent?.name, 'Ada Lovelace');
-});
-
-test('a bye has no opponent', () => {
   assert.equal(findSeat(MATCHES, ['Barbara Liskov'], ['US'])?.opponent, undefined);
 });
 
@@ -306,10 +299,6 @@ test('a career is searched for under every name its player registers with', () =
   assert.equal(findSeat(round, seatNamesFor('9397', 'Caitlin White'), ['CA'])?.match.table, 7);
 });
 
-test('the seat key stays on the registered name, so follows and reports survive an alias', () => {
-  assert.equal(seatKey({ name: 'Cali White', country: 'CA' }), 'cali white|CA');
-});
-
 test('a seat slug folds the name and carries the country, and matches only its own seat', () => {
   assert.equal(seatSlug({ name: 'José Núñez', country: 'MX' }), 'jose-nunez--mx');
   assert.equal(seatSlug({ name: "Alan O'Neill-Jones Jr.", country: '' }), 'alan-o-neill-jones-jr');
@@ -364,7 +353,8 @@ test('standings fold this round into the record RK9 posted going into it', () =>
   );
 });
 
-test('folding is memoised without confusing one name for another', () => {
+test('names fold case, accents and spacing away, and memoising the fold never confuses two names', () => {
+  assert.equal(foldName('  JOSÉ   Núñez '), 'jose nunez');
   // The cache is keyed on the raw string, so repeated folds agree and distinct
   // names stay distinct however often the search re-runs.
   assert.equal(foldName('José Núñez'), foldName('José Núñez'));

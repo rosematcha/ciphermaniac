@@ -128,17 +128,6 @@ test('a result corrected after the round finished is republished', async () => {
   );
 });
 
-test('a body cut short cannot finish a round or replace the published one', async () => {
-  const h = harness({ 1: OPEN_ROUND });
-  await h.tick(0);
-  const published = structuredClone(h.files.get(liveKeys.round(EVENT, 1)));
-  // Keeps only the confirmed rows, so every surviving match is complete.
-  h.rounds[1] = OPEN_ROUND.slice(0, OPEN_ROUND.indexOf('<div class="row row-cols-3 match no-gutter "'));
-  assert.equal(await h.tick(MINUTE), 'broken');
-  assert.deepEqual(h.files.get(liveKeys.round(EVENT, 1)), published);
-  assert.equal(h.state.roundComplete, false);
-});
-
 test("on the first day's mornings, round one is probed every half minute and read every ten", async () => {
   const h = harness({});
   assert.equal(await h.tick(0), 'not-posted');
@@ -220,13 +209,22 @@ test('a change while idle brings back per-minute polling', async () => {
   assert.deepEqual(h.fetched.slice(-2), [2, 1]);
 });
 
-test('broken markup is reported and leaves the last good round in place', async () => {
-  const h = harness({ 1: OPEN_ROUND });
-  await h.tick(0);
-  const published = structuredClone(h.files.get(liveKeys.round(EVENT, 1)));
-  h.rounds[1] = BROKEN_ROUND;
-  assert.equal(await h.tick(MINUTE), 'broken');
-  assert.deepEqual(h.files.get(liveKeys.round(EVENT, 1)), published);
+test('broken or cut-short markup is reported and leaves the last good round in place', async () => {
+  const cases: Array<[string, string]> = [
+    ['renamed markup', BROKEN_ROUND],
+    // Keeps only the confirmed rows, so every surviving match is complete: a cut
+    // body must not finish the round either.
+    ['cut short', OPEN_ROUND.slice(0, OPEN_ROUND.indexOf('<div class="row row-cols-3 match no-gutter "'))]
+  ];
+  for (const [label, body] of cases) {
+    const h = harness({ 1: OPEN_ROUND });
+    await h.tick(0);
+    const published = structuredClone(h.files.get(liveKeys.round(EVENT, 1)));
+    h.rounds[1] = body;
+    assert.equal(await h.tick(MINUTE), 'broken', label);
+    assert.deepEqual(h.files.get(liveKeys.round(EVENT, 1)), published, label);
+    assert.equal(h.state.roundComplete, false, label);
+  }
 });
 
 test("round two's first publish is kept as the day's anchor, and never moves", async () => {
