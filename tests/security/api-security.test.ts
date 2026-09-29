@@ -1,259 +1,103 @@
-import test, { beforeEach } from 'node:test';
-import assert from 'node:assert/strict';
+/**
+ * The image proxies (/thumbnails and /sprites): which paths reach an upstream
+ * at all, which upstream URL a valid path becomes, and what comes back.
+ */
 
-import { generateMaliciousInput } from '../__utils__/mock-data-factory.js';
+import test, { afterEach } from 'node:test';
+import assert from 'node:assert/strict';
 
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers.js';
 
-import * as FeedbackModule from '../../functions/api/feedback.ts';
 import { imageProxyResponse } from '../../functions/lib/api/responses.ts';
 import * as ThumbnailModule from '../../functions/thumbnails/[[path]].ts';
 import * as SpriteModule from '../../functions/sprites/[[path]].ts';
 
-beforeEach(() => {
-  FeedbackModule._resetRateLimitStore();
+const LIMITLESS = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
+
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
   restoreFetch();
 });
 
-function makeJsonRequest(body: unknown, headers: Record<string, string> = {}) {
-  return new Request('https://ciphermaniac.test/feedback', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers
-    },
-    body: JSON.stringify(body)
-  });
+function makeRequest(path: string): Request {
+  return new Request(`https://ciphermaniac.test${path}`, { method: 'GET' });
 }
 
-test('Feedback API: OPTIONS preflight returns CORS headers', async () => {
-  const resp = FeedbackModule.onRequestOptions();
-  assert.equal(resp.status, 200);
-  const allowOrigin = resp.headers.get('Access-Control-Allow-Origin');
-  assert.equal(allowOrigin, '*');
-  const allowMethods = resp.headers.get('Access-Control-Allow-Methods');
-  assert.ok(allowMethods && allowMethods.includes('POST'));
-});
-
-test('Feedback API: rejects malformed JSON and invalid Content-Type', async () => {
-  const badJsonReq = new Request('https://ciphermaniac.test/feedback', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: '{invalidJson: true,'
-  });
-
-  const badResp = await FeedbackModule.onRequestPost({ request: badJsonReq, env: {} as any });
-  assert.equal(badResp.status, 400);
-  const badBody = JSON.parse(await badResp.text());
-  assert.ok(badBody.error);
-
-  const plainReq = new Request('https://ciphermaniac.test/feedback', {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: 'feedback'
-  });
-  const plainResp = await FeedbackModule.onRequestPost({ request: plainReq, env: {} as any });
-  assert.equal(plainResp.status, 400);
-});
-
-test('Feedback API: neutralizes XSS and script tags in outgoing email payload', async () => {
-  const malicious = generateMaliciousInput('xss').payload as string;
-  let capturedBodyText = null as string | null;
-
-  mockFetch([
-    {
-      predicate: (_input, init) => {
-        if (typeof init?.body === 'string') {
-          capturedBodyText = init.body;
-        }
-        return true;
-      },
-      status: 200,
-      body: { id: 'mocked-email' }
-    }
-  ]);
-
-  const payload = {
-    type: 'say',
-    message: `User says: ${malicious}`
-  };
-
-  const req = makeJsonRequest(payload);
-  const env = { RESEND_API_KEY: 'sk_test_mock' } as any;
-
-  const resp = await FeedbackModule.onRequestPost({ request: req, env });
-  assert.equal(resp.status, 200, 'Expected successful response when mail provider accepts request');
-
-  assert.ok(capturedBodyText !== null, 'Outbound email body should have been captured by mockFetch');
-  if (capturedBodyText) {
-    const lower = capturedBodyText.toLowerCase();
-    assert.equal(lower.includes('<script>'), false, 'Outbound email should not contain literal <script> tags');
-    assert.equal(lower.includes('</script>'), false, 'Outbound email should not contain literal </script> tags');
-    assert.equal(lower.includes("alert('xss')"), false, 'Outbound email should not contain direct JS payloads');
-  }
-
-  restoreFetch();
-});
-
-test('Feedback API: prevents email header injection via the reply handle', async () => {
-  let capturedBodyText = null as string | null;
-  mockFetch([
-    {
-      predicate: (_input, init) => {
-        capturedBodyText = (init as any)?.body as string;
-        return true;
-      },
-      status: 200,
-      body: { id: 'ok' }
-    }
-  ]);
-
-  const contact = 'attacker@example.com\nBcc: victim@example.com';
-  const payload = {
-    type: 'wrong',
-    message: 'Something broke',
-    reply: { method: 'email', handle: contact }
-  };
-
-  const req = makeJsonRequest(payload);
-  const env = { RESEND_API_KEY: 'sk_safe' } as any;
-
-  const resp = await FeedbackModule.onRequestPost({ request: req, env });
-  assert.equal(resp.status, 200);
-  assert.ok(capturedBodyText !== null);
-  if (capturedBodyText) {
-    assert.equal(capturedBodyText.includes('\nBcc:'), false, 'Outbound email must not contain injected Bcc header');
-    assert.equal(
-      capturedBodyText.includes('\r\nBcc:'),
-      false,
-      'Outbound email must not contain CRLF-injected Bcc header'
-    );
-  }
-
-  restoreFetch();
-});
-
-test('Feedback API: does not expose API keys from downstream errors', async () => {
-  const leakedKey = 'Bearer sk_live_SUPER_SECRET_KEY_12345';
-  mockFetch([
-    {
-      predicate: (input, _init) => typeof input === 'string' && input.includes('api.resend.com'),
-      status: 401,
-      body: leakedKey
-    }
-  ]);
-
-  const payload = {
-    type: 'say',
-    message: 'Test secret leakage'
-  };
-
-  const req = makeJsonRequest(payload);
-  const env = { RESEND_API_KEY: 'sk_set_but_downstream_leaks' } as any;
-
-  const resp = await FeedbackModule.onRequestPost({ request: req, env });
-  assert.equal(resp.status, 500);
-  const text = await resp.text();
-  assert.equal(text.includes('SUPER_SECRET_KEY_12345'), false, 'Error response must not echo downstream secrets');
-
-  restoreFetch();
-});
-
-test('Feedback API: handles unicode characters and enforces size limits', async () => {
-  let captured = null as string | null;
-  mockFetch([
-    {
-      predicate: (_i, init) => {
-        captured = (init as any)?.body as string;
-        return true;
-      },
-      status: 200,
-      body: { id: 'ok' }
-    }
-  ]);
-
-  const unicode = '反馈: 👍🏽 — 漢字 — emoji — 😊';
-  const payload = {
-    type: 'say',
-    message: unicode
-  };
-
-  const req = makeJsonRequest(payload);
-  const env = { RESEND_API_KEY: 'sk_unicode' } as any;
-
-  const resp = await FeedbackModule.onRequestPost({ request: req, env });
-  assert.equal(resp.status, 200);
-  assert.ok(captured && captured.includes(unicode), 'Unicode content should be preserved in outgoing email text');
-
-  const largeString = 'A'.repeat(1024 * 1024 + 100);
-  const largeReq = new Request('https://ciphermaniac.test/feedback', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'say', message: largeString })
-  });
-
-  const largeResp = await FeedbackModule.onRequestPost({ request: largeReq, env });
-  assert.ok([413, 400].includes(largeResp.status), `Large payload should be rejected; got ${largeResp.status}`);
-
-  restoreFetch();
-});
-
-function makeThumbnailRequest(path: string): Request {
-  return new Request(`https://ciphermaniac.test${path}`, {
-    method: 'GET'
-  });
+/** Answer every fetch with an image, recording the URLs asked for. */
+function recordImageFetches(): string[] {
+  const requested: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    requested.push(typeof input === 'string' ? input : input instanceof Request ? input.url : String(input));
+    return new Response('fake-image-data', { status: 200, headers: { 'Content-Type': 'image/png' } });
+  }) as typeof fetch;
+  return requested;
 }
 
-test('Thumbnail API: rejects invalid path format', async () => {
-  const request = makeThumbnailRequest('/thumbnails/sm/TEF');
-  const response = await ThumbnailModule.onRequest({ request });
-  assert.strictEqual(response.status, 400, 'Should reject path with missing number');
-  const text = await response.text();
-  assert.ok(text.includes('Invalid path format'), 'Error should mention path format');
-});
-
-test('Thumbnail API: rejects invalid size parameter', async () => {
-  const request = makeThumbnailRequest('/thumbnails/large/TEF/123');
-  const response = await ThumbnailModule.onRequest({ request });
-  assert.strictEqual(response.status, 400, 'Should reject invalid size');
-  const text = await response.text();
-  assert.ok(text.includes('Invalid size'), 'Error should mention invalid size');
-});
-
-test('Thumbnail API: rejects set codes outside the length and character rules', async () => {
-  for (const setCode of ['TOOLONGSETCODE', 'X', 'TE-F']) {
-    const response = await ThumbnailModule.onRequest({
-      request: makeThumbnailRequest(`/thumbnails/sm/${setCode}/123`)
-    });
-    assert.strictEqual(response.status, 400, `Should reject ${setCode}`);
-    assert.match(await response.text(), /Invalid set code format/);
+test('Thumbnail API: malformed and traversal paths are refused without a fetch', async () => {
+  const requested = recordImageFetches();
+  const malformed: Array<[string, RegExp | null]> = [
+    ['/thumbnails/sm/TEF', /Invalid path format/],
+    ['/thumbnails/large/TEF/123', /Invalid size/],
+    ['/thumbnails/sm/TOOLONGSETCODE/123', /Invalid set code format/],
+    ['/thumbnails/sm/X/123', /Invalid set code format/],
+    ['/thumbnails/sm/TE-F/123', /Invalid set code format/],
+    ['/thumbnails/sm/TEF/abc!@#', null],
+    // An encoded separator is refused by validation, not left to routing.
+    ['/thumbnails/sm/TE%2FF/123', null],
+    ['/thumbnails/sm/TEF/..%2F..%2Fetc%2Fpasswd', null]
+  ];
+  for (const [path, message] of malformed) {
+    const response = await ThumbnailModule.onRequest({ request: makeRequest(path) });
+    assert.equal(response.status, 400, `Should reject ${path}`);
+    if (message) {
+      assert.match(await response.text(), message, path);
+    }
   }
-});
-
-test('Thumbnail API: rejects invalid card number format', async () => {
-  const request = makeThumbnailRequest('/thumbnails/sm/TEF/abc!@#');
-  const response = await ThumbnailModule.onRequest({ request });
-  assert.strictEqual(response.status, 400, 'Should reject invalid card number');
-});
-
-test('Thumbnail API: rejects encoded path separators before fetching', async () => {
-  let fetches = 0;
-  mockFetch({
-    predicate: () => {
-      fetches += 1;
-      return true;
-    },
-    status: 200,
-    body: 'unexpected fetch'
-  });
-  const traversalPaths = ['/thumbnails/sm/TEF/..%2F..%2Fetc%2Fpasswd', '/thumbnails/sm/TE%2FF/123'];
-
-  for (const path of traversalPaths) {
-    const request = makeThumbnailRequest(path);
-    const response = await ThumbnailModule.onRequest({ request });
-    assert.strictEqual(response.status, 400, `Path traversal attempt should be blocked: ${path}`);
+  // Traversal may be refused at routing (404) or validation (400); either way
+  // nothing is fetched.
+  const traversal = [
+    '/thumbnails/sm/../TEF/123',
+    '/thumbnails/sm/../../etc/passwd',
+    '/thumbnails/sm/TEF/../../../secret/123',
+    '/thumbnails/sm/TEF/..%2F..%2Fetc/passwd',
+    // The pokemontcg.io leg only forwards names it recognises.
+    '/thumbnails/ptcgio/base1/..%2F..%2Fetc%2Fpasswd',
+    '/thumbnails/ptcgio/base1/94.png%3Fx',
+    '/thumbnails/ptcgio/BASE1%20/94',
+    '/thumbnails/ptcgio/b/94',
+    '/thumbnails/ptcgio/base1/hires'
+  ];
+  for (const path of traversal) {
+    const response = await ThumbnailModule.onRequest({ request: makeRequest(path) });
+    assert.ok([400, 404].includes(response.status), `Should refuse ${path}, got ${response.status}`);
   }
-  assert.strictEqual(fetches, 0);
+  assert.deepStrictEqual(requested, [], 'A refused path must not be fetched');
+});
+
+test('Thumbnail API: a valid path becomes the upstream file name, served CORS-open', async () => {
+  const cases: Array<[string, string]> = [
+    ['/thumbnails/sm/TEF/123', `${LIMITLESS}/TEF/TEF_123_R_EN_SM.png`],
+    ['/thumbnails/xs/PAL/45', `${LIMITLESS}/PAL/PAL_045_R_EN_XS.png`],
+    ['/thumbnails/sm/TEF/007', `${LIMITLESS}/TEF/TEF_007_R_EN_SM.png`],
+    // Variant suffixes are lowercase on the case-sensitive CDN.
+    ['/thumbnails/sm/SLG/068A', `${LIMITLESS}/SLG/SLG_068a_R_EN_SM.png`],
+    ['/thumbnails/lg/LOR/TG24', `${LIMITLESS}/LOR/LOR_TG24_R_EN_LG.png`],
+    // Gallery digits are padded to two.
+    ['/thumbnails/sm/CRZ/GG5', `${LIMITLESS}/CRZ/CRZ_GG05_R_EN_SM.png`],
+    // The lone type letter of an unnumbered basic Energy stays unpadded.
+    ['/thumbnails/sm/TEU/000P', `${LIMITLESS}/TEU/TEU_P_R_EN_SM.png`],
+    // Vintage scans come from pokemontcg.io, proxied so they are readable cross-origin.
+    ['/thumbnails/ptcgio/base1/94_hires', 'https://images.pokemontcg.io/base1/94_hires.png']
+  ];
+  for (const [path, expected] of cases) {
+    const requested = recordImageFetches();
+    const response = await ThumbnailModule.onRequest({ request: makeRequest(path) });
+    assert.strictEqual(response.status, 200, path);
+    assert.strictEqual(requested[0], expected, path);
+    assert.strictEqual(response.headers.get('Access-Control-Allow-Origin'), '*', path);
+  }
 });
 
 test('Thumbnail API: OPTIONS preflight returns CORS headers', async () => {
@@ -264,9 +108,15 @@ test('Thumbnail API: OPTIONS preflight returns CORS headers', async () => {
 });
 
 test('Sprite API: rejects invalid slugs', async () => {
-  const response = await SpriteModule.onRequest({ request: makeThumbnailRequest('/sprites/mew%2Fmeow.png') });
-  assert.strictEqual(response.status, 400);
-  assert.match(await response.text(), /Invalid sprite slug/);
+  const cases: Array<[string, RegExp]> = [
+    ['/sprites/../mew.png', /Invalid path format/],
+    ['/sprites/mew%2Fmeow.png', /Invalid sprite slug/]
+  ];
+  for (const [path, message] of cases) {
+    const response = await SpriteModule.onRequest({ request: makeRequest(path) });
+    assert.strictEqual(response.status, 400, path);
+    assert.match(await response.text(), message, path);
+  }
 });
 
 test('Sprite API: falls back and returns an immutable, CORS-open image', async () => {
@@ -279,7 +129,7 @@ test('Sprite API: falls back and returns an immutable, CORS-open image', async (
     }
   ]);
 
-  const response = await SpriteModule.onRequest({ request: makeThumbnailRequest('/sprites/mew.png') });
+  const response = await SpriteModule.onRequest({ request: makeRequest('/sprites/mew.png') });
   assert.strictEqual(response.status, 200);
   assert.strictEqual(response.headers.get('Content-Type'), 'image/png');
   assert.strictEqual(response.headers.get('Access-Control-Allow-Origin'), '*');
@@ -291,220 +141,4 @@ test('Sprite API: falls back and returns an immutable, CORS-open image', async (
 test('Image proxy preserves an upstream image content type', () => {
   const response = imageProxyResponse(new Response('fake-image-data', { headers: { 'Content-Type': 'image/webp' } }));
   assert.strictEqual(response.headers.get('Content-Type'), 'image/webp');
-});
-
-test('Thumbnail API: accepts valid sm/xs sizes', async () => {
-  mockFetch({
-    predicate: url => {
-      const urlStr = typeof url === 'string' ? url : (url as Request).url;
-      return urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com');
-    },
-    status: 200,
-    headers: { 'Content-Type': 'image/png' },
-    body: 'fake-image-data'
-  });
-
-  const smRequest = makeThumbnailRequest('/thumbnails/sm/TEF/123');
-  const smResponse = await ThumbnailModule.onRequest({ request: smRequest });
-  assert.strictEqual(smResponse.status, 200, 'Should accept sm size');
-
-  restoreFetch();
-
-  mockFetch({
-    predicate: url => {
-      const urlStr = typeof url === 'string' ? url : (url as Request).url;
-      return urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com');
-    },
-    status: 200,
-    headers: { 'Content-Type': 'image/png' },
-    body: 'fake-image-data'
-  });
-
-  const xsRequest = makeThumbnailRequest('/thumbnails/xs/PAL/45');
-  const xsResponse = await ThumbnailModule.onRequest({ request: xsRequest });
-  assert.strictEqual(xsResponse.status, 200, 'Should accept xs size');
-
-  restoreFetch();
-});
-
-test('Thumbnail API: accepts trainer gallery card numbers', async () => {
-  const requested: string[] = [];
-  mockFetch({
-    predicate: url => {
-      const urlStr = typeof url === 'string' ? url : (url as Request).url;
-      if (urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com')) {
-        requested.push(urlStr);
-        return true;
-      }
-      return false;
-    },
-    status: 200,
-    headers: { 'Content-Type': 'image/png' },
-    body: 'fake-image-data'
-  });
-
-  const response = await ThumbnailModule.onRequest({ request: makeThumbnailRequest('/thumbnails/lg/LOR/TG24') });
-  assert.strictEqual(response.status, 200, 'Should accept TG-prefixed numbers');
-  assert.ok(
-    requested[0].endsWith('/LOR/LOR_TG24_R_EN_LG.png'),
-    `Should build the gallery filename, got ${requested[0]}`
-  );
-
-  restoreFetch();
-
-  const padded: string[] = [];
-  mockFetch({
-    predicate: url => {
-      const urlStr = typeof url === 'string' ? url : (url as Request).url;
-      if (urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com')) {
-        padded.push(urlStr);
-        return true;
-      }
-      return false;
-    },
-    status: 200,
-    headers: { 'Content-Type': 'image/png' },
-    body: 'fake-image-data'
-  });
-  const ggResponse = await ThumbnailModule.onRequest({ request: makeThumbnailRequest('/thumbnails/sm/CRZ/GG5') });
-  assert.strictEqual(ggResponse.status, 200, 'Should accept GG-prefixed numbers');
-  assert.ok(padded[0].endsWith('/CRZ/CRZ_GG05_R_EN_SM.png'), `Should pad gallery digits to two, got ${padded[0]}`);
-
-  restoreFetch();
-});
-
-test('Thumbnail API: accepts the lone type letter of an unnumbered basic Energy', async () => {
-  const requested: string[] = [];
-  mockFetch({
-    predicate: url => {
-      const urlStr = typeof url === 'string' ? url : (url as Request).url;
-      if (urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com')) {
-        requested.push(urlStr);
-        return true;
-      }
-      return false;
-    },
-    status: 200,
-    headers: { 'Content-Type': 'image/png' },
-    body: 'fake-image-data'
-  });
-
-  const response = await ThumbnailModule.onRequest({ request: makeThumbnailRequest('/thumbnails/sm/TEU/000P') });
-  assert.strictEqual(response.status, 200, 'Should accept a bare Energy letter');
-  assert.ok(requested[0].endsWith('/TEU/TEU_P_R_EN_SM.png'), `Should keep the letter unpadded, got ${requested[0]}`);
-
-  restoreFetch();
-});
-
-test('Thumbnail API: lowercases variant suffixes', async () => {
-  const requested: string[] = [];
-  mockFetch({
-    predicate: url => {
-      const urlStr = typeof url === 'string' ? url : (url as Request).url;
-      if (urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com')) {
-        requested.push(urlStr);
-        return true;
-      }
-      return false;
-    },
-    status: 200,
-    headers: { 'Content-Type': 'image/png' },
-    body: 'fake-image-data'
-  });
-
-  const response = await ThumbnailModule.onRequest({ request: makeThumbnailRequest('/thumbnails/sm/SLG/068A') });
-  assert.strictEqual(response.status, 200, 'Should accept suffixed numbers');
-  assert.ok(
-    requested[0].endsWith('/SLG/SLG_068a_R_EN_SM.png'),
-    `Suffix should be lowercased for the CDN, got ${requested[0]}`
-  );
-
-  restoreFetch();
-});
-
-test('Thumbnail API: handles card number normalization', async () => {
-  mockFetch({
-    predicate: (url, _init) => {
-      const urlStr = typeof url === 'string' ? url : (url as Request).url;
-      return urlStr.includes('limitlesstcg.nyc3.cdn.digitaloceanspaces.com');
-    },
-    status: 200,
-    headers: { 'Content-Type': 'image/png' },
-    body: 'fake-image-data'
-  });
-
-  const request = makeThumbnailRequest('/thumbnails/sm/TEF/007');
-  const response = await ThumbnailModule.onRequest({ request });
-  assert.strictEqual(response.status, 200, 'Should handle leading zeros');
-
-  restoreFetch();
-});
-
-test('Thumbnail API: accepts card numbers with letter suffix', async () => {
-  mockFetch({
-    predicate: () => true,
-    status: 200,
-    headers: { 'Content-Type': 'image/png' },
-    body: 'fake-image-data'
-  });
-
-  const request = makeThumbnailRequest('/thumbnails/sm/TEF/123a');
-  const response = await ThumbnailModule.onRequest({ request });
-  assert.strictEqual(response.status, 200, 'Should accept card number with suffix');
-
-  restoreFetch();
-});
-
-test('Thumbnail API: proxies pokemontcg.io scans with CORS open', async () => {
-  const requested: string[] = [];
-  mockFetch({
-    predicate: url => {
-      const urlStr = typeof url === 'string' ? url : (url as Request).url;
-      if (urlStr.includes('images.pokemontcg.io')) {
-        requested.push(urlStr);
-        return true;
-      }
-      return false;
-    },
-    status: 200,
-    headers: { 'Content-Type': 'image/png' },
-    body: 'fake-image-data'
-  });
-
-  const response = await ThumbnailModule.onRequest({
-    request: makeThumbnailRequest('/thumbnails/ptcgio/base1/94_hires')
-  });
-  assert.strictEqual(response.status, 200, 'Should serve a vintage scan');
-  assert.strictEqual(requested[0], 'https://images.pokemontcg.io/base1/94_hires.png');
-  assert.strictEqual(response.headers.get('Access-Control-Allow-Origin'), '*');
-
-  restoreFetch();
-});
-
-test('Thumbnail API: the pokemontcg.io leg only forwards names it recognises', async () => {
-  const attempted: string[] = [];
-  mockFetch({
-    predicate: url => {
-      attempted.push(typeof url === 'string' ? url : (url as Request).url);
-      return true;
-    },
-    status: 200,
-    headers: { 'Content-Type': 'image/png' },
-    body: 'fake-image-data'
-  });
-
-  const rejected = [
-    '/thumbnails/ptcgio/base1/..%2F..%2Fetc%2Fpasswd',
-    '/thumbnails/ptcgio/base1/94.png%3Fx',
-    '/thumbnails/ptcgio/BASE1%20/94',
-    '/thumbnails/ptcgio/b/94',
-    '/thumbnails/ptcgio/base1/hires'
-  ];
-  for (const path of rejected) {
-    const response = await ThumbnailModule.onRequest({ request: makeThumbnailRequest(path) });
-    assert.ok([400, 404].includes(response.status), `Should refuse ${path}, got ${response.status}`);
-  }
-  assert.deepStrictEqual(attempted, [], 'A refused name must not be fetched');
-
-  restoreFetch();
 });

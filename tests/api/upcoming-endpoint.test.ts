@@ -59,30 +59,25 @@ test('upcoming GET forwards a browser-like request and returns parsed events wit
   assert.match(payload.refreshedAt, /^2026|^20/);
 });
 
-test('upcoming GET distinguishes a structurally broken schedule from an empty one', async () => {
+test('upcoming GET warns about a structurally broken schedule, not a legitimately empty one', async () => {
   const warn = mock.method(console, 'warn', () => undefined);
-  mockFetch({ status: 200, body: await fixture('renamed-attributes') });
-
-  const response = await onRequest({ request: new Request('https://ciphermaniac.test/api/limitless/upcoming') });
-  const payload = (await response.json()) as { events: unknown[]; parseWarning?: string };
-
-  assert.equal(response.status, 200);
-  assert.deepEqual(payload.events, []);
-  assert.match(payload.parseWarning ?? '', /markup may have changed/);
-  assert.equal(warn.mock.calls.length, 1);
-});
-
-test('upcoming GET does not warn for a legitimate empty schedule', async () => {
-  const warn = mock.method(console, 'warn', () => undefined);
-  mockFetch({ status: 200, body: await fixture('empty') });
-
-  const response = await onRequest({ request: new Request('https://ciphermaniac.test/api/limitless/upcoming') });
-  const payload = (await response.json()) as { events: unknown[]; parseWarning?: string };
-
-  assert.equal(response.status, 200);
-  assert.deepEqual(payload.events, []);
-  assert.equal(payload.parseWarning, undefined);
-  assert.equal(warn.mock.calls.length, 0);
+  for (const [name, warning] of [
+    ['renamed-attributes', /markup may have changed/],
+    ['empty', undefined]
+  ] as const) {
+    warn.mock.resetCalls();
+    mockFetch({ status: 200, body: await fixture(name) });
+    const response = await onRequest({ request: new Request('https://ciphermaniac.test/api/limitless/upcoming') });
+    const payload = (await response.json()) as { events: unknown[]; parseWarning?: string };
+    assert.equal(response.status, 200, name);
+    assert.deepEqual(payload.events, [], name);
+    if (warning) {
+      assert.match(payload.parseWarning ?? '', warning);
+    } else {
+      assert.equal(payload.parseWarning, undefined, name);
+    }
+    assert.equal(warn.mock.calls.length, warning ? 1 : 0, name);
+  }
 });
 
 test('upcoming GET turns upstream status and network failures into 502 JSON errors', async () => {

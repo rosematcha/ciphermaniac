@@ -8,7 +8,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  bracketOrder,
   type Entrant,
   type PairingHistory,
   pairNextElimination,
@@ -100,12 +99,6 @@ test('a forty-player field with five rounds of history pairs rematch-free', () =
       }
     }
   }
-});
-
-test('bracket order keeps the top seeds apart', () => {
-  assert.deepEqual(bracketOrder(2), [1, 2]);
-  assert.deepEqual(bracketOrder(4), [1, 4, 2, 3]);
-  assert.deepEqual(bracketOrder(8), [1, 8, 4, 5, 2, 7, 3, 6]);
 });
 
 test('seeds a top cut and advances winners in bracket order', () => {

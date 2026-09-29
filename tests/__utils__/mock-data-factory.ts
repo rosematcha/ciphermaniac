@@ -1,6 +1,6 @@
 /**
  * Mock data factory for tests
- * Provides functions to generate tournaments, decks, cards, and malicious inputs.
+ * Provides functions to generate tournaments, decks, and cards.
  * This file is intended for use in unit and integration tests.
  */
 
@@ -43,20 +43,6 @@ export interface Deck {
   cards: Card[];
   tournament?: Pick<Tournament, 'id' | 'name' | 'date'>;
   placement?: number | null;
-}
-
-/**
- * Type of malicious payload to generate.
- */
-export type MaliciousType = 'xss' | 'path-traversal' | 'sql-injection' | 'command-injection' | 'xml-bomb' | 'all';
-
-/**
- * Map of named malicious payloads.
- */
-export interface MaliciousPayloads {
-  type: MaliciousType;
-  payload: string | Record<string, string>;
-  description: string;
 }
 
 let nextId = 0;
@@ -104,64 +90,4 @@ export function generateMockDeck(overrides: Partial<Deck> = {}): Deck {
   };
 
   return { ...defaults, ...overrides };
-}
-
-/**
- * Generate malicious input payloads for testing security handling.
- * @param type the kind of payload to generate, or "all" for a mixed set
- */
-export function generateMaliciousInput(type: MaliciousType = 'all'): MaliciousPayloads {
-  const xss: MaliciousPayloads = {
-    type: 'xss',
-    payload: "\"><script>/*xss*/alert('xss')</script>",
-    description: 'Basic script tag XSS payload'
-  };
-
-  const pathTraversal: MaliciousPayloads = {
-    type: 'path-traversal',
-    payload: '../../../../etc/passwd\0',
-    description: 'Path traversal attempt with null byte'
-  };
-
-  const sqlInjection: MaliciousPayloads = {
-    type: 'sql-injection',
-    payload: "' OR 1=1; --",
-    description: 'Classic SQL injection payload'
-  };
-
-  const commandInjection: MaliciousPayloads = {
-    type: 'command-injection',
-    payload: '; rm -rf / #',
-    description: 'Shell command injection attempt'
-  };
-
-  const xmlBomb: MaliciousPayloads = {
-    type: 'xml-bomb',
-    payload:
-      '<?xml version="1.0"?><!DOCTYPE lolz [ <!ENTITY lol "lol"> ]><lolz>&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;</lolz>',
-    description: 'Small XML bomb-like payload'
-  };
-
-  const all: MaliciousPayloads = {
-    type: 'all',
-    payload: {
-      xss: xss.payload as string,
-      pathTraversal: pathTraversal.payload as string,
-      sqlInjection: sqlInjection.payload as string,
-      commandInjection: commandInjection.payload as string,
-      xmlBomb: xmlBomb.payload as string
-    },
-    description: 'Collection of common malicious payloads'
-  };
-
-  const map: Record<MaliciousType, MaliciousPayloads> = {
-    xss,
-    'path-traversal': pathTraversal,
-    'sql-injection': sqlInjection,
-    'command-injection': commandInjection,
-    'xml-bomb': xmlBomb,
-    all
-  };
-
-  return map[type];
 }

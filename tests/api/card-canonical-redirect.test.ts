@@ -46,18 +46,6 @@ async function request(set: string, number: string, db: unknown | null = SYNONYM
   return { status: res.status, location: res.headers.get('Location') ?? '', res };
 }
 
-test('a variant printing 301s to its canonical card page', async () => {
-  const { status, location } = await request('TWM', '130');
-  assert.equal(status, 301);
-  assert.equal(location, 'https://ciphermaniac.com/cards/PRE/073');
-});
-
-test('the canonical printing is served, not redirected', async () => {
-  const { status, res } = await request('PRE', '073');
-  assert.equal(status, 200);
-  assert.equal(await res.text(), NEXT_BODY);
-});
-
 test('a redirect target never redirects again (no 301 loop)', async () => {
   for (const [set, number] of [
     ['TWM', '130'],
@@ -95,35 +83,31 @@ test('a reciprocal synonym pair serves both URLs rather than looping', async () 
   }
 });
 
-test('URL casing and zero padding resolve the same as the canonical form', async () => {
+test('a variant printing 301s to its canonical page, whatever its casing and zero padding', async () => {
   for (const [set, number] of [
+    ['TWM', '130'],
     ['twm', '130'],
     ['TWM', '0130'],
     ['TwM', '00130']
   ]) {
     const { status, location } = await request(set, number);
-    assert.equal(status, 301);
-    assert.equal(location, 'https://ciphermaniac.com/cards/PRE/073');
+    assert.equal(status, 301, `${set}/${number}`);
+    assert.equal(location, 'https://ciphermaniac.com/cards/PRE/073', `${set}/${number}`);
   }
 });
 
-test('an unknown card falls through to the SPA shell', async () => {
-  const { status, res } = await request('ZZZ', '999');
-  assert.equal(status, 200);
-  assert.equal(await res.text(), NEXT_BODY);
-});
-
-test('a missing synonym DB falls through instead of failing', async () => {
-  const { status } = await request('TWM', '130', null);
-  assert.equal(status, 200);
-});
-
-test('a malformed synonym DB falls through instead of failing', async () => {
-  const { status } = await request('TWM', '130', { synonyms: { garbage: 42 }, canonicals: {} });
-  assert.equal(status, 200);
-});
-
-test('an empty set or number falls through', async () => {
-  assert.equal((await request('', '130')).status, 200);
-  assert.equal((await request('TWM', '')).status, 200);
+test('anything unresolvable falls through to the SPA shell rather than failing', async () => {
+  const cases: Array<[string, string, string, unknown]> = [
+    ['the canonical printing', 'PRE', '073', SYNONYMS],
+    ['an unknown card', 'ZZZ', '999', SYNONYMS],
+    ['a missing synonym DB', 'TWM', '130', null],
+    ['a malformed synonym DB', 'TWM', '130', { synonyms: { garbage: 42 }, canonicals: {} }],
+    ['an empty set', '', '130', SYNONYMS],
+    ['an empty number', 'TWM', '', SYNONYMS]
+  ];
+  for (const [label, set, number, db] of cases) {
+    const { status, res } = await request(set, number, db);
+    assert.equal(status, 200, label);
+    assert.equal(await res.text(), NEXT_BODY, label);
+  }
 });

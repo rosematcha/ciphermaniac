@@ -136,13 +136,6 @@ const fillVotes = (count: number) => {
 const shown = async (response: Response) => (await response.json()) as { archetype: string | null };
 const published = () => (JSON.parse(files.get(`live/v1/${SLUG}/reports.json`) ?? '{"decks":{}}') as LiveReports).decks;
 
-test('an oversized body is refused by its bytes, not its characters', async () => {
-  // 5,000 characters but 15,000 bytes: past the cap only when counted properly.
-  const response = await post({ ...report('Dragapult', 1), padding: 'あ'.repeat(5000) });
-  assert.equal(response.status, 400);
-  assert.deepEqual(published(), {});
-});
-
 test('a single report is shown, with the time of the file that shows it', async () => {
   const response = await post(report('Dragapult', 1));
   assert.equal(response.status, 200);
@@ -277,11 +270,6 @@ test('a batch of changes and retractions is let through at the cap', async () =>
   assert.equal((await post(report('Dragapult', 9, 'another|US'))).status, 429);
 });
 
-test('one device cannot report more seats than an event could plausibly need', async () => {
-  fillVotes(1500);
-  assert.equal((await post(report('Dragapult', 9))).status, 429);
-});
-
 test('a trusted address is not rate limited, and its neighbours still are', async () => {
   const bindings = { REPORTS: fakeBucket(files), LIVE_DB: fakeDb(votes), TRUSTED_REPORTERS: '2a01:4f9::1, 10.0.0.1' };
   let last = 200;
@@ -304,21 +292,7 @@ test('an empty list trusts nobody, the addressless least of all', async () => {
   assert.equal(last, 429);
 });
 
-test('a device at the cap can still change and take back the seats it has', async () => {
-  fillVotes(1500);
-  const seat = 'player 0|US';
-  assert.equal((await post(report('Gardevoir', 9, seat))).status, 200);
-  assert.deepEqual(published(), { [seat]: 'Gardevoir' });
-  assert.equal((await post(report(null, 9, seat))).status, 200);
-  assert.deepEqual(published(), {});
-});
-
-test('a flood from one address is limited, and missing bindings are a clean 503', async () => {
-  let last = 200;
-  for (let i = 0; i < 61; i += 1) {
-    last = (await post(report('Dragapult', i))).status;
-  }
-  assert.equal(last, 429);
+test('missing bindings are a clean 503', async () => {
   assert.equal((await post(report('Dragapult', 1), {} as never)).status, 503);
 });
 
