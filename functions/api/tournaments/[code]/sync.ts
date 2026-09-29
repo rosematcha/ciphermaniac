@@ -66,6 +66,9 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
     return jsonError(CONFLICT, 409);
   }
   const { tournament } = upload;
+  if (tournament.players.length === 0 && access.row.tournament.players.length > 0) {
+    return jsonError('That file has nobody in it; link the file TOM is using', 400);
+  }
   // Only a sync changes a TOM event's document, so a retry after another write still finds the one checked.
   const checked = JSON.stringify(access.row.tournament);
   const outcome = await mutate(access.db, access.row, row =>

@@ -234,10 +234,13 @@ function applyCuts(pods: Pod[], finals: XmlElement | undefined): Pod[] {
   return pods.map(pod => ({ ...pod, cut: cuts.get(CATEGORY_CODES[pod.category]) ?? 0 }));
 }
 
+/** The sections every file TOM saves has, even before anyone registers. */
+const REQUIRED_SECTIONS = ['data', 'players', 'pods'];
+
 /** Reads a .tdf. Throws when the file is not XML or not a TOM tournament. */
 export function parseTdf(source: string): Tournament {
   const root = parseXml(source);
-  if (root.name !== 'tournament') {
+  if (root.name !== 'tournament' || REQUIRED_SECTIONS.some(name => !child(root, name))) {
     throw new Error('Not a TOM tournament file');
   }
   const data = child(root, 'data');

@@ -148,6 +148,8 @@ test('refuses codes it does not know rather than rewriting them', () => {
 
 test('refuses files that are not TOM tournaments', () => {
   assert.throws(() => parseTdf('<html></html>'), /Not a TOM tournament/);
+  assert.throws(() => parseTdf('<tournament/>'), /Not a TOM tournament/, 'a file with none of TOM’s sections');
+  assert.throws(() => parseTdf('<tournament><data/><players/></tournament>'), /Not a TOM tournament/);
   assert.throws(() => parseTdf('<tournament><data></tournament>'), /Unexpected/);
   assert.throws(() => parseTdf('just text'), /No root element/);
 });

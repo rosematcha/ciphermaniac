@@ -1356,3 +1356,23 @@ test('a .tdf sent from a copy the site no longer holds is refused, not synced ov
   const bare = await hit(sync.onRequestPut as Handler, '/sync', at(code), { method: 'PUT', cookie: owner, body: tdf });
   assert.equal(bare.status, 400);
 });
+
+test('a sync that would leave a TOM event with nobody in it is refused', async () => {
+  const owner = await signIn('Organizer');
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const created = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf } }
+  );
+  const { code } = created.json;
+  const emptied = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: { ...tdf, players: [], pods: [] }, base: await revisionNow(code, owner) }
+  });
+  assert.equal(emptied.status, 400);
+  const kept = await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner });
+  assert.equal(kept.json.tournament.players.length, tdf.players.length);
+});
