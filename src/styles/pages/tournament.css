@@ -185,6 +185,14 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   width: auto;
   font-size: var(--text-sm);
 }
+.tm-secret {
+  transition: filter var(--ms-fast) var(--ease-base);
+}
+.tm-secret.is-hidden {
+  filter: blur(5px);
+  cursor: pointer;
+  user-select: none;
+}
 /* The negative hue walked toward the ink, so 12px error text clears 4.5:1 on
    the surface in both modes; the raw token sits at 4.4. */
 .tm-error,

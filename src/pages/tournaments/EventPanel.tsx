@@ -132,6 +132,8 @@ function RoundTimes(props: { state: ManageState; manage: Manage }) {
 
 function StaffInvite(props: { state: ManageState; manage: Manage }) {
   const [copied, setCopied] = createSignal(false);
+  // Blurred until pressed, so the link stays off a screen being shared or projected.
+  const [revealed, setRevealed] = createSignal(false);
   function rotate() {
     const { code } = props.manage;
     void props.state.run(() => rotateStaffToken(code));
@@ -146,7 +148,15 @@ function StaffInvite(props: { state: ManageState; manage: Manage }) {
     <section class='tm-section-block'>
       <h2 class='tm-subhead'>Staff</h2>
       <div class='tm-actions'>
-        <input class='tm-input tm-link' readOnly value={link()} aria-label='Staff invite link' />
+        <input
+          class='tm-input tm-link tm-secret'
+          classList={{ 'is-hidden': !revealed() }}
+          readOnly
+          value={link()}
+          aria-label='Staff invite link'
+          title={revealed() ? undefined : 'Press to show'}
+          onFocus={() => setRevealed(true)}
+        />
         <button type='button' class='btn btn-secondary' onClick={() => void copy()}>
           {copied() ? 'Copied' : 'Copy invite link'}
         </button>
