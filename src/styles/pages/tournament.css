@@ -1281,6 +1281,75 @@ tr.is-in .tm-place {
   }
 }
 
+/* ---------- Settings rows (setup and the Event tab) ---------- */
+.tm-set-row {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 18px;
+  min-height: 52px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-base);
+}
+.tm-box > .tm-set-row:first-child {
+  border-top: 0;
+}
+.tm-set-label {
+  display: grid;
+  gap: 2px;
+  font-weight: 600;
+}
+.tm-set-label small {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--muted);
+}
+.tm-set-control {
+  display: flex;
+  min-width: 0;
+}
+.tm-set-control > .tm-input,
+.tm-set-control > .tm-select {
+  width: 100%;
+  max-width: 360px;
+}
+.tm-set-control > .tm-set-minutes {
+  width: 96px;
+}
+.tm-set-control > .tm-textarea {
+  max-width: 520px;
+}
+.tm-set-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.tm-invite .tm-link {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+.tm-set-foot {
+  justify-content: flex-end;
+  border-top: 1px solid var(--rule);
+  background: var(--bg);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+.tm-event-panel {
+  max-width: 880px;
+  gap: var(--space-5);
+}
+.tm-danger-box {
+  border-color: color-mix(in srgb, var(--negative) 55%, var(--border));
+}
+@media (max-width: 640px) {
+  .tm-set-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* ---------- Round header and clock ---------- */
 .tm-actions-bar:empty {
   display: none;

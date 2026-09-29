@@ -1,95 +1,163 @@
 /**
- * The console's event tab: details players see, round times, deck
- * visibility, whether the event is sanctioned and whether players report
- * their own results, staff invites, the .tdf export, and closing or deleting
- * the event.
+ * The console's event tab, as bordered boxes of settings rows (label at left,
+ * control at right): the event itself (name, round lengths), what players see
+ * and do (start, format, archetypes, sanctioned, reporting, decklists,
+ * details), finishing (close or reopen, the .tdf), the staff invite, and
+ * deleting the event. Each box of settings saves on its own and says when it
+ * has unsaved changes; anything that cannot be taken back asks first.
  */
 
 import { useNavigate } from '@solidjs/router';
-import { createSignal, For, Show } from 'solid-js';
-import {
-  type DeckVisibility,
-  isSanctioned,
-  SETTINGS_LIMITS,
-  type TournamentSettings
-} from '../../../shared/tournament/view';
+import { createSignal, type JSX, Show } from 'solid-js';
+import { isSanctioned, SETTINGS_LIMITS, type TournamentSettings } from '../../../shared/tournament/view';
 import { deleteTournament, type Manage, rotateStaffToken, saveSettings } from '../../lib/tournament/api';
 import { tdfFilename, tdfText } from '../../lib/tournament/exportTdf';
 import { downloadBlob } from '../../lib/download';
 import { ConfirmAction } from './ConfirmAction';
-import { ErrorLine, Field } from './Field';
+import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
 import type { ManageState } from './manageState';
+import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
-const VISIBILITY_LABELS: Record<DeckVisibility, string> = {
-  always: 'Shown to everyone',
-  after: 'Shown once the event ends',
-  off: 'Off'
+/** A box of settings with its heading, and a foot with Save and whether anything is unsaved. */
+function SettingsBox(props: {
+  title: string;
+  dirty: boolean;
+  busy: boolean;
+  onSave: () => void;
+  children: JSX.Element;
+}) {
+  return (
+    <section>
+      <h2 class='tm-th tm-box-head'>{props.title}</h2>
+      <form
+        class='tm-box tm-set-box'
+        onSubmit={event => {
+          event.preventDefault();
+          props.onSave();
+        }}
+      >
+        {props.children}
+        <div class='tm-box-bar tm-set-foot'>
+          <Show when={props.dirty}>
+            <span class='muted'>Unsaved changes</span>
+          </Show>
+          <button type='submit' class='btn btn-primary' disabled={props.busy || !props.dirty}>
+            Save
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function EventDetails(props: { state: ManageState; manage: Manage }) {
+  const info = () => props.manage.tournament.info;
+  const [name, setName] = createSignal(info().name);
+  const [roundTime, setRoundTime] = createSignal(info().roundTime);
+  const [finals, setFinals] = createSignal(info().finalsRoundTime);
+  const dirty = () => name() !== info().name || roundTime() !== info().roundTime || finals() !== info().finalsRoundTime;
+  const save = () =>
+    void props.state.send({
+      type: 'updateInfo',
+      info: { name: name(), roundTime: roundTime(), finalsRoundTime: finals() }
+    });
+  return (
+    <SettingsBox title='Event' dirty={dirty()} busy={props.state.busy()} onSave={save}>
+      <SettingRow label='Event name' for='info-name'>
+        <input id='info-name' class='tm-input' value={name()} onInput={e => setName(e.currentTarget.value)} />
+      </SettingRow>
+      <SettingRow label='Round minutes' for='info-round'>
+        <input
+          id='info-round'
+          class='tm-input tm-set-minutes'
+          type='number'
+          min='1'
+          max='180'
+          value={roundTime()}
+          onInput={e => setRoundTime(Number(e.currentTarget.value))}
+        />
+      </SettingRow>
+      <SettingRow label='Top cut round minutes' for='info-finals'>
+        <input
+          id='info-finals'
+          class='tm-input tm-set-minutes'
+          type='number'
+          min='1'
+          max='180'
+          value={finals()}
+          onInput={e => setFinals(Number(e.currentTarget.value))}
+        />
+      </SettingRow>
+    </SettingsBox>
+  );
+}
+
+type PlayerSettings = Pick<
+  TournamentSettings,
+  'details' | 'format' | 'startsAt' | 'deckVisibility' | 'sanctioned' | 'playerReporting' | 'decklistsOpen'
+>;
+
+const pickPlayerSettings = (settings: TournamentSettings): PlayerSettings => {
+  const { details, format, startsAt, deckVisibility, sanctioned, playerReporting, decklistsOpen } = settings;
+  return { details, format, startsAt, deckVisibility, sanctioned, playerReporting, decklistsOpen };
 };
 
-function SettingsForm(props: { state: ManageState; manage: Manage }) {
+function ForPlayers(props: { state: ManageState; manage: Manage }) {
   // eslint-disable-next-line solid/reactivity -- the form edits a copy taken when it opens; saving replaces the event
-  const [draft, setDraft] = createSignal<TournamentSettings>({ ...props.manage.settings });
-  const set = <K extends keyof TournamentSettings>(key: K, value: TournamentSettings[K]) =>
+  const [draft, setDraft] = createSignal<PlayerSettings>(pickPlayerSettings(props.manage.settings));
+  const set = <K extends keyof PlayerSettings>(key: K, value: PlayerSettings[K]) =>
     setDraft({ ...draft(), [key]: value });
-  function save(event: Event) {
-    event.preventDefault();
+  const dirty = () => {
+    const saved = pickPlayerSettings(props.manage.settings);
+    return (Object.keys(saved) as (keyof PlayerSettings)[]).some(key => saved[key] !== draft()[key]);
+  };
+  function save() {
     const { code } = props.manage;
-    const { details, format, startsAt, deckVisibility, sanctioned, playerReporting } = draft();
-    void props.state.run(() =>
-      saveSettings(code, { details, format, startsAt, deckVisibility, sanctioned, playerReporting })
-    );
+    const next = draft();
+    void props.state.run(() => saveSettings(code, next));
   }
   return (
-    <form class='tm-form' onSubmit={save}>
-      <div class='tm-grid-fields'>
-        <Field id='set-start' label='Starts'>
-          <input
-            id='set-start'
-            class='tm-input'
-            type='datetime-local'
-            value={draft().startsAt}
-            onInput={e => set('startsAt', e.currentTarget.value)}
-          />
-        </Field>
-        <Field id='set-format' label='Format'>
-          <FormatSelect id='set-format' value={draft().format} onChange={value => set('format', value)} />
-        </Field>
-        <Field id='set-decks' label='Archetypes'>
-          <select
-            id='set-decks'
-            class='tm-select tm-select-full'
-            onChange={e => set('deckVisibility', e.currentTarget.value as DeckVisibility)}
-          >
-            <For each={Object.entries(VISIBILITY_LABELS)}>
-              {([value, label]) => (
-                <option value={value} selected={draft().deckVisibility === value}>
-                  {label}
-                </option>
-              )}
-            </For>
-          </select>
-        </Field>
-      </div>
-      <Show when={props.manage.mode === 'swiss'}>
-        <label class='tm-check'>
-          <input
-            type='checkbox'
-            checked={draft().sanctioned}
-            onChange={e => set('sanctioned', e.currentTarget.checked)}
-          />
-          <span>Sanctioned: players give their Player ID and birth year, and the event exports a .tdf</span>
-        </label>
-      </Show>
-      <label class='tm-check'>
+    <SettingsBox title='For players' dirty={dirty()} busy={props.state.busy()} onSave={save}>
+      <SettingRow label='Starts' for='set-start'>
         <input
-          type='checkbox'
-          checked={draft().playerReporting}
-          onChange={e => set('playerReporting', e.currentTarget.checked)}
+          id='set-start'
+          class='tm-input'
+          type='datetime-local'
+          value={draft().startsAt}
+          onInput={e => set('startsAt', e.currentTarget.value)}
         />
-        <span>Players report their own results</span>
-      </label>
-      <Field id='set-details' label='Details for players'>
+      </SettingRow>
+      <SettingRow label='Format' for='set-format'>
+        <FormatSelect id='set-format' value={draft().format} onChange={value => set('format', value)} />
+      </SettingRow>
+      <SettingRow label='Archetypes' for='set-decks'>
+        <ArchetypesSelect id='set-decks' value={draft().deckVisibility} onChange={v => set('deckVisibility', v)} />
+      </SettingRow>
+      <Show when={props.manage.mode === 'swiss'}>
+        <SettingRow label='Sanctioned'>
+          <Toggle
+            label='Sanctioned'
+            value={draft().sanctioned}
+            on='Yes'
+            off='No'
+            onChange={v => set('sanctioned', v)}
+          />
+        </SettingRow>
+      </Show>
+      <SettingRow label='Player reporting'>
+        <Toggle label='Player reporting' value={draft().playerReporting} onChange={v => set('playerReporting', v)} />
+      </SettingRow>
+      <SettingRow label='Decklists'>
+        <Toggle
+          label='Decklists'
+          value={draft().decklistsOpen}
+          on='Open'
+          off='Closed'
+          onChange={v => set('decklistsOpen', v)}
+        />
+      </SettingRow>
+      <SettingRow label='Details for players' for='set-details'>
         <textarea
           id='set-details'
           class='tm-input tm-textarea'
@@ -97,63 +165,61 @@ function SettingsForm(props: { state: ManageState; manage: Manage }) {
           value={draft().details}
           onInput={e => set('details', e.currentTarget.value)}
         />
-      </Field>
-      <div class='tm-actions'>
-        <button type='submit' class='btn btn-primary' disabled={props.state.busy()}>
-          Save
-        </button>
-      </div>
-    </form>
+      </SettingRow>
+    </SettingsBox>
   );
 }
 
-function RoundTimes(props: { state: ManageState; manage: Manage }) {
-  const info = () => props.manage.tournament.info;
-  const [name, setName] = createSignal(info().name);
-  const [roundTime, setRoundTime] = createSignal(info().roundTime);
-  const [finals, setFinals] = createSignal(info().finalsRoundTime);
-  const save = (event: Event) => {
-    event.preventDefault();
-    void props.state.send({
-      type: 'updateInfo',
-      info: { name: name(), roundTime: roundTime(), finalsRoundTime: finals() }
-    });
-  };
+/** Close or reopen, and the .tdf: what an organizer does at the end of the day. */
+function Finish(props: { state: ManageState; manage: Manage }) {
+  const download = () =>
+    downloadBlob(
+      new Blob([tdfText({ ...props.manage, finished: props.manage.settings.finished })], { type: 'application/xml' }),
+      tdfFilename(props.manage.tournament)
+    );
+  function setFinished(finished: boolean) {
+    const { code } = props.manage;
+    void props.state.run(() => saveSettings(code, { finished }));
+  }
   return (
-    <form class='tm-form' onSubmit={save}>
-      <div class='tm-grid-fields'>
-        <Field id='info-name' label='Event name'>
-          <input id='info-name' class='tm-input' value={name()} onInput={e => setName(e.currentTarget.value)} />
-        </Field>
-        <Field id='info-round' label='Round minutes'>
-          <input
-            id='info-round'
-            class='tm-input'
-            type='number'
-            min='1'
-            max='180'
-            value={roundTime()}
-            onInput={e => setRoundTime(Number(e.currentTarget.value))}
-          />
-        </Field>
-        <Field id='info-finals' label='Top cut round minutes'>
-          <input
-            id='info-finals'
-            class='tm-input'
-            type='number'
-            min='1'
-            max='180'
-            value={finals()}
-            onInput={e => setFinals(Number(e.currentTarget.value))}
-          />
-        </Field>
+    <section>
+      <h2 class='tm-th tm-box-head'>Finish</h2>
+      <div class='tm-box'>
+        <SettingRow label='Status'>
+          <span class='tm-set-inline'>
+            <span>{props.manage.settings.finished ? 'Closed' : 'Open'}</span>
+            <Show
+              when={props.manage.settings.finished}
+              fallback={
+                <ConfirmAction
+                  class='btn btn-secondary'
+                  label='Close event'
+                  question='Close the event?'
+                  confirmLabel='Close'
+                  onConfirm={() => setFinished(true)}
+                />
+              }
+            >
+              <button
+                type='button'
+                class='btn btn-secondary'
+                disabled={props.state.busy()}
+                onClick={() => setFinished(false)}
+              >
+                Reopen event
+              </button>
+            </Show>
+          </span>
+        </SettingRow>
+        <Show when={isSanctioned(props.manage)}>
+          <SettingRow label='Play! Pokémon file'>
+            <button type='button' class='btn btn-secondary' onClick={download}>
+              Download .tdf
+            </button>
+          </SettingRow>
+        </Show>
       </div>
-      <div class='tm-actions'>
-        <button type='submit' class='btn btn-primary' disabled={props.state.busy()}>
-          Save
-        </button>
-      </div>
-    </form>
+    </section>
   );
 }
 
@@ -172,28 +238,33 @@ function StaffInvite(props: { state: ManageState; manage: Manage }) {
     setTimeout(() => setCopied(false), 1500);
   }
   return (
-    <section class='tm-section-block'>
-      <h2 class='tm-subhead'>Staff</h2>
-      <div class='tm-actions'>
-        <input
-          class='tm-input tm-link tm-secret'
-          classList={{ 'is-hidden': !revealed() }}
-          readOnly
-          value={link()}
-          aria-label='Staff invite link'
-          title={revealed() ? undefined : 'Press to show'}
-          onFocus={() => setRevealed(true)}
-        />
-        <button type='button' class='btn btn-secondary' onClick={() => void copy()}>
-          {copied() ? 'Copied' : 'Copy invite link'}
-        </button>
-        <ConfirmAction
-          class='btn btn-ghost'
-          label='New link'
-          question='Make a new link and remove current staff?'
-          confirmLabel='Remove staff'
-          onConfirm={rotate}
-        />
+    <section>
+      <h2 class='tm-th tm-box-head'>Staff</h2>
+      <div class='tm-box'>
+        <SettingRow label='Invite link'>
+          <span class='tm-set-inline tm-invite'>
+            <input
+              class='tm-input tm-link tm-secret'
+              classList={{ 'is-hidden': !revealed() }}
+              readOnly
+              value={link()}
+              aria-label='Staff invite link'
+              title={revealed() ? undefined : 'Press to show'}
+              onFocus={() => setRevealed(true)}
+            />
+            <button type='button' class='btn btn-secondary' onClick={() => void copy()}>
+              {copied() ? 'Copied' : 'Copy invite link'}
+            </button>
+            <ConfirmAction
+              class='btn btn-ghost'
+              label='New link'
+              question='Make a new link and remove current staff?'
+              confirmLabel='Remove staff'
+              danger
+              onConfirm={rotate}
+            />
+          </span>
+        </SettingRow>
       </div>
     </section>
   );
@@ -211,61 +282,18 @@ function DeleteEvent(props: { manage: Manage }) {
     }
   }
   return (
-    <section class='tm-section-block tm-danger-zone'>
-      <ConfirmAction
-        class='btn btn-ghost tm-danger-text'
-        label='Delete event'
-        question={`Delete ${props.manage.tournament.info.name} for good?`}
-        confirmLabel='Delete'
-        onConfirm={() => void remove()}
-      />
+    <section class='tm-box tm-danger-box'>
+      <SettingRow label='Delete this event'>
+        <ConfirmAction
+          class='btn btn-secondary tm-danger'
+          label='Delete event'
+          question={`Delete ${props.manage.tournament.info.name} for good?`}
+          confirmLabel='Delete'
+          danger
+          onConfirm={() => void remove()}
+        />
+      </SettingRow>
       <ErrorLine message={error()} />
-    </section>
-  );
-}
-
-/** Close or reopen, and the .tdf: what an organizer does at the end of the day. */
-function Finish(props: { state: ManageState; manage: Manage }) {
-  const download = () =>
-    downloadBlob(
-      new Blob([tdfText({ ...props.manage, finished: props.manage.settings.finished })], { type: 'application/xml' }),
-      tdfFilename(props.manage.tournament)
-    );
-  function setFinished(finished: boolean) {
-    const { code } = props.manage;
-    void props.state.run(() => saveSettings(code, { finished }));
-  }
-  return (
-    <section class='tm-section-block'>
-      <h2 class='tm-subhead'>Finish</h2>
-      <div class='tm-actions'>
-        <Show
-          when={props.manage.settings.finished}
-          fallback={
-            <ConfirmAction
-              class='btn btn-secondary'
-              label='Close event'
-              question='Close the event?'
-              confirmLabel='Close'
-              onConfirm={() => setFinished(true)}
-            />
-          }
-        >
-          <button
-            type='button'
-            class='btn btn-secondary'
-            disabled={props.state.busy()}
-            onClick={() => setFinished(false)}
-          >
-            Reopen event
-          </button>
-        </Show>
-        <Show when={isSanctioned(props.manage)}>
-          <button type='button' class='btn btn-ghost' onClick={download}>
-            Download .tdf
-          </button>
-        </Show>
-      </div>
     </section>
   );
 }
@@ -274,15 +302,9 @@ export function EventPanel(props: { state: ManageState; manage: Manage }) {
   return (
     <div class='tm-panel tm-event-panel'>
       <Show when={props.manage.mode === 'swiss'}>
-        <section class='tm-section-block'>
-          <h2 class='tm-subhead'>Event</h2>
-          <RoundTimes state={props.state} manage={props.manage} />
-        </section>
+        <EventDetails state={props.state} manage={props.manage} />
       </Show>
-      <section class='tm-section-block'>
-        <h2 class='tm-subhead'>For players</h2>
-        <SettingsForm state={props.state} manage={props.manage} />
-      </section>
+      <ForPlayers state={props.state} manage={props.manage} />
       <Finish state={props.state} manage={props.manage} />
       <Show when={props.manage.role === 'owner'}>
         <StaffInvite state={props.state} manage={props.manage} />
