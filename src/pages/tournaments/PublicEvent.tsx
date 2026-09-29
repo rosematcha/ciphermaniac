@@ -18,8 +18,9 @@ import { decksEnabled, isSanctioned, type PublishedView, type TournamentView } f
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
-import { fetchPublished, fetchView, identifyPlayer } from '../../lib/tournament/api';
+import { ApiError, fetchPublished, fetchView, identifyPlayer } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
+import { createViewPoll, schedulePolls } from '../../lib/tournament/viewPoll';
 import {
   currentRound,
   divisionHeading,
@@ -47,34 +48,46 @@ const DecklistForm = lazy(() => import('./DecklistForm').then(m => ({ default: m
 
 type Tab = 'pairings' | 'standings' | 'decks' | 'decklist';
 
-const POLL_MS = 10_000;
+/** No event has this code: asking again will not find one. */
+const missing = (error: unknown) => error instanceof ApiError && error.status === 404;
 
-/** The event, polled while the tab is visible; a poll that finds nothing new costs one tiny request. */
+/**
+ * The event, polled while the tab is visible (see lib/tournament/viewPoll.ts);
+ * a poll that finds nothing new costs one tiny request.
+ */
 function createView(code: () => string) {
-  const [view, { mutate }] = createResource(code, c => fetchView(c).then(v => v as TournamentView));
-  onMount(() => {
-    // Players read the published file, which costs the functions nothing;
-    // staff, who see decks before the public does, ask the API, as does
-    // anyone the file cannot reach (not published yet, or a local server).
-    async function poll() {
-      const current = latestValue(view);
-      if (document.hidden || !current) {
-        return;
-      }
-      const published = current.viewer.role ? null : await fetchPublished(code()).catch(() => null);
-      if (published) {
-        if (published.version > current.version) {
-          mutate({ ...published, viewer: current.viewer });
-        }
-        return;
-      }
-      const next = await fetchView(code(), current.version).catch(() => null);
-      if (next) {
-        mutate(next);
-      }
+  const [view, { mutate, refetch }] = createResource(code, c => fetchView(c).then(v => v as TournamentView));
+  /** Loads the event again after its first load failed; whether it is there now. */
+  async function reload(): Promise<boolean> {
+    if (!view.error) {
+      return true;
     }
-    const timer = setInterval(() => void poll(), POLL_MS);
-    onCleanup(() => clearInterval(timer));
+    if (missing(view.error)) {
+      return false;
+    }
+    try {
+      return (await refetch()) != null;
+    } catch {
+      return false;
+    }
+  }
+  onMount(() => {
+    const poll = createViewPoll({
+      current: () => latestValue(view),
+      reload,
+      published: () => fetchPublished(code()),
+      api: since => fetchView(code(), since),
+      apply: next => mutate(next),
+      now: Date.now
+    });
+    const polls = schedulePolls(poll, () => document.hidden);
+    // Back online: the next look should not wait out a long backoff.
+    const online = () => polls.soon();
+    window.addEventListener('online', online);
+    onCleanup(() => {
+      polls.stop();
+      window.removeEventListener('online', online);
+    });
   });
   /** Takes a fresher copy handed over by an action, such as a player's report. */
   function take(published: PublishedView) {
@@ -83,7 +96,7 @@ function createView(code: () => string) {
       mutate({ ...published, viewer: current.viewer });
     }
   }
-  return { view, take };
+  return { view, take, retry: () => void reload() };
 }
 
 const meKey = (code: string) => `cm-tournament-me:${code}`;
@@ -493,7 +506,7 @@ function Hero(props: { view: TournamentView }) {
 
 export function PublicEvent(props: { code: string }) {
   const [params] = useSearchParams<{ screen?: string }>();
-  const { view, take } = createView(() => props.code);
+  const { view, take, retry } = createView(() => props.code);
   const current = () => latestValue(view);
   createEffect(() => {
     document.title = `${current()?.tournament.info.name ?? props.code} — Ciphermaniac`;
@@ -504,6 +517,11 @@ export function PublicEvent(props: { code: string }) {
       fallback={
         <Show when={view.error} fallback={<Skeleton width='280px' height='28px' />}>
           <ErrorLine message={view.error instanceof Error ? view.error.message : 'This event could not be loaded.'} />
+          <Show when={!missing(view.error)}>
+            <button type='button' class='btn btn-secondary tm-small' onClick={() => retry()}>
+              Retry
+            </button>
+          </Show>
         </Show>
       }
     >
