@@ -7,7 +7,7 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
 import { DIVISION_LABELS, type Player, playerName } from '../../../shared/tournament/types';
-import { decksEnabled } from '../../../shared/tournament/view';
+import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
 import { type Manage, setDeck } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import { DeckCombo } from '../live/LiveDeck';
@@ -17,7 +17,8 @@ import { ErrorLine, Field } from './Field';
 import type { ManageState } from './manageState';
 import { birthDateFor } from './ProfileFields';
 
-function AddPlayer(props: { state: ManageState }) {
+/** A new player: a name, and at a sanctioned event their Player ID and birth year. */
+function AddPlayer(props: { state: ManageState; sanctioned: boolean }) {
   const [first, setFirst] = createSignal('');
   const [last, setLast] = createSignal('');
   const [popId, setPopId] = createSignal('');
@@ -29,8 +30,8 @@ function AddPlayer(props: { state: ManageState }) {
       player: {
         firstName: first(),
         lastName: last(),
-        ...(popId() ? { id: popId() } : {}),
-        ...(year() ? { birthDate: birthDateFor(year()) } : {})
+        ...(props.sanctioned && popId() ? { id: popId() } : {}),
+        ...(props.sanctioned && year() ? { birthDate: birthDateFor(year()) } : {})
       }
     });
     if (ok) {
@@ -50,25 +51,27 @@ function AddPlayer(props: { state: ManageState }) {
         <Field id='add-last' label='Last name'>
           <input id='add-last' class='tm-input' value={last()} onInput={e => setLast(e.currentTarget.value)} />
         </Field>
-        <Field id='add-pop' label='Player ID'>
-          <input
-            id='add-pop'
-            class='tm-input'
-            inputmode='numeric'
-            value={popId()}
-            onInput={e => setPopId(e.currentTarget.value.replace(/\D/g, ''))}
-          />
-        </Field>
-        <Field id='add-year' label='Birth year'>
-          <input
-            id='add-year'
-            class='tm-input'
-            inputmode='numeric'
-            maxLength={4}
-            value={year()}
-            onInput={e => setYear(e.currentTarget.value.replace(/\D/g, ''))}
-          />
-        </Field>
+        <Show when={props.sanctioned}>
+          <Field id='add-pop' label='Player ID'>
+            <input
+              id='add-pop'
+              class='tm-input'
+              inputmode='numeric'
+              value={popId()}
+              onInput={e => setPopId(e.currentTarget.value.replace(/\D/g, ''))}
+            />
+          </Field>
+          <Field id='add-year' label='Birth year'>
+            <input
+              id='add-year'
+              class='tm-input'
+              inputmode='numeric'
+              maxLength={4}
+              value={year()}
+              onInput={e => setYear(e.currentTarget.value.replace(/\D/g, ''))}
+            />
+          </Field>
+        </Show>
       </div>
       <div class='tm-actions'>
         <button
@@ -184,6 +187,7 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
 
 function PlayerRow(props: { state: ManageState; manage: Manage; player: Player; season: number }) {
   const swiss = () => props.manage.mode === 'swiss';
+  const sanctioned = () => isSanctioned(props.manage);
   return (
     <tr classList={{ 'is-dropped': props.player.droppedAfter !== null }}>
       <td>
@@ -192,8 +196,10 @@ function PlayerRow(props: { state: ManageState; manage: Manage; player: Player; 
           <span class='muted-cell tm-flag'>Late</span>
         </Show>
       </td>
-      <td class='num muted-cell'>{props.player.id}</td>
-      <td class='muted-cell'>{DIVISION_LABELS[divisionFor(props.player.birthDate, props.season)]}</td>
+      <Show when={sanctioned()}>
+        <td class='num muted-cell'>{props.player.id}</td>
+        <td class='muted-cell'>{DIVISION_LABELS[divisionFor(props.player.birthDate, props.season)]}</td>
+      </Show>
       <Show when={decksEnabled(props.manage.settings)}>
         <DeckCell state={props.state} manage={props.manage} player={props.player} />
       </Show>
@@ -216,6 +222,7 @@ export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
   const [query, setQuery] = createSignal('');
   const season = () => seasonOf(parseTomDate(props.manage.tournament.info.startDate) ?? new Date());
   const swiss = () => props.manage.mode === 'swiss';
+  const sanctioned = () => isSanctioned(props.manage);
   const players = createMemo(() => {
     const q = query().trim().toLowerCase();
     return [...props.manage.tournament.players]
@@ -225,7 +232,7 @@ export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
   return (
     <div class='tm-panel'>
       <Show when={swiss()}>
-        <AddPlayer state={props.state} />
+        <AddPlayer state={props.state} sanctioned={sanctioned()} />
       </Show>
       <div class='tm-toolbar'>
         <input
@@ -243,8 +250,10 @@ export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
           <thead>
             <tr>
               <th>Player</th>
-              <th class='num'>Player ID</th>
-              <th>Division</th>
+              <Show when={sanctioned()}>
+                <th class='num'>Player ID</th>
+                <th>Division</th>
+              </Show>
               <Show when={decksEnabled(props.manage.settings)}>
                 <th>Deck</th>
               </Show>

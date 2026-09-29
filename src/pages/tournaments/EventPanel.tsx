@@ -1,11 +1,17 @@
 /**
  * The console's event tab: details players see, round times, deck
- * visibility, staff invites, the .tdf export, and closing or deleting the event.
+ * visibility, whether the event is sanctioned, staff invites, the .tdf
+ * export, and closing or deleting the event.
  */
 
 import { useNavigate } from '@solidjs/router';
 import { createSignal, For, Show } from 'solid-js';
-import { type DeckVisibility, SETTINGS_LIMITS, type TournamentSettings } from '../../../shared/tournament/view';
+import {
+  type DeckVisibility,
+  isSanctioned,
+  SETTINGS_LIMITS,
+  type TournamentSettings
+} from '../../../shared/tournament/view';
 import { deleteTournament, type Manage, rotateStaffToken, saveSettings } from '../../lib/tournament/api';
 import { tdfFilename, tdfText } from '../../lib/tournament/exportTdf';
 import { downloadBlob } from '../../lib/download';
@@ -28,8 +34,8 @@ function SettingsForm(props: { state: ManageState; manage: Manage }) {
   function save(event: Event) {
     event.preventDefault();
     const { code } = props.manage;
-    const { details, format, startsAt, deckVisibility } = draft();
-    void props.state.run(() => saveSettings(code, { details, format, startsAt, deckVisibility }));
+    const { details, format, startsAt, deckVisibility, sanctioned } = draft();
+    void props.state.run(() => saveSettings(code, { details, format, startsAt, deckVisibility, sanctioned }));
   }
   return (
     <form class='tm-form' onSubmit={save}>
@@ -62,6 +68,16 @@ function SettingsForm(props: { state: ManageState; manage: Manage }) {
           </select>
         </Field>
       </div>
+      <Show when={props.manage.mode === 'swiss'}>
+        <label class='tm-check'>
+          <input
+            type='checkbox'
+            checked={draft().sanctioned}
+            onChange={e => set('sanctioned', e.currentTarget.checked)}
+          />
+          <span>Sanctioned: players give their Player ID and birth year, and the event exports a .tdf</span>
+        </label>
+      </Show>
       <Field id='set-details' label='Details for players'>
         <textarea
           id='set-details'
@@ -233,9 +249,11 @@ function Finish(props: { state: ManageState; manage: Manage }) {
             Reopen event
           </button>
         </Show>
-        <button type='button' class='btn btn-ghost' onClick={download}>
-          Download .tdf
-        </button>
+        <Show when={isSanctioned(props.manage)}>
+          <button type='button' class='btn btn-ghost' onClick={download}>
+            Download .tdf
+          </button>
+        </Show>
       </div>
     </section>
   );

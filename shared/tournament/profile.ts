@@ -22,10 +22,13 @@ function field(body: Record<string, unknown>, key: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-/** Why a profile cannot be saved, per field; empty when it can. */
-export function profileErrors(profile: PlayerProfile): Partial<Record<keyof PlayerProfile, string>> {
+/**
+ * Why a profile cannot be saved, per field; empty when it can. An
+ * unsanctioned event asks only for the name.
+ */
+export function profileErrors(profile: PlayerProfile, sanctioned = true): Partial<Record<keyof PlayerProfile, string>> {
   const errors: Partial<Record<keyof PlayerProfile, string>> = {};
-  if (!POP_ID_RE.test(profile.popId)) {
+  if (sanctioned && !POP_ID_RE.test(profile.popId)) {
     errors.popId = 'A POP ID is up to ten digits';
   }
   if (!profile.firstName || profile.firstName.length > NAME_MAX) {
@@ -34,23 +37,26 @@ export function profileErrors(profile: PlayerProfile): Partial<Record<keyof Play
   if (!profile.lastName || profile.lastName.length > NAME_MAX) {
     errors.lastName = 'Required';
   }
-  if (!DATE_RE.test(profile.birthDate)) {
+  if (sanctioned && !DATE_RE.test(profile.birthDate)) {
     errors.birthDate = 'Use MM/DD/YYYY';
   }
   return errors;
 }
 
-/** A profile out of a request body, or null when a field is missing or malformed. */
-export function readProfile(body: unknown): PlayerProfile | null {
+/**
+ * A profile out of a request body, or null when a field is missing or
+ * malformed. Unsanctioned, the Player ID and birth date are left blank.
+ */
+export function readProfile(body: unknown, sanctioned = true): PlayerProfile | null {
   if (typeof body !== 'object' || body === null) {
     return null;
   }
   const record = body as Record<string, unknown>;
   const profile = {
-    popId: field(record, 'popId'),
+    popId: sanctioned ? field(record, 'popId') : '',
     firstName: field(record, 'firstName'),
     lastName: field(record, 'lastName'),
-    birthDate: field(record, 'birthDate')
+    birthDate: sanctioned ? field(record, 'birthDate') : ''
   };
-  return Object.keys(profileErrors(profile)).length === 0 ? profile : null;
+  return Object.keys(profileErrors(profile, sanctioned)).length === 0 ? profile : null;
 }

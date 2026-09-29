@@ -41,6 +41,11 @@ export interface TournamentSettings {
   startsAt: string;
   /** Set when the organizer closes the event; 'after' decks show from then. */
   finished: boolean;
+  /**
+   * A Play! Pokémon event: players are known by Player ID and birth year, and
+   * the event exports a .tdf. An unsanctioned one asks for names only.
+   */
+  sanctioned: boolean;
 }
 
 export const DEFAULT_SETTINGS: TournamentSettings = {
@@ -49,7 +54,9 @@ export const DEFAULT_SETTINGS: TournamentSettings = {
   details: '',
   format: 'Standard',
   startsAt: '',
-  finished: false
+  finished: false,
+  // Events made before the choice existed asked for Player IDs, so they stay sanctioned.
+  sanctioned: true
 };
 
 export const SETTINGS_LIMITS = { details: 1000, format: 40, archetype: 60 } as const;
@@ -62,6 +69,7 @@ type SettingCheck = (value: unknown) => boolean;
 const SETTING_CHECKS: { [K in keyof TournamentSettings]: SettingCheck } = {
   decklistsOpen: value => typeof value === 'boolean',
   finished: value => typeof value === 'boolean',
+  sanctioned: value => typeof value === 'boolean',
   deckVisibility: value => VISIBILITIES.includes(value as DeckVisibility),
   details: value => typeof value === 'string' && value.length <= SETTINGS_LIMITS.details,
   format: value => typeof value === 'string' && value.length <= SETTINGS_LIMITS.format,
@@ -82,6 +90,11 @@ export function readSettings(body: unknown, current: TournamentSettings): Tourna
     next[key] = value;
   }
   return next as unknown as TournamentSettings;
+}
+
+/** Whether players are known by Player ID and birth year: a TOM event always is. */
+export function isSanctioned(event: { mode: TournamentMode; settings: TournamentSettings }): boolean {
+  return event.mode === 'tom' || event.settings.sanctioned;
 }
 
 /** Whether the event tracks archetypes at all. */

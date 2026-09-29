@@ -10,7 +10,7 @@ import { createEffect, createMemo, createResource, createSignal, For, onCleanup,
 import { parseTomDate } from '../../../shared/tournament/divisions';
 import { swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
-import { decksEnabled, type TournamentView } from '../../../shared/tournament/view';
+import { decksEnabled, isSanctioned, type TournamentView } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
@@ -269,7 +269,11 @@ function EventBody(props: { view: TournamentView }) {
         <DeckStats tournament={props.view.tournament} decks={props.view.decks} />
       </Show>
       <Show when={tab() === 'decklist'}>
-        <DecklistForm code={props.view.code} archetypes={decksEnabled(props.view.settings)} />
+        <DecklistForm
+          code={props.view.code}
+          archetypes={decksEnabled(props.view.settings)}
+          sanctioned={isSanctioned(props.view)}
+        />
       </Show>
       <Show when={open()}>
         {id => (

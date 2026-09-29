@@ -732,3 +732,27 @@ afterEach(() => {
   delete env.ENVIRONMENT;
   delete env.REPORTS;
 });
+
+function settle(code: string, cookie: string, change: Record<string, unknown>) {
+  return hit(settings.onRequestPut as Handler, '/settings', at(code), { method: 'PUT', cookie, body: change });
+}
+
+test('an unsanctioned event takes decklists by name and leaves the account’s Player ID alone', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { sanctioned: false, decklistsOpen: true });
+  await send(code, owner, { type: 'addPlayer', player: { firstName: 'Pat', lastName: 'Player' } });
+  const player = await signIn('Player');
+  const profile = { popId: '1234567', firstName: 'Pat', lastName: 'Player', birthDate: '02/27/2001' };
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profile });
+  const sent = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
+    method: 'PUT',
+    cookie: player,
+    body: { deck: '60 Basic {P} Energy SVE 5', profile: { firstName: 'Pat', lastName: 'player' } }
+  });
+  assert.equal(sent.status, 200);
+  assert.equal(sent.json.decklist.popId, '');
+  assert.equal(sent.json.decklist.registered, true, 'matched to the list by name');
+  const account = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: player });
+  assert.equal(account.json.user.popId, '1234567');
+});
