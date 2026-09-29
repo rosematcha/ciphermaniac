@@ -16,22 +16,30 @@ import type { Pod, Round, Tournament } from '../../shared/tournament/types.ts';
 import { assignKeys, DEFAULT_SETTINGS, publicTournament } from '../../shared/tournament/view.ts';
 import { tdfFilename, tdfText } from '../../src/lib/tournament/exportTdf.ts';
 import {
+  champion,
   clockLabel,
   currentMatchOf,
+  cutSplit,
   deckBreakdown,
   divisionHeading,
   divisionLookup,
+  eventStatus,
   filterMatches,
   matchHistory,
   namesById,
+  nextStep,
+  ordinal,
+  podProgress,
   podStandings,
   recommendedStructure,
   recordsBefore,
   reportState,
+  RESULT_WORDS,
   roundLabel,
   seatMark,
   shownDecks,
   shownOutcome,
+  statusParts,
   unseated
 } from '../../src/lib/tournament/present.ts';
 
@@ -220,4 +228,113 @@ test('a player’s report state: pressed, disputed, locked, and final once it st
     locked: true,
     final: true
   });
+});
+
+test('the console’s next step: pair when every table is in, wait while any is open, close after the final', () => {
+  const open = podProgress(pod, []);
+  assert.equal(open.round?.number, 2);
+  assert.ok(open.open > 0);
+  assert.deepEqual(nextStep(open, false), {
+    kind: 'pair',
+    label: 'Pair round 3',
+    ready: false,
+    reason: `${open.open} ${open.open === 1 ? 'table' : 'tables'} open`
+  });
+  assert.deepEqual(nextStep({ ...open, open: 0 }, false), { kind: 'pair', label: 'Pair round 3', ready: true });
+  assert.deepEqual(nextStep({ round: undefined, tables: 0, open: 0, champion: null }, false), {
+    kind: 'pair',
+    label: 'Pair round 1',
+    ready: true
+  });
+  assert.deepEqual(nextStep({ ...open, champion: 'x' }, false), { kind: 'close', champion: 'x' });
+  assert.deepEqual(nextStep(open, true), { kind: 'none' });
+});
+
+test('a cut round leads to the next stage by name, and a finished final crowns its winner', () => {
+  const quarter: Round = { ...round2, kind: 'elimination', matches: round2.matches.slice(0, 4) };
+  const done = { round: quarter, tables: 4, open: 0, champion: null };
+  assert.equal((nextStep(done, false) as { label: string }).label, 'Pair semifinals');
+  const semi: Round = { ...round2, kind: 'elimination', matches: round2.matches.slice(0, 2) };
+  assert.equal((nextStep({ ...done, round: semi }, false) as { label: string }).label, 'Pair the final');
+  const [first] = round2.matches;
+  assert.ok(first);
+  const final: Round = { ...round2, kind: 'elimination', matches: [{ ...first, outcome: 'p1' }] };
+  assert.equal(champion(final), first.p1);
+  assert.equal(champion({ ...final, matches: [{ ...first, outcome: 'pending' }] }), null);
+});
+
+test('the status sentence names the round, what is still playing and the clock', () => {
+  const open = podProgress(pod, []);
+  assert.deepEqual(statusParts(open, false, '23:41'), [
+    'Round 2',
+    `${open.open} ${open.open === 1 ? 'table' : 'tables'} playing`,
+    '23:41 left'
+  ]);
+  assert.equal(statusParts(open, false, '-4:05')[2], '4:05 over', 'past time reads as over, not negative');
+  assert.deepEqual(statusParts({ ...open, open: 0 }, false, '23:41'), ['Round 2', `all ${open.tables} tables in`]);
+  assert.deepEqual(statusParts({ round: undefined, tables: 0, open: 0, champion: null }, false, null), [
+    'Registration'
+  ]);
+  assert.deepEqual(statusParts(open, true, null), ['Finished']);
+});
+
+test('the cut line says what split the last player in from the first one out', () => {
+  const row = (place: number, points: number, owp: number, oowp = 0.5) => ({
+    playerId: String(place),
+    place,
+    record: { wins: 0, losses: 0, ties: 0 },
+    points,
+    owp,
+    oowp,
+    dropped: false,
+    late: false
+  });
+  assert.equal(cutSplit([row(1, 9, 0.6), row(2, 6, 0.7)], 1), '1st and 2nd split on points: 9 / 6');
+  assert.equal(cutSplit([row(1, 6, 0.6397), row(2, 6, 0.4833)], 1), '1st and 2nd split on OWP: 63.97% / 48.33%');
+  assert.equal(cutSplit([row(1, 6, 0.5, 0.61), row(2, 6, 0.5, 0.52)], 1), '1st and 2nd split on OOWP: 61.00% / 52.00%');
+  assert.equal(cutSplit([row(1, 6, 0.5)], 8), null, 'no one outside the cut');
+  const long = Array.from({ length: 12 }, (_, i) => row(i + 1, 12 - i, 0.5));
+  assert.match(cutSplit(long, 11) ?? '', /^11th and 12th/);
+});
+
+test('the public status names registration, the round in play, or how the event finished', () => {
+  const registering = { ...CHALLENGE, pods: CHALLENGE.pods.map(p => ({ ...p, rounds: [] })) };
+  const players = registering.players.filter(p => p.droppedAfter === null).length;
+  assert.deepEqual(eventStatus(registering, { pending: [], finished: false, firstRound: '11:00 AM' }, 0), [
+    'Registration',
+    `${players} players`,
+    'Round 1 at 11:00 AM'
+  ]);
+  assert.deepEqual(eventStatus(registering, { pending: [], finished: false, firstRound: null }, 0), [
+    'Registration',
+    `${players} players`
+  ]);
+  const live = eventStatus(CHALLENGE, { pending: [], finished: false, firstRound: null }, 0);
+  assert.equal(live[0], roundLabel(pod.rounds.at(-1) as Round));
+  const swiss = pod.rounds.filter(r => r.kind === 'swiss').length;
+  const cut = { ...CHALLENGE, pods: [{ ...pod, cut: 8 }] };
+  assert.deepEqual(eventStatus(cut, { pending: [], finished: true, firstRound: null }, 0), [
+    'Finished',
+    `${swiss} round${swiss === 1 ? '' : 's'}`,
+    'Top 8'
+  ]);
+});
+
+test('places read as ordinals and results as the pairings show them', () => {
+  assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 101, 111].map(ordinal), [
+    '1st',
+    '2nd',
+    '3rd',
+    '4th',
+    '11th',
+    '12th',
+    '13th',
+    '21st',
+    '22nd',
+    '101st',
+    '111th'
+  ]);
+  assert.equal(RESULT_WORDS.p1, '1–0');
+  assert.equal(RESULT_WORDS['double-loss'], 'Double loss');
+  assert.equal(RESULT_WORDS.pending, undefined);
 });

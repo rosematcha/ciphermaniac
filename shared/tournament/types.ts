@@ -66,6 +66,8 @@ export interface Player {
    * between tables. Their match takes that table; everyone else fills the rest.
    */
   fixedTable?: number;
+  /** Added to the event by submitting a decklist rather than by staff. */
+  fromList?: boolean;
   /** TOM's timestamps, kept so a round trip leaves them as they were. */
   created: string;
   modified: string;

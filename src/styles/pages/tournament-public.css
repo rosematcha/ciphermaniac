@@ -1,0 +1,300 @@
+/* The public event page (/t/:code), loaded with its chunk (PublicEvent):
+   the viewer's own match, the registered list and the player sheet. */
+
+/* ---------- Your match: the strip, and the report panel it opens into ---------- */
+.tm-you {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-body);
+}
+.tm-you-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+  padding: 12px 14px;
+}
+.tm-you-big {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.tm-you-big small {
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.tm-you-mid {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.tm-you-mid .tm-seat-link {
+  display: inline;
+  width: auto;
+  font: inherit;
+}
+.tm-you-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.tm-you-end .tm-clock {
+  font-size: var(--text-xl);
+  font-weight: 800;
+}
+.tm-you-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--rule);
+}
+.tm-you-answers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+.tm-you-answers .tm-report-choices {
+  flex: 1 1 360px;
+  max-width: 760px;
+  margin: 0;
+}
+.tm-you-status.is-bad {
+  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
+}
+.tm-you-note {
+  margin: 0;
+  font-size: var(--text-base);
+}
+.tm-you-who {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px 6px 14px;
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-sm);
+}
+.tm-you-ask {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+.tm-you-q {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.tm-you-find {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+.tm-you-find .tm-field {
+  flex: 1 1 220px;
+  max-width: 420px;
+}
+.tm-report-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--space-2);
+}
+.tm-report-choices .btn {
+  justify-content: center;
+  min-height: 44px;
+}
+/* Once fixed, the pressed answer stays at full strength (it is marked
+   aria-disabled rather than disabled) while the others fade. */
+.tm-report-choices .btn[aria-disabled='true'] {
+  cursor: default;
+}
+.tm-report-choices .btn.is-disputed {
+  border-color: var(--negative);
+  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
+}
+@media (max-width: 640px) {
+  .tm-you-end {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .tm-you-end .btn,
+  .tm-you-who .btn,
+  .tm-you-find .btn {
+    min-height: 44px;
+  }
+  .tm-you-find .tm-field,
+  .tm-you-find .btn {
+    flex-basis: 100%;
+    max-width: none;
+  }
+}
+
+/* ---------- Pairings and standings: one box each ---------- */
+.tm-public .tm-standings + .tm-standings {
+  margin-top: var(--space-4);
+}
+.tm-box-note {
+  border-top: 1px solid var(--rule);
+  border-bottom: 0;
+  font-size: var(--text-sm);
+}
+.tm-public .tm-details {
+  margin: 0 0 var(--space-4);
+}
+.tm-result-col {
+  white-space: nowrap;
+}
+/* The desktop table is fixed-layout, so the result column needs its own width. */
+@media (min-width: 641px) {
+  .tm-public-pairings th.tm-extra-col {
+    width: 110px;
+  }
+}
+@media (max-width: 640px) {
+  .tm-public-pairings .data td.tm-result-col {
+    grid-area: extra;
+    padding-left: 40px;
+    font-size: var(--text-sm);
+  }
+}
+
+/* Before round 1: who is in, by last name, in columns. */
+.tm-registered {
+  list-style: none;
+  margin: 0;
+  padding: 6px 14px 10px;
+  columns: 14rem auto;
+  column-gap: 18px;
+}
+.tm-registered li {
+  break-inside: avoid;
+  border-bottom: 1px solid var(--rule);
+}
+.tm-registered .tm-seat-link {
+  min-height: 36px;
+}
+.tm-registered strong {
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .tm-registered .tm-seat-link {
+    min-height: 44px;
+  }
+}
+
+/* ---------- Player sheet: at the side on desktop, from the bottom on a phone ---------- */
+.tm-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
+}
+.tm-sheet {
+  position: fixed;
+  top: var(--topnav-h);
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(440px, 100vw);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+}
+.tm-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 20px;
+  padding: 18px 0 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.tm-sheet-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--text-xl);
+}
+.tm-sheet-head p {
+  margin: 2px 0 0;
+  font-size: var(--text-base);
+}
+.tm-sheet-body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+.tm-sheet-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+.tm-sheet-stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  padding: 8px 12px;
+}
+.tm-sheet-stats > div + div {
+  border-left: 1px solid var(--rule);
+}
+.tm-sheet-stats dd {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+.tm-sheet-stats dt {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tm-history thead th {
+  position: static;
+}
+.tm-history .tm-seat-link {
+  width: 100%;
+}
+.tm-history .tm-record {
+  margin-left: auto;
+}
+.tm-sheet-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid var(--rule);
+}
+@media (max-width: 640px) {
+  /* Pinned to both edges: 100vw counts the scrollbar gutter a phone never draws. */
+  .tm-sheet {
+    top: auto;
+    left: 0;
+    width: auto;
+    height: 80vh;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+  .tm-sheet-stats dd {
+    font-size: var(--text-body);
+  }
+  .tm-sheet-foot .btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
+  }
+}

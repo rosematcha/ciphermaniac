@@ -15,6 +15,8 @@ import {
 } from '../../../shared/tournament/reports';
 import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
 import {
+  eliminationResult,
+  percentLabel,
   placeFinals,
   recordLabel,
   sideResult,
@@ -52,6 +54,127 @@ export function roundLabel(round: Round): string {
   const remaining = round.matches.length * 2;
   return CUT_ROUND_NAMES[remaining] ?? `Top ${remaining}`;
 }
+
+/** The winner of a finished final, or null while the event is still going. */
+export function champion(round: Round | undefined): string | null {
+  if (round?.kind !== 'elimination' || round.matches.length !== 1) {
+    return null;
+  }
+  const [final] = round.matches;
+  return final ? (eliminationResult(final)?.winner ?? null) : null;
+}
+
+/** Where a pod's current round stands: how many tables are still playing, and any champion. */
+export interface PodProgress {
+  round: Round | undefined;
+  /** Tables with two players, byes and missed rounds aside. */
+  tables: number;
+  /** Of those, the ones with no result yet (a result entered on the site counts). */
+  open: number;
+  champion: string | null;
+}
+
+export function podProgress(pod: Pod, pending: readonly PendingResult[]): PodProgress {
+  const round = currentRound(pod);
+  const played = round?.matches.filter(m => m.p2 !== null) ?? [];
+  const open = round ? played.filter(m => shownOutcome(m, pod, round, pending).outcome === 'pending').length : 0;
+  return { round, tables: played.length, open, champion: champion(round) };
+}
+
+const tablesWord = (n: number, kind: Round['kind']) =>
+  kind === 'elimination' ? (n === 1 ? 'match' : 'matches') : n === 1 ? 'table' : 'tables';
+
+/** The name of the stage a finished cut round leads to: "semifinals", "the final". */
+function nextStageName(round: Round): string {
+  const name = CUT_ROUND_NAMES[round.matches.length] ?? `top ${round.matches.length}`;
+  return name === 'Final' ? 'the final' : name.toLowerCase();
+}
+
+/**
+ * The one step the console offers next, the same on every tab: pair the next
+ * round or stage (disabled, with the reason, while tables are still open), or
+ * close the event once the final has a champion.
+ */
+export type NextStep =
+  | { kind: 'pair'; label: string; ready: boolean; reason?: string }
+  | { kind: 'close'; champion: string }
+  | { kind: 'none' };
+
+export function nextStep(progress: PodProgress, finished: boolean): NextStep {
+  const { round, open, champion: winner } = progress;
+  if (finished) {
+    return { kind: 'none' };
+  }
+  if (winner) {
+    return { kind: 'close', champion: winner };
+  }
+  if (!round) {
+    return { kind: 'pair', label: 'Pair round 1', ready: true };
+  }
+  const label = round.kind === 'swiss' ? `Pair round ${round.number + 1}` : `Pair ${nextStageName(round)}`;
+  return open > 0
+    ? { kind: 'pair', label, ready: false, reason: `${open} ${tablesWord(open, round.kind)} open` }
+    : { kind: 'pair', label, ready: true };
+}
+
+/** The status sentence's parts: the round, what is happening in it, and the clock when it runs. */
+/** A clock past zero reads as time over rather than a negative time left. */
+const timeWords = (clock: string) => (clock.startsWith('-') ? `${clock.slice(1)} over` : `${clock} left`);
+
+export function statusParts(progress: PodProgress, finished: boolean, clock: string | null): string[] {
+  const { round, open, tables } = progress;
+  if (finished) {
+    return ['Finished'];
+  }
+  if (!round) {
+    return ['Registration'];
+  }
+  if (progress.champion) {
+    return [roundLabel(round), 'final played'];
+  }
+  const doing =
+    open === 0
+      ? `all ${tables} ${tablesWord(tables, round.kind)} in`
+      : `${open} ${tablesWord(open, round.kind)} playing`;
+  return [roundLabel(round), doing, ...(open > 0 && clock ? [timeWords(clock)] : [])];
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * Where the event stands, for the public page and the big screen: who is
+ * registered and when round 1 starts, the round in play, or how it finished.
+ * `firstRound` is the start time already formatted, or null when unset.
+ */
+export function eventStatus(
+  tournament: Tournament,
+  event: { pending: readonly PendingResult[]; finished: boolean; firstRound: string | null },
+  now: number
+): string[] {
+  const pod = tournament.pods.find(p => p.rounds.length > 0);
+  if (!pod) {
+    const players = tournament.players.filter(player => player.droppedAfter === null).length;
+    return ['Registration', plural(players, 'player'), ...(event.firstRound ? [`Round 1 at ${event.firstRound}`] : [])];
+  }
+  if (event.finished) {
+    const swiss = pod.rounds.filter(round => round.kind === 'swiss').length;
+    return ['Finished', plural(swiss, 'round'), ...(pod.cut ? [`Top ${pod.cut}`] : [])];
+  }
+  const progress = podProgress(pod, event.pending);
+  const { round } = progress;
+  const clock = round && (round.clockStartedAt != null || round.startTime) ? clockLabel(round, now) : null;
+  return statusParts(progress, false, clock);
+}
+
+/** A match's result as the pairings show it. */
+export const RESULT_WORDS: Partial<Record<Outcome, string>> = {
+  p1: '1–0',
+  p2: '0–1',
+  tie: 'Tie',
+  'double-loss': 'Double loss',
+  bye: 'Bye',
+  loss: 'Missed round'
+};
 
 export const STATUS_LABELS: Record<Round['status'], string> = {
   paired: 'Paired',
@@ -315,4 +438,27 @@ export function reportState(
   const locked = isLocked(mine, now);
   const agreed = theirs?.outcome === mine.outcome && locked && isLocked(theirs, now);
   return { chosen: asResult(mine.outcome, seat), disputed: isDisputed(forMatch), locked, final: agreed };
+}
+
+export const ordinal = (n: number) => {
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10];
+  return `${n}${suffix ?? 'th'}`;
+};
+
+/** What put the last player in above the first one out: points, then OWP, then OOWP. */
+export function cutSplit(rows: readonly Standing[], cut: number): string | null {
+  const inside = rows[cut - 1];
+  const outside = rows[cut];
+  if (!inside || !outside) {
+    return null;
+  }
+  const lead = `${ordinal(cut)} and ${ordinal(cut + 1)} split on`;
+  if (inside.points !== outside.points) {
+    return `${lead} points: ${inside.points} / ${outside.points}`;
+  }
+  if (inside.owp !== outside.owp) {
+    return `${lead} OWP: ${percentLabel(inside.owp)} / ${percentLabel(outside.owp)}`;
+  }
+  return `${lead} OOWP: ${percentLabel(inside.oowp)} / ${percentLabel(outside.oowp)}`;
 }

@@ -1,14 +1,17 @@
 /**
- * /t/:code: the page players follow. Pairings and standings update on their
- * own; a player who marks themselves (or whose profile's Player ID is on the
- * list) gets their table first. Decklists are submitted from here while the
- * organizer has submission open.
+ * /t/:code: the page players follow. The head says where the event stands;
+ * a player the page knows (by their profile's Player ID, a device that
+ * remembers them, or "This is me" in a player sheet) gets their own match
+ * first. Pairings and standings update on their own, each in one box with the
+ * division switch and search in its bar. Decks show only as the event allows
+ * (the server leaves hidden ones out), and decklists are submitted from here
+ * while the organizer has submission open.
  */
 
 import { useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, lazy, onCleanup, onMount, Show } from 'solid-js';
 import { parseTomDate } from '../../../shared/tournament/divisions';
-import { swissStandings } from '../../../shared/tournament/standings';
+import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
 import { decksEnabled, isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
@@ -17,23 +20,28 @@ import { Tabs } from '../../components/Tabs';
 import { fetchPublished, fetchView } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import {
-  currentMatchOf,
   currentRound,
+  divisionHeading,
+  eventStatus,
   filterMatches,
   namesById,
-  recordsBefore,
+  ordinal,
+  podStandings,
   roundLabel,
   STATUS_LABELS
 } from '../../lib/tournament/present';
-import { BigScreen } from './BigScreen';
-import { Clock } from './Clock';
-import { DecklistForm } from './DecklistForm';
-import { DeckStats } from './DeckStats';
 import { ErrorLine } from './Field';
+import { TournamentHero } from './Hero';
 import { MatchTable } from './MatchTable';
-import { PlayerMatch } from './PlayerMatch';
+import { createNow } from './now';
 import { PlayerSheet } from './PlayerSheet';
 import { StandingsTable } from './StandingsTable';
+import { YourMatch } from './YourMatch';
+import '../../styles/pages/tournament-public.css';
+
+const BigScreen = lazy(() => import('./BigScreen').then(m => ({ default: m.BigScreen })));
+const DeckStats = lazy(() => import('./DeckStats').then(m => ({ default: m.DeckStats })));
+const DecklistForm = lazy(() => import('./DecklistForm').then(m => ({ default: m.DecklistForm })));
 
 type Tab = 'pairings' | 'standings' | 'decks' | 'decklist';
 
@@ -78,40 +86,6 @@ function createView(code: () => string) {
 
 const meKey = (code: string) => `cm-tournament-me:${code}`;
 
-function YourMatch(props: { view: TournamentView; me: string }) {
-  const found = () => currentMatchOf(props.view.tournament, props.me);
-  const names = () => namesById(props.view.tournament);
-  return (
-    <Show when={found()}>
-      {f => {
-        const opponent = () => (f().match.p1 === props.me ? f().match.p2 : f().match.p1);
-        const records = () => recordsBefore(f().pod, f().round);
-        return (
-          <section class='tm-you' aria-label='Your match'>
-            <span class='tm-you-round'>
-              {names().get(props.me)} · {roundLabel(f().round)}
-            </span>
-            <Show
-              when={f().match.table}
-              fallback={<strong>{f().match.outcome === 'bye' ? 'Bye' : 'Not paired'}</strong>}
-            >
-              <strong>Table {f().match.table}</strong>
-            </Show>
-            <Show when={opponent()}>
-              {o => (
-                <span>
-                  vs {names().get(o())} <span class='muted num'>{records().get(o())}</span>
-                </span>
-              )}
-            </Show>
-            <Clock round={f().round} />
-          </section>
-        );
-      }}
-    </Show>
-  );
-}
-
 function hasPodData(view: TournamentView) {
   return view.tournament.pods.some(pod => pod.rounds.length > 0);
 }
@@ -142,7 +116,6 @@ function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
   ];
 }
 
-/** The tab the URL asks for if the event has it; before round 1, the decklist form when it is open. */
 /** Before round 1, the decklist form if it is open; once the event is closed, where everyone finished. */
 function defaultTab(view: TournamentView): Tab {
   if (!hasPodData(view)) {
@@ -155,6 +128,14 @@ function pickTab(tabs: readonly { value: Tab }[], wanted: string | undefined, vi
   const choice = (wanted as Tab | undefined) ?? defaultTab(view);
   return tabs.some(t => t.value === choice) ? choice : 'pairings';
 }
+
+/** One line under every panel while decks wait for the event to end. */
+const deckNote = (view: TournamentView) =>
+  view.settings.deckVisibility === 'after' && !view.settings.finished ? 'Decks shown once the event ends' : undefined;
+
+/** The start of round 1 as a time, when the organizer set one. */
+const firstRoundTime = (startsAt: string) =>
+  startsAt ? new Date(startsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : null;
 
 function RoundSelect(props: { pod: Pod | undefined; round: Round | undefined; onSelect: (n: number) => void }) {
   return (
@@ -183,14 +164,25 @@ function OpenPlayer(props: {
   onOpen: (id: string | null) => void;
 }) {
   const pod = () => props.view.tournament.pods.find(p => p.playerIds.includes(props.id)) ?? props.fallback;
+  const division = () => divisionHeading(props.view.divisions[props.id] ?? null);
+  const standings = (p: Pod) => swissStandings(p, props.view.tournament.players);
+  const place = (p: Pod) => {
+    const divisionOf = (id: string) => props.view.divisions[id] ?? 'masters';
+    const row = podStandings(props.view.tournament, p, divisionOf)
+      .flatMap(group => group.rows)
+      .find(r => r.playerId === props.id);
+    return row && p.rounds.length > 0 ? `${ordinal(row.place)} in ${division()}` : `${division()} · Registered`;
+  };
   return (
     <Show when={pod()}>
       {p => (
         <PlayerSheet
           playerId={props.id}
           pod={p()}
-          standing={swissStandings(p(), props.view.tournament.players).find(row => row.playerId === props.id)}
+          standing={standings(p()).find(row => row.playerId === props.id)}
+          place={place(p())}
           names={props.names}
+          records={new Map(standings(p()).map(row => [row.playerId, recordLabel(row.record)]))}
           decks={props.view.decks}
           isMe={props.me === props.id}
           onMe={props.onMe}
@@ -202,6 +194,43 @@ function OpenPlayer(props: {
   );
 }
 
+/** Before round 1: who is in, by last name, so a player can check they are. */
+function RegisteredList(props: {
+  view: TournamentView;
+  me: string | null;
+  query: string;
+  onPlayer: (id: string) => void;
+}) {
+  const players = () =>
+    props.view.tournament.players
+      .filter(player => player.droppedAfter === null)
+      .filter(player =>
+        `${player.firstName} ${player.lastName}`.toLowerCase().includes(props.query.trim().toLowerCase())
+      )
+      .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
+  return (
+    <>
+      <p class='tm-box-bar muted'>Pairings will show here once round 1 is paired.</p>
+      <ul class='tm-registered'>
+        <For each={players()}>
+          {player => (
+            <li>
+              <button type='button' class='tm-seat-link' onClick={() => props.onPlayer(player.id)}>
+                <span class='tm-name'>
+                  {player.firstName} <strong>{player.lastName}</strong>
+                </span>
+                <Show when={player.id === props.me}>
+                  <span class='tm-flag is-you'>You</span>
+                </Show>
+              </button>
+            </li>
+          )}
+        </For>
+      </ul>
+    </>
+  );
+}
+
 function EventBody(props: { view: TournamentView; onView: (view: PublishedView) => void }) {
   const [params, setParams] = useSearchParams<{ tab?: string }>();
   const [podChoice, setPodChoice] = createSignal<PodCategory | null>(null);
@@ -210,23 +239,18 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
   const [open, setOpen] = createSignal<string | null>(null);
   const { me, setMe } = createMe(() => props.view);
   const pods = () => props.view.tournament.pods;
-  const pod = createMemo(() => pods().find(p => p.category === podChoice()) ?? pods()[0]);
+  const myPod = () => pods().find(p => p.playerIds.includes(me() ?? ''))?.category ?? null;
+  const pod = createMemo(() => pods().find(p => p.category === (podChoice() ?? myPod())) ?? pods()[0]);
   const round = createMemo(() => pod()?.rounds.find(r => r.number === roundChoice()) ?? currentRound(pod()));
   const names = createMemo(() => namesById(props.view.tournament));
   const divisionOf = (id: string) => props.view.divisions[id] ?? 'masters';
   const tabs = createMemo(() => tabsFor(props.view));
   const tab = () => pickTab(tabs(), params.tab, props.view);
+  const started = () => hasPodData(props.view);
 
-  return (
+  const bar = (withRounds: boolean) => (
     <>
-      <Show
-        when={props.view.settings.playerReporting}
-        fallback={<Show when={me()}>{id => <YourMatch view={props.view} me={id()} />}</Show>}
-      >
-        <PlayerMatch view={props.view} me={me()} onMe={setMe} onView={props.onView} />
-      </Show>
-      <Tabs options={tabs()} selected={tab()} onSelect={value => setParams({ tab: value }, { replace: true })} />
-      <Show when={pods().length > 1 && (tab() === 'pairings' || tab() === 'standings')}>
+      <Show when={pods().length > 1}>
         <Segmented
           options={pods().map(p => ({ value: p.category, label: POD_LABELS[p.category] }))}
           selected={pod()?.category ?? 'masters'}
@@ -237,46 +261,73 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
           ariaLabel='Division'
         />
       </Show>
-      <Show when={tab() === 'pairings' || tab() === 'standings'}>
-        <div class='tm-toolbar'>
-          <input
-            class='search'
-            type='search'
-            placeholder='Find a player'
-            aria-label='Find a player'
-            value={query()}
-            onInput={e => setQuery(e.currentTarget.value)}
-          />
-          <Show when={tab() === 'pairings'}>
-            <RoundSelect pod={pod()} round={round()} onSelect={setRoundChoice} />
-          </Show>
-        </div>
+      <input
+        class='search tm-grow'
+        type='search'
+        placeholder='Find a player'
+        aria-label='Find a player'
+        value={query()}
+        onInput={e => setQuery(e.currentTarget.value)}
+      />
+      <Show when={withRounds}>
+        <RoundSelect pod={pod()} round={round()} onSelect={setRoundChoice} />
       </Show>
+    </>
+  );
+
+  return (
+    <>
+      <YourMatch
+        view={props.view}
+        me={me()}
+        onMe={setMe}
+        onView={props.onView}
+        onPlayer={setOpen}
+        firstRound={firstRoundTime(props.view.settings.startsAt)}
+      />
+      <Tabs options={tabs()} selected={tab()} onSelect={value => setParams({ tab: value }, { replace: true })} />
       <Show when={tab() === 'pairings'}>
-        <Show when={pod() && round()} fallback={<p class='muted'>Pairings will show here once round 1 is paired.</p>}>
-          <MatchTable
-            pod={pod()!}
-            round={round()!}
-            matches={filterMatches(round()!.matches, names(), query())}
-            names={names()}
-            decks={props.view.decks}
-            pending={props.view.pending}
-            me={me()}
-            onPlayer={setOpen}
-          />
-        </Show>
+        <section class='tm-box tm-public-pairings'>
+          <div class='tm-box-bar'>{bar(started())}</div>
+          <Show
+            when={pod() && round()}
+            fallback={<RegisteredList view={props.view} me={me()} query={query()} onPlayer={setOpen} />}
+          >
+            <MatchTable
+              pod={pod()!}
+              round={round()!}
+              matches={filterMatches(round()!.matches, names(), query())}
+              names={names()}
+              decks={props.view.decks}
+              pending={props.view.pending}
+              me={me()}
+              onPlayer={setOpen}
+              results
+            />
+          </Show>
+          <Show when={started() && deckNote(props.view)}>
+            {note => <p class='tm-box-bar tm-box-note muted'>{note()}</p>}
+          </Show>
+        </section>
       </Show>
       <Show when={tab() === 'standings' && pod()}>
-        <StandingsTable
-          tournament={props.view.tournament}
-          pod={pod()!}
-          names={names()}
-          decks={props.view.decks}
-          divisionOf={divisionOf}
-          me={me()}
-          query={query()}
-          onPlayer={setOpen}
-        />
+        <Show
+          when={started()}
+          fallback={<p class='muted tm-empty'>Standings will show here once round 1 is played.</p>}
+        >
+          <StandingsTable
+            tournament={props.view.tournament}
+            pod={pod()!}
+            names={names()}
+            decks={props.view.decks}
+            divisionOf={divisionOf}
+            me={me()}
+            query={query()}
+            onPlayer={setOpen}
+            bar={bar(false)}
+            note={deckNote(props.view)}
+          />
+        </Show>
       </Show>
       <Show when={tab() === 'decks'}>
         <DeckStats tournament={props.view.tournament} decks={props.view.decks} />
@@ -305,60 +356,79 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
   );
 }
 
+const sameYear = (date: Date) => date.getFullYear() === new Date().getFullYear();
+
+/** "Sat, Oct 3", with the year only outside this one. */
+const dayLabel = (date: Date, timeZone?: string) =>
+  date.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear(date) ? {} : { year: 'numeric' }),
+    ...(timeZone ? { timeZone } : {})
+  });
+
 /** One date format across the page: the organizer's start time, else TOM's start date. */
 function eventDate(startsAt: string, startDate: string): string {
   if (startsAt) {
-    return new Date(startsAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    const date = new Date(startsAt);
+    return `${dayLabel(date)} · ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
   }
   const tom = parseTomDate(startDate);
-  return tom ? tom.toLocaleDateString(undefined, { dateStyle: 'medium', timeZone: 'UTC' }) : '';
+  return tom ? dayLabel(tom, 'UTC') : '';
 }
 
 /** When the page last changed: a time today, a date before that. */
 function updatedLabel(at: number): string {
   const date = new Date(at);
   const today = new Date().toDateString() === date.toDateString();
-  return today
-    ? date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-    : date.toLocaleDateString(undefined, { dateStyle: 'medium' });
+  return today ? date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : dayLabel(date);
 }
 
 function Hero(props: { view: TournamentView }) {
+  const now = createNow();
   const info = () => props.view.tournament.info;
   const settings = () => props.view.settings;
-  const when = () => eventDate(settings().startsAt, info().startDate);
+  const status = () =>
+    eventStatus(
+      props.view.tournament,
+      { pending: props.view.pending, finished: settings().finished, firstRound: firstRoundTime(settings().startsAt) },
+      now()
+    ).join(' · ');
   const place = () => [info().city, info().state].filter(Boolean).join(', ');
   const parts = () =>
     [
-      when(),
+      eventDate(settings().startsAt, info().startDate),
       settings().format,
       place(),
       `${props.view.tournament.players.length} players`,
-      settings().finished ? 'Finished' : '',
       `Updated ${updatedLabel(props.view.updatedAt)}`
     ].filter(Boolean);
   return (
-    <section class='hero'>
-      <h1>{info().name}</h1>
-      <p class='hero-meta'>
-        <For each={parts()}>
-          {(part, i) => (
-            <>
-              {/* The dot trails the part before it, so a wrapped line never starts on one. */}
-              <span class='tm-meta-part'>
-                {part}
-                <Show when={i() < parts().length - 1}>
-                  <span class='dot'>·</span>
-                </Show>
-              </span>{' '}
-            </>
-          )}
-        </For>
-      </p>
+    <>
+      <TournamentHero
+        title={info().name}
+        status={status()}
+        meta={
+          <For each={parts()}>
+            {(part, i) => (
+              <>
+                {/* The dot trails the part before it, so a wrapped line never starts on one. */}
+                <span class='tm-meta-part'>
+                  {part}
+                  <Show when={i() < parts().length - 1}>
+                    <span class='dot'>·</span>
+                  </Show>
+                </span>{' '}
+              </>
+            )}
+          </For>
+        }
+      />
       <Show when={settings().details}>
         <p class='tm-details'>{settings().details}</p>
       </Show>
-    </section>
+    </>
   );
 }
 
@@ -380,7 +450,7 @@ export function PublicEvent(props: { code: string }) {
     >
       {v => (
         <Show when={params.screen !== '1'} fallback={<BigScreen view={v()} />}>
-          <div class='tm-page'>
+          <div class='tm-page tm-public'>
             <Hero view={v()} />
             <EventBody view={v()} onView={take} />
           </div>

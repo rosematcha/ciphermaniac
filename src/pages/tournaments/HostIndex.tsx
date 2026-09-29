@@ -1,72 +1,153 @@
 /**
- * /host: the events an organizer runs or staffs, and the two ways to start
- * one. A Swiss event is run entirely on the site. A TOM event starts from the
- * .tdf TOM saves to, on desktop where TOM runs; on a browser that can hold a
- * file, the file stays linked so later saves reach the site without another
- * upload. Either way the setup (EventSetup) asks the rest.
+ * /host: for someone signed out, the home page (HostHome: what running an
+ * event here is, and sign-in for organizers). Signed in, the events they run
+ * or staff: a hero with the count of each and the ways to start one, the
+ * events running now each in its own box with the console a press away, then the
+ * rest in a table.
+ *
+ * An event starts two ways. A Swiss event is run entirely on the site. A TOM
+ * event starts from the .tdf TOM saves to, on desktop where TOM runs; on a
+ * browser that can hold a file, the file stays linked so later saves reach
+ * the site without another upload. Either way the setup (EventSetup) asks
+ * the rest, in place of the lists.
  */
 
 import { A, useNavigate } from '@solidjs/router';
-import { createResource, createSignal, For, Match, onMount, Show, Switch } from 'solid-js';
+import { createResource, createSignal, For, lazy, Match, onMount, Show, Switch } from 'solid-js';
 import { parseTomDate } from '../../../shared/tournament/divisions';
 import { parseTdf } from '../../../shared/tournament/tdf';
 import type { Tournament } from '../../../shared/tournament/types';
-import { createFromTdf, createSwiss, listTournaments, type TournamentSummary } from '../../lib/tournament/api';
-import { session } from './session';
+import {
+  createFromTdf,
+  createSwiss,
+  fetchView,
+  listTournaments,
+  type TournamentSummary
+} from '../../lib/tournament/api';
 import { canLinkFiles, pickTdf, rememberHandle, type TdfHandle } from '../../lib/tournament/tomLink';
 import { latestValue } from '../../lib/resource';
+import { eventStatus } from '../../lib/tournament/present';
 import { EventSetup, type Setup } from './EventSetup';
 import { ErrorLine } from './Field';
-import { SignIn } from './SignIn';
+import { TournamentHero } from './Hero';
+import { session } from './session';
+
+const HostHome = lazy(() => import('./HostHome').then(m => ({ default: m.HostHome })));
 
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 const shortDate = (startDate: string) =>
-  parseTomDate(startDate)?.toLocaleDateString(undefined, { dateStyle: 'medium', timeZone: 'UTC' }) ?? '';
+  parseTomDate(startDate)?.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }) ?? '';
 
-function EventList(props: { events: readonly TournamentSummary[] }) {
+type Phase = 'live' | 'upcoming' | 'finished';
+
+/** Running (a round paired, not closed), still to start, or closed. */
+const phaseOf = (event: TournamentSummary): Phase => {
+  if (event.finished) {
+    return 'finished';
+  }
+  return event.rounds > 0 ? 'live' : 'upcoming';
+};
+
+const PHASE_WORDS: Record<Phase, string> = { live: 'Running', upcoming: 'Registration', finished: 'Finished' };
+
+function EventRow(props: { event: TournamentSummary }) {
+  const finished = () => props.event.finished;
   return (
-    <div class='table-wrap'>
-      <table class='data'>
-        <thead>
-          <tr>
-            <th>Event</th>
-            <th>Date</th>
-            <th>Run in</th>
-            <th class='num'>Players</th>
-            <th>Status</th>
-            <th>
-              <span class='sr-only'>Public page</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <For each={props.events}>
-            {event => (
-              <tr>
-                <td>
-                  <A href={`/host/${event.code}`}>{event.name || event.code}</A>
-                  <Show when={event.role === 'staff'}>
-                    <span class='muted-cell tm-flag'>Staff</span>
-                  </Show>
-                </td>
-                <td class='muted-cell tm-nowrap'>{shortDate(event.startDate)}</td>
-                <td class='muted-cell'>{event.mode === 'tom' ? 'TOM' : 'Swiss'}</td>
-                <td class='num'>{event.players}</td>
-                <td class='muted-cell'>{event.finished ? 'Finished' : 'Open'}</td>
-                <td class='tm-extra-col'>
-                  <A href={`/t/${event.code}`}>Public page</A>
-                </td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </div>
+    <tr>
+      <td>
+        <A class='tm-event-name' href={`/host/${props.event.code}`}>
+          {props.event.name || props.event.code}
+        </A>
+        <Show when={props.event.role === 'staff'}>
+          <span class='tm-flag'>Staff</span>
+        </Show>
+      </td>
+      <td class='muted-cell'>{PHASE_WORDS[phaseOf(props.event)]}</td>
+      <td class='muted-cell tm-nowrap'>{shortDate(props.event.startDate)}</td>
+      <td class='muted-cell tm-wide-col'>{props.event.mode === 'tom' ? 'TOM' : 'Swiss'}</td>
+      <td class='num'>{props.event.players}</td>
+      <td class='tm-extra-col'>
+        <span class='tm-row-actions'>
+          <A class='btn btn-ghost tm-small' href={`/host/${props.event.code}${finished() ? '?tab=standings' : ''}`}>
+            {finished() ? 'Results' : 'Console'}
+          </A>
+          <A class='btn btn-ghost tm-small' href={`/t/${props.event.code}`}>
+            Public page
+          </A>
+        </span>
+      </td>
+    </tr>
   );
 }
 
-type Stage = { kind: 'choose' } | { kind: 'swiss' } | { kind: 'tom'; tournament: Tournament; handle: TdfHandle | null };
+function EventTable(props: { title: string; events: readonly TournamentSummary[] }) {
+  return (
+    <section class='tm-host-section'>
+      <h2 class='tm-th tm-box-head'>{props.title}</h2>
+      <div class='tm-box'>
+        <div class='table-wrap'>
+          <table class='data tm-host-table'>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th class='tm-wide-col'>Run in</th>
+                <th class='num'>Players</th>
+                <th>
+                  <span class='sr-only'>Links</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={props.events}>{event => <EventRow event={event} />}</For>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** The event running now: where its round stands, and its console, big screen and public page. */
+function LiveEvent(props: { event: TournamentSummary }) {
+  const [view] = createResource(
+    () => props.event.code,
+    code => fetchView(code)
+  );
+  const status = () => {
+    const current = latestValue(view);
+    return current
+      ? eventStatus(
+          current.tournament,
+          { pending: current.pending, finished: false, firstRound: null },
+          Date.now()
+        ).join(' · ')
+      : 'Running';
+  };
+  return (
+    <section class='tm-box tm-live-event'>
+      <div class='tm-live-event-text'>
+        <h2>{props.event.name || props.event.code}</h2>
+        <p class='tm-status'>{status()}</p>
+      </div>
+      <div class='tm-live-event-acts'>
+        <A class='btn btn-primary' href={`/host/${props.event.code}`}>
+          Open console
+        </A>
+        <a class='btn btn-secondary' href={`/t/${props.event.code}?screen=1`} target='_blank' rel='noopener'>
+          Big screen
+        </a>
+        <A class='btn btn-ghost' href={`/t/${props.event.code}`}>
+          Public page
+        </A>
+      </div>
+    </section>
+  );
+}
+
+type Stage = { kind: 'lists' } | { kind: 'swiss' } | { kind: 'tom'; tournament: Tournament; handle: TdfHandle | null };
 
 /**
  * Picking up a .tdf: the file is read and parsed first, so the setup only
@@ -74,6 +155,7 @@ type Stage = { kind: 'choose' } | { kind: 'swiss' } | { kind: 'tom'; tournament:
  */
 function LinkTdf(props: {
   busy: boolean;
+  class: string;
   onRead: (tournament: Tournament, handle: TdfHandle | null) => void;
   onError: (message: string) => void;
 }) {
@@ -101,7 +183,7 @@ function LinkTdf(props: {
     <Show
       when={canLinkFiles()}
       fallback={
-        <label class='btn btn-secondary tm-desktop-only'>
+        <label class={`${props.class} tm-desktop-only`}>
           Choose .tdf file
           <input
             type='file'
@@ -118,22 +200,27 @@ function LinkTdf(props: {
         </label>
       }
     >
-      <button type='button' class='btn btn-secondary tm-desktop-only' disabled={props.busy} onClick={() => void link()}>
+      <button type='button' class={`${props.class} tm-desktop-only`} disabled={props.busy} onClick={() => void link()}>
         Link .tdf file
       </button>
     </Show>
   );
 }
 
-/** Start an event, or on desktop follow one run in TOM; either way the setup asks the rest. */
-function StartEvent(props: { onCreated: (code: string) => void }) {
-  const [stage, setStage] = createSignal<Stage>({ kind: 'choose' });
+function Organizer(props: { onOpened: (code: string) => void }) {
+  const user = () => latestValue(session)?.user;
+  const [events] = createResource(user, () => listTournaments().then(result => result.tournaments));
+  const [stage, setStage] = createSignal<Stage>({ kind: 'lists' });
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const back = () => {
-    setStage({ kind: 'choose' });
-    setError(null);
-  };
+  const all = () => latestValue(events) ?? [];
+  const byPhase = (phase: Phase) => all().filter(event => phaseOf(event) === phase);
+  const live = () => byPhase('live');
+  const rest = () => all().filter(event => phaseOf(event) !== 'live');
+  const counts = () =>
+    all().length === 0
+      ? 'No events yet'
+      : (['live', 'upcoming', 'finished'] as Phase[]).map(phase => `${byPhase(phase).length} ${phase}`).join(' · ');
 
   async function create(setup: Setup) {
     const current = stage();
@@ -145,9 +232,9 @@ function StartEvent(props: { onCreated: (code: string) => void }) {
         if (current.handle) {
           await rememberHandle(code, current.handle);
         }
-        props.onCreated(code);
+        props.onOpened(code);
       } else {
-        props.onCreated((await createSwiss(setup)).code);
+        props.onOpened((await createSwiss(setup)).code);
       }
     } catch (err) {
       setError(errorText(err));
@@ -156,32 +243,45 @@ function StartEvent(props: { onCreated: (code: string) => void }) {
     }
   }
 
+  const tdfRead = (tournament: Tournament, handle: TdfHandle | null) => {
+    setError(null);
+    setStage({ kind: 'tom', tournament, handle });
+  };
+  /** One primary on the page: starting an event, unless an event is running, whose console is. */
+  const startClass = () => (live().length > 0 ? 'btn btn-secondary' : 'btn btn-primary');
+
   return (
     <Switch>
-      <Match when={stage().kind === 'choose'}>
-        <div class='tm-actions'>
-          <button type='button' class='btn btn-primary' onClick={() => setStage({ kind: 'swiss' })}>
-            Start an event
-          </button>
-          <LinkTdf
-            busy={busy()}
-            onRead={(tournament, handle) => {
-              setError(null);
-              setStage({ kind: 'tom', tournament, handle });
-            }}
-            onError={setError}
-          />
-        </div>
+      <Match when={stage().kind === 'lists'}>
+        <TournamentHero
+          title='Run an event'
+          status={<span class='muted'>{counts()}</span>}
+          action={
+            <span class='tm-hero-acts'>
+              <button type='button' class={startClass()} onClick={() => setStage({ kind: 'swiss' })}>
+                Start an event
+              </button>
+              <LinkTdf busy={busy()} class='btn btn-secondary' onRead={tdfRead} onError={setError} />
+            </span>
+          }
+        />
         <ErrorLine message={error()} />
+        <For each={live()}>{event => <LiveEvent event={event} />}</For>
+        <Show when={rest().length > 0}>
+          <EventTable title='Your events' events={rest()} />
+        </Show>
       </Match>
-      <Match when={stage().kind !== 'choose'}>
+      <Match when={stage().kind !== 'lists'}>
         <EventSetup
           mode={stage().kind === 'tom' ? 'tom' : 'swiss'}
           tdfName={(stage() as Extract<Stage, { kind: 'tom' }>).tournament?.info.name}
           busy={busy()}
           error={error()}
           onCreate={setup => void create(setup)}
-          onCancel={back}
+          onCancel={() => {
+            setStage({ kind: 'lists' });
+            setError(null);
+          }}
         />
       </Match>
     </Switch>
@@ -190,31 +290,18 @@ function StartEvent(props: { onCreated: (code: string) => void }) {
 
 export function HostIndex() {
   const navigate = useNavigate();
-  const user = () => latestValue(session)?.user;
-  const [events] = createResource(user, () => listTournaments().then(result => result.tournaments));
-  const opened = (code: string) => navigate(`/host/${code}`);
+  const current = () => latestValue(session);
   onMount(() => {
     document.title = 'Run an event — Ciphermaniac';
   });
   return (
     <div class='tm-page'>
-      <section class='hero'>
-        <h1>Run an event</h1>
-      </section>
-      <Show
-        when={user()}
-        fallback={<Show when={latestValue(session)}>{s => <SignIn providers={s().providers} next='/host' />}</Show>}
-      >
-        <Show when={latestValue(events)?.length}>
-          <section class='tm-section-block'>
-            <h2 class='tm-subhead'>Your events</h2>
-            <EventList events={latestValue(events) ?? []} />
-          </section>
-        </Show>
-        <section class='tm-section-block'>
-          <h2 class='tm-subhead'>Start an event</h2>
-          <StartEvent onCreated={opened} />
-        </section>
+      <Show when={current()}>
+        {s => (
+          <Show when={s().user} fallback={<HostHome providers={s().providers} />}>
+            <Organizer onOpened={code => navigate(`/host/${code}`)} />
+          </Show>
+        )}
       </Show>
     </div>
   );

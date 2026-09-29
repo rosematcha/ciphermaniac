@@ -68,7 +68,11 @@ CREATE INDEX IF NOT EXISTS staff_by_user ON staff (user_id);
 
 -- One decklist per player per tournament; resubmitting replaces it. The
 -- archetype is the player's own word, kept here until staff apply it: a
--- player cannot set what the public page says someone else is on.
+-- player cannot set what the public page says someone else is on. Players
+-- need no account: `user_id` holds the identity the list was submitted under
+-- (`pop:<Player ID>`, or `name:<first> <last>` at an unsanctioned event;
+-- lists from before that change hold an account ID), and `owner_token` the
+-- SHA-256 of the token the submitting device keeps to read the list back.
 CREATE TABLE IF NOT EXISTS decklists (
   code TEXT NOT NULL,
   user_id TEXT NOT NULL,
@@ -79,5 +83,6 @@ CREATE TABLE IF NOT EXISTS decklists (
   deck TEXT NOT NULL,
   archetype TEXT,
   submitted_at INTEGER NOT NULL,
+  owner_token TEXT,
   PRIMARY KEY (code, user_id)
 ) WITHOUT ROWID;

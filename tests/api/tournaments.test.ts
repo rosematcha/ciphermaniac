@@ -4,7 +4,8 @@
  * allows the dev provider; only an event's staff change it; the public copy
  * never carries Player IDs or birth dates; a TOM event takes results as
  * pending until its synced file settles them; decklists come in only while
- * submission is open.
+ * submission is open, from players with no account, and put a new submitter
+ * on the player list.
  */
 
 import assert from 'node:assert/strict';
@@ -552,9 +553,12 @@ test('decklists come in only while open, and decks show as the visibility settin
     body: submission
   });
   assert.deepEqual(sent.json.decklist.problems, []);
-  assert.equal(sent.json.decklist.registered, false);
+  assert.equal(sent.json.registration, 'added', 'a submitter not on the list is added to it');
+  assert.deepEqual([sent.json.decklist.registered, sent.json.decklist.fromList], [true, true]);
 
-  const mine = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: player });
+  const mine = await hit(decklists.onRequestGet as Handler, `/decklists?popId=777&token=${sent.json.token}`, at(code), {
+    cookie: player
+  });
   assert.deepEqual([mine.json.decklists.length, mine.json.mine.popId], [0, '777']);
   const all = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   assert.deepEqual([all.json.decklists.length, all.json.decklists[0].archetype], [1, 'Gardevoir ex']);
@@ -925,4 +929,111 @@ test('at a TOM event an agreed report becomes a pending result for TOM', async (
   assert.equal(agreed.json.pending[0]?.outcome, 'tie');
   const table = agreed.json.tournament.pods[0]?.rounds[1]?.matches.find(m => m.table === 1);
   assert.equal(table?.outcome, 'pending', 'TOM’s copy is untouched');
+});
+
+const LIST = { deck: '60 Basic {P} Energy SVE 5', archetype: null };
+
+function submitAs(code: string, profile: Record<string, string>, extra: Record<string, unknown> = {}) {
+  return hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
+    method: 'PUT',
+    body: { ...LIST, profile, ...extra }
+  });
+}
+
+function listOf(code: string, query: string) {
+  return hit(decklists.onRequestGet as Handler, `/decklists?${query}`, at(code));
+}
+
+test('a player with no account submits a list, reads it back with its device token, and withdraws it', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklistsOpen: true });
+  const profile = { popId: '4242', firstName: 'Nia', lastName: 'Okafor', birthDate: '02/27/2001' };
+  const sent = await submitAs(code, profile);
+  assert.equal(sent.status, 200, 'no sign-in needed');
+  assert.equal(sent.json.registration, 'added');
+  const { token } = sent.json;
+  assert.ok(typeof token === 'string' && token.length > 20);
+  const roster = await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner });
+  const added = roster.json.tournament.players.find((p: { id: string }) => p.id === '4242');
+  assert.equal(added?.fromList, true, 'marked as added from a list');
+
+  const mine = await listOf(code, `popId=4242&token=${token}`);
+  assert.equal(mine.json.mine.firstName, 'Nia');
+  assert.equal((await listOf(code, 'popId=4242&token=nope')).json.mine, null, 'the Player ID alone reads nothing');
+  assert.equal((await listOf(code, 'popId=4242')).json.mine, null);
+
+  const again = await submitAs(code, { ...profile, firstName: 'Nia R.' }, { deck: '60 Basic {D} Energy SVE 7' });
+  assert.equal(again.json.registration, 'matched', 'the same Player ID replaces the list and is already in');
+  const staffLists = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
+  assert.equal(staffLists.json.decklists.length, 1, 'one list per identity');
+  assert.equal((await listOf(code, `popId=4242&token=${token}`)).json.mine, null, 'a new submission has a new token');
+
+  const withdrawn = await hit(decklists.onRequestDelete as Handler, '/decklists?popId=4242', at(code), {
+    method: 'DELETE'
+  });
+  assert.equal(withdrawn.status, 204);
+  const after = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
+  assert.equal(after.json.decklists.length, 0);
+  const foreign = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
+    method: 'PUT',
+    origin: 'https://elsewhere.test',
+    body: { ...LIST, profile }
+  });
+  assert.equal(foreign.status, 403, 'another site’s page cannot submit for a player');
+});
+
+test('a submitter is only added to an open Swiss event, and an unsanctioned one by name', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklistsOpen: true, finished: true });
+  const closed = await submitAs(code, { popId: '5151', firstName: 'Ada', lastName: 'Byron', birthDate: '02/27/1990' });
+  assert.deepEqual([closed.status, closed.json.registration], [200, 'not-added'], 'a closed event takes nobody new');
+
+  const casual = await newSwiss(owner);
+  await settle(casual, owner, { decklistsOpen: true, sanctioned: false });
+  const byName = await submitAs(casual, { firstName: 'Grace', lastName: 'Hopper' });
+  assert.equal(byName.json.registration, 'added');
+  const again = await submitAs(casual, { firstName: 'grace', lastName: 'HOPPER' });
+  assert.equal(again.json.registration, 'matched', 'names match however they are typed');
+  const roster = await hit(manage.onRequestGet as Handler, '/manage', at(casual), { cookie: owner });
+  assert.equal(roster.json.tournament.players.length, 1);
+  const mine = await listOf(casual, `firstName=Grace&lastName=Hopper&token=${again.json.token}`);
+  assert.equal(mine.json.mine.lastName, 'HOPPER');
+});
+
+test('a signed-in player’s profile reads no list without the device token', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklistsOpen: true });
+  const player = await signIn('Player');
+  const profile = { popId: '6161', firstName: 'Lin', lastName: 'Park', birthDate: '02/27/2001' };
+  const sent = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
+    method: 'PUT',
+    cookie: player,
+    body: { ...LIST, profile }
+  });
+  assert.equal(sent.status, 200);
+  // Anyone can put another player's details in their profile, so the profile alone must not read the list.
+  const bySession = await hit(decklists.onRequestGet as Handler, '/decklists?popId=6161', at(code), { cookie: player });
+  assert.equal(bySession.json.mine, null);
+  const byToken = await hit(
+    decklists.onRequestGet as Handler,
+    `/decklists?popId=6161&token=${sent.json.token}`,
+    at(code),
+    {
+      cookie: player
+    }
+  );
+  assert.equal(byToken.json.mine.lastName, 'Park');
+});
+
+test('names split differently are different players’ lists', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklistsOpen: true, sanctioned: false });
+  await submitAs(code, { firstName: 'Mary Ann', lastName: 'Smith' });
+  await submitAs(code, { firstName: 'Mary', lastName: 'Ann Smith' });
+  const staffLists = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
+  assert.equal(staffLists.json.decklists.length, 2);
 });

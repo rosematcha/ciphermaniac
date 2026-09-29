@@ -271,6 +271,8 @@ export interface TournamentSummary {
   /** MM/DD/YYYY, as TOM writes it; '' when unset. */
   startDate: string;
   finished: boolean;
+  /** Rounds the event's first pod has paired: 0 before round 1. */
+  rounds: number;
   updatedAt: number;
 }
 
@@ -281,6 +283,7 @@ interface SummaryRow {
   players: number | null;
   start_date: string | null;
   finished: number | null;
+  rounds: number | null;
   owner_id: string;
   updated_at: number;
 }
@@ -291,7 +294,8 @@ export async function listTournaments(db: D1Like, userId: string): Promise<Tourn
     .prepare(
       "SELECT code, mode, json_extract(state, '$.info.name') AS name, " +
         "json_array_length(state, '$.players') AS players, json_extract(state, '$.info.startDate') AS start_date, " +
-        "json_extract(settings, '$.finished') AS finished, owner_id, updated_at FROM tournaments " +
+        "json_extract(settings, '$.finished') AS finished, " +
+        "json_array_length(state, '$.pods[0].rounds') AS rounds, owner_id, updated_at FROM tournaments " +
         'WHERE owner_id = ? OR code IN (SELECT code FROM staff WHERE user_id = ?) ORDER BY updated_at DESC LIMIT 200'
     )
     .bind(userId, userId)
@@ -304,6 +308,7 @@ export async function listTournaments(db: D1Like, userId: string): Promise<Tourn
     players: row.players ?? 0,
     startDate: row.start_date ?? '',
     finished: row.finished === 1,
+    rounds: row.rounds ?? 0,
     updatedAt: row.updated_at
   }));
 }
