@@ -136,12 +136,42 @@ body.tm-screen-mode main.page {
   padding-left: 1em;
   border-left: 1px solid var(--rule);
 }
+/* A result in: the winner marked in the accent, the loser faded (in a top cut,
+   out), a tie marked on both. A table with its result reads quieter than one
+   still playing. */
 .tm-screen-seat.is-out {
   color: var(--muted);
 }
+.tm-screen-mark {
+  display: inline-block;
+  min-width: 1.5em;
+  margin-left: 0.5em;
+  padding: 0.1em 0.3em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.55em;
+  flex: none;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+.tm-screen-seat.is-win .tm-screen-mark {
+  border-color: var(--accent);
+  background: var(--accent-fill);
+  color: var(--accent-fg);
+}
+.tm-screen-tables li.is-done .tm-screen-table {
+  color: var(--muted);
+}
 .tm-screen-name {
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  min-width: 0;
   font-weight: 700;
+}
+.tm-screen-name-text {
+  overflow: hidden;
+  min-width: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

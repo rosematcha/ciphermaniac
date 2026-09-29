@@ -2,7 +2,9 @@
  * The projector view (`/t/:code?screen=1`), read from across a room. Tables
  * run in order, one per row with large names, or two per row where there are
  * many; each row is the table number, then both players with the record they
- * brought into the round. The list scrolls itself when it does not fit, at
+ * brought into the round. As results come in, the winner is marked and the
+ * loser fades, so the room sees who won and which tables are still playing.
+ * The list scrolls itself when it does not fit, at
  * the speed set on the screen. The header carries the event's status, a QR
  * code and the event code for anyone who would rather look at their phone,
  * and the clock, the largest thing on the screen. Before round 1 is paired it
@@ -18,7 +20,14 @@ import { swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type Round } from '../../../shared/tournament/types';
 import type { TournamentView } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
-import { currentRound, eventStatus, namesById, recordsBefore, shownOutcome } from '../../lib/tournament/present';
+import {
+  currentRound,
+  eventStatus,
+  namesById,
+  recordsBefore,
+  seatMark,
+  shownOutcome
+} from '../../lib/tournament/present';
 import { sortMatches } from '../../../shared/tournament/rounds';
 import { Clock } from './Clock';
 import { createNow } from './now';
@@ -86,18 +95,30 @@ function createScreenPrefs() {
 
 type Prefs = ReturnType<typeof createScreenPrefs>;
 
-/** A seat at a table: the name and record, the seed in a top cut, faded once they have lost. */
-function ScreenSeat(props: { id: string | null; name: string; record: string; seed?: number; out: boolean }) {
+/** A seat at a table: the name and record, the seed in a top cut, and once the table is done, how it went. */
+function ScreenSeat(props: { id: string | null; name: string; record: string; seed?: number; mark: string }) {
   return (
-    <span class='tm-screen-seat' classList={{ 'is-out': props.out }}>
+    <span
+      class='tm-screen-seat'
+      classList={{ 'is-win': props.mark === 'W', 'is-out': props.mark === 'L', 'is-tie': props.mark === 'T' }}
+    >
       <span class='tm-screen-name'>
         <Show when={props.seed}>{seed => <small class='num'>{seed()}</small>}</Show>
-        {props.name}
+        <span class='tm-screen-name-text'>{props.name}</span>
+        <Show when={props.mark}>
+          {mark => (
+            <span class='tm-screen-mark' aria-label={MARK_WORDS[mark()]}>
+              {mark()}
+            </span>
+          )}
+        </Show>
       </span>
       <span class='tm-screen-record num'>{props.record}</span>
     </span>
   );
 }
+
+const MARK_WORDS: Record<string, string> = { W: 'Won', L: 'Lost', T: 'Tie' };
 
 /** A pod's tables in order, table number first. */
 function TableRows(props: { view: TournamentView; pod: Pod; round: Round; heading: boolean }) {
@@ -108,21 +129,16 @@ function TableRows(props: { view: TournamentView; pod: Pod; round: Round; headin
       ? new Map(swissStandings(props.pod, props.view.tournament.players).map(row => [row.playerId, row.place]))
       : new Map<string, number>()
   );
-  /** Out of a top cut: faded, so the room reads who goes on. Swiss rounds fade no one. */
-  const lost = (match: Round['matches'][number], seat: 1 | 2) => {
-    if (props.round.kind !== 'elimination') {
-      return false;
-    }
-    const { outcome } = shownOutcome(match, props.pod, props.round, props.view.pending);
-    return outcome === (seat === 1 ? 'p2' : 'p1') || outcome === 'double-loss';
-  };
-  const seat = (id: string | null, out: boolean, fallback: string) => (
+  /** W, L or T by a seat once its table has a result; a bye or a missed round is not a table. */
+  const mark = (match: Round['matches'][number], seat: 1 | 2) =>
+    match.p2 === null ? '' : seatMark(shownOutcome(match, props.pod, props.round, props.view.pending).outcome, seat);
+  const seat = (id: string | null, seatMarkText: string, fallback: string) => (
     <ScreenSeat
       id={id}
       name={id ? (names().get(id) ?? id) : fallback}
       record={id ? (records().get(id) ?? '') : ''}
       seed={id ? seeds().get(id) : undefined}
-      out={out}
+      mark={seatMarkText}
     />
   );
   return (
@@ -133,10 +149,10 @@ function TableRows(props: { view: TournamentView; pod: Pod; round: Round; headin
       <ol class='tm-screen-tables'>
         <For each={sortMatches(props.round.matches)}>
           {match => (
-            <li>
+            <li classList={{ 'is-done': mark(match, 1) !== '' }}>
               <span class='tm-screen-table num'>{match.table || '—'}</span>
-              {seat(match.p1, lost(match, 1), '')}
-              {seat(match.p2, lost(match, 2), match.outcome === 'bye' ? 'Bye' : 'Missed round')}
+              {seat(match.p1, mark(match, 1), '')}
+              {seat(match.p2, mark(match, 2), match.outcome === 'bye' ? 'Bye' : 'Missed round')}
             </li>
           )}
         </For>
@@ -196,6 +212,8 @@ export function BigScreen(props: { view: TournamentView }) {
   const url = () => `${location.origin}/t/${props.view.code}`;
   const pods = () => props.view.tournament.pods.filter(pod => currentRound(pod));
   const lead = () => pods()[0];
+  // An ended event has no clock to run down, whatever it was left on.
+  const clockPod = () => (props.view.settings.finished ? undefined : lead());
   const firstRound = () => firstRoundTime(props.view.settings.startsAt);
   const status = () =>
     eventStatus(
@@ -248,9 +266,9 @@ export function BigScreen(props: { view: TournamentView }) {
           </div>
         </div>
         <Show
-          when={lead()}
+          when={clockPod()}
           fallback={
-            <Show when={firstRound()}>
+            <Show when={!lead() && firstRound()}>
               {time => (
                 <p class='tm-screen-start'>
                   <small>Round 1</small>
