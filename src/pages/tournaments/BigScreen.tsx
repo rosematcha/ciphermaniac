@@ -4,7 +4,9 @@
  * with their table and opponent, as TOM's printed pairings are; it flows into
  * columns on a wide screen and scrolls itself when it still does not fit. The
  * clock is the largest thing on the screen, and the event code and a QR code
- * take anyone to their own phone. The site's chrome is hidden while it is up.
+ * take anyone to their own phone. Before round 1 is paired it lists everyone
+ * registered, the same way, so a player can check they are in. The site's
+ * chrome is hidden while it is up.
  */
 
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
@@ -90,12 +92,33 @@ function ScreenList(props: { view: TournamentView; pod: Pod }) {
   );
 }
 
+/** Everyone registered and not dropped, by last name, for players to find themselves before round 1. */
+function Registered(props: { view: TournamentView }) {
+  const names = createMemo(() => namesById(props.view.tournament));
+  const players = () =>
+    props.view.tournament.players
+      .filter(player => player.droppedAfter === null)
+      .sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
+  return (
+    <ol class='tm-screen-list tm-screen-registered'>
+      <For each={players()}>
+        {player => (
+          <li>
+            <span class='tm-screen-name'>{names().get(player.id)}</span>
+          </li>
+        )}
+      </For>
+    </ol>
+  );
+}
+
 export function BigScreen(props: { view: TournamentView }) {
   let scroller: HTMLDivElement | undefined;
   const url = () => `${location.origin}/t/${props.view.code}`;
   const [scrolling, setScrolling] = createSignal(localStorage.getItem(SCROLL_KEY) !== 'off');
   const [controls, setControls] = createSignal(false);
   const lead = () => props.view.tournament.pods.find(pod => currentRound(pod));
+  const registered = () => props.view.tournament.players.filter(player => player.droppedAfter === null).length;
   const toggleScroll = () => {
     const next = !scrolling();
     localStorage.setItem(SCROLL_KEY, next ? 'on' : 'off');
@@ -124,14 +147,18 @@ export function BigScreen(props: { view: TournamentView }) {
       <header class='tm-screen-head'>
         <div>
           <h1 class='tm-screen-title'>{props.view.tournament.info.name}</h1>
-          <Show when={lead()}>{pod => <p class='tm-screen-round'>{roundLabel(currentRound(pod()) as Round)}</p>}</Show>
+          <Show when={lead()} fallback={<p class='tm-screen-round num'>{registered()} registered</p>}>
+            {pod => <p class='tm-screen-round'>{roundLabel(currentRound(pod()) as Round)}</p>}
+          </Show>
         </div>
         <Show when={lead()}>{pod => <Clock round={currentRound(pod()) as Round} class='tm-screen-clock' />}</Show>
       </header>
       <div class='tm-screen-main' ref={scroller}>
-        <For each={props.view.tournament.pods.filter(pod => currentRound(pod))}>
-          {pod => <ScreenList view={props.view} pod={pod} />}
-        </For>
+        <Show when={lead()} fallback={<Registered view={props.view} />}>
+          <For each={props.view.tournament.pods.filter(pod => currentRound(pod))}>
+            {pod => <ScreenList view={props.view} pod={pod} />}
+          </For>
+        </Show>
       </div>
       <aside class='tm-screen-side'>
         <QrCode text={url()} label='Event page QR code' />
