@@ -127,8 +127,8 @@ export interface SwissSetup {
 export const createSwiss = (setup: SwissSetup) =>
   call<{ code: string }>('/api/tournaments', json('POST', { mode: 'swiss', ...setup }));
 
-export const createFromTdf = (tournament: Tournament) =>
-  call<{ code: string }>('/api/tournaments', json('POST', { mode: 'tom', tournament }));
+export const createFromTdf = (tournament: Tournament, settings?: Partial<TournamentSettings>) =>
+  call<{ code: string }>('/api/tournaments', json('POST', { mode: 'tom', tournament, settings }));
 
 const base = (code: string) => `/api/tournaments/${encodeURIComponent(code)}`;
 
