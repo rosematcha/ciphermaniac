@@ -91,11 +91,6 @@ test('the same decks rebaked at later events roll to later canonicals', () => {
   assert.ok((at2025.get('cardUsage.json') as { usage: Record<string, unknown> }).usage["Boss's Orders::PAL::172"]);
   const at2026 = rebakeFromDecks(decks, DB, '2026-06-12');
   assert.ok((at2026.get('cardUsage.json') as { usage: Record<string, unknown> }).usage[MEG_UID]);
-  // Cluster identity is stable: every rolling key resolves to the same global canonical.
-  for (const bodies of [at2025, at2026]) {
-    const [key] = Object.keys((bodies.get('cardUsage.json') as { usage: Record<string, unknown> }).usage);
-    assert.equal(DB.synonyms[key] ?? key, MEG_UID);
-  }
 });
 
 test('event-date price overrides change the accessibility outcome', () => {

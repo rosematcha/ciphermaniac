@@ -52,11 +52,11 @@ test('cardUsageForCard returns null when the card is absent', () => {
   assert.strictEqual(cardUsageForCard(payload, CARD, null), null);
 });
 
-test('fetchCardUsage returns null on 404', async () => {
+test('the optional per-event indexes resolve to null on 404', async () => {
   mockFetch({ predicate: () => true, status: 404, body: null });
   try {
-    const res = await fetchCardUsage('2026-01-01, Regional Championship Nowhere');
-    assert.strictEqual(res, null);
+    assert.strictEqual(await fetchCardUsage('2026-01-01, Regional Championship Nowhere'), null, 'card usage');
+    assert.strictEqual(await fetchConversionIndex('missing-fixture'), null, 'conversion');
   } finally {
     restoreFetch();
   }
@@ -123,15 +123,6 @@ test('fetchDay2CardStats falls back to decks.json when conversion.json is missin
     assert.ok(boss);
     assert.strictEqual(boss!.day1Count, 2);
     assert.strictEqual(boss!.day2Count, 1);
-  } finally {
-    restoreFetch();
-  }
-});
-
-test('fetchConversionIndex returns null on 404', async () => {
-  mockFetch({ predicate: () => true, status: 404, body: null });
-  try {
-    assert.strictEqual(await fetchConversionIndex('missing-fixture'), null);
   } finally {
     restoreFetch();
   }

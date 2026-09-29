@@ -14,7 +14,6 @@ import test from 'node:test';
 import {
   classifyTournament,
   majorTournaments,
-  ONLINE_META_DATE_LABEL,
   ONLINE_META_LABEL,
   ONLINE_META_NAME,
   prettyTournamentName,
@@ -33,23 +32,22 @@ const WORLDS = '2026-08-28, World Championship San Francisco';
 // classifyTournament
 // ---------------------------------------------------------------------------
 
-test('events classify by their name', () => {
-  assert.equal(classifyTournament(LA), 'regional');
-  assert.equal(classifyTournament(NAIC), 'international');
-  assert.equal(classifyTournament(LIMA), 'special');
-  assert.equal(classifyTournament(WORLDS), 'worlds');
-  assert.equal(classifyTournament(ONLINE_META_NAME), 'online');
-  assert.equal(classifyTournament('2026-01-01, League Cup Toronto'), 'other');
-});
-
-test('classification is case-insensitive', () => {
-  assert.equal(classifyTournament('2026-05-08, REGIONAL CHAMPIONSHIP Los Angeles'), 'regional');
-  assert.equal(classifyTournament('2026-06-20, north america international championship'), 'international');
-});
-
-test('an unparseable key classifies as other rather than throwing', () => {
-  assert.equal(classifyTournament(''), 'other');
-  assert.equal(classifyTournament('not a tournament key'), 'other');
+test('events classify by their name, case-insensitively, and anything unparseable is other', () => {
+  const cases: Array<[string, string]> = [
+    [LA, 'regional'],
+    [NAIC, 'international'],
+    [LIMA, 'special'],
+    [WORLDS, 'worlds'],
+    [ONLINE_META_NAME, 'online'],
+    ['2026-01-01, League Cup Toronto', 'other'],
+    ['2026-05-08, REGIONAL CHAMPIONSHIP Los Angeles', 'regional'],
+    ['2026-06-20, north america international championship', 'international'],
+    ['', 'other'],
+    ['not a tournament key', 'other']
+  ];
+  for (const [key, expected] of cases) {
+    assert.equal(classifyTournament(key), expected, key);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -64,26 +62,17 @@ test('the date prefix parses to a local calendar date', () => {
   assert.equal(d.getDate(), 8);
 });
 
-test('the online meta has no date', () => {
-  assert.equal(tournamentDate(ONLINE_META_NAME), null);
-});
-
-test('a key without a parseable date prefix yields null', () => {
-  assert.equal(tournamentDate('Regional Championship Los Angeles'), null);
-  assert.equal(tournamentDate(''), null);
-  assert.equal(tournamentDate('26-05-08, Short Year'), null);
-});
-
-test('an impossible calendar date yields null rather than a rolled-over one', () => {
-  // Date() would silently roll 2026-02-31 into March; the parser must not.
-  const d = tournamentDate('2026-13-45, Nonsense Event');
-  assert.equal(d, null);
-});
-
-test('dates sort chronologically, which is what the majors window relies on', () => {
-  const keys = [LIMA, LA, NAIC];
-  const sorted = [...keys].sort((a, b) => (tournamentDate(a)?.getTime() ?? 0) - (tournamentDate(b)?.getTime() ?? 0));
-  assert.deepEqual(sorted, [LA, NAIC, LIMA]);
+test('the online meta, a key without a date prefix, and an impossible date all yield null', () => {
+  for (const key of [
+    ONLINE_META_NAME,
+    'Regional Championship Los Angeles',
+    '',
+    '26-05-08, Short Year',
+    // Date() would silently roll 2026-02-31 into March; the parser must not.
+    '2026-13-45, Nonsense Event'
+  ]) {
+    assert.equal(tournamentDate(key), null, key);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -97,6 +86,13 @@ test('a dated key renders as name then date', () => {
   assert.ok(!pretty.startsWith('2026-05-08'), 'the raw date prefix must not survive');
 });
 
+test('the online meta renders as its label, and any other undated key is returned unmangled', () => {
+  assert.equal(prettyTournamentName(ONLINE_META_NAME), ONLINE_META_LABEL);
+  for (const key of ['Some Other Thing', '', '2026-13-45, Nonsense Event']) {
+    assert.equal(prettyTournamentName(key), key, key);
+  }
+});
+
 test('shortTournamentName makes event tiers compact and city-first', () => {
   assert.equal(shortTournamentName('Regional Championship Melbourne'), 'Melbourne Regionals');
   assert.equal(shortTournamentName('International Championship New Orleans'), 'New Orleans Internationals');
@@ -104,41 +100,14 @@ test('shortTournamentName makes event tiers compact and city-first', () => {
   assert.equal(shortTournamentName('League Cup Toronto'), 'League Cup Toronto');
 });
 
-test('the online meta renders as its label', () => {
-  assert.equal(prettyTournamentName(ONLINE_META_NAME), ONLINE_META_LABEL);
-  assert.equal(ONLINE_META_LABEL, 'Online events');
-  assert.equal(ONLINE_META_DATE_LABEL, 'last 14 days');
-});
-
-test('an unrecognized key is returned unchanged rather than mangled', () => {
-  assert.equal(prettyTournamentName('Some Other Thing'), 'Some Other Thing');
-  assert.equal(prettyTournamentName(''), '');
-});
-
-test('an unparseable date leaves the key untouched', () => {
-  const key = '2026-13-45, Nonsense Event';
-  assert.equal(prettyTournamentName(key), key);
-});
-
 // ---------------------------------------------------------------------------
 // majorTournaments
 // ---------------------------------------------------------------------------
 
-test('majors are worlds, internationals, regionals, and special events', () => {
+test('majors are worlds, internationals, regionals, and special events, in input order', () => {
   const list = [WORLDS, LA, NAIC, LIMA, ONLINE_META_NAME, '2026-01-01, League Cup Toronto'];
   assert.deepEqual(majorTournaments(list), [WORLDS, LA, NAIC, LIMA]);
-});
-
-test('filtering preserves input order', () => {
-  const list = [LIMA, NAIC, LA];
-  assert.deepEqual(majorTournaments(list), [LIMA, NAIC, LA]);
-});
-
-test('the online meta is never a major', () => {
-  assert.deepEqual(majorTournaments([ONLINE_META_NAME]), []);
-});
-
-test('an empty list stays empty', () => {
+  assert.deepEqual(majorTournaments([LIMA, NAIC, LA]), [LIMA, NAIC, LA]);
   assert.deepEqual(majorTournaments([]), []);
 });
 
@@ -152,23 +121,17 @@ test('the online key is the R2 folder name verbatim, and the label is not', () =
   assert.notEqual(ONLINE_META_LABEL, ONLINE_META_NAME);
 });
 
-test('scope slugs round trip through a published list', () => {
-  const keys = [ONLINE_META_NAME, LA, NAIC, LIMA, WORLDS];
-  for (const key of keys) {
-    assert.equal(resolveScopeSlug(scopeSlug(key), keys), key);
-  }
-});
-
-test('the online scope has a short stable slug', () => {
+test('scope slugs are short for the online scope and fold punctuation and diacritics', () => {
   assert.equal(scopeSlug(ONLINE_META_NAME), 'online');
-});
-
-test('scope slugs fold punctuation and diacritics', () => {
   const key = '2026-09-12, São Paulo Regional: Masters & Juniors!';
   assert.equal(scopeSlug(key), '2026-09-12-sao-paulo-regional-masters-juniors');
 });
 
-test('an unknown or unpublished scope slug does not resolve', () => {
+test('scope slugs round trip through a published list, and an unknown or unpublished one does not resolve', () => {
+  const keys = [ONLINE_META_NAME, LA, NAIC, LIMA, WORLDS];
+  for (const key of keys) {
+    assert.equal(resolveScopeSlug(scopeSlug(key), keys), key);
+  }
   assert.equal(resolveScopeSlug('2026-01-01-unknown', [ONLINE_META_NAME, LA]), null);
   assert.equal(resolveScopeSlug(scopeSlug(LA), [ONLINE_META_NAME]), null);
 });

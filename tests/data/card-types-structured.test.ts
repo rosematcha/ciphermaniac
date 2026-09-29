@@ -14,67 +14,70 @@ import {
   restructureEntry
 } from '../../scripts/build-card-types.mjs';
 
-void test('parseStage maps the observed type-line vocabulary', () => {
-  assert.equal(parseStage('Basic'), 'basic');
-  assert.equal(parseStage('Stage 1 - Evolves from Eevee'), 'stage1');
-  assert.equal(parseStage('Stage 2 - Evolves from Kirlia'), 'stage2');
-  assert.equal(parseStage('VSTAR - Evolves from Charizard V'), 'vstar');
-  assert.equal(parseStage('VMAX - Evolves from Kyurem V'), 'vmax');
-  assert.equal(parseStage('Level Up'), 'levelUp');
-  // every mapped value is in the exported vocabulary
-  for (const info of ['Basic', 'Stage 1', 'Stage 2', 'VSTAR', 'VMAX', 'Level Up']) {
+void test('parseStage maps the observed type-line vocabulary and nothing else', () => {
+  const cases: Array<[string | null | undefined, string | null]> = [
+    ['Basic', 'basic'],
+    ['Stage 1 - Evolves from Eevee', 'stage1'],
+    ['Stage 2 - Evolves from Kirlia', 'stage2'],
+    ['VSTAR - Evolves from Charizard V', 'vstar'],
+    ['VMAX - Evolves from Kyurem V', 'vmax'],
+    ['Level Up', 'levelUp'],
+    ['Restored', null],
+    ['', null],
+    [null, null],
+    [undefined, null]
+  ];
+  for (const [info, expected] of cases) {
     const stage = parseStage(info);
+    assert.equal(stage, expected, String(info));
+    // every mapped value is in the exported vocabulary
     assert.ok(stage === null || CARD_STAGES.includes(stage));
   }
 });
 
-void test('parseStage returns null for unknown / non-string input', () => {
-  assert.equal(parseStage('Restored'), null);
-  assert.equal(parseStage(null), null);
-  assert.equal(parseStage(undefined), null);
-  assert.equal(parseStage(''), null);
-});
-
-void test('parseMechanicSubtypes extracts single and multi-mechanic names', () => {
-  assert.deepEqual(parseMechanicSubtypes('Charizard ex'), ['ex']);
-  assert.deepEqual(parseMechanicSubtypes('Terapagos ex'), ['ex']);
-  assert.deepEqual(parseMechanicSubtypes('Tera Charizard ex'), ['Tera', 'ex']);
-  assert.deepEqual(parseMechanicSubtypes('Lugia VSTAR'), ['VSTAR']);
-  assert.deepEqual(parseMechanicSubtypes('Charizard VMAX'), ['VMAX']);
-  assert.deepEqual(parseMechanicSubtypes('Mewtwo V'), ['V']);
-  assert.deepEqual(parseMechanicSubtypes('Radiant Greninja'), ['Radiant']);
-  assert.deepEqual(parseMechanicSubtypes('Mega Venusaur ex'), ['Mega', 'ex']);
-  // canonical emission order (Mega before ex, VMAX before V family precedence)
-  assert.deepEqual(parseMechanicSubtypes('Charizard'), []);
-});
-
-void test('parseMechanicSubtypes does not false-positive on name substrings', () => {
-  assert.deepEqual(parseMechanicSubtypes('Vaporeon'), []); // "V" only as a word
-  assert.deepEqual(parseMechanicSubtypes('Vespiquen'), []);
-  assert.deepEqual(parseMechanicSubtypes('Exeggutor'), []); // "ex" only as a word
-  assert.deepEqual(parseMechanicSubtypes(''), []);
-  assert.deepEqual(parseMechanicSubtypes(null), []);
-  for (const name of ['Charizard ex', 'Lugia VSTAR', 'Mega Venusaur ex']) {
-    for (const m of parseMechanicSubtypes(name)) {
+void test('parseMechanicSubtypes extracts whole-word mechanics in canonical order', () => {
+  const cases: Array<[string | null, string[]]> = [
+    ['Charizard ex', ['ex']],
+    ['Terapagos ex', ['ex']],
+    ['Tera Charizard ex', ['Tera', 'ex']],
+    ['Lugia VSTAR', ['VSTAR']],
+    ['Charizard VMAX', ['VMAX']],
+    ['Mewtwo V', ['V']],
+    ['Radiant Greninja', ['Radiant']],
+    ['Mega Venusaur ex', ['Mega', 'ex']],
+    ['Charizard', []],
+    // No false positives on name substrings: "V" and "ex" only as words.
+    ['Vaporeon', []],
+    ['Vespiquen', []],
+    ['Exeggutor', []],
+    ['', []],
+    [null, []]
+  ];
+  for (const [name, expected] of cases) {
+    const mechanics = parseMechanicSubtypes(name);
+    assert.deepEqual(mechanics, expected, String(name));
+    for (const m of mechanics) {
       assert.ok(CARD_MECHANIC_SUBTYPES.includes(m));
     }
   }
 });
 
-void test('parseWeaknessResistance structures type + modifier', () => {
-  assert.deepEqual(parseWeaknessResistance('Fighting ×2'), { type: 'Fighting', modifier: '×2' });
-  assert.deepEqual(parseWeaknessResistance('Fire x2'), { type: 'Fire', modifier: 'x2' });
-  assert.deepEqual(parseWeaknessResistance('Fighting -30'), { type: 'Fighting', modifier: '-30' });
-  assert.deepEqual(parseWeaknessResistance('Water +20'), { type: 'Water', modifier: '+20' });
-  assert.deepEqual(parseWeaknessResistance('Fighting'), { type: 'Fighting', modifier: null });
-});
-
-void test('parseWeaknessResistance treats none/empty/non-string as null', () => {
-  assert.equal(parseWeaknessResistance('none'), null);
-  assert.equal(parseWeaknessResistance('None'), null);
-  assert.equal(parseWeaknessResistance(''), null);
-  assert.equal(parseWeaknessResistance(null), null);
-  assert.equal(parseWeaknessResistance(undefined), null);
+void test('parseWeaknessResistance structures type + modifier and treats none/empty as null', () => {
+  const cases: Array<[string | null | undefined, { type: string; modifier: string | null } | null]> = [
+    ['Fighting ×2', { type: 'Fighting', modifier: '×2' }],
+    ['Fire x2', { type: 'Fire', modifier: 'x2' }],
+    ['Fighting -30', { type: 'Fighting', modifier: '-30' }],
+    ['Water +20', { type: 'Water', modifier: '+20' }],
+    ['Fighting', { type: 'Fighting', modifier: null }],
+    ['none', null],
+    ['None', null],
+    ['', null],
+    [null, null],
+    [undefined, null]
+  ];
+  for (const [value, expected] of cases) {
+    assert.deepEqual(parseWeaknessResistance(value), expected, String(value));
+  }
 });
 
 void test('restructureEntry upgrades a legacy Pokémon entry offline', () => {

@@ -42,15 +42,9 @@ class MemoryPointerStore<T> implements ConditionalPointerStore<T> {
   }
 }
 
-test('creates the pointer when absent', async () => {
-  const store = new MemoryPointerStore<{ releaseId: string }>();
-  const written = await updatePointer(store, 'production.json', () => ({ releaseId: 'r1' }));
-  assert.deepStrictEqual(written, { releaseId: 'r1' });
-});
-
-test('updates the pointer when the ETag matches', async () => {
+test('creates the pointer when absent, then updates it while the ETag matches', async () => {
   const store = new MemoryPointerStore<{ n: number }>();
-  await updatePointer(store, 'p', () => ({ n: 1 }));
+  assert.deepStrictEqual(await updatePointer(store, 'p', () => ({ n: 1 })), { n: 1 });
   const written = await updatePointer(store, 'p', current => ({ n: (current?.n ?? 0) + 1 }));
   assert.deepStrictEqual(written, { n: 2 });
 });

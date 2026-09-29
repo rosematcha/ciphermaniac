@@ -233,19 +233,18 @@ function loadFixtureDecks(name: string): DeckEntry[] {
 // ---------------------------------------------------------------------------
 // Fixture parity: OLD and NEW agree on content; NEW is D9-ordered.
 // ---------------------------------------------------------------------------
-for (const fixture of ['labs-event.json', 'online-window.json']) {
-  test(`fixture ${fixture}: OLD and NEW produce identical content; NEW is D9-ordered`, () => {
+test('fixtures: OLD and NEW produce identical content; NEW is D9-ordered', () => {
+  for (const fixture of ['labs-event.json', 'online-window.json']) {
     const decks = loadFixtureDecks(fixture);
     const oldReport = legacyGenerateReportFromDecks(decks, decks.length, null);
     const newReport = generateReportFromDecks(decks, decks.length, null);
 
-    assert.strictEqual(newReport.deckTotal, oldReport.deckTotal);
-    assert.strictEqual(newReport.items.length, oldReport.items.length);
+    assert.strictEqual(newReport.deckTotal, oldReport.deckTotal, fixture);
     // Identical rows (every field except rank) — order is the only allowed diff.
-    assert.deepStrictEqual(contentKey(newReport.items), contentKey(oldReport.items));
+    assert.deepStrictEqual(contentKey(newReport.items), contentKey(oldReport.items), fixture);
     assertD9Ordered(newReport.items);
-  });
-}
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Hand-built decks: content parity, and NEW reorders equal-found ties by name.
@@ -289,26 +288,6 @@ test('hand decks: content identical, NEW breaks equal-found ties by name (OLD di
   // ...NEW orders the tie by name (Aaa before Zzz).
   const newTie = newReport.items.slice(1).map(i => i.name);
   assert.deepStrictEqual(newTie, ['Aaa', 'Zzz']);
-});
-
-test('NEW ordering of equal-found ties is input-order-independent', () => {
-  const forward: DeckEntry[] = [
-    { cards: [card('Zzz', 1)] },
-    { cards: [card('Zzz', 1)] },
-    { cards: [card('Aaa', 1)] },
-    { cards: [card('Aaa', 1)] }
-  ];
-  const reversed: DeckEntry[] = [...forward].reverse();
-
-  const a = generateReportFromDecks(forward, forward.length, null);
-  const b = generateReportFromDecks(reversed, reversed.length, null);
-
-  // Byte-identical output whichever order the decks arrive in.
-  assert.deepStrictEqual(a.items, b.items);
-  assert.deepStrictEqual(
-    a.items.map(i => i.name),
-    ['Aaa', 'Zzz']
-  );
 });
 
 test('NEW ordering is permutation-invariant across many deck orderings', () => {

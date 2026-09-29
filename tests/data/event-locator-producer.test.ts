@@ -143,6 +143,7 @@ test('the locals pull stops at the first page a day past the horizon and drops w
 
 test('a locals page is retried like a sanctioned one, and a feed out of date order fails the pull', async () => {
   const answers = [respond('busy', 503), respond(PHP_FATAL), respond(JSON.stringify(localsOn('2026-09-16', 3)))];
+  // The third answer is a short page, so it also has to end the pull: a fourth request finds no answer.
   const events = await fetchLocalEvents({ fetch: async () => answers.shift()!, sleep: noSleep });
   assert.equal(events.length, 3);
 
@@ -154,14 +155,6 @@ test('a locals page is retried like a sanctioned one, and a feed out of date ord
     }),
     /not sorted by date: page 1 starts 2026-09-18, after 2026-09-20/
   );
-});
-
-test('a short locals page ends the pull before the horizon', async () => {
-  const events = await fetchLocalEvents({
-    fetch: async () => respond(JSON.stringify(localsOn('2026-09-16', 3))),
-    sleep: noSleep
-  });
-  assert.equal(events.length, 3);
 });
 
 test('a server that answers every page with page 1 is caught', async () => {

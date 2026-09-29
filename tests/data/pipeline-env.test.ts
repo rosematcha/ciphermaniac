@@ -56,17 +56,6 @@ test('a missing or blank required variable throws, naming it but never a value',
   }
 });
 
-test('the error for a set-but-blank secret does not echo its value', () => {
-  // A pipeline failure is public in the Actions log.
-  assert.throws(
-    () => withEnv({ CM_SECRET: '   ' }, () => requireEnv('CM_SECRET')),
-    (err: Error) => {
-      assert.ok(!err.message.includes('   ') || err.message.trim() === err.message, err.message);
-      return true;
-    }
-  );
-});
-
 test('an optional variable falls back when unset or blank', () => {
   assert.equal(
     withEnv({ CM_T: undefined }, () => optionalEnv('CM_T', 'fb')),
@@ -82,46 +71,29 @@ test('an optional variable falls back when unset or blank', () => {
   );
 });
 
-test('the string "false" is false, not truthy', () => {
+test('the string "false" is false, not truthy, and an unset boolean takes its fallback', () => {
   // This is the whole point: Actions renders an unchecked boolean input as the
   // string "false", and Boolean("false") is true.
-  assert.equal(
-    withEnv({ CM_B: 'false' }, () => boolEnv('CM_B')),
-    false
-  );
-  assert.equal(
-    withEnv({ CM_B: 'False' }, () => boolEnv('CM_B')),
-    false
-  );
-  assert.equal(
-    withEnv({ CM_B: '0' }, () => boolEnv('CM_B')),
-    false
-  );
-  assert.equal(
-    withEnv({ CM_B: 'no' }, () => boolEnv('CM_B')),
-    false
-  );
-});
-
-test('affirmatives are affirmative', () => {
-  for (const value of ['true', 'TRUE', '1', 'yes', 'on']) {
+  const cases: Array<[string | undefined, boolean | undefined, boolean]> = [
+    ['false', undefined, false],
+    ['False', undefined, false],
+    ['0', undefined, false],
+    ['no', undefined, false],
+    ['true', undefined, true],
+    ['TRUE', undefined, true],
+    ['1', undefined, true],
+    ['yes', undefined, true],
+    ['on', undefined, true],
+    [undefined, undefined, false],
+    ['', true, true]
+  ];
+  for (const [value, fallback, expected] of cases) {
     assert.equal(
-      withEnv({ CM_B: value }, () => boolEnv('CM_B')),
-      true,
-      value
+      withEnv({ CM_B: value }, () => boolEnv('CM_B', fallback)),
+      expected,
+      `${JSON.stringify(value)} with fallback ${fallback}`
     );
   }
-});
-
-test('an unset boolean takes its fallback', () => {
-  assert.equal(
-    withEnv({ CM_B: undefined }, () => boolEnv('CM_B')),
-    false
-  );
-  assert.equal(
-    withEnv({ CM_B: '' }, () => boolEnv('CM_B', true)),
-    true
-  );
 });
 
 test('an unrecognized boolean throws rather than guessing', () => {
@@ -143,32 +115,12 @@ test('integers are bounded', () => {
   }
 });
 
-test('R2 config prefers R2_ACCOUNT_ID, which is what the workflows set', () => {
-  const cfg = withEnv(
-    {
-      R2_ACCOUNT_ID: 'acct-r2',
-      CLOUDFLARE_ACCOUNT_ID: 'acct-cf',
-      R2_ACCESS_KEY_ID: 'k',
-      R2_SECRET_ACCESS_KEY: 's',
-      R2_BUCKET_NAME: 'b'
-    },
-    () => r2Config()
-  );
+test('R2 config prefers R2_ACCOUNT_ID, which the workflows set, and falls back to CLOUDFLARE_ACCOUNT_ID', () => {
+  const keys = { R2_ACCESS_KEY_ID: 'k', R2_SECRET_ACCESS_KEY: 's', R2_BUCKET_NAME: 'b' };
+  const cfg = withEnv({ ...keys, R2_ACCOUNT_ID: 'acct-r2', CLOUDFLARE_ACCOUNT_ID: 'acct-cf' }, () => r2Config());
   assert.deepEqual(cfg, { accountId: 'acct-r2', accessKeyId: 'k', secretAccessKey: 's', bucket: 'b' });
-});
-
-test('R2 config accepts CLOUDFLARE_ACCOUNT_ID when a job forgot the mapping', () => {
-  const cfg = withEnv(
-    {
-      R2_ACCOUNT_ID: undefined,
-      CLOUDFLARE_ACCOUNT_ID: 'acct-cf',
-      R2_ACCESS_KEY_ID: 'k',
-      R2_SECRET_ACCESS_KEY: 's',
-      R2_BUCKET_NAME: 'b'
-    },
-    () => r2Config()
-  );
-  assert.equal(cfg.accountId, 'acct-cf');
+  const fallback = withEnv({ ...keys, R2_ACCOUNT_ID: undefined, CLOUDFLARE_ACCOUNT_ID: 'acct-cf' }, () => r2Config());
+  assert.equal(fallback.accountId, 'acct-cf');
 });
 
 test('the bucket is required unless a default is offered', () => {

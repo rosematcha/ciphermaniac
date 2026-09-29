@@ -50,124 +50,42 @@ function makePairing(player1: string, player2: string | null, winner: string | 0
 // Daily Aggregation Tests
 // ============================================================================
 
-test('generateArchetypeTrends produces daily granularity data', () => {
+test('generateArchetypeTrends buckets by calendar day and by week, merging same-day events', () => {
   const tournaments = [
     makeTournament('t1', '2025-12-01T10:00:00Z'),
-    makeTournament('t2', '2025-12-02T10:00:00Z'),
-    makeTournament('t3', '2025-12-03T10:00:00Z')
+    makeTournament('t2', '2025-12-01T18:00:00Z'), // Same day, different time
+    makeTournament('t3', '2025-12-02T10:00:00Z'),
+    makeTournament('t4', '2025-12-08T10:00:00Z') // Next week
   ];
-
-  const decks = [
+  const decks = tournaments.map(tournament =>
     makeDeck(
-      't1',
-      '2025-12-01T10:00:00Z',
-      'Gardevoir',
-      ['top8'],
-      [{ name: 'Gardevoir ex', count: 3, set: 'SVI', number: '086' }]
-    ),
-    makeDeck(
-      't2',
-      '2025-12-02T10:00:00Z',
-      'Gardevoir',
-      ['top8'],
-      [{ name: 'Gardevoir ex', count: 4, set: 'SVI', number: '086' }]
-    ),
-    makeDeck(
-      't3',
-      '2025-12-03T10:00:00Z',
-      'Gardevoir',
-      ['top8'],
-      [{ name: 'Gardevoir ex', count: 3, set: 'SVI', number: '086' }]
-    )
-  ];
-
-  const result = generateArchetypeTrends(decks, tournaments, null);
-
-  // Should have days array
-  assert.ok(Array.isArray(result.days), 'result.days should be an array');
-  assert.strictEqual(result.days.length, 3, 'Should have 3 days');
-
-  // Days should be in chronological order
-  assert.strictEqual(result.days[0].date, '2025-12-01');
-  assert.strictEqual(result.days[1].date, '2025-12-02');
-  assert.strictEqual(result.days[2].date, '2025-12-03');
-
-  // Each day should have totals
-  result.days.forEach(day => {
-    assert.ok(day.totals, 'Day should have totals');
-    assert.ok(typeof day.totals.all === 'number', 'totals.all should be a number');
-  });
-
-  // Meta should include dayCount
-  assert.strictEqual(result.meta.dayCount, 3, 'meta.dayCount should be 3');
-});
-
-test('generateArchetypeTrends aggregates multiple tournaments on same day', () => {
-  const tournaments = [
-    makeTournament('t1', '2025-12-01T10:00:00Z'),
-    makeTournament('t2', '2025-12-01T18:00:00Z') // Same day, different time
-  ];
-
-  const decks = [
-    makeDeck(
-      't1',
-      '2025-12-01T10:00:00Z',
-      'Dragapult',
-      ['top8'],
-      [{ name: 'Dragapult ex', count: 4, set: 'TWM', number: '130' }]
-    ),
-    makeDeck(
-      't2',
-      '2025-12-01T18:00:00Z',
+      tournament.id,
+      tournament.date,
       'Dragapult',
       ['top8'],
       [{ name: 'Dragapult ex', count: 4, set: 'TWM', number: '130' }]
     )
-  ];
+  );
 
   const result = generateArchetypeTrends(decks, tournaments, null);
 
-  // Should aggregate to single day
-  assert.strictEqual(result.days.length, 1, 'Should aggregate to 1 day');
-  assert.strictEqual(result.days[0].date, '2025-12-01');
-  assert.strictEqual(result.days[0].totals.all, 2, 'Should have 2 decks total');
-  assert.deepStrictEqual(result.days[0].tournamentIds.sort(), ['t1', 't2'], 'Should include both tournament IDs');
-});
-
-test('generateArchetypeTrends maintains backward compatibility with weeks array', () => {
-  const tournaments = [
-    makeTournament('t1', '2025-12-01T10:00:00Z'), // Week 1
-    makeTournament('t2', '2025-12-08T10:00:00Z') // Week 2
-  ];
-
-  const decks = [
-    makeDeck(
-      't1',
-      '2025-12-01T10:00:00Z',
-      'Charizard',
-      ['top8'],
-      [{ name: 'Charizard ex', count: 2, set: 'OBF', number: '125' }]
-    ),
-    makeDeck(
-      't2',
-      '2025-12-08T10:00:00Z',
-      'Charizard',
-      ['top8'],
-      [{ name: 'Charizard ex', count: 3, set: 'OBF', number: '125' }]
-    )
-  ];
-
-  const result = generateArchetypeTrends(decks, tournaments, null);
-
-  // Should still have weeks array for backward compatibility
-  assert.ok(Array.isArray(result.weeks), 'result.weeks should be an array');
-  assert.strictEqual(result.weeks.length, 2, 'Should have 2 weeks');
-  assert.ok(result.weeks[0].weekStart, 'Week should have weekStart');
-  assert.ok(result.weeks[0].weekEnd, 'Week should have weekEnd');
-
-  // Meta should include both counts
-  assert.ok(result.meta.dayCount >= 2, 'meta.dayCount should be at least 2');
-  assert.strictEqual(result.meta.weekCount, 2, 'meta.weekCount should be 2');
+  assert.deepStrictEqual(
+    result.days.map(day => [day.date, day.totals.all, [...day.tournamentIds].sort()]),
+    [
+      ['2025-12-01', 2, ['t1', 't2']],
+      ['2025-12-02', 1, ['t3']],
+      ['2025-12-08', 1, ['t4']]
+    ]
+  );
+  assert.deepStrictEqual(
+    result.weeks.map(week => [week.weekStart, week.weekEnd]),
+    [
+      ['2025-12-01', '2025-12-07'],
+      ['2025-12-08', '2025-12-14']
+    ]
+  );
+  assert.strictEqual(result.meta.dayCount, 3);
+  assert.strictEqual(result.meta.weekCount, 2);
 });
 
 test('generateArchetypeTrends handles empty input gracefully', () => {
@@ -214,15 +132,10 @@ test('generateArchetypeTrends tracks card playrate across days', () => {
 
   const result = generateArchetypeTrends(decks, tournaments, null);
 
-  // Check that cards have timeline data
-  const cardKeys = Object.keys(result.cards);
-  assert.ok(cardKeys.length > 0, 'Should have at least one card');
-
-  const testCard = Object.values(result.cards).find((c: any) => c.name === 'Test Card');
+  const testCard = Object.values(result.cards).find((c: any) => c.name === 'Test Card') as any;
   assert.ok(testCard, 'Test Card should be in results');
-
-  // Playrate should increase from day 1 to day 2
-  assert.ok((testCard as any).playrateChange > 0, 'Playrate should increase');
+  assert.strictEqual(testCard.currentPlayrate, 100);
+  assert.strictEqual(testCard.playrateChange, 50, '50% -> 100%');
 });
 
 // ============================================================================
@@ -283,30 +196,6 @@ test('buildMatchupMatrix aggregates wins/losses/ties correctly', () => {
   assert.strictEqual(mirror.ties, 1, 'Mirror ties recorded');
   assert.strictEqual(mirror.wins, mirror.losses, 'Mirror record is symmetric');
   assert.strictEqual(mirror.winRate, 50, 'Mirror win rate pinned at 50');
-});
-
-test('buildMatchupMatrix handles ties correctly', () => {
-  const targetArchetype = 'TestDeck';
-
-  const pairingsData = [
-    {
-      tournamentId: 't1',
-      standings: [makeStanding('p1', 'TestDeck'), makeStanding('p2', 'OpponentDeck')],
-      pairings: [
-        makePairing('p1', 'p2', 0), // Tie
-        makePairing('p1', 'p2', 0), // Another tie
-        makePairing('p1', 'p2', 'p1') // Win
-      ]
-    }
-  ];
-
-  const result = buildMatchupMatrix(targetArchetype, pairingsData, 3);
-
-  assert.ok(result.OpponentDeck, 'Should have OpponentDeck matchup');
-  const opponent = result.OpponentDeck;
-  assert.strictEqual(opponent.ties, 2, 'Should have 2 ties');
-  assert.strictEqual(opponent.wins, 1, 'Should have 1 win');
-  assert.strictEqual(opponent.total, 3, 'Should have 3 total games');
 });
 
 test('buildMatchupMatrix handles double losses (winner = -1)', () => {
@@ -387,7 +276,7 @@ test('buildMatchupMatrix filters out matchups with insufficient sample size', ()
   assert.ok(!result.RareOpponent, 'Should filter out rare matchup (< 3 games)');
 });
 
-test('buildMatchupMatrix calculates winRate correctly', () => {
+test('buildMatchupMatrix counts ties and takes winRate over every game', () => {
   const targetArchetype = 'TestDeck';
 
   const pairingsData = [
@@ -406,6 +295,7 @@ test('buildMatchupMatrix calculates winRate correctly', () => {
   const result = buildMatchupMatrix(targetArchetype, pairingsData, 3);
 
   const opponent = result.OpponentDeck;
+  assert.deepStrictEqual([opponent.wins, opponent.losses, opponent.ties, opponent.total], [2, 1, 1, 4]);
   // Win rate = wins / total = 2 / 4 = 50%
   assert.strictEqual(opponent.winRate, 50, 'Win rate should be 50%');
 });
@@ -438,12 +328,9 @@ test('buildMatchupMatrix aggregates across multiple tournaments', () => {
   assert.strictEqual(charizard.total, 4, 'Should have 4 total games');
 });
 
-test('buildMatchupMatrix handles empty pairings data', () => {
-  const result = buildMatchupMatrix('TestDeck', []);
-  assert.deepStrictEqual(result, {}, 'Should return empty object for empty input');
-});
+test('buildMatchupMatrix returns nothing for empty input or opponents with no known deck', () => {
+  assert.deepStrictEqual(buildMatchupMatrix('TestDeck', []), {}, 'empty input');
 
-test('buildMatchupMatrix handles missing deck info gracefully', () => {
   const targetArchetype = 'TestDeck';
 
   const pairingsData = [
@@ -470,7 +357,7 @@ test('buildMatchupMatrix handles missing deck info gracefully', () => {
 // Integration Test: generateArchetypeTrends with matchup data
 // ============================================================================
 
-test('generateArchetypeTrends includes matchups when pairingsData is provided', () => {
+test('generateArchetypeTrends includes matchups only when pairingsData is provided', () => {
   const archetypeName = 'Dragapult Dusknoir';
 
   const tournaments = [makeTournament('t1', '2025-12-01T10:00:00Z')];
@@ -513,16 +400,8 @@ test('generateArchetypeTrends includes matchups when pairingsData is provided', 
   assert.strictEqual(gholdengo.losses, 1);
   assert.strictEqual(gholdengo.total, 4);
   assert.strictEqual(gholdengo.winRate, 75); // 75% win rate
-});
 
-test('generateArchetypeTrends returns empty matchups when no pairingsData', () => {
-  const tournaments = [makeTournament('t1', '2025-12-01T10:00:00Z')];
-  const decks = [makeDeck('t1', '2025-12-01T10:00:00Z', 'TestDeck', ['top8'], [])];
-
-  const result = generateArchetypeTrends(decks, tournaments, null);
-
-  assert.ok(result.matchups !== undefined, 'matchups should be defined');
-  assert.deepStrictEqual(result.matchups, {}, 'matchups should be empty object');
+  assert.deepStrictEqual(generateArchetypeTrends(decks, tournaments, null).matchups, {}, 'no pairingsData');
 });
 
 // ============================================================================

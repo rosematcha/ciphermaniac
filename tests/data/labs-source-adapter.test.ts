@@ -85,21 +85,15 @@ function source(): LabsSourceEvent {
   };
 }
 
-test('adapter output passes the contract validator', () => {
+test('adapter output validates and does not depend on standings order', () => {
   const event = labsSourceToNormalized(source());
   const result = validateNormalizedEvent(event);
   assert.deepStrictEqual(result.ok ? [] : result.errors, []);
-});
-
-test('participants are canonicalized independently of standings order', () => {
-  const input = source();
-  input.standings.reverse();
-  const event = labsSourceToNormalized(input);
-  assert.deepStrictEqual(
-    event.participants.map(participant => participant.participantId),
-    [...event.participants.map(participant => participant.participantId)].sort()
-  );
-  assert.ok(validateNormalizedEvent(event).ok);
+  const reversed = source();
+  reversed.standings.reverse();
+  // Only the source hash may differ: it fingerprints the raw payload, order included.
+  const withoutSourceHash = (e: typeof event) => canonicalStringify({ ...e, sourceRevisions: [] });
+  assert.strictEqual(withoutSourceHash(labsSourceToNormalized(reversed)), withoutSourceHash(event));
 });
 
 test('opw fraction is converted to a 0-100 percentage', () => {
@@ -159,11 +153,4 @@ test('the adapter output drives the artifact orchestrator end to end', () => {
     profiles: { all: { byArchetypePair: { archetypeA: string; archetypeB: string }[] } };
   };
   assert.ok(mp.profiles.all.byArchetypePair.some(p => p.archetypeA === p.archetypeB));
-});
-
-test('deterministic: same source builds byte-identical normalized output twice', () => {
-  assert.strictEqual(
-    canonicalStringify(labsSourceToNormalized(source())),
-    canonicalStringify(labsSourceToNormalized(source()))
-  );
 });

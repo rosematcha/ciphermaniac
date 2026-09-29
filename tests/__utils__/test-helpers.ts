@@ -136,14 +136,3 @@ export function restoreFetch(): void {
   }
   _currentMockResponses = null;
 }
-
-/**
- * Deep clone an object for test isolation. Uses structuredClone when available.
- * @param obj Value to clone
- */
-export function deepClone<T>(obj: T): T {
-  if (typeof (globalThis as any).structuredClone === 'function') {
-    return (globalThis as any).structuredClone(obj);
-  }
-  return JSON.parse(JSON.stringify(obj)) as T;
-}

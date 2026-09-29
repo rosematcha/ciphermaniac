@@ -98,8 +98,9 @@ test('pools match on rarity and keep the special foil patterns apart', () => {
   );
 });
 
-test('the outcome without a chance takes the remainder, and over-claiming throws', () => {
+test('the outcome without a chance takes the remainder, a rate can be 1 in N, and over-claiming throws', () => {
   assert.deepEqual(resolveChances(SLOTS[1].outcomes), [0.01, 0.99]);
+  assert.deepEqual(resolveChances([{ label: 'SIR', odds: 80 }, { label: 'Reverse holo' }]), [1 / 80, 1 - 1 / 80]);
   assert.throws(
     () => resolveChances([{ label: 'a', chance: 0.7 }, { label: 'b', chance: 0.4 }, { label: 'c' }]),
     /over 1/
@@ -163,10 +164,6 @@ test('a print both reverse slots can draw is one row, carrying both slots', () =
   // Half of each slot's draws, twice over.
   assert.equal(rows[0].chance, 1);
   assert.equal(rows[0].contribution, 12);
-});
-
-test('a rate can be quoted as 1 in N', () => {
-  assert.deepEqual(resolveChances([{ label: 'SIR', odds: 80 }, { label: 'Reverse holo' }]), [1 / 80, 1 - 1 / 80]);
 });
 
 const ORDINARY = 4.035 + 0.2 + 0.0495 + 0.035;

@@ -97,45 +97,41 @@ test('invalid manifests and missing active references fail closed', () => {
   assert.throws(() => expiredGenerations([], new Set(), NOW));
 });
 
-test('an old active release keeps the releases on either side of it, however long publishing stalls', () => {
-  const keep = protectedGenerations(
+test('protection keeps the active release and one rollback on each side, whatever the timing', () => {
+  const cases: Array<[string, ReturnType<typeof manifest>[], string[]]> = [
     [
-      manifest('active', ACTIVE, OLD - 1000),
-      manifest('newer', PREVIOUS, OLD),
-      manifest('older', EXPIRED, OLD - 2000),
-      manifest('oldest', RECENT, OLD - 3000)
+      'an old active release keeps its neighbours however long publishing stalls',
+      [
+        manifest('active', ACTIVE, OLD - 1000),
+        manifest('newer', PREVIOUS, OLD),
+        manifest('older', EXPIRED, OLD - 2000),
+        manifest('oldest', RECENT, OLD - 3000)
+      ],
+      [ACTIVE, PREVIOUS, EXPIRED]
     ],
-    new Set(['active']),
-    NOW
-  );
-  assert.deepEqual([...keep].sort(), [ACTIVE, PREVIOUS, EXPIRED].sort());
-});
-
-test('a release that was never promoted does not displace the last good one', () => {
-  const keep = protectedGenerations(
     [
-      manifest('unpromoted', RECENT, NOW),
-      manifest('active', ACTIVE, NOW - 1_000),
-      manifest('previous', PREVIOUS, NOW - 2_000),
-      manifest('expired', EXPIRED, NOW - 3_000)
+      'a release that was never promoted does not displace the last good one',
+      [
+        manifest('unpromoted', RECENT, NOW),
+        manifest('active', ACTIVE, NOW - 1_000),
+        manifest('previous', PREVIOUS, NOW - 2_000),
+        manifest('expired', EXPIRED, NOW - 3_000)
+      ],
+      [ACTIVE, PREVIOUS, RECENT]
     ],
-    new Set(['active']),
-    NOW
-  );
-  assert.deepEqual([...keep].sort(), [ACTIVE, PREVIOUS, RECENT].sort());
-});
-
-test('a publishing burst keeps one rollback rather than every recent release', () => {
-  const keep = protectedGenerations(
     [
-      manifest('active', ACTIVE, NOW),
-      manifest('previous', PREVIOUS, NOW - 1_000),
-      manifest('recent', RECENT, NOW - 2_000)
-    ],
-    new Set(['active']),
-    NOW
-  );
-  assert.deepEqual([...keep].sort(), [ACTIVE, PREVIOUS].sort());
+      'a publishing burst keeps one rollback rather than every recent release',
+      [
+        manifest('active', ACTIVE, NOW),
+        manifest('previous', PREVIOUS, NOW - 1_000),
+        manifest('recent', RECENT, NOW - 2_000)
+      ],
+      [ACTIVE, PREVIOUS]
+    ]
+  ];
+  for (const [label, manifests, expected] of cases) {
+    assert.deepEqual([...protectedGenerations(manifests, new Set(['active']), NOW)].sort(), expected.sort(), label);
+  }
 });
 
 test('captured report cleanup is an explicit producer-contract allowlist', () => {
@@ -250,7 +246,8 @@ test('an object written after planning blocks deletion of its generation', async
   assert.deepEqual(f.removed, []);
 });
 
-test('R2 storage adapter paginates and refuses truncated listings, missing reads, and partial deletes', async t => {
+test('R2 storage adapter refuses incomplete listings, missing reads, and partial deletes', async t => {
+  // Pagination and cursorless truncation belong to listR2Objects (r2-inventory.test.ts).
   const client = new S3Client({ region: 'auto', credentials: { accessKeyId: 'test', secretAccessKey: 'test' } });
   const responses: unknown[] = [];
   t.mock.method(client, 'send', async (command: unknown) => {
@@ -262,31 +259,17 @@ test('R2 storage adapter paginates and refuses truncated listings, missing reads
     return responses.shift();
   });
   const store = createRetentionStore(client, 'test');
-  responses.push(
-    {
-      Contents: [{ Key: 'one', Size: 1, LastModified: new Date(OLD) }],
-      IsTruncated: true,
-      NextContinuationToken: 'next'
-    },
-    { Contents: [{ Key: 'two', Size: 2, LastModified: new Date(NOW) }] }
-  );
-  const objects = [];
-  for await (const object of store.list('')) {
-    objects.push(object);
-  }
-  assert.equal(objects.length, 2);
-  responses.push({ IsTruncated: true });
-  await assert.rejects(async () => {
+  const listAll = async () => {
+    const objects = [];
     for await (const object of store.list('')) {
-      void object;
+      objects.push(object);
     }
-  }, /truncated without a cursor/);
+    return objects;
+  };
+  responses.push({ Contents: [{ Key: 'one', Size: 1, LastModified: new Date(OLD) }] });
+  assert.deepEqual(await listAll(), [{ key: 'one', size: 1, modified: OLD }]);
   responses.push({ Contents: [{}] });
-  await assert.rejects(async () => {
-    for await (const object of store.list('')) {
-      void object;
-    }
-  }, /metadata/);
+  await assert.rejects(listAll(), /metadata/);
   responses.push({ Body: { transformToString: async () => '{"ok":true}' } });
   assert.deepEqual(await store.read('one'), { ok: true });
   responses.push({});

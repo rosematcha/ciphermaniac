@@ -9,7 +9,7 @@ const db: SynonymDatabase = {
 } as SynonymDatabase;
 
 describe('aggregateCanonicalCardsPerDeck', () => {
-  it('collapses two printings mapped to the same canonical into one entry', () => {
+  it('collapses two printings into one entry that takes its identity from the canonical UID', () => {
     const deck = aggregateCanonicalCardsPerDeck(
       [
         { name: 'Pikachu', set: 'OLD', number: '002', count: 2 },
@@ -21,12 +21,7 @@ describe('aggregateCanonicalCardsPerDeck', () => {
     const card = deck.get('Pikachu::NEW::001');
     assert.ok(card, 'keyed by the canonical UID');
     assert.strictEqual(card.copies, 3, 'copies summed across printings');
-  });
-
-  it('derives name/set/number from the canonical UID, not the first-seen variant', () => {
-    const deck = aggregateCanonicalCardsPerDeck([{ name: 'Pikachu', set: 'OLD', number: '002', count: 1 }], db);
-    const card = deck.get('Pikachu::NEW::001');
-    assert.ok(card);
+    // The variant is seen first; the entry must still carry the canonical printing.
     assert.strictEqual(card.set, 'NEW');
     assert.strictEqual(card.number, '001');
   });
@@ -48,11 +43,6 @@ describe('aggregateCanonicalCardsPerDeck', () => {
     assert.strictEqual(deck.size, 2);
     assert.strictEqual(deck.get('Pikachu::NEW::001')?.copies, 4);
     assert.strictEqual(deck.get('Gloom::NEW::004')?.copies, 2);
-  });
-
-  it('works without a synonym database (null)', () => {
-    const deck = aggregateCanonicalCardsPerDeck([{ name: 'Pikachu', set: 'NEW', number: '001', count: 1 }], null);
-    assert.ok(deck.get('Pikachu::NEW::001'));
   });
 
   it('falls back to bare name when set/number are absent', () => {

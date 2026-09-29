@@ -14,8 +14,7 @@ import {
   type MatchupStat,
   selectKeyMatchups,
   shownMatchups,
-  summarizeMatchups,
-  WR_MIN_GAMES
+  summarizeMatchups
 } from '../../src/lib/matchups.ts';
 
 const approx = (actual: number, expected: number, eps = 1e-9) =>
@@ -91,65 +90,21 @@ test('summarizeMatchups: empty when nothing meets the floor', () => {
   assert.equal(s.toughest, null);
 });
 
-test('shownMatchups: well-sampled deck shows exactly the rows meeting the floor', () => {
-  const rows = [
-    { opponentLabel: 'a', matches: 200 },
-    { opponentLabel: 'b', matches: 100 },
-    { opponentLabel: 'c', matches: 60 },
-    { opponentLabel: 'd', matches: 40 },
-    { opponentLabel: 'e', matches: 30 },
-    { opponentLabel: 'f', matches: 25 },
-    { opponentLabel: 'g', matches: 21 },
-    { opponentLabel: 'h', matches: 20 },
-    { opponentLabel: 'i', matches: 19 }, // below floor, not needed to reach MIN_SHOWN
-    { opponentLabel: 'j', matches: 3 }
+test('shownMatchups: every row at the floor shows, topped up to MIN_SHOWN by the most-played', () => {
+  const rows = (counts: number[]) => counts.map((matches, i) => ({ opponentLabel: 'abcdefghij'[i], matches }));
+  const cases: Array<[string, number[], string]> = [
+    // Eight clear the floor of 20 (h exactly at it), so 19 stays hidden.
+    ['a well-sampled deck', [200, 100, 60, 40, 30, 25, 21, 20, 19, 3], 'abcdefgh'],
+    // Nothing clears the floor; the most-played headline and the two rarest spill to the expander.
+    ['a low-playrate deck', [12, 9, 8, 7, 6, 5, 4, 3, 2, 1], 'abcdefgh'],
+    // Three clear the floor; fill tops up with the next most-played.
+    ['floor rows plus fill', [50, 40, 20, 15, 14, 13, 12, 11, 10], 'abcdefgh'],
+    // Nine clear the floor: all show, more than MIN_SHOWN.
+    ['more than MIN_SHOWN at the floor', [90, 80, 70, 60, 50, 40, 30, 21, 20, 5], 'abcdefghi']
   ];
-  const shown = shownMatchups(rows);
-  assert.equal(shown.size, 8);
-  assert.ok(shown.has('h')); // exactly at the floor
-  assert.ok(!shown.has('i')); // below floor, and 8 already clear it
-  assert.ok(!shown.has('j'));
-});
-
-test('shownMatchups: low-playrate deck fills up to MIN_SHOWN by most-played', () => {
-  // Every matchup is thin (< WR_MIN_GAMES); none clears the floor.
-  const rows = [
-    { opponentLabel: 'a', matches: 12 },
-    { opponentLabel: 'b', matches: 9 },
-    { opponentLabel: 'c', matches: 8 },
-    { opponentLabel: 'd', matches: 7 },
-    { opponentLabel: 'e', matches: 6 },
-    { opponentLabel: 'f', matches: 5 },
-    { opponentLabel: 'g', matches: 4 },
-    { opponentLabel: 'h', matches: 3 },
-    { opponentLabel: 'i', matches: 2 }, // the tail spills to the expander
-    { opponentLabel: 'j', matches: 1 }
-  ];
-  const shown = shownMatchups(rows);
-  assert.equal(shown.size, 8);
-  assert.ok(shown.has('a')); // most-played 2-game+ matchups headline
-  assert.ok(shown.has('h'));
-  assert.ok(!shown.has('i')); // the two rarest stay hidden
-  assert.ok(!shown.has('j'));
-});
-
-test('shownMatchups: floor rows plus fill can exceed the floor count', () => {
-  // 3 clear the floor; fill tops up to MIN_SHOWN with the next most-played.
-  const rows = [
-    { opponentLabel: 'a', matches: 50 },
-    { opponentLabel: 'b', matches: 40 },
-    { opponentLabel: 'c', matches: 20 },
-    { opponentLabel: 'd', matches: 15 },
-    { opponentLabel: 'e', matches: 14 },
-    { opponentLabel: 'f', matches: 13 },
-    { opponentLabel: 'g', matches: 12 },
-    { opponentLabel: 'h', matches: 11 },
-    { opponentLabel: 'i', matches: 10 }
-  ];
-  const shown = shownMatchups(rows);
-  assert.equal(shown.size, 8);
-  assert.ok(shown.has('h'));
-  assert.ok(!shown.has('i'));
+  for (const [label, counts, expected] of cases) {
+    assert.deepEqual([...shownMatchups(rows(counts))].sort().join(''), expected, label);
+  }
 });
 
 test('matchupImportance: field share weighted by sqrt of deviation (min 1)', () => {
@@ -179,13 +134,4 @@ test('selectKeyMatchups: excludes mirror + low-sample, ranks by importance, disp
     key.map(r => r.opponentLabel),
     ['Dragapult Dusknoir', 'Gardevoir ex', 'Charizard ex', 'Raging Bolt', 'Slowking']
   );
-});
-
-test('selectKeyMatchups: a lopsided but rarer matchup can beat a common even one', () => {
-  const rows: MatchupStat[] = [
-    stat({ opponentLabel: 'CommonEven', winRate: 50, matches: 300, fieldShare: 10 }), // imp 10
-    stat({ opponentLabel: 'RareBlowout', winRate: 80, matches: 100, fieldShare: 2 }) // imp 2*sqrt(30)=10.95
-  ];
-  const key = selectKeyMatchups(rows, WR_MIN_GAMES, 1);
-  assert.equal(key[0]?.opponentLabel, 'RareBlowout');
 });

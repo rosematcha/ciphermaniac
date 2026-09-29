@@ -53,10 +53,11 @@ describe('buildWeeklyReport periods', () => {
     assert.equal(report.days, 7);
   });
 
-  it('ignores lists on or after the window end', () => {
+  it('ignores lists on or after the window end, or without a parseable date', () => {
     const late = list(0, 'A');
     late.tournamentDate = END;
-    const report = buildWeeklyReport([late, list(-1, 'A'), list(1, 'A')], LOOSE);
+    const undated = { archetype: 'A', cards: [] } as TrendDeckInput;
+    const report = buildWeeklyReport([late, list(-1, 'A'), undated, list(1, 'A')], LOOSE);
     assert.equal(report.recent.lists, 1);
   });
 
@@ -291,12 +292,6 @@ describe('buildWeeklyReport edge cases', () => {
 
   it('rejects an unparseable window end', () => {
     assert.throws(() => buildWeeklyReport([], { windowEnd: 'never' }), /windowEnd/);
-  });
-
-  it('skips decks without a parseable date', () => {
-    const undated = { archetype: 'A', cards: [] } as TrendDeckInput;
-    const report = buildWeeklyReport([undated, list(1, 'A')], LOOSE);
-    assert.equal(report.recent.lists, 1);
   });
 });
 

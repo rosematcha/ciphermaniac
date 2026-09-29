@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildLensRows, countInDeck, type DeckLite, partitionByCard, tallyLens, wrOf } from '../../src/lib/cardLens.ts';
+import { buildLensRows, type DeckLite, partitionByCard, tallyLens, wrOf } from '../../src/lib/cardLens.ts';
 import { buildCardId } from '../../shared/deckCardId.ts';
 import type { DeckCard, PlayerMatchRecord } from '../../src/types/index.ts';
 
@@ -41,13 +41,8 @@ const MATCHES: PlayerMatchRecord[] = [
   m(99, 'Dragapult', 'win') // skipped: pilot in neither subset
 ];
 
-test('countInDeck sums copies of the canonical card id, normalizing the number', () => {
-  assert.equal(countInDeck(DECKS[0].cards, CARD), 1);
-  assert.equal(countInDeck(DECKS[1].cards, CARD), 2);
-  assert.equal(countInDeck(DECKS[2].cards, CARD), 0);
-});
-
-test('partitionByCard splits decks into runs-≥N vs not', () => {
+test('partitionByCard splits decks into runs-≥N vs not, normalizing the collector number', () => {
+  // Deck 1 lists the card as raw "76"; it must still count toward ASC~076.
   const p1 = partitionByCard(DECKS, CARD, 1);
   assert.deepEqual([...p1.withIds].sort(), [1, 2]);
   assert.deepEqual([...p1.withoutIds], [3]);

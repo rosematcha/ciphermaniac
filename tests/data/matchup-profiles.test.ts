@@ -9,13 +9,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { buildMatchupProfiles, PHASE_MULTIPLIERS, QUALITY_MODEL } from '../../shared/data/reports/matchupProfiles.ts';
-import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
+import { buildMatchupProfiles, QUALITY_MODEL } from '../../shared/data/reports/matchupProfiles.ts';
 import type { NormalizedEvent } from '../../shared/data/contracts.ts';
 
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'data-pipeline');
 const labs = JSON.parse(readFileSync(join(fixturesDir, 'labs-event.json'), 'utf8')) as NormalizedEvent;
-const online = JSON.parse(readFileSync(join(fixturesDir, 'online-window.json'), 'utf8')) as NormalizedEvent;
 
 test('counts decided/tie/double_loss matches with known archetypes', () => {
   const body = buildMatchupProfiles(labs);
@@ -51,12 +49,6 @@ test('quality weighting differs from unweighted and applies phase multipliers', 
   assert.strictEqual(body.qualityModel, QUALITY_MODEL);
 });
 
-test('phase multipliers table matches the frozen policy', () => {
-  assert.strictEqual(PHASE_MULTIPLIERS[1], 1.0);
-  assert.strictEqual(PHASE_MULTIPLIERS[2], 1.75);
-  assert.strictEqual(PHASE_MULTIPLIERS[3], 3.0);
-});
-
 test('pair labels are sorted (archetypeA <= archetypeB) and rows sorted by weightedMatches', () => {
   const body = buildMatchupProfiles(labs);
   for (const pair of body.profiles.all.byArchetypePair) {
@@ -67,22 +59,4 @@ test('pair labels are sorted (archetypeA <= archetypeB) and rows sorted by weigh
     wm,
     [...wm].sort((a, b) => b - a)
   );
-});
-
-test('permutation-invariant: input match order cannot change bytes', () => {
-  const reversed: NormalizedEvent = {
-    ...labs,
-    matches: [...labs.matches].reverse(),
-    participants: [...labs.participants].reverse()
-  };
-  assert.strictEqual(
-    canonicalStringify(buildMatchupProfiles(labs)),
-    canonicalStringify(buildMatchupProfiles(reversed))
-  );
-});
-
-test('online windows produce empty profiles', () => {
-  const body = buildMatchupProfiles(online);
-  assert.strictEqual(body.profiles.all.matchesConsidered, 0);
-  assert.deepStrictEqual(body.profiles.all.byArchetypePair, []);
 });

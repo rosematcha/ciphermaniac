@@ -71,19 +71,24 @@ const CIRCLES: Array<{ name: string; lat: number; lon: number; km: number }> = [
   { name: 'Cell corner exactly, 5 km', lat: 30, lon: -100, km: 5 }
 ];
 
-for (const circle of CIRCLES) {
-  test(`every point inside the circle lands in a returned cell: ${circle.name}`, () => {
-    const cells = new Set(cellsForCircle(circle.lat, circle.lon, circle.km));
-    const misses: string[] = [];
-    for (let bearing = 0; bearing < 360; bearing += 5) {
-      for (const share of [0, 0.25, 0.5, 0.75, 0.99]) {
-        const [lat, lon] = destination(circle.lat, circle.lon, circle.km * share, bearing);
-        const key = cellKeyFor(lat, lon);
-        if (!cells.has(key)) {
-          misses.push(`${lat.toFixed(3)},${lon.toFixed(3)} -> ${key}`);
-        }
+/** Points walked around the circle, by bearing and share of its radius, that fall outside the returned cells. */
+function missedPoints(circle: (typeof CIRCLES)[number]): string[] {
+  const cells = new Set(cellsForCircle(circle.lat, circle.lon, circle.km));
+  const misses: string[] = [];
+  for (let bearing = 0; bearing < 360; bearing += 5) {
+    for (const share of [0, 0.25, 0.5, 0.75, 0.99]) {
+      const [lat, lon] = destination(circle.lat, circle.lon, circle.km * share, bearing);
+      const key = cellKeyFor(lat, lon);
+      if (!cells.has(key)) {
+        misses.push(`${lat.toFixed(3)},${lon.toFixed(3)} -> ${key}`);
       }
     }
-    assert.deepEqual(misses, []);
-  });
+  }
+  return misses;
 }
+
+test('every point inside a search circle lands in a returned cell', () => {
+  for (const circle of CIRCLES) {
+    assert.deepEqual(missedPoints(circle), [], circle.name);
+  }
+});

@@ -1,6 +1,7 @@
 /**
  * tests/data/release-resolver.test.ts
- * Release-aware resolver and the generated module renderer.
+ * Release-aware resolver, the generated module renderer, and the release composer
+ * that feeds it.
  */
 
 import test from 'node:test';
@@ -8,6 +9,8 @@ import assert from 'node:assert/strict';
 
 import { coerceManifest, createReleaseResolver } from '../../shared/releaseManifest.ts';
 import { renderModule } from '../../.github/scripts/generate-release-module.ts';
+import { buildReleaseArtifacts } from '../../.github/scripts/publish-release.ts';
+import type { ReleaseScope } from '../../shared/data/build/release.ts';
 
 function manifest(): unknown {
   return {
@@ -66,7 +69,16 @@ test('the resolver is frozen (roots cannot be mutated mid-session)', () => {
   }, TypeError);
 });
 
-test('renderModule emits null by default and a typed manifest when given one', () => {
+test('renderModule emits null by default, and the composer embeds the manifest it composed', () => {
   assert.match(renderModule(null), /EMBEDDED_RELEASE: ReleaseManifest \| null = null;/);
-  assert.match(renderModule(manifest()), /"releaseId": "20260713T000000Z-abc"/);
+  const { roots, events } = manifest() as { roots: Record<ReleaseScope, string>; events: Record<string, string> };
+  const composed = buildReleaseArtifacts({
+    roots,
+    events,
+    releaseId: '20260713T120000Z-abc1234',
+    publishedAt: '2026-07-13T12:00:00Z'
+  });
+  assert.strictEqual(composed.manifest.roots.online, '/releases/v1/online/aaa');
+  assert.match(composed.module, /EMBEDDED_RELEASE: ReleaseManifest \| null =/);
+  assert.match(composed.module, /"releaseId": "20260713T120000Z-abc1234"/);
 });

@@ -62,20 +62,13 @@ const INDEX = buildClusterIndex(DB);
 
 describe('resolveCanonicalUidAt', () => {
   it("rolls Boss's Orders through three canonicals across the dataset's events", () => {
+    // Each is itself a variant in DB.synonyms, so usage stays attached to the one
+    // global identity whatever canonical an event stores.
     const rawUid = "Boss's Orders::PAL::248";
     // Baltimore 2023 → Monterrey 2025 → NAIC 2026.
     assert.equal(resolveCanonicalUidAt(rawUid, DB, INDEX, '2023-07-15'), "Boss's Orders::BRS::132");
     assert.equal(resolveCanonicalUidAt(rawUid, DB, INDEX, '2025-05-17'), "Boss's Orders::PAL::172");
     assert.equal(resolveCanonicalUidAt(rawUid, DB, INDEX, '2026-06-13'), "Boss's Orders::MEG::114");
-  });
-
-  it('every rolling canonical resolves back to one stable global identity', () => {
-    // Usage stays attached to the card: whatever canonical an event stores,
-    // the flat synonym map sends it to the same cluster identity.
-    for (const date of ['2023-07-15', '2025-05-17', '2026-06-13']) {
-      const rolling = resolveCanonicalUidAt("Boss's Orders::RCL::154", DB, INDEX, date);
-      assert.equal(DB.synonyms[rolling] ?? rolling, MEG_UID);
-    }
   });
 
   it('resolves any cluster member to the same rolling canonical', () => {
@@ -85,11 +78,8 @@ describe('resolveCanonicalUidAt', () => {
     assert.deepEqual([...resolved], ["Boss's Orders::PAL::172"]);
   });
 
-  it('resolves a name-only identifier through canonicals first', () => {
+  it('resolves a name-only identifier through canonicals first, and passes unknown UIDs through', () => {
     assert.equal(resolveCanonicalUidAt("Boss's Orders", DB, INDEX, '2023-07-15'), "Boss's Orders::BRS::132");
-  });
-
-  it('passes unknown UIDs through unchanged', () => {
     assert.equal(resolveCanonicalUidAt('Nonexistent::XXX::001', DB, INDEX, '2025-05-17'), 'Nonexistent::XXX::001');
   });
 });

@@ -19,14 +19,9 @@ test('Merge variant counts correctly across set/code variations', () => {
   ];
 
   const report = generateReportFromDecks(decks as any, decks.length, null);
-  const multi = report.items.find((i: any) => String(i.name).toLowerCase().includes('multi'));
-  assert.ok(multi, 'Multi should be present');
-  // found should be 3 (present in 3 decks)
-  assert.strictEqual(multi.found, 3);
-  // If uid present, number and set should be normalized
-  if (multi.uid) {
-    assert.ok(String(multi.uid).includes('S1::001') || String(multi.uid).includes('S1::001'));
-  }
+  assert.strictEqual(report.items.length, 1, 'casing and padding variants are one card');
+  assert.strictEqual(report.items[0].uid, 'Multi::S1::001');
+  assert.strictEqual(report.items[0].found, 3);
 });
 
 // Card type enrichment and cache behavior

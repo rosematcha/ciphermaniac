@@ -45,11 +45,9 @@ test('archetype index + per-archetype files + cardUsage are generated and consis
   const artifacts = buildEventArtifacts(labs);
   const index = artifacts.get('archetypes/index.json') as { name: string }[];
   assert.ok(Array.isArray(index) && index.length > 0);
-  // Every index slug resolves to one aggregate body; deck subsets derive from
-  // the event's single canonical decks.json.
+  // Every index slug resolves to one aggregate body.
   for (const entry of index) {
     assert.ok(artifacts.has(`archetypes/${entry.name}/cards.json`), `no body for ${entry.name}`);
-    assert.equal(artifacts.has(`archetypes/${entry.name}/decks.json`), false);
   }
   // cardUsage slugs are a subset of the archetype index slugs.
   const usage = artifacts.get('cardUsage.json') as { usage: Record<string, { slug: string }[]> };
@@ -66,11 +64,9 @@ test('phase2 and topcut slices reuse the report bundle under a prefix', () => {
   assert.ok(artifacts.has('slices/phase2/master.json'));
   assert.ok(artifacts.has('slices/phase2/archetypes/index.json'));
   assert.ok(artifacts.has('slices/topcut/master.json'));
-  assert.equal(artifacts.has('slices/phase2/decks.json'), false);
-  assert.equal(artifacts.has('slices/topcut/decks.json'), false);
 });
 
-test('an event publishes exactly one deck corpus', () => {
+test('an event publishes exactly one deck corpus; archetypes and slices derive from it', () => {
   const deckBodies = [...buildEventArtifacts(labs).keys()].filter(path => path.endsWith('decks.json'));
   assert.deepEqual(deckBodies, ['decks.json']);
 });
@@ -83,19 +79,6 @@ test('online window omits match-derived and conversion artifacts', () => {
   assert.deepStrictEqual(artifacts.get('playerMatches.json'), []);
   assert.strictEqual(artifacts.has('matchupProfiles.json'), false, 'no matchups without matches');
   assert.strictEqual(artifacts.has('conversion.json'), false, 'online has no Day 2');
-});
-
-test('master.json deckTotal counts only decks with a decklist; found <= deckTotal', () => {
-  const artifacts = buildEventArtifacts(labs) as Map<
-    string,
-    { deckTotal: number; items: { found: number; total: number }[] }
-  >;
-  const master = artifacts.get('master.json')!;
-  const withList = labs.decks.filter(d => d.hasDecklist).length;
-  assert.strictEqual(master.deckTotal, withList);
-  for (const item of master.items) {
-    assert.ok(item.found <= master.deckTotal, `found ${item.found} > deckTotal ${master.deckTotal}`);
-  }
 });
 
 test('decks.json separates participantId (playerId) from the content-hash deckId', () => {

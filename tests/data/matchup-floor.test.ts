@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { buildMatchupMatrix, MIN_MATCHUP_GAMES } from '../../shared/data/analysis/archetypeTrends.js';
+import { WR_MIN_GAMES } from '../../src/lib/confidence.ts';
 
 const standing = (player: string, deck: string) => ({ player, deck: { name: deck } });
 const pairing = (player1: string, player2: string, winner: string | number) => ({ player1, player2, winner });
 
 test('the default matchup floor matches the frontend readout floor', () => {
-  assert.strictEqual(MIN_MATCHUP_GAMES, 20);
+  assert.strictEqual(MIN_MATCHUP_GAMES, WR_MIN_GAMES);
 });
 
 test('buildMatchupMatrix publishes nothing below the default floor', () => {

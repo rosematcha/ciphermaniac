@@ -87,68 +87,61 @@ function usageEntry(slug: string): CardUsageEntry {
   return { slug, found: 5, pct: 50, dist: [] };
 }
 
-test('cardUsageForCard: a rolling-keyed usage entry is found from a global-canonical card', () => {
-  const payload: CardUsagePayload = {
-    canonicalizedAt: '2024-09-13',
-    usage: { "Boss's Orders::BRS::132": [usageEntry('gardevoir_ex')] }
-  };
-  const globalCard = item({ name: "Boss's Orders", set: 'MEG', number: '114', uid: MEG_UID });
-  const rows = cardUsageForCard(payload, globalCard, DB);
-  assert.ok(rows, 'global card resolves to the rolling-keyed cluster entry');
-  assert.equal(rows![0].slug, 'gardevoir_ex');
-});
-
-test('cardUsageForCard: a rolling-keyed usage entry is found from a rolling-uid card (direct)', () => {
-  const payload: CardUsagePayload = {
-    canonicalizedAt: '2024-09-13',
-    usage: { "Boss's Orders::BRS::132": [usageEntry('charizard_ex')] }
-  };
-  const rollingCard = item({ name: "Boss's Orders", set: 'BRS', number: '132', uid: "Boss's Orders::BRS::132" });
-  const rows = cardUsageForCard(payload, rollingCard, DB);
-  assert.ok(rows);
-  assert.equal(rows![0].slug, 'charizard_ex');
-});
-
-test('cardUsageForCard: a global-keyed usage entry is found from a rolling-uid card', () => {
-  // The reverse direction: an un-rebaked (global-keyed) event, queried with a
-  // card carrying a rolling uid (e.g. navigated from a rebaked event's link).
-  const payload: CardUsagePayload = { usage: { [MEG_UID]: [usageEntry('miraidon_ex')] } };
-  const rollingCard = item({ name: "Boss's Orders", set: 'PAL', number: '172', uid: "Boss's Orders::PAL::172" });
-  const rows = cardUsageForCard(payload, rollingCard, DB);
-  assert.ok(rows);
-  assert.equal(rows![0].slug, 'miraidon_ex');
-});
-
-test('cardUsageForCard: no DB still finds a direct uid hit but not a cluster hit', () => {
-  const payload: CardUsagePayload = { usage: { "Boss's Orders::BRS::132": [usageEntry('gardevoir_ex')] } };
-  const globalCard = item({ name: "Boss's Orders", set: 'MEG', number: '114', uid: MEG_UID });
-  assert.equal(cardUsageForCard(payload, globalCard, null), null, 'no cluster match without a DB');
+test('cardUsageForCard: usage is found across rolling and global keys from either side, but only directly without a DB', () => {
+  const rolling = "Boss's Orders::BRS::132";
+  const cases: Array<[string, CardUsagePayload, CardItem, SynonymDatabase | null, string | null]> = [
+    [
+      'rolling-keyed entry from a global-canonical card',
+      { canonicalizedAt: '2024-09-13', usage: { [rolling]: [usageEntry('gardevoir_ex')] } },
+      item({ name: "Boss's Orders", set: 'MEG', number: '114', uid: MEG_UID }),
+      DB,
+      'gardevoir_ex'
+    ],
+    [
+      'rolling-keyed entry from a rolling-uid card (direct)',
+      { canonicalizedAt: '2024-09-13', usage: { [rolling]: [usageEntry('charizard_ex')] } },
+      item({ name: "Boss's Orders", set: 'BRS', number: '132', uid: rolling }),
+      DB,
+      'charizard_ex'
+    ],
+    // The reverse direction: an un-rebaked (global-keyed) event, queried with a
+    // card carrying a rolling uid (e.g. navigated from a rebaked event's link).
+    [
+      'global-keyed entry from a rolling-uid card',
+      { usage: { [MEG_UID]: [usageEntry('miraidon_ex')] } },
+      item({ name: "Boss's Orders", set: 'PAL', number: '172', uid: "Boss's Orders::PAL::172" }),
+      DB,
+      'miraidon_ex'
+    ],
+    [
+      'no cluster match without a DB',
+      { usage: { [rolling]: [usageEntry('gardevoir_ex')] } },
+      item({ name: "Boss's Orders", set: 'MEG', number: '114', uid: MEG_UID }),
+      null,
+      null
+    ]
+  ];
+  for (const [label, payload, card, db, slug] of cases) {
+    assert.equal(cardUsageForCard(payload, card, db)?.[0].slug ?? null, slug, label);
+  }
 });
 
 // ---------------------------------------------------------------------------
 // (c) conversion stat matching across rolling keys (findByClusterUid).
 // ---------------------------------------------------------------------------
 
-test('findByClusterUid: a rolling-keyed conversion stat matches a global-canonical card', () => {
+test('findByClusterUid: rolling and global keys match each other, and unrelated cards do not', () => {
   const stats = [
     { uid: "Boss's Orders::BRS::132", conversion: 61 },
     { uid: 'Iono::PAL::185', conversion: 40 }
   ];
-  const hit = findByClusterUid(stats, MEG_UID, DB);
-  assert.ok(hit);
-  assert.equal(hit!.conversion, 61);
-});
-
-test('findByClusterUid: a global-keyed stat matches a rolling card uid', () => {
-  const stats = [{ uid: MEG_UID, conversion: 55 }];
-  const hit = findByClusterUid(stats, "Boss's Orders::PAL::248", DB);
-  assert.ok(hit);
-  assert.equal(hit!.conversion, 55);
-});
-
-test('findByClusterUid: unrelated cards do not match', () => {
-  const stats = [{ uid: 'Iono::PAL::185', conversion: 40 }];
-  assert.equal(findByClusterUid(stats, MEG_UID, DB), undefined);
+  assert.equal(findByClusterUid(stats, MEG_UID, DB)?.conversion, 61, 'rolling-keyed stat from a global card');
+  assert.equal(
+    findByClusterUid([{ uid: MEG_UID, conversion: 55 }], "Boss's Orders::PAL::248", DB)?.conversion,
+    55,
+    'global-keyed stat from a rolling card'
+  );
+  assert.equal(findByClusterUid([stats[1]], MEG_UID, DB), undefined, 'unrelated card');
 });
 
 // ---------------------------------------------------------------------------
@@ -206,16 +199,12 @@ test('computeMajorsMovers: a global-canonical resolver joins the card into one r
 // findCardBySetNumberCanonical: URL (global) ↔ master item (rolling).
 // ---------------------------------------------------------------------------
 
-test('findCardBySetNumberCanonical: the global-canonical URL finds a rolling master item', () => {
+test('findCardBySetNumberCanonical: a global-canonical or stale variant URL finds the rolling master item', () => {
   const items = [item({ name: "Boss's Orders", set: 'BRS', number: '132', uid: "Boss's Orders::BRS::132" })];
-  const found = findCardBySetNumberCanonical(items, 'MEG', '114', DB);
-  assert.ok(found, 'global set/number resolves to the rolling-print item');
-  assert.equal(found!.set, 'BRS');
-});
-
-test('findCardBySetNumberCanonical: a stale variant URL finds the same rolling item', () => {
-  const items = [item({ name: "Boss's Orders", set: 'BRS', number: '132', uid: "Boss's Orders::BRS::132" })];
-  const found = findCardBySetNumberCanonical(items, 'PAL', '248', DB);
-  assert.ok(found);
-  assert.equal(found!.set, 'BRS');
+  for (const [set, number] of [
+    ['MEG', '114'],
+    ['PAL', '248']
+  ]) {
+    assert.equal(findCardBySetNumberCanonical(items, set, number, DB)?.set, 'BRS', `${set} ${number}`);
+  }
 });

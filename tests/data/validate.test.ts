@@ -30,63 +30,29 @@ import {
 // Predicates
 // ============================================================================
 
-test('isRecord accepts plain objects and rejects the object-like values', () => {
-  assert.ok(isRecord({}));
-  assert.ok(isRecord({ a: 1 }));
-  assert.ok(!isRecord(null));
-  assert.ok(!isRecord([]));
-  assert.ok(!isRecord('x'));
-  assert.ok(!isRecord(undefined));
-});
-
-test('isInteger rejects the non-integer numbers', () => {
-  assert.ok(isInteger(0));
-  assert.ok(isInteger(-4));
-  assert.ok(!isInteger(1.5));
-  assert.ok(!isInteger(NaN));
-  assert.ok(!isInteger(Infinity));
-  assert.ok(!isInteger('3'));
-});
-
-test('isNonEmptyString requires at least one character', () => {
-  assert.ok(isNonEmptyString('a'));
-  assert.ok(!isNonEmptyString(''));
-  assert.ok(!isNonEmptyString(null));
-});
-
-test('isStringArray accepts an empty array but not a mixed one', () => {
-  assert.ok(isStringArray([]));
-  assert.ok(isStringArray(['a', 'b']));
-  assert.ok(!isStringArray(['a', 1]));
-  assert.ok(!isStringArray('a'));
-});
-
-test('isIntegerAtLeast is inclusive of its bound', () => {
+test('each predicate accepts exactly its values and fails rather than throws on the rest', () => {
   const atLeastOne = isIntegerAtLeast(1);
-  assert.ok(atLeastOne(1));
-  assert.ok(atLeastOne(9));
-  assert.ok(!atLeastOne(0));
-  assert.ok(!atLeastOne(1.5));
-});
-
-test('isFiniteInRange is inclusive at both ends and rejects non-finite values', () => {
   const pct = isFiniteInRange(0, 100);
-  assert.ok(pct(0));
-  assert.ok(pct(100));
-  assert.ok(!pct(-0.1));
-  assert.ok(!pct(100.1));
-  assert.ok(!pct(NaN));
-  assert.ok(!pct(Infinity));
-});
-
-test('isMemberOf works from an array or a set, and non-strings fail rather than throw', () => {
-  const fromArray = isMemberOf(['a', 'b']);
-  const fromSet = isMemberOf(new Set(['a', 'b']));
-  assert.ok(fromArray('a'));
-  assert.ok(fromSet('b'));
-  assert.ok(!fromArray('c'));
-  assert.ok(!fromSet(null));
-  assert.ok(!fromArray(1));
+  const cases: Array<[string, (value: unknown) => boolean, unknown[], unknown[]]> = [
+    ['isRecord', isRecord, [{}, { a: 1 }], [null, [], 'x', undefined]],
+    ['isInteger', isInteger, [0, -4], [1.5, NaN, Infinity, '3']],
+    ['isNonEmptyString', isNonEmptyString, ['a'], ['', null]],
+    ['isStringArray', isStringArray, [[], ['a', 'b']], [['a', 1], 'a']],
+    // Inclusive of its bound.
+    ['isIntegerAtLeast(1)', atLeastOne, [1, 9], [0, 1.5]],
+    // Inclusive at both ends.
+    ['isFiniteInRange(0, 100)', pct, [0, 100], [-0.1, 100.1, NaN, Infinity]],
+    ['isMemberOf(array)', isMemberOf(['a', 'b']), ['a'], ['c', 1]],
+    ['isMemberOf(set)', isMemberOf(new Set(['a', 'b'])), ['b'], [null]]
+  ];
+  for (const [name, predicate, accepted, rejected] of cases) {
+    for (const value of accepted) {
+      assert.ok(predicate(value), `${name} accepts ${JSON.stringify(value)}`);
+    }
+    for (const value of rejected) {
+      assert.ok(!predicate(value), `${name} rejects ${String(value)}`);
+    }
+  }
 });
 
 // ============================================================================
@@ -131,18 +97,7 @@ test('orNull skips both undefined and null', () => {
 // Message formatting
 // ============================================================================
 
-test('an empty path yields unprefixed field names', () => {
-  const errors: string[] = [];
-  checkFields(
-    { metadataVersion: 0 },
-    '',
-    { metadataVersion: required(isIntegerAtLeast(1), 'expected positive integer') },
-    errors
-  );
-  assert.deepEqual(errors, ['metadataVersion: expected positive integer']);
-});
-
-test('a nested path is joined with a dot', () => {
+test('a nested path is joined with a dot, and an empty path yields unprefixed field names', () => {
   const errors: string[] = [];
   checkFields(
     { wins: -1 },
@@ -150,15 +105,24 @@ test('a nested path is joined with a dot', () => {
     { wins: required(isIntegerAtLeast(0), 'expected a non-negative integer') },
     errors
   );
-  assert.deepEqual(errors, ['participants[3].record.wins: expected a non-negative integer']);
+  checkFields(
+    { metadataVersion: 0 },
+    '',
+    { metadataVersion: required(isIntegerAtLeast(1), 'expected positive integer') },
+    errors
+  );
+  assert.deepEqual(errors, [
+    'participants[3].record.wins: expected a non-negative integer',
+    'metadataVersion: expected positive integer'
+  ]);
 });
 
 // ============================================================================
 // Collection behaviour
 // ============================================================================
 
-test('every failing field is reported, in spec order, with no short circuit', () => {
-  const errors: string[] = [];
+test('every failing field is appended to prior errors, in spec order, with no short circuit', () => {
+  const errors = ['earlier: something else'];
   checkFields(
     { a: 1, b: 2, c: 'ok' },
     'root',
@@ -169,13 +133,7 @@ test('every failing field is reported, in spec order, with no short circuit', ()
     },
     errors
   );
-  assert.deepEqual(errors, ['root.a: expected string a', 'root.b: expected string b']);
-});
-
-test('checkFields appends rather than replacing prior errors', () => {
-  const errors = ['earlier: something else'];
-  checkFields({}, 'root', { name: required(isNonEmptyString, 'expected non-empty string') }, errors);
-  assert.deepEqual(errors, ['earlier: something else', 'root.name: expected non-empty string']);
+  assert.deepEqual(errors, ['earlier: something else', 'root.a: expected string a', 'root.b: expected string b']);
 });
 
 // ============================================================================
@@ -194,38 +152,22 @@ test('a non-array reports the array itself, not its elements', () => {
   assert.deepEqual(errors, ['root.icons: expected an array of non-empty strings']);
 });
 
-test('a bad element is reported by index', () => {
+test('a bad element is reported by index, and an empty array passes', () => {
   const errors: string[] = [];
-  checkArrayOf(
-    ['ok', '', 'fine', 7],
-    'root.icons',
-    'expected an array of non-empty strings',
-    required(isNonEmptyString, 'expected a non-empty string'),
-    errors
-  );
+  const element = required(isNonEmptyString, 'expected a non-empty string');
+  checkArrayOf(['ok', '', 'fine', 7], 'root.icons', 'expected an array of non-empty strings', element, errors);
+  checkArrayOf([], 'root.empty', 'expected an array', element, errors);
   assert.deepEqual(errors, [
     'root.icons[1]: expected a non-empty string',
     'root.icons[3]: expected a non-empty string'
   ]);
 });
 
-test('an empty array passes', () => {
-  const errors: string[] = [];
-  checkArrayOf(
-    [],
-    'root.icons',
-    'expected an array',
-    required(isNonEmptyString, 'expected a non-empty string'),
-    errors
-  );
-  assert.deepEqual(errors, []);
-});
-
 // ============================================================================
 // Value-derived messages
 // ============================================================================
 
-test('a function message tail is resolved against the value that failed', () => {
+test('a function message tail is resolved against the value that failed, per array element too', () => {
   const errors: string[] = [];
   checkFields(
     { outcome: 'nope' },
@@ -233,11 +175,6 @@ test('a function message tail is resolved against the value that failed', () => 
     { outcome: required(isMemberOf(['decided', 'tie']), v => `invalid outcome "${String(v)}"`) },
     errors
   );
-  assert.deepEqual(errors, ['matches[0].outcome: invalid outcome "nope"']);
-});
-
-test('a function message tail also resolves for array elements, per element', () => {
-  const errors: string[] = [];
   checkArrayOf(
     ['ok', 'bad'],
     'root.tags',
@@ -245,5 +182,5 @@ test('a function message tail also resolves for array elements, per element', ()
     required(isMemberOf(['ok']), v => `unknown value "${String(v)}"`),
     errors
   );
-  assert.deepEqual(errors, ['root.tags[1]: unknown value "bad"']);
+  assert.deepEqual(errors, ['matches[0].outcome: invalid outcome "nope"', 'root.tags[1]: unknown value "bad"']);
 });

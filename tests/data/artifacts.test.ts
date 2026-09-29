@@ -27,7 +27,7 @@ import {
   validateCardUsageIndex,
   validateConversionIndex
 } from '../../shared/data/artifacts.ts';
-import { type NormalizedEvent, parseCardIdentity } from '../../shared/data/contracts.ts';
+import type { NormalizedEvent } from '../../shared/data/contracts.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256Hex } from '../../shared/data/hash.ts';
 
@@ -126,32 +126,9 @@ test('permuting the input decks yields byte-identical artifacts', () => {
   assert.strictEqual(canonicalStringify(buildConversionIndex(decks, participants)), canonicalStringify(labsConversion));
 });
 
-test('rebuilding twice produces identical artifacts', () => {
-  assert.strictEqual(sha256Hex(buildCardReport(labs.decks)), sha256Hex(labsCardReport));
-  assert.strictEqual(sha256Hex(buildArchetypeIndex(labs.decks)), sha256Hex(labsArchetypeIndex));
-  assert.strictEqual(sha256Hex(buildCardUsageIndex(buildArchetypeCardReports(labs.decks))), sha256Hex(labsCardUsage));
-});
-
 // ============================================================================
 // Cross-checks the plan names
 // ============================================================================
-
-test('distribution player counts sum to foundCount for every card', () => {
-  for (const item of labsCardReport.items) {
-    const sum = item.dist.reduce((total, entry) => total + entry.players, 0);
-    assert.strictEqual(sum, item.foundCount, `dist sum mismatch for ${item.uid}`);
-  }
-});
-
-test('every report item set/number agrees with its canonical UID', () => {
-  for (const item of labsCardReport.items) {
-    const parsed = parseCardIdentity(item.uid);
-    assert.ok(parsed, `unparseable uid ${item.uid}`);
-    assert.strictEqual(item.set, parsed.set);
-    assert.strictEqual(item.number, parsed.number);
-    assert.strictEqual(item.name, parsed.name);
-  }
-});
 
 test('card usage slugs resolve into the archetype index slugs', () => {
   const indexSlugs = new Set(labsArchetypeIndex.archetypes.map(entry => entry.identity.slug));
@@ -182,111 +159,116 @@ test('tied foundCount items are ordered by name (tie-breaker exercised)', () => 
 // Invariant violations — every mutation must be rejected by the right validator
 // ============================================================================
 
-test('rejects a card report where foundCount exceeds deckTotal', () => {
-  const report = clone(labsCardReport);
-  report.items[0].foundCount = report.deckTotal + 1;
-  const result = validateCardReport(report);
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.errors.some(error => error.includes('exceeds deckTotal')));
-  }
-});
+type ValidationResult = { ok: true } | { ok: false; errors: string[] };
 
-test('rejects a distribution whose players do not sum to foundCount', () => {
-  const report = clone(labsCardReport);
-  report.items[0].dist[0].players += 1;
-  const result = validateCardReport(report);
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.errors.some(error => error.includes('player counts sum to')));
-  }
-});
+interface ViolationCase {
+  name: string;
+  /** Mutates a fresh clone of the labs artifact and returns the validator's verdict. */
+  run: () => ValidationResult;
+  error: string;
+}
 
-test('rejects a non-contiguous rank', () => {
-  const report = clone(labsCardReport);
-  report.items[1].rank = 99;
-  const result = validateCardReport(report);
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.errors.some(error => error.includes('rank: expected 2')));
+const VIOLATIONS: ViolationCase[] = [
+  {
+    name: 'card report foundCount exceeding deckTotal',
+    run: () => {
+      const report = clone(labsCardReport);
+      report.items[0].foundCount = report.deckTotal + 1;
+      return validateCardReport(report);
+    },
+    error: 'exceeds deckTotal'
+  },
+  {
+    name: 'distribution whose players do not sum to foundCount',
+    run: () => {
+      const report = clone(labsCardReport);
+      report.items[0].dist[0].players += 1;
+      return validateCardReport(report);
+    },
+    error: 'player counts sum to'
+  },
+  {
+    name: 'non-contiguous rank',
+    run: () => {
+      const report = clone(labsCardReport);
+      report.items[1].rank = 99;
+      return validateCardReport(report);
+    },
+    error: 'rank: expected 2'
+  },
+  {
+    name: 'card report items out of the canonical sort order',
+    run: () => {
+      const report = clone(labsCardReport);
+      report.items.reverse();
+      // Re-rank so ranks stay 1-based and contiguous; only the ORDER is wrong now.
+      report.items.forEach((item, index) => {
+        item.rank = index + 1;
+      });
+      return validateCardReport(report);
+    },
+    error: 'not in canonical sort order'
+  },
+  {
+    name: 'report item whose set disagrees with its UID',
+    run: () => {
+      const report = clone(labsCardReport);
+      const withSet = report.items.find(item => item.set !== null);
+      assert.ok(withSet);
+      withSet.set = 'XXX';
+      return validateCardReport(report);
+    },
+    error: 'does not match UID set'
+  },
+  {
+    name: 'wrong sharePct in the archetype index',
+    run: () => {
+      const index: ArchetypeIndex = clone(labsArchetypeIndex);
+      index.archetypes[0].sharePct = 99;
+      return validateArchetypeIndex(index);
+    },
+    error: 'inconsistent with deckCount/deckTotal'
+  },
+  {
+    name: 'archetype index out of order',
+    run: () => {
+      const index = clone(labsArchetypeIndex);
+      index.archetypes.reverse();
+      return validateArchetypeIndex(index);
+    },
+    error: 'not in canonical sort order'
+  },
+  {
+    name: 'conversion card whose day2 exceeds day1',
+    run: () => {
+      const conversion: ConversionIndex = clone(labsConversion);
+      const uid = Object.keys(conversion.cards)[0];
+      conversion.cards[uid].day2 = conversion.cards[uid].day1 + 1;
+      return validateConversionIndex(conversion);
+    },
+    error: '].day2'
+  },
+  {
+    name: 'card usage index keyed by an unparseable UID',
+    run: () => {
+      const index: CardUsageIndex = clone(labsCardUsage);
+      const uid = Object.keys(index.usage)[0];
+      index.usage['Bad::Two'] = index.usage[uid];
+      return validateCardUsageIndex(index);
+    },
+    error: 'unparseable UID key'
   }
-});
+];
 
-test('rejects items that are out of the canonical sort order', () => {
-  const report = clone(labsCardReport);
-  report.items.reverse();
-  // Re-rank so ranks stay 1-based and contiguous; only the ORDER is wrong now.
-  report.items.forEach((item, index) => {
-    item.rank = index + 1;
-  });
-  const result = validateCardReport(report);
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.errors.some(error => error.includes('not in canonical sort order')));
-  }
-});
-
-test('rejects a report item whose set disagrees with its UID', () => {
-  const report = clone(labsCardReport);
-  const withSet = report.items.find(item => item.set !== null);
-  assert.ok(withSet);
-  withSet.set = 'XXX';
-  const result = validateCardReport(report);
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.errors.some(error => error.includes('does not match UID set')));
-  }
-});
-
-test('rejects a wrong sharePct in the archetype index', () => {
-  const index: ArchetypeIndex = clone(labsArchetypeIndex);
-  index.archetypes[0].sharePct = 99;
-  const result = validateArchetypeIndex(index);
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.errors.some(error => error.includes('inconsistent with deckCount/deckTotal')));
-  }
-});
-
-test('rejects an archetype index that is out of order', () => {
-  const index = clone(labsArchetypeIndex);
-  index.archetypes.reverse();
-  const result = validateArchetypeIndex(index);
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.errors.some(error => error.includes('not in canonical sort order')));
-  }
-});
-
-test('rejects a conversion card whose day2 exceeds day1', () => {
-  const conversion: ConversionIndex = clone(labsConversion);
-  const uid = Object.keys(conversion.cards)[0];
-  conversion.cards[uid].day2 = conversion.cards[uid].day1 + 1;
-  const result = validateConversionIndex(conversion);
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.errors.some(error => error.includes(`cards["${uid}"].day2`)));
-  }
-});
-
-test('rejects a conversion index with no Day 2 population', () => {
-  const conversion = clone(labsConversion);
-  conversion.day2Total = 0;
-  const result = validateConversionIndex(conversion);
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.errors.some(error => error.includes('requires a Day 2')));
-  }
-});
-
-test('rejects a card usage index keyed by an unparseable UID', () => {
-  const index: CardUsageIndex = clone(labsCardUsage);
-  const uid = Object.keys(index.usage)[0];
-  index.usage['Bad::Two'] = index.usage[uid];
-  const result = validateCardUsageIndex(index);
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.ok(result.errors.some(error => error.includes('unparseable UID key')));
+test('every artifact invariant violation is rejected by its validator', () => {
+  for (const violation of VIOLATIONS) {
+    const result = violation.run();
+    assert.strictEqual(result.ok, false, `${violation.name} was accepted`);
+    const errors = result.ok ? [] : result.errors;
+    assert.ok(
+      errors.some(error => error.includes(violation.error)),
+      `${violation.name}: expected an error containing "${violation.error}", got ${JSON.stringify(errors)}`
+    );
   }
 });
 

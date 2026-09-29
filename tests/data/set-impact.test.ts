@@ -58,17 +58,17 @@ const credit = (uid: string, date: string) => {
   return attributor.credit(attributor.canonical(uid), date);
 };
 
-test('a staple is credited to whichever set is keeping it legal', () => {
-  assert.equal(credit('Ultra Ball::MEG::131', '2024-09-13')?.set, 'BRS');
-  assert.equal(credit('Ultra Ball::MEG::131', '2025-05-02')?.set, 'SVI');
-  assert.equal(credit('Ultra Ball::MEG::131', '2026-05-08')?.set, 'MEG');
-});
-
-test('only the printing that brought a card into Standard is new', () => {
+test('a staple is credited to whichever set keeps it legal, and only the set that brought it in is new', () => {
   // DEX predates the catalog's legality windows, so BRS introduced it.
-  assert.equal(credit('Ultra Ball::MEG::131', '2024-09-13')?.isNew, true);
-  assert.equal(credit('Ultra Ball::MEG::131', '2025-05-02')?.isNew, false);
-  assert.equal(credit('Ultra Ball::MEG::131', '2026-05-08')?.isNew, false);
+  const cases: Array<[string, string, boolean]> = [
+    ['2024-09-13', 'BRS', true],
+    ['2025-05-02', 'SVI', false],
+    ['2026-05-08', 'MEG', false]
+  ];
+  for (const [date, set, isNew] of cases) {
+    const credited = credit('Ultra Ball::MEG::131', date);
+    assert.deepEqual([credited?.set, credited?.isNew], [set, isNew], date);
+  }
 });
 
 test('a reprint of a card out of Standard counts as new', () => {

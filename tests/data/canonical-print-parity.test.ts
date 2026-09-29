@@ -9,7 +9,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import test from 'node:test';
 
 import { chooseCanonicalPrint, type PrintVariation } from '../../shared/data/canonicalPrint.ts';
 
@@ -44,9 +44,8 @@ const BOSSS_ORDERS_PRINTS: PrintVariation[] = [
   print('ASC', '256', 8.05)
 ];
 
-// Real print tables scraped from Limitless plus synthetic edge cases; the same
-// corpus the Python and .mjs unit tests exercise, chooser expectations agreed
-// with Reese.
+// Real print tables scraped from Limitless plus synthetic edge cases, chooser
+// expectations agreed with Reese.
 const CORPUS: Scenario[] = [
   {
     label: 'standard-legal filtering + oldest cheap Pokemon print',
@@ -64,21 +63,7 @@ const CORPUS: Scenario[] = [
     label: 'excludes rotated prints and secret rares',
     // Boss's Orders: everything before MEG has rotated; ASC 256 is a secret rare.
     cardName: "Boss's Orders",
-    variations: [
-      print('SP', '251', 13.57),
-      print('RCL', '154', 1.35),
-      print('RCL', '189', 67.04),
-      print('RCL', '200', 46.56),
-      print('SHF', '058', 0.31),
-      print('BRS', '132', 0.44),
-      print('LOR', 'TG24', 10.96),
-      print('PAL', '172', 0.32),
-      print('PAL', '248', 11.18),
-      print('PAL', '265', 19.95),
-      print('MEG', '114', 0.25),
-      print('ASC', '183', 0.23),
-      print('ASC', '256', 8.05)
-    ],
+    variations: BOSSS_ORDERS_PRINTS,
     expected: ['MEG', '114']
   },
   {
@@ -169,7 +154,7 @@ const CORPUS: Scenario[] = [
     expected: ['ASC', '042']
   },
   {
-    label: 'empty variation list yields null in both implementations',
+    label: 'empty variation list yields null',
     cardName: 'Nonexistent',
     variations: [],
     expected: null
@@ -281,23 +266,15 @@ const CORPUS: Scenario[] = [
   }
 ];
 
-describe('canonical-print scenario corpus', () => {
+test('every scenario in the canonical-print corpus picks its agreed print', () => {
   for (const scenario of CORPUS) {
-    it(scenario.label, () => {
-      const options = scenario.asOfDate ? { asOfDate: scenario.asOfDate } : undefined;
-      const result = chooseCanonicalPrint(scenario.variations, scenario.cardName, options);
-
-      if (scenario.expected === null) {
-        assert.equal(result, null);
-      } else {
-        assert.ok(result, 'expected a canonical print');
-        assert.deepEqual([result.set, result.number], scenario.expected);
-      }
-    });
+    const options = scenario.asOfDate ? { asOfDate: scenario.asOfDate } : undefined;
+    const result = chooseCanonicalPrint(scenario.variations, scenario.cardName, options);
+    assert.deepEqual(result ? [result.set, result.number] : null, scenario.expected, scenario.label);
   }
+});
 
-  it('rejects a malformed asOfDate', () => {
-    const variations = [print('ASC', '198', 0.43)];
-    assert.throws(() => chooseCanonicalPrint(variations, 'Poke Pad', { asOfDate: '2026/02/28' }));
-  });
+test('chooseCanonicalPrint rejects a malformed asOfDate', () => {
+  const variations = [print('ASC', '198', 0.43)];
+  assert.throws(() => chooseCanonicalPrint(variations, 'Poke Pad', { asOfDate: '2026/02/28' }));
 });

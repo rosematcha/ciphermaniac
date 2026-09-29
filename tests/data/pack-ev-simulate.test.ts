@@ -110,12 +110,10 @@ test('the roll picks the outcome, and the second roll picks the card', () => {
   // Same outcome, later card roll: the other half of the pool.
   const second = scripted([0, 0, 0, 0, 0, 0, 0, 0.99, 0]);
   assert.equal(second[3].card?.name, 'Lesser Chase');
-});
-
-test('a roll past the last named chance falls through to the remainder outcome', () => {
-  const pulls = openPack(preparePack(INPUTS), () => 0.999);
-  assert.equal(pulls[3].outcome, 'Reverse holo');
-  assert.equal(pulls[3].printing, 'reverse');
+  // A roll past the last named chance falls through to the remainder outcome.
+  const past = openPack(pack, () => 0.999);
+  assert.equal(past[3].outcome, 'Reverse holo');
+  assert.equal(past[3].printing, 'reverse');
 });
 
 test('sampled value converges on the EV table', () => {
@@ -144,7 +142,7 @@ const WITH_GOD_PACK = {
   ]
 };
 
-test('a god pack roll replaces every slot it does not keep', () => {
+test('a god pack roll replaces every slot it does not keep, and any other roll opens an ordinary pack', () => {
   const pack = preparePack(WITH_GOD_PACK);
   // First roll picks the special pack; the kept energy slot takes one roll,
   // then each random draw takes one.
@@ -161,11 +159,8 @@ test('a god pack roll replaces every slot it does not keep', () => {
     ]
   );
   assert.equal(pulls[1].notable, true);
-});
-
-test('an ordinary roll in a set with god packs opens an ordinary pack', () => {
-  const ordinary = openPack(preparePack(WITH_GOD_PACK), () => 0.99);
-  assert.equal(ordinary.length, 5);
+  // An ordinary roll in the same set opens an ordinary pack.
+  assert.equal(openPack(pack, () => 0.99).length, 5);
 });
 
 test('sampled value converges on the EV table with god packs in the mix', () => {

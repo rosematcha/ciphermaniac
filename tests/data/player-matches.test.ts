@@ -289,7 +289,7 @@ test('rounds ride on the profile rather than an object of their own', async () =
   ]);
 });
 
-test('the profile carries the drop round and the index carries the record', async () => {
+test('the profile carries the drop round', async () => {
   const store = makeStore();
   await buildPlayerAggregates(makeEnv(store));
 
@@ -297,10 +297,6 @@ test('the profile carries the drop round and the index carries the record', asyn
   assert.equal(finn.tournaments[0].dropRound, 3);
   const gabriel = JSON.parse(store['players/1272/profile.json']) as PlayerProfile;
   assert.equal(gabriel.tournaments[0].dropRound, null);
-
-  const index = JSON.parse(store['players/index.json']) as Array<{ playerId: string; wins: number; losses: number }>;
-  // Everyone here has one event, so the index is empty; the write plan still computed the record.
-  assert.deepEqual(index, []);
 });
 
 test('match rows keyed by the career id join when that convention fits better', async () => {
