@@ -4,6 +4,7 @@
  * the deck breakdown, who is waiting for a seat, and the .tdf export.
  */
 
+import { divisionLookup } from '../../shared/tournament/divisions.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -22,7 +23,6 @@ import {
   cutSplit,
   deckBreakdown,
   divisionHeading,
-  divisionLookup,
   eventStatus,
   filterMatches,
   matchHistory,
@@ -170,7 +170,18 @@ test('exports pending results into the .tdf, finalized once the event closes', (
   const written = tdfText({ tournament: CHALLENGE, pending, finished: false });
   assert.equal(parseTdf(written).pods[0]?.rounds[1]?.matches[1]?.outcome, 'p1');
   assert.match(written, /stage="4"/);
-  assert.match(tdfText({ tournament: CHALLENGE, pending: [], finished: true }), /<standings>/);
+  assert.throws(() => tdfText({ tournament: CHALLENGE, pending: [], finished: true }), /Enter all match results/);
+  const completed = round2.matches
+    .filter(m => m.outcome === 'pending')
+    .map(match => ({
+      pod: 'mixed' as const,
+      round: 2,
+      ...match,
+      p2: match.p2!,
+      outcome: 'p1' as const,
+      at: 0
+    }));
+  assert.match(tdfText({ tournament: CHALLENGE, pending: completed, finished: true }), /<standings>/);
   assert.equal(tdfFilename(CHALLENGE), 'Fixture Challenge Friends.tdf');
   assert.equal(tdfFilename(emptyTournament({ name: '???' }, true)), 'tournament.tdf');
 });

@@ -26,7 +26,8 @@ export const LIMITS = {
   rounds: 40,
   matchesPerRound: 2600,
   text: 200,
-  passthrough: 20_000
+  passthrough: 20_000,
+  standings: 1_000_000
 } as const;
 
 const OUTCOMES: readonly Outcome[] = ['pending', 'p1', 'p2', 'tie', 'double-loss', 'bye', 'loss'];
@@ -165,6 +166,11 @@ function record<T>(value: unknown, read: (entry: unknown) => T): Record<string, 
   return Object.fromEntries(entries.map(([key, entry]) => [str(key, 40), read(entry)]));
 }
 
+function savedStandings(value: unknown): { xml: string; state: string } {
+  const o = obj(value);
+  return { xml: str(o.xml, LIMITS.standings), state: str(o.state, LIMITS.standings) };
+}
+
 function passthrough(value: unknown): TdfPassthrough {
   const o = obj(value);
   return {
@@ -177,7 +183,8 @@ function passthrough(value: unknown): TdfPassthrough {
       const codes = obj(entry);
       return { type: str(codes.type, 10), stage: str(codes.stage, 10) };
     }),
-    finalsOptions: str(o.finalsOptions, LIMITS.passthrough)
+    finalsOptions: str(o.finalsOptions, LIMITS.passthrough),
+    ...(o.standings === undefined ? {} : { standings: savedStandings(o.standings) })
   };
 }
 

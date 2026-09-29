@@ -180,11 +180,16 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
 
 /** Close or reopen, and the .tdf: what an organizer does at the end of the day. */
 function Finish(props: { state: ManageState; manage: Manage }) {
-  const download = () =>
-    downloadBlob(
-      new Blob([tdfText({ ...props.manage, finished: props.manage.settings.finished })], { type: 'application/xml' }),
-      tdfFilename(props.manage.tournament)
-    );
+  const download = () => {
+    const { manage } = props;
+    void props.state.run(() => {
+      downloadBlob(
+        new Blob([tdfText({ ...manage, finished: manage.settings.finished })], { type: 'application/xml' }),
+        tdfFilename(manage.tournament)
+      );
+      return Promise.resolve(manage);
+    });
+  };
   function setFinished(finished: boolean) {
     const { code } = props.manage;
     void props.state.run(() => saveSettings(code, { finished }));

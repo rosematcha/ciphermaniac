@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tournament type="2" stage="4" version="1.82" gametype="TRADING_CARD_GAME" mode="CUSTOM">
+	<data>
+		<name>Fixture Tournament</name>
+		<id>26-09-000456</id>
+		<city>Springfield</city>
+		<state>AL</state>
+		<country>United States</country>
+		<roundtime>30</roundtime>
+		<finalsroundtime>75</finalsroundtime>
+		<organizer popid="7000001" name="Fixture Organizer"/>
+		<startdate>07/19/2026</startdate>
+		<lessswiss>false</lessswiss>
+		<autotablenumber>false</autotablenumber>
+		<overflowtablestart>0</overflowtablestart>
+	</data>
+	<timeelapsed>208</timeelapsed>
+	<players>
+		<player userid="7300001">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/1997</birthdate>
+			<starter>true</starter>
+			<creationdate>04/19/2026 14:48:23</creationdate>
+			<lastmodifieddate>04/19/2026 14:48:23</lastmodifieddate>
+		</player>
+		<player userid="7300002">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/2010</birthdate>
+			<starter>true</starter>
+			<creationdate>09/21/2025 13:03:35</creationdate>
+			<lastmodifieddate>04/19/2026 15:02:45</lastmodifieddate>
+		</player>
+		<player userid="7300003">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/1996</birthdate>
+			<starter>true</starter>
+			<creationdate>09/17/2025 18:36:30</creationdate>
+			<lastmodifieddate>09/24/2025 21:16:21</lastmodifieddate>
+		</player>
+		<player userid="7300004">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/1979</birthdate>
+			<starter>true</starter>
+			<creationdate>07/19/2026 15:03:16</creationdate>
+			<lastmodifieddate>07/19/2026 15:03:16</lastmodifieddate>
+		</player>
+		<player userid="7300005">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/2006</birthdate>
+			<starter>true</starter>
+			<creationdate>09/17/2025 19:40:50</creationdate>
+			<lastmodifieddate>09/17/2025 19:40:50</lastmodifieddate>
+		</player>
+		<player userid="7300006">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/1998</birthdate>
+			<starter>true</starter>
+			<creationdate>05/17/2026 14:53:45</creationdate>
+			<lastmodifieddate>07/01/2026 19:33:35</lastmodifieddate>
+		</player>
+	</players>
+	<pods>
+		<pod category="2" stage="0">
+			<poddata>
+				<startingtable>1</startingtable>
+				<playoff3rd4th>false</playoff3rd4th>
+				<subgroupcount>1</subgroupcount>
+				<additionalrounds>0</additionalrounds>
+				<blockedranges>
+				</blockedranges>
+			</poddata>
+			<subgroups>
+				<subgroup number="1">
+					<players>
+						<player userid="7300002" />
+						<player userid="7300004" />
+						<player userid="7300003" />
+						<player userid="7300001" />
+						<player userid="7300005" />
+						<player userid="7300006" />
+					</players>
+				</subgroup>
+			</subgroups>
+			<rounds>
+				<round number="1" type="2" stage="4" >
+					<timeleft>1616</timeleft>
+					<pairtime>07/19/2026 15:07:34</pairtime>
+					<starttime>07/19/2026 15:07:58</starttime>
+					<matches>
+						<match outcome="0">
+							<player1 userid="7300001"/>
+							<player2 userid="7300002"/>
+							<timestamp>07/19/2026 15:07:34</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="0">
+							<player1 userid="7300005"/>
+							<player2 userid="7300004"/>
+							<timestamp>07/19/2026 15:07:34</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="0">
+							<player1 userid="7300006"/>
+							<player2 userid="7300003"/>
+							<timestamp>07/19/2026 15:07:34</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+					</matches>
+				</round>
+			</rounds>
+		</pod>
+	</pods>
+	<finalsoptions>
+		<categorycut key="2">
+			<options>
+				<value>0</value>
+			</options>
+			<cut>0</cut>
+			<playercount>6</playercount>
+			<paired3rd4th>false</paired3rd4th>
+		</categorycut>
+	</finalsoptions>
+</tournament>

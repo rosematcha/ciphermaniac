@@ -3,6 +3,7 @@
  * invite link (`?invite=`), which adds them to the event's staff on the way in.
  */
 
+import { divisionLookup } from '../../../shared/tournament/divisions';
 import { A, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createSignal, For, lazy, Match, onCleanup, onMount, Show, Switch } from 'solid-js';
 import { activeIds } from '../../../shared/tournament/rounds';
@@ -12,7 +13,6 @@ import { Tabs } from '../../components/Tabs';
 import { joinStaff, type Manage, saveSettings } from '../../lib/tournament/api';
 import {
   clockLabel,
-  divisionLookup,
   namesById,
   type NextStep,
   nextStep,

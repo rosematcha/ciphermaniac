@@ -5,7 +5,7 @@
  * and splits Juniors, Seniors and Masters at fixed ages.
  */
 
-import type { Division } from './types.js';
+import type { Division, Tournament } from './types.js';
 
 /** The season (named for the year it ends) an event on this date belongs to. */
 export function seasonOf(date: Date): number {
@@ -55,4 +55,11 @@ const TOM_DATE_TIME_RE = /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/;
 
 export function isTomDateTime(value: unknown): value is string {
   return typeof value === 'string' && TOM_DATE_TIME_RE.test(value);
+}
+
+/** Every player's age division in the event's season. */
+export function divisionLookup(tournament: Tournament): (id: string) => Division {
+  const season = seasonOf(parseTomDate(tournament.info.startDate) ?? new Date());
+  const births = new Map(tournament.players.map(p => [p.id, p.birthDate]));
+  return id => divisionFor(births.get(id) ?? '', season);
 }

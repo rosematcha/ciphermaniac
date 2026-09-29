@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tournament type="2" stage="5" version="1.82" gametype="TRADING_CARD_GAME" mode="CUSTOM">
+	<data>
+		<name>Fixture Tournament</name>
+		<id>26-09-000456</id>
+		<city>Springfield</city>
+		<state>AL</state>
+		<country>United States</country>
+		<roundtime>30</roundtime>
+		<finalsroundtime>75</finalsroundtime>
+		<organizer popid="7000001" name="Fixture Organizer"/>
+		<startdate>07/22/2026</startdate>
+		<lessswiss>false</lessswiss>
+		<autotablenumber>false</autotablenumber>
+		<overflowtablestart>16</overflowtablestart>
+	</data>
+	<timeelapsed>12625</timeelapsed>
+	<players>
+		<player userid="7300001">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/2006</birthdate>
+			<starter>true</starter>
+			<creationdate>09/17/2025 19:40:50</creationdate>
+			<lastmodifieddate>09/17/2025 19:40:50</lastmodifieddate>
+		</player>
+		<player userid="7300002">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/1997</birthdate>
+			<starter>true</starter>
+			<creationdate>05/10/2026 15:07:35</creationdate>
+			<lastmodifieddate>05/10/2026 15:07:35</lastmodifieddate>
+		</player>
+		<player userid="7300003">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/2008</birthdate>
+			<starter>true</starter>
+			<creationdate>07/22/2026 19:34:58</creationdate>
+			<lastmodifieddate>07/22/2026 19:34:58</lastmodifieddate>
+		</player>
+		<player userid="7300004">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/1996</birthdate>
+			<starter>true</starter>
+			<creationdate>09/17/2025 18:36:30</creationdate>
+			<lastmodifieddate>09/24/2025 21:16:21</lastmodifieddate>
+		</player>
+		<player userid="7300005">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/2003</birthdate>
+			<starter>true</starter>
+			<creationdate>07/22/2026 19:34:02</creationdate>
+			<lastmodifieddate>07/22/2026 19:34:02</lastmodifieddate>
+		</player>
+		<player userid="7300006">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/2009</birthdate>
+			<starter>true</starter>
+			<creationdate>01/14/2026 18:48:49</creationdate>
+			<lastmodifieddate>01/28/2026 20:23:48</lastmodifieddate>
+		</player>
+		<player userid="7300007">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/2008</birthdate>
+			<starter>true</starter>
+			<creationdate>09/28/2025 16:32:14</creationdate>
+			<lastmodifieddate>09/28/2025 16:32:14</lastmodifieddate>
+		</player>
+		<player userid="7300008">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/1966</birthdate>
+			<starter>true</starter>
+			<creationdate>07/22/2026 19:11:14</creationdate>
+			<lastmodifieddate>07/22/2026 19:11:14</lastmodifieddate>
+		</player>
+		<player userid="7300009">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/1998</birthdate>
+			<starter>true</starter>
+			<creationdate>05/17/2026 14:53:45</creationdate>
+			<lastmodifieddate>07/01/2026 19:33:35</lastmodifieddate>
+		</player>
+		<player userid="7300010">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/1997</birthdate>
+			<starter>true</starter>
+			<creationdate>07/22/2026 19:08:34</creationdate>
+			<lastmodifieddate>07/22/2026 19:08:34</lastmodifieddate>
+		</player>
+		<player userid="7300011">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/1996</birthdate>
+			<starter>true</starter>
+			<dropped>
+				<status>1</status>
+				<round>2</round>
+				<timestamp>07/22/2026 20:56:36</timestamp>
+			</dropped>
+			<creationdate>09/21/2025 12:36:50</creationdate>
+			<lastmodifieddate>09/21/2025 12:36:50</lastmodifieddate>
+		</player>
+		<player userid="7300012">
+			<firstname>Player</firstname>
+			<lastname>Fixture</lastname>
+			<birthdate>02/27/2005</birthdate>
+			<starter>true</starter>
+			<creationdate>02/25/2026 19:55:11</creationdate>
+			<lastmodifieddate>03/04/2026 19:20:03</lastmodifieddate>
+		</player>
+	</players>
+	<pods>
+		<pod category="2" stage="0">
+			<poddata>
+				<startingtable>1</startingtable>
+				<playoff3rd4th>false</playoff3rd4th>
+				<subgroupcount>1</subgroupcount>
+				<additionalrounds>0</additionalrounds>
+				<blockedranges>
+				</blockedranges>
+			</poddata>
+			<subgroups>
+				<subgroup number="1">
+					<players>
+						<player userid="7300010" />
+						<player userid="7300002" />
+						<player userid="7300012" />
+						<player userid="7300009" />
+						<player userid="7300003" />
+						<player userid="7300011" />
+						<player userid="7300008" />
+						<player userid="7300005" />
+						<player userid="7300006" />
+						<player userid="7300001" />
+						<player userid="7300007" />
+						<player userid="7300004" />
+					</players>
+				</subgroup>
+			</subgroups>
+			<rounds>
+				<round number="1" type="2" stage="5" >
+					<timeleft>0</timeleft>
+					<pairtime>07/22/2026 19:38:45</pairtime>
+					<starttime>07/22/2026 19:43:42</starttime>
+					<matches>
+						<match outcome="1">
+							<player1 userid="7300007"/>
+							<player2 userid="7300009"/>
+							<timestamp>07/22/2026 20:04:05</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300003"/>
+							<player2 userid="7300006"/>
+							<timestamp>07/22/2026 20:04:03</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300005"/>
+							<player2 userid="7300011"/>
+							<timestamp>07/22/2026 20:19:34</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300002"/>
+							<player2 userid="7300004"/>
+							<timestamp>07/22/2026 20:06:23</timestamp>
+							<tablenumber>4</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="7300012"/>
+							<player2 userid="7300001"/>
+							<timestamp>07/22/2026 20:10:05</timestamp>
+							<tablenumber>5</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300010"/>
+							<player2 userid="7300008"/>
+							<timestamp>07/22/2026 20:06:46</timestamp>
+							<tablenumber>6</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="2" type="2" stage="5" >
+					<timeleft>0</timeleft>
+					<pairtime>07/22/2026 20:20:30</pairtime>
+					<starttime>07/22/2026 20:22:04</starttime>
+					<matches>
+						<match outcome="1">
+							<player1 userid="7300005"/>
+							<player2 userid="7300007"/>
+							<timestamp>07/22/2026 20:33:50</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300001"/>
+							<player2 userid="7300003"/>
+							<timestamp>07/22/2026 20:46:34</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="3">
+							<player1 userid="7300010"/>
+							<player2 userid="7300002"/>
+							<timestamp>07/22/2026 21:12:03</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="7300011"/>
+							<player2 userid="7300008"/>
+							<timestamp>07/22/2026 20:50:33</timestamp>
+							<tablenumber>4</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300012"/>
+							<player2 userid="7300004"/>
+							<timestamp>07/22/2026 20:45:58</timestamp>
+							<tablenumber>5</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300006"/>
+							<player2 userid="7300009"/>
+							<timestamp>07/22/2026 20:45:56</timestamp>
+							<tablenumber>6</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="3" type="2" stage="5" >
+					<timeleft>0</timeleft>
+					<pairtime>07/22/2026 21:12:48</pairtime>
+					<starttime>07/22/2026 21:14:28</starttime>
+					<matches>
+						<match outcome="5">
+							<player userid="7300004"/>
+							<timestamp>07/22/2026 21:12:48</timestamp>
+							<tablenumber>0</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300001"/>
+							<player2 userid="7300005"/>
+							<timestamp>07/22/2026 21:35:13</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300010"/>
+							<player2 userid="7300003"/>
+							<timestamp>07/22/2026 21:18:55</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="7300002"/>
+							<player2 userid="7300007"/>
+							<timestamp>07/22/2026 21:30:52</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300008"/>
+							<player2 userid="7300006"/>
+							<timestamp>07/22/2026 21:30:15</timestamp>
+							<tablenumber>4</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300012"/>
+							<player2 userid="7300009"/>
+							<timestamp>07/22/2026 21:41:13</timestamp>
+							<tablenumber>5</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="4" type="2" stage="8" >
+					<timeleft>0</timeleft>
+					<pairtime>07/22/2026 21:41:52</pairtime>
+					<starttime>07/22/2026 21:42:11</starttime>
+					<matches>
+						<match outcome="5">
+							<player userid="7300009"/>
+							<timestamp>07/22/2026 21:41:52</timestamp>
+							<tablenumber>0</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300001"/>
+							<player2 userid="7300010"/>
+							<timestamp>07/22/2026 22:19:37</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="7300012"/>
+							<player2 userid="7300007"/>
+							<timestamp>07/22/2026 22:03:13</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="7300005"/>
+							<player2 userid="7300008"/>
+							<timestamp>07/22/2026 22:21:13</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="7300002"/>
+							<player2 userid="7300006"/>
+							<timestamp>07/22/2026 22:08:53</timestamp>
+							<tablenumber>4</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="7300004"/>
+							<player2 userid="7300003"/>
+							<timestamp>07/22/2026 22:03:59</timestamp>
+							<tablenumber>5</tablenumber>
+						</match>
+					</matches>
+				</round>
+			</rounds>
+		</pod>
+	</pods>
+	<standings>
+		<pod category="2" type="finished">
+			<player id="7300001" place="1" />
+			<player id="7300012" place="2" />
+			<player id="7300008" place="3" />
+			<player id="7300010" place="4" />
+			<player id="7300005" place="5" />
+			<player id="7300003" place="6" />
+			<player id="7300007" place="7" />
+			<player id="7300006" place="8" />
+			<player id="7300002" place="9" />
+			<player id="7300009" place="10" />
+			<player id="7300004" place="11" />
+			<player id="7300011" place="12" />
+		</pod>
+		<pod category="2" type="dnf">
+		</pod>
+		<pod category="1" type="finished">
+		</pod>
+		<pod category="1" type="dnf">
+		</pod>
+		<pod category="0" type="finished">
+		</pod>
+		<pod category="0" type="dnf">
+		</pod>
+	</standings>
+	<finalsoptions>
+		<categorycut key="2">
+			<options>
+				<value>0</value>
+				<value>4</value>
+			</options>
+			<cut>0</cut>
+			<playercount>12</playercount>
+			<paired3rd4th>false</paired3rd4th>
+		</categorycut>
+	</finalsoptions>
+</tournament>
