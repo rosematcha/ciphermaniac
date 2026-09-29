@@ -1204,6 +1204,83 @@ tr.is-in .tm-place {
   }
 }
 
+/* ---------- Console decklists ---------- */
+.tm-bar-link {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+}
+.tm-list-sprite {
+  width: 52px;
+}
+.tm-lists td {
+  padding-block: 6px;
+}
+.tm-list-when {
+  width: 1%;
+}
+.tm-list-check {
+  min-width: 120px;
+}
+.tm-list-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-2) 0 var(--space-2) 52px;
+}
+.tm-list-head {
+  margin: 0 0 4px;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+.tm-list-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+@media (max-width: 640px) {
+  .tm-lists,
+  .tm-lists tbody,
+  .tm-lists tr,
+  .tm-lists td {
+    display: block;
+  }
+  .tm-lists thead {
+    display: none;
+  }
+  .tm-lists tr:not(.tm-expansion) {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 4px 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .tm-lists td {
+    padding: 0;
+    border: 0;
+    height: auto;
+  }
+  .tm-lists .tm-list-sprite {
+    grid-row: span 3;
+  }
+  .tm-lists .tm-list-when {
+    width: auto;
+  }
+  .tm-lists .tm-extra-col {
+    width: auto;
+  }
+  .tm-lists .tm-extra-col .tm-row-actions {
+    flex-wrap: wrap;
+    margin-left: -8px;
+  }
+  .tm-list-columns {
+    padding-left: 0;
+  }
+}
+
 /* ---------- Round header and clock ---------- */
 .tm-actions-bar:empty {
   display: none;
