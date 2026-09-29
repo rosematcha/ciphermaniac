@@ -11,7 +11,7 @@
  * to everyone; one note says so rather than every row.
  */
 
-import { For, Show } from 'solid-js';
+import { For, type JSX, Show } from 'solid-js';
 import { percentLabel, recordLabel, type Standing } from '../../../shared/tournament/standings';
 import type { Division, Pod, Tournament } from '../../../shared/tournament/types';
 import { cutSplit, divisionHeading, podStandings, recommendedStructure } from '../../lib/tournament/present';
@@ -30,6 +30,10 @@ interface TableProps {
   tiebreakers?: boolean;
   /** Hold back the decks of the players in a cut already under way. */
   hideCutDecks?: boolean;
+  /** The first box's bar: the public page's division switch and search. */
+  bar?: JSX.Element;
+  /** A muted line at the foot of each box. */
+  note?: string | undefined;
 }
 
 export function StandingsTable(props: TableProps) {
@@ -44,7 +48,7 @@ export function StandingsTable(props: TableProps) {
   const colspan = () => (props.tiebreakers ? 6 : 4);
   return (
     <For each={groups()}>
-      {group => {
+      {(group, index) => {
         const cut = () => cutOf(group.rows);
         const hidden = (row: Standing) => Boolean(props.hideCutDecks) && cutStarted() && row.place <= cut();
         const split = () => (props.tiebreakers && !cutStarted() ? cutSplit(group.rows, cut()) : null);
@@ -54,6 +58,9 @@ export function StandingsTable(props: TableProps) {
               <h2 class='tm-subhead'>{divisionHeading(group.division)}</h2>
             </Show>
             <div class='tm-box'>
+              <Show when={index() === 0 && props.bar}>
+                <div class='tm-box-bar'>{props.bar}</div>
+              </Show>
               <Show when={props.hideCutDecks && cutStarted() && cut() > 0}>
                 <div class='tm-box-bar'>
                   <span class='muted'>Top {cut()} decks hidden until the event ends</span>
@@ -116,6 +123,9 @@ export function StandingsTable(props: TableProps) {
                   </tbody>
                 </table>
               </div>
+              <Show when={props.note}>
+                <p class='tm-box-bar tm-box-note muted'>{props.note}</p>
+              </Show>
             </div>
           </section>
         );

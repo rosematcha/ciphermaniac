@@ -1,7 +1,9 @@
 /**
- * One player's event: record, tiebreakers and every match, opened from any
- * name on the public page. It is also where a player marks themselves, so
- * the page can lead with their table from then on.
+ * One player's event, opened from any name on the public page: where they
+ * stand, record, points and tiebreakers, then every round with the opponent,
+ * the opponent's record and the result. A side sheet on desktop, a bottom
+ * sheet on a phone. It is also where a player marks themselves, so the page
+ * can lead with their table from then on.
  */
 
 import { For, onCleanup, onMount, Show } from 'solid-js';
@@ -9,12 +11,17 @@ import { percentLabel, recordLabel, type Standing } from '../../../shared/tourna
 import type { Pod } from '../../../shared/tournament/types';
 import { matchHistory } from '../../lib/tournament/present';
 import { DeckIcons } from './DeckIcons';
+import { Squares } from './Squares';
 
 export function PlayerSheet(props: {
   playerId: string;
   pod: Pod;
   standing: Standing | undefined;
+  /** Where they stand, as "2nd in Masters". */
+  place: string;
   names: Map<string, string>;
+  /** Each player's record so far. */
+  records: Map<string, string>;
   decks: Record<string, string>;
   isMe: boolean;
   onMe: (id: string | null) => void;
@@ -39,10 +46,16 @@ export function PlayerSheet(props: {
       <div class='tm-scrim' aria-hidden='true' onClick={() => props.onClose()} />
       <div class='tm-sheet' role='dialog' aria-modal='true' aria-labelledby='tm-sheet-title'>
         <div class='tm-sheet-head'>
-          <h2 id='tm-sheet-title'>
-            <DeckIcons label={props.decks[props.playerId]} size={22} />
-            {props.names.get(props.playerId)}
-          </h2>
+          <div>
+            <h2 id='tm-sheet-title'>
+              <DeckIcons label={props.decks[props.playerId]} size={22} />
+              {props.names.get(props.playerId)}
+            </h2>
+            <p class='muted'>
+              {props.place}
+              <Show when={props.decks[props.playerId]}>{label => <> · {label()}</>}</Show>
+            </p>
+          </div>
           <button
             type='button'
             class='btn btn-ghost'
@@ -52,53 +65,70 @@ export function PlayerSheet(props: {
             Close
           </button>
         </div>
-        <Show when={props.decks[props.playerId]}>{label => <p class='muted'>{label()}</p>}</Show>
-        <Show when={props.standing}>
-          {row => (
-            <dl class='stat-band'>
-              <div class='stat-band-item'>
-                <dt>Record</dt>
-                <dd class='num'>{recordLabel(row().record)}</dd>
-              </div>
-              <div class='stat-band-item'>
-                <dt>Points</dt>
-                <dd class='num'>{row().points}</dd>
-              </div>
-              <div class='stat-band-item'>
-                <dt>OWP</dt>
-                <dd class='num'>{percentLabel(row().owp)}</dd>
-              </div>
-              <div class='stat-band-item'>
-                <dt>OOWP</dt>
-                <dd class='num'>{percentLabel(row().oowp)}</dd>
-              </div>
-            </dl>
-          )}
-        </Show>
-        <ol class='tm-history'>
-          <For each={history()}>
+        <div class='tm-sheet-body'>
+          <Show when={props.standing}>
             {row => (
-              <li>
-                <span class='tm-mark' classList={{ 'is-win': row.mark === 'W' }}>
-                  {row.mark || '·'}
-                </span>
-                <span class='muted num'>R{row.round}</span>
-                <Show
-                  when={row.opponent}
-                  fallback={<span class='muted'>{row.outcome === 'bye' ? 'Bye' : 'Missed round'}</span>}
-                >
-                  {opponent => (
-                    <button type='button' class='tm-seat-link' onClick={() => props.onPlayer(opponent())}>
-                      <DeckIcons label={props.decks[opponent()]} />
-                      <span class='tm-name'>{props.names.get(opponent())}</span>
-                    </button>
-                  )}
-                </Show>
-              </li>
+              <dl class='tm-sheet-stats'>
+                <div>
+                  <dd class='num'>{recordLabel(row().record)}</dd>
+                  <dt>Record</dt>
+                </div>
+                <div>
+                  <dd class='num'>{row().points}</dd>
+                  <dt>Points</dt>
+                </div>
+                <div>
+                  <dd class='num'>{percentLabel(row().owp)}</dd>
+                  <dt>OWP</dt>
+                </div>
+                <div>
+                  <dd class='num'>{percentLabel(row().oowp)}</dd>
+                  <dt>OOWP</dt>
+                </div>
+              </dl>
             )}
-          </For>
-        </ol>
-        <div class='tm-actions'>
+          </Show>
+          <div class='tm-box'>
+            <table class='data tm-history'>
+              <thead>
+                <tr>
+                  <th class='num tm-table-col'>Round</th>
+                  <th>Opponent</th>
+                  <th class='num'>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <For each={history()}>
+                  {row => (
+                    <tr>
+                      <td class='num muted-cell tm-table-col'>{row.round}</td>
+                      <td>
+                        <Show
+                          when={row.opponent}
+                          fallback={<span class='muted'>{row.outcome === 'bye' ? 'Bye' : 'Missed round'}</span>}
+                        >
+                          {opponent => (
+                            <button type='button' class='tm-seat-link' onClick={() => props.onPlayer(opponent())}>
+                              <DeckIcons label={props.decks[opponent()]} />
+                              <span class='tm-name'>{props.names.get(opponent())}</span>
+                              <span class='muted-cell tm-record'>{props.records.get(opponent()) ?? ''}</span>
+                            </button>
+                          )}
+                        </Show>
+                      </td>
+                      <td class='num'>
+                        <Show when={row.mark} fallback={<span class='muted-cell'>Table {row.table}</span>}>
+                          <Squares marks={[row.mark]} />
+                        </Show>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class='tm-sheet-foot'>
           <button
             type='button'
             class={props.isMe ? 'btn btn-ghost' : 'btn btn-primary'}

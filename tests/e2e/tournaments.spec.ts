@@ -67,10 +67,11 @@ test('the public page shows the round, finds a player and opens their history @m
     .click();
   const sheet = page.getByRole('dialog');
   await expect(sheet).toContainText('Hedy Lamarr');
-  await expect(sheet.locator('.tm-history li')).toHaveCount(2);
+  await expect(sheet.locator('.tm-history tbody tr')).toHaveCount(2);
   await sheet.getByRole('button', { name: 'This is me' }).click();
   await sheet.getByRole('button', { name: 'Close' }).click();
-  await expect(page.locator('.tm-you')).toContainText('Table 2');
+  await expect(page.locator('.tm-you-big')).toHaveText(/Table\s*2/);
+  await expect(page.locator('.tm-you-who')).toContainText('Hedy Lamarr');
   expect(errors).toEqual([]);
 });
 
@@ -114,4 +115,13 @@ test('before round 1 the big screen lists everyone registered, by last name', as
   await expect(page.locator('.tm-screen-registered li')).toHaveCount(players.length);
   await expect(page.locator('.tm-screen-name').first()).toHaveText('Frances Allen');
   await expect(page.locator('.tm-screen-round')).toHaveText(`${players.length} registered`);
+});
+
+test('before round 1 the public page lists everyone registered @mobile', async ({ page }) => {
+  const unpaired = { ...VIEW.tournament, pods: VIEW.tournament.pods.map(pod => ({ ...pod, rounds: [] })) };
+  await mockApi(page, { ...VIEW, tournament: unpaired });
+  await page.goto(`/t/${CODE}`);
+  const players = VIEW.tournament.players.filter(p => p.droppedAfter === null);
+  await expect(page.locator('.tm-status')).toHaveText(`Registration · ${players.length} players`);
+  await expect(page.locator('.tm-registered li')).toHaveCount(players.length);
 });
