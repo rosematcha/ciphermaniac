@@ -8,6 +8,7 @@
 import { createSignal } from 'solid-js';
 import type { Command } from '../../../shared/tournament/commands';
 import { ApiError, fetchManage, type Manage, sendCommand } from '../../lib/tournament/api';
+import { announceChange } from '../../lib/tournament/changes';
 
 export interface ManageState {
   data: () => Manage | null;
@@ -35,6 +36,10 @@ export function createManage(code: () => string): ManageState {
     const shown = data();
     if (!shown || shown.code !== next.code || next.version >= shown.version) {
       setData(next);
+    }
+    if (shown?.code === next.code && next.version > shown.version) {
+      // A big screen open in another tab looks again now rather than at its next poll.
+      announceChange(next.code, next.version);
     }
   }
 

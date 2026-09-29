@@ -14,6 +14,7 @@ import {
   POLL_MS,
   pollDelay,
   schedulePolls,
+  SCREEN_POLL_MS,
   type ViewSource
 } from '../../src/lib/tournament/viewPoll.ts';
 
@@ -75,7 +76,15 @@ test('staff ask the API on every poll and skip the published copy', async () => 
 test('a failed API look reports failure, and failures wait longer up to five minutes', async () => {
   const s = source({ shown: viewAt(3, 'owner'), api: () => Promise.reject(new Error('offline')) });
   assert.equal(await s.poll(), false);
-  assert.deepEqual([0, 1, 2, 10].map(pollDelay), [POLL_MS, 2 * POLL_MS, 4 * POLL_MS, 5 * 60_000]);
+  assert.deepEqual(
+    [0, 1, 2, 10].map(n => pollDelay(n)),
+    [POLL_MS, 2 * POLL_MS, 4 * POLL_MS, 5 * 60_000]
+  );
+  assert.deepEqual(
+    [0, 1, 10].map(n => pollDelay(n, SCREEN_POLL_MS)),
+    [SCREEN_POLL_MS, 2 * SCREEN_POLL_MS, 5 * 60_000],
+    'the big screen looks twice as often, and backs off to the same ceiling'
+  );
 });
 
 test('a page with no event yet loads it again instead of polling for changes', async () => {
@@ -167,6 +176,41 @@ test('a hidden page skips its look and keeps the schedule', async () => {
     mock.timers.tick(POLL_MS);
     await settle();
     assert.equal(looks, 1);
+    polls.stop();
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test('a look asked for while one is under way follows it at once', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    let finish: (ok: boolean) => void = () => undefined;
+    let looks = 0;
+    const polls = schedulePolls(
+      () => {
+        looks += 1;
+        return new Promise<boolean>(resolve => {
+          finish = resolve;
+        });
+      },
+      () => false,
+      SCREEN_POLL_MS
+    );
+    mock.timers.tick(SCREEN_POLL_MS);
+    assert.equal(looks, 1);
+    // The console changed the event after this look had already read it.
+    polls.soon();
+    finish(true);
+    await settle();
+    mock.timers.tick(0);
+    await settle();
+    assert.equal(looks, 2, 'the change is looked for without waiting out the schedule');
+    finish(true);
+    await settle();
+    mock.timers.tick(SCREEN_POLL_MS - 1);
+    await settle();
+    assert.equal(looks, 2, 'and the schedule carries on from there');
     polls.stop();
   } finally {
     mock.timers.reset();

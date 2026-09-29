@@ -14,13 +14,15 @@
 import type { PublishedView, TournamentView } from '../../../shared/tournament/view';
 
 export const POLL_MS = 10_000;
+/** The big screen's poll: it is what the room reads, and one per venue. */
+export const SCREEN_POLL_MS = 5_000;
 /** How often a player's page asks the API while the published file cannot be read. */
 export const FALLBACK_MS = 30_000;
 const MAX_WAIT_MS = 5 * 60_000;
 
-/** The wait before the next look, after `failures` failed looks in a row. */
-export function pollDelay(failures: number): number {
-  return Math.min(MAX_WAIT_MS, POLL_MS * 2 ** failures);
+/** The wait before the next look, after `failures` failed looks in a row, for a page that looks every `every` ms. */
+export function pollDelay(failures: number, every = POLL_MS): number {
+  return Math.min(MAX_WAIT_MS, every * 2 ** failures);
 }
 
 export interface ViewSource {
@@ -71,20 +73,24 @@ export function createViewPoll(source: ViewSource): () => Promise<boolean> {
 }
 
 export interface Polls {
-  /** Looks again now, forgetting past failures; a look already under way finishes and schedules the next. */
+  /**
+   * Looks again now, forgetting past failures. Asked during a look, the next
+   * one follows it at once, since the look under way may have read too early.
+   */
   soon: () => void;
   stop: () => void;
 }
 
 /**
- * Runs `poll` one look at a time, waiting `pollDelay(failures)` between
- * looks. A hidden page skips its look but keeps the schedule. Nothing is
- * scheduled once stopped, even by a look that was under way.
+ * Runs `poll` one look at a time, waiting `pollDelay(failures, every)`
+ * between looks. A hidden page skips its look but keeps the schedule. Nothing
+ * is scheduled once stopped, even by a look that was under way.
  */
-export function schedulePolls(poll: () => Promise<boolean>, hidden: () => boolean): Polls {
+export function schedulePolls(poll: () => Promise<boolean>, hidden: () => boolean, every = POLL_MS): Polls {
   let failures = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let running = false;
+  let again = false;
   let stopped = false;
 
   function wait(ms: number) {
@@ -99,15 +105,18 @@ export function schedulePolls(poll: () => Promise<boolean>, hidden: () => boolea
     }
     running = false;
     if (!stopped) {
-      wait(pollDelay(failures));
+      wait(again ? 0 : pollDelay(failures, every));
     }
+    again = false;
   }
 
-  wait(pollDelay(0));
+  wait(pollDelay(0, every));
   return {
     soon: () => {
       failures = 0;
-      if (!running && !stopped) {
+      if (running) {
+        again = true;
+      } else if (!stopped) {
         wait(0);
       }
     },
