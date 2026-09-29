@@ -9,28 +9,24 @@ const withTitle = (title: string, extra: Partial<typeof defaultConfig> = {}) => 
   title
 });
 
-test('a title without a manual break stays on one line', () => {
-  assert.deepEqual(titleLinesFor(withTitle('Team Rocket Honchkrow')), ['Team Rocket Honchkrow']);
-});
-
-test('/n breaks the title where it was typed', () => {
-  assert.deepEqual(titleLinesFor(withTitle("Team Rocket's /n Honchkrow")), ["Team Rocket's", 'Honchkrow']);
-});
-
-test('a backslash-n break works too', () => {
-  assert.deepEqual(titleLinesFor(withTitle("Team Rocket's \\n Honchkrow")), ["Team Rocket's", 'Honchkrow']);
-});
-
-test('more than one manual break is honoured', () => {
-  assert.deepEqual(titleLinesFor(withTitle('a /n b /n c')), ['a', 'b', 'c']);
-});
-
-test('a manual break overrides the duo auto-break', () => {
-  const config = withTitle('Team Rocket /n Honchkrow', { pokemon2: 'honchkrow', titleBreak: true });
-  assert.deepEqual(titleLinesFor(config), ['Team Rocket', 'Honchkrow']);
-});
-
-test('the duo auto-break still splits at the first space', () => {
-  const config = withTitle('Team Rocket Honchkrow', { pokemon2: 'honchkrow', titleBreak: true });
-  assert.deepEqual(titleLinesFor(config), ['Team', 'Rocket Honchkrow']);
+test('titles break at manual /n or \\n markers, else at the duo auto-break', () => {
+  const cases = [
+    ['a title without a manual break stays on one line', withTitle('Team Rocket Honchkrow'), ['Team Rocket Honchkrow']],
+    ['/n breaks the title where it was typed', withTitle("Team Rocket's /n Honchkrow"), ["Team Rocket's", 'Honchkrow']],
+    ['a backslash-n break works too', withTitle("Team Rocket's \\n Honchkrow"), ["Team Rocket's", 'Honchkrow']],
+    ['more than one manual break is honoured', withTitle('a /n b /n c'), ['a', 'b', 'c']],
+    [
+      'a manual break overrides the duo auto-break',
+      withTitle('Team Rocket /n Honchkrow', { pokemon2: 'honchkrow', titleBreak: true }),
+      ['Team Rocket', 'Honchkrow']
+    ],
+    [
+      'the duo auto-break still splits at the first space',
+      withTitle('Team Rocket Honchkrow', { pokemon2: 'honchkrow', titleBreak: true }),
+      ['Team', 'Rocket Honchkrow']
+    ]
+  ] as const;
+  for (const [name, config, expected] of cases) {
+    assert.deepEqual(titleLinesFor(config), expected, name);
+  }
 });

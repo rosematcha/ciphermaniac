@@ -50,17 +50,14 @@ test('outlines still print solid black', () => {
   assert.equal(buildToneCurve(hist, total)[18], 0);
 });
 
-test('dark and pale sprites land at a similar ink coverage', () => {
-  // Not identical: the gamma clamp deliberately lets a genuinely dark sprite
-  // stay the darker of the two rather than forcing every sprite to one density.
-  assert.ok(Math.abs(coverage(dark) - coverage(pale)) < 0.2);
-});
-
-test('both sprite kinds sit near half coverage', () => {
+test('dark and pale sprites both sit near half coverage, and near each other', () => {
   for (const sprite of [dark, pale]) {
     const c = coverage(sprite);
     assert.ok(c > 0.3 && c < 0.65, `coverage ${c.toFixed(2)} out of range`);
   }
+  // Not identical: the gamma clamp deliberately lets a genuinely dark sprite
+  // stay the darker of the two rather than forcing every sprite to one density.
+  assert.ok(Math.abs(coverage(dark) - coverage(pale)) < 0.2);
 });
 
 test('the curve is monotonic', () => {

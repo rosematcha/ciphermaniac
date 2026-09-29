@@ -17,13 +17,9 @@ function makeDeck(overrides: Partial<Deck>): Deck {
   } as Deck;
 }
 
-test('generateReportForFilters narrows decks by archetype and quantity', () => {
+test('generateReportForFilters aggregates exactly the subset filterDecks narrows to, by archetype and quantity', () => {
   const decks: Deck[] = [
-    makeDeck({
-      id: 'd1',
-      archetype: 'Mew',
-      cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 2 }]
-    }),
+    makeDeck({ id: 'd1', archetype: 'Mew', cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 2 }] }),
     makeDeck({
       id: 'd2',
       archetype: 'Mew',
@@ -32,24 +28,6 @@ test('generateReportForFilters narrows decks by archetype and quantity', () => {
         { name: 'Eevee', set: 'SVI', number: '8', count: 1 }
       ]
     }),
-    makeDeck({
-      id: 'd3',
-      archetype: 'Gardevoir',
-      cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 4 }]
-    })
-  ];
-
-  const report = generateReportForFilters(decks, 'Mew', [{ cardId: 'SVI~007', operator: '>=', count: 2 }]);
-
-  assert.equal(report.deckTotal, 1);
-  assert.ok(report.items.length > 0);
-  assert.equal(report.raw?.generatedClientSide, true);
-});
-
-test('filterDecks returns the same subset generateReportForFilters aggregates', () => {
-  const decks: Deck[] = [
-    makeDeck({ id: 'd1', archetype: 'Mew', cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 2 }] }),
-    makeDeck({ id: 'd2', archetype: 'Mew', cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 1 }] }),
     makeDeck({ id: 'd3', archetype: 'Gardevoir', cards: [{ name: 'Pikachu', set: 'SVI', number: '7', count: 4 }] })
   ];
   const filters = [{ cardId: 'SVI~007', operator: '>=', count: 2 }];
@@ -61,7 +39,9 @@ test('filterDecks returns the same subset generateReportForFilters aggregates', 
     matched.map(d => d.id),
     ['d1']
   );
-  assert.equal(matched.length, report.deckTotal);
+  assert.equal(report.deckTotal, 1);
+  assert.ok(report.items.length > 0);
+  assert.equal(report.raw?.generatedClientSide, true);
 });
 
 test('filterDecks with no filters returns every archetype deck', () => {

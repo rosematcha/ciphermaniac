@@ -22,19 +22,10 @@ test('with R2 available the first attempt is the WebP tier', () => {
   assert.ok(attempts[0].endsWith('_LG.webp'));
 });
 
-test('skipR2 removes the R2 attempt entirely', () => {
-  const attempts: string[] = buildAttempts('SVI', '181', 'lg', 'proxy');
-  assert.equal(
-    attempts.some(u => u.includes(R2)),
-    false,
-    'no attempt may hit R2 when the caller opted out'
-  );
-  assert.ok(attempts[0].startsWith(PROXY));
-});
-
-test('skipR2 preserves the size fallback chain and its order', () => {
+test('skipR2 removes the R2 attempt entirely and preserves the size fallback chain and its order', () => {
   const withR2 = buildAttempts('SVI', '181', 'lg', 'r2').filter(u => u.startsWith(PROXY));
   const without = buildAttempts('SVI', '181', 'lg', 'proxy');
+  // Every attempt is a proxy tier, so no attempt may hit R2 when the caller opted out.
   assert.deepEqual(without, withR2, 'dropping the R2 tier must not reorder or lose proxy tiers');
   assert.deepEqual(
     without.map(u => u.split('/')[2]),

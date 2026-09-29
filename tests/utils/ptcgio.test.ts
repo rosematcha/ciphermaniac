@@ -9,7 +9,13 @@ import assert from 'node:assert/strict';
 
 import { hasPtcgioImages, ptcgioImageUrls, ptcgioSrcset } from '../../src/utils/ptcgio.ts';
 
-test('vintage sets map to their pokemontcg.io ids with zero-stripped numbers', () => {
+/**
+ * The same-origin proxy leads because pokemontcg.io sends no
+ * `Access-Control-Allow-Origin`: a hotlinked scan paints, but the tier list's
+ * rasteriser cannot read it back, so every vintage print exported as an empty
+ * frame. The direct URLs stay on as a display fallback.
+ */
+test('vintage sets map to their pokemontcg.io ids with zero-stripped numbers, proxy first', () => {
   assert.deepStrictEqual(ptcgioImageUrls('BS', '094', 'lg'), [
     '/thumbnails/ptcgio/base1/94_hires',
     '/thumbnails/ptcgio/base1/94',
@@ -27,24 +33,6 @@ test('small tiers lead with the plain scan; case-insensitive set codes', () => {
     'https://images.pokemontcg.io/dp3/127.png',
     'https://images.pokemontcg.io/dp3/127_hires.png'
   ]);
-});
-
-/**
- * The proxy leads because pokemontcg.io sends no `Access-Control-Allow-Origin`:
- * a hotlinked scan paints, but the tier list's rasteriser cannot read it back,
- * so every vintage print exported as an empty frame. The direct URLs stay on as
- * a display fallback.
- */
-test('the same-origin proxy leads and the hotlinks trail it', () => {
-  const urls = ptcgioImageUrls('BS', '094', 'sm');
-  assert.ok(
-    urls.slice(0, 2).every(u => u.startsWith('/thumbnails/ptcgio/')),
-    urls.join(' ')
-  );
-  assert.ok(
-    urls.slice(2).every(u => u.startsWith('https://images.pokemontcg.io/')),
-    urls.join(' ')
-  );
 });
 
 test('promo numbers get their set prefix', () => {

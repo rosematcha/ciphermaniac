@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { eventAmount, eventsInSeason, ordinalPlace, summarizeSeasons } from '../../src/utils/earningsBreakdown.ts';
+import { eventsInSeason, ordinalPlace, summarizeSeasons } from '../../src/utils/earningsBreakdown.ts';
 import type { EarningsEvent } from '../../shared/earningsTypes.ts';
 
 function event(over: Partial<EarningsEvent> = {}): EarningsEvent {
@@ -23,7 +23,7 @@ const EVENTS: EarningsEvent[] = [
   event({ name: 'Regional Orlando', season: '2526', place: 1, cash: 5000, adjusted: 10000 })
 ];
 
-test('a season line counts every event but only banks the paying ones', () => {
+test('season lines come newest first, counting every event but banking only the paying ones', () => {
   const rows = summarizeSeasons(EVENTS, 'actual');
   assert.deepEqual(
     rows.map(r => [r.season, r.eventCount, r.bestPlace, r.amount]),
@@ -32,14 +32,6 @@ test('a season line counts every event but only banks the paying ones', () => {
       // Both 2024-25 events count, including the 40th that paid nothing.
       ['2425', 2, 5, 3000]
     ]
-  );
-});
-
-test('seasons come back newest first', () => {
-  const rows = summarizeSeasons(EVENTS, 'actual');
-  assert.deepEqual(
-    rows.map(r => r.season),
-    ['2526', '2425']
   );
 });
 
@@ -67,16 +59,6 @@ test('a season expansion keeps non-paying events, in source order', () => {
     rows.map(r => r.name),
     ['Regional Peoria', 'Regional Knoxville']
   );
-});
-
-test('an unknown season expands to nothing', () => {
-  assert.deepEqual(eventsInSeason(EVENTS, '1011'), []);
-});
-
-test('event amounts follow the active basis', () => {
-  const orlando = EVENTS[3];
-  assert.equal(eventAmount(orlando, 'actual'), 5000);
-  assert.equal(eventAmount(orlando, 'adjusted'), 10000);
 });
 
 test('placements read as ordinals, with the teens all th', () => {

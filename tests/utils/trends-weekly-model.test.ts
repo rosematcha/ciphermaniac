@@ -179,32 +179,24 @@ test('the window change skips missing days and needs two points', () => {
   assert.equal(windowChange([]), null);
 });
 
-test('the Y axis runs one whole percent past the data at each end', () => {
-  const axis = yAxisDomain([3.8, 7.2, 12]);
-  assert.equal(axis.min, 3);
-  assert.equal(axis.max, 13);
-  assert.deepEqual(axis.ticks, [3, 6, 8, 10, 13]);
-});
-
-test('a whole-number extreme still gets its percent of headroom', () => {
-  const axis = yAxisDomain([4, 12]);
-  assert.equal(axis.min, 3);
-  assert.equal(axis.max, 13);
-});
-
-test('the Y axis never runs below zero', () => {
-  assert.equal(yAxisDomain([0.4, 5]).min, 0);
-  assert.equal(yAxisDomain([0, 5]).min, 0);
-});
-
-test('a wide range steps in fives or tens and keeps the bounds', () => {
-  assert.deepEqual(yAxisDomain([2, 21.5]).ticks, [1, 5, 10, 15, 22]);
-  // 40 sits half a step under the 45 bound, close enough to crowd its label.
-  assert.deepEqual(yAxisDomain([1, 44]).ticks, [0, 10, 20, 30, 45]);
-});
-
-test('an empty chart falls back to zero to ten', () => {
-  assert.deepEqual(yAxisDomain([]), { min: 0, max: 10, ticks: [0, 2, 4, 6, 8, 10] });
+test('the Y axis runs one whole percent past the data at each end, never below zero, with readable ticks', () => {
+  const cases = [
+    ['one whole percent past the data', [3.8, 7.2, 12], { min: 3, max: 13, ticks: [3, 6, 8, 10, 13] }],
+    [
+      'a whole-number extreme still gets its percent of headroom',
+      [4, 12],
+      { min: 3, max: 13, ticks: [3, 6, 8, 10, 13] }
+    ],
+    ['never below zero', [0.4, 5], { min: 0, max: 6, ticks: [0, 2, 4, 6] }],
+    ['never below zero from zero', [0, 5], { min: 0, max: 6, ticks: [0, 2, 4, 6] }],
+    ['a wide range steps in fives and keeps the bounds', [2, 21.5], { min: 1, max: 22, ticks: [1, 5, 10, 15, 22] }],
+    // 40 sits half a step under the 45 bound, close enough to crowd its label.
+    ['a wider range steps in tens', [1, 44], { min: 0, max: 45, ticks: [0, 10, 20, 30, 45] }],
+    ['an empty chart falls back to zero to ten', [], { min: 0, max: 10, ticks: [0, 2, 4, 6, 8, 10] }]
+  ] as const;
+  for (const [name, values, expected] of cases) {
+    assert.deepEqual(yAxisDomain([...values]), expected, name);
+  }
 });
 
 test('figures format the way the tiles and rail print them', () => {

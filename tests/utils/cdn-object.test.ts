@@ -11,19 +11,15 @@ import { isMissingObject } from '../../scripts/cdnObject.ts';
 const SPACES_DENIED =
   '<?xml version="1.0" encoding="UTF-8"?><Error><Code>AccessDenied</Code><Message></Message><BucketName>limitlesstcg</BucketName></Error>';
 
-test('a 404 is missing', async () => {
-  assert.equal(await isMissingObject(new Response('', { status: 404 })), true);
-});
-
-test('a Spaces AccessDenied 403 is missing', async () => {
-  assert.equal(await isMissingObject(new Response(SPACES_DENIED, { status: 403 })), true);
-});
-
-test('any other 403 is not', async () => {
-  assert.equal(await isMissingObject(new Response('<html>Just a moment...</html>', { status: 403 })), false);
-});
-
-test('a success or server error is not', async () => {
-  assert.equal(await isMissingObject(new Response('png', { status: 200 })), false);
-  assert.equal(await isMissingObject(new Response('', { status: 503 })), false);
+test('a 404 or a Spaces AccessDenied 403 is missing; any other response is not', async () => {
+  const cases = [
+    ['a 404', new Response('', { status: 404 }), true],
+    ['a Spaces AccessDenied 403', new Response(SPACES_DENIED, { status: 403 }), true],
+    ['any other 403', new Response('<html>Just a moment...</html>', { status: 403 }), false],
+    ['a success', new Response('png', { status: 200 }), false],
+    ['a server error', new Response('', { status: 503 }), false]
+  ] as const;
+  for (const [name, response, missing] of cases) {
+    assert.equal(await isMissingObject(response), missing, name);
+  }
 });

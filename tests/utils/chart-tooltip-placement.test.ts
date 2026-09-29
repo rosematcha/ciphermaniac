@@ -15,28 +15,20 @@ import { placeChartTooltip } from '../../src/pages/trendsPage/chartTooltip.ts';
 const BOX = 800;
 const TIP = 260;
 
-test('sits to the right of the crosshair while there is room', () => {
-  assert.equal(placeChartTooltip(100, TIP, BOX), 112);
-  // Still fits on the right past the midpoint — the old midpoint rule flipped here.
-  assert.equal(placeChartTooltip(500, TIP, BOX), 512);
-});
-
-test('flips to the left only once the right side would overflow', () => {
-  // 528 + 12 + 260 = 800 exactly: the last position that fits on the right.
-  assert.equal(placeChartTooltip(528, TIP, BOX), 540);
-  assert.equal(placeChartTooltip(529, TIP, BOX), 529 - 12 - TIP);
-});
-
-test('a crosshair at the far edge keeps the tooltip inside the box', () => {
-  const left = placeChartTooltip(BOX, TIP, BOX);
-  assert.ok(left >= 0 && left + TIP <= BOX);
-});
-
-test('near the left edge it stays on the right rather than going negative', () => {
-  assert.equal(placeChartTooltip(0, TIP, BOX), 12);
-  assert.equal(placeChartTooltip(4, TIP, BOX), 16);
-});
-
-test('a tooltip wider than the chart clamps to the left edge', () => {
-  assert.equal(placeChartTooltip(120, 400, 300), 0);
+test('sits right of the crosshair while it fits, flips left only on overflow, and stays inside the box', () => {
+  const cases = [
+    ['room on the right', 100, TIP, BOX, 112],
+    // Still fits on the right past the midpoint — the old midpoint rule flipped here.
+    ['past the midpoint', 500, TIP, BOX, 512],
+    // 528 + 12 + 260 = 800 exactly: the last position that fits on the right.
+    ['the last position that fits on the right', 528, TIP, BOX, 540],
+    ['one pixel further flips left', 529, TIP, BOX, 529 - 12 - TIP],
+    ['a crosshair at the far edge', BOX, TIP, BOX, BOX - 12 - TIP],
+    ['near the left edge it stays right rather than going negative', 0, TIP, BOX, 12],
+    ['a few pixels in from the left edge', 4, TIP, BOX, 16],
+    ['a tooltip wider than the chart clamps to the left edge', 120, 400, 300, 0]
+  ] as const;
+  for (const [name, x, tip, box, expected] of cases) {
+    assert.equal(placeChartTooltip(x, tip, box), expected, name);
+  }
 });

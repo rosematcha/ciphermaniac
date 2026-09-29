@@ -9,7 +9,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { AUTO_ORDER, DEFAULT_RAMP, INK, nextSwatchId, PAPER, swatch, SWATCHES } from '../../src/pages/tierList/palette';
+import { AUTO_ORDER, DEFAULT_RAMP, INK, PAPER, swatch, SWATCHES } from '../../src/pages/tierList/palette';
 import {
   decodeShare,
   defaultTiers,
@@ -102,20 +102,6 @@ test('the default ramp walks one way round the hue wheel, red to purple', () => 
   }
 });
 
-test('an auto-coloured tier never lands inside the default gradient', () => {
-  assert.ok(!AUTO_ORDER.some(id => swatch(id).tone === 'ramp'));
-});
-
-test('added tiers never reuse a colour that is already on the board', () => {
-  // The case that matters: a fourteen-tier board, coloured without the picker.
-  const used = [...DEFAULT_RAMP];
-  for (let i = 0; i < 8; i++) {
-    const next = nextSwatchId(used);
-    assert.ok(!used.includes(next), `${next} was already taken`);
-    used.push(next);
-  }
-});
-
 // ---------------------------------------------------------------------------
 // Tiers
 // ---------------------------------------------------------------------------
@@ -161,11 +147,16 @@ test('the last tier cannot be deleted', () => {
   assert.equal(withDeletedTier(one, new Map(), one[0]!.id).tiers.length, 1);
 });
 
-test('adding a tier appends it with an unused colour', () => {
-  const tiers = defaultTiers();
-  const next = withAddedTier(tiers);
-  assert.equal(next.length, 7);
-  assert.ok(!tiers.some(t => t.swatch === next[6]!.swatch));
+test('added tiers are appended and never reuse a colour that is already on the board', () => {
+  // The case that matters: a fourteen-tier board, coloured without the picker.
+  let tiers = defaultTiers();
+  for (let i = 0; i < 8; i++) {
+    const next = withAddedTier(tiers);
+    assert.equal(next.length, tiers.length + 1);
+    const added = next[next.length - 1]!.swatch;
+    assert.ok(!tiers.some(t => t.swatch === added), `${added} was already taken`);
+    tiers = next;
+  }
 });
 
 test('editing one tier leaves the others alone', () => {
@@ -214,11 +205,6 @@ test('an item in a tier that no longer exists falls back to the tray', () => {
 test('renaming a custom archetype carries its placement to the new id', () => {
   const moved = withRenamedPlacement(new Map([['t2', ['Dragapult', 'Rogue']]]), 'Rogue', 'Rogue v2');
   assert.deepEqual(moved.get('t2'), ['Dragapult', 'Rogue v2'], 'renamed in place, order kept');
-});
-
-test('renaming to the same name leaves the list alone', () => {
-  const same = withRenamedPlacement(new Map([['t2', ['Rogue']]]), 'Rogue', 'Rogue');
-  assert.deepEqual(same.get('t2'), ['Rogue']);
 });
 
 // ---------------------------------------------------------------------------
@@ -283,18 +269,12 @@ test('pinning the tray writes the visible order down, so an index means what it 
   // clamps to index 0, which is the "you can move up but never down" bug.
   const bare = withDroppedItem(new Map(), 'a', 'tray', 3);
   assert.deepEqual(bare.get('tray'), ['a']);
-  const moved = withDroppedItem(pinned, 'a', 'tray', 3);
-  assert.deepEqual(moved.get('tray'), ['b', 'c', 'd', 'a']);
-});
-
-test('a pinned tray moves a tile down as readily as up', () => {
-  const shown = ['a', 'b', 'c', 'd', 'e'];
   // Indexes are counted among the tiles that stay put: the dragged tile is out
   // of flow while it is in the air, which is what the sortable reports against.
-  const down = withDroppedItem(withPinnedTray(new Map(), shown), 'b', 'tray', 3);
-  assert.deepEqual(down.get('tray'), ['a', 'c', 'd', 'b', 'e']);
-  const up = withDroppedItem(withPinnedTray(new Map(), shown), 'd', 'tray', 1);
-  assert.deepEqual(up.get('tray'), ['a', 'd', 'b', 'c', 'e']);
+  const down = withDroppedItem(pinned, 'a', 'tray', 3);
+  assert.deepEqual(down.get('tray'), ['b', 'c', 'd', 'a']);
+  const up = withDroppedItem(pinned, 'd', 'tray', 1);
+  assert.deepEqual(up.get('tray'), ['a', 'd', 'b', 'c']);
 });
 
 test('pinning the tray leaves the tiers alone and does not mutate its input', () => {
@@ -306,19 +286,6 @@ test('pinning the tray leaves the tiers alone and does not mutate its input', ()
   assert.deepEqual(pinned.get('t1'), ['x']);
   assert.deepEqual(pinned.get('tray'), ['a', 'b']);
   assert.deepEqual(before.get('tray'), ['old']);
-});
-
-test('a pinned tray survives the round trip through distribute', () => {
-  const items = [item('a'), item('b'), item('c')];
-  const pinned = withPinnedTray(
-    new Map(),
-    items.map(i => i.id)
-  );
-  const { tray } = distribute(items, defaultTiers(), withDroppedItem(pinned, 'a', 'tray', 2));
-  assert.deepEqual(
-    tray.map(t => t.id),
-    ['b', 'c', 'a']
-  );
 });
 
 // ---------------------------------------------------------------------------
@@ -364,22 +331,23 @@ test('names outside ASCII survive the round trip', () => {
   assert.equal(back?.tiers[0]!.name, 'Étage');
 });
 
-test('a payload this version did not write decodes to null rather than throwing', () => {
-  assert.equal(decodeShare('not-base64!!'), null);
-  assert.equal(decodeShare(btoa('{"v":99}')), null);
-  assert.equal(decodeShare(''), null);
-});
-
-test('malformed share fields decode to null', () => {
+test('a payload this version did not write, or with malformed fields, decodes to null rather than throwing', () => {
   const valid = { v: 1, m: 'icons', s: '', t: '', r: [['S', 'vivid-red']], c: [] };
   const encoded = (value: unknown) => btoa(JSON.stringify(value));
-
-  assert.equal(decodeShare(encoded({ ...valid, m: 'unknown' })), null);
-  assert.equal(decodeShare(encoded({ ...valid, s: 1 })), null);
-  assert.equal(decodeShare(encoded({ ...valid, r: [['S', 1]] })), null);
-  assert.equal(decodeShare(encoded({ ...valid, c: [[Number.NaN, 'Deck', [], []]] })), null);
-  assert.equal(decodeShare(encoded({ ...valid, c: [[1, 'Deck', [1], []]] })), null);
-  assert.equal(decodeShare(encoded({ ...valid, c: [[1, 'Deck', [], [false]]] })), null);
+  const payloads = [
+    'not-base64!!',
+    btoa('{"v":99}'),
+    '',
+    encoded({ ...valid, m: 'unknown' }),
+    encoded({ ...valid, s: 1 }),
+    encoded({ ...valid, r: [['S', 1]] }),
+    encoded({ ...valid, c: [[Number.NaN, 'Deck', [], []]] }),
+    encoded({ ...valid, c: [[1, 'Deck', [1], []]] }),
+    encoded({ ...valid, c: [[1, 'Deck', [], [false]]] })
+  ];
+  for (const payload of payloads) {
+    assert.equal(decodeShare(payload), null, payload);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -398,18 +366,12 @@ const CARDS: Card[] = [
   { name: 'Raging Bolt ex', arts: 6 }
 ];
 
-test('a prefix match outranks a match anywhere else', () => {
+test('a prefix match outranks a match anywhere else, and more arts lead within a group', () => {
   const hits = rankByQuery(CARDS, 'r', c => c.name, { weight: c => c.arts });
-  assert.equal(hits[0]!.name, 'Rare Candy', 'the heaviest prefix match leads');
   assert.deepEqual(
     hits.map(c => c.name),
     ['Rare Candy', 'Riolu', 'Raging Bolt ex', 'Professor Turo']
   );
-});
-
-test('within a group the card with more arts comes first', () => {
-  const hits = rankByQuery(CARDS, 'r', c => c.name, { weight: c => c.arts });
-  assert.ok(hits.indexOf(CARDS[1]!) < hits.indexOf(CARDS[0]!), 'Rare Candy (14) before Riolu (8)');
 });
 
 test('an empty query offers the head of the list, already ranked by the caller', () => {

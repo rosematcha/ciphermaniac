@@ -11,16 +11,18 @@ import { isJokeArt, isJokeDay, isJokeMode, jokeArtNumber } from '../../src/lib/j
 /** Local-time constructor: the joke is keyed to the visitor's own calendar. */
 const at = (month: number, day: number) => new Date(2026, month - 1, day, 12, 0, 0);
 
-test('the day is September 10th in local time, and nothing either side of it', () => {
-  assert.equal(isJokeDay(at(9, 10)), true);
-  assert.equal(isJokeDay(at(9, 9)), false);
-  assert.equal(isJokeDay(at(9, 11)), false);
-  assert.equal(isJokeDay(at(10, 10)), false);
-});
-
-test("the day covers the visitor's whole local day, midnight to midnight", () => {
-  assert.equal(isJokeDay(new Date(2026, 8, 10, 0, 0, 0)), true);
-  assert.equal(isJokeDay(new Date(2026, 8, 10, 23, 59, 59)), true);
+test("the day is September 10th, the visitor's whole local day, and nothing either side of it", () => {
+  const cases = [
+    [at(9, 10), true],
+    [new Date(2026, 8, 10, 0, 0, 0), true],
+    [new Date(2026, 8, 10, 23, 59, 59), true],
+    [at(9, 9), false],
+    [at(9, 11), false],
+    [at(10, 10), false]
+  ] as const;
+  for (const [date, expected] of cases) {
+    assert.equal(isJokeDay(date), expected, date.toString());
+  }
 });
 
 test('?j=1 turns the arts on out of season, and any other value does not', () => {

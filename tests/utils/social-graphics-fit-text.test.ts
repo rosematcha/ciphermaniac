@@ -14,25 +14,21 @@ import { type FitBounds, fitFontSize, type FitTarget, fitToWidth } from '../../s
 
 const HERO = { max: 42, min: 24 };
 
-test('a name that already fits keeps the design size', () => {
-  assert.equal(fitFontSize(HERO, 400, 260), 42);
-  assert.equal(fitFontSize(HERO, 400, 400), 42);
-});
-
-test('a long name scales down in proportion to the overflow', () => {
-  // Half again as wide as the box, so roughly two thirds of the size.
-  assert.equal(fitFontSize(HERO, 400, 600), 28);
-});
-
-test('shrinking stops at the floor', () => {
-  assert.equal(fitFontSize(HERO, 400, 4000), 24);
-});
-
-test('an unmeasurable element keeps the design size', () => {
-  // A hidden or not-yet-laid-out element measures zero; sizing off that would
-  // pin every name to the floor.
-  assert.equal(fitFontSize(HERO, 0, 0), 42);
-  assert.equal(fitFontSize(HERO, 0, 300), 42);
+test('the fitted size is the design size, scaled down by the overflow to a floor', () => {
+  const cases = [
+    ['a name that fits', 400, 260, 42],
+    ['a name that exactly fits', 400, 400, 42],
+    // Half again as wide as the box, so roughly two thirds of the size.
+    ['a long name scales in proportion', 400, 600, 28],
+    ['shrinking stops at the floor', 400, 4000, 24],
+    // A hidden or not-yet-laid-out element measures zero; sizing off that would
+    // pin every name to the floor.
+    ['an unmeasurable element', 0, 0, 42],
+    ['an unmeasurable box', 0, 300, 42]
+  ] as const;
+  for (const [name, box, content, expected] of cases) {
+    assert.equal(fitFontSize(HERO, box, content), expected, name);
+  }
 });
 
 /**
@@ -59,17 +55,11 @@ test('a short name is rendered at the design size', () => {
   assert.equal(target.size, 42);
 });
 
-test('a long name is shrunk until it fits its box', () => {
-  const target = fakeTarget(400, 0.5, 30);
-  const size = fitToWidth(target, HERO);
-  assert.ok(size < 42, `expected a shrink, got ${size}`);
-  assert.ok(target.scrollWidth <= target.clientWidth, 'the fitted name should no longer overflow');
-});
-
 test('a name that overflows after the proportional step keeps stepping down', () => {
   // The fudge makes the linear estimate land one pixel too wide.
   const target = fakeTarget(400, 0.5, 30, 3);
-  fitToWidth(target, HERO);
+  const size = fitToWidth(target, HERO);
+  assert.ok(size < 42, `expected a shrink, got ${size}`);
   assert.ok(target.scrollWidth <= target.clientWidth, 'the fitted name should no longer overflow');
 });
 

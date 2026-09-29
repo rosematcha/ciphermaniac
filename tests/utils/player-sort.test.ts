@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { PlayerIndexSlimEntry } from '../../shared/playerTypes.ts';
-import { comparePlayers, RATE_MIN_EVENTS, sortValue, winPct } from '../../src/utils/playerSort.ts';
+import { comparePlayers, RATE_MIN_EVENTS, winPct } from '../../src/utils/playerSort.ts';
 
 let nextId = 0;
 function player(over: Partial<PlayerIndexSlimEntry>): PlayerIndexSlimEntry {
@@ -25,15 +25,6 @@ test('winPct is wins over decided games, 0 when unplayed', () => {
   assert.equal(winPct(player({ wins: 0, losses: 0 })), 0);
 });
 
-test('sortValue maps each key to its column', () => {
-  const p = player({ eventCount: 10, day2s: 7, topCuts: 4, tournamentWins: 2, wins: 30, losses: 10 });
-  assert.equal(sortValue(p, 'events'), 10);
-  assert.equal(sortValue(p, 'day2s'), 7);
-  assert.equal(sortValue(p, 'topCuts'), 4);
-  assert.equal(sortValue(p, 'titles'), 2);
-  assert.equal(sortValue(p, 'winPct'), 0.75);
-});
-
 test('top cuts and titles sort by value and tiebreak on events, then name', () => {
   const many = player({ name: 'Amy', topCuts: 9, tournamentWins: 1, eventCount: 20 });
   const few = player({ name: 'Bo', topCuts: 2, tournamentWins: 1, eventCount: 30 });
@@ -44,11 +35,19 @@ test('top cuts and titles sort by value and tiebreak on events, then name', () =
   assert.deepEqual([many, few].sort(comparePlayers('titles', 'asc')), [few, many]);
 });
 
-test('count sorts order by value in both directions', () => {
-  const low = player({ day2s: 2 });
-  const high = player({ day2s: 9 });
-  assert.deepEqual([low, high].sort(comparePlayers('day2s', 'desc')), [high, low]);
-  assert.deepEqual([high, low].sort(comparePlayers('day2s', 'asc')), [low, high]);
+test('count sorts order by their own column in both directions', () => {
+  // Only the sorted column differs, so a key read from the wrong column ties
+  // and falls to the tiebreak, which cannot satisfy both directions.
+  const cases = [
+    ['day2s', { day2s: 2 }, { day2s: 9 }],
+    ['events', { eventCount: 2 }, { eventCount: 9 }]
+  ] as const;
+  for (const [key, lowOver, highOver] of cases) {
+    const low = player({ name: 'Same', ...lowOver });
+    const high = player({ name: 'Same', ...highOver });
+    assert.deepEqual([low, high].sort(comparePlayers(key, 'desc')), [high, low], key);
+    assert.deepEqual([high, low].sort(comparePlayers(key, 'asc')), [low, high], key);
+  }
 });
 
 test('win rate sort ranks small samples below qualified players', () => {

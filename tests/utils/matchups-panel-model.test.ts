@@ -31,26 +31,30 @@ import type { CardItem } from '../../src/types/index.ts';
 // Formatters
 // ---------------------------------------------------------------------------
 
-test('win rate rounds to a whole percent', () => {
-  assert.equal(formatWinRate(52.4), '52%');
-  assert.equal(formatWinRate(0), '0%');
-  assert.equal(formatWinRate(100), '100%');
+test('win rate rounds to a whole percent, and an absent one reads as an em dash, not zero', () => {
+  const cases = [
+    [52.4, '52%'],
+    [0, '0%'],
+    [100, '100%'],
+    [null, '—'],
+    [Number.NaN, '—'],
+    [Infinity, '—']
+  ] as const;
+  for (const [input, expected] of cases) {
+    assert.equal(formatWinRate(input), expected, String(input));
+  }
 });
 
-test('an absent win rate reads as an em dash, not zero', () => {
-  assert.equal(formatWinRate(null), '—');
-  assert.equal(formatWinRate(Number.NaN), '—');
-  assert.equal(formatWinRate(Infinity), '—');
-});
-
-test('field share keeps one decimal', () => {
-  assert.equal(formatShare(12.74), '12.7%');
-  assert.equal(formatShare(0), '0.0%');
-});
-
-test('an unknown field share renders nothing rather than a placeholder', () => {
-  assert.equal(formatShare(null), '');
-  assert.equal(formatShare(Number.NaN), '');
+test('field share keeps one decimal, and an unknown one renders nothing rather than a placeholder', () => {
+  const cases = [
+    [12.74, '12.7%'],
+    [0, '0.0%'],
+    [null, ''],
+    [Number.NaN, '']
+  ] as const;
+  for (const [input, expected] of cases) {
+    assert.equal(formatShare(input), expected, String(input));
+  }
 });
 
 test('lens deltas are signed percentage points', () => {
@@ -84,21 +88,21 @@ test('lens delta sorting uses the conservative bound', () => {
 // Tone — the non-colour encoding
 // ---------------------------------------------------------------------------
 
-test('tone splits at the exact 50% center', () => {
-  assert.equal(toneClass(51), 'mu-pos');
-  assert.equal(toneClass(49), 'mu-neg');
-  assert.equal(toneClass(50), 'mu-flat');
-});
-
-test('a win rate within half a point of even reads neutral', () => {
-  assert.equal(toneClass(50.4), 'mu-flat');
-  assert.equal(toneClass(49.6), 'mu-flat');
-  assert.equal(toneClass(50.6), 'mu-pos');
-});
-
-test('no data reads neutral rather than unfavored', () => {
-  assert.equal(toneClass(null), 'mu-flat');
-  assert.equal(toneClass(Number.NaN), 'mu-flat');
+test('tone splits at 50%, reading neutral within half a point of even and with no data', () => {
+  const cases = [
+    [51, 'mu-pos'],
+    [49, 'mu-neg'],
+    [50, 'mu-flat'],
+    [50.4, 'mu-flat'],
+    [49.6, 'mu-flat'],
+    [50.6, 'mu-pos'],
+    // No data reads neutral rather than unfavored.
+    [null, 'mu-flat'],
+    [Number.NaN, 'mu-flat']
+  ] as const;
+  for (const [input, expected] of cases) {
+    assert.equal(toneClass(input), expected, String(input));
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -114,7 +118,7 @@ const rows = [
 const quality = (r: (typeof rows)[number]) => r.wr;
 const prevalence = (r: (typeof rows)[number]) => r.share;
 
-test('win-rate mode orders by quality, descending', () => {
+test('win-rate mode orders by quality, descending, with no-data matchups last', () => {
   assert.deepEqual(
     sortByMode(rows, 'winRate', quality, prevalence).map(r => r.name),
     ['a', 'd', 'b', 'c']
@@ -126,10 +130,6 @@ test('prevalence mode leads with field share', () => {
     sortByMode(rows, 'prevalence', quality, prevalence).map(r => r.name),
     ['c', 'b', 'd', 'a']
   );
-});
-
-test('a matchup with no data never displaces one with data', () => {
-  assert.equal(sortByMode(rows, 'winRate', quality, prevalence).at(-1)?.name, 'c');
 });
 
 test('quality breaks ties in prevalence mode', () => {
@@ -156,20 +156,18 @@ test('sorting does not mutate the input', () => {
 // Key matchup tally
 // ---------------------------------------------------------------------------
 
-test('key matchups tally into favored, even, and unfavored', () => {
+test('key matchups tally into favored, even, and unfavored, with the even band 48 to 52 inclusive', () => {
+  // The band matches the overview's.
   const stats = summarizeKeyMatchups([
     { winRate: 60, prevalence: 10 },
     { winRate: 50, prevalence: 20 },
-    { winRate: 40, prevalence: 5 }
+    { winRate: 40, prevalence: 5 },
+    { winRate: 48 },
+    { winRate: 52 },
+    { winRate: 53 },
+    { winRate: 47 }
   ]);
-  assert.deepEqual(stats, { favored: 1, even: 1, unfavored: 1, shareSum: 35 });
-});
-
-test('the even band is 48 to 52 inclusive, matching the overview', () => {
-  const stats = summarizeKeyMatchups([{ winRate: 48 }, { winRate: 52 }, { winRate: 53 }, { winRate: 47 }]);
-  assert.equal(stats.even, 2);
-  assert.equal(stats.favored, 1);
-  assert.equal(stats.unfavored, 1);
+  assert.deepEqual(stats, { favored: 2, even: 3, unfavored: 2, shareSum: 35 });
 });
 
 test('a missing field share contributes nothing to the sum', () => {
@@ -192,9 +190,10 @@ const items = [
   { name: 'No Printing', pct: 50 }
 ] as CardItem[];
 
-test('only cards inside the tech band earn a chip', () => {
+test('only printed cards inside the tech band earn a chip', () => {
   // Below the band there are too few decks to compare with and without; at or
-  // above it the "without" side is a handful of stragglers.
+  // above it the "without" side is a handful of stragglers. 'No Printing' sits
+  // in the band but has nothing for the lens to match on.
   assert.deepEqual(
     suggestTechCards(items, null).map(t => t.name),
     ['Tech A', 'Tech B']
@@ -218,13 +217,6 @@ test('chips are ordered most-played first', () => {
   assert.deepEqual(
     suggestTechCards(shuffled, null).map(t => t.name),
     ['Tech A', 'Tech B']
-  );
-});
-
-test('a card with no printing cannot become a chip', () => {
-  assert.equal(
-    suggestTechCards(items, null).some(t => t.name === 'No Printing'),
-    false
   );
 });
 
