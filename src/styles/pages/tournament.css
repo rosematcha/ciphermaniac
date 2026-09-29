@@ -983,6 +983,122 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
 }
 
+/* ---------- Players ---------- */
+/* The add form is one row of fields with the button at its end. */
+.tm-add-row {
+  align-items: end;
+  gap: var(--space-3);
+}
+.tm-add-row .tm-field {
+  flex: 1 1 160px;
+}
+.tm-add-row .tm-field:nth-child(n + 3) {
+  flex: 0 1 140px;
+}
+.tm-who {
+  min-width: 180px;
+}
+.tm-who-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-weight: 600;
+}
+.tm-who-sub {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.data tr.is-dropped .tm-who-name {
+  color: var(--muted);
+  font-weight: 500;
+}
+.tm-rounds-cell {
+  width: 1%;
+  white-space: nowrap;
+}
+.tm-deck-cell.is-off {
+  min-width: 200px;
+}
+.tm-deck-off {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+.tm-th-note {
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+}
+.tm-th-link {
+  padding: 0;
+  font: inherit;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tm-roster td {
+  padding-block: 6px;
+}
+@media (max-width: 640px) {
+  .tm-add-row .tm-field,
+  .tm-add-row .tm-field:nth-child(n + 3) {
+    flex: 1 1 100%;
+  }
+  .tm-add-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  /* A player restacks to a card of lines under a finger: the name and table,
+     then the rounds and deck, then the actions; nothing hides off the side. */
+  .tm-roster,
+  .tm-roster tbody,
+  .tm-roster tr,
+  .tm-roster td {
+    display: block;
+  }
+  .tm-roster thead {
+    display: none;
+  }
+  .tm-roster tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .tm-roster td {
+    padding: 0;
+    border: 0;
+    height: auto;
+    min-width: 0;
+  }
+  .tm-roster .tm-who {
+    grid-column: 1;
+  }
+  .tm-roster .tm-fixed-cell {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .tm-roster .tm-rounds-cell,
+  .tm-roster .tm-deck-cell,
+  .tm-roster .tm-extra-col {
+    grid-column: 1 / -1;
+  }
+  .tm-roster .tm-extra-col {
+    width: auto;
+  }
+  .tm-roster .tm-extra-col .tm-row-actions {
+    flex-wrap: wrap;
+    margin-left: -8px;
+  }
+}
+
 /* ---------- Round header and clock ---------- */
 .tm-actions-bar:empty {
   display: none;
