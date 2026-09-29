@@ -6,6 +6,7 @@
 import {
   decksEnabled,
   decksVisible,
+  isSanctioned,
   publicDecks,
   publicDivisions,
   publicPending,
@@ -69,7 +70,7 @@ export function publicViewOf(row: TournamentRow): PublishedView {
     mode: row.mode,
     version: row.version,
     updatedAt: row.updatedAt,
-    tournament: publicTournament(row.tournament, row.keys),
+    tournament: publicTournament(row.tournament, row.keys, !isSanctioned(row)),
     pending: publicPending(row.pending, row.keys),
     reports: publicReports(row.reports, row.keys),
     divisions: publicDivisions(row.tournament, row.keys, Date.now()),

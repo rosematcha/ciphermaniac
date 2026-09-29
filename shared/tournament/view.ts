@@ -9,6 +9,7 @@
  */
 
 import { divisionFor, parseTomDate, seasonOf } from './divisions.js';
+import { shortLastNames } from './identify.js';
 import type { PlayerReport } from './reports.js';
 import type { Division, Outcome, Pod, PodCategory, Tournament } from './types.js';
 
@@ -163,9 +164,14 @@ function eventSeason(tournament: Tournament, now: number): number {
   return seasonOf(parseTomDate(tournament.info.startDate) ?? new Date(now));
 }
 
-/** The public copy of the tournament, its players under `keys` (see assignKeys). */
-export function publicTournament(tournament: Tournament, keys: Record<string, string>): Tournament {
+/**
+ * The public copy of the tournament, its players under `keys` (see
+ * assignKeys). With `shortNames`, as for an unsanctioned event, last names go
+ * out shortened (see shortLastNames).
+ */
+export function publicTournament(tournament: Tournament, keys: Record<string, string>, shortNames = false): Tournament {
   const key = (id: string) => keys[id] ?? id;
+  const short = shortNames ? shortLastNames(tournament.players) : null;
   const pods: Pod[] = tournament.pods.map(pod => ({
     ...pod,
     playerIds: pod.playerIds.map(key),
@@ -183,6 +189,7 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
     players: tournament.players.map(player => ({
       ...player,
       id: key(player.id),
+      lastName: short?.get(player.id) ?? player.lastName,
       birthDate: '',
       created: '',
       modified: ''

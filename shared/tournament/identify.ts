@@ -58,3 +58,30 @@ export function decklistPlayer(
   const matches = named(named(tournament.players, 'lastName', list.lastName), 'firstName', list.firstName);
   return matches.length === 1 ? matches[0]?.id : undefined;
 }
+
+/** Whether `name` starts with `prefix`, as nameKey compares them. */
+const startsAs = (name: string, prefix: string) => nameKey(name).startsWith(nameKey(prefix));
+
+/** The shortest start of `last` that no rival's last name shares; the whole name when none will do. */
+function shortest(last: string, rivals: readonly Player[]): string {
+  for (let n = 1; n < last.length; n += 1) {
+    if (!rivals.some(rival => startsAs(rival.lastName, last.slice(0, n)))) {
+      return `${last.slice(0, n)}.`;
+    }
+  }
+  return last;
+}
+
+/**
+ * Each player's last name as an unsanctioned event shows it publicly: an
+ * initial, or as many letters as it takes to tell two players with the same
+ * first name apart (Ash Ket. and Ash Kel.).
+ */
+export function shortLastNames(players: readonly Player[]): Map<string, string> {
+  return new Map(
+    players.map(player => {
+      const rivals = players.filter(o => o !== player && nameKey(o.firstName) === nameKey(player.firstName));
+      return [player.id, shortest(player.lastName.trim(), rivals)];
+    })
+  );
+}

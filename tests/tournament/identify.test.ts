@@ -8,7 +8,7 @@ import test from 'node:test';
 
 import { applyCommand, type Command } from '../../shared/tournament/commands.ts';
 import { emptyTournament } from '../../shared/tournament/create.ts';
-import { decklistPlayer, findPlayer, nameKey } from '../../shared/tournament/identify.ts';
+import { decklistPlayer, findPlayer, nameKey, shortLastNames } from '../../shared/tournament/identify.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
 import type { Tournament } from '../../shared/tournament/types.ts';
 
@@ -52,4 +52,31 @@ test('a decklist finds its player by Player ID, or unsanctioned by full name', (
   assert.equal(decklistPlayer(t, { ...list, firstName: 'Blue' }, false), undefined);
   assert.equal(decklistPlayer(t, { ...list, popId: '103' }, true), '103');
   assert.equal(decklistPlayer(t, list, true), undefined);
+});
+
+test('an unsanctioned event shows last names as short as they can be and still tell players apart', () => {
+  const players = [
+    ['1', 'Ash', 'Ketchum'],
+    ['2', 'Ash', 'Keller'],
+    ['3', 'Misty', 'Waterflower'],
+    ['4', 'Brock', 'Kettle'],
+    ['5', 'Gary', 'Oak'],
+    ['6', 'Gary', 'Oak'],
+    ['7', 'Ash', 'Ke']
+  ].map(([id, firstName, lastName]) => ({
+    id: id as string,
+    firstName: firstName as string,
+    lastName: lastName as string,
+    birthDate: '',
+    droppedAfter: null,
+    created: '',
+    modified: ''
+  }));
+  const short = shortLastNames(players);
+  assert.equal(short.get('1'), 'Ket.');
+  assert.equal(short.get('2'), 'Kel.');
+  assert.equal(short.get('3'), 'W.');
+  assert.equal(short.get('4'), 'K.', 'only players with the same first name compete');
+  assert.equal(short.get('5'), 'Oak', 'two identical names keep the whole name');
+  assert.equal(short.get('7'), 'Ke', 'a name no prefix can separate is shown whole');
 });

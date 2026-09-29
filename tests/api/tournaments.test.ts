@@ -894,6 +894,10 @@ test('an unsanctioned event finds players by last name, asking for a first name 
   assert.equal(shared.json.ambiguous, true);
   assert.equal((await playerSays(code, { lastName: 'Oak', firstName: 'Daisy' })).status, 200);
   assert.equal((await playerSays(code, { lastName: 'Ketchum' })).status, 200);
+  const shown = (await view(code)).tournament.players.map(p => `${p.firstName} ${p.lastName}`).sort();
+  assert.deepEqual(shown, ['Ash K.', 'Daisy O.', 'Gary O.'], 'the public sees initials, never full last names');
+  const staffNames = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  assert.ok(staffNames.tournament.players.some((p: { lastName: string }) => p.lastName === 'Ketchum'));
   const byId = await playerSays(code, { popId: '9000000000' });
   assert.equal(byId.status, 404, 'no Player IDs at an unsanctioned event');
 });
