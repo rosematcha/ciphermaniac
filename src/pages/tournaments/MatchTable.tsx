@@ -1,9 +1,10 @@
 /**
  * A round's tables, for players and staff alike. Each row is the table, the
- * two players with the record they brought into the round, and the result
- * once there is one (`results`, for players). Staff get the result controls: a player's name is the
- * button that reports them as the winner, which is one press at the table
- * (and a second to confirm, see RoundPanel).
+ * two players with the record they brought into the round, and a mark by
+ * whoever won. The public page adds whether each table is still playing, on
+ * desktop. Staff get the result controls: a player's name is the button that
+ * reports them as the winner, which is one press at the table (and a second
+ * to confirm, see RoundPanel).
  *
  * On a phone a row restacks into two lines under its table number, as the
  * site's live pairings do, so the opponent is never behind a sideways scroll.
@@ -13,7 +14,7 @@ import { For, type JSX, Show } from 'solid-js';
 import { sortMatches } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import type { PendingResult } from '../../../shared/tournament/view';
-import { recordsBefore, RESULT_WORDS, seatMark, shownOutcome } from '../../lib/tournament/present';
+import { recordsBefore, seatMark, shownOutcome } from '../../lib/tournament/present';
 import { DeckIcons } from './DeckIcons';
 
 export interface MatchTableProps {
@@ -30,8 +31,8 @@ export interface MatchTableProps {
   onReport?: (match: Match, outcome: Outcome) => void;
   /** Staff only: the extra cell at the end of each row. */
   extra?: (match: Match) => JSX.Element;
-  /** Players: a Result column with each table's result, or that it is still playing. */
-  results?: boolean;
+  /** The public page: a Status column saying which tables are still playing, on desktop. */
+  status?: boolean;
   /** Players picked for a swap, drawn as selected. */
   selected?: ReadonlySet<string>;
   /** The result waiting for staff to confirm it, previewed in its row. */
@@ -57,7 +58,7 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
     <>
       <DeckIcons label={props.decks[playerId]} />
       <span class='tm-name'>{name(playerId)}</span>
-      <Show when={props.results && playerId === props.me}>
+      <Show when={props.status && playerId === props.me}>
         <span class='tm-flag is-you'>You</span>
       </Show>
       <span class='muted-cell tm-record'>{props.records.get(playerId) ?? ''}</span>
@@ -104,16 +105,17 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
 }
 
 /**
- * The result as players read it: the score once there is one, "Playing" until
- * then. A bye or a missed round already says so in the opponent's place.
+ * Whether a table is still playing, for whoever is watching the room: the
+ * marks beside the names already say who won. A bye or a missed round has
+ * nothing to play.
  */
-function ResultCell(props: MatchTableProps & { match: Match }) {
+function StatusCell(props: MatchTableProps & { match: Match }) {
   const outcome = () => shownOutcome(props.match, props.pod, props.round, props.pending).outcome;
   return (
-    <td class='tm-result-col'>
+    <td class='tm-status-col'>
       <Show when={props.match.p2 !== null}>
-        <Show when={outcome() !== 'pending'} fallback={<span class='muted-cell'>Playing</span>}>
-          <strong>{RESULT_WORDS[outcome()]}</strong>
+        <Show when={outcome() === 'pending'} fallback={<span class='muted-cell'>Done</span>}>
+          <strong>Playing</strong>
         </Show>
       </Show>
     </td>
@@ -132,8 +134,11 @@ export function MatchTable(props: MatchTableProps) {
             <th class='num tm-table-col'>Table</th>
             <th>Player</th>
             <th>Opponent</th>
-            <Show when={props.extra || props.results}>
+            <Show when={props.extra}>
               <th class='tm-extra-col'>Result</th>
+            </Show>
+            <Show when={props.status && !props.extra}>
+              <th class='tm-status-col'>Status</th>
             </Show>
           </tr>
         </thead>
@@ -145,8 +150,8 @@ export function MatchTable(props: MatchTableProps) {
                 <SeatCell {...props} match={match} seat={1} records={records()} />
                 <SeatCell {...props} match={match} seat={2} records={records()} />
                 <Show when={props.extra}>{extra => <td class='tm-extra-col'>{extra()(match)}</td>}</Show>
-                <Show when={props.results && !props.extra}>
-                  <ResultCell {...props} match={match} />
+                <Show when={props.status && !props.extra}>
+                  <StatusCell {...props} match={match} />
                 </Show>
               </tr>
             )}

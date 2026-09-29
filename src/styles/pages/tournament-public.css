@@ -147,13 +147,13 @@
 .tm-public .tm-details {
   margin: 0 0 var(--space-4);
 }
-.tm-result-col {
+.tm-status-col {
   white-space: nowrap;
 }
-/* The desktop table is fixed-layout, so the result column needs its own width. */
+/* The desktop table is fixed-layout, so the status column needs its own width. */
 @media (min-width: 641px) {
-  .tm-public-pairings th.tm-extra-col {
-    width: 110px;
+  .tm-public-pairings th.tm-status-col {
+    width: 96px;
   }
 }
 
@@ -293,18 +293,19 @@
 }
 
 /* ---------- Pairings on a phone ----------
-   One pairing per row: the table number, the two players on two lines with
-   their records beside their names, and the result at the right, centred
-   across both lines. The whole row shades for the viewer's own table. */
+   One pairing per row: the table number by the first player, the two players
+   on two lines with their records beside their names. Whether a table is
+   still playing is for the room, on desktop. The whole row shades for the
+   viewer's own table. */
 @media (max-width: 640px) {
   .tm-public-pairings .tm-box-bar > * {
     flex: 1 1 100%;
   }
   .tm-public-pairings .data tr {
-    grid-template-columns: 26px minmax(0, 1fr) auto;
+    grid-template-columns: 26px minmax(0, 1fr);
     grid-template-areas:
-      'table player result'
-      'table opponent result';
+      'table player'
+      'table opponent';
     column-gap: 8px;
     padding: 4px 14px;
   }
@@ -314,9 +315,8 @@
     font-weight: 600;
     color: var(--fg);
   }
-  .tm-public-pairings .data td.tm-result-col {
-    grid-area: result;
-    text-align: right;
+  .tm-public-pairings .data td.tm-status-col {
+    display: none;
   }
   .tm-public-pairings .tm-seat-link {
     flex: 0 1 auto;

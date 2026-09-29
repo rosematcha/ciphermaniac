@@ -302,7 +302,7 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
               pending={props.view.pending}
               me={me()}
               onPlayer={setOpen}
-              results
+              status
             />
           </Show>
           <Show when={started() && deckNote(props.view)}>
