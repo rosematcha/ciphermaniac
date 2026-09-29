@@ -1,7 +1,8 @@
 /**
  * The console's event tab: details players see, round times, deck
- * visibility, whether the event is sanctioned, staff invites, the .tdf
- * export, and closing or deleting the event.
+ * visibility, whether the event is sanctioned and whether players report
+ * their own results, staff invites, the .tdf export, and closing or deleting
+ * the event.
  */
 
 import { useNavigate } from '@solidjs/router';
@@ -34,8 +35,10 @@ function SettingsForm(props: { state: ManageState; manage: Manage }) {
   function save(event: Event) {
     event.preventDefault();
     const { code } = props.manage;
-    const { details, format, startsAt, deckVisibility, sanctioned } = draft();
-    void props.state.run(() => saveSettings(code, { details, format, startsAt, deckVisibility, sanctioned }));
+    const { details, format, startsAt, deckVisibility, sanctioned, playerReporting } = draft();
+    void props.state.run(() =>
+      saveSettings(code, { details, format, startsAt, deckVisibility, sanctioned, playerReporting })
+    );
   }
   return (
     <form class='tm-form' onSubmit={save}>
@@ -78,6 +81,14 @@ function SettingsForm(props: { state: ManageState; manage: Manage }) {
           <span>Sanctioned: players give their Player ID and birth year, and the event exports a .tdf</span>
         </label>
       </Show>
+      <label class='tm-check'>
+        <input
+          type='checkbox'
+          checked={draft().playerReporting}
+          onChange={e => set('playerReporting', e.currentTarget.checked)}
+        />
+        <span>Players report their own results</span>
+      </label>
       <Field id='set-details' label='Details for players'>
         <textarea
           id='set-details'

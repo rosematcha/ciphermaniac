@@ -168,9 +168,12 @@ export const rotateStaffToken = (code: string) => call<Manage>(`${base(code)}/st
 
 export const deleteTournament = (code: string) => call<null>(base(code), { method: 'DELETE' });
 
-/** A player says who they are; their public key, to follow their pairings with. */
+/** A player says who they are; their public key, to follow their pairings with, and the event as it stands. */
 export const identifyPlayer = (code: string, claim: PlayerClaim) =>
-  call<{ key: string | null }>(`${base(code)}/report`, json('POST', claim));
+  call<{ key: string | null; view: PublishedView }>(
+    `${base(code)}/report`,
+    json('POST', { ...claim, localTime: tomDateTime(new Date()) })
+  );
 
 /** A player reports their current match; the answer carries the event as it now stands. */
 export const reportAsPlayer = (code: string, claim: PlayerClaim, result: PlayerResult) =>

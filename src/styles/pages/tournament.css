@@ -768,6 +768,79 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   margin-left: auto;
 }
 
+/* ---------- A player's own match, where players report ---------- */
+.tm-report {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+.tm-report .tm-you-round {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tm-report-ask {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.tm-report-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+  width: 100%;
+}
+.tm-report-entry .tm-field {
+  flex: 1 1 180px;
+}
+.tm-report-table {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.tm-report-table-label {
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.tm-report-versus {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 420px;
+}
+.tm-report-versus .tm-clock {
+  margin-left: auto;
+}
+.tm-report-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 420px;
+  margin-top: var(--space-2);
+}
+.tm-report-choices .btn {
+  justify-content: center;
+  min-height: 44px;
+}
+/* Once fixed, the pressed answer stays at full strength (it is marked
+   aria-disabled rather than disabled) while the others fade. */
+.tm-report-choices .btn[aria-disabled='true'] {
+  cursor: default;
+}
+.tm-report-choices .btn.is-disputed {
+  border-color: var(--negative);
+  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
+}
+
 /* ---------- Player sheet ---------- */
 .tm-scrim {
   position: fixed;

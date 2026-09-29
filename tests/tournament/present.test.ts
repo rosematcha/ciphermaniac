@@ -27,6 +27,7 @@ import {
   podStandings,
   recommendedStructure,
   recordsBefore,
+  reportState,
   roundLabel,
   seatMark,
   shownDecks,
@@ -185,4 +186,38 @@ test('deck sprites are drawn only while the event tracks archetypes', () => {
   const decks = { '1': 'Gardevoir' };
   assert.deepEqual(shownDecks({ decks, settings: { ...DEFAULT_SETTINGS, deckVisibility: 'after' } }), decks);
   assert.deepEqual(shownDecks({ decks, settings: { ...DEFAULT_SETTINGS, deckVisibility: 'off' } }), {});
+});
+
+test('a player’s report state: pressed, disputed, locked, and final once it stands', () => {
+  const match = round2.matches.find(m => m.outcome === 'pending' && m.p2 !== null);
+  assert.ok(match?.p2);
+  const at = { pod, round: round2, match };
+  const mine = { pod: pod.category, round: 2, table: match.table, p1: match.p1, p2: match.p2, at: 0 };
+  const none = reportState(at, { pending: [], reports: [] }, match.p1, 0);
+  assert.deepEqual(none, { chosen: null, disputed: false, locked: false, final: false });
+  const won = [{ ...mine, by: match.p1, outcome: 'p1' as const }];
+  assert.deepEqual(reportState(at, { pending: [], reports: won }, match.p1, 1000), {
+    chosen: 'win',
+    disputed: false,
+    locked: false,
+    final: false
+  });
+  const both = [...won, { ...mine, by: match.p2, outcome: 'p2' as const }];
+  const disputed = reportState(at, { pending: [], reports: both }, match.p2, 30_000);
+  assert.deepEqual(disputed, { chosen: 'win', disputed: true, locked: true, final: false });
+  const agreed = [...won, { ...mine, by: match.p2, outcome: 'p1' as const }];
+  assert.equal(reportState(at, { pending: [], reports: agreed }, match.p2, 29_999).final, false);
+  assert.deepEqual(reportState(at, { pending: [], reports: agreed }, match.p2, 30_000), {
+    chosen: 'loss',
+    disputed: false,
+    locked: true,
+    final: true
+  });
+  const staff = [{ ...mine, outcome: 'tie' as const }];
+  assert.deepEqual(reportState(at, { pending: staff, reports: both }, match.p1, 0), {
+    chosen: 'tie',
+    disputed: false,
+    locked: true,
+    final: true
+  });
 });

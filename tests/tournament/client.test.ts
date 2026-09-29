@@ -120,7 +120,13 @@ test('a player identifies and reports through one endpoint, stamped with the ven
     sent.map(s => `${s.method} ${s.url}`),
     ['POST /api/tournaments/ABC/report', 'POST /api/tournaments/ABC/report']
   );
-  assert.deepEqual(sent[0]?.body, { lastName: 'Oak' });
+  const identified = sent[0]?.body as { lastName: string; localTime: string };
+  assert.equal(identified.lastName, 'Oak');
+  assert.match(
+    identified.localTime,
+    /^\d{2}\/\d{2}\/\d{4} /,
+    'identifying can settle a result, so it carries the clock too'
+  );
   const reported = sent[1]?.body as { popId: string; result: string; localTime: string };
   assert.deepEqual([reported.popId, reported.result], ['12', 'win']);
   assert.match(reported.localTime, /^\d{2}\/\d{2}\/\d{4} /);
