@@ -4,7 +4,7 @@
  * whoever won. The public page adds whether each table is still playing, on
  * desktop. Staff get the result controls: a player's name is the button that
  * reports them as the winner, which is one press at the table (and a second
- * to confirm, see RoundPanel).
+ * to confirm, or a double click, see RoundPanel).
  *
  * On a phone a row restacks into two lines under its table number, as the
  * site's live pairings do, so the opponent is never behind a sideways scroll.
@@ -29,6 +29,8 @@ export interface MatchTableProps {
   onPlayer?: (id: string) => void;
   /** Staff only: report `outcome` for the match. */
   onReport?: (match: Match, outcome: Outcome) => void;
+  /** Staff only: record `outcome` at once, from a double click on the winner. */
+  onRecord?: (match: Match, outcome: Outcome) => void;
   /** Staff only: the extra cell at the end of each row. */
   extra?: (match: Match) => JSX.Element;
   /** The public page: a Status column saying which tables are still playing, on desktop. */
@@ -93,6 +95,7 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
                 classList={{ 'is-winner': mark() === 'W' }}
                 aria-label={`Report ${name(playerId())} as the winner`}
                 onClick={() => props.onReport?.(props.match, winnerOutcome(props.seat))}
+                onDblClick={() => props.onRecord?.(props.match, winnerOutcome(props.seat))}
               >
                 {content(playerId())}
               </button>

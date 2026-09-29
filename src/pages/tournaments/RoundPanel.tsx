@@ -7,7 +7,8 @@
  * re-pairs the round around the results already in.
  *
  * Results are entered by pressing the winner's name, then Record in the row,
- * so a slip of the finger is not a result. The filter narrows the room to
+ * so a slip of the finger is not a result; a double click on the name records
+ * it at once, for a result read off a slip. The filter narrows the room to
  * one table (type its number) or player, or to the tables still playing, so
  * a result called out across the room is a few keystrokes and two presses,
  * and focus comes back to the filter for the next one. Where players report
@@ -241,7 +242,7 @@ function RoomFilter(props: {
       >
         Open tables only
       </button>
-      <span class='muted tm-hint'>Press a player to report their win</span>
+      <span class='muted tm-hint'>Press a player to report their win, or double-click to record it</span>
     </div>
   );
 }
@@ -353,12 +354,12 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
     filterInput?.select();
   }
 
-  function record(match: Match) {
+  /** Sends a result, and hands the filter back for the next table. */
+  function send(match: Match, outcome: Outcome) {
     const r = round();
-    const choice = asking();
     setAsking(null);
     backToFilter();
-    if (!r || !choice) {
+    if (!r) {
       return;
     }
     void props.state.send({
@@ -368,8 +369,15 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
       table: match.table,
       p1: match.p1,
       p2: match.p2,
-      outcome: choice.outcome
+      outcome
     });
+  }
+
+  function record(match: Match) {
+    const choice = asking();
+    if (choice) {
+      send(match, choice.outcome);
+    }
   }
 
   function pickForSwap(id: string) {
@@ -454,6 +462,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               pending={props.manage.pending}
               selected={new Set(swapPick() ? [swapPick() as string] : [])}
               onReport={swapMode() || props.locked ? undefined : report}
+              onRecord={swapMode() || props.locked ? undefined : send}
               onPlayer={swapMode() ? pickForSwap : undefined}
               confirming={asking()}
               extra={match => (
