@@ -288,18 +288,30 @@ async function register(
   return { registration: 'added', row: outcome.row };
 }
 
-/** A player resubmits a handful of times at most; 20 per address per ten minutes leaves room. */
-const rateLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 20 });
+/**
+ * A whole field can send its lists from one venue's Wi-Fi, so the limit is
+ * counted per event and sized for a room: 150 submissions per address per
+ * event per ten minutes, with a looser cap across every event so one address
+ * cannot flood many.
+ */
+const eventLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 150 });
+const addressLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 400 });
 
 /** @internal exposed for tests */
 export function _resetRateLimitStore(): void {
-  rateLimiter.reset();
+  eventLimiter.reset();
+  addressLimiter.reset();
 }
 
-const limited = (request: Request) => !rateLimiter.check(request.headers.get('CF-Connecting-IP') ?? 'unknown').allowed;
+function limited(context: Context<'code'>): boolean {
+  const address = context.request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  const code = String(context.params.code).toUpperCase();
+  const forEvent = eventLimiter.check(`${code}:${address}`).allowed;
+  return !(addressLimiter.check(address).allowed && forEvent);
+}
 
 export async function onRequestPut(context: Context<'code'>): Promise<Response> {
-  if (limited(context.request)) {
+  if (limited(context)) {
     return jsonError('Too many submissions. Try again later.', 429);
   }
   if (!sameOrigin(context.request)) {
@@ -333,7 +345,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
 }
 
 export async function onRequestDelete(context: Context<'code'>): Promise<Response> {
-  if (limited(context.request)) {
+  if (limited(context)) {
     return jsonError('Too many requests. Try again later.', 429);
   }
   if (!sameOrigin(context.request)) {

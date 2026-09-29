@@ -1398,3 +1398,13 @@ test('an idle console poll answers 204 to staff only, and a change or a due repo
   assert.equal(changed.status, 200);
   assert.equal(changed.json.tournament.players.length, 1);
 });
+
+test('a field sending lists from one venue address is not turned away', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklistsOpen: true, sanctioned: false });
+  for (let i = 0; i < 40; i += 1) {
+    const sent = await submitAs(code, { firstName: 'Player', lastName: `Number ${i}` });
+    assert.equal(sent.status, 200, `player ${i + 1} of 40`);
+  }
+});
