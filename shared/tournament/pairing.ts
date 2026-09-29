@@ -39,7 +39,12 @@ const STEP_BUDGET = 50_000;
 export function rankForPairing(entrants: readonly Entrant[], random: Random): string[] {
   const groups = new Map<number, string[]>();
   for (const entrant of entrants) {
-    groups.set(entrant.points, [...(groups.get(entrant.points) ?? []), entrant.id]);
+    const group = groups.get(entrant.points);
+    if (group) {
+      group.push(entrant.id);
+    } else {
+      groups.set(entrant.points, [entrant.id]);
+    }
   }
   return [...groups.keys()].sort((a, b) => b - a).flatMap(points => shuffled(groups.get(points) ?? [], random));
 }
@@ -55,7 +60,14 @@ export function pickBye(ranked: readonly string[], byes: ReadonlySet<string>): s
   return ranked.at(-1);
 }
 
+/**
+ * One walk's state. Seats are marked used and pairings pushed as the walk goes
+ * down, and undone as it backs up, so a step costs no copying of the field.
+ */
 interface Search {
+  ranked: readonly string[];
+  used: boolean[];
+  pairings: Pairing[];
   history: PairingHistory;
   allowRematch: boolean;
   steps: number;
@@ -65,38 +77,66 @@ function haveMet(history: PairingHistory, a: string, b: string): boolean {
   return history.opponents.get(a)?.has(b) ?? false;
 }
 
-/** Pairs `pool` (ranked) top down, or returns null if it cannot within the rules and budget. */
-function pairPool(pool: readonly string[], state: Search): Pairing[] | null {
-  const [top, ...rest] = pool;
-  if (top === undefined) {
-    return [];
+/** The first seat at or after `from` nobody has taken yet; the field's length when all are taken. */
+function nextFree(state: Search, from: number): number {
+  let seat = from;
+  while (seat < state.ranked.length && state.used[seat]) {
+    seat += 1;
   }
-  for (let i = 0; i < rest.length; i += 1) {
-    state.steps += 1;
-    const candidate = rest[i] as string;
-    if (state.steps > STEP_BUDGET) {
-      return null;
-    }
-    if (!state.allowRematch && haveMet(state.history, top, candidate)) {
+  return seat;
+}
+
+/** Whether `top` may meet the player in `seat`, as far as the rules go. */
+function allowed(state: Search, top: string, seat: number): boolean {
+  return !state.used[seat] && (state.allowRematch || !haveMet(state.history, top, state.ranked[seat] as string));
+}
+
+/** Pairs the untaken seats from `from` down, top first; false if it cannot within the rules and budget. */
+function pairFrom(state: Search, from: number): boolean {
+  const seat = nextFree(state, from);
+  const top = state.ranked[seat];
+  if (top === undefined) {
+    return true;
+  }
+  state.used[seat] = true;
+  for (let other = seat + 1; other < state.ranked.length; other += 1) {
+    if (state.used[other]) {
       continue;
     }
-    const remainder = pairPool([...rest.slice(0, i), ...rest.slice(i + 1)], state);
-    if (remainder) {
-      return [{ p1: top, p2: candidate }, ...remainder];
+    state.steps += 1;
+    if (state.steps > STEP_BUDGET) {
+      break;
+    }
+    if (allowed(state, top, other) && tryPair(state, seat, other)) {
+      return true;
     }
   }
-  return null;
+  state.used[seat] = false;
+  return false;
+}
+
+/** Seats `seat` against `other` and pairs the rest; undoes the pair when the rest cannot be paired. */
+function tryPair(state: Search, seat: number, other: number): boolean {
+  state.used[other] = true;
+  state.pairings.push({ p1: state.ranked[seat] as string, p2: state.ranked[other] as string });
+  if (pairFrom(state, seat + 1)) {
+    return true;
+  }
+  state.pairings.pop();
+  state.used[other] = false;
+  return false;
+}
+
+function walk(ranked: readonly string[], history: PairingHistory, allowRematch: boolean): Pairing[] | null {
+  const state: Search = { ranked, used: ranked.map(() => false), pairings: [], history, allowRematch, steps: 0 };
+  return pairFrom(state, 0) ? state.pairings : null;
 }
 
 /** Rematch-free if the field allows it; otherwise the fewest rematches the walk finds first. */
 function pairRanked(ranked: readonly string[], history: PairingHistory): Pairing[] {
-  const strict = pairPool(ranked, { history, allowRematch: false, steps: 0 });
-  if (strict) {
-    return strict;
-  }
   // Still prefers new opponents: with rematches allowed the walk keeps the ranked order,
   // so a rematch is taken only where the strict pass found no way through.
-  return pairPool(ranked, { history, allowRematch: true, steps: 0 }) ?? [];
+  return walk(ranked, history, false) ?? walk(ranked, history, true) ?? [];
 }
 
 /**
