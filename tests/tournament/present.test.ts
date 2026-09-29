@@ -267,6 +267,7 @@ test('the status sentence names the round, what is still playing and the clock',
     `${open.open} ${open.open === 1 ? 'table' : 'tables'} playing`,
     '23:41 left'
   ]);
+  assert.equal(statusParts(open, false, '-4:05')[2], '4:05 over', 'past time reads as over, not negative');
   assert.deepEqual(statusParts({ ...open, open: 0 }, false, '23:41'), ['Round 2', `all ${open.tables} tables in`]);
   assert.deepEqual(statusParts({ round: undefined, tables: 0, open: 0, champion: null }, false, null), [
     'Registration'

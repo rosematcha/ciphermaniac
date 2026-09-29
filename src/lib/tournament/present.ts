@@ -118,6 +118,9 @@ export function nextStep(progress: PodProgress, finished: boolean): NextStep {
 }
 
 /** The status sentence's parts: the round, what is happening in it, and the clock when it runs. */
+/** A clock past zero reads as time over rather than a negative time left. */
+const timeWords = (clock: string) => (clock.startsWith('-') ? `${clock.slice(1)} over` : `${clock} left`);
+
 export function statusParts(progress: PodProgress, finished: boolean, clock: string | null): string[] {
   const { round, open, tables } = progress;
   if (finished) {
@@ -133,7 +136,7 @@ export function statusParts(progress: PodProgress, finished: boolean, clock: str
     open === 0
       ? `all ${tables} ${tablesWord(tables, round.kind)} in`
       : `${open} ${tablesWord(open, round.kind)} playing`;
-  return [roundLabel(round), doing, ...(open > 0 && clock ? [`${clock} left`] : [])];
+  return [roundLabel(round), doing, ...(open > 0 && clock ? [timeWords(clock)] : [])];
 }
 
 export const STATUS_LABELS: Record<Round['status'], string> = {
