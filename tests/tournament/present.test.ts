@@ -16,6 +16,7 @@ import type { Pod, Round, Tournament } from '../../shared/tournament/types.ts';
 import { assignKeys, DEFAULT_SETTINGS, publicTournament } from '../../shared/tournament/view.ts';
 import { tdfFilename, tdfText } from '../../src/lib/tournament/exportTdf.ts';
 import {
+  champion,
   clockLabel,
   currentMatchOf,
   deckBreakdown,
@@ -24,6 +25,8 @@ import {
   filterMatches,
   matchHistory,
   namesById,
+  nextStep,
+  podProgress,
   podStandings,
   recommendedStructure,
   recordsBefore,
@@ -32,6 +35,7 @@ import {
   seatMark,
   shownDecks,
   shownOutcome,
+  statusParts,
   unseated
 } from '../../src/lib/tournament/present.ts';
 
@@ -220,4 +224,51 @@ test('a player’s report state: pressed, disputed, locked, and final once it st
     locked: true,
     final: true
   });
+});
+
+test('the console’s next step: pair when every table is in, wait while any is open, close after the final', () => {
+  const open = podProgress(pod, []);
+  assert.equal(open.round?.number, 2);
+  assert.ok(open.open > 0);
+  assert.deepEqual(nextStep(open, false), {
+    kind: 'pair',
+    label: 'Pair round 3',
+    ready: false,
+    reason: `${open.open} ${open.open === 1 ? 'table' : 'tables'} open`
+  });
+  assert.deepEqual(nextStep({ ...open, open: 0 }, false), { kind: 'pair', label: 'Pair round 3', ready: true });
+  assert.deepEqual(nextStep({ round: undefined, tables: 0, open: 0, champion: null }, false), {
+    kind: 'pair',
+    label: 'Pair round 1',
+    ready: true
+  });
+  assert.deepEqual(nextStep({ ...open, champion: 'x' }, false), { kind: 'close', champion: 'x' });
+  assert.deepEqual(nextStep(open, true), { kind: 'none' });
+});
+
+test('a cut round leads to the next stage by name, and a finished final crowns its winner', () => {
+  const quarter: Round = { ...round2, kind: 'elimination', matches: round2.matches.slice(0, 4) };
+  const done = { round: quarter, tables: 4, open: 0, champion: null };
+  assert.equal((nextStep(done, false) as { label: string }).label, 'Pair semifinals');
+  const semi: Round = { ...round2, kind: 'elimination', matches: round2.matches.slice(0, 2) };
+  assert.equal((nextStep({ ...done, round: semi }, false) as { label: string }).label, 'Pair the final');
+  const [first] = round2.matches;
+  assert.ok(first);
+  const final: Round = { ...round2, kind: 'elimination', matches: [{ ...first, outcome: 'p1' }] };
+  assert.equal(champion(final), first.p1);
+  assert.equal(champion({ ...final, matches: [{ ...first, outcome: 'pending' }] }), null);
+});
+
+test('the status sentence names the round, what is still playing and the clock', () => {
+  const open = podProgress(pod, []);
+  assert.deepEqual(statusParts(open, false, '23:41'), [
+    'Round 2',
+    `${open.open} ${open.open === 1 ? 'table' : 'tables'} playing`,
+    '23:41 left'
+  ]);
+  assert.deepEqual(statusParts({ ...open, open: 0 }, false, '23:41'), ['Round 2', `all ${open.tables} tables in`]);
+  assert.deepEqual(statusParts({ round: undefined, tables: 0, open: 0, champion: null }, false, null), [
+    'Registration'
+  ]);
+  assert.deepEqual(statusParts(open, true, null), ['Finished']);
 });

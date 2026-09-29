@@ -663,7 +663,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   text-align: center;
 }
 .tm-mark.is-win {
-  color: var(--positive);
+  color: var(--fg);
 }
 .tm-mark.is-unconfirmed {
   text-decoration: underline dotted;
@@ -897,6 +897,89 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
   .tm-table-input {
     min-height: 44px;
+  }
+}
+
+/* ---------- The round box ---------- */
+.tm-box .table-wrap {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+}
+.tm-box .tm-empty {
+  padding: var(--space-3) 14px;
+}
+.tm-num {
+  font-variant-numeric: tabular-nums;
+}
+.tm-box-bar .tm-clock-group {
+  margin-left: 0;
+}
+/* A result cell: what stands, the controls in fixed slots, then any report on its own line. */
+.tm-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 8px;
+  white-space: normal;
+}
+.tm-result-label {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tm-result-label.is-open {
+  font-weight: 400;
+  color: var(--muted);
+}
+.tm-result-sub {
+  font-weight: 400;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.tm-result-acts {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 2px;
+}
+/* Clear's slot is held open on an open row, so Tie and Double loss sit in line with the decided rows'. */
+.tm-result-slot {
+  display: inline-flex;
+  min-width: 56px;
+  justify-content: flex-end;
+}
+.tm-result-note {
+  grid-column: 1 / -1;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.tm-result-note.tm-problem {
+  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
+}
+.tm-result.is-asking .tm-result-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tm-strip.tm-champion {
+  padding-block: 10px;
+}
+.tm-strip .tm-champion-name {
+  font-size: var(--text-lg);
+}
+@media (min-width: 641px) {
+  .tm-matches.has-extra th.tm-extra-col {
+    width: 330px;
+  }
+}
+@media (max-width: 640px) {
+  .tm-result {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .tm-result-acts {
+    justify-content: flex-start;
+  }
+  .tm-result-slot {
+    min-width: 0;
   }
 }
 

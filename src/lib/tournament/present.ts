@@ -15,6 +15,7 @@ import {
 } from '../../../shared/tournament/reports';
 import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
 import {
+  eliminationResult,
   placeFinals,
   recordLabel,
   sideResult,
@@ -51,6 +52,87 @@ export function roundLabel(round: Round): string {
   }
   const remaining = round.matches.length * 2;
   return CUT_ROUND_NAMES[remaining] ?? `Top ${remaining}`;
+}
+
+/** The winner of a finished final, or null while the event is still going. */
+export function champion(round: Round | undefined): string | null {
+  if (round?.kind !== 'elimination' || round.matches.length !== 1) {
+    return null;
+  }
+  const [final] = round.matches;
+  return final ? (eliminationResult(final)?.winner ?? null) : null;
+}
+
+/** Where a pod's current round stands: how many tables are still playing, and any champion. */
+export interface PodProgress {
+  round: Round | undefined;
+  /** Tables with two players, byes and missed rounds aside. */
+  tables: number;
+  /** Of those, the ones with no result yet (a result entered on the site counts). */
+  open: number;
+  champion: string | null;
+}
+
+export function podProgress(pod: Pod, pending: readonly PendingResult[]): PodProgress {
+  const round = currentRound(pod);
+  const played = round?.matches.filter(m => m.p2 !== null) ?? [];
+  const open = round ? played.filter(m => shownOutcome(m, pod, round, pending).outcome === 'pending').length : 0;
+  return { round, tables: played.length, open, champion: champion(round) };
+}
+
+const tablesWord = (n: number, kind: Round['kind']) =>
+  kind === 'elimination' ? (n === 1 ? 'match' : 'matches') : n === 1 ? 'table' : 'tables';
+
+/** The name of the stage a finished cut round leads to: "semifinals", "the final". */
+function nextStageName(round: Round): string {
+  const name = CUT_ROUND_NAMES[round.matches.length] ?? `top ${round.matches.length}`;
+  return name === 'Final' ? 'the final' : name.toLowerCase();
+}
+
+/**
+ * The one step the console offers next, the same on every tab: pair the next
+ * round or stage (disabled, with the reason, while tables are still open), or
+ * close the event once the final has a champion.
+ */
+export type NextStep =
+  | { kind: 'pair'; label: string; ready: boolean; reason?: string }
+  | { kind: 'close'; champion: string }
+  | { kind: 'none' };
+
+export function nextStep(progress: PodProgress, finished: boolean): NextStep {
+  const { round, open, champion: winner } = progress;
+  if (finished) {
+    return { kind: 'none' };
+  }
+  if (winner) {
+    return { kind: 'close', champion: winner };
+  }
+  if (!round) {
+    return { kind: 'pair', label: 'Pair round 1', ready: true };
+  }
+  const label = round.kind === 'swiss' ? `Pair round ${round.number + 1}` : `Pair ${nextStageName(round)}`;
+  return open > 0
+    ? { kind: 'pair', label, ready: false, reason: `${open} ${tablesWord(open, round.kind)} open` }
+    : { kind: 'pair', label, ready: true };
+}
+
+/** The status sentence's parts: the round, what is happening in it, and the clock when it runs. */
+export function statusParts(progress: PodProgress, finished: boolean, clock: string | null): string[] {
+  const { round, open, tables } = progress;
+  if (finished) {
+    return ['Finished'];
+  }
+  if (!round) {
+    return ['Registration'];
+  }
+  if (progress.champion) {
+    return [roundLabel(round), 'final played'];
+  }
+  const doing =
+    open === 0
+      ? `all ${tables} ${tablesWord(tables, round.kind)} in`
+      : `${open} ${tablesWord(open, round.kind)} playing`;
+  return [roundLabel(round), doing, ...(open > 0 && clock ? [`${clock} left`] : [])];
 }
 
 export const STATUS_LABELS: Record<Round['status'], string> = {

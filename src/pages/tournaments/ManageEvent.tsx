@@ -4,16 +4,30 @@
  */
 
 import { A, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createSignal, For, lazy, onCleanup, onMount, Show } from 'solid-js';
-import { POD_LABELS, type PodCategory } from '../../../shared/tournament/types';
+import { createEffect, createMemo, createSignal, For, lazy, Match, onCleanup, onMount, Show, Switch } from 'solid-js';
+import { activeIds } from '../../../shared/tournament/rounds';
+import { type Pod, POD_LABELS, type PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
 import { Tabs } from '../../components/Tabs';
-import { joinStaff, type Manage } from '../../lib/tournament/api';
-import { divisionLookup, namesById, shownDecks } from '../../lib/tournament/present';
+import { joinStaff, type Manage, saveSettings } from '../../lib/tournament/api';
+import {
+  clockLabel,
+  divisionLookup,
+  namesById,
+  type NextStep,
+  nextStep,
+  podProgress,
+  type PodProgress,
+  shownDecks,
+  statusParts,
+  unseated
+} from '../../lib/tournament/present';
 import { session } from './session';
 import { latestValue } from '../../lib/resource';
+import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
-import { createManage } from './manageState';
+import { TournamentHero } from './Hero';
+import { createManage, type ManageState } from './manageState';
 import { RoundPanel } from './RoundPanel';
 import { SignIn } from './SignIn';
 import { TomSyncPanel } from './TomSyncPanel';
@@ -39,26 +53,101 @@ const TABS: { value: Tab; label: string }[] = [
 /** Other staff change the event too; the console looks again this often while visible. */
 const REFRESH_MS = 15_000;
 
-function Hero(props: { manage: Manage }) {
+/** Ticks once a second while mounted, for a clock in a sentence. */
+function createNow() {
+  const [now, setNow] = createSignal(Date.now());
+  onMount(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    onCleanup(() => clearInterval(timer));
+  });
+  return now;
+}
+
+const NO_PROGRESS: PodProgress = { round: undefined, tables: 0, open: 0, champion: null };
+
+/**
+ * The console's head, the same on every tab: the event, where its round
+ * stands, and the one step to take next. A TOM event's next step belongs to
+ * its file (see TomSyncPanel), so here it has none.
+ */
+function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined }) {
+  const now = createNow();
   const info = () => props.manage.tournament.info;
+  const finished = () => props.manage.settings.finished;
+  const progress = () => (props.pod ? podProgress(props.pod, props.manage.pending) : NO_PROGRESS);
+  const clock = () => {
+    const { round } = progress();
+    return round && (round.clockStartedAt != null || round.startTime) ? clockLabel(round, now()) : null;
+  };
+  const waiting = () =>
+    props.manage.mode === 'swiss' && props.pod ? unseated(props.manage.tournament, props.pod).length : 0;
+  const status = () =>
+    [...statusParts(progress(), finished(), clock()), ...(waiting() ? [`${waiting()} not seated`] : [])].join(' · ');
+  const step = () => (props.manage.mode === 'tom' ? ({ kind: 'none' } as NextStep) : nextStep(progress(), finished()));
+  const active = () => (props.pod ? activeIds(props.manage.tournament, props.pod).length : 0);
+  const pair = (s: Extract<NextStep, { kind: 'pair' }>) => {
+    const canStart = s.label !== 'Pair round 1' || active() >= 2;
+    return (
+      <button
+        type='button'
+        class='btn btn-primary'
+        disabled={!s.ready || !canStart || props.state.busy()}
+        onClick={() => props.pod && void props.state.send({ type: 'pairRound', pod: props.pod.category })}
+      >
+        {s.label}
+      </button>
+    );
+  };
+  const reason = () => {
+    const s = step();
+    if (s.kind !== 'pair') {
+      return undefined;
+    }
+    return s.label === 'Pair round 1' && active() < 2 ? 'Add players to pair' : s.reason;
+  };
+  function close() {
+    const { code } = props.manage;
+    void props.state.run(() => saveSettings(code, { finished: true }));
+  }
   return (
-    <section class='hero'>
-      <h1>{info().name}</h1>
-      <p class='hero-meta'>
-        <span class='num'>{props.manage.code}</span>
-        <span class='dot'>·</span>
-        {props.manage.mode === 'tom' ? 'Run in TOM' : 'Swiss on this site'}
-        <span class='dot'>·</span>
-        {props.manage.tournament.players.length} players
-        <span class='dot'>·</span>
-        <A href={`/t/${props.manage.code}`}>Public page</A>
-        <span class='dot'>·</span>
-        {/* Its own tab, since it goes on the projector while the console keeps running. */}
-        <a href={`/t/${props.manage.code}?screen=1`} target='_blank' rel='noopener'>
-          Big screen
-        </a>
-      </p>
-    </section>
+    <TournamentHero
+      title={info().name}
+      status={status()}
+      meta={
+        <>
+          <span class='num'>{props.manage.code}</span>
+          <span class='dot'>·</span>
+          {props.manage.mode === 'tom' ? 'Run in TOM' : 'Swiss on this site'}
+          <span class='dot'>·</span>
+          {props.manage.tournament.players.length} players
+          <span class='dot'>·</span>
+          <A href={`/t/${props.manage.code}`}>Public page</A>
+          <span class='dot'>·</span>
+          {/* Its own tab, since it goes on the projector while the console keeps running. */}
+          <a href={`/t/${props.manage.code}?screen=1`} target='_blank' rel='noopener'>
+            Big screen
+          </a>
+        </>
+      }
+      action={
+        <Switch>
+          <Match when={step().kind === 'pair' && (step() as Extract<NextStep, { kind: 'pair' }>)}>
+            {s => pair(s())}
+          </Match>
+          <Match when={step().kind === 'close'}>
+            <ConfirmAction
+              class='btn btn-primary'
+              label='Close event'
+              question='Close the event?'
+              confirmLabel='Close'
+              disabled={props.state.busy()}
+              onConfirm={close}
+            />
+          </Match>
+        </Switch>
+      }
+      reason={reason()}
+    />
   );
 }
 
@@ -74,7 +163,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
   const divisionOf = createMemo(() => divisionLookup(props.manage.tournament));
   return (
     <div class='tm-page'>
-      <Hero manage={props.manage} />
+      <Hero state={props.state} manage={props.manage} pod={pod()} />
       <Show when={props.manage.mode === 'tom'}>
         <TomSyncPanel manage={props.manage} onSynced={props.state.load} />
       </Show>

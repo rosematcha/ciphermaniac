@@ -111,9 +111,7 @@ export function MatchTable(props: MatchTableProps) {
             <th>Player</th>
             <th>Opponent</th>
             <Show when={props.extra}>
-              <th class='tm-extra-col'>
-                <span class='sr-only'>Result</span>
-              </th>
+              <th class='tm-extra-col'>Result</th>
             </Show>
           </tr>
         </thead>
