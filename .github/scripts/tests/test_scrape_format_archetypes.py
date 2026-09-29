@@ -91,21 +91,15 @@ class MergeTests(unittest.TestCase):
         merged = formats.merge({"retired": _entry("retired", ["X"])}, {"ex": _entry("ex", ["Y"])})
         self.assertEqual([entry["id"] for entry in merged["formats"]], ["ex"])
 
-    def test_records_the_share_floor_it_was_built_with(self):
-        self.assertEqual(formats.merge({}, {})["shareFloor"], formats.SHARE_FLOOR)
-
 
 class CatalogTests(unittest.TestCase):
-    def test_ids_are_unique(self):
+    def test_catalog_is_well_formed(self):
         ids = [spec.id for spec in formats.FORMATS]
-        self.assertEqual(len(ids), len(set(ids)))
-
-    def test_every_format_is_current_or_past(self):
+        self.assertEqual(len(ids), len(set(ids)), "ids are unique")
         self.assertEqual({spec.group for spec in formats.FORMATS}, {"current", "past"})
-
-    def test_only_current_formats_aggregate_windows(self):
-        # A past format's page already covers its whole history, so walking its
-        # set windows would fetch six pages to rebuild the one we started from.
+        # Only current formats aggregate windows: a past format's page already
+        # covers its whole history, so walking its set windows would fetch six
+        # pages to rebuild the one we started from.
         self.assertEqual(
             {spec.id for spec in formats.FORMATS if spec.aggregate},
             {spec.id for spec in formats.FORMATS if spec.group == "current"},

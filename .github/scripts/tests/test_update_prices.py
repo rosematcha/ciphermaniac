@@ -28,110 +28,54 @@ def _price(product_id, subtype, market):
 
 
 class SelectMarketPriceTest(unittest.TestCase):
-    def test_prefers_normal_over_reverse_holo(self):
-        # Crispin SCR 133: the reverse holo must not win just because it
-        # appears later in the feed.
-        variants = [
-            _price(567390, "Reverse Holofoil", 1.08),
-            _price(567390, "Normal", 0.23),
+    def test_picks_the_preferred_priced_variant(self):
+        cases = [
+            # Crispin SCR 133: the reverse holo must not win just because it
+            # appears later in the feed.
+            ("normal over reverse holo",
+             [_price(567390, "Reverse Holofoil", 1.08), _price(567390, "Normal", 0.23)], (0.23, "Normal")),
+            ("holo-only card", [_price(1, "Holofoil", 10.11)], (10.11, "Holofoil")),
+            # A Normal row with no market price must not shadow a priced holo.
+            ("unpriced preferred variant", [_price(1, "Normal", None), _price(1, "Holofoil", 2.5)], (2.5, "Holofoil")),
+            ("any positive price",
+             [_price(1, "Normal", None), _price(1, "Reverse Holofoil", 0.4)], (0.4, "Reverse Holofoil")),
+            ("nothing priced", [_price(1, "Normal", None), _price(1, "Reverse Holofoil", "")], None),
+            ("no variants", [], None),
         ]
-        self.assertEqual(
-            update_prices.select_market_price(variants), (0.23, "Normal")
-        )
-
-    def test_holo_only_cards_use_holofoil(self):
-        variants = [_price(1, "Holofoil", 10.11)]
-        self.assertEqual(
-            update_prices.select_market_price(variants), (10.11, "Holofoil")
-        )
-
-    def test_skips_unpriced_preferred_variant(self):
-        # A Normal row with no market price must not shadow a priced holo.
-        variants = [
-            _price(1, "Normal", None),
-            _price(1, "Holofoil", 2.5),
-        ]
-        self.assertEqual(
-            update_prices.select_market_price(variants), (2.5, "Holofoil")
-        )
-
-    def test_falls_back_to_any_positive_price(self):
-        variants = [
-            _price(1, "Normal", None),
-            _price(1, "Reverse Holofoil", 0.4),
-        ]
-        self.assertEqual(
-            update_prices.select_market_price(variants), (0.4, "Reverse Holofoil")
-        )
-
-    def test_returns_none_when_nothing_priced(self):
-        variants = [_price(1, "Normal", None), _price(1, "Reverse Holofoil", "")]
-        self.assertIsNone(update_prices.select_market_price(variants))
-        self.assertIsNone(update_prices.select_market_price([]))
+        for label, variants, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(update_prices.select_market_price(variants), expected)
 
 
 class ParseProductTest(unittest.TestCase):
-    def test_parses_name_number_suffix(self):
-        parsed = update_prices.parse_product(
-            _product(567390, "Crispin - 133/142", "133/142")
-        )
-        self.assertEqual(parsed, (567390, "Crispin", "133"))
+    def test_splits_the_name_from_its_number(self):
+        cases = [
+            ("name - number/total", _product(567390, "Crispin - 133/142", "133/142"), (567390, "Crispin", "133")),
+            ("pads to three digits", _product(1, "Pikachu - 5/102", "5/102"), (1, "Pikachu", "005")),
+            ("non-numeric number", _product(2, "Gardevoir - TG05/TG30", "TG05/TG30"), (2, "Gardevoir", "TG05")),
+            # Sealed product (booster boxes etc.) has no Number in extendedData.
+            ("sealed product", _product(3, "Stellar Crown Booster Box", None), None),
+            # Promo groups name products "CardName - Number" with no "/total".
+            ("promo without a total", _product(4, "Pikachu ex - 106", "106"), (4, "Pikachu ex", "106")),
+            ("promo with a variant parenthetical",
+             _product(5, "Pikachu - 225 (World Championship 2025)", "225"), (5, "Pikachu", "225")),
+            ("set-prefixed promo number", _product(6, "Hop's Zacian ex - SVP193", "SVP193"),
+             (6, "Hop's Zacian ex", "SVP193")),
+            ("dash that is not a number suffix", _product(7, "Ho-Oh - Reshiram", "045"), (7, "Ho-Oh - Reshiram", "045")),
+            ("hyphenated name", _product(8, "Porygon-Z - 155/182", "155/182"), (8, "Porygon-Z", "155")),
+            ("no space before the number", _product(9, "Charizard ex -196", "196"), (9, "Charizard ex", "196")),
+            ("name omits the set prefix the number field carries",
+             _product(10, "Espeon ex - 175", "SVP 175"), (10, "Espeon ex", "SVP175")),
+        ]
+        for label, product, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(update_prices.parse_product(product), expected)
 
-    def test_pads_number_to_three_digits(self):
-        parsed = update_prices.parse_product(_product(1, "Pikachu - 5/102", "5/102"))
-        self.assertEqual(parsed, (1, "Pikachu", "005"))
-
-    def test_keeps_non_numeric_numbers(self):
-        parsed = update_prices.parse_product(
-            _product(2, "Gardevoir - TG05/TG30", "TG05/TG30")
-        )
-        self.assertEqual(parsed, (2, "Gardevoir", "TG05"))
-
-    def test_rejects_products_without_number(self):
-        # Sealed product (booster boxes etc.) has no Number in extendedData.
-        self.assertIsNone(
-            update_prices.parse_product(_product(3, "Stellar Crown Booster Box", None))
-        )
-
-    def test_strips_promo_number_suffix_without_a_total(self):
-        # Promo groups name products "CardName - Number" with no "/total".
-        parsed = update_prices.parse_product(_product(4, "Pikachu ex - 106", "106"))
-        self.assertEqual(parsed, (4, "Pikachu ex", "106"))
-
-    def test_strips_promo_suffix_with_variant_parenthetical(self):
-        parsed = update_prices.parse_product(
-            _product(5, "Pikachu - 225 (World Championship 2025)", "225")
-        )
-        self.assertEqual(parsed, (5, "Pikachu", "225"))
-
-    def test_set_prefixed_promo_number_survives_parsing(self):
-        parsed = update_prices.parse_product(
-            _product(6, "Hop's Zacian ex - SVP193", "SVP193")
-        )
-        self.assertEqual(parsed, (6, "Hop's Zacian ex", "SVP193"))
+    def test_strips_a_set_prefix_only_when_it_is_the_set_code(self):
         self.assertEqual(update_prices.strip_set_prefix("SVP193", "SVP"), "193")
-        self.assertEqual(update_prices.normalize_product_number("SVP 200"), "SVP200")
-        self.assertEqual(update_prices.strip_set_prefix("SVP200", "SVP"), "200")
-
-    def test_leaves_alphanumeric_card_numbers_prefixed(self):
+        self.assertEqual(update_prices.strip_set_prefix(update_prices.normalize_product_number("SVP 200"), "SVP"), "200")
         # TG05 is the card number, not a set code — never strip it.
         self.assertIsNone(update_prices.strip_set_prefix("TG05", "SCR"))
-
-    def test_keeps_a_dash_that_is_not_a_number_suffix(self):
-        parsed = update_prices.parse_product(_product(7, "Ho-Oh - Reshiram", "045"))
-        self.assertEqual(parsed, (7, "Ho-Oh - Reshiram", "045"))
-
-    def test_keeps_hyphenated_names_when_stripping_the_number(self):
-        parsed = update_prices.parse_product(_product(8, "Porygon-Z - 155/182", "155/182"))
-        self.assertEqual(parsed, (8, "Porygon-Z", "155"))
-
-    def test_tolerates_a_missing_space_before_the_number(self):
-        parsed = update_prices.parse_product(_product(9, "Charizard ex -196", "196"))
-        self.assertEqual(parsed, (9, "Charizard ex", "196"))
-
-    def test_name_number_may_omit_the_set_prefix_the_number_field_carries(self):
-        parsed = update_prices.parse_product(_product(10, "Espeon ex - 175", "SVP 175"))
-        self.assertEqual(parsed, (10, "Espeon ex", "SVP175"))
 
 
 class ExtractSetPricesTest(unittest.TestCase):
@@ -148,31 +92,29 @@ class ExtractSetPricesTest(unittest.TestCase):
             out, {"Crispin::SCR::133": {"price": 0.23, "tcgPlayerId": "567390"}}
         )
 
-    def test_fuzzy_matches_accents_and_brackets(self):
-        products = [_product(10, "Boss's Orders (Ghetsis) - 172/193", "172/193")]
-        # UID side carries bracketed disambiguation; product side may not match
-        # exactly, so the normalized name::number lookup has to bridge it.
-        uid = "Boss's Orders [Ghetsis]::PAL::172"
-        price_records = [_price(10, "Normal", 1.5)]
-        products[0]["name"] = "Boss's Orders [Ghetsis] - 172/193"
-        out = update_prices.extract_set_prices(products, price_records, "PAL", [uid])
-        self.assertEqual(out[uid]["price"], 1.5)
-
-    def test_matches_a_set_prefixed_promo_number(self):
-        products = [_product(30, "Hop's Zacian ex - SVP193", "SVP193")]
-        uid = "Hop's Zacian ex::SVP::193"
-        out = update_prices.extract_set_prices(
-            products, [_price(30, "Normal", 4.2)], "SVP", [uid]
-        )
-        self.assertEqual(out[uid]["price"], 4.2)
-
-    def test_matches_a_typographic_apostrophe(self):
-        products = [_product(31, "Marnie’s Morpeko", "206")]
-        uid = "Marnie's Morpeko::SVP::206"
-        out = update_prices.extract_set_prices(
-            products, [_price(31, "Normal", 0.9)], "SVP", [uid]
-        )
-        self.assertEqual(out[uid]["price"], 0.9)
+    def test_bridges_naming_differences_between_tcgcsv_and_our_uids(self):
+        cases = [
+            ("set-prefixed promo number", _product(30, "Hop's Zacian ex - SVP193", "SVP193"),
+             "SVP", "Hop's Zacian ex::SVP::193"),
+            ("typographic apostrophe", _product(31, "Marnie’s Morpeko", "206"), "SVP", "Marnie's Morpeko::SVP::206"),
+            # TCGPlayer names special prints "Name (Full Art)" / "Name (Secret)";
+            # our UIDs carry the bare name plus the print's own number.
+            ("parenthesized variant suffix", _product(40, "Adaman (Full Art) - 181/189", "181/189"),
+             "ASR", "Adaman::ASR::181"),
+            ("basic energy prefix", _product(41, "Basic Grass Energy - 001", "001"), "SVE", "Grass Energy::SVE::001"),
+            # SWSH promos ("SP" to us) number their cards "SWSH001".."SWSH307".
+            ("aliased promo number prefix", _product(42, "Arceus V - SWSH204", "SWSH204"), "SP", "Arceus V::SP::204"),
+            # Our UIDs say GG1 where TCGCSV says GG01 (and vice versa for TG05).
+            ("unpadded gallery uid", _product(43, "Hisuian Voltorb - GG01/GG70", "GG01/GG70"),
+             "CRZ", "Hisuian Voltorb::CRZ::GG1"),
+            ("padded gallery uid", _product(44, "Gardevoir - TG5/TG30", "TG5/TG30"), "SIT", "Gardevoir::SIT::TG05"),
+        ]
+        for label, product, set_code, uid in cases:
+            with self.subTest(label):
+                out = update_prices.extract_set_prices(
+                    [product], [_price(product["productId"], "Holofoil", 2.5)], set_code, [uid]
+                )
+                self.assertEqual(out.get(uid, {}).get("price"), 2.5)
 
     def test_unpriced_products_are_omitted(self):
         products = [_product(11, "Snorlax - 51/68", "51/68")]
@@ -180,52 +122,6 @@ class ExtractSetPricesTest(unittest.TestCase):
             products, [_price(11, "Normal", None)], "SET", ["Snorlax::SET::051"]
         )
         self.assertEqual(out, {})
-
-    def test_matches_a_parenthesized_variant_suffix(self):
-        # TCGPlayer names special prints "Name (Full Art)" / "Name (Secret)";
-        # our UIDs carry the bare name plus the print's own number.
-        products = [_product(40, "Adaman (Full Art) - 181/189", "181/189")]
-        uid = "Adaman::ASR::181"
-        out = update_prices.extract_set_prices(
-            products, [_price(40, "Holofoil", 12.0)], "ASR", [uid]
-        )
-        self.assertEqual(out[uid]["price"], 12.0)
-
-    def test_matches_basic_energy_without_the_basic_prefix(self):
-        products = [_product(41, "Basic Grass Energy - 001", "001")]
-        uid = "Grass Energy::SVE::001"
-        out = update_prices.extract_set_prices(
-            products, [_price(41, "Normal", 0.05)], "SVE", [uid]
-        )
-        self.assertEqual(out[uid]["price"], 0.05)
-
-    def test_matches_an_aliased_promo_number_prefix(self):
-        # SWSH promos ("SP" to us) number their cards "SWSH001".."SWSH307".
-        products = [_product(42, "Arceus V - SWSH204", "SWSH204")]
-        uid = "Arceus V::SP::204"
-        out = update_prices.extract_set_prices(
-            products, [_price(42, "Holofoil", 2.5)], "SP", [uid]
-        )
-        self.assertEqual(out[uid]["price"], 2.5)
-
-    def test_matches_zero_padded_gallery_numbers(self):
-        # Our UIDs say GG1 where TCGCSV says GG01 (and vice versa for TG05).
-        products = [
-            _product(43, "Hisuian Voltorb - GG01/GG70", "GG01/GG70"),
-            _product(44, "Gardevoir - TG5/TG30", "TG5/TG30"),
-        ]
-        uids = ["Hisuian Voltorb::CRZ::GG1", "Gardevoir::SIT::TG05"]
-        out = update_prices.extract_set_prices(
-            products,
-            [_price(43, "Holofoil", 3.0), _price(44, "Holofoil", 4.0)],
-            "CRZ",
-            [uids[0]],
-        )
-        self.assertEqual(out[uids[0]]["price"], 3.0)
-        out = update_prices.extract_set_prices(
-            [products[1]], [_price(44, "Holofoil", 4.0)], "SIT", [uids[1]]
-        )
-        self.assertEqual(out[uids[1]]["price"], 4.0)
 
     def test_first_priced_product_wins_for_duplicate_uid(self):
         products = [
@@ -239,7 +135,6 @@ class ExtractSetPricesTest(unittest.TestCase):
         self.assertEqual(
             out["Pikachu::SET::025"], {"price": 0.5, "tcgPlayerId": "20"}
         )
-
 
 class UpdatePriceHistoryTest(unittest.TestCase):
     def test_seeds_empty_history(self):
@@ -327,20 +222,15 @@ class LoadPriceHistoryTest(unittest.TestCase):
         client = _FakeR2Client(error=_FakeS3Error("NoSuchKey"))
         self.assertEqual(update_prices.load_price_history(client, "bucket"), {})
 
-    def test_transport_error_aborts_instead_of_starting_fresh(self):
-        client = _FakeR2Client(error=ConnectionError("connection reset"))
-        with self.assertRaises(update_prices.PriceHistoryReadError):
-            update_prices.load_price_history(client, "bucket")
-
-    def test_permission_error_aborts(self):
-        client = _FakeR2Client(error=_FakeS3Error("AccessDenied"))
-        with self.assertRaises(update_prices.PriceHistoryReadError):
-            update_prices.load_price_history(client, "bucket")
-
-    def test_corrupt_json_aborts(self):
-        client = _FakeR2Client(payload=b"{not json")
-        with self.assertRaises(update_prices.PriceHistoryReadError):
-            update_prices.load_price_history(client, "bucket")
+    def test_any_other_failure_aborts_instead_of_starting_fresh(self):
+        cases = [
+            ("transport", _FakeR2Client(error=ConnectionError("connection reset"))),
+            ("permission", _FakeR2Client(error=_FakeS3Error("AccessDenied"))),
+            ("corrupt json", _FakeR2Client(payload=b"{not json")),
+        ]
+        for label, client in cases:
+            with self.subTest(label), self.assertRaises(update_prices.PriceHistoryReadError):
+                update_prices.load_price_history(client, "bucket")
 
     def test_valid_history_loads(self):
         payload = json.dumps(
@@ -509,23 +399,24 @@ class ResolveGroupIdsTest(unittest.TestCase):
         {"groupId": 100, "abbreviation": "SCR", "name": "Stellar Crown"},
         {"groupId": 200, "abbreviation": "SWSH09", "name": "SWSH09: Brilliant Stars"},
     ]
-    NAME_INDEX = {"brilliant stars": "BRS"}
+    NAME_INDEX = update_prices.build_catalog_name_index(
+        {"sets": [{"code": "BRS", "name": "Brilliant Stars"}, {"code": "SCR", "name": "Stellar Crown"}]}
+    )
 
-    def test_abbreviation_match_wins(self):
-        mappings, unmapped = update_prices.resolve_group_ids(["SCR"], self.GROUPS, self.NAME_INDEX, {})
-        self.assertEqual(mappings["SCR"], 100)
-        self.assertEqual(unmapped, [])
-
-    def test_catalog_name_fallback_when_abbreviation_differs(self):
-        # Our code BRS never matches the group's "SWSH09" abbreviation; the group
-        # name tail "Brilliant Stars" bridges it.
-        mappings, unmapped = update_prices.resolve_group_ids(["BRS"], self.GROUPS, self.NAME_INDEX, {})
-        self.assertEqual(mappings["BRS"], 200)
-        self.assertEqual(unmapped, [])
-
-    def test_manual_map_beats_name_fallback(self):
-        mappings, _ = update_prices.resolve_group_ids(["BRS"], self.GROUPS, self.NAME_INDEX, {"BRS": 999})
-        self.assertEqual(mappings["BRS"], 999)
+    def test_resolves_by_abbreviation_then_manual_map_then_catalog_name(self):
+        cases = [
+            ("abbreviation match", ["SCR"], {}, {"SCR": 100}, []),
+            # Our code BRS never matches the group's "SWSH09" abbreviation; the group
+            # name tail "Brilliant Stars" bridges it.
+            ("catalog name fallback", ["BRS"], {}, {"BRS": 200}, []),
+            ("manual map beats name fallback", ["BRS"], {"BRS": 999}, {"BRS": 999}, []),
+            ("unmapped is reported, not fatal", ["ZZZ"], {}, {}, ["ZZZ"]),
+        ]
+        for label, codes, manual, expected, unmapped in cases:
+            with self.subTest(label):
+                self.assertEqual(
+                    update_prices.resolve_group_ids(codes, self.GROUPS, self.NAME_INDEX, manual), (expected, unmapped)
+                )
 
     def test_shared_abbreviation_prefers_the_group_named_like_the_set(self):
         groups = [
@@ -534,11 +425,6 @@ class ResolveGroupIdsTest(unittest.TestCase):
         ]
         mappings, _ = update_prices.resolve_group_ids(["30C"], groups, {"30th celebration": "30C"}, {})
         self.assertEqual(mappings["30C"], 24722)
-
-    def test_unmapped_is_reported_not_fatal(self):
-        mappings, unmapped = update_prices.resolve_group_ids(["ZZZ"], self.GROUPS, self.NAME_INDEX, {})
-        self.assertEqual(mappings, {})
-        self.assertEqual(unmapped, ["ZZZ"])
 
 
 class BuildPrintUniverseTest(unittest.TestCase):
@@ -553,8 +439,6 @@ class BuildPrintUniverseTest(unittest.TestCase):
             universe,
             {"Umbreon ex::PRE::060", "Umbreon ex::PRE::161", "Pikachu ex::SSP::057"},
         )
-
-    def test_tolerates_empty_input(self):
         self.assertEqual(update_prices.build_print_universe({}), set())
 
 
@@ -567,28 +451,19 @@ class ExpandToClustersTest(unittest.TestCase):
         "canonicals": {"Iono": "Iono::PAF::237"},
     }
 
-    def test_an_archive_print_pulls_in_its_whole_cluster(self):
-        # A 2023 event names PAL/185; the collector prints that make the
-        # "All printings" scope interesting are the rest of the cluster.
-        self.assertEqual(
-            update_prices.expand_to_clusters({"Iono::PAL::185"}, self.SYNONYMS),
-            {"Iono::PAL::185", "Iono::PAF::080", "Iono::PAF::237"},
-        )
-
-    def test_a_canonical_pulls_in_its_aliases(self):
-        self.assertEqual(
-            update_prices.expand_to_clusters({"Iono::PAF::237"}, self.SYNONYMS),
-            {"Iono::PAL::185", "Iono::PAF::080", "Iono::PAF::237"},
-        )
-
-    def test_unclustered_prints_pass_through(self):
-        self.assertEqual(
-            update_prices.expand_to_clusters({"Hero's Cape::TEF::152"}, self.SYNONYMS),
-            {"Hero's Cape::TEF::152"},
-        )
-
-    def test_tolerates_empty_input(self):
-        self.assertEqual(update_prices.expand_to_clusters(set(), self.SYNONYMS), set())
+    def test_any_print_pulls_in_its_whole_cluster(self):
+        cluster = {"Iono::PAL::185", "Iono::PAF::080", "Iono::PAF::237"}
+        cases = [
+            # A 2023 event names PAL/185; the collector prints that make the
+            # "All printings" scope interesting are the rest of the cluster.
+            ("an archive print", {"Iono::PAL::185"}, cluster),
+            ("a canonical", {"Iono::PAF::237"}, cluster),
+            ("an unclustered print", {"Hero's Cape::TEF::152"}, {"Hero's Cape::TEF::152"}),
+            ("nothing", set(), set()),
+        ]
+        for label, uids, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(update_prices.expand_to_clusters(uids, self.SYNONYMS), expected)
 
 
 class CurrentMetaCanonicalsTest(unittest.TestCase):

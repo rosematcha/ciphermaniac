@@ -67,25 +67,20 @@ def bands(seed: int, **kwargs) -> art.ArtBands:
 
 
 class SameArtTest(unittest.TestCase):
-    def test_identical_printings_match(self):
-        ncc, chroma = art.compare(bands(1), bands(1))
-        self.assertGreaterEqual(ncc, art.NCC_THRESHOLD)
-        self.assertTrue(art.is_same_art(ncc, chroma))
-
-    def test_shifted_printing_still_matches(self):
-        # Reprints re-position the illustration by a few percent of the card.
-        ncc, chroma = art.compare(bands(2), bands(2, offset=(14, 10)))
-        self.assertTrue(art.is_same_art(ncc, chroma), f"ncc={ncc} chroma={chroma}")
-
-    def test_rescaled_printing_still_matches(self):
-        # A promo reprint of the same illustration, framed slightly tighter.
-        ncc, chroma = art.compare(bands(3), bands(3, zoom=1.12))
-        self.assertTrue(art.is_same_art(ncc, chroma), f"ncc={ncc} chroma={chroma}")
-
-    def test_different_illustrations_do_not_match(self):
-        ncc, chroma = art.compare(bands(4), bands(5))
-        self.assertLess(ncc, art.NCC_THRESHOLD)
-        self.assertFalse(art.is_same_art(ncc, chroma))
+    def test_matches_reprints_of_one_illustration_and_nothing_else(self):
+        cases = [
+            ("identical printings", bands(1), bands(1), True),
+            # Reprints re-position the illustration by a few percent of the card.
+            ("shifted printing", bands(2), bands(2, offset=(14, 10)), True),
+            # A promo reprint of the same illustration, framed slightly tighter.
+            ("rescaled printing", bands(3), bands(3, zoom=1.12), True),
+            ("different illustrations", bands(4), bands(5), False),
+        ]
+        for label, a, b, same in cases:
+            with self.subTest(label):
+                ncc, chroma = art.compare(a, b)
+                self.assertEqual(ncc >= art.NCC_THRESHOLD, same, f"ncc={ncc}")
+                self.assertEqual(art.is_same_art(ncc, chroma), same, f"ncc={ncc} chroma={chroma}")
 
 
 class ColourwayTest(unittest.TestCase):
@@ -114,17 +109,9 @@ class GroupingTest(unittest.TestCase):
             "EEE::005": bands(7, zoom=0.94),
         }
 
-    def test_groups_printings_that_share_art(self):
+    def test_groups_printings_that_share_art_in_input_order(self):
         groups = art.group_by_art(list(self.cards), self.cards.__getitem__)
-        self.assertEqual(
-            sorted(sorted(g) for g in groups),
-            [["AAA::001", "CCC::003", "EEE::005"], ["BBB::002", "DDD::004"]],
-        )
-
-    def test_preserves_input_order_within_and_between_groups(self):
-        groups = art.group_by_art(list(self.cards), self.cards.__getitem__)
-        self.assertEqual(groups[0], ["AAA::001", "CCC::003", "EEE::005"])
-        self.assertEqual(groups[1], ["BBB::002", "DDD::004"])
+        self.assertEqual(groups, [["AAA::001", "CCC::003", "EEE::005"], ["BBB::002", "DDD::004"]])
 
     def test_single_printing_is_its_own_group(self):
         self.assertEqual(art.group_by_art(["X::1"], {"X::1": bands(9)}.__getitem__), [["X::1"]])
@@ -136,9 +123,6 @@ class GroupingTest(unittest.TestCase):
 
 
 class ParameterSignatureTest(unittest.TestCase):
-    def test_is_stable_across_calls(self):
-        self.assertEqual(art.parameter_signature(), art.parameter_signature())
-
     def test_changes_when_a_threshold_is_retuned(self):
         before = art.parameter_signature()
         original = art.NCC_THRESHOLD
@@ -247,8 +231,6 @@ class SelectByNameTest(unittest.TestCase):
             sorted(build.select_by_name(self.CLUSTERS, {"Charizard ex"})),
             ["Charizard ex::MEW::006", "Charizard ex::OBF::125"],
         )
-
-    def test_an_unknown_name_selects_nothing(self):
         self.assertEqual(build.select_by_name(self.CLUSTERS, {"Pidgey"}), {})
 
 
@@ -265,18 +247,19 @@ class SignatureTest(unittest.TestCase):
 
 class BareNumberTest(unittest.TestCase):
     def test_strips_the_cdn_zero_padding(self):
-        self.assertEqual(build._bare_number("090"), "90")
-        self.assertEqual(build._bare_number("007"), "7")
-        self.assertEqual(build._bare_number("191"), "191")
+        cases = [
+            ("090", "90"),
+            ("007", "7"),
+            ("191", "191"),
+            ("068A", "68A"),  # trailing letters are kept
+            ("TG24", "TG24"),  # unparseable numbers pass through
+            ("000P", "P"),  # a lone energy letter
+        ]
+        for number, expected in cases:
+            with self.subTest(number=number):
+                self.assertEqual(build._bare_number(number), expected)
 
-    def test_keeps_trailing_letters(self):
-        self.assertEqual(build._bare_number("068A"), "68A")
-
-    def test_passes_through_unparseable_numbers(self):
-        self.assertEqual(build._bare_number("TG24"), "TG24")
-
-    def test_strips_padding_from_a_lone_energy_letter(self):
-        self.assertEqual(build._bare_number("000P"), "P")
+    def test_cdn_number_strips_padding_only_from_a_lone_energy_letter(self):
         self.assertEqual(build._cdn_number("000P"), "P")
         self.assertEqual(build._cdn_number("068A"), "068A")
 

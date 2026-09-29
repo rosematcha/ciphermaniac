@@ -20,41 +20,42 @@ def _card(count, name, set_code, number):
 
 
 class MatchTierTests(unittest.TestCase):
-    def test_a_plain_species_matches_whole(self):
-        self.assertEqual(deck_arts.match_tier("gardevoir", "Gardevoir ex"), 2)
-
-    def test_form_words_the_card_spells_differently(self):
-        self.assertEqual(deck_arts.match_tier("goodra-hisui", "Hisuian Goodra VSTAR"), 2)
-        self.assertEqual(deck_arts.match_tier("inteleon-gmax", "Inteleon VMAX"), 2)
-        self.assertEqual(deck_arts.match_tier("eternatus-eternamax", "Eternatus VMAX"), 2)
-
-    def test_both_mega_spellings(self):
-        self.assertEqual(deck_arts.match_tier("lucario-mega", "Mega Lucario ex"), 2)
-        self.assertEqual(deck_arts.match_tier("audino-mega", "M Audino-EX"), 2)
-
-    def test_word_order_does_not_matter(self):
-        self.assertEqual(deck_arts.match_tier("calyrex-shadow-rider", "Shadow Rider Calyrex VMAX"), 2)
-
-    def test_a_card_that_drops_the_form_still_matches_on_species(self):
-        # The Lost Zone deck's Giratina is Origin Forme in the art and plain
-        # "Giratina VSTAR" in print.
-        self.assertEqual(deck_arts.match_tier("giratina-origin", "Giratina VSTAR"), 1)
-
-    def test_a_different_pokemon_of_the_same_line_does_not_match(self):
-        self.assertEqual(deck_arts.match_tier("porygon-z", "Porygon2"), 0)
-        self.assertEqual(deck_arts.match_tier("yanmega", "Yanma"), 0)
-
-    def test_an_empty_slug_matches_nothing(self):
-        self.assertEqual(deck_arts.match_tier("", "Gardevoir ex"), 0)
+    def test_grades_how_well_a_slug_names_a_card(self):
+        cases = [
+            ("gardevoir", "Gardevoir ex", 2),
+            # Form words the card spells differently.
+            ("goodra-hisui", "Hisuian Goodra VSTAR", 2),
+            ("inteleon-gmax", "Inteleon VMAX", 2),
+            ("eternatus-eternamax", "Eternatus VMAX", 2),
+            # Both mega spellings.
+            ("lucario-mega", "Mega Lucario ex", 2),
+            ("audino-mega", "M Audino-EX", 2),
+            # Word order does not matter.
+            ("calyrex-shadow-rider", "Shadow Rider Calyrex VMAX", 2),
+            # The Lost Zone deck's Giratina is Origin Forme in the art and plain
+            # "Giratina VSTAR" in print: a species-only match.
+            ("giratina-origin", "Giratina VSTAR", 1),
+            # A different Pokemon of the same line does not match.
+            ("porygon-z", "Porygon2", 0),
+            ("yanmega", "Yanma", 0),
+            ("", "Gardevoir ex", 0),
+        ]
+        for slug, name, tier in cases:
+            with self.subTest(slug=slug, name=name):
+                self.assertEqual(deck_arts.match_tier(slug, name), tier)
 
 
 class ThumbnailIdTests(unittest.TestCase):
-    def test_numbers_are_padded_and_set_codes_uppercased(self):
-        self.assertEqual(deck_arts.thumbnail_id("tm", "98"), "TM/098")
-        self.assertEqual(deck_arts.thumbnail_id("SVI", "086"), "SVI/086")
-
-    def test_gallery_numbers_survive_intact(self):
-        self.assertEqual(deck_arts.thumbnail_id("CRZ", "GG05"), "CRZ/GG05")
+    def test_pads_numbers_and_uppercases_set_codes(self):
+        cases = [
+            ("tm", "98", "TM/098"),
+            ("SVI", "086", "SVI/086"),
+            # Gallery numbers survive intact.
+            ("CRZ", "GG05", "CRZ/GG05"),
+        ]
+        for set_code, number, expected in cases:
+            with self.subTest(set_code=set_code, number=number):
+                self.assertEqual(deck_arts.thumbnail_id(set_code, number), expected)
 
 
 class ParsePokemonLineTests(unittest.TestCase):
@@ -63,8 +64,7 @@ class ParsePokemonLineTests(unittest.TestCase):
             deck_arts.parse_pokemon_line("4 Yanmega (TM-98)"),
             {"count": 4, "name": "Yanmega", "set": "TM", "number": "98"},
         )
-
-    def test_a_trainer_line_carries_no_print_and_is_skipped(self):
+        # A trainer line carries no print and is skipped.
         self.assertIsNone(deck_arts.parse_pokemon_line("4 Pokémon Collector"))
 
 
