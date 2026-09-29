@@ -18,7 +18,8 @@
  * The archetype stays on the list until staff apply it. A signed-in
  * submitter's profile is saved to their account unless it already names
  * another Player ID.
- * DELETE — withdraws the list under the details and token in the query.
+ * DELETE — withdraws the list under the details and token in the query,
+ * while submission is open.
  * PATCH — staff unlock the list under the details in the query.
  */
 
@@ -342,21 +343,32 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
   if (access instanceof Response) {
     return access;
   }
+  if (!access.row.settings.decklistsOpen) {
+    return jsonError('Decklist submission is closed', 403);
+  }
   const key = claimFrom(context.request, isSanctioned(access.row));
   if (!key) {
     return jsonError('Say whose list to withdraw', 400);
   }
   const held = new URL(context.request.url).searchParams.get('token') ?? '';
   const { db, row } = access;
-  const list = await db
-    .prepare('SELECT owner_token FROM decklists WHERE code = ? AND user_id = ?')
-    .bind(row.code, key)
-    .first<{ owner_token: string | null }>();
-  if (list?.owner_token && list.owner_token !== (held ? await sha256(held) : '')) {
+  // The token is checked in the delete itself, so a list replaced meanwhile is not the one withdrawn.
+  const deleted = (await db
+    .prepare('DELETE FROM decklists WHERE code = ? AND user_id = ? AND (owner_token IS NULL OR owner_token = ?)')
+    .bind(row.code, key, held ? await sha256(held) : '')
+    .run()) as { meta?: { changes?: number } };
+  if ((deleted.meta?.changes ?? 0) === 0 && (await listExists(db, row.code, key))) {
     return jsonError(LOCKED, 409);
   }
-  await db.prepare('DELETE FROM decklists WHERE code = ? AND user_id = ?').bind(row.code, key).run();
   return NO_CONTENT();
+}
+
+async function listExists(db: Access['db'], code: string, key: string): Promise<boolean> {
+  const found = await db
+    .prepare('SELECT 1 AS yes FROM decklists WHERE code = ? AND user_id = ?')
+    .bind(code, key)
+    .first<{ yes: number }>();
+  return found !== null;
 }
 
 const NO_CONTENT = () => new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });

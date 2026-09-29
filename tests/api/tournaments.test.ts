@@ -1217,3 +1217,20 @@ test('a join that read the old invite link cannot land after the organizer repla
     403
   );
 });
+
+test('a list cannot be withdrawn once submission closes, even with its token', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklistsOpen: true });
+  const sent = await submitAs(code, { popId: '4343', firstName: 'Ola', lastName: 'Nordmann', birthDate: '02/27/2001' });
+  await settle(code, owner, { decklistsOpen: false });
+  const withdrawn = await hit(
+    decklists.onRequestDelete as Handler,
+    `/decklists?popId=4343&token=${sent.json.token}`,
+    at(code),
+    { method: 'DELETE' }
+  );
+  assert.equal(withdrawn.status, 403);
+  const lists = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
+  assert.equal(lists.json.decklists.length, 1);
+});
