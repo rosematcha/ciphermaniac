@@ -4,7 +4,7 @@
  */
 
 import { A, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, lazy, onCleanup, onMount, Show } from 'solid-js';
 import { POD_LABELS, type PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
 import { Tabs } from '../../components/Tabs';
@@ -12,7 +12,6 @@ import { joinStaff, type Manage } from '../../lib/tournament/api';
 import { divisionLookup, namesById, shownDecks } from '../../lib/tournament/present';
 import { session } from './session';
 import { latestValue } from '../../lib/resource';
-import { DecklistsPanel } from './DecklistsPanel';
 import { EventPanel } from './EventPanel';
 import { ErrorLine } from './Field';
 import { createManage } from './manageState';
@@ -21,6 +20,9 @@ import { RoundPanel } from './RoundPanel';
 import { SignIn } from './SignIn';
 import { StandingsTable } from './StandingsTable';
 import { TomSyncPanel } from './TomSyncPanel';
+
+// Decklists are read before the event, not during it, so their tab loads when opened.
+const DecklistsPanel = lazy(() => import('./DecklistsPanel').then(m => ({ default: m.DecklistsPanel })));
 
 type Tab = 'round' | 'players' | 'standings' | 'decklists' | 'event';
 
