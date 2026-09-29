@@ -28,6 +28,7 @@ import * as sync from '../../functions/api/tournaments/[code]/sync.ts';
 import * as tournaments from '../../functions/api/tournaments/index.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { REPORT_WINDOW_MS } from '../../shared/tournament/reports.ts';
+import { revisionOf } from '../../shared/tournament/revision.ts';
 import { parseTdf } from '../../shared/tournament/tdf.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { publishView } from '../../functions/lib/tournaments/publish.ts';
@@ -121,6 +122,11 @@ async function addPlayers(code: string, cookie: string, count: number) {
     });
     assert.equal(added.status, 200);
   }
+}
+
+/** The revision of the event's document as the console loads it, as the browser following the .tdf sends it. */
+async function revisionNow(code: string, cookie: string): Promise<string> {
+  return revisionOf((await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie })).json.tournament);
 }
 
 const view = async (code: string, cookie?: string) =>
@@ -507,7 +513,7 @@ test('a TOM event holds site results as pending until the synced file settles th
   const synced = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
     method: 'PUT',
     cookie: owner,
-    body: settled
+    body: { tournament: settled, base: await revisionNow(code, owner) }
   });
   assert.equal(synced.status, 200);
   assert.deepEqual(synced.json.pending, []);
@@ -1305,4 +1311,48 @@ test('a publish still behind after a burst of writes takes its copy down rather 
   await publishView(env, older);
   env.TOURNAMENT_DB = db;
   assert.ok(!objects.has(key));
+});
+
+test('a .tdf sent from a copy the site no longer holds is refused, not synced over newer rounds', async () => {
+  const owner = await signIn('Organizer');
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const created = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf } }
+  );
+  const { code } = created.json;
+  const base = await revisionNow(code, owner);
+  const newer = { ...tdf, info: { ...tdf.info, name: 'Newer copy' } };
+  const first = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: newer, base }
+  });
+  assert.equal(first.status, 200);
+  assert.equal(first.json.revision, await revisionNow(code, owner), 'the answer carries the revision now held');
+  const older = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: tdf, base }
+  });
+  assert.equal(older.status, 409, 'a second browser still on the first copy');
+  const kept = await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner });
+  assert.equal(kept.json.tournament.info.name, 'Newer copy');
+  const next = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: tdf, base: first.json.revision }
+  });
+  assert.equal(next.status, 200, 'the browser that synced last carries on');
+  const again = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: tdf, base }
+  });
+  assert.equal(again.status, 200, 'the copy the site already holds is no conflict, from any tab');
+  assert.equal(again.json.version, next.json.version, 'and changes nothing');
+  const bare = await hit(sync.onRequestPut as Handler, '/sync', at(code), { method: 'PUT', cookie: owner, body: tdf });
+  assert.equal(bare.status, 400);
 });
