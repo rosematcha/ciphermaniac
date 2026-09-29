@@ -216,10 +216,15 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
 }
 .tm-secret {
-  transition: filter var(--ms-fast) var(--ease-base);
+  transition:
+    color var(--ms-fast) var(--ease-base),
+    text-shadow var(--ms-fast) var(--ease-base);
 }
+/* Only the text is blurred: it goes transparent and is drawn again as a soft
+   halo, so the box and its border stay sharp. */
 .tm-secret.is-hidden {
-  filter: blur(5px);
+  color: transparent;
+  text-shadow: 0 0 7px var(--fg);
   cursor: pointer;
   user-select: none;
 }
