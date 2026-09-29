@@ -116,8 +116,16 @@ export function linkUrl(provider: Exclude<Provider, 'dev'>): string {
 
 export const listTournaments = () => call<{ tournaments: TournamentSummary[] }>('/api/tournaments');
 
-export const createSwiss = (name: string, combined: boolean) =>
-  call<{ code: string }>('/api/tournaments', json('POST', { mode: 'swiss', name, combined }));
+/** What the setup asks before a Swiss event starts; the settings left out keep their defaults. */
+export interface SwissSetup {
+  name: string;
+  combined: boolean;
+  roundTime?: number;
+  settings?: Partial<TournamentSettings>;
+}
+
+export const createSwiss = (setup: SwissSetup) =>
+  call<{ code: string }>('/api/tournaments', json('POST', { mode: 'swiss', ...setup }));
 
 export const createFromTdf = (tournament: Tournament) =>
   call<{ code: string }>('/api/tournaments', json('POST', { mode: 'tom', tournament }));

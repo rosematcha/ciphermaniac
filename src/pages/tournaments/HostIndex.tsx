@@ -73,7 +73,7 @@ function NewSwiss(props: { onCreated: (code: string) => void }) {
     setBusy(true);
     setError(null);
     try {
-      props.onCreated((await createSwiss(name(), combined())).code);
+      props.onCreated((await createSwiss({ name: name(), combined: combined() })).code);
     } catch (err) {
       setError(errorText(err));
     } finally {

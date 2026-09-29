@@ -75,7 +75,7 @@ test('every call goes to its endpoint with its body', async () => {
   await fetchSession();
   await saveProfile(profile);
   await listTournaments();
-  await createSwiss('Cup', false);
+  await createSwiss({ name: 'Cup', combined: false });
   await createFromTdf(t);
   await fetchView('ABC', 3);
   await fetchManage('ABC');

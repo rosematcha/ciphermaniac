@@ -739,6 +739,50 @@ function settle(code: string, cookie: string, change: Record<string, unknown>) {
   return hit(settings.onRequestPut as Handler, '/settings', at(code), { method: 'PUT', cookie, body: change });
 }
 
+function playerSays(code: string, body: Record<string, unknown>) {
+  return hit(report.onRequestPost as Handler, '/report', at(code), {
+    method: 'POST',
+    body: { ...body, localTime: '10/10/2026 12:00:00' }
+  });
+}
+
+test('an event starts with the settings its setup chose', async () => {
+  const owner = await signIn('Organizer');
+  const created = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    {
+      method: 'POST',
+      cookie: owner,
+      body: {
+        mode: 'swiss',
+        name: 'Friday Locals',
+        combined: false,
+        roundTime: 25,
+        settings: { sanctioned: false, playerReporting: true, format: 'Expanded', finished: true }
+      }
+    }
+  );
+  assert.equal(created.status, 201);
+  const code = created.json.code as string;
+  const made = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  assert.equal(made.tournament.info.roundTime, 25);
+  assert.equal(made.tournament.combined, true, 'no birth years, so no divisions to split');
+  assert.equal(made.settings.sanctioned, false);
+  assert.equal(made.settings.playerReporting, true);
+  assert.equal(made.settings.format, 'Expanded');
+  assert.equal(made.settings.finished, false, 'an event does not start closed');
+  assert.equal(made.settings.deckVisibility, 'off');
+  const bad = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    { method: 'POST', cookie: owner, body: { mode: 'swiss', name: 'X', settings: { sanctioned: 'yes' } } }
+  );
+  assert.equal(bad.status, 400);
+});
+
 test('an unsanctioned event takes decklists by name and leaves the account’s Player ID alone', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
@@ -758,13 +802,6 @@ test('an unsanctioned event takes decklists by name and leaves the account’s P
   const account = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: player });
   assert.equal(account.json.user.popId, '1234567');
 });
-
-function playerSays(code: string, body: Record<string, unknown>) {
-  return hit(report.onRequestPost as Handler, '/report', at(code), {
-    method: 'POST',
-    body: { ...body, localTime: '10/10/2026 12:00:00' }
-  });
-}
 
 test('players report their own results: agreement settles, disagreement waits for staff', async () => {
   const owner = await signIn('Organizer');

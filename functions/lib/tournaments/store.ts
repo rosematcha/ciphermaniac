@@ -105,6 +105,7 @@ export interface NewTournament {
   ownerId: string;
   mode: TournamentMode;
   tournament: Tournament;
+  settings?: TournamentSettings;
 }
 
 export async function createTournament(db: D1Like, input: NewTournament): Promise<string> {
@@ -125,7 +126,7 @@ export async function createTournament(db: D1Like, input: NewTournament): Promis
         input.ownerId,
         input.mode,
         stateJson(input.tournament),
-        JSON.stringify(DEFAULT_SETTINGS),
+        JSON.stringify(input.settings ?? DEFAULT_SETTINGS),
         JSON.stringify(assignKeys(input.tournament, {})),
         randomToken(16),
         now,
