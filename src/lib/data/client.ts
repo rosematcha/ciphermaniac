@@ -172,6 +172,11 @@ export function createDataClient(options: DataClientOptions = {}): DataClient {
       ) {
         return new Promise<T | null>(() => {}); // navigation underway; never resolves
       }
+      if (!response.ok) {
+        // An unread body holds the request open, and with it the page's
+        // network idle.
+        void response.body?.cancel();
+      }
       if (optional && response.status === 404) {
         return null;
       }

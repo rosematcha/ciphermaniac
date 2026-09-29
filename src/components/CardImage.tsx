@@ -32,6 +32,7 @@ export function probeR2Ready(): void {
   } else if (cached === null) {
     fetch(`${R2_CARD_IMAGES}/_ready`)
       .then(res => {
+        void res.body?.cancel();
         try {
           sessionStorage.setItem('cm:r2CardImages', res.ok ? '1' : '0');
         } catch {

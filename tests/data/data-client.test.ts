@@ -139,6 +139,25 @@ test('a resolved response is reused within the TTL and refetched after it expire
   assert.equal(calls.length, 2, 'a tab left open across the daily update must see fresh data');
 });
 
+test('an error response is released rather than left unread', async () => {
+  // An unread body holds its request open in the browser, so the page never
+  // reaches network idle; Lighthouse then waits out its whole load timeout.
+  const responses: Response[] = [];
+  const answer = (status: number) => () => {
+    const response = new Response('gone', { status });
+    responses.push(response);
+    return response;
+  };
+  const { impl } = makeFetch({ optional: answer(404), required: answer(500) });
+  const c = client({ fetch: impl });
+  assert.equal(await c.fetchJsonOptional('/reports/optional.json'), null);
+  await assert.rejects(c.fetchJson('/reports/required.json'), /500/);
+  assert.deepEqual(
+    responses.map(response => response.bodyUsed),
+    [true, true]
+  );
+});
+
 test('an optional miss is cached like any other resolved response', async () => {
   const { impl, calls } = makeFetch({}, () => new Response('gone', { status: 404 }));
   const c = client({ fetch: impl });

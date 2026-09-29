@@ -58,6 +58,7 @@ export function fetchCardFacets(): Promise<CardFacetMap> {
     try {
       const response = await fetch(cardFacetsUrl(), { mode: 'cors' });
       if (!response.ok) {
+        void response.body?.cancel();
         // The facets artifact is published by the same daily job as
         // evolves-from. Until that job has run once, fall back to the older
         // companion: it carries no categories or stages, but it's enough to
