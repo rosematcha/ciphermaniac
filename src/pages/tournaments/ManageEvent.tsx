@@ -209,7 +209,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
               decks={shownDecks(props.manage)}
               divisionOf={divisionOf()}
               tiebreakers
-              hideCutDecks={props.manage.settings.deckVisibility !== 'always'}
+              hideCutDecks={props.manage.settings.deckVisibility !== 'always' && !props.manage.settings.finished}
             />
           )}
         </For>
