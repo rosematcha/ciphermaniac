@@ -112,6 +112,44 @@ test('gatherDecks refuses to publish when too many standings fetches fail', asyn
   );
 });
 
+test('gatherDecks includes entries without decklists when archetype metadata is available', async () => {
+  const listless = [
+    { placing: 1, name: 'A', player: 'p1', deck: { id: 'dragapult-dusknoir', name: 'Other' } },
+    { placing: 2, name: 'B', player: 'p2', deck: { id: 'dragapult-dusknoir', name: 'Other' } },
+    { placing: 3, name: 'C', player: 'p3' }
+  ];
+  // A decklist on the first, then filler that pads the field past the 8-player floor.
+  const rows = [
+    { ...listless[0], decklist: { pokemon: [{ name: 'Dragapult ex', count: 4, set: 'TWM', number: '130' }] } },
+    ...listless.slice(1),
+    ...Array.from({ length: 5 }, (_, i) => row(i + 4, 10 + i))
+  ];
+  const fetchJson = async (path: string) =>
+    path === '/games/PTCG/decks'
+      ? [{ identifier: 'dragapult-dusknoir', name: 'Dragapult Dusknoir', cards: [{ name: 'Dragapult ex' }] }]
+      : standingsFetcher({ t1: rows })(path);
+  const diagnostics: Record<string, any> = {};
+  const decks = await gatherDecks(env, [tournament('t1', 32)], diagnostics, null, { fetchJson });
+
+  assert.equal(decks.length, 7);
+  assert.deepEqual(
+    decks.slice(0, 2).map(deck => [deck.archetype, deck.hasDecklist]),
+    [
+      ['Dragapult Dusknoir', true],
+      ['Dragapult Dusknoir', false]
+    ]
+  );
+  assert.equal(diagnostics.tournamentFields.t1.fieldSize, 8);
+});
+
+test('gatherDecks uses full standings instead of top-cut caps', async () => {
+  const rows = Array.from({ length: 150 }, (_, i) => row(i + 1, i + 1));
+  const decks = await gatherDecks(env, [tournament('t2', 200)], {}, null, {
+    fetchJson: standingsFetcher({ t2: rows })
+  });
+  assert.equal(decks.length, 150);
+});
+
 test('exclusion config catches restricted-format event names and nothing ordinary', () => {
   const exclusions = compileExclusions(exclusionConfig);
   const excluded = [

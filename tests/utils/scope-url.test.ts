@@ -8,33 +8,23 @@ const EVENT = '2026-05-08, Regional Championship Los Angeles';
 const STORED = '2026-06-20, North America International Championship';
 const KEYS = [ONLINE_META_NAME, EVENT, STORED];
 
-test('a URL scope takes precedence over persisted scope', () => {
-  assert.deepEqual(resolveInitialScope(scopeSlug(EVENT), STORED, KEYS), {
-    key: EVENT,
-    removeInvalidParam: false
-  });
-});
-
-test('persisted scope takes precedence over the default', () => {
-  assert.equal(resolveInitialScope(undefined, STORED, KEYS).key, STORED);
-});
-
-test('the online scope is the default without URL or stored state', () => {
-  assert.equal(resolveInitialScope(undefined, null, KEYS).key, ONLINE_META_NAME);
-});
-
-test('an unresolvable URL scope falls back and is marked for removal', () => {
-  assert.deepEqual(resolveInitialScope('not-published', STORED, KEYS), {
-    key: STORED,
-    removeInvalidParam: true
-  });
-});
-
-test('an unresolvable URL and stale storage fall back to online', () => {
-  assert.deepEqual(resolveInitialScope('not-published', 'missing event', KEYS), {
-    key: ONLINE_META_NAME,
-    removeInvalidParam: true
-  });
+test('the initial scope is the URL, then storage, then online, dropping an unresolvable URL param', () => {
+  const cases = [
+    ['a URL scope takes precedence over persisted scope', scopeSlug(EVENT), STORED, EVENT, false],
+    ['persisted scope takes precedence over the default', undefined, STORED, STORED, false],
+    ['the online scope is the default without URL or stored state', undefined, null, ONLINE_META_NAME, false],
+    ['an unresolvable URL scope falls back and is marked for removal', 'not-published', STORED, STORED, true],
+    [
+      'an unresolvable URL and stale storage fall back to online',
+      'not-published',
+      'missing event',
+      ONLINE_META_NAME,
+      true
+    ]
+  ] as const;
+  for (const [name, param, stored, key, removeInvalidParam] of cases) {
+    assert.deepEqual(resolveInitialScope(param, stored, KEYS), { key, removeInvalidParam }, name);
+  }
 });
 
 test('scope-aware routes include their detail pages but exclude independent tools', () => {

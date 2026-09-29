@@ -88,11 +88,6 @@ test('a required fetch rejects on 404 with the URL and status in the message', a
   await assert.rejects(client({ fetch: impl }).fetchJson('/reports/missing.json'), /missing\.json: 404/);
 });
 
-test('an optional fetch resolves to null on 404', async () => {
-  const { impl } = makeFetch({}, () => new Response('gone', { status: 404 }));
-  assert.equal(await client({ fetch: impl }).fetchJsonOptional('/reports/missing.json'), null);
-});
-
 test('an optional fetch still rejects on a non-404 error', async () => {
   const { impl } = makeFetch({}, () => new Response('boom', { status: 500, statusText: 'Server Error' }));
   await assert.rejects(client({ fetch: impl }).fetchJsonOptional('/reports/x.json'), /500/);
@@ -129,7 +124,7 @@ test('concurrent requests for one URL share a single fetch', async () => {
   assert.deepEqual(results, [{ ok: 1 }, { ok: 1 }, { ok: 1 }]);
 });
 
-test('a resolved response is reused within the TTL', async () => {
+test('a resolved response is reused within the TTL and refetched after it expires', async () => {
   const clock = makeClock();
   const { impl, calls } = makeFetch({ '/reports/x.json': () => json({ ok: 1 }) });
   const c = client({ fetch: impl, now: clock.now });
@@ -137,29 +132,30 @@ test('a resolved response is reused within the TTL', async () => {
   await c.fetchJson('/reports/x.json');
   clock.advance(FETCH_TTL_MS - 1);
   await c.fetchJson('/reports/x.json');
-  assert.equal(calls.length, 1);
-});
+  assert.equal(calls.length, 1, 'reused within the TTL');
 
-test('a resolved response is refetched after the TTL expires', async () => {
-  const clock = makeClock();
-  const { impl, calls } = makeFetch({ '/reports/x.json': () => json({ ok: 1 }) });
-  const c = client({ fetch: impl, now: clock.now });
-
-  await c.fetchJson('/reports/x.json');
-  clock.advance(FETCH_TTL_MS + 1);
+  clock.advance(2);
   await c.fetchJson('/reports/x.json');
   assert.equal(calls.length, 2, 'a tab left open across the daily update must see fresh data');
 });
 
-test('different paths do not share a cache entry', async () => {
-  const { impl, calls } = makeFetch({
-    '/reports/a.json': () => json({ a: 1 }),
-    '/reports/b.json': () => json({ b: 2 })
-  });
+test('an error response is released rather than left unread', async () => {
+  // An unread body holds its request open in the browser, so the page never
+  // reaches network idle; Lighthouse then waits out its whole load timeout.
+  const responses: Response[] = [];
+  const answer = (status: number) => () => {
+    const response = new Response('gone', { status });
+    responses.push(response);
+    return response;
+  };
+  const { impl } = makeFetch({ optional: answer(404), required: answer(500) });
   const c = client({ fetch: impl });
-  assert.deepEqual(await c.fetchJson('/reports/a.json'), { a: 1 });
-  assert.deepEqual(await c.fetchJson('/reports/b.json'), { b: 2 });
-  assert.equal(calls.length, 2);
+  assert.equal(await c.fetchJsonOptional('/reports/optional.json'), null);
+  await assert.rejects(c.fetchJson('/reports/required.json'), /500/);
+  assert.deepEqual(
+    responses.map(response => response.bodyUsed),
+    [true, true]
+  );
 });
 
 test('an optional miss is cached like any other resolved response', async () => {

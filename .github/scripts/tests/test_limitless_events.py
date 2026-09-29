@@ -92,9 +92,8 @@ class ParseDeckPokemonTests(unittest.TestCase):
     def test_reads_the_pokemon_column_and_only_it(self):
         cards = events.parse_deck_pokemon(self.HTML)
         self.assertEqual([c["name"] for c in cards], ["Giratina V", "Giratina VSTAR"])
-
-    def test_counts_are_averages_and_stay_fractional(self):
-        self.assertEqual(events.parse_deck_pokemon(self.HTML)[0]["count"], 3.03)
+        # Counts are averages and stay fractional.
+        self.assertEqual(cards[0]["count"], 3.03)
 
     def test_a_page_with_no_pokemon_column_yields_nothing(self):
         self.assertEqual(events.parse_deck_pokemon("<div></div>"), [])

@@ -137,19 +137,13 @@ test('a run that renames nobody still skips the profiles it always skipped', asy
   assert.equal(rebuild.profilesWritten, 1, 'only the player whose events changed is rewritten');
 });
 
-test('the manifest records the names it published and the override table it published them under', async () => {
-  const store = makeStore();
-  await buildPlayerAggregates(makeEnv(store));
-
-  const manifest = JSON.parse(store['players/_manifest.json']);
-  assert.deepEqual(manifest.names, { '1': 'Ash Ketchum', '2': 'Tim Franklin' });
-  assert.equal(manifest.identityRevision, IDENTITY_OVERRIDES_REVISION);
-});
-
-test('an identity-override edit defeats the no-change fast path', async () => {
+test('the manifest records the override table it was built under, and an edit to it defeats the fast path', async () => {
   const store = makeStore();
   const env = makeEnv(store);
   await buildPlayerAggregates(env);
+  const published = JSON.parse(store['players/_manifest.json']);
+  assert.deepEqual(published.names, { '1': 'Ash Ketchum', '2': 'Tim Franklin' });
+  assert.equal(published.identityRevision, IDENTITY_OVERRIDES_REVISION);
 
   // Nothing changed, so this run short-circuits.
   assert.equal((await buildPlayerAggregates(env)).skippedNoChanges, true);

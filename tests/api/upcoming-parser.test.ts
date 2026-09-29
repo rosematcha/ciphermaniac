@@ -27,32 +27,39 @@ function fixture(name: string): string {
 // The normal page
 // ---------------------------------------------------------------------------
 
-test('a normal page yields every event, date-ascending', () => {
+test('a normal page yields every event, date-ascending, with its country, format and links', () => {
   const result = parseUpcoming(fixture('normal'));
-  assert.equal(result.events.length, 3);
-  assert.deepEqual(
-    result.events.map(e => e.date),
-    ['2026-08-14', '2026-08-29', '2026-09-12']
-  );
+  assert.deepEqual(result.events, [
+    {
+      date: '2026-08-14',
+      country: 'JP',
+      name: 'World Championships 2026',
+      format: 'standard',
+      type: 'worlds',
+      limitlessUrl: 'https://limitlesstcg.com/tournaments/700',
+      // &amp; must decode, or the second param arrives as "amp;b".
+      externalUrl: 'https://worlds.pokemon.com/?a=1&b=2'
+    },
+    {
+      date: '2026-08-29',
+      country: 'PE',
+      name: 'Special Event Lima',
+      format: 'standard',
+      type: 'special',
+      limitlessUrl: 'https://limitlesstcg.com/tournaments/536',
+      externalUrl: undefined
+    },
+    {
+      date: '2026-09-12',
+      country: 'US',
+      name: 'Regional Championship Baltimore',
+      format: 'standard',
+      type: 'regional',
+      limitlessUrl: 'https://limitlesstcg.com/tournaments/612',
+      externalUrl: 'https://rk9.gg/event/baltimore'
+    }
+  ]);
   assert.equal(detectParseBreakage(result), undefined);
-});
-
-test('each event carries its country, format, and Limitless link', () => {
-  const [worlds, lima, baltimore] = parseUpcoming(fixture('normal')).events;
-  assert.equal(baltimore.name, 'Regional Championship Baltimore');
-  assert.equal(baltimore.country, 'US');
-  assert.equal(baltimore.format, 'standard');
-  assert.equal(baltimore.limitlessUrl, 'https://limitlesstcg.com/tournaments/612');
-  assert.equal(baltimore.externalUrl, 'https://rk9.gg/event/baltimore');
-  assert.equal(lima.country, 'PE');
-  assert.equal(lima.externalUrl, undefined, 'no external link in that row');
-  assert.equal(worlds.type, 'worlds');
-});
-
-test('an external link keeps its query string intact', () => {
-  const worlds = parseUpcoming(fixture('normal')).events.find(e => e.type === 'worlds');
-  // &amp; must decode, or the second param arrives as "amp;b".
-  assert.equal(worlds?.externalUrl, 'https://worlds.pokemon.com/?a=1&b=2');
 });
 
 // ---------------------------------------------------------------------------
@@ -84,12 +91,6 @@ test('HTML entities in names and links are decoded', () => {
 // Empty vs broken
 // ---------------------------------------------------------------------------
 
-test('a genuinely empty schedule is empty, with no warning', () => {
-  const result = parseUpcoming(fixture('empty'));
-  assert.equal(result.events.length, 0);
-  assert.equal(detectParseBreakage(result), undefined, 'an off-season must not look like a bug');
-});
-
 test('renamed attributes are reported as breakage, not as an empty schedule', () => {
   const result = parseUpcoming(fixture('renamed-attributes'));
   assert.equal(result.events.length, 0);
@@ -116,52 +117,60 @@ test('a partial breakage is caught even when some rows still parse', () => {
 // ---------------------------------------------------------------------------
 
 test('malformed rows degrade individually without losing the good ones', () => {
-  const result = parseUpcoming(fixture('malformed'));
-  const complete = result.events.find(e => e.name === 'Complete Event');
-  assert.ok(complete, 'the well-formed row survives its broken neighbors');
-  assert.equal(complete.date, '2026-09-12');
-  assert.equal(complete.limitlessUrl, 'https://limitlesstcg.com/tournaments/612');
-  assert.equal(complete.externalUrl, undefined);
+  let result: ReturnType<typeof parseUpcoming> | undefined;
+  // The fixture ends in an unterminated row.
+  assert.doesNotThrow(() => {
+    result = parseUpcoming(fixture('malformed'));
+  });
+  assert.deepEqual(result?.events, [
+    {
+      date: '2026-09-12',
+      country: 'US',
+      name: 'Complete Event',
+      format: 'standard',
+      type: 'other',
+      limitlessUrl: 'https://limitlesstcg.com/tournaments/612',
+      externalUrl: undefined
+    },
+    // Missing country, format and links still yields an event.
+    {
+      date: '2026-09-13',
+      country: '',
+      name: 'No Link Event',
+      format: '',
+      type: 'other',
+      limitlessUrl: undefined,
+      externalUrl: undefined
+    },
+    // A javascript: external link is dropped, not surfaced as clickable; the safe link survives.
+    {
+      date: '2026-09-14',
+      country: 'XX',
+      name: 'Hostile Link',
+      format: 'standard',
+      type: 'other',
+      limitlessUrl: 'https://limitlesstcg.com/tournaments/999',
+      externalUrl: undefined
+    },
+    // An unparseable external href is dropped. The "Blank Date" row is not emitted at all.
+    {
+      date: '2026-09-15',
+      country: 'XX',
+      name: 'Broken Link',
+      format: 'standard',
+      type: 'other',
+      limitlessUrl: undefined,
+      externalUrl: undefined
+    }
+  ]);
 });
 
-test('a row missing country and format still yields an event', () => {
-  const event = parseUpcoming(fixture('malformed')).events.find(e => e.name === 'No Link Event');
-  assert.ok(event);
-  assert.equal(event.country, '');
-  assert.equal(event.format, '');
-  assert.equal(event.limitlessUrl, undefined);
-});
-
-test('a javascript: external link is dropped, not surfaced as clickable', () => {
-  const event = parseUpcoming(fixture('malformed')).events.find(e => e.name === 'Hostile Link');
-  assert.ok(event);
-  assert.equal(event.externalUrl, undefined);
-  assert.equal(event.limitlessUrl, 'https://limitlesstcg.com/tournaments/999', 'the safe link survives');
-});
-
-test('an unparseable external href is dropped', () => {
-  const event = parseUpcoming(fixture('malformed')).events.find(e => e.name === 'Broken Link');
-  assert.ok(event);
-  assert.equal(event.externalUrl, undefined);
-});
-
-test('a row with a blank date is not emitted', () => {
-  const { events } = parseUpcoming(fixture('malformed'));
-  assert.equal(
-    events.some(e => e.name === 'Blank Date'),
-    false
-  );
-});
-
-test('an unterminated final row does not throw', () => {
-  assert.doesNotThrow(() => parseUpcoming(fixture('malformed')));
-});
-
-test('empty and non-HTML input is safe', () => {
-  for (const input of ['', '   ', 'not html at all', '<html></html>']) {
+test('a genuinely empty schedule, and empty or non-HTML input, is empty with no warning', () => {
+  // An off-season must not look like a bug.
+  for (const input of [fixture('empty'), '', '   ', 'not html at all', '<html></html>']) {
     const result = parseUpcoming(input);
-    assert.equal(result.events.length, 0);
-    assert.equal(detectParseBreakage(result), undefined);
+    assert.equal(result.events.length, 0, input);
+    assert.equal(detectParseBreakage(result), undefined, input);
   }
 });
 
@@ -170,14 +179,18 @@ test('empty and non-HTML input is safe', () => {
 // ---------------------------------------------------------------------------
 
 test('event names classify into the display buckets', () => {
-  assert.equal(classifyType('World Championships 2026'), 'worlds');
-  assert.equal(classifyType('2026 Pokemon World Championship'), 'worlds');
-  assert.equal(classifyType('North America International Championships'), 'international');
-  assert.equal(classifyType('NAIC 2026'), 'international');
-  assert.equal(classifyType('Regional Championship Baltimore'), 'regional');
-  assert.equal(classifyType('Baltimore Regional Championship'), 'regional');
-  assert.equal(classifyType('Special Event Lima'), 'special');
-  assert.equal(classifyType('League Cup Toronto'), 'other');
+  for (const [name, type] of [
+    ['World Championships 2026', 'worlds'],
+    ['2026 Pokemon World Championship', 'worlds'],
+    ['North America International Championships', 'international'],
+    ['NAIC 2026', 'international'],
+    ['Regional Championship Baltimore', 'regional'],
+    ['Baltimore Regional Championship', 'regional'],
+    ['Special Event Lima', 'special'],
+    ['League Cup Toronto', 'other']
+  ]) {
+    assert.equal(classifyType(name), type, name);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -186,9 +199,5 @@ test('event names classify into the display buckets', () => {
 
 test('parsing is repeatable — the module-scoped regex does not carry state', () => {
   const html = fixture('normal');
-  const first = parseUpcoming(html);
-  const second = parseUpcoming(html);
-  const third = parseUpcoming(html);
-  assert.deepEqual(first, second);
-  assert.deepEqual(second, third);
+  assert.deepEqual(parseUpcoming(html), parseUpcoming(html));
 });

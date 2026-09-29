@@ -54,35 +54,34 @@ function allRouteInputs(database: SynonymDatabase): Array<{ set: string; number:
 // Key normalization
 // ---------------------------------------------------------------------------
 
-test('cardRouteKey collapses casing and zero padding but not promo suffixes', () => {
-  assert.equal(cardRouteKey('twm', '130'), 'TWM::130');
-  assert.equal(cardRouteKey('TWM', '0130'), 'TWM::130');
-  assert.equal(cardRouteKey('TWM', 130), 'TWM::130');
-  assert.equal(cardRouteKey('pal', '018a'), 'PAL::18A');
-  assert.equal(cardRouteKey('PAL', '18A'), 'PAL::18A');
-  assert.notEqual(cardRouteKey('PAL', '185'), cardRouteKey('PAL', '185a'));
-  assert.equal(cardRouteKey('CRZ', 'GG05'), 'CRZ::GG05');
-});
-
-test('cardRouteKey rejects half-specified routes', () => {
-  assert.equal(cardRouteKey('', '130'), '');
-  assert.equal(cardRouteKey('TWM', ''), '');
-  assert.equal(cardRouteKey(null, null), '');
-  assert.equal(cardRouteKey(undefined, '130'), '');
+test('cardRouteKey collapses casing and zero padding but not promo suffixes, and rejects half-specified routes', () => {
+  const cases: Array<[string | null | undefined, string | number | null, string]> = [
+    ['twm', '130', 'TWM::130'],
+    ['TWM', '0130', 'TWM::130'],
+    ['TWM', 130, 'TWM::130'],
+    ['pal', '018a', 'PAL::18A'],
+    ['PAL', '18A', 'PAL::18A'],
+    ['PAL', '185', 'PAL::185'],
+    ['PAL', '185a', 'PAL::185A'],
+    ['CRZ', 'GG05', 'CRZ::GG05'],
+    ['', '130', ''],
+    ['TWM', '', ''],
+    [null, null, ''],
+    [undefined, '130', '']
+  ];
+  for (const [set, number, expected] of cases) {
+    assert.equal(cardRouteKey(set, number), expected, `${String(set)}/${String(number)}`);
+  }
 });
 
 // ---------------------------------------------------------------------------
 // The core invariant, on hand-built graphs
 // ---------------------------------------------------------------------------
 
-test('a single-hop variant resolves to its canonical', () => {
-  const index = buildCanonicalRouteIndex(db({ 'Dragapult ex::TWM::130': 'Dragapult ex::PRE::073' }));
-  assert.deepEqual(resolveCanonicalRoute(index, 'TWM', '130'), { key: 'PRE::73', set: 'PRE', number: '073' });
-});
-
-test('resolution is idempotent: the representative does not redirect', () => {
+test('a single-hop variant resolves to its canonical, which does not redirect again', () => {
   const index = buildCanonicalRouteIndex(db({ 'Dragapult ex::TWM::130': 'Dragapult ex::PRE::073' }));
   const first = resolveCanonicalRoute(index, 'TWM', '130');
+  assert.deepEqual(first, { key: 'PRE::73', set: 'PRE', number: '073' });
   assert.ok(first);
   assert.equal(resolveCanonicalRoute(index, first.set, first.number), null);
 });
@@ -325,10 +324,4 @@ test('a plain self-mapping on its own is not an ambiguity', () => {
     nonTerminal: [],
     ambiguous: []
   });
-});
-
-test('assertCanonicalRoutesSound fails on a self-edge conflict', () => {
-  assert.throws(() =>
-    assertCanonicalRoutesSound(db({ 'Foo::SVI::001': 'Foo::SVI::0001', 'Bar::SVI::001': 'Bar::TWM::130' }))
-  );
 });

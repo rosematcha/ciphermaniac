@@ -47,11 +47,8 @@ test('resolves a variant UID or a bare name to the same cluster', () => {
   assert.strictEqual(fromVariant.length, 4);
 });
 
-test('a UID with no synonym entries is its own one-member cluster', () => {
+test('an unmapped UID or a null database yields a one-member cluster', () => {
   assert.deepStrictEqual(getClusterMembers(DB, 'Ultra Ball::SVI::196'), ['Ultra Ball::SVI::196']);
-});
-
-test('null database degrades to a one-member cluster', () => {
   assert.deepStrictEqual(getClusterMembers(null, 'Night Stretcher::SFA::061'), ['Night Stretcher::SFA::061']);
 });
 

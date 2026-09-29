@@ -1,289 +1,103 @@
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
 import { onRequestOptions, onRequestGet as tournamentsHandler } from '../../functions/api/limitless/tournaments.js';
-import { fetchLimitlessJson } from '../../shared/api/limitless.js';
 
-// Fixed test date for deterministic tests
-const FIXED_TEST_DATE = '2025-01-15T12:00:00.000Z';
+const originalFetch = globalThis.fetch;
+const ENV = { LIMITLESS_API_KEY: 'test-key' } as never;
 
 afterEach(() => {
-  restoreFetch();
+  globalThis.fetch = originalFetch;
 });
 
-// Helper to construct Request for handler
-function makeRequest(url: string) {
-  return new Request(url, { method: 'GET' });
+/** Answer every upstream call with `status` and `body`, recording the URLs asked for. */
+function upstream(status: number, body: unknown = []): string[] {
+  const requested: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    requested.push(url);
+    const response = new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+    // The error path logs response.url, which a constructed Response leaves empty.
+    Object.defineProperty(response, 'url', { value: url });
+    return response;
+  }) as typeof globalThis.fetch;
+  return requested;
 }
 
-test('Limitless tournaments - OPTIONS returns 204 with CORS headers', async () => {
+function get(query = ''): Promise<Response> {
+  return tournamentsHandler({
+    request: new Request(`https://ciphermaniac.test/api/limitless/tournaments${query ? `?${query}` : ''}`),
+    env: ENV
+  });
+}
+
+test('Limitless tournaments - OPTIONS returns 204 with CORS headers', () => {
   const res = onRequestOptions();
   assert.strictEqual(res.status, 204);
   assert.strictEqual(res.headers.get('Access-Control-Allow-Origin'), '*');
 });
 
-test('Limitless tournaments - fetch list with pagination and returns Cache-Control header', async () => {
-  // Page 1 returns two tournaments, page 2 returns empty
-  mockFetch([
-    {
-      predicate: (input: RequestInfo | URL) => String(input).includes('page=1'),
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: [{ id: 't1', name: 'Tourn 1', date: FIXED_TEST_DATE, format: 'STANDARD', game: 'PTCG', players: 10 }]
-    },
-    {
-      predicate: (input: RequestInfo | URL) => String(input).includes('page=2'),
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: []
-    }
-  ]);
-
-  // Provide API key via global (limitless resolver will pick this up)
-  globalThis.__LIMITLESS_API_KEY__ = 'limitless-key';
-
-  const req = makeRequest('https://ciphermaniac.test/api/limitless/tournaments?game=PTCG&page=1');
-  const res = await tournamentsHandler({ request: req, env: { LIMITLESS_API_KEY: 'limit' } as any });
+test('Limitless tournaments - forwards only allowed params, normalized, and caches the answer', async () => {
+  const tournaments = [{ id: 't1', name: 'Tourn 1' }];
+  const requested = upstream(200, tournaments);
+  const res = await get('game=PTCG&format=STANDARD&evil=1&limit=050&page=3');
   assert.strictEqual(res.status, 200);
-
-  const text = await res.text();
-  const payload = JSON.parse(text);
-  assert.strictEqual(payload.success, true);
-  assert.ok(Array.isArray(payload.data));
   assert.strictEqual(res.headers.get('Cache-Control')?.includes('max-age=300'), true);
-
-  restoreFetch();
-  delete globalThis.__LIMITLESS_API_KEY__;
+  const forwarded = new URL(requested[0] ?? '').searchParams;
+  assert.deepStrictEqual(Object.fromEntries(forwarded), {
+    game: 'PTCG',
+    format: 'STANDARD',
+    limit: '50',
+    page: '3'
+  });
+  const payload = (await res.json()) as { success: boolean; query: Record<string, string>; data: unknown };
+  assert.strictEqual(payload.success, true);
+  assert.deepStrictEqual(payload.query, Object.fromEntries(forwarded));
+  assert.deepStrictEqual(payload.data, tournaments);
 });
 
-test('Limitless tournaments - query parameter handling (only allowed params forwarded)', async () => {
-  globalThis.__LIMITLESS_API_KEY__ = 'k';
-
-  // Respond with echoing the query
-  mockFetch([
-    {
-      predicate: (input: RequestInfo | URL) => String(input).includes('/tournaments'),
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: []
-    }
-  ]);
-
-  // Request with allowed and disallowed params
-  const req = makeRequest('https://ciphermaniac.test/api/limitless/tournaments?game=PTCG&format=STANDARD&evil=1');
-  const res = await tournamentsHandler({ request: req, env: { LIMITLESS_API_KEY: 'k' } as any });
-  const payload = JSON.parse(await res.text());
-  // Query in response should not include 'evil'
-  assert.strictEqual(payload.query?.game, 'PTCG');
-  assert.strictEqual(payload.query?.format, 'STANDARD');
-  assert.strictEqual(payload.query?.evil, undefined);
-
-  restoreFetch();
-  delete globalThis.__LIMITLESS_API_KEY__;
-});
-
-test('Limitless - fetchLimitlessJson throws for missing API key', async () => {
-  // Ensure no API key is set anywhere
-  delete globalThis.__LIMITLESS_API_KEY__;
-  const origProcessEnv = process.env.LIMITLESS_API_KEY;
-  delete process.env.LIMITLESS_API_KEY;
-
-  // Ensure environment without key - this should throw before any fetch
-  await assert.rejects(
-    async () => {
-      await fetchLimitlessJson('/tournaments', { env: {} });
-    },
-    {
-      message: /Limitless API key not configured/i
-    }
-  );
-
-  // Restore
-  if (origProcessEnv) {
-    process.env.LIMITLESS_API_KEY = origProcessEnv;
+test('Limitless tournaments - upstream failures keep their status, or 502, and are never cached', async () => {
+  for (const status of [404, 429, 500]) {
+    upstream(status, { error: 'upstream' });
+    const res = await get();
+    assert.strictEqual(res.status, status);
+    assert.strictEqual(res.headers.get('Cache-Control'), 'no-store', String(status));
+    assert.strictEqual(((await res.json()) as { success: boolean }).success, false);
   }
-});
-
-test('Limitless - 404 from upstream returns 404 status from handler', async () => {
-  globalThis.__LIMITLESS_API_KEY__ = 'k';
-
-  // Save original fetch and replace with mock
-  const orig = globalThis.fetch;
-  globalThis.fetch = async (input: RequestInfo | URL) => {
-    const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
-    if (url.includes('/tournaments')) {
-      // Create a proper Response-like object with URL property
-      const body = JSON.stringify({ message: 'Not found' });
-      const resp = new Response(body, {
-        status: 404,
-        headers: { 'content-type': 'application/json' }
-      });
-      // Override the url getter to return the actual URL
-      Object.defineProperty(resp, 'url', { value: url, writable: false });
-      return resp;
-    }
-    return new Response(null, { status: 404 });
-  };
-
-  const req = makeRequest('https://ciphermaniac.test/api/limitless/tournaments');
-  const res = await tournamentsHandler({ request: req, env: { LIMITLESS_API_KEY: 'k' } as any });
-  assert.strictEqual(res.status, 404);
-  const payload = JSON.parse(await res.text());
-  assert.strictEqual(payload.success, false);
-
-  // Restore original fetch
-  globalThis.fetch = orig;
-  delete globalThis.__LIMITLESS_API_KEY__;
-});
-
-test('Limitless - 500 upstream returns 502 from handler and disables cache', async () => {
-  globalThis.__LIMITLESS_API_KEY__ = 'k';
-
-  // Save original fetch and replace with mock
-  const orig = globalThis.fetch;
-  globalThis.fetch = async (input: RequestInfo | URL) => {
-    const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
-    if (url.includes('/tournaments')) {
-      const resp = new Response('Server failure', {
-        status: 500,
-        headers: { 'content-type': 'application/json' }
-      });
-      // Override the url getter to return the actual URL
-      Object.defineProperty(resp, 'url', { value: url, writable: false });
-      return resp;
-    }
-    return new Response(null, { status: 500 });
-  };
-
-  const req = makeRequest('https://ciphermaniac.test/api/limitless/tournaments');
-  const res = await tournamentsHandler({ request: req, env: { LIMITLESS_API_KEY: 'k' } as any });
-  // fetchLimitlessJson will throw an error with status 500 -> handler maps to 500
-  assert.strictEqual(res.status, 500);
-  // Should include Cache-Control: no-store
-  assert.strictEqual(res.headers.get('Cache-Control'), 'no-store');
-
-  // Restore original fetch
-  globalThis.fetch = orig;
-  delete globalThis.__LIMITLESS_API_KEY__;
-});
-
-test('Limitless - rate limiting (429) is propagated', async () => {
-  globalThis.__LIMITLESS_API_KEY__ = 'k';
-
-  // Save original fetch and replace with mock
-  const orig = globalThis.fetch;
-  globalThis.fetch = async (input: RequestInfo | URL) => {
-    const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
-    if (url.includes('/tournaments')) {
-      const resp = new Response(JSON.stringify({ error: 'Too Many Requests' }), {
-        status: 429,
-        headers: { 'content-type': 'application/json' }
-      });
-      // Override the url getter to return the actual URL
-      Object.defineProperty(resp, 'url', { value: url, writable: false });
-      return resp;
-    }
-    return new Response(null, { status: 429 });
-  };
-
-  const req = makeRequest('https://ciphermaniac.test/api/limitless/tournaments');
-  const res = await tournamentsHandler({ request: req, env: { LIMITLESS_API_KEY: 'k' } as any });
-  assert.strictEqual(res.status, 429);
-
-  // Restore original fetch
-  globalThis.fetch = orig;
-  delete globalThis.__LIMITLESS_API_KEY__;
-});
-
-test('Limitless - network timeout (fetch throws) returns 502', async () => {
-  // mock fetch to throw
-  const orig = globalThis.fetch;
-  globalThis.fetch = async () => {
+  globalThis.fetch = (async () => {
     throw new Error('network timeout');
-  };
-  globalThis.__LIMITLESS_API_KEY__ = 'k';
-  const req = makeRequest('https://ciphermaniac.test/api/limitless/tournaments');
-  const res = await tournamentsHandler({ request: req, env: { LIMITLESS_API_KEY: 'k' } as any });
-  assert.strictEqual(res.status, 502);
-  // restore
-  globalThis.fetch = orig;
-  delete globalThis.__LIMITLESS_API_KEY__;
+  }) as typeof globalThis.fetch;
+  const res = await get();
+  assert.strictEqual(res.status, 502, 'a network failure');
+  assert.strictEqual(res.headers.get('Cache-Control'), 'no-store');
 });
 
 // --- Phase 9.3: numeric proxy params are bounded, not forwarded verbatim ---
 
-/** Swap globalThis.fetch for the duration of `run`, always restoring it. */
-async function withFetch<T>(stub: typeof globalThis.fetch, run: () => Promise<T>): Promise<T> {
-  const original = globalThis.fetch;
-  globalThis.fetch = stub;
-  try {
-    return await run();
-  } finally {
-    globalThis.fetch = original;
-  }
-}
-
-function proxyRequest(query: string): Request {
-  return new Request(`https://ciphermaniac.test/api/limitless/tournaments?${query}`);
-}
-
-const PROXY_ENV = { LIMITLESS_API_KEY: 'test-key' } as never;
-
 test('Limitless tournaments - out-of-range limit/page are rejected before the upstream call', async () => {
-  let upstreamCalls = 0;
-  const stub = (async () => {
-    upstreamCalls += 1;
-    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
-  }) as typeof globalThis.fetch;
-
-  await withFetch(stub, async () => {
-    for (const query of [
-      'limit=0',
-      'limit=101',
-      'limit=1000000',
-      'limit=-5',
-      'limit=abc',
-      'limit=2.5',
-      'page=0',
-      'page=-1',
-      'page=501',
-      `format=${'x'.repeat(65)}`
-    ]) {
-      const response = await tournamentsHandler({ request: proxyRequest(query), env: PROXY_ENV });
-      assert.strictEqual(response.status, 400, `${query} was accepted`);
-    }
-  });
-  assert.strictEqual(upstreamCalls, 0, 'a rejected request must not reach Limitless');
-});
-
-test('Limitless tournaments - in-range limit/page are forwarded normalized', async () => {
-  let forwarded = '';
-  const stub = (async (input: RequestInfo | URL | URL) => {
-    forwarded = new URL(String(input)).search;
-    return new Response('{"data":[]}', { status: 200, headers: { 'content-type': 'application/json' } });
-  }) as typeof globalThis.fetch;
-
-  const response = await withFetch(stub, () =>
-    tournamentsHandler({ request: proxyRequest('limit=050&page=3&game=PTCG'), env: PROXY_ENV })
-  );
-  assert.strictEqual(response.status, 200);
-  assert.match(forwarded, /limit=50/, 'leading zeros are normalized away');
-  assert.match(forwarded, /page=3/);
-  assert.match(forwarded, /game=PTCG/);
+  const requested = upstream(200, {});
+  for (const query of [
+    'limit=0',
+    'limit=101',
+    'limit=1000000',
+    'limit=-5',
+    'limit=abc',
+    'limit=2.5',
+    'page=0',
+    'page=-1',
+    'page=501',
+    `format=${'x'.repeat(65)}`
+  ]) {
+    const response = await get(query);
+    assert.strictEqual(response.status, 400, `${query} was accepted`);
+  }
+  assert.strictEqual(requested.length, 0, 'a rejected request must not reach Limitless');
 });
 
 test('Limitless tournaments - boundary values are accepted', async () => {
-  const stub = (async () =>
-    new Response('{"data":[]}', {
-      status: 200,
-      headers: { 'content-type': 'application/json' }
-    })) as typeof globalThis.fetch;
-
-  await withFetch(stub, async () => {
-    for (const query of ['limit=1', 'limit=100', 'page=1', 'page=500']) {
-      const response = await tournamentsHandler({ request: proxyRequest(query), env: PROXY_ENV });
-      assert.strictEqual(response.status, 200, `${query} was rejected`);
-    }
-  });
+  upstream(200, { data: [] });
+  for (const query of ['limit=1', 'limit=100', 'page=1', 'page=500']) {
+    const response = await get(query);
+    assert.strictEqual(response.status, 200, `${query} was rejected`);
+  }
 });

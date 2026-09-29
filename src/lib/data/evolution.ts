@@ -43,8 +43,10 @@ export function createEvolutionMapLoader(
           const entries = (await slim.json()) as Record<string, string>;
           return new Map<string, string>(Object.entries(entries));
         }
+        void slim.body?.cancel();
         const response = await fetcher(resolveUrl('/assets/data/card-types.json'), { mode: 'cors' });
         if (!response.ok) {
+          void response.body?.cancel();
           evolutionMapPromise = null;
           return new Map<string, string>();
         }

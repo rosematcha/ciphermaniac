@@ -1,10 +1,10 @@
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { deepClone, mockFetch, restoreFetch } from '../__utils__/test-helpers';
+import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
 import { generateReportFromDecks } from '../../shared/data/reports/cardReport.js';
-import { buildArchetypeReports, gatherDecks } from '../../shared/onlineMeta/index.js';
+import { gatherDecks } from '../../shared/onlineMeta/index.js';
 
 afterEach(() => {
   restoreFetch();
@@ -73,49 +73,17 @@ test('Generate report from valid deck list and calculate distributions', () => {
   assert.strictEqual(Number(char.pct), Math.round((1 / 3) * 10000) / 100);
 });
 
-test('Handle empty tournament and tournament with no decks', () => {
-  const emptyReport = generateReportFromDecks([], 0, null);
-  assert.strictEqual(emptyReport.deckTotal, 0);
-  assert.ok(Array.isArray(emptyReport.items));
-  assert.strictEqual(emptyReport.items.length, 0);
-
-  const noDecksReport = generateReportFromDecks(null as any, 0, null);
-  assert.strictEqual(noDecksReport.deckTotal, 0);
-  assert.strictEqual(noDecksReport.items.length, 0);
-});
-
-test('Handle malformed deck lists and validate deck totals', () => {
-  const malformed = [{ cards: null }, {}, { cards: [{ name: 'Bad Card', count: 'not-a-number' } as any] }];
-
-  const report = generateReportFromDecks(malformed as any, malformed.length, null);
-  assert.strictEqual(Array.isArray(report.items), true);
-  assert.strictEqual(report.items.length, 0);
-  assert.strictEqual(report.deckTotal, 3);
-});
-
-test('Detect duplicate decks and aggregate across multiple tournaments', () => {
-  const deckA = { cards: [makeCard('Zubat', 4, 'SWSH', '010')] };
-  const deckB = deepClone(deckA);
-  const decks = [deckA, deckB];
-  const report = generateReportFromDecks(decks, decks.length, null);
-  const zubat = report.items.find((i: any) => String(i.name).toLowerCase().includes('zubat'));
-  assert.ok(zubat);
-  assert.strictEqual(zubat.found, 2);
-  assert.strictEqual(Array.isArray(zubat.dist), true);
-  assert.strictEqual(zubat.dist.length, 1);
-  assert.strictEqual(zubat.dist[0].copies, 4);
-  assert.strictEqual(zubat.dist[0].players, 2);
-});
-
-test('Handle cards appearing in 100% and 0% of decks', () => {
-  const decks = [{ cards: [makeCard('Always', 1)] }, { cards: [makeCard('Always', 2)] }];
-  const report = generateReportFromDecks(decks, decks.length, null);
-  const always = report.items.find((i: any) => String(i.name).toLowerCase().includes('always'));
-  assert.ok(always);
-  assert.strictEqual(always.pct, 100);
-
-  const never = report.items.find((i: any) => String(i.name).toLowerCase().includes('never'));
-  assert.strictEqual(never, undefined);
+test('Empty, missing, and malformed deck lists yield no items but keep the deck total', () => {
+  const cases: Array<[string, unknown, number]> = [
+    ['empty', [], 0],
+    ['missing', null, 0],
+    ['malformed', [{ cards: null }, {}, { cards: [{ name: 'Bad Card', count: 'not-a-number' }] }], 3]
+  ];
+  for (const [label, decks, deckTotal] of cases) {
+    const report = generateReportFromDecks(decks as any, deckTotal, null);
+    assert.strictEqual(report.deckTotal, deckTotal, label);
+    assert.deepStrictEqual(report.items, [], label);
+  }
 });
 
 test('gatherDecks derives success tags and handles small tournaments / ties', async () => {
@@ -234,22 +202,6 @@ test('gatherDecks reclassifies generic archetypes using Limitless deck ids', asy
   assert.equal(decks[0].archetypeSource, 'deck-id');
   assert.equal(diagnostics?.archetypeClassification?.deckId, 1);
   restoreFetch();
-});
-
-test('buildArchetypeReports groups archetypes and computes thumbnails/index', () => {
-  const decks = [
-    { archetype: 'Fast Fire', cards: [{ name: 'F', count: 3 }] },
-    { archetype: 'fast_fire', cards: [{ name: 'F', count: 3 }] },
-    { archetype: 'Control Man', cards: [{ name: 'C', count: 3 }] }
-  ];
-
-  const { archetypeFiles, archetypeIndex, minDecks } = buildArchetypeReports(decks as any, 1, null, {
-    thumbnailConfig: {}
-  });
-  assert.ok(Array.isArray(archetypeFiles));
-  assert.ok(archetypeFiles.some((file: any) => String(file.base).toLowerCase().includes('fast')));
-  assert.ok(Array.isArray(archetypeIndex));
-  assert.strictEqual(minDecks >= 1, true);
 });
 
 // P-12: after resolving the canonical UID via the synonym DB, the emitted

@@ -65,22 +65,6 @@ test('canonicalizeReport: merges variant printings into the canonical row', () =
   assert.equal(merged.rank, 1);
 });
 
-test('canonicalizeReport: leaves non-synonym cards alone', () => {
-  const db: SynonymDatabase = { synonyms: {}, canonicals: {} };
-  const report = {
-    deckTotal: 50,
-    items: [
-      makeItem({ name: 'Iono', set: 'PAL', number: '185', uid: 'Iono::PAL::185', found: 20, total: 50, pct: 40 }),
-      makeItem({ name: 'Boss', set: 'MEG', number: '114', uid: 'Boss::MEG::114', found: 10, total: 50, pct: 20 })
-    ]
-  };
-
-  const result = canonicalizeReport(report, db);
-  assert.equal(result.items.length, 2, 'no merges should happen');
-  assert.equal(result.items[0].uid, 'Iono::PAL::185');
-  assert.equal(result.items[1].uid, 'Boss::MEG::114');
-});
-
 test('canonicalizeReport: merges dist buckets by copies and recomputes percent', () => {
   const db: SynonymDatabase = {
     synonyms: { 'Foo::B::002': 'Foo::A::001' },

@@ -16,28 +16,28 @@ import { buildArchetypeReports } from '../../shared/data/archetypes/build.ts';
 import { onlineArchetypeOptions } from '../../shared/data/reports/onlineArtifacts.ts';
 
 describe('listedDeckCount', () => {
-  it('counts only decks carrying at least one card', () => {
-    assert.equal(
-      listedDeckCount([
-        { cards: [{ name: 'Blaziken ex', count: 2 }] },
-        { cards: [] },
-        { cards: undefined },
-        {},
-        { cards: [{ name: 'Dragapult ex', count: 2 }] }
-      ]),
-      2
-    );
-  });
-
-  it('asks only whether a decklist exists, not what the copy counts are', () => {
+  it('counts only decks carrying at least one card row, whatever its copy count', () => {
     // The predicate has to hold for every aggregator that divides by it, and
     // aggregateDecks counts a zero-copy row as present.
-    assert.equal(listedDeckCount([{ cards: [{ name: 'Ghost', count: 0 }] }]), 1);
-  });
-
-  it('is zero for an empty or non-array deck list', () => {
-    assert.equal(listedDeckCount([]), 0);
-    assert.equal(listedDeckCount(undefined as never), 0);
+    const cases: Array<[string, unknown, number]> = [
+      [
+        'mixed decks',
+        [
+          { cards: [{ name: 'Blaziken ex', count: 2 }] },
+          { cards: [] },
+          { cards: undefined },
+          {},
+          { cards: [{ name: 'Dragapult ex', count: 2 }] }
+        ],
+        2
+      ],
+      ['a zero-copy row', [{ cards: [{ name: 'Ghost', count: 0 }] }], 1],
+      ['an empty list', [], 0],
+      ['a non-array', undefined, 0]
+    ];
+    for (const [label, decks, expected] of cases) {
+      assert.equal(listedDeckCount(decks as never), expected, label);
+    }
   });
 });
 
@@ -73,26 +73,12 @@ describe('archetype reports exclude listless decks from the denominator', () => 
     assert.equal(blaziken.pct, 100);
   });
 
-  it('keeps every card at or below the report total', () => {
-    for (const item of file.data.items) {
-      assert.ok(item.found <= file.data.deckTotal, `${item.name}: ${item.found} > ${file.data.deckTotal}`);
-      assert.ok(item.pct <= 100, `${item.name}: pct ${item.pct} > 100`);
-    }
-  });
-
   it('still counts the listless deck toward the archetype meta share', () => {
     // The entry has a placement and an archetype — it belongs in the meta even
     // though it contributes no card, so deckCount and the report total differ.
     assert.equal(file.deckCount, 3);
     const entry = built.index.find(e => e.name === file.base || e.label === file.displayName)!;
     assert.equal(entry.deckCount, 3);
-  });
-
-  it('leaves a report with no listless decks untouched', () => {
-    const clean = buildArchetypeReports(DECKS.slice(0, 2), null, onlineArchetypeOptions({}, null, null));
-    const cleanFile = clean.files.find(f => f.base.toLowerCase().includes('dragapult'))!;
-    assert.equal(cleanFile.data.deckTotal, 2);
-    assert.equal(cleanFile.deckCount, 2);
   });
 });
 

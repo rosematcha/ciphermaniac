@@ -8,7 +8,6 @@
  * opponent slug/icons on top. Kept free of Solid + DOM so it's unit-testable.
  */
 import { type MatchupProfile, normalizeArchetypeKey, type OnlineMatchupRecord } from './data';
-export { WR_MIN_GAMES } from './confidence';
 import { WR_MIN_GAMES } from './confidence';
 
 /** A win is worth 3× a tie — Pokémon match points (win 3, tie 1, loss 0). */

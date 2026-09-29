@@ -40,9 +40,9 @@ test.beforeEach(async ({ page }) => {
 /**
  * Navigate and assert the page mounted without throwing.
  *
- * Deliberately not `networkidle`: the service worker keeps background work
- * going, so that state never arrives and every test would time out at 30s
- * having proven nothing. Waiting for `main` to exist is both faster and a
+ * Deliberately not `networkidle`: a page streaming in hundreds of thumbnails
+ * takes seconds to get there, and a test would wait on it having proven
+ * nothing. Waiting for `main` to exist is both faster and a
  * stronger claim — the app actually rendered.
  */
 async function gotoClean(page: import('@playwright/test').Page, path: string): Promise<void> {
@@ -53,13 +53,13 @@ async function gotoClean(page: import('@playwright/test').Page, path: string): P
   expect(errors, `uncaught page errors on ${path}`).toEqual([]);
 }
 
-test('home renders its meta summary', async ({ page }) => {
+test('home renders its meta summary @mobile', async ({ page }) => {
   await gotoClean(page, '/');
   await expect(page.locator('main')).toBeVisible();
   await expect(page.locator('body')).toContainText(/Ciphermaniac|meta|deck/i);
 });
 
-test('cards index lists cards from the fixture master report', async ({ page }) => {
+test('cards index lists cards from the fixture master report @mobile', async ({ page }) => {
   await gotoClean(page, '/cards');
   // The fixture's top card. If the index rendered from real data this would be
   // whatever is hot today instead.
@@ -109,7 +109,7 @@ test('a variant card URL resolves to its canonical card', async ({ page }) => {
   await expect(page.locator('body')).toContainText('Dragapult ex');
 });
 
-test('archetypes index lists archetypes', async ({ page }) => {
+test('archetypes index lists archetypes @mobile', async ({ page }) => {
   const icons = page.waitForResponse(response =>
     new URL(response.url()).pathname.endsWith('/assets/aaaaaaaaaaaa/archetype-icons.json')
   );
@@ -178,7 +178,7 @@ test('players index ranks the fixture players with a rank switch', async ({ page
   await expect(page.locator('.players-table th[aria-sort="descending"]')).toHaveText(/Win %/);
 });
 
-test('a player profile renders their history as the first tab', async ({ page }) => {
+test('a player profile renders their history as the first tab @mobile', async ({ page }) => {
   await gotoClean(page, '/players/1272');
   await expect(page.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.history-table thead th')).toHaveCount(6);
@@ -287,7 +287,7 @@ test('compare asks for two players before it compares anything', async ({ page }
   await expect(page.getByRole('searchbox')).toHaveCount(2);
 });
 
-test('tournaments index renders the catalog', async ({ page }) => {
+test('tournaments index renders the catalog @mobile', async ({ page }) => {
   await gotoClean(page, '/events/majors');
   await expect(page.locator('main')).toBeVisible();
 });
@@ -315,7 +315,7 @@ test('the tools index links to the card wall', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Card Wall/i })).toHaveAttribute('href', '/tools/card-wall');
 });
 
-test('the tools index features the tier list, label maker and pack EV as tiles', async ({ page }) => {
+test('the tools index features the tier list, label maker and pack EV as tiles @mobile', async ({ page }) => {
   await gotoClean(page, '/tools');
   const featured = page.locator('.tools-featured .arche');
   await expect(featured).toHaveCount(3);
@@ -357,7 +357,7 @@ test('set impact explains its figures without sorting on a tap', async ({ page }
   await expect(page.locator('th[aria-sort="descending"]')).toHaveClass(/set-impact-lifetime/);
 });
 
-test('set impact opens a picked set in the panel', async ({ page }) => {
+test('set impact opens a picked set in the panel @mobile', async ({ page }) => {
   await gotoClean(page, '/tools/set-impact');
   const panel = page.locator('.set-impact-panel:visible, .set-impact-inline:visible').first();
   const first = await page.locator('.set-impact-pick').first().textContent();
@@ -372,7 +372,7 @@ test('set impact opens a picked set in the panel', async ({ page }) => {
   await expect(page.locator('.set-impact-card:visible').first()).toBeVisible();
 });
 
-test('pack EV sets a pack opened against a pack sealed, and opens packs', async ({ page }) => {
+test('pack EV sets a pack opened against a pack sealed, and opens packs @mobile', async ({ page }) => {
   await gotoClean(page, '/tools/pack-ev');
   // Nothing is open until a set is picked.
   await expect(page.locator('.packev-band')).toHaveCount(0);
@@ -415,7 +415,7 @@ test('pack EV warms hit art before a rip, at the URLs the hit tiles request', as
   expect(sources.filter(source => !warmed.includes(source))).toEqual([]);
 });
 
-test('a tier list tile carries a placeholder until its art paints', async ({ page }) => {
+test('a tier list tile carries a placeholder until its art paints @mobile', async ({ page }) => {
   // Switching view rebuilds every tile, so its art starts from nothing. Holding
   // the thumbnails open is what makes that window observable: `vite preview`
   // runs no /thumbnails Function, so the art has to be served from here anyway.
@@ -474,7 +474,7 @@ test('a narrow desktop viewport uses the compact two-tier header', async ({ page
   expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth);
 });
 
-test('the top archetypes grid stops at two rows', async ({ page }) => {
+test('the top archetypes grid stops at two rows @mobile', async ({ page }) => {
   await gotoClean(page, '/');
   const grid = page.locator('.top-archetypes .gallery-grid');
   await expect(grid.locator('.arche:not(.arche-skeleton)').first()).toBeVisible();
@@ -492,7 +492,9 @@ test('the top archetypes grid stops at two rows', async ({ page }) => {
   expect(layout.shown).toBe(Math.min(layout.rendered, layout.columns * 2));
 });
 
-test('the footer keeps its links on their own row without overflowing narrow viewports', async ({ page }, testInfo) => {
+test('the footer keeps its links on their own row without overflowing narrow viewports @mobile', async ({
+  page
+}, testInfo) => {
   if (testInfo.project.name !== 'mobile') {
     await page.setViewportSize({ width: 700, height: 800 });
   }
@@ -521,7 +523,7 @@ test('the footer keeps its links on their own row without overflowing narrow vie
   expect(footer.scrollWidth).toBeLessThanOrEqual(footer.clientWidth);
 });
 
-test('the footer spans the page column instead of shrinking to its content', async ({ page }, testInfo) => {
+test('the footer spans the page column instead of shrinking to its content @mobile', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile', 'the wide row only exists above 900px');
   await page.setViewportSize({ width: 1440, height: 900 });
   await gotoClean(page, '/about');
@@ -533,7 +535,7 @@ test('the footer spans the page column instead of shrinking to its content', asy
   expect(widths.footer).toBe(widths.page);
 });
 
-test('short pages fill one viewport without adding empty scroll space', async ({ page }) => {
+test('short pages fill one viewport without adding empty scroll space @mobile', async ({ page }) => {
   for (const viewport of [
     { width: 1440, height: 1000 },
     { width: 390, height: 844 }
@@ -579,7 +581,7 @@ test('keyboard focus opens the Tools menu', async ({ page }, testInfo) => {
   await expect(menu).toBeVisible();
 });
 
-test('the card wall mounts and paints its loop', async ({ page }) => {
+test('the card wall mounts and paints its loop @mobile', async ({ page }) => {
   // No card art here: /thumbnails is a Pages Function and `vite preview` does
   // not run one, so every scan 404s and the wall draws its placeholder slots.
   // That is exactly the case worth smoke-testing — the animation loop has to
@@ -640,7 +642,7 @@ test('an earnings row expands into its own breakdown', async ({ page }) => {
   await expect(page.locator('.row-expansion')).toHaveCount(1);
 });
 
-test('social graphics fits long card names inside their cards', async ({ page }, testInfo) => {
+test('social graphics fits long card names inside their cards @mobile', async ({ page }, testInfo) => {
   // The canvas is a fixed 1280px desktop composition; the mobile project gets
   // the "built for desktop" note instead, so there is nothing to measure.
   test.skip(testInfo.project.name !== 'desktop', 'canvas only renders on desktop');
@@ -684,7 +686,7 @@ test('a lazy route whose chunk a deploy removed recovers with one reload', async
   expect(errors, 'the preload failure should be handled, not thrown').toEqual([]);
 });
 
-test('a tier-list tile always has artwork, even with no sprite to show', async ({ page }) => {
+test('a tier-list tile always has artwork, even with no sprite to show @mobile', async ({ page }) => {
   // Both sprite sources cut off, which is the worst case and the one the
   // fixture run is already in: every chip has to fall through to the committed
   // Substitute doll rather than render an empty box nobody can identify or,
@@ -805,7 +807,7 @@ test.describe('theme', () => {
   // Nothing stored, and an OS asking for dark.
   test.use({ colorScheme: 'dark' });
 
-  test('a first visit follows the system, and the footer toggle overrides it', async ({ page }) => {
+  test('a first visit follows the system, and the footer toggle overrides it @mobile', async ({ page }) => {
     await gotoClean(page, '/tools');
     await expect(page.locator('body')).toHaveAttribute('data-mode', 'dark');
 
@@ -851,7 +853,7 @@ async function touchOnly(page: import('@playwright/test').Page): Promise<void> {
   });
 }
 
-test('on a touch pointer a tier shows its tools on tap, and hides them again', async ({ page }, testInfo) => {
+test('on a touch pointer a tier shows its tools on tap, and hides them again @mobile', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'the touch affordance, on the touch project');
   await touchOnly(page);
   await gotoClean(page, '/tools/tier-list');
@@ -884,7 +886,7 @@ test('on a touch pointer a tier shows its tools on tap, and hides them again', a
   await expect.poll(names).toEqual([before[1], before[0], ...before.slice(2)]);
 });
 
-test('on a touch pointer the second tap opens the tier editor, and a rename lands on the plate', async ({
+test('on a touch pointer the second tap opens the tier editor, and a rename lands on the plate @mobile', async ({
   page
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'the touch affordance, on the touch project');
@@ -905,7 +907,9 @@ test('on a touch pointer the second tap opens the tier editor, and a rename land
   await expect(plate.locator('.tl-tools')).toHaveCSS('opacity', '0');
 });
 
-test('on a touch pointer the export is shown on screen rather than navigated to', async ({ page }, testInfo) => {
+test('on a touch pointer the export is shown on screen rather than navigated to @mobile', async ({
+  page
+}, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'the touch affordance, on the touch project');
   // A download link in an in-app browser navigates to the file — the report
   // was "I click the button and the page just reloads itself".
@@ -936,7 +940,7 @@ test('on a touch pointer the export is shown on screen rather than navigated to'
    most of a 2,200px document with the target off screen for most of it.
    --------------------------------------------------------------------------- */
 
-test('on a phone the tray docks to the bottom edge and carries the actions', async ({ page }, testInfo) => {
+test('on a phone the tray docks to the bottom edge and carries the actions @mobile', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'the phone layout, on the phone project');
   await gotoClean(page, '/tools/tier-list');
   await expect(page.locator('.tl-tray .tl-item').first()).toBeVisible();
@@ -956,7 +960,7 @@ test('on a phone the tray docks to the bottom edge and carries the actions', asy
   await expect.poll(height).toBe(resting);
 });
 
-test('on a phone a tap picks a tile up and a tap on a tier places it', async ({ page }, testInfo) => {
+test('on a phone a tap picks a tile up and a tap on a tier places it @mobile', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'the phone layout, on the phone project');
   await gotoClean(page, '/tools/tier-list');
   const tile = page.locator('.tl-tray .tl-item').first();
@@ -985,7 +989,7 @@ test('on a phone a tap picks a tile up and a tap on a tier places it', async ({ 
   await expect(unranked).toHaveText(String(before - 1));
 });
 
-test('on a phone quick rank empties the pile one archetype at a time', async ({ page }, testInfo) => {
+test('on a phone quick rank empties the pile one archetype at a time @mobile', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'the phone layout, on the phone project');
   await gotoClean(page, '/tools/tier-list');
   await expect(page.locator('.tl-tray .tl-item').first()).toBeVisible();
@@ -1028,7 +1032,7 @@ test('on a desktop a click on a tile is not a placement', async ({ page }, testI
   await expect(page.locator('.tl-rank')).toHaveCount(0);
 });
 
-test('feedback shows its fields once a type is picked, and sends what was asked', async ({ page }) => {
+test('feedback shows its fields once a type is picked, and sends what was asked @mobile', async ({ page }) => {
   let sent: Record<string, unknown> | null = null;
   await page.route('**/api/feedback', async route => {
     sent = route.request().postDataJSON() as Record<string, unknown>;

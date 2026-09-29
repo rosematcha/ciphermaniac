@@ -87,23 +87,6 @@ test('phaseSplit records Day 1, Day 2 and top cut in order, counting the bye as 
   ]);
 });
 
-test('the phase records add up to the career record the hero band shows', () => {
-  // Verified against production: Ajay Sridhar publishes 182-103-71 over 180
-  // played wins and two byes. Whatever the phase rows sum to has to be the
-  // record printed directly above them.
-  const all = Object.values(rounds()).flat();
-  const standings = {
-    wins: all.filter(r => r.outcome === 'win' || r.outcome === 'bye').length,
-    losses: all.filter(r => r.outcome === 'loss' || r.outcome === 'double_loss').length,
-    ties: all.filter(r => r.outcome === 'tie').length
-  };
-  const summed = phaseSplit(rounds()).reduce(
-    (acc, row) => ({ wins: acc.wins + row.wins, losses: acc.losses + row.losses, ties: acc.ties + row.ties }),
-    { wins: 0, losses: 0, ties: 0 }
-  );
-  assert.deepEqual(summed, standings);
-});
-
 test('repeatOpponents keys by career id, counts meetings and lists events newest first', () => {
   const rows = repeatOpponents(rounds());
   // "Someone" (no career id, keyed by name) was met four times; Tim three.

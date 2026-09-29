@@ -171,7 +171,7 @@ test('a whole run of decks is picked in the panel and sent as one request', asyn
   await expect(page.locator('.run-report')).toHaveCount(0);
 });
 
-test('reporting a whole run is hidden on mobile', async ({ page }) => {
+test('reporting a whole run is hidden on mobile @mobile', async ({ page }) => {
   test.skip(test.info().project.name !== 'mobile', 'This visibility check applies to mobile.');
   await stubEvent(page);
   await page.goto(`/live/${SLUG}?player=${encodeURIComponent(RUNNER)}&cc=US`, { waitUntil: 'load' });

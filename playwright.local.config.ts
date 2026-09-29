@@ -5,16 +5,15 @@ import { defineConfig, devices } from '@playwright/test';
  *
  * These run against a fixture dataset served from `tests/fixtures/e2e/`, not
  * against production R2, so a failure means the code changed rather than the
- * meta did. That is what makes them safe to gate pull requests on — the live
- * suite in `playwright.config.ts` stays as an integration canary, where a
- * failure is genuinely ambiguous between "we broke it" and "R2 is having a day".
+ * meta did. That makes them safe to gate pull requests on.
  *
  * The origin is baked into the bundle by VITE_DATA_ORIGIN, so the fixture
  * server's port is fixed rather than ephemeral.
  */
 
-const FIXTURE_PORT = 4320;
-const PREVIEW_PORT = 4321;
+// Overridable so two checkouts can run the suite side by side.
+const FIXTURE_PORT = Number(process.env.E2E_FIXTURE_PORT ?? 4320);
+const PREVIEW_PORT = Number(process.env.E2E_PREVIEW_PORT ?? 4321);
 const FIXTURE_ORIGIN = `http://127.0.0.1:${FIXTURE_PORT}`;
 
 export default defineConfig({
@@ -22,6 +21,7 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   timeout: 30_000,
   retries: 0,
+  workers: 4,
   forbidOnly: Boolean(process.env.CI),
   reporter: process.env.CI ? 'line' : 'list',
   use: {
@@ -32,8 +32,8 @@ export default defineConfig({
     trace: 'retain-on-failure'
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile', use: { ...devices['Pixel 7'] } }
+    { name: 'desktop', grepInvert: /@mobileOnly/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile', grep: /@mobile/, use: { ...devices['Pixel 7'] } }
   ],
   webServer: [
     {

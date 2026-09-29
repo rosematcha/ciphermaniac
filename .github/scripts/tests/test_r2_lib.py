@@ -68,58 +68,37 @@ class ReadJsonTest(unittest.TestCase):
         self.assertEqual(result.value, {"a": 1, "b": [2, 3]})
         self.assertIsNone(result.error)
 
-    def test_missing_on_verifiable_404(self):
-        client = _GetClient(error=_S3Error("NoSuchKey"))
-        result = r2.read_json(client, "bucket", "key")
-        self.assertEqual(result.status, "missing")
-        self.assertIsNone(result.value)
-        self.assertIsNotNone(result.error)
-
-    def test_corrupt_on_bad_json(self):
-        client = _GetClient(payload=b"{not valid json")
-        result = r2.read_json(client, "bucket", "key")
-        self.assertEqual(result.status, "corrupt")
-        self.assertIsNotNone(result.error)
-
-    def test_corrupt_on_bad_unicode(self):
-        client = _GetClient(payload=b"\xff\xfe not utf-8")
-        result = r2.read_json(client, "bucket", "key")
-        self.assertEqual(result.status, "corrupt")
-
-    def test_transport_on_non_404_error(self):
-        client = _GetClient(error=ConnectionError("connection reset"))
-        result = r2.read_json(client, "bucket", "key")
-        self.assertEqual(result.status, "transport")
-        self.assertIsInstance(result.error, ConnectionError)
-
-    def test_access_denied_is_transport_not_missing(self):
-        client = _GetClient(error=_S3Error("AccessDenied"))
-        result = r2.read_json(client, "bucket", "key")
-        self.assertEqual(result.status, "transport")
+    def test_only_a_verifiable_404_reads_as_missing(self):
+        cases = [
+            ("404", _GetClient(error=_S3Error("NoSuchKey")), "missing"),
+            ("bad json", _GetClient(payload=b"{not valid json"), "corrupt"),
+            ("bad unicode", _GetClient(payload=b"\xff\xfe not utf-8"), "corrupt"),
+            ("connection reset", _GetClient(error=ConnectionError("connection reset")), "transport"),
+            ("access denied", _GetClient(error=_S3Error("AccessDenied")), "transport"),
+        ]
+        for label, client, status in cases:
+            with self.subTest(label):
+                result = r2.read_json(client, "bucket", "key")
+                self.assertEqual(result.status, status)
+                self.assertIsNone(result.value)
+                self.assertIsNotNone(result.error)
+        # Callers re-raise it, so it has to stay the exception itself.
+        error = ConnectionError("connection reset")
+        self.assertIs(r2.read_json(_GetClient(error=error), "bucket", "key").error, error)
 
 
 class ObjectExistsTest(unittest.TestCase):
-    def test_true_when_head_succeeds(self):
+    def test_answers_true_on_head_and_false_only_on_404(self):
         self.assertTrue(r2.object_exists(_HeadClient(), "bucket", "key"))
-
-    def test_false_on_404_code(self):
-        client = _HeadClient(error=_S3Error("404", status=404))
-        self.assertFalse(r2.object_exists(client, "bucket", "key"))
-
-    def test_false_on_not_found_status_only(self):
         # A head_object 404 sometimes carries only the HTTP status, no Error.Code.
-        client = _HeadClient(error=_S3Error(status=404))
-        self.assertFalse(r2.object_exists(client, "bucket", "key"))
+        for error in (_S3Error("404", status=404), _S3Error(status=404)):
+            with self.subTest(error.response):
+                self.assertFalse(r2.object_exists(_HeadClient(error=error), "bucket", "key"))
 
-    def test_raises_on_transport(self):
-        client = _HeadClient(error=ConnectionError("connection reset"))
-        with self.assertRaises(ConnectionError):
-            r2.object_exists(client, "bucket", "key")
-
-    def test_raises_on_access_denied(self):
-        client = _HeadClient(error=_S3Error("AccessDenied", status=403))
-        with self.assertRaises(_S3Error):
-            r2.object_exists(client, "bucket", "key")
+    def test_raises_on_anything_else(self):
+        for error in (ConnectionError("connection reset"), _S3Error("AccessDenied", status=403)):
+            with self.subTest(repr(error)), self.assertRaises(type(error)):
+                r2.object_exists(_HeadClient(error=error), "bucket", "key")
 
 
 class ProductionReleaseTest(unittest.TestCase):
@@ -183,6 +162,7 @@ class ProductionReleaseTest(unittest.TestCase):
             sources["2026-01-01, Event"],
             "/releases/v1/events/2026-01-01, Event/fed654cba321",
         )
+
 
 class MakeR2ClientTest(unittest.TestCase):
     def test_sets_adaptive_retries_and_timeouts(self):

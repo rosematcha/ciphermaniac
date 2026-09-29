@@ -20,7 +20,7 @@ function scriptedClient(responses: unknown[]): { client: S3Client; sent: Sent[] 
   return { client, sent };
 }
 
-test('listR2Keys follows every page with the cursor from the one before', async () => {
+test('listR2Keys follows every page with the cursor from the one before, and lists nothing for an empty prefix', async () => {
   const { client, sent } = scriptedClient([
     { Contents: [{ Key: 'a/1.json' }, { Key: 'a/2.json' }], IsTruncated: true, NextContinuationToken: 'page-2' },
     { Contents: [{ Key: 'a/3.json' }], IsTruncated: false }
@@ -30,11 +30,9 @@ test('listR2Keys follows every page with the cursor from the one before', async 
     sent.map(command => command.input.ContinuationToken),
     [undefined, 'page-2']
   );
-});
 
-test('an empty prefix lists nothing', async () => {
-  const { client } = scriptedClient([{ IsTruncated: false }]);
-  assert.deepEqual(await listR2Keys(client, 'bucket', 'none/'), []);
+  const empty = scriptedClient([{ IsTruncated: false }]);
+  assert.deepEqual(await listR2Keys(empty.client, 'bucket', 'none/'), []);
 });
 
 test('a truncated page without a cursor throws instead of passing for a full listing', async () => {

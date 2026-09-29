@@ -103,17 +103,18 @@ async function throttle(page: Page): Promise<void> {
 }
 
 test.describe('layout shift', () => {
-  test.describe.configure({ timeout: 90_000 });
+  test.describe.configure({ mode: 'parallel', timeout: 90_000 });
 
   for (const route of ROUTES) {
-    test(`${route} settles without shifting`, async ({ page }) => {
+    test(`${route} settles without shifting @mobile`, async ({ page }) => {
       await page.addInitScript(OBSERVER);
       await throttle(page);
       await page.goto(route, { waitUntil: 'load' });
-      // Long enough for the second-tier resources (prices, win rates, trend
-      // files) to land — several of the shifts this guards against only
-      // happened when one of those resolved after first paint.
-      await page.waitForTimeout(8000);
+      // Until the second-tier resources (prices, win rates, trend files) have
+      // landed — several of the shifts this guards against only happened when
+      // one of those resolved after first paint. Capped, because a page that
+      // streams in hundreds of thumbnails is never idle under this throttle.
+      await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => undefined);
       const { cls, shifts } = await page.evaluate(() => {
         const w = window as unknown as { __cls: number; __shifts: Shift[] };
         return { cls: w.__cls, shifts: w.__shifts };

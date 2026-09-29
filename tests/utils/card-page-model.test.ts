@@ -42,18 +42,18 @@ const ROLLING_CARD = { name: 'Dragapult ex', set: 'TWM', number: '130', pct: 40 
 // Scope
 // ---------------------------------------------------------------------------
 
-test('a live card keeps the selected tournament', () => {
-  assert.equal(effectiveTournament(true, '2026-05-08, Regional X', '2026-01-01'), '2026-05-08, Regional X');
-});
-
-test('a snapshot card redirects downstream fetches at the snapshot', () => {
-  // Otherwise "Where it's played" would show today's archetypes next to a
-  // pre-rotation card.
-  assert.equal(effectiveTournament(false, '2026-05-08, Regional X', '2026-01-01'), 'snapshot:2026-01-01');
-});
-
-test('no snapshot date falls back to the selected tournament', () => {
-  assert.equal(effectiveTournament(false, '2026-05-08, Regional X', null), '2026-05-08, Regional X');
+test('a snapshot card redirects downstream fetches at the snapshot; anything else keeps the selection', () => {
+  const selected = '2026-05-08, Regional X';
+  const cases = [
+    ['a live card keeps the selected tournament', true, '2026-01-01', selected],
+    // Otherwise "Where it's played" would show today's archetypes next to a
+    // pre-rotation card.
+    ['a snapshot card reads the snapshot', false, '2026-01-01', 'snapshot:2026-01-01'],
+    ['no snapshot date falls back to the selection', false, null, selected]
+  ] as const;
+  for (const [name, live, snapshot, expected] of cases) {
+    assert.equal(effectiveTournament(live, selected, snapshot), expected, name);
+  }
 });
 
 test('conversion is computed only where a day-2 cut exists', () => {
@@ -83,95 +83,77 @@ test('the empty state names the scope that was searched', () => {
 
 const PRICES = { 'Dragapult ex::PRE::073': { price: 12.5, tcgPlayerId: 'tcg-1' } };
 
-test('a card prices by its own UID', () => {
-  assert.deepEqual(resolvePriceEntry(CARD, PRICES, { selected: null, globalUid: null }), {
-    price: 12.5,
-    tcgPlayerId: 'tcg-1'
-  });
-});
+const SELECTED = { uid: 'Dragapult ex::TWM::200', set: 'TWM', number: '200', price: 24.75 };
+const GLOBAL = 'Dragapult ex::PRE::073';
 
-test('a rolling-print card falls back to its global canonical UID', () => {
-  // prices.json keys the CURRENT global canonical; the rendered card may not be it.
-  assert.deepEqual(resolvePriceEntry(ROLLING_CARD, PRICES, { selected: null, globalUid: 'Dragapult ex::PRE::073' }), {
-    price: 12.5,
-    tcgPlayerId: 'tcg-1'
-  });
-});
-
-test('a selected printing uses its scraped price when prices.json has no entry', () => {
-  assert.deepEqual(
-    resolvePriceEntry(CARD, PRICES, {
-      selected: { uid: 'Dragapult ex::TWM::200', set: 'TWM', number: '200', price: 24.75 },
-      globalUid: 'Dragapult ex::PRE::073'
-    }),
-    { price: 24.75, tcgPlayerId: undefined }
-  );
-});
-
-test('a selected printing keeps its own TCGplayer product link', () => {
-  const prices = { ...PRICES, 'Dragapult ex::TWM::200': { price: 24.75, tcgPlayerId: 'tcg-variant' } };
-  assert.deepEqual(
-    resolvePriceEntry(CARD, prices, {
-      selected: { uid: 'Dragapult ex::TWM::200', set: 'TWM', number: '200', price: 20 },
-      globalUid: 'Dragapult ex::PRE::073'
-    }),
-    { price: 24.75, tcgPlayerId: 'tcg-variant' }
-  );
-});
-
-test('missing prices or card yield nothing', () => {
-  assert.equal(resolvePriceEntry(CARD, null, { selected: null, globalUid: null }), null);
-  assert.equal(resolvePriceEntry(undefined, PRICES, { selected: null, globalUid: null }), null);
+test('a price resolves by UID, then the global canonical, then a selected printing', () => {
+  const withVariant = { ...PRICES, 'Dragapult ex::TWM::200': { price: 24.75, tcgPlayerId: 'tcg-variant' } };
+  const cases = [
+    ['a card prices by its own UID', CARD, PRICES, null, null, { price: 12.5, tcgPlayerId: 'tcg-1' }],
+    // prices.json keys the CURRENT global canonical; the rendered card may not be it.
+    [
+      'a rolling print falls back to its global canonical',
+      ROLLING_CARD,
+      PRICES,
+      null,
+      GLOBAL,
+      { price: 12.5, tcgPlayerId: 'tcg-1' }
+    ],
+    [
+      'a selected printing uses its scraped price when prices.json has no entry',
+      CARD,
+      PRICES,
+      SELECTED,
+      GLOBAL,
+      { price: 24.75, tcgPlayerId: undefined }
+    ],
+    [
+      'a selected printing keeps its own TCGplayer product link',
+      CARD,
+      withVariant,
+      { ...SELECTED, price: 20 },
+      GLOBAL,
+      { price: 24.75, tcgPlayerId: 'tcg-variant' }
+    ],
+    ['missing prices yield nothing', CARD, null, null, null, null],
+    ['a missing card yields nothing', undefined, PRICES, null, null, null]
+  ] as const;
+  for (const [name, card, prices, selected, globalUid, expected] of cases) {
+    assert.deepEqual(resolvePriceEntry(card, prices, { selected, globalUid }), expected, name);
+  }
 });
 
 const HISTORY = { 'Dragapult ex::PRE::073': [{ date: '2026-01-01', price: 10 }] };
 
-test('the sparkline series follows the same fallback chain as the price', () => {
-  assert.equal(resolvePriceSeries(CARD, HISTORY, true, { selected: null, globalUid: null }).length, 1);
-  assert.equal(
-    resolvePriceSeries(ROLLING_CARD, HISTORY, true, { selected: null, globalUid: 'Dragapult ex::PRE::073' }).length,
-    1
-  );
-});
-
-test("a selected printing never borrows another printing's sparkline", () => {
-  assert.deepEqual(
-    resolvePriceSeries(CARD, HISTORY, true, {
-      selected: { uid: 'Dragapult ex::TWM::200', set: 'TWM', number: '200', price: 24.75 },
-      globalUid: 'Dragapult ex::PRE::073'
-    }),
-    []
-  );
-});
-
-test('an unready history plots nothing', () => {
-  assert.deepEqual(resolvePriceSeries(CARD, HISTORY, false, { selected: null, globalUid: null }), []);
-  assert.deepEqual(resolvePriceSeries(CARD, null, true, { selected: null, globalUid: null }), []);
+test('the sparkline series follows the price fallback chain, but never borrows across printings', () => {
+  const cases = [
+    ['own UID', CARD, HISTORY, true, null, null, 1],
+    ['global canonical', ROLLING_CARD, HISTORY, true, null, GLOBAL, 1],
+    ["a selected printing never borrows another printing's sparkline", CARD, HISTORY, true, SELECTED, GLOBAL, 0],
+    ['an unready history plots nothing', CARD, HISTORY, false, null, null, 0],
+    ['no history plots nothing', CARD, null, true, null, null, 0]
+  ] as const;
+  for (const [name, card, history, ready, selected, globalUid, points] of cases) {
+    assert.equal(resolvePriceSeries(card, history, ready, { selected, globalUid }).length, points, name);
+  }
 });
 
 // ---------------------------------------------------------------------------
 // Report joins
 // ---------------------------------------------------------------------------
 
-test('a card is found in an archetype report by set and number', () => {
-  const report = { items: [{ name: 'Other', set: 'SVI', number: '1' }, CARD] } as ArchetypeReport;
-  assert.equal(findCardInArchetypeReport(report, CARD)?.name, 'Dragapult ex');
-});
-
-test('leading zeros do not prevent a match', () => {
-  const report = { items: [{ name: 'Dragapult ex', set: 'pre', number: 73 }] } as unknown as ArchetypeReport;
-  assert.ok(findCardInArchetypeReport(report, CARD));
-});
-
-test('a report item lacking set and number still matches by name', () => {
-  const report = { items: [{ name: 'Dragapult ex' }] } as ArchetypeReport;
-  assert.ok(findCardInArchetypeReport(report, CARD));
-});
-
-test('a card absent from the report yields null', () => {
-  const report = { items: [{ name: 'Other', set: 'SVI', number: '1' }] } as ArchetypeReport;
-  assert.equal(findCardInArchetypeReport(report, CARD), null);
-  assert.equal(findCardInArchetypeReport({ items: [] } as unknown as ArchetypeReport, CARD), null);
+test('a card is found in an archetype report by set and number, or by name when those are missing', () => {
+  const cases = [
+    ['set and number', [{ name: 'Other', set: 'SVI', number: '1' }, CARD], 'Dragapult ex'],
+    ['leading zeros do not prevent a match', [{ name: 'Dragapult ex', set: 'pre', number: 73 }], 'Dragapult ex'],
+    ['an item lacking set and number matches by name', [{ name: 'Dragapult ex' }], 'Dragapult ex'],
+    ['an absent card', [{ name: 'Other', set: 'SVI', number: '1' }], null],
+    ['an empty report', [], null]
+  ] as const;
+  for (const [name, items, found] of cases) {
+    const report = { items } as unknown as ArchetypeReport;
+    assert.equal(findCardInArchetypeReport(report, CARD)?.name ?? null, found, name);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -198,14 +180,11 @@ test('usage rows join the index for deck totals', () => {
   assert.equal(rows[0].item.found, 90);
 });
 
-test('a usage row for an archetype missing from the index is dropped', () => {
-  const payload = {
+test('a card with no usage entry, or only for archetypes missing from the index, yields no rows', () => {
+  const retired = {
     usage: { 'Dragapult ex::PRE::073': [{ slug: 'Retired_Deck', found: 5, pct: 5, dist: [] }] }
   } as never;
-  assert.deepEqual(buildUsageRowsFromIndex(payload, ARCHETYPES, CARD, DB), []);
-});
-
-test('a card with no usage entry yields no rows', () => {
+  assert.deepEqual(buildUsageRowsFromIndex(retired, ARCHETYPES, CARD, DB), []);
   assert.deepEqual(buildUsageRowsFromIndex({ usage: {} } as never, ARCHETYPES, CARD, DB), []);
 });
 
@@ -232,7 +211,7 @@ test('no stats or no card yields nothing', () => {
 // Presentation math
 // ---------------------------------------------------------------------------
 
-test('average copies weights each count by its players', () => {
+test('average copies weights each count by its players, and is null without a distribution', () => {
   const card = {
     dist: [
       { copies: 1, players: 1 },
@@ -240,40 +219,24 @@ test('average copies weights each count by its players', () => {
     ]
   };
   assert.equal(averageCopies(card), (1 * 1 + 3 * 3) / 4);
-});
-
-test('a card with no distribution has no average', () => {
   assert.equal(averageCopies({ dist: [] }), null);
   assert.equal(averageCopies({}), null);
 });
 
-test('a near-universal card is flagged as uninformative', () => {
-  const caveats = conversionCaveats({ pct: 95 }, { day1Count: 500 });
-  assert.equal(caveats.length, 1);
-  assert.match(caveats[0], /mirrors the field/);
-});
-
-test('a tiny sample is flagged', () => {
-  const caveats = conversionCaveats({ pct: 20 }, { day1Count: 4 });
-  assert.equal(caveats.length, 1);
-  assert.match(caveats[0], /too small a sample/);
-  assert.match(caveats[0], /4 decks/);
-});
-
-test('one deck is singular', () => {
-  assert.match(conversionCaveats({ pct: 20 }, { day1Count: 1 })[0], /1 deck /);
-});
-
-test('both caveats can apply at once', () => {
-  assert.equal(conversionCaveats({ pct: 95 }, { day1Count: 4 }).length, 2);
-});
-
-test('a well-sampled niche card gets no caveats', () => {
-  assert.deepEqual(conversionCaveats({ pct: 20 }, { day1Count: 500 }), []);
-});
-
-test('no conversion row means no caveats', () => {
-  assert.deepEqual(conversionCaveats({ pct: 95 }, undefined), []);
+test('conversion caveats flag a near-universal card and a tiny sample', () => {
+  const cases = [
+    ['a near-universal card mirrors the field', 95, 500, [/mirrors the field/]],
+    ['a tiny sample is flagged', 20, 4, [/4 decks.*too small a sample/]],
+    ['one deck is singular', 20, 1, [/1 deck /]],
+    ['both caveats can apply at once', 95, 4, [/mirrors the field/, /too small a sample/]],
+    ['a well-sampled niche card gets no caveats', 20, 500, []],
+    ['no conversion row means no caveats', 95, undefined, []]
+  ] as const;
+  for (const [name, pct, day1Count, patterns] of cases) {
+    const caveats = conversionCaveats({ pct }, day1Count === undefined ? undefined : { day1Count });
+    assert.equal(caveats.length, patterns.length, name);
+    patterns.forEach((pattern, i) => assert.match(caveats[i]!, pattern, name));
+  }
 });
 
 test('sub-one-percent usage reads as "<1%" rather than rounding to zero', () => {

@@ -46,22 +46,20 @@ function deck(id: string, cards: Array<[string, string, string | number, number]
 // canonicalizeDecks
 // ---------------------------------------------------------------------------
 
-test('deck cards are rewritten to their canonical printing', () => {
-  const [out] = canonicalizeDecks([deck('d1', [['Dragapult ex', 'TWM', '130', 2]])], DB);
-  assert.equal(out.cards?.[0].set, 'PRE');
-  assert.equal(out.cards?.[0].number, '073');
-});
-
-test('canonicalization does not mutate the input decks', () => {
-  const input = [deck('d1', [['Dragapult ex', 'TWM', '130', 2]])];
-  canonicalizeDecks(input, DB);
+test('deck cards with a synonym are rewritten to their canonical printing, on a copy', () => {
+  const input = [
+    deck('d1', [
+      ['Dragapult ex', 'TWM', '130', 2],
+      ['Nest Ball', 'SVI', '181', 4]
+    ])
+  ];
+  const [out] = canonicalizeDecks(input, DB);
+  assert.deepEqual(
+    out.cards?.map(c => `${c.set}/${c.number}`),
+    ['PRE/073', 'SVI/181'],
+    'a card with no synonym mapping is left alone'
+  );
   assert.equal(input[0].cards?.[0].set, 'TWM', 'the original decks must survive for other consumers');
-});
-
-test('a card with no synonym mapping is left alone', () => {
-  const [out] = canonicalizeDecks([deck('d1', [['Nest Ball', 'SVI', '181', 4]])], DB);
-  assert.equal(out.cards?.[0].set, 'SVI');
-  assert.equal(out.cards?.[0].number, '181');
 });
 
 test('a deck with no cards survives canonicalization', () => {
@@ -119,26 +117,31 @@ test('an empty deck collection yields an empty baseline', () => {
 // rulesToFilters
 // ---------------------------------------------------------------------------
 
-test('include rules carry their operator and count', () => {
-  const rules = [{ id: 1, cardId: 'SVI~181', mode: 'include', countOp: '>=', count: 2 }] as Rule[];
-  assert.deepEqual(rulesToFilters(rules), [{ cardId: 'SVI~181', operator: '>=', count: 2 }]);
-});
-
-test('exclude rules become the empty operator with a null count', () => {
-  const rules = [{ id: 1, cardId: 'SVI~181', mode: 'exclude', countOp: '>=', count: 0 }] as Rule[];
-  assert.deepEqual(rulesToFilters(rules), [{ cardId: 'SVI~181', operator: '', count: null }]);
-});
-
-test('a rule whose count is mid-edit is dropped rather than matching nothing', () => {
-  // Comparing against NaN matches zero decks, so the list would blank out while
-  // the user is still typing a number.
-  const rules = [{ id: 1, cardId: 'SVI~181', mode: 'include', countOp: '>=', count: Number.NaN }] as Rule[];
-  assert.deepEqual(rulesToFilters(rules), []);
-});
-
-test('an exclude rule survives even with a non-finite count', () => {
-  const rules = [{ id: 1, cardId: 'SVI~181', mode: 'exclude', countOp: '>=', count: Number.NaN }] as Rule[];
-  assert.equal(rulesToFilters(rules).length, 1);
+test('rules become filters, dropping an include whose count is mid-edit', () => {
+  const rule = (mode: string, count: number) => ({ id: 1, cardId: 'SVI~181', mode, countOp: '>=', count }) as Rule;
+  const cases = [
+    [
+      'include rules carry their operator and count',
+      rule('include', 2),
+      [{ cardId: 'SVI~181', operator: '>=', count: 2 }]
+    ],
+    [
+      'exclude rules become the empty operator with a null count',
+      rule('exclude', 0),
+      [{ cardId: 'SVI~181', operator: '', count: null }]
+    ],
+    // Comparing against NaN matches zero decks, so the list would blank out
+    // while the user is still typing a number.
+    ['an include with a mid-edit count is dropped', rule('include', Number.NaN), []],
+    [
+      'an exclude survives a non-finite count',
+      rule('exclude', Number.NaN),
+      [{ cardId: 'SVI~181', operator: '', count: null }]
+    ]
+  ] as const;
+  for (const [name, input, expected] of cases) {
+    assert.deepEqual(rulesToFilters([input]), expected, name);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -151,24 +154,19 @@ const CORPUS = [
   deck('d3', [['Ultra Ball', 'SVI', '196', 4]])
 ];
 
-test('a copy-count filter narrows the corpus', () => {
-  const kept = applyFilters(CORPUS, 'Dragapult', 'all', [{ cardId: 'SVI~181', operator: '>=', count: 2 }]);
-  assert.deepEqual(
-    kept.map(d => d.id),
-    ['d1']
-  );
-});
-
-test('an exclude filter keeps only decks without the card', () => {
-  const kept = applyFilters(CORPUS, 'Dragapult', 'all', [{ cardId: 'SVI~181', operator: '', count: null }]);
-  assert.deepEqual(
-    kept.map(d => d.id),
-    ['d3']
-  );
-});
-
-test('no filters keeps the whole archetype', () => {
-  assert.equal(applyFilters(CORPUS, 'Dragapult', 'all', []).length, 3);
+test('filters narrow the corpus by copy count or by absence', () => {
+  const cases = [
+    ['a copy-count filter', [{ cardId: 'SVI~181', operator: '>=', count: 2 }], ['d1']],
+    ['an exclude filter keeps only decks without the card', [{ cardId: 'SVI~181', operator: '', count: null }], ['d3']],
+    ['no filters keeps the whole archetype', [], ['d1', 'd2', 'd3']]
+  ] as const;
+  for (const [name, filters, expected] of cases) {
+    assert.deepEqual(
+      applyFilters(CORPUS, 'Dragapult', 'all', [...filters]).map(d => d.id),
+      expected,
+      name
+    );
+  }
 });
 
 test('filter order does not change the result', () => {
@@ -214,26 +212,20 @@ const ITEMS = [
   { name: 'Buddy-Buddy Poffin', set: 'TEF', number: '144' }
 ] as CardItem[];
 
-test('an empty query matches nothing', () => {
-  assert.deepEqual(searchCandidates(ITEMS, '   ', new Set(), null), []);
-});
-
-test('search matches on folded name', () => {
-  assert.deepEqual(
-    searchCandidates(ITEMS, 'ball', new Set(), null).map(i => i.name),
-    ['Nest Ball', 'Ultra Ball']
-  );
-});
-
-test('cards already used by a rule are excluded', () => {
-  assert.deepEqual(
-    searchCandidates(ITEMS, 'ball', new Set(['SVI~181']), null).map(i => i.name),
-    ['Ultra Ball']
-  );
-});
-
-test('results are capped', () => {
-  assert.equal(searchCandidates(ITEMS, 'ball', new Set(), null, 1).length, 1);
+test('search matches folded names, skips cards already in a rule, and caps its results', () => {
+  const cases = [
+    ['an empty query matches nothing', '   ', [], undefined, []],
+    ['search matches on folded name', 'ball', [], undefined, ['Nest Ball', 'Ultra Ball']],
+    ['cards already used by a rule are excluded', 'ball', ['SVI~181'], undefined, ['Ultra Ball']],
+    ['results are capped', 'ball', [], 1, ['Nest Ball']]
+  ] as const;
+  for (const [name, query, used, limit, expected] of cases) {
+    assert.deepEqual(
+      searchCandidates(ITEMS, query, new Set(used), null, limit).map(i => i.name),
+      expected,
+      name
+    );
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -279,13 +271,9 @@ test('sameRenderedContent compares the distribution, not just the headline', () 
 // inclusionPct
 // ---------------------------------------------------------------------------
 
-test('inclusion percent is rounded to a whole number', () => {
+test('inclusion percent is rounded to a whole number, and reads zero when unknown', () => {
   const ctx = { totalDecks: 3, presence: new Map([['SVI~181', { count: 2 }]]) } as never;
   assert.equal(inclusionPct(ctx, 'SVI~181'), '67');
-});
-
-test('a missing card or empty context reads as zero', () => {
-  const ctx = { totalDecks: 3, presence: new Map() } as never;
-  assert.equal(inclusionPct(ctx, 'SVI~181'), '0');
-  assert.equal(inclusionPct(null, 'SVI~181'), '0');
+  assert.equal(inclusionPct(ctx, 'SVI~196'), '0', 'a missing card');
+  assert.equal(inclusionPct(null, 'SVI~181'), '0', 'no context');
 });

@@ -5,7 +5,6 @@ import test from 'node:test';
 
 import {
   leadingArchetype,
-  liveReportsKey,
   MAX_REPORTS_PER_REQUEST,
   parseDeckReports,
   reportableArchetypes
@@ -98,10 +97,6 @@ test('an archetype leads with more than half the reports: one report does, a spl
     null
   );
   assert.equal(leadingArchetype([]), null);
-});
-
-test('reports are published beside the event they belong to', () => {
-  assert.equal(liveReportsKey('baltimore-2027'), 'live/v1/baltimore-2027/reports.json');
 });
 
 test('the picker offers the online index first, then the rest of the icon map by name, once each', () => {

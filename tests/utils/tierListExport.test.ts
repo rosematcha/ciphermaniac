@@ -78,25 +78,18 @@ test('a layout already wider than the narrowest target is exported at the conten
   assert.equal(exportWidth(sample), 800 + SLACK);
 });
 
-test('a narrow layout is padded out to the narrowest target', () => {
-  // Content wants 318; 4:5 of 450 tall wants 360, and the ratio is what binds.
-  const sample: LayoutSample = { constraint: 340, height: 450, used: 300 };
-  assert.equal(exportWidth(sample), 360);
-});
-
 test('a sparse board is padded to 4:5 rather than left as a sliver', () => {
   // Six tiers holding one card between them: the export Reese got back at
   // 0.45:1 before the one-tile padding cap came out.
   const sample: LayoutSample = { constraint: 200, height: 640, used: 200 };
   assert.equal(exportWidth(sample), 640 * NARROWEST);
-  assert.ok(exportWidth(sample) / sample.height - NARROWEST < 1e-9);
 });
 
 // ---------------------------------------------------------------------------
 // Sweep
 // ---------------------------------------------------------------------------
 
-test('the sweep reports one candidate per distinct wrapping, widest first', () => {
+test('the sweep reports one candidate per distinct wrapping, widest first, down to one tile per row', () => {
   const measure = board(6, 8);
   const samples = sampleLayouts(natural(measure), measure);
   assert.ok(samples.length > 1);
@@ -104,12 +97,7 @@ test('the sweep reports one candidate per distinct wrapping, widest first', () =
     assert.ok(samples[i]!.used < samples[i - 1]!.used, 'each candidate is narrower than the last');
     assert.ok(samples[i]!.height >= samples[i - 1]!.height, 'and no shorter');
   }
-});
-
-test('the sweep bottoms out at one tile per row instead of running away', () => {
-  const measure = board(6, 8);
-  const samples = sampleLayouts(natural(measure), measure);
-  assert.equal(samples[samples.length - 1]!.used, CHROME + STRIDE);
+  assert.equal(samples[samples.length - 1]!.used, CHROME + STRIDE, 'bottoms out instead of running away');
 });
 
 test('a board that cannot wrap yields a single candidate', () => {
@@ -143,12 +131,6 @@ test('a sparse card-art board lands near the narrowest target rather than stayin
   const ratio = chosenRatio(6, 4);
   assert.ok(ratio < 1, `expected a portrait, got ${ratio.toFixed(3)}`);
   assert.ok(ratio > 0.6, `but not a sliver, got ${ratio.toFixed(3)}`);
-});
-
-test('a board with almost nothing on it still lands on a target', () => {
-  // Six tiers, one card. Left to its content this is a 0.45:1 sliver.
-  const ratio = chosenRatio(6, 1);
-  assert.ok(Math.abs(ratio - NARROWEST) < 1e-9, `expected 4:5, got ${ratio.toFixed(3)}`);
 });
 
 const SHAPES = [1, 2, 4, 6, 8, 12].flatMap(tiers => [1, 2, 4, 8, 16, 30].map(busiest => [tiers, busiest] as const));

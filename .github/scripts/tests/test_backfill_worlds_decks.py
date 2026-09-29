@@ -38,11 +38,7 @@ class PayloadTest(unittest.TestCase):
             self.assertEqual(sum(c["count"] for c in deck["cards"]), 60, deck["playerId"])
             self.assertTrue(deck["archetype"])
             self.assertEqual(deck["deckSource"], "rk9")
-
-    def test_every_payload_deck_cites_its_rk9_source(self):
-        payload = backfill.load_payload()
-        for deck in payload["decks"]:
-            self.assertIn(deck["playerId"], payload["sources"])
+            self.assertIn(deck["playerId"], payload["sources"], "every deck cites its rk9 source")
 
 
 class PreconditionTest(unittest.TestCase):

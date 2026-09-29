@@ -11,6 +11,7 @@ import test from 'node:test';
 import { addDays, buildLocalsArtifacts, expandLocals, weekdayOf } from '../../shared/events/locals.ts';
 import type { LocalsCell, LocalSlot } from '../../shared/events/types.ts';
 import { rawListedLocal, rawLocalEvent, rawLocalSeries } from '../__utils__/pokedata.ts';
+import { sanAntonioLocals } from '../__utils__/sanAntonioEvents.ts';
 
 /** A Tuesday. The three-week window runs through Tuesday 2026-10-06. */
 const NOW = new Date('2026-09-15T12:00:00Z');
@@ -284,4 +285,46 @@ test('an aging index never extends a weekly slot beyond the dates the producer a
     expandLocals([dated], '2026-09-29', 21, '2026-09-15').map(event => event.date),
     ['2026-09-30']
   );
+});
+
+test('real San Antonio records expand to the sessions each store actually runs', () => {
+  const expanded = expandLocals([...sanAntonioLocals().cells.values()], '2026-09-16', 21);
+  const eventsFor = (league: string) =>
+    expanded
+      .filter(event => event.id.startsWith(`${league}-`))
+      .map(event => [event.date, event.time, ...(event.reportedTimes ? [event.reportedTimes] : [])]);
+  const cases: Array<[string, string, unknown[]]> = [
+    [
+      'PokeHive: UTC Saturday starts become Friday 7:30 PM Central',
+      '6243233',
+      [
+        ['2026-09-18', '19:30'],
+        ['2026-09-25', '19:30'],
+        ['2026-10-02', '19:30']
+      ]
+    ],
+    [
+      'Combat Power: the listed Sunday and Wednesday survive, deduplicating only the same session',
+      '6238620',
+      [
+        ['2026-09-20', '15:00'],
+        ['2026-09-23', '19:00'],
+        ['2026-09-30', '19:00'],
+        ['2026-10-07', '19:00'],
+        ['2026-09-16', '19:30']
+      ]
+    ],
+    [
+      'Time2Play: conflicting Sunday starts form one unresolved session per date',
+      '25098755',
+      [
+        ['2026-09-20', '', ['13:00', '14:30']],
+        ['2026-09-27', '', ['13:00', '14:30']],
+        ['2026-10-04', '', ['13:00', '14:30']]
+      ]
+    ]
+  ];
+  for (const [store, league, expected] of cases) {
+    assert.deepEqual(eventsFor(league), expected, store);
+  }
 });

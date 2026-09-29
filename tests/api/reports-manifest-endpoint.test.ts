@@ -84,18 +84,16 @@ async function callManifest(status: number | 'network'): Promise<Response> {
   }
 }
 
-test('reports manifest returns 503 (not 404) when master probe 5xxs', async () => {
-  const response = await callManifest(500);
-  assert.strictEqual(response.status, 503);
-  assert.strictEqual(response.headers.get('Cache-Control'), 'no-store');
-});
-
-test('reports manifest returns 503 when master probe hits a network error', async () => {
-  const response = await callManifest('network');
-  assert.strictEqual(response.status, 503);
-});
-
-test('reports manifest still returns 404 when the report is genuinely absent', async () => {
-  const response = await callManifest(404);
-  assert.strictEqual(response.status, 404);
+test('reports manifest answers a storage outage with an uncached 503, and only true absence with 404', async () => {
+  for (const [probe, expected] of [
+    [500, 503],
+    ['network', 503],
+    [404, 404]
+  ] as const) {
+    const response = await callManifest(probe);
+    assert.strictEqual(response.status, expected, String(probe));
+    if (expected === 503) {
+      assert.strictEqual(response.headers.get('Cache-Control'), 'no-store', String(probe));
+    }
+  }
 });

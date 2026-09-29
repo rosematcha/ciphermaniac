@@ -9,6 +9,5 @@
 export { countField, DEFAULT_MIN_FIELD_PLAYERS, fetchRecentOnlineTournaments, gatherDecks } from './tournamentFetcher';
 export { compileExclusions, matchExclusion } from './exclusions';
 export { utcDayWindow } from './window';
-export { buildArchetypeReports } from './reportGenerator';
 export { buildTrendReport, buildCardTrendReport } from './archetypeBuilder';
 export { appendTrendHistory, buildWeeklyReport } from './weeklyBuilder';

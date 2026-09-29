@@ -160,7 +160,8 @@ function stubDocument(): {
   };
 }
 
-test('a press that never moves is reported as a tap, not a drop', () => {
+/** Press, optionally move to a point, and release; returns what was reported. */
+function press(target: 'tile' | 'nothing', moveTo: [number, number] | null): { taps: string[]; drops: string[] } {
   const dom = stubDocument();
   const taps: string[] = [];
   const drops: string[] = [];
@@ -169,54 +170,33 @@ test('a press that never moves is reported as a tap, not a drop', () => {
     onTap: id => taps.push(id)
   });
 
-  dom.fire('pointerdown', { target: dom.tile, button: 0, clientX: 10, clientY: 10, pointerId: 1 });
+  const pressed = target === 'tile' ? dom.tile : node('tl-add');
+  dom.fire('pointerdown', { target: pressed, button: 0, clientX: 10, clientY: 10, pointerId: 1 });
+  if (moveTo) {
+    dom.fire('pointermove', { clientX: moveTo[0], clientY: moveTo[1], preventDefault: () => {} });
+  }
   dom.fire('pointerup', {});
 
-  assert.deepEqual(taps, ['Dragapult']);
-  assert.deepEqual(drops, []);
   uninstall();
   dom.restore();
-});
+  return { taps, drops };
+}
 
-test('a press within the threshold is still a tap — a finger never holds perfectly still', () => {
-  const dom = stubDocument();
-  const taps: string[] = [];
-  const uninstall = installItemSortable({ onDrop: () => {}, onTap: id => taps.push(id) });
-
-  dom.fire('pointerdown', { target: dom.tile, button: 0, clientX: 10, clientY: 10, pointerId: 1 });
-  dom.fire('pointermove', { clientX: 12, clientY: 11, preventDefault: () => {} });
-  dom.fire('pointerup', {});
-
-  assert.deepEqual(taps, ['Dragapult']);
-  uninstall();
-  dom.restore();
-});
-
-test('a press that becomes a drag is not also a tap', () => {
-  const dom = stubDocument();
-  const taps: string[] = [];
-  const uninstall = installItemSortable({ onDrop: () => {}, onTap: id => taps.push(id) });
-
-  dom.fire('pointerdown', { target: dom.tile, button: 0, clientX: 10, clientY: 10, pointerId: 1 });
-  dom.fire('pointermove', { clientX: 60, clientY: 90, preventDefault: () => {} });
-  dom.fire('pointerup', {});
-
-  assert.deepEqual(taps, []);
-  uninstall();
-  dom.restore();
-});
-
-test('a press on nothing draggable reports neither', () => {
-  const dom = stubDocument();
-  const taps: string[] = [];
-  const uninstall = installItemSortable({ onDrop: () => {}, onTap: id => taps.push(id) });
-
-  dom.fire('pointerdown', { target: node('tl-add'), button: 0, clientX: 10, clientY: 10, pointerId: 1 });
-  dom.fire('pointerup', {});
-
-  assert.deepEqual(taps, []);
-  uninstall();
-  dom.restore();
+test('a press is a tap only when it starts on a tile and stays within the threshold', () => {
+  const cases = [
+    ['a press that never moves is a tap, not a drop', 'tile', null, ['Dragapult']],
+    // A finger never holds perfectly still.
+    ['a press within the threshold is still a tap', 'tile', [12, 11], ['Dragapult']],
+    ['a press that becomes a drag is not also a tap', 'tile', [60, 90], []],
+    ['a press on nothing draggable reports neither', 'nothing', null, []]
+  ] as const;
+  for (const [name, target, moveTo, expectedTaps] of cases) {
+    const { taps, drops } = press(target, moveTo ? [...moveTo] : null);
+    assert.deepEqual(taps, expectedTaps, name);
+    if (moveTo === null) {
+      assert.deepEqual(drops, [], name);
+    }
+  }
 });
 
 test('a page that does not want taps is not handed any', () => {

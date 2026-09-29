@@ -51,7 +51,7 @@ async function mockApi(page: Page) {
   return errors;
 }
 
-test('the public page shows the round, finds a player and opens their history', async ({ page }) => {
+test('the public page shows the round, finds a player and opens their history @mobile', async ({ page }) => {
   const errors = await mockApi(page);
   await page.goto(`/t/${CODE}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fixture Challenge & Friends');
@@ -80,7 +80,7 @@ test('standings rank a combined pod per division', async ({ page }) => {
   await expect(page.locator('.tm-standings').last().locator('tbody tr')).toHaveCount(7);
 });
 
-test('a signed-out organizer is offered sign-in, not a console', async ({ page }) => {
+test('a signed-out organizer is offered sign-in, not a console @mobile', async ({ page }) => {
   await mockApi(page);
   await page.goto('/host');
   await expect(page.getByRole('link', { name: 'Continue with Google' })).toHaveAttribute(

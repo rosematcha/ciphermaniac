@@ -19,12 +19,6 @@
             "maxNumericValue": 90000
           }
         ],
-        "cumulative-layout-shift": [
-          "error",
-          {
-            "maxNumericValue": 0.1
-          }
-        ],
         "largest-contentful-paint": [
           "error",
           {

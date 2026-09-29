@@ -18,7 +18,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  asCardUid,
   cardUid,
   cardUidOrName,
   getCanonicalCardFromData,
@@ -66,22 +65,27 @@ test('a UID built from a deck card resolves through a padded synonym database', 
 // Normalization
 // ---------------------------------------------------------------------------
 
-test('the set code is uppercased', () => {
-  assert.equal(cardUid('Nest Ball', 'svi', '181'), cardUid('Nest Ball', 'SVI', '181'));
-  assert.equal(cardUid('Nest Ball', 'SvI', '181'), 'Nest Ball::SVI::181');
-});
-
-test('the number is zero-padded to three digits, suffixes uppercased', () => {
-  assert.equal(cardUid('X', 'ABC', '5'), 'X::ABC::005');
-  assert.equal(cardUid('X', 'ABC', 5), 'X::ABC::005');
-  assert.equal(cardUid('X', 'ABC', '005'), 'X::ABC::005');
-  assert.equal(cardUid('X', 'ABC', '18a'), 'X::ABC::018A');
-  assert.equal(cardUid('X', 'ABC', '1180'), 'X::ABC::1180', 'already longer than three digits');
-});
-
-test('a non-numeric collector number is uppercased, not padded', () => {
-  assert.equal(cardUid('X', 'CRZ', 'gg05'), 'X::CRZ::GG05');
-  assert.equal(cardUid('X', 'LOR', 'TG24'), 'X::LOR::TG24');
+test('cardUid uppercases the set, pads numeric numbers, and refuses half-specified cards', () => {
+  const cases: Array<[string, string | null, string | number | null | undefined, string | null, string]> = [
+    ['Nest Ball', 'SvI', '181', 'Nest Ball::SVI::181', 'set code uppercased'],
+    ['X', 'ABC', '5', 'X::ABC::005', 'padded to three digits'],
+    ['X', 'ABC', 5, 'X::ABC::005', 'numeric input padded'],
+    ['X', 'ABC', '005', 'X::ABC::005', 'already padded'],
+    ['X', 'ABC', '18a', 'X::ABC::018A', 'suffix uppercased after padding'],
+    ['X', 'ABC', '1180', 'X::ABC::1180', 'already longer than three digits'],
+    ['X', 'CRZ', 'gg05', 'X::CRZ::GG05', 'non-numeric uppercased, not padded'],
+    ['X', 'LOR', 'TG24', 'X::LOR::TG24', 'non-numeric kept'],
+    ["Boss's Orders", 'MEG', '114', "Boss's Orders::MEG::114", 'name used verbatim'],
+    ['Café Cup', 'ABC', '1', 'Café Cup::ABC::001', 'non-ASCII name used verbatim'],
+    ['X', '', '1', null, 'missing set'],
+    ['X', 'ABC', '', null, 'missing number'],
+    ['X', null, null, null, 'null set and number'],
+    ['X', 'ABC', undefined, null, 'undefined number'],
+    ['', 'ABC', '1', null, 'missing name']
+  ];
+  for (const [name, set, number, expected, label] of cases) {
+    assert.equal(cardUid(name, set, number), expected, label);
+  }
 });
 
 test('construction is idempotent: rebuilding from a UID s parts is a fixed point', () => {
@@ -91,22 +95,9 @@ test('construction is idempotent: rebuilding from a UID s parts is a fixed point
   assert.equal(cardUid(name, set, number), first);
 });
 
-test('the card name is used verbatim, including punctuation and colons in names', () => {
-  assert.equal(cardUid("Boss's Orders", 'MEG', '114'), "Boss's Orders::MEG::114");
-  assert.equal(cardUid('Café Cup', 'ABC', '1'), 'Café Cup::ABC::001');
-});
-
 // ---------------------------------------------------------------------------
-// Absent parts
+// Name-only fallback
 // ---------------------------------------------------------------------------
-
-test('a missing set or number yields null rather than a malformed UID', () => {
-  assert.equal(cardUid('X', '', '1'), null);
-  assert.equal(cardUid('X', 'ABC', ''), null);
-  assert.equal(cardUid('X', null, null), null);
-  assert.equal(cardUid('X', 'ABC', undefined), null);
-  assert.equal(cardUid('', 'ABC', '1'), null);
-});
 
 test('cardUidOrName falls back to the bare name, matching the name-only canonicals map', () => {
   assert.equal(cardUidOrName('Basic Fire Energy', null, null), 'Basic Fire Energy');
@@ -119,12 +110,4 @@ test('a name-only key still resolves through the canonicals map', () => {
     canonicals: { 'Dragapult ex': 'Dragapult ex::PRE::073' }
   };
   assert.equal(getCanonicalCardFromData(db, cardUidOrName('Dragapult ex', null, null)), 'Dragapult ex::PRE::073');
-});
-
-// ---------------------------------------------------------------------------
-// asCardUid is for reading, not building
-// ---------------------------------------------------------------------------
-
-test('asCardUid passes a producer-written UID through unchanged', () => {
-  assert.equal(asCardUid('Munkidori::TWM::095'), 'Munkidori::TWM::095');
 });

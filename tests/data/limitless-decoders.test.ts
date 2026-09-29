@@ -33,15 +33,12 @@ const VALID_TOURNAMENT = {
 // Shape vs rows
 // ---------------------------------------------------------------------------
 
-test('a list endpoint returning a non-array throws', () => {
+test('an endpoint returning the wrong top-level shape throws', () => {
   for (const raw of [{}, 'nope', null, 42]) {
-    assert.throws(() => decodeTournamentList(raw), LimitlessShapeError, `accepted ${JSON.stringify(raw)}`);
+    assert.throws(() => decodeTournamentList(raw), LimitlessShapeError, `list accepted ${JSON.stringify(raw)}`);
   }
-});
-
-test('an object endpoint returning a non-object throws', () => {
   for (const raw of [[], 'nope', null, 7]) {
-    assert.throws(() => decodeTournamentDetails(raw), LimitlessShapeError);
+    assert.throws(() => decodeTournamentDetails(raw), LimitlessShapeError, `details accepted ${JSON.stringify(raw)}`);
   }
 });
 
@@ -109,37 +106,32 @@ test('optional fields become undefined rather than empty strings or NaN', () => 
   assert.equal(rows[0].players, undefined);
 });
 
-test('a numeric field arriving as a numeric string is accepted', () => {
-  const { rows } = decodeTournamentList([{ ...VALID_TOURNAMENT, players: '128' }]);
+test('a numeric string player count is accepted, and a non-numeric one becomes undefined rather than NaN', () => {
+  const { rows } = decodeTournamentList([
+    { ...VALID_TOURNAMENT, players: '128' },
+    { ...VALID_TOURNAMENT, players: 'lots' }
+  ]);
   assert.equal(rows[0].players, 128);
-});
-
-test('a non-numeric player count becomes undefined rather than NaN', () => {
-  const { rows } = decodeTournamentList([{ ...VALID_TOURNAMENT, players: 'lots' }]);
-  assert.equal(rows[0].players, undefined);
+  assert.equal(rows[1].players, undefined);
 });
 
 // ---------------------------------------------------------------------------
 // Details — absent must stay distinguishable from false
 // ---------------------------------------------------------------------------
 
-test('absent booleans stay absent rather than defaulting to false', () => {
-  // The caller filters with `=== false`, so "unknown" must not become "no".
-  const details = decodeTournamentDetails({});
-  assert.equal(details.decklists, undefined);
-  assert.equal(details.isOnline, undefined);
-});
-
-test('explicit false survives as false', () => {
-  const details = decodeTournamentDetails({ decklists: false, isOnline: false });
-  assert.equal(details.decklists, false);
-  assert.equal(details.isOnline, false);
-});
-
-test('a non-boolean in a boolean field is treated as unknown, not truthy', () => {
-  const details = decodeTournamentDetails({ decklists: 'yes', isOnline: 1 });
-  assert.equal(details.decklists, undefined, "'yes' must not be read as a decision");
-  assert.equal(details.isOnline, undefined);
+test('booleans keep absent, false, and unrecognized apart', () => {
+  // The caller filters with `=== false`, so "unknown" must not become "no",
+  // and a non-boolean like 'yes' must not be read as a decision either way.
+  const cases: Array<[Record<string, unknown>, boolean | undefined]> = [
+    [{}, undefined],
+    [{ decklists: false, isOnline: false }, false],
+    [{ decklists: 'yes', isOnline: 1 }, undefined]
+  ];
+  for (const [raw, expected] of cases) {
+    const details = decodeTournamentDetails(raw);
+    assert.equal(details.decklists, expected, `decklists from ${JSON.stringify(raw)}`);
+    assert.equal(details.isOnline, expected, `isOnline from ${JSON.stringify(raw)}`);
+  }
 });
 
 test('a malformed organizer becomes undefined rather than throwing', () => {
@@ -159,16 +151,16 @@ test('a standings row needs to identify a player somehow', () => {
   assert.equal(seen, 5);
 });
 
-test('a decklist passes through structurally unchecked', () => {
+test('a decklist object passes through structurally unchecked, and a non-object becomes undefined', () => {
   // toCardEntries is the one place that interprets a decklist; duplicating its
   // tolerance here would mean two places to keep in sync.
   const decklist = { pokemon: [{ name: 'Pikachu', count: 4 }] };
-  const { rows } = decodeStandings([{ player: 'Ash', decklist }]);
+  const { rows } = decodeStandings([
+    { player: 'Ash', decklist },
+    { player: 'Misty', decklist: 'oops' }
+  ]);
   assert.deepEqual(rows[0].decklist, decklist);
-});
-
-test('a non-object decklist becomes undefined', () => {
-  assert.equal(decodeStandings([{ player: 'Ash', decklist: 'oops' }]).rows[0].decklist, undefined);
+  assert.equal(rows[1].decklist, undefined);
 });
 
 test('a deck reference survives partially', () => {
@@ -180,22 +172,19 @@ test('a deck reference survives partially', () => {
 // Breakage detection — the part that matters
 // ---------------------------------------------------------------------------
 
-test('losing every row of a non-empty response is reported as breakage', () => {
-  const result = decodeTournamentList([{ nope: 1 }, { nope: 2 }]);
-  assert.equal(result.rows.length, 0);
-  assert.match(String(detectDecodeBreakage(result, 'tournament list')), /discarded all 2 rows/);
-});
-
-test('losing a majority is reported', () => {
-  const raw = [VALID_TOURNAMENT, { bad: 1 }, { bad: 2 }];
-  assert.match(String(detectDecodeBreakage(decodeTournamentList(raw), 'list')), /discarded 2 of 3/);
-});
-
-test('losing a minority is normal upstream noise and stays quiet', () => {
-  const raw = [VALID_TOURNAMENT, { ...VALID_TOURNAMENT, id: 't2' }, { bad: 1 }];
-  assert.equal(detectDecodeBreakage(decodeTournamentList(raw), 'list'), undefined);
-});
-
-test('a clean decode is quiet', () => {
-  assert.equal(detectDecodeBreakage(decodeTournamentList([VALID_TOURNAMENT]), 'list'), undefined);
+test('losing all or most rows of a non-empty response is breakage; a minority is upstream noise', () => {
+  const cases: Array<[string, unknown[], RegExp | undefined]> = [
+    ['every row lost', [{ nope: 1 }, { nope: 2 }], /discarded all 2 rows/],
+    ['a majority lost', [VALID_TOURNAMENT, { bad: 1 }, { bad: 2 }], /discarded 2 of 3/],
+    ['a minority lost', [VALID_TOURNAMENT, { ...VALID_TOURNAMENT, id: 't2' }, { bad: 1 }], undefined],
+    ['a clean decode', [VALID_TOURNAMENT], undefined]
+  ];
+  for (const [label, raw, expected] of cases) {
+    const breakage = detectDecodeBreakage(decodeTournamentList(raw), 'list');
+    if (expected) {
+      assert.match(String(breakage), expected, label);
+    } else {
+      assert.equal(breakage, undefined, label);
+    }
+  }
 });

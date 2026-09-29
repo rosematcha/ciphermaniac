@@ -54,203 +54,91 @@ function rejects(error: unknown): () => Promise<unknown> {
 const BUCKET = 'test-bucket';
 const KEY = 'reports/thing.json';
 
-test('getJsonResult → found returns the parsed value', async () => {
-  const client = stubClient(found('{"a":1,"b":[2,3]}'));
-  const result = await getJsonResult<{ a: number; b: number[] }>(client, BUCKET, KEY);
-  assert.equal(result.status, 'found');
-  if (result.status === 'found') {
-    assert.deepEqual(result.value, { a: 1, b: [2, 3] });
-  }
-});
-
-test('getJsonResult → missing on NoSuchKey', async () => {
-  const client = stubClient(rejects({ name: 'NoSuchKey' }));
-  const result = await getJsonResult(client, BUCKET, KEY);
-  assert.equal(result.status, 'missing');
-});
-
-test('getJsonResult → missing on a 404 $metadata status', async () => {
-  const client = stubClient(rejects({ $metadata: { httpStatusCode: 404 } }));
-  const result = await getJsonResult(client, BUCKET, KEY);
-  assert.equal(result.status, 'missing');
-});
-
-test('getJsonResult → corrupt when the body is not JSON', async () => {
-  const client = stubClient(found('this is not json{'));
-  const result = await getJsonResult(client, BUCKET, KEY);
-  assert.equal(result.status, 'corrupt');
-  if (result.status === 'corrupt') {
-    assert.ok(result.error instanceof Error);
-  }
-});
-
-test('getJsonResult → transport on a 500 (never conflated with missing)', async () => {
-  const err = awsError({ name: 'InternalError', status: 500 });
-  const client = stubClient(rejects(err));
-  const result = await getJsonResult(client, BUCKET, KEY, { retry: FAST_RETRY });
-  assert.equal(result.status, 'transport');
-  if (result.status === 'transport') {
-    assert.equal(result.error, err);
-  }
-});
-
-test('getJsonResult → transport on a network failure with no HTTP status', async () => {
-  const client = stubClient(rejects(new Error('ECONNRESET')));
-  const result = await getJsonResult(client, BUCKET, KEY, { retry: FAST_RETRY });
-  assert.equal(result.status, 'transport');
-});
-
-test('getJsonResult never throws', async () => {
-  const client = stubClient(rejects('a bare string, not even an Error'));
-  await assert.doesNotReject(() => getJsonResult(client, BUCKET, KEY));
-});
-
-test('createReportsBinding.get → null on a verified 404', async () => {
-  const client = stubClient(rejects({ $metadata: { httpStatusCode: 404 } }));
-  const binding = createReportsBinding(client, BUCKET);
-  assert.equal(await binding.get(KEY), null);
-});
-
-test('createReportsBinding.get → null on NoSuchKey', async () => {
-  const client = stubClient(rejects({ name: 'NoSuchKey' }));
-  const binding = createReportsBinding(client, BUCKET);
-  assert.equal(await binding.get(KEY), null);
-});
-
-test('createReportsBinding.get → object exposing text()/json() when found', async () => {
-  const client = stubClient(found('{"ok":true}'));
-  const binding = createReportsBinding(client, BUCKET);
-  const obj = await binding.get(KEY);
-  assert.ok(obj);
-  assert.equal(await obj.text(), '{"ok":true}');
-});
-
-test('createReportsBinding.get → rethrows a transport failure (not treated as 404)', async () => {
-  const client = stubClient(rejects({ $metadata: { httpStatusCode: 503 } }));
-  const binding = createReportsBinding(client, BUCKET, { retry: FAST_RETRY });
-  await assert.rejects(() => binding.get(KEY));
-});
-
-test('withR2Retry retries a 500 and returns the eventual success', async () => {
+/** Wrap a handler so each call is counted. */
+function counted(handler: () => Promise<unknown>): { client: S3Client; calls: () => number } {
   let calls = 0;
-  const value = await withR2Retry(async () => {
-    calls += 1;
-    if (calls < 3) {
-      throw awsError({ name: 'InternalError', status: 500 });
-    }
-    return 'ok';
-  }, FAST_RETRY);
-  assert.equal(value, 'ok');
-  assert.equal(calls, 3);
-});
-
-test('withR2Retry gives up after the attempt budget and rethrows the last error', async () => {
-  const err = awsError({ name: 'InternalError', status: 500 });
-  let calls = 0;
-  await assert.rejects(
-    () =>
-      withR2Retry(
-        async () => {
-          calls += 1;
-          throw err;
-        },
-        { ...FAST_RETRY, attempts: 4 }
-      ),
-    (thrown: unknown) => thrown === err
-  );
-  assert.equal(calls, 4);
-});
-
-test('withR2Retry does not retry a 404 — missing is an answer, not a fault', async () => {
-  let calls = 0;
-  await assert.rejects(() =>
-    withR2Retry(async () => {
+  return {
+    client: stubClient(() => {
       calls += 1;
-      throw awsError({ name: 'NoSuchKey' });
-    }, FAST_RETRY)
-  );
-  assert.equal(calls, 1);
-});
+      return handler();
+    }),
+    calls: () => calls
+  };
+}
 
-test('withR2Retry does not retry a 403 — bad credentials will not fix themselves', async () => {
-  let calls = 0;
-  await assert.rejects(() =>
-    withR2Retry(async () => {
-      calls += 1;
-      throw awsError({ name: 'AccessDenied', status: 403 });
-    }, FAST_RETRY)
-  );
-  assert.equal(calls, 1);
-});
-
-test('withR2Retry retries a 429 even though it is a 4xx', async () => {
-  let calls = 0;
-  await withR2Retry(async () => {
-    calls += 1;
-    if (calls < 2) {
-      throw awsError({ name: 'SlowDown', status: 429 });
+test('getJsonResult classifies every outcome, never throws, and only retries transport', async () => {
+  const cases: Array<[string, () => Promise<unknown>, string, number | null]> = [
+    ['found', found('{"a":1,"b":[2,3]}'), 'found', 1],
+    ['NoSuchKey', rejects({ name: 'NoSuchKey' }), 'missing', 1],
+    ['404 status', rejects({ $metadata: { httpStatusCode: 404 } }), 'missing', 1],
+    // A parse error is not transient.
+    ['not JSON', found('this is not json{'), 'corrupt', 1],
+    // Never conflated with missing.
+    ['500', rejects(awsError({ name: 'InternalError', status: 500 })), 'transport', null],
+    ['network failure with no HTTP status', rejects(new Error('ECONNRESET')), 'transport', null],
+    ['a bare string, not even an Error', rejects('a bare string'), 'transport', null]
+  ];
+  for (const [label, handler, status, expectedCalls] of cases) {
+    const { client, calls } = counted(handler);
+    const result = await getJsonResult(client, BUCKET, KEY, { retry: FAST_RETRY });
+    assert.equal(result.status, status, label);
+    if (expectedCalls !== null) {
+      assert.equal(calls(), expectedCalls, label);
     }
-  }, FAST_RETRY);
-  assert.equal(calls, 2);
+  }
+
+  const found1 = await getJsonResult<{ a: number }>(stubClient(found('{"a":1}')), BUCKET, KEY);
+  assert.deepEqual(found1.status === 'found' && found1.value, { a: 1 });
+  const err = awsError({ name: 'InternalError', status: 500 });
+  const transport = await getJsonResult(stubClient(rejects(err)), BUCKET, KEY, { retry: FAST_RETRY });
+  assert.equal(transport.status === 'transport' && transport.error, err);
 });
 
-test('withR2Retry retries a socket failure that carries no HTTP status', async () => {
-  let calls = 0;
-  await withR2Retry(async () => {
-    calls += 1;
-    if (calls < 2) {
-      throw awsError({ code: 'ECONNRESET' });
-    }
-  }, FAST_RETRY);
-  assert.equal(calls, 2);
-});
-
-test('getJsonResult retries a 500 and returns the value on a later attempt', async () => {
-  let calls = 0;
-  const client = stubClient(async () => {
-    calls += 1;
-    if (calls < 2) {
-      throw awsError({ name: 'InternalError', status: 500 });
-    }
-    return { Body: { transformToString: async () => '{"a":1}' } };
-  });
-  const result = await getJsonResult<{ a: number }>(client, BUCKET, KEY, { retry: FAST_RETRY });
-  assert.equal(result.status, 'found');
-  assert.equal(calls, 2);
-});
-
-test('getJsonResult retries a body read that drops mid-stream', async () => {
-  let calls = 0;
-  const client = stubClient(async () => {
-    calls += 1;
-    return {
-      Body: {
-        transformToString: async () => {
-          if (calls < 2) {
-            throw awsError({ code: 'ECONNRESET' });
-          }
-          return '{"a":1}';
+test('getJsonResult retries a failed send and a body read that drops mid-stream', async () => {
+  const failures: Array<[string, (calls: number) => Promise<unknown>]> = [
+    [
+      'send',
+      async calls => {
+        if (calls < 2) {
+          throw awsError({ name: 'InternalError', status: 500 });
         }
+        return { Body: { transformToString: async () => '{"a":1}' } };
       }
-    };
-  });
-  const result = await getJsonResult<{ a: number }>(client, BUCKET, KEY, { retry: FAST_RETRY });
-  assert.equal(result.status, 'found');
-  if (result.status === 'found') {
-    assert.deepEqual(result.value, { a: 1 });
+    ],
+    [
+      'body read',
+      async calls => ({
+        Body: {
+          transformToString: async () => {
+            if (calls < 2) {
+              throw awsError({ code: 'ECONNRESET' });
+            }
+            return '{"a":1}';
+          }
+        }
+      })
+    ]
+  ];
+  for (const [label, attempt] of failures) {
+    let calls = 0;
+    const client = stubClient(() => {
+      calls += 1;
+      return attempt(calls);
+    });
+    const result = await getJsonResult<{ a: number }>(client, BUCKET, KEY, { retry: FAST_RETRY });
+    assert.deepEqual(result.status === 'found' && result.value, { a: 1 }, label);
+    assert.equal(calls, 2, label);
   }
-  assert.equal(calls, 2);
 });
 
-test('getJsonResult still reports corrupt without retrying — a parse error is not transient', async () => {
-  let calls = 0;
-  const client = stubClient(async () => {
-    calls += 1;
-    return { Body: { transformToString: async () => 'not json{' } };
+test('createReportsBinding.get returns null only for a verified miss and rethrows a transport failure', async () => {
+  for (const miss of [{ $metadata: { httpStatusCode: 404 } }, { name: 'NoSuchKey' }]) {
+    assert.equal(await createReportsBinding(stubClient(rejects(miss)), BUCKET).get(KEY), null, JSON.stringify(miss));
+  }
+  const binding = createReportsBinding(stubClient(rejects({ $metadata: { httpStatusCode: 503 } })), BUCKET, {
+    retry: FAST_RETRY
   });
-  const result = await getJsonResult(client, BUCKET, KEY);
-  assert.equal(result.status, 'corrupt');
-  assert.equal(calls, 1);
+  await assert.rejects(() => binding.get(KEY));
 });
 
 test('createReportsBinding.get retries a 500 before succeeding', async () => {
@@ -269,16 +157,58 @@ test('createReportsBinding.get retries a 500 before succeeding', async () => {
 });
 
 test('createReportsBinding.get buffers the body so repeated reads do not refetch', async () => {
-  let calls = 0;
-  const client = stubClient(async () => {
-    calls += 1;
-    return { Body: { transformToString: async () => '{"ok":true}' } };
-  });
+  const { client, calls } = counted(found('{"ok":true}'));
   const obj = await createReportsBinding(client, BUCKET).get(KEY);
   assert.ok(obj);
   assert.equal(await obj.text(), '{"ok":true}');
   assert.deepEqual(await obj.json(), { ok: true });
-  assert.equal(calls, 1);
+  assert.equal(calls(), 1);
+});
+
+test('withR2Retry retries server, throttling, and socket failures, but not a miss or bad credentials', async () => {
+  const cases: Array<[string, Error, boolean]> = [
+    ['500', awsError({ name: 'InternalError', status: 500 }), true],
+    // A 429 is a 4xx that is still worth retrying.
+    ['429', awsError({ name: 'SlowDown', status: 429 }), true],
+    ['socket failure with no HTTP status', awsError({ code: 'ECONNRESET' }), true],
+    // Missing is an answer, not a fault.
+    ['404', awsError({ name: 'NoSuchKey' }), false],
+    // Bad credentials will not fix themselves.
+    ['403', awsError({ name: 'AccessDenied', status: 403 }), false]
+  ];
+  for (const [label, error, retried] of cases) {
+    let calls = 0;
+    const attempt = withR2Retry(async () => {
+      calls += 1;
+      if (calls < 2) {
+        throw error;
+      }
+      return 'ok';
+    }, FAST_RETRY);
+    if (retried) {
+      assert.equal(await attempt, 'ok', label);
+    } else {
+      await assert.rejects(attempt, label);
+    }
+    assert.equal(calls, retried ? 2 : 1, label);
+  }
+});
+
+test('withR2Retry gives up after the attempt budget and rethrows the last error', async () => {
+  const err = awsError({ name: 'InternalError', status: 500 });
+  let calls = 0;
+  await assert.rejects(
+    () =>
+      withR2Retry(
+        async () => {
+          calls += 1;
+          throw err;
+        },
+        { ...FAST_RETRY, attempts: 4 }
+      ),
+    (thrown: unknown) => thrown === err
+  );
+  assert.equal(calls, 4);
 });
 
 test('putJsonIfChanged skips matching content and writes changed content once', async () => {
@@ -302,15 +232,12 @@ test('putJsonIfChanged does not turn a HEAD transport failure into a rewrite', a
   await assert.rejects(() => putJsonIfChanged(client, BUCKET, KEY, { value: { ok: true } }));
 });
 
-test('readJson returns the parsed value', async () => {
+test('readJson returns the parsed value, and null only for a verified 404', async () => {
   assert.deepEqual(await readJson(stubClient(found('{"a":1}')), BUCKET, KEY), { a: 1 });
-});
-
-test('readJson returns null only for a verified 404', async () => {
   assert.equal(await readJson(stubClient(rejects(awsError({ name: 'NoSuchKey' }))), BUCKET, KEY), null);
 });
 
-test('readJson throws on a transport failure, keeping the cause', async () => {
+test('readJson throws on a transport failure or a corrupt body, keeping the cause', async () => {
   const fault = awsError({ name: 'InternalError', status: 500 });
   await assert.rejects(
     readJson(stubClient(rejects(fault)), BUCKET, KEY, { retry: { attempts: 2, ...FAST_RETRY } }),
@@ -320,8 +247,5 @@ test('readJson throws on a transport failure, keeping the cause', async () => {
       return true;
     }
   );
-});
-
-test('readJson throws on a corrupt body rather than reading it as missing', async () => {
   await assert.rejects(readJson(stubClient(found('{not json')), BUCKET, KEY), /\(corrupt\)/);
 });

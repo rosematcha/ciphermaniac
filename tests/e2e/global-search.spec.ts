@@ -83,7 +83,7 @@ test('Escape clears and closes the results', async ({ page }, testInfo) => {
   await expect(page.getByRole('listbox', { name: 'Search results' })).toHaveCount(0);
 });
 
-test('the phone nav opens search in a sheet', async ({ page }, testInfo) => {
+test('the phone nav opens search in a sheet @mobile', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'phone layout only');
   await gotoHome(page);
   await page.getByRole('button', { name: 'Search', exact: true }).click();

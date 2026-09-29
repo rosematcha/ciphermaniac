@@ -15,137 +15,80 @@ import {
   sortReportItems
 } from '../../shared/reportUtils';
 
-// ============================================================================
-// calculatePercentage tests
-// ============================================================================
-
-test('calculatePercentage returns correct percentage with 2 decimal places', () => {
-  assert.strictEqual(calculatePercentage(50, 100), 50);
-  assert.strictEqual(calculatePercentage(1, 3), 33.33);
-  assert.strictEqual(calculatePercentage(2, 3), 66.67);
-  assert.strictEqual(calculatePercentage(25, 100), 25);
+test('calculatePercentage rounds to 2 decimal places and returns 0 for a non-positive denominator', () => {
+  const cases: Array<[number, number, number]> = [
+    [50, 100, 50],
+    [1, 3, 33.33],
+    [2, 3, 66.67],
+    [50, 50, 100],
+    [1, 1000, 0.1],
+    [1, 10000, 0.01],
+    [50, 0, 0],
+    [50, -10, 0]
+  ];
+  for (const [numerator, denominator, expected] of cases) {
+    assert.strictEqual(calculatePercentage(numerator, denominator), expected, `${numerator}/${denominator}`);
+  }
 });
 
-test('calculatePercentage returns 0 when denominator is 0 or negative', () => {
-  assert.strictEqual(calculatePercentage(50, 0), 0);
-  assert.strictEqual(calculatePercentage(50, -10), 0);
-});
-
-test('calculatePercentage handles 100% correctly', () => {
-  assert.strictEqual(calculatePercentage(100, 100), 100);
-  assert.strictEqual(calculatePercentage(50, 50), 100);
-});
-
-test('calculatePercentage handles small percentages', () => {
-  assert.strictEqual(calculatePercentage(1, 1000), 0.1);
-  assert.strictEqual(calculatePercentage(1, 10000), 0.01);
-});
-
-// ============================================================================
-// createDistributionFromHistogram tests
-// ============================================================================
-
-test('createDistFromHistogram creates correct distribution', () => {
+test('createDistFromHistogram builds a distribution sorted by copies ascending', () => {
   const histogram = new Map<number, number>([
+    [3, 3],
     [1, 5],
-    [2, 10],
-    [3, 3]
+    [2, 10]
   ]);
-  const result = createDistFromHistogram(histogram, 18);
-
-  assert.strictEqual(result.length, 3);
-  assert.deepStrictEqual(result[0], { copies: 1, players: 5, percent: 27.78 });
-  assert.deepStrictEqual(result[1], { copies: 2, players: 10, percent: 55.56 });
-  assert.deepStrictEqual(result[2], { copies: 3, players: 3, percent: 16.67 });
-});
-
-test('createDistFromHistogram sorts by copies ascending', () => {
-  const histogram = new Map<number, number>([
-    [4, 2],
-    [1, 5],
-    [2, 3]
+  assert.deepStrictEqual(createDistFromHistogram(histogram, 18), [
+    { copies: 1, players: 5, percent: 27.78 },
+    { copies: 2, players: 10, percent: 55.56 },
+    { copies: 3, players: 3, percent: 16.67 }
   ]);
-  const result = createDistFromHistogram(histogram, 10);
-
-  assert.strictEqual(result[0].copies, 1);
-  assert.strictEqual(result[1].copies, 2);
-  assert.strictEqual(result[2].copies, 4);
+  assert.deepStrictEqual(createDistFromHistogram(new Map(), 0), []);
 });
 
-test('createDistFromHistogram handles empty histogram', () => {
-  const histogram = new Map<number, number>();
-  const result = createDistFromHistogram(histogram, 0);
-
-  assert.strictEqual(result.length, 0);
+test('createDistributionFromCounts buckets raw counts, treating non-numeric values as zero copies', () => {
+  assert.deepStrictEqual(createDistributionFromCounts([1, 2, 2, 3, 2, 1], 6), [
+    { copies: 1, players: 2, percent: 33.33 },
+    { copies: 2, players: 3, percent: 50 },
+    { copies: 3, players: 1, percent: 16.67 }
+  ]);
+  // At runtime, we might receive bad data. The function converts values via Number().
+  assert.deepStrictEqual(createDistributionFromCounts(['x', 0, 2] as unknown as number[], 3)[0], {
+    copies: 0,
+    players: 2,
+    percent: 66.67
+  });
 });
 
-// ============================================================================
-// createDistributionFromCounts tests
-// ============================================================================
-
-test('createDistributionFromCounts creates distribution from raw counts', () => {
-  const counts = [1, 2, 2, 3, 2, 1];
-  const result = createDistributionFromCounts(counts, 6);
-
-  assert.strictEqual(result.length, 3);
-  // 2 players with 1 copy, 3 players with 2 copies, 1 player with 3 copies
-  assert.deepStrictEqual(result[0], { copies: 1, players: 2, percent: 33.33 });
-  assert.deepStrictEqual(result[1], { copies: 2, players: 3, percent: 50 });
-  assert.deepStrictEqual(result[2], { copies: 3, players: 1, percent: 16.67 });
+test('composeCategoryPath builds category/subtype slugs, or an empty string without a category', () => {
+  const cases: Array<[string | null | undefined, string | null, string | null, string]> = [
+    ['Pokemon', null, null, 'pokemon'],
+    ['POKEMON', null, null, 'pokemon'],
+    ['Trainer', 'Supporter', null, 'trainer/supporter'],
+    ['Trainer', 'Item', null, 'trainer/item'],
+    ['Trainer', 'Stadium', null, 'trainer/stadium'],
+    ['Trainer', 'Tool', null, 'trainer/tool'],
+    ['Energy', null, 'Basic', 'energy/basic'],
+    ['Energy', null, 'Special', 'energy/special'],
+    [null, null, null, ''],
+    ['', null, null, ''],
+    [undefined, null, null, '']
+  ];
+  for (const [category, trainerType, energyType, expected] of cases) {
+    assert.strictEqual(
+      composeCategoryPath(category, trainerType, energyType),
+      expected,
+      `${category}/${trainerType}/${energyType}`
+    );
+  }
 });
 
-test('createDistributionFromCounts handles non-numeric values at runtime', () => {
-  // At runtime, we might receive bad data. The function converts values via Number()
-  const counts = [1, 0, 2, 0, 2] as number[];
-  const result = createDistributionFromCounts(counts, 5);
-
-  // 0s become 0
-  assert.strictEqual(result.length, 3);
-  assert.strictEqual(result[0].copies, 0);
-  assert.strictEqual(result[0].players, 2);
-});
-
-// ============================================================================
-// composeCategoryPath tests
-// ============================================================================
-
-test('composeCategoryPath creates pokemon path', () => {
-  assert.strictEqual(composeCategoryPath('Pokemon', null, null), 'pokemon');
-  assert.strictEqual(composeCategoryPath('POKEMON', null, null), 'pokemon');
-});
-
-test('composeCategoryPath creates trainer paths with subtypes', () => {
-  assert.strictEqual(composeCategoryPath('Trainer', 'Supporter', null), 'trainer/supporter');
-  assert.strictEqual(composeCategoryPath('Trainer', 'Item', null), 'trainer/item');
-  assert.strictEqual(composeCategoryPath('Trainer', 'Stadium', null), 'trainer/stadium');
-  assert.strictEqual(composeCategoryPath('Trainer', 'Tool', null), 'trainer/tool');
-});
-
-test('composeCategoryPath appends acespec to the real trainer subtype', () => {
+test('composeCategoryPath appends acespec to the real trainer subtype, or flat when it is unknown', () => {
   assert.strictEqual(composeCategoryPath('Trainer', 'Tool', null, { aceSpec: true }), 'trainer/tool/acespec');
   // Prime Catcher is an Item and Grand Tree a Stadium — neither becomes a tool.
   assert.strictEqual(composeCategoryPath('Trainer', 'Item', null, { aceSpec: true }), 'trainer/item/acespec');
   assert.strictEqual(composeCategoryPath('Trainer', 'Stadium', null, { aceSpec: true }), 'trainer/stadium/acespec');
-});
-
-test('composeCategoryPath keeps ace spec paths flat when the subtype is unknown', () => {
   assert.strictEqual(composeCategoryPath('Trainer', null, null, { aceSpec: true }), 'trainer/acespec');
 });
-
-test('composeCategoryPath creates energy paths', () => {
-  assert.strictEqual(composeCategoryPath('Energy', null, 'Basic'), 'energy/basic');
-  assert.strictEqual(composeCategoryPath('Energy', null, 'Special'), 'energy/special');
-});
-
-test('composeCategoryPath returns empty string for null/empty category', () => {
-  assert.strictEqual(composeCategoryPath(null, null, null), '');
-  assert.strictEqual(composeCategoryPath('', null, null), '');
-  assert.strictEqual(composeCategoryPath(undefined, null, null), '');
-});
-
-// ============================================================================
-// sortReportItems tests
-// ============================================================================
 
 test('sortReportItems sorts by pct descending, then found, then name', () => {
   const items = [
@@ -175,22 +118,11 @@ test('sortReportItems does not mutate original array', () => {
   assert.strictEqual(items[0], originalFirst);
 });
 
-// ============================================================================
-// assignRanks tests
-// ============================================================================
-
 test('assignRanks adds 1-based rank to items', () => {
-  const items = [{ name: 'First' }, { name: 'Second' }, { name: 'Third' }];
-
-  const result = assignRanks(items);
-
-  assert.strictEqual(result[0].rank, 1);
-  assert.strictEqual(result[1].rank, 2);
-  assert.strictEqual(result[2].rank, 3);
-  assert.strictEqual(result[0].name, 'First');
-});
-
-test('assignRanks handles empty array', () => {
-  const result = assignRanks([]);
-  assert.strictEqual(result.length, 0);
+  assert.deepStrictEqual(assignRanks([{ name: 'First' }, { name: 'Second' }, { name: 'Third' }]), [
+    { name: 'First', rank: 1 },
+    { name: 'Second', rank: 2 },
+    { name: 'Third', rank: 3 }
+  ]);
+  assert.deepStrictEqual(assignRanks([]), []);
 });

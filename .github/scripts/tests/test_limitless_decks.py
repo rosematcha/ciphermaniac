@@ -60,34 +60,26 @@ SET_SELECTOR_EXPANDED = (
 
 
 class ParseDeckRowsTests(unittest.TestCase):
-    def test_reads_the_deck_slug_off_the_link(self):
-        self.assertEqual([row.slug for row in decks.parse_deck_rows(TABLE)], ["greninja", "night-march"])
-
-    def test_reads_name_icons_count_and_share(self):
+    def test_reads_slug_name_icons_count_and_share(self):
         rows = decks.parse_deck_rows(TABLE)
+        # "Other" carries no deck link, so it never parses as a row.
         self.assertEqual([row.name for row in rows], ["Greninja", "Night March"])
+        self.assertEqual([row.slug for row in rows], ["greninja", "night-march"])
         self.assertEqual(rows[1].icons, ["joltik", "pumpkaboo"])
+        # The score cell shares the count cell's class; the count is still 17.
         self.assertEqual(rows[0].count, 17)
+        # A fraction: the percent cell next to it reads "15.74%"; taking that
+        # instead would inflate every share by a hundred and defeat the share floor.
         self.assertAlmostEqual(rows[0].share, 0.1574)
 
-    def test_share_is_a_fraction_not_a_percentage(self):
-        # The percent cell next to it reads "15.74%"; taking that instead would
-        # inflate every share by a hundred and defeat the share floor.
-        self.assertLess(decks.parse_deck_rows(TABLE)[0].share, 1)
-
-    def test_count_ignores_the_score_cell_it_shares_a_class_with(self):
-        self.assertEqual(decks.parse_deck_rows(TABLE)[0].count, 17)
-
-    def test_other_has_no_deck_link_so_it_never_parses_as_a_row(self):
-        self.assertNotIn("Other", [row.name for row in decks.parse_deck_rows(TABLE)])
-
-    def test_caps_icons_at_two(self):
-        html = _row("Wide", ["a", "b", "c", "d"], 1, 0.01)
-        self.assertEqual(decks.parse_deck_rows(html)[0].icons, ["a", "b"])
-
-    def test_dedupes_repeated_slugs(self):
-        html = _row("Mirror", ["gardevoir", "gardevoir"], 1, 0.01)
-        self.assertEqual(decks.parse_deck_rows(html)[0].icons, ["gardevoir"])
+    def test_icons_are_deduped_and_capped_at_two(self):
+        cases = [
+            (["a", "b", "c", "d"], ["a", "b"]),
+            (["gardevoir", "gardevoir"], ["gardevoir"]),
+        ]
+        for slugs, expected in cases:
+            with self.subTest(slugs=slugs):
+                self.assertEqual(decks.parse_deck_rows(_row("Deck", slugs, 1, 0.01))[0].icons, expected)
 
     def test_rows_without_a_share_attribute_are_skipped(self):
         self.assertEqual(decks.parse_deck_rows('<tr><td><a href="/decks/x">X</a></td></tr>'), [])
@@ -98,28 +90,28 @@ class ParseDeckRowsTests(unittest.TestCase):
 
 
 class FieldSizeTests(unittest.TestCase):
-    def test_reads_the_player_count(self):
-        self.assertEqual(decks.parse_field_size(TABLE), 108)
-
-    def test_empty_window_reports_zero(self):
-        self.assertEqual(decks.parse_field_size("<p>0 tournaments, 0 players, 0 matches</p>"), 0)
-
-    def test_missing_summary_reports_zero(self):
-        self.assertEqual(decks.parse_field_size("<p>nothing here</p>"), 0)
+    def test_reads_the_player_count_or_zero(self):
+        cases = [
+            (TABLE, 108),
+            ("<p>0 tournaments, 0 players, 0 matches</p>", 0),
+            ("<p>nothing here</p>", 0),
+        ]
+        for html, expected in cases:
+            with self.subTest(expected=expected, html=html[:40]):
+                self.assertEqual(decks.parse_field_size(html), expected)
 
 
 class SetOptionTests(unittest.TestCase):
-    def test_keeps_page_order_newest_first(self):
-        self.assertEqual(
-            decks.parse_set_options(SET_SELECTOR_ROTATING),
-            [("2026", "PBL"), ("2026", "CRI"), ("2025", "ASC")],
-        )
-
-    def test_expanded_selector_has_no_rotation_and_still_yields_sets(self):
-        self.assertEqual(decks.parse_set_options(SET_SELECTOR_EXPANDED), [("", "PBL"), ("", "CRI")])
-
-    def test_missing_selector_yields_nothing(self):
-        self.assertEqual(decks.parse_set_options("<p>no selector</p>"), [])
+    def test_reads_sets_in_page_order_newest_first(self):
+        cases = [
+            ("rotating", SET_SELECTOR_ROTATING, [("2026", "PBL"), ("2026", "CRI"), ("2025", "ASC")]),
+            # Expanded does not rotate, so its selector has no data-rotation.
+            ("expanded", SET_SELECTOR_EXPANDED, [("", "PBL"), ("", "CRI")]),
+            ("missing selector", "<p>no selector</p>", []),
+        ]
+        for label, html, expected in cases:
+            with self.subTest(label):
+                self.assertEqual(decks.parse_set_options(html), expected)
 
 
 class AggregateTests(unittest.TestCase):
@@ -159,31 +151,28 @@ class AggregateTests(unittest.TestCase):
 
 
 class DisambiguateTests(unittest.TestCase):
-    def test_unique_names_are_left_alone(self):
-        rows = [_deck("Greninja", [], 1, 0.5), _deck("Night March", [], 1, 0.5)]
-        self.assertEqual([row.name for row in decks.disambiguate_names(rows)], ["Greninja", "Night March"])
-
-    def test_collisions_take_the_slugs_last_segment(self):
-        rows = [
-            _deck("Buzzwole", [], 5, 0.5, slug="buzzwole-gx"),
-            _deck("Buzzwole", [], 4, 0.4, slug="buzzwole-fli"),
+    def test_only_colliding_names_take_a_suffix(self):
+        cases = [
+            ("unique names", [_deck("Greninja", [], 1, 0.5), _deck("Night March", [], 1, 0.5)],
+             ["Greninja", "Night March"]),
+            (
+                "collisions take the slug's last segment",
+                [
+                    _deck("Zoroark", [], 9, 0.9),
+                    _deck("Buzzwole", [], 5, 0.5, slug="buzzwole-gx"),
+                    _deck("Buzzwole", [], 4, 0.4, slug="buzzwole-fli"),
+                ],
+                ["Zoroark", "Buzzwole (GX)", "Buzzwole (FLI)"],
+            ),
+            (
+                "a suffix that does not separate falls back to the whole slug",
+                [_deck("Mew", [], 5, 0.5, slug="mew-a-box"), _deck("Mew", [], 4, 0.4, slug="mew-b-box")],
+                ["Mew (mew-a-box)", "Mew (mew-b-box)"],
+            ),
         ]
-        self.assertEqual([row.name for row in decks.disambiguate_names(rows)], ["Buzzwole (GX)", "Buzzwole (FLI)"])
-
-    def test_only_the_colliding_names_are_touched(self):
-        rows = [
-            _deck("Zoroark", [], 9, 0.9),
-            _deck("Buzzwole", [], 5, 0.5, slug="buzzwole-gx"),
-            _deck("Buzzwole", [], 4, 0.4, slug="buzzwole-fli"),
-        ]
-        self.assertEqual(decks.disambiguate_names(rows)[0].name, "Zoroark")
-
-    def test_a_suffix_that_does_not_separate_falls_back_to_the_whole_slug(self):
-        rows = [
-            _deck("Mew", [], 5, 0.5, slug="mew-a-box"),
-            _deck("Mew", [], 4, 0.4, slug="mew-b-box"),
-        ]
-        self.assertEqual([row.name for row in decks.disambiguate_names(rows)], ["Mew (mew-a-box)", "Mew (mew-b-box)"])
+        for label, rows, expected in cases:
+            with self.subTest(label):
+                self.assertEqual([row.name for row in decks.disambiguate_names(rows)], expected)
 
     def test_everything_else_about_the_row_survives(self):
         rows = [

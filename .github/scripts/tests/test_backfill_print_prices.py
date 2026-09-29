@@ -1,8 +1,8 @@
 """Unit tests for backfill-print-prices' pure helpers (no network/credentials).
 
-Covers the four decision points a bad backfill would corrupt silently: which
-dates to process, which prints make up the universe, how set codes resolve to
-TCGCSV groups (including the catalog-name fallback), and the artifact shape.
+Covers the decision points a bad backfill would corrupt silently: which dates
+to process, which prints make up the universe, and the artifact shape. Set-code
+to TCGCSV-group resolution is update-prices' resolve_group_ids, tested there.
 """
 
 import importlib.util
@@ -25,67 +25,54 @@ bpp = _load_module()
 
 
 class ExtractEventDatesTest(unittest.TestCase):
-    def test_strings_dicts_and_undated_entries(self):
-        tournaments = [
-            "2025-09-13, Regional Championship Monterrey",
-            {"folder": "2025-05-17, Some Regional"},
-            {"name": "2025-05-17, Duplicate Date Event"},  # dedupes with above
-            {"path": "2024-06-01, Path-keyed Event"},
-            "No date at the front of this one",
-            {"folder": "malformed"},
-            42,  # non-string/dict entry is ignored
+    def test_reads_sorted_unique_dates_and_splits_off_pre_archive_ones(self):
+        cases = [
+            (
+                "strings, dicts and undated entries",
+                [
+                    "2025-09-13, Regional Championship Monterrey",
+                    {"folder": "2025-05-17, Some Regional"},
+                    {"name": "2025-05-17, Duplicate Date Event"},  # dedupes with above
+                    {"path": "2024-06-01, Path-keyed Event"},
+                    "No date at the front of this one",
+                    {"folder": "malformed"},
+                    42,  # non-string/dict entry is ignored
+                ],
+                ["2024-06-01", "2025-05-17", "2025-09-13"],
+                [],
+            ),
+            (
+                "pre-archive floor",
+                [
+                    "2024-02-07, One day before the floor",
+                    "2024-02-08, On the floor (kept)",
+                    "2023-11-01, Well before",
+                ],
+                ["2024-02-08"],
+                ["2023-11-01", "2024-02-07"],
+            ),
+            ("wrapped object form", {"tournaments": ["2025-01-01, New Year Cup"]}, ["2025-01-01"], []),
+            # A ten-char prefix that isn't a real date must not slip through.
+            ("impossible date", ["2025-13-99, Impossible date"], [], []),
         ]
-        dates, skipped_old = bpp.extract_event_dates(tournaments)
-        self.assertEqual(dates, ["2024-06-01", "2025-05-17", "2025-09-13"])
-        self.assertEqual(skipped_old, [])
-
-    def test_skips_pre_archive_floor_dates(self):
-        tournaments = [
-            "2024-02-07, One day before the floor",
-            "2024-02-08, On the floor (kept)",
-            "2023-11-01, Well before",
-        ]
-        dates, skipped_old = bpp.extract_event_dates(tournaments)
-        self.assertEqual(dates, ["2024-02-08"])
-        self.assertEqual(skipped_old, ["2023-11-01", "2024-02-07"])
-
-    def test_accepts_wrapped_object_form(self):
-        wrapped = {"tournaments": ["2025-01-01, New Year Cup"]}
-        dates, _ = bpp.extract_event_dates(wrapped)
-        self.assertEqual(dates, ["2025-01-01"])
-
-    def test_rejects_non_date_leading_digits(self):
-        # A ten-char prefix that isn't a real date must not slip through.
-        dates, _ = bpp.extract_event_dates(["2025-13-99, Impossible date"])
-        self.assertEqual(dates, [])
+        for label, tournaments, dates, skipped_old in cases:
+            with self.subTest(label):
+                self.assertEqual(bpp.extract_event_dates(tournaments), (dates, skipped_old))
 
 
 class BuildUidUniverseTest(unittest.TestCase):
-    def test_includes_aliases_canonicals_and_base_canonicals(self):
+    def test_adds_every_cluster_an_archived_event_reported(self):
+        # The synonym universe itself is update-prices' build_print_universe
+        # (tested there); the backfill adds whole clusters for archived prints.
         synonyms_data = {
-            "synonyms": {
-                "Pikachu::BRS::049": "Pikachu::SVI::050",
-                "Iono::PAL::185": "Iono::PAF::237",
-            },
-            "canonicals": {
-                "Professor's Research": "Professor's Research::SVI::189",
-            },
+            "synonyms": {"Iono::PAL::185": "Iono::PAF::237"},
+            "canonicals": {"Professor's Research": "Professor's Research::SVI::189"},
         }
-        universe = bpp.build_uid_universe(synonyms_data)
+        universe = bpp.build_uid_universe(synonyms_data, {"Iono::PAL::185", "Nest Ball::SVI::181"})
         self.assertEqual(
             universe,
-            {
-                "Pikachu::BRS::049",    # alias key
-                "Pikachu::SVI::050",    # its canonical
-                "Iono::PAL::185",
-                "Iono::PAF::237",
-                "Professor's Research::SVI::189",  # base-name canonical
-            },
+            {"Iono::PAL::185", "Iono::PAF::237", "Professor's Research::SVI::189", "Nest Ball::SVI::181"},
         )
-
-    def test_tolerates_empty_and_missing_sections(self):
-        self.assertEqual(bpp.build_uid_universe({}), set())
-        self.assertEqual(bpp.build_uid_universe({"synonyms": {}}), set())
 
     def test_groups_by_set_middle_segment(self):
         universe = {
@@ -98,51 +85,6 @@ class BuildUidUniverseTest(unittest.TestCase):
         self.assertEqual(sorted(by_set["BRS"]), ["Pikachu::BRS::049", "Raichu::BRS::050"])
         self.assertEqual(by_set["PAL"], ["Iono::PAL::185"])
         self.assertNotIn("", by_set)
-
-
-class MapSetsToGroupIdsTest(unittest.TestCase):
-    def setUp(self):
-        # Minimal catalog: name → code, exercising the fallback path.
-        catalog = {
-            "sets": [
-                {"code": "BRS", "name": "Brilliant Stars"},
-                {"code": "SVI", "name": "Scarlet & Violet"},
-            ]
-        }
-        self.name_index = bpp.build_catalog_name_index(catalog)
-
-    def test_abbreviation_match_wins(self):
-        groups = [{"groupId": 100, "abbreviation": "SVI", "name": "SV01: Scarlet & Violet"}]
-        mappings, unmapped = bpp.map_sets_to_group_ids(
-            ["SVI"], groups, self.name_index, manual_map={}
-        )
-        self.assertEqual(mappings, {"SVI": 100})
-        self.assertEqual(unmapped, [])
-
-    def test_name_fallback_resolves_when_abbreviation_differs(self):
-        # TCGCSV abbreviation is "SWSH09", our code is "BRS"; the group name tail
-        # "Brilliant Stars" matches the catalog name, so BRS resolves via fallback.
-        groups = [{"groupId": 200, "abbreviation": "SWSH09", "name": "SWSH09: Brilliant Stars"}]
-        mappings, unmapped = bpp.map_sets_to_group_ids(
-            ["BRS"], groups, self.name_index, manual_map={}
-        )
-        self.assertEqual(mappings, {"BRS": 200})
-        self.assertEqual(unmapped, [])
-
-    def test_manual_map_beats_name_fallback(self):
-        groups = [{"groupId": 200, "abbreviation": "SWSH09", "name": "SWSH09: Brilliant Stars"}]
-        mappings, _ = bpp.map_sets_to_group_ids(
-            ["BRS"], groups, self.name_index, manual_map={"BRS": 999}
-        )
-        self.assertEqual(mappings["BRS"], 999)
-
-    def test_unmapped_set_reported_not_fatal(self):
-        groups = [{"groupId": 100, "abbreviation": "SVI", "name": "SV01: Scarlet & Violet"}]
-        mappings, unmapped = bpp.map_sets_to_group_ids(
-            ["SVI", "ZZZ"], groups, self.name_index, manual_map={}
-        )
-        self.assertEqual(mappings, {"SVI": 100})
-        self.assertEqual(unmapped, ["ZZZ"])
 
 
 class AssembleArtifactTest(unittest.TestCase):

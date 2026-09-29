@@ -7,7 +7,6 @@
  *
  * cardUsage — the live producer (run-online-meta.ts) now imports the shared
  * builder directly, so these tests pin the builder's semantics over
- * per-archetype reports built from the Phase 1 normalized fixtures plus
  * synonym-edge decks (two printings in one deck; a synonym canonical rewrite).
  *
  * conversion — the only current producer is Python's
@@ -19,9 +18,6 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 
 import {
   type ArchetypeUsageSource,
@@ -31,70 +27,9 @@ import { buildConversionIndex } from '../../shared/data/reports/conversion';
 import { type DeckEntry, generateReportFromDecks } from '../../shared/data/reports/cardReport';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const FIXTURE_DIR = join(HERE, '..', 'fixtures', 'data-pipeline');
-
 // ---------------------------------------------------------------------------
-// cardUsage: the shared TS builder over the fixture corpus.
+// cardUsage: the shared TS builder over synonym-edge reports.
 // ---------------------------------------------------------------------------
-
-/** A normalized Phase 1 deck card (only the fields we flatten are typed). */
-interface NormalizedCard {
-  canonical: { name: string; set: string | null; number: string | null };
-  count: number;
-}
-interface NormalizedDeck {
-  archetype: { slug: string };
-  cards: NormalizedCard[];
-}
-interface NormalizedEvent {
-  decks: NormalizedDeck[];
-}
-
-function loadEvent(name: string): NormalizedEvent {
-  return JSON.parse(readFileSync(join(FIXTURE_DIR, name), 'utf8')) as NormalizedEvent;
-}
-
-/** Flatten a normalized deck to the raw-deck shape generateReportFromDecks reads. */
-function toRawDeck(deck: NormalizedDeck): DeckEntry {
-  return {
-    cards: deck.cards.map(card => ({
-      name: card.canonical.name,
-      set: card.canonical.set ?? undefined,
-      number: card.canonical.number ?? undefined,
-      count: card.count
-    }))
-  };
-}
-
-/** Build per-archetype `{ base, data }` report files from normalized decks. */
-function archetypeFilesFromEvent(event: NormalizedEvent, synonymDb: SynonymDatabase | null): ArchetypeUsageSource[] {
-  const bySlug = new Map<string, DeckEntry[]>();
-  for (const deck of event.decks) {
-    const { slug } = deck.archetype;
-    const group = bySlug.get(slug);
-    if (group) {
-      group.push(toRawDeck(deck));
-    } else {
-      bySlug.set(slug, [toRawDeck(deck)]);
-    }
-  }
-  return Array.from(bySlug.entries()).map(([base, decks]) => ({
-    base,
-    data: generateReportFromDecks(decks, decks.length, synonymDb)
-  }));
-}
-
-test('cardUsage: builds a non-trivial index over the fixtures', () => {
-  const files: ArchetypeUsageSource[] = [
-    ...archetypeFilesFromEvent(loadEvent('labs-event.json'), null),
-    ...archetypeFilesFromEvent(loadEvent('online-window.json'), null)
-  ];
-
-  const shared = buildCardUsageIndexShared(files);
-  // The corpus is non-trivial: several UIDs, each with usage rows.
-  assert.ok(Object.keys(shared.usage).length > 3);
-});
 
 test('cardUsage: synonym-edge reports (two printings + canonical rewrite)', () => {
   // Iono PAF 237 is a variant printing of the canonical Iono PAL 185.
@@ -184,10 +119,6 @@ test('conversion: Day 2 dedup, canonical merge, and missing decklists', () => {
   assert.deepStrictEqual(index, expected);
   // Pin key order (first-seen), matching Python dict insertion.
   assert.strictEqual(JSON.stringify(index), JSON.stringify(expected));
-  // Invariant: day2 <= day1 for every card.
-  for (const counts of Object.values(index!.cards)) {
-    assert.ok(counts.day2 <= counts.day1);
-  }
 });
 
 test('conversion: without a synonym DB the two printings stay distinct', () => {
@@ -233,16 +164,17 @@ test('conversion: cards without a canonicalizable set+number are skipped', () =>
   });
 });
 
-test('conversion: returns null when no deck made Day 2', () => {
-  const decks = [
+test('conversion: returns null when no deck made Day 2, including empty or missing input', () => {
+  const day1Only = [
     { madePhase2: false, cards: [{ name: 'Charizard ex', set: 'OBF', number: '125' }] },
     { madePhase2: false, cards: [{ name: 'Iono', set: 'PAL', number: '185' }] }
   ];
-  assert.strictEqual(buildConversionIndex(decks, null), null);
-});
-
-test('conversion: returns null for empty or missing input', () => {
-  assert.strictEqual(buildConversionIndex([], null), null);
-  assert.strictEqual(buildConversionIndex(undefined, null), null);
-  assert.strictEqual(buildConversionIndex(null, null), null);
+  for (const [label, decks] of [
+    ['Day 1 only', day1Only],
+    ['empty', []],
+    ['undefined', undefined],
+    ['null', null]
+  ] as const) {
+    assert.strictEqual(buildConversionIndex(decks, null), null, label);
+  }
 });

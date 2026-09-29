@@ -1,6 +1,5 @@
 export {
   accessiblePriceCap,
-  asCardUid,
   buildCardId,
   canonicalizeVariant,
   cardNumberIndexKey,

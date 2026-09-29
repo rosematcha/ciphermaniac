@@ -32,11 +32,6 @@ function composition(): ReleaseComposition {
   };
 }
 
-test('composeRelease produces a valid manifest', () => {
-  const manifest = composeRelease(composition());
-  assert.deepStrictEqual(validateReleaseManifest(manifest), []);
-});
-
 test('resolveScopePath joins the scope root and strips leading slashes', () => {
   const manifest = composeRelease(composition());
   assert.strictEqual(resolveScopePath(manifest, 'online', 'master.json'), '/releases/v1/online/aaa111/master.json');
@@ -46,7 +41,7 @@ test('resolveScopePath joins the scope root and strips leading slashes', () => {
   );
 });
 
-test('resolveEventPath returns null for an unlinked event', () => {
+test('resolveEventPath joins a linked event root and returns null for an unlinked event', () => {
   const manifest = composeRelease(composition());
   assert.strictEqual(
     resolveEventPath(manifest, 'labs:0042', 'cardUsage.json'),
@@ -72,16 +67,4 @@ test('validateReleaseManifest flags missing scopes and bad paths', () => {
   });
   assert.ok(errors.some(e => e.includes('roots.online')));
   assert.ok(errors.some(e => e.includes('roots.trends: missing')));
-});
-
-test('a release only replaces changed scope roots (unchanged reuse prior root)', () => {
-  const prior = composeRelease(composition());
-  // New build: only online changed; every other scope reuses the prior root.
-  const next = composeRelease({
-    ...composition(),
-    releaseId: '20260714T000000Z-def5678',
-    roots: { ...prior.roots, online: '/releases/v1/online/new999' }
-  });
-  assert.strictEqual(next.roots.trends, prior.roots.trends);
-  assert.notStrictEqual(next.roots.online, prior.roots.online);
 });

@@ -13,11 +13,8 @@ test('returns a populated database unchanged', () => {
   assert.equal(requireSynonymDatabase(db, 'key'), db);
 });
 
-test('throws when the asset was not found', () => {
+test('throws, naming the key, when the asset is missing or has no synonyms', () => {
   assert.throws(() => requireSynonymDatabase(null, 'assets/card-synonyms.json'), /assets\/card-synonyms\.json/);
-});
-
-test('throws when the asset has no synonyms', () => {
   assert.throws(() => requireSynonymDatabase({ synonyms: {}, canonicals: {} }, 'key'), /missing or empty/);
   assert.throws(() => requireSynonymDatabase({ canonicals: {} }, 'key'), /missing or empty/);
 });

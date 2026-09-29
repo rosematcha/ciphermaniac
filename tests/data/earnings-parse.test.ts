@@ -17,23 +17,22 @@ import {
   parseTournamentRef
 } from '../../shared/earningsParse.ts';
 
-test('abbreviated thousands expand', () => {
-  assert.equal(parseCash('2.5K$'), 2500);
-  assert.equal(parseCash('1K$'), 1000);
-  assert.equal(parseCash('7.5K$'), 7500);
-  assert.equal(parseCash('50K$'), 50000);
-});
-
-test('plain amounts pass through, with or without separators', () => {
-  assert.equal(parseCash('750$'), 750);
-  assert.equal(parseCash('250$'), 250);
-  assert.equal(parseCash('77,000$'), 77000);
-  assert.equal(parseCash('$1,500'), 1500);
-});
-
-test('an empty cell is no money, not a parse failure', () => {
-  assert.equal(parseCash(''), 0);
-  assert.equal(parseCash('   '), 0);
+test('cash cells expand abbreviated thousands, drop separators, and read blank as zero', () => {
+  const cases: Array<[string, number]> = [
+    ['2.5K$', 2500],
+    ['1K$', 1000],
+    ['7.5K$', 7500],
+    ['50K$', 50000],
+    ['750$', 750],
+    ['77,000$', 77000],
+    ['$1,500', 1500],
+    // An empty cell is no money, not a parse failure.
+    ['', 0],
+    ['   ', 0]
+  ];
+  for (const [cell, expected] of cases) {
+    assert.equal(parseCash(cell), expected, JSON.stringify(cell));
+  }
 });
 
 test('an unrecognized amount throws rather than silently counting as zero', () => {
@@ -57,14 +56,11 @@ test('season headings become two-digit span keys', () => {
   assert.equal(parseSeasonKey('Detailed tournament history'), null);
 });
 
-test('resume reads back the ids a previous run captured', () => {
-  const ndjson = ['{"id":"1","results":[]}', '{"id":"2","results":[]}', ''].join('\n');
-  const { ids, torn } = parseCrawledIds(ndjson);
-  assert.deepEqual([...ids], ['1', '2']);
-  assert.equal(torn, 0);
-});
+test('resume reads back captured ids, dropping a line torn by a killed process', () => {
+  const clean = parseCrawledIds(['{"id":"1","results":[]}', '{"id":"2","results":[]}', ''].join('\n'));
+  assert.deepEqual([...clean.ids], ['1', '2']);
+  assert.equal(clean.torn, 0);
 
-test('a line torn by a killed process is dropped, not thrown on', () => {
   // Killing the crawl mid-append leaves a half-written line. It must not make
   // the whole cache unreadable — the id it belonged to is simply re-fetched.
   const ndjson = '{"id":"1","results":[]}\n{"id":"2","resu';
@@ -87,9 +83,6 @@ test('a tournament link yields the numeric id, not its trailing division code', 
   assert.deepEqual(parseTournamentRef('/tournaments/522'), { id: '522', division: 'masters' });
   assert.deepEqual(parseTournamentRef('/tournaments/375/SR'), { id: '375', division: 'junior-senior' });
   assert.deepEqual(parseTournamentRef('/tournaments/210/JR'), { id: '210', division: 'junior-senior' });
-});
-
-test('an explicit Masters suffix reads as Masters', () => {
   assert.deepEqual(parseTournamentRef('/tournaments/9/MA'), { id: '9', division: 'masters' });
 });
 

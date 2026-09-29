@@ -14,28 +14,22 @@ import { generateReportFromDecks } from '../../shared/data/reports/cardReport.js
 /**
  * Logging: ensure log data is newline-safe (no log injection)
  */
-test('Logger should not allow newline injection in logged messages', () => {
-  const dangerous = 'User input\nERR: injected';
-  // The logger.format function should create a single-line prefix, so message containing newlines should be preserved but not cause multi-line metadata injection
-  const parts = formatForTest(dangerous, []);
-  const joined = parts.join(' ');
-  assert.equal(joined.includes('\n'), false, 'Formatted log output should not contain raw newline characters');
+test('Logger flattens CR/LF in string arguments so input cannot forge log lines', () => {
+  assert.deepEqual(formatForTest('User input\nERR: injected', ['a\r\nb', 5]), ['User input ERR: injected', 'a b', 5]);
 });
 
 /**
- * Card name sanitization in reports: generate a report containing a malicious card name and ensure
- * that generated UIDs or filenames do not include traversal sequences
+ * Card name sanitization in reports: a malicious card name must not carry
+ * traversal sequences or separators into the generated report.
  */
-test('Report generation sanitizes card names and prevents UID traversal', () => {
+test('Report generation sanitizes card names', () => {
   const deck = generateMockDeck({
     cards: [{ id: 'c1', name: 'EvilCard/..\\secret', count: 3, category: 'Other' }]
   } as any);
 
   const report = generateReportFromDecks([deck], 1, null);
-  // Ensure item names or uids do not contain path traversal pieces
-  for (const item of report.items) {
-    const name = (item.name || '').toString();
-    assert.equal(name.includes('..'), false, 'Report item names must not contain traversal sequences');
-    assert.equal(name.includes('/'), false, 'Report item names must not contain path separators');
-  }
+  assert.deepEqual(
+    report.items.map(item => item.name),
+    ['EvilCardsecret']
+  );
 });

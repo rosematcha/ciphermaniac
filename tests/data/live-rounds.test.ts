@@ -28,22 +28,18 @@ beforeEach(() => {
   missing = new Set();
 });
 
-test('every posted round is read, oldest first', async () => {
-  const loaded = await fetchPostedRounds('test-2027', 3, undefined, reader);
-  assert.deepEqual(
-    loaded.map(round => round?.round),
-    [1, 2, 3]
-  );
-  assert.deepEqual(read, ['test-2027|1', 'test-2027|2', 'test-2027|3']);
-});
-
 test('the current round is read at the index hash, and the rounds before it are not', async () => {
   await fetchPostedRounds('test-2027', 3, 'abc', reader);
   assert.deepEqual(read, ['test-2027|1', 'test-2027|2', 'test-2027|3@abc']);
 });
 
-test('a second read costs one request, not the whole run', async () => {
-  await fetchPostedRounds('test-2027', 3, undefined, reader);
+test('every posted round is read oldest first, and a second read costs one request, not the whole run', async () => {
+  const first = await fetchPostedRounds('test-2027', 3, undefined, reader);
+  assert.deepEqual(
+    first.map(round => round?.round),
+    [1, 2, 3]
+  );
+  assert.deepEqual(read, ['test-2027|1', 'test-2027|2', 'test-2027|3']);
   read = [];
   const loaded = await fetchPostedRounds('test-2027', 3, undefined, reader);
   assert.deepEqual(read, ['test-2027|3'], 'finished rounds are held for the session');

@@ -26,13 +26,10 @@ function chunked(chunks: Uint8Array[]): { request: Request; pulled: () => number
   return { request, pulled: () => index };
 }
 
-test('parses a body under the cap', async () => {
+test('parses a body under or exactly at the cap', async () => {
   assert.deepEqual(await readJsonBody(post('{"a":[1,2]}'), 64), { ok: true, value: { a: [1, 2] } });
-});
-
-test('a body of exactly the cap is accepted', async () => {
   const body = '"aaaa"';
-  assert.equal((await readJsonBody(post(body), body.length)).ok, true);
+  assert.deepEqual(await readJsonBody(post(body), body.length), { ok: true, value: 'aaaa' });
 });
 
 test('refuses on the declared length without reading the body', async () => {

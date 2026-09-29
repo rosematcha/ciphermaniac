@@ -2,32 +2,36 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { buildCardTrendReport, buildTrendReport } from '../../shared/onlineMeta/index.ts';
 
-// Mock data helpers
-const createTournament = (id: string, date: string, players: number, deckTotal: number) => ({
+const tournament = (id: string, date: string, deckTotal: number) => ({
   id,
   name: `Tournament ${id}`,
   date,
-  players,
+  players: deckTotal,
   deckTotal,
   format: 'STANDARD'
 });
 
-const createDeck = (tournamentId: string, archetype: string, successTags: string[] = []) => ({
+const deck = (
+  tournamentId: string,
+  archetype: string,
+  cards: Array<{ name: string; set?: string; number?: string }> = []
+) => ({
   tournamentId,
   archetype,
-  successTags
+  successTags: [],
+  cards: cards.map(card => ({ count: 1, ...card }))
 });
 
 describe('Trends Logic', () => {
   describe('buildTrendReport', () => {
     it('should include small tournaments (MIN_TREND_PLAYERS is 0)', () => {
       const tournaments = [
-        createTournament('t1', '2023-01-01', 20, 20),
-        createTournament('t2', '2023-01-02', 8, 8), // Small
-        createTournament('t3', '2023-01-03', 30, 30)
+        tournament('t1', '2023-01-01', 20),
+        tournament('t2', '2023-01-02', 8), // Small
+        tournament('t3', '2023-01-03', 30)
       ];
 
-      const decks = [createDeck('t1', 'Deck A'), createDeck('t2', 'Deck A'), createDeck('t3', 'Deck A')];
+      const decks = [deck('t1', 'Deck A'), deck('t2', 'Deck A'), deck('t3', 'Deck A')];
 
       const report = buildTrendReport(decks, tournaments, { minAppearances: 1 });
 
@@ -42,10 +46,10 @@ describe('Trends Logic', () => {
     });
 
     it('should backfill missing tournaments with 0 share', () => {
-      const tournaments = [createTournament('t1', '2023-01-01', 20, 20), createTournament('t2', '2023-01-02', 20, 20)];
+      const tournaments = [tournament('t1', '2023-01-01', 20), tournament('t2', '2023-01-02', 20)];
 
       // Deck A is only in t1
-      const decks = [createDeck('t1', 'Deck A')];
+      const decks = [deck('t1', 'Deck A')];
 
       const report = buildTrendReport(decks, tournaments, { minAppearances: 1 });
       const series = report.series.find(ser => ser.displayName === 'Deck A');
@@ -67,10 +71,10 @@ describe('Trends Logic', () => {
 
   describe('buildCardTrendReport', () => {
     it('should exclude cards with 0% current share from Rising list', () => {
-      const tournaments = [createTournament('t1', '2023-01-01', 20, 20), createTournament('t2', '2023-01-02', 20, 20)];
+      const tournaments = [tournament('t1', '2023-01-01', 20), tournament('t2', '2023-01-02', 20)];
 
       // Card A was in t1 but not t2
-      const decks = [{ ...createDeck('t1', 'Deck'), cards: [{ name: 'Card A', count: 1 }] }];
+      const decks = [deck('t1', 'Deck', [{ name: 'Card A' }])];
 
       const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1, topCount: 5 });
 
@@ -80,29 +84,17 @@ describe('Trends Logic', () => {
 
     it('should produce disjoint rising and falling lists', () => {
       const tournaments = [
-        createTournament('t1', '2023-01-01', 20, 20),
-        createTournament('t2', '2023-01-15', 20, 20),
-        createTournament('t3', '2023-01-29', 20, 20)
+        tournament('t1', '2023-01-01', 20),
+        tournament('t2', '2023-01-15', 20),
+        tournament('t3', '2023-01-29', 20)
       ];
       const decks = [
         // Riser climbs t1=1 → t3=10
-        ...Array.from({ length: 1 }, () => ({
-          ...createDeck('t1', 'A'),
-          cards: [{ name: 'Riser', set: 'SVI', number: '1' }]
-        })),
-        ...Array.from({ length: 10 }, () => ({
-          ...createDeck('t3', 'A'),
-          cards: [{ name: 'Riser', set: 'SVI', number: '1' }]
-        })),
+        ...Array.from({ length: 1 }, () => deck('t1', 'A', [{ name: 'Riser', set: 'SVI', number: '1' }])),
+        ...Array.from({ length: 10 }, () => deck('t3', 'A', [{ name: 'Riser', set: 'SVI', number: '1' }])),
         // Faller drops t1=10 → t3=1
-        ...Array.from({ length: 10 }, () => ({
-          ...createDeck('t1', 'B'),
-          cards: [{ name: 'Faller', set: 'SVI', number: '2' }]
-        })),
-        ...Array.from({ length: 1 }, () => ({
-          ...createDeck('t3', 'B'),
-          cards: [{ name: 'Faller', set: 'SVI', number: '2' }]
-        }))
+        ...Array.from({ length: 10 }, () => deck('t1', 'B', [{ name: 'Faller', set: 'SVI', number: '2' }])),
+        ...Array.from({ length: 1 }, () => deck('t3', 'B', [{ name: 'Faller', set: 'SVI', number: '2' }]))
       ];
 
       const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1, topCount: 10 });
@@ -114,37 +106,12 @@ describe('Trends Logic', () => {
       }
     });
 
-    it('should emit recentAvg and startAvg fields on each card', () => {
-      const tournaments = [
-        createTournament('t1', '2023-01-01', 20, 20),
-        createTournament('t2', '2023-01-15', 20, 20),
-        createTournament('t3', '2023-01-29', 20, 20)
-      ];
-      const decks = [
-        ...Array.from({ length: 1 }, () => ({
-          ...createDeck('t1', 'A'),
-          cards: [{ name: 'Riser', set: 'SVI', number: '1' }]
-        })),
-        ...Array.from({ length: 10 }, () => ({
-          ...createDeck('t3', 'A'),
-          cards: [{ name: 'Riser', set: 'SVI', number: '1' }]
-        }))
-      ];
-      const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1, topCount: 5 });
-      const all = [...report.rising, ...report.falling];
-      assert.ok(all.length > 0, 'expected at least one card');
-      for (const card of all) {
-        assert.ok(typeof card.recentAvg === 'number', `recentAvg missing for ${card.name}`);
-        assert.ok(typeof card.startAvg === 'number', `startAvg missing for ${card.name}`);
-      }
-    });
-
     it('should drop delta=0 entries from both rising and falling lists', () => {
-      const tournaments = [createTournament('t1', '2023-01-01', 20, 20), createTournament('t2', '2023-01-02', 20, 20)];
+      const tournaments = [tournament('t1', '2023-01-01', 20), tournament('t2', '2023-01-02', 20)];
       // Flat card: same share both events
       const decks = [
-        { ...createDeck('t1', 'A'), cards: [{ name: 'Flat', set: 'SVI', number: '1' }] },
-        { ...createDeck('t2', 'A'), cards: [{ name: 'Flat', set: 'SVI', number: '1' }] }
+        deck('t1', 'A', [{ name: 'Flat', set: 'SVI', number: '1' }]),
+        deck('t2', 'A', [{ name: 'Flat', set: 'SVI', number: '1' }])
       ];
       const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1, topCount: 5 });
       assert.ok(!report.rising.some(card => card.name === 'Flat'));
@@ -155,17 +122,14 @@ describe('Trends Logic', () => {
     // not the total number of events in the window.
     it('should report appearances as present-event count, not total events', () => {
       const tournaments = [
-        createTournament('t1', '2023-01-01', 20, 20),
-        createTournament('t2', '2023-01-15', 20, 20),
-        createTournament('t3', '2023-01-29', 20, 20)
+        tournament('t1', '2023-01-01', 20),
+        tournament('t2', '2023-01-15', 20),
+        tournament('t3', '2023-01-29', 20)
       ];
       // Riser present in t1 and t3 only (2 of 3 events).
       const decks = [
-        { ...createDeck('t1', 'A'), cards: [{ name: 'Riser', set: 'SVI', number: '1' }] },
-        ...Array.from({ length: 10 }, () => ({
-          ...createDeck('t3', 'A'),
-          cards: [{ name: 'Riser', set: 'SVI', number: '1' }]
-        }))
+        deck('t1', 'A', [{ name: 'Riser', set: 'SVI', number: '1' }]),
+        ...Array.from({ length: 10 }, () => deck('t3', 'A', [{ name: 'Riser', set: 'SVI', number: '1' }]))
       ];
 
       const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1, topCount: 5 });
@@ -173,5 +137,108 @@ describe('Trends Logic', () => {
       assert.ok(riser, 'Riser should appear in the trend report');
       assert.strictEqual(riser!.appearances, 2, 'appearances should count only present events (2 of 3)');
     });
+  });
+});
+
+describe('buildTrendReport signal guards', () => {
+  it('drops days under the deck floor from every timeline', () => {
+    const tournaments = [
+      tournament('big', '2026-08-20T18:00:00Z', 2),
+      tournament('tiny', '2026-08-21T18:00:00Z', 1),
+      tournament('big2', '2026-08-22T18:00:00Z', 2)
+    ];
+    const decks = [
+      deck('big', 'Deck A'),
+      deck('big', 'Deck B'),
+      deck('tiny', 'Deck A'),
+      deck('big2', 'Deck A'),
+      deck('big2', 'Deck B')
+    ];
+
+    const report = buildTrendReport(decks, tournaments, { minAppearances: 1, minDayDecks: 2 });
+    for (const series of report.series) {
+      assert.deepStrictEqual(
+        series.timeline.map(point => point.date),
+        ['2026-08-20', '2026-08-22'],
+        `${series.displayName} should skip the one-deck day`
+      );
+    }
+    // The floor removes days from the chart, not decks from the totals.
+    assert.strictEqual(report.deckTotal, 5);
+  });
+
+  it('leaves the Other bucket out of the series', () => {
+    const tournaments = [tournament('t1', '2026-08-20T18:00:00Z', 3)];
+    const decks = [deck('t1', 'Deck A'), deck('t1', 'Other'), deck('t1', 'Unknown')];
+
+    const report = buildTrendReport(decks, tournaments, { minAppearances: 1 });
+    assert.deepStrictEqual(
+      report.series.map(series => series.displayName),
+      ['Deck A']
+    );
+    // Bucket decks still sit in the denominator: Deck A is 1 of 3.
+    assert.strictEqual(report.series[0].timeline[0].share, 33.33);
+  });
+});
+
+describe('buildCardTrendReport movers', () => {
+  it('weights start and end shares by decks, not by events', () => {
+    // First third: one 100-deck event with the card in 10 decks (10%) and one
+    // 2-deck pod with the card in both (100%). Unweighted that averaged to
+    // 55%; weighted it is 12 of 102.
+    const tournaments = [
+      tournament('open', '2026-08-01T18:00:00Z', 100),
+      tournament('pod', '2026-08-02T18:00:00Z', 2),
+      tournament('mid', '2026-08-10T18:00:00Z', 10),
+      tournament('mid2', '2026-08-11T18:00:00Z', 10),
+      tournament('late', '2026-08-20T18:00:00Z', 100),
+      tournament('late2', '2026-08-21T18:00:00Z', 100)
+    ];
+    const card = { name: 'Switch', set: 'MEG', number: '130' };
+    const decks = [
+      ...Array.from({ length: 10 }, () => deck('open', 'A', [card])),
+      ...Array.from({ length: 90 }, () => deck('open', 'A')),
+      deck('pod', 'A', [card]),
+      deck('pod', 'A', [card]),
+      ...Array.from({ length: 10 }, () => deck('mid', 'A')),
+      ...Array.from({ length: 10 }, () => deck('mid2', 'A')),
+      ...Array.from({ length: 30 }, () => deck('late', 'A', [card])),
+      ...Array.from({ length: 70 }, () => deck('late', 'A')),
+      ...Array.from({ length: 30 }, () => deck('late2', 'A', [card])),
+      ...Array.from({ length: 70 }, () => deck('late2', 'A'))
+    ];
+
+    const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1 });
+    const switchCard = report.rising.find(item => item.name === 'Switch');
+    assert.ok(switchCard, 'Switch should be rising');
+    assert.strictEqual(switchCard.startShare, 11.8);
+    assert.strictEqual(switchCard.endShare, 30);
+    assert.strictEqual(switchCard.delta, 18.2);
+  });
+
+  it('collapses an evolution line that moves together into its final stage', () => {
+    const tournaments = [
+      tournament('t1', '2026-08-01T18:00:00Z', 10),
+      tournament('t2', '2026-08-10T18:00:00Z', 10),
+      tournament('t3', '2026-08-20T18:00:00Z', 10)
+    ];
+    const line = [
+      { name: "Marnie's Impidimp", set: 'DRI', number: '134' },
+      { name: "Marnie's Morgrem", set: 'DRI', number: '135' },
+      { name: "Marnie's Grimmsnarl ex", set: 'DRI', number: '136' }
+    ];
+    const other = { name: 'Air Balloon', set: 'ASC', number: '181' };
+    const decks = [
+      ...Array.from({ length: 5 }, () => deck('t1', 'A', [...line, other])),
+      ...Array.from({ length: 5 }, () => deck('t1', 'A')),
+      ...Array.from({ length: 10 }, () => deck('t2', 'A')),
+      ...Array.from({ length: 10 }, () => deck('t3', 'A'))
+    ];
+
+    const report = buildCardTrendReport(decks, tournaments, { minAppearances: 1 });
+    // The three DRI cards collapse to the final stage. Air Balloon shares the
+    // timeline but not the set, so it stays its own row.
+    assert.deepStrictEqual(report.falling.map(item => item.name).sort(), ['Air Balloon', "Marnie's Grimmsnarl ex"]);
+    assert.strictEqual(report.cardsAnalyzed, 4);
   });
 });

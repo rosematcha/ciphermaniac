@@ -5,8 +5,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { expandLocals } from '../../shared/events/locals.ts';
 import type { EventKind, LocatorEvent } from '../../shared/events/types.ts';
 import { filterEvents, groupByDay, type LocatorQuery, venueMarkers } from '../../src/lib/events/filter.ts';
+import { sanAntonioLocals, sanAntonioScheduled } from '../__utils__/sanAntonioEvents.ts';
 
 function event(id: string, overrides: Partial<LocatorEvent> = {}): LocatorEvent {
   return {
@@ -167,4 +169,24 @@ test('unknown and conflicting times cannot advertise a competing weekly session'
   assert.deepEqual(filterEvents([event('untimed', { time: '' }), unknown], query({ kinds: new Set(['local']) })), []);
   const earlier = event('earlier', { kind: 'local', time: '', reportedTimes: ['10:00', '11:30'] });
   assert.equal(filterEvents([scheduled, earlier], query({ kinds: new Set(['local']) })).length, 1);
+});
+
+test('San Antonio combines the real scheduled feed with locals without duplicating Combat Power on challenge day', () => {
+  const locals = expandLocals([...sanAntonioLocals().cells.values()], '2026-09-16', 21);
+  const events = filterEvents([...sanAntonioScheduled, ...locals], {
+    center: { lat: 29.4928, lon: -98.552 },
+    radiusKm: 50,
+    kinds: new Set(['cup', 'challenge', 'prerelease', 'local']),
+    windowDays: 30,
+    today: '2026-09-16'
+  });
+  const cp = events.filter(event => event.shop === 'CP COLLECTIBLES');
+  assert.deepEqual(
+    cp.filter(event => event.date === '2026-09-23').map(event => [event.kind, event.time]),
+    [['challenge', '19:30']]
+  );
+  assert.ok(cp.some(event => event.date === '2026-09-30' && event.kind === 'local'));
+  assert.ok(cp.some(event => event.date === '2026-09-20' && event.time === '15:00'));
+  assert.equal(events.filter(event => event.shop === 'TIME2PLAY').length, 3);
+  assert.equal(events.filter(event => event.shop === 'THE POKEHIVE WONDERLAND MALL').length, 3);
 });

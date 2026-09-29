@@ -13,20 +13,17 @@ import { RELOAD_GUARD_MS, shouldReloadAfterPreloadError } from '../../src/lib/pr
 
 const NOW = 1_800_000_000_000;
 
-test('the first preload failure reloads', () => {
-  assert.equal(shouldReloadAfterPreloadError(null, NOW), true);
-});
-
-test('a second failure straight after the reload does not loop', () => {
-  assert.equal(shouldReloadAfterPreloadError(NOW - 1_000, NOW), false);
-  assert.equal(shouldReloadAfterPreloadError(NOW - (RELOAD_GUARD_MS - 1), NOW), false);
-});
-
-test('a failure long after the last reload is a new deploy, so it reloads again', () => {
-  assert.equal(shouldReloadAfterPreloadError(NOW - RELOAD_GUARD_MS, NOW), true);
-  assert.equal(shouldReloadAfterPreloadError(NOW - 60 * 60_000, NOW), true);
-});
-
-test('unreadable guard state reloads rather than giving up', () => {
-  assert.equal(shouldReloadAfterPreloadError(Number.NaN, NOW), true);
+test('a preload failure reloads unless the last reload was within the guard window', () => {
+  const cases = [
+    ['the first preload failure reloads', null, true],
+    ['a second failure straight after the reload does not loop', NOW - 1_000, false],
+    ['a failure just inside the guard does not loop', NOW - (RELOAD_GUARD_MS - 1), false],
+    // A failure long after the last reload is a new deploy.
+    ['a failure at the guard edge reloads again', NOW - RELOAD_GUARD_MS, true],
+    ['a failure an hour later reloads again', NOW - 60 * 60_000, true],
+    ['unreadable guard state reloads rather than giving up', Number.NaN, true]
+  ] as const;
+  for (const [name, lastReload, expected] of cases) {
+    assert.equal(shouldReloadAfterPreloadError(lastReload, NOW), expected, name);
+  }
 });

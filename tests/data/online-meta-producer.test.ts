@@ -150,9 +150,9 @@ test('sweeps an archetype that left the meta and keys outside the report shape, 
   assert.ok(bucket.objects.has('assets/card-synonyms.json'));
 });
 
-test('a master-only run leaves the published archetypes alone', async () => {
+test('a master-only run leaves the published archetypes and lists alone', async () => {
   const kept = `${BASE}/archetypes/Retired_Deck/cards.json`;
-  const bucket = seeded({ [kept]: {} });
+  const bucket = seeded({ [kept]: {}, [`${BASE}/lists.json`]: { old: true } });
   await runOnlineMeta(options(bucket.store, { generateArchetypes: false }));
 
   assert.deepEqual(bucket.removed, []);
@@ -232,17 +232,12 @@ test('a stale cardSuccess.json is swept when no deck meets the floor, and kept w
   assert.ok(kept.writes.includes(`${BASE}/archetypes/index.json`));
 });
 
-test('lists.json indexes every listed deck, and a master-only run leaves it alone', async () => {
+test('lists.json indexes every listed deck', async () => {
   const bucket = seeded();
   await runOnlineMeta(options(bucket.store));
   const lists = bucket.objects.get(`${BASE}/lists.json`) as { decks: unknown[]; events: unknown[][] };
   assert.equal(lists.decks.length, 16);
   assert.deepEqual(lists.events, [['t1', 'Weekly', '2026-08-20', 16]]);
-
-  const kept = seeded({ [`${BASE}/lists.json`]: { old: true } });
-  await runOnlineMeta(options(kept.store, { generateArchetypes: false }));
-  assert.deepEqual(kept.removed, []);
-  assert.ok(!kept.writes.includes(`${BASE}/lists.json`));
 });
 
 test('a store failure mid-publish never reaches meta.json', async () => {

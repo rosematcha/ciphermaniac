@@ -142,14 +142,14 @@ test('tile origin always sits one tile to the left, so callers only tile rightwa
   }
 });
 
-test('direction decides which way the cards travel', () => {
+test('direction decides which way a row travels, and laps how far', () => {
   const scene = buildScene(
     config({
       rowSettings: [
         { direction: 'left', laps: 1 },
         { direction: 'right', laps: 1 },
-        { direction: 'left', laps: 1 },
-        { direction: 'right', laps: 1 }
+        { direction: 'left', laps: 3 },
+        { direction: 'right', laps: 3 }
       ]
     }),
     OPEN,
@@ -157,32 +157,18 @@ test('direction decides which way the cards travel', () => {
     720
   );
   const dt = scene.loopSeconds / 1000;
-  // Compare unwrapped travel rather than the wrapped origin, which can jump.
-  const travel = (rowIndex: number, t: number) => {
+  // The origin wraps, so a step is read as the shortest signed distance.
+  const step = (rowIndex: number): number => {
     const row = scene.rows[rowIndex]!;
-    const raw = (t / scene.loopSeconds) * row.laps * scene.tileWidth + row.phase;
-    return row.direction === 'left' ? -raw : raw;
+    const raw =
+      tileOriginX(row, scene.tileWidth, scene.loopSeconds, dt) -
+      tileOriginX(row, scene.tileWidth, scene.loopSeconds, 0);
+    return raw - Math.round(raw / scene.tileWidth) * scene.tileWidth;
   };
-  assert.ok(travel(0, dt) < travel(0, 0), 'a left row moves left');
-  assert.ok(travel(1, dt) > travel(1, 0), 'a right row moves right');
-});
-
-test('a faster row covers proportionally more ground per loop', () => {
-  const scene = buildScene(
-    config({
-      rowSettings: [
-        { direction: 'left', laps: 1 },
-        { direction: 'left', laps: 3 },
-        { direction: 'left', laps: 1 },
-        { direction: 'left', laps: 1 }
-      ]
-    }),
-    OPEN,
-    1280,
-    720
-  );
-  assert.equal(scene.rows[1]!.laps, 3);
-  assert.equal(scene.rows[0]!.laps, 1);
+  assert.ok(step(0) < 0, 'a left row moves left');
+  assert.ok(step(1) > 0, 'a right row moves right');
+  assert.ok(Math.abs(step(2) - step(0) * 3) < 1e-6, 'three laps cover three times the ground');
+  assert.ok(Math.abs(step(3) - step(1) * 3) < 1e-6);
 });
 
 test('the deal covers the roster and repeats only once it has to', () => {

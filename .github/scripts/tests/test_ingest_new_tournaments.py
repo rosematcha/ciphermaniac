@@ -9,9 +9,11 @@ scheduled job ever notices.
 
 import importlib.util
 import json
+import os
 import unittest
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 
 def _load_module():
@@ -29,12 +31,10 @@ ingest_module = _load_module()
 
 class IngestionScopeTest(unittest.TestCase):
     def test_daily_discovery_accepts_only_recent_events(self):
-        today = date(2026, 9, 18)
-        self.assertTrue(ingest_module.is_recent_event("2026-09-01, Regional", today))
-        self.assertFalse(ingest_module.is_recent_event("2024-11-30, Regional", today))
-
-    def test_missing_date_is_deferred_rather_than_ingested(self):
-        self.assertFalse(ingest_module.is_recent_event(None, date(2026, 9, 18)))
+        # A missing date is deferred rather than ingested.
+        for folder, recent in [("2026-09-01, Regional", True), ("2024-11-30, Regional", False), (None, False)]:
+            with self.subTest(folder=folder):
+                self.assertEqual(ingest_module.is_recent_event(folder, date(2026, 9, 18)), recent)
 
 
 class _JsonSession:
@@ -253,12 +253,9 @@ class PlanIngestTest(unittest.TestCase):
 
 class ParseEnvTest(unittest.TestCase):
     def test_max_ingest_falls_back_on_junk_and_non_positive(self):
-        import os
-
         for raw, expected in [("", 5), ("nope", 5), ("0", 5), ("-3", 5), ("12", 12)]:
-            os.environ["MAX_INGEST_TEST"] = raw
-            self.assertEqual(ingest_module.parse_int_env("MAX_INGEST_TEST", 5), expected)
-        del os.environ["MAX_INGEST_TEST"]
+            with self.subTest(raw=raw), patch.dict(os.environ, {"MAX_INGEST_TEST": raw}):
+                self.assertEqual(ingest_module.parse_int_env("MAX_INGEST_TEST", 5), expected)
 
 
 if __name__ == "__main__":

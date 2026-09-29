@@ -33,7 +33,7 @@ function conversion(cards: Record<string, [day1: number, day2: number]>, totals:
   };
 }
 
-test('the field carries the deck total, card counts and the cut', () => {
+test('the field carries the deck total, card counts, the cut and the sets the event saw', () => {
   const field = buildEventField(
     master(
       [
@@ -49,6 +49,7 @@ test('the field carries the deck total, card counts and the cut', () => {
   assert.deepEqual(field.cards.get('Switch::MEG::130'), { found: 139, day1: 139, day2: 12 });
   assert.deepEqual(field.cards.get('Boss::DRI::176'), { found: 93, day1: 0, day2: 0 });
   assert.equal(Math.round(field.fieldConversion ?? 0), 18);
+  assert.deepEqual([...field.sets].sort(), ['DRI', 'MEG']);
 });
 
 test('an event with no published cut has no conversion to weigh', () => {
@@ -85,19 +86,4 @@ test('two prints of one card land on a single row', () => {
     db
   );
   assert.equal(field.cards.get('Switch::MEG::130')?.found, 139);
-});
-
-test('the field records which sets the event actually saw', () => {
-  const field = buildEventField(
-    master(
-      [
-        ['Switch::MEG::130', 100],
-        ['Boss::DRI::176', 50]
-      ],
-      800
-    ),
-    null,
-    null
-  );
-  assert.deepEqual([...field.sets].sort(), ['DRI', 'MEG']);
 });

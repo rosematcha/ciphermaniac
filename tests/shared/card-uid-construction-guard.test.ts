@@ -158,7 +158,7 @@ test('the allowlist stays honest — every entry still exists and still needs to
 });
 
 /* eslint-disable no-template-curly-in-string -- these strings ARE the code samples under test */
-test('the guard catches the evasions an adversarial review found', () => {
+test('the guard catches the evasions an adversarial review found, on one line or split across lines', () => {
   // The first version matched only a single-line template literal and tested
   // NON_CARD_KEY against the whole line, so join(), concatenation, and a
   // trailing comment each defeated it.
@@ -171,23 +171,6 @@ test('the guard catches the evasions an adversarial review found', () => {
     const code = codeOnly(line);
     assert.ok(UID_PATTERNS.some(re => re.test(code)) && !NON_CARD_KEY.test(code), `guard does not catch: ${line}`);
   }
-});
-
-test('the guard still ignores the two-part index-key form and deck fingerprints', () => {
-  const allowed = [
-    'return `${set.toUpperCase()}::${cardNumberIndexKey(number)}`;',
-    'const cacheKey = `${tournament}::${archetypeBase}`;',
-    ".map(card => `${card.count}x${card.name || ''}::${card.set || ''}::${card.number || ''}`)"
-  ];
-  for (const line of allowed) {
-    const code = codeOnly(line);
-    assert.ok(!UID_PATTERNS.some(re => re.test(code)) || NON_CARD_KEY.test(code), `guard falsely flags: ${line}`);
-  }
-});
-/* eslint-enable no-template-curly-in-string */
-
-/* eslint-disable no-template-curly-in-string -- these strings ARE the code samples under test */
-test('the guard catches a UID split across lines', () => {
   // A line-by-line scan misses these, and a formatter can produce them by
   // accident on a long line — not just an author evading deliberately.
   const multiline = [
@@ -201,6 +184,18 @@ test('the guard catches a UID split across lines', () => {
       UID_PATTERNS.some(re => re.test(joined)),
       `guard misses across lines: ${JSON.stringify(sample)}`
     );
+  }
+});
+
+test('the guard still ignores the two-part index-key form and deck fingerprints', () => {
+  const allowed = [
+    'return `${set.toUpperCase()}::${cardNumberIndexKey(number)}`;',
+    'const cacheKey = `${tournament}::${archetypeBase}`;',
+    ".map(card => `${card.count}x${card.name || ''}::${card.set || ''}::${card.number || ''}`)"
+  ];
+  for (const line of allowed) {
+    const code = codeOnly(line);
+    assert.ok(!UID_PATTERNS.some(re => re.test(code)) || NON_CARD_KEY.test(code), `guard falsely flags: ${line}`);
   }
 });
 /* eslint-enable no-template-curly-in-string */

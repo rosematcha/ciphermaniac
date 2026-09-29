@@ -75,7 +75,7 @@ function makeStore(): Record<string, string> {
   };
 }
 
-test('an alias id folds into the canonical profile under the pinned name', async () => {
+test('an alias id folds into the canonical profile under the pinned name, decks and all', async () => {
   const store = makeStore();
   await buildPlayerAggregates(makeEnv(store));
 
@@ -85,30 +85,22 @@ test('an alias id folds into the canonical profile under the pinned name', async
   assert.equal(parsed.name, 'Caitlin White');
   assert.equal(parsed.summary.eventCount, 2, 'both ids’ events belong to one career');
   assert.equal(store['players/16920/profile.json'], undefined, 'the alias id must not publish its own career');
-});
-
-test('the published profile carries no trace of the replaced name', async () => {
-  const store = makeStore();
-  await buildPlayerAggregates(makeEnv(store));
-
-  assert.ok(!store['players/9397/profile.json'].includes('Cali White'));
-});
-
-test('a deck recorded under the alias id still attaches to the merged career', async () => {
-  const store = makeStore();
-  await buildPlayerAggregates(makeEnv(store));
+  assert.ok(!profile.includes('Cali White'), 'the published profile carries no trace of the replaced name');
 
   const decks = store['players/9397/decks.json'];
   assert.ok(decks, 'the slice-local deck join must use the id the event recorded');
   assert.equal(Object.keys(JSON.parse(decks).decks).length, 1);
 });
 
-test('ids without an override pass through untouched', () => {
-  assert.equal(canonicalPlayerId('12786'), '12786');
-  assert.equal(overriddenPlayerName('12786'), null);
-});
-
-test('Olive Battaglia’s original account folds into Olivia Battaglia’s active account', () => {
-  assert.equal(canonicalPlayerId('169'), '25523');
-  assert.equal(overriddenPlayerName('25523'), 'Olivia Battaglia');
+test('only overridden ids fold into another career or take a pinned name', () => {
+  // Olive Battaglia’s original account folds into Olivia Battaglia’s active account.
+  const cases: Array<[string, string, string | null]> = [
+    ['12786', '12786', null],
+    ['169', '25523', null],
+    ['25523', '25523', 'Olivia Battaglia']
+  ];
+  for (const [id, canonical, name] of cases) {
+    assert.equal(canonicalPlayerId(id), canonical, id);
+    assert.equal(overriddenPlayerName(id), name, id);
+  }
 });

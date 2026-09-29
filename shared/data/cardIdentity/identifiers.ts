@@ -66,11 +66,6 @@ export function itemUid(item: {
   return maybeItemUid(item) as string;
 }
 
-/** Type a UID read from a trusted artifact. Construct new UIDs with `cardUid`. */
-export function asCardUid(uid: string): CardUid {
-  return uid as CardUid;
-}
-
 export function canonicalizeVariant(
   setCode: string | null | undefined,
   number: string | number | null | undefined

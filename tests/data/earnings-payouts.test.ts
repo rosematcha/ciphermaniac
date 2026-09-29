@@ -18,29 +18,31 @@ function result(over: Partial<CrawledResult> = {}): CrawledResult {
 }
 
 test('each payout band covers through its upper bound and no further', () => {
-  assert.equal(payoutFor('regional', 1, 'masters'), 10_000);
-  assert.equal(payoutFor('regional', 2, 'masters'), 7_000);
-  assert.equal(payoutFor('regional', 3, 'masters'), 5_000);
-  assert.equal(payoutFor('regional', 4, 'masters'), 5_000);
-  assert.equal(payoutFor('regional', 5, 'masters'), 3_000);
-  assert.equal(payoutFor('regional', 16, 'masters'), 2_000);
-  assert.equal(payoutFor('regional', 17, 'masters'), 1_000);
-  // The Regional table stops at 32; 33rd is out of the money.
-  assert.equal(payoutFor('regional', 32, 'masters'), 1_000);
-  assert.equal(payoutFor('regional', 33, 'masters'), 0);
-});
-
-test('Internationals pay two bands deeper than Regionals, Worlds pays more per band', () => {
-  assert.equal(payoutFor('international', 33, 'masters'), 2_000);
-  assert.equal(payoutFor('international', 64, 'masters'), 2_000);
-  assert.equal(payoutFor('international', 65, 'masters'), 0);
-  assert.equal(payoutFor('worlds', 1, 'masters'), 50_000);
-  assert.equal(payoutFor('worlds', 32, 'masters'), 5_000);
-  assert.equal(payoutFor('worlds', 33, 'masters'), 0);
-});
-
-test('a missing placement pays nothing rather than counting as first', () => {
-  assert.equal(payoutFor('worlds', null, 'masters'), 0);
+  const cases: Array<[Parameters<typeof payoutFor>[0], number | null, number]> = [
+    ['regional', 1, 10_000],
+    ['regional', 2, 7_000],
+    ['regional', 3, 5_000],
+    ['regional', 4, 5_000],
+    ['regional', 5, 3_000],
+    ['regional', 16, 2_000],
+    ['regional', 17, 1_000],
+    // The Regional table stops at 32; 33rd is out of the money.
+    ['regional', 32, 1_000],
+    ['regional', 33, 0],
+    // Internationals pay two bands deeper than Regionals...
+    ['international', 33, 2_000],
+    ['international', 64, 2_000],
+    ['international', 65, 0],
+    // ...and Worlds pays more per band.
+    ['worlds', 1, 50_000],
+    ['worlds', 32, 5_000],
+    ['worlds', 33, 0],
+    // A missing placement pays nothing rather than counting as first.
+    ['worlds', null, 0]
+  ];
+  for (const [tier, place, expected] of cases) {
+    assert.equal(payoutFor(tier, place, 'masters'), expected, `${tier} ${String(place)}`);
+  }
 });
 
 test('Juniors and Seniors restate from their own, much lower column', () => {
