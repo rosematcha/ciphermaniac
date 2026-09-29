@@ -23,7 +23,6 @@
     "test:node": "node scripts/run-node-tests.mjs node",
     "test:python": "node scripts/quality/run-tool.mjs python -m unittest discover -s .github/scripts/tests -p test_*.py",
     "test:e2e:local": "playwright test --config playwright.local.config.ts",
-    "test:e2e:live": "playwright test",
     "test:coverage": "c8 --reporter=text --reporter=lcov --reporter=json npm run test:node",
     "coverage:check": "c8 check-coverage --statements 80 --branches 77 --functions 86 --lines 80",
     "coverage:check:domain": "c8 check-coverage --statements 92 --branches 76 --functions 98 --lines 92 --include 'shared/data/**/*.ts'",
