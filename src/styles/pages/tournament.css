@@ -25,17 +25,6 @@
 .tm-page .tabs {
   margin-bottom: var(--space-3);
 }
-.tm-page > .tm-toolbar {
-  margin-bottom: var(--space-3);
-}
-.tm-section-block {
-  display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-5);
-}
-.tm-section-block:first-child {
-  margin-top: 0;
-}
 .tm-subhead {
   font-size: var(--text-body);
   font-weight: 600;
@@ -43,9 +32,6 @@
 }
 .tm-standings > .tm-subhead {
   margin: var(--space-4) 0 var(--space-2);
-}
-.tm-form h3 {
-  margin: 0;
 }
 
 /* A grid child keeps its content's width by default, and a table's content is
@@ -317,11 +303,6 @@ body[data-mode='dark'] .tm-sso-google:hover {
 }
 
 /* ---------- Forms ---------- */
-.tm-form {
-  display: grid;
-  gap: var(--space-3);
-  align-content: start;
-}
 .tm-grid-fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -412,19 +393,12 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   margin: 0;
   accent-color: var(--accent);
 }
-.tm-actions,
-.tm-toolbar,
 .tm-inline-form {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
 }
-.tm-toolbar .search {
-  flex: 1 1 220px;
-  min-width: 0;
-}
-.tm-count,
 .tm-hint {
   font-size: var(--text-base);
 }
@@ -466,19 +440,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   font-size: var(--text-sm);
   font-weight: 600;
 }
-.tm-note {
-  display: grid;
-  gap: var(--space-2);
-  font-size: var(--text-base);
-  padding: 10px 14px;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-}
-.tm-seat-note {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
 .tm-small {
   min-height: 30px;
   padding: 4px 9px;
@@ -487,18 +448,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 .tm-danger {
   color: var(--negative);
   border-color: var(--negative);
-}
-.tm-danger-text {
-  color: var(--negative);
-}
-.tm-danger-zone {
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--rule);
-}
-/* A ghost button's padding would set it off the column every heading starts on. */
-.tm-danger-zone > .btn-ghost {
-  justify-self: start;
-  margin-left: -14px;
 }
 .tm-meta-part {
   white-space: nowrap;
@@ -514,44 +463,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   max-width: 70ch;
   font-size: var(--text-body);
   white-space: pre-line;
-}
-
-/* A disclosure that reads as a quiet button until opened. */
-.tm-disclosure > summary {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--control-h);
-  padding: 0 12px;
-  border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  font-weight: 600;
-  cursor: pointer;
-  list-style: none;
-}
-.tm-disclosure > summary::-webkit-details-marker {
-  display: none;
-}
-.tm-disclosure > summary::after {
-  content: '';
-  width: 6px;
-  height: 6px;
-  margin-left: 8px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
-  transition: transform var(--ms-fast) var(--ease-base);
-}
-.tm-disclosure[open] > summary::after {
-  transform: translateY(1px) rotate(-135deg);
-}
-.tm-disclosure > summary:hover {
-  background: var(--surface-2);
-}
-.tm-disclosure[open] {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 /* ---------- Inline confirmation ---------- */
@@ -574,15 +485,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 .tm-extra-col {
   width: 1%;
   white-space: nowrap;
-}
-/* What players reported sits on its own line above the result controls, and wraps. */
-.tm-report-note {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--space-2);
-  white-space: normal;
-  font-size: var(--text-sm);
 }
 .tm-seat-inner {
   display: inline-flex;
@@ -731,11 +633,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   height: auto;
   padding-block: var(--space-2);
 }
-.tm-decklist {
-  margin: 0;
-  font-size: var(--text-sm);
-  white-space: pre-wrap;
-}
 .tm-deck-link {
   color: var(--fg);
   vertical-align: middle;
@@ -775,9 +672,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
   .tm-hint {
     display: none;
-  }
-  .tm-seat-note {
-    grid-template-columns: minmax(0, 1fr);
   }
   /* A pairing restacks to two lines under its table number, the result
      controls on a third, as /live does: the opponent never scrolls away. */
@@ -861,7 +755,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   .tm-seat-link,
   .tm-small,
   .tm-check,
-  .tm-disclosure > summary,
   .tm-filter-bar .chip {
     min-height: 44px;
   }
@@ -1453,18 +1346,6 @@ tr.is-in .tm-place {
 }
 
 /* ---------- Round header and clock ---------- */
-.tm-actions-bar:empty {
-  display: none;
-}
-.tm-round-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-.tm-round-head .tm-clock-group {
-  margin-left: auto;
-}
 .tm-clock {
   font-size: var(--text-lg);
   font-weight: 700;
@@ -1589,20 +1470,4 @@ tr.is-in .tm-place {
 }
 .tm-account-strip .dot {
   opacity: 0.4;
-}
-.tm-account-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
-}
-.tm-account-name {
-  font-weight: 600;
-  margin-right: auto;
-}
-.tm-account-name-input {
-  max-width: 20rem;
 }
