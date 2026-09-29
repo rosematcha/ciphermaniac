@@ -1194,6 +1194,20 @@ tr.is-in .tm-place {
   flex: 1 1 260px;
   max-width: 420px;
 }
+.tm-staff-list {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tm-staff-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 .tm-set-foot {
   justify-content: flex-end;
   border-top: 1px solid var(--rule);

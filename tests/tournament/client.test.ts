@@ -17,11 +17,13 @@ import {
   fetchMyDecklist,
   fetchPublished,
   fetchSession,
+  fetchStaff,
   fetchView,
   identifyPlayer,
   joinStaff,
   linkUrl,
   listTournaments,
+  removeStaff,
   reportAsPlayer,
   rotateStaffToken,
   saveAccountName,
@@ -90,6 +92,8 @@ test('every call goes to its endpoint with its body', async () => {
   await submitDecklist('ABC', { deck: 'deck', profile, archetype: null, token: 'kept' });
   await fetchMyDecklist('ABC', profile, 'tok');
   await fetchMyDecklist('ABC', { popId: '', firstName: 'Ann', lastName: 'Lee' }, 'tok');
+  await fetchStaff('ABC');
+  await removeStaff('ABC', 'u-1');
   assert.deepEqual(
     sent.map(s => `${s.method} ${s.url}`),
     [
@@ -109,7 +113,9 @@ test('every call goes to its endpoint with its body', async () => {
       'GET /api/tournaments/ABC/decklists',
       'PUT /api/tournaments/ABC/decklists',
       'GET /api/tournaments/ABC/decklists?popId=1&firstName=A&lastName=B&token=tok',
-      'GET /api/tournaments/ABC/decklists?popId=&firstName=Ann&lastName=Lee&token=tok'
+      'GET /api/tournaments/ABC/decklists?popId=&firstName=Ann&lastName=Lee&token=tok',
+      'GET /api/tournaments/ABC/staff',
+      'DELETE /api/tournaments/ABC/staff?user=u-1'
     ]
   );
   const decklist = sent[14]?.body as { localTime: string };

@@ -1120,3 +1120,28 @@ test('two agreeing reports from one device wait for staff, and staff can free a 
   const real = await phoneOf(code, first.p2, 'their-own-phone');
   assert.equal(real.said.json.reporter, true, 'the real player can claim their seat once staff free it');
 });
+
+/** An event with one member of staff, who joined through the invite link. */
+async function withHelper() {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const token = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json.staffToken;
+  const helper = await signIn('Helper');
+  await hit(staff.onRequestPost as Handler, '/staff', at(code), { method: 'POST', cookie: helper, body: { token } });
+  return { owner, code, helper };
+}
+
+test('the organizer sees who joined staff, and when, and removes one of them', async () => {
+  const { owner, code, helper } = await withHelper();
+  const listed = await hit(staff.onRequestGet as Handler, '/staff', at(code), { cookie: owner });
+  assert.equal(listed.json.staff.length, 1);
+  assert.equal(listed.json.staff[0].name, 'Helper');
+  assert.ok(typeof listed.json.staff[0].joinedAt === 'number');
+  assert.equal((await hit(staff.onRequestGet as Handler, '/staff', at(code), { cookie: helper })).status, 403);
+  const removed = await hit(staff.onRequestDelete as Handler, `/staff?user=${listed.json.staff[0].id}`, at(code), {
+    method: 'DELETE',
+    cookie: owner
+  });
+  assert.deepEqual(removed.json.staff, []);
+  assert.equal((await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: helper })).status, 403);
+});

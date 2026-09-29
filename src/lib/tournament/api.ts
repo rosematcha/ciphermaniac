@@ -234,6 +234,20 @@ export const reportAsPlayer = (code: string, claim: PlayerClaim, result: PlayerR
 export const releaseReporter = (code: string, playerId: string) =>
   call<null>(`${base(code)}/report?${new URLSearchParams({ player: playerId }).toString()}`, { method: 'DELETE' });
 
+export interface StaffMember {
+  id: string;
+  name: string;
+  joinedAt: number | null;
+}
+
+/** Everyone the invite link let onto the staff; the organizer's to see. */
+export const fetchStaff = (code: string) => call<{ staff: StaffMember[] }>(`${base(code)}/staff`);
+
+export const removeStaff = (code: string, userId: string) =>
+  call<{ staff: StaffMember[] }>(`${base(code)}/staff?${new URLSearchParams({ user: userId }).toString()}`, {
+    method: 'DELETE'
+  });
+
 /** Every list, for staff. */
 export const fetchDecklists = (code: string) =>
   call<{ decklists: Decklist[]; mine: Decklist | null }>(`${base(code)}/decklists`);

@@ -2,14 +2,46 @@
  * POST /api/tournaments/:code/staff — joins the event's staff with the invite
  * token the organizer shared ({ token }), or, for the organizer, replaces the
  * token and removes every current staff member ({ rotate: true }).
+ * GET — the organizer sees everyone the invite link let in, and when.
+ * DELETE ?user=<id> — the organizer removes one of them.
  */
 
 import { readJsonBody } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { randomToken } from '../../../lib/auth/session.js';
-import { type Access, manageView, open, privateJson } from '../../../lib/tournaments/access.js';
-import { addStaff, clearStaff, mutate } from '../../../lib/tournaments/store.js';
+import { type Access, manageView, open, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
+import { addStaff, clearStaff, listStaff, mutate, removeStaff } from '../../../lib/tournaments/store.js';
+
+/** The event, when the organizer is the one asking; the refusal otherwise. */
+async function openForOwner(context: Context<'code'>): Promise<Access | Response> {
+  const access = await openForStaff(context);
+  if (access instanceof Response) {
+    return access;
+  }
+  return access.role === 'owner' ? access : jsonError('Only the organizer can do that', 403);
+}
+
+export async function onRequestGet(context: Context<'code'>): Promise<Response> {
+  const access = await openForOwner(context);
+  if (access instanceof Response) {
+    return access;
+  }
+  return privateJson({ staff: await listStaff(access.db, access.row.code) });
+}
+
+export async function onRequestDelete(context: Context<'code'>): Promise<Response> {
+  const access = await openForOwner(context);
+  if (access instanceof Response) {
+    return access;
+  }
+  const user = new URL(context.request.url).searchParams.get('user') ?? '';
+  if (!user) {
+    return jsonError('Say who to remove', 400);
+  }
+  await removeStaff(access.db, access.row.code, user);
+  return privateJson({ staff: await listStaff(access.db, access.row.code) });
+}
 
 /**
  * A new invite token, and nobody on staff: the old link stops working and

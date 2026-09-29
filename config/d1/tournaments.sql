@@ -59,9 +59,12 @@ CREATE TABLE IF NOT EXISTS tournaments (
 );
 CREATE INDEX IF NOT EXISTS tournaments_by_owner ON tournaments (owner_id, updated_at);
 
+-- Who joined an event's staff through its invite link, and when, so the
+-- organizer can see everyone the link let in and remove one of them.
 CREATE TABLE IF NOT EXISTS staff (
   code TEXT NOT NULL,
   user_id TEXT NOT NULL,
+  joined_at INTEGER,
   PRIMARY KEY (code, user_id)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS staff_by_user ON staff (user_id);
