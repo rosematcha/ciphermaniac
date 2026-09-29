@@ -12,7 +12,7 @@ import { DEFAULT_ROUND_MINUTES } from '../../../shared/tournament/create';
 import type { DecklistMode, DeckVisibility, TournamentSettings } from '../../../shared/tournament/view';
 import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
-import { DecklistsSwitch } from './SettingChoices';
+import { DecklistsSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
 export interface Setup {
@@ -44,6 +44,7 @@ export function EventSetup(props: {
   const [reporting, setReporting] = createSignal(false);
   const [archetypes, setArchetypes] = createSignal<DeckVisibility>('off');
   const [decklists, setDecklists] = createSignal<DecklistMode>('off');
+  const [roundCap, setRoundCap] = createSignal(0);
   const swiss = () => props.mode === 'swiss';
   const needsName = () => swiss() && !name().trim();
   const needsPlayTools = () => (swiss() ? sanctioned() : props.tdfSanctioned);
@@ -64,7 +65,7 @@ export function EventSetup(props: {
         deckVisibility: archetypes(),
         decklists: decklists(),
         playerReporting: reporting(),
-        ...(swiss() ? { sanctioned: sanctioned() } : {})
+        ...(swiss() ? { sanctioned: sanctioned(), roundCap: roundCap() } : {})
       }
     });
   }
@@ -149,6 +150,9 @@ export function EventSetup(props: {
               value={roundTime()}
               onInput={e => setRoundTime(Number(e.currentTarget.value))}
             />
+          </SettingRow>
+          <SettingRow label='Swiss rounds' for='setup-rounds'>
+            <RoundsSelect id='setup-rounds' value={roundCap()} onChange={setRoundCap} />
           </SettingRow>
         </Show>
         <SettingRow label='Player reporting'>

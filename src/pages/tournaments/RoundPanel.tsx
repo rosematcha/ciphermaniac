@@ -18,7 +18,6 @@
 
 import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
 import { isDisputed, oneDevice, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
-import { activeIds } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import type { Manage } from '../../lib/tournament/api';
 import {
@@ -35,7 +34,7 @@ import {
 } from '../../lib/tournament/present';
 import type { ManageState } from './manageState';
 import { MatchTable } from './MatchTable';
-import { ChampionLine, ClockControls, DeleteRound, RepairControl, TopCutControl } from './RoundControls';
+import { ChampionLine, ClockControls, DeleteRound, RepairControl } from './RoundControls';
 
 function RoundPicker(props: { pod: Pod; selected: number; onSelect: (n: number) => void }) {
   return (
@@ -314,7 +313,6 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const round = createMemo(() => props.pod.rounds.find(r => r.number === picked()) ?? latest());
   const names = createMemo(() => namesById(props.manage.tournament));
   const waiting = () => (tom() || latest()?.kind !== 'swiss' ? [] : unseated(props.manage.tournament, props.pod));
-  const active = () => activeIds(props.manage.tournament, props.pod).length;
   const isLatest = () => round()?.number === latest()?.number;
   const winner = () => champion(latest());
   const played = () => round()?.matches.filter(m => m.p2 !== null) ?? [];
@@ -327,7 +325,6 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const nothingReported = () => played().every(m => m.outcome === 'pending');
   /** The staff controls that act on the round, offered only on its latest round and never for TOM. */
   const live = () => !tom() && isLatest() && winner() === null;
-  const swissDone = () => latest()?.kind === 'swiss' && openCount() === 0 && isLatest();
   const isAsking = (match: Match) => asking()?.table === match.table && asking()?.p1 === match.p1;
   // A new round, or another division, starts on its current round again.
   createEffect(on([() => latest()?.number, () => props.pod.category], () => setPicked(null), { defer: true }));
@@ -411,13 +408,6 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
             label='Re-pair to seat them'
             question={`Re-pair the open tables to seat ${waitingNames()}?`}
           />
-        </div>
-      </Show>
-      <Show when={!tom() && swissDone() && active() >= 4 && winner() === null}>
-        <div class='tm-strip'>
-          <span>{latest() ? `${roundLabel(latest() as Round)} complete` : ''}</span>
-          <span class='tm-grow' />
-          <TopCutControl state={props.state} pod={props.pod} active={active()} />
         </div>
       </Show>
       <Show when={winner()}>{id => <ChampionLine name={names().get(id()) ?? id()} />}</Show>

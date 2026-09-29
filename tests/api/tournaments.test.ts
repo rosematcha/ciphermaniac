@@ -793,7 +793,7 @@ test('an event starts with the settings its setup chose', async () => {
         name: 'Friday Locals',
         combined: false,
         roundTime: 25,
-        settings: { sanctioned: false, playerReporting: true, format: 'Expanded', finished: true }
+        settings: { sanctioned: false, playerReporting: true, format: 'Expanded', finished: true, roundCap: 3 }
       }
     }
   );
@@ -808,6 +808,7 @@ test('an event starts with the settings its setup chose', async () => {
   assert.equal(made.settings.finished, false, 'an event does not start closed');
   assert.equal(made.settings.deckVisibility, 'off');
   assert.equal(made.settings.decklists, 'off');
+  assert.equal(made.settings.roundCap, 3, 'a league that plays three rounds');
   const bad = await hit(
     tournaments.onRequestPost as Handler,
     '/api/tournaments',

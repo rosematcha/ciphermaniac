@@ -36,6 +36,7 @@ import {
   namesById,
   ordinal,
   podStandings,
+  roundCapOf,
   roundLabel,
   STATUS_LABELS
 } from '../../lib/tournament/present';
@@ -486,7 +487,12 @@ function Hero(props: { view: TournamentView }) {
   const status = () =>
     eventStatus(
       props.view.tournament,
-      { pending: props.view.pending, finished: settings().finished, firstRound: firstRoundTime(settings().startsAt) },
+      {
+        pending: props.view.pending,
+        finished: settings().finished,
+        firstRound: firstRoundTime(settings().startsAt),
+        roundCap: roundCapOf(props.view)
+      },
       now()
     ).join(' · ');
   const place = () => [info().city, info().state].filter(Boolean).join(', ');

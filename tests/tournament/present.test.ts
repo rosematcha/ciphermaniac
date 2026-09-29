@@ -12,6 +12,7 @@ import test from 'node:test';
 import { applyCommand, type Command } from '../../shared/tournament/commands.ts';
 import { emptyTournament } from '../../shared/tournament/create.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
+import { recommendedStructure } from '../../shared/tournament/structure.ts';
 import { parseTdf } from '../../shared/tournament/tdf.ts';
 import type { Pod, Round, Tournament } from '../../shared/tournament/types.ts';
 import { assignKeys, DEFAULT_SETTINGS, publicTournament } from '../../shared/tournament/view.ts';
@@ -22,6 +23,7 @@ import {
   currentMatchOf,
   cutSplit,
   deckBreakdown,
+  divisionCuts,
   divisionHeading,
   eventStatus,
   filterMatches,
@@ -29,12 +31,13 @@ import {
   namesById,
   nextStep,
   ordinal,
+  plannedRounds,
   podProgress,
   podStandings,
-  recommendedStructure,
   recordsBefore,
   reportState,
   RESULT_WORDS,
+  roundCapOf,
   roundLabel,
   seatMark,
   shownDecks,
@@ -295,6 +298,82 @@ test('the status sentence names the round, what is still playing and the clock',
   assert.deepEqual(statusParts(open, true, null), ['Finished']);
 });
 
+test('against a plan, the status counts the Swiss rounds, and names a round past the plan alone', () => {
+  const open = podProgress(pod, []);
+  assert.equal(statusParts(open, false, null, 3)[0], 'Round 2 of 3');
+  assert.equal(statusParts(open, false, null, 1)[0], 'Round 2', 'a round past the plan');
+  const quarter: Round = { ...round2, kind: 'elimination', matches: round2.matches.slice(0, 4) };
+  assert.equal(statusParts({ ...open, round: quarter }, false, null, 3)[0], 'Quarterfinals');
+});
+
+/** A pod of `n` players, for the plan: only its size counts. */
+const podOf = (n: number): Pod => ({ ...pod, playerIds: Array.from({ length: n }, (_, i) => String(i + 1)) });
+
+/** A tournament of `n` players, the first `dropped` of them dropped. */
+const fieldOf = (n: number, dropped = 0): Tournament => ({
+  ...CHALLENGE,
+  players: Array.from({ length: n }, (_, i) => ({
+    ...(CHALLENGE.players[0] as Tournament['players'][number]),
+    id: String(i + 1),
+    droppedAfter: i < dropped ? 1 : null
+  }))
+});
+
+test('the rounds are Play! Pokémon’s structure for the attendance, held to the round cap', () => {
+  assert.equal(plannedRounds(podOf(16), 0), 5);
+  assert.equal(plannedRounds(podOf(16), 3), 3, 'a league that plays three rounds');
+  assert.equal(plannedRounds(podOf(6), 5), 3, 'a cap above the structure changes nothing');
+  assert.equal(plannedRounds(podOf(40), 0), 6);
+  assert.equal(roundCapOf({ mode: 'tom', settings: { ...DEFAULT_SETTINGS, roundCap: 3 } }), null);
+  assert.equal(roundCapOf({ mode: 'swiss', settings: { ...DEFAULT_SETTINGS, roundCap: 3 } }), 3);
+});
+
+test('each division cuts by its own attendance, and not past the players still in', () => {
+  assert.deepEqual(
+    divisionCuts(fieldOf(16), podOf(16), () => 'masters'),
+    [{ division: 'masters', active: 16, cut: 4 }]
+  );
+  assert.deepEqual(
+    divisionCuts(fieldOf(24, 17), podOf(24), () => 'masters'),
+    [{ division: 'masters', active: 7, cut: 0 }],
+    'drops left too few for a top 8'
+  );
+  // 20 Masters and 5 Juniors played together: a top 4 of Masters, no cut for Juniors.
+  const juniors = new Set(['21', '22', '23', '24', '25']);
+  assert.deepEqual(
+    divisionCuts(fieldOf(25), podOf(25), id => (juniors.has(id) ? 'junior' : 'masters')),
+    [
+      { division: 'junior', active: 5, cut: 0 },
+      { division: 'masters', active: 20, cut: 4 }
+    ]
+  );
+});
+
+test('once the plan’s rounds are played, the next step is a decision, which waits on open tables', () => {
+  const open = podProgress(pod, []);
+  const early = nextStep({ ...open, open: 0 }, false, { rounds: 3, cut: 4 });
+  assert.deepEqual(early, { kind: 'pair', label: 'Pair round 3', ready: true }, 'round 2 of 3');
+  assert.deepEqual(nextStep({ ...open, open: 0 }, false, { rounds: 2, cut: 4 }), {
+    kind: 'decide',
+    label: 'Pair round 3',
+    cut: 4,
+    ready: true
+  });
+  assert.deepEqual(nextStep({ ...open, open: 2 }, false, { rounds: 2, cut: 0 }), {
+    kind: 'decide',
+    label: 'Pair round 3',
+    cut: 0,
+    ready: false,
+    reason: '2 tables open'
+  });
+  const semi: Round = { ...round2, kind: 'elimination', matches: round2.matches.slice(0, 2) };
+  assert.equal(
+    nextStep({ ...open, round: semi, open: 0 }, false, { rounds: 1, cut: 4 }).kind,
+    'pair',
+    'a cut pairs on'
+  );
+});
+
 test('the cut line says what split the last player in from the first one out', () => {
   const row = (place: number, points: number, owp: number, oowp = 0.5) => ({
     playerId: String(place),
@@ -317,20 +396,21 @@ test('the cut line says what split the last player in from the first one out', (
 test('the public status names registration, the round in play, or how the event finished', () => {
   const registering = { ...CHALLENGE, pods: CHALLENGE.pods.map(p => ({ ...p, rounds: [] })) };
   const players = registering.players.filter(p => p.droppedAfter === null).length;
-  assert.deepEqual(eventStatus(registering, { pending: [], finished: false, firstRound: '11:00 AM' }, 0), [
+  assert.deepEqual(eventStatus(registering, { pending: [], finished: false, firstRound: '11:00 AM', roundCap: 0 }, 0), [
     'Registration',
     `${players} players`,
     'Round 1 at 11:00 AM'
   ]);
-  assert.deepEqual(eventStatus(registering, { pending: [], finished: false, firstRound: null }, 0), [
+  assert.deepEqual(eventStatus(registering, { pending: [], finished: false, firstRound: null, roundCap: 0 }, 0), [
     'Registration',
     `${players} players`
   ]);
-  const live = eventStatus(CHALLENGE, { pending: [], finished: false, firstRound: null }, 0);
+  // TOM decides a TOM event's rounds, so its round is named alone.
+  const live = eventStatus(CHALLENGE, { pending: [], finished: false, firstRound: null, roundCap: null }, 0);
   assert.equal(live[0], roundLabel(pod.rounds.at(-1) as Round));
   const swiss = pod.rounds.filter(r => r.kind === 'swiss').length;
   const cut = { ...CHALLENGE, pods: [{ ...pod, cut: 8 }] };
-  assert.deepEqual(eventStatus(cut, { pending: [], finished: true, firstRound: null }, 0), [
+  assert.deepEqual(eventStatus(cut, { pending: [], finished: true, firstRound: null, roundCap: 0 }, 0), [
     'Finished',
     `${swiss} round${swiss === 1 ? '' : 's'}`,
     'Top 8'

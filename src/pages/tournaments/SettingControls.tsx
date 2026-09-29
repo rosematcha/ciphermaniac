@@ -2,8 +2,9 @@
  * The controls an event's settings are made with, shared by the new event
  * setup and the console's Event tab so the same setting is always the same
  * control: a two-way switch for sanctioned and player reporting, and the
- * three-way archetypes choice (the decklists choice is in SettingChoices).
- * Each sits in a settings row, the label at left and the control at right.
+ * three-way archetypes choice (the decklists and Swiss rounds choices are in
+ * SettingChoices). Each sits in a settings row, the label at left and the
+ * control at right.
  */
 
 import { For, type JSX, Show } from 'solid-js';

@@ -57,6 +57,12 @@ export interface TournamentSettings {
   sanctioned: boolean;
   /** Players report their own results from the event's page (see shared/tournament/reports.ts). */
   playerReporting: boolean;
+  /**
+   * The most Swiss rounds the event plans to play; 0 plays the number Play!
+   * Pokémon recommends for the attendance. Past it the console offers the top
+   * cut and ending the event ahead of another round.
+   */
+  roundCap: number;
 }
 
 export const DEFAULT_SETTINGS: TournamentSettings = {
@@ -68,10 +74,11 @@ export const DEFAULT_SETTINGS: TournamentSettings = {
   finished: false,
   // Events made before the choice existed asked for Player IDs, so they stay sanctioned.
   sanctioned: true,
-  playerReporting: false
+  playerReporting: false,
+  roundCap: 0
 };
 
-export const SETTINGS_LIMITS = { details: 1000, format: 40, archetype: 60 } as const;
+export const SETTINGS_LIMITS = { details: 1000, format: 40, archetype: 60, roundCap: 15 } as const;
 
 const VISIBILITIES: readonly DeckVisibility[] = ['always', 'after', 'off'];
 const DECKLIST_MODES: readonly DecklistMode[] = ['off', 'open', 'closed'];
@@ -81,6 +88,8 @@ type SettingCheck = (value: unknown) => boolean;
 
 const SETTING_CHECKS: { [K in keyof TournamentSettings]: SettingCheck } = {
   decklists: value => DECKLIST_MODES.includes(value as DecklistMode),
+  roundCap: value =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= SETTINGS_LIMITS.roundCap,
   finished: value => typeof value === 'boolean',
   sanctioned: value => typeof value === 'boolean',
   playerReporting: value => typeof value === 'boolean',

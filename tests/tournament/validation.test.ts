@@ -122,7 +122,7 @@ test('settings changes are checked field by field', () => {
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'off', finished: true }), false);
 });
 
-test('decklists are off, open or closed', () => {
+test('decklists are off, open or closed, and rounds are capped at up to fifteen', () => {
   assert.equal(DEFAULT_SETTINGS.decklists, 'off', 'a new event takes no decklists until asked to');
   assert.equal(readSettings({ decklists: 'open' }, DEFAULT_SETTINGS)?.decklists, 'open');
   assert.equal(readSettings({ decklists: true }, DEFAULT_SETTINGS), null);
@@ -131,6 +131,10 @@ test('decklists are off, open or closed', () => {
   assert.equal(readSettings({ decklistsOpen: false }, DEFAULT_SETTINGS)?.decklists, 'closed');
   assert.equal('decklistsOpen' in (readSettings({ decklistsOpen: true }, DEFAULT_SETTINGS) ?? {}), false);
   assert.equal(readSettings({ decklistsOpen: 'yes' }, DEFAULT_SETTINGS), null);
+  assert.equal(readSettings({ roundCap: 3 }, DEFAULT_SETTINGS)?.roundCap, 3);
+  for (const bad of [-1, 16, 2.5, '3']) {
+    assert.equal(readSettings({ roundCap: bad }, DEFAULT_SETTINGS), null);
+  }
   assert.equal(decklistsOpen({ decklists: 'open' }), true);
   assert.equal(decklistsOpen({ decklists: 'closed' }), false);
 });

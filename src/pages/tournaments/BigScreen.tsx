@@ -25,6 +25,7 @@ import {
   eventStatus,
   namesById,
   recordsBefore,
+  roundCapOf,
   seatMark,
   shownOutcome
 } from '../../lib/tournament/present';
@@ -218,7 +219,12 @@ export function BigScreen(props: { view: TournamentView }) {
   const status = () =>
     eventStatus(
       props.view.tournament,
-      { pending: props.view.pending, finished: props.view.settings.finished, firstRound: firstRound() },
+      {
+        pending: props.view.pending,
+        finished: props.view.settings.finished,
+        firstRound: firstRound(),
+        roundCap: roundCapOf(props.view)
+      },
       now()
     );
   let hide: ReturnType<typeof setTimeout> | undefined;

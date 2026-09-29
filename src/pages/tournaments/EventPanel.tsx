@@ -1,14 +1,15 @@
 /**
  * The console's event tab, as bordered boxes of settings rows (label at left,
- * control at right): the event itself (name, round lengths), what players see
- * and do (start, format, archetypes, sanctioned, reporting, decklists,
- * details), finishing (close or reopen, the .tdf), the staff invite, and
- * deleting the event. Each box of settings saves on its own and says when it
- * has unsaved changes; anything that cannot be taken back asks first.
+ * control at right): the event itself (name, round lengths, Swiss rounds),
+ * what players see and do (start, format, archetypes, sanctioned, reporting,
+ * decklists, details), finishing (end or reopen, the .tdf), the staff invite,
+ * and deleting the event. Each box of settings saves on its own and says when
+ * it has unsaved changes; anything that cannot be taken back asks first.
  */
 
 import { useNavigate } from '@solidjs/router';
 import { createResource, createSignal, For, type JSX, Show } from 'solid-js';
+import { recommendedStructure } from '../../../shared/tournament/structure';
 import { isSanctioned, SETTINGS_LIMITS, type TournamentSettings } from '../../../shared/tournament/view';
 import {
   deleteTournament,
@@ -25,7 +26,7 @@ import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
 import type { ManageState } from './manageState';
-import { DecklistsSwitch } from './SettingChoices';
+import { DecklistsSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
 /** A box of settings with its heading, and a foot with Save and whether anything is unsaved. */
@@ -60,19 +61,38 @@ function SettingsBox(props: {
   );
 }
 
+/**
+ * Play! Pokémon's Swiss rounds for the players in so far: for an event that
+ * pairs everyone together, as most do; none while divisions pair apart, each
+ * on its own count, or before anyone is in.
+ */
+function recommendedRounds(manage: Manage): number | undefined {
+  const [pod, ...others] = manage.tournament.pods;
+  return pod && others.length === 0 ? recommendedStructure(pod.playerIds.length).rounds : undefined;
+}
+
 function EventDetails(props: { state: ManageState; manage: Manage }) {
   const info = () => props.manage.tournament.info;
   const [name, setName] = createSignal(info().name);
   const [roundTime, setRoundTime] = createSignal(info().roundTime);
   const [finals, setFinals] = createSignal(info().finalsRoundTime);
-  const dirty = () => name() !== info().name || roundTime() !== info().roundTime || finals() !== info().finalsRoundTime;
-  const save = () =>
-    void props.state.send({
-      type: 'updateInfo',
-      info: { name: name(), roundTime: roundTime(), finalsRoundTime: finals() }
-    });
+  // eslint-disable-next-line solid/reactivity -- the form edits a copy taken when it opens; saving replaces the event
+  const [roundCap, setRoundCap] = createSignal(props.manage.settings.roundCap);
+  const infoDirty = () =>
+    name() !== info().name || roundTime() !== info().roundTime || finals() !== info().finalsRoundTime;
+  const capDirty = () => roundCap() !== props.manage.settings.roundCap;
+  // The rounds are a setting and the rest the event's own details, so each goes where it is kept.
+  async function save() {
+    const { code } = props.manage;
+    const details = { name: name(), roundTime: roundTime(), finalsRoundTime: finals() };
+    const saved = !infoDirty() || (await props.state.send({ type: 'updateInfo', info: details }));
+    const cap = roundCap();
+    if (saved && capDirty()) {
+      await props.state.run(() => saveSettings(code, { roundCap: cap }));
+    }
+  }
   return (
-    <SettingsBox title='Event' dirty={dirty()} busy={props.state.busy()} onSave={save}>
+    <SettingsBox title='Event' dirty={infoDirty() || capDirty()} busy={props.state.busy()} onSave={() => void save()}>
       <SettingRow label='Event name' for='info-name'>
         <input id='info-name' class='tm-input' value={name()} onInput={e => setName(e.currentTarget.value)} />
       </SettingRow>
@@ -96,6 +116,14 @@ function EventDetails(props: { state: ManageState; manage: Manage }) {
           max='180'
           value={finals()}
           onInput={e => setFinals(Number(e.currentTarget.value))}
+        />
+      </SettingRow>
+      <SettingRow label='Swiss rounds' for='info-rounds'>
+        <RoundsSelect
+          id='info-rounds'
+          value={roundCap()}
+          recommended={recommendedRounds(props.manage)}
+          onChange={setRoundCap}
         />
       </SettingRow>
     </SettingsBox>
@@ -173,7 +201,7 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
   );
 }
 
-/** Close or reopen, and the .tdf: what an organizer does at the end of the day. */
+/** End or reopen, and the .tdf: what an organizer does at the end of the day. */
 function Finish(props: { state: ManageState; manage: Manage }) {
   const download = () => {
     const { manage } = props;
@@ -195,15 +223,15 @@ function Finish(props: { state: ManageState; manage: Manage }) {
       <div class='tm-box'>
         <SettingRow label='Status'>
           <span class='tm-set-inline'>
-            <span>{props.manage.settings.finished ? 'Closed' : 'Open'}</span>
+            <span>{props.manage.settings.finished ? 'Ended' : 'In progress'}</span>
             <Show
               when={props.manage.settings.finished}
               fallback={
                 <ConfirmAction
                   class='btn btn-secondary'
-                  label='Close event'
-                  question='Close the event?'
-                  confirmLabel='Close'
+                  label='End event'
+                  question='End the event?'
+                  confirmLabel='End event'
                   onConfirm={() => setFinished(true)}
                 />
               }
