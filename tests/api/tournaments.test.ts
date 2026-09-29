@@ -30,7 +30,8 @@ import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { REPORT_WINDOW_MS } from '../../shared/tournament/reports.ts';
 import { parseTdf } from '../../shared/tournament/tdf.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
-import { rotateStaff } from '../../functions/lib/tournaments/store.ts';
+import { publishView } from '../../functions/lib/tournaments/publish.ts';
+import { loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
 import { sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 const ORIGIN = 'https://cm.test';
@@ -1233,4 +1234,75 @@ test('a list cannot be withdrawn once submission closes, even with its token', a
   assert.equal(withdrawn.status, 403);
   const lists = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   assert.equal(lists.json.decklists.length, 1);
+});
+
+function memoryBucket() {
+  const objects = new Map<string, string>();
+  env.REPORTS = {
+    put: async (key, value) => {
+      objects.set(key, value);
+    },
+    delete: async key => {
+      objects.delete(key);
+    }
+  };
+  return objects;
+}
+
+test('a publish that lands late puts the newest view back, and cannot bring back a deleted event', async () => {
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const key = `tournaments/v1/${code}.json`;
+  const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
+  const older = await loadTournament(db, code);
+  await addPlayers(code, owner, 1);
+  const newest = JSON.parse(objects.get(key) ?? '{}').version as number;
+  assert.ok(older && newest > older.version);
+  await publishView(env, older);
+  assert.equal(JSON.parse(objects.get(key) ?? '{}').version, newest, 'the late copy is replaced by the newest');
+
+  const latest = await loadTournament(db, code);
+  await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
+  assert.ok(latest);
+  await publishView(env, latest);
+  assert.ok(!objects.has(key), 'a publish after the delete takes its copy down again');
+});
+
+test('a publish R2 refuses takes the stale copy down, so the page asks the API', async () => {
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  assert.ok(objects.has(`tournaments/v1/${code}.json`));
+  const bucket = env.REPORTS as NonNullable<TournamentEnv['REPORTS']>;
+  env.REPORTS = { ...bucket, put: () => Promise.reject(new Error('R2 down')) };
+  const log = console.error;
+  console.error = () => undefined;
+  try {
+    await addPlayers(code, owner, 1);
+  } finally {
+    console.error = log;
+  }
+  assert.ok(!objects.has(`tournaments/v1/${code}.json`));
+});
+
+test('a publish still behind after a burst of writes takes its copy down rather than leave it stale', async () => {
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const key = `tournaments/v1/${code}.json`;
+  const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
+  const older = await loadTournament(db, code);
+  assert.ok(older);
+  // Every look after a put finds a newer version, as in a burst of writes.
+  env.TOURNAMENT_DB = {
+    ...db,
+    prepare: sql =>
+      sql.startsWith('SELECT version FROM tournaments')
+        ? ({ ...db.prepare(sql), bind: () => ({ ...db.prepare(sql), first: async () => ({ version: 1e9 }) }) } as never)
+        : db.prepare(sql)
+  };
+  await publishView(env, older);
+  env.TOURNAMENT_DB = db;
+  assert.ok(!objects.has(key));
 });

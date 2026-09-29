@@ -28,6 +28,6 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
-  await publishView(context.env.REPORTS, outcome.row);
+  await publishView(context.env, outcome.row);
   return privateJson(manageView({ ...access, row: outcome.row }));
 }

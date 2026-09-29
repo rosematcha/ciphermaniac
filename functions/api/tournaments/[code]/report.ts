@@ -107,7 +107,7 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
-  await publishView(context.env.REPORTS, outcome.row);
+  await publishView(context.env, outcome.row);
   return privateJson({
     key: outcome.row.keys[who.id] ?? null,
     view: publicViewOf(outcome.row),
@@ -120,7 +120,7 @@ async function identify(context: Context<'code'>, access: Access, body: Body, id
   const standing = await claimReporter(access.db, access.row.code, id, { held: body.reportToken, device: body.device });
   const row = await settleIfDue(access.db, access.row, body.localTime);
   if (row !== access.row) {
-    await publishView(context.env.REPORTS, row);
+    await publishView(context.env, row);
   }
   return privateJson({ key: row.keys[id] ?? null, view: publicViewOf(row), ...standingOf(standing) });
 }

@@ -20,7 +20,7 @@ export async function onRequestGet(context: Context<'code'>): Promise<Response> 
   }
   const row = await settleIfDue(access.db, access.row);
   if (row !== access.row) {
-    await publishView(context.env.REPORTS, row);
+    await publishView(context.env, row);
   }
   return privateJson(manageView({ ...access, row }));
 }

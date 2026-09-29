@@ -284,7 +284,7 @@ async function register(
   if ('error' in outcome) {
     return { registration: outcome.error === ALREADY_IN ? 'matched' : 'not-added', row };
   }
-  await publishView(context.env.REPORTS, outcome.row);
+  await publishView(context.env, outcome.row);
   return { registration: 'added', row: outcome.row };
 }
 
