@@ -23,13 +23,15 @@ export function TournamentsPage() {
   const params = useParams<{ code?: string }>();
   const code = () => (params.code ?? '').toUpperCase();
   const screen = () => new URLSearchParams(location.search).get('screen') === '1';
+  const settings = () => location.pathname.startsWith('/account') || location.pathname.startsWith('/settings');
   return (
     <>
-      <Show when={!screen()}>
+      {/* Settings shows who is signed in itself. */}
+      <Show when={!screen() && !settings()}>
         <AccountStrip />
       </Show>
       <Switch fallback={<HostIndex />}>
-        <Match when={location.pathname.startsWith('/account') || location.pathname.startsWith('/settings')}>
+        <Match when={settings()}>
           <SettingsPage />
         </Match>
         <Match when={location.pathname.startsWith('/t/') && code()}>
