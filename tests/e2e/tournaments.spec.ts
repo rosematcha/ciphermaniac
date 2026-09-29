@@ -272,3 +272,71 @@ test('a first load that fails offers Retry, which loads the event', async ({ pag
   await retry.click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fixture Challenge & Friends');
 });
+
+const TDF_SOURCE = readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8');
+
+/** A signed-in organizer's console for the TOM event, with a browser that can link files. */
+async function tomConsole(page: Page, sync: () => { status: number; json: unknown }) {
+  await page.addInitScript(source => {
+    const file = { modified: 1, lost: false };
+    Object.assign(window, {
+      tdfFile: file,
+      showOpenFilePicker: async () => [
+        {
+          name: 'event.tdf',
+          getFile: async () => {
+            if (file.lost) {
+              throw new DOMException('The file cannot be read', 'NotAllowedError');
+            }
+            return new File([source], 'event.tdf', { lastModified: file.modified });
+          },
+          createWritable: async () => ({ write: async () => undefined, close: async () => undefined }),
+          queryPermission: async () => 'granted',
+          requestPermission: async () => 'granted'
+        }
+      ]
+    });
+  }, TDF_SOURCE);
+  await page.route('**/api/**', route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/me') {
+      const user = { id: 'u1', name: 'Organizer', avatar: null, popId: null, firstName: null, lastName: null };
+      return route.fulfill({ json: { user: { ...user, birthDate: null, providers: ['dev'] }, providers: ['dev'] } });
+    }
+    if (url.pathname === `/api/tournaments/${CODE}/manage`) {
+      return url.searchParams.has('since')
+        ? route.fulfill({ status: 204 })
+        : route.fulfill({
+            json: {
+              ...VIEW,
+              tournament: tdf,
+              decks: {},
+              settings: DEFAULT_SETTINGS,
+              role: 'owner',
+              staffToken: 'invite'
+            }
+          });
+    }
+    if (url.pathname === `/api/tournaments/${CODE}/sync`) {
+      return route.fulfill(sync());
+    }
+    return route.fulfill({ status: 404, json: { error: 'Not found' } });
+  });
+  await page.goto(`/host/${CODE}`);
+  await page.getByRole('button', { name: 'Link .tdf file' }).click();
+}
+
+test('a TOM console stops following its file when another copy was synced over it', async ({ page }) => {
+  await tomConsole(page, () => ({ status: 409, json: { error: 'The site has a different copy of this event.' } }));
+  await expect(page.getByText('The site has a different copy of this event.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reconnect event.tdf' })).toBeVisible();
+});
+
+test('a TOM console holds off results when the browser takes back the file', async ({ page }) => {
+  await tomConsole(page, () => ({ status: 200, json: { version: 5, pending: [], revision: 'next' } }));
+  await expect(page.getByRole('button', { name: 'Refresh .tdf' }).first()).toBeVisible();
+  await page.evaluate(() => {
+    (window as unknown as { tdfFile: { lost: boolean } }).tdfFile.lost = true;
+  });
+  await expect(page.getByRole('button', { name: 'Reconnect event.tdf' })).toBeVisible();
+});

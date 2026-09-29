@@ -44,6 +44,10 @@ const POLL_MS = 2000;
 /** 'none' before a file is linked (or on a browser that cannot hold one), 'reconnect' when permission lapsed. */
 export type LinkState = 'none' | 'reconnect' | 'watching';
 
+/** The browser took back permission to read the file, or it was moved or deleted. */
+const lostFile = (err: unknown) =>
+  err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'NotFoundError');
+
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 export const readTime = (at: Date) =>
@@ -117,6 +121,10 @@ export function createTomLink(props: { manage: () => Manage; onSynced: () => Pro
       }
     } catch (err) {
       // TOM may be halfway through a save; the next look reads the finished file.
+      // A file the page may no longer read, or that is gone, will not come back on its own.
+      if (lostFile(err)) {
+        setState('reconnect');
+      }
       setError(errorText(err));
     } finally {
       reading = false;
@@ -146,7 +154,8 @@ export function createTomLink(props: { manage: () => Manage; onSynced: () => Pro
   async function link() {
     try {
       const picked = await pickTdf();
-      await rememberHandle(code(), picked);
+      // Remembering only saves picking the file again after a reload; a browser that cannot keep it still follows it.
+      await rememberHandle(code(), picked).catch(() => undefined);
       restart();
       await watch(picked, true);
     } catch (err) {
