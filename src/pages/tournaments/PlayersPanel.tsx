@@ -14,21 +14,26 @@
 import { useSearchParams } from '@solidjs/router';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
+import { hasPlayed } from '../../../shared/tournament/rounds';
 import { DIVISION_LABELS, type Player, playerName, type Tournament } from '../../../shared/tournament/types';
 import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
-import { type Manage, releaseReporter, setDeck } from '../../lib/tournament/api';
-import { latestValue } from '../../lib/resource';
+import { type Manage, releaseReporter } from '../../lib/tournament/api';
 import { matchHistory } from '../../lib/tournament/present';
-import { DeckCombo } from '../live/LiveDeck';
-import { deckOptions } from './deckOptions';
+import type { ReportedDeck } from '../live/LiveDeck';
 import { ConfirmAction } from './ConfirmAction';
-import { ErrorLine, Field } from './Field';
+import { createDeckOptions } from './deckOptions';
+import { DeckPicker } from './DeckPicker';
+import { Field } from './Field';
 import type { ManageState } from './manageState';
 import { birthDateFor } from './ProfileFields';
 import { Squares } from './Squares';
 
-/** A new player: a name, and at a sanctioned event their Player ID and birth year. */
+/**
+ * A new player: a name, and at a sanctioned event their Player ID and birth
+ * year. Once added, the first name takes focus again for the next in line.
+ */
 function AddPlayer(props: { state: ManageState; sanctioned: boolean; late: boolean }) {
+  let firstInput: HTMLInputElement | undefined;
   const [first, setFirst] = createSignal('');
   const [last, setLast] = createSignal('');
   const [popId, setPopId] = createSignal('');
@@ -49,13 +54,20 @@ function AddPlayer(props: { state: ManageState; sanctioned: boolean; late: boole
       setLast('');
       setPopId('');
       setYear('');
+      firstInput?.focus();
     }
   }
   return (
     <form class='tm-box tm-add-player' aria-label='Add a player' onSubmit={event => void submit(event)}>
       <div class='tm-box-bar tm-add-row'>
         <Field id='add-first' label='First name'>
-          <input id='add-first' class='tm-input' value={first()} onInput={e => setFirst(e.currentTarget.value)} />
+          <input
+            id='add-first'
+            ref={el => (firstInput = el)}
+            class='tm-input'
+            value={first()}
+            onInput={e => setFirst(e.currentTarget.value)}
+          />
         </Field>
         <Field id='add-last' label='Last name'>
           <input id='add-last' class='tm-input' value={last()} onInput={e => setLast(e.currentTarget.value)} />
@@ -93,34 +105,10 @@ function AddPlayer(props: { state: ManageState; sanctioned: boolean; late: boole
   );
 }
 
-function DeckCell(props: { state: ManageState; manage: Manage; player: Player }) {
-  const [deckError, setDeckError] = createSignal<string | null>(null);
-  const label = () => props.manage.decks[props.player.id];
-  async function pickDeck(archetype: string | null) {
-    setDeckError(null);
-    const { code } = props.manage;
-    const { id } = props.player;
-    const ok = await props.state.run(() => setDeck(code, id, archetype));
-    if (!ok) {
-      setDeckError('Could not save the deck');
-    }
-  }
+function DeckCell(props: RowProps) {
   return (
     <td class='tm-deck-cell'>
-      <span class='tm-deck-pick'>
-        <DeckCombo
-          decks={latestValue(deckOptions) ?? []}
-          selected={label() ? { label: label() as string } : undefined}
-          placeholder='Deck'
-          onPick={deck => void pickDeck(deck.label)}
-        />
-        <Show when={label()} fallback={<span />}>
-          <button type='button' class='btn btn-ghost tm-small' onClick={() => void pickDeck(null)}>
-            Clear
-          </button>
-        </Show>
-      </span>
-      <ErrorLine message={deckError()} />
+      <DeckPicker state={props.state} manage={props.manage} playerId={props.player.id} decks={props.decks} />
     </td>
   );
 }
@@ -164,7 +152,8 @@ function FixedTableCell(props: { state: ManageState; player: Player }) {
 }
 
 /**
- * Drop, reinstate, remove. A drop can be taken back only until the next round
+ * Drop, reinstate, remove (only before the player's first match: after it
+ * they are dropped). A drop can be taken back only until the next round
  * is paired (see undropPlayer in shared/tournament/commands.ts). Where players
  * report, staff can also let another device report for a player, as when
  * they change phones or someone else claimed them first.
@@ -172,10 +161,8 @@ function FixedTableCell(props: { state: ManageState; player: Player }) {
 function PlayerActions(props: { state: ManageState; manage: Manage; player: Player }) {
   const send = (type: 'dropPlayer' | 'undropPlayer' | 'removePlayer') =>
     void props.state.send({ type, id: props.player.id });
-  const latest = () => {
-    const pod = props.manage.tournament.pods.find(p => p.playerIds.includes(props.player.id));
-    return pod?.rounds.at(-1)?.number ?? 0;
-  };
+  const pod = () => props.manage.tournament.pods.find(p => p.playerIds.includes(props.player.id));
+  const latest = () => pod()?.rounds.at(-1)?.number ?? 0;
   const dropped = () => props.player.droppedAfter;
   return (
     <td class='tm-extra-col'>
@@ -204,12 +191,15 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             onConfirm={() => void releaseReporter(props.manage.code, props.player.id).catch(() => undefined)}
           />
         </Show>
-        <ConfirmAction
-          label='Remove'
-          question={`Remove ${playerName(props.player)}?`}
-          danger
-          onConfirm={() => send('removePlayer')}
-        />
+        {/* Once paired, a player is dropped rather than removed, so their opponents keep the match. */}
+        <Show when={!hasPlayed(pod(), props.player.id)}>
+          <ConfirmAction
+            label='Remove'
+            question={`Remove ${playerName(props.player)}?`}
+            danger
+            onConfirm={() => send('removePlayer')}
+          />
+        </Show>
       </span>
     </td>
   );
@@ -232,6 +222,7 @@ interface RowProps {
   player: Player;
   season: number;
   showRounds: boolean;
+  decks: readonly ReportedDeck[];
 }
 
 function PlayerRow(props: RowProps) {
@@ -267,7 +258,7 @@ function PlayerRow(props: RowProps) {
         </td>
       </Show>
       <Show when={decksEnabled(props.manage.settings)} fallback={<DeckOffCell />}>
-        <DeckCell state={props.state} manage={props.manage} player={props.player} />
+        <DeckCell {...props} />
       </Show>
       <Show
         when={swiss()}
@@ -292,6 +283,10 @@ export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
   const sanctioned = () => isSanctioned(props.manage);
   const started = () => props.manage.tournament.pods.some(pod => pod.rounds.length > 0);
   const archetypes = () => decksEnabled(props.manage.settings);
+  const decks = createDeckOptions(
+    () => props.manage.settings.format,
+    () => Object.values(props.manage.decks)
+  );
   const players = createMemo(() => {
     const q = query().trim().toLowerCase();
     return [...props.manage.tournament.players]
@@ -358,6 +353,7 @@ export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
                     player={player}
                     season={season()}
                     showRounds={started()}
+                    decks={decks()}
                   />
                 )}
               </For>

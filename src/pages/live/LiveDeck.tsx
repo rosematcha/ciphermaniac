@@ -16,6 +16,8 @@ export interface ReportedDeck {
    * of dead decks on the same footing as the twelve in the room.
    */
   played?: boolean;
+  /** Typed in by hand: a name the list did not have. */
+  custom?: boolean;
 }
 
 export function deckIcons(deck: ReportedDeck): string[] {
@@ -43,8 +45,14 @@ export function DeckCombo(props: {
   selected?: ReportedDeck;
   placeholder: string;
   width?: string;
+  /** Whether a name the list lacks can be typed in and picked as it is, up to `custom` characters. */
+  custom?: number;
   onPick: (deck: ReportedDeck) => void;
 }) {
+  const create = () => {
+    const max = props.custom;
+    return max ? (query: string) => ({ label: query.trim().slice(0, max), custom: true }) : undefined;
+  };
   return (
     <Combo<ReportedDeck>
       placeholder={props.placeholder}
@@ -52,10 +60,11 @@ export function DeckCombo(props: {
       browse={props.decks.filter(deck => deck.played)}
       label={deck => deck.label}
       weight={deck => deck.percent ?? 0}
-      tier={deck => (deck.played ? 0 : 1)}
+      tier={deck => (deck.custom ? 2 : deck.played ? 0 : 1)}
       selected={props.selected}
       adorn={deck => <ArchetypeIcons slugs={deckIcons(deck)} size={20} />}
       onPick={props.onPick}
+      create={create()}
       width={props.width}
     >
       {(deck, query) => <DeckOption deck={deck} query={query} />}
@@ -147,7 +156,9 @@ function DeckOption(props: { deck: ReportedDeck; query: string }) {
         {parts()[2]}
       </b>
       <span>
-        <Show when={props.deck.percent}>{share => `${Math.round(share())}%`}</Show>
+        <Show when={!props.deck.custom} fallback='Custom'>
+          <Show when={props.deck.percent}>{share => `${Math.round(share())}%`}</Show>
+        </Show>
       </span>
     </>
   );

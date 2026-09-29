@@ -13,7 +13,13 @@ import { profileErrors, readProfile } from '../../shared/tournament/profile.ts';
 import { readCommand } from '../../shared/tournament/readCommand.ts';
 import { parseTdf } from '../../shared/tournament/tdf.ts';
 import { readTournament } from '../../shared/tournament/validate.ts';
-import { decksVisible, DEFAULT_SETTINGS, readSettings } from '../../shared/tournament/view.ts';
+import {
+  decklistsOpen,
+  decksVisible,
+  DEFAULT_SETTINGS,
+  readSettings,
+  storedSettings
+} from '../../shared/tournament/view.ts';
 import { decodeEntities, encodeEntities } from '../../shared/tournament/xml.ts';
 
 test('reads every well-formed command', () => {
@@ -114,6 +120,35 @@ test('settings changes are checked field by field', () => {
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'after' }), false);
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'after', finished: true }), true);
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'off', finished: true }), false);
+});
+
+test('decklists are off, open or closed, and rounds are capped at up to fifteen', () => {
+  assert.equal(DEFAULT_SETTINGS.decklists, 'off', 'a new event takes no decklists until asked to');
+  assert.equal(readSettings({ decklists: 'open' }, DEFAULT_SETTINGS)?.decklists, 'open');
+  assert.equal(readSettings({ decklists: true }, DEFAULT_SETTINGS), null);
+  // A console loaded before decklists could be turned off still sends the old switch.
+  assert.equal(readSettings({ decklistsOpen: true }, DEFAULT_SETTINGS)?.decklists, 'open');
+  assert.equal(readSettings({ decklistsOpen: false }, DEFAULT_SETTINGS)?.decklists, 'closed');
+  assert.equal('decklistsOpen' in (readSettings({ decklistsOpen: true }, DEFAULT_SETTINGS) ?? {}), false);
+  assert.equal(readSettings({ decklistsOpen: 'yes' }, DEFAULT_SETTINGS), null);
+  assert.equal(readSettings({ roundCap: 3 }, DEFAULT_SETTINGS)?.roundCap, 3);
+  for (const bad of [-1, 16, 2.5, '3']) {
+    assert.equal(readSettings({ roundCap: bad }, DEFAULT_SETTINGS), null);
+  }
+  assert.equal(decklistsOpen({ decklists: 'open' }), true);
+  assert.equal(decklistsOpen({ decklists: 'closed' }), false);
+});
+
+test('settings stored before decklists could be turned off keep their switch', () => {
+  assert.deepEqual(storedSettings({ decklistsOpen: true, format: 'Expanded' }), {
+    ...DEFAULT_SETTINGS,
+    decklists: 'open',
+    format: 'Expanded'
+  });
+  assert.equal(storedSettings({ decklistsOpen: false }).decklists, 'closed');
+  assert.equal(storedSettings({}).decklists, 'off');
+  assert.equal(storedSettings({ decklists: 'open', decklistsOpen: false }).decklists, 'open');
+  assert.equal('decklistsOpen' in storedSettings({ decklistsOpen: true }), false);
 });
 
 test('a player profile needs an ID, a name and a birth date', () => {

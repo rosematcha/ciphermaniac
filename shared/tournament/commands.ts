@@ -17,6 +17,7 @@ import type { Random } from './random.js';
 import {
   activeIds,
   fixedTables,
+  hasPlayed,
   isReported,
   latestRound,
   pairingHistory,
@@ -194,15 +195,9 @@ function podOf(tournament: Tournament, id: string): Pod | undefined {
   return tournament.pods.find(pod => pod.playerIds.includes(id));
 }
 
-function playedAny(pod: Pod | undefined, id: string): boolean {
-  return (pod?.rounds ?? []).some(round =>
-    round.matches.some(match => (match.p1 === id || match.p2 === id) && match.outcome !== 'loss')
-  );
-}
-
 function removePlayer(tournament: Tournament, id: string): CommandResult {
   const pod = podOf(tournament, id);
-  if (playedAny(pod, id)) {
+  if (hasPlayed(pod, id)) {
     return fail('This player has been paired; drop them instead');
   }
   const pods = tournament.pods.map(p =>
@@ -485,7 +480,9 @@ function adjustClock(tournament: Tournament, category: PodCategory, seconds: num
 
 /**
  * Who a cut seeds from: the pod, or in a pod that plays several divisions
- * together, the one division asked for, since each keeps its own cut.
+ * together, the one division asked for, since each keeps its own cut. A
+ * combined pod whose players are all one division (an unsanctioned event has
+ * no birth dates, so everyone reads as Masters) cuts as a whole.
  */
 function cutField(tournament: Tournament, pod: Pod, division: Division | undefined, season: number) {
   const combined = !(DIVISIONS as readonly string[]).includes(pod.category);
@@ -493,7 +490,11 @@ function cutField(tournament: Tournament, pod: Pod, division: Division | undefin
     return undefined;
   }
   const births = new Map(tournament.players.map(p => [p.id, p.birthDate]));
-  return new Set(pod.playerIds.filter(id => divisionFor(births.get(id) ?? '', season) === division));
+  const of = (id: string) => divisionFor(births.get(id) ?? '', season);
+  if (new Set(pod.playerIds.map(of)).size < 2) {
+    return undefined;
+  }
+  return new Set(pod.playerIds.filter(id => of(id) === division));
 }
 
 function startTopCut(

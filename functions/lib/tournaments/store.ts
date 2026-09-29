@@ -13,6 +13,7 @@ import {
   assignKeys,
   DEFAULT_SETTINGS,
   type PendingResult,
+  storedSettings,
   type TournamentMode,
   type TournamentSettings
 } from '../../../shared/tournament/view.js';
@@ -62,7 +63,7 @@ function fromRaw(raw: RawRow): TournamentRow {
     tournament: JSON.parse(raw.state) as Tournament,
     pending: JSON.parse(raw.pending) as PendingResult[],
     reports: JSON.parse(raw.reports) as PlayerReport[],
-    settings: { ...DEFAULT_SETTINGS, ...(JSON.parse(raw.settings) as Partial<TournamentSettings>) },
+    settings: storedSettings(JSON.parse(raw.settings) as Record<string, unknown>),
     keys: JSON.parse(raw.player_keys) as Record<string, string>,
     decks: JSON.parse(raw.decks) as Record<string, string>,
     staffToken: raw.staff_token,

@@ -9,9 +9,10 @@
 
 import { createSignal, Show } from 'solid-js';
 import { DEFAULT_ROUND_MINUTES } from '../../../shared/tournament/create';
-import type { DeckVisibility, TournamentSettings } from '../../../shared/tournament/view';
+import type { DecklistMode, DeckVisibility, TournamentSettings } from '../../../shared/tournament/view';
 import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
+import { DecklistsSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
 export interface Setup {
@@ -42,7 +43,8 @@ export function EventSetup(props: {
   const [roundTime, setRoundTime] = createSignal(DEFAULT_ROUND_MINUTES);
   const [reporting, setReporting] = createSignal(false);
   const [archetypes, setArchetypes] = createSignal<DeckVisibility>('off');
-  const [decklists, setDecklists] = createSignal(false);
+  const [decklists, setDecklists] = createSignal<DecklistMode>('off');
+  const [roundCap, setRoundCap] = createSignal(0);
   const swiss = () => props.mode === 'swiss';
   const needsName = () => swiss() && !name().trim();
   const needsPlayTools = () => (swiss() ? sanctioned() : props.tdfSanctioned);
@@ -61,9 +63,9 @@ export function EventSetup(props: {
         format: format(),
         startsAt: startsAt(),
         deckVisibility: archetypes(),
-        decklistsOpen: decklists(),
+        decklists: decklists(),
         playerReporting: reporting(),
-        ...(swiss() ? { sanctioned: sanctioned() } : {})
+        ...(swiss() ? { sanctioned: sanctioned(), roundCap: roundCap() } : {})
       }
     });
   }
@@ -149,6 +151,9 @@ export function EventSetup(props: {
               onInput={e => setRoundTime(Number(e.currentTarget.value))}
             />
           </SettingRow>
+          <SettingRow label='Swiss rounds' for='setup-rounds'>
+            <RoundsSelect id='setup-rounds' value={roundCap()} onChange={setRoundCap} />
+          </SettingRow>
         </Show>
         <SettingRow label='Player reporting'>
           <Toggle label='Player reporting' value={reporting()} onChange={setReporting} />
@@ -157,7 +162,7 @@ export function EventSetup(props: {
           <ArchetypesSelect id='setup-archetypes' value={archetypes()} onChange={setArchetypes} />
         </SettingRow>
         <SettingRow label='Decklists'>
-          <Toggle label='Decklists' value={decklists()} on='Open' off='Closed' onChange={setDecklists} />
+          <DecklistsSwitch value={decklists()} onChange={setDecklists} />
         </SettingRow>
       </div>
       <div class='tm-setup-foot'>

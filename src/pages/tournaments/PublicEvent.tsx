@@ -14,13 +14,20 @@ import { parseTomDate } from '../../../shared/tournament/divisions';
 import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
-import { decksEnabled, isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
+import {
+  decklistsOpen,
+  decksEnabled,
+  isSanctioned,
+  type PublishedView,
+  type TournamentView
+} from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
 import { ApiError, fetchPublished, fetchView, identifyPlayer } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
-import { createViewPoll, schedulePolls } from '../../lib/tournament/viewPoll';
+import { onChange } from '../../lib/tournament/changes';
+import { createViewPoll, POLL_MS, schedulePolls, SCREEN_POLL_MS } from '../../lib/tournament/viewPoll';
 import {
   currentRound,
   divisionHeading,
@@ -29,6 +36,7 @@ import {
   namesById,
   ordinal,
   podStandings,
+  roundCapOf,
   roundLabel,
   STATUS_LABELS
 } from '../../lib/tournament/present';
@@ -52,10 +60,12 @@ type Tab = 'pairings' | 'standings' | 'decks' | 'decklist';
 const missing = (error: unknown) => error instanceof ApiError && error.status === 404;
 
 /**
- * The event, polled while the tab is visible (see lib/tournament/viewPoll.ts);
- * a poll that finds nothing new costs one tiny request.
+ * The event, polled while the tab is visible (see lib/tournament/viewPoll.ts),
+ * every `every` ms; a poll that finds nothing new costs one tiny request. It
+ * also looks the moment the tab is shown again, and when the console in
+ * another tab of this browser changes the event.
  */
-function createView(code: () => string) {
+function createView(code: () => string, every: number) {
   const [view, { mutate, refetch }] = createResource(code, c => fetchView(c).then(v => v as TournamentView));
   /** Loads the event again after its first load failed; whether it is there now. */
   async function reload(): Promise<boolean> {
@@ -80,13 +90,26 @@ function createView(code: () => string) {
       apply: next => mutate(next),
       now: Date.now
     });
-    const polls = schedulePolls(poll, () => document.hidden);
-    // Back online: the next look should not wait out a long backoff.
-    const online = () => polls.soon();
-    window.addEventListener('online', online);
+    const polls = schedulePolls(poll, () => document.hidden, every);
+    // Back online or back in view: the next look should not wait out the schedule.
+    const soon = () => polls.soon();
+    const shown = () => {
+      if (!document.hidden) {
+        polls.soon();
+      }
+    };
+    const unsubscribe = onChange(code(), version => {
+      if (version > (latestValue(view)?.version ?? 0)) {
+        polls.soon();
+      }
+    });
+    window.addEventListener('online', soon);
+    document.addEventListener('visibilitychange', shown);
     onCleanup(() => {
       polls.stop();
-      window.removeEventListener('online', online);
+      unsubscribe();
+      window.removeEventListener('online', soon);
+      document.removeEventListener('visibilitychange', shown);
     });
   });
   /** Takes a fresher copy handed over by an action, such as a player's report. */
@@ -174,7 +197,7 @@ function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
     { value: 'pairings', label: 'Pairings' },
     { value: 'standings', label: 'Standings' },
     ...(Object.keys(view.decks).length ? [{ value: 'decks' as const, label: 'Decks' }] : []),
-    ...(view.settings.decklistsOpen ? [{ value: 'decklist' as const, label: 'Submit decklist' }] : [])
+    ...(decklistsOpen(view.settings) ? [{ value: 'decklist' as const, label: 'Submit decklist' }] : [])
   ];
 }
 
@@ -407,6 +430,7 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
         <DecklistForm
           code={props.view.code}
           archetypes={decksEnabled(props.view.settings)}
+          format={props.view.settings.format}
           sanctioned={isSanctioned(props.view)}
         />
       </Show>
@@ -464,7 +488,12 @@ function Hero(props: { view: TournamentView }) {
   const status = () =>
     eventStatus(
       props.view.tournament,
-      { pending: props.view.pending, finished: settings().finished, firstRound: firstRoundTime(settings().startsAt) },
+      {
+        pending: props.view.pending,
+        finished: settings().finished,
+        firstRound: firstRoundTime(settings().startsAt),
+        roundCap: roundCapOf(props.view)
+      },
       now()
     ).join(' · ');
   const place = () => [info().city, info().state].filter(Boolean).join(', ');
@@ -506,8 +535,22 @@ function Hero(props: { view: TournamentView }) {
 
 export function PublicEvent(props: { code: string }) {
   const [params] = useSearchParams<{ screen?: string }>();
-  const { view, take, retry } = createView(() => props.code);
+  // The page is the big screen or not for as long as it is open.
+  const { view, take, retry } = createView(() => props.code, params.screen === '1' ? SCREEN_POLL_MS : POLL_MS);
   const current = () => latestValue(view);
+  // A past format's sprites come with its archetype list, loaded only when there are decks to draw.
+  const pastFormat = createMemo(() => {
+    const shown = current();
+    return shown && shown.settings.format !== 'Standard' && Object.keys(shown.decks).length > 0
+      ? shown.settings.format
+      : null;
+  });
+  createEffect(() => {
+    const format = pastFormat();
+    if (format) {
+      void import('./deckOptions').then(m => m.learnFormatIcons(format));
+    }
+  });
   createEffect(() => {
     document.title = `${current()?.tournament.info.name ?? props.code} — Ciphermaniac`;
   });

@@ -1,14 +1,16 @@
 /**
  * The console's event tab, as bordered boxes of settings rows (label at left,
- * control at right): the event itself (name, round lengths), what players see
- * and do (start, format, archetypes, sanctioned, reporting, decklists,
- * details), finishing (close or reopen, the .tdf), the staff invite, and
- * deleting the event. Each box of settings saves on its own and says when it
- * has unsaved changes; anything that cannot be taken back asks first.
+ * control at right): the event itself (name, round lengths, Swiss rounds),
+ * what players see and do (start, format, archetypes, sanctioned, reporting,
+ * decklists, details), finishing (end or reopen, the .tdf), the staff invite
+ * and who is on staff, and deleting the event. Each box of settings saves on
+ * its own and says when it has unsaved changes; anything that cannot be taken
+ * back asks first.
  */
 
 import { useNavigate } from '@solidjs/router';
 import { createResource, createSignal, For, type JSX, Show } from 'solid-js';
+import { recommendedStructure } from '../../../shared/tournament/structure';
 import { isSanctioned, SETTINGS_LIMITS, type TournamentSettings } from '../../../shared/tournament/view';
 import {
   deleteTournament,
@@ -24,7 +26,9 @@ import { downloadBlob } from '../../lib/download';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
+import { session } from './session';
 import type { ManageState } from './manageState';
+import { DecklistsSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
 /** A box of settings with its heading, and a foot with Save and whether anything is unsaved. */
@@ -59,19 +63,38 @@ function SettingsBox(props: {
   );
 }
 
+/**
+ * Play! Pokémon's Swiss rounds for the players in so far: for an event that
+ * pairs everyone together, as most do; none while divisions pair apart, each
+ * on its own count, or before anyone is in.
+ */
+function recommendedRounds(manage: Manage): number | undefined {
+  const [pod, ...others] = manage.tournament.pods;
+  return pod && others.length === 0 ? recommendedStructure(pod.playerIds.length).rounds : undefined;
+}
+
 function EventDetails(props: { state: ManageState; manage: Manage }) {
   const info = () => props.manage.tournament.info;
   const [name, setName] = createSignal(info().name);
   const [roundTime, setRoundTime] = createSignal(info().roundTime);
   const [finals, setFinals] = createSignal(info().finalsRoundTime);
-  const dirty = () => name() !== info().name || roundTime() !== info().roundTime || finals() !== info().finalsRoundTime;
-  const save = () =>
-    void props.state.send({
-      type: 'updateInfo',
-      info: { name: name(), roundTime: roundTime(), finalsRoundTime: finals() }
-    });
+  // eslint-disable-next-line solid/reactivity -- the form edits a copy taken when it opens; saving replaces the event
+  const [roundCap, setRoundCap] = createSignal(props.manage.settings.roundCap);
+  const infoDirty = () =>
+    name() !== info().name || roundTime() !== info().roundTime || finals() !== info().finalsRoundTime;
+  const capDirty = () => roundCap() !== props.manage.settings.roundCap;
+  // The rounds are a setting and the rest the event's own details, so each goes where it is kept.
+  async function save() {
+    const { code } = props.manage;
+    const details = { name: name(), roundTime: roundTime(), finalsRoundTime: finals() };
+    const saved = !infoDirty() || (await props.state.send({ type: 'updateInfo', info: details }));
+    const cap = roundCap();
+    if (saved && capDirty()) {
+      await props.state.run(() => saveSettings(code, { roundCap: cap }));
+    }
+  }
   return (
-    <SettingsBox title='Event' dirty={dirty()} busy={props.state.busy()} onSave={save}>
+    <SettingsBox title='Event' dirty={infoDirty() || capDirty()} busy={props.state.busy()} onSave={() => void save()}>
       <SettingRow label='Event name' for='info-name'>
         <input id='info-name' class='tm-input' value={name()} onInput={e => setName(e.currentTarget.value)} />
       </SettingRow>
@@ -97,18 +120,26 @@ function EventDetails(props: { state: ManageState; manage: Manage }) {
           onInput={e => setFinals(Number(e.currentTarget.value))}
         />
       </SettingRow>
+      <SettingRow label='Swiss rounds' for='info-rounds'>
+        <RoundsSelect
+          id='info-rounds'
+          value={roundCap()}
+          recommended={recommendedRounds(props.manage)}
+          onChange={setRoundCap}
+        />
+      </SettingRow>
     </SettingsBox>
   );
 }
 
 type PlayerSettings = Pick<
   TournamentSettings,
-  'details' | 'format' | 'startsAt' | 'deckVisibility' | 'sanctioned' | 'playerReporting' | 'decklistsOpen'
+  'details' | 'format' | 'startsAt' | 'deckVisibility' | 'sanctioned' | 'playerReporting' | 'decklists'
 >;
 
 const pickPlayerSettings = (settings: TournamentSettings): PlayerSettings => {
-  const { details, format, startsAt, deckVisibility, sanctioned, playerReporting, decklistsOpen } = settings;
-  return { details, format, startsAt, deckVisibility, sanctioned, playerReporting, decklistsOpen };
+  const { details, format, startsAt, deckVisibility, sanctioned, playerReporting, decklists } = settings;
+  return { details, format, startsAt, deckVisibility, sanctioned, playerReporting, decklists };
 };
 
 function ForPlayers(props: { state: ManageState; manage: Manage }) {
@@ -157,13 +188,7 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
         <Toggle label='Player reporting' value={draft().playerReporting} onChange={v => set('playerReporting', v)} />
       </SettingRow>
       <SettingRow label='Decklists'>
-        <Toggle
-          label='Decklists'
-          value={draft().decklistsOpen}
-          on='Open'
-          off='Closed'
-          onChange={v => set('decklistsOpen', v)}
-        />
+        <DecklistsSwitch value={draft().decklists} onChange={v => set('decklists', v)} />
       </SettingRow>
       <SettingRow label='Details for players' for='set-details'>
         <textarea
@@ -178,7 +203,7 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
   );
 }
 
-/** Close or reopen, and the .tdf: what an organizer does at the end of the day. */
+/** End or reopen, and the .tdf: what an organizer does at the end of the day. */
 function Finish(props: { state: ManageState; manage: Manage }) {
   const download = () => {
     const { manage } = props;
@@ -200,15 +225,15 @@ function Finish(props: { state: ManageState; manage: Manage }) {
       <div class='tm-box'>
         <SettingRow label='Status'>
           <span class='tm-set-inline'>
-            <span>{props.manage.settings.finished ? 'Closed' : 'Open'}</span>
+            <span>{props.manage.settings.finished ? 'Ended' : 'In progress'}</span>
             <Show
               when={props.manage.settings.finished}
               fallback={
                 <ConfirmAction
                   class='btn btn-secondary'
-                  label='Close event'
-                  question='Close the event?'
-                  confirmLabel='Close'
+                  label='End event'
+                  question='End the event?'
+                  confirmLabel='End event'
                   onConfirm={() => setFinished(true)}
                 />
               }
@@ -256,15 +281,35 @@ function StaffInvite(props: { state: ManageState; manage: Manage }) {
       <div class='tm-box'>
         <SettingRow label='Invite link'>
           <span class='tm-set-inline tm-invite'>
-            <input
-              class='tm-input tm-link tm-secret'
-              classList={{ 'is-hidden': !revealed() }}
-              readOnly
-              value={link()}
-              aria-label='Staff invite link'
-              title={revealed() ? undefined : 'Press to show'}
-              onFocus={() => setRevealed(true)}
-            />
+            <Show
+              when={revealed()}
+              fallback={
+                <button
+                  type='button'
+                  class='tm-input tm-link tm-secret'
+                  aria-label='Show the staff invite link'
+                  onClick={() => setRevealed(true)}
+                >
+                  <span class='tm-secret-text' aria-hidden='true'>
+                    {link()}
+                  </span>
+                </button>
+              }
+            >
+              <input
+                class='tm-input tm-link'
+                readOnly
+                value={link()}
+                aria-label='Staff invite link'
+                ref={el =>
+                  queueMicrotask(() => {
+                    el.focus();
+                    el.select();
+                  })
+                }
+                onFocus={e => e.currentTarget.select()}
+              />
+            </Show>
             <button type='button' class='btn btn-secondary' onClick={() => void copy()}>
               {copied() ? 'Copied' : 'Copy invite link'}
             </button>
@@ -286,13 +331,19 @@ function StaffInvite(props: { state: ManageState; manage: Manage }) {
 
 const joinedOn = (at: number) => new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
-/** Everyone the invite link let in, and when, so a link that went further than meant shows; each can be removed. */
+/**
+ * Who runs the event: the organizer first, then everyone the invite link let
+ * in, and when, so a link that went further than meant shows; each of them
+ * can be removed.
+ */
 function StaffList(props: { manage: Manage }) {
   // A new link removes everyone, so the list is asked for again with each one.
   const [staff, { mutate }] = createResource(
     () => ({ code: props.manage.code, token: props.manage.staffToken }),
     ({ code }) => fetchStaff(code).then(result => result.staff)
   );
+  // Only the organizer sees this list, so the organizer is whoever is signed in.
+  const organizer = () => latestValue(session)?.user?.name;
   async function remove(id: string) {
     const result = await removeStaff(props.manage.code, id).catch(() => null);
     if (result) {
@@ -301,27 +352,35 @@ function StaffList(props: { manage: Manage }) {
   }
   return (
     <SettingRow label='On staff'>
-      <Show when={latestValue(staff)?.length} fallback={<span class='muted'>Nobody has joined yet</span>}>
-        <ul class='tm-staff-list'>
-          <For each={latestValue(staff)}>
-            {member => (
-              <li>
-                <span>
-                  {member.name}
-                  <Show when={member.joinedAt}>{at => <span class='muted'> · joined {joinedOn(at())}</span>}</Show>
-                </span>
-                <ConfirmAction
-                  label='Remove'
-                  question={`Remove ${member.name} from staff?`}
-                  confirmLabel='Remove'
-                  danger
-                  onConfirm={() => void remove(member.id)}
-                />
-              </li>
-            )}
-          </For>
-        </ul>
-      </Show>
+      <ul class='tm-staff-list'>
+        <Show when={organizer()}>
+          {name => (
+            <li>
+              <span>
+                {name()}
+                <span class='muted'> · organizer</span>
+              </span>
+            </li>
+          )}
+        </Show>
+        <For each={latestValue(staff)}>
+          {member => (
+            <li>
+              <span>
+                {member.name}
+                <Show when={member.joinedAt}>{at => <span class='muted'> · joined {joinedOn(at())}</span>}</Show>
+              </span>
+              <ConfirmAction
+                label='Remove'
+                question={`Remove ${member.name} from staff?`}
+                confirmLabel='Remove'
+                danger
+                onConfirm={() => void remove(member.id)}
+              />
+            </li>
+          )}
+        </For>
+      </ul>
     </SettingRow>
   );
 }

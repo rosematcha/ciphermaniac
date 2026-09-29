@@ -16,7 +16,7 @@ import { createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import { birthYear } from '../../../shared/tournament/divisions';
 import { type DeckSection, parseDecklist } from '../../../shared/tournament/decklist';
 import { decklistPlayer } from '../../../shared/tournament/identify';
-import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
+import { decklistsOpen, decksEnabled, isSanctioned } from '../../../shared/tournament/view';
 import {
   type Decklist,
   fetchDecklists,
@@ -261,23 +261,24 @@ export function DecklistsPanel(props: { state: ManageState; manage: Manage }) {
     ].join(' · ');
   };
   const key = (list: Decklist) => `${list.popId}|${list.firstName}|${list.lastName}`;
+  const accepting = () => decklistsOpen(props.manage.settings);
   function toggle() {
     const { code } = props.manage;
-    const decklistsOpen = !props.manage.settings.decklistsOpen;
-    void props.state.run(() => saveSettings(code, { decklistsOpen }));
+    const decklists = accepting() ? 'closed' : 'open';
+    void props.state.run(() => saveSettings(code, { decklists }));
   }
   return (
     <div class='tm-panel'>
       <section class='tm-box'>
         <div class='tm-box-bar'>
-          <strong>{props.manage.settings.decklistsOpen ? 'Submission open' : 'Submission closed'}</strong>
+          <strong>{accepting() ? 'Submission open' : 'Submission closed'}</strong>
           <span class='muted tm-num'>{counts()}</span>
           <A class='tm-bar-link' href={`/t/${props.manage.code}?tab=decklist`}>
             Submit decklist page
           </A>
           <span class='tm-grow' />
           <button type='button' class='btn btn-secondary tm-small' disabled={props.state.busy()} onClick={toggle}>
-            {props.manage.settings.decklistsOpen ? 'Close submission' : 'Open submission'}
+            {accepting() ? 'Close submission' : 'Open submission'}
           </button>
         </div>
         <div class='tm-box-bar'>

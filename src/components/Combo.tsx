@@ -20,6 +20,9 @@
  * list of live archetypes followed by a tail of dead ones reads as two groups
  * rather than one long one. A list that holds only one tier draws no rule.
  *
+ * Given `create`, a query that names nothing in the list is offered as a new
+ * entry of its own, last, so a name the catalogue lacks can still be picked.
+ *
  * Browsing and searching are separate lists. With nothing typed the box offers
  * `browse` in full and lets the user scroll it; once there is a query it ranks
  * the whole of `options` and shows the best few. A caller with a long tail can
@@ -57,6 +60,8 @@ interface ComboProps<T> {
   /** Row content beside the name, e.g. a thumbnail and a count. */
   children: (item: T, query: string) => JSX.Element;
   onPick: (item: T) => void;
+  /** Makes an entry from a query that names nothing in the list, offered after the matches. */
+  create?: (query: string) => T;
   /** Width of the field; the list matches it. */
   width?: string;
 }
@@ -84,7 +89,9 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
     if (!q) {
       return [...(props.browse ?? props.options.slice(0, SUGGESTION_LIMIT))];
     }
-    return rankByQuery(props.options, q, props.label, { weight: props.weight, tier: props.tier });
+    const ranked = rankByQuery(props.options, q, props.label, { weight: props.weight, tier: props.tier });
+    const named = props.options.some(item => props.label(item).toLowerCase() === q.toLowerCase());
+    return props.create && !named ? [...ranked, props.create(q)] : ranked;
   });
   const optionId = (i: number): string => `${listId}-${i}`;
   /** Whether a row opens a new tier, and so wants the rule above it. Never the first row. */

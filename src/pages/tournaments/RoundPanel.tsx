@@ -7,18 +7,21 @@
  * re-pairs the round around the results already in.
  *
  * Results are entered by pressing the winner's name, then Record in the row,
- * so a slip of the finger is not a result. The filter narrows the room to
+ * so a slip of the finger is not a result; a double click on the name records
+ * it at once, for a result read off a slip. The filter narrows the room to
  * one table (type its number) or player, or to the tables still playing, so
  * a result called out across the room is a few keystrokes and two presses,
  * and focus comes back to the filter for the next one. Where players report
  * their own, each open match says what they reported, and staff accept a
- * lone report or settle a dispute by entering the result as usual.
+ * lone report or settle a dispute by entering the result as usual. With
+ * archetypes on, Enter decks turns every seat into its player's deck picker,
+ * for naming decks as the room is walked.
  */
 
-import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, lazy, on, Show, Suspense } from 'solid-js';
 import { isDisputed, oneDevice, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
-import { activeIds } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
+import { decksEnabled } from '../../../shared/tournament/view';
 import type { Manage } from '../../lib/tournament/api';
 import {
   champion,
@@ -34,7 +37,10 @@ import {
 } from '../../lib/tournament/present';
 import type { ManageState } from './manageState';
 import { MatchTable } from './MatchTable';
-import { ChampionLine, ClockControls, DeleteRound, RepairControl, TopCutControl } from './RoundControls';
+import { ChampionLine, ClockControls, DeleteRound, RepairControl } from './RoundControls';
+
+// Decks are named now and then, not every round, so their picker loads when first asked for.
+const EventDeckPicker = lazy(() => import('./DeckPicker').then(m => ({ default: m.EventDeckPicker })));
 
 function RoundPicker(props: { pod: Pod; selected: number; onSelect: (n: number) => void }) {
   return (
@@ -214,12 +220,18 @@ function matchesQuery(match: Match, query: string, names: Map<string, string>): 
     : filterMatches([match], names, query).length > 0;
 }
 
-/** The bar that narrows the room: a table number or a name, and optionally only the tables still playing. */
+/**
+ * The bar that narrows the room: a table number or a name, and optionally
+ * only the tables still playing; with archetypes on, the switch to naming decks.
+ */
 function RoomFilter(props: {
   query: string;
   openOnly: boolean;
+  /** Null while the event has archetypes off. */
+  deckMode: boolean | null;
   onQuery: (value: string) => void;
   onOpenOnly: (value: boolean) => void;
+  onDeckMode: (value: boolean) => void;
   ref: (el: HTMLInputElement) => void;
 }) {
   return (
@@ -241,7 +253,21 @@ function RoomFilter(props: {
       >
         Open tables only
       </button>
-      <span class='muted tm-hint'>Press a player to report their win</span>
+      <Show when={props.deckMode !== null}>
+        <button
+          type='button'
+          class='chip'
+          aria-pressed={Boolean(props.deckMode)}
+          onClick={() => props.onDeckMode(!props.deckMode)}
+        >
+          Enter decks
+        </button>
+      </Show>
+      <span class='muted tm-hint'>
+        {props.deckMode
+          ? 'Pick each player’s deck'
+          : 'Press a player to report their win, or double-click to record it'}
+      </span>
     </div>
   );
 }
@@ -309,11 +335,12 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const [asking, setAsking] = createSignal<Asking | null>(null);
   const [query, setQuery] = createSignal('');
   const [openOnly, setOpenOnly] = createSignal(false);
+  const [deckMode, setDeckMode] = createSignal(false);
+  const naming = () => deckMode() && decksEnabled(props.manage.settings);
   let filterInput: HTMLInputElement | undefined;
   const round = createMemo(() => props.pod.rounds.find(r => r.number === picked()) ?? latest());
   const names = createMemo(() => namesById(props.manage.tournament));
   const waiting = () => (tom() || latest()?.kind !== 'swiss' ? [] : unseated(props.manage.tournament, props.pod));
-  const active = () => activeIds(props.manage.tournament, props.pod).length;
   const isLatest = () => round()?.number === latest()?.number;
   const winner = () => champion(latest());
   const played = () => round()?.matches.filter(m => m.p2 !== null) ?? [];
@@ -326,7 +353,6 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const nothingReported = () => played().every(m => m.outcome === 'pending');
   /** The staff controls that act on the round, offered only on its latest round and never for TOM. */
   const live = () => !tom() && isLatest() && winner() === null;
-  const swissDone = () => latest()?.kind === 'swiss' && openCount() === 0 && isLatest();
   const isAsking = (match: Match) => asking()?.table === match.table && asking()?.p1 === match.p1;
   // A new round, or another division, starts on its current round again.
   createEffect(on([() => latest()?.number, () => props.pod.category], () => setPicked(null), { defer: true }));
@@ -353,12 +379,12 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
     filterInput?.select();
   }
 
-  function record(match: Match) {
+  /** Sends a result, and hands the filter back for the next table. */
+  function send(match: Match, outcome: Outcome) {
     const r = round();
-    const choice = asking();
     setAsking(null);
     backToFilter();
-    if (!r || !choice) {
+    if (!r) {
       return;
     }
     void props.state.send({
@@ -368,8 +394,15 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
       table: match.table,
       p1: match.p1,
       p2: match.p2,
-      outcome: choice.outcome
+      outcome
     });
+  }
+
+  function record(match: Match) {
+    const choice = asking();
+    if (choice) {
+      send(match, choice.outcome);
+    }
   }
 
   function pickForSwap(id: string) {
@@ -405,13 +438,6 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
           />
         </div>
       </Show>
-      <Show when={!tom() && swissDone() && active() >= 4 && winner() === null}>
-        <div class='tm-strip'>
-          <span>{latest() ? `${roundLabel(latest() as Round)} complete` : ''}</span>
-          <span class='tm-grow' />
-          <TopCutControl state={props.state} pod={props.pod} active={active()} />
-        </div>
-      </Show>
       <Show when={winner()}>{id => <ChampionLine name={names().get(id()) ?? id()} />}</Show>
       <Show when={round()} fallback={<p class='muted'>No rounds yet.</p>}>
         {r => (
@@ -442,8 +468,10 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               ref={el => (filterInput = el)}
               query={query()}
               openOnly={openOnly()}
+              deckMode={decksEnabled(props.manage.settings) ? deckMode() : null}
               onQuery={setQuery}
               onOpenOnly={setOpenOnly}
+              onDeckMode={setDeckMode}
             />
             <MatchTable
               pod={props.pod}
@@ -454,7 +482,17 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               pending={props.manage.pending}
               selected={new Set(swapPick() ? [swapPick() as string] : [])}
               onReport={swapMode() || props.locked ? undefined : report}
+              onRecord={swapMode() || props.locked ? undefined : send}
               onPlayer={swapMode() ? pickForSwap : undefined}
+              deckPicker={
+                naming() && !swapMode()
+                  ? id => (
+                      <Suspense fallback={<span class='tm-deck-pick' />}>
+                        <EventDeckPicker state={props.state} manage={props.manage} playerId={id} />
+                      </Suspense>
+                    )
+                  : undefined
+              }
               confirming={asking()}
               extra={match => (
                 <Result

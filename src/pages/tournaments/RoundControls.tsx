@@ -1,47 +1,70 @@
 /**
  * The controls that move a round along besides pairing the next one (the
- * console's head does that): the top cut, the clock, re-pairing, deleting a
- * round nobody has played, and the champion. Each shows only in the state it
- * belongs to, and anything that cannot be taken back asks first, in place.
+ * console's head does that, and offers the top cut once the Swiss rounds are
+ * played): the clock, re-pairing, deleting a round nobody has played, and the
+ * champion. Each shows only in the state it belongs to, and anything that
+ * cannot be taken back asks first, in place.
  */
 
 import { createSignal, For, Show } from 'solid-js';
 import { TOP_CUT_SIZES } from '../../../shared/tournament/commands';
-import { type Division, DIVISION_LABELS, DIVISIONS, type Pod, type Round } from '../../../shared/tournament/types';
-import { clockLabel, recommendedStructure } from '../../lib/tournament/present';
+import { type Division, DIVISION_LABELS, type Pod, type Round } from '../../../shared/tournament/types';
+import { clockLabel, type DivisionCut } from '../../lib/tournament/present';
 import { Clock } from './Clock';
 import { ConfirmAction } from './ConfirmAction';
 import type { ManageState } from './manageState';
 
-const combinedPod = (pod: Pod) => !(DIVISIONS as readonly string[]).includes(pod.category);
+/** With no cut planned, the biggest one the players still in can fill, up to a top 8. */
+const largestCut = (active: number) => TOP_CUT_SIZES.filter(n => n <= Math.min(8, active)).at(-1) ?? 2;
 
-export function TopCutControl(props: { state: ManageState; pod: Pod; active: number }) {
+/** The size to offer first for a division: its planned cut, else the biggest it can fill. */
+const suggestedCut = (entry: DivisionCut | undefined) => (entry ? entry.cut || largestCut(entry.active) : 2);
+
+/**
+ * The top cut's size, then the button that starts it. `cuts` are the
+ * divisions the pod plays (see divisionCuts); with more than one, each cuts
+ * on its own, so the division is asked too, and picking one offers its own
+ * cut first.
+ */
+export function TopCutControl(props: {
+  state: ManageState;
+  pod: Pod;
+  cuts: readonly DivisionCut[];
+  primary?: boolean;
+}) {
   // eslint-disable-next-line solid/reactivity -- a starting suggestion; the organizer's pick wins from then on
-  const [size, setSize] = createSignal(recommendedStructure(props.active).cut || 8);
-  const [division, setDivision] = createSignal<Division>('masters');
+  const [division, setDivision] = createSignal<Division>(props.cuts.at(-1)?.division ?? 'masters');
+  const entry = () => props.cuts.find(c => c.division === division()) ?? props.cuts.at(-1);
+
+  const [size, setSize] = createSignal(suggestedCut(entry()));
+  const several = () => props.cuts.length > 1;
+  function pickDivision(next: Division) {
+    setDivision(next);
+    setSize(suggestedCut(entry()));
+  }
   function start() {
     const cut = { type: 'startTopCut' as const, pod: props.pod.category, size: size() };
-    void props.state.send(combinedPod(props.pod) ? { ...cut, division: division() } : cut);
+    void props.state.send(several() ? { ...cut, division: division() } : cut);
   }
   return (
     <span class='tm-inline-form'>
-      <Show when={combinedPod(props.pod)}>
+      <Show when={several()}>
         <select
           class='tm-select'
           aria-label='Division to cut'
-          onChange={e => setDivision(e.currentTarget.value as Division)}
+          onChange={e => pickDivision(e.currentTarget.value as Division)}
         >
-          <For each={DIVISIONS}>
-            {d => (
-              <option value={d} selected={d === division()}>
-                {DIVISION_LABELS[d]}
+          <For each={props.cuts}>
+            {c => (
+              <option value={c.division} selected={c.division === division()}>
+                {DIVISION_LABELS[c.division]}
               </option>
             )}
           </For>
         </select>
       </Show>
       <select class='tm-select' aria-label='Top cut size' onChange={e => setSize(Number(e.currentTarget.value))}>
-        <For each={TOP_CUT_SIZES.filter(n => n <= props.active)}>
+        <For each={TOP_CUT_SIZES.filter(n => n <= (entry()?.active ?? 0))}>
           {n => (
             <option value={n} selected={n === size()}>
               Top {n}
@@ -49,7 +72,12 @@ export function TopCutControl(props: { state: ManageState; pod: Pod; active: num
           )}
         </For>
       </select>
-      <button type='button' class='btn btn-secondary' disabled={props.state.busy()} onClick={start}>
+      <button
+        type='button'
+        class={props.primary ? 'btn btn-primary' : 'btn btn-secondary'}
+        disabled={props.state.busy()}
+        onClick={start}
+      >
         Start top cut
       </button>
     </span>
@@ -127,7 +155,7 @@ export function DeleteRound(props: { state: ManageState; pod: Pod; round: Round 
   );
 }
 
-/** Who won; closing the event is the console head's next step once there is a champion. */
+/** Who won; ending the event is the console head's next step once there is a champion. */
 export function ChampionLine(props: { name: string }) {
   return (
     <div class='tm-strip tm-champion' role='status'>

@@ -4,13 +4,13 @@
  * whoever won. The public page adds whether each table is still playing, on
  * desktop. Staff get the result controls: a player's name is the button that
  * reports them as the winner, which is one press at the table (and a second
- * to confirm, see RoundPanel).
+ * to confirm, or a double click, see RoundPanel).
  *
  * On a phone a row restacks into two lines under its table number, as the
  * site's live pairings do, so the opponent is never behind a sideways scroll.
  */
 
-import { For, type JSX, Show } from 'solid-js';
+import { For, type JSX, Show, Switch, Match as When } from 'solid-js';
 import { sortMatches } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import type { PendingResult } from '../../../shared/tournament/view';
@@ -29,6 +29,10 @@ export interface MatchTableProps {
   onPlayer?: (id: string) => void;
   /** Staff only: report `outcome` for the match. */
   onReport?: (match: Match, outcome: Outcome) => void;
+  /** Staff only: record `outcome` at once, from a double click on the winner. */
+  onRecord?: (match: Match, outcome: Outcome) => void;
+  /** Staff only: the deck picker for a player, drawn in their seat in place of the result button. */
+  deckPicker?: (id: string) => JSX.Element;
   /** Staff only: the extra cell at the end of each row. */
   extra?: (match: Match) => JSX.Element;
   /** The public page: a Status column saying which tables are still playing, on desktop. */
@@ -79,24 +83,34 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
                 <span class='sr-only'> (not yet confirmed)</span>
               </Show>
             </span>
-            <Show
-              when={reportable()}
+            <Switch
               fallback={
                 <button type='button' class='tm-seat-link' onClick={() => props.onPlayer?.(playerId())}>
                   {content(playerId())}
                 </button>
               }
             >
-              <button
-                type='button'
-                class='tm-seat-link'
-                classList={{ 'is-winner': mark() === 'W' }}
-                aria-label={`Report ${name(playerId())} as the winner`}
-                onClick={() => props.onReport?.(props.match, winnerOutcome(props.seat))}
-              >
-                {content(playerId())}
-              </button>
-            </Show>
+              <When when={props.deckPicker}>
+                {picker => (
+                  <span class='tm-seat-deck'>
+                    <span class='tm-name'>{name(playerId())}</span>
+                    {picker()(playerId())}
+                  </span>
+                )}
+              </When>
+              <When when={reportable()}>
+                <button
+                  type='button'
+                  class='tm-seat-link'
+                  classList={{ 'is-winner': mark() === 'W' }}
+                  aria-label={`Report ${name(playerId())} as the winner`}
+                  onClick={() => props.onReport?.(props.match, winnerOutcome(props.seat))}
+                  onDblClick={() => props.onRecord?.(props.match, winnerOutcome(props.seat))}
+                >
+                  {content(playerId())}
+                </button>
+              </When>
+            </Switch>
           </span>
         )}
       </Show>

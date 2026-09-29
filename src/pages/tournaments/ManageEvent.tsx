@@ -13,11 +13,14 @@ import { Tabs } from '../../components/Tabs';
 import { joinStaff, type Manage, saveSettings } from '../../lib/tournament/api';
 import {
   clockLabel,
+  type DivisionCut,
+  divisionCuts,
   namesById,
-  type NextStep,
   nextStep,
-  podProgress,
+  type NextStep,
+  plannedRounds,
   type PodProgress,
+  podProgress,
   shownDecks,
   statusParts,
   unseated
@@ -29,6 +32,7 @@ import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
 import { createManage, type ManageState } from './manageState';
 import { createNow } from './now';
+import { TopCutControl } from './RoundControls';
 import { RoundPanel } from './RoundPanel';
 import { SignIn } from './SignIn';
 import { createTomLink, type TomLink, TomNextStep, TomStrip } from './TomSyncPanel';
@@ -54,7 +58,7 @@ const TABS: { value: Tab; label: string }[] = [
 /** Other staff change the event too; the console looks again this often while visible. */
 const REFRESH_MS = 15_000;
 
-/** Ticks once a second while mounted, for a clock in a sentence. */
+/** A division with no pod yet: nothing paired, nothing playing. */
 const NO_PROGRESS: PodProgress = { round: undefined, tables: 0, open: 0, champion: null };
 
 /** What a TOM event's head adds to the round: whether TOM has every result entered here. */
@@ -66,28 +70,92 @@ function tomPart(tom: TomLink): string {
   return n ? `${n} result${n === 1 ? '' : 's'} to write` : 'TOM has every result';
 }
 
-/** The pair step's button: disabled, with the reason under it, until every table is in. */
+/** Pairing the pod's next round or stage. */
 function PairButton(props: {
   state: ManageState;
   pod: Pod | undefined;
-  step: Extract<NextStep, { kind: 'pair' }>;
+  label: string;
   ready: boolean;
+  primary?: boolean;
 }) {
   return (
     <button
       type='button'
-      class='btn btn-primary'
+      class={props.primary === false ? 'btn btn-secondary' : 'btn btn-primary'}
       disabled={!props.ready || props.state.busy()}
       onClick={() => props.pod && void props.state.send({ type: 'pairRound', pod: props.pod.category })}
     >
-      {props.step.label}
+      {props.label}
     </button>
+  );
+}
+
+/** Ending the event, asked in place. */
+function EndEvent(props: { state: ManageState; manage: Manage; primary?: boolean }) {
+  function end() {
+    const { code } = props.manage;
+    void props.state.run(() => saveSettings(code, { finished: true }));
+  }
+  return (
+    <ConfirmAction
+      class={props.primary ? 'btn btn-primary' : 'btn btn-secondary'}
+      label='End event'
+      question='End the event?'
+      confirmLabel='End event'
+      disabled={props.state.busy()}
+      onConfirm={end}
+    />
+  );
+}
+
+/**
+ * Once the plan's Swiss rounds are played: the top cut when the plan has one,
+ * else ending the event, as the step, with another round and the other of
+ * the two beside it. While the last round is still playing, only the step
+ * shows, disabled, with the reason under it.
+ */
+function DecideStep(props: {
+  state: ManageState;
+  manage: Manage;
+  pod: Pod;
+  step: Extract<NextStep, { kind: 'decide' }>;
+  cuts: readonly DivisionCut[];
+}) {
+  const cutFirst = () => props.step.cut > 0;
+  const cut = (primary: boolean) => (
+    <TopCutControl state={props.state} pod={props.pod} cuts={props.cuts} primary={primary} />
+  );
+  return (
+    <Show
+      when={props.step.ready}
+      fallback={
+        <button type='button' class='btn btn-primary' disabled>
+          {cutFirst() ? 'Start top cut' : 'End event'}
+        </button>
+      }
+    >
+      <span class='tm-next-acts'>
+        <PairButton state={props.state} pod={props.pod} label={props.step.label} ready primary={false} />
+        <Show
+          when={cutFirst()}
+          fallback={
+            <>
+              <Show when={props.cuts.some(c => c.active >= 4)}>{cut(false)}</Show>
+              <EndEvent state={props.state} manage={props.manage} primary />
+            </>
+          }
+        >
+          <EndEvent state={props.state} manage={props.manage} />
+          {cut(true)}
+        </Show>
+      </span>
+    </Show>
   );
 }
 
 /**
  * The console's head, the same on every tab: the event, where its round
- * stands, and the one step to take next. A TOM event's next step belongs to
+ * stands, and the step to take next. A TOM event's next step belongs to
  * its file: reconnect it, write the results TOM does not have, or read it
  * again (see TomSyncPanel).
  */
@@ -101,23 +169,32 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
   };
   const waiting = () =>
     props.manage.mode === 'swiss' && props.pod ? unseated(props.manage.tournament, props.pod).length : 0;
+  const active = () => (props.pod ? activeIds(props.manage.tournament, props.pod).length : 0);
+  const cuts = createMemo(() =>
+    props.pod ? divisionCuts(props.manage.tournament, props.pod, divisionLookup(props.manage.tournament)) : []
+  );
+  // The step's cut is the one the top cut control offers first: the last division's, Masters where it plays.
+  const plan = () =>
+    props.pod
+      ? { rounds: plannedRounds(props.pod, props.manage.settings.roundCap), cut: cuts().at(-1)?.cut ?? 0 }
+      : null;
   const status = () => {
     const { tom } = props;
     const extra = tom ? [tomPart(tom)] : waiting() ? [`${waiting()} not seated`] : [];
-    return [...statusParts(progress(), finished(), tom ? null : clock()), ...extra].join(' · ');
+    const rounds = tom ? null : (plan()?.rounds ?? null);
+    return [...statusParts(progress(), finished(), tom ? null : clock(), rounds), ...extra].join(' · ');
   };
-  const step = () => (props.tom ? ({ kind: 'none' } as NextStep) : nextStep(progress(), finished()));
-  const active = () => (props.pod ? activeIds(props.manage.tournament, props.pod).length : 0);
+  const step = () => (props.tom ? ({ kind: 'none' } as NextStep) : nextStep(progress(), finished(), plan()));
   const pairStep = () => {
     const s = step();
     return s.kind === 'pair' ? s : null;
   };
+  const decideStep = () => {
+    const s = step();
+    return s.kind === 'decide' ? s : null;
+  };
   const firstBlocked = () => pairStep()?.label === 'Pair round 1' && active() < 2;
-  const reason = () => (firstBlocked() ? 'Add players to pair' : pairStep()?.reason);
-  function close() {
-    const { code } = props.manage;
-    void props.state.run(() => saveSettings(code, { finished: true }));
-  }
+  const reason = () => (firstBlocked() ? 'Add players to pair' : (pairStep() ?? decideStep())?.reason);
   return (
     <TournamentHero
       title={props.manage.tournament.info.name}
@@ -142,17 +219,17 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
         <Switch>
           <Match when={props.tom}>{tom => <TomNextStep link={tom()} />}</Match>
           <Match when={pairStep()}>
-            {s => <PairButton state={props.state} pod={props.pod} step={s()} ready={s().ready && !firstBlocked()} />}
+            {s => (
+              <PairButton state={props.state} pod={props.pod} label={s().label} ready={s().ready && !firstBlocked()} />
+            )}
+          </Match>
+          <Match when={props.pod && decideStep()}>
+            {s => (
+              <DecideStep state={props.state} manage={props.manage} pod={props.pod as Pod} step={s()} cuts={cuts()} />
+            )}
           </Match>
           <Match when={step().kind === 'close'}>
-            <ConfirmAction
-              class='btn btn-primary'
-              label='Close event'
-              question='Close the event?'
-              confirmLabel='Close'
-              disabled={props.state.busy()}
-              onConfirm={close}
-            />
+            <EndEvent state={props.state} manage={props.manage} primary />
           </Match>
         </Switch>
       }
@@ -161,10 +238,14 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
   );
 }
 
+/** The console's tabs: Decklists only while the event takes them. */
+const tabsFor = (manage: Manage) => TABS.filter(t => t.value !== 'decklists' || manage.settings.decklists !== 'off');
+
 function Console(props: { state: ReturnType<typeof createManage>; manage: Manage }) {
   // In the URL, so a reload mid-event comes back to the same tab.
   const [params, setParams] = useSearchParams<{ tab?: string }>();
-  const tab = (): Tab => (TABS.some(t => t.value === params.tab) ? (params.tab as Tab) : 'round');
+  const tabs = () => tabsFor(props.manage);
+  const tab = (): Tab => (tabs().some(t => t.value === params.tab) ? (params.tab as Tab) : 'round');
   const setTab = (value: Tab) => setParams({ tab: value === 'round' ? undefined : value }, { replace: true });
   const [podChoice, setPodChoice] = createSignal<PodCategory | null>(null);
   const pods = () => props.manage.tournament.pods;
@@ -180,7 +261,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
   return (
     <div class='tm-page'>
       <Hero state={props.state} manage={props.manage} pod={pod()} tom={tom} />
-      <Tabs options={TABS} selected={tab()} onSelect={setTab} ariaLabel='Event sections' />
+      <Tabs options={tabs()} selected={tab()} onSelect={setTab} ariaLabel='Event sections' />
       <Show when={tom}>{link => <TomStrip link={link()} />}</Show>
       <Show when={pods().length > 1 && (tab() === 'round' || tab() === 'standings')}>
         <Segmented

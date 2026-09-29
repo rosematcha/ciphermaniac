@@ -26,7 +26,7 @@ import {
 } from '../../lib/tournament/api';
 import { canLinkFiles, pickTdf, rememberHandle, type TdfHandle } from '../../lib/tournament/tomLink';
 import { latestValue } from '../../lib/resource';
-import { eventStatus } from '../../lib/tournament/present';
+import { eventStatus, roundCapOf } from '../../lib/tournament/present';
 import { EventSetup, type Setup } from './EventSetup';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
@@ -121,7 +121,7 @@ function LiveEvent(props: { event: TournamentSummary }) {
     return current
       ? eventStatus(
           current.tournament,
-          { pending: current.pending, finished: false, firstRound: null },
+          { pending: current.pending, finished: false, firstRound: null, roundCap: roundCapOf(current) },
           Date.now()
         ).join(' · ')
       : 'Running';

@@ -14,7 +14,8 @@
 import { For, type JSX, Show } from 'solid-js';
 import { percentLabel, recordLabel, type Standing } from '../../../shared/tournament/standings';
 import type { Division, Pod, Tournament } from '../../../shared/tournament/types';
-import { cutSplit, divisionHeading, podStandings, recommendedStructure } from '../../lib/tournament/present';
+import { recommendedStructure } from '../../../shared/tournament/structure';
+import { cutSplit, divisionHeading, podStandings } from '../../lib/tournament/present';
 import { DeckIcons } from './DeckIcons';
 
 interface TableProps {
@@ -41,9 +42,15 @@ export function StandingsTable(props: TableProps) {
   const hasDecks = () => Object.keys(props.decks).length > 0;
   const matches = (id: string) =>
     !props.query?.trim() || (props.names.get(id) ?? '').toLowerCase().includes(props.query.trim().toLowerCase());
-  /** The cut this division plays to: the one set, or before it is, the recommended one for its size. */
-  const cutOf = (rows: readonly Standing[]) =>
-    props.pod.cut || recommendedStructure(rows.filter(row => !row.dropped).length).cut;
+  /**
+   * The cut this division plays to: the one set, or before it is, the one its
+   * attendance calls for while enough are still in, as the console offers it
+   * (see divisionCuts).
+   */
+  const cutOf = (rows: readonly Standing[]) => {
+    const { cut } = recommendedStructure(rows.length);
+    return props.pod.cut || (cut <= rows.filter(row => !row.dropped).length ? cut : 0);
+  };
   const cutStarted = () => props.pod.rounds.some(round => round.kind === 'elimination');
   const colspan = () => (props.tiebreakers ? 6 : 4);
   return (
