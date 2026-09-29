@@ -5,6 +5,7 @@
  */
 
 import { createSignal, Show } from 'solid-js';
+import { createDeckOptions } from './deckOptions';
 import { SETTINGS_LIMITS } from '../../../shared/tournament/view';
 import { type Manage, setDeck } from '../../lib/tournament/api';
 import { DeckCombo, type ReportedDeck } from '../live/LiveDeck';
@@ -52,4 +53,13 @@ export function DeckPicker(props: {
       <ErrorLine message={error()} />
     </>
   );
+}
+
+/** The picker with its own list of the event's decks, for a seat in the pairings. */
+export function EventDeckPicker(props: { state: ManageState; manage: Manage; playerId: string }) {
+  const decks = createDeckOptions(
+    () => props.manage.settings.format,
+    () => Object.values(props.manage.decks)
+  );
+  return <DeckPicker state={props.state} manage={props.manage} playerId={props.playerId} decks={decks()} />;
 }

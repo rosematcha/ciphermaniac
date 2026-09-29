@@ -13,12 +13,15 @@
  * a result called out across the room is a few keystrokes and two presses,
  * and focus comes back to the filter for the next one. Where players report
  * their own, each open match says what they reported, and staff accept a
- * lone report or settle a dispute by entering the result as usual.
+ * lone report or settle a dispute by entering the result as usual. With
+ * archetypes on, Enter decks turns every seat into its player's deck picker,
+ * for naming decks as the room is walked.
  */
 
-import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, lazy, on, Show, Suspense } from 'solid-js';
 import { isDisputed, oneDevice, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
+import { decksEnabled } from '../../../shared/tournament/view';
 import type { Manage } from '../../lib/tournament/api';
 import {
   champion,
@@ -35,6 +38,9 @@ import {
 import type { ManageState } from './manageState';
 import { MatchTable } from './MatchTable';
 import { ChampionLine, ClockControls, DeleteRound, RepairControl } from './RoundControls';
+
+// Decks are named now and then, not every round, so their picker loads when first asked for.
+const EventDeckPicker = lazy(() => import('./DeckPicker').then(m => ({ default: m.EventDeckPicker })));
 
 function RoundPicker(props: { pod: Pod; selected: number; onSelect: (n: number) => void }) {
   return (
@@ -214,12 +220,18 @@ function matchesQuery(match: Match, query: string, names: Map<string, string>): 
     : filterMatches([match], names, query).length > 0;
 }
 
-/** The bar that narrows the room: a table number or a name, and optionally only the tables still playing. */
+/**
+ * The bar that narrows the room: a table number or a name, and optionally
+ * only the tables still playing; with archetypes on, the switch to naming decks.
+ */
 function RoomFilter(props: {
   query: string;
   openOnly: boolean;
+  /** Null while the event has archetypes off. */
+  deckMode: boolean | null;
   onQuery: (value: string) => void;
   onOpenOnly: (value: boolean) => void;
+  onDeckMode: (value: boolean) => void;
   ref: (el: HTMLInputElement) => void;
 }) {
   return (
@@ -241,7 +253,21 @@ function RoomFilter(props: {
       >
         Open tables only
       </button>
-      <span class='muted tm-hint'>Press a player to report their win, or double-click to record it</span>
+      <Show when={props.deckMode !== null}>
+        <button
+          type='button'
+          class='chip'
+          aria-pressed={Boolean(props.deckMode)}
+          onClick={() => props.onDeckMode(!props.deckMode)}
+        >
+          Enter decks
+        </button>
+      </Show>
+      <span class='muted tm-hint'>
+        {props.deckMode
+          ? 'Pick each player’s deck'
+          : 'Press a player to report their win, or double-click to record it'}
+      </span>
     </div>
   );
 }
@@ -309,6 +335,8 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const [asking, setAsking] = createSignal<Asking | null>(null);
   const [query, setQuery] = createSignal('');
   const [openOnly, setOpenOnly] = createSignal(false);
+  const [deckMode, setDeckMode] = createSignal(false);
+  const naming = () => deckMode() && decksEnabled(props.manage.settings);
   let filterInput: HTMLInputElement | undefined;
   const round = createMemo(() => props.pod.rounds.find(r => r.number === picked()) ?? latest());
   const names = createMemo(() => namesById(props.manage.tournament));
@@ -440,8 +468,10 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               ref={el => (filterInput = el)}
               query={query()}
               openOnly={openOnly()}
+              deckMode={decksEnabled(props.manage.settings) ? deckMode() : null}
               onQuery={setQuery}
               onOpenOnly={setOpenOnly}
+              onDeckMode={setDeckMode}
             />
             <MatchTable
               pod={props.pod}
@@ -454,6 +484,15 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               onReport={swapMode() || props.locked ? undefined : report}
               onRecord={swapMode() || props.locked ? undefined : send}
               onPlayer={swapMode() ? pickForSwap : undefined}
+              deckPicker={
+                naming() && !swapMode()
+                  ? id => (
+                      <Suspense fallback={<span class='tm-deck-pick' />}>
+                        <EventDeckPicker state={props.state} manage={props.manage} playerId={id} />
+                      </Suspense>
+                    )
+                  : undefined
+              }
               confirming={asking()}
               extra={match => (
                 <Result

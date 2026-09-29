@@ -597,6 +597,20 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   align-items: center;
   gap: 4px;
 }
+/* Naming decks from the pairings: the name, then its picker, on the seat's line. */
+.tm-seat-deck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.tm-seat-deck .tm-name {
+  flex: 0 1 auto;
+}
+.tm-seat-deck .tm-deck-pick {
+  flex: 1 1 180px;
+  min-width: 0;
+}
 .tm-fixed-cell {
   width: 84px;
 }
