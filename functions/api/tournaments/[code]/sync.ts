@@ -33,7 +33,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
       body.ok ? 400 : 413
     );
   }
-  const outcome = await mutate(access.db, access.row.code, row => ({
+  const outcome = await mutate(access.db, access.row, row => ({
     tournament,
     pending: prunePending(tournament, row.pending)
   }));

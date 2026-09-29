@@ -269,7 +269,7 @@ async function register(
   // may have added them meanwhile, or the organizer closed the event.
   const outcome = await mutateSettled(
     access.db,
-    row.code,
+    row,
     current => {
       if (decklistPlayer(current.tournament, profile, isSanctioned(current)) !== undefined) {
         return ALREADY_IN;

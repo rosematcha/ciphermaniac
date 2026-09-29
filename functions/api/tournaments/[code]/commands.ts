@@ -29,7 +29,7 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
   }
   const outcome = await mutateSettled(
     access.db,
-    access.row.code,
+    access.row,
     row => commandChanges(row, command, value?.localTime),
     value?.localTime
   );

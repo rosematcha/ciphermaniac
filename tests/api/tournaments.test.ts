@@ -1155,3 +1155,35 @@ test('only the organizer shows decks sooner; staff can still hide them', async (
   assert.equal((await put(owner, 'always')).status, 200);
   assert.equal((await put(helper, 'after')).status, 200, 'but can hide them');
 });
+
+/** Every statement the functions prepare from here on, in order. */
+function recordSql(): string[] {
+  const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
+  const seen: string[] = [];
+  env.TOURNAMENT_DB = {
+    ...db,
+    prepare: sql => {
+      seen.push(sql);
+      return db.prepare(sql);
+    }
+  };
+  return seen;
+}
+
+test('a change reads the event once and writes only the columns it changed', async () => {
+  const cookie = await signIn('Organizer');
+  const code = await newSwiss(cookie);
+  await addPlayers(code, cookie, 2);
+  const seen = recordSql();
+  const saved = await hit(decks.onRequestPut as Handler, '/decks', at(code), {
+    method: 'PUT',
+    cookie,
+    body: { playerId: '900', archetype: 'Gardevoir' }
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.json.decks['900'], 'Gardevoir');
+  assert.equal(seen.filter(sql => sql.startsWith('SELECT * FROM tournaments')).length, 1);
+  const update = seen.find(sql => sql.startsWith('UPDATE tournaments')) ?? '';
+  assert.match(update, /decks = \?/);
+  assert.doesNotMatch(update, /state = |staff_token = |settings = /);
+});

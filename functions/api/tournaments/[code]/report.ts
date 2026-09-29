@@ -103,7 +103,7 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
     return jsonError(NOT_REPORTER, 403);
   }
   const device = (await reporterDevice(db, row.code, who.id)) ?? '';
-  const outcome = await mutateSettled(db, row.code, r => reportChanges(r, who.claim, result, device), body.localTime);
+  const outcome = await mutateSettled(db, row, r => reportChanges(r, who.claim, result, device), body.localTime);
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }

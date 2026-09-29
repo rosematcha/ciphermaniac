@@ -24,7 +24,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if (label === undefined || !access.row.tournament.players.some(player => player.id === playerId)) {
     return jsonError('Not a deck change', 400);
   }
-  const outcome = await mutate(access.db, access.row.code, row => ({ decks: withDeck(row.decks, playerId, label) }));
+  const outcome = await mutate(access.db, access.row, row => ({ decks: withDeck(row.decks, playerId, label) }));
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
