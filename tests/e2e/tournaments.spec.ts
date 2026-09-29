@@ -244,3 +244,17 @@ test('before round 1 the public page lists everyone registered @mobile', async (
   await expect(page.locator('.tm-status')).toHaveText(`Registration · ${players.length} players`);
   await expect(page.locator('.tm-registered li')).toHaveCount(players.length);
 });
+
+test('the player sheet keeps Tab inside it until it closes', async ({ page }) => {
+  await mockApi(page);
+  await page.goto(`/t/${CODE}`);
+  await page.locator('.tm-matches tbody tr').first().getByRole('button').first().click();
+  const sheet = page.getByRole('dialog');
+  await expect(sheet).toBeVisible();
+  for (let i = 0; i < 12; i += 1) {
+    await page.keyboard.press('Tab');
+    expect(await sheet.evaluate(el => el.contains(document.activeElement))).toBe(true);
+  }
+  await page.keyboard.press('Shift+Tab');
+  expect(await sheet.evaluate(el => el.contains(document.activeElement))).toBe(true);
+});
