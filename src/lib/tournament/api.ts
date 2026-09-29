@@ -57,6 +57,8 @@ export interface TournamentSummary {
   players: number;
   startDate: string;
   finished: boolean;
+  /** Rounds the event's first pod has paired: 0 before round 1. */
+  rounds: number;
   updatedAt: number;
 }
 

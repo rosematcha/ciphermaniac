@@ -84,16 +84,15 @@ test('standings rank a combined pod per division', async ({ page }) => {
 test('a signed-out organizer is offered sign-in, not a console @mobile', async ({ page }) => {
   await mockApi(page);
   await page.goto('/host');
-  await expect(page.getByRole('link', { name: 'Sign in with Google' })).toHaveAttribute(
-    'href',
-    '/api/auth/login/google?next=%2Fhost'
-  );
-  await expect(page.getByRole('link', { name: 'Sign in with Discord' })).toBeVisible();
+  // The home page offers sign-in at the top and again at the end.
+  const google = page.getByRole('link', { name: 'Sign in with Google' }).first();
+  await expect(google).toHaveAttribute('href', '/api/auth/login/google?next=%2Fhost');
+  await expect(page.getByRole('link', { name: 'Sign in with Discord' }).first()).toBeVisible();
   // The server has to see the click: the client router must not take it as one of its own routes.
   const login = page.waitForRequest(
     request => request.isNavigationRequest() && new URL(request.url()).pathname === '/api/auth/login/google'
   );
-  await page.getByRole('link', { name: 'Sign in with Google' }).click();
+  await google.click();
   await login;
 });
 

@@ -1354,6 +1354,51 @@ tr.is-in .tm-place {
   display: none;
 }
 
+/* ---------- Your events ---------- */
+.tm-hero-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.tm-live-event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+  padding: 14px 16px;
+  margin-bottom: var(--space-5);
+  border-color: var(--accent);
+}
+.tm-live-event h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.tm-live-event .tm-status {
+  margin: 2px 0 0;
+}
+.tm-live-event-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.tm-host-section + .tm-host-section {
+  margin-top: var(--space-5);
+}
+.tm-event-name {
+  font-weight: 600;
+  color: var(--fg);
+}
+@media (max-width: 640px) {
+  .tm-live-event-acts {
+    width: 100%;
+  }
+  .tm-live-event-acts .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
 /* ---------- Round header and clock ---------- */
 .tm-actions-bar:empty {
   display: none;
