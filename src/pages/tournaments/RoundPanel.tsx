@@ -16,7 +16,7 @@
  */
 
 import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
-import { isDisputed, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
+import { isDisputed, oneDevice, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
 import { activeIds } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import type { Manage } from '../../lib/tournament/api';
@@ -122,9 +122,14 @@ function reportNote(reports: readonly PlayerReport[], match: Match, names: Map<s
   if (reports.length === 0) {
     return null;
   }
+  const [first, second] = reports;
+  if (first && second && oneDevice(first, second)) {
+    // Two agreeing reports from one device never settle on their own: one person may have spoken for both seats.
+    return { text: `Both reports came from one device. Reported: ${askingLabel(first, match, names)}`, problem: true };
+  }
   return isDisputed(reports)
     ? { text: `Reports differ. ${reports.map(said).join('; ')}`, problem: true }
-    : { text: `Reported: ${askingLabel(reports[0] as PlayerReport, match, names)}`, problem: false };
+    : { text: `Reported: ${askingLabel(first as PlayerReport, match, names)}`, problem: false };
 }
 
 /**

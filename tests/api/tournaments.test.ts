@@ -752,6 +752,13 @@ function playerSays(code: string, body: Record<string, unknown>) {
   });
 }
 
+/** A player's phone: it says who they are once, keeps the token it is given, and reports with it. */
+async function phoneOf(code: string, popId: string, device = `phone-${popId}`) {
+  const said = await playerSays(code, { popId, device });
+  const token = said.json.reportToken as string | undefined;
+  return { said, report: (result: string) => playerSays(code, { popId, result, device, reportToken: token }) };
+}
+
 test('an event starts with the settings its setup chose', async () => {
   const owner = await signIn('Organizer');
   const created = await hit(
@@ -819,33 +826,43 @@ test('players report their own results: agreement stands once locked, disagreeme
   assert.equal((await playerSays(code, { popId: first.p1, result: 'win' })).status, 403, 'off until staff turn it on');
   await settle(code, owner, { playerReporting: true });
 
-  const who = await playerSays(code, { popId: first.p1 });
+  const p1 = await phoneOf(code, first.p1);
+  const p2 = await phoneOf(code, first.p2);
+  const who = p1.said;
   assert.equal(who.status, 200);
+  assert.ok(who.json.reportToken && who.json.reporter, 'the first device to say who they are reports for them');
   assert.ok(who.json.key && who.json.key !== first.p1, 'a public key, never the Player ID');
   assert.equal((await playerSays(code, { popId: '1' })).status, 404);
-  assert.equal((await playerSays(code, { popId: first.p1, result: 'forfeit' })).status, 400);
+  assert.equal((await p1.report('forfeit')).status, 400);
 
-  const one = await playerSays(code, { popId: first.p1, result: 'win' });
+  const forged = await playerSays(code, { popId: first.p2, result: 'loss', device: `phone-${first.p1}` });
+  assert.equal(forged.status, 403, 'knowing the opponent’s Player ID does not report for them');
+  const later = await playerSays(code, { popId: first.p2, device: 'another-phone' });
+  assert.deepEqual([later.json.reporter, later.json.reportToken], [false, undefined], 'a second device only follows');
+  const one = await p1.report('win');
   assert.equal(one.json.view.reports.length, 1);
   assert.ok(!JSON.stringify(one.json.view.reports).includes(first.p1), 'reports go out under public keys');
-  const agreed = await playerSays(code, { popId: first.p2, result: 'loss' });
+  const agreed = await p2.report('loss');
   assert.equal(agreed.json.view.reports.length, 2, 'agreeing reports wait out the window');
   assert.equal(agreed.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'pending');
-  const changed = await playerSays(code, { popId: first.p2, result: 'win' });
+  const changed = await p2.report('win');
   assert.equal(changed.json.view.reports.length, 2, 'a change replaces the report inside the window');
-  await playerSays(code, { popId: first.p2, result: 'loss' });
+  await p2.report('loss');
 
   mock.timers.tick(REPORT_WINDOW_MS);
-  assert.match((await playerSays(code, { popId: first.p2, result: 'win' })).json.error, /already has a result/);
+  assert.match((await p2.report('win')).json.error, /already has a result/);
   const settled = await playerSays(code, { popId: first.p1 });
   assert.deepEqual(settled.json.view.reports, []);
   assert.equal(settled.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'p1', 'once locked, it stands');
 
-  await playerSays(code, { popId: second.p1, result: 'win' });
-  const disputed = await playerSays(code, { popId: second.p2, result: 'win' });
+  const s1 = await phoneOf(code, second.p1);
+  const s2 = await phoneOf(code, second.p2);
+  await s1.report('win');
+  const disputed = await s2.report('win');
   assert.equal(disputed.json.view.reports.length, 2);
+  assert.ok(!JSON.stringify(disputed.json.view).includes('device'), 'which device reported stays with staff');
   mock.timers.tick(REPORT_WINDOW_MS);
-  assert.match((await playerSays(code, { popId: second.p2, result: 'loss' })).json.error, /locked/);
+  assert.match((await s2.report('loss')).json.error, /locked/);
   assert.equal(
     (await playerSays(code, { popId: second.p1 })).json.view.tournament.pods[0].rounds[0].matches[1].outcome,
     'pending'
@@ -877,13 +894,13 @@ test('players report their own results: agreement stands once locked, disagreeme
     p2: first.p2,
     outcome: 'pending'
   });
-  assert.equal((await playerSays(code, { popId: first.p1, result: 'win' })).json.view.reports.length, 1);
+  assert.equal((await p1.report('win')).json.view.reports.length, 1);
   const off = await settle(code, owner, { playerReporting: false });
   assert.deepEqual(off.json.reports, [], 'turning reporting off drops what was waiting');
   const marked = await playerSays(code, { popId: first.p1 });
   assert.equal(marked.status, 200, 'a player still says who they are with reporting off');
   assert.ok(marked.json.key);
-  const refused = await playerSays(code, { popId: first.p1, result: 'win' });
+  const refused = await p1.report('win');
   assert.equal(refused.status, 403, 'but reports go to staff');
   assert.equal((await playerSays(code, { popId: '0000000' })).status, 404, 'a Player ID not in the event finds nobody');
 });
@@ -969,15 +986,25 @@ test('a player with no account submits a list, reads it back with its device tok
   assert.equal((await listOf(code, 'popId=4242&token=nope')).json.mine, null, 'the Player ID alone reads nothing');
   assert.equal((await listOf(code, 'popId=4242')).json.mine, null);
 
-  const again = await submitAs(code, { ...profile, firstName: 'Nia R.' }, { deck: '60 Basic {D} Energy SVE 7' });
-  assert.equal(again.json.registration, 'matched', 'the same Player ID replaces the list and is already in');
+  const stranger = await submitAs(code, profile, { deck: '60 Basic {G} Energy SVE 1' });
+  assert.equal(stranger.status, 409, 'the same Player ID from another device cannot replace the list');
+  assert.match(stranger.json.error, /sent from another device/);
+  const again = await submitAs(code, { ...profile, firstName: 'Nia R.' }, { deck: '60 Basic {D} Energy SVE 7', token });
+  assert.equal(again.json.registration, 'matched', 'the sending device replaces the list, and they are already in');
   const staffLists = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   assert.equal(staffLists.json.decklists.length, 1, 'one list per identity');
   assert.equal((await listOf(code, `popId=4242&token=${token}`)).json.mine, null, 'a new submission has a new token');
 
-  const withdrawn = await hit(decklists.onRequestDelete as Handler, '/decklists?popId=4242', at(code), {
+  const forged = await hit(decklists.onRequestDelete as Handler, '/decklists?popId=4242', at(code), {
     method: 'DELETE'
   });
+  assert.equal(forged.status, 409, 'nor withdraw it');
+  const withdrawn = await hit(
+    decklists.onRequestDelete as Handler,
+    `/decklists?popId=4242&token=${again.json.token}`,
+    at(code),
+    { method: 'DELETE' }
+  );
   assert.equal(withdrawn.status, 204);
   const after = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   assert.equal(after.json.decklists.length, 0);
@@ -1000,7 +1027,7 @@ test('a submitter is only added to an open Swiss event, and an unsanctioned one 
   await settle(casual, owner, { decklistsOpen: true, sanctioned: false });
   const byName = await submitAs(casual, { firstName: 'Grace', lastName: 'Hopper' });
   assert.equal(byName.json.registration, 'added');
-  const again = await submitAs(casual, { firstName: 'grace', lastName: 'HOPPER' });
+  const again = await submitAs(casual, { firstName: 'grace', lastName: 'HOPPER' }, { token: byName.json.token });
   assert.equal(again.json.registration, 'matched', 'names match however they are typed');
   const roster = await hit(manage.onRequestGet as Handler, '/manage', at(casual), { cookie: owner });
   assert.equal(roster.json.tournament.players.length, 1);
@@ -1042,4 +1069,54 @@ test('names split differently are different players’ lists', async () => {
   await submitAs(code, { firstName: 'Mary', lastName: 'Ann Smith' });
   const staffLists = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   assert.equal(staffLists.json.decklists.length, 2);
+});
+
+test('staff unlock a list for a player on a new device, who then takes it over', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklistsOpen: true });
+  const profile = { popId: '7373', firstName: 'Ren', lastName: 'Aoki', birthDate: '02/27/2001' };
+  await submitAs(code, profile);
+  assert.equal((await submitAs(code, profile)).status, 409);
+  const byPlayer = await hit(decklists.onRequestPatch as Handler, '/decklists?popId=7373', at(code), {
+    method: 'PATCH'
+  });
+  assert.equal(byPlayer.status, 401, 'only staff unlock');
+  const unlocked = await hit(decklists.onRequestPatch as Handler, '/decklists?popId=7373', at(code), {
+    method: 'PATCH',
+    cookie: owner
+  });
+  assert.equal(unlocked.status, 204);
+  const newPhone = await submitAs(code, profile, { deck: '60 Basic {W} Energy SVE 3' });
+  assert.equal(newPhone.status, 200);
+  assert.equal((await submitAs(code, profile)).status, 409, 'and it is locked to the new device');
+});
+
+test('two agreeing reports from one device wait for staff, and staff can free a player’s device', async () => {
+  const owner = await signIn('Organizer');
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 4);
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const [first] = paired.json.tournament.pods[0].rounds[0].matches;
+  await settle(code, owner, { playerReporting: true });
+  // One phone claims both seats before either player does.
+  const mine = await phoneOf(code, first.p1, 'one-phone');
+  const theirs = await phoneOf(code, first.p2, 'one-phone');
+  await mine.report('win');
+  await theirs.report('loss');
+  mock.timers.tick(REPORT_WINDOW_MS);
+  const after = await playerSays(code, { popId: first.p1, device: 'one-phone' });
+  assert.equal(after.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'pending', 'not settled');
+  const staffView = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  const [a, b] = staffView.reports as { device?: string }[];
+  assert.ok(a?.device && a.device === b?.device, 'staff can see both came from one device');
+
+  const released = await hit(report.onRequestDelete as Handler, `/report?player=${first.p2}`, at(code), {
+    method: 'DELETE',
+    cookie: owner
+  });
+  assert.equal(released.status, 204);
+  const real = await phoneOf(code, first.p2, 'their-own-phone');
+  assert.equal(real.said.json.reporter, true, 'the real player can claim their seat once staff free it');
 });

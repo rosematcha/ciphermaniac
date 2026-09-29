@@ -329,6 +329,7 @@ export async function deleteTournament(db: D1Like, code: string): Promise<void> 
   await db.batch([
     db.prepare('DELETE FROM tournaments WHERE code = ?').bind(code),
     db.prepare('DELETE FROM staff WHERE code = ?').bind(code),
-    db.prepare('DELETE FROM decklists WHERE code = ?').bind(code)
+    db.prepare('DELETE FROM decklists WHERE code = ?').bind(code),
+    db.prepare('DELETE FROM report_devices WHERE code = ?').bind(code)
   ]);
 }

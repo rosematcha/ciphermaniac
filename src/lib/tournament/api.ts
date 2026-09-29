@@ -85,6 +85,8 @@ export interface Decklist extends PlayerProfile {
   registered: boolean;
   /** Submitting this list is what added the player to the event. */
   fromList: boolean;
+  /** Only the device that sent it can replace it, until staff unlock it. */
+  locked: boolean;
 }
 
 /** Whether submitting put the player on the event's list, found them on it, or could not add them. */
@@ -185,19 +187,52 @@ export const rotateStaffToken = (code: string) => call<Manage>(`${base(code)}/st
 
 export const deleteTournament = (code: string) => call<null>(base(code), { method: 'DELETE' });
 
+const DEVICE_KEY = 'cm-device';
+
+/**
+ * This browser's own ID, made once and kept: the server tells two reports
+ * from one device apart from reports from two, and records which device
+ * reports for a player. Without storage (a test, a locked-down browser) each
+ * call counts as its own device.
+ */
+function deviceId(): string {
+  const stored = typeof localStorage === 'undefined' ? null : localStorage.getItem(DEVICE_KEY);
+  if (stored) {
+    return stored;
+  }
+  const made = crypto.randomUUID();
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(DEVICE_KEY, made);
+  }
+  return made;
+}
+
+/** What the report endpoint says of the asker: the player's public key, the event, and whether this device reports for them. */
+export interface PlayerAnswer {
+  key: string | null;
+  view: PublishedView;
+  /** The token to keep, when this device just became the one that reports for the player. */
+  reportToken?: string;
+  reporter?: boolean;
+}
+
 /** A player says who they are; their public key, to follow their pairings with, and the event as it stands. */
-export const identifyPlayer = (code: string, claim: PlayerClaim) =>
-  call<{ key: string | null; view: PublishedView }>(
+export const identifyPlayer = (code: string, claim: PlayerClaim, reportToken?: string | null) =>
+  call<PlayerAnswer>(
     `${base(code)}/report`,
-    json('POST', { ...claim, localTime: tomDateTime(new Date()) })
+    json('POST', { ...claim, reportToken, device: deviceId(), localTime: tomDateTime(new Date()) })
   );
 
-/** A player reports their current match; the answer carries the event as it now stands. */
-export const reportAsPlayer = (code: string, claim: PlayerClaim, result: PlayerResult) =>
-  call<{ key: string | null; view: PublishedView }>(
+/** A player reports their current match, with the token of the device that reports for them. */
+export const reportAsPlayer = (code: string, claim: PlayerClaim, result: PlayerResult, reportToken: string | null) =>
+  call<PlayerAnswer>(
     `${base(code)}/report`,
-    json('POST', { ...claim, result, localTime: tomDateTime(new Date()) })
+    json('POST', { ...claim, result, reportToken, device: deviceId(), localTime: tomDateTime(new Date()) })
   );
+
+/** Staff let another device report for a player, as when they change phones. */
+export const releaseReporter = (code: string, playerId: string) =>
+  call<null>(`${base(code)}/report?${new URLSearchParams({ player: playerId }).toString()}`, { method: 'DELETE' });
 
 /** Every list, for staff. */
 export const fetchDecklists = (code: string) =>
@@ -210,11 +245,22 @@ export const fetchMyDecklist = (
   token: string
 ) => call<{ mine: Decklist | null }>(`${base(code)}/decklists?${listOwner(owner, token)}`);
 
-export const submitDecklist = (code: string, deck: string, profile: PlayerProfile, archetype: string | null) =>
+/** Sends a list; replacing one takes the token of the device that sent it. */
+export const submitDecklist = (
+  code: string,
+  list: { deck: string; profile: PlayerProfile; archetype: string | null; token: string | null }
+) =>
   call<{ decklist: Decklist; registration: Registration; token: string }>(
     `${base(code)}/decklists`,
-    json('PUT', { deck, profile, archetype, localTime: tomDateTime(new Date()) })
+    json('PUT', { ...list, localTime: tomDateTime(new Date()) })
   );
 
-export const withdrawDecklist = (code: string, owner: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>) =>
-  call<null>(`${base(code)}/decklists?${listOwner(owner)}`, { method: 'DELETE' });
+export const withdrawDecklist = (
+  code: string,
+  owner: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>,
+  token: string | null
+) => call<null>(`${base(code)}/decklists?${listOwner(owner, token ?? undefined)}`, { method: 'DELETE' });
+
+/** Staff unlock a list, so the player can send it again from another device. */
+export const unlockDecklist = (code: string, owner: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>) =>
+  call<null>(`${base(code)}/decklists?${listOwner(owner)}`, { method: 'PATCH' });

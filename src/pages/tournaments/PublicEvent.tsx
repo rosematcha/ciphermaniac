@@ -18,7 +18,7 @@ import { decksEnabled, isSanctioned, type PublishedView, type TournamentView } f
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
-import { fetchPublished, fetchView } from '../../lib/tournament/api';
+import { fetchPublished, fetchView, identifyPlayer } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import {
   currentRound,
@@ -88,12 +88,22 @@ function createView(code: () => string) {
 
 const meKey = (code: string) => `cm-tournament-me:${code}`;
 const claimKey = (code: string) => `cm-tournament-player:${code}`;
+const tokenKey = (code: string) => `cm-tournament-report:${code}`;
 
 function storedClaim(code: string): PlayerClaim | null {
   try {
     return JSON.parse(localStorage.getItem(claimKey(code)) ?? 'null') as PlayerClaim | null;
   } catch {
     return null;
+  }
+}
+
+/** Sets or clears a remembered value. */
+function keep(key: string, value: string | null) {
+  if (value) {
+    localStorage.setItem(key, value);
+  } else {
+    localStorage.removeItem(key);
   }
 }
 
@@ -112,20 +122,38 @@ function createMe(view: () => TournamentView, onView: (view: PublishedView) => v
   const stored = storedClaim(code());
   const [claim, setClaim] = createSignal(stored);
   const [chosen, setChosen] = createSignal(stored ? localStorage.getItem(meKey(code())) : null);
+  const [reportToken, setReportToken] = createSignal(stored ? localStorage.getItem(tokenKey(code())) : null);
   function identified(found: Identified) {
-    localStorage.setItem(meKey(code()), found.key);
-    localStorage.setItem(claimKey(code()), JSON.stringify(found.claim));
+    keep(meKey(code()), found.key);
+    keep(claimKey(code()), JSON.stringify(found.claim));
     setChosen(found.key);
     setClaim(found.claim);
+    // A new token when this device just became the one that reports; none kept when another device is.
+    const token = found.reportToken ?? (found.reporter === false ? null : reportToken());
+    keep(tokenKey(code()), token);
+    setReportToken(token);
     onView(found.view);
   }
   function forget() {
-    localStorage.removeItem(meKey(code()));
-    localStorage.removeItem(claimKey(code()));
+    [meKey, claimKey, tokenKey].forEach(key => localStorage.removeItem(key(code())));
     setChosen(null);
     setClaim(null);
+    setReportToken(null);
   }
-  return { me: () => view().viewer.me ?? chosen(), claim, identified, forget };
+  // A device that said who the player is before reporting took a token asks for one now, if nobody has it.
+  async function claimNow(said: PlayerClaim) {
+    const answer = await identifyPlayer(code(), said).catch(() => null);
+    if (answer?.key) {
+      identified({ ...answer, claim: said, key: answer.key });
+    }
+  }
+  onMount(() => {
+    const said = claim();
+    if (said && !reportToken()) {
+      void claimNow(said);
+    }
+  });
+  return { me: () => view().viewer.me ?? chosen(), claim, reportToken, identified, forget };
 }
 
 function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
@@ -261,7 +289,7 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
   const [roundChoice, setRoundChoice] = createSignal<number | null>(null);
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal<string | null>(null);
-  const { me, claim, identified, forget } = createMe(
+  const { me, claim, reportToken, identified, forget } = createMe(
     () => props.view,
     view => props.onView(view)
   );
@@ -308,6 +336,7 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
         view={props.view}
         me={me()}
         claim={claim()}
+        reportToken={reportToken()}
         onIdentified={identified}
         onForget={forget}
         onView={props.onView}

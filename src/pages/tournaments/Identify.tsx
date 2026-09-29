@@ -18,6 +18,10 @@ export interface Identified {
   claim: PlayerClaim;
   key: string;
   view: PublishedView;
+  /** The token to keep, when this device just became the one that reports for the player. */
+  reportToken?: string;
+  /** False when another device reports for them. */
+  reporter?: boolean;
 }
 
 export function IdentifyForm(props: {
@@ -60,7 +64,7 @@ export function IdentifyForm(props: {
         setError(wrong());
         return;
       }
-      props.onFound({ claim, key: found.key, view: found.view });
+      props.onFound({ ...found, claim, key: found.key });
     } catch (err) {
       failure(err);
     } finally {

@@ -16,7 +16,7 @@ import { createMemo, createSignal, For, Show } from 'solid-js';
 import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
 import { DIVISION_LABELS, type Player, playerName, type Tournament } from '../../../shared/tournament/types';
 import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
-import { type Manage, setDeck } from '../../lib/tournament/api';
+import { type Manage, releaseReporter, setDeck } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import { matchHistory } from '../../lib/tournament/present';
 import { DeckCombo } from '../live/LiveDeck';
@@ -165,7 +165,9 @@ function FixedTableCell(props: { state: ManageState; player: Player }) {
 
 /**
  * Drop, reinstate, remove. A drop can be taken back only until the next round
- * is paired (see undropPlayer in shared/tournament/commands.ts).
+ * is paired (see undropPlayer in shared/tournament/commands.ts). Where players
+ * report, staff can also let another device report for a player, as when
+ * they change phones or someone else claimed them first.
  */
 function PlayerActions(props: { state: ManageState; manage: Manage; player: Player }) {
   const send = (type: 'dropPlayer' | 'undropPlayer' | 'removePlayer') =>
@@ -193,6 +195,14 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
         </Show>
         <Show when={dropped() !== null && dropped() !== latest()}>
           <span class='muted-cell'>Dropped after round {dropped()}</span>
+        </Show>
+        <Show when={props.manage.settings.playerReporting && dropped() === null}>
+          <ConfirmAction
+            label='Reset reporting'
+            question={`Let another device report for ${playerName(props.player)}?`}
+            confirmLabel='Reset'
+            onConfirm={() => void releaseReporter(props.manage.code, props.player.id).catch(() => undefined)}
+          />
         </Show>
         <ConfirmAction
           label='Remove'

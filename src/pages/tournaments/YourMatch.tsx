@@ -37,6 +37,8 @@ const errorText = (err: unknown) => (err instanceof Error ? err.message : String
 
 const SAID: Record<PlayerResult, string> = { win: 'won', loss: 'lost', tie: 'tied' };
 
+const NOT_REPORTER = 'Someone else is already reporting for this player. Ask staff if that’s wrong.';
+
 const NOTES = {
   open: 'You and your opponent both report. When the two reports match, the result counts.',
   reported: 'You can change your report until the timer runs out. After that it waits for your opponent’s.',
@@ -49,6 +51,8 @@ interface Props {
   me: string | null;
   /** What they said, which reports carry; null until they say. */
   claim: PlayerClaim | null;
+  /** The token of the device that reports for them, when this device is it. */
+  reportToken: string | null;
   onIdentified: (found: Identified) => void;
   onForget: () => void;
   onView: (view: PublishedView) => void;
@@ -105,7 +109,7 @@ function createReport(props: Props & { me: string }, found: () => Found | null) 
     setBusy(true);
     setError(null);
     try {
-      props.onView((await reportAsPlayer(props.view.code, claim, result)).view);
+      props.onView((await reportAsPlayer(props.view.code, claim, result, props.reportToken)).view);
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -115,7 +119,7 @@ function createReport(props: Props & { me: string }, found: () => Found | null) 
 
   async function settle(claim: PlayerClaim) {
     setSettling(true);
-    const answer = await identifyPlayer(props.view.code, claim).catch(() => null);
+    const answer = await identifyPlayer(props.view.code, claim, props.reportToken).catch(() => null);
     if (answer) {
       props.onView(answer.view);
     }
@@ -216,7 +220,7 @@ function MatchLine(props: Props & { me: string; found: Found; report: Report; op
   const names = () => namesById(props.view.tournament);
   const opponent = () => (props.found.match.p1 === props.me ? props.found.match.p2 : props.found.match.p1);
   const result = () => decided(props.report, props.found, props.me, props.view);
-  const canReport = () => Boolean(props.report.state()) && !props.open;
+  const canReport = () => Boolean(props.report.state()) && Boolean(props.reportToken) && !props.open;
   return (
     <Show
       when={opponent()}
@@ -290,7 +294,12 @@ function MatchBox(props: Props & { me: string }) {
   const started = () => props.view.tournament.pods.some(pod => pod.rounds.length > 0);
   const panel = () => {
     const state = report.state();
-    return state && !state.final && (open() || state.disputed) ? state : null;
+    return props.reportToken && state && !state.final && (open() || state.disputed) ? state : null;
+  };
+  /** Another device reports for this player: this one follows the table and says why it cannot report. */
+  const followsOnly = () => {
+    const state = report.state();
+    return !props.reportToken && state !== null && !state.final;
   };
   const division = () => divisionHeading(props.view.divisions[props.me] ?? null);
   return (
@@ -322,6 +331,9 @@ function MatchBox(props: Props & { me: string }) {
           </Match>
         </Switch>
       </div>
+      <Show when={followsOnly()}>
+        <p class='tm-you-panel tm-you-note muted'>{NOT_REPORTER}</p>
+      </Show>
       <Show when={panel() && found()}>
         {f => (
           <ReportPanel
