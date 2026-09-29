@@ -67,6 +67,19 @@ export async function sha256(value: string): Promise<string> {
 const USER_COLUMNS = 'users.id, name, email, avatar, pop_id, first_name, last_name, birth_date';
 
 /** The signed-in user for this request, or null. */
+/** Just the signed-in user's ID, for a check that needs no more of the account. */
+export async function currentUserId(db: D1Like, request: Request): Promise<string | null> {
+  const token = readCookie(request, SESSION_COOKIE);
+  if (!token) {
+    return null;
+  }
+  const row = await db
+    .prepare('SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?')
+    .bind(await sha256(token), Date.now())
+    .first<{ user_id: string }>();
+  return row?.user_id ?? null;
+}
+
 export async function currentUser(db: D1Like, request: Request): Promise<User | null> {
   const token = readCookie(request, SESSION_COOKIE);
   if (!token) {

@@ -265,6 +265,29 @@ async function tryChange(
   return { row: { ...row, ...changes, keys, reports, version, updatedAt: Date.now() }, version };
 }
 
+/** What the console's polls check before anything else: whether the copy they hold still stands. */
+export interface TournamentHead {
+  ownerId: string;
+  version: number;
+  reports: PlayerReport[];
+}
+
+export async function loadHead(db: D1Like, code: string): Promise<TournamentHead | null> {
+  const raw = await db
+    .prepare('SELECT owner_id, version, reports FROM tournaments WHERE code = ?')
+    .bind(code)
+    .first<{ owner_id: string; version: number; reports: string }>();
+  return raw && { ownerId: raw.owner_id, version: raw.version, reports: JSON.parse(raw.reports) as PlayerReport[] };
+}
+
+export async function isStaffMember(db: D1Like, code: string, userId: string): Promise<boolean> {
+  const staff = await db
+    .prepare('SELECT 1 AS yes FROM staff WHERE code = ? AND user_id = ?')
+    .bind(code, userId)
+    .first<{ yes: number }>();
+  return staff !== null;
+}
+
 export async function roleOf(db: D1Like, row: TournamentRow, user: User | null): Promise<Role | null> {
   if (!user) {
     return null;
@@ -272,11 +295,7 @@ export async function roleOf(db: D1Like, row: TournamentRow, user: User | null):
   if (user.id === row.ownerId) {
     return 'owner';
   }
-  const staff = await db
-    .prepare('SELECT 1 AS yes FROM staff WHERE code = ? AND user_id = ?')
-    .bind(row.code, user.id)
-    .first<{ yes: number }>();
-  return staff ? 'staff' : null;
+  return (await isStaffMember(db, row.code, user.id)) ? 'staff' : null;
 }
 
 /**

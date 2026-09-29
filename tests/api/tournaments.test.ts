@@ -953,8 +953,12 @@ test('at a TOM event an agreed report becomes a pending result for TOM', async (
   await playerSays(code, { popId: '7200001', result: 'tie' });
   const both = await playerSays(code, { popId: '7200004', result: 'tie' });
   assert.equal(both.status, 200, 'a TOM event goes by Player ID whatever its setting says');
+  const { version } = both.json.view;
+  assert.ok(version > 0, 'the console polls with the version it holds');
   mock.timers.tick(REPORT_WINDOW_MS);
-  const agreed = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })) as {
+  const agreed = (await hit(manage.onRequestGet as Handler, `/manage?since=${version}`, at(code), {
+    cookie: owner
+  })) as {
     json: { pending: { outcome: string }[]; tournament: TournamentView['tournament'] };
   };
   assert.equal(agreed.json.pending.length, 1, 'the console’s next look settles it');
@@ -1375,4 +1379,22 @@ test('a sync that would leave a TOM event with nobody in it is refused', async (
   assert.equal(emptied.status, 400);
   const kept = await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner });
   assert.equal(kept.json.tournament.players.length, tdf.players.length);
+});
+
+test('an idle console poll answers 204 to staff only, and a change or a due report sends the document', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const poll = (since: number, cookie?: string) =>
+    hit(manage.onRequestGet as Handler, `/manage?since=${since}`, at(code), { cookie });
+  const { version } = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  const seen = recordSql();
+  const idle = await poll(version, owner);
+  assert.deepEqual([idle.status, idle.json], [204, null]);
+  assert.ok(!seen.some(sql => sql.startsWith('SELECT * FROM tournaments')), 'the document is not read');
+  assert.equal((await poll(version)).status, 401, 'a stranger learns nothing from the short answer');
+  assert.equal((await poll(version, await signIn('Stranger'))).status, 403);
+  await addPlayers(code, owner, 1);
+  const changed = await poll(version, owner);
+  assert.equal(changed.status, 200);
+  assert.equal(changed.json.tournament.players.length, 1);
 });

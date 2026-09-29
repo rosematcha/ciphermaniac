@@ -40,7 +40,11 @@ export function createManage(code: () => string): ManageState {
 
   async function load() {
     try {
-      take(await fetchManage(code()));
+      const shown = data();
+      const next = await fetchManage(code(), shown?.code === code() ? shown.version : undefined);
+      if (next) {
+        take(next);
+      }
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof ApiError ? err : new ApiError(String(err), 0));
