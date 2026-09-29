@@ -83,7 +83,7 @@ test('every call goes to its endpoint with its body', async () => {
   await fetchView('ABC', 3);
   await fetchManage('ABC');
   await sendCommand('ABC', { type: 'pairRound', pod: 'mixed' });
-  await syncTournament('ABC', t);
+  await syncTournament('ABC', t, 'rev');
   await setDeck('ABC', '1', 'Gardevoir ex');
   await saveSettings('ABC', { decklistsOpen: true });
   await joinStaff('ABC', 'tok');

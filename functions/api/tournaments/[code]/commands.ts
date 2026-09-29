@@ -29,13 +29,13 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
   }
   const outcome = await mutateSettled(
     access.db,
-    access.row.code,
+    access.row,
     row => commandChanges(row, command, value?.localTime),
     value?.localTime
   );
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
-  await publishView(context.env.REPORTS, outcome.row);
+  await publishView(context.env, outcome.row);
   return privateJson(manageView({ ...access, row: outcome.row }));
 }

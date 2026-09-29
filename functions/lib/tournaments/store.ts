@@ -161,7 +161,6 @@ export interface Changes {
   reports?: PlayerReport[];
   settings?: TournamentSettings;
   decks?: Record<string, string>;
-  staffToken?: string;
 }
 
 /**
@@ -179,69 +178,114 @@ function reportsAfter(row: TournamentRow, changes: Changes): PlayerReport[] {
     : reports;
 }
 
+/** The columns a change writes, and their values: only what it changed. */
+function columnsFor(row: TournamentRow, changes: Changes): [string, string][] {
+  const { tournament, pending, settings, decks } = changes;
+  const columns: [string, string | false | undefined][] = [
+    ['state', tournament && stateJson(tournament)],
+    ['player_keys', tournament && JSON.stringify(assignKeys(tournament, row.keys))],
+    ['pending', pending && JSON.stringify(pending)],
+    ['settings', settings && JSON.stringify(settings)],
+    ['decks', decks && JSON.stringify(decks)],
+    // Reports follow the results and the reporting setting, so any of those rewrites them.
+    ['reports', (changes.reports ?? tournament ?? pending ?? settings) && JSON.stringify(reportsAfter(row, changes))]
+  ];
+  return columns.filter((column): column is [string, string] => typeof column[1] === 'string');
+}
+
 /**
- * Writes the changes if the row is still at `row.version`.
+ * Writes the changes if the row is still at `row.version`. Only the columns
+ * the change touches are written, so a result reported mid-event does not
+ * send the whole document back.
  * @returns The new version, or null when someone else wrote first
  */
 export async function saveTournament(db: D1Like, row: TournamentRow, changes: Changes): Promise<number | null> {
-  const tournament = changes.tournament ?? row.tournament;
-  const keys = changes.tournament ? assignKeys(tournament, row.keys) : row.keys;
+  const columns = columnsFor(row, changes);
   const result = (await db
     .prepare(
-      'UPDATE tournaments SET state = ?, pending = ?, reports = ?, settings = ?, player_keys = ?, decks = ?, ' +
-        'staff_token = ?, version = version + 1, updated_at = ? WHERE code = ? AND version = ?'
+      `UPDATE tournaments SET ${columns.map(([name]) => `${name} = ?, `).join('')}` +
+        'version = version + 1, updated_at = ? WHERE code = ? AND version = ?'
     )
-    .bind(
-      stateJson(tournament),
-      JSON.stringify(changes.pending ?? row.pending),
-      JSON.stringify(reportsAfter(row, changes)),
-      JSON.stringify(changes.settings ?? row.settings),
-      JSON.stringify(keys),
-      JSON.stringify(changes.decks ?? row.decks),
-      changes.staffToken ?? row.staffToken,
-      Date.now(),
-      row.code,
-      row.version
-    )
+    .bind(...columns.map(([, value]) => value), Date.now(), row.code, row.version)
     .run()) as { meta?: { changes?: number } };
   return (result.meta?.changes ?? 0) === 1 ? row.version + 1 : null;
 }
 
 /**
  * Reads, changes and writes, retrying from a fresh read when another write got
- * there first. `change` returns the changes or an error message.
+ * there first. Given the row a request already read, the first try uses it
+ * rather than reading it again. `change` returns the changes or an error message.
  */
 export async function mutate(
   db: D1Like,
-  code: string,
+  from: string | TournamentRow,
   change: (row: TournamentRow) => Changes | string
 ): Promise<{ row: TournamentRow; version: number } | { error: string; status: number }> {
+  const code = typeof from === 'string' ? from : from.code;
+  let known = typeof from === 'string' ? null : from;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const row = await loadTournament(db, code);
+    const row = known ?? (await loadTournament(db, code));
+    known = null;
     if (!row) {
       return { error: 'No such tournament', status: 404 };
     }
-    const changes = change(row);
-    if (typeof changes === 'string') {
-      return { error: changes, status: 400 };
-    }
-    const version = await saveTournament(db, row, changes).catch((error: unknown) => {
-      if (error instanceof TooLarge) {
-        return error;
-      }
-      throw error;
-    });
-    if (version instanceof TooLarge) {
-      return { error: version.message, status: 413 };
-    }
-    if (version !== null) {
-      // The keys as saved, so a player added by this change is already under a public key.
-      const keys = changes.tournament ? assignKeys(changes.tournament, row.keys) : row.keys;
-      const reports = reportsAfter(row, changes);
-      return { row: { ...row, ...changes, keys, reports, version, updatedAt: Date.now() }, version };
+    const outcome = await tryChange(db, row, change);
+    if (outcome) {
+      return outcome;
     }
   }
   return { error: 'Busy; try again', status: 409 };
+}
+
+/** One read-change-write; null when another write got there first. */
+async function tryChange(
+  db: D1Like,
+  row: TournamentRow,
+  change: (row: TournamentRow) => Changes | string
+): Promise<{ row: TournamentRow; version: number } | { error: string; status: number } | null> {
+  const changes = change(row);
+  if (typeof changes === 'string') {
+    return { error: changes, status: 400 };
+  }
+  const version = await saveTournament(db, row, changes).catch((error: unknown) => {
+    if (error instanceof TooLarge) {
+      return error;
+    }
+    throw error;
+  });
+  if (version instanceof TooLarge) {
+    return { error: version.message, status: 413 };
+  }
+  if (version === null) {
+    return null;
+  }
+  // The keys as saved, so a player added by this change is already under a public key.
+  const keys = changes.tournament ? assignKeys(changes.tournament, row.keys) : row.keys;
+  const reports = reportsAfter(row, changes);
+  return { row: { ...row, ...changes, keys, reports, version, updatedAt: Date.now() }, version };
+}
+
+/** What the console's polls check before anything else: whether the copy they hold still stands. */
+export interface TournamentHead {
+  ownerId: string;
+  version: number;
+  reports: PlayerReport[];
+}
+
+export async function loadHead(db: D1Like, code: string): Promise<TournamentHead | null> {
+  const raw = await db
+    .prepare('SELECT owner_id, version, reports FROM tournaments WHERE code = ?')
+    .bind(code)
+    .first<{ owner_id: string; version: number; reports: string }>();
+  return raw && { ownerId: raw.owner_id, version: raw.version, reports: JSON.parse(raw.reports) as PlayerReport[] };
+}
+
+export async function isStaffMember(db: D1Like, code: string, userId: string): Promise<boolean> {
+  const staff = await db
+    .prepare('SELECT 1 AS yes FROM staff WHERE code = ? AND user_id = ?')
+    .bind(code, userId)
+    .first<{ yes: number }>();
+  return staff !== null;
 }
 
 export async function roleOf(db: D1Like, row: TournamentRow, user: User | null): Promise<Role | null> {
@@ -251,18 +295,24 @@ export async function roleOf(db: D1Like, row: TournamentRow, user: User | null):
   if (user.id === row.ownerId) {
     return 'owner';
   }
-  const staff = await db
-    .prepare('SELECT 1 AS yes FROM staff WHERE code = ? AND user_id = ?')
-    .bind(row.code, user.id)
-    .first<{ yes: number }>();
-  return staff ? 'staff' : null;
+  return (await isStaffMember(db, row.code, user.id)) ? 'staff' : null;
 }
 
-export async function addStaff(db: D1Like, code: string, userId: string): Promise<void> {
-  await db
-    .prepare('INSERT OR IGNORE INTO staff (code, user_id, joined_at) VALUES (?, ?, ?)')
-    .bind(code, userId, Date.now())
-    .run();
+/**
+ * Joins the user to the event's staff if `token` is its invite token at the
+ * moment of writing: checked in the insert itself, so a join that read the
+ * old token cannot land after the organizer replaced it.
+ * @returns Whether the user joined
+ */
+export async function joinStaff(db: D1Like, code: string, userId: string, token: string): Promise<boolean> {
+  const result = (await db
+    .prepare(
+      'INSERT OR IGNORE INTO staff (code, user_id, joined_at) ' +
+        'SELECT code, ?, ? FROM tournaments WHERE code = ? AND staff_token = ?'
+    )
+    .bind(userId, Date.now(), code, token)
+    .run()) as { meta?: { changes?: number } };
+  return (result.meta?.changes ?? 0) === 1;
 }
 
 export interface StaffMember {
@@ -339,8 +389,17 @@ export async function listTournaments(db: D1Like, userId: string): Promise<Tourn
   }));
 }
 
-export async function clearStaff(db: D1Like, code: string): Promise<void> {
-  await db.prepare('DELETE FROM staff WHERE code = ?').bind(code).run();
+/**
+ * A new invite token and nobody on staff, in one transaction: no join can
+ * fall between the two and keep a place the old link gave.
+ */
+export async function rotateStaff(db: D1Like, code: string): Promise<void> {
+  await db.batch([
+    db
+      .prepare('UPDATE tournaments SET staff_token = ?, version = version + 1, updated_at = ? WHERE code = ?')
+      .bind(randomToken(16), Date.now(), code),
+    db.prepare('DELETE FROM staff WHERE code = ?').bind(code)
+  ]);
 }
 
 export async function ownedCount(db: D1Like, userId: string): Promise<number> {

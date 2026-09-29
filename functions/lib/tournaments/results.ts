@@ -74,11 +74,11 @@ export function settledChanges(row: TournamentRow, now: number, localTime?: unkn
  */
 export function mutateSettled(
   db: D1Like,
-  code: string,
+  from: string | TournamentRow,
   change: (row: TournamentRow) => Changes | string,
   localTime?: unknown
 ) {
-  return mutate(db, code, row => {
+  return mutate(db, from, row => {
     const settled = settledChanges(row, Date.now(), localTime) ?? {};
     const next = change({ ...row, ...settled });
     return typeof next === 'string' ? next : { ...settled, ...next };
@@ -90,6 +90,6 @@ export async function settleIfDue(db: D1Like, row: TournamentRow, localTime?: un
   if (dueResults(row.reports, Date.now()).length === 0) {
     return row;
   }
-  const outcome = await mutateSettled(db, row.code, () => ({}), localTime);
+  const outcome = await mutateSettled(db, row, () => ({}), localTime);
   return 'error' in outcome ? row : outcome.row;
 }

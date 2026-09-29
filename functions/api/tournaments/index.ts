@@ -106,7 +106,7 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
     const code = await createTournament(db, { ownerId: user.id, mode, tournament, settings });
     const row = await loadTournament(db, code);
     if (row) {
-      await publishView(env.REPORTS, row);
+      await publishView(env, row);
     }
     return privateJson({ code }, 201);
   } catch (error) {

@@ -1,5 +1,6 @@
 import { createEffect, createSignal, type JSX, onCleanup, type ParentComponent, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
+import { focusableIn, keepTabIn } from '../lib/focusTrap';
 
 interface BottomSheetProps {
   open: boolean;
@@ -9,13 +10,6 @@ interface BottomSheetProps {
   ariaLabel?: string;
   /** Sticky footer row (e.g. Clear + primary action). */
   footer?: JSX.Element;
-}
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-function focusableIn(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(el => !el.hasAttribute('disabled'));
 }
 
 /**
@@ -66,23 +60,7 @@ export const BottomSheet: ParentComponent<BottomSheetProps> = props => {
         props.onClose();
         return;
       }
-      if (e.key !== 'Tab') {
-        return;
-      }
-      const nodes = focusableIn(dialog);
-      if (nodes.length === 0) {
-        e.preventDefault();
-        return;
-      }
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
+      keepTabIn(dialog, e);
     };
 
     document.addEventListener('keydown', onKey);

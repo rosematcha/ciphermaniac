@@ -11,6 +11,7 @@ import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 's
 import { percentLabel, recordLabel, type Standing } from '../../../shared/tournament/standings';
 import type { Pod } from '../../../shared/tournament/types';
 import type { TournamentView } from '../../../shared/tournament/view';
+import { keepTabIn } from '../../lib/focusTrap';
 import { matchHistory } from '../../lib/tournament/present';
 import { DeckIcons } from './DeckIcons';
 import { type Identified, IdentifyForm } from './Identify';
@@ -43,11 +44,14 @@ export function PlayerSheet(props: {
       { defer: true }
     )
   );
-  // Focus goes into the sheet and back to what opened it; Escape closes it.
+  // Focus goes into the sheet, stays there, and goes back to what opened it; Escape closes it.
   const opener = document.activeElement as HTMLElement | null;
+  let sheet: HTMLDivElement | undefined;
   const onKey = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       props.onClose();
+    } else if (sheet) {
+      keepTabIn(sheet, event);
     }
   };
   onMount(() => document.addEventListener('keydown', onKey));
@@ -58,7 +62,7 @@ export function PlayerSheet(props: {
   return (
     <>
       <div class='tm-scrim' aria-hidden='true' onClick={() => props.onClose()} />
-      <div class='tm-sheet' role='dialog' aria-modal='true' aria-labelledby='tm-sheet-title'>
+      <div ref={sheet} class='tm-sheet' role='dialog' aria-modal='true' aria-labelledby='tm-sheet-title'>
         <div class='tm-sheet-head'>
           <div>
             <h2 id='tm-sheet-title'>

@@ -10,14 +10,20 @@
  * it has it, the console holds off result entry, since the site can no
  * longer see what TOM has.
  *
+ * Each sync names the copy of the event it follows on from, so a browser with
+ * an older copy of the file cannot overwrite rounds another one synced: the
+ * site refuses it, and the link waits to be reconnected, which replaces the
+ * site's copy with this file on purpose.
+ *
  * The link's state lives in createTomLink, shared by the file strip under the
  * console's tabs (TomStrip), the console's next step and the round panel.
  */
 
 import { createSignal, onCleanup, onMount, Show } from 'solid-js';
+import { revisionOf } from '../../../shared/tournament/revision';
 import { parseTdf } from '../../../shared/tournament/tdf';
 import type { Tournament } from '../../../shared/tournament/types';
-import { type Manage, syncTournament } from '../../lib/tournament/api';
+import { ApiError, type Manage, syncTournament } from '../../lib/tournament/api';
 import { tdfFilename, tdfText } from '../../lib/tournament/exportTdf';
 import {
   canLinkFiles,
@@ -38,6 +44,10 @@ const POLL_MS = 2000;
 /** 'none' before a file is linked (or on a browser that cannot hold one), 'reconnect' when permission lapsed. */
 export type LinkState = 'none' | 'reconnect' | 'watching';
 
+/** The browser took back permission to read the file, or it was moved or deleted. */
+const lostFile = (err: unknown) =>
+  err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'NotFoundError');
+
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 export const readTime = (at: Date) =>
@@ -51,21 +61,47 @@ export function createTomLink(props: { manage: () => Manage; onSynced: () => Pro
   const [askingWrite, setAskingWrite] = createSignal(false);
   let lastModified = 0;
   let lastSent = '';
+  /** The revision this browser's last sync left; null until it has synced, when the console's copy is the base. */
+  let synced: string | null = null;
   let reading = false;
   /** What asked to write, for focus to return to if the organizer keeps the file as it is. */
   let opener: HTMLElement | null = null;
   const code = () => props.manage().code;
+
+  /** Starts over from the console's copy: the next read sends the file whatever it holds. */
+  function restart() {
+    synced = null;
+    lastModified = 0;
+    lastSent = '';
+  }
 
   /** Sends the parsed file if it differs from what was last sent. */
   async function push(text: string) {
     const parsed = parseTdf(text);
     const json = JSON.stringify(parsed);
     if (json !== lastSent) {
-      await syncTournament(code(), parsed);
+      const base = synced ?? (await revisionOf(props.manage().tournament));
+      ({ revision: synced } = await syncTournament(code(), parsed, base).catch(conflicted));
       lastSent = json;
       await props.onSynced();
     }
     setReadAt(new Date());
+  }
+
+  /**
+   * Another copy was synced since this one: stop following the file until the
+   * organizer reconnects it. Without a linked file, the next upload replaces
+   * the copy the console now shows.
+   */
+  async function conflicted(err: unknown): Promise<never> {
+    if (err instanceof ApiError && err.status === 409) {
+      restart();
+      if (handle()) {
+        setState('reconnect');
+      }
+      await props.onSynced();
+    }
+    throw err;
   }
 
   async function tick(force = false) {
@@ -85,6 +121,10 @@ export function createTomLink(props: { manage: () => Manage; onSynced: () => Pro
       }
     } catch (err) {
       // TOM may be halfway through a save; the next look reads the finished file.
+      // A file the page may no longer read, or that is gone, will not come back on its own.
+      if (lostFile(err)) {
+        setState('reconnect');
+      }
       setError(errorText(err));
     } finally {
       reading = false;
@@ -114,8 +154,9 @@ export function createTomLink(props: { manage: () => Manage; onSynced: () => Pro
   async function link() {
     try {
       const picked = await pickTdf();
-      await rememberHandle(code(), picked);
-      lastModified = 0;
+      // Remembering only saves picking the file again after a reload; a browser that cannot keep it still follows it.
+      await rememberHandle(code(), picked).catch(() => undefined);
+      restart();
       await watch(picked, true);
     } catch (err) {
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
@@ -142,6 +183,18 @@ export function createTomLink(props: { manage: () => Manage; onSynced: () => Pro
   const exported = (tournament: Tournament) =>
     tdfText({ tournament, pending: props.manage().pending, finished: false });
 
+  /** Sends the file as it is now and writes the results into it, with the watch held off meanwhile. */
+  async function readAndWrite(current: TdfHandle) {
+    reading = true;
+    try {
+      const text = await (await current.getFile()).text();
+      await push(text);
+      await writeFile(current, exported(parseTdf(text)));
+    } finally {
+      reading = false;
+    }
+  }
+
   /**
    * Writes the results into TOM's file as it is now, not as the site last saw
    * it: TOM may have saved since, and its newer rounds must survive the write.
@@ -152,9 +205,7 @@ export function createTomLink(props: { manage: () => Manage; onSynced: () => Pro
     const current = handle();
     try {
       if (current && state() === 'watching' && (await ensurePermission(current, 'readwrite', true))) {
-        const text = await (await current.getFile()).text();
-        await push(text);
-        await writeFile(current, exported(parseTdf(text)));
+        await readAndWrite(current);
         await tick();
         return;
       }

@@ -101,6 +101,16 @@ test('a forty-player field with five rounds of history pairs rematch-free', () =
   }
 });
 
+test('a field of thousands pairs everyone, without the walk copying the field at every step', () => {
+  const entrants = Array.from({ length: 5001 }, (_, i) => ({ id: `p${i}`, points: 0 }));
+  const started = performance.now();
+  const pairings = pairSwiss(entrants, noHistory, seededRandom(1));
+  assert.ok(performance.now() - started < 1000, 'well inside a request');
+  const seated = pairings.flatMap(p => [p.p1, p.p2]).filter(id => id !== null);
+  assert.equal(new Set(seated).size, 5001);
+  assert.equal(pairings.at(-1)?.p2, null, 'the odd player out has the bye');
+});
+
 test('seeds a top cut and advances winners in bracket order', () => {
   const seeds = ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'];
   assert.deepEqual(pairTopCut(seeds), [

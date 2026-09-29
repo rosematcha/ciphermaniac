@@ -165,14 +165,20 @@ export async function fetchPublished(code: string): Promise<PublishedView | null
 export const fetchView = (code: string, since?: number) =>
   call<TournamentView | null>(since ? `${base(code)}?since=${since}` : base(code));
 
-export const fetchManage = (code: string) => call<Manage>(`${base(code)}/manage`);
+/** The console's copy, or null when it has not changed since `since`. */
+export const fetchManage = (code: string, since?: number) =>
+  call<Manage | null>(since ? `${base(code)}/manage?since=${since}` : `${base(code)}/manage`);
 
 /** Sends one command, stamped with the venue's clock (see functions/lib/tournaments/commandContext.ts). */
 export const sendCommand = (code: string, command: Command) =>
   call<Manage>(`${base(code)}/commands`, json('POST', { command, localTime: tomDateTime(new Date()) }));
 
-export const syncTournament = (code: string, tournament: Tournament) =>
-  call<{ version: number; pending: PendingResult[] }>(`${base(code)}/sync`, json('PUT', tournament));
+/** Sends the parsed .tdf, taken only if the site still holds the copy `revision` names (see shared/tournament/revision.ts). */
+export const syncTournament = (code: string, tournament: Tournament, revision: string) =>
+  call<{ version: number; pending: PendingResult[]; revision: string }>(
+    `${base(code)}/sync`,
+    json('PUT', { tournament, base: revision })
+  );
 
 export const setDeck = (code: string, playerId: string, archetype: string | null) =>
   call<Manage>(`${base(code)}/decks`, json('PUT', { playerId, archetype }));

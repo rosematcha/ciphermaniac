@@ -18,7 +18,8 @@
  * The archetype stays on the list until staff apply it. A signed-in
  * submitter's profile is saved to their account unless it already names
  * another Player ID.
- * DELETE — withdraws the list under the details and token in the query.
+ * DELETE — withdraws the list under the details and token in the query,
+ * while submission is open.
  * PATCH — staff unlock the list under the details in the query.
  */
 
@@ -269,7 +270,7 @@ async function register(
   // may have added them meanwhile, or the organizer closed the event.
   const outcome = await mutateSettled(
     access.db,
-    row.code,
+    row,
     current => {
       if (decklistPlayer(current.tournament, profile, isSanctioned(current)) !== undefined) {
         return ALREADY_IN;
@@ -283,22 +284,34 @@ async function register(
   if ('error' in outcome) {
     return { registration: outcome.error === ALREADY_IN ? 'matched' : 'not-added', row };
   }
-  await publishView(context.env.REPORTS, outcome.row);
+  await publishView(context.env, outcome.row);
   return { registration: 'added', row: outcome.row };
 }
 
-/** A player resubmits a handful of times at most; 20 per address per ten minutes leaves room. */
-const rateLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 20 });
+/**
+ * A whole field can send its lists from one venue's Wi-Fi, so the limit is
+ * counted per event and sized for a room: 150 submissions per address per
+ * event per ten minutes, with a looser cap across every event so one address
+ * cannot flood many.
+ */
+const eventLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 150 });
+const addressLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 400 });
 
 /** @internal exposed for tests */
 export function _resetRateLimitStore(): void {
-  rateLimiter.reset();
+  eventLimiter.reset();
+  addressLimiter.reset();
 }
 
-const limited = (request: Request) => !rateLimiter.check(request.headers.get('CF-Connecting-IP') ?? 'unknown').allowed;
+function limited(context: Context<'code'>): boolean {
+  const address = context.request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  const code = String(context.params.code).toUpperCase();
+  const forEvent = eventLimiter.check(`${code}:${address}`).allowed;
+  return !(addressLimiter.check(address).allowed && forEvent);
+}
 
 export async function onRequestPut(context: Context<'code'>): Promise<Response> {
-  if (limited(context.request)) {
+  if (limited(context)) {
     return jsonError('Too many submissions. Try again later.', 429);
   }
   if (!sameOrigin(context.request)) {
@@ -332,7 +345,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
 }
 
 export async function onRequestDelete(context: Context<'code'>): Promise<Response> {
-  if (limited(context.request)) {
+  if (limited(context)) {
     return jsonError('Too many requests. Try again later.', 429);
   }
   if (!sameOrigin(context.request)) {
@@ -342,21 +355,32 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
   if (access instanceof Response) {
     return access;
   }
+  if (!access.row.settings.decklistsOpen) {
+    return jsonError('Decklist submission is closed', 403);
+  }
   const key = claimFrom(context.request, isSanctioned(access.row));
   if (!key) {
     return jsonError('Say whose list to withdraw', 400);
   }
   const held = new URL(context.request.url).searchParams.get('token') ?? '';
   const { db, row } = access;
-  const list = await db
-    .prepare('SELECT owner_token FROM decklists WHERE code = ? AND user_id = ?')
-    .bind(row.code, key)
-    .first<{ owner_token: string | null }>();
-  if (list?.owner_token && list.owner_token !== (held ? await sha256(held) : '')) {
+  // The token is checked in the delete itself, so a list replaced meanwhile is not the one withdrawn.
+  const deleted = (await db
+    .prepare('DELETE FROM decklists WHERE code = ? AND user_id = ? AND (owner_token IS NULL OR owner_token = ?)')
+    .bind(row.code, key, held ? await sha256(held) : '')
+    .run()) as { meta?: { changes?: number } };
+  if ((deleted.meta?.changes ?? 0) === 0 && (await listExists(db, row.code, key))) {
     return jsonError(LOCKED, 409);
   }
-  await db.prepare('DELETE FROM decklists WHERE code = ? AND user_id = ?').bind(row.code, key).run();
   return NO_CONTENT();
+}
+
+async function listExists(db: Access['db'], code: string, key: string): Promise<boolean> {
+  const found = await db
+    .prepare('SELECT 1 AS yes FROM decklists WHERE code = ? AND user_id = ?')
+    .bind(code, key)
+    .first<{ yes: number }>();
+  return found !== null;
 }
 
 const NO_CONTENT = () => new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });

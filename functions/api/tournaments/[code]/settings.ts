@@ -30,13 +30,13 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if (access.role !== 'owner' && OPENNESS[next.deckVisibility] > OPENNESS[access.row.settings.deckVisibility]) {
     return jsonError('Only the organizer can show decks sooner', 403);
   }
-  const outcome = await mutate(access.db, access.row.code, row => {
+  const outcome = await mutate(access.db, access.row, row => {
     const settings = readSettings(change, row.settings);
     return settings ? { settings } : 'Not a settings change';
   });
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
-  await publishView(context.env.REPORTS, outcome.row);
+  await publishView(context.env, outcome.row);
   return privateJson(manageView({ ...access, row: outcome.row }));
 }
