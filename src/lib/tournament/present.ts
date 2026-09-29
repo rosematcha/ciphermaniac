@@ -16,6 +16,7 @@ import {
 import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
 import {
   eliminationResult,
+  percentLabel,
   placeFinals,
   recordLabel,
   sideResult,
@@ -397,4 +398,27 @@ export function reportState(
   const locked = isLocked(mine, now);
   const agreed = theirs?.outcome === mine.outcome && locked && isLocked(theirs, now);
   return { chosen: asResult(mine.outcome, seat), disputed: isDisputed(forMatch), locked, final: agreed };
+}
+
+const ordinal = (n: number) => {
+  const tens = n % 100;
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10];
+  return `${n}${suffix ?? 'th'}`;
+};
+
+/** What put the last player in above the first one out: points, then OWP, then OOWP. */
+export function cutSplit(rows: readonly Standing[], cut: number): string | null {
+  const inside = rows[cut - 1];
+  const outside = rows[cut];
+  if (!inside || !outside) {
+    return null;
+  }
+  const lead = `${ordinal(cut)} and ${ordinal(cut + 1)} split on`;
+  if (inside.points !== outside.points) {
+    return `${lead} points: ${inside.points} / ${outside.points}`;
+  }
+  if (inside.owp !== outside.owp) {
+    return `${lead} OWP: ${percentLabel(inside.owp)} / ${percentLabel(outside.owp)}`;
+  }
+  return `${lead} OOWP: ${percentLabel(inside.oowp)} / ${percentLabel(outside.oowp)}`;
 }

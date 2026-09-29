@@ -19,6 +19,7 @@ import {
   champion,
   clockLabel,
   currentMatchOf,
+  cutSplit,
   deckBreakdown,
   divisionHeading,
   divisionLookup,
@@ -271,4 +272,23 @@ test('the status sentence names the round, what is still playing and the clock',
     'Registration'
   ]);
   assert.deepEqual(statusParts(open, true, null), ['Finished']);
+});
+
+test('the cut line says what split the last player in from the first one out', () => {
+  const row = (place: number, points: number, owp: number, oowp = 0.5) => ({
+    playerId: String(place),
+    place,
+    record: { wins: 0, losses: 0, ties: 0 },
+    points,
+    owp,
+    oowp,
+    dropped: false,
+    late: false
+  });
+  assert.equal(cutSplit([row(1, 9, 0.6), row(2, 6, 0.7)], 1), '1st and 2nd split on points: 9 / 6');
+  assert.equal(cutSplit([row(1, 6, 0.6397), row(2, 6, 0.4833)], 1), '1st and 2nd split on OWP: 63.97% / 48.33%');
+  assert.equal(cutSplit([row(1, 6, 0.5, 0.61), row(2, 6, 0.5, 0.52)], 1), '1st and 2nd split on OOWP: 61.00% / 52.00%');
+  assert.equal(cutSplit([row(1, 6, 0.5)], 8), null, 'no one outside the cut');
+  const long = Array.from({ length: 12 }, (_, i) => row(i + 1, 12 - i, 0.5));
+  assert.match(cutSplit(long, 11) ?? '', /^11th and 12th/);
 });

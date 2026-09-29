@@ -1099,6 +1099,43 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
 }
 
+/* ---------- Standings ---------- */
+.tm-standings .tm-seat-link {
+  gap: 10px;
+}
+.tm-standings .tm-who {
+  display: grid;
+  min-width: 0;
+}
+.tm-standings .tm-who-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-place {
+  color: var(--muted);
+}
+tr.is-in .tm-place {
+  color: var(--fg);
+  font-weight: 600;
+}
+.tm-points {
+  font-weight: 700;
+}
+/* The cut: a marigold hairline and what split the last one in from the first one out. */
+.data tr.tm-cut-line td {
+  height: auto;
+  padding: 6px 14px;
+  border-top: 1px solid var(--accent);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.tm-cut-top {
+  margin-right: 10px;
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
 /* ---------- Round header and clock ---------- */
 .tm-actions-bar:empty {
   display: none;
