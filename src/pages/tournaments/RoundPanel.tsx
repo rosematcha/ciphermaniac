@@ -77,6 +77,8 @@ const SCORE: Partial<Record<Outcome, string>> = {
 
 interface ResultProps {
   match: Match;
+  /** Nothing can be entered: the result shows, the controls do not. */
+  locked: boolean;
   pod: Pod;
   round: Round;
   manage: Manage;
@@ -164,7 +166,7 @@ function Result(props: ResultProps) {
                 <span class='tm-result-sub'> not in TOM yet</span>
               </Show>
             </span>
-            <span class='tm-result-acts'>
+            <span class='tm-result-acts' classList={{ 'is-locked': props.locked }}>
               <Show when={lone()}>
                 {report => (
                   <button
@@ -247,7 +249,61 @@ function RoomFilter(props: {
   );
 }
 
-export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod }) {
+interface RoundBarProps {
+  state: ManageState;
+  pod: Pod;
+  round: Round;
+  tom: boolean;
+  /** The round can still be acted on: its latest, no champion, not TOM's. */
+  live: boolean;
+  played: number;
+  open: number;
+  waiting: boolean;
+  nothingReported: boolean;
+  swapMode: boolean;
+  onPick: (round: number) => void;
+  onSwap: () => void;
+}
+
+/** The round's bar: the picker and progress, then what can be done to it (swap, re-pair, delete, the clock). */
+function RoundBar(props: RoundBarProps) {
+  const swiss = () => props.round.kind === 'swiss';
+  const running = () => props.live && props.round.status !== 'finished';
+  return (
+    <div class='tm-box-bar'>
+      <RoundPicker pod={props.pod} selected={props.round.number} onSelect={props.onPick} />
+      <span class='muted tm-num'>
+        {STATUS_LABELS[props.round.status]} · {props.played - props.open} of {props.played} in
+      </span>
+      <span class='tm-grow' />
+      <Show when={props.tom}>
+        <span class='muted'>Paired in TOM</span>
+      </Show>
+      <Show when={running() && swiss()}>
+        <button
+          type='button'
+          class='btn btn-ghost tm-small'
+          aria-pressed={props.swapMode}
+          onClick={() => props.onSwap()}
+        >
+          {props.swapMode ? 'Cancel swap' : 'Swap players'}
+        </button>
+      </Show>
+      <Show when={props.live && swiss() && props.open > 0 && !props.waiting}>
+        <RepairControl state={props.state} pod={props.pod} label='Re-pair round' />
+      </Show>
+      <Show when={props.live && props.nothingReported}>
+        <DeleteRound state={props.state} pod={props.pod} round={props.round} />
+      </Show>
+      <Show when={running()}>
+        <ClockControls state={props.state} pod={props.pod} round={props.round} />
+      </Show>
+    </div>
+  );
+}
+
+/** `locked`: a TOM event whose file needs reconnecting takes no results until the site can see it again. */
+export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod; locked?: boolean }) {
   const tom = () => props.manage.mode === 'tom';
   const latest = () => currentRound(props.pod);
   const [picked, setPicked] = createSignal<number | null>(null);
@@ -363,38 +419,23 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
       <Show when={round()} fallback={<p class='muted'>No rounds yet.</p>}>
         {r => (
           <section class='tm-box'>
-            <div class='tm-box-bar'>
-              <RoundPicker pod={props.pod} selected={r().number} onSelect={setPicked} />
-              <span class='muted tm-num'>
-                {STATUS_LABELS[r().status]} · {played().length - openCount()} of {played().length} in
-              </span>
-              <span class='tm-grow' />
-              <Show when={tom()}>
-                <span class='muted'>Paired in TOM</span>
-              </Show>
-              <Show when={live() && r().kind === 'swiss' && r().status !== 'finished'}>
-                <button
-                  type='button'
-                  class='btn btn-ghost tm-small'
-                  aria-pressed={swapMode()}
-                  onClick={() => {
-                    setSwapMode(!swapMode());
-                    setSwapPick(null);
-                  }}
-                >
-                  {swapMode() ? 'Cancel swap' : 'Swap players'}
-                </button>
-              </Show>
-              <Show when={live() && r().kind === 'swiss' && openCount() > 0 && waiting().length === 0}>
-                <RepairControl state={props.state} pod={props.pod} label='Re-pair round' />
-              </Show>
-              <Show when={live() && nothingReported()}>
-                <DeleteRound state={props.state} pod={props.pod} round={r()} />
-              </Show>
-              <Show when={live() && r().status !== 'finished'}>
-                <ClockControls state={props.state} pod={props.pod} round={r()} />
-              </Show>
-            </div>
+            <RoundBar
+              state={props.state}
+              pod={props.pod}
+              round={r()}
+              tom={tom()}
+              live={live()}
+              played={played().length}
+              open={openCount()}
+              waiting={waiting().length > 0}
+              nothingReported={nothingReported()}
+              swapMode={swapMode()}
+              onPick={setPicked}
+              onSwap={() => {
+                setSwapMode(!swapMode());
+                setSwapPick(null);
+              }}
+            />
             <Show when={swapMode()}>
               <div class='tm-box-bar tm-ask'>
                 <span>Pick two players to trade seats.</span>
@@ -415,11 +456,12 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               decks={shownDecks(props.manage)}
               pending={props.manage.pending}
               selected={new Set(swapPick() ? [swapPick() as string] : [])}
-              onReport={swapMode() ? undefined : report}
+              onReport={swapMode() || props.locked ? undefined : report}
               onPlayer={swapMode() ? pickForSwap : undefined}
               confirming={asking()}
               extra={match => (
                 <Result
+                  locked={props.locked ?? false}
                   match={match}
                   pod={props.pod}
                   round={r()}

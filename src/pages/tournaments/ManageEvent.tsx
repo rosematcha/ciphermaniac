@@ -30,7 +30,7 @@ import { TournamentHero } from './Hero';
 import { createManage, type ManageState } from './manageState';
 import { RoundPanel } from './RoundPanel';
 import { SignIn } from './SignIn';
-import { TomSyncPanel } from './TomSyncPanel';
+import { createTomLink, type TomLink, TomNextStep, TomStrip } from './TomSyncPanel';
 
 // Pairings is the tab a running event lives on, so only it loads with the page;
 // the others load when opened (decklists are read before the event, the
@@ -65,14 +65,42 @@ function createNow() {
 
 const NO_PROGRESS: PodProgress = { round: undefined, tables: 0, open: 0, champion: null };
 
+/** What a TOM event's head adds to the round: whether TOM has every result entered here. */
+function tomPart(tom: TomLink): string {
+  if (tom.locked()) {
+    return 'reconnect the .tdf to enter results';
+  }
+  const n = tom.pending();
+  return n ? `${n} result${n === 1 ? '' : 's'} to write` : 'TOM has every result';
+}
+
+/** The pair step's button: disabled, with the reason under it, until every table is in. */
+function PairButton(props: {
+  state: ManageState;
+  pod: Pod | undefined;
+  step: Extract<NextStep, { kind: 'pair' }>;
+  ready: boolean;
+}) {
+  return (
+    <button
+      type='button'
+      class='btn btn-primary'
+      disabled={!props.ready || props.state.busy()}
+      onClick={() => props.pod && void props.state.send({ type: 'pairRound', pod: props.pod.category })}
+    >
+      {props.step.label}
+    </button>
+  );
+}
+
 /**
  * The console's head, the same on every tab: the event, where its round
  * stands, and the one step to take next. A TOM event's next step belongs to
- * its file (see TomSyncPanel), so here it has none.
+ * its file: reconnect it, write the results TOM does not have, or read it
+ * again (see TomSyncPanel).
  */
-function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined }) {
+function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined; tom: TomLink | null }) {
   const now = createNow();
-  const info = () => props.manage.tournament.info;
   const finished = () => props.manage.settings.finished;
   const progress = () => (props.pod ? podProgress(props.pod, props.manage.pending) : NO_PROGRESS);
   const clock = () => {
@@ -81,37 +109,26 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined 
   };
   const waiting = () =>
     props.manage.mode === 'swiss' && props.pod ? unseated(props.manage.tournament, props.pod).length : 0;
-  const status = () =>
-    [...statusParts(progress(), finished(), clock()), ...(waiting() ? [`${waiting()} not seated`] : [])].join(' · ');
-  const step = () => (props.manage.mode === 'tom' ? ({ kind: 'none' } as NextStep) : nextStep(progress(), finished()));
+  const status = () => {
+    const { tom } = props;
+    const extra = tom ? [tomPart(tom)] : waiting() ? [`${waiting()} not seated`] : [];
+    return [...statusParts(progress(), finished(), tom ? null : clock()), ...extra].join(' · ');
+  };
+  const step = () => (props.tom ? ({ kind: 'none' } as NextStep) : nextStep(progress(), finished()));
   const active = () => (props.pod ? activeIds(props.manage.tournament, props.pod).length : 0);
-  const pair = (s: Extract<NextStep, { kind: 'pair' }>) => {
-    const canStart = s.label !== 'Pair round 1' || active() >= 2;
-    return (
-      <button
-        type='button'
-        class='btn btn-primary'
-        disabled={!s.ready || !canStart || props.state.busy()}
-        onClick={() => props.pod && void props.state.send({ type: 'pairRound', pod: props.pod.category })}
-      >
-        {s.label}
-      </button>
-    );
-  };
-  const reason = () => {
+  const pairStep = () => {
     const s = step();
-    if (s.kind !== 'pair') {
-      return undefined;
-    }
-    return s.label === 'Pair round 1' && active() < 2 ? 'Add players to pair' : s.reason;
+    return s.kind === 'pair' ? s : null;
   };
+  const firstBlocked = () => pairStep()?.label === 'Pair round 1' && active() < 2;
+  const reason = () => (firstBlocked() ? 'Add players to pair' : pairStep()?.reason);
   function close() {
     const { code } = props.manage;
     void props.state.run(() => saveSettings(code, { finished: true }));
   }
   return (
     <TournamentHero
-      title={info().name}
+      title={props.manage.tournament.info.name}
       status={status()}
       meta={
         <>
@@ -131,8 +148,9 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined 
       }
       action={
         <Switch>
-          <Match when={step().kind === 'pair' && (step() as Extract<NextStep, { kind: 'pair' }>)}>
-            {s => pair(s())}
+          <Match when={props.tom}>{tom => <TomNextStep link={tom()} />}</Match>
+          <Match when={pairStep()}>
+            {s => <PairButton state={props.state} pod={props.pod} step={s()} ready={s().ready && !firstBlocked()} />}
           </Match>
           <Match when={step().kind === 'close'}>
             <ConfirmAction
@@ -161,13 +179,17 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
   const pod = createMemo(() => pods().find(p => p.category === podChoice()) ?? pods()[0]);
   const names = createMemo(() => namesById(props.manage.tournament));
   const divisionOf = createMemo(() => divisionLookup(props.manage.tournament));
+  // A TOM event's file is linked for as long as the console is open, whatever the tab.
+  const tom =
+    // eslint-disable-next-line solid/reactivity -- an event's mode never changes, and the link lives as long as the console
+    props.manage.mode === 'tom'
+      ? createTomLink({ manage: () => props.manage, onSynced: () => props.state.load() })
+      : null;
   return (
     <div class='tm-page'>
-      <Hero state={props.state} manage={props.manage} pod={pod()} />
-      <Show when={props.manage.mode === 'tom'}>
-        <TomSyncPanel manage={props.manage} onSynced={props.state.load} />
-      </Show>
+      <Hero state={props.state} manage={props.manage} pod={pod()} tom={tom} />
       <Tabs options={TABS} selected={tab()} onSelect={setTab} ariaLabel='Event sections' />
+      <Show when={tom}>{link => <TomStrip link={link()} />}</Show>
       <Show when={pods().length > 1 && (tab() === 'round' || tab() === 'standings')}>
         <Segmented
           options={pods().map(p => ({ value: p.category, label: POD_LABELS[p.category] }))}
@@ -179,7 +201,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
       <ErrorLine message={props.state.error()} />
       <Show when={tab() === 'round'}>
         <Show when={pod()} fallback={<p class='muted'>Add players to start pairing.</p>}>
-          {p => <RoundPanel state={props.state} manage={props.manage} pod={p()} />}
+          {p => <RoundPanel state={props.state} manage={props.manage} pod={p()} locked={tom?.locked() ?? false} />}
         </Show>
       </Show>
       <Show when={tab() === 'players'}>
