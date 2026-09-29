@@ -100,11 +100,25 @@ test('a signed-out organizer is offered sign-in, not a console @mobile', async (
 test('the big screen hides the site chrome and shows a QR code to the event', async ({ page }) => {
   await mockApi(page);
   await page.goto(`/t/${CODE}?screen=1`);
-  // One row per player, alphabetical by last name: seven players are in round 2.
-  await expect(page.locator('.tm-screen-list li')).toHaveCount(7);
-  await expect(page.locator('.tm-screen-name').first()).toHaveText('Frances Allen');
+  // One row per table in order, then the bye: round 2 seats seven players at three tables.
+  const rows = page.locator('.tm-screen-tables li');
+  await expect(rows).toHaveCount(4);
+  await expect(rows.first().locator('.tm-screen-table')).toHaveText('1');
   await expect(page.locator('.topnav')).toBeHidden();
   await expect(page.getByRole('img', { name: 'Event page QR code' })).toBeVisible();
+});
+
+test('the big screen remembers two per row and cycles its scroll speed with S', async ({ page }) => {
+  await mockApi(page);
+  await page.goto(`/t/${CODE}?screen=1`);
+  await expect(page.getByRole('tab', { name: 'Slow' })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('s');
+  await expect(page.getByRole('tab', { name: 'Moderate' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('button', { name: 'Show two per row' }).click();
+  await expect(page.locator('.tm-screen')).toHaveClass(/is-two/);
+  await page.reload();
+  await expect(page.locator('.tm-screen')).toHaveClass(/is-two/);
+  await expect(page.getByRole('tab', { name: 'Moderate' })).toHaveAttribute('aria-selected', 'true');
 });
 
 test('before round 1 the big screen lists everyone registered, by last name', async ({ page }) => {
@@ -113,8 +127,8 @@ test('before round 1 the big screen lists everyone registered, by last name', as
   await page.goto(`/t/${CODE}?screen=1`);
   const players = VIEW.tournament.players.filter(p => p.droppedAfter === null);
   await expect(page.locator('.tm-screen-registered li')).toHaveCount(players.length);
-  await expect(page.locator('.tm-screen-name').first()).toHaveText('Frances Allen');
-  await expect(page.locator('.tm-screen-round')).toHaveText(`${players.length} registered`);
+  await expect(page.locator('.tm-screen-registered li').first()).toHaveText('Frances Allen');
+  await expect(page.locator('.tm-screen-status')).toHaveText(`Registration · ${players.length} players`);
 });
 
 test('before round 1 the public page lists everyone registered @mobile', async ({ page }) => {

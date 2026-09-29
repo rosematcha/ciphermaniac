@@ -1,0 +1,215 @@
+/* The big screen (/t/:code?screen=1), loaded with its chunk (BigScreen).
+   Read from across a room: sizes scale with the screen between two steps of
+   the type scale, and the clock is the largest thing on it. */
+body.tm-screen-mode .topnav,
+body.tm-screen-mode .site-footer,
+body.tm-screen-mode .live-banner {
+  display: none;
+}
+body.tm-screen-mode main.page {
+  max-width: none;
+  padding: 0;
+}
+.tm-screen {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  row-gap: var(--space-4);
+  height: 100dvh;
+  padding: var(--space-5) var(--space-6);
+}
+.tm-screen-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.tm-screen-text {
+  flex: 1;
+  min-width: 0;
+}
+.tm-screen-title {
+  margin: 0;
+  font-size: clamp(var(--text-xl), 2.4vw, calc(var(--text-2xl) * 1.4));
+}
+.tm-screen-status {
+  margin: 6px 0 0;
+  font-size: clamp(var(--text-lg), 1.6vw, var(--text-2xl));
+}
+.tm-screen-join {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.tm-screen-join .tm-qr {
+  width: clamp(72px, 6.5vw, 120px);
+}
+.tm-qr {
+  display: block;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.tm-screen-code {
+  margin: 0;
+  font-size: clamp(var(--text-xl), 2vw, calc(var(--text-2xl) * 1.2));
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.tm-screen-url {
+  margin: 2px 0 0;
+  font-size: var(--text-base);
+  color: var(--muted);
+  word-break: break-all;
+}
+.tm-screen-clock {
+  font-size: clamp(calc(var(--text-2xl) * 1.6), 7vw, calc(var(--text-2xl) * 4.4));
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+}
+.tm-screen-start {
+  display: grid;
+  justify-items: end;
+  margin: 0;
+  color: var(--muted);
+}
+.tm-screen-start small {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.tm-screen-start span {
+  font-size: clamp(var(--text-2xl), 4.5vw, calc(var(--text-2xl) * 2.6));
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.tm-screen-main {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.tm-screen-main::-webkit-scrollbar {
+  display: none;
+}
+
+/* Tables in order: the number, then both players. One per row by default,
+   two per row where there are many. */
+.tm-screen-pod + .tm-screen-pod {
+  margin-top: var(--space-5);
+}
+.tm-screen-pod-head {
+  margin: 0 0 8px;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+.tm-screen-tables {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: clamp(var(--text-xl), 2.2vw, calc(var(--text-2xl) * 1.5));
+}
+.tm-screen-tables li {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 1em;
+  padding: 0.35em 0;
+  border-bottom: 1px solid var(--rule);
+  break-inside: avoid;
+}
+.tm-screen.is-two .tm-screen-tables {
+  columns: 2;
+  column-gap: var(--space-6);
+  font-size: clamp(var(--text-lg), 1.5vw, var(--text-2xl));
+}
+.tm-screen-table {
+  font-size: 1.6em;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+.tm-screen-seat {
+  display: grid;
+  min-width: 0;
+}
+.tm-screen-seat + .tm-screen-seat {
+  padding-left: 1em;
+  border-left: 1px solid var(--rule);
+}
+.tm-screen-seat.is-out {
+  color: var(--muted);
+}
+.tm-screen-name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-screen-name small {
+  margin-right: 0.4em;
+  font-size: 0.6em;
+  font-weight: 600;
+  color: var(--muted);
+}
+.tm-screen-record {
+  font-size: 0.6em;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* Before round 1: everyone registered, by last name, in columns. */
+.tm-screen-registered {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  columns: 18rem auto;
+  column-gap: var(--space-6);
+  font-size: clamp(var(--text-lg), 1.7vw, var(--text-2xl));
+}
+.tm-screen-registered li {
+  padding: 0.4em 0;
+  border-bottom: 1px solid var(--rule);
+  break-inside: avoid;
+}
+.tm-screen-registered strong {
+  font-weight: 700;
+}
+
+/* For whoever is at the laptop: shown while the pointer moves, never to the room. */
+.tm-screen-controls {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  opacity: 0;
+  transition: opacity var(--ms-base) var(--ease-base);
+}
+.tm-screen-controls.is-shown,
+.tm-screen-controls:focus-within {
+  opacity: 1;
+}
+.tm-screen-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: var(--text-base);
+}
+@media (max-width: 900px) {
+  .tm-screen {
+    height: auto;
+    padding: var(--space-4);
+  }
+  .tm-screen-head {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+  .tm-screen.is-two .tm-screen-tables {
+    columns: 1;
+  }
+}
