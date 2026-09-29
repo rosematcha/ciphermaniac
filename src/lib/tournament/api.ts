@@ -6,7 +6,9 @@
 
 import type { Command } from '../../../shared/tournament/commands';
 import { tomDateTime } from '../../../shared/tournament/divisions';
+import type { PlayerClaim } from '../../../shared/tournament/identify';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
+import type { PlayerReport, PlayerResult } from '../../../shared/tournament/reports';
 import type { Tournament } from '../../../shared/tournament/types';
 import {
   type PendingResult,
@@ -21,7 +23,9 @@ import { R2_ORIGIN } from '../constants';
 export class ApiError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    /** The server's whole answer, for the few errors that say more than a message. */
+    readonly body: Record<string, unknown> | null = null
   ) {
     super(message);
   }
@@ -63,6 +67,7 @@ export interface Manage {
   updatedAt: number;
   tournament: Tournament;
   pending: PendingResult[];
+  reports: PlayerReport[];
   settings: TournamentSettings;
   decks: Record<string, string>;
   role: 'owner' | 'staff';
@@ -85,8 +90,8 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: init.body ? { 'Content-Type': 'application/json' } : undefined
   });
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new ApiError(body?.error ?? `Request failed (${response.status})`, response.status);
+    const body = (await response.json().catch(() => null)) as ({ error?: string } & Record<string, unknown>) | null;
+    throw new ApiError(body?.error ?? `Request failed (${response.status})`, response.status, body);
   }
   return (response.status === 204 ? null : await response.json()) as T;
 }
@@ -154,6 +159,17 @@ export const joinStaff = (code: string, token: string) =>
 export const rotateStaffToken = (code: string) => call<Manage>(`${base(code)}/staff`, json('POST', { rotate: true }));
 
 export const deleteTournament = (code: string) => call<null>(base(code), { method: 'DELETE' });
+
+/** A player says who they are; their public key, to follow their pairings with. */
+export const identifyPlayer = (code: string, claim: PlayerClaim) =>
+  call<{ key: string | null }>(`${base(code)}/report`, json('POST', claim));
+
+/** A player reports their current match; the answer carries the event as it now stands. */
+export const reportAsPlayer = (code: string, claim: PlayerClaim, result: PlayerResult) =>
+  call<{ key: string | null; view: PublishedView }>(
+    `${base(code)}/report`,
+    json('POST', { ...claim, result, localTime: tomDateTime(new Date()) })
+  );
 
 export const fetchDecklists = (code: string) =>
   call<{ decklists: Decklist[]; mine: Decklist | null }>(`${base(code)}/decklists`);

@@ -20,6 +20,7 @@ import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts'
 import * as decks from '../../functions/api/tournaments/[code]/decks.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
 import * as manage from '../../functions/api/tournaments/[code]/manage.ts';
+import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import * as settings from '../../functions/api/tournaments/[code]/settings.ts';
 import * as staff from '../../functions/api/tournaments/[code]/staff.ts';
 import * as sync from '../../functions/api/tournaments/[code]/sync.ts';
@@ -35,6 +36,7 @@ let env: TournamentEnv;
 beforeEach(() => {
   env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true' };
   decklists._resetRateLimitStore();
+  report._resetRateLimitStore();
 });
 
 interface Call {
@@ -755,4 +757,110 @@ test('an unsanctioned event takes decklists by name and leaves the account’s P
   assert.equal(sent.json.decklist.registered, true, 'matched to the list by name');
   const account = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: player });
   assert.equal(account.json.user.popId, '1234567');
+});
+
+function playerSays(code: string, body: Record<string, unknown>) {
+  return hit(report.onRequestPost as Handler, '/report', at(code), {
+    method: 'POST',
+    body: { ...body, localTime: '10/10/2026 12:00:00' }
+  });
+}
+
+test('players report their own results: agreement settles, disagreement waits for staff', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 4);
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const [first, second] = paired.json.tournament.pods[0].rounds[0].matches;
+  assert.equal((await playerSays(code, { popId: first.p1, result: 'win' })).status, 403, 'off until staff turn it on');
+  await settle(code, owner, { playerReporting: true });
+
+  const who = await playerSays(code, { popId: first.p1 });
+  assert.equal(who.status, 200);
+  assert.ok(who.json.key && who.json.key !== first.p1, 'a public key, never the Player ID');
+  assert.equal((await playerSays(code, { popId: '1' })).status, 404);
+  assert.equal((await playerSays(code, { popId: first.p1, result: 'forfeit' })).status, 400);
+
+  const one = await playerSays(code, { popId: first.p1, result: 'win' });
+  assert.equal(one.json.view.reports.length, 1);
+  assert.ok(!JSON.stringify(one.json.view.reports).includes(first.p1), 'reports go out under public keys');
+  const agreed = await playerSays(code, { popId: first.p2, result: 'loss' });
+  assert.deepEqual(agreed.json.view.reports, []);
+  assert.equal(agreed.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'p1');
+  assert.match((await playerSays(code, { popId: first.p2, result: 'win' })).json.error, /already has a result/);
+
+  await playerSays(code, { popId: second.p1, result: 'win' });
+  const disputed = await playerSays(code, { popId: second.p2, result: 'win' });
+  assert.equal(disputed.json.view.reports.length, 2);
+  assert.equal(disputed.json.view.tournament.pods[0].rounds[0].matches[1].outcome, 'pending');
+  const staffView = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  assert.deepEqual(
+    staffView.reports.map((r: { by: string }) => r.by).sort(),
+    [second.p1, second.p2].sort(),
+    'staff see who said what'
+  );
+  const overridden = await send(code, owner, {
+    type: 'reportResult',
+    pod: 'mixed',
+    round: 1,
+    table: second.table,
+    p1: second.p1,
+    p2: second.p2,
+    outcome: 'p2'
+  });
+  assert.deepEqual(overridden.json.reports, [], 'a staff result settles the dispute');
+  assert.deepEqual((await view(code)).reports, []);
+
+  await send(code, owner, {
+    type: 'reportResult',
+    pod: 'mixed',
+    round: 1,
+    table: first.table,
+    p1: first.p1,
+    p2: first.p2,
+    outcome: 'pending'
+  });
+  assert.equal((await playerSays(code, { popId: first.p1, result: 'win' })).json.view.reports.length, 1);
+  const off = await settle(code, owner, { playerReporting: false });
+  assert.deepEqual(off.json.reports, [], 'turning reporting off drops what was waiting');
+});
+
+test('an unsanctioned event finds players by last name, asking for a first name when two share it', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { sanctioned: false, playerReporting: true });
+  for (const [firstName, lastName] of [
+    ['Gary', 'Oak'],
+    ['Daisy', 'Oak'],
+    ['Ash', 'Ketchum']
+  ]) {
+    await send(code, owner, { type: 'addPlayer', player: { firstName, lastName } });
+  }
+  const shared = await playerSays(code, { lastName: 'oak' });
+  assert.equal(shared.status, 404);
+  assert.equal(shared.json.ambiguous, true);
+  assert.equal((await playerSays(code, { lastName: 'Oak', firstName: 'Daisy' })).status, 200);
+  assert.equal((await playerSays(code, { lastName: 'Ketchum' })).status, 200);
+  const byId = await playerSays(code, { popId: '9000000000' });
+  assert.equal(byId.status, 404, 'no Player IDs at an unsanctioned event');
+});
+
+test('at a TOM event an agreed report becomes a pending result for TOM', async () => {
+  const owner = await signIn('Organizer');
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const created = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf, settings: { sanctioned: false } } }
+  );
+  const { code } = created.json;
+  await settle(code, owner, { playerReporting: true });
+  await playerSays(code, { popId: '7200001', result: 'tie' });
+  const agreed = await playerSays(code, { popId: '7200004', result: 'tie' });
+  assert.equal(agreed.status, 200, 'a TOM event goes by Player ID whatever its setting says');
+  assert.equal(agreed.json.view.pending.length, 1);
+  assert.equal(agreed.json.view.pending[0].outcome, 'tie');
+  const table = agreed.json.view.tournament.pods[0].rounds[1].matches.find((m: { table: number }) => m.table === 1);
+  assert.equal(table.outcome, 'pending', 'TOM’s copy is untouched');
 });

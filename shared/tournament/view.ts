@@ -9,6 +9,7 @@
  */
 
 import { divisionFor, parseTomDate, seasonOf } from './divisions.js';
+import type { PlayerReport } from './reports.js';
 import type { Division, Outcome, Pod, PodCategory, Tournament } from './types.js';
 
 export type TournamentMode = 'swiss' | 'tom';
@@ -46,6 +47,8 @@ export interface TournamentSettings {
    * the event exports a .tdf. An unsanctioned one asks for names only.
    */
   sanctioned: boolean;
+  /** Players report their own results from the event's page (see shared/tournament/reports.ts). */
+  playerReporting: boolean;
 }
 
 export const DEFAULT_SETTINGS: TournamentSettings = {
@@ -56,7 +59,8 @@ export const DEFAULT_SETTINGS: TournamentSettings = {
   startsAt: '',
   finished: false,
   // Events made before the choice existed asked for Player IDs, so they stay sanctioned.
-  sanctioned: true
+  sanctioned: true,
+  playerReporting: false
 };
 
 export const SETTINGS_LIMITS = { details: 1000, format: 40, archetype: 60 } as const;
@@ -70,6 +74,7 @@ const SETTING_CHECKS: { [K in keyof TournamentSettings]: SettingCheck } = {
   decklistsOpen: value => typeof value === 'boolean',
   finished: value => typeof value === 'boolean',
   sanctioned: value => typeof value === 'boolean',
+  playerReporting: value => typeof value === 'boolean',
   deckVisibility: value => VISIBILITIES.includes(value as DeckVisibility),
   details: value => typeof value === 'string' && value.length <= SETTINGS_LIMITS.details,
   format: value => typeof value === 'string' && value.length <= SETTINGS_LIMITS.format,
@@ -114,6 +119,8 @@ export interface TournamentView {
   updatedAt: number;
   tournament: Tournament;
   pending: PendingResult[];
+  /** Results players reported that are not settled yet, so a player sees where theirs stands. */
+  reports: PlayerReport[];
   /** Each public key's age division, since the birth dates it comes from stay private. */
   divisions: Record<string, Division>;
   /** Each public key's archetype label, when the organizer's deck visibility allows. */

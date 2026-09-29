@@ -319,6 +319,15 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   width: 1%;
   white-space: nowrap;
 }
+/* What players reported sits on its own line above the result controls, and wraps. */
+.tm-report-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  white-space: normal;
+  font-size: var(--text-sm);
+}
 .tm-seat-inner {
   display: inline-flex;
   align-items: center;

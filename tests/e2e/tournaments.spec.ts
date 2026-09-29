@@ -29,6 +29,7 @@ const VIEW: TournamentView = {
   updatedAt: 0,
   tournament: publicTournament(tdf, keys),
   pending: [],
+  reports: [],
   divisions: publicDivisions(tdf, keys, Date.UTC(2026, 9, 3)),
   decks: publicDecks({ '7200001': 'Gardevoir ex' }, keys),
   settings: { ...DEFAULT_SETTINGS, details: 'Doors at 11', deckVisibility: 'always' },
