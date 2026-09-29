@@ -25,6 +25,7 @@ import {
   currentRound,
   filterMatches,
   namesById,
+  RESULT_WORDS,
   roundLabel,
   shownDecks,
   shownOutcome,
@@ -65,15 +66,6 @@ function askingLabel(asking: Pick<Asking, 'outcome'>, match: Match, names: Map<s
   const winner = asking.outcome === 'p1' ? match.p1 : asking.outcome === 'p2' ? match.p2 : null;
   return winner ? `${names.get(winner) ?? winner} wins` : (OUTCOME_WORDS[asking.outcome] ?? '');
 }
-
-const SCORE: Partial<Record<Outcome, string>> = {
-  p1: '1–0',
-  p2: '0–1',
-  tie: 'Tie',
-  'double-loss': 'Double loss',
-  bye: 'Bye',
-  loss: 'Missed round'
-};
 
 interface ResultProps {
   match: Match;
@@ -151,7 +143,7 @@ function Result(props: ResultProps) {
   // A bye or a missed round is decided by the pairing itself: nothing to enter.
   const decidedByPairing = (
     <div class='tm-result'>
-      <span class='tm-result-label'>{SCORE[props.match.outcome]}</span>
+      <span class='tm-result-label'>{RESULT_WORDS[props.match.outcome]}</span>
     </div>
   );
   return (
@@ -161,7 +153,7 @@ function Result(props: ResultProps) {
         fallback={
           <div class='tm-result'>
             <span class='tm-result-label' classList={{ 'is-open': open() }}>
-              {open() ? 'Open' : SCORE[shown().outcome]}
+              {open() ? 'Open' : RESULT_WORDS[shown().outcome]}
               <Show when={shown().unconfirmed}>
                 <span class='tm-result-sub'> not in TOM yet</span>
               </Show>

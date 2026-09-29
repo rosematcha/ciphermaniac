@@ -23,15 +23,18 @@ import {
   deckBreakdown,
   divisionHeading,
   divisionLookup,
+  eventStatus,
   filterMatches,
   matchHistory,
   namesById,
   nextStep,
+  ordinal,
   podProgress,
   podStandings,
   recommendedStructure,
   recordsBefore,
   reportState,
+  RESULT_WORDS,
   roundLabel,
   seatMark,
   shownDecks,
@@ -292,4 +295,46 @@ test('the cut line says what split the last player in from the first one out', (
   assert.equal(cutSplit([row(1, 6, 0.5)], 8), null, 'no one outside the cut');
   const long = Array.from({ length: 12 }, (_, i) => row(i + 1, 12 - i, 0.5));
   assert.match(cutSplit(long, 11) ?? '', /^11th and 12th/);
+});
+
+test('the public status names registration, the round in play, or how the event finished', () => {
+  const registering = { ...CHALLENGE, pods: CHALLENGE.pods.map(p => ({ ...p, rounds: [] })) };
+  const players = registering.players.filter(p => p.droppedAfter === null).length;
+  assert.deepEqual(eventStatus(registering, { pending: [], finished: false, firstRound: '11:00 AM' }, 0), [
+    'Registration',
+    `${players} players`,
+    'Round 1 at 11:00 AM'
+  ]);
+  assert.deepEqual(eventStatus(registering, { pending: [], finished: false, firstRound: null }, 0), [
+    'Registration',
+    `${players} players`
+  ]);
+  const live = eventStatus(CHALLENGE, { pending: [], finished: false, firstRound: null }, 0);
+  assert.equal(live[0], roundLabel(pod.rounds.at(-1) as Round));
+  const swiss = pod.rounds.filter(r => r.kind === 'swiss').length;
+  const cut = { ...CHALLENGE, pods: [{ ...pod, cut: 8 }] };
+  assert.deepEqual(eventStatus(cut, { pending: [], finished: true, firstRound: null }, 0), [
+    'Finished',
+    `${swiss} round${swiss === 1 ? '' : 's'}`,
+    'Top 8'
+  ]);
+});
+
+test('places read as ordinals and results as the pairings show them', () => {
+  assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 101, 111].map(ordinal), [
+    '1st',
+    '2nd',
+    '3rd',
+    '4th',
+    '11th',
+    '12th',
+    '13th',
+    '21st',
+    '22nd',
+    '101st',
+    '111th'
+  ]);
+  assert.equal(RESULT_WORDS.p1, '1–0');
+  assert.equal(RESULT_WORDS['double-loss'], 'Double loss');
+  assert.equal(RESULT_WORDS.pending, undefined);
 });

@@ -28,6 +28,7 @@ import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
 import { createManage, type ManageState } from './manageState';
+import { createNow } from './now';
 import { RoundPanel } from './RoundPanel';
 import { SignIn } from './SignIn';
 import { createTomLink, type TomLink, TomNextStep, TomStrip } from './TomSyncPanel';
@@ -54,15 +55,6 @@ const TABS: { value: Tab; label: string }[] = [
 const REFRESH_MS = 15_000;
 
 /** Ticks once a second while mounted, for a clock in a sentence. */
-function createNow() {
-  const [now, setNow] = createSignal(Date.now());
-  onMount(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    onCleanup(() => clearInterval(timer));
-  });
-  return now;
-}
-
 const NO_PROGRESS: PodProgress = { round: undefined, tables: 0, open: 0, champion: null };
 
 /** What a TOM event's head adds to the round: whether TOM has every result entered here. */

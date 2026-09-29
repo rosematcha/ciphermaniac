@@ -139,6 +139,43 @@ export function statusParts(progress: PodProgress, finished: boolean, clock: str
   return [roundLabel(round), doing, ...(open > 0 && clock ? [timeWords(clock)] : [])];
 }
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * Where the event stands, for the public page and the big screen: who is
+ * registered and when round 1 starts, the round in play, or how it finished.
+ * `firstRound` is the start time already formatted, or null when unset.
+ */
+export function eventStatus(
+  tournament: Tournament,
+  event: { pending: readonly PendingResult[]; finished: boolean; firstRound: string | null },
+  now: number
+): string[] {
+  const pod = tournament.pods.find(p => p.rounds.length > 0);
+  if (!pod) {
+    const players = tournament.players.filter(player => player.droppedAfter === null).length;
+    return ['Registration', plural(players, 'player'), ...(event.firstRound ? [`Round 1 at ${event.firstRound}`] : [])];
+  }
+  if (event.finished) {
+    const swiss = pod.rounds.filter(round => round.kind === 'swiss').length;
+    return ['Finished', plural(swiss, 'round'), ...(pod.cut ? [`Top ${pod.cut}`] : [])];
+  }
+  const progress = podProgress(pod, event.pending);
+  const { round } = progress;
+  const clock = round && (round.clockStartedAt != null || round.startTime) ? clockLabel(round, now) : null;
+  return statusParts(progress, false, clock);
+}
+
+/** A match's result as the pairings show it. */
+export const RESULT_WORDS: Partial<Record<Outcome, string>> = {
+  p1: '1–0',
+  p2: '0–1',
+  tie: 'Tie',
+  'double-loss': 'Double loss',
+  bye: 'Bye',
+  loss: 'Missed round'
+};
+
 export const STATUS_LABELS: Record<Round['status'], string> = {
   paired: 'Paired',
   started: 'In progress',
@@ -403,7 +440,7 @@ export function reportState(
   return { chosen: asResult(mine.outcome, seat), disputed: isDisputed(forMatch), locked, final: agreed };
 }
 
-const ordinal = (n: number) => {
+export const ordinal = (n: number) => {
   const tens = n % 100;
   const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10];
   return `${n}${suffix ?? 'th'}`;

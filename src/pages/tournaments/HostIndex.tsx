@@ -26,7 +26,7 @@ import {
 } from '../../lib/tournament/api';
 import { canLinkFiles, pickTdf, rememberHandle, type TdfHandle } from '../../lib/tournament/tomLink';
 import { latestValue } from '../../lib/resource';
-import { clockLabel, podProgress, statusParts } from '../../lib/tournament/present';
+import { eventStatus } from '../../lib/tournament/present';
 import { EventSetup, type Setup } from './EventSetup';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
@@ -117,14 +117,14 @@ function LiveEvent(props: { event: TournamentSummary }) {
     code => fetchView(code)
   );
   const status = () => {
-    const pod = latestValue(view)?.tournament.pods.find(p => p.rounds.length > 0);
-    if (!pod) {
-      return 'Running';
-    }
-    const progress = podProgress(pod, latestValue(view)?.pending ?? []);
-    const { round } = progress;
-    const clock = round && (round.clockStartedAt != null || round.startTime) ? clockLabel(round, Date.now()) : null;
-    return statusParts(progress, false, clock).join(' · ');
+    const current = latestValue(view);
+    return current
+      ? eventStatus(
+          current.tournament,
+          { pending: current.pending, finished: false, firstRound: null },
+          Date.now()
+        ).join(' · ')
+      : 'Running';
   };
   return (
     <section class='tm-box tm-live-event'>
