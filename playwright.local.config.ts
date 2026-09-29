@@ -11,8 +11,9 @@ import { defineConfig, devices } from '@playwright/test';
  * server's port is fixed rather than ephemeral.
  */
 
-const FIXTURE_PORT = 4320;
-const PREVIEW_PORT = 4321;
+// Overridable so two checkouts can run the suite side by side.
+const FIXTURE_PORT = Number(process.env.E2E_FIXTURE_PORT ?? 4320);
+const PREVIEW_PORT = Number(process.env.E2E_PREVIEW_PORT ?? 4321);
 const FIXTURE_ORIGIN = `http://127.0.0.1:${FIXTURE_PORT}`;
 
 export default defineConfig({
