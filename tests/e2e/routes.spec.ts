@@ -40,9 +40,9 @@ test.beforeEach(async ({ page }) => {
 /**
  * Navigate and assert the page mounted without throwing.
  *
- * Deliberately not `networkidle`: the service worker keeps background work
- * going, so that state never arrives and every test would time out at 30s
- * having proven nothing. Waiting for `main` to exist is both faster and a
+ * Deliberately not `networkidle`: a page streaming in hundreds of thumbnails
+ * takes seconds to get there, and a test would wait on it having proven
+ * nothing. Waiting for `main` to exist is both faster and a
  * stronger claim — the app actually rendered.
  */
 async function gotoClean(page: import('@playwright/test').Page, path: string): Promise<void> {
