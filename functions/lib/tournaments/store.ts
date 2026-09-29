@@ -173,12 +173,10 @@ function reportsAfter(row: TournamentRow, changes: Changes): PlayerReport[] {
   if (!(changes.settings ?? row.settings).playerReporting) {
     return [];
   }
-  if (changes.reports) {
-    return changes.reports;
-  }
+  const reports = changes.reports ?? row.reports;
   return changes.tournament || changes.pending
-    ? pruneReports(applyPending(changes.tournament ?? row.tournament, changes.pending ?? row.pending), row.reports)
-    : row.reports;
+    ? pruneReports(applyPending(changes.tournament ?? row.tournament, changes.pending ?? row.pending), reports)
+    : reports;
 }
 
 /**

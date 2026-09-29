@@ -1,6 +1,7 @@
 /**
- * Players reporting their own results: two agreeing reports settle a match,
- * two differing ones settle nothing, and a result from anywhere clears the
+ * Players reporting their own results: a report can change for a short
+ * window and then locks, two agreeing locked reports settle a match, two
+ * differing ones settle nothing, and a result from anywhere clears the
  * reports for that match.
  */
 
@@ -11,16 +12,20 @@ import { applyCommand, type Command } from '../../shared/tournament/commands.ts'
 import { emptyTournament } from '../../shared/tournament/create.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
 import {
+  dueResults,
   fileReport,
   isDisputed,
+  isLocked,
   type OpenMatch,
   type PlayerReport,
   playerReport,
   pruneReports,
   publicReports,
+  REPORT_WINDOW_MS,
   reportableMatch,
   reportedOutcome,
-  reportsFor
+  reportsFor,
+  resultOf
 } from '../../shared/tournament/reports.ts';
 import type { Match, Tournament } from '../../shared/tournament/types.ts';
 import { applyPending } from '../../shared/tournament/view.ts';
@@ -79,42 +84,50 @@ test('a result is told from either seat', () => {
   assert.equal(reportedOutcome(match, 'b', 'tie'), 'tie');
 });
 
-test('two agreeing reports settle the match and leave no reports behind', () => {
+test('agreeing reports stand once both have locked, and not before', () => {
   const t = paired();
   const [match] = matchesOf(t);
   assert.ok(match?.p2);
-  const first = fileReport([], report(t, match.p1, 'win'));
-  assert.equal(first.agreed, null);
-  assert.equal(first.reports.length, 1);
-  const second = fileReport(first.reports, report(t, match.p2, 'loss'));
-  assert.equal(second.agreed, 'p1');
-  assert.deepEqual(second.reports, []);
+  const first = fileReport([], report(t, match.p1, 'win', 0));
+  assert.ok(typeof first !== 'string');
+  const both = fileReport(first, report(t, match.p2, 'loss', 10_000));
+  assert.ok(typeof both !== 'string');
+  assert.deepEqual(dueResults(both, 10_000 + REPORT_WINDOW_MS - 1), [], 'the later report can still change');
+  const due = dueResults(both, 10_000 + REPORT_WINDOW_MS);
+  assert.equal(due.length, 1, 'one result per match');
+  assert.deepEqual(resultOf(due[0] as PlayerReport), {
+    type: 'reportResult',
+    pod: 'mixed',
+    round: 1,
+    table: match.table,
+    p1: match.p1,
+    p2: match.p2,
+    outcome: 'p1'
+  });
 });
 
-test('two ties agree, but two wins are a dispute that settles nothing', () => {
+test('two ties agree, but two wins are a dispute that never stands on its own', () => {
   const t = paired();
   const [match] = matchesOf(t);
   assert.ok(match?.p2);
-  const tie = fileReport(fileReport([], report(t, match.p1, 'tie')).reports, report(t, match.p2, 'tie'));
-  assert.equal(tie.agreed, 'tie');
-  const both = fileReport(fileReport([], report(t, match.p1, 'win')).reports, report(t, match.p2, 'win'));
-  assert.equal(both.agreed, null);
-  const forMatch = reportsFor(both.reports, 'mixed', 1, match);
-  assert.equal(forMatch.length, 2);
-  assert.ok(isDisputed(forMatch));
+  const ties = [report(t, match.p1, 'tie', 0), report(t, match.p2, 'tie', 0)];
+  assert.equal(dueResults(ties, REPORT_WINDOW_MS)[0]?.outcome, 'tie');
+  const wins = [report(t, match.p1, 'win', 0), report(t, match.p2, 'win', 0)];
+  assert.deepEqual(dueResults(wins, REPORT_WINDOW_MS * 10), []);
+  assert.ok(isDisputed(reportsFor(wins, 'mixed', 1, match)));
 });
 
-test('a player who changes their report replaces it, which can end a dispute', () => {
+test('a player can change their report inside the window, and not after', () => {
   const t = paired();
   const [match] = matchesOf(t);
   assert.ok(match?.p2);
-  const disputed = fileReport(fileReport([], report(t, match.p1, 'win')).reports, report(t, match.p2, 'win'));
-  const changed = fileReport(disputed.reports, report(t, match.p2, 'loss', 2));
-  assert.equal(changed.agreed, 'p1');
-  const again = fileReport([report(t, match.p1, 'win')], report(t, match.p1, 'loss', 2));
-  assert.equal(again.reports.length, 1);
-  assert.equal(again.reports[0]?.outcome, 'p2');
-  assert.ok(!isDisputed(again.reports));
+  const filed = [report(t, match.p1, 'win', 0), report(t, match.p2, 'win', 0)];
+  const changed = fileReport(filed, report(t, match.p2, 'loss', REPORT_WINDOW_MS - 1));
+  assert.ok(typeof changed !== 'string');
+  assert.equal(changed.length, 2, 'replaced, not added');
+  assert.ok(!isDisputed(changed));
+  assert.ok(isLocked({ at: 0 }, REPORT_WINDOW_MS));
+  assert.match(String(fileReport(filed, report(t, match.p1, 'loss', REPORT_WINDOW_MS))), /locked/);
 });
 
 test('only an open match against an opponent in the current round can be reported', () => {

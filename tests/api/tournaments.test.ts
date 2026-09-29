@@ -9,7 +9,7 @@
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { afterEach, beforeEach, test } from 'node:test';
+import { afterEach, beforeEach, mock, test } from 'node:test';
 
 import * as callback from '../../functions/api/auth/callback/[provider].ts';
 import * as login from '../../functions/api/auth/login/[provider].ts';
@@ -26,6 +26,7 @@ import * as staff from '../../functions/api/tournaments/[code]/staff.ts';
 import * as sync from '../../functions/api/tournaments/[code]/sync.ts';
 import * as tournaments from '../../functions/api/tournaments/index.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
+import { REPORT_WINDOW_MS } from '../../shared/tournament/reports.ts';
 import { parseTdf } from '../../shared/tournament/tdf.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { sqliteD1 } from '../__utils__/sqliteD1.ts';
@@ -731,6 +732,7 @@ test('only the organizer deletes an event', async () => {
 });
 
 afterEach(() => {
+  mock.timers.reset();
   delete env.ENVIRONMENT;
   delete env.REPORTS;
 });
@@ -803,8 +805,9 @@ test('an unsanctioned event takes decklists by name and leaves the account’s P
   assert.equal(account.json.user.popId, '1234567');
 });
 
-test('players report their own results: agreement settles, disagreement waits for staff', async () => {
+test('players report their own results: agreement stands once locked, disagreement waits for staff', async () => {
   const owner = await signIn('Organizer');
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 4);
   const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
@@ -822,14 +825,27 @@ test('players report their own results: agreement settles, disagreement waits fo
   assert.equal(one.json.view.reports.length, 1);
   assert.ok(!JSON.stringify(one.json.view.reports).includes(first.p1), 'reports go out under public keys');
   const agreed = await playerSays(code, { popId: first.p2, result: 'loss' });
-  assert.deepEqual(agreed.json.view.reports, []);
-  assert.equal(agreed.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'p1');
+  assert.equal(agreed.json.view.reports.length, 2, 'agreeing reports wait out the window');
+  assert.equal(agreed.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'pending');
+  const changed = await playerSays(code, { popId: first.p2, result: 'win' });
+  assert.equal(changed.json.view.reports.length, 2, 'a change replaces the report inside the window');
+  await playerSays(code, { popId: first.p2, result: 'loss' });
+
+  mock.timers.tick(REPORT_WINDOW_MS);
   assert.match((await playerSays(code, { popId: first.p2, result: 'win' })).json.error, /already has a result/);
+  const settled = await playerSays(code, { popId: first.p1 });
+  assert.deepEqual(settled.json.view.reports, []);
+  assert.equal(settled.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'p1', 'once locked, it stands');
 
   await playerSays(code, { popId: second.p1, result: 'win' });
   const disputed = await playerSays(code, { popId: second.p2, result: 'win' });
   assert.equal(disputed.json.view.reports.length, 2);
-  assert.equal(disputed.json.view.tournament.pods[0].rounds[0].matches[1].outcome, 'pending');
+  mock.timers.tick(REPORT_WINDOW_MS);
+  assert.match((await playerSays(code, { popId: second.p2, result: 'loss' })).json.error, /locked/);
+  assert.equal(
+    (await playerSays(code, { popId: second.p1 })).json.view.tournament.pods[0].rounds[0].matches[1].outcome,
+    'pending'
+  );
   const staffView = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
   assert.deepEqual(
     staffView.reports.map((r: { by: string }) => r.by).sort(),
@@ -884,6 +900,7 @@ test('an unsanctioned event finds players by last name, asking for a first name 
 
 test('at a TOM event an agreed report becomes a pending result for TOM', async () => {
   const owner = await signIn('Organizer');
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
   const created = await hit(
     tournaments.onRequestPost as Handler,
@@ -894,10 +911,14 @@ test('at a TOM event an agreed report becomes a pending result for TOM', async (
   const { code } = created.json;
   await settle(code, owner, { playerReporting: true });
   await playerSays(code, { popId: '7200001', result: 'tie' });
-  const agreed = await playerSays(code, { popId: '7200004', result: 'tie' });
-  assert.equal(agreed.status, 200, 'a TOM event goes by Player ID whatever its setting says');
-  assert.equal(agreed.json.view.pending.length, 1);
-  assert.equal(agreed.json.view.pending[0].outcome, 'tie');
-  const table = agreed.json.view.tournament.pods[0].rounds[1].matches.find((m: { table: number }) => m.table === 1);
-  assert.equal(table.outcome, 'pending', 'TOM’s copy is untouched');
+  const both = await playerSays(code, { popId: '7200004', result: 'tie' });
+  assert.equal(both.status, 200, 'a TOM event goes by Player ID whatever its setting says');
+  mock.timers.tick(REPORT_WINDOW_MS);
+  const agreed = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })) as {
+    json: { pending: { outcome: string }[]; tournament: TournamentView['tournament'] };
+  };
+  assert.equal(agreed.json.pending.length, 1, 'the console’s next look settles it');
+  assert.equal(agreed.json.pending[0]?.outcome, 'tie');
+  const table = agreed.json.tournament.pods[0]?.rounds[1]?.matches.find(m => m.table === 1);
+  assert.equal(table?.outcome, 'pending', 'TOM’s copy is untouched');
 });

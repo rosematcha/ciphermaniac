@@ -13,8 +13,7 @@ import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
 import { manageView, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
 import { publishView } from '../../../lib/tournaments/publish.js';
-import { commandChanges } from '../../../lib/tournaments/results.js';
-import { mutate } from '../../../lib/tournaments/store.js';
+import { commandChanges, mutateSettled } from '../../../lib/tournaments/results.js';
 
 export async function onRequestPost(context: Context<'code'>): Promise<Response> {
   const access = await openForStaff(context);
@@ -28,7 +27,12 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
   if (!command) {
     return jsonError('Not a command', 400);
   }
-  const outcome = await mutate(access.db, access.row.code, row => commandChanges(row, command, value?.localTime));
+  const outcome = await mutateSettled(
+    access.db,
+    access.row.code,
+    row => commandChanges(row, command, value?.localTime),
+    value?.localTime
+  );
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }

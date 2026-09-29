@@ -1,15 +1,16 @@
 /**
  * Results players report themselves, from the event's page.
  *
- * Each player in a match says how it went. When both have and they agree, the
- * result stands, as if staff had entered it. When they disagree, neither
- * counts: the match stays open and shows as disputed until a player changes
- * their report or staff enter the result, which settles it either way. One
- * report alone waits for the opponent, and staff can take it as it is.
+ * Each player in a match says how it went, and can change their mind for a
+ * short window before their report locks. When both reports agree and both
+ * have locked, the result stands, as if staff had entered it. When they
+ * disagree, neither counts: the match stays open and shows as disputed until
+ * staff enter the result, which settles it either way. One report alone
+ * waits for the opponent, and staff can take it as it is.
  */
 
 import { latestRound } from './rounds.js';
-import type { Match, Outcome, Pod, PodCategory, Round, Tournament } from './types.js';
+import type { Match, Pod, PodCategory, Round, Tournament } from './types.js';
 
 /** A match's result as one of its players tells it. */
 export type ReportedOutcome = 'p1' | 'p2' | 'tie';
@@ -82,24 +83,29 @@ export function playerReport(open: OpenMatch, by: string, result: PlayerResult, 
   return { pod: pod.category, round: round.number, table: match.table, p1: match.p1, p2: match.p2, by, outcome, at };
 }
 
-export interface Filed {
-  reports: PlayerReport[];
-  /** The result both players agree on, which now stands; null while it does not. */
-  agreed: ReportedOutcome | null;
+/** How long a player has to change a report before it locks. */
+export const REPORT_WINDOW_MS = 30_000;
+
+export const isLocked = (report: Pick<PlayerReport, 'at'>, now: number): boolean => now - report.at >= REPORT_WINDOW_MS;
+
+/** Adds a player's report in place of an earlier one of theirs, unless that one has locked. */
+export function fileReport(reports: readonly PlayerReport[], report: PlayerReport): PlayerReport[] | string {
+  const own = reports.find(r => sameMatch(r, report) && r.by === report.by);
+  if (own && isLocked(own, report.at)) {
+    return 'Your report has locked; ask staff to change it';
+  }
+  return [...reports.filter(r => r !== own), report];
 }
 
-/**
- * Adds a player's report, replacing any earlier one of theirs for the match.
- * If the opponent has reported the same result, the pair is settled and both
- * reports are taken out; a differing one stays, and the match is disputed.
- */
-export function fileReport(reports: readonly PlayerReport[], report: PlayerReport): Filed {
-  const rest = reports.filter(r => !(sameMatch(r, report) && r.by === report.by));
-  const other = rest.find(r => sameMatch(r, report));
-  if (other?.outcome === report.outcome) {
-    return { reports: rest.filter(r => !sameMatch(r, report)), agreed: report.outcome };
-  }
-  return { reports: [...rest, report], agreed: null };
+/** One report from each match whose two reports agree and have both locked: those results now stand. */
+export function dueResults(reports: readonly PlayerReport[], now: number): PlayerReport[] {
+  return reports.filter(report => {
+    if (report.by !== report.p1) {
+      return false;
+    }
+    const other = reports.find(r => sameMatch(r, report) && r.by === report.p2);
+    return other?.outcome === report.outcome && isLocked(report, now) && isLocked(other, now);
+  });
 }
 
 /** The reports filed for one match. */
@@ -134,8 +140,8 @@ export function publicReports(reports: readonly PlayerReport[], keys: Record<str
   return reports.map(report => ({ ...report, p1: key(report.p1), p2: key(report.p2), by: key(report.by) }));
 }
 
-/** Staff's result for a match, in the terms a command or pending entry takes. */
-export function resultFor(open: OpenMatch, outcome: Outcome) {
-  const { pod, round, match } = open;
-  return { pod: pod.category, round: round.number, table: match.table, p1: match.p1, p2: match.p2, outcome };
+/** The result a settled report stands for, as the command staff would send. */
+export function resultOf(report: PlayerReport) {
+  const { pod, round, table, p1, p2, outcome } = report;
+  return { type: 'reportResult' as const, pod, round, table, p1, p2, outcome };
 }

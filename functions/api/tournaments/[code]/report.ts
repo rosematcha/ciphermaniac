@@ -2,9 +2,11 @@
  * POST /api/tournaments/:code/report — a player at an event with player
  * reporting on says who they are: { popId } at a sanctioned event, or
  * { lastName, firstName? } at an unsanctioned one. Alone, that answers with
- * their public key, so the page can follow their pairings. With { result }
- * ('win', 'loss' or 'tie') it also reports their current match (see
- * shared/tournament/reports.ts), and a result both players agree on stands.
+ * their public key and the event, so the page can follow their pairings.
+ * With { result } ('win', 'loss' or 'tie') it also reports their current
+ * match (see shared/tournament/reports.ts). Either way, results whose reports
+ * have agreed and locked are written in first, so a player asking again once
+ * their window closes sees the result stand.
  *
  * Nobody signs in for this, as a player at the table has no time to: knowing
  * a player's Player ID or name is enough, the same trust a paper slip carries,
@@ -17,8 +19,7 @@ import {
   PLAYER_RESULTS,
   playerReport,
   type PlayerResult,
-  reportableMatch,
-  resultFor
+  reportableMatch
 } from '../../../../shared/tournament/reports.js';
 import { applyPending, isSanctioned } from '../../../../shared/tournament/view.js';
 import { readJsonBody } from '../../../lib/api/body.js';
@@ -27,8 +28,8 @@ import { jsonError } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { type Access, open, privateJson, publicViewOf } from '../../../lib/tournaments/access.js';
 import { publishView } from '../../../lib/tournaments/publish.js';
-import { commandChanges } from '../../../lib/tournaments/results.js';
-import { type Changes, mutate, type TournamentRow } from '../../../lib/tournaments/store.js';
+import { mutateSettled, settleIfDue } from '../../../lib/tournaments/results.js';
+import type { Changes, TournamentRow } from '../../../lib/tournaments/store.js';
 
 type Body = Record<string, unknown>;
 
@@ -45,25 +46,14 @@ function readReport(row: TournamentRow, claim: PlayerClaim, result: PlayerResult
     return found.error;
   }
   const open = reportableMatch(applyPending(row.tournament, row.pending), found.id);
-  if (typeof open === 'string') {
-    return open;
-  }
-  const report = playerReport(open, found.id, result, Date.now());
-  return typeof report === 'string' ? report : { open, report };
+  return typeof open === 'string' ? open : playerReport(open, found.id, result, Date.now());
 }
 
-/** The report laid over the event, with the result it settles when the opponent agrees. */
-function reportChanges(row: TournamentRow, claim: PlayerClaim, result: PlayerResult, localTime: unknown) {
-  const read = readReport(row, claim, result);
-  if (typeof read === 'string') {
-    return read;
-  }
-  const filed = fileReport(row.reports, read.report);
-  if (!filed.agreed) {
-    return { reports: filed.reports };
-  }
-  const settled = commandChanges(row, { type: 'reportResult', ...resultFor(read.open, filed.agreed) }, localTime);
-  return typeof settled === 'string' ? settled : ({ ...settled, reports: filed.reports } satisfies Changes);
+/** The report laid over the event's others; the result stands once both players' reports agree and lock. */
+function reportChanges(row: TournamentRow, claim: PlayerClaim, result: PlayerResult): Changes | string {
+  const report = readReport(row, claim, result);
+  const reports = typeof report === 'string' ? report : fileReport(row.reports, report);
+  return typeof reports === 'string' ? reports : { reports };
 }
 
 /**
@@ -98,14 +88,26 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
   if (!PLAYER_RESULTS.includes(result)) {
     return jsonError('Not a result', 400);
   }
-  const outcome = await mutate(access.db, access.row.code, row =>
-    reportChanges(row, who.claim, result, body.localTime)
+  const outcome = await mutateSettled(
+    access.db,
+    access.row.code,
+    row => reportChanges(row, who.claim, result),
+    body.localTime
   );
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
   await publishView(context.env.REPORTS, outcome.row);
   return privateJson({ key: outcome.row.keys[who.id] ?? null, view: publicViewOf(outcome.row) });
+}
+
+/** Who the player is, and the event with any due results settled. */
+async function identify(context: Context<'code'>, access: Access, body: Body, id: string) {
+  const row = await settleIfDue(access.db, access.row, body.localTime);
+  if (row !== access.row) {
+    await publishView(context.env.REPORTS, row);
+  }
+  return privateJson({ key: row.keys[id] ?? null, view: publicViewOf(row) });
 }
 
 export async function onRequestPost(context: Context<'code'>): Promise<Response> {
@@ -121,6 +123,6 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
     return privateJson({ error: found.error, ambiguous: found.ambiguous === true }, 404);
   }
   return body.result === undefined
-    ? privateJson({ key: access.row.keys[found.id] ?? null })
+    ? identify(context, access, body, found.id)
     : report(context, access, body, { claim, id: found.id });
 }
