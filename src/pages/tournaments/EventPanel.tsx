@@ -8,9 +8,17 @@
  */
 
 import { useNavigate } from '@solidjs/router';
-import { createSignal, type JSX, Show } from 'solid-js';
+import { createResource, createSignal, For, type JSX, Show } from 'solid-js';
 import { isSanctioned, SETTINGS_LIMITS, type TournamentSettings } from '../../../shared/tournament/view';
-import { deleteTournament, type Manage, rotateStaffToken, saveSettings } from '../../lib/tournament/api';
+import {
+  deleteTournament,
+  fetchStaff,
+  type Manage,
+  removeStaff,
+  rotateStaffToken,
+  saveSettings
+} from '../../lib/tournament/api';
+import { latestValue } from '../../lib/resource';
 import { tdfFilename, tdfText } from '../../lib/tournament/exportTdf';
 import { downloadBlob } from '../../lib/download';
 import { ConfirmAction } from './ConfirmAction';
@@ -172,11 +180,16 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
 
 /** Close or reopen, and the .tdf: what an organizer does at the end of the day. */
 function Finish(props: { state: ManageState; manage: Manage }) {
-  const download = () =>
-    downloadBlob(
-      new Blob([tdfText({ ...props.manage, finished: props.manage.settings.finished })], { type: 'application/xml' }),
-      tdfFilename(props.manage.tournament)
-    );
+  const download = () => {
+    const { manage } = props;
+    void props.state.run(() => {
+      downloadBlob(
+        new Blob([tdfText({ ...manage, finished: manage.settings.finished })], { type: 'application/xml' }),
+        tdfFilename(manage.tournament)
+      );
+      return Promise.resolve(manage);
+    });
+  };
   function setFinished(finished: boolean) {
     const { code } = props.manage;
     void props.state.run(() => saveSettings(code, { finished }));
@@ -265,8 +278,51 @@ function StaffInvite(props: { state: ManageState; manage: Manage }) {
             />
           </span>
         </SettingRow>
+        <StaffList manage={props.manage} />
       </div>
     </section>
+  );
+}
+
+const joinedOn = (at: number) => new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+/** Everyone the invite link let in, and when, so a link that went further than meant shows; each can be removed. */
+function StaffList(props: { manage: Manage }) {
+  // A new link removes everyone, so the list is asked for again with each one.
+  const [staff, { mutate }] = createResource(
+    () => ({ code: props.manage.code, token: props.manage.staffToken }),
+    ({ code }) => fetchStaff(code).then(result => result.staff)
+  );
+  async function remove(id: string) {
+    const result = await removeStaff(props.manage.code, id).catch(() => null);
+    if (result) {
+      mutate(result.staff);
+    }
+  }
+  return (
+    <SettingRow label='On staff'>
+      <Show when={latestValue(staff)?.length} fallback={<span class='muted'>Nobody has joined yet</span>}>
+        <ul class='tm-staff-list'>
+          <For each={latestValue(staff)}>
+            {member => (
+              <li>
+                <span>
+                  {member.name}
+                  <Show when={member.joinedAt}>{at => <span class='muted'> · joined {joinedOn(at())}</span>}</Show>
+                </span>
+                <ConfirmAction
+                  label='Remove'
+                  question={`Remove ${member.name} from staff?`}
+                  confirmLabel='Remove'
+                  danger
+                  onConfirm={() => void remove(member.id)}
+                />
+              </li>
+            )}
+          </For>
+        </ul>
+      </Show>
+    </SettingRow>
   );
 }
 

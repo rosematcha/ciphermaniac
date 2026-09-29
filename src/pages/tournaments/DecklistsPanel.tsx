@@ -17,8 +17,16 @@ import { birthYear } from '../../../shared/tournament/divisions';
 import { type DeckSection, parseDecklist } from '../../../shared/tournament/decklist';
 import { decklistPlayer } from '../../../shared/tournament/identify';
 import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
-import { type Decklist, fetchDecklists, type Manage, saveSettings, setDeck } from '../../lib/tournament/api';
+import {
+  type Decklist,
+  fetchDecklists,
+  type Manage,
+  saveSettings,
+  setDeck,
+  unlockDecklist
+} from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
+import { ConfirmAction } from './ConfirmAction';
 import { DeckIcons } from './DeckIcons';
 import type { ManageState } from './manageState';
 
@@ -120,6 +128,11 @@ function DecklistRow(props: RowProps) {
       props.onChanged();
     }
   }
+  /** Lets the player send the list again from another device; the next list sent under these details takes it over. */
+  async function unlock() {
+    await unlockDecklist(props.manage.code, props.list).catch(() => undefined);
+    props.onChanged();
+  }
   const canUseDeck = () =>
     archetypes() && playerId() && props.list.archetype && props.manage.decks[playerId() ?? ''] !== props.list.archetype;
   return (
@@ -175,6 +188,14 @@ function DecklistRow(props: RowProps) {
               <button type='button' class='btn btn-ghost tm-small' onClick={useDeck}>
                 Use their deck
               </button>
+            </Show>
+            <Show when={props.list.locked}>
+              <ConfirmAction
+                label='Unlock'
+                question='Let another device send this list?'
+                confirmLabel='Unlock'
+                onConfirm={() => void unlock()}
+              />
             </Show>
           </span>
         </td>

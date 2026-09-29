@@ -90,13 +90,20 @@
   font-size: var(--text-lg);
   font-weight: 600;
 }
-.tm-you-find {
+.tm-identify {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
   gap: 8px;
 }
-.tm-you-find .tm-field {
+.tm-identify > .tm-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+.tm-sheet-foot .tm-identify {
+  flex: 1;
+}
+.tm-identify .tm-field {
   flex: 1 1 220px;
   max-width: 420px;
 }
@@ -125,11 +132,11 @@
   }
   .tm-you-end .btn,
   .tm-you-who .btn,
-  .tm-you-find .btn {
+  .tm-identify .btn {
     min-height: 44px;
   }
-  .tm-you-find .tm-field,
-  .tm-you-find .btn {
+  .tm-identify .tm-field,
+  .tm-identify .btn {
     flex-basis: 100%;
     max-width: none;
   }
@@ -147,20 +154,13 @@
 .tm-public .tm-details {
   margin: 0 0 var(--space-4);
 }
-.tm-result-col {
+.tm-status-col {
   white-space: nowrap;
 }
-/* The desktop table is fixed-layout, so the result column needs its own width. */
+/* The desktop table is fixed-layout, so the status column needs its own width. */
 @media (min-width: 641px) {
-  .tm-public-pairings th.tm-extra-col {
-    width: 110px;
-  }
-}
-@media (max-width: 640px) {
-  .tm-public-pairings .data td.tm-result-col {
-    grid-area: extra;
-    padding-left: 40px;
-    font-size: var(--text-sm);
+  .tm-public-pairings th.tm-status-col {
+    width: 96px;
   }
 }
 
@@ -296,5 +296,61 @@
     flex: 1;
     justify-content: center;
     min-height: 44px;
+  }
+}
+
+/* ---------- Pairings on a phone ----------
+   One pairing per row: the table number by the first player, the two players
+   on two lines with their records beside their names. Whether a table is
+   still playing is for the room, on desktop. The whole row shades for the
+   viewer's own table. */
+@media (max-width: 640px) {
+  .tm-public-pairings .tm-box-bar > * {
+    flex: 1 1 100%;
+  }
+  .tm-public-pairings .data tr {
+    grid-template-columns: 26px minmax(0, 1fr);
+    grid-template-areas:
+      'table player'
+      'table opponent';
+    column-gap: 8px;
+    padding: 4px 14px;
+  }
+  .tm-public-pairings .data td.tm-table-col {
+    align-self: start;
+    padding-top: 12px;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  .tm-public-pairings .data td.tm-status-col {
+    display: none;
+  }
+  .tm-public-pairings .tm-seat-link {
+    flex: 0 1 auto;
+    min-height: 40px;
+  }
+  .tm-public-pairings .tm-record {
+    margin-left: 0;
+  }
+  /* The full sprite slot, as on desktop, so a two-Pokémon deck does not push its name out of line. */
+  .tm-public-pairings .has-decks .tm-seat-link .tm-deck,
+  .tm-public-pairings .has-decks .tm-seat-link:not(:has(.tm-deck))::before {
+    min-width: 38px;
+  }
+  /* "Bye" and "Missed round" start where the names do: past the mark and the sprite slot. */
+  .tm-public-pairings td.tm-seat > .muted-cell {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    padding-left: 22px;
+  }
+  .tm-public-pairings .has-decks td.tm-seat > .muted-cell {
+    padding-left: 66px;
+  }
+  .tm-public-pairings .data tr.is-me {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  .tm-public-pairings .data tr.is-me td {
+    background: none;
   }
 }

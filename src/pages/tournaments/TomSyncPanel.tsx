@@ -52,6 +52,8 @@ export function createTomLink(props: { manage: () => Manage; onSynced: () => Pro
   let lastModified = 0;
   let lastSent = '';
   let reading = false;
+  /** What asked to write, for focus to return to if the organizer keeps the file as it is. */
+  let opener: HTMLElement | null = null;
   const code = () => props.manage().code;
 
   /** Sends the parsed file if it differs from what was last sent. */
@@ -180,8 +182,15 @@ export function createTomLink(props: { manage: () => Manage; onSynced: () => Pro
     link,
     unlink,
     upload,
-    askWrite: () => setAskingWrite(true),
-    keepWrite: () => setAskingWrite(false),
+    askWrite: () => {
+      opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setAskingWrite(true);
+    },
+    /** Backs out of writing, and puts focus back on what asked. */
+    keepWrite: () => {
+      setAskingWrite(false);
+      opener?.focus();
+    },
     writeBack
   };
 }
@@ -288,7 +297,16 @@ export function TomStrip(props: { link: TomLink }) {
         <UploadButton link={link()} label='Upload .tdf' class='btn btn-secondary tm-small' />
       </Show>
       <Show when={link().askingWrite()}>
-        <span class='tm-ask tm-ask-line' role='group' aria-label='Write results to the .tdf'>
+        <span
+          class='tm-ask tm-ask-line'
+          role='group'
+          aria-label='Write results to the .tdf'
+          onKeyDown={event => {
+            if (event.key === 'Escape') {
+              link().keepWrite();
+            }
+          }}
+        >
           <span class='tm-confirm-label'>Close the event in TOM before writing, then reopen the file in TOM.</span>
           <button
             type='button'

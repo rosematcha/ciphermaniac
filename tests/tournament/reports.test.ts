@@ -70,7 +70,7 @@ function openFor(t: Tournament, id: string): OpenMatch {
 }
 
 function report(t: Tournament, id: string, result: 'win' | 'loss' | 'tie', at = 1): PlayerReport {
-  const made = playerReport(openFor(t, id), id, result, at);
+  const made = playerReport(openFor(t, id), id, result, { at });
   assert.ok(typeof made !== 'string', String(made));
   return made;
 }
@@ -153,7 +153,7 @@ test('a top cut match takes no tie from a player', () => {
   t = run(t, { type: 'startTopCut', pod: 'mixed', size: 2, division: 'masters' });
   const [final] = matchesOf(t);
   assert.ok(final);
-  assert.equal(playerReport(openFor(t, final.p1), final.p1, 'tie', 0), 'A top cut match needs a winner');
+  assert.equal(playerReport(openFor(t, final.p1), final.p1, 'tie', { at: 0 }), 'A top cut match needs a winner');
 });
 
 test('reports go once their match has a result or is re-paired, and go public under public keys', () => {

@@ -259,7 +259,33 @@ export async function roleOf(db: D1Like, row: TournamentRow, user: User | null):
 }
 
 export async function addStaff(db: D1Like, code: string, userId: string): Promise<void> {
-  await db.prepare('INSERT OR IGNORE INTO staff (code, user_id) VALUES (?, ?)').bind(code, userId).run();
+  await db
+    .prepare('INSERT OR IGNORE INTO staff (code, user_id, joined_at) VALUES (?, ?, ?)')
+    .bind(code, userId, Date.now())
+    .run();
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  /** When they joined through the invite link; null for anyone who joined before that was kept. */
+  joinedAt: number | null;
+}
+
+/** Everyone the invite link has let onto the event's staff, earliest first. */
+export async function listStaff(db: D1Like, code: string): Promise<StaffMember[]> {
+  const { results } = await db
+    .prepare(
+      'SELECT staff.user_id AS id, users.name AS name, staff.joined_at AS joined_at FROM staff ' +
+        'LEFT JOIN users ON users.id = staff.user_id WHERE staff.code = ? ORDER BY staff.joined_at'
+    )
+    .bind(code)
+    .all<{ id: string; name: string | null; joined_at: number | null }>();
+  return results.map(row => ({ id: row.id, name: row.name ?? 'Unknown', joinedAt: row.joined_at }));
+}
+
+export async function removeStaff(db: D1Like, code: string, userId: string): Promise<void> {
+  await db.prepare('DELETE FROM staff WHERE code = ? AND user_id = ?').bind(code, userId).run();
 }
 
 export interface TournamentSummary {
@@ -329,6 +355,7 @@ export async function deleteTournament(db: D1Like, code: string): Promise<void> 
   await db.batch([
     db.prepare('DELETE FROM tournaments WHERE code = ?').bind(code),
     db.prepare('DELETE FROM staff WHERE code = ?').bind(code),
-    db.prepare('DELETE FROM decklists WHERE code = ?').bind(code)
+    db.prepare('DELETE FROM decklists WHERE code = ?').bind(code),
+    db.prepare('DELETE FROM report_devices WHERE code = ?').bind(code)
   ]);
 }

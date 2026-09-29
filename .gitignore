@@ -63,6 +63,7 @@ public/assets/style-trends.css
 *.bak
 *.tmp
 sample.tdf
+/scratch-tdf-examples/
 
 # Dev stuff - keep organized in dev/ directory
 *.md

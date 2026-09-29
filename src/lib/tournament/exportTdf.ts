@@ -3,10 +3,9 @@
  * entered here laid over it, or a Swiss event written out in TOM's layout.
  */
 
-import { wasFinalized, writeTdf } from '../../../shared/tournament/tdf';
+import { writeTdf } from '../../../shared/tournament/tdf';
 import type { Tournament } from '../../../shared/tournament/types';
 import { applyPending, type PendingResult } from '../../../shared/tournament/view';
-import { divisionLookup } from './present';
 
 export interface ExportSource {
   tournament: Tournament;
@@ -17,8 +16,7 @@ export interface ExportSource {
 export function tdfText(source: ExportSource): string {
   const tournament = applyPending(source.tournament, source.pending);
   return writeTdf(tournament, {
-    finalized: source.finished || wasFinalized(tournament),
-    divisionOf: divisionLookup(tournament)
+    finalized: source.finished || undefined
   });
 }
 

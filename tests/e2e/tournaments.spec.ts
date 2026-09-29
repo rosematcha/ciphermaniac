@@ -13,6 +13,7 @@ import { parseTdf } from '../../shared/tournament/tdf';
 import {
   assignKeys,
   DEFAULT_SETTINGS,
+  isSanctioned,
   publicDecks,
   publicDivisions,
   publicTournament,
@@ -44,6 +45,13 @@ async function mockApi(page: Page, view: TournamentView = VIEW) {
     if (url.pathname === '/api/me') {
       return route.fulfill({ json: { user: null, providers: ['google', 'discord'] } });
     }
+    if (url.pathname === `/api/tournaments/${CODE}/report`) {
+      const claim = route.request().postDataJSON() as { popId?: string; lastName?: string };
+      const player = tdf.players.find(p => p.id === claim.popId || p.lastName === claim.lastName);
+      return player
+        ? route.fulfill({ json: { key: keys[player.id], view } })
+        : route.fulfill({ status: 404, json: { error: 'No player by that name is in this event' } });
+    }
     if (url.pathname === `/api/tournaments/${CODE}`) {
       return url.searchParams.has('since') ? route.fulfill({ status: 204 }) : route.fulfill({ json: view });
     }
@@ -69,6 +77,17 @@ test('the public page shows the round, finds a player and opens their history @m
   await expect(sheet).toContainText('Hedy Lamarr');
   await expect(sheet.locator('.tm-history tbody tr')).toHaveCount(2);
   await sheet.getByRole('button', { name: 'This is me' }).click();
+  // Saying so takes proof: the Player ID at a sanctioned event, the last name at any other.
+  const hedy = tdf.players.find(p => p.lastName === 'Lamarr');
+  const [label, right, wrong] = isSanctioned(VIEW)
+    ? ['Player ID', hedy?.id ?? '', '7200001']
+    : ['Last name', 'Lamarr', 'Jackson'];
+  await sheet.getByLabel(label).fill(wrong);
+  await sheet.getByRole('button', { name: 'Confirm' }).click();
+  await expect(sheet.locator('.tm-error')).toContainText('isn’t this player’s');
+  await sheet.getByLabel(label).fill(right);
+  await sheet.getByRole('button', { name: 'Confirm' }).click();
+  await expect(sheet.getByRole('button', { name: 'This isn’t me' })).toBeVisible();
   await sheet.getByRole('button', { name: 'Close' }).click();
   await expect(page.locator('.tm-you-big')).toHaveText(/Table\s*2/);
   await expect(page.locator('.tm-you-who')).toContainText('Hedy Lamarr');
@@ -95,6 +114,92 @@ test('a signed-out organizer is offered sign-in, not a console @mobile', async (
   );
   await google.click();
   await login;
+});
+
+async function mockOrganizer(page: Page) {
+  const submissions: unknown[] = [];
+  await page.route('**/api/**', route => {
+    const { pathname } = new URL(route.request().url());
+    if (pathname === '/api/me') {
+      return route.fulfill({ json: { user: { id: 'organizer', name: 'Organizer' }, providers: [] } });
+    }
+    if (pathname === '/api/tournaments' && route.request().method() === 'POST') {
+      submissions.push(route.request().postDataJSON());
+      return route.fulfill({ status: 400, json: { error: 'Fixture submission' } });
+    }
+    return route.fulfill({ json: { tournaments: [] } });
+  });
+  return submissions;
+}
+
+test('sanctioned setup requires Play! Tools confirmation; local setup skips it @mobile', async ({ page }) => {
+  const submissions = await mockOrganizer(page);
+  await page.goto('/host');
+  await page.getByRole('button', { name: 'Start an event' }).click();
+  const create = page.getByRole('button', { name: 'Create event' });
+  const confirmation = page.getByRole('checkbox', { name: 'I’ve created this event in Play! Tools' });
+  await expect(create).toBeDisabled();
+  await page.getByRole('textbox', { name: 'Event name' }).fill('Tuesday League');
+  await expect(create).toBeEnabled();
+  await expect(confirmation).toHaveCount(0);
+  const sanctioned = page.getByRole('tablist', { name: 'Sanctioned', exact: true });
+  await sanctioned.getByRole('tab', { name: 'Yes', exact: true }).click();
+  await expect(confirmation).not.toBeChecked();
+  await expect(create).toBeDisabled();
+  await expect(page.getByRole('link', { name: 'Play! Tools', exact: true })).toHaveAttribute(
+    'href',
+    'https://play-tools.pokemon.com/'
+  );
+  await expect(page.getByRole('link', { name: 'Sanctioning guide' })).toHaveAttribute(
+    'href',
+    'https://play-tools.pokemon.com/guide'
+  );
+  // A programmatic submit must obey the same gate as the disabled button.
+  await page.locator('.tm-setup').evaluate(form => form.dispatchEvent(new Event('submit', { bubbles: true })));
+  expect(submissions).toEqual([]);
+  await confirmation.check();
+  await expect(create).toBeEnabled();
+  await confirmation.uncheck();
+  await expect(create).toBeDisabled();
+  await sanctioned.getByRole('tab', { name: 'No', exact: true }).click();
+  await expect(confirmation).toHaveCount(0);
+  await expect(create).toBeEnabled();
+  await sanctioned.getByRole('tab', { name: 'Yes', exact: true }).click();
+  await confirmation.check();
+  await create.click();
+  await expect(page.locator('.tm-error')).toHaveText('Fixture submission');
+  expect(submissions).toEqual([
+    expect.objectContaining({ name: 'Tuesday League', settings: expect.objectContaining({ sanctioned: true }) })
+  ]);
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Start an event' }).click();
+  await sanctioned.getByRole('tab', { name: 'Yes', exact: true }).click();
+  await expect(confirmation).not.toBeChecked();
+});
+
+test('a TOM sanction ID shows an unchecked confirmation; an unsanctioned file skips it', async ({ page }) => {
+  await mockOrganizer(page);
+  // Use the upload fallback, so the test supplies a file without an OS picker.
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'showOpenFilePicker', { value: undefined });
+  });
+  await page.goto('/host');
+  const buffer = readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url));
+  await page.locator('input[type="file"]').setInputFiles({ name: 'challenge.tdf', mimeType: 'text/xml', buffer });
+  const confirmation = page.getByRole('checkbox', { name: 'I’ve created this event in Play! Tools' });
+  const create = page.getByRole('button', { name: 'Create event' });
+  await expect(confirmation).not.toBeChecked();
+  await expect(create).toBeDisabled();
+  await confirmation.check();
+  await expect(create).toBeEnabled();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'local.tdf',
+    mimeType: 'text/xml',
+    buffer: Buffer.from(buffer.toString().replace('<id>26-09-000456</id>', '<id></id>'))
+  });
+  await expect(confirmation).toHaveCount(0);
+  await expect(create).toBeEnabled();
 });
 
 test('the big screen hides the site chrome and shows a QR code to the event', async ({ page }) => {

@@ -26,7 +26,13 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash][extname]',
         // The embedded release manifest grows with every event, so it ships in a
         // chunk of its own and is budgeted apart from the code (see check-bundle-budget).
-        codeSplitting: { groups: [{ name: 'release', test: /shared[\\/]generated[\\/]release/ }] }
+        codeSplitting: {
+          groups: [
+            { name: 'release', test: /shared[\\/]generated[\\/]release/ },
+            // These small controls share Solid helpers and are used together in event forms.
+            { name: 'form', test: /tournaments[\\/](Field|FormatSelect|SettingControls)\.tsx$/ }
+          ]
+        }
       }
     }
   },

@@ -17,11 +17,13 @@ import {
   fetchMyDecklist,
   fetchPublished,
   fetchSession,
+  fetchStaff,
   fetchView,
   identifyPlayer,
   joinStaff,
   linkUrl,
   listTournaments,
+  removeStaff,
   reportAsPlayer,
   rotateStaffToken,
   saveAccountName,
@@ -87,9 +89,11 @@ test('every call goes to its endpoint with its body', async () => {
   await joinStaff('ABC', 'tok');
   await rotateStaffToken('ABC');
   await fetchDecklists('ABC');
-  await submitDecklist('ABC', 'deck', profile, null);
+  await submitDecklist('ABC', { deck: 'deck', profile, archetype: null, token: 'kept' });
   await fetchMyDecklist('ABC', profile, 'tok');
   await fetchMyDecklist('ABC', { popId: '', firstName: 'Ann', lastName: 'Lee' }, 'tok');
+  await fetchStaff('ABC');
+  await removeStaff('ABC', 'u-1');
   assert.deepEqual(
     sent.map(s => `${s.method} ${s.url}`),
     [
@@ -109,7 +113,9 @@ test('every call goes to its endpoint with its body', async () => {
       'GET /api/tournaments/ABC/decklists',
       'PUT /api/tournaments/ABC/decklists',
       'GET /api/tournaments/ABC/decklists?popId=1&firstName=A&lastName=B&token=tok',
-      'GET /api/tournaments/ABC/decklists?popId=&firstName=Ann&lastName=Lee&token=tok'
+      'GET /api/tournaments/ABC/decklists?popId=&firstName=Ann&lastName=Lee&token=tok',
+      'GET /api/tournaments/ABC/staff',
+      'DELETE /api/tournaments/ABC/staff?user=u-1'
     ]
   );
   const decklist = sent[14]?.body as { localTime: string };
@@ -122,7 +128,7 @@ test('every call goes to its endpoint with its body', async () => {
 test('a player identifies and reports through one endpoint, stamped with the venue clock', async () => {
   answer(200, { key: '4' });
   await identifyPlayer('ABC', { lastName: 'Oak' });
-  await reportAsPlayer('ABC', { popId: '12' }, 'win');
+  await reportAsPlayer('ABC', { popId: '12' }, 'win', 'seat-token');
   assert.deepEqual(
     sent.map(s => `${s.method} ${s.url}`),
     ['POST /api/tournaments/ABC/report', 'POST /api/tournaments/ABC/report']
@@ -134,8 +140,10 @@ test('a player identifies and reports through one endpoint, stamped with the ven
     /^\d{2}\/\d{2}\/\d{4} /,
     'identifying can settle a result, so it carries the clock too'
   );
-  const reported = sent[1]?.body as { popId: string; result: string; localTime: string };
-  assert.deepEqual([reported.popId, reported.result], ['12', 'win']);
+  const reported = sent[1]?.body as { popId: string; result: string; localTime: string; reportToken: string };
+  assert.deepEqual([reported.popId, reported.result, reported.reportToken], ['12', 'win', 'seat-token']);
+  const devices = sent.map(s => (s.body as { device?: string }).device);
+  assert.ok(devices.every(Boolean), 'each carries a device ID (a fresh one each here, with no storage to keep it)');
   assert.match(reported.localTime, /^\d{2}\/\d{2}\/\d{4} /);
 });
 
@@ -161,11 +169,11 @@ test('a 204 answers null', async () => {
   assert.equal(await fetchView('ABC', 3), null);
   assert.equal(await signOut(), null);
   assert.equal(await deleteTournament('ABC'), null);
-  assert.equal(await withdrawDecklist('ABC', { popId: '12', firstName: 'A', lastName: 'B' }), null);
+  assert.equal(await withdrawDecklist('ABC', { popId: '12', firstName: 'A', lastName: 'B' }, 'kept'), null);
   assert.equal(
     sent.at(-1)?.url,
-    '/api/tournaments/ABC/decklists?popId=12&firstName=A&lastName=B',
-    'withdrawn by who sent it'
+    '/api/tournaments/ABC/decklists?popId=12&firstName=A&lastName=B&token=kept',
+    'withdrawn by who sent it, with the token of the device that sent it'
   );
 });
 

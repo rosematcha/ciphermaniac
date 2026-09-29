@@ -2,18 +2,22 @@
  * One player's event, opened from any name on the public page: where they
  * stand, record, points and tiebreakers, then every round with the opponent,
  * the opponent's record and the result. A side sheet on desktop, a bottom
- * sheet on a phone. It is also where a player marks themselves, so the page
- * can lead with their table from then on.
+ * sheet on a phone. It is also where a player marks themselves, proving it
+ * with their Player ID or last name, so the page can lead with their table
+ * from then on.
  */
 
-import { For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
 import { percentLabel, recordLabel, type Standing } from '../../../shared/tournament/standings';
 import type { Pod } from '../../../shared/tournament/types';
+import type { TournamentView } from '../../../shared/tournament/view';
 import { matchHistory } from '../../lib/tournament/present';
 import { DeckIcons } from './DeckIcons';
+import { type Identified, IdentifyForm } from './Identify';
 import { Squares } from './Squares';
 
 export function PlayerSheet(props: {
+  view: TournamentView;
   playerId: string;
   pod: Pod;
   standing: Standing | undefined;
@@ -24,11 +28,21 @@ export function PlayerSheet(props: {
   records: Map<string, string>;
   decks: Record<string, string>;
   isMe: boolean;
-  onMe: (id: string | null) => void;
+  onIdentified: (found: Identified) => void;
+  onForget: () => void;
   onClose: () => void;
   onPlayer: (id: string) => void;
 }) {
   const history = () => matchHistory(props.pod, props.playerId);
+  const [proving, setProving] = createSignal(false);
+  // Opening another player's sheet starts over rather than asking for them.
+  createEffect(
+    on(
+      () => props.playerId,
+      () => setProving(false),
+      { defer: true }
+    )
+  );
   // Focus goes into the sheet and back to what opened it; Escape closes it.
   const opener = document.activeElement as HTMLElement | null;
   const onKey = (event: KeyboardEvent) => {
@@ -129,13 +143,35 @@ export function PlayerSheet(props: {
           </div>
         </div>
         <div class='tm-sheet-foot'>
-          <button
-            type='button'
-            class={props.isMe ? 'btn btn-ghost' : 'btn btn-primary'}
-            onClick={() => props.onMe(props.isMe ? null : props.playerId)}
+          <Show
+            when={!props.isMe}
+            fallback={
+              <button type='button' class='btn btn-ghost' onClick={() => props.onForget()}>
+                This isn’t me
+              </button>
+            }
           >
-            {props.isMe ? 'This isn’t me' : 'This is me'}
-          </button>
+            <Show
+              when={proving()}
+              fallback={
+                <button type='button' class='btn btn-primary' onClick={() => setProving(true)}>
+                  This is me
+                </button>
+              }
+            >
+              <IdentifyForm
+                view={props.view}
+                idPrefix='sheet'
+                submitLabel='Confirm'
+                expect={props.playerId}
+                autofocus
+                onFound={found => {
+                  setProving(false);
+                  props.onIdentified(found);
+                }}
+              />
+            </Show>
+          </Show>
         </div>
       </div>
     </>

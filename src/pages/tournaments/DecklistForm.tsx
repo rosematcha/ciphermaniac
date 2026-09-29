@@ -8,9 +8,9 @@
  *
  * Submitting adds a player who is not on the event's list yet. The device
  * remembers who sent the list and the token the server gave it, so coming
- * back shows the list to update or withdraw; another device finds it by
- * sending the same details again. A signed-in player's profile fills the
- * form in.
+ * back shows the list to update or withdraw. The list is locked to that
+ * device: another one sending the same details is refused, until staff
+ * unlock it. A signed-in player's profile fills the form in.
  */
 
 import { createEffect, createResource, createSignal, For, Show } from 'solid-js';
@@ -18,7 +18,6 @@ import { type DeckSection, parseDecklist } from '../../../shared/tournament/deck
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import {
   type Decklist,
-  fetchDecklists,
   fetchMyDecklist,
   type Registration,
   submitDecklist,
@@ -63,16 +62,10 @@ function remember(code: string, value: Remembered | null) {
   }
 }
 
-/** This device's list: by the details and token it kept, or a signed-in player's own. */
+/** This device's list, by the details and token it kept. */
 async function loadMine(code: string): Promise<Decklist | null> {
   const kept = recall(code);
-  if (kept) {
-    const { mine } = await fetchMyDecklist(code, kept.profile, kept.token);
-    if (mine) {
-      return mine;
-    }
-  }
-  return latestValue(session)?.user ? (await fetchDecklists(code)).mine : null;
+  return kept ? (await fetchMyDecklist(code, kept.profile, kept.token)).mine : null;
 }
 
 const SECTION_LABELS: Record<DeckSection, string> = { pokemon: 'Pokémon', trainer: 'Trainer', energy: 'Energy' };
@@ -159,7 +152,12 @@ function createDecklistForm(props: FormProps) {
     setError(null);
     try {
       const sent = profile();
-      const result = await submitDecklist(props.code, deck(), sent, props.archetypes ? archetype() : null);
+      const result = await submitDecklist(props.code, {
+        deck: deck(),
+        profile: sent,
+        archetype: props.archetypes ? archetype() : null,
+        token: recall(props.code)?.token ?? null
+      });
       remember(props.code, { profile: sent, token: result.token });
       setRegistration(result.registration);
       setKnown(true);
@@ -182,7 +180,7 @@ function createDecklistForm(props: FormProps) {
   async function withdraw() {
     setError(null);
     try {
-      await withdrawDecklist(props.code, profile());
+      await withdrawDecklist(props.code, profile(), recall(props.code)?.token ?? null);
       clearList();
     } catch (err) {
       fail(err);
@@ -351,7 +349,7 @@ function Foot(props: { form: DecklistState }) {
       </Show>
       <p class='tm-decklist-note muted'>
         {f().current()
-          ? 'Same details on another device finds your list.'
+          ? 'Change it from this device until submissions close.'
           : 'Staff see it. Change it until submissions close.'}
       </p>
     </div>

@@ -59,9 +59,12 @@ CREATE TABLE IF NOT EXISTS tournaments (
 );
 CREATE INDEX IF NOT EXISTS tournaments_by_owner ON tournaments (owner_id, updated_at);
 
+-- Who joined an event's staff through its invite link, and when, so the
+-- organizer can see everyone the link let in and remove one of them.
 CREATE TABLE IF NOT EXISTS staff (
   code TEXT NOT NULL,
   user_id TEXT NOT NULL,
+  joined_at INTEGER,
   PRIMARY KEY (code, user_id)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS staff_by_user ON staff (user_id);
@@ -70,9 +73,11 @@ CREATE INDEX IF NOT EXISTS staff_by_user ON staff (user_id);
 -- archetype is the player's own word, kept here until staff apply it: a
 -- player cannot set what the public page says someone else is on. Players
 -- need no account: `user_id` holds the identity the list was submitted under
--- (`pop:<Player ID>`, or `name:<first> <last>` at an unsanctioned event;
--- lists from before that change hold an account ID), and `owner_token` the
--- SHA-256 of the token the submitting device keeps to read the list back.
+-- (`pop:<Player ID>`, or `name:["first","last"]` at an unsanctioned event),
+-- and `owner_token` the SHA-256 of the token the submitting device keeps. The
+-- token reads the list back and is the only way to replace or withdraw it;
+-- staff can clear it (NULL) so the next submission under those details
+-- takes the list over.
 CREATE TABLE IF NOT EXISTS decklists (
   code TEXT NOT NULL,
   user_id TEXT NOT NULL,
@@ -85,4 +90,20 @@ CREATE TABLE IF NOT EXISTS decklists (
   submitted_at INTEGER NOT NULL,
   owner_token TEXT,
   PRIMARY KEY (code, user_id)
+) WITHOUT ROWID;
+
+-- Which device reports for a player at an event where players report their
+-- own results. The first device to say who the player is claims them: it
+-- keeps a token whose SHA-256 is `token_hash`, and only that token files a
+-- report as them, so nobody can report for both seats of a match by knowing
+-- the opponent's Player ID. `device` is the SHA-256 of an ID the browser
+-- keeps; two agreeing reports from one device go to staff rather than
+-- settling. Staff remove a row to let another device claim the player.
+CREATE TABLE IF NOT EXISTS report_devices (
+  code TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  token_hash TEXT NOT NULL,
+  device TEXT NOT NULL,
+  claimed_at INTEGER NOT NULL,
+  PRIMARY KEY (code, player_id)
 ) WITHOUT ROWID;

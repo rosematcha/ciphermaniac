@@ -7,13 +7,13 @@
  * - TOM writes from templates, not a serializer, so its spacing is not
  *   uniform (`<player1 userid="1"/>` but `<player userid="1" />` in a roster,
  *   and a stray space in `<round ... stage="6" >`). The writer copies it
- *   exactly, and an untouched file round-trips byte for byte.
+ *   for new files. Older TOM layouts may have their whitespace normalized.
  * - Outcome codes: 0 open, 1 and 2 a win for that seat, 3 a tie, 5 a bye,
  *   8 a forced loss (a late entrant's missed round), 10 a double loss. A bye
  *   and a forced loss name one `<player>` at table 0.
  * - Round type 1 is single elimination; a Swiss round repeats the root type
  *   (2 for a League Challenge, 3 for a Cup). Stage 2 is paired or playing,
- *   6 finished, and 8 the last round of a finalized event.
+ *   6 finished (5 in older files), and 8 the last round of a finalized event.
  * - Pod categories: 0 Juniors, 1 Seniors, 2 Masters, 8 Juniors and Seniors,
  *   9 Seniors and Masters, 10 everyone.
  * - `<standings>` is written only once the event is finalized (root stage 5).
@@ -22,6 +22,7 @@
  * writing an imported file changes only what the site changed.
  */
 
+import { divisionLookup } from './divisions.js';
 import { placeFinals, swissStandings } from './standings.js';
 import {
   type Division,
@@ -67,6 +68,7 @@ const STAGE_PLAYING = '2';
 const STAGE_FINISHED = '6';
 const STAGE_FINAL = '8';
 const FINALIZED = '5';
+const FINISHED_STAGES = new Set(['5', STAGE_FINISHED, STAGE_FINAL]);
 
 /** What a new file says about itself: TOM 1.86, a one-day TCG event. */
 export const DEFAULT_ROOT_ATTRS: [string, string][] = [
@@ -86,7 +88,7 @@ export const DEFAULT_ROOT_ATTRS: [string, string][] = [
 function known<T>(codes: ReadonlyMap<string, T>, code: string, what: string): T {
   const value = codes.get(code);
   if (value === undefined) {
-    throw new Error(`Unknown ${what} "${code}" in this file`);
+    throw new Error(`Unknown ${what} "${code}"`);
   }
   return value;
 }
@@ -102,28 +104,25 @@ const INFO_TAGS = new Set([
   'organizer',
   'startdate'
 ]);
-const PLAYER_TAGS = new Set(['firstname', 'lastname', 'birthdate', 'creationdate', 'lastmodifieddate', 'dropped']);
+const PLAYER_TAGS = new Set(['firstname', 'lastname', 'birthdate']);
 const PODDATA_TAGS = new Set(['startingtable', 'playoff3rd4th']);
 
 /** Any element as TOM would write it, at depth 0; `indent` shifts it into place. */
 export function serializeElement(element: XmlElement): string {
+  const { name, children, text } = element;
   const attrs = element.attrs.map(([key, value]) => ` ${key}="${encodeEntities(value)}"`).join('');
-  if (element.children.length === 0 && element.text) {
-    return `<${element.name}${attrs}>${encodeEntities(element.text)}</${element.name}>`;
+  if (name === 'player' && children.length === 0 && !text) {
+    return `<player${attrs} />`;
   }
-  if (element.children.length === 0) {
-    return attrs ? `<${element.name}${attrs}/>` : `<${element.name}>\n</${element.name}>`;
-  }
-  const inner = element.children.map(serializeElement).map(xml => indent(xml, 1));
-  return [`<${element.name}${attrs}>`, ...inner, `</${element.name}>`].join('\n');
+  const content = children.length
+    ? ['', ...children.map(child => indent(serializeElement(child), 1)), ''].join('\n')
+    : encodeEntities(text) || '\n';
+  return `<${name}${attrs}>${content}</${name}>`;
 }
 
 function indent(xml: string, depth: number): string {
   const tabs = '\t'.repeat(depth);
-  return xml
-    .split('\n')
-    .map(line => tabs + line)
-    .join('\n');
+  return tabs + xml.replace(/\n/g, `\n${tabs}`);
 }
 
 function extras(element: XmlElement | undefined, known: ReadonlySet<string>): [string, string][] {
@@ -160,7 +159,7 @@ function readPlayer(element: XmlElement): Player {
     lastName: childText(element, 'lastname'),
     birthDate: childText(element, 'birthdate'),
     droppedAfter: droppedRound,
-    ...(child(element, 'late') && childText(element, 'late') !== 'false' ? { late: true } : {}),
+    ...(childText(element, 'starter') === 'false' || childText(element, 'late') === 'true' ? { late: true } : {}),
     created: childText(element, 'creationdate'),
     modified: childText(element, 'lastmodifieddate')
   };
@@ -178,11 +177,7 @@ function readMatch(element: XmlElement): Match {
 }
 
 function roundStatus(stage: string, matches: readonly Match[], startTime: string): RoundStatus {
-  if (
-    stage === STAGE_FINISHED ||
-    stage === STAGE_FINAL ||
-    (matches.length > 0 && matches.every(m => m.outcome !== 'pending'))
-  ) {
+  if (FINISHED_STAGES.has(stage) || (matches.length > 0 && matches.every(m => m.outcome !== 'pending'))) {
     return 'finished';
   }
   return startTime || matches.some(m => m.outcome !== 'pending') ? 'started' : 'paired';
@@ -249,7 +244,7 @@ export function parseTdf(source: string): Tournament {
   const playerElements = children(child(root, 'players'), 'player');
   const podElements = children(child(root, 'pods'), 'pod');
   const finals = child(root, 'finalsoptions');
-  return {
+  const tournament: Tournament = {
     info: readInfo(data),
     players: playerElements.map(readPlayer),
     pods: applyCuts(podElements.map(readPod), finals),
@@ -268,6 +263,33 @@ export function parseTdf(source: string): Tournament {
       finalsOptions: finals ? serializeElement(finals) : ''
     }
   };
+  const standings = child(root, 'standings');
+  if (standings && tournament.passthrough) {
+    tournament.passthrough.standings = { xml: serializeElement(standings), state: standingsState(tournament) };
+  }
+  return tournament;
+}
+
+/** Only changes that can affect final places invalidate TOM's saved standings. */
+function standingsState(t: Tournament): string {
+  return JSON.stringify(
+    [t.info.startDate, t.players, t.pods],
+    [
+      'id',
+      'birthDate',
+      'droppedAfter',
+      'late',
+      'category',
+      'playerIds',
+      'rounds',
+      'number',
+      'kind',
+      'matches',
+      'p1',
+      'p2',
+      'outcome'
+    ]
+  );
 }
 
 // ---------- writing ----------
@@ -283,15 +305,15 @@ function block(depth: number, lines: readonly string[]): string[] {
   return lines.map(line => indent(line, depth));
 }
 
-const NEW_FILE_DATA: [string, string][] = [
-  ['lessswiss', '<lessswiss>false</lessswiss>'],
-  ['autotablenumber', '<autotablenumber>false</autotablenumber>'],
-  ['overflowtablestart', '<overflowtablestart>0</overflowtablestart>']
+const NEW_FILE_DATA = [
+  '<lessswiss>false</lessswiss>',
+  '<autotablenumber>false</autotablenumber>',
+  '<overflowtablestart>0</overflowtablestart>'
 ];
 
 function writeData(t: Tournament): string[] {
   const { info } = t;
-  const extra = t.passthrough?.extraData ?? NEW_FILE_DATA;
+  const extra = t.passthrough?.extraData.map(([, xml]) => xml) ?? NEW_FILE_DATA;
   return [
     '<data>',
     ...block(1, [
@@ -304,29 +326,57 @@ function writeData(t: Tournament): string[] {
       tag('finalsroundtime', info.finalsRoundTime),
       `<organizer popid="${esc(info.organizerPopId)}" name="${esc(info.organizerName)}"/>`,
       tag('startdate', info.startDate),
-      ...extra.map(([, xml]) => xml)
+      ...extra
     ]),
     '</data>'
   ];
 }
 
-const DEFAULT_PLAYER_EXTRAS: [string, string][] = [['starter', '<starter>true</starter>']];
+function writeDrop(player: Player, extra: [string, string][]): string[] {
+  if (player.droppedAfter === null) {
+    return [];
+  }
+  const saved = extra.find(([name]) => name === 'dropped')?.[1] ?? '';
+  const drop = saved ? parseXml(saved) : undefined;
+  if (drop && childText(drop, 'status') !== '0' && childText(drop, 'round') === String(player.droppedAfter)) {
+    return [saved];
+  }
+  return [
+    '<dropped>',
+    ...block(1, [tag('status', 1), tag('round', player.droppedAfter), tag('timestamp', player.modified)]),
+    '</dropped>'
+  ];
+}
+
+function playerFields(player: Player, extra: [string, string][]): string[] {
+  const values: Record<string, string> = {
+    starter: String(!player.late),
+    late: String(player.late === true),
+    creationdate: player.created,
+    lastmodifieddate: player.modified
+  };
+  const fields = [...extra];
+  for (const name of ['creationdate', 'lastmodifieddate', 'dropped']) {
+    if (!extra.some(([key]) => key === name)) {
+      fields.push([name, '']);
+    }
+  }
+  return fields.flatMap(([name, xml]) => {
+    if (name === 'dropped') {
+      return writeDrop(player, extra);
+    }
+    return [Object.hasOwn(values, name) ? tag(name, values[name] ?? '') : xml];
+  });
+}
 
 function writePlayer(player: Player, extra: [string, string][]): string[] {
-  const dropped =
-    player.droppedAfter === null
-      ? []
-      : ['<dropped>', ...block(1, [tag('status', 1), tag('round', player.droppedAfter)]), '</dropped>'];
   return [
     `<player userid="${esc(player.id)}">`,
     ...block(1, [
       tag('firstname', player.firstName),
       tag('lastname', player.lastName),
       tag('birthdate', player.birthDate),
-      ...extra.map(([, xml]) => xml),
-      tag('creationdate', player.created),
-      tag('lastmodifieddate', player.modified),
-      ...dropped
+      ...playerFields(player, extra)
     ]),
     '</player>'
   ];
@@ -352,15 +402,17 @@ interface RoundContext {
 }
 
 function roundStage(round: Round, context: RoundContext): string {
-  if (round.status !== 'finished') {
-    return STAGE_PLAYING;
+  const kept = context.codes?.stage;
+  const complete =
+    round.status === 'finished' || (round.matches.length > 0 && round.matches.every(m => m.outcome !== 'pending'));
+  if (!complete) {
+    return kept && !FINISHED_STAGES.has(kept) ? kept : STAGE_PLAYING;
   }
   if (context.finalized && context.last) {
     return STAGE_FINAL;
   }
   // A finished round keeps TOM's own finished code; one the site finished gets the usual one.
-  const kept = context.codes?.stage;
-  return kept === STAGE_FINISHED || kept === STAGE_FINAL ? kept : STAGE_FINISHED;
+  return kept && FINISHED_STAGES.has(kept) ? kept : STAGE_FINISHED;
 }
 
 function writeRound(round: Round, context: RoundContext): string[] {
@@ -380,10 +432,10 @@ function writeRound(round: Round, context: RoundContext): string[] {
   ];
 }
 
-const NEW_POD_EXTRAS: [string, string][] = [
-  ['subgroupcount', '<subgroupcount>1</subgroupcount>'],
-  ['additionalrounds', '<additionalrounds>0</additionalrounds>'],
-  ['blockedranges', '<blockedranges>\n</blockedranges>']
+const NEW_POD_EXTRAS = [
+  '<subgroupcount>1</subgroupcount>',
+  '<additionalrounds>0</additionalrounds>',
+  '<blockedranges>\n</blockedranges>'
 ];
 
 function writePod(t: Tournament, pod: Pod, finalized: boolean): string[] {
@@ -405,7 +457,7 @@ function writePod(t: Tournament, pod: Pod, finalized: boolean): string[] {
       ...block(1, [
         tag('startingtable', pod.startingTable),
         tag('playoff3rd4th', String(pod.playoff3rd4th)),
-        ...(extra?.extra ?? NEW_POD_EXTRAS).map(([, xml]) => xml)
+        ...(extra?.extra.map(([, xml]) => xml) ?? NEW_POD_EXTRAS)
       ]),
       '</poddata>',
       '<subgroups>',
@@ -464,6 +516,11 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
   return ['<standings>', ...block(1, pods), '</standings>'];
 }
 
+function finalStandings(t: Tournament, divisionOf: (id: string) => Division): string[] {
+  const saved = t.passthrough?.standings;
+  return saved?.state === standingsState(t) ? saved.xml.split('\n') : writeStandings(t, divisionOf);
+}
+
 function writeFinalsOptions(t: Tournament, divisionOf: (id: string) => Division): string[] {
   if (t.passthrough?.finalsOptions) {
     return t.passthrough.finalsOptions.split('\n');
@@ -472,7 +529,7 @@ function writeFinalsOptions(t: Tournament, divisionOf: (id: string) => Division)
     `<categorycut key="${CATEGORY_CODES[division]}">`,
     ...block(1, [
       '<options>',
-      ...block(1, [tag('value', 0)]),
+      ...block(1, [tag('value', 0), ...(pods[0]?.cut ? [tag('value', pods[0].cut)] : [])]),
       '</options>',
       tag('cut', pods[0]?.cut ?? 0),
       tag(
@@ -510,16 +567,19 @@ function rootAttrs(t: Tournament, finalized: boolean): string {
 export interface WriteOptions {
   /** Marks the event finished and writes final standings, as TOM's "Finalize Results" does. */
   finalized?: boolean;
-  /** Each player's age division, for standings in a combined pod. Defaults to Masters. */
+  /** Each player's age division, for standings in a combined pod. Defaults to birth year and event season. */
   divisionOf?: (id: string) => Division;
 }
 
 /** Writes the tournament as a .tdf, in TOM's own layout. */
 export function writeTdf(t: Tournament, options: WriteOptions = {}): string {
-  const finalized = options.finalized ?? false;
-  const divisionOf = options.divisionOf ?? (() => 'masters' as const);
+  const finalized = options.finalized ?? wasFinalized(t);
+  if (finalized && t.pods.some(pod => pod.rounds.some(round => round.matches.some(m => m.outcome === 'pending')))) {
+    throw new Error('Enter all match results to finalize');
+  }
+  const divisionOf = options.divisionOf ?? divisionLookup(t);
   const extras = t.passthrough?.playerExtras ?? {};
-  const players = t.players.flatMap(p => writePlayer(p, extras[p.id] ?? DEFAULT_PLAYER_EXTRAS));
+  const players = t.players.flatMap(p => writePlayer(p, extras[p.id] ?? [['starter', '']]));
   const pods = t.pods.flatMap(pod => writePod(t, pod, finalized));
   const lines = [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -533,7 +593,7 @@ export function writeTdf(t: Tournament, options: WriteOptions = {}): string {
       '<pods>',
       ...block(1, pods),
       '</pods>',
-      ...(finalized ? writeStandings(t, divisionOf) : []),
+      ...(finalized ? finalStandings(t, divisionOf) : []),
       ...writeFinalsOptions(t, divisionOf)
     ]),
     '</tournament>'

@@ -6,7 +6,8 @@
  * have locked, the result stands, as if staff had entered it. When they
  * disagree, neither counts: the match stays open and shows as disputed until
  * staff enter the result, which settles it either way. One report alone
- * waits for the opponent, and staff can take it as it is.
+ * waits for the opponent, and staff can take it as it is. Two agreeing
+ * reports sent from one device never settle on their own: staff look first.
  */
 
 import { latestRound } from './rounds.js';
@@ -30,6 +31,8 @@ export interface PlayerReport {
   by: string;
   outcome: ReportedOutcome;
   at: number;
+  /** The hashed device that filed it; kept from the public view. */
+  device?: string;
 }
 
 type MatchKey = Pick<PlayerReport, 'pod' | 'round' | 'table' | 'p1' | 'p2'>;
@@ -74,13 +77,28 @@ export function reportableMatch(tournament: Tournament, playerId: string): OpenM
 }
 
 /** A player's report of their open match, or why it cannot be one. */
-export function playerReport(open: OpenMatch, by: string, result: PlayerResult, at: number): PlayerReport | string {
+export function playerReport(
+  open: OpenMatch,
+  by: string,
+  result: PlayerResult,
+  filed: { at: number; device?: string }
+): PlayerReport | string {
   if (open.round.kind === 'elimination' && result === 'tie') {
     return 'A top cut match needs a winner';
   }
   const { pod, round, match } = open;
   const outcome = reportedOutcome(match, by, result);
-  return { pod: pod.category, round: round.number, table: match.table, p1: match.p1, p2: match.p2, by, outcome, at };
+  return {
+    pod: pod.category,
+    round: round.number,
+    table: match.table,
+    p1: match.p1,
+    p2: match.p2,
+    by,
+    outcome,
+    at: filed.at,
+    ...(filed.device ? { device: filed.device } : {})
+  };
 }
 
 /** How long a player has to change a report before it locks. */
@@ -97,14 +115,23 @@ export function fileReport(reports: readonly PlayerReport[], report: PlayerRepor
   return [...reports.filter(r => r !== own), report];
 }
 
-/** One report from each match whose two reports agree and have both locked: those results now stand. */
+/** Whether both of a match's reports came from one device: one person speaking for both seats. */
+export const oneDevice = (a: Pick<PlayerReport, 'device'>, b: Pick<PlayerReport, 'device'>): boolean =>
+  a.device !== undefined && a.device === b.device;
+
+/**
+ * One report from each match whose two reports agree, have both locked and
+ * came from two devices: those results now stand.
+ */
 export function dueResults(reports: readonly PlayerReport[], now: number): PlayerReport[] {
   return reports.filter(report => {
     if (report.by !== report.p1) {
       return false;
     }
     const other = reports.find(r => sameMatch(r, report) && r.by === report.p2);
-    return other?.outcome === report.outcome && isLocked(report, now) && isLocked(other, now);
+    return (
+      other?.outcome === report.outcome && isLocked(report, now) && isLocked(other, now) && !oneDevice(report, other)
+    );
   });
 }
 
@@ -134,10 +161,15 @@ export function pruneReports(tournament: Tournament, reports: readonly PlayerRep
   });
 }
 
-/** The reports under public keys. */
+/** The reports under public keys, without the devices they came from. */
 export function publicReports(reports: readonly PlayerReport[], keys: Record<string, string>): PlayerReport[] {
   const key = (id: string) => keys[id] ?? id;
-  return reports.map(report => ({ ...report, p1: key(report.p1), p2: key(report.p2), by: key(report.by) }));
+  return reports.map(({ device: _device, ...report }) => ({
+    ...report,
+    p1: key(report.p1),
+    p2: key(report.p2),
+    by: key(report.by)
+  }));
 }
 
 /** The result a settled report stands for, as the command staff would send. */

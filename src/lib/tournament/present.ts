@@ -13,7 +13,6 @@ import {
   type PlayerResult,
   reportsFor
 } from '../../../shared/tournament/reports';
-import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
 import {
   eliminationResult,
   percentLabel,
@@ -388,13 +387,6 @@ export function unseated(tournament: Tournament, pod: Pod): string[] {
   );
   const dropped = new Set(tournament.players.filter(p => p.droppedAfter !== null).map(p => p.id));
   return pod.playerIds.filter(id => !seated.has(id) && !dropped.has(id));
-}
-
-/** Each player's age division for the event's season, from the birth dates staff can see. */
-export function divisionLookup(tournament: Tournament): (id: string) => Division {
-  const season = seasonOf(parseTomDate(tournament.info.startDate) ?? new Date());
-  const births = new Map(tournament.players.map(p => [p.id, p.birthDate]));
-  return id => divisionFor(births.get(id) ?? '', season);
 }
 
 /** The archetypes to draw beside names: none when the event has them off. */

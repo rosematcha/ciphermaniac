@@ -13,11 +13,12 @@ import { createEffect, createMemo, createResource, createSignal, For, lazy, onCl
 import { parseTomDate } from '../../../shared/tournament/divisions';
 import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
+import type { PlayerClaim } from '../../../shared/tournament/identify';
 import { decksEnabled, isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
-import { fetchPublished, fetchView } from '../../lib/tournament/api';
+import { fetchPublished, fetchView, identifyPlayer } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import {
   currentRound,
@@ -35,6 +36,7 @@ import { TournamentHero } from './Hero';
 import { MatchTable } from './MatchTable';
 import { createNow } from './now';
 import { PlayerSheet } from './PlayerSheet';
+import type { Identified } from './Identify';
 import { StandingsTable } from './StandingsTable';
 import { YourMatch } from './YourMatch';
 import '../../styles/pages/tournament-public.css';
@@ -85,6 +87,25 @@ function createView(code: () => string) {
 }
 
 const meKey = (code: string) => `cm-tournament-me:${code}`;
+const claimKey = (code: string) => `cm-tournament-player:${code}`;
+const tokenKey = (code: string) => `cm-tournament-report:${code}`;
+
+function storedClaim(code: string): PlayerClaim | null {
+  try {
+    return JSON.parse(localStorage.getItem(claimKey(code)) ?? 'null') as PlayerClaim | null;
+  } catch {
+    return null;
+  }
+}
+
+/** Sets or clears a remembered value. */
+function keep(key: string, value: string | null) {
+  if (value) {
+    localStorage.setItem(key, value);
+  } else {
+    localStorage.removeItem(key);
+  }
+}
 
 function hasPodData(view: TournamentView) {
   return view.tournament.pods.some(pod => pod.rounds.length > 0);
@@ -92,19 +113,47 @@ function hasPodData(view: TournamentView) {
 
 /**
  * Which player the viewer is: the one their profile's Player ID matches, or
- * the one they marked on this device.
+ * the one they proved on this device with a Player ID or last name (see
+ * Identify). A player marked on this device before proof was asked for is
+ * not taken on its word.
  */
-function createMe(view: () => TournamentView) {
-  const [chosen, setChosen] = createSignal(localStorage.getItem(meKey(view().code)));
-  const setMe = (id: string | null) => {
-    if (id) {
-      localStorage.setItem(meKey(view().code), id);
-    } else {
-      localStorage.removeItem(meKey(view().code));
+function createMe(view: () => TournamentView, onView: (view: PublishedView) => void) {
+  const code = () => view().code;
+  const stored = storedClaim(code());
+  const [claim, setClaim] = createSignal(stored);
+  const [chosen, setChosen] = createSignal(stored ? localStorage.getItem(meKey(code())) : null);
+  const [reportToken, setReportToken] = createSignal(stored ? localStorage.getItem(tokenKey(code())) : null);
+  function identified(found: Identified) {
+    keep(meKey(code()), found.key);
+    keep(claimKey(code()), JSON.stringify(found.claim));
+    setChosen(found.key);
+    setClaim(found.claim);
+    // A new token when this device just became the one that reports; none kept when another device is.
+    const token = found.reportToken ?? (found.reporter === false ? null : reportToken());
+    keep(tokenKey(code()), token);
+    setReportToken(token);
+    onView(found.view);
+  }
+  function forget() {
+    [meKey, claimKey, tokenKey].forEach(key => localStorage.removeItem(key(code())));
+    setChosen(null);
+    setClaim(null);
+    setReportToken(null);
+  }
+  // A device that said who the player is before reporting took a token asks for one now, if nobody has it.
+  async function claimNow(said: PlayerClaim) {
+    const answer = await identifyPlayer(code(), said).catch(() => null);
+    if (answer?.key) {
+      identified({ ...answer, claim: said, key: answer.key });
     }
-    setChosen(id);
-  };
-  return { me: () => view().viewer.me ?? chosen(), setMe };
+  }
+  onMount(() => {
+    const said = claim();
+    if (said && !reportToken()) {
+      void claimNow(said);
+    }
+  });
+  return { me: () => view().viewer.me ?? chosen(), claim, reportToken, identified, forget };
 }
 
 function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
@@ -160,7 +209,8 @@ function OpenPlayer(props: {
   id: string;
   me: string | null;
   names: Map<string, string>;
-  onMe: (id: string | null) => void;
+  onIdentified: (found: Identified) => void;
+  onForget: () => void;
   onOpen: (id: string | null) => void;
 }) {
   const pod = () => props.view.tournament.pods.find(p => p.playerIds.includes(props.id)) ?? props.fallback;
@@ -177,6 +227,7 @@ function OpenPlayer(props: {
     <Show when={pod()}>
       {p => (
         <PlayerSheet
+          view={props.view}
           playerId={props.id}
           pod={p()}
           standing={standings(p()).find(row => row.playerId === props.id)}
@@ -185,7 +236,8 @@ function OpenPlayer(props: {
           records={new Map(standings(p()).map(row => [row.playerId, recordLabel(row.record)]))}
           decks={props.view.decks}
           isMe={props.me === props.id}
-          onMe={props.onMe}
+          onIdentified={props.onIdentified}
+          onForget={props.onForget}
           onClose={() => props.onOpen(null)}
           onPlayer={props.onOpen}
         />
@@ -237,7 +289,10 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
   const [roundChoice, setRoundChoice] = createSignal<number | null>(null);
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal<string | null>(null);
-  const { me, setMe } = createMe(() => props.view);
+  const { me, claim, reportToken, identified, forget } = createMe(
+    () => props.view,
+    view => props.onView(view)
+  );
   const pods = () => props.view.tournament.pods;
   const myPod = () => pods().find(p => p.playerIds.includes(me() ?? ''))?.category ?? null;
   const pod = createMemo(() => pods().find(p => p.category === (podChoice() ?? myPod())) ?? pods()[0]);
@@ -280,7 +335,10 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
       <YourMatch
         view={props.view}
         me={me()}
-        onMe={setMe}
+        claim={claim()}
+        reportToken={reportToken()}
+        onIdentified={identified}
+        onForget={forget}
         onView={props.onView}
         onPlayer={setOpen}
         firstRound={firstRoundTime(props.view.settings.startsAt)}
@@ -302,7 +360,7 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
               pending={props.view.pending}
               me={me()}
               onPlayer={setOpen}
-              results
+              status
             />
           </Show>
           <Show when={started() && deckNote(props.view)}>
@@ -346,7 +404,8 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
             fallback={pod()}
             id={id()}
             me={me()}
-            onMe={setMe}
+            onIdentified={identified}
+            onForget={forget}
             onOpen={setOpen}
             names={names()}
           />

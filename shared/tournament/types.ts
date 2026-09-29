@@ -159,6 +159,8 @@ export interface TdfPassthrough {
   /** Per round, keyed `category:number`: TOM's own type and stage codes. */
   roundCodes: Record<string, { type: string; stage: string }>;
   finalsOptions: string;
+  /** TOM's finalized places and the inputs they describe; retained until results or entrants change. */
+  standings?: { xml: string; state: string };
 }
 
 export function playerName(player: Pick<Player, 'firstName' | 'lastName'>): string {
