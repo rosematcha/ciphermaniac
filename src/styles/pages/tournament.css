@@ -428,17 +428,26 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
     display: none;
   }
 }
+/* A hidden secret is a button drawn as its field. Only the text is blurred,
+   and it fades out before the field's edges, so the blur never meets the
+   border in a hard line; the box and its border stay sharp. */
 .tm-secret {
-  transition:
-    color var(--ms-fast) var(--ease-base),
-    text-shadow var(--ms-fast) var(--ease-base);
-}
-/* Only the text is blurred: it goes transparent and is drawn again as a soft
-   halo, so the box and its border stay sharp. */
-.tm-secret.is-hidden {
-  color: transparent;
-  text-shadow: 0 0 7px var(--fg);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  color: var(--fg);
+  text-align: left;
   cursor: pointer;
+}
+.tm-secret-text {
+  flex: 1;
+  min-width: 0;
+  padding-block: 10px;
+  margin-block: -10px;
+  overflow: hidden;
+  white-space: nowrap;
+  filter: blur(5px);
+  mask-image: linear-gradient(90deg, transparent, #000 1em, #000 calc(100% - 3em), transparent);
   user-select: none;
 }
 /* The negative hue walked toward the ink, so 12px error text clears 4.5:1 on
@@ -1216,8 +1225,14 @@ tr.is-in .tm-place {
   gap: 8px 12px;
   min-width: 0;
 }
+/* The link and both buttons on one line, the link taking what the buttons
+   leave; only a narrow screen, or New link asking first, wraps them. */
+.tm-invite {
+  flex: 1 1 auto;
+}
 .tm-invite .tm-link {
-  flex: 1 1 260px;
+  flex: 1 1 200px;
+  min-width: 0;
   max-width: 420px;
 }
 .tm-staff-list {

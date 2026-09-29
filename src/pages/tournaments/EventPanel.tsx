@@ -2,9 +2,10 @@
  * The console's event tab, as bordered boxes of settings rows (label at left,
  * control at right): the event itself (name, round lengths, Swiss rounds),
  * what players see and do (start, format, archetypes, sanctioned, reporting,
- * decklists, details), finishing (end or reopen, the .tdf), the staff invite,
- * and deleting the event. Each box of settings saves on its own and says when
- * it has unsaved changes; anything that cannot be taken back asks first.
+ * decklists, details), finishing (end or reopen, the .tdf), the staff invite
+ * and who is on staff, and deleting the event. Each box of settings saves on
+ * its own and says when it has unsaved changes; anything that cannot be taken
+ * back asks first.
  */
 
 import { useNavigate } from '@solidjs/router';
@@ -25,6 +26,7 @@ import { downloadBlob } from '../../lib/download';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
+import { session } from './session';
 import type { ManageState } from './manageState';
 import { DecklistsSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
@@ -279,15 +281,35 @@ function StaffInvite(props: { state: ManageState; manage: Manage }) {
       <div class='tm-box'>
         <SettingRow label='Invite link'>
           <span class='tm-set-inline tm-invite'>
-            <input
-              class='tm-input tm-link tm-secret'
-              classList={{ 'is-hidden': !revealed() }}
-              readOnly
-              value={link()}
-              aria-label='Staff invite link'
-              title={revealed() ? undefined : 'Press to show'}
-              onFocus={() => setRevealed(true)}
-            />
+            <Show
+              when={revealed()}
+              fallback={
+                <button
+                  type='button'
+                  class='tm-input tm-link tm-secret'
+                  aria-label='Show the staff invite link'
+                  onClick={() => setRevealed(true)}
+                >
+                  <span class='tm-secret-text' aria-hidden='true'>
+                    {link()}
+                  </span>
+                </button>
+              }
+            >
+              <input
+                class='tm-input tm-link'
+                readOnly
+                value={link()}
+                aria-label='Staff invite link'
+                ref={el =>
+                  queueMicrotask(() => {
+                    el.focus();
+                    el.select();
+                  })
+                }
+                onFocus={e => e.currentTarget.select()}
+              />
+            </Show>
             <button type='button' class='btn btn-secondary' onClick={() => void copy()}>
               {copied() ? 'Copied' : 'Copy invite link'}
             </button>
@@ -309,13 +331,19 @@ function StaffInvite(props: { state: ManageState; manage: Manage }) {
 
 const joinedOn = (at: number) => new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
-/** Everyone the invite link let in, and when, so a link that went further than meant shows; each can be removed. */
+/**
+ * Who runs the event: the organizer first, then everyone the invite link let
+ * in, and when, so a link that went further than meant shows; each of them
+ * can be removed.
+ */
 function StaffList(props: { manage: Manage }) {
   // A new link removes everyone, so the list is asked for again with each one.
   const [staff, { mutate }] = createResource(
     () => ({ code: props.manage.code, token: props.manage.staffToken }),
     ({ code }) => fetchStaff(code).then(result => result.staff)
   );
+  // Only the organizer sees this list, so the organizer is whoever is signed in.
+  const organizer = () => latestValue(session)?.user?.name;
   async function remove(id: string) {
     const result = await removeStaff(props.manage.code, id).catch(() => null);
     if (result) {
@@ -324,27 +352,35 @@ function StaffList(props: { manage: Manage }) {
   }
   return (
     <SettingRow label='On staff'>
-      <Show when={latestValue(staff)?.length} fallback={<span class='muted'>Nobody has joined yet</span>}>
-        <ul class='tm-staff-list'>
-          <For each={latestValue(staff)}>
-            {member => (
-              <li>
-                <span>
-                  {member.name}
-                  <Show when={member.joinedAt}>{at => <span class='muted'> · joined {joinedOn(at())}</span>}</Show>
-                </span>
-                <ConfirmAction
-                  label='Remove'
-                  question={`Remove ${member.name} from staff?`}
-                  confirmLabel='Remove'
-                  danger
-                  onConfirm={() => void remove(member.id)}
-                />
-              </li>
-            )}
-          </For>
-        </ul>
-      </Show>
+      <ul class='tm-staff-list'>
+        <Show when={organizer()}>
+          {name => (
+            <li>
+              <span>
+                {name()}
+                <span class='muted'> · organizer</span>
+              </span>
+            </li>
+          )}
+        </Show>
+        <For each={latestValue(staff)}>
+          {member => (
+            <li>
+              <span>
+                {member.name}
+                <Show when={member.joinedAt}>{at => <span class='muted'> · joined {joinedOn(at())}</span>}</Show>
+              </span>
+              <ConfirmAction
+                label='Remove'
+                question={`Remove ${member.name} from staff?`}
+                confirmLabel='Remove'
+                danger
+                onConfirm={() => void remove(member.id)}
+              />
+            </li>
+          )}
+        </For>
+      </ul>
     </SettingRow>
   );
 }
