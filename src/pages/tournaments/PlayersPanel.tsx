@@ -16,13 +16,13 @@ import { createMemo, createSignal, For, Show } from 'solid-js';
 import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
 import { DIVISION_LABELS, type Player, playerName, type Tournament } from '../../../shared/tournament/types';
 import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
-import { type Manage, releaseReporter, setDeck } from '../../lib/tournament/api';
-import { latestValue } from '../../lib/resource';
+import { type Manage, releaseReporter } from '../../lib/tournament/api';
 import { matchHistory } from '../../lib/tournament/present';
-import { DeckCombo } from '../live/LiveDeck';
-import { deckOptions } from './deckOptions';
+import type { ReportedDeck } from '../live/LiveDeck';
 import { ConfirmAction } from './ConfirmAction';
-import { ErrorLine, Field } from './Field';
+import { createDeckOptions } from './deckOptions';
+import { DeckPicker } from './DeckPicker';
+import { Field } from './Field';
 import type { ManageState } from './manageState';
 import { birthDateFor } from './ProfileFields';
 import { Squares } from './Squares';
@@ -93,34 +93,10 @@ function AddPlayer(props: { state: ManageState; sanctioned: boolean; late: boole
   );
 }
 
-function DeckCell(props: { state: ManageState; manage: Manage; player: Player }) {
-  const [deckError, setDeckError] = createSignal<string | null>(null);
-  const label = () => props.manage.decks[props.player.id];
-  async function pickDeck(archetype: string | null) {
-    setDeckError(null);
-    const { code } = props.manage;
-    const { id } = props.player;
-    const ok = await props.state.run(() => setDeck(code, id, archetype));
-    if (!ok) {
-      setDeckError('Could not save the deck');
-    }
-  }
+function DeckCell(props: RowProps) {
   return (
     <td class='tm-deck-cell'>
-      <span class='tm-deck-pick'>
-        <DeckCombo
-          decks={latestValue(deckOptions) ?? []}
-          selected={label() ? { label: label() as string } : undefined}
-          placeholder='Deck'
-          onPick={deck => void pickDeck(deck.label)}
-        />
-        <Show when={label()} fallback={<span />}>
-          <button type='button' class='btn btn-ghost tm-small' onClick={() => void pickDeck(null)}>
-            Clear
-          </button>
-        </Show>
-      </span>
-      <ErrorLine message={deckError()} />
+      <DeckPicker state={props.state} manage={props.manage} playerId={props.player.id} decks={props.decks} />
     </td>
   );
 }
@@ -232,6 +208,7 @@ interface RowProps {
   player: Player;
   season: number;
   showRounds: boolean;
+  decks: readonly ReportedDeck[];
 }
 
 function PlayerRow(props: RowProps) {
@@ -267,7 +244,7 @@ function PlayerRow(props: RowProps) {
         </td>
       </Show>
       <Show when={decksEnabled(props.manage.settings)} fallback={<DeckOffCell />}>
-        <DeckCell state={props.state} manage={props.manage} player={props.player} />
+        <DeckCell {...props} />
       </Show>
       <Show
         when={swiss()}
@@ -292,6 +269,10 @@ export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
   const sanctioned = () => isSanctioned(props.manage);
   const started = () => props.manage.tournament.pods.some(pod => pod.rounds.length > 0);
   const archetypes = () => decksEnabled(props.manage.settings);
+  const decks = createDeckOptions(
+    () => props.manage.settings.format,
+    () => Object.values(props.manage.decks)
+  );
   const players = createMemo(() => {
     const q = query().trim().toLowerCase();
     return [...props.manage.tournament.players]
@@ -358,6 +339,7 @@ export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
                     player={player}
                     season={season()}
                     showRounds={started()}
+                    decks={decks()}
                   />
                 )}
               </For>

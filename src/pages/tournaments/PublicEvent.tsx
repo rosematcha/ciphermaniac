@@ -430,6 +430,7 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
         <DecklistForm
           code={props.view.code}
           archetypes={decksEnabled(props.view.settings)}
+          format={props.view.settings.format}
           sanctioned={isSanctioned(props.view)}
         />
       </Show>
@@ -537,6 +538,19 @@ export function PublicEvent(props: { code: string }) {
   // The page is the big screen or not for as long as it is open.
   const { view, take, retry } = createView(() => props.code, params.screen === '1' ? SCREEN_POLL_MS : POLL_MS);
   const current = () => latestValue(view);
+  // A past format's sprites come with its archetype list, loaded only when there are decks to draw.
+  const pastFormat = createMemo(() => {
+    const shown = current();
+    return shown && shown.settings.format !== 'Standard' && Object.keys(shown.decks).length > 0
+      ? shown.settings.format
+      : null;
+  });
+  createEffect(() => {
+    const format = pastFormat();
+    if (format) {
+      void import('./deckOptions').then(m => m.learnFormatIcons(format));
+    }
+  });
   createEffect(() => {
     document.title = `${current()?.tournament.info.name ?? props.code} — Ciphermaniac`;
   });

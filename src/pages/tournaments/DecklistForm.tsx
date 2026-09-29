@@ -16,6 +16,7 @@
 import { createEffect, createResource, createSignal, For, Show } from 'solid-js';
 import { type DeckSection, parseDecklist } from '../../../shared/tournament/decklist';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
+import { SETTINGS_LIMITS } from '../../../shared/tournament/view';
 import {
   type Decklist,
   fetchMyDecklist,
@@ -26,7 +27,7 @@ import {
 import { latestValue } from '../../lib/resource';
 import { DeckCombo } from '../live/LiveDeck';
 import { ConfirmAction } from './ConfirmAction';
-import { deckOptions } from './deckOptions';
+import { createDeckOptions } from './deckOptions';
 import { ErrorLine } from './Field';
 import { birthYearOf, emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
 import { session } from './session';
@@ -34,6 +35,8 @@ import { session } from './session';
 interface FormProps {
   code: string;
   archetypes: boolean;
+  /** The event's format, whose archetypes the deck picker offers. */
+  format: string;
   /** Unsanctioned, the form asks for the name alone. */
   sanctioned: boolean;
 }
@@ -358,6 +361,7 @@ function Foot(props: { form: DecklistState }) {
 
 export function DecklistForm(props: FormProps) {
   const form = createDecklistForm(props);
+  const decks = createDeckOptions(() => props.format);
   const count = () => `${form.parsed().total} card${form.parsed().total === 1 ? '' : 's'}`;
   return (
     <form class='tm-box tm-decklist-form' onSubmit={event => event.preventDefault()}>
@@ -373,12 +377,13 @@ export function DecklistForm(props: FormProps) {
       <YouRow form={form} sanctioned={props.sanctioned} />
       <Show when={props.archetypes}>
         {/* A wrapping label, since the picker's input takes no id. */}
-        <label class='tm-box-bar tm-form-row'>
+        <label class='tm-box-bar tm-form-row live-deck-picker'>
           <span class='tm-form-row-label'>Deck</span>
           <DeckCombo
-            decks={latestValue(deckOptions) ?? []}
+            decks={decks()}
             selected={form.archetype() ? { label: form.archetype() as string } : undefined}
             placeholder='Search archetypes'
+            custom={SETTINGS_LIMITS.archetype}
             onPick={picked => form.setArchetype(picked.label)}
           />
         </label>
