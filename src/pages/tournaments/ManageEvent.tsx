@@ -49,7 +49,10 @@ function Hero(props: { manage: Manage }) {
         <span class='dot'>·</span>
         <A href={`/t/${props.manage.code}`}>Public page</A>
         <span class='dot'>·</span>
-        <A href={`/t/${props.manage.code}?screen=1`}>Big screen</A>
+        {/* Its own tab, since it goes on the projector while the console keeps running. */}
+        <a href={`/t/${props.manage.code}?screen=1`} target='_blank' rel='noopener'>
+          Big screen
+        </a>
       </p>
     </section>
   );
