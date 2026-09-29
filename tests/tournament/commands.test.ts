@@ -150,8 +150,8 @@ test('deletes an unreported round, not a reported one', () => {
 test('a top cut seeds from standings and plays down to a winner', () => {
   let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'mixed' }));
   t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
-  assert.match(attempt(t, { type: 'startTopCut', pod: 'mixed', size: 4 }), /Pick the division/);
-  t = run(t, { type: 'startTopCut', pod: 'mixed', size: 4, division: 'masters' });
+  // Everyone is a Master, so the combined pod cuts as a whole with no division asked.
+  t = run(t, { type: 'startTopCut', pod: 'mixed', size: 4 });
   const seeds = swissStandings(pod(t), t.players)
     .slice(0, 4)
     .map(row => row.playerId);
@@ -236,6 +236,7 @@ test('a combined pod cuts one division at a time, seeded from that division', ()
     )
   );
   t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
+  assert.match(attempt(t, { type: 'startTopCut', pod: 'mixed', size: 4 }), /Pick the division/);
   t = run(t, { type: 'startTopCut', pod: 'mixed', size: 4, division: 'junior' });
   const seeded = round(t).matches.flatMap(m => [m.p1, m.p2]);
   assert.deepEqual(new Set(seeded), new Set(['300', '301', '302', '303']));

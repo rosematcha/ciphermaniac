@@ -485,7 +485,9 @@ function adjustClock(tournament: Tournament, category: PodCategory, seconds: num
 
 /**
  * Who a cut seeds from: the pod, or in a pod that plays several divisions
- * together, the one division asked for, since each keeps its own cut.
+ * together, the one division asked for, since each keeps its own cut. A
+ * combined pod whose players are all one division (an unsanctioned event has
+ * no birth dates, so everyone reads as Masters) cuts as a whole.
  */
 function cutField(tournament: Tournament, pod: Pod, division: Division | undefined, season: number) {
   const combined = !(DIVISIONS as readonly string[]).includes(pod.category);
@@ -493,7 +495,11 @@ function cutField(tournament: Tournament, pod: Pod, division: Division | undefin
     return undefined;
   }
   const births = new Map(tournament.players.map(p => [p.id, p.birthDate]));
-  return new Set(pod.playerIds.filter(id => divisionFor(births.get(id) ?? '', season) === division));
+  const of = (id: string) => divisionFor(births.get(id) ?? '', season);
+  if (new Set(pod.playerIds.map(of)).size < 2) {
+    return undefined;
+  }
+  return new Set(pod.playerIds.filter(id => of(id) === division));
 }
 
 function startTopCut(

@@ -105,6 +105,12 @@ test('a combined pod is ranked per division', () => {
   assert.equal(divisionHeading(null), '');
   const single: Pod = { ...pod, category: 'masters' };
   assert.equal(podStandings(CHALLENGE, single, () => 'masters')[0]?.division, null);
+  const everyone = podStandings(CHALLENGE, pod, () => 'masters');
+  assert.deepEqual(
+    everyone.map(group => [group.division, group.rows.length]),
+    [[null, 8]],
+    'a combined pod of one division, as at an unsanctioned event, names none'
+  );
 });
 
 test('a player’s history, current match and records going in', () => {

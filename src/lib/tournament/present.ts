@@ -220,10 +220,12 @@ export function podStandings(
   if ((DIVISIONS as readonly string[]).includes(pod.category)) {
     return [{ division: null, rows: placeFinals(pod, swissStandings(pod, tournament.players)) }];
   }
-  return DIVISIONS.flatMap(division => {
+  const groups = DIVISIONS.flatMap(division => {
     const only = new Set(pod.playerIds.filter(id => divisionOf(id) === division));
     return only.size ? [{ division, rows: placeFinals(pod, swissStandings(pod, tournament.players, { only })) }] : [];
   });
+  // One division among them, as at an unsanctioned event: one table, with no division to name.
+  return groups.length === 1 ? groups.map(group => ({ ...group, division: null })) : groups;
 }
 
 export function divisionHeading(division: Division | null): string {
