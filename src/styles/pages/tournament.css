@@ -1136,6 +1136,74 @@ tr.is-in .tm-place {
   color: var(--accent-ink);
 }
 
+/* ---------- Submit decklist ---------- */
+.tm-decklist-form {
+  max-width: 820px;
+}
+.tm-decklist-status {
+  font-variant-numeric: tabular-nums;
+}
+/* Label left, control right, as the setup and event settings rows are. */
+.tm-form-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px 18px;
+  padding-block: 12px;
+}
+.tm-form-row-label {
+  padding-top: 8px;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+.tm-known {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: var(--control-h);
+}
+.tm-decklist-body {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.tm-deck-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+.tm-deck-counts strong {
+  color: var(--fg);
+}
+.tm-deck-ok {
+  margin: 0;
+  font-size: var(--text-base);
+}
+.tm-decklist-foot {
+  flex-wrap: wrap;
+}
+.tm-decklist-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--text-base);
+}
+@media (max-width: 640px) {
+  .tm-form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tm-form-row-label {
+    padding-top: 0;
+  }
+  .tm-decklist-foot .btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* ---------- Round header and clock ---------- */
 .tm-actions-bar:empty {
   display: none;

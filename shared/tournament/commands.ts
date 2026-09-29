@@ -48,6 +48,8 @@ export interface NewPlayer {
   birthDate?: string;
   /** Overrides the division the birth date gives. */
   division?: Division;
+  /** Set when the player's own decklist submission adds them (see functions/api/tournaments/[code]/decklists.ts). */
+  fromList?: boolean;
 }
 
 export type Command =
@@ -140,6 +142,23 @@ function podFor(tournament: Tournament, division: Division): Pod {
   return findPod(tournament, category) ?? newPod(category);
 }
 
+/** A player as they join: late once their pod has paired a round, and marked when their decklist added them. */
+function newPlayer(
+  fields: Pick<Player, 'id' | 'firstName' | 'lastName' | 'birthDate'> & { fromList?: boolean | undefined },
+  pod: Pod,
+  ctx: CommandContext
+): Player {
+  const { fromList, ...rest } = fields;
+  return {
+    ...rest,
+    droppedAfter: null,
+    ...(pod.rounds.length > 0 ? { late: true } : {}),
+    ...(fromList ? { fromList: true } : {}),
+    created: ctx.localTime,
+    modified: ctx.localTime
+  };
+}
+
 function addPlayer(tournament: Tournament, input: NewPlayer, ctx: CommandContext): CommandResult {
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
@@ -155,16 +174,7 @@ function addPlayer(tournament: Tournament, input: NewPlayer, ctx: CommandContext
   }
   const birthDate = input.birthDate?.trim() ?? '';
   const pod = podFor(tournament, input.division ?? divisionFor(birthDate, ctx.season));
-  const player: Player = {
-    id,
-    firstName,
-    lastName,
-    birthDate,
-    droppedAfter: null,
-    ...(pod.rounds.length > 0 ? { late: true } : {}),
-    created: ctx.localTime,
-    modified: ctx.localTime
-  };
+  const player = newPlayer({ id, firstName, lastName, birthDate, fromList: input.fromList }, pod, ctx);
   const joined = missedRounds(pod, id, ctx.localTime);
   const pods = tournament.pods.some(p => p.category === pod.category)
     ? tournament.pods.map(p => (p.category === pod.category ? joined : p))

@@ -105,6 +105,7 @@ function player(value: unknown): Player {
     droppedAfter: o.droppedAfter === null ? null : int(o.droppedAfter, 0, LIMITS.rounds),
     ...(o.late === true ? { late: true } : {}),
     ...(o.fixedTable === undefined ? {} : { fixedTable: int(o.fixedTable, 1, 9999) }),
+    ...(o.fromList === true ? { fromList: true } : {}),
     created: str(o.created, 40),
     modified: str(o.modified, 40)
   };

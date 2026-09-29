@@ -14,6 +14,7 @@ import {
   deleteTournament,
   fetchDecklists,
   fetchManage,
+  fetchMyDecklist,
   fetchPublished,
   fetchSession,
   fetchView,
@@ -87,6 +88,8 @@ test('every call goes to its endpoint with its body', async () => {
   await rotateStaffToken('ABC');
   await fetchDecklists('ABC');
   await submitDecklist('ABC', 'deck', profile, null);
+  await fetchMyDecklist('ABC', profile, 'tok');
+  await fetchMyDecklist('ABC', { popId: '', firstName: 'Ann', lastName: 'Lee' }, 'tok');
   assert.deepEqual(
     sent.map(s => `${s.method} ${s.url}`),
     [
@@ -104,9 +107,13 @@ test('every call goes to its endpoint with its body', async () => {
       'POST /api/tournaments/ABC/staff',
       'POST /api/tournaments/ABC/staff',
       'GET /api/tournaments/ABC/decklists',
-      'PUT /api/tournaments/ABC/decklists'
+      'PUT /api/tournaments/ABC/decklists',
+      'GET /api/tournaments/ABC/decklists?popId=1&token=tok',
+      'GET /api/tournaments/ABC/decklists?firstName=Ann&lastName=Lee&token=tok'
     ]
   );
+  const decklist = sent[14]?.body as { localTime: string };
+  assert.match(decklist.localTime, /^\d{2}\/\d{2}\/\d{4} /, 'a list can add its submitter, so it carries the clock');
   const command = sent[7]?.body as { localTime: string };
   assert.match(command.localTime, /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/, 'stamped with the venue clock');
   assert.deepEqual(sent[3]?.body, { mode: 'swiss', name: 'Cup', combined: false });
@@ -154,7 +161,8 @@ test('a 204 answers null', async () => {
   assert.equal(await fetchView('ABC', 3), null);
   assert.equal(await signOut(), null);
   assert.equal(await deleteTournament('ABC'), null);
-  assert.equal(await withdrawDecklist('ABC'), null);
+  assert.equal(await withdrawDecklist('ABC', { popId: '12', firstName: 'A', lastName: 'B' }), null);
+  assert.equal(sent.at(-1)?.url, '/api/tournaments/ABC/decklists?popId=12', 'withdrawn by who sent it');
 });
 
 test('a failure carries the server’s message and status', async () => {

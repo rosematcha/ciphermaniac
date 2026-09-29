@@ -81,6 +81,22 @@ export interface Decklist extends PlayerProfile {
   submittedAt: number;
   problems: string[];
   registered: boolean;
+  /** Submitting this list is what added the player to the event. */
+  fromList: boolean;
+}
+
+/** Whether submitting put the player on the event's list, found them on it, or could not add them. */
+export type Registration = 'added' | 'matched' | 'not-added';
+
+/** Who a list belongs to, as a query string: the Player ID, or the name at an unsanctioned event. */
+function listOwner(profile: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>, token?: string): string {
+  const query = new URLSearchParams(
+    profile.popId ? { popId: profile.popId } : { firstName: profile.firstName, lastName: profile.lastName }
+  );
+  if (token) {
+    query.set('token', token);
+  }
+  return query.toString();
 }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -182,10 +198,22 @@ export const reportAsPlayer = (code: string, claim: PlayerClaim, result: PlayerR
     json('POST', { ...claim, result, localTime: tomDateTime(new Date()) })
   );
 
+/** Every list, for staff. */
 export const fetchDecklists = (code: string) =>
   call<{ decklists: Decklist[]; mine: Decklist | null }>(`${base(code)}/decklists`);
 
-export const submitDecklist = (code: string, deck: string, profile: PlayerProfile, archetype: string | null) =>
-  call<{ decklist: Decklist }>(`${base(code)}/decklists`, json('PUT', { deck, profile, archetype }));
+/** A player's own list, by the details it was sent under and the token the sending device kept. */
+export const fetchMyDecklist = (
+  code: string,
+  owner: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>,
+  token: string
+) => call<{ mine: Decklist | null }>(`${base(code)}/decklists?${listOwner(owner, token)}`);
 
-export const withdrawDecklist = (code: string) => call<null>(`${base(code)}/decklists`, { method: 'DELETE' });
+export const submitDecklist = (code: string, deck: string, profile: PlayerProfile, archetype: string | null) =>
+  call<{ decklist: Decklist; registration: Registration; token: string }>(
+    `${base(code)}/decklists`,
+    json('PUT', { deck, profile, archetype, localTime: tomDateTime(new Date()) })
+  );
+
+export const withdrawDecklist = (code: string, owner: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>) =>
+  call<null>(`${base(code)}/decklists?${listOwner(owner)}`, { method: 'DELETE' });
