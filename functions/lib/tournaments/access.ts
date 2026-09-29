@@ -109,6 +109,7 @@ export function manageView(access: Access): Record<string, unknown> {
   };
 }
 
+/** Event data is shared by link, not for search engines to list. */
 export function privateJson(body: unknown, status = 200): Response {
-  return jsonResponse(body, { ...PRIVATE, status });
+  return jsonResponse(body, { ...PRIVATE, status, headers: { 'X-Robots-Tag': 'noindex' } });
 }

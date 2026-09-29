@@ -39,6 +39,7 @@ beforeEach(() => {
   env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true' };
   decklists._resetRateLimitStore();
   report._resetRateLimitStore();
+  event._resetRateLimitStore();
 });
 
 interface Call {
