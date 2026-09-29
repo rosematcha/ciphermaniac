@@ -47,6 +47,13 @@ export function pointsBefore(pod: Pod, beforeRound: number): Map<string, number>
   return new Map([...tallies].map(([id, tally]) => [id, matchPoints(tally.record)]));
 }
 
+/** Whether a player has sat a match or had a bye in the pod: more than the rounds they missed by joining late. */
+export function hasPlayed(pod: Pod | undefined, id: string): boolean {
+  return (pod?.rounds ?? []).some(round =>
+    round.matches.some(match => (match.p1 === id || match.p2 === id) && match.outcome !== 'loss')
+  );
+}
+
 /** Players in the pod who have not dropped. */
 export function activeIds(tournament: Tournament, pod: Pod): string[] {
   const dropped = new Set(tournament.players.filter(p => p.droppedAfter !== null).map(p => p.id));

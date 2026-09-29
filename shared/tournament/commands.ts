@@ -17,6 +17,7 @@ import type { Random } from './random.js';
 import {
   activeIds,
   fixedTables,
+  hasPlayed,
   isReported,
   latestRound,
   pairingHistory,
@@ -194,15 +195,9 @@ function podOf(tournament: Tournament, id: string): Pod | undefined {
   return tournament.pods.find(pod => pod.playerIds.includes(id));
 }
 
-function playedAny(pod: Pod | undefined, id: string): boolean {
-  return (pod?.rounds ?? []).some(round =>
-    round.matches.some(match => (match.p1 === id || match.p2 === id) && match.outcome !== 'loss')
-  );
-}
-
 function removePlayer(tournament: Tournament, id: string): CommandResult {
   const pod = podOf(tournament, id);
-  if (playedAny(pod, id)) {
+  if (hasPlayed(pod, id)) {
     return fail('This player has been paired; drop them instead');
   }
   const pods = tournament.pods.map(p =>

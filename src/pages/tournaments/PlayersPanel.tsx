@@ -14,6 +14,7 @@
 import { useSearchParams } from '@solidjs/router';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
+import { hasPlayed } from '../../../shared/tournament/rounds';
 import { DIVISION_LABELS, type Player, playerName, type Tournament } from '../../../shared/tournament/types';
 import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
 import { type Manage, releaseReporter } from '../../lib/tournament/api';
@@ -27,8 +28,12 @@ import type { ManageState } from './manageState';
 import { birthDateFor } from './ProfileFields';
 import { Squares } from './Squares';
 
-/** A new player: a name, and at a sanctioned event their Player ID and birth year. */
+/**
+ * A new player: a name, and at a sanctioned event their Player ID and birth
+ * year. Once added, the first name takes focus again for the next in line.
+ */
 function AddPlayer(props: { state: ManageState; sanctioned: boolean; late: boolean }) {
+  let firstInput: HTMLInputElement | undefined;
   const [first, setFirst] = createSignal('');
   const [last, setLast] = createSignal('');
   const [popId, setPopId] = createSignal('');
@@ -49,13 +54,20 @@ function AddPlayer(props: { state: ManageState; sanctioned: boolean; late: boole
       setLast('');
       setPopId('');
       setYear('');
+      firstInput?.focus();
     }
   }
   return (
     <form class='tm-box tm-add-player' aria-label='Add a player' onSubmit={event => void submit(event)}>
       <div class='tm-box-bar tm-add-row'>
         <Field id='add-first' label='First name'>
-          <input id='add-first' class='tm-input' value={first()} onInput={e => setFirst(e.currentTarget.value)} />
+          <input
+            id='add-first'
+            ref={el => (firstInput = el)}
+            class='tm-input'
+            value={first()}
+            onInput={e => setFirst(e.currentTarget.value)}
+          />
         </Field>
         <Field id='add-last' label='Last name'>
           <input id='add-last' class='tm-input' value={last()} onInput={e => setLast(e.currentTarget.value)} />
@@ -140,7 +152,8 @@ function FixedTableCell(props: { state: ManageState; player: Player }) {
 }
 
 /**
- * Drop, reinstate, remove. A drop can be taken back only until the next round
+ * Drop, reinstate, remove (only before the player's first match: after it
+ * they are dropped). A drop can be taken back only until the next round
  * is paired (see undropPlayer in shared/tournament/commands.ts). Where players
  * report, staff can also let another device report for a player, as when
  * they change phones or someone else claimed them first.
@@ -148,10 +161,8 @@ function FixedTableCell(props: { state: ManageState; player: Player }) {
 function PlayerActions(props: { state: ManageState; manage: Manage; player: Player }) {
   const send = (type: 'dropPlayer' | 'undropPlayer' | 'removePlayer') =>
     void props.state.send({ type, id: props.player.id });
-  const latest = () => {
-    const pod = props.manage.tournament.pods.find(p => p.playerIds.includes(props.player.id));
-    return pod?.rounds.at(-1)?.number ?? 0;
-  };
+  const pod = () => props.manage.tournament.pods.find(p => p.playerIds.includes(props.player.id));
+  const latest = () => pod()?.rounds.at(-1)?.number ?? 0;
   const dropped = () => props.player.droppedAfter;
   return (
     <td class='tm-extra-col'>
@@ -180,12 +191,15 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             onConfirm={() => void releaseReporter(props.manage.code, props.player.id).catch(() => undefined)}
           />
         </Show>
-        <ConfirmAction
-          label='Remove'
-          question={`Remove ${playerName(props.player)}?`}
-          danger
-          onConfirm={() => send('removePlayer')}
-        />
+        {/* Once paired, a player is dropped rather than removed, so their opponents keep the match. */}
+        <Show when={!hasPlayed(pod(), props.player.id)}>
+          <ConfirmAction
+            label='Remove'
+            question={`Remove ${playerName(props.player)}?`}
+            danger
+            onConfirm={() => send('removePlayer')}
+          />
+        </Show>
       </span>
     </td>
   );
