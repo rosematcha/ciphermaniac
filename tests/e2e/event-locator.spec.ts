@@ -85,7 +85,7 @@ async function boxOf(page: Page, selector: string) {
   return box;
 }
 
-test('asks for device location on first open and lists what is near it, by day', async ({ page }) => {
+test('asks for device location on first open and lists what is near it, by day @mobile', async ({ page }) => {
   await openLocator(page);
   await expect(search(page)).toHaveAttribute('placeholder', 'Austin, TX');
   // San Antonio is 75 miles out, so five of the six fixture events are in range.
@@ -142,7 +142,7 @@ test('while the location prompt is open it shows loading, never an empty result'
   await expect(page.locator('.empty-state')).toHaveCount(0);
 });
 
-test('on a phone every row shows its distance in full', async ({ page }, testInfo) => {
+test('on a phone every row shows its distance in full @mobile', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'phones only');
   await openLocator(page);
   const hidden = await page.$$eval(
@@ -153,7 +153,7 @@ test('on a phone every row shows its distance in full', async ({ page }, testInf
   expect(hidden).toBe(0);
 });
 
-test('the Locals setting adds casual weekly events and is remembered', async ({ page }) => {
+test('the Locals setting adds casual weekly events and is remembered @mobile', async ({ page }) => {
   await openLocator(page);
   const locals = (await filters(page)).getByRole('button', { name: 'Locals' });
   await expect(locals).toHaveAttribute('aria-pressed', 'false');
@@ -190,7 +190,7 @@ test("the store's own registration leads, and pokemon.com carries the details", 
   await expect(challenge.getByRole('link', { name: 'Register with the store' })).toHaveCount(0);
 });
 
-test('searching a store name finds the store and opens its next event', async ({ page }) => {
+test('searching a store name finds the store and opens its next event @mobile', async ({ page }) => {
   await openLocator(page);
   await page.getByRole('combobox', { name: /Search a place/ }).fill('dragon');
   const options = page.getByRole('option');
@@ -225,7 +225,7 @@ test("the visitor's own position never goes into the link", async ({ page }) => 
   expect(new URL(page.url()).searchParams.get('lat')).toBeNull();
 });
 
-test('League Cups alone narrows the list and the map', async ({ page }) => {
+test('League Cups alone narrows the list and the map @mobile', async ({ page }) => {
   await openLocator(page);
   await (await filters(page)).getByRole('button', { name: 'Challenges' }).click();
   await expect(page.locator('.el-row')).toHaveCount(2);
@@ -233,7 +233,7 @@ test('League Cups alone narrows the list and the map', async ({ page }) => {
   await expect(page.locator('.el-count')).toHaveText('2 events, 2 Cups');
 });
 
-test('a shared link opens on its place and radius', async ({ page }) => {
+test('a shared link opens on its place and radius @mobile', async ({ page }) => {
   await openLocator(page, '/events/locator?near=San%20Antonio%2C%20TX&lat=29.424&lon=-98.494&cc=US&r=25&u=mi');
   await expect(search(page)).toHaveAttribute('placeholder', 'San Antonio, TX');
   await expect(page.locator('.el-row')).toHaveCount(1);
@@ -249,7 +249,7 @@ test('a country with no listed events says so', async ({ page }, testInfo) => {
   await expect(page.locator('.empty-state')).toContainText('No events listed in Japan.');
 });
 
-test('on a phone the map and list split the screen, and only the list scrolls', async ({ page }, testInfo) => {
+test('on a phone the map and list split the screen, and only the list scrolls @mobile', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'phones only');
   await openLocator(page);
   const height = page.viewportSize()?.height ?? 0;
@@ -265,7 +265,9 @@ test('on a phone the map and list split the screen, and only the list scrolls', 
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test('on a phone the filter sheet holds the controls and the seam states the result', async ({ page }, testInfo) => {
+test('on a phone the filter sheet holds the controls and the seam states the result @mobile', async ({
+  page
+}, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'phones only');
   await openLocator(page);
   const seam = page.locator('.el-seam');
@@ -282,7 +284,9 @@ test('on a phone the filter sheet holds the controls and the seam states the res
   await expect(seam).toContainText('2 events, 2 Cups');
 });
 
-test('on a phone the map swallows long presses and a tapped dot opens its event below', async ({ page }, testInfo) => {
+test('on a phone the map swallows long presses and a tapped dot opens its event below @mobile', async ({
+  page
+}, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'phones only');
   await openLocator(page);
   const prevented = await page.evaluate(() => {
@@ -299,7 +303,9 @@ test('on a phone the map swallows long presses and a tapped dot opens its event 
   expect(await boxOf(page, '.el-map-slot')).toEqual(map);
 });
 
-test('a phone on its side puts the map beside the list, with its controls clear', async ({ page }, testInfo) => {
+test('a phone on its side puts the map beside the list, with its controls clear @mobile', async ({
+  page
+}, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'phones only');
   await page.setViewportSize({ width: 844, height: 390 });
   await openLocator(page);

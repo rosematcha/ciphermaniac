@@ -39,7 +39,7 @@ async function openLive(page: import('@playwright/test').Page, path = LIVE): Pro
   expect(errors, `uncaught page errors on ${path}`).toEqual([]);
 }
 
-test('the page opens on the round the event is on, with every table', async ({ page }) => {
+test('the page opens on the round the event is on, with every table @mobile', async ({ page }) => {
   await openLive(page);
   await expect(page.locator('h1')).toHaveText('Test Cup Regional Championships');
   await expect(page.locator('.hero-meta')).toContainText('Live: Round 2');
@@ -104,7 +104,7 @@ test('a scheduled regional stays hidden until its tracking data exists', async (
   await expect(page.locator('.tournament-row-link')).toContainText('Brisbane Regional Championships');
 });
 
-test('the control bar is one row, whatever the round count', async ({ page }) => {
+test('the control bar is one row, whatever the round count @mobile', async ({ page }) => {
   await openLive(page);
   const bar = page.locator('.live-bar');
   const height = await bar.evaluate(el => el.getBoundingClientRect().height);
@@ -114,7 +114,7 @@ test('the control bar is one row, whatever the round count', async ({ page }) =>
   await expect(page.locator('.live-bar .chip')).toHaveCount(0);
 });
 
-test('nothing on the page scrolls sideways', async ({ page }) => {
+test('nothing on the page scrolls sideways @mobile', async ({ page }) => {
   await openLive(page);
   const { scrollWidth, innerWidth } = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -123,7 +123,7 @@ test('nothing on the page scrolls sideways', async ({ page }) => {
   expect(scrollWidth, `scrollWidth ${scrollWidth} > viewport ${innerWidth}`).toBeLessThanOrEqual(innerWidth);
 });
 
-test('both seats of a pairing are on screen', async ({ page }) => {
+test('both seats of a pairing are on screen @mobile', async ({ page }) => {
   await openLive(page);
   const row = page.locator('.live-table .data tbody tr').first();
   const width = await page.evaluate(() => window.innerWidth);
@@ -134,7 +134,7 @@ test('both seats of a pairing are on screen', async ({ page }) => {
   }
 });
 
-test('the round stepper walks back and marks the pinned round', async ({ page }) => {
+test('the round stepper walks back and marks the pinned round @mobile', async ({ page }) => {
   await openLive(page);
   await page.getByRole('button', { name: 'Previous round' }).click();
   await expect(page).toHaveURL(/round=1/);
@@ -253,7 +253,7 @@ test('a submitted result is marked as unconfirmed, not just coloured', async ({ 
   await expect(provisional.first()).toContainText('?');
 });
 
-test('following is set from the row and filters the list', async ({ page }) => {
+test('following is set from the row and filters the list @mobile', async ({ page }) => {
   await openLive(page);
   await page.getByRole('button', { name: 'Follow Ada Lovelace' }).click();
   await page.goto(`${LIVE}?following=1`, { waitUntil: 'load' });

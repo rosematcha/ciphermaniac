@@ -22,6 +22,7 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   timeout: 30_000,
   retries: 0,
+  workers: 4,
   forbidOnly: Boolean(process.env.CI),
   reporter: process.env.CI ? 'line' : 'list',
   use: {
@@ -33,7 +34,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile', use: { ...devices['Pixel 7'] } }
+    { name: 'mobile', grep: /@mobile/, use: { ...devices['Pixel 7'] } }
   ],
   webServer: [
     {

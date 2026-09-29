@@ -103,10 +103,10 @@ async function throttle(page: Page): Promise<void> {
 }
 
 test.describe('layout shift', () => {
-  test.describe.configure({ timeout: 90_000 });
+  test.describe.configure({ mode: 'parallel', timeout: 90_000 });
 
   for (const route of ROUTES) {
-    test(`${route} settles without shifting`, async ({ page }) => {
+    test(`${route} settles without shifting @mobile`, async ({ page }) => {
       await page.addInitScript(OBSERVER);
       await throttle(page);
       await page.goto(route, { waitUntil: 'load' });
