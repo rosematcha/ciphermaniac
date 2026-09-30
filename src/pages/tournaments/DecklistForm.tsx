@@ -18,6 +18,7 @@ import { type DeckSection, parseDecklist } from '../../../shared/tournament/deck
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import { SETTINGS_LIMITS } from '../../../shared/tournament/view';
 import {
+  ApiError,
   type Decklist,
   fetchMyDecklist,
   type Registration,
@@ -153,13 +154,17 @@ function createDecklistForm(props: FormProps) {
   async function send() {
     setSending(true);
     setError(null);
+    const before = recall(props.code);
+    const sent = profile();
+    // Kept before the list goes, so a list that lands without its answer is still this device's to change.
+    const token = before?.token ?? crypto.randomUUID();
+    remember(props.code, { profile: sent, token });
     try {
-      const sent = profile();
       const result = await submitDecklist(props.code, {
         deck: deck(),
         profile: sent,
         archetype: props.archetypes ? archetype() : null,
-        token: recall(props.code)?.token ?? null
+        token
       });
       remember(props.code, { profile: sent, token: result.token });
       setRegistration(result.registration);
@@ -167,6 +172,10 @@ function createDecklistForm(props: FormProps) {
       setTouched(false);
       mutate(result.decklist);
     } catch (err) {
+      // The server refused the list, so nothing landed: the device keeps what it had.
+      if (err instanceof ApiError && err.status < 500) {
+        remember(props.code, before);
+      }
       fail(err);
     } finally {
       setSending(false);

@@ -11,7 +11,8 @@
  * GET — staff see every list. A player sees their own with the details they
  * submitted under (query popId / firstName / lastName) and their token.
  * PUT — submits or replaces a list while submission is open: { deck,
- * profile, archetype?, token?, localTime? }; replacing takes the token. A
+ * profile, archetype?, token?, localTime? }; replacing takes the token, and
+ * the token the device sends stays the list's, so a retry still owns it. A
  * submitter who is not on the event's player list is added to it (a Swiss
  * event still open), marked as added from a list; the answer says whether
  * they were added, matched or not added, and carries the device's new token.
@@ -323,6 +324,9 @@ function limited(context: Context<'code'>): boolean {
   return !(addressLimiter.check(address).allowed && forEvent);
 }
 
+/** A token the device made for itself, when it sent one that looks like one. */
+const deviceToken = (held: unknown) => (typeof held === 'string' && /^[\w-]{16,100}$/.test(held) ? held : null);
+
 export async function onRequestPut(context: Context<'code'>): Promise<Response> {
   if (limited(context)) {
     return jsonError('Too many submissions. Try again later.', 429);
@@ -344,7 +348,8 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   // With archetypes off for the event, the player's pick is not kept.
   const submission = decksEnabled(access.row.settings) ? read : { ...read, archetype: null };
   const now = Date.now();
-  const token = crypto.randomUUID();
+  // The device's own token stays its token, so a retry after a lost answer still owns the list.
+  const token = deviceToken(submission.held) ?? crypto.randomUUID();
   if (!(await store(access, submission, await sha256(token), now))) {
     return jsonError(LOCKED, 409);
   }

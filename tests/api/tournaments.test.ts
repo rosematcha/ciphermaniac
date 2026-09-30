@@ -1040,7 +1040,13 @@ test('a player with no account submits a list, reads it back with its device tok
   assert.equal(again.json.registration, 'matched', 'the sending device replaces the list, and they are already in');
   const staffLists = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   assert.equal(staffLists.json.decklists.length, 1, 'one list per identity');
-  assert.equal((await listOf(code, `popId=4242&token=${token}`)).json.mine, null, 'a new submission has a new token');
+  assert.equal(
+    again.json.token,
+    token,
+    'the device keeps its token, so a retry after a lost answer still owns the list'
+  );
+  const retried = await submitAs(code, profile, { token });
+  assert.equal(retried.status, 200);
 
   const forged = await hit(decklists.onRequestDelete as Handler, '/decklists?popId=4242', at(code), {
     method: 'DELETE'
@@ -1055,6 +1061,11 @@ test('a player with no account submits a list, reads it back with its device tok
   assert.equal(withdrawn.status, 204);
   const after = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   assert.equal(after.json.decklists.length, 0);
+
+  const own = 'device-made-token-0001';
+  const first = await submitAs(code, { ...profile, popId: '4243' }, { token: own });
+  assert.equal(first.json.token, own, 'a first list takes the token its device made before sending');
+  assert.equal((await submitAs(code, { ...profile, popId: '4243' }, { token: own })).status, 200);
   const foreign = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
     method: 'PUT',
     origin: 'https://elsewhere.test',
