@@ -847,45 +847,16 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   .tm-matches {
     overflow-x: hidden;
   }
-  .tm-matches .data,
-  .tm-matches .data tbody,
-  .tm-matches .data tr,
-  .tm-matches .data td {
-    display: block;
-    width: auto;
-  }
-  .tm-matches .data thead {
-    display: none;
-  }
   .tm-matches .data tr {
-    display: grid;
     grid-template-columns: 34px minmax(0, 1fr);
     grid-template-areas:
       'table player'
       'table opponent'
       'extra extra';
-    align-items: center;
     column-gap: 6px;
     padding: 6px 12px;
-    border-bottom: 1px solid var(--rule);
-  }
-  .tm-matches .data td {
-    height: auto;
-    padding: 0;
-    border: 0;
-  }
-  .tm-matches .data td.tm-table-col {
-    grid-area: table;
-    text-align: left;
-  }
-  .tm-matches .data td.tm-seat:nth-of-type(2) {
-    grid-area: player;
-  }
-  .tm-matches .data td.tm-seat:nth-of-type(3) {
-    grid-area: opponent;
   }
   .tm-matches .data td.tm-extra-col {
-    grid-area: extra;
     padding-left: 40px;
   }
   .tm-matches .data td.tm-extra-col:empty,
@@ -1066,15 +1037,61 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
     width: 320px;
   }
 }
-@media (max-width: 640px) {
-  .tm-result {
-    grid-template-columns: auto minmax(0, 1fr);
+/* Below a wide screen, fixed columns cut names to a letter, so a pairing
+   restacks: its two players one over the other beside the table number. A
+   tablet keeps the result at the right as a desktop does; a phone takes it
+   onto a line of its own (see Phones). */
+@media (max-width: 1100px) {
+  .tm-matches .data,
+  .tm-matches .data tbody,
+  .tm-matches .data tr,
+  .tm-matches .data td {
+    display: block;
+    width: auto;
   }
-  .tm-result-acts {
-    justify-content: flex-start;
+  .tm-matches .data thead {
+    display: none;
   }
-  .tm-result-slot {
-    min-width: 0;
+  .tm-matches .data tr {
+    display: grid;
+    align-items: center;
+  }
+  .tm-matches .data td {
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .tm-matches .data td.tm-table-col {
+    grid-area: table;
+    text-align: left;
+  }
+  .tm-matches .data td.tm-seat:nth-of-type(2) {
+    grid-area: player;
+  }
+  .tm-matches .data td.tm-seat:nth-of-type(3) {
+    grid-area: opponent;
+  }
+  .tm-matches .data td.tm-extra-col {
+    grid-area: extra;
+  }
+}
+@media (min-width: 641px) and (max-width: 1100px) {
+  .tm-matches table.data {
+    table-layout: auto;
+  }
+  .tm-matches .data tr {
+    grid-template-columns: 32px minmax(0, 1fr) 300px;
+    grid-template-areas:
+      'table player extra'
+      'table opponent extra';
+    column-gap: 14px;
+    padding: 6px 14px;
+  }
+  .tm-matches:not(.has-extra) .data tr {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+  .tm-matches .data td.tm-status-col {
+    grid-area: extra;
   }
 }
 
