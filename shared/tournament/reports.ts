@@ -76,6 +76,13 @@ export function reportableMatch(tournament: Tournament, playerId: string): OpenM
   return { pod, round, match: { ...match, p2: match.p2 } };
 }
 
+/** The match a player's page showed them when they reported, so a stale page cannot report the next round's. */
+export type ShownMatch = Pick<PlayerReport, 'pod' | 'round' | 'table'>;
+
+/** Whether `open` is still the match the player's page showed, when it said which. */
+export const stillShown = (open: OpenMatch, shown: ShownMatch | undefined): boolean =>
+  !shown || (shown.pod === open.pod.category && shown.round === open.round.number && shown.table === open.match.table);
+
 /** A player's report of their open match, or why it cannot be one. */
 export function playerReport(
   open: OpenMatch,

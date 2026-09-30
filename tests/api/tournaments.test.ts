@@ -927,6 +927,27 @@ test('players report their own results: agreement stands once locked, disagreeme
   assert.equal((await playerSays(code, { popId: '0000000' })).status, 404, 'a Player ID not in the event finds nobody');
 });
 
+test('a report for the match a stale page showed does not land on the next round', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  await settle(code, owner, { playerReporting: true });
+  const [first] = (await send(code, owner, { type: 'pairRound', pod: 'mixed' })).json.tournament.pods[0].rounds[0]
+    .matches;
+  const phone = await phoneOf(code, first.p1);
+  const token = phone.said.json.reportToken as string;
+  const shownFirst = { pod: 'mixed', round: 1, table: first.table };
+  const says = (match: unknown) =>
+    playerSays(code, { popId: first.p1, result: 'win', match, device: `phone-${first.p1}`, reportToken: token });
+  assert.equal((await says(shownFirst)).status, 200, 'the match the page showed takes the report');
+  await send(code, owner, { type: 'reportResult', ...shownFirst, p1: first.p1, p2: first.p2, outcome: 'p1' });
+  await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const stale = await says(shownFirst);
+  assert.equal(stale.status, 400);
+  assert.match(stale.json.error, /pairing has changed/);
+  assert.deepEqual((await view(code)).reports, [], 'nothing was filed against round 2');
+});
+
 test('an unsanctioned event finds players by last name, asking for a first name when two share it', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);

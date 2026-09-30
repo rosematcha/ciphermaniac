@@ -5,9 +5,10 @@
  * follow their pairings; any event takes it, as it is how a player marks
  * themselves. With { result } ('win', 'loss' or 'tie') it also reports their
  * current match (see shared/tournament/reports.ts), where player reporting
- * is on. Either way, results whose reports
- * have agreed and locked are written in first, so a player asking again once
- * their window closes sees the result stand.
+ * is on; { match: { pod, round, table } } names the match the page showed,
+ * and a report for one that is no longer current is refused. Either way,
+ * results whose reports have agreed and locked are written in first, so a
+ * player asking again once their window closes sees the result stand.
  *
  * Nobody signs in for this, as a player at the table has no time to. Knowing
  * a player's Player ID or name finds their table, but a player knows their
@@ -23,8 +24,11 @@ import {
   PLAYER_RESULTS,
   playerReport,
   type PlayerResult,
-  reportableMatch
+  reportableMatch,
+  type ShownMatch,
+  stillShown
 } from '../../../../shared/tournament/reports.js';
+import type { PodCategory } from '../../../../shared/tournament/types.js';
 import { applyPending, isSanctioned } from '../../../../shared/tournament/view.js';
 import { readJsonBody } from '../../../lib/api/body.js';
 import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
@@ -46,19 +50,40 @@ function claimOf(body: Body): PlayerClaim {
 
 const NOT_REPORTER = 'Someone else is already reporting for this player. Ask staff if that’s wrong.';
 
+/** The match the player's page showed them, when it said: pod, round and table. */
+function shownOf(value: unknown): ShownMatch | undefined {
+  const shown = typeof value === 'object' && value ? (value as Record<string, unknown>) : {};
+  const { pod, round, table } = shown;
+  return typeof pod === 'string' && typeof round === 'number' && typeof table === 'number'
+    ? { pod: pod as PodCategory, round, table }
+    : undefined;
+}
+
+interface Filing {
+  claim: PlayerClaim;
+  result: PlayerResult;
+  shown: ShownMatch | undefined;
+  device: string;
+}
+
 /** The player's report of their open match, or why they cannot report. */
-function readReport(row: TournamentRow, claim: PlayerClaim, result: PlayerResult, device: string) {
-  const found = findPlayer(row.tournament, isSanctioned(row), claim);
+function readReport(row: TournamentRow, filing: Filing) {
+  const found = findPlayer(row.tournament, isSanctioned(row), filing.claim);
   if (!found.ok) {
     return found.error;
   }
   const open = reportableMatch(applyPending(row.tournament, row.pending), found.id);
-  return typeof open === 'string' ? open : playerReport(open, found.id, result, { at: Date.now(), device });
+  if (typeof open === 'string') {
+    return open;
+  }
+  return stillShown(open, filing.shown)
+    ? playerReport(open, found.id, filing.result, { at: Date.now(), device: filing.device })
+    : 'Your pairing has changed; check your table';
 }
 
 /** The report laid over the event's others; the result stands once both players' reports agree and lock. */
-function reportChanges(row: TournamentRow, claim: PlayerClaim, result: PlayerResult, device: string): Changes | string {
-  const report = readReport(row, claim, result, device);
+function reportChanges(row: TournamentRow, filing: Filing): Changes | string {
+  const report = readReport(row, filing);
   const reports = typeof report === 'string' ? report : fileReport(row.reports, report);
   return typeof reports === 'string' ? reports : { reports };
 }
@@ -104,8 +129,8 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
   if (!standing.reporter) {
     return jsonError(NOT_REPORTER, 403);
   }
-  const device = standing.device ?? '';
-  const outcome = await mutateSettled(db, row, r => reportChanges(r, who.claim, result, device), body.localTime);
+  const filing = { claim: who.claim, result, shown: shownOf(body.match), device: standing.device ?? '' };
+  const outcome = await mutateSettled(db, row, r => reportChanges(r, filing), body.localTime);
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
