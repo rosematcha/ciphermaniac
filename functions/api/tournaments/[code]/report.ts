@@ -64,10 +64,12 @@ function reportChanges(row: TournamentRow, claim: PlayerClaim, result: PlayerRes
 }
 
 /**
- * A room of players shares the venue's address, and each reports a few times
- * a round; this stops a script, not a busy event.
+ * A room of players shares the venue's address, and each says who they are,
+ * reports and asks again a few times a round, most of it in the minutes a
+ * round ends; this stops a script, not a busy event. It matches the event
+ * page's own limit.
  */
-const rateLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 300 });
+const rateLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 1200 });
 
 /** @internal exposed for tests */
 export function _resetRateLimitStore(): void {
