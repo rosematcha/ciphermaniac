@@ -148,9 +148,18 @@ export function preloadPublished(code: string): void {
 export const fetchView = (code: string, since?: number) =>
   call<TournamentView | null>(since ? `${base(code)}?since=${since}` : base(code));
 
-/** The console's copy, or null when it has not changed since `since`. */
-export const fetchManage = (code: string, since?: number) =>
-  call<Manage | null>(since ? `${base(code)}/manage?since=${since}` : `${base(code)}/manage`);
+/**
+ * The console's copy, or null when it has not changed since `since`. The poll
+ * can settle players' reports, so it carries the venue's clock as a command
+ * does.
+ */
+export function fetchManage(code: string, since?: number) {
+  const query = new URLSearchParams({ localTime: tomDateTime(new Date()) });
+  if (since) {
+    query.set('since', String(since));
+  }
+  return call<Manage | null>(`${base(code)}/manage?${query}`);
+}
 
 /** Sends one command, stamped with the venue's clock (see functions/lib/tournaments/commandContext.ts). */
 export const sendCommand = (code: string, command: Command) =>

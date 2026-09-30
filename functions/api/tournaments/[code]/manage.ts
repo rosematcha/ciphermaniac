@@ -4,7 +4,8 @@
  * the players' reports have settled get written in (see settleIfDue).
  * `?since=<version>` answers 204 when that version still stands and no report
  * is due to settle, which is what the console polls with: an idle console
- * costs one small read, not the whole document.
+ * costs one small read, not the whole document. `?localTime=` is the venue's
+ * clock, which results settled here are stamped with, as a command's are.
  */
 
 import { dueResults } from '../../../../shared/tournament/reports.js';
@@ -39,5 +40,6 @@ export async function onRequestGet(context: Context<'code'>): Promise<Response> 
   if (!role) {
     return jsonError(access.user ? 'Only this event’s staff can do that' : 'Sign in first', access.user ? 403 : 401);
   }
-  return privateJson(manageView({ ...access, role, row: await settled(context, access) }));
+  const localTime = new URL(context.request.url).searchParams.get('localTime');
+  return privateJson(manageView({ ...access, role, row: await settled(context, access, localTime) }));
 }

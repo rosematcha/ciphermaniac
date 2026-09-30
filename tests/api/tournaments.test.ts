@@ -921,6 +921,28 @@ test('players report their own results: agreement stands once locked, disagreeme
   assert.equal((await playerSays(code, { popId: '0000000' })).status, 404, 'a Player ID not in the event finds nobody');
 });
 
+test('a result the console poll settles is stamped with the venue clock the poll sent', async () => {
+  const owner = await signIn('Organizer');
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const [match] = paired.json.tournament.pods[0].rounds[0].matches;
+  await settle(code, owner, { playerReporting: true });
+  const { version } = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  await (await phoneOf(code, match.p1)).report('win');
+  await (await phoneOf(code, match.p2)).report('loss');
+  mock.timers.tick(REPORT_WINDOW_MS);
+  const polled = await hit(
+    manage.onRequestGet as Handler,
+    `/manage?since=${version}&localTime=${encodeURIComponent('10/10/2026 18:30:00')}`,
+    at(code),
+    { cookie: owner }
+  );
+  const settledMatch = polled.json.tournament.pods[0].rounds[0].matches[0];
+  assert.deepEqual([settledMatch.outcome, settledMatch.timestamp], ['p1', '10/10/2026 18:30:00']);
+});
+
 test('a report for the match a stale page showed does not land on the next round', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);

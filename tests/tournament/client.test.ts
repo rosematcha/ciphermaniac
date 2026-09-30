@@ -83,6 +83,7 @@ test('every call goes to its endpoint with its body', async () => {
   await createFromTdf(t);
   await fetchView('ABC', 3);
   await fetchManage('ABC');
+  await fetchManage('ABC', 4);
   await sendCommand('ABC', { type: 'pairRound', pod: 'mixed' });
   await syncTournament('ABC', t, 'rev');
   await setDeck('ABC', '1', 'Gardevoir ex');
@@ -95,8 +96,9 @@ test('every call goes to its endpoint with its body', async () => {
   await fetchMyDecklist('ABC', { popId: '', firstName: 'Ann', lastName: 'Lee' }, 'tok');
   await fetchStaff('ABC');
   await removeStaff('ABC', 'u-1');
+  const clockless = (url: string) => url.replace(/localTime=[^&]*&?/, '').replace(/\?$/, '');
   assert.deepEqual(
-    sent.map(s => `${s.method} ${s.url}`),
+    sent.map(s => `${s.method} ${clockless(s.url)}`),
     [
       'GET /api/me',
       'PUT /api/me',
@@ -105,6 +107,7 @@ test('every call goes to its endpoint with its body', async () => {
       'POST /api/tournaments',
       'GET /api/tournaments/ABC?since=3',
       'GET /api/tournaments/ABC/manage',
+      'GET /api/tournaments/ABC/manage?since=4',
       'POST /api/tournaments/ABC/commands',
       'PUT /api/tournaments/ABC/sync',
       'PUT /api/tournaments/ABC/decks',
@@ -119,9 +122,11 @@ test('every call goes to its endpoint with its body', async () => {
       'DELETE /api/tournaments/ABC/staff?user=u-1'
     ]
   );
-  const decklist = sent[14]?.body as { localTime: string };
+  const poll = new URL(sent[7]?.url ?? '', 'https://cm.test').searchParams.get('localTime') ?? '';
+  assert.match(poll, /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/, 'a poll can settle reports, so it carries the clock');
+  const decklist = sent[15]?.body as { localTime: string };
   assert.match(decklist.localTime, /^\d{2}\/\d{2}\/\d{4} /, 'a list can add its submitter, so it carries the clock');
-  const command = sent[7]?.body as { localTime: string };
+  const command = sent[8]?.body as { localTime: string };
   assert.match(command.localTime, /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/, 'stamped with the venue clock');
   assert.deepEqual(sent[3]?.body, { mode: 'swiss', name: 'Cup', combined: false });
 });
