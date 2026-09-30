@@ -64,7 +64,7 @@ function EventRow(props: { event: TournamentSummary }) {
         </Show>
       </td>
       <td class='muted-cell'>{PHASE_WORDS[phaseOf(props.event)]}</td>
-      <td class='muted-cell tm-nowrap'>{shortDate(props.event.startDate)}</td>
+      <td class='muted-cell tm-nowrap tm-wide-col'>{shortDate(props.event.startDate)}</td>
       <td class='muted-cell tm-wide-col'>{props.event.mode === 'tom' ? 'TOM' : 'Swiss'}</td>
       <td class='num'>{props.event.players}</td>
       <td class='tm-extra-col'>
@@ -92,7 +92,7 @@ function EventTable(props: { title: string; events: readonly TournamentSummary[]
               <tr>
                 <th>Event</th>
                 <th>Status</th>
-                <th>Date</th>
+                <th class='tm-wide-col'>Date</th>
                 <th class='tm-wide-col'>Run in</th>
                 <th class='num'>Players</th>
                 <th>

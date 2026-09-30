@@ -140,6 +140,12 @@
     flex-basis: 100%;
     max-width: none;
   }
+  .tm-identify .btn {
+    justify-content: center;
+  }
+  .tm-history .tm-seat-link {
+    font-size: var(--text-base);
+  }
 }
 
 /* ---------- Pairings and standings: one box each ---------- */
@@ -265,6 +271,18 @@
 }
 .tm-history thead th {
   position: static;
+}
+/* Fixed columns, so the opponent's name gives way rather than pushing the
+   result out of the sheet on a phone. */
+.tm-history {
+  table-layout: fixed;
+  width: 100%;
+}
+.tm-history th.tm-table-col {
+  width: 64px;
+}
+.tm-history th:last-child {
+  width: 76px;
 }
 .tm-history .tm-seat-link {
   width: 100%;

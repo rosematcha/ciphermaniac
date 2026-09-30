@@ -18,6 +18,8 @@ body:has(.tm-page) {
   --surface: #fcfbf8;
   --surface-2: #ece7df;
   --rule: #d2cbc0;
+  /* A chosen segment sits raised off its track: lighter in either mode. */
+  --segment-on: var(--surface);
 }
 body[data-mode='dark']:has(.tm-page) {
   --bg: #131110;
@@ -25,6 +27,7 @@ body[data-mode='dark']:has(.tm-page) {
   --surface-2: #302c29;
   --border: #7d746c;
   --rule: #3a3633;
+  --segment-on: #48423e;
 }
 @media (prefers-color-scheme: dark) {
   body:not([data-mode]):has(.tm-page) {
@@ -33,6 +36,7 @@ body[data-mode='dark']:has(.tm-page) {
     --surface-2: #302c29;
     --border: #7d746c;
     --rule: #3a3633;
+    --segment-on: #48423e;
   }
 }
 
@@ -897,6 +901,16 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   .tm-standings .tm-table-col {
     width: 36px;
   }
+  /* Fixed columns, so every division's record and points share one edge. */
+  .tm-standings table.data {
+    table-layout: fixed;
+  }
+  .tm-standings th:nth-child(3) {
+    width: 64px;
+  }
+  .tm-standings th:nth-child(4) {
+    width: 40px;
+  }
   .tm-standings.has-decks .tm-seat-link .tm-deck,
   .tm-standings.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
     min-width: 34px;
@@ -1056,7 +1070,12 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   vertical-align: 1px;
 }
 /* A picked deck's name starts in one place, whether its deck has one sprite
-   or two (the second selector outranks the picker's own two-sprite padding). */
+   or two: the sprites sit centred in a fixed slot (the second selector
+   outranks the picker's own two-sprite padding). */
+:is(.tm-deck-cell, .tm-seat-deck) .tl-combo-lead {
+  width: 48px;
+  justify-content: center;
+}
 :is(.tm-deck-cell, .tm-seat-deck) .tl-picker .search,
 :is(.tm-deck-cell, .tm-seat-deck) .tl-picker:has(.tl-combo-lead .arche-icon + .arche-icon) .search {
   padding-left: 62px;
@@ -1194,12 +1213,13 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 :is(.tm-deck-cell, .tm-seat-deck) .tl-picker .search {
   font-weight: 500;
 }
-/* A row's actions sit at its end, so the last one lines up down the column
-   however many come before it (players, decklists). */
-.tm-page td.tm-extra-col:has(> .tm-row-actions) {
+/* A player's actions sit at the row's end, so Drop lines up down the column
+   however many come before it. (Decklists keep theirs from the left: View,
+   the one every row has, stays put.) */
+.tm-roster td.tm-extra-col {
   text-align: right;
 }
-.tm-page td.tm-extra-col > .tm-row-actions {
+.tm-roster td.tm-extra-col > .tm-row-actions {
   justify-content: flex-end;
 }
 @media (max-width: 640px) {
@@ -1211,9 +1231,11 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
     width: 100%;
     justify-content: center;
   }
-  /* A player restacks to a card of lines under a finger: the name and their
-     fixed table, then the rounds and the actions, then the deck; nothing
-     hides off the side. Rows part on the zebra, not on a rule. */
+}
+/* Up to a tablet, a player restacks to a card of lines: the name and their
+   fixed table, then the rounds and the actions, then the deck; nothing hides
+   off the side. Rows part on the zebra, not on a rule. */
+@media (max-width: 900px) {
   .tm-roster,
   .tm-roster tbody,
   .tm-roster tr,
@@ -1225,7 +1247,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
   .tm-roster tr {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) max-content;
     grid-template-areas:
       'who fixed'
       'rounds actions'
@@ -1249,6 +1271,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
   .tm-roster .tm-fixed-cell {
     grid-area: fixed;
+    justify-self: end;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1268,6 +1291,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
   .tm-roster .tm-extra-col {
     grid-area: actions;
+    justify-self: end;
     width: auto;
   }
   .tm-roster .tm-extra-col .tm-row-actions {
@@ -1310,12 +1334,13 @@ tr.is-in .tm-place {
 .tm-points {
   font-weight: 700;
 }
-/* The cut: a marigold rule and what split the last one in from the first one out. */
+/* The cut: what split the last one in from the first one out, closed by a
+   marigold rule, so the line reads as the foot of the cut rather than a head
+   over the players below it. */
 .data tr.tm-cut-line td {
   height: auto;
   padding: 7px 14px;
-  border-top: 2px solid var(--accent);
-  background: color-mix(in srgb, var(--accent-fill) 10%, var(--surface));
+  border-bottom: 2px solid var(--accent);
   font-size: var(--text-base);
   font-variant-numeric: tabular-nums;
 }
@@ -1447,10 +1472,12 @@ tr.is-in .tm-place {
     padding: 10px 14px;
     border-bottom: 1px solid var(--rule);
   }
-  .tm-lists td {
+  .table-wrap .tm-lists td {
     padding: 0;
     border: 0;
     height: auto;
+    min-width: 0;
+    white-space: normal;
   }
   .tm-lists .tm-list-sprite {
     grid-row: span 3;
@@ -1459,6 +1486,7 @@ tr.is-in .tm-place {
     width: auto;
   }
   .tm-lists .tm-extra-col {
+    grid-column: 2;
     width: auto;
   }
   .tm-lists .tm-extra-col .tm-row-actions {
@@ -1544,6 +1572,7 @@ tr.is-in .tm-place {
    fill: the site's pill, a shade off its track, left On and Off hard to tell
    apart at a glance. Marigold would make Off read as on. */
 .tm-page .segmented button.active {
+  background: var(--segment-on);
   font-weight: 600;
   box-shadow: 0 0 0 1px var(--border);
 }
@@ -1695,6 +1724,11 @@ tr.is-in .tm-place {
   .tm-live-event-acts .btn {
     flex: 1;
     justify-content: center;
+    white-space: nowrap;
+  }
+  /* The console is the card's step: a row of its own, the other two sharing the next. */
+  .tm-live-event-acts .btn-primary {
+    flex-basis: 100%;
   }
 }
 

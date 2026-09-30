@@ -112,12 +112,17 @@ export function StandingsTable(props: TableProps) {
                                   <span class='tm-who'>
                                     <span class='tm-who-name'>
                                       <span class='tm-name'>{props.names.get(row.playerId) ?? row.playerId}</span>
-                                      <Show when={row.dropped}>
-                                        <span class='tm-flag'>Dropped</span>
-                                      </Show>
                                     </span>
-                                    <Show when={hasDecks() && !hidden(row)}>
-                                      <span class='tm-who-sub'>{props.decks[row.playerId] ?? 'No deck'}</span>
+                                    {/* On the second line, so a dropped player's name keeps its room. */}
+                                    <Show when={(hasDecks() && !hidden(row)) || row.dropped}>
+                                      <span class='tm-who-sub'>
+                                        <Show when={hasDecks() && !hidden(row)}>
+                                          {props.decks[row.playerId] ?? 'No deck'}
+                                        </Show>
+                                        <Show when={row.dropped}>
+                                          <span class='tm-flag'>Dropped</span>
+                                        </Show>
+                                      </span>
                                     </Show>
                                   </span>
                                 </button>
