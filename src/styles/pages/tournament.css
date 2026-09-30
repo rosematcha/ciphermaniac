@@ -282,7 +282,7 @@ body[data-mode='dark']:has(.tm-page) {
   box-sizing: border-box;
   border: 1px solid var(--muted);
   border-radius: 2px;
-  font-size: var(--text-2xs);
+  font-size: var(--text-xs);
   font-weight: 700;
   line-height: 1;
   color: var(--fg);
@@ -701,6 +701,10 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 .data tr.is-me td {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
+/* On the tint the muted ink falls under 4.5:1 in dark mode; the player's own row is read closest. */
+.tm-page .data tr.is-me .muted-cell {
+  color: var(--fg);
+}
 .data tr.is-confirming td {
   background: color-mix(in srgb, var(--accent) 9%, var(--surface));
 }
@@ -805,6 +809,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   padding-block: var(--space-2);
 }
 .tm-deck-link {
+  min-height: 44px;
   color: var(--fg);
   vertical-align: middle;
 }
@@ -875,6 +880,44 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   .tm-matches .data td.tm-extra-col {
     padding-left: 40px;
   }
+  /* A result's word and its actions part with room between them, the actions
+     wrapping under the word when a narrow phone cannot hold both. */
+  /* Scoped to the table so these outrank the base result rules further down. */
+  .tm-matches .tm-result {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+  }
+  .tm-matches .tm-result-acts {
+    margin-left: auto;
+    gap: 8px;
+  }
+  /* An empty last slot takes no room here, so an open row stays on one line. */
+  .tm-matches .tm-result-slot {
+    min-width: 0;
+  }
+  /* The question Record answers is never cut short. */
+  .tm-matches .tm-result.is-asking .tm-result-label {
+    flex-basis: 100%;
+    white-space: normal;
+    overflow: visible;
+  }
+  /* A name wraps rather than losing its end: it is what a player looks for.
+     Each seat keeps a little air so two wrapped names never read as one. */
+  .tm-matches .tm-name {
+    white-space: normal;
+  }
+  .tm-matches .tm-seat-link {
+    padding-block: 6px;
+  }
+  .tm-matches .data tr {
+    row-gap: 4px;
+  }
+  /* Column heads a step up from the site's phone 9px: the smallest HIG allows. */
+  .tm-page .table-wrap .data thead th {
+    font-size: var(--text-xs);
+  }
   .tm-matches .data td.tm-extra-col:empty,
   .tm-matches .data td.tm-extra-col:not(:has(button)) {
     display: none;
@@ -923,6 +966,10 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   .tm-standings .tm-who-sub {
     font-size: var(--text-sm);
   }
+  /* On the narrowest phones a long name or deck wraps rather than losing its end. */
+  .tm-standings :is(.tm-name, .tm-who-sub) {
+    white-space: normal;
+  }
   /* The deck stats fit a phone without a sideways scroll: the deck, how many
      play it and how it is doing; share and matches are left to wider screens. */
   .tm-deck-stats :is(th, td):is(:nth-child(3), :nth-child(4)) {
@@ -950,6 +997,17 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   .tm-page .search,
   .tm-page .tl-picker .search {
     height: 44px;
+  }
+  .tm-small,
+  .tm-page .tm-clock-group button,
+  .tm-page .tabs button {
+    min-width: 44px;
+    justify-content: center;
+  }
+  .tm-event-name {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
   .tm-hero .hero-meta a,
   .tm-bar-link {
@@ -1080,6 +1138,16 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 :is(.tm-deck-cell, .tm-seat-deck) .tl-picker:has(.tl-combo-lead .arche-icon + .arche-icon) .search {
   padding-left: 62px;
 }
+/* A tap leaves no hover tint behind on a touch screen. */
+@media (hover: none) {
+  .tm-page .tm-seat-link:hover {
+    background: transparent;
+  }
+}
+/* While a player sheet is open, the page behind it does not scroll along. */
+body:has(.tm-sheet) {
+  overflow: hidden;
+}
 .tm-strip .tm-champion-name {
   font-size: var(--text-lg);
 }
@@ -1124,6 +1192,13 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
   .tm-matches .data td.tm-extra-col {
     grid-area: extra;
+  }
+  /* A stacked row's cells no longer fill it, so its state is drawn on the row. */
+  .tm-matches .data tr.is-confirming {
+    background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  }
+  .tm-matches .data tr.is-confirming td {
+    background: none;
   }
 }
 @media (min-width: 641px) and (max-width: 1100px) {
@@ -1266,7 +1341,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
     grid-area: who;
     min-width: 0;
   }
-  .tm-roster .tm-who-sub {
+  .tm-roster :is(.tm-who-sub, .tm-name) {
     white-space: normal;
   }
   .tm-roster .tm-fixed-cell {
@@ -1727,7 +1802,7 @@ tr.is-in .tm-place {
     white-space: nowrap;
   }
   /* The console is the card's step: a row of its own, the other two sharing the next. */
-  .tm-live-event-acts .btn-primary {
+  .tm-live-event-acts .btn:first-child {
     flex-basis: 100%;
   }
 }
