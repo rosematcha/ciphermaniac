@@ -14,7 +14,7 @@ import { jsonError } from '../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../lib/auth/env.js';
 import { currentUser } from '../../lib/auth/session.js';
 import { MAX_TOURNAMENT_BYTES, privateJson } from '../../lib/tournaments/access.js';
-import { publishView } from '../../lib/tournaments/publish.js';
+import { publishAfter } from '../../lib/tournaments/publish.js';
 import {
   createTournament,
   listTournaments,
@@ -85,7 +85,8 @@ async function readNew(request: Request): Promise<NewEvent | string> {
   return { mode, tournament, settings };
 }
 
-export async function onRequestPost({ request, env }: Context): Promise<Response> {
+export async function onRequestPost(context: Context): Promise<Response> {
+  const { request, env } = context;
   const db = env.TOURNAMENT_DB;
   if (!db || !sameOrigin(request)) {
     return jsonError('Forbidden', 403);
@@ -106,7 +107,7 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
     const code = await createTournament(db, { ownerId: user.id, mode, tournament, settings });
     const row = await loadTournament(db, code);
     if (row) {
-      await publishView(env, row);
+      await publishAfter(context, row);
     }
     return privateJson({ code }, 201);
   } catch (error) {

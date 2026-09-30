@@ -13,6 +13,7 @@
  */
 
 import { type PublishedView, publishedViewKey } from '../../../shared/tournament/view.js';
+import type { Context } from '../auth/env.js';
 import { loadTournament, loadVersion, type TournamentRow } from './store.js';
 import type { D1Like, PublishBucket } from '../types.js';
 import { publicViewOf } from './access.js';
@@ -77,6 +78,20 @@ export async function publishView(env: PublishEnv, row: TournamentRow): Promise<
     // Still behind after a burst of writes, and the newest may have gone up before this copy did.
     await unpublishView(bucket, row.code);
   }
+}
+
+/**
+ * Publishes once the answer has gone, where the runtime can keep the function
+ * alive for it: whoever made the change does not wait on R2 and the look back
+ * at the database. The pages that read the copy poll it seconds apart.
+ */
+export function publishAfter(context: Pick<Context, 'env' | 'waitUntil'>, row: TournamentRow): Promise<void> {
+  const published = publishView(context.env, row);
+  if (!context.waitUntil) {
+    return published;
+  }
+  context.waitUntil(published);
+  return Promise.resolve();
 }
 
 export async function unpublishView(bucket: PublishBucket | undefined, code: string): Promise<void> {

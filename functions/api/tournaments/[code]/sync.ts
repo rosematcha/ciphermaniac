@@ -20,7 +20,7 @@ import { readJsonBody } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
 import { MAX_TOURNAMENT_BYTES, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
-import { publishView } from '../../../lib/tournaments/publish.js';
+import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { mutate } from '../../../lib/tournaments/store.js';
 
 const CONFLICT = 'The site has a different copy of this event. Reconnect the file TOM is using to replace it.';
@@ -79,7 +79,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.error === CONFLICT ? 409 : outcome.status);
   }
-  await publishView(context.env, outcome.row);
+  await publishAfter(context, outcome.row);
   return privateJson({
     version: outcome.version,
     pending: outcome.row.pending,

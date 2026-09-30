@@ -12,7 +12,7 @@ import { readJsonBody } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
 import { manageView, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
-import { publishView } from '../../../lib/tournaments/publish.js';
+import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { commandChanges, mutateSettled } from '../../../lib/tournaments/results.js';
 
 export async function onRequestPost(context: Context<'code'>): Promise<Response> {
@@ -36,6 +36,6 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
-  await publishView(context.env, outcome.row);
+  await publishAfter(context, outcome.row);
   return privateJson(manageView({ ...access, row: outcome.row }));
 }

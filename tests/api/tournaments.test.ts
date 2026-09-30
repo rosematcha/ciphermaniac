@@ -1458,3 +1458,34 @@ test('a field sending lists from one venue address is not turned away', async ()
     assert.equal(sent.status, 200, `player ${i + 1} of 40`);
   }
 });
+
+test('the answer to a change does not wait for its publish where the runtime keeps the function alive', async () => {
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const key = `tournaments/v1/${code}.json`;
+  const before = objects.get(key);
+  const bucket = env.REPORTS as NonNullable<TournamentEnv['REPORTS']>;
+  let release = () => undefined as void;
+  const held = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  env.REPORTS = { ...bucket, put: (...args) => held.then(() => bucket.put(...args)) };
+  const kept: Promise<unknown>[] = [];
+  const response = await commands.onRequestPost({
+    request: request(`/api/tournaments/${code}/commands`, {
+      method: 'POST',
+      cookie: owner,
+      body: { command: { type: 'addPlayer', player: { firstName: 'Ash', lastName: 'Ketchum' } } }
+    }),
+    env,
+    params: at(code),
+    waitUntil: (promise: Promise<unknown>) => void kept.push(promise)
+  });
+  assert.equal(response.status, 200, 'answered while the publish is still held');
+  assert.equal(objects.get(key), before);
+  assert.equal(kept.length, 1, 'the publish is handed to the runtime to finish');
+  release();
+  await Promise.all(kept);
+  assert.equal(JSON.parse(objects.get(key) ?? '{}').tournament.players.length, 1);
+});

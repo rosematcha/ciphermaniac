@@ -13,6 +13,8 @@ export interface Context<Params extends string = never> {
   request: Request;
   env: TournamentEnv;
   params: { [key in Params]: string | string[] };
+  /** Keeps the function alive for work that outlasts the answer; tests call the handlers without it. */
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 /** A route parameter as one string; Pages hands catch-alls over as arrays. */

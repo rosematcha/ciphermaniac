@@ -35,7 +35,7 @@ import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { type Access, open, openForStaff, privateJson, publicViewOf } from '../../../lib/tournaments/access.js';
-import { publishView } from '../../../lib/tournaments/publish.js';
+import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { type Claim, claimReporter, releaseReporter } from '../../../lib/tournaments/reporters.js';
 import { mutateSettled, settleIfDue } from '../../../lib/tournaments/results.js';
 import type { Changes, TournamentRow } from '../../../lib/tournaments/store.js';
@@ -134,7 +134,7 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
-  await publishView(context.env, outcome.row);
+  await publishAfter(context, outcome.row);
   return privateJson({
     key: outcome.row.keys[who.id] ?? null,
     view: publicViewOf(outcome.row),
@@ -147,7 +147,7 @@ async function identify(context: Context<'code'>, access: Access, body: Body, id
   const standing = await claimReporter(access.db, access.row.code, id, { held: body.reportToken, device: body.device });
   const row = await settleIfDue(access.db, access.row, body.localTime);
   if (row !== access.row) {
-    await publishView(context.env, row);
+    await publishAfter(context, row);
   }
   return privateJson({ key: row.keys[id] ?? null, view: publicViewOf(row), ...standingOf(standing) });
 }

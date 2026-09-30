@@ -10,7 +10,7 @@ import { readJsonBody } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
 import { manageView, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
-import { publishView } from '../../../lib/tournaments/publish.js';
+import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { mutate } from '../../../lib/tournaments/store.js';
 
 /** How soon each setting shows decks to players: higher is sooner. */
@@ -37,6 +37,6 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
-  await publishView(context.env, outcome.row);
+  await publishAfter(context, outcome.row);
   return privateJson(manageView({ ...access, row: outcome.row }));
 }

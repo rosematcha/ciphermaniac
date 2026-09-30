@@ -12,7 +12,7 @@ import { jsonError } from '../../../lib/api/responses.js';
 import { type Context, param } from '../../../lib/auth/env.js';
 import { currentUserId } from '../../../lib/auth/session.js';
 import { manageView, open, privateJson } from '../../../lib/tournaments/access.js';
-import { publishView } from '../../../lib/tournaments/publish.js';
+import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { settleIfDue } from '../../../lib/tournaments/results.js';
 import { isCode, isStaffMember, loadHead } from '../../../lib/tournaments/store.js';
 
@@ -45,7 +45,7 @@ export async function onRequestGet(context: Context<'code'>): Promise<Response> 
   }
   const row = await settleIfDue(access.db, access.row);
   if (row !== access.row) {
-    await publishView(context.env, row);
+    await publishAfter(context, row);
   }
   return privateJson(manageView({ ...access, row }));
 }

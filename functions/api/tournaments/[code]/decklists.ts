@@ -40,7 +40,7 @@ import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { sha256 } from '../../../lib/auth/session.js';
 import { type Access, open, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
 import { archetypeLabel } from '../../../lib/tournaments/decks.js';
-import { publishView } from '../../../lib/tournaments/publish.js';
+import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { commandChanges, mutateSettled } from '../../../lib/tournaments/results.js';
 import type { TournamentRow } from '../../../lib/tournaments/store.js';
 
@@ -290,7 +290,7 @@ async function register(
   if ('error' in outcome) {
     return { registration: outcome.error === ALREADY_IN ? 'matched' : 'not-added', row };
   }
-  await publishView(context.env, outcome.row);
+  await publishAfter(context, outcome.row);
   return { registration: 'added', row: outcome.row };
 }
 
