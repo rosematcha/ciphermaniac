@@ -10,9 +10,10 @@
 import { expect, type Page, test } from '@playwright/test';
 
 import { applyCommand, type Command } from '../../shared/tournament/commands';
+import type { PlayerReport } from '../../shared/tournament/reports';
 import { emptyTournament } from '../../shared/tournament/create';
 import { seededRandom } from '../../shared/tournament/random';
-import type { Tournament } from '../../shared/tournament/types';
+import type { Match, Tournament } from '../../shared/tournament/types';
 import {
   assignKeys,
   DEFAULT_SETTINGS,
@@ -67,7 +68,12 @@ const settingsOf = (patch: Partial<TournamentSettings>): TournamentSettings => (
 });
 
 /** The console's API: the event as staff see it, and every command and deck sent recorded. */
-async function mockConsole(page: Page, tournament: Tournament, settings: TournamentSettings) {
+async function mockConsole(
+  page: Page,
+  tournament: Tournament,
+  settings: TournamentSettings,
+  reports: readonly PlayerReport[] = []
+) {
   const sent: Command[] = [];
   const decks: unknown[] = [];
   const manage = {
@@ -77,7 +83,7 @@ async function mockConsole(page: Page, tournament: Tournament, settings: Tournam
     updatedAt: 0,
     tournament,
     pending: [],
-    reports: [],
+    reports,
     settings,
     decks: {},
     role: 'owner',
@@ -128,6 +134,40 @@ test('after the planned rounds the console offers the top cut, another round and
   await expect(page.getByRole('button', { name: 'Pair round 6' })).toBeVisible();
   await page.getByRole('button', { name: 'End event' }).click();
   await expect(page.getByText('End the event?')).toBeVisible();
+});
+
+test("an open table shows its players' reports in its one row, and a lone report can be accepted", async ({ page }) => {
+  const t = event(8, 0, true);
+  const [lone, disputed] = t.pods[0]?.rounds[0]?.matches ?? [];
+  if (!lone?.p2 || !disputed?.p2) {
+    throw new Error('the event has no first two tables');
+  }
+  const report = (m: Match, by: string, outcome: PlayerReport['outcome']): PlayerReport => ({
+    pod: 'mixed',
+    round: 1,
+    table: m.table,
+    p1: m.p1,
+    p2: m.p2 ?? '',
+    by,
+    outcome,
+    at: 0
+  });
+  await mockConsole(page, t, settingsOf({ playerReporting: true }), [
+    report(lone, lone.p2, 'p2'),
+    report(disputed, disputed.p1, 'p1'),
+    report(disputed, disputed.p2, 'p2')
+  ]);
+  const rows = page.locator('.tm-matches tbody tr');
+  const first = rows.filter({ has: page.locator('.tm-result-label.is-reported:not(.is-problem)') });
+  await expect(first.locator('.tm-result-label')).toHaveText(/^Reported\. Reported: .+ wins$/);
+  await expect(first.locator('.tm-tag')).toHaveAttribute('title', 'Reported: won');
+  const second = rows.filter({ has: page.locator('.tm-result-label.is-problem') });
+  await expect(second.locator('.tm-result-label')).toHaveText(/^Disputed\. Reports differ\./);
+  await expect(second.locator('.tm-tag.is-problem')).toHaveCount(2);
+  await expect(second.getByRole('button', { name: 'Accept' })).toHaveCount(0);
+  await first.getByRole('button', { name: 'Accept' }).click();
+  await expect(page.getByRole('button', { name: 'Record' })).toBeVisible();
+  await expect(page.locator('.tm-result.is-asking .tm-result-label')).toHaveText(/ wins\?$/);
 });
 
 test('a capped league ends after its rounds instead of pairing on', async ({ page }) => {

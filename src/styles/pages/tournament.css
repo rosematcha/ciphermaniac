@@ -510,7 +510,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 
 /* ---------- Pairings and standings rows ---------- */
 .tm-table-col {
-  width: 64px;
+  width: 56px;
 }
 .tm-wide-col {
   width: 90px;
@@ -538,7 +538,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   padding: 0 6px;
   margin-left: -6px;
   border-radius: var(--radius-sm);
-  font-size: var(--text-base);
+  font-size: var(--text-body);
   text-align: left;
   color: var(--fg);
 }
@@ -556,19 +556,49 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 .tm-record {
   flex: none;
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
 }
 /* The result, one letter wide, so every name in a column starts in line. */
 .tm-mark {
   flex: none;
-  width: 14px;
-  font-size: var(--text-sm);
+  width: 16px;
+  font-size: var(--text-base);
   font-weight: 700;
   color: var(--muted);
   text-align: center;
 }
 .tm-mark.is-win {
+  color: var(--accent-ink);
+}
+/* The table number is what the room calls out, so it reads at the names' size. */
+.tm-matches .data td.tm-table-col {
+  font-size: var(--text-body);
+  font-weight: 600;
   color: var(--fg);
+}
+.tm-matches .data td {
+  height: 44px;
+}
+/* A decided table recedes: its loser and its result go to the secondary
+   label, the winner keeps the ink and the weight. */
+.tm-matches .tm-seat:has(.tm-mark:not(.is-win):not(:empty)) .tm-seat-link {
+  color: var(--muted);
+}
+/* What a player reported, beside their name: a marigold edge while it can be
+   taken as it is, the problem ink when reports differ or share a device. */
+.tm-tag {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--accent-ink);
+}
+.tm-tag.is-problem {
+  border-color: var(--negative);
+  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
 }
 .tm-mark.is-unconfirmed {
   text-decoration: underline dotted;
@@ -772,7 +802,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   }
   .tm-matches.has-decks .tm-seat-link .tm-deck,
   .tm-matches.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
-    min-width: 26px;
+    min-width: 38px;
   }
   .tm-seat-link {
     flex: 1 1 auto;
@@ -825,7 +855,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 .tm-box-bar .tm-clock-group {
   margin-left: 0;
 }
-/* A result cell: what stands, the controls in fixed slots, then any report on its own line. */
+/* A result cell, one line: what stands, then the controls in fixed slots. */
 .tm-result {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -834,12 +864,36 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   white-space: normal;
 }
 .tm-result-label {
-  font-weight: 600;
+  font-size: var(--text-body);
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-}
-.tm-result-label.is-open {
-  font-weight: 400;
   color: var(--muted);
+}
+/* A table still playing is what staff are there for: full ink, and a dot in
+   marigold, or in the problem ink when its reports need settling. */
+.tm-result-label.is-open {
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--fg);
+}
+.tm-result-label.is-open::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 1px;
+}
+.tm-result-label.is-reported {
+  color: var(--accent-ink);
+}
+.tm-result-label.is-problem {
+  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
+}
+.tm-result-label.is-problem::before {
+  background: var(--negative);
 }
 .tm-result-sub {
   font-weight: 400;
@@ -851,24 +905,29 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   justify-content: flex-end;
   gap: 2px;
 }
-/* Clear's slot is held open on an open row, so Tie and Double loss sit in line with the decided rows'. */
+/* The last slot is held open, so Tie and Double loss sit in line down the
+   column whether it holds Clear, Accept or nothing. */
 .tm-result-slot {
   display: inline-flex;
-  min-width: 56px;
-  justify-content: flex-end;
+  min-width: 68px;
 }
-.tm-result-note {
-  grid-column: 1 / -1;
-  font-size: var(--text-sm);
-  color: var(--muted);
+/* Accepting a lone report is the likely press on its row, so it is tinted,
+   not outlined: one step up from the text actions, well under Record. */
+.tm-accept {
+  background: color-mix(in srgb, var(--accent-fill) 22%, var(--surface));
+  color: var(--fg);
+  font-weight: 600;
 }
-.tm-result-note.tm-problem {
-  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
+.tm-accept:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-fill) 38%, var(--surface));
 }
 .tm-result.is-asking .tm-result-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--fg);
 }
 .tm-strip.tm-champion {
   padding-block: 10px;
@@ -878,7 +937,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 }
 @media (min-width: 641px) {
   .tm-matches.has-extra th.tm-extra-col {
-    width: 330px;
+    width: 320px;
   }
 }
 @media (max-width: 640px) {

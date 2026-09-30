@@ -14,7 +14,7 @@ import { For, type JSX, Show, Switch, Match as When } from 'solid-js';
 import { sortMatches } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import type { PendingResult } from '../../../shared/tournament/view';
-import { recordsBefore, seatMark, shownOutcome } from '../../lib/tournament/present';
+import { recordsBefore, seatMark, type SeatTag, shownOutcome } from '../../lib/tournament/present';
 import { DeckIcons } from './DeckIcons';
 
 export interface MatchTableProps {
@@ -35,6 +35,8 @@ export interface MatchTableProps {
   deckPicker?: (id: string) => JSX.Element;
   /** Staff only: the extra cell at the end of each row. */
   extra?: (match: Match) => JSX.Element;
+  /** Staff only: a short tag after a player's name, as what they reported. */
+  tag?: (match: Match, id: string) => SeatTag | null;
   /** The public page: a Status column saying which tables are still playing, on desktop. */
   status?: boolean;
   /** Players picked for a swap, drawn as selected. */
@@ -65,6 +67,14 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
       <Show when={props.status && playerId === props.me}>
         <span class='tm-flag is-you'>You</span>
       </Show>
+      <Show when={props.tag?.(props.match, playerId)}>
+        {tag => (
+          <span class='tm-tag' classList={{ 'is-problem': tag().problem }} title={tag().title}>
+            <span aria-hidden='true'>{tag().text}</span>
+            <span class='sr-only'>{tag().title}</span>
+          </span>
+        )}
+      </Show>
       <span class='muted-cell tm-record'>{props.records.get(playerId) ?? ''}</span>
     </>
   );
@@ -85,7 +95,12 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
             </span>
             <Switch
               fallback={
-                <button type='button' class='tm-seat-link' onClick={() => props.onPlayer?.(playerId())}>
+                <button
+                  type='button'
+                  class='tm-seat-link'
+                  classList={{ 'is-winner': mark() === 'W' }}
+                  onClick={() => props.onPlayer?.(playerId())}
+                >
                   {content(playerId())}
                 </button>
               }
