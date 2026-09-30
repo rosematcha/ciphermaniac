@@ -1384,6 +1384,30 @@ test('a publish that lands late leaves the newer copy up, and cannot bring back 
   assert.ok(!objects.has(key), 'a publish after the delete takes its copy down again');
 });
 
+test('a publish that never gets a write in takes the copy down rather than leave it behind', async () => {
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const bucket = env.REPORTS as NonNullable<TournamentEnv['REPORTS']>;
+  let refused = 0;
+  env.REPORTS = {
+    ...bucket,
+    put: async () => {
+      refused += 1;
+      return null;
+    }
+  };
+  const log = console.error;
+  console.error = () => undefined;
+  try {
+    await addPlayers(code, owner, 1);
+  } finally {
+    console.error = log;
+  }
+  assert.ok(refused > 1, 'it tries again after a refused write');
+  assert.ok(!objects.has(`tournaments/v1/${code}.json`));
+});
+
 test('a publish R2 refuses takes the stale copy down, so the page asks the API', async () => {
   const objects = memoryBucket();
   const owner = await signIn('Organizer');

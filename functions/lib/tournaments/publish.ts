@@ -26,10 +26,12 @@ import { publicViewOf } from './access.js';
 export const PUBLISHED_CACHE_CONTROL = 'public, max-age=5';
 
 /**
- * Each refused write means another publish landed first; this many lets a
- * round's end of them through in turn.
+ * Each refused write means another publish landed first, and a landing only
+ * ever moves the copy forward, so the tries run out only when a publish is
+ * behind that many others at once: a safety stop, not a limit a round's end
+ * reaches.
  */
-const MAX_TRIES = 8;
+const MAX_TRIES = 32;
 
 interface PublishEnv {
   REPORTS?: PublishBucket;
@@ -81,11 +83,12 @@ export async function publishView(env: PublishEnv, row: TournamentRow): Promise<
         return;
       }
     }
+    console.error('Publishing the event view gave up behind other publishes', row.code);
   } catch (error) {
     console.error('Publishing the event view failed', error);
-    // A copy left up would stay stale; without one, the page asks the API.
-    await unpublishView(bucket, row.code);
   }
+  // A copy left up could stay stale; without one, the page asks the API.
+  await unpublishView(bucket, row.code);
 }
 
 /** A copy put where there was none may belong to an event deleted meanwhile. */
