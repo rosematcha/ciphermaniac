@@ -11,7 +11,7 @@
  * to everyone; one note says so rather than every row.
  */
 
-import { For, type JSX, Show } from 'solid-js';
+import { createMemo, Index, type JSX, Show } from 'solid-js';
 import { percentLabel, recordLabel, type Standing } from '../../../shared/tournament/standings';
 import type { Division, Pod, Tournament } from '../../../shared/tournament/types';
 import { recommendedStructure } from '../../../shared/tournament/structure';
@@ -42,7 +42,7 @@ interface TableProps {
 }
 
 export function StandingsTable(props: TableProps) {
-  const groups = () => podStandings(props.tournament, props.pod, props.divisionOf);
+  const groups = createMemo(() => podStandings(props.tournament, props.pod, props.divisionOf));
   const hasDecks = () => Object.keys(props.decks).length > 0;
   const matches = (id: string) =>
     !props.query?.trim() || (props.names.get(id) ?? '').toLowerCase().includes(props.query.trim().toLowerCase());
@@ -62,18 +62,20 @@ export function StandingsTable(props: TableProps) {
       <Show when={several() && props.bar}>
         <div class='tm-standings-bar'>{props.bar}</div>
       </Show>
-      <For each={groups()}>
+      {/* By position, not by row: a result re-ranks the table by rewriting its cells, and the
+          boxes, the search in their bar and the scroll all stay where they were. */}
+      <Index each={groups()}>
         {(group, index) => {
-          const cut = () => cutOf(group.rows);
+          const cut = createMemo(() => cutOf(group().rows));
           const hidden = (row: Standing) => Boolean(props.hideCutDecks) && cutStarted() && row.place <= cut();
-          const split = () => (props.tiebreakers && !cutStarted() ? cutSplit(group.rows, cut()) : null);
+          const split = () => (props.tiebreakers && !cutStarted() ? cutSplit(group().rows, cut()) : null);
           return (
             <section class='tm-standings' classList={{ 'has-decks': hasDecks() }}>
-              <Show when={group.division}>
-                <h2 class='tm-subhead'>{divisionHeading(group.division)}</h2>
+              <Show when={group().division}>
+                <h2 class='tm-subhead'>{divisionHeading(group().division)}</h2>
               </Show>
               <div class='tm-box'>
-                <Show when={index() === 0 && !several() && props.bar}>
+                <Show when={index === 0 && !several() && props.bar}>
                   <div class='tm-box-bar'>{props.bar}</div>
                 </Show>
                 <Show when={props.hideCutDecks && cutStarted() && cut() > 0}>
@@ -96,29 +98,29 @@ export function StandingsTable(props: TableProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      <For each={group.rows.filter(row => matches(row.playerId))}>
+                      <Index each={group().rows.filter(row => matches(row.playerId))}>
                         {row => (
                           <>
-                            <tr classList={{ 'is-me': row.playerId === props.me, 'is-in': row.place <= cut() }}>
-                              <td class='num tm-table-col tm-place'>{row.place}</td>
+                            <tr classList={{ 'is-me': row().playerId === props.me, 'is-in': row().place <= cut() }}>
+                              <td class='num tm-table-col tm-place'>{row().place}</td>
                               <td>
                                 <button
                                   type='button'
                                   class='tm-seat-link'
-                                  onClick={() => props.onPlayer?.(row.playerId)}
+                                  onClick={() => props.onPlayer?.(row().playerId)}
                                 >
-                                  <DeckIcons label={hidden(row) ? undefined : props.decks[row.playerId]} />
+                                  <DeckIcons label={hidden(row()) ? undefined : props.decks[row().playerId]} />
                                   <span class='tm-who'>
                                     <span class='tm-who-name'>
-                                      <span class='tm-name'>{props.names.get(row.playerId) ?? row.playerId}</span>
+                                      <span class='tm-name'>{props.names.get(row().playerId) ?? row().playerId}</span>
                                     </span>
                                     {/* On the second line, so a dropped player's name keeps its room. */}
-                                    <Show when={(hasDecks() && !hidden(row)) || row.dropped}>
+                                    <Show when={(hasDecks() && !hidden(row())) || row().dropped}>
                                       <span class='tm-who-sub'>
-                                        <Show when={hasDecks() && !hidden(row)}>
-                                          {props.decks[row.playerId] ?? 'No deck'}
+                                        <Show when={hasDecks() && !hidden(row())}>
+                                          {props.decks[row().playerId] ?? 'No deck'}
                                         </Show>
-                                        <Show when={row.dropped}>
+                                        <Show when={row().dropped}>
                                           <span class='tm-flag'>Dropped</span>
                                         </Show>
                                       </span>
@@ -126,14 +128,14 @@ export function StandingsTable(props: TableProps) {
                                   </span>
                                 </button>
                               </td>
-                              <td class='num'>{recordLabel(row.record)}</td>
-                              <td class='num tm-points'>{row.points}</td>
+                              <td class='num'>{recordLabel(row().record)}</td>
+                              <td class='num tm-points'>{row().points}</td>
                               <Show when={props.tiebreakers}>
-                                <td class='num muted-cell tm-wide-col'>{percentLabel(row.owp)}</td>
-                                <td class='num muted-cell tm-wide-col'>{percentLabel(row.oowp)}</td>
+                                <td class='num muted-cell tm-wide-col'>{percentLabel(row().owp)}</td>
+                                <td class='num muted-cell tm-wide-col'>{percentLabel(row().oowp)}</td>
                               </Show>
                             </tr>
-                            <Show when={row.place === cut() && group.rows.length > cut() && !props.query?.trim()}>
+                            <Show when={row().place === cut() && group().rows.length > cut() && !props.query?.trim()}>
                               <tr class='tm-cut-line'>
                                 {/* The tiebreakers' two columns get a cell of their own, hidden with them on a
                                     phone: spanned by this one, they kept their width in a fixed table and
@@ -149,7 +151,7 @@ export function StandingsTable(props: TableProps) {
                             </Show>
                           </>
                         )}
-                      </For>
+                      </Index>
                     </tbody>
                   </table>
                 </div>
@@ -160,7 +162,7 @@ export function StandingsTable(props: TableProps) {
             </section>
           );
         }}
-      </For>
+      </Index>
     </>
   );
 }

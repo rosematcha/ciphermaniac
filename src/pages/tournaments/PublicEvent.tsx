@@ -11,6 +11,7 @@
 import { useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, lazy, onCleanup, onMount, Show } from 'solid-js';
 import { parseTomDate } from '../../../shared/tournament/divisions';
+import { hasStarted, latestRound, podOf } from '../../../shared/tournament/rounds';
 import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
@@ -25,16 +26,25 @@ import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
 import { ApiError, fetchPublished, fetchView, identifyPlayer } from '../../lib/tournament/api';
+import { ordinal } from '../../lib/format';
 import { latestValue } from '../../lib/resource';
 import { onChange } from '../../lib/tournament/changes';
-import { createViewPoll, POLL_MS, schedulePolls, SCREEN_POLL_MS } from '../../lib/tournament/viewPoll';
+import { shared } from '../../lib/tournament/share';
 import {
-  currentRound,
+  createViewPoll,
+  firstView,
+  lookOnReturn,
+  POLL_MS,
+  schedulePolls,
+  SCREEN_POLL_MS,
+  seesMoreThanPublished
+} from '../../lib/tournament/viewPoll';
+import {
   divisionHeading,
   eventStatus,
   filterMatches,
+  firstRoundTime,
   namesById,
-  ordinal,
   podStandings,
   roundCapOf,
   roundLabel,
@@ -59,14 +69,47 @@ type Tab = 'pairings' | 'standings' | 'decks' | 'decklist';
 /** No event has this code: asking again will not find one. */
 const missing = (error: unknown) => error instanceof ApiError && error.status === 404;
 
+const sameViewer = (a: TournamentView['viewer'], b: TournamentView['viewer']) =>
+  a.role === b.role && a.me === b.me && a.signedIn === b.signedIn;
+
 /**
  * The event, polled while the tab is visible (see lib/tournament/viewPoll.ts),
  * every `every` ms; a poll that finds nothing new costs one tiny request. It
  * also looks the moment the tab is shown again, and when the console in
- * another tab of this browser changes the event.
+ * another tab of this browser changes the event. `decks` is whether the page
+ * shows decks, the only thing staff see that the published file does not.
  */
-function createView(code: () => string, every: number) {
-  const [view, { mutate, refetch }] = createResource(code, c => fetchView(c).then(v => v as TournamentView));
+function createView(code: () => string, signedIn: () => boolean, options: { every: number; decks: boolean }) {
+  const fromApi = (c: string) => fetchView(c).then(v => v as TournamentView);
+  const [view, { mutate, refetch }] = createResource(code, c =>
+    firstView({ published: () => fetchPublished(c), api: () => fromApi(c) })
+  );
+  /**
+   * Takes a copy no older than the one shown, of the same event: answers can
+   * land out of order. An older one still says who the viewer is, which the
+   * copy shown may not know yet.
+   */
+  function accept(next: TournamentView) {
+    const current = latestValue(view);
+    if (!current || (current.code === next.code && next.version >= current.version)) {
+      mutate(shared(current, next));
+    } else if (current.code === next.code && !sameViewer(current.viewer, next.viewer)) {
+      mutate({ ...current, viewer: next.viewer });
+    }
+  }
+  // The published file knows nobody. A signed-in viewer's copy comes from the API: staff see
+  // decks before the public does, and an account's Player ID marks its player.
+  let asked = '';
+  createEffect(() => {
+    const shown = latestValue(view);
+    // Asked once an event: an answer that still knows nobody is not asked for again.
+    if (signedIn() && shown && !shown.viewer.signedIn && asked !== shown.code) {
+      asked = shown.code;
+      void fromApi(shown.code)
+        .then(accept)
+        .catch(() => undefined);
+    }
+  });
   /** Loads the event again after its first load failed; whether it is there now. */
   async function reload(): Promise<boolean> {
     if (!view.error) {
@@ -82,41 +125,36 @@ function createView(code: () => string, every: number) {
     }
   }
   onMount(() => {
+    let announced = 0;
     const poll = createViewPoll({
       current: () => latestValue(view),
+      ownCopy: shown => options.decks && seesMoreThanPublished(shown),
+      announced: () => announced,
       reload,
       published: () => fetchPublished(code()),
       api: since => fetchView(code(), since),
-      apply: next => mutate(next),
+      apply: accept,
       now: Date.now
     });
-    const polls = schedulePolls(poll, () => document.hidden, every);
-    // Back online or back in view: the next look should not wait out the schedule.
-    const soon = () => polls.soon();
-    const shown = () => {
-      if (!document.hidden) {
-        polls.soon();
-      }
-    };
+    const polls = schedulePolls(poll, () => document.hidden, options.every);
+    const forget = lookOnReturn(polls);
     const unsubscribe = onChange(code(), version => {
       if (version > (latestValue(view)?.version ?? 0)) {
+        announced = Math.max(announced, version);
         polls.soon();
       }
     });
-    window.addEventListener('online', soon);
-    document.addEventListener('visibilitychange', shown);
     onCleanup(() => {
       polls.stop();
       unsubscribe();
-      window.removeEventListener('online', soon);
-      document.removeEventListener('visibilitychange', shown);
+      forget();
     });
   });
   /** Takes a fresher copy handed over by an action, such as a player's report. */
   function take(published: PublishedView) {
     const current = latestValue(view);
-    if (current && published.version >= current.version) {
-      mutate({ ...published, viewer: current.viewer });
+    if (current) {
+      accept({ ...published, viewer: current.viewer });
     }
   }
   return { view, take, retry: () => void reload() };
@@ -141,10 +179,6 @@ function keep(key: string, value: string | null) {
   } else {
     localStorage.removeItem(key);
   }
-}
-
-function hasPodData(view: TournamentView) {
-  return view.tournament.pods.some(pod => pod.rounds.length > 0);
 }
 
 /**
@@ -203,7 +237,7 @@ function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
 
 /** Before round 1, the decklist form if it is open; once the event is closed, where everyone finished. */
 function defaultTab(view: TournamentView): Tab {
-  if (!hasPodData(view)) {
+  if (!hasStarted(view.tournament)) {
     return 'decklist';
   }
   return view.settings.finished ? 'standings' : 'pairings';
@@ -217,10 +251,6 @@ function pickTab(tabs: readonly { value: Tab }[], wanted: string | undefined, vi
 /** One line under every panel while decks wait for the event to end. */
 const deckNote = (view: TournamentView) =>
   view.settings.deckVisibility === 'after' && !view.settings.finished ? 'Decks shown once the event ends' : undefined;
-
-/** The start of round 1 as a time, when the organizer set one. */
-const firstRoundTime = (startsAt: string) =>
-  startsAt ? new Date(startsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : null;
 
 function RoundSelect(props: { pod: Pod | undefined; round: Round | undefined; onSelect: (n: number) => void }) {
   return (
@@ -249,16 +279,24 @@ function OpenPlayer(props: {
   onForget: () => void;
   onOpen: (id: string | null) => void;
 }) {
-  const pod = () => props.view.tournament.pods.find(p => p.playerIds.includes(props.id)) ?? props.fallback;
+  const pod = createMemo(() => podOf(props.view.tournament, props.id) ?? props.fallback);
   const division = () => divisionHeading(props.view.divisions[props.id] ?? null);
-  const standings = (p: Pod) => swissStandings(p, props.view.tournament.players);
-  const place = (p: Pod) => {
+  // Memos: the sheet reads these once per row of the player's history, and ranking a pod is a pass over its every match.
+  const standings = createMemo(() => {
+    const p = pod();
+    return p ? swissStandings(p, props.view.tournament.players) : [];
+  });
+  const records = createMemo(() => new Map(standings().map(row => [row.playerId, recordLabel(row.record)])));
+  const place = createMemo(() => {
+    const p = pod();
     const divisionOf = (id: string) => props.view.divisions[id] ?? 'masters';
-    const row = podStandings(props.view.tournament, p, divisionOf)
-      .flatMap(group => group.rows)
-      .find(r => r.playerId === props.id);
-    return row && p.rounds.length > 0 ? `${ordinal(row.place)} in ${division()}` : `${division()} · Registered`;
-  };
+    const row = p
+      ? podStandings(props.view.tournament, p, divisionOf)
+          .flatMap(group => group.rows)
+          .find(r => r.playerId === props.id)
+      : undefined;
+    return row && p?.rounds.length ? `${ordinal(row.place)} in ${division()}` : `${division()} · Registered`;
+  });
   return (
     <Show when={pod()}>
       {p => (
@@ -266,10 +304,10 @@ function OpenPlayer(props: {
           view={props.view}
           playerId={props.id}
           pod={p()}
-          standing={standings(p()).find(row => row.playerId === props.id)}
-          place={place(p())}
+          standing={standings().find(row => row.playerId === props.id)}
+          place={place()}
           names={props.names}
-          records={new Map(standings(p()).map(row => [row.playerId, recordLabel(row.record)]))}
+          records={records()}
           decks={props.view.decks}
           isMe={props.me === props.id}
           onIdentified={props.onIdentified}
@@ -330,14 +368,15 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
     view => props.onView(view)
   );
   const pods = () => props.view.tournament.pods;
-  const myPod = () => pods().find(p => p.playerIds.includes(me() ?? ''))?.category ?? null;
+  const myPod = () => podOf(props.view.tournament, me() ?? '')?.category ?? null;
   const pod = createMemo(() => pods().find(p => p.category === (podChoice() ?? myPod())) ?? pods()[0]);
-  const round = createMemo(() => pod()?.rounds.find(r => r.number === roundChoice()) ?? currentRound(pod()));
+  const round = createMemo(() => pod()?.rounds.find(r => r.number === roundChoice()) ?? latestRound(pod()));
   const names = createMemo(() => namesById(props.view.tournament));
   const divisionOf = (id: string) => props.view.divisions[id] ?? 'masters';
   const tabs = createMemo(() => tabsFor(props.view));
   const tab = () => pickTab(tabs(), params.tab, props.view);
-  const started = () => hasPodData(props.view);
+  // A memo: the bar is drawn from it, and a bar drawn again on every new copy drops the search mid-word.
+  const started = createMemo(() => hasStarted(props.view.tournament));
 
   const bar = (withRounds: boolean) => (
     <>
@@ -533,10 +572,20 @@ function Hero(props: { view: TournamentView }) {
   );
 }
 
-export function PublicEvent(props: { code: string }) {
+/** `signedIn`: whether an account is signed in, which the page's own copy of the event cannot say (see createView). */
+export function PublicEvent(props: { code: string; signedIn: boolean }) {
   const [params] = useSearchParams<{ screen?: string }>();
   // The page is the big screen or not for as long as it is open.
-  const { view, take, retry } = createView(() => props.code, params.screen === '1' ? SCREEN_POLL_MS : POLL_MS);
+  const screen = params.screen === '1';
+  // The big screen draws no decks, so it reads the published file even in a staff browser.
+  const { view, take, retry } = createView(
+    () => props.code,
+    () => props.signedIn,
+    {
+      every: screen ? SCREEN_POLL_MS : POLL_MS,
+      decks: !screen
+    }
+  );
   const current = () => latestValue(view);
   // A past format's sprites come with its archetype list, loaded only when there are decks to draw.
   const pastFormat = createMemo(() => {
@@ -569,7 +618,7 @@ export function PublicEvent(props: { code: string }) {
       }
     >
       {v => (
-        <Show when={params.screen !== '1'} fallback={<BigScreen view={v()} />}>
+        <Show when={!screen} fallback={<BigScreen view={v()} />}>
           <div class='tm-page tm-public'>
             <Hero view={v()} />
             <EventBody view={v()} onView={take} />

@@ -1,8 +1,9 @@
 /**
- * How the event's public page keeps up. Players read the published file,
- * which costs the functions nothing; staff, who see decks before the public
- * does, ask the API, as does anyone the file cannot reach (not published yet,
- * or a local server).
+ * How the event's public page keeps up. Everyone reads the published file,
+ * which costs the functions nothing. The API is asked only by staff whose copy
+ * shows decks the public cannot see yet, by anyone the file cannot reach (not
+ * published yet, or a local server), and once for each change the console in
+ * another tab of this browser announces before the file has it.
  *
  * A room of players falling back to the API at once (R2 unreachable) would
  * spend the day's function requests within hours, so a player's fallback asks
@@ -11,7 +12,13 @@
  * keeps trying on the same schedule.
  */
 
-import type { PublishedView, TournamentView } from '../../../shared/tournament/view';
+import {
+  decksEnabled,
+  decksVisible,
+  type PublishedView,
+  type TournamentView,
+  type Viewer
+} from '../../../shared/tournament/view';
 
 export const POLL_MS = 10_000;
 /** The big screen's poll: it is what the room reads, and one per venue. */
@@ -25,12 +32,38 @@ export function pollDelay(failures: number, every = POLL_MS): number {
   return Math.min(MAX_WAIT_MS, every * 2 ** failures);
 }
 
+/** Who reads the published file: nobody the event knows. */
+const NOBODY: Viewer = { role: null, me: null, signedIn: false };
+
+/**
+ * The event as a page first shows it: the published file, which is read from
+ * the edge and costs the functions nothing, and the API only when the file
+ * cannot be read. A room opening the page at once asks the functions for
+ * nothing; a signed-in viewer's page asks the API afterwards for who they are.
+ */
+export async function firstView(source: {
+  published: () => Promise<PublishedView | null>;
+  api: () => Promise<TournamentView>;
+}): Promise<TournamentView> {
+  const published = await source.published().catch(() => null);
+  return published ? { ...published, viewer: NOBODY } : source.api();
+}
+
+/** Whether the viewer's copy holds what the published file does not: decks staff see before the public does. */
+export function seesMoreThanPublished(view: TournamentView): boolean {
+  return view.viewer.role !== null && decksEnabled(view.settings) && !decksVisible(view.settings);
+}
+
 export interface ViewSource {
   current: () => TournamentView | undefined;
+  /** Whether this page shows the viewer something the published file lacks, so only the API will do. */
+  ownCopy: (view: TournamentView) => boolean;
+  /** The newest version another tab of this browser announced (see changes.ts); 0 for none. */
+  announced: () => number;
   /** Loads the page again when its first load failed; whether the page has its event now. */
   reload: () => Promise<boolean>;
   published: () => Promise<PublishedView | null>;
-  /** The view if it changed since `since`, or null. */
+  /** The view if it changed since `since`, or null; the whole view for 0. */
   api: (since: number) => Promise<TournamentView | null>;
   apply: (view: TournamentView) => void;
   now: () => number;
@@ -39,15 +72,23 @@ export interface ViewSource {
 /** One look at the event: true when it went through, false when it failed and the next should wait. */
 export function createViewPoll(source: ViewSource): () => Promise<boolean> {
   let askedApiAt = Number.NEGATIVE_INFINITY;
+  /** The version of the last copy the API gave; a copy from anywhere else lacks what only the API has. */
+  let fromApi = -1;
 
-  async function askApi(current: TournamentView): Promise<boolean> {
-    if (!current.viewer.role && source.now() - askedApiAt < FALLBACK_MS) {
+  /**
+   * Asks the API: each time when `due`, otherwise no more than every half
+   * minute. `own` asks for the viewer's own copy, whole unless the one held
+   * came from the API.
+   */
+  async function askApi(current: TournamentView, due: boolean, own = false): Promise<boolean> {
+    if (!due && source.now() - askedApiAt < FALLBACK_MS) {
       return true;
     }
     askedApiAt = source.now();
     try {
-      const next = await source.api(current.version);
+      const next = await source.api(own && current.version !== fromApi ? 0 : current.version);
       if (next) {
+        fromApi = next.version;
         source.apply(next);
       }
       return true;
@@ -61,14 +102,18 @@ export function createViewPoll(source: ViewSource): () => Promise<boolean> {
     if (!current) {
       return source.reload();
     }
-    const published = current.viewer.role ? null : await source.published().catch(() => null);
+    if (source.ownCopy(current)) {
+      return askApi(current, true, true);
+    }
+    const published = await source.published().catch(() => null);
     if (!published) {
-      return askApi(current);
+      return askApi(current, false);
     }
     if (published.version > current.version) {
       source.apply({ ...published, viewer: current.viewer });
     }
-    return true;
+    // The console's word arrives before its publish does; the API has the change already.
+    return Math.max(published.version, current.version) < source.announced() ? askApi(current, true) : true;
   };
 }
 
@@ -124,5 +169,21 @@ export function schedulePolls(poll: () => Promise<boolean>, hidden: () => boolea
       stopped = true;
       clearTimeout(timer);
     }
+  };
+}
+
+/** Looks again the moment the page is back in view or back online, without waiting out the schedule; returns the undo. */
+export function lookOnReturn(polls: Polls): () => void {
+  const soon = () => polls.soon();
+  const shown = () => {
+    if (!document.hidden) {
+      polls.soon();
+    }
+  };
+  window.addEventListener('online', soon);
+  document.addEventListener('visibilitychange', shown);
+  return () => {
+    window.removeEventListener('online', soon);
+    document.removeEventListener('visibilitychange', shown);
   };
 }

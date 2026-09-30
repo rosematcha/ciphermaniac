@@ -10,7 +10,7 @@
  * reports sent from one device never settle on their own: staff look first.
  */
 
-import { latestRound } from './rounds.js';
+import { isOpenMatch, latestRound, type MatchKey, podOf, sameMatch } from './rounds.js';
 import type { Match, Pod, PodCategory, Round, Tournament } from './types.js';
 
 /** A match's result as one of its players tells it. */
@@ -21,11 +21,7 @@ export type PlayerResult = 'win' | 'loss' | 'tie';
 
 export const PLAYER_RESULTS: readonly PlayerResult[] = ['win', 'loss', 'tie'];
 
-export interface PlayerReport {
-  pod: PodCategory;
-  round: number;
-  table: number;
-  p1: string;
+export interface PlayerReport extends MatchKey {
   p2: string;
   /** The player who reported, one of the two. */
   by: string;
@@ -37,11 +33,6 @@ export interface PlayerReport {
    */
   device?: string;
 }
-
-type MatchKey = Pick<PlayerReport, 'pod' | 'round' | 'table' | 'p1' | 'p2'>;
-
-const sameMatch = (a: MatchKey, b: MatchKey) =>
-  a.pod === b.pod && a.round === b.round && a.table === b.table && a.p1 === b.p1 && a.p2 === b.p2;
 
 /** The match's result from one seat's word. */
 export function reportedOutcome(match: Pick<Match, 'p1'>, by: string, result: PlayerResult): ReportedOutcome {
@@ -64,8 +55,8 @@ export interface OpenMatch {
  * results laid over it (see applyPending), since those count as results.
  */
 export function reportableMatch(tournament: Tournament, playerId: string): OpenMatch | string {
-  const pod = tournament.pods.find(p => p.playerIds.includes(playerId));
-  const round = pod && latestRound(pod);
+  const pod = podOf(tournament, playerId);
+  const round = latestRound(pod);
   const match = round?.matches.find(m => m.p1 === playerId || m.p2 === playerId);
   if (!pod || !round || !match) {
     return 'You are not paired this round';
@@ -130,19 +121,27 @@ export const oneDevice = (a: Pick<PlayerReport, 'device'>, b: Pick<PlayerReport,
   a.device !== undefined && a.device === b.device;
 
 /**
- * One report from each match whose two reports agree, have both locked and
- * came from two devices: those results now stand.
+ * Whether a match's two reports settle it at `now`: they say the same, both
+ * have locked, and they came from two devices. The player's page asks this
+ * too, so it calls a result settled exactly when the server will write it.
  */
+export function settles(report: PlayerReport, other: PlayerReport | undefined, now: number): boolean {
+  return (
+    other?.outcome === report.outcome && isLocked(report, now) && isLocked(other, now) && !oneDevice(report, other)
+  );
+}
+
+/** One report from each match whose two reports settle it: those results now stand. */
 export function dueResults(reports: readonly PlayerReport[], now: number): PlayerReport[] {
-  return reports.filter(report => {
-    if (report.by !== report.p1) {
-      return false;
-    }
-    const other = reports.find(r => sameMatch(r, report) && r.by === report.p2);
-    return (
-      other?.outcome === report.outcome && isLocked(report, now) && isLocked(other, now) && !oneDevice(report, other)
-    );
-  });
+  return reports.filter(
+    report =>
+      report.by === report.p1 &&
+      settles(
+        report,
+        reports.find(r => sameMatch(r, report) && r.by === report.p2),
+        now
+      )
+  );
 }
 
 /** The reports filed for one match. */
@@ -164,11 +163,7 @@ export function isDisputed(forMatch: readonly PlayerReport[]): boolean {
  * As with reportableMatch, pending results are laid over `tournament`.
  */
 export function pruneReports(tournament: Tournament, reports: readonly PlayerReport[]): PlayerReport[] {
-  return reports.filter(report => {
-    const round = tournament.pods.find(p => p.category === report.pod)?.rounds.find(r => r.number === report.round);
-    const match = round?.matches.find(m => m.table === report.table && m.p1 === report.p1 && m.p2 === report.p2);
-    return match?.outcome === 'pending';
-  });
+  return reports.filter(report => isOpenMatch(tournament, report));
 }
 
 /** One mark on both of a match's public reports when one device sent them, so its page does not call them settled. */

@@ -8,19 +8,15 @@
  */
 
 import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
-import { jsonError } from '../../../lib/api/responses.js';
+import { jsonError, noContent } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
-import { open, openForStaff, privateJson, viewOf } from '../../../lib/tournaments/access.js';
+import { open, openForOwner, pollOf, privateJson, viewOf } from '../../../lib/tournaments/access.js';
 import { unpublishView } from '../../../lib/tournaments/publish.js';
-import { deleteTournament, isCode, loadVersion } from '../../../lib/tournaments/store.js';
+import { deleteTournament, loadVersion } from '../../../lib/tournaments/store.js';
 
 async function unchanged(context: Context<'code'>): Promise<boolean> {
-  const since = Number(new URL(context.request.url).searchParams.get('since'));
-  const code = String(context.params.code).toUpperCase();
-  if (!since || !context.env.TOURNAMENT_DB || !isCode(code)) {
-    return false;
-  }
-  return (await loadVersion(context.env.TOURNAMENT_DB, code)) === since;
+  const poll = pollOf(context);
+  return poll !== null && (await loadVersion(poll.db, poll.code)) === poll.since;
 }
 
 const rateLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, maxRequests: 1200 });
@@ -35,21 +31,18 @@ export async function onRequestGet(context: Context<'code'>): Promise<Response> 
     return jsonError('Too many requests from here. Try again shortly.', 429);
   }
   if (await unchanged(context)) {
-    return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+    return noContent();
   }
   const access = await open(context);
   return access instanceof Response ? access : privateJson(viewOf(access));
 }
 
 export async function onRequestDelete(context: Context<'code'>): Promise<Response> {
-  const access = await openForStaff(context);
+  const access = await openForOwner(context, 'Only the organizer can delete the event');
   if (access instanceof Response) {
     return access;
   }
-  if (access.role !== 'owner') {
-    return jsonError('Only the organizer can delete the event', 403);
-  }
   await deleteTournament(access.db, access.row.code);
   await unpublishView(context.env.REPORTS, access.row.code);
-  return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+  return noContent();
 }

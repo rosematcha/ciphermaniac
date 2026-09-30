@@ -5,14 +5,54 @@
 
 import type { Pairing, PairingHistory } from './pairing.js';
 import { matchPoints, tallySwiss } from './standings.js';
-import type { Match, Pod, Round, Tournament } from './types.js';
+import type { Match, Pod, PodCategory, Round, Tournament } from './types.js';
 
-export function latestRound(pod: Pod): Round | undefined {
-  return pod.rounds.at(-1);
+/** The pod's current round: the last one paired. */
+export function latestRound(pod: Pod | undefined): Round | undefined {
+  return pod?.rounds.at(-1);
+}
+
+/** The pod a player plays in. */
+export function podOf(tournament: Tournament, playerId: string): Pod | undefined {
+  return tournament.pods.find(pod => pod.playerIds.includes(playerId));
+}
+
+/** Whether any round has been paired: before that the event is still taking players. */
+export function hasStarted(tournament: Tournament): boolean {
+  return tournament.pods.some(pod => pod.rounds.length > 0);
 }
 
 export function isReported(match: Match): boolean {
   return match.outcome !== 'pending';
+}
+
+/**
+ * What names one match across the event. Both players are part of it, so a
+ * result or a report sent for a match cannot land on a pairing made since.
+ */
+export interface MatchKey {
+  pod: PodCategory;
+  round: number;
+  table: number;
+  p1: string;
+  p2: string | null;
+}
+
+export function sameMatch(a: MatchKey, b: MatchKey): boolean {
+  return a.pod === b.pod && a.round === b.round && a.table === b.table && a.p1 === b.p1 && a.p2 === b.p2;
+}
+
+/** The match a key names, with its pod and round; undefined once it is gone (re-paired) or if it never was. */
+export function findMatch(tournament: Tournament, key: MatchKey): { pod: Pod; round: Round; match: Match } | undefined {
+  const pod = tournament.pods.find(p => p.category === key.pod);
+  const round = pod?.rounds.find(r => r.number === key.round);
+  const match = round?.matches.find(m => m.table === key.table && m.p1 === key.p1 && m.p2 === key.p2);
+  return pod && round && match ? { pod, round, match } : undefined;
+}
+
+/** Whether the match a key names is still there and still waiting on a result. */
+export function isOpenMatch(tournament: Tournament, key: MatchKey): boolean {
+  return findMatch(tournament, key)?.match.outcome === 'pending';
 }
 
 export function roundComplete(round: Round): boolean {

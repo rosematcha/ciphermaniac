@@ -20,12 +20,12 @@
 
 import { createEffect, createMemo, createSignal, For, lazy, on, Show, Suspense } from 'solid-js';
 import { isDisputed, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
+import { latestRound } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import { decksEnabled } from '../../../shared/tournament/view';
 import type { Manage } from '../../lib/tournament/api';
 import {
   champion,
-  currentRound,
   filterMatches,
   namesById,
   outcomeLabel,
@@ -71,6 +71,10 @@ interface ResultProps {
   pod: Pod;
   round: Round;
   manage: Manage;
+  /** What the players reported for the match while it is open (see openReports). */
+  reports: readonly PlayerReport[];
+  /** The result sent for the match and not answered yet. */
+  sent: Outcome | undefined;
   names: Map<string, string>;
   asking: Asking | null;
   onReport: (outcome: Outcome) => void;
@@ -111,11 +115,17 @@ function ConfirmResult(props: ResultProps & { asking: Asking }) {
   );
 }
 
-/** An open match's reports, or none once a result stands. */
-function openReports(manage: Manage, pod: Pod, round: Round, match: Match): readonly PlayerReport[] {
-  return shownOutcome(match, pod, round, manage.pending).outcome === 'pending'
-    ? reportsFor(manage.reports, pod.category, round.number, match)
-    : [];
+const NO_REPORTS: readonly PlayerReport[] = [];
+
+/** A round's reports by table, so each row reads its own table's and not the whole room's. */
+function reportsByTable(reports: readonly PlayerReport[], pod: Pod, round: Round): Map<number, PlayerReport[]> {
+  const byTable = new Map<number, PlayerReport[]>();
+  for (const report of reports) {
+    if (report.pod === pod.category && report.round === round.number) {
+      byTable.set(report.table, [...(byTable.get(report.table) ?? []), report]);
+    }
+  }
+  return byTable;
 }
 
 /**
@@ -125,12 +135,15 @@ function openReports(manage: Manage, pod: Pod, round: Round, match: Match): read
  * stands, or Accept while one report waits: the two never meet.
  */
 function Result(props: ResultProps) {
-  const shown = () => shownOutcome(props.match, props.pod, props.round, props.manage.pending);
+  // A result on its way shows as sent, so the row does not read Open for as long as the answer takes.
+  const shown = () =>
+    props.sent
+      ? { outcome: props.sent, unconfirmed: false }
+      : shownOutcome(props.match, props.pod, props.round, props.manage.pending);
   const open = () => shown().outcome === 'pending';
   const elimination = () => props.round.kind === 'elimination';
-  const reports = () => openReports(props.manage, props.pod, props.round, props.match);
-  const report = () => staffReport(reports(), props.match, props.names);
-  const lone = () => (reports().length > 0 && !isDisputed(reports()) ? reports()[0] : undefined);
+  const report = createMemo(() => staffReport(props.reports, props.match, props.names));
+  const lone = () => (props.reports.length > 0 && !isDisputed(props.reports) ? props.reports[0] : undefined);
   // A bye or a missed round is decided by the pairing itself: nothing to enter.
   const decidedByPairing = (
     <div class='tm-result'>
@@ -310,11 +323,18 @@ function RoundBar(props: RoundBarProps) {
 /** `locked`: a TOM event whose file needs reconnecting takes no results until the site can see it again. */
 export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod; locked?: boolean }) {
   const tom = () => props.manage.mode === 'tom';
-  const latest = () => currentRound(props.pod);
+  const latest = () => latestRound(props.pod);
   const [picked, setPicked] = createSignal<number | null>(null);
   const [swapMode, setSwapMode] = createSignal(false);
   const [swapPick, setSwapPick] = createSignal<string | null>(null);
   const [asking, setAsking] = createSignal<Asking | null>(null);
+  /**
+   * Results sent and not answered yet, by match: each row shows its own until
+   * the answer lands or fails. The panel outlives a switch to another division
+   * or round, so a table number alone would show one on another's table.
+   */
+  const [sent, setSent] = createSignal<ReadonlyMap<string, Outcome>>(new Map());
+  const sentKey = (r: Round, match: Match) => `${props.pod.category}|${r.number}|${match.table}|${match.p1}`;
   const [query, setQuery] = createSignal('');
   const [openOnly, setOpenOnly] = createSignal(false);
   const [deckMode, setDeckMode] = createSignal(false);
@@ -336,6 +356,15 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   /** The staff controls that act on the round, offered only on its latest round and never for TOM. */
   const live = () => !tom() && isLatest() && winner() === null;
   const isAsking = (match: Match) => asking()?.table === match.table && asking()?.p1 === match.p1;
+  const roundReports = createMemo(() => {
+    const r = round();
+    return r ? reportsByTable(props.manage.reports, props.pod, r) : new Map<number, PlayerReport[]>();
+  });
+  /** An open match's reports, or none once a result stands. */
+  const openReports = (match: Match, r: Round): readonly PlayerReport[] =>
+    shownOutcome(match, props.pod, r, props.manage.pending).outcome === 'pending'
+      ? reportsFor(roundReports().get(match.table) ?? NO_REPORTS, props.pod.category, r.number, match)
+      : NO_REPORTS;
   // A new round, or another division, starts on its current round again.
   createEffect(on([() => latest()?.number, () => props.pod.category], () => setPicked(null), { defer: true }));
 
@@ -369,15 +398,12 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
     if (!r) {
       return;
     }
-    void props.state.send({
-      type: 'reportResult',
-      pod: props.pod.category,
-      round: r.number,
-      table: match.table,
-      p1: match.p1,
-      p2: match.p2,
-      outcome
-    });
+    const { table, p1, p2 } = match;
+    const key = sentKey(r, match);
+    setSent(matches => new Map(matches).set(key, outcome));
+    void props.state
+      .send({ type: 'reportResult', pod: props.pod.category, round: r.number, table, p1, p2, outcome })
+      .finally(() => setSent(matches => new Map([...matches].filter(([sentMatch]) => sentMatch !== key))));
   }
 
   function record(match: Match) {
@@ -477,9 +503,8 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                   : undefined
               }
               confirming={asking()}
-              tag={(match, id) =>
-                staffReport(openReports(props.manage, props.pod, r(), match), match, names())?.tags.get(id) ?? null
-              }
+              sent={match => sent().get(sentKey(r(), match))}
+              tag={(match, id) => staffReport(openReports(match, r()), match, names())?.tags.get(id) ?? null}
               extra={match => (
                 <Result
                   locked={props.locked ?? false}
@@ -487,6 +512,8 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                   pod={props.pod}
                   round={r()}
                   manage={props.manage}
+                  reports={openReports(match, r())}
+                  sent={sent().get(sentKey(r(), match))}
                   names={names()}
                   asking={isAsking(match) ? asking() : null}
                   onReport={o => report(match, o)}

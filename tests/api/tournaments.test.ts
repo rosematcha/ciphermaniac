@@ -33,7 +33,7 @@ import { parseTdf } from '../../shared/tournament/tdf.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { publishView } from '../../functions/lib/tournaments/publish.ts';
 import { loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
-import { sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { countingTrips, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 const ORIGIN = 'https://cm.test';
 let env: TournamentEnv;
@@ -670,15 +670,7 @@ test('an event too large for one D1 row is refused with a message', async () => 
 });
 
 test('every change publishes the public view to R2, and deleting the event removes it', async () => {
-  const objects = new Map<string, { body: string; cacheControl: string }>();
-  env.REPORTS = {
-    put: async (key, value, options) => {
-      objects.set(key, { body: value, cacheControl: options.httpMetadata.cacheControl ?? '' });
-    },
-    delete: async key => {
-      objects.delete(key);
-    }
-  };
+  const objects = memoryBucket();
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
   const key = `tournaments/v1/${code}.json`;
@@ -694,7 +686,7 @@ test('every change publishes the public view to R2, and deleting the event remov
     cookie: owner,
     body: { playerId: '900', archetype: 'Gardevoir' }
   });
-  const published = JSON.parse(objects.get(key)?.body ?? '{}');
+  const published = bodyOf(objects.get(key));
   assert.equal(published.tournament.players.length, 2, 'a player just added is published');
   const stable = JSON.stringify({ ...published, updatedAt: 0, version: 0 });
   assert.ok(!stable.includes('900'), 'no Player IDs, not even for a player just added');
@@ -708,13 +700,14 @@ test('every change publishes the public view to R2, and deleting the event remov
     cookie: owner,
     body: { deckVisibility: 'always' }
   });
-  assert.deepEqual(Object.values(JSON.parse(objects.get(key)?.body ?? '{}').decks), ['Gardevoir']);
+  assert.deepEqual(Object.values(bodyOf(objects.get(key)).decks), ['Gardevoir']);
   await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
   assert.ok(!objects.has(key), 'deleting the event unpublishes it');
 });
 
 test('a failed publish does not fail the change', async () => {
   env.REPORTS = {
+    head: async () => null,
     put: async () => {
       throw new Error('R2 down');
     },
@@ -863,7 +856,8 @@ test('players report their own results: agreement stands once locked, disagreeme
   assert.deepEqual([later.json.reporter, later.json.reportToken], [false, undefined], 'a second device only follows');
   const one = await p1.report('win');
   assert.equal(one.json.view.reports.length, 1);
-  assert.ok(!JSON.stringify(one.json.view.reports).includes(first.p1), 'reports go out under public keys');
+  const named = one.json.view.reports.flatMap((r: { p1: string; p2: string; by: string }) => [r.p1, r.p2, r.by]);
+  assert.ok(!named.includes(first.p1), 'reports go out under public keys');
   const agreed = await p2.report('loss');
   assert.equal(agreed.json.view.reports.length, 2, 'agreeing reports wait out the window');
   assert.equal(agreed.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'pending');
@@ -925,6 +919,42 @@ test('players report their own results: agreement stands once locked, disagreeme
   const refused = await p1.report('win');
   assert.equal(refused.status, 403, 'but reports go to staff');
   assert.equal((await playerSays(code, { popId: '0000000' })).status, 404, 'a Player ID not in the event finds nobody');
+});
+
+test('a result the console poll settles is stamped with the venue clock the poll sent', async () => {
+  const owner = await signIn('Organizer');
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const [match] = paired.json.tournament.pods[0].rounds[0].matches;
+  await settle(code, owner, { playerReporting: true });
+  const { version } = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
+  await (await phoneOf(code, match.p1)).report('win');
+  await (await phoneOf(code, match.p2)).report('loss');
+  mock.timers.tick(REPORT_WINDOW_MS);
+  const polled = await hit(
+    manage.onRequestGet as Handler,
+    `/manage?since=${version}&localTime=${encodeURIComponent('10/10/2026 18:30:00')}`,
+    at(code),
+    { cookie: owner }
+  );
+  const settledMatch = polled.json.tournament.pods[0].rounds[0].matches[0];
+  assert.deepEqual([settledMatch.outcome, settledMatch.timestamp], ['p1', '10/10/2026 18:30:00']);
+});
+
+test('players cannot report once the event has ended', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const [match] = paired.json.tournament.pods[0].rounds[0].matches;
+  await settle(code, owner, { playerReporting: true });
+  const phone = await phoneOf(code, match.p1);
+  await settle(code, owner, { finished: true });
+  const refused = await phone.report('win');
+  assert.deepEqual([refused.status, refused.json.error], [403, 'This event is over']);
+  assert.equal((await playerSays(code, { popId: match.p1 })).status, 200, 'a player can still find their table');
 });
 
 test('a report for the match a stale page showed does not land on the next round', async () => {
@@ -1296,11 +1326,33 @@ test('a list cannot be withdrawn once submission closes, even with its token', a
   assert.equal(lists.json.decklists.length, 1);
 });
 
+interface Stored {
+  body: string;
+  cacheControl: string;
+  etag: string;
+  version: string;
+}
+
+/** An R2 bucket in memory, conditional writes included: a write whose condition fails changes nothing. */
 function memoryBucket() {
-  const objects = new Map<string, string>();
+  const objects = new Map<string, Stored>();
+  let uploads = 0;
+  const holds = (held: Stored | undefined, onlyIf: { etagMatches: string } | Headers) =>
+    onlyIf instanceof Headers ? onlyIf.get('If-None-Match') === '*' && !held : held?.etag === onlyIf.etagMatches;
   env.REPORTS = {
-    put: async (key, value) => {
-      objects.set(key, value);
+    head: async key => {
+      const held = objects.get(key);
+      return held ? { etag: held.etag, customMetadata: { version: held.version } } : null;
+    },
+    put: async (key, body, options) => {
+      if (!holds(objects.get(key), options.onlyIf)) {
+        return null;
+      }
+      uploads += 1;
+      const etag = `etag-${uploads}`;
+      const { version = '' } = options.customMetadata;
+      objects.set(key, { body, cacheControl: options.httpMetadata.cacheControl ?? '', etag, version });
+      return { etag, customMetadata: options.customMetadata };
     },
     delete: async key => {
       objects.delete(key);
@@ -1309,7 +1361,9 @@ function memoryBucket() {
   return objects;
 }
 
-test('a publish that lands late puts the newest view back, and cannot bring back a deleted event', async () => {
+const bodyOf = (stored: Stored | undefined) => JSON.parse(stored?.body ?? '{}');
+
+test('a publish that lands late leaves the newer copy up, and cannot bring back a deleted event', async () => {
   const objects = memoryBucket();
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
@@ -1317,16 +1371,55 @@ test('a publish that lands late puts the newest view back, and cannot bring back
   const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
   const older = await loadTournament(db, code);
   await addPlayers(code, owner, 1);
-  const newest = JSON.parse(objects.get(key) ?? '{}').version as number;
-  assert.ok(older && newest > older.version);
+  const newest = await loadTournament(db, code);
+  assert.ok(older && newest && newest.version > older.version);
+  assert.equal(bodyOf(objects.get(key)).version, newest.version);
+  const trips = countTrips();
   await publishView(env, older);
-  assert.equal(JSON.parse(objects.get(key) ?? '{}').version, newest, 'the late copy is replaced by the newest');
+  assert.equal(bodyOf(objects.get(key)).version, newest.version, 'the late copy does not replace the newer one');
 
-  const latest = await loadTournament(db, code);
+  // Another publish lands between this one's look and its write.
+  const bucket = env.REPORTS as NonNullable<TournamentEnv['REPORTS']>;
+  env.REPORTS = {
+    ...bucket,
+    put: async (...args) => {
+      env.REPORTS = bucket;
+      objects.set(key, { ...(objects.get(key) as Stored), etag: 'crossed', version: String(newest.version + 5) });
+      return bucket.put(...args);
+    }
+  };
+  await publishView(env, { ...newest, version: newest.version + 1 });
+  assert.equal(objects.get(key)?.etag, 'crossed', 'a write that crossed a newer one yields to it');
+  assert.equal(trips(), 0, 'publishing over a copy asks the database nothing');
+
+  env.TOURNAMENT_DB = db;
   await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
-  assert.ok(latest);
-  await publishView(env, latest);
+  await publishView(env, newest);
   assert.ok(!objects.has(key), 'a publish after the delete takes its copy down again');
+});
+
+test('a publish that never gets a write in takes the copy down rather than leave it behind', async () => {
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const bucket = env.REPORTS as NonNullable<TournamentEnv['REPORTS']>;
+  let refused = 0;
+  env.REPORTS = {
+    ...bucket,
+    put: async () => {
+      refused += 1;
+      return null;
+    }
+  };
+  const log = console.error;
+  console.error = () => undefined;
+  try {
+    await addPlayers(code, owner, 1);
+  } finally {
+    console.error = log;
+  }
+  assert.ok(refused > 1, 'it tries again after a refused write');
+  assert.ok(!objects.has(`tournaments/v1/${code}.json`));
 });
 
 test('a publish R2 refuses takes the stale copy down, so the page asks the API', async () => {
@@ -1344,27 +1437,6 @@ test('a publish R2 refuses takes the stale copy down, so the page asks the API',
     console.error = log;
   }
   assert.ok(!objects.has(`tournaments/v1/${code}.json`));
-});
-
-test('a publish still behind after a burst of writes takes its copy down rather than leave it stale', async () => {
-  const objects = memoryBucket();
-  const owner = await signIn('Organizer');
-  const code = await newSwiss(owner);
-  const key = `tournaments/v1/${code}.json`;
-  const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
-  const older = await loadTournament(db, code);
-  assert.ok(older);
-  // Every look after a put finds a newer version, as in a burst of writes.
-  env.TOURNAMENT_DB = {
-    ...db,
-    prepare: sql =>
-      sql.startsWith('SELECT version FROM tournaments')
-        ? ({ ...db.prepare(sql), bind: () => ({ ...db.prepare(sql), first: async () => ({ version: 1e9 }) }) } as never)
-        : db.prepare(sql)
-  };
-  await publishView(env, older);
-  env.TOURNAMENT_DB = db;
-  assert.ok(!objects.has(key));
 });
 
 test('a .tdf sent from a copy the site no longer holds is refused, not synced over newer rounds', async () => {
@@ -1386,6 +1458,11 @@ test('a .tdf sent from a copy the site no longer holds is refused, not synced ov
   });
   assert.equal(first.status, 200);
   assert.equal(first.json.revision, await revisionNow(code, owner), 'the answer carries the revision now held');
+  assert.deepEqual(
+    [first.json.role, first.json.tournament.players.length],
+    ['owner', tdf.players.length],
+    'and is the console’s new copy, so the console need not ask for it'
+  );
   const older = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
     method: 'PUT',
     cookie: owner,
@@ -1457,4 +1534,200 @@ test('a field sending lists from one venue address is not turned away', async ()
     const sent = await submitAs(code, { firstName: 'Player', lastName: `Number ${i}` });
     assert.equal(sent.status, 200, `player ${i + 1} of 40`);
   }
+});
+
+test('the answer to a change does not wait for its publish where the runtime keeps the function alive', async () => {
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const key = `tournaments/v1/${code}.json`;
+  const before = objects.get(key);
+  const bucket = env.REPORTS as NonNullable<TournamentEnv['REPORTS']>;
+  let release = () => undefined as void;
+  const held = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  env.REPORTS = { ...bucket, put: (...args) => held.then(() => bucket.put(...args)) };
+  const kept: Promise<unknown>[] = [];
+  const response = await commands.onRequestPost({
+    request: request(`/api/tournaments/${code}/commands`, {
+      method: 'POST',
+      cookie: owner,
+      body: { command: { type: 'addPlayer', player: { firstName: 'Ash', lastName: 'Ketchum' } } }
+    }),
+    env,
+    params: at(code),
+    waitUntil: (promise: Promise<unknown>) => void kept.push(promise)
+  });
+  assert.equal(response.status, 200, 'answered while the publish is still held');
+  assert.equal(objects.get(key), before);
+  assert.equal(kept.length, 1, 'the publish is handed to the runtime to finish');
+  release();
+  await Promise.all(kept);
+  assert.equal(bodyOf(objects.get(key)).tournament.players.length, 1);
+});
+
+/** Counts the database round trips the functions make from here on. */
+function countTrips(): () => number {
+  const counting = countingTrips(env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>);
+  env.TOURNAMENT_DB = counting.db;
+  return counting.trips;
+}
+
+test('a staff action waits on the database twice, and an idle console poll once', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const console = (cookie: string, since = '') =>
+    hit(manage.onRequestGet as Handler, `/manage${since}`, at(code), { cookie });
+  const helper = await signIn('Helper');
+  await hit(staff.onRequestPost as Handler, '/staff', at(code), {
+    method: 'POST',
+    cookie: helper,
+    body: { token: (await console(owner)).json.staffToken }
+  });
+  for (const cookie of [owner, helper]) {
+    const { version } = (await console(cookie)).json;
+    const trips = countTrips();
+    const before = trips();
+    assert.equal((await console(cookie, `?since=${version}`)).status, 204);
+    assert.equal(trips() - before, 1, 'the poll is one read');
+    const added = await send(code, cookie, { type: 'addPlayer', player: { firstName: 'Late', lastName: cookie } });
+    assert.equal(added.status, 200);
+    assert.equal(trips() - before, 3, 'the action is one read of the event and who asks, and one write');
+  }
+  const strangers = countTrips();
+  assert.equal((await hit(event.onRequestGet as Handler, '/', at(code))).status, 200);
+  assert.equal(strangers(), 1, 'a player with no session reads only the event');
+});
+
+test('the account page names the providers an account signs in with; an event request does not read them', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const seen = recordSql();
+  const trips = countTrips();
+  const account = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: owner });
+  assert.deepEqual(account.json.user.providers, ['dev']);
+  assert.equal(trips(), 1, 'the user and their providers come in one round trip');
+  const saved = await hit(
+    me.onRequestPatch as Handler,
+    '/api/me',
+    {},
+    {
+      method: 'PATCH',
+      cookie: owner,
+      body: { name: 'Renamed' }
+    }
+  );
+  assert.deepEqual([saved.json.user.name, saved.json.user.providers], ['Renamed', ['dev']]);
+  seen.length = 0;
+  assert.equal((await view(code, owner)).viewer.role, 'owner');
+  assert.ok(!seen.some(sql => sql.includes('identities')), 'providers are not read to open an event');
+});
+
+test('nothing the functions ask of the database scans a table', async () => {
+  const { raw } = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const seen = recordSql();
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: owner });
+  await hit(tournaments.onRequestGet as Handler, '/api/tournaments', {}, { cookie: owner });
+  const { staffToken, version } = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner }))
+    .json;
+  const helper = await signIn('Helper');
+  await hit(staff.onRequestPost as Handler, '/staff', at(code), {
+    method: 'POST',
+    cookie: helper,
+    body: { token: staffToken }
+  });
+  await hit(staff.onRequestGet as Handler, '/staff', at(code), { cookie: owner });
+  await hit(manage.onRequestGet as Handler, `/manage?since=${version}`, at(code), { cookie: helper });
+  await settle(code, owner, { decklists: 'open', playerReporting: true });
+  await addPlayers(code, owner, 2);
+  const sent = await submitAs(code, { popId: '900', firstName: 'Player', lastName: '0', birthDate: '02/27/1990' });
+  await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
+  await hit(decklists.onRequestGet as Handler, `/decklists?popId=900&token=${sent.json.token}`, at(code));
+  await hit(decklists.onRequestPatch as Handler, '/decklists?popId=900', at(code), { method: 'PATCH', cookie: owner });
+  await hit(decklists.onRequestDelete as Handler, '/decklists?popId=900', at(code), { method: 'DELETE' });
+  await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  await playerSays(code, { popId: '900', result: 'win' });
+  await hit(report.onRequestDelete as Handler, '/report?player=900', at(code), { method: 'DELETE', cookie: owner });
+  await hit(staff.onRequestPost as Handler, '/staff', at(code), {
+    method: 'POST',
+    cookie: owner,
+    body: { rotate: true }
+  });
+  await hit(logout.onRequestPost as Handler, '/api/auth/logout', {}, { method: 'POST', cookie: helper });
+  await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
+  const statements = [...new Set(seen)];
+  assert.ok(statements.length > 25, 'the flow reached the functions');
+  for (const sql of statements) {
+    const plan = raw.prepare(`EXPLAIN QUERY PLAN ${sql}`).all() as { detail: string }[];
+    const scans = plan.map(step => step.detail).filter(detail => detail.startsWith('SCAN'));
+    assert.deepEqual(scans, [], sql);
+  }
+});
+
+test('an event made on a code already taken gets another, and the first is untouched', async () => {
+  const owner = await signIn('Organizer');
+  // Every draw the same: the second event's first code is the first event's.
+  const random = mock.method(Math, 'random', () => 0);
+  const first = await newSwiss(owner);
+  let draws = 0;
+  random.mock.mockImplementation(() => {
+    draws += 1;
+    return draws <= first.length ? 0 : 0.5;
+  });
+  const second = await newSwiss(owner);
+  random.mock.restore();
+  assert.notEqual(second, first);
+  await addPlayers(second, owner, 1);
+  assert.equal((await view(first)).tournament.players.length, 0);
+  assert.equal((await view(second)).tournament.players.length, 1);
+});
+
+test('the index migration brings an older database in line with the schema', () => {
+  const indexes = (db: ReturnType<typeof sqliteD1>['raw']) =>
+    db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL ORDER BY name").all();
+  const fresh = sqliteD1('tournaments.sql').raw;
+  const older = sqliteD1('tournaments.sql').raw;
+  older.exec('DROP INDEX identities_by_user; DROP INDEX tournaments_of_owner');
+  older.exec('CREATE INDEX tournaments_by_owner ON tournaments (owner_id, updated_at)');
+  const migration = readFileSync(
+    new URL('../../config/d1/migrations/tournaments-0004-indexes.sql', import.meta.url),
+    'utf8'
+  );
+  older.exec(migration);
+  older.exec(migration);
+  assert.deepEqual(indexes(older), indexes(fresh));
+});
+
+/** Has another write land just ahead of each of the functions' next `times` writes to the event. */
+function raceWrites(times: number) {
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  let left = times;
+  env.TOURNAMENT_DB = {
+    ...db,
+    prepare: sql => {
+      if (left > 0 && sql.startsWith('UPDATE tournaments SET')) {
+        left -= 1;
+        db.raw.exec('UPDATE tournaments SET version = version + 1');
+      }
+      return db.prepare(sql);
+    }
+  };
+}
+
+test('a change beaten to the row by other writes lands on what they left, and gives up only after five tries', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const add = (lastName: string) => send(code, owner, { type: 'addPlayer', player: { firstName: 'Ash', lastName } });
+  raceWrites(4);
+  const landed = await add('Ketchum');
+  assert.equal(landed.status, 200);
+  assert.equal(landed.json.tournament.players.length, 1);
+  assert.equal(landed.json.version, 6, 'four writes ahead of it, then its own');
+  raceWrites(5);
+  const busy = await add('Oak');
+  assert.deepEqual([busy.status, busy.json.error], [409, 'Busy; try again']);
+  assert.equal((await view(code)).tournament.players.length, 1, 'nothing half-written');
 });

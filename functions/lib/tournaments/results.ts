@@ -9,6 +9,7 @@
 
 import { applyCommand, type Command } from '../../../shared/tournament/commands.js';
 import { dueResults, resultOf } from '../../../shared/tournament/reports.js';
+import { isOpenMatch } from '../../../shared/tournament/rounds.js';
 import { prunePending, withPending } from '../../../shared/tournament/view.js';
 import type { D1Like } from '../types.js';
 import { commandContext } from './commandContext.js';
@@ -19,11 +20,7 @@ import { type Changes, mutate, type TournamentRow } from './store.js';
  * wins over anything written here, so a correction would never land.
  */
 function pendingChange(row: TournamentRow, command: Extract<Command, { type: 'reportResult' }>): Changes | string {
-  const pod = row.tournament.pods.find(p => p.category === command.pod);
-  const match = pod?.rounds
-    .find(r => r.number === command.round)
-    ?.matches.find(m => m.table === command.table && m.p1 === command.p1 && m.p2 === command.p2);
-  if (match?.outcome !== 'pending') {
+  if (!isOpenMatch(row.tournament, command)) {
     return 'TOM already has a result for this match; change it in TOM';
   }
   const { pod: category, round, table, p1, p2, outcome } = command;
@@ -74,11 +71,11 @@ export function settledChanges(row: TournamentRow, now: number, localTime?: unkn
  */
 export function mutateSettled(
   db: D1Like,
-  from: string | TournamentRow,
+  read: TournamentRow,
   change: (row: TournamentRow) => Changes | string,
   localTime?: unknown
 ) {
-  return mutate(db, from, row => {
+  return mutate(db, read, row => {
     const settled = settledChanges(row, Date.now(), localTime) ?? {};
     const next = change({ ...row, ...settled });
     return typeof next === 'string' ? next : { ...settled, ...next };

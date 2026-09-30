@@ -7,19 +7,21 @@ import {
   decksEnabled,
   decksVisible,
   isSanctioned,
+  type Manage,
   publicDecks,
   publicDivisions,
   publicPending,
   publicTournament,
   type PublishedView,
+  type Role,
   type TournamentView
 } from '../../../shared/tournament/view.js';
 import { publicReports } from '../../../shared/tournament/reports.js';
 import { jsonError, jsonResponse } from '../api/responses.js';
 import { type Context, param, sameOrigin } from '../auth/env.js';
-import { currentUser, type User } from '../auth/session.js';
+import type { User } from '../auth/session.js';
 import type { D1Like } from '../types.js';
-import { isCode, loadTournament, type Role, roleOf, type TournamentRow } from './store.js';
+import { isCode, openTournament, type TournamentRow } from './store.js';
 
 export const PRIVATE = { cacheControl: 'no-store', cors: false } as const;
 
@@ -39,17 +41,31 @@ export async function open(context: Context<'code'>): Promise<Access | Response>
   if (!db) {
     return jsonError('Tournaments are not available', 503);
   }
-  const code = param(context.params.code).toUpperCase();
-  const row = isCode(code) ? await loadTournament(db, code) : null;
-  if (!row) {
-    return jsonError('No such tournament', 404);
-  }
-  const user = await currentUser(db, context.request);
-  return { db, user, row, role: await roleOf(db, row, user) };
+  const code = codeOf(context);
+  const opened = isCode(code) ? await openTournament(db, code, context.request) : null;
+  return opened ? { db, ...opened } : jsonError('No such tournament', 404);
 }
 
+/** The event code a route names, as codes are stored. */
+export const codeOf = (context: Context<'code'>): string => param(context.params.code).toUpperCase();
+
+/**
+ * What a poll names: the event, and the version the asker already holds
+ * (`?since=`). Null when it names no version or no event, and the whole
+ * answer is due.
+ */
+export function pollOf(context: Context<'code'>): { db: D1Like; code: string; since: number } | null {
+  const since = Number(new URL(context.request.url).searchParams.get('since'));
+  const db = context.env.TOURNAMENT_DB;
+  const code = codeOf(context);
+  return since && db && isCode(code) ? { db, code, since } : null;
+}
+
+/** An event opened by one of its staff. */
+export type StaffAccess = Access & { role: Role };
+
 /** As `open`, for a change only staff may make. */
-export async function openForStaff(context: Context<'code'>): Promise<Access | Response> {
+export async function openForStaff(context: Context<'code'>): Promise<StaffAccess | Response> {
   if (!sameOrigin(context.request)) {
     return jsonError('Forbidden', 403);
   }
@@ -60,7 +76,20 @@ export async function openForStaff(context: Context<'code'>): Promise<Access | R
   if (!access.user) {
     return jsonError('Sign in first', 401);
   }
-  return access.role ? access : jsonError('Only this event’s staff can do that', 403);
+  const { role } = access;
+  return role ? { ...access, role } : jsonError('Only this event’s staff can do that', 403);
+}
+
+/** As `openForStaff`, for what only the organizer may do; `refusal` tells anyone else so. */
+export async function openForOwner(
+  context: Context<'code'>,
+  refusal = 'Only the organizer can do that'
+): Promise<StaffAccess | Response> {
+  const access = await openForStaff(context);
+  if (access instanceof Response) {
+    return access;
+  }
+  return access.role === 'owner' ? access : jsonError(refusal, 403);
 }
 
 /** What anyone may read about the event: what is published to R2, and the base of every API view. */
@@ -92,7 +121,7 @@ export function viewOf(access: Access): TournamentView {
 }
 
 /** Staff get the whole document, pending results and invite token included. */
-export function manageView(access: Access): Record<string, unknown> {
+export function manageView(access: StaffAccess): Manage {
   const { row, role } = access;
   return {
     code: row.code,

@@ -5,8 +5,9 @@
  * follow their pairings; any event takes it, as it is how a player marks
  * themselves. With { result } ('win', 'loss' or 'tie') it also reports their
  * current match (see shared/tournament/reports.ts), where player reporting
- * is on; { match: { pod, round, table } } names the match the page showed,
- * and a report for one that is no longer current is refused. Either way,
+ * is on and the event has not ended; { match: { pod, round, table } } names
+ * the match the page showed, and a report for one that is no longer current
+ * is refused. Either way,
  * results whose reports have agreed and locked are written in first, so a
  * player asking again once their window closes sees the result stand.
  *
@@ -29,15 +30,16 @@ import {
   stillShown
 } from '../../../../shared/tournament/reports.js';
 import type { PodCategory } from '../../../../shared/tournament/types.js';
-import { applyPending, isSanctioned } from '../../../../shared/tournament/view.js';
-import { readJsonBody } from '../../../lib/api/body.js';
+import { applyPending, isSanctioned, type TournamentSettings } from '../../../../shared/tournament/view.js';
+import { readJsonObject } from '../../../lib/api/body.js';
 import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
-import { jsonError } from '../../../lib/api/responses.js';
+import { jsonError, noContent } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { type Access, open, openForStaff, privateJson, publicViewOf } from '../../../lib/tournaments/access.js';
-import { publishView } from '../../../lib/tournaments/publish.js';
+import { settled } from '../../../lib/tournaments/answers.js';
+import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { type Claim, claimReporter, releaseReporter } from '../../../lib/tournaments/reporters.js';
-import { mutateSettled, settleIfDue } from '../../../lib/tournaments/results.js';
+import { mutateSettled } from '../../../lib/tournaments/results.js';
 import type { Changes, TournamentRow } from '../../../lib/tournaments/store.js';
 
 type Body = Record<string, unknown>;
@@ -81,8 +83,24 @@ function readReport(row: TournamentRow, filing: Filing) {
     : 'Your pairing has changed; check your table';
 }
 
-/** The report laid over the event's others; the result stands once both players' reports agree and lock. */
+/** Why players cannot report here, or null when they can. */
+function closedToReports(settings: TournamentSettings): string | null {
+  if (!settings.playerReporting) {
+    return 'Results at this event are reported to staff';
+  }
+  return settings.finished ? 'This event is over' : null;
+}
+
+/**
+ * The report laid over the event's others; the result stands once both
+ * players' reports agree and lock. Checked against the row each try reads,
+ * so a report that raced the organizer ending the event does not land after.
+ */
 function reportChanges(row: TournamentRow, filing: Filing): Changes | string {
+  const closed = closedToReports(row.settings);
+  if (closed) {
+    return closed;
+  }
   const report = readReport(row, filing);
   const reports = typeof report === 'string' ? report : fileReport(row.reports, report);
   return typeof reports === 'string' ? reports : { reports };
@@ -134,7 +152,7 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
   }
-  await publishView(context.env, outcome.row);
+  await publishAfter(context, outcome.row);
   return privateJson({
     key: outcome.row.keys[who.id] ?? null,
     view: publicViewOf(outcome.row),
@@ -145,10 +163,7 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
 /** Who the player is, whether this device reports for them, and the event with any due results settled. */
 async function identify(context: Context<'code'>, access: Access, body: Body, id: string) {
   const standing = await claimReporter(access.db, access.row.code, id, { held: body.reportToken, device: body.device });
-  const row = await settleIfDue(access.db, access.row, body.localTime);
-  if (row !== access.row) {
-    await publishView(context.env, row);
-  }
+  const row = await settled(context, access, body.localTime);
   return privateJson({ key: row.keys[id] ?? null, view: publicViewOf(row), ...standingOf(standing) });
 }
 
@@ -163,7 +178,7 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
     return jsonError('No such player', 404);
   }
   await releaseReporter(access.db, access.row.code, player);
-  return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+  return noContent();
 }
 
 export async function onRequestPost(context: Context<'code'>): Promise<Response> {
@@ -171,10 +186,10 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
   if (access instanceof Response) {
     return access;
   }
-  const read = await readJsonBody(context.request, 1024);
-  const body: Body = read.ok && typeof read.value === 'object' && read.value ? (read.value as Body) : {};
-  if (body.result !== undefined && !access.row.settings.playerReporting) {
-    return jsonError('Results at this event are reported to staff', 403);
+  const body: Body = (await readJsonObject(context.request, 1024)) ?? {};
+  const refusal = body.result === undefined ? null : closedToReports(access.row.settings);
+  if (refusal) {
+    return jsonError(refusal, 403);
   }
   const claim = claimOf(body);
   const found = findPlayer(access.row.tournament, isSanctioned(access.row), claim);

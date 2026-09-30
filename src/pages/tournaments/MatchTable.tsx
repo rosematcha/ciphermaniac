@@ -43,6 +43,8 @@ export interface MatchTableProps {
   selected?: ReadonlySet<string>;
   /** The result waiting for staff to confirm it, previewed in its row. */
   confirming?: { table: number; p1: string; outcome: Outcome } | null;
+  /** Staff only: the result sent for a match and not answered yet, previewed the same way until it is. */
+  sent?: (match: Match) => Outcome | undefined;
 }
 
 const winnerOutcome = (seat: 1 | 2): Outcome => (seat === 1 ? 'p1' : 'p2');
@@ -53,9 +55,9 @@ const isConfirming = (props: MatchTableProps, match: Match) =>
 function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records: Map<string, string> }) {
   const id = () => (props.seat === 1 ? props.match.p1 : props.match.p2);
   const shown = () => {
-    const preview = isConfirming(props, props.match) ? props.confirming : null;
+    const preview = isConfirming(props, props.match) ? props.confirming?.outcome : props.sent?.(props.match);
     return preview
-      ? { outcome: preview.outcome, unconfirmed: true }
+      ? { outcome: preview, unconfirmed: true }
       : shownOutcome(props.match, props.pod, props.round, props.pending);
   };
   const mark = () => seatMark(shown().outcome, props.seat);

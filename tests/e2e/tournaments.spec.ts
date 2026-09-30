@@ -94,6 +94,106 @@ test('the public page shows the round, finds a player and opens their history @m
   expect(errors).toEqual([]);
 });
 
+/** The event's published file on the data origin: what the page reads first, and then polls. */
+async function publish(page: Page, current: () => TournamentView) {
+  await page.route(`**/tournaments/v1/${CODE}.json`, route => {
+    const { viewer: _viewer, ...published } = current();
+    return route.fulfill({ json: published, headers: { 'access-control-allow-origin': '*' } });
+  });
+}
+
+/** The fixture with its first open table of round 2 won by player one, as the next version. */
+function afterOneResult(): TournamentView {
+  const next = structuredClone(VIEW);
+  const open = next.tournament.pods[0]?.rounds.at(-1)?.matches.find(match => match.outcome === 'pending');
+  if (!open) {
+    throw new Error('the fixture has no open table');
+  }
+  open.outcome = 'p1';
+  return { ...next, version: VIEW.version + 1 };
+}
+
+/** Word from the console in another tab that the event moved on, as lib/tournament/changes.ts sends it. */
+const announce = (page: Page, version: number) =>
+  page.evaluate(change => new BroadcastChannel('cm-tournament-changes').postMessage(change), { code: CODE, version });
+
+test('a player opening the page reads the published file, and asks the functions for no event', async ({ page }) => {
+  await mockApi(page);
+  await publish(page, () => VIEW);
+  const asked: string[] = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === `/api/tournaments/${CODE}`) {
+      asked.push(request.url());
+    }
+  });
+  await page.goto(`/t/${CODE}`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fixture Challenge & Friends');
+  await expect(page.locator('.tm-matches tbody tr')).toHaveCount(4);
+  expect(asked).toEqual([]);
+});
+
+test('a result coming in redraws its own table, and leaves the search and the other tables as they were', async ({
+  page
+}) => {
+  let view = VIEW;
+  await mockApi(page);
+  await publish(page, () => view);
+  await page.goto(`/t/${CODE}`);
+  const rows = page.locator('.tm-matches tbody tr');
+  await expect(rows).toHaveCount(4);
+  await expect(rows.filter({ hasText: 'Playing' })).toHaveCount(2);
+  const search = page.getByRole('searchbox', { name: 'Find a player' });
+  await search.focus();
+  // Marked, so a row or a search box drawn again from nothing shows as one that lost its mark.
+  await page.locator('.tm-matches tbody tr, .tm-public-pairings input').evaluateAll(els => {
+    els.forEach(el => el.setAttribute('data-kept', ''));
+  });
+  view = afterOneResult();
+  await announce(page, view.version);
+  await expect(rows.filter({ hasText: 'Playing' })).toHaveCount(1);
+  await expect(search).toBeFocused();
+  await expect(search).toHaveAttribute('data-kept', '');
+  await expect(page.locator('.tm-matches tbody tr[data-kept]')).toHaveCount(3);
+});
+
+test('a result coming in re-ranks the standings in place', async ({ page }) => {
+  let view = VIEW;
+  await mockApi(page);
+  await publish(page, () => view);
+  await page.goto(`/t/${CODE}?tab=standings`);
+  const rows = page.locator('.tm-standings tbody tr');
+  await expect(rows).toHaveCount(8);
+  const search = page.getByRole('searchbox', { name: 'Find a player' });
+  await search.focus();
+  await page.locator('.tm-standings tbody tr, .tm-standings-bar input').evaluateAll(els => {
+    els.forEach(el => el.setAttribute('data-kept', ''));
+  });
+  const before = await rows.allInnerTexts();
+  view = afterOneResult();
+  await announce(page, view.version);
+  await expect.poll(() => rows.allInnerTexts()).not.toEqual(before);
+  await expect(search).toBeFocused();
+  await expect(page.locator('.tm-standings tbody tr[data-kept]')).toHaveCount(8);
+});
+
+test('a result coming in leaves the big screen’s other tables where they were', async ({ page }) => {
+  let view = VIEW;
+  await mockApi(page);
+  await publish(page, () => view);
+  await page.goto(`/t/${CODE}?screen=1`);
+  const tables = page.locator('.tm-screen-tables li');
+  await expect(tables).toHaveCount(4);
+  await expect(page.locator('.tm-screen-tables li.is-done')).toHaveCount(1);
+  await page.locator('.tm-screen-pod, .tm-screen-tables li').evaluateAll(els => {
+    els.forEach(el => el.setAttribute('data-kept', ''));
+  });
+  view = afterOneResult();
+  await announce(page, view.version);
+  await expect(page.locator('.tm-screen-tables li.is-done')).toHaveCount(2);
+  await expect(page.locator('.tm-screen-pod[data-kept]')).toHaveCount(1);
+  await expect(page.locator('.tm-screen-tables li[data-kept]')).toHaveCount(3);
+});
+
 test('standings rank a combined pod per division', async ({ page }) => {
   await mockApi(page);
   await page.goto(`/t/${CODE}?tab=standings`);
@@ -276,6 +376,16 @@ test('a first load that fails offers Retry, which loads the event', async ({ pag
 const TDF_SOURCE = readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8');
 
 /** A signed-in organizer's console for the TOM event, with a browser that can link files. */
+/** The console's copy of the TOM event the file below holds. */
+const tomManage = () => ({
+  ...VIEW,
+  tournament: tdf,
+  decks: {},
+  settings: DEFAULT_SETTINGS,
+  role: 'owner',
+  staffToken: 'invite'
+});
+
 async function tomConsole(page: Page, sync: () => { status: number; json: unknown }) {
   await page.addInitScript(source => {
     const file = { modified: 1, lost: false };
@@ -304,18 +414,7 @@ async function tomConsole(page: Page, sync: () => { status: number; json: unknow
       return route.fulfill({ json: { user: { ...user, birthDate: null, providers: ['dev'] }, providers: ['dev'] } });
     }
     if (url.pathname === `/api/tournaments/${CODE}/manage`) {
-      return url.searchParams.has('since')
-        ? route.fulfill({ status: 204 })
-        : route.fulfill({
-            json: {
-              ...VIEW,
-              tournament: tdf,
-              decks: {},
-              settings: DEFAULT_SETTINGS,
-              role: 'owner',
-              staffToken: 'invite'
-            }
-          });
+      return url.searchParams.has('since') ? route.fulfill({ status: 204 }) : route.fulfill({ json: tomManage() });
     }
     if (url.pathname === `/api/tournaments/${CODE}/sync`) {
       return route.fulfill(sync());
@@ -333,7 +432,7 @@ test('a TOM console stops following its file when another copy was synced over i
 });
 
 test('a TOM console holds off results when the browser takes back the file', async ({ page }) => {
-  await tomConsole(page, () => ({ status: 200, json: { version: 5, pending: [], revision: 'next' } }));
+  await tomConsole(page, () => ({ status: 200, json: { ...tomManage(), version: 5, revision: 'next' } }));
   await expect(page.getByRole('button', { name: 'Refresh .tdf' }).first()).toBeVisible();
   await page.evaluate(() => {
     (window as unknown as { tdfFile: { lost: boolean } }).tdfFile.lost = true;

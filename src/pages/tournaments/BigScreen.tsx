@@ -15,21 +15,21 @@
  * remembered on the device. The site's chrome is hidden while it is up.
  */
 
-import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createMemo, createSignal, For, Index, onCleanup, onMount, Show } from 'solid-js';
 import { swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_LABELS, type Round } from '../../../shared/tournament/types';
 import type { TournamentView } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import {
-  currentRound,
   eventStatus,
+  firstRoundTime,
   namesById,
   recordsBefore,
   roundCapOf,
   seatMark,
   shownOutcome
 } from '../../lib/tournament/present';
-import { sortMatches } from '../../../shared/tournament/rounds';
+import { latestRound, sortMatches } from '../../../shared/tournament/rounds';
 import { Clock } from './Clock';
 import { createNow } from './now';
 import { QrCode } from './QrCode';
@@ -202,16 +202,13 @@ function Controls(props: { prefs: Prefs; shown: boolean; tables: boolean; onFocu
   );
 }
 
-const firstRoundTime = (startsAt: string) =>
-  startsAt ? new Date(startsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : null;
-
 export function BigScreen(props: { view: TournamentView }) {
   let scroller: HTMLDivElement | undefined;
   const prefs = createScreenPrefs();
   const now = createNow();
   const [controls, setControls] = createSignal(false);
   const url = () => `${location.origin}/t/${props.view.code}`;
-  const pods = () => props.view.tournament.pods.filter(pod => currentRound(pod));
+  const pods = () => props.view.tournament.pods.filter(pod => latestRound(pod));
   const lead = () => pods()[0];
   // An ended event has no clock to run down, whatever it was left on.
   const clockPod = () => (props.view.settings.finished ? undefined : lead());
@@ -284,16 +281,23 @@ export function BigScreen(props: { view: TournamentView }) {
             </Show>
           }
         >
-          {pod => <Clock round={currentRound(pod()) as Round} class='tm-screen-clock' />}
+          {pod => <Clock round={latestRound(pod()) as Round} class='tm-screen-clock' />}
         </Show>
       </header>
       <div class='tm-screen-main' ref={scroller}>
         <Show when={lead()} fallback={<Registered view={props.view} />}>
-          <For each={pods()}>
+          {/* By position: a result changes its pod, and a pod drawn again from nothing would
+              send the room's scroll back to the top. */}
+          <Index each={pods()}>
             {pod => (
-              <TableRows view={props.view} pod={pod} round={currentRound(pod) as Round} heading={pods().length > 1} />
+              <TableRows
+                view={props.view}
+                pod={pod()}
+                round={latestRound(pod()) as Round}
+                heading={pods().length > 1}
+              />
             )}
-          </For>
+          </Index>
         </Show>
       </div>
       <Controls prefs={prefs} shown={controls()} tables={Boolean(lead())} onFocus={reveal} />

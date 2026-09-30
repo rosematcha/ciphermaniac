@@ -7,7 +7,7 @@
  * single indexed lookup with no write.
  */
 
-import type { D1Like } from '../types.js';
+import type { D1Like, D1Statement } from '../types.js';
 import { readCookie, SESSION_COOKIE } from './cookies.js';
 import type { Profile } from './oauth.js';
 
@@ -26,7 +26,7 @@ export interface User {
   providers?: string[];
 }
 
-interface UserRow {
+export interface UserRow {
   id: string;
   name: string;
   email: string | null;
@@ -66,40 +66,51 @@ export async function sha256(value: string): Promise<string> {
 
 const USER_COLUMNS = 'users.id, name, email, avatar, pop_id, first_name, last_name, birth_date';
 
-/** The signed-in user for this request, or null. */
-/** Just the signed-in user's ID, for a check that needs no more of the account. */
-export async function currentUserId(db: D1Like, request: Request): Promise<string | null> {
+/** The SHA-256 of the request's session token, as the sessions table keys it; null without the cookie. */
+export async function sessionHash(request: Request): Promise<string | null> {
   const token = readCookie(request, SESSION_COOKIE);
-  if (!token) {
-    return null;
-  }
-  const row = await db
-    .prepare('SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?')
-    .bind(await sha256(token), Date.now())
-    .first<{ user_id: string }>();
-  return row?.user_id ?? null;
+  return token ? sha256(token) : null;
 }
 
-export async function currentUser(db: D1Like, request: Request): Promise<User | null> {
-  const token = readCookie(request, SESSION_COOKIE);
-  if (!token) {
-    return null;
-  }
-  const row = await db
+/** The read of the user a session belongs to; `userFromRow` reads its row. */
+export function sessionUserQuery(db: D1Like, tokenHash: string, now: number): D1Statement {
+  return db
     .prepare(
       `SELECT ${USER_COLUMNS} FROM sessions JOIN users ON users.id = sessions.user_id ` +
         'WHERE sessions.token_hash = ? AND sessions.expires_at > ?'
     )
-    .bind(await sha256(token), Date.now())
-    .first<UserRow>();
-  if (!row) {
+    .bind(tokenHash, now);
+}
+
+/** The signed-in user for this request, or null. */
+export async function currentUser(db: D1Like, request: Request): Promise<User | null> {
+  const hash = await sessionHash(request);
+  const row = hash ? await sessionUserQuery(db, hash, Date.now()).first<UserRow>() : null;
+  return row ? userFromRow(row) : null;
+}
+
+/**
+ * As `currentUser`, with the providers the account signs in with, which only
+ * the account's own page shows. Both reads go in one round trip.
+ */
+export async function currentAccount(db: D1Like, request: Request): Promise<User | null> {
+  const hash = await sessionHash(request);
+  if (!hash) {
     return null;
   }
-  const identities = await db
-    .prepare('SELECT provider FROM identities WHERE user_id = ?')
-    .bind(row.id)
-    .all<{ provider: string }>();
-  return { ...userFromRow(row), providers: identities.results.map(identity => identity.provider) };
+  const now = Date.now();
+  const [user, identities] = await db.batch([
+    sessionUserQuery(db, hash, now),
+    db
+      .prepare(
+        'SELECT provider FROM identities JOIN sessions ON sessions.user_id = identities.user_id ' +
+          'WHERE sessions.token_hash = ? AND sessions.expires_at > ?'
+      )
+      .bind(hash, now)
+  ]);
+  const row = (user?.results as UserRow[] | undefined)?.[0];
+  const providers = (identities?.results ?? []) as { provider: string }[];
+  return row ? { ...userFromRow(row), providers: providers.map(identity => identity.provider) } : null;
 }
 
 /** Attach a provider only when its identity is still free or already belongs to this user. */
@@ -177,11 +188,8 @@ export async function createSession(db: D1Like, userId: string): Promise<string>
 }
 
 export async function endSession(db: D1Like, request: Request): Promise<void> {
-  const token = readCookie(request, SESSION_COOKIE);
-  if (token) {
-    await db
-      .prepare('DELETE FROM sessions WHERE token_hash = ?')
-      .bind(await sha256(token))
-      .run();
+  const hash = await sessionHash(request);
+  if (hash) {
+    await db.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(hash).run();
   }
 }

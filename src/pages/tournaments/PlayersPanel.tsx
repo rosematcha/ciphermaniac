@@ -13,8 +13,9 @@
 
 import { useSearchParams } from '@solidjs/router';
 import { createMemo, createSignal, For, Show } from 'solid-js';
-import { divisionFor, parseTomDate, seasonOf } from '../../../shared/tournament/divisions';
-import { hasPlayed } from '../../../shared/tournament/rounds';
+import { divisionFor, eventSeason } from '../../../shared/tournament/divisions';
+import { canUndrop } from '../../../shared/tournament/commands';
+import { hasPlayed, hasStarted, podOf } from '../../../shared/tournament/rounds';
 import { DIVISION_LABELS, type Player, playerName, type Tournament } from '../../../shared/tournament/types';
 import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
 import { type Manage, releaseReporter } from '../../lib/tournament/api';
@@ -161,8 +162,7 @@ function FixedTableCell(props: { state: ManageState; player: Player }) {
 function PlayerActions(props: { state: ManageState; manage: Manage; player: Player }) {
   const send = (type: 'dropPlayer' | 'undropPlayer' | 'removePlayer') =>
     void props.state.send({ type, id: props.player.id });
-  const pod = () => props.manage.tournament.pods.find(p => p.playerIds.includes(props.player.id));
-  const latest = () => pod()?.rounds.at(-1)?.number ?? 0;
+  const pod = () => podOf(props.manage.tournament, props.player.id);
   const dropped = () => props.player.droppedAfter;
   return (
     <td class='tm-extra-col'>
@@ -175,7 +175,7 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             onConfirm={() => send('dropPlayer')}
           />
         </Show>
-        <Show when={dropped() !== null && dropped() === latest()}>
+        <Show when={dropped() !== null && canUndrop(props.manage.tournament, props.player)}>
           <button type='button' class='btn btn-ghost tm-small' onClick={() => send('undropPlayer')}>
             Reinstate
           </button>
@@ -185,7 +185,7 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             label='Reset reporting'
             question={`Let another device report for ${playerName(props.player)}?`}
             confirmLabel='Reset'
-            onConfirm={() => void releaseReporter(props.manage.code, props.player.id).catch(() => undefined)}
+            onConfirm={() => void props.state.act(releaseReporter(props.manage.code, props.player.id))}
           />
         </Show>
         {/* Once paired, a player is dropped rather than removed, so their opponents keep the match. */}
@@ -204,7 +204,7 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
 
 /** A player's results so far, one mark per round of their pod. */
 function marksOf(tournament: Tournament, player: Player): { marks: string[]; rounds: number } {
-  const pod = tournament.pods.find(p => p.playerIds.includes(player.id));
+  const pod = podOf(tournament, player.id);
   if (!pod) {
     return { marks: [], rounds: 0 };
   }
@@ -269,10 +269,10 @@ function PlayerRow(props: RowProps) {
 export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
   const [, setParams] = useSearchParams<{ tab?: string }>();
   const [query, setQuery] = createSignal('');
-  const season = () => seasonOf(parseTomDate(props.manage.tournament.info.startDate) ?? new Date());
+  const season = () => eventSeason(props.manage.tournament);
   const swiss = () => props.manage.mode === 'swiss';
   const sanctioned = () => isSanctioned(props.manage);
-  const started = () => props.manage.tournament.pods.some(pod => pod.rounds.length > 0);
+  const started = () => hasStarted(props.manage.tournament);
   const archetypes = () => decksEnabled(props.manage.settings);
   const decks = createDeckOptions(
     () => props.manage.settings.format,

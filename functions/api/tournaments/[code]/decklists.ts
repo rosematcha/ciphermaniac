@@ -25,22 +25,25 @@
  */
 
 import { MAX_DECKLIST_CHARS, parseDecklist } from '../../../../shared/tournament/decklist.js';
-import { decklistPlayer, nameKey } from '../../../../shared/tournament/identify.js';
+import { decklistMatcher, decklistPlayer, fullNameKey } from '../../../../shared/tournament/identify.js';
 import { type PlayerProfile, readProfile } from '../../../../shared/tournament/profile.js';
 import {
+  type Decklist,
   decklistsOpen,
   decksEnabled,
   isSanctioned,
+  type Registration,
   type TournamentSettings
 } from '../../../../shared/tournament/view.js';
-import { readJsonBody } from '../../../lib/api/body.js';
+import { readJsonObject } from '../../../lib/api/body.js';
 import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
-import { jsonError } from '../../../lib/api/responses.js';
+import { jsonError, noContent } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { sha256 } from '../../../lib/auth/session.js';
-import { type Access, open, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
+import { rowsChanged } from '../../../lib/d1.js';
+import { type Access, codeOf, open, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
 import { archetypeLabel } from '../../../lib/tournaments/decks.js';
-import { publishView } from '../../../lib/tournaments/publish.js';
+import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { commandChanges, mutateSettled } from '../../../lib/tournaments/results.js';
 import type { TournamentRow } from '../../../lib/tournaments/store.js';
 
@@ -57,16 +60,8 @@ interface DecklistRow {
   owner_token: string | null;
 }
 
-interface Stored extends PlayerProfile {
-  deck: string;
-  archetype: string | null;
-  submittedAt: number;
-  /** Whether only the sending device can replace it; staff unlocking clears this. */
-  locked: boolean;
-}
-
-/** Whether the submitter is on the player list, and whether their list is what put them there. */
-export type Registration = 'added' | 'matched' | 'not-added';
+/** A list as stored, before it is checked against the roster (see presenter). */
+type Stored = Omit<Decklist, 'problems' | 'registered' | 'fromList'>;
 
 function fromRow(row: DecklistRow): Stored {
   return {
@@ -81,25 +76,28 @@ function fromRow(row: DecklistRow): Stored {
   };
 }
 
-function present(list: Stored, row: TournamentRow) {
-  const id = decklistPlayer(row.tournament, list, isSanctioned(row));
-  const player = id === undefined ? undefined : row.tournament.players.find(p => p.id === id);
-  return {
-    ...list,
-    problems: parseDecklist(list.deck).problems,
-    /** Whether the player is on the event's player list yet. */
-    registered: player !== undefined,
-    /** Whether submitting this list is what added them. */
-    fromList: player?.fromList === true
+/**
+ * Lists as the pages show them, each with its problems and where its player
+ * stands on the event's list. The roster is indexed once for however many
+ * lists there are: staff read the whole event's at a time.
+ */
+function presenter(row: TournamentRow) {
+  const match = decklistMatcher(row.tournament, isSanctioned(row));
+  const players = new Map(row.tournament.players.map(player => [player.id, player]));
+  return (list: Stored): Decklist => {
+    const player = players.get(match(list) ?? '');
+    return {
+      ...list,
+      problems: parseDecklist(list.deck).problems,
+      registered: player !== undefined,
+      fromList: player?.fromList === true
+    };
   };
 }
 
 /** Who a list belongs to: the Player ID at a sanctioned event, the full name at an unsanctioned one. */
 export function identityKey(profile: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>, sanctioned: boolean) {
-  // The two names are kept apart, so "Mary Ann" + "Smith" and "Mary" + "Ann Smith" are two players.
-  return sanctioned
-    ? `pop:${profile.popId.trim()}`
-    : `name:${JSON.stringify([nameKey(profile.firstName), nameKey(profile.lastName)])}`;
+  return sanctioned ? `pop:${profile.popId.trim()}` : `name:${fullNameKey(profile)}`;
 }
 
 /** The details a player gave in a query string, as the identity their list is kept under. */
@@ -142,10 +140,11 @@ export async function onRequestGet(context: Context<'code'>): Promise<Response> 
       .prepare('SELECT * FROM decklists WHERE code = ? ORDER BY last_name, first_name')
       .bind(access.row.code)
       .all<DecklistRow>();
-    return privateJson({ decklists: results.map(row => present(fromRow(row), access.row)), mine: null });
+    const present = presenter(access.row);
+    return privateJson({ decklists: results.map(row => present(fromRow(row))), mine: null });
   }
   const mine = await ownList(access, context.request);
-  return privateJson({ decklists: [], mine: mine ? present(fromRow(mine), access.row) : null });
+  return privateJson({ decklists: [], mine: mine ? presenter(access.row)(fromRow(mine)) : null });
 }
 
 interface Submission {
@@ -161,8 +160,7 @@ const LOCKED = 'This list was sent from another device. Send it from that device
 
 /** The submission in a request body, or why it is not one. */
 async function readSubmission(request: Request, sanctioned: boolean): Promise<Submission | string> {
-  const body = await readJsonBody(request, MAX_DECKLIST_CHARS * 4 + 1024);
-  const value = body.ok && typeof body.value === 'object' && body.value ? (body.value as Record<string, unknown>) : {};
+  const value = (await readJsonObject(request, MAX_DECKLIST_CHARS * 4 + 1024)) ?? {};
   const profile = readProfile(value.profile, sanctioned);
   const deck = typeof value.deck === 'string' ? value.deck.trim() : '';
   const archetype = archetypeLabel(value.archetype ?? null);
@@ -231,12 +229,8 @@ async function store(access: Access, submission: Submission, tokenHash: string, 
       tokenHash,
       held
     );
-  await insert.run();
-  const stored = await access.db
-    .prepare('SELECT owner_token FROM decklists WHERE code = ? AND user_id = ?')
-    .bind(access.row.code, key)
-    .first<{ owner_token: string | null }>();
-  if (stored?.owner_token !== tokenHash) {
+  // The upsert changes no row when another device's list is there, so its count is the answer.
+  if (rowsChanged(await insert.run()) === 0) {
     return false;
   }
   if (access.user) {
@@ -290,7 +284,7 @@ async function register(
   if ('error' in outcome) {
     return { registration: outcome.error === ALREADY_IN ? 'matched' : 'not-added', row };
   }
-  await publishView(context.env, outcome.row);
+  await publishAfter(context, outcome.row);
   return { registration: 'added', row: outcome.row };
 }
 
@@ -319,7 +313,7 @@ export function _resetRateLimitStore(): void {
 
 function limited(context: Context<'code'>): boolean {
   const address = context.request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  const code = String(context.params.code).toUpperCase();
+  const code = codeOf(context);
   const forEvent = eventLimiter.check(`${code}:${address}`).allowed;
   return !(addressLimiter.check(address).allowed && forEvent);
 }
@@ -356,7 +350,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   const { registration, row } = await register(context, access, submission);
   const { profile, deck, archetype } = submission;
   return privateJson({
-    decklist: present({ ...profile, deck, archetype, submittedAt: now, locked: true }, row),
+    decklist: presenter(row)({ ...profile, deck, archetype, submittedAt: now, locked: true }),
     registration,
     token
   });
@@ -383,14 +377,14 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
   const held = new URL(context.request.url).searchParams.get('token') ?? '';
   const { db, row } = access;
   // The token is checked in the delete itself, so a list replaced meanwhile is not the one withdrawn.
-  const deleted = (await db
+  const deleted = await db
     .prepare('DELETE FROM decklists WHERE code = ? AND user_id = ? AND (owner_token IS NULL OR owner_token = ?)')
     .bind(row.code, key, held ? await sha256(held) : '')
-    .run()) as { meta?: { changes?: number } };
-  if ((deleted.meta?.changes ?? 0) === 0 && (await listExists(db, row.code, key))) {
+    .run();
+  if (rowsChanged(deleted) === 0 && (await listExists(db, row.code, key))) {
     return jsonError(LOCKED, 409);
   }
-  return NO_CONTENT();
+  return noContent();
 }
 
 async function listExists(db: Access['db'], code: string, key: string): Promise<boolean> {
@@ -400,8 +394,6 @@ async function listExists(db: Access['db'], code: string, key: string): Promise<
     .first<{ yes: number }>();
   return found !== null;
 }
-
-const NO_CONTENT = () => new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
 
 /** Staff unlock a list, so the next submission under its details takes it over from whichever device sent it. */
 export async function onRequestPatch(context: Context<'code'>): Promise<Response> {
@@ -417,5 +409,5 @@ export async function onRequestPatch(context: Context<'code'>): Promise<Response
     .prepare('UPDATE decklists SET owner_token = NULL WHERE code = ? AND user_id = ?')
     .bind(access.row.code, key)
     .run();
-  return NO_CONTENT();
+  return noContent();
 }

@@ -8,17 +8,22 @@ import type { Command } from '../../../shared/tournament/commands';
 import { tomDateTime } from '../../../shared/tournament/divisions';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
-import type { PlayerReport, PlayerResult, ShownMatch } from '../../../shared/tournament/reports';
+import type { PlayerResult, ShownMatch } from '../../../shared/tournament/reports';
 import type { Tournament } from '../../../shared/tournament/types';
 import {
-  type PendingResult,
+  type Decklist,
+  type Manage,
   type PublishedView,
   publishedViewKey,
-  type TournamentMode,
+  type Registration,
+  type StaffMember,
   type TournamentSettings,
+  type TournamentSummary,
   type TournamentView
 } from '../../../shared/tournament/view';
 import { R2_ORIGIN } from '../constants';
+
+export type { Decklist, Manage, Registration, StaffMember, TournamentSummary };
 
 export class ApiError extends Error {
   constructor(
@@ -30,6 +35,9 @@ export class ApiError extends Error {
     super(message);
   }
 }
+
+/** What a failed call says, for the pages to show as-is. */
+export const errorText = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
 export interface Me {
   id: string;
@@ -48,49 +56,6 @@ export interface Session {
   user: Me | null;
   providers: Provider[];
 }
-
-export interface TournamentSummary {
-  code: string;
-  mode: TournamentMode;
-  name: string;
-  role: 'owner' | 'staff';
-  players: number;
-  startDate: string;
-  finished: boolean;
-  /** Rounds the event's first pod has paired: 0 before round 1. */
-  rounds: number;
-  updatedAt: number;
-}
-
-export interface Manage {
-  code: string;
-  mode: TournamentMode;
-  version: number;
-  updatedAt: number;
-  tournament: Tournament;
-  pending: PendingResult[];
-  reports: PlayerReport[];
-  settings: TournamentSettings;
-  decks: Record<string, string>;
-  role: 'owner' | 'staff';
-  staffToken: string | null;
-}
-
-export interface Decklist extends PlayerProfile {
-  deck: string;
-  /** The player's own word for their deck, until staff apply it. */
-  archetype: string | null;
-  submittedAt: number;
-  problems: string[];
-  registered: boolean;
-  /** Submitting this list is what added the player to the event. */
-  fromList: boolean;
-  /** Only the device that sent it can replace it, until staff unlock it. */
-  locked: boolean;
-}
-
-/** Whether submitting put the player on the event's list, found them on it, or could not add them. */
-export type Registration = 'added' | 'matched' | 'not-added';
 
 /** Who a list belongs to, as a query string: the Player ID, or the name at an unsanctioned event. */
 function listOwner(profile: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>, token?: string): string {
@@ -156,18 +121,44 @@ const base = (code: string) => `/api/tournaments/${encodeURIComponent(code)}`;
  * read: not published yet, or a data origin that does not carry it. Revalidated
  * rather than cached, so a poll sees the edge's copy, which is seconds old.
  */
-export async function fetchPublished(code: string): Promise<PublishedView | null> {
+export function fetchPublished(code: string): Promise<PublishedView | null> {
+  const started = early?.code === code ? early.read : null;
+  early = null;
+  return started ?? readPublished(code);
+}
+
+async function readPublished(code: string): Promise<PublishedView | null> {
   const response = await fetch(`${R2_ORIGIN}/${publishedViewKey(code)}`, { cache: 'no-cache' });
   return response.ok ? ((await response.json()) as PublishedView) : null;
+}
+
+let early: { code: string; read: Promise<PublishedView | null> } | null = null;
+
+/**
+ * Starts reading an event's published view while the code of the page that
+ * shows it is still loading, so the two arrive side by side; the page's first
+ * `fetchPublished` takes this read.
+ */
+export function preloadPublished(code: string): void {
+  early = { code, read: readPublished(code).catch(() => null) };
 }
 
 /** The public view, or null when it has not changed since `since`. */
 export const fetchView = (code: string, since?: number) =>
   call<TournamentView | null>(since ? `${base(code)}?since=${since}` : base(code));
 
-/** The console's copy, or null when it has not changed since `since`. */
-export const fetchManage = (code: string, since?: number) =>
-  call<Manage | null>(since ? `${base(code)}/manage?since=${since}` : `${base(code)}/manage`);
+/**
+ * The console's copy, or null when it has not changed since `since`. The poll
+ * can settle players' reports, so it carries the venue's clock as a command
+ * does.
+ */
+export function fetchManage(code: string, since?: number) {
+  const query = new URLSearchParams({ localTime: tomDateTime(new Date()) });
+  if (since) {
+    query.set('since', String(since));
+  }
+  return call<Manage | null>(`${base(code)}/manage?${query}`);
+}
 
 /** Sends one command, stamped with the venue's clock (see functions/lib/tournaments/commandContext.ts). */
 export const sendCommand = (code: string, command: Command) =>
@@ -175,10 +166,7 @@ export const sendCommand = (code: string, command: Command) =>
 
 /** Sends the parsed .tdf, taken only if the site still holds the copy `revision` names (see shared/tournament/revision.ts). */
 export const syncTournament = (code: string, tournament: Tournament, revision: string) =>
-  call<{ version: number; pending: PendingResult[]; revision: string }>(
-    `${base(code)}/sync`,
-    json('PUT', { tournament, base: revision })
-  );
+  call<Manage & { revision: string }>(`${base(code)}/sync`, json('PUT', { tournament, base: revision }));
 
 export const setDeck = (code: string, playerId: string, archetype: string | null) =>
   call<Manage>(`${base(code)}/decks`, json('PUT', { playerId, archetype }));
@@ -244,12 +232,6 @@ export const reportAsPlayer = (
 /** Staff let another device report for a player, as when they change phones. */
 export const releaseReporter = (code: string, playerId: string) =>
   call<null>(`${base(code)}/report?${new URLSearchParams({ player: playerId }).toString()}`, { method: 'DELETE' });
-
-export interface StaffMember {
-  id: string;
-  name: string;
-  joinedAt: number | null;
-}
 
 /** Everyone the invite link let onto the staff; the organizer's to see. */
 export const fetchStaff = (code: string) => call<{ staff: StaffMember[] }>(`${base(code)}/staff`);

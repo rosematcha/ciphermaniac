@@ -12,10 +12,22 @@
  */
 
 import { A } from '@solidjs/router';
-import { createMemo, createResource, createSignal, For, Match, onCleanup, onMount, Show, Switch } from 'solid-js';
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  Match,
+  on,
+  onCleanup,
+  onMount,
+  Show,
+  Switch
+} from 'solid-js';
 import { birthYear } from '../../../shared/tournament/divisions';
 import { type DeckSection, parseDecklist } from '../../../shared/tournament/decklist';
-import { decklistPlayer } from '../../../shared/tournament/identify';
+import { decklistMatcher } from '../../../shared/tournament/identify';
 import { decklistsOpen, decksEnabled, isSanctioned } from '../../../shared/tournament/view';
 import {
   type Decklist,
@@ -26,6 +38,7 @@ import {
   unlockDecklist
 } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
+import { shared } from '../../lib/tournament/share';
 import { ConfirmAction } from './ConfirmAction';
 import { DeckIcons } from './DeckIcons';
 import type { ManageState } from './manageState';
@@ -85,10 +98,14 @@ function ListColumns(props: { deck: string }) {
   );
 }
 
+/** Finds the player a list belongs to (see decklistMatcher). */
+type PlayerOf = (list: Decklist) => string | undefined;
+
 interface RowProps {
   state: ManageState;
   manage: Manage;
   list: Decklist;
+  playerOf: PlayerOf;
   open: boolean;
   onToggle: () => void;
   onChanged: () => void;
@@ -96,7 +113,7 @@ interface RowProps {
 
 function DecklistRow(props: RowProps) {
   const sanctioned = () => isSanctioned(props.manage);
-  const playerId = () => decklistPlayer(props.manage.tournament, props.list, sanctioned());
+  const playerId = () => props.playerOf(props.list);
   const archetypes = () => decksEnabled(props.manage.settings);
   const sub = () =>
     [
@@ -130,8 +147,9 @@ function DecklistRow(props: RowProps) {
   }
   /** Lets the player send the list again from another device; the next list sent under these details takes it over. */
   async function unlock() {
-    await unlockDecklist(props.manage.code, props.list).catch(() => undefined);
-    props.onChanged();
+    if (await props.state.act(unlockDecklist(props.manage.code, props.list))) {
+      props.onChanged();
+    }
   }
   const canUseDeck = () =>
     archetypes() && playerId() && props.list.archetype && props.manage.decks[playerId() ?? ''] !== props.list.archetype;
@@ -223,14 +241,16 @@ function listMatches(list: Decklist, query: string): boolean {
 }
 
 /** Problems first, then submitters not on the list, then the rest in the order they came in. */
-function ordered(lists: readonly Decklist[], manage: Manage): Decklist[] {
+function ordered(lists: readonly Decklist[], playerOf: PlayerOf): Decklist[] {
   const rank = (list: Decklist) => {
     if (list.problems.length > 0) {
       return 0;
     }
-    return decklistPlayer(manage.tournament, list, isSanctioned(manage)) ? 2 : 1;
+    return playerOf(list) ? 2 : 1;
   };
-  return [...lists].sort((a, b) => rank(a) - rank(b) || a.submittedAt - b.submittedAt);
+  // Ranked once each, not once per comparison.
+  const ranks = new Map(lists.map(list => [list, rank(list)]));
+  return [...lists].sort((a, b) => (ranks.get(a) ?? 0) - (ranks.get(b) ?? 0) || a.submittedAt - b.submittedAt);
 }
 
 /** How often the tab looks for new lists while it is open. */
@@ -260,25 +280,32 @@ export function DecklistsPanel(props: { state: ManageState; manage: Manage }) {
     () => props.manage.code,
     code => fetchDecklists(code).then(result => result.decklists)
   );
+  const accepting = () => decklistsOpen(props.manage.settings);
+  /** Looks for new lists, keeping the rows of the lists that did not change. A failed look keeps the lists shown. */
+  const look = () =>
+    void fetchDecklists(props.manage.code)
+      .then(result => mutate(shared(latestValue(lists), result.decklists)))
+      .catch(() => undefined);
   // A list from a player already entered does not change the event, so the console's own refresh misses it.
-  // A failed look keeps the lists shown; the next one tries again.
+  // Lists only come in while submission is open, so that is when the tab looks, and once more as it closes.
   onMount(() => {
     const timer = setInterval(() => {
-      if (!document.hidden && lists.state === 'ready') {
-        void fetchDecklists(props.manage.code)
-          .then(result => mutate(result.decklists))
-          .catch(() => undefined);
+      if (!document.hidden && accepting() && lists.state === 'ready') {
+        look();
       }
     }, LISTS_REFRESH_MS);
     onCleanup(() => clearInterval(timer));
   });
+  createEffect(on(accepting, look, { defer: true }));
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal<string | null>(null);
   const all = () => latestValue(lists) ?? [];
+  // The roster is read once for every list, and again only when the players change.
+  const playerOf = createMemo(() => decklistMatcher(props.manage.tournament, isSanctioned(props.manage)));
   const shown = createMemo(() =>
     ordered(
       all().filter(list => listMatches(list, query())),
-      props.manage
+      playerOf()
     )
   );
   const counts = () => {
@@ -295,7 +322,6 @@ export function DecklistsPanel(props: { state: ManageState; manage: Manage }) {
     ].join(' · ');
   };
   const key = (list: Decklist) => `${list.popId}|${list.firstName}|${list.lastName}`;
-  const accepting = () => decklistsOpen(props.manage.settings);
   function toggle() {
     const { code } = props.manage;
     const decklists = accepting() ? 'closed' : 'open';
@@ -351,6 +377,7 @@ export function DecklistsPanel(props: { state: ManageState; manage: Manage }) {
                       state={props.state}
                       manage={props.manage}
                       list={list}
+                      playerOf={playerOf()}
                       open={open() === key(list)}
                       onToggle={() => setOpen(open() === key(list) ? null : key(list))}
                       onChanged={() => void refetch()}

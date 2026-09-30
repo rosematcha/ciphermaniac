@@ -9,19 +9,13 @@ import { emptyTournament } from '../../../shared/tournament/create.js';
 import { tomDateTime } from '../../../shared/tournament/divisions.js';
 import { readTournament } from '../../../shared/tournament/validate.js';
 import { DEFAULT_SETTINGS, readSettings, type TournamentSettings } from '../../../shared/tournament/view.js';
-import { readJsonBody } from '../../lib/api/body.js';
+import { readJsonObject } from '../../lib/api/body.js';
 import { jsonError } from '../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../lib/auth/env.js';
 import { currentUser } from '../../lib/auth/session.js';
 import { MAX_TOURNAMENT_BYTES, privateJson } from '../../lib/tournaments/access.js';
-import { publishView } from '../../lib/tournaments/publish.js';
-import {
-  createTournament,
-  listTournaments,
-  loadTournament,
-  ownedCount,
-  TooLarge
-} from '../../lib/tournaments/store.js';
+import { publishAfter } from '../../lib/tournaments/publish.js';
+import { createTournament, listTournaments, ownedCount, TooLarge } from '../../lib/tournaments/store.js';
 import type { Tournament } from '../../../shared/tournament/types.js';
 
 export async function onRequestGet({ request, env }: Context): Promise<Response> {
@@ -71,8 +65,7 @@ function initialSettings(body: Body): TournamentSettings | null {
 
 /** The event a create request describes, or why it describes none. */
 async function readNew(request: Request): Promise<NewEvent | string> {
-  const body = await readJsonBody(request, MAX_TOURNAMENT_BYTES);
-  const value = (body.ok && typeof body.value === 'object' && body.value) as Body | false;
+  const value = await readJsonObject(request, MAX_TOURNAMENT_BYTES);
   const settings = value && initialSettings(value);
   if (!value || !settings) {
     return 'Not a tournament';
@@ -85,7 +78,8 @@ async function readNew(request: Request): Promise<NewEvent | string> {
   return { mode, tournament, settings };
 }
 
-export async function onRequestPost({ request, env }: Context): Promise<Response> {
+export async function onRequestPost(context: Context): Promise<Response> {
+  const { request, env } = context;
   const db = env.TOURNAMENT_DB;
   if (!db || !sameOrigin(request)) {
     return jsonError('Forbidden', 403);
@@ -103,12 +97,9 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
     return jsonError('You have too many events; delete an old one first', 429);
   }
   try {
-    const code = await createTournament(db, { ownerId: user.id, mode, tournament, settings });
-    const row = await loadTournament(db, code);
-    if (row) {
-      await publishView(env, row);
-    }
-    return privateJson({ code }, 201);
+    const row = await createTournament(db, { ownerId: user.id, mode, tournament, settings });
+    await publishAfter(context, row);
+    return privateJson({ code: row.code }, 201);
   } catch (error) {
     if (error instanceof TooLarge) {
       return jsonError(error.message, 413);

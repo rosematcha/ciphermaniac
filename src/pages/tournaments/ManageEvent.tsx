@@ -5,12 +5,23 @@
 
 import { divisionLookup } from '../../../shared/tournament/divisions';
 import { A, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createSignal, For, lazy, Match, onCleanup, onMount, Show, Switch } from 'solid-js';
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  lazy,
+  Match,
+  onCleanup,
+  onMount,
+  Show,
+  Switch,
+  untrack
+} from 'solid-js';
 import { activeIds } from '../../../shared/tournament/rounds';
 import { type Pod, POD_LABELS, type PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
 import { Tabs } from '../../components/Tabs';
-import { joinStaff, type Manage, saveSettings } from '../../lib/tournament/api';
+import { errorText, joinStaff, type Manage, saveSettings } from '../../lib/tournament/api';
 import {
   clockLabel,
   type DivisionCut,
@@ -30,6 +41,7 @@ import { latestValue } from '../../lib/resource';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
+import { lookOnReturn, schedulePolls } from '../../lib/tournament/viewPoll';
 import { createManage, type ManageState } from './manageState';
 import { createNow } from './now';
 import { TopCutControl } from './RoundControls';
@@ -180,7 +192,9 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
     const { tom } = props;
     const extra = tom ? [tomPart(tom)] : waiting() ? [`${waiting()} not seated`] : [];
     const rounds = tom ? null : (plan()?.rounds ?? null);
-    return [...statusParts(progress(), finished(), tom ? null : clock(), rounds), ...extra].join(' · ');
+    // A console that cannot reach the site says so, rather than showing an old round as the current one.
+    const stale = props.state.loadError() ? ['not updating'] : [];
+    return [...statusParts(progress(), finished(), tom ? null : clock(), rounds), ...extra, ...stale].join(' · ');
   };
   const step = () => (props.tom ? ({ kind: 'none' } as NextStep) : nextStep(progress(), finished(), plan()));
   const pairStep = () => {
@@ -279,7 +293,10 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
   const tom =
     // eslint-disable-next-line solid/reactivity -- an event's mode never changes, and the link lives as long as the console
     props.manage.mode === 'tom'
-      ? createTomLink({ manage: () => props.manage, onSynced: () => props.state.load() })
+      ? createTomLink({
+          manage: () => props.manage,
+          onSynced: async answer => (answer ? props.state.take(answer) : props.state.load())
+        })
       : null;
   return (
     <div class='tm-page'>
@@ -304,11 +321,11 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
         <PlayersPanel state={props.state} manage={props.manage} />
       </Show>
       <Show when={tab() === 'standings'}>
-        <For each={pod() ? [pod()!] : []}>
+        <Show when={pod()}>
           {p => (
             <StandingsTable
               tournament={props.manage.tournament}
-              pod={p}
+              pod={p()}
               names={names()}
               decks={shownDecks(props.manage)}
               divisionOf={divisionOf()}
@@ -316,7 +333,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
               hideCutDecks={props.manage.settings.deckVisibility !== 'always' && !props.manage.settings.finished}
             />
           )}
-        </For>
+        </Show>
       </Show>
       <Show when={tab() === 'decklists'}>
         <DecklistsPanel state={props.state} manage={props.manage} />
@@ -349,26 +366,35 @@ export function ManageEvent(props: { code: string }) {
   const [joinError, setJoinError] = createSignal<string | null>(null);
   const user = () => latestValue(session)?.user;
 
-  async function enter(code: string, invite: string | undefined) {
-    if (invite) {
-      await joinStaff(code, invite).catch(err => setJoinError(err instanceof Error ? err.message : String(err)));
-    }
+  /** An invite link joins the staff first, which takes the account; the event is then read as staff. */
+  async function join(code: string, invite: string) {
+    await joinStaff(code, invite).catch(err => setJoinError(errorText(err)));
     await state.load();
   }
 
+  // Without an invite the event is read at once, beside the account: the server says who may.
   createEffect(() => {
-    if (user()) {
-      void enter(props.code, params.invite);
+    const { code } = props;
+    const { invite } = params;
+    if (invite && !user()) {
+      return;
     }
+    // Untracked: the read looks at the copy it holds, and must not run again each time that copy changes.
+    untrack(() => void (invite ? join(code, invite) : state.load()));
   });
 
   onMount(() => {
-    const timer = setInterval(() => {
-      if (!document.hidden && state.data() && !state.busy()) {
-        void state.load();
-      }
-    }, REFRESH_MS);
-    onCleanup(() => clearInterval(timer));
+    // One look at a time, waiting longer after each that fails, and at once when the tab is back in view.
+    const polls = schedulePolls(
+      () => (state.data() && !state.busy() ? state.load() : Promise.resolve(true)),
+      () => document.hidden,
+      REFRESH_MS
+    );
+    const forget = lookOnReturn(polls);
+    onCleanup(() => {
+      polls.stop();
+      forget();
+    });
   });
 
   createEffect(() => {

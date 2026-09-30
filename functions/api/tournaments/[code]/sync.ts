@@ -7,7 +7,8 @@
  * This is the fix for re-uploading: the browser watches the file TOM saves,
  * parses it locally, and sends the result only when it changed. Storing it is
  * one validated write, with nothing to reprocess. Pending results the new
- * file settles are dropped. A file sent from a copy the site no longer holds
+ * file settles are dropped. The answer is the console's new copy of the
+ * event, with the revision it now holds, so the console need not ask again. A file sent from a copy the site no longer holds
  * is refused (409) rather than taken over rounds another browser synced; one
  * that is the copy the site already holds changes nothing and succeeds.
  */
@@ -16,11 +17,11 @@ import { revisionOf } from '../../../../shared/tournament/revision.js';
 import type { Tournament } from '../../../../shared/tournament/types.js';
 import { readTournament } from '../../../../shared/tournament/validate.js';
 import { prunePending } from '../../../../shared/tournament/view.js';
-import { readJsonBody } from '../../../lib/api/body.js';
+import { asObject, readJsonBody } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
-import { MAX_TOURNAMENT_BYTES, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
-import { publishView } from '../../../lib/tournaments/publish.js';
+import { manageView, MAX_TOURNAMENT_BYTES, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
+import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { mutate } from '../../../lib/tournaments/store.js';
 
 const CONFLICT = 'The site has a different copy of this event. Reconnect the file TOM is using to replace it.';
@@ -36,7 +37,7 @@ async function readUpload(request: Request): Promise<Upload | Response> {
   if (!body.ok) {
     return jsonError('That file is too large', 413);
   }
-  const value = typeof body.value === 'object' && body.value ? (body.value as Record<string, unknown>) : {};
+  const value = asObject(body.value) ?? {};
   const tournament = readTournament(value.tournament);
   if (!tournament) {
     return jsonError('That file did not read as a tournament', 400);
@@ -60,7 +61,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   const sent = await revisionOf(upload.tournament);
   // The copy the site already holds, from a second tab or a push that crossed another: nothing to change.
   if (sent === held) {
-    return privateJson({ version: access.row.version, pending: access.row.pending, revision: held });
+    return privateJson({ ...manageView(access), revision: held });
   }
   if (held !== upload.base) {
     return jsonError(CONFLICT, 409);
@@ -79,10 +80,6 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.error === CONFLICT ? 409 : outcome.status);
   }
-  await publishView(context.env, outcome.row);
-  return privateJson({
-    version: outcome.version,
-    pending: outcome.row.pending,
-    revision: sent
-  });
+  await publishAfter(context, outcome.row);
+  return privateJson({ ...manageView({ ...access, row: outcome.row }), revision: sent });
 }

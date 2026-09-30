@@ -9,10 +9,8 @@
 import { createSignal, Show } from 'solid-js';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
 import { isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
-import { ApiError, identifyPlayer } from '../../lib/tournament/api';
+import { ApiError, errorText, identifyPlayer } from '../../lib/tournament/api';
 import { ErrorLine, Field } from './Field';
-
-const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 export interface Identified {
   claim: PlayerClaim;

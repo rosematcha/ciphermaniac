@@ -1,20 +1,25 @@
 /**
- * The public page's polling: players read the published file and fall back
- * to the API only every half minute, staff always ask the API, failed looks
- * back off, and a page whose first load failed keeps trying.
+ * The public page's polling: everyone reads the published file and falls
+ * back to the API only every half minute, staff ask the API only for decks
+ * the public cannot see yet, a change the console announces is asked of the
+ * API once, failed looks back off, and a page whose first load failed keeps
+ * trying.
  */
 
 import assert from 'node:assert/strict';
 import test, { mock } from 'node:test';
 
-import type { PublishedView, TournamentView } from '../../shared/tournament/view.ts';
+import { DEFAULT_SETTINGS, type PublishedView, type TournamentView } from '../../shared/tournament/view.ts';
 import {
   createViewPoll,
   FALLBACK_MS,
+  firstView,
+  lookOnReturn,
   POLL_MS,
   pollDelay,
   schedulePolls,
   SCREEN_POLL_MS,
+  seesMoreThanPublished,
   type ViewSource
 } from '../../src/lib/tournament/viewPoll.ts';
 
@@ -35,6 +40,8 @@ function source(overrides: Partial<ViewSource> & { shown?: TournamentView }) {
       shown = view;
     },
     now: () => now,
+    ownCopy: view => view.viewer.role !== null,
+    announced: () => 0,
     ...overrides,
     published: async () => {
       calls.published += 1;
@@ -65,12 +72,77 @@ test('a player whose published copy cannot be read asks the API every half minut
   assert.equal(s.calls.api, Math.ceil((6 * POLL_MS) / FALLBACK_MS));
 });
 
-test('staff ask the API on every poll and skip the published copy', async () => {
+test('a page that shows staff their own copy asks the API on every poll and skips the published copy', async () => {
   const s = source({ shown: viewAt(3, 'staff'), api: async () => viewAt(5, 'staff') });
   await s.poll();
   await s.poll();
   assert.deepEqual([s.calls.api, s.calls.published], [2, 0]);
   assert.equal(s.shown()?.version, 5);
+});
+
+test('staff whose copy the published file holds read the file like anyone', async () => {
+  const s = source({
+    shown: viewAt(3, 'staff'),
+    ownCopy: () => false,
+    published: async () => ({ version: 4 }) as PublishedView
+  });
+  await s.poll();
+  assert.deepEqual([s.calls.api, s.calls.published], [0, 1]);
+  assert.equal(s.shown()?.viewer.role, 'staff', 'the viewer is kept');
+});
+
+test('staff see more than the file only while decks are theirs alone', () => {
+  const staffWith = (deckVisibility: 'off' | 'after' | 'always', finished = false) =>
+    ({
+      viewer: { role: 'staff', me: null, signedIn: true },
+      settings: { ...DEFAULT_SETTINGS, deckVisibility, finished }
+    }) as TournamentView;
+  assert.equal(seesMoreThanPublished(staffWith('after')), true);
+  assert.equal(seesMoreThanPublished(staffWith('after', true)), false, 'shown to all once the event ends');
+  assert.equal(seesMoreThanPublished(staffWith('always')), false);
+  assert.equal(seesMoreThanPublished(staffWith('off')), false);
+  const player = { ...staffWith('after'), viewer: { role: null, me: null, signedIn: true } } as TournamentView;
+  assert.equal(seesMoreThanPublished(player), false);
+});
+
+test('a staff copy taken from the file is asked for whole, since the API would call it current', async () => {
+  const sinces: number[] = [];
+  let own = false;
+  const s = source({
+    shown: viewAt(3, 'staff'),
+    ownCopy: () => own,
+    published: async () => ({ version: 4 }) as PublishedView,
+    api: async since => {
+      sinces.push(since);
+      return since === 0 ? viewAt(4, 'staff') : null;
+    }
+  });
+  await s.poll();
+  assert.equal(s.shown()?.version, 4, 'decks shown to all: the file will do');
+  own = true;
+  await s.poll();
+  await s.poll();
+  assert.deepEqual(sinces, [0, 4], 'whole once, then only what changed');
+});
+
+test('a change the console announced asks the API once, until the file catches up', async () => {
+  let announced = 5;
+  let file = 3;
+  const s = source({
+    shown: viewAt(3),
+    ownCopy: () => false,
+    announced: () => announced,
+    published: async () => ({ version: file }) as PublishedView,
+    api: async () => viewAt(5)
+  });
+  await s.poll();
+  assert.equal(s.shown()?.version, 5, 'the API has the change before the file does');
+  await s.poll();
+  assert.equal(s.calls.api, 1, 'asked once for the change, not on every poll');
+  announced = 7;
+  file = 7;
+  await s.poll();
+  assert.deepEqual([s.shown()?.version, s.calls.api], [7, 1], 'a file that already has the change is enough');
 });
 
 test('a failed API look reports failure, and failures wait longer up to five minutes', async () => {
@@ -214,5 +286,46 @@ test('a look asked for while one is under way follows it at once', async () => {
     polls.stop();
   } finally {
     mock.timers.reset();
+  }
+});
+
+test('a page first shows the published file as nobody, and asks the API only when it cannot be read', async () => {
+  let asked = 0;
+  const api = async () => {
+    asked += 1;
+    return viewAt(7, 'owner');
+  };
+  const read = await firstView({ published: async () => ({ version: 6 }) as PublishedView, api });
+  assert.deepEqual([read.version, read.viewer], [6, { role: null, me: null, signedIn: false }]);
+  assert.equal(asked, 0, 'a room opening the page asks the functions for nothing');
+  assert.equal((await firstView({ published: async () => null, api })).version, 7, 'not published yet');
+  const unreachable = await firstView({ published: () => Promise.reject(new Error('blocked')), api });
+  assert.equal(unreachable.viewer.role, 'owner', 'the API says who is asking');
+  assert.equal(asked, 2);
+});
+
+test('a page back in view or back online looks at once, until it closes', () => {
+  const heard = new Map<string, () => void>();
+  const target = {
+    addEventListener: (name: string, listener: () => void) => void heard.set(name, listener),
+    removeEventListener: (name: string) => void heard.delete(name)
+  };
+  const page = { ...target, hidden: true };
+  const globals = globalThis as { document?: unknown; window?: unknown };
+  const before = { document: globals.document, window: globals.window };
+  Object.assign(globals, { document: page, window: target });
+  try {
+    let looks = 0;
+    const forget = lookOnReturn({ soon: () => void (looks += 1), stop: () => undefined });
+    heard.get('visibilitychange')?.();
+    assert.equal(looks, 0, 'going out of view is not a reason to look');
+    page.hidden = false;
+    heard.get('visibilitychange')?.();
+    heard.get('online')?.();
+    assert.equal(looks, 2);
+    forget();
+    assert.equal(heard.size, 0);
+  } finally {
+    Object.assign(globals, before);
   }
 });

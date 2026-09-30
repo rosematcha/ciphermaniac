@@ -8,20 +8,17 @@
  * it with the same shared code the organizer's copy uses.
  */
 
-import { divisionFor, parseTomDate, seasonOf } from './divisions.js';
+import { divisionFor, eventSeason } from './divisions.js';
 import { shortLastNames } from './identify.js';
+import type { PlayerProfile } from './profile.js';
 import type { PlayerReport } from './reports.js';
-import type { Division, Outcome, Pod, PodCategory, Tournament } from './types.js';
+import { isOpenMatch, type MatchKey, sameMatch } from './rounds.js';
+import type { Division, Outcome, Pod, Tournament } from './types.js';
 
 export type TournamentMode = 'swiss' | 'tom';
 
 /** A result entered on the site for a TOM-run event, shown until the .tdf has one. */
-export interface PendingResult {
-  pod: PodCategory;
-  round: number;
-  table: number;
-  p1: string;
-  p2: string | null;
+export interface PendingResult extends MatchKey {
   outcome: Outcome;
   at: number;
 }
@@ -203,10 +200,6 @@ export function assignKeys(tournament: Tournament, keys: Record<string, string>)
   return next;
 }
 
-function eventSeason(tournament: Tournament, now: number): number {
-  return seasonOf(parseTomDate(tournament.info.startDate) ?? new Date(now));
-}
-
 /**
  * The public copy of the tournament, its players under `keys` (see
  * assignKeys). With `shortNames`, as for an unsanctioned event, last names go
@@ -229,11 +222,15 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
   }));
   return {
     info: { ...tournament.info, organizerPopId: '' },
+    // Field by field, so a field added to Player stays private until it is named here:
+    // a fixed table, for one, is an accommodation, not the room's business.
     players: tournament.players.map(player => ({
-      ...player,
       id: key(player.id),
+      firstName: player.firstName,
       lastName: short?.get(player.id) ?? player.lastName,
       birthDate: '',
+      droppedAfter: player.droppedAfter,
+      ...(player.late ? { late: true } : {}),
       created: '',
       modified: ''
     })),
@@ -247,7 +244,7 @@ export function publicDivisions(
   keys: Record<string, string>,
   now: number
 ): Record<string, Division> {
-  const season = eventSeason(tournament, now);
+  const season = eventSeason(tournament, new Date(now));
   return Object.fromEntries(
     tournament.players.map(player => [keys[player.id] ?? player.id, divisionFor(player.birthDate, season)])
   );
@@ -263,29 +260,12 @@ export function publicPending(pending: readonly PendingResult[], keys: Record<st
   return pending.map(result => ({ ...result, p1: key(result.p1), p2: result.p2 === null ? null : key(result.p2) }));
 }
 
-type MatchKey = Pick<PendingResult, 'pod' | 'round' | 'table' | 'p1' | 'p2'>;
-
-function sameMatch(result: PendingResult, key: MatchKey): boolean {
-  return (
-    result.pod === key.pod &&
-    result.round === key.round &&
-    result.table === key.table &&
-    result.p1 === key.p1 &&
-    result.p2 === key.p2
-  );
-}
-
 /**
  * The pending results still waiting on TOM: a result is dropped once the
  * .tdf has its own for that match, or once the match is gone (re-paired).
  */
 export function prunePending(tournament: Tournament, pending: readonly PendingResult[]): PendingResult[] {
-  return pending.filter(result => {
-    const pod = tournament.pods.find(p => p.category === result.pod);
-    const round = pod?.rounds.find(r => r.number === result.round);
-    const match = round?.matches.find(m => m.table === result.table && m.p1 === result.p1 && m.p2 === result.p2);
-    return match !== undefined && match.outcome === 'pending';
-  });
+  return pending.filter(result => isOpenMatch(tournament, result));
 }
 
 /** Records a pending result, replacing any earlier one for the same match; `pending` outcome clears it. */
@@ -315,3 +295,67 @@ export function applyPending(tournament: Tournament, pending: readonly PendingRe
     }))
   };
 }
+
+// What the staff endpoints answer with, beyond the public view: declared once, so the
+// functions that send these and the pages that read them cannot drift apart.
+
+/** The organizer owns the event; staff joined through its invite link. */
+export type Role = 'owner' | 'staff';
+
+/** One of a user's events, as their list shows it. */
+export interface TournamentSummary {
+  code: string;
+  mode: TournamentMode;
+  name: string;
+  role: Role;
+  players: number;
+  /** MM/DD/YYYY, as TOM writes it; '' when unset. */
+  startDate: string;
+  finished: boolean;
+  /** Rounds the event's first pod has paired: 0 before round 1. */
+  rounds: number;
+  updatedAt: number;
+}
+
+/** The whole event, as its staff's console holds it. */
+export interface Manage {
+  code: string;
+  mode: TournamentMode;
+  version: number;
+  updatedAt: number;
+  tournament: Tournament;
+  pending: PendingResult[];
+  reports: PlayerReport[];
+  settings: TournamentSettings;
+  /** POP ID to archetype label. */
+  decks: Record<string, string>;
+  role: Role;
+  /** The invite link's token, for the organizer alone. */
+  staffToken: string | null;
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  /** When they joined through the invite link; null for anyone who joined before that was kept. */
+  joinedAt: number | null;
+}
+
+/** A submitted decklist, as staff and its own submitter read it. */
+export interface Decklist extends PlayerProfile {
+  deck: string;
+  /** The player's own word for their deck, until staff apply it. */
+  archetype: string | null;
+  submittedAt: number;
+  /** What the parser found wrong with the list. */
+  problems: string[];
+  /** Whether the player is on the event's player list yet. */
+  registered: boolean;
+  /** Submitting this list is what added the player to the event. */
+  fromList: boolean;
+  /** Only the device that sent it can replace it, until staff unlock it. */
+  locked: boolean;
+}
+
+/** Whether submitting put the player on the event's list, found them on it, or could not add them. */
+export type Registration = 'added' | 'matched' | 'not-added';

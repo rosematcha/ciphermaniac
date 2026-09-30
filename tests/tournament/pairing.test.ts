@@ -1,7 +1,7 @@
 /**
  * Swiss pairing: inside point groups, no rematches while any other pairing
- * exists, the bye to the lowest player without one, and a top cut seeded so the
- * top two can only meet in the final.
+ * exists and the fewest where one must be taken, the bye to the lowest player
+ * without one, and a top cut seeded so the top two can only meet in the final.
  */
 
 import assert from 'node:assert/strict';
@@ -81,6 +81,48 @@ test('avoids a rematch when another pairing exists', () => {
 test('allows a rematch rather than leaving a round unpaired', () => {
   const pairings = pairSwiss(entrants([3, 0]), history([['p0', 'p1']]), seededRandom(5));
   assert.deepEqual(pairings, [{ p1: 'p0', p2: 'p1' }]);
+});
+
+test('where a rematch cannot be avoided, the round takes no more than it must', () => {
+  // p0 has met everyone; the rest have met once each. One rematch pairs the round.
+  const met = history([...[1, 2, 3, 4, 5].map(i => ['p0', `p${i}`] as [string, string]), ['p1', 'p2'], ['p3', 'p4']]);
+  for (let seed = 0; seed < 50; seed += 1) {
+    const pairings = pairSwiss(entrants([0, 0, 0, 0, 0, 0]), met, seededRandom(seed));
+    const rematches = pairings.filter(p => p.p2 !== null && met.opponents.get(p.p1)?.has(p.p2));
+    assert.equal(rematches.length, 1, `seed ${seed}`);
+  }
+});
+
+test('a player low in the standings with one new opponent left still pairs rematch-free, and quickly', () => {
+  // p15 has met everyone but p0, so the top of the field has to give p0 up to them.
+  const field = entrants(Array.from({ length: 16 }, (_, i) => 16 - i));
+  const met = history(Array.from({ length: 14 }, (_, i) => ['p15', `p${i + 1}`] as [string, string]));
+  const started = performance.now();
+  const pairings = pairSwiss(field, met, seededRandom(3));
+  assert.ok(performance.now() - started < 50, 'found without walking the field');
+  assert.ok(pairings.some(p => new Set([p.p1, p.p2]).has('p15') && new Set([p.p1, p.p2]).has('p0')));
+  assert.ok(pairings.every(p => p.p2 === null || !met.opponents.get(p.p1)?.has(p.p2)));
+});
+
+test('a field whose bottom has all met each other pairs within the step budget, not by walking every way down', () => {
+  // Seven at the bottom have all met; the rest have six rounds among themselves.
+  const random = seededRandom(42);
+  const ids = Array.from({ length: 512 }, (_, i) => `p${i}`);
+  const body = ids.slice(0, 505);
+  const played: [string, string][] = [];
+  for (let round = 0; round < 6; round += 1) {
+    const order = [...body].sort(() => random() - 0.5);
+    for (let i = 0; i + 1 < order.length; i += 2) {
+      played.push([order[i] as string, order[i + 1] as string]);
+    }
+  }
+  const bottom = ids.slice(505);
+  bottom.forEach((a, i) => bottom.slice(i + 1).forEach(b => played.push([a, b])));
+  const field = ids.map((id, i) => ({ id, points: 512 - i }));
+  const started = performance.now();
+  const pairings = pairSwiss(field, history(played), seededRandom(1));
+  assert.ok(performance.now() - started < 100, 'bounded by the budget');
+  assert.equal(new Set(pairings.flatMap(p => [p.p1, p.p2]).filter(id => id !== null)).size, 512);
 });
 
 test('a forty-player field with five rounds of history pairs rematch-free', () => {

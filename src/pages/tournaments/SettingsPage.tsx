@@ -9,7 +9,15 @@
 import { A, useNavigate, useSearchParams } from '@solidjs/router';
 import { createEffect, createSignal, For, onMount, Show } from 'solid-js';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
-import { linkUrl, type Me, type Provider, saveAccountName, saveProfile, signOut } from '../../lib/tournament/api';
+import {
+  errorText,
+  linkUrl,
+  type Me,
+  type Provider,
+  saveAccountName,
+  saveProfile,
+  signOut
+} from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
 import { ErrorLine } from './Field';
 import { emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
@@ -53,9 +61,9 @@ function Identity(props: { user: Me; providers: readonly Provider[] }) {
             <Show
               when={props.user.providers.includes(provider)}
               fallback={
-                <A class='tm-link-inline' href={linkUrl(provider)}>
+                <a class='tm-link-inline' href={linkUrl(provider)} rel='external'>
                   Link {PROVIDER_NAMES[provider]}
-                </A>
+                </a>
               }
             >
               <span class='muted'>{PROVIDER_NAMES[provider]} linked</span>
@@ -80,7 +88,7 @@ function AccountName(props: { user: Me }) {
       setError(null);
       setSaved(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorText(err));
     }
   }
   return (
@@ -139,7 +147,7 @@ function Profile(props: { user: Me }) {
       setSession(prev => (prev ? { ...prev, user } : prev));
       setStatus('saved');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorText(err));
       setStatus('idle');
     }
   }

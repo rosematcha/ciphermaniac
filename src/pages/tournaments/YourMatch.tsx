@@ -11,18 +11,19 @@
  * remembers it; the page holds that (see PublicEvent).
  */
 
+import { ordinal } from '../../lib/format';
 import { createEffect, createSignal, For, Match, Show, Switch } from 'solid-js';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
 import type { PlayerResult } from '../../../shared/tournament/reports';
 import { recordLabel, sideResult } from '../../../shared/tournament/standings';
+import { hasStarted, podOf } from '../../../shared/tournament/rounds';
 import type { Pod, Round, Match as TableMatch } from '../../../shared/tournament/types';
 import { isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
-import { identifyPlayer, reportAsPlayer } from '../../lib/tournament/api';
+import { errorText, identifyPlayer, reportAsPlayer } from '../../lib/tournament/api';
 import {
   currentMatchOf,
   divisionHeading,
   namesById,
-  ordinal,
   podStandings,
   recordsBefore,
   reportState,
@@ -32,8 +33,6 @@ import { Clock } from './Clock';
 import { ErrorLine } from './Field';
 import { type Identified, IdentifyForm } from './Identify';
 import { createNow } from './now';
-
-const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 const SAID: Record<PlayerResult, string> = { win: 'won', loss: 'lost', tie: 'tied' };
 
@@ -93,7 +92,9 @@ const CHOICES: { result: PlayerResult; label: string }[] = [
 /** The viewer's report of their match: where it stands, sending it, and settling it once both agree. */
 function createReport(props: Props & { me: string }, found: () => Found | null) {
   const now = createNow();
-  const [busy, setBusy] = createSignal(false);
+  /** The answer on its way to the server: its button reads as pressed from the press, not from the reply. */
+  const [sending, setSending] = createSignal<PlayerResult | null>(null);
+  const busy = () => sending() !== null;
   const [error, setError] = createSignal<string | null>(null);
   const [settling, setSettling] = createSignal(false);
   const state = () => {
@@ -110,14 +111,14 @@ function createReport(props: Props & { me: string }, found: () => Found | null) 
       return;
     }
     const match = { pod: shown.pod.category, round: shown.round.number, table: shown.match.table };
-    setBusy(true);
+    setSending(result);
     setError(null);
     try {
       props.onView((await reportAsPlayer(props.view.code, claim, { result, match }, props.reportToken)).view);
     } catch (err) {
       setError(errorText(err));
     } finally {
-      setBusy(false);
+      setSending(null);
     }
   }
 
@@ -134,12 +135,12 @@ function createReport(props: Props & { me: string }, found: () => Found | null) 
   // Once both reports agree and lock, asking again writes the result in, so it shows as it stands.
   createEffect(() => {
     const { claim } = props;
-    if (claim && state()?.final && found()?.match.outcome === 'pending' && !settling()) {
+    if (claim && state()?.due && !settling()) {
       void settle(claim);
     }
   });
 
-  return { state, busy, error, send };
+  return { state, busy, sending, error, send };
 }
 
 type Report = ReturnType<typeof createReport>;
@@ -175,7 +176,7 @@ function ReportPanel(props: { report: Report; found: Found; opponent: string }) 
         <div class='tm-report-choices' role='group' aria-label='Report your result'>
           <For each={choices()}>
             {choice => {
-              const on = () => s()?.chosen === choice.result;
+              const on = () => (props.report.sending() ?? s()?.chosen) === choice.result;
               return (
                 <button
                   type='button'
@@ -283,7 +284,7 @@ function MatchLine(props: Props & { me: string; found: Found; report: Report; op
 
 /** Where the viewer finished: their place in their division, record and points. */
 function placeOf(view: TournamentView, me: string) {
-  const pod = view.tournament.pods.find(p => p.playerIds.includes(me));
+  const pod = podOf(view.tournament, me);
   if (!pod || pod.rounds.length === 0) {
     return null;
   }
@@ -298,7 +299,7 @@ function MatchBox(props: Props & { me: string }) {
   // Props go through whole: spreading them into an object would read them once and lose later updates.
   const report = createReport(props, found);
   const placed = () => (props.view.settings.finished ? placeOf(props.view, props.me) : null);
-  const started = () => props.view.tournament.pods.some(pod => pod.rounds.length > 0);
+  const started = () => hasStarted(props.view.tournament);
   const panel = () => {
     const state = report.state();
     return props.reportToken && state && !state.final && (open() || state.disputed) ? state : null;
@@ -378,7 +379,7 @@ function MatchBox(props: Props & { me: string }) {
  */
 export function YourMatch(props: Props) {
   const reporting = () => props.view.settings.playerReporting;
-  const live = () => !props.view.settings.finished && props.view.tournament.pods.some(pod => pod.rounds.length > 0);
+  const live = () => !props.view.settings.finished && hasStarted(props.view.tournament);
   return (
     <Switch>
       <Match when={reporting() && live() && (!props.claim || !props.me)}>

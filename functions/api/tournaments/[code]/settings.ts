@@ -9,8 +9,8 @@ import { type DeckVisibility, readSettings } from '../../../../shared/tournament
 import { readJsonBody } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
-import { manageView, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
-import { publishView } from '../../../lib/tournaments/publish.js';
+import { openForStaff } from '../../../lib/tournaments/access.js';
+import { answerStaff } from '../../../lib/tournaments/answers.js';
 import { mutate } from '../../../lib/tournaments/store.js';
 
 /** How soon each setting shows decks to players: higher is sooner. */
@@ -34,9 +34,5 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
     const settings = readSettings(change, row.settings);
     return settings ? { settings } : 'Not a settings change';
   });
-  if ('error' in outcome) {
-    return jsonError(outcome.error, outcome.status);
-  }
-  await publishView(context.env, outcome.row);
-  return privateJson(manageView({ ...access, row: outcome.row }));
+  return answerStaff(context, access, outcome);
 }

@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS identities (
   user_id TEXT NOT NULL,
   PRIMARY KEY (provider, subject)
 ) WITHOUT ROWID;
+-- The account page lists a user's providers; without this that read scans every account's.
+CREATE INDEX IF NOT EXISTS identities_by_user ON identities (user_id);
 
 -- The cookie holds the session token; only its SHA-256 is stored.
 CREATE TABLE IF NOT EXISTS sessions (
@@ -57,7 +59,10 @@ CREATE TABLE IF NOT EXISTS tournaments (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS tournaments_by_owner ON tournaments (owner_id, updated_at);
+-- On the owner alone: an index that also held `updated_at` would be rewritten
+-- by every save, a second row written each time, and the organizer's list
+-- sorts its few rows itself.
+CREATE INDEX IF NOT EXISTS tournaments_of_owner ON tournaments (owner_id);
 
 -- Who joined an event's staff through its invite link, and when, so the
 -- organizer can see everyone the link let in and remove one of them.
