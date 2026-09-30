@@ -5,8 +5,9 @@
  * follow their pairings; any event takes it, as it is how a player marks
  * themselves. With { result } ('win', 'loss' or 'tie') it also reports their
  * current match (see shared/tournament/reports.ts), where player reporting
- * is on; { match: { pod, round, table } } names the match the page showed,
- * and a report for one that is no longer current is refused. Either way,
+ * is on and the event has not ended; { match: { pod, round, table } } names
+ * the match the page showed, and a report for one that is no longer current
+ * is refused. Either way,
  * results whose reports have agreed and locked are written in first, so a
  * player asking again once their window closes sees the result stand.
  *
@@ -29,7 +30,7 @@ import {
   stillShown
 } from '../../../../shared/tournament/reports.js';
 import type { PodCategory } from '../../../../shared/tournament/types.js';
-import { applyPending, isSanctioned } from '../../../../shared/tournament/view.js';
+import { applyPending, isSanctioned, type TournamentSettings } from '../../../../shared/tournament/view.js';
 import { readJsonObject } from '../../../lib/api/body.js';
 import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
 import { jsonError, noContent } from '../../../lib/api/responses.js';
@@ -82,8 +83,24 @@ function readReport(row: TournamentRow, filing: Filing) {
     : 'Your pairing has changed; check your table';
 }
 
-/** The report laid over the event's others; the result stands once both players' reports agree and lock. */
+/** Why players cannot report here, or null when they can. */
+function closedToReports(settings: TournamentSettings): string | null {
+  if (!settings.playerReporting) {
+    return 'Results at this event are reported to staff';
+  }
+  return settings.finished ? 'This event is over' : null;
+}
+
+/**
+ * The report laid over the event's others; the result stands once both
+ * players' reports agree and lock. Checked against the row each try reads,
+ * so a report that raced the organizer ending the event does not land after.
+ */
 function reportChanges(row: TournamentRow, filing: Filing): Changes | string {
+  const closed = closedToReports(row.settings);
+  if (closed) {
+    return closed;
+  }
   const report = readReport(row, filing);
   const reports = typeof report === 'string' ? report : fileReport(row.reports, report);
   return typeof reports === 'string' ? reports : { reports };
@@ -170,8 +187,9 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
     return access;
   }
   const body: Body = (await readJsonObject(context.request, 1024)) ?? {};
-  if (body.result !== undefined && !access.row.settings.playerReporting) {
-    return jsonError('Results at this event are reported to staff', 403);
+  const refusal = body.result === undefined ? null : closedToReports(access.row.settings);
+  if (refusal) {
+    return jsonError(refusal, 403);
   }
   const claim = claimOf(body);
   const found = findPlayer(access.row.tournament, isSanctioned(access.row), claim);

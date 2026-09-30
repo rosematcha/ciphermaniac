@@ -943,6 +943,20 @@ test('a result the console poll settles is stamped with the venue clock the poll
   assert.deepEqual([settledMatch.outcome, settledMatch.timestamp], ['p1', '10/10/2026 18:30:00']);
 });
 
+test('players cannot report once the event has ended', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const [match] = paired.json.tournament.pods[0].rounds[0].matches;
+  await settle(code, owner, { playerReporting: true });
+  const phone = await phoneOf(code, match.p1);
+  await settle(code, owner, { finished: true });
+  const refused = await phone.report('win');
+  assert.deepEqual([refused.status, refused.json.error], [403, 'This event is over']);
+  assert.equal((await playerSays(code, { popId: match.p1 })).status, 200, 'a player can still find their table');
+});
+
 test('a report for the match a stale page showed does not land on the next round', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
