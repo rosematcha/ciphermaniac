@@ -136,6 +136,16 @@ test('after the planned rounds the console offers the top cut, another round and
   await expect(page.getByText('End the event?')).toBeVisible();
 });
 
+test('every Swiss round ends with another round, the top cut and ending the event, in that order', async ({ page }) => {
+  // Sixteen players plan five rounds, so after round 2 another round is the step.
+  await mockConsole(page, event(16, 2, false), settingsOf({}));
+  const acts = page.locator('.tm-next-acts');
+  await expect(acts.getByRole('button')).toHaveText(['Pair round 3', 'Start top cut', 'End event']);
+  await expect(acts.getByRole('button', { name: 'Pair round 3' })).toHaveClass(/btn-primary/);
+  await expect(acts.getByRole('button', { name: 'Start top cut' })).toHaveClass(/btn-secondary/);
+  await expect(acts.getByRole('button', { name: 'End event' })).toHaveClass(/btn-secondary/);
+});
+
 test("an open table shows its players' reports in its one row, and a lone report can be accepted", async ({ page }) => {
   const t = event(8, 0, true);
   const [lone, disputed] = t.pods[0]?.rounds[0]?.matches ?? [];

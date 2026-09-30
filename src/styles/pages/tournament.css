@@ -131,14 +131,18 @@ body[data-mode='dark']:has(.tm-page) {
   justify-items: end;
   gap: 4px;
 }
-/* Once the Swiss rounds are played: another round, ending, and the top cut,
-   on one line with the step last. */
+/* A Swiss round's end: another round, the top cut and ending the event on
+   one line (see RoundEndStep), the three set a little further apart than the
+   cut's own fields so they read as three choices. */
 .tm-next-acts {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-2) var(--space-4);
+}
+.tm-next-acts .tm-inline-form {
+  gap: var(--space-1);
 }
 .tm-next-reason {
   font-size: var(--text-sm);
@@ -153,8 +157,16 @@ body[data-mode='dark']:has(.tm-page) {
   .tm-next .btn {
     justify-content: center;
   }
+  /* On a phone the three are full-width rows, the cut's fields sharing theirs. */
   .tm-next-acts {
-    justify-content: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tm-next-acts .tm-inline-form {
+    flex-wrap: nowrap;
+  }
+  .tm-next-acts .tm-inline-form .btn {
+    flex: 1;
   }
 }
 
