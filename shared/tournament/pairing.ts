@@ -9,8 +9,11 @@
  * The search is a depth-first walk down the ranked list: each player takes the
  * first opponent below them they have not played, and backs up when the rest
  * of the field can no longer be paired. On real fields it pairs at the first
- * try; a step budget stops a pathological one from spinning, and a second pass
- * that allows rematches means a round can always be paired.
+ * try. A field that cannot pair rematch-free is walked again allowing one
+ * rematch, then two, so a round takes the fewest the walk can find. The walks
+ * share a step budget, which bounds the work on a pathological field; past
+ * it, one last walk still prefers a new opponent at every seat and always
+ * finishes.
  */
 
 import { type Random, shuffled } from './random.js';
@@ -33,6 +36,7 @@ export interface Pairing {
   p2: string | null;
 }
 
+/** Seats every walk for one round may look at together: a few milliseconds at worst. */
 const STEP_BUDGET = 50_000;
 
 /** Highest points first, shuffled inside each point group. */
@@ -61,20 +65,67 @@ export function pickBye(ranked: readonly string[], byes: ReadonlySet<string>): s
 }
 
 /**
- * One walk's state. Seats are marked used and pairings pushed as the walk goes
- * down, and undone as it backs up, so a step costs no copying of the field.
+ * One walk's state. Seats are marked taken and pairings pushed as the walk
+ * goes down, and undone as it backs up, so a step costs no copying of the
+ * field. The walk keeps its choices on a list of its own rather than the call
+ * stack, so a field of thousands does not run the stack out.
  */
 interface Search {
   ranked: readonly string[];
-  used: boolean[];
-  pairings: Pairing[];
   history: PairingHistory;
-  allowRematch: boolean;
+  used: boolean[];
+  /** For each seat, the seats of the players it has met. */
+  met: number[][];
+  /** For each seat, how many of the players it has met are still unseated. */
+  metLeft: number[];
+  /** Seats that have met anyone, most opponents first: the players a walk can strand. */
+  crowded: number[];
+  /** Seats still unseated. */
+  left: number;
+  pairings: Pairing[];
+  /** Rematches the walk may still take. */
+  rematches: number;
   steps: number;
+  budget: number;
+}
+
+/** A seat's opponent as the walk chose them. */
+interface Choice {
+  seat: number;
+  other: number;
+  rematch: boolean;
+}
+
+function newSearch(ranked: readonly string[], history: PairingHistory, rematches: number, budget: number): Search {
+  const seatOf = new Map(ranked.map((id, seat) => [id, seat]));
+  const met = ranked.map(id => [...(history.opponents.get(id) ?? [])].flatMap(o => seatOf.get(o) ?? []));
+  const crowded = met.flatMap((opponents, seat) => (opponents.length > 0 ? [seat] : []));
+  crowded.sort((a, b) => (met[b] ?? []).length - (met[a] ?? []).length);
+  return {
+    ranked,
+    history,
+    used: ranked.map(() => false),
+    met,
+    metLeft: met.map(opponents => opponents.length),
+    crowded,
+    left: ranked.length,
+    pairings: [],
+    rematches,
+    steps: 0,
+    budget
+  };
 }
 
 function haveMet(history: PairingHistory, a: string, b: string): boolean {
   return history.opponents.get(a)?.has(b) ?? false;
+}
+
+function take(state: Search, seat: number, taken: boolean): void {
+  state.used[seat] = taken;
+  state.left += taken ? -1 : 1;
+  for (const opponent of state.met[seat] ?? []) {
+    state.metLeft[opponent] = (state.metLeft[opponent] ?? 0) + (taken ? -1 : 1);
+  }
 }
 
 /** The first seat at or after `from` nobody has taken yet; the field's length when all are taken. */
@@ -86,57 +137,138 @@ function nextFree(state: Search, from: number): number {
   return seat;
 }
 
-/** Whether `top` may meet the player in `seat`, as far as the rules go. */
-function allowed(state: Search, top: string, seat: number): boolean {
-  return !state.used[seat] && (state.allowRematch || !haveMet(state.history, top, state.ranked[seat] as string));
-}
-
-/** Pairs the untaken seats from `from` down, top first; false if it cannot within the rules and budget. */
-function pairFrom(state: Search, from: number): boolean {
-  const seat = nextFree(state, from);
-  const top = state.ranked[seat];
-  if (top === undefined) {
-    return true;
+/**
+ * Whether an unseated player has met everyone still unseated, so only a
+ * rematch can seat them. Only a player who has met that many can be, so the
+ * look stops at the first who has met fewer.
+ */
+function stranded(state: Search): boolean {
+  const others = state.left - 1;
+  if (others < 1) {
+    return false;
   }
-  state.used[seat] = true;
-  for (let other = seat + 1; other < state.ranked.length; other += 1) {
-    if (state.used[other]) {
-      continue;
+  for (const seat of state.crowded) {
+    if ((state.met[seat] ?? []).length < others) {
+      return false;
     }
-    state.steps += 1;
-    if (state.steps > STEP_BUDGET) {
-      break;
-    }
-    if (allowed(state, top, other) && tryPair(state, seat, other)) {
+    if (!state.used[seat] && state.metLeft[seat] === others) {
       return true;
     }
   }
-  state.used[seat] = false;
   return false;
 }
 
-/** Seats `seat` against `other` and pairs the rest; undoes the pair when the rest cannot be paired. */
-function tryPair(state: Search, seat: number, other: number): boolean {
-  state.used[other] = true;
-  state.pairings.push({ p1: state.ranked[seat] as string, p2: state.ranked[other] as string });
-  if (pairFrom(state, seat + 1)) {
-    return true;
+/**
+ * The first untaken seat after `from` whose player `top` has met (`rematch`)
+ * or not; the field's length if none, or once the walk is out of steps. Each
+ * seat looked at is a step.
+ */
+function nextOpponent(state: Search, top: string, from: number, rematch: boolean): number {
+  let other = from + 1;
+  while (other < state.ranked.length && state.steps < state.budget) {
+    state.steps += 1;
+    if (!state.used[other] && haveMet(state.history, top, state.ranked[other] as string) === rematch) {
+      return other;
+    }
+    other += 1;
   }
+  return state.ranked.length;
+}
+
+/**
+ * The seat's next opponent after `after`, its last try: new opponents in
+ * order, then, with rematches left, old ones. Null when none is left, or the
+ * walk is out of steps.
+ */
+function nextChoice(state: Search, seat: number, after: Choice | null): Choice | null {
+  const top = state.ranked[seat] as string;
+  const phases = after?.rematch ? [true] : [false, true];
+  for (const rematch of phases) {
+    const from = after && after.rematch === rematch ? after.other : seat;
+    const other = rematch && state.rematches === 0 ? state.ranked.length : nextOpponent(state, top, from, rematch);
+    if (other < state.ranked.length) {
+      return { seat, other, rematch };
+    }
+  }
+  return null;
+}
+
+function pair(state: Search, choice: Choice): void {
+  take(state, choice.other, true);
+  state.rematches -= choice.rematch ? 1 : 0;
+  state.pairings.push({ p1: state.ranked[choice.seat] as string, p2: state.ranked[choice.other] as string });
+}
+
+function unpair(state: Search, choice: Choice): void {
   state.pairings.pop();
-  state.used[other] = false;
-  return false;
+  state.rematches += choice.rematch ? 1 : 0;
+  take(state, choice.other, false);
 }
 
-function walk(ranked: readonly string[], history: PairingHistory, allowRematch: boolean): Pairing[] | null {
-  const state: Search = { ranked, used: ranked.map(() => false), pairings: [], history, allowRematch, steps: 0 };
-  return pairFrom(state, 0) ? state.pairings : null;
+/** Whether a pairing just made leaves the rest unpairable within the rules: a player only a rematch could seat. */
+const deadEnd = (state: Search) => state.rematches === 0 && stranded(state);
+
+/**
+ * Pairs the untaken seats top first: each takes the first new opponent below
+ * them, and a rematch only where no new one leads through. False if it cannot
+ * within its rematches and budget.
+ */
+function search(state: Search): boolean {
+  const choices: Choice[] = [];
+  let last: Choice | null = null;
+  let seat = nextFree(state, 0);
+  while (seat < state.ranked.length) {
+    if (!last) {
+      take(state, seat, true);
+    }
+    const choice = nextChoice(state, seat, last);
+    if (choice) {
+      pair(state, choice);
+      if (deadEnd(state)) {
+        unpair(state, choice);
+        last = choice;
+        continue;
+      }
+      choices.push(choice);
+      last = null;
+      seat = nextFree(state, seat + 1);
+      continue;
+    }
+    // Nothing left for this seat: undo the choice above it and try past that.
+    take(state, seat, false);
+    last = choices.pop() ?? null;
+    if (!last || state.steps >= state.budget) {
+      return false;
+    }
+    unpair(state, last);
+    ({ seat } = last);
+  }
+  return true;
 }
 
-/** Rematch-free if the field allows it; otherwise the fewest rematches the walk finds first. */
+interface Walk {
+  pairings: Pairing[] | null;
+  steps: number;
+}
+
+function walk(ranked: readonly string[], history: PairingHistory, rematches: number, budget: number): Walk {
+  const state = newSearch(ranked, history, rematches, budget);
+  return { pairings: search(state) ? state.pairings : null, steps: state.steps };
+}
+
+/** Rematch-free if the field allows it; otherwise the fewest rematches the walks find within the budget. */
 function pairRanked(ranked: readonly string[], history: PairingHistory): Pairing[] {
-  // Still prefers new opponents: with rematches allowed the walk keeps the ranked order,
-  // so a rematch is taken only where the strict pass found no way through.
-  return walk(ranked, history, false) ?? walk(ranked, history, true) ?? [];
+  const most = Math.floor(ranked.length / 2);
+  let left = STEP_BUDGET;
+  for (let rematches = 0; rematches < most && left > 0; rematches += 1) {
+    const found = walk(ranked, history, rematches, left);
+    if (found.pairings) {
+      return found.pairings;
+    }
+    left -= found.steps;
+  }
+  // Every seat may rematch, so the first way down pairs everyone; each still takes a new opponent where one is left.
+  return walk(ranked, history, most, Number.POSITIVE_INFINITY).pairings ?? [];
 }
 
 /**
