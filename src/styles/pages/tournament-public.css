@@ -327,7 +327,7 @@
   }
   .tm-public-pairings .tm-seat-link {
     flex: 0 1 auto;
-    min-height: 40px;
+    min-height: 44px;
   }
   .tm-public-pairings .tm-record {
     margin-left: 0;
@@ -341,7 +341,7 @@
   .tm-public-pairings td.tm-seat > .muted-cell {
     display: flex;
     align-items: center;
-    min-height: 40px;
+    min-height: 44px;
     padding-left: 22px;
   }
   .tm-public-pairings .has-decks td.tm-seat > .muted-cell {

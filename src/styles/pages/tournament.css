@@ -918,16 +918,30 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
     padding: 0 8px;
   }
 }
-/* Under a finger, every control is a 44px target. */
+/* Under a finger, every control is a 44px target, as HIG asks: the site's
+   38px fields and 40px buttons are sized for a pointer. The hero's links
+   stay text in the line and take their target from padding the margin
+   gives back. */
 @media (max-width: 640px), (pointer: coarse) {
   .tm-seat-link,
   .tm-small,
   .tm-check,
-  .tm-filter-bar .chip {
+  .tm-filter-bar .chip,
+  .tm-table-input,
+  .tm-page :is(.btn, .tm-input, .tm-select),
+  .tm-page .segmented button,
+  .tm-page .tm-clock-group button {
     min-height: 44px;
   }
-  .tm-table-input {
-    min-height: 44px;
+  .tm-page .search,
+  .tm-page .tl-picker .search {
+    height: 44px;
+  }
+  .tm-hero .hero-meta a,
+  .tm-bar-link {
+    display: inline-block;
+    padding-block: 12px;
+    margin-block: -12px;
   }
 }
 
