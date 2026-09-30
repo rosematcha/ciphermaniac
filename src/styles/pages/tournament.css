@@ -8,6 +8,11 @@
 .tm-narrow {
   max-width: 640px;
 }
+/* The pages mark secondary text .muted in some forty places; without this it
+   all drew at full ink, and the pages had one level of text where they meant two. */
+.tm-page .muted {
+  color: var(--muted);
+}
 
 /* ---------- Page rhythm ---------- */
 .tm-page .hero {
@@ -412,10 +417,17 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   gap: var(--space-2);
 }
 .tm-hint {
-  font-size: var(--text-base);
-}
-.tm-hint {
   margin-left: auto;
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+/* Once the bar wraps, the hint starts its own line rather than hanging at the right. */
+@media (max-width: 1100px) {
+  .tm-filter-bar .tm-hint {
+    flex-basis: 100%;
+    margin-left: 0;
+    font-size: var(--text-sm);
+  }
 }
 .tm-link {
   flex: 1 1 280px;
