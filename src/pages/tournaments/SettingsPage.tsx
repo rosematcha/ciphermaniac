@@ -61,9 +61,9 @@ function Identity(props: { user: Me; providers: readonly Provider[] }) {
             <Show
               when={props.user.providers.includes(provider)}
               fallback={
-                <A class='tm-link-inline' href={linkUrl(provider)}>
+                <a class='tm-link-inline' href={linkUrl(provider)} rel='external'>
                   Link {PROVIDER_NAMES[provider]}
-                </A>
+                </a>
               }
             >
               <span class='muted'>{PROVIDER_NAMES[provider]} linked</span>
