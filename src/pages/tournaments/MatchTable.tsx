@@ -87,7 +87,10 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
       >
         {playerId => (
           <span class='tm-seat-inner'>
-            <span class='tm-mark' classList={{ 'is-win': mark() === 'W', 'is-unconfirmed': shown().unconfirmed }}>
+            <span
+              class='tm-mark'
+              classList={{ 'is-win': mark() === 'W', 'is-loss': mark() === 'L', 'is-unconfirmed': shown().unconfirmed }}
+            >
               {mark()}
               <Show when={mark() && shown().unconfirmed}>
                 <span class='sr-only'> (not yet confirmed)</span>

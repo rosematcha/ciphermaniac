@@ -248,7 +248,7 @@ body[data-mode='dark']:has(.tm-page) {
   color: var(--muted);
   font-weight: 500;
 }
-.tm-page .data tbody tr:is(:hover, :focus-within) .btn-ghost {
+.tm-page .data tbody tr:is(:hover, :has(:focus-visible)) .btn-ghost {
   color: var(--fg);
 }
 .tm-page .tm-box-bar .btn-ghost {
@@ -670,8 +670,8 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   height: 44px;
 }
 /* A decided table recedes: its loser and its result go to the secondary
-   label, the winner keeps the ink and the weight. */
-.tm-matches .tm-seat:has(.tm-mark:not(.is-win):not(:empty)) .tm-seat-link {
+   label, the winner keeps the ink and the weight; a tie loses no one. */
+.tm-matches .tm-seat:has(.tm-mark.is-loss) .tm-seat-link {
   color: var(--muted);
 }
 /* What a player reported, beside their name: a marigold edge while it can be
@@ -974,8 +974,9 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
-/* A table still playing is what staff are there for: full ink, and a dot in
-   marigold, or in the problem ink when its reports need settling. */
+/* A table still playing is what staff are there for: full ink and a dot;
+   marigold only once a report waits on them, the problem ink when reports
+   need settling. */
 .tm-result-label.is-open {
   font-weight: 600;
   white-space: nowrap;
@@ -988,8 +989,11 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   height: 7px;
   margin-right: 7px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--muted);
   vertical-align: 1px;
+}
+.tm-result-label.is-reported::before {
+  background: var(--accent);
 }
 .tm-result-label.is-reported {
   color: var(--accent-ink);
@@ -1002,7 +1006,8 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 }
 .tm-result-sub {
   font-weight: 400;
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
+  white-space: nowrap;
   color: var(--muted);
 }
 .tm-result-acts {
@@ -1016,15 +1021,16 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   display: inline-flex;
   min-width: 68px;
 }
-/* Accepting a lone report is the likely press on its row, so it is tinted,
-   not outlined: one step up from the text actions, well under Record. */
+/* Accepting a lone report is the likely press on its row, so it is drawn
+   with a marigold edge: one step up from the text actions, well under Record. */
 .tm-accept {
-  background: color-mix(in srgb, var(--accent-fill) 22%, var(--surface));
-  color: var(--fg);
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 600;
 }
 .tm-accept:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-fill) 38%, var(--surface));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
 .tm-result.is-asking .tm-result-label {
   white-space: nowrap;
@@ -1046,7 +1052,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   height: 7px;
   margin-right: 7px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--muted);
   vertical-align: 1px;
 }
 /* A picked deck's name starts in one place, whether its deck has one sprite
@@ -1060,7 +1066,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 }
 @media (min-width: 641px) {
   .tm-matches.has-extra th.tm-extra-col {
-    width: 320px;
+    width: 340px;
   }
 }
 /* Below a wide screen, fixed columns cut names to a letter, so a pairing
