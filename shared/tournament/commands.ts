@@ -380,7 +380,21 @@ function deleteRound(tournament: Tournament, category: PodCategory): CommandResu
     return fail('Clear this round’s results before deleting it');
   }
   const rounds = pod.rounds.slice(0, -1);
-  return done(withPod(tournament, { ...pod, rounds, cut: rounds.some(r => r.kind === 'elimination') ? pod.cut : 0 }));
+  const next = withPod(tournament, { ...pod, rounds, cut: rounds.some(r => r.kind === 'elimination') ? pod.cut : 0 });
+  return done(rounds.length > 0 ? next : onTime(next, pod));
+}
+
+/** With no round left in the pod, nobody in it joined after one was paired. */
+function onTime(tournament: Tournament, pod: Pod): Tournament {
+  const inPod = new Set(pod.playerIds);
+  const players = tournament.players.map(player => {
+    if (!player.late || !inPod.has(player.id)) {
+      return player;
+    }
+    const { late: _late, ...onTimeNow } = player;
+    return onTimeNow;
+  });
+  return { ...tournament, players };
 }
 
 function outcomeError(round: Round, match: Match, outcome: Outcome): string | null {

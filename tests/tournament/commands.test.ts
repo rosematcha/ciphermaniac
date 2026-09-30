@@ -147,6 +147,14 @@ test('deletes an unreported round, not a reported one', () => {
   assert.match(attempt(reportAll(t), { type: 'deleteRound', pod: 'mixed' }), /Clear this round/);
 });
 
+test('a player who joined during round 1 is on time once round 1 is deleted', () => {
+  let t = run(withPlayers(4), { type: 'pairRound', pod: 'mixed' });
+  t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Comer', id: '999' } });
+  assert.equal(t.players.find(p => p.id === '999')?.late, true);
+  t = run(t, { type: 'deleteRound', pod: 'mixed' });
+  assert.equal(t.players.find(p => p.id === '999')?.late, undefined);
+});
+
 test('a top cut seeds from standings and plays down to a winner', () => {
   let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'mixed' }));
   t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
