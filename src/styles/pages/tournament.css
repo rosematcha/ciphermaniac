@@ -1373,6 +1373,17 @@ body:has(.tm-sheet) {
     flex-wrap: wrap;
     margin-right: -8px;
   }
+  /* A question asked in place takes its own line, and wraps, rather than squeezing the name. */
+  .tm-roster tr:has(.tm-confirm) {
+    grid-template-areas:
+      'who fixed'
+      'rounds rounds'
+      'actions actions'
+      'deck deck';
+  }
+  .tm-roster .tm-confirm-label {
+    white-space: normal;
+  }
 }
 
 /* ---------- Standings ---------- */
