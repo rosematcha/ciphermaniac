@@ -145,7 +145,8 @@ function pod(value: unknown): Pod {
     rounds: arr(o.rounds, LIMITS.rounds).map(round),
     cut: int(o.cut, 0, 512),
     playoff3rd4th: o.playoff3rd4th === true,
-    startingTable: int(o.startingTable, 0, 100_000)
+    startingTable: int(o.startingTable, 0, 100_000),
+    ...(o.cutOf === undefined ? {} : { cutOf: oneOf(o.cutOf, POD_CATEGORIES) })
   };
 }
 

@@ -17,8 +17,8 @@ import {
   Switch,
   untrack
 } from 'solid-js';
-import { activeIds } from '../../../shared/tournament/rounds';
-import { type Pod, POD_LABELS, type PodCategory } from '../../../shared/tournament/types';
+import { activeIds, cutPodsOf, latestRound, livePods, roundComplete } from '../../../shared/tournament/rounds';
+import type { Pod, PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
 import { Tabs } from '../../components/Tabs';
 import { errorText, joinStaff, type Manage, saveSettings } from '../../lib/tournament/api';
@@ -30,6 +30,7 @@ import {
   nextStep,
   type NextStep,
   plannedRounds,
+  podLabel,
   type PodProgress,
   podProgress,
   shownDecks,
@@ -141,8 +142,13 @@ function RoundEndStep(props: {
   ready: boolean;
   step: RoundEnd;
   cuts: readonly DivisionCut[];
+  /** The pod's divisions have begun their top cuts: its Swiss rounds are over, and only the others' cuts are left. */
+  swissOver: boolean;
+  /** Another pod's round is still playing, so ending the event is not the step to take. */
+  othersPlaying: boolean;
 }) {
-  const canCut = () => props.step === 'cut' || props.cuts.some(c => c.active >= 4);
+  const open = () => props.cuts.filter(c => !c.started);
+  const canCut = () => props.step === 'cut' || open().some(c => c.active >= 4);
   return (
     <Show
       when={props.ready}
@@ -153,11 +159,19 @@ function RoundEndStep(props: {
       }
     >
       <span class='tm-next-acts'>
-        <PairButton state={props.state} pod={props.pod} label={props.label} ready primary={props.step === 'pair'} />
-        <Show when={canCut()}>
-          <TopCutControl state={props.state} pod={props.pod} cuts={props.cuts} primary={props.step === 'cut'} />
+        <Show when={!props.swissOver}>
+          <PairButton state={props.state} pod={props.pod} label={props.label} ready primary={props.step === 'pair'} />
         </Show>
-        <EndEvent state={props.state} manage={props.manage} primary={props.step === 'end'} />
+        <Show when={canCut()}>
+          <TopCutControl
+            state={props.state}
+            pod={props.pod}
+            cuts={open()}
+            divided={props.cuts.length > 1}
+            primary={props.step === 'cut'}
+          />
+        </Show>
+        <EndEvent state={props.state} manage={props.manage} primary={props.step === 'end' && !props.othersPlaying} />
       </span>
     </Show>
   );
@@ -183,14 +197,29 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
   const cuts = createMemo(() =>
     props.pod ? divisionCuts(props.manage.tournament, props.pod, divisionLookup(props.manage.tournament)) : []
   );
-  // The step's cut is the one the top cut control offers first: the last division's, Masters where it plays.
+  const swissOver = () => (props.pod ? cutPodsOf(props.manage.tournament, props.pod).length > 0 : false);
+  // A division's bracket, or another pod paired apart, still playing: the event is not over for them.
+  const othersPlaying = () =>
+    livePods(props.manage.tournament).some(p => {
+      const round = latestRound(p);
+      return p.category !== props.pod?.category && round !== undefined && !roundComplete(round);
+    });
+  // The step's cut is the one the top cut control offers first: the last division's left to cut, Masters where it plays.
   const plan = () =>
     props.pod
-      ? { rounds: plannedRounds(props.pod, props.manage.settings.roundCap), cut: cuts().at(-1)?.cut ?? 0 }
+      ? {
+          rounds: plannedRounds(props.pod, props.manage.settings.roundCap),
+          cut:
+            cuts()
+              .filter(c => !c.started)
+              .at(-1)?.cut ?? 0
+        }
       : null;
   const status = () => {
     const { tom } = props;
-    const extra = tom ? [tomPart(tom)] : waiting() ? [`${waiting()} not seated`] : [];
+    const extra = tom
+      ? [tomPart(tom)]
+      : [...(waiting() ? [`${waiting()} not seated`] : []), ...(swissOver() ? ['top cuts under way'] : [])];
     const rounds = tom ? null : (plan()?.rounds ?? null);
     // A console that cannot reach the site says so, rather than showing an old round as the current one.
     const stale = props.state.loadError() ? ['not updating'] : [];
@@ -208,8 +237,9 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
   /** A Swiss round's end, as RoundEndStep lays it out; round one and the top cut's rounds only pair. */
   const roundEnd = () => {
     const s = step();
-    if (s.kind === 'decide') {
-      return { ...s, end: (s.cut > 0 ? 'cut' : 'end') as RoundEnd };
+    if (s.kind === 'decide' || (s.kind === 'pair' && swissOver())) {
+      const cut = plan()?.cut ?? 0;
+      return { ...s, end: (cut > 0 ? 'cut' : 'end') as RoundEnd };
     }
     return s.kind === 'pair' && progress().round?.kind === 'swiss' ? { ...s, end: 'pair' as RoundEnd } : null;
   };
@@ -257,6 +287,8 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
                 ready={s().ready}
                 step={s().end}
                 cuts={cuts()}
+                swissOver={swissOver()}
+                othersPlaying={othersPlaying()}
               />
             )}
           </Match>
@@ -266,7 +298,7 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
             )}
           </Match>
           <Match when={step().kind === 'close'}>
-            <EndEvent state={props.state} manage={props.manage} primary />
+            <EndEvent state={props.state} manage={props.manage} primary={!othersPlaying()} />
           </Match>
         </Switch>
       }
@@ -286,7 +318,10 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
   const setTab = (value: Tab) => setParams({ tab: value === 'round' ? undefined : value }, { replace: true });
   const [podChoice, setPodChoice] = createSignal<PodCategory | null>(null);
   const pods = () => props.manage.tournament.pods;
-  const pod = createMemo(() => pods().find(p => p.category === podChoice()) ?? pods()[0]);
+  // Until one is picked, the first pod still in play: a pod whose divisions have cut has nothing left to pair.
+  const pod = createMemo(
+    () => pods().find(p => p.category === podChoice()) ?? livePods(props.manage.tournament)[0] ?? pods()[0]
+  );
   const names = createMemo(() => namesById(props.manage.tournament));
   const divisionOf = createMemo(() => divisionLookup(props.manage.tournament));
   // A TOM event's file is linked for as long as the console is open, whatever the tab.
@@ -305,7 +340,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
       <Show when={tom}>{link => <TomStrip link={link()} />}</Show>
       <Show when={pods().length > 1 && (tab() === 'round' || tab() === 'standings')}>
         <Segmented
-          options={pods().map(p => ({ value: p.category, label: POD_LABELS[p.category] }))}
+          options={pods().map(p => ({ value: p.category, label: podLabel(p) }))}
           selected={pod()?.category ?? 'masters'}
           onSelect={setPodChoice}
           ariaLabel='Division'

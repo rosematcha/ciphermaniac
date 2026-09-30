@@ -17,19 +17,20 @@
 
 import { createMemo, createSignal, For, Index, onCleanup, onMount, Show } from 'solid-js';
 import { swissStandings } from '../../../shared/tournament/standings';
-import { type Pod, POD_LABELS, type Round } from '../../../shared/tournament/types';
+import type { Pod, Round } from '../../../shared/tournament/types';
 import type { TournamentView } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import {
   eventStatus,
   firstRoundTime,
   namesById,
+  podLabel,
   recordsBefore,
   roundCapOf,
   seatMark,
   shownOutcome
 } from '../../lib/tournament/present';
-import { latestRound, sortMatches } from '../../../shared/tournament/rounds';
+import { latestRound, livePods, sortMatches, withSwiss } from '../../../shared/tournament/rounds';
 import { Clock } from './Clock';
 import { createNow } from './now';
 import { QrCode } from './QrCode';
@@ -124,12 +125,16 @@ const MARK_WORDS: Record<string, string> = { W: 'Won', L: 'Lost', T: 'Tie' };
 /** A pod's tables in order, table number first. */
 function TableRows(props: { view: TournamentView; pod: Pod; round: Round; heading: boolean }) {
   const names = createMemo(() => namesById(props.view.tournament));
-  const records = createMemo(() => recordsBefore(props.pod, props.round));
-  const seeds = createMemo(() =>
-    props.round.kind === 'elimination'
-      ? new Map(swissStandings(props.pod, props.view.tournament.players).map(row => [row.playerId, row.place]))
-      : new Map<string, number>()
-  );
+  // A division's top cut reads its records and seeds from the Swiss rounds that seeded it, among its own players.
+  const played = createMemo(() => withSwiss(props.view.tournament, props.pod));
+  const records = createMemo(() => recordsBefore(played(), props.round));
+  const seeds = createMemo(() => {
+    if (props.round.kind !== 'elimination') {
+      return new Map<string, number>();
+    }
+    const only = props.pod.cutOf ? { only: new Set(props.pod.playerIds) } : {};
+    return new Map(swissStandings(played(), props.view.tournament.players, only).map(row => [row.playerId, row.place]));
+  });
   /** W, L or T by a seat once its table has a result; a bye or a missed round is not a table. */
   const mark = (match: Round['matches'][number], seat: 1 | 2) =>
     match.p2 === null ? '' : seatMark(shownOutcome(match, props.pod, props.round, props.view.pending).outcome, seat);
@@ -145,7 +150,7 @@ function TableRows(props: { view: TournamentView; pod: Pod; round: Round; headin
   return (
     <section class='tm-screen-pod'>
       <Show when={props.heading}>
-        <h2 class='tm-screen-pod-head'>{POD_LABELS[props.pod.category]}</h2>
+        <h2 class='tm-screen-pod-head'>{podLabel(props.pod)}</h2>
       </Show>
       <ol class='tm-screen-tables'>
         <For each={sortMatches(props.round.matches)}>
@@ -208,7 +213,7 @@ export function BigScreen(props: { view: TournamentView }) {
   const now = createNow();
   const [controls, setControls] = createSignal(false);
   const url = () => `${location.origin}/t/${props.view.code}`;
-  const pods = () => props.view.tournament.pods.filter(pod => latestRound(pod));
+  const pods = () => livePods(props.view.tournament).filter(pod => latestRound(pod));
   const lead = () => pods()[0];
   // An ended event has no clock to run down, whatever it was left on.
   const clockPod = () => (props.view.settings.finished ? undefined : lead());

@@ -15,7 +15,7 @@ import { useSearchParams } from '@solidjs/router';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { divisionFor, eventSeason } from '../../../shared/tournament/divisions';
 import { canUndrop } from '../../../shared/tournament/commands';
-import { hasPlayed, hasStarted, podOf } from '../../../shared/tournament/rounds';
+import { hasPlayed, hasStarted, playerPod, podOf } from '../../../shared/tournament/rounds';
 import { DIVISION_LABELS, type Player, playerName, type Tournament } from '../../../shared/tournament/types';
 import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
 import { type Manage, releaseReporter } from '../../lib/tournament/api';
@@ -202,9 +202,9 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
   );
 }
 
-/** A player's results so far, one mark per round of their pod. */
+/** A player's results so far, one mark per round they could play: their pod's, and their division's top cut's. */
 function marksOf(tournament: Tournament, player: Player): { marks: string[]; rounds: number } {
-  const pod = podOf(tournament, player.id);
+  const pod = playerPod(tournament, player.id);
   if (!pod) {
     return { marks: [], rounds: 0 };
   }

@@ -14,7 +14,6 @@
 import { createMemo, Index, type JSX, Show } from 'solid-js';
 import { percentLabel, recordLabel, type Standing } from '../../../shared/tournament/standings';
 import type { Division, Pod, Tournament } from '../../../shared/tournament/types';
-import { recommendedStructure } from '../../../shared/tournament/structure';
 import { cutSplit, divisionHeading, podStandings } from '../../lib/tournament/present';
 import { DeckIcons } from './DeckIcons';
 
@@ -46,16 +45,6 @@ export function StandingsTable(props: TableProps) {
   const hasDecks = () => Object.keys(props.decks).length > 0;
   const matches = (id: string) =>
     !props.query?.trim() || (props.names.get(id) ?? '').toLowerCase().includes(props.query.trim().toLowerCase());
-  /**
-   * The cut this division plays to: the one set, or before it is, the one its
-   * attendance calls for while enough are still in, as the console offers it
-   * (see divisionCuts).
-   */
-  const cutOf = (rows: readonly Standing[]) => {
-    const { cut } = recommendedStructure(rows.length);
-    return props.pod.cut || (cut <= rows.filter(row => !row.dropped).length ? cut : 0);
-  };
-  const cutStarted = () => props.pod.rounds.some(round => round.kind === 'elimination');
   const several = () => groups().length > 1;
   return (
     <>
@@ -66,7 +55,9 @@ export function StandingsTable(props: TableProps) {
           boxes, the search in their bar and the scroll all stay where they were. */}
       <Index each={groups()}>
         {(group, index) => {
-          const cut = createMemo(() => cutOf(group().rows));
+          // Each division its own: the cut it plays to, and whether it has started (see podStandings).
+          const cut = () => group().cut;
+          const cutStarted = () => group().cutStarted;
           const hidden = (row: Standing) => Boolean(props.hideCutDecks) && cutStarted() && row.place <= cut();
           const split = () => (props.tiebreakers && !cutStarted() ? cutSplit(group().rows, cut()) : null);
           return (

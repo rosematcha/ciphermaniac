@@ -120,6 +120,13 @@ export interface Pod {
   /** Whether the cut plays for third place. */
   playoff3rd4th: boolean;
   startingTable: number;
+  /**
+   * Set on a pod that plays one division's top cut out of a pod of several:
+   * divisions played together share only the Swiss rounds, and each cuts on
+   * its own (Tournament Rules Handbook §5.2.1). Names the pod whose Swiss
+   * standings seed it; its rounds are numbered on from that pod's.
+   */
+  cutOf?: PodCategory;
 }
 
 export interface TournamentInfo {

@@ -16,7 +16,7 @@ import { createEffect, createSignal, For, Match, Show, Switch } from 'solid-js';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
 import type { PlayerResult } from '../../../shared/tournament/reports';
 import { recordLabel, sideResult } from '../../../shared/tournament/standings';
-import { hasStarted, podOf } from '../../../shared/tournament/rounds';
+import { hasStarted, podOf, withSwiss } from '../../../shared/tournament/rounds';
 import type { Pod, Round, Match as TableMatch } from '../../../shared/tournament/types';
 import { isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
 import { errorText, identifyPlayer, reportAsPlayer } from '../../lib/tournament/api';
@@ -253,7 +253,9 @@ function MatchLine(props: Props & { me: string; found: Found; report: Report; op
             <button type='button' class='tm-seat-link' onClick={() => props.onPlayer?.(id())}>
               <span class='tm-name'>{names().get(id())}</span>
             </button>{' '}
-            <span class='muted num'>{recordsBefore(props.found.pod, props.found.round).get(id())}</span>
+            <span class='muted num'>
+              {recordsBefore(withSwiss(props.view.tournament, props.found.pod), props.found.round).get(id())}
+            </span>
           </span>
           <span class='tm-you-end'>
             <Show

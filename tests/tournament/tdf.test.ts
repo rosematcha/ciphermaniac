@@ -17,6 +17,7 @@ import { swissStandings } from '../../shared/tournament/standings.ts';
 import { parseTdf, wasFinalized, writeTdf } from '../../shared/tournament/tdf.ts';
 import type { Pod, Tournament } from '../../shared/tournament/types.ts';
 import { readTournament } from '../../shared/tournament/validate.ts';
+import { juniorsCutApart } from '../__utils__/divisionCuts.ts';
 
 const fixture = (name: string) => readFileSync(new URL(`../fixtures/tdf/${name}`, import.meta.url), 'utf8');
 const CUP = fixture('cup-finalized.tdf');
@@ -133,6 +134,23 @@ test('an event run on the site exports a file that reads back the same', () => {
     ['800', '801', '802', '803', '804']
   );
   assert.equal(writeTdf(read), written, 'a file this site wrote also round-trips');
+});
+
+test('divisions that cut apart are written as pods of their own, and read back as those cuts', () => {
+  const t = juniorsCutApart();
+  const written = writeTdf(t);
+  assert.match(written, /<pod category="10" stage="0">/);
+  assert.match(written, /<pod category="0" stage="0">/);
+  assert.match(written, /<categorycut key="0">\s*<options>\s*<value>0<\/value>\s*<value>4<\/value>/);
+  const read = parseTdf(written);
+  assert.deepEqual(
+    read.pods.map(p => [p.category, p.cutOf ?? null]),
+    [
+      ['mixed', null],
+      ['junior', 'mixed']
+    ]
+  );
+  assert.equal(writeTdf(read), written, 'and round-trips');
 });
 
 test('refuses codes it does not know rather than rewriting them', () => {

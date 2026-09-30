@@ -23,7 +23,8 @@
  */
 
 import { divisionLookup } from './divisions.js';
-import { hasStarted } from './rounds.js';
+import { divisionsOf } from './podding.js';
+import { cutPodOf, hasStarted } from './rounds.js';
 import { placeFinals, swissStandings } from './standings.js';
 import {
   type Division,
@@ -233,7 +234,29 @@ function readPod(element: XmlElement): Pod {
 /** Top-cut sizes live in `<finalsoptions>`, keyed by division; a pod takes its division's. */
 function applyCuts(pods: Pod[], finals: XmlElement | undefined): Pod[] {
   const cuts = new Map(children(finals, 'categorycut').map(cut => [attr(cut, 'key'), int(childText(cut, 'cut'))]));
-  return pods.map(pod => ({ ...pod, cut: cuts.get(CATEGORY_CODES[pod.category]) ?? 0 }));
+  return linkCuts(pods.map(pod => ({ ...pod, cut: cuts.get(CATEGORY_CODES[pod.category]) ?? 0 })));
+}
+
+/**
+ * A pod of one division that plays only single-elimination rounds, all its
+ * players from a pod that plays several divisions, is that division's top
+ * cut out of it (see Pod.cutOf), as the site writes one. How TOM itself
+ * writes a combined pod's cuts is not known: no file seen has one.
+ */
+function linkCuts(pods: Pod[]): Pod[] {
+  return pods.map(pod => {
+    const cutOnly =
+      isDivision(pod.category) && pod.rounds.length > 0 && pod.rounds.every(r => r.kind === 'elimination');
+    const from =
+      cutOnly &&
+      pods.find(
+        other =>
+          !isDivision(other.category) &&
+          divisionsOf(other.category).includes(pod.category as Division) &&
+          pod.playerIds.every(id => other.playerIds.includes(id))
+      );
+    return from ? { ...pod, cutOf: from.category } : pod;
+  });
 }
 
 /** The sections every file TOM saves has, even before anyone registers. */
@@ -483,7 +506,8 @@ function writePod(t: Tournament, pod: Pod, finalized: boolean): string[] {
 /** Division of each player as the event placed them: their pod's, or for a combined pod, `divisionOf`. */
 function divisionPlayers(t: Tournament, divisionOf: (id: string) => Division): Map<Division, Pod[]> {
   const pods = new Map<Division, Pod[]>();
-  for (const pod of t.pods) {
+  // A division's top cut is played by players its Swiss pod already counts.
+  for (const pod of t.pods.filter(p => !p.cutOf)) {
     for (const division of DIVISIONS) {
       const ids = pod.playerIds.filter(id =>
         isDivision(pod.category) ? pod.category === division : divisionOf(id) === division
@@ -502,7 +526,7 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
     const places = (byDivision.get(division) ?? []).flatMap(pod => {
       const full = t.pods.find(p => p.category === pod.category) ?? pod;
       const only = new Set(pod.playerIds);
-      return placeFinals(full, swissStandings(full, t.players, { only }));
+      return placeFinals(cutPodOf(t, full, division) ?? full, swissStandings(full, t.players, { only }));
     });
     const code = CATEGORY_CODES[division];
     const rows = places.map(row => `<player id="${esc(row.playerId)}" place="${row.place}" />`);
@@ -526,21 +550,25 @@ function writeFinalsOptions(t: Tournament, divisionOf: (id: string) => Division)
   if (t.passthrough?.finalsOptions) {
     return t.passthrough.finalsOptions.split('\n');
   }
-  const cuts = [...divisionPlayers(t, divisionOf)].flatMap(([division, pods]) => [
-    `<categorycut key="${CATEGORY_CODES[division]}">`,
-    ...block(1, [
-      '<options>',
-      ...block(1, [tag('value', 0), ...(pods[0]?.cut ? [tag('value', pods[0].cut)] : [])]),
-      '</options>',
-      tag('cut', pods[0]?.cut ?? 0),
-      tag(
-        'playercount',
-        pods.reduce((sum, pod) => sum + pod.playerIds.length, 0)
-      ),
-      tag('paired3rd4th', String(pods[0]?.playoff3rd4th ?? false))
-    ]),
-    '</categorycut>'
-  ]);
+  const cuts = [...divisionPlayers(t, divisionOf)].flatMap(([division, pods]) => {
+    // The division's own cut: the pod it plays its top cut in when it shares its Swiss pod (see Pod.cutOf).
+    const cut = t.pods.find(p => p.cutOf && p.category === division) ?? pods[0];
+    return [
+      `<categorycut key="${CATEGORY_CODES[division]}">`,
+      ...block(1, [
+        '<options>',
+        ...block(1, [tag('value', 0), ...(cut?.cut ? [tag('value', cut.cut)] : [])]),
+        '</options>',
+        tag('cut', cut?.cut ?? 0),
+        tag(
+          'playercount',
+          pods.reduce((sum, pod) => sum + pod.playerIds.length, 0)
+        ),
+        tag('paired3rd4th', String(cut?.playoff3rd4th ?? false))
+      ]),
+      '</categorycut>'
+    ];
+  });
   return cuts.length
     ? ['<finalsoptions>', ...block(1, cuts), '</finalsoptions>']
     : ['<finalsoptions>', '</finalsoptions>'];

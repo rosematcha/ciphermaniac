@@ -5,6 +5,7 @@
  */
 
 import { divisionLookup } from '../../shared/tournament/divisions.ts';
+import { juniorsCutApart } from '../__utils__/divisionCuts.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test, { describe } from 'node:test';
@@ -34,6 +35,7 @@ import {
   nextStep,
   outcomeLabel,
   plannedRounds,
+  podLabel,
   podProgress,
   podStandings,
   recordsBefore,
@@ -234,6 +236,24 @@ test('the public copy names only what the room may see of each player', () => {
   });
 });
 
+test('divisions that played together each take their places from their own cut', () => {
+  const t = juniorsCutApart();
+  const mixed = t.pods.find(p => p.category === 'mixed') as Pod;
+  const juniorCut = t.pods.find(p => p.category === 'junior') as Pod;
+  const groups = podStandings(t, mixed, divisionLookup(t));
+  assert.deepEqual(
+    groups.map(g => [g.division, g.cut, g.cutStarted, g.rows.length]),
+    [
+      ['junior', 4, true, 4],
+      ['masters', 0, false, 4]
+    ]
+  );
+  const final = juniorCut.rounds.at(-1)?.matches[0];
+  assert.equal(groups[0]?.rows[0]?.playerId, final?.p1, 'the Juniors’ champion first');
+  assert.deepEqual(podStandings(t, juniorCut, divisionLookup(t)), [groups[0]], 'the cut reads as its division');
+  assert.equal(podLabel(juniorCut), 'Juniors top cut');
+});
+
 test('deck sprites are drawn only while the event tracks archetypes', () => {
   const decks = { '1': 'Gardevoir' };
   assert.deepEqual(shownDecks({ decks, settings: { ...DEFAULT_SETTINGS, deckVisibility: 'after' } }), decks);
@@ -368,11 +388,11 @@ test('the rounds are Play! Pokémon’s structure for the attendance, held to th
 test('each division cuts by its own attendance, and not past the players still in', () => {
   assert.deepEqual(
     divisionCuts(fieldOf(16), podOf(16), () => 'masters'),
-    [{ division: 'masters', active: 16, cut: 4 }]
+    [{ division: 'masters', active: 16, cut: 4, started: false }]
   );
   assert.deepEqual(
     divisionCuts(fieldOf(24, 17), podOf(24), () => 'masters'),
-    [{ division: 'masters', active: 7, cut: 0 }],
+    [{ division: 'masters', active: 7, cut: 0, started: false }],
     'drops left too few for a top 8'
   );
   // 20 Masters and 5 Juniors played together: a top 4 of Masters, no cut for Juniors.
@@ -380,8 +400,8 @@ test('each division cuts by its own attendance, and not past the players still i
   assert.deepEqual(
     divisionCuts(fieldOf(25), podOf(25), id => (juniors.has(id) ? 'junior' : 'masters')),
     [
-      { division: 'junior', active: 5, cut: 0 },
-      { division: 'masters', active: 20, cut: 4 }
+      { division: 'junior', active: 5, cut: 0, started: false },
+      { division: 'masters', active: 20, cut: 4, started: false }
     ]
   );
 });
