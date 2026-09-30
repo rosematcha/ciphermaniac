@@ -180,9 +180,6 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             Reinstate
           </button>
         </Show>
-        <Show when={dropped() !== null && dropped() !== latest()}>
-          <span class='muted-cell'>Dropped after round {dropped()}</span>
-        </Show>
         <Show when={props.manage.settings.playerReporting && dropped() === null}>
           <ConfirmAction
             label='Reset reporting'
@@ -231,7 +228,8 @@ function PlayerRow(props: RowProps) {
   const sub = () =>
     [
       sanctioned() ? props.player.id : '',
-      sanctioned() ? DIVISION_LABELS[divisionFor(props.player.birthDate, props.season)] : ''
+      sanctioned() ? DIVISION_LABELS[divisionFor(props.player.birthDate, props.season)] : '',
+      props.player.droppedAfter !== null ? `dropped after round ${props.player.droppedAfter}` : ''
     ]
       .filter(Boolean)
       .join(' · ');
@@ -260,14 +258,7 @@ function PlayerRow(props: RowProps) {
       <Show when={decksEnabled(props.manage.settings)} fallback={<DeckOffCell />}>
         <DeckCell {...props} />
       </Show>
-      <Show
-        when={swiss()}
-        fallback={
-          <td class='tm-extra-col muted-cell'>
-            <Show when={props.player.droppedAfter !== null}>Dropped after round {props.player.droppedAfter}</Show>
-          </td>
-        }
-      >
+      <Show when={swiss()} fallback={<td class='tm-extra-col' />}>
         <FixedTableCell state={props.state} player={props.player} />
         <PlayerActions state={props.state} manage={props.manage} player={props.player} />
       </Show>
@@ -336,7 +327,7 @@ export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
                 </th>
                 <Show when={swiss()}>
                   <th class='num' title='Static seating: this player sits at the same table every round'>
-                    Table
+                    Fixed table
                   </th>
                 </Show>
                 <th>

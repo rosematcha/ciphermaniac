@@ -140,6 +140,20 @@
     flex-basis: 100%;
     max-width: none;
   }
+  .tm-identify .btn {
+    justify-content: center;
+  }
+  .tm-history .tm-seat-link {
+    font-size: var(--text-base);
+  }
+  /* A sheet's opponent is what it is read for: the name wraps rather than
+     giving way to a record the sheet already sums up above. */
+  .tm-history .tm-name {
+    white-space: normal;
+  }
+  .tm-history .tm-record {
+    display: none;
+  }
 }
 
 /* ---------- Pairings and standings: one box each ---------- */
@@ -228,6 +242,7 @@
   font-size: var(--text-base);
 }
 .tm-sheet-body {
+  overscroll-behavior: contain;
   display: grid;
   align-content: start;
   gap: var(--space-3);
@@ -257,7 +272,7 @@
   font-weight: 700;
 }
 .tm-sheet-stats dt {
-  font-size: var(--text-2xs);
+  font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: var(--tracking-micro);
   text-transform: uppercase;
@@ -265,6 +280,19 @@
 }
 .tm-history thead th {
   position: static;
+  font-size: var(--text-xs);
+}
+/* Fixed columns, so the opponent's name gives way rather than pushing the
+   result out of the sheet on a phone. */
+.tm-history {
+  table-layout: fixed;
+  width: 100%;
+}
+.tm-history th.tm-table-col {
+  width: 64px;
+}
+.tm-history th:last-child {
+  width: 76px;
 }
 .tm-history .tm-seat-link {
   width: 100%;
@@ -327,7 +355,7 @@
   }
   .tm-public-pairings .tm-seat-link {
     flex: 0 1 auto;
-    min-height: 40px;
+    min-height: 44px;
   }
   .tm-public-pairings .tm-record {
     margin-left: 0;
@@ -341,7 +369,7 @@
   .tm-public-pairings td.tm-seat > .muted-cell {
     display: flex;
     align-items: center;
-    min-height: 40px;
+    min-height: 44px;
     padding-left: 22px;
   }
   .tm-public-pairings .has-decks td.tm-seat > .muted-cell {

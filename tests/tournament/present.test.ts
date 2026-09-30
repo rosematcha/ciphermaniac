@@ -7,14 +7,15 @@
 import { divisionLookup } from '../../shared/tournament/divisions.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import test from 'node:test';
+import test, { describe } from 'node:test';
 
 import { applyCommand, type Command } from '../../shared/tournament/commands.ts';
 import { emptyTournament } from '../../shared/tournament/create.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
 import { recommendedStructure } from '../../shared/tournament/structure.ts';
 import { parseTdf } from '../../shared/tournament/tdf.ts';
-import type { Pod, Round, Tournament } from '../../shared/tournament/types.ts';
+import type { PlayerReport } from '../../shared/tournament/reports.ts';
+import type { Match, Pod, Round, Tournament } from '../../shared/tournament/types.ts';
 import { assignKeys, DEFAULT_SETTINGS, publicTournament } from '../../shared/tournament/view.ts';
 import { tdfFilename, tdfText } from '../../src/lib/tournament/exportTdf.ts';
 import {
@@ -31,6 +32,7 @@ import {
   namesById,
   nextStep,
   ordinal,
+  outcomeLabel,
   plannedRounds,
   podProgress,
   podStandings,
@@ -42,6 +44,7 @@ import {
   seatMark,
   shownDecks,
   shownOutcome,
+  staffReport,
   statusParts,
   unseated
 } from '../../src/lib/tournament/present.ts';
@@ -434,4 +437,68 @@ test('places read as ordinals and results as the pairings show them', () => {
   assert.equal(RESULT_WORDS.p1, '1–0');
   assert.equal(RESULT_WORDS['double-loss'], 'Double loss');
   assert.equal(RESULT_WORDS.pending, undefined);
+});
+
+describe("what staff see of an open match's reports", () => {
+  const match: Match = { table: 4, p1: 'ash', p2: 'misty', outcome: 'pending', timestamp: '' };
+  const names = new Map([
+    ['ash', 'Ash Ketchum'],
+    ['misty', 'Misty Waterflower']
+  ]);
+  const report = (by: string, outcome: PlayerReport['outcome'], device?: string): PlayerReport => ({
+    pod: 'masters',
+    round: 3,
+    table: 4,
+    p1: 'ash',
+    p2: 'misty',
+    by,
+    outcome,
+    at: 0,
+    ...(device ? { device } : {})
+  });
+
+  test('an outcome reads as staff confirm it', () => {
+    assert.equal(outcomeLabel('p2', match, names), 'Misty Waterflower wins');
+    assert.equal(outcomeLabel('tie', match, names), 'Tie');
+    assert.equal(outcomeLabel('pending', match, names), 'Clear the result');
+  });
+
+  test('no reports leave the cell at Open', () => {
+    assert.equal(staffReport([], match, names), null);
+  });
+
+  test('one report reads Reported, and tags its sender with their win or loss', () => {
+    const won = staffReport([report('misty', 'p2')], match, names);
+    assert.equal(won?.label, 'Reported');
+    assert.equal(won?.problem, false);
+    assert.equal(won?.detail, 'Reported: Misty Waterflower wins');
+    assert.deepEqual(won?.tags.get('misty'), { text: 'Won', title: 'Reported: won', problem: false });
+    assert.equal(won?.tags.has('ash'), false);
+    assert.equal(staffReport([report('ash', 'p2')], match, names)?.tags.get('ash')?.text, 'Lost');
+    assert.equal(staffReport([report('ash', 'tie')], match, names)?.tags.get('ash')?.text, 'Tie');
+  });
+
+  test('reports that differ read Disputed, with both senders tagged as a problem', () => {
+    const disputed = staffReport([report('ash', 'p1'), report('misty', 'p2')], match, names);
+    assert.equal(disputed?.label, 'Disputed');
+    assert.equal(
+      disputed?.detail,
+      'Reports differ. Ash Ketchum: Ash Ketchum wins; Misty Waterflower: Misty Waterflower wins'
+    );
+    assert.deepEqual(
+      [...(disputed?.tags.values() ?? [])].map(tag => [tag.text, tag.problem]),
+      [
+        ['Won', true],
+        ['Won', true]
+      ]
+    );
+  });
+
+  test('two agreeing reports from one device read One device, not Reported', () => {
+    const shared = staffReport([report('ash', 'p1', 'd1'), report('misty', 'p1', 'd1')], match, names);
+    assert.equal(shared?.label, 'One device');
+    assert.equal(shared?.problem, true);
+    assert.equal(shared?.detail, 'Both reports came from one device. Reported: Ash Ketchum wins');
+    assert.equal(shared?.tags.get('misty')?.text, 'Lost');
+  });
 });

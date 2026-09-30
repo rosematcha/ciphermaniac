@@ -64,7 +64,7 @@ function EventRow(props: { event: TournamentSummary }) {
         </Show>
       </td>
       <td class='muted-cell'>{PHASE_WORDS[phaseOf(props.event)]}</td>
-      <td class='muted-cell tm-nowrap'>{shortDate(props.event.startDate)}</td>
+      <td class='muted-cell tm-nowrap tm-wide-col'>{shortDate(props.event.startDate)}</td>
       <td class='muted-cell tm-wide-col'>{props.event.mode === 'tom' ? 'TOM' : 'Swiss'}</td>
       <td class='num'>{props.event.players}</td>
       <td class='tm-extra-col'>
@@ -84,7 +84,7 @@ function EventRow(props: { event: TournamentSummary }) {
 function EventTable(props: { title: string; events: readonly TournamentSummary[] }) {
   return (
     <section class='tm-host-section'>
-      <h2 class='tm-th tm-box-head'>{props.title}</h2>
+      <h2 class='tm-subhead tm-box-head'>{props.title}</h2>
       <div class='tm-box'>
         <div class='table-wrap'>
           <table class='data tm-host-table'>
@@ -92,7 +92,7 @@ function EventTable(props: { title: string; events: readonly TournamentSummary[]
               <tr>
                 <th>Event</th>
                 <th>Status</th>
-                <th>Date</th>
+                <th class='tm-wide-col'>Date</th>
                 <th class='tm-wide-col'>Run in</th>
                 <th class='num'>Players</th>
                 <th>
@@ -111,7 +111,8 @@ function EventTable(props: { title: string; events: readonly TournamentSummary[]
 }
 
 /** The event running now: where its round stands, and its console, big screen and public page. */
-function LiveEvent(props: { event: TournamentSummary }) {
+/** `first`: the live event at the top, whose console is the page's one primary step. */
+function LiveEvent(props: { event: TournamentSummary; first: boolean }) {
   const [view] = createResource(
     () => props.event.code,
     code => fetchView(code)
@@ -133,7 +134,7 @@ function LiveEvent(props: { event: TournamentSummary }) {
         <p class='tm-status'>{status()}</p>
       </div>
       <div class='tm-live-event-acts'>
-        <A class='btn btn-primary' href={`/host/${props.event.code}`}>
+        <A class={props.first ? 'btn btn-primary' : 'btn btn-secondary'} href={`/host/${props.event.code}`}>
           Open console
         </A>
         <a class='btn btn-secondary' href={`/t/${props.event.code}?screen=1`} target='_blank' rel='noopener'>
@@ -266,7 +267,7 @@ function Organizer(props: { onOpened: (code: string) => void }) {
           }
         />
         <ErrorLine message={error()} />
-        <For each={live()}>{event => <LiveEvent event={event} />}</For>
+        <For each={live()}>{(event, i) => <LiveEvent event={event} first={i() === 0} />}</For>
         <Show when={rest().length > 0}>
           <EventTable title='Your events' events={rest()} />
         </Show>

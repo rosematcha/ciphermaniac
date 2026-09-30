@@ -9,6 +9,7 @@ import { secondsLeft } from '../../../shared/tournament/commands';
 import {
   isDisputed,
   isLocked,
+  oneDevice,
   type PlayerReport,
   type PlayerResult,
   reportsFor
@@ -488,6 +489,88 @@ export function reportState(
   const locked = isLocked(mine, now);
   const agreed = theirs?.outcome === mine.outcome && locked && isLocked(theirs, now);
   return { chosen: asResult(mine.outcome, seat), disputed: isDisputed(forMatch), locked, final: agreed };
+}
+
+const OUTCOME_WORDS: Partial<Record<Outcome, string>> = {
+  tie: 'Tie',
+  'double-loss': 'Double loss',
+  pending: 'Clear the result'
+};
+
+/** An outcome in words, as staff confirm it: "Ash Ketchum wins", "Tie", "Clear the result". */
+export function outcomeLabel(outcome: Outcome, match: Match, names: Map<string, string>): string {
+  const winner = outcome === 'p1' ? match.p1 : outcome === 'p2' ? match.p2 : null;
+  return winner ? `${names.get(winner) ?? winner} wins` : (OUTCOME_WORDS[outcome] ?? '');
+}
+
+/** A short tag after a player's name in a pairings row, as what they reported. */
+export interface SeatTag {
+  text: string;
+  /** The tag in full, for its tooltip and for assistive tech. */
+  title: string;
+  /** Drawn as a problem: reports that differ, or that came from one device. */
+  problem: boolean;
+}
+
+const REPORT_WORDS: Partial<Record<Outcome, string>> = {
+  tie: 'Tie',
+  'double-loss': 'Double loss'
+};
+
+/**
+ * What a report says, beside the player who sent it, in a word (their win or
+ * loss, or the tie they called): the result cell beside it already says
+ * Reported or Disputed, and a longer tag cut the name short.
+ */
+function reportTag(report: PlayerReport, match: Match, problem: boolean): SeatTag {
+  const winner = report.outcome === 'p1' ? match.p1 : report.outcome === 'p2' ? match.p2 : null;
+  const text = winner ? (winner === report.by ? 'Won' : 'Lost') : (REPORT_WORDS[report.outcome] ?? 'Reported');
+  return { text, title: `Reported: ${text.toLowerCase()}`, problem };
+}
+
+export interface StaffReport {
+  /** Stands in for Open in the result cell. */
+  label: string;
+  problem: boolean;
+  /** The whole story, for the label's tooltip and for assistive tech. */
+  detail: string;
+  /** Each reporter's tag, by player ID. */
+  tags: Map<string, SeatTag>;
+}
+
+/**
+ * What the players reported for an open match: one report, which staff can
+ * take as it is, or two that differ, which count for nothing until staff
+ * enter the result. The cell says which in a word, and each reporter's tag
+ * says what they sent, so the row stays one line.
+ */
+export function staffReport(
+  reports: readonly PlayerReport[],
+  match: Match,
+  names: Map<string, string>
+): StaffReport | null {
+  const [first, second] = reports;
+  if (!first) {
+    return null;
+  }
+  const said = (report: PlayerReport) =>
+    `${names.get(report.by) ?? report.by}: ${outcomeLabel(report.outcome, match, names)}`;
+  // Two agreeing reports from one device never settle on their own: one person may have spoken for both seats.
+  const shared = Boolean(second && oneDevice(first, second));
+  const disputed = isDisputed(reports);
+  const problem = shared || disputed;
+  const tags = new Map(reports.map(report => [report.by, reportTag(report, match, problem)]));
+  if (shared) {
+    return {
+      label: 'One device',
+      problem,
+      tags,
+      detail: `Both reports came from one device. Reported: ${outcomeLabel(first.outcome, match, names)}`
+    };
+  }
+  return disputed
+    ? { label: 'Disputed', problem, tags, detail: `Reports differ. ${reports.map(said).join('; ')}` }
+    : { label: 'Reported', problem, tags, detail: `Reported: ${outcomeLabel(first.outcome, match, names)}` };
 }
 
 export const ordinal = (n: number) => {

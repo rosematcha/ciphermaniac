@@ -108,46 +108,44 @@ function EndEvent(props: { state: ManageState; manage: Manage; primary?: boolean
   );
 }
 
+/** Which of a Swiss round's ends the plan calls for: another round until its rounds are played, then the cut or the end. */
+type RoundEnd = 'pair' | 'cut' | 'end';
+
+/** What the disabled step says while the round plays, when it is not pairing. */
+const WAITING_WORDS: Partial<Record<RoundEnd, string>> = { cut: 'Start top cut', end: 'End event' };
+
 /**
- * Once the plan's Swiss rounds are played: the top cut when the plan has one,
- * else ending the event, as the step, with another round and the other of
- * the two beside it. While the last round is still playing, only the step
- * shows, disabled, with the reason under it.
+ * The end of a Swiss round: another round, the top cut and ending the event,
+ * together on one line and always in that order, so a hand finds each where
+ * it was last round. Only the one the plan calls for is primary. While the
+ * round is still playing, only that step shows, disabled, with the reason
+ * under it.
  */
-function DecideStep(props: {
+function RoundEndStep(props: {
   state: ManageState;
   manage: Manage;
   pod: Pod;
-  step: Extract<NextStep, { kind: 'decide' }>;
+  label: string;
+  ready: boolean;
+  step: RoundEnd;
   cuts: readonly DivisionCut[];
 }) {
-  const cutFirst = () => props.step.cut > 0;
-  const cut = (primary: boolean) => (
-    <TopCutControl state={props.state} pod={props.pod} cuts={props.cuts} primary={primary} />
-  );
+  const canCut = () => props.step === 'cut' || props.cuts.some(c => c.active >= 4);
   return (
     <Show
-      when={props.step.ready}
+      when={props.ready}
       fallback={
         <button type='button' class='btn btn-primary' disabled>
-          {cutFirst() ? 'Start top cut' : 'End event'}
+          {WAITING_WORDS[props.step] ?? props.label}
         </button>
       }
     >
       <span class='tm-next-acts'>
-        <PairButton state={props.state} pod={props.pod} label={props.step.label} ready primary={false} />
-        <Show
-          when={cutFirst()}
-          fallback={
-            <>
-              <Show when={props.cuts.some(c => c.active >= 4)}>{cut(false)}</Show>
-              <EndEvent state={props.state} manage={props.manage} primary />
-            </>
-          }
-        >
-          <EndEvent state={props.state} manage={props.manage} />
-          {cut(true)}
+        <PairButton state={props.state} pod={props.pod} label={props.label} ready primary={props.step === 'pair'} />
+        <Show when={canCut()}>
+          <TopCutControl state={props.state} pod={props.pod} cuts={props.cuts} primary={props.step === 'cut'} />
         </Show>
+        <EndEvent state={props.state} manage={props.manage} primary={props.step === 'end'} />
       </span>
     </Show>
   );
@@ -193,6 +191,14 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
     const s = step();
     return s.kind === 'decide' ? s : null;
   };
+  /** A Swiss round's end, as RoundEndStep lays it out; round one and the top cut's rounds only pair. */
+  const roundEnd = () => {
+    const s = step();
+    if (s.kind === 'decide') {
+      return { ...s, end: (s.cut > 0 ? 'cut' : 'end') as RoundEnd };
+    }
+    return s.kind === 'pair' && progress().round?.kind === 'swiss' ? { ...s, end: 'pair' as RoundEnd } : null;
+  };
   const firstBlocked = () => pairStep()?.label === 'Pair round 1' && active() < 2;
   const reason = () => (firstBlocked() ? 'Add players to pair' : (pairStep() ?? decideStep())?.reason);
   return (
@@ -200,15 +206,24 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
       title={props.manage.tournament.info.name}
       status={status()}
       meta={
+        // Each part keeps the dot after it, so the line wraps between parts and never starts on a dot.
         <>
-          <span class='num'>{props.manage.code}</span>
-          <span class='dot'>·</span>
-          {props.manage.mode === 'tom' ? 'Run in TOM' : 'Swiss on this site'}
-          <span class='dot'>·</span>
-          {props.manage.tournament.players.length} players
-          <span class='dot'>·</span>
-          <A href={`/t/${props.manage.code}`}>Public page</A>
-          <span class='dot'>·</span>
+          <span class='tm-meta-part'>
+            <span class='num'>{props.manage.code}</span>
+            <span class='dot'>·</span>
+          </span>
+          <span class='tm-meta-part'>
+            {props.manage.mode === 'tom' ? 'Run in TOM' : 'Swiss on this site'}
+            <span class='dot'>·</span>
+          </span>
+          <span class='tm-meta-part'>
+            {props.manage.tournament.players.length} players
+            <span class='dot'>·</span>
+          </span>
+          <span class='tm-meta-part'>
+            <A href={`/t/${props.manage.code}`}>Public page</A>
+            <span class='dot'>·</span>
+          </span>
           {/* Its own tab, since it goes on the projector while the console keeps running. */}
           <a href={`/t/${props.manage.code}?screen=1`} target='_blank' rel='noopener'>
             Big screen
@@ -218,14 +233,22 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
       action={
         <Switch>
           <Match when={props.tom}>{tom => <TomNextStep link={tom()} />}</Match>
+          <Match when={props.pod && roundEnd()}>
+            {s => (
+              <RoundEndStep
+                state={props.state}
+                manage={props.manage}
+                pod={props.pod as Pod}
+                label={s().label}
+                ready={s().ready}
+                step={s().end}
+                cuts={cuts()}
+              />
+            )}
+          </Match>
           <Match when={pairStep()}>
             {s => (
               <PairButton state={props.state} pod={props.pod} label={s().label} ready={s().ready && !firstBlocked()} />
-            )}
-          </Match>
-          <Match when={props.pod && decideStep()}>
-            {s => (
-              <DecideStep state={props.state} manage={props.manage} pod={props.pod as Pod} step={s()} cuts={cuts()} />
             )}
           </Match>
           <Match when={step().kind === 'close'}>

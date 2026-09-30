@@ -41,7 +41,7 @@ function SettingsBox(props: {
 }) {
   return (
     <section>
-      <h2 class='tm-th tm-box-head'>{props.title}</h2>
+      <h2 class='tm-subhead tm-box-head'>{props.title}</h2>
       <form
         class='tm-box tm-set-box'
         onSubmit={event => {
@@ -221,7 +221,7 @@ function Finish(props: { state: ManageState; manage: Manage }) {
   }
   return (
     <section>
-      <h2 class='tm-th tm-box-head'>Finish</h2>
+      <h2 class='tm-subhead tm-box-head'>Finish</h2>
       <div class='tm-box'>
         <SettingRow label='Status'>
           <span class='tm-set-inline'>
@@ -277,7 +277,7 @@ function StaffInvite(props: { state: ManageState; manage: Manage }) {
   }
   return (
     <section>
-      <h2 class='tm-th tm-box-head'>Staff</h2>
+      <h2 class='tm-subhead tm-box-head'>Staff</h2>
       <div class='tm-box'>
         <SettingRow label='Invite link'>
           <span class='tm-set-inline tm-invite'>

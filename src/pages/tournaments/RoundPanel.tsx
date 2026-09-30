@@ -19,7 +19,7 @@
  */
 
 import { createEffect, createMemo, createSignal, For, lazy, on, Show, Suspense } from 'solid-js';
-import { isDisputed, oneDevice, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
+import { isDisputed, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import { decksEnabled } from '../../../shared/tournament/view';
 import type { Manage } from '../../lib/tournament/api';
@@ -28,10 +28,12 @@ import {
   currentRound,
   filterMatches,
   namesById,
+  outcomeLabel,
   RESULT_WORDS,
   roundLabel,
   shownDecks,
   shownOutcome,
+  staffReport,
   STATUS_LABELS,
   unseated
 } from '../../lib/tournament/present';
@@ -62,17 +64,6 @@ interface Asking {
   outcome: Outcome;
 }
 
-const OUTCOME_WORDS: Partial<Record<Outcome, string>> = {
-  tie: 'Tie',
-  'double-loss': 'Double loss',
-  pending: 'Clear the result'
-};
-
-function askingLabel(asking: Pick<Asking, 'outcome'>, match: Match, names: Map<string, string>): string {
-  const winner = asking.outcome === 'p1' ? match.p1 : asking.outcome === 'p2' ? match.p2 : null;
-  return winner ? `${names.get(winner) ?? winner} wins` : (OUTCOME_WORDS[asking.outcome] ?? '');
-}
-
 interface ResultProps {
   match: Match;
   /** Nothing can be entered: the result shows, the controls do not. */
@@ -100,7 +91,9 @@ function ConfirmResult(props: ResultProps & { asking: Asking }) {
         }
       }}
     >
-      <span class='tm-result-label'>{askingLabel(props.asking, props.match, props.names)}?</span>
+      <span class='tm-result-label' title={`${outcomeLabel(props.asking.outcome, props.match, props.names)}?`}>
+        {outcomeLabel(props.asking.outcome, props.match, props.names)}?
+      </span>
       <span class='tm-result-acts'>
         <button
           type='button'
@@ -111,45 +104,32 @@ function ConfirmResult(props: ResultProps & { asking: Asking }) {
           Record
         </button>
         <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onKeep()}>
-          Keep
+          Cancel
         </button>
       </span>
     </div>
   );
 }
 
-/**
- * What the players reported for an open match: one report, which staff can
- * take as it is, or two that differ, which count for nothing until staff
- * enter the result.
- */
-function reportNote(reports: readonly PlayerReport[], match: Match, names: Map<string, string>) {
-  const said = (report: PlayerReport) => `${names.get(report.by) ?? report.by}: ${askingLabel(report, match, names)}`;
-  if (reports.length === 0) {
-    return null;
-  }
-  const [first, second] = reports;
-  if (first && second && oneDevice(first, second)) {
-    // Two agreeing reports from one device never settle on their own: one person may have spoken for both seats.
-    return { text: `Both reports came from one device. Reported: ${askingLabel(first, match, names)}`, problem: true };
-  }
-  return isDisputed(reports)
-    ? { text: `Reports differ. ${reports.map(said).join('; ')}`, problem: true }
-    : { text: `Reported: ${askingLabel(first as PlayerReport, match, names)}`, problem: false };
+/** An open match's reports, or none once a result stands. */
+function openReports(manage: Manage, pod: Pod, round: Round, match: Match): readonly PlayerReport[] {
+  return shownOutcome(match, pod, round, manage.pending).outcome === 'pending'
+    ? reportsFor(manage.reports, pod.category, round.number, match)
+    : [];
 }
 
 /**
- * A match's result cell: what stands (or Open), then the controls in fixed
- * slots so Tie, Double loss and Clear line up down the column, then what the
- * players reported, on its own line.
+ * A match's result cell, on one line: what stands (Open, or what the players
+ * reported), then the controls in fixed slots so Tie, Double loss and the
+ * last slot line up down the column. The last slot is Clear once a result
+ * stands, or Accept while one report waits: the two never meet.
  */
 function Result(props: ResultProps) {
   const shown = () => shownOutcome(props.match, props.pod, props.round, props.manage.pending);
   const open = () => shown().outcome === 'pending';
   const elimination = () => props.round.kind === 'elimination';
-  const reports = () =>
-    open() ? reportsFor(props.manage.reports, props.pod.category, props.round.number, props.match) : [];
-  const note = () => reportNote(reports(), props.match, props.names);
+  const reports = () => openReports(props.manage, props.pod, props.round, props.match);
+  const report = () => staffReport(reports(), props.match, props.names);
   const lone = () => (reports().length > 0 && !isDisputed(reports()) ? reports()[0] : undefined);
   // A bye or a missed round is decided by the pairing itself: nothing to enter.
   const decidedByPairing = (
@@ -163,24 +143,18 @@ function Result(props: ResultProps) {
         when={props.asking}
         fallback={
           <div class='tm-result'>
-            <span class='tm-result-label' classList={{ 'is-open': open() }}>
-              {open() ? 'Open' : RESULT_WORDS[shown().outcome]}
+            <span
+              class='tm-result-label'
+              classList={{ 'is-open': open(), 'is-reported': Boolean(report()), 'is-problem': report()?.problem }}
+              title={report()?.detail}
+            >
+              {open() ? (report()?.label ?? 'Open') : RESULT_WORDS[shown().outcome]}
+              <Show when={report()}>{r => <span class='sr-only'>. {r().detail}</span>}</Show>
               <Show when={shown().unconfirmed}>
                 <span class='tm-result-sub'> not in TOM yet</span>
               </Show>
             </span>
             <span class='tm-result-acts' classList={{ 'is-locked': props.locked }}>
-              <Show when={lone()}>
-                {report => (
-                  <button
-                    type='button'
-                    class='btn btn-secondary tm-small'
-                    onClick={() => props.onReport(report().outcome)}
-                  >
-                    Accept
-                  </button>
-                )}
-              </Show>
               <Show when={!elimination()}>
                 <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onReport('tie')}>
                   Tie
@@ -190,20 +164,24 @@ function Result(props: ResultProps) {
                 </button>
               </Show>
               <span class='tm-result-slot'>
-                <Show when={!open()}>
-                  <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onReport('pending')}>
-                    Clear
-                  </button>
+                <Show
+                  when={open()}
+                  fallback={
+                    <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onReport('pending')}>
+                      Clear
+                    </button>
+                  }
+                >
+                  <Show when={lone()}>
+                    {r => (
+                      <button type='button' class='btn tm-small tm-accept' onClick={() => props.onReport(r().outcome)}>
+                        Accept
+                      </button>
+                    )}
+                  </Show>
                 </Show>
               </span>
             </span>
-            <Show when={note()}>
-              {n => (
-                <span class='tm-result-note' classList={{ 'tm-problem': n().problem }}>
-                  {n().text}
-                </span>
-              )}
-            </Show>
           </div>
         }
       >
@@ -229,6 +207,8 @@ function RoomFilter(props: {
   openOnly: boolean;
   /** Null while the event has archetypes off. */
   deckMode: boolean | null;
+  /** Whether a press on a player does anything worth saying: not while swapping, nor with every table in. */
+  hint: boolean;
   onQuery: (value: string) => void;
   onOpenOnly: (value: boolean) => void;
   onDeckMode: (value: boolean) => void;
@@ -263,11 +243,13 @@ function RoomFilter(props: {
           Enter decks
         </button>
       </Show>
-      <span class='muted tm-hint'>
-        {props.deckMode
-          ? 'Pick each player’s deck'
-          : 'Press a player to report their win, or double-click to record it'}
-      </span>
+      <Show when={props.deckMode || props.hint}>
+        <span class='tm-hint'>
+          {props.deckMode
+            ? 'Pick each player’s deck'
+            : 'Press a player to report their win, or double-click to record it'}
+        </span>
+      </Show>
     </div>
   );
 }
@@ -469,6 +451,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               query={query()}
               openOnly={openOnly()}
               deckMode={decksEnabled(props.manage.settings) ? deckMode() : null}
+              hint={!swapMode() && !props.locked && openCount() > 0}
               onQuery={setQuery}
               onOpenOnly={setOpenOnly}
               onDeckMode={setDeckMode}
@@ -494,6 +477,9 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                   : undefined
               }
               confirming={asking()}
+              tag={(match, id) =>
+                staffReport(openReports(props.manage, props.pod, r(), match), match, names())?.tags.get(id) ?? null
+              }
               extra={match => (
                 <Result
                   locked={props.locked ?? false}
