@@ -376,6 +376,16 @@ test('a first load that fails offers Retry, which loads the event', async ({ pag
 const TDF_SOURCE = readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8');
 
 /** A signed-in organizer's console for the TOM event, with a browser that can link files. */
+/** The console's copy of the TOM event the file below holds. */
+const tomManage = () => ({
+  ...VIEW,
+  tournament: tdf,
+  decks: {},
+  settings: DEFAULT_SETTINGS,
+  role: 'owner',
+  staffToken: 'invite'
+});
+
 async function tomConsole(page: Page, sync: () => { status: number; json: unknown }) {
   await page.addInitScript(source => {
     const file = { modified: 1, lost: false };
@@ -404,18 +414,7 @@ async function tomConsole(page: Page, sync: () => { status: number; json: unknow
       return route.fulfill({ json: { user: { ...user, birthDate: null, providers: ['dev'] }, providers: ['dev'] } });
     }
     if (url.pathname === `/api/tournaments/${CODE}/manage`) {
-      return url.searchParams.has('since')
-        ? route.fulfill({ status: 204 })
-        : route.fulfill({
-            json: {
-              ...VIEW,
-              tournament: tdf,
-              decks: {},
-              settings: DEFAULT_SETTINGS,
-              role: 'owner',
-              staffToken: 'invite'
-            }
-          });
+      return url.searchParams.has('since') ? route.fulfill({ status: 204 }) : route.fulfill({ json: tomManage() });
     }
     if (url.pathname === `/api/tournaments/${CODE}/sync`) {
       return route.fulfill(sync());
@@ -433,7 +432,7 @@ test('a TOM console stops following its file when another copy was synced over i
 });
 
 test('a TOM console holds off results when the browser takes back the file', async ({ page }) => {
-  await tomConsole(page, () => ({ status: 200, json: { version: 5, pending: [], revision: 'next' } }));
+  await tomConsole(page, () => ({ status: 200, json: { ...tomManage(), version: 5, revision: 'next' } }));
   await expect(page.getByRole('button', { name: 'Refresh .tdf' }).first()).toBeVisible();
   await page.evaluate(() => {
     (window as unknown as { tdfFile: { lost: boolean } }).tdfFile.lost = true;

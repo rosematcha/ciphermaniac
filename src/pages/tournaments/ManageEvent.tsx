@@ -293,7 +293,10 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
   const tom =
     // eslint-disable-next-line solid/reactivity -- an event's mode never changes, and the link lives as long as the console
     props.manage.mode === 'tom'
-      ? createTomLink({ manage: () => props.manage, onSynced: () => props.state.load() })
+      ? createTomLink({
+          manage: () => props.manage,
+          onSynced: async answer => (answer ? props.state.take(answer) : props.state.load())
+        })
       : null;
   return (
     <div class='tm-page'>

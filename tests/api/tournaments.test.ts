@@ -1458,6 +1458,11 @@ test('a .tdf sent from a copy the site no longer holds is refused, not synced ov
   });
   assert.equal(first.status, 200);
   assert.equal(first.json.revision, await revisionNow(code, owner), 'the answer carries the revision now held');
+  assert.deepEqual(
+    [first.json.role, first.json.tournament.players.length],
+    ['owner', tdf.players.length],
+    'and is the console’s new copy, so the console need not ask for it'
+  );
   const older = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
     method: 'PUT',
     cookie: owner,

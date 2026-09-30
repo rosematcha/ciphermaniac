@@ -22,6 +22,8 @@ export interface ManageState {
   load: () => Promise<boolean>;
   /** Runs a request that answers with the event, and takes its answer. */
   run: (request: () => Promise<Manage>) => Promise<boolean>;
+  /** Takes a copy of the event the page got another way, as a TOM sync's answer. */
+  take: (next: Manage) => void;
   /** Waits on a request that changes something beside the event, and shows why if it fails; whether it went through. */
   act: (request: Promise<unknown>) => Promise<boolean>;
   send: (command: Command) => Promise<boolean>;
@@ -90,6 +92,7 @@ export function createManage(code: () => string): ManageState {
     load,
     // Started inside a promise, so a request that throws before it sends still shows why.
     run: request => act(Promise.resolve().then(request).then(take)),
+    take,
     act,
     send: command => act(sendCommand(code(), command).then(take)),
     clearError: () => setError(null)

@@ -13,7 +13,6 @@ import type { Tournament } from '../../../shared/tournament/types';
 import {
   type Decklist,
   type Manage,
-  type PendingResult,
   type PublishedView,
   publishedViewKey,
   type Registration,
@@ -167,10 +166,7 @@ export const sendCommand = (code: string, command: Command) =>
 
 /** Sends the parsed .tdf, taken only if the site still holds the copy `revision` names (see shared/tournament/revision.ts). */
 export const syncTournament = (code: string, tournament: Tournament, revision: string) =>
-  call<{ version: number; pending: PendingResult[]; revision: string }>(
-    `${base(code)}/sync`,
-    json('PUT', { tournament, base: revision })
-  );
+  call<Manage & { revision: string }>(`${base(code)}/sync`, json('PUT', { tournament, base: revision }));
 
 export const setDeck = (code: string, playerId: string, archetype: string | null) =>
   call<Manage>(`${base(code)}/decks`, json('PUT', { playerId, archetype }));

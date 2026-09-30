@@ -51,7 +51,11 @@ const lostFile = (err: unknown) =>
 export const readTime = (at: Date) =>
   at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 
-export function createTomLink(props: { manage: () => Manage; onSynced: () => Promise<unknown> }) {
+/**
+ * `onSynced` takes the console's new copy of the event when a sync answered
+ * with one, and asks for it again when one was refused.
+ */
+export function createTomLink(props: { manage: () => Manage; onSynced: (answer?: Manage) => Promise<unknown> }) {
   const [handle, setHandle] = createSignal<TdfHandle | null>(null);
   const [state, setState] = createSignal<LinkState>('none');
   const [readAt, setReadAt] = createSignal<Date | null>(null);
@@ -79,9 +83,10 @@ export function createTomLink(props: { manage: () => Manage; onSynced: () => Pro
     const json = JSON.stringify(parsed);
     if (json !== lastSent) {
       const base = synced ?? (await revisionOf(props.manage().tournament));
-      ({ revision: synced } = await syncTournament(code(), parsed, base).catch(conflicted));
+      const answer = await syncTournament(code(), parsed, base).catch(conflicted);
+      synced = answer.revision;
       lastSent = json;
-      await props.onSynced();
+      await props.onSynced(answer);
     }
     setReadAt(new Date());
   }
