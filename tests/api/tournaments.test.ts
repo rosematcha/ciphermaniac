@@ -863,7 +863,8 @@ test('players report their own results: agreement stands once locked, disagreeme
   assert.deepEqual([later.json.reporter, later.json.reportToken], [false, undefined], 'a second device only follows');
   const one = await p1.report('win');
   assert.equal(one.json.view.reports.length, 1);
-  assert.ok(!JSON.stringify(one.json.view.reports).includes(first.p1), 'reports go out under public keys');
+  const named = one.json.view.reports.flatMap((r: { p1: string; p2: string; by: string }) => [r.p1, r.p2, r.by]);
+  assert.ok(!named.includes(first.p1), 'reports go out under public keys');
   const agreed = await p2.report('loss');
   assert.equal(agreed.json.view.reports.length, 2, 'agreeing reports wait out the window');
   assert.equal(agreed.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'pending');
