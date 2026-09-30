@@ -56,7 +56,6 @@ export function StandingsTable(props: TableProps) {
     return props.pod.cut || (cut <= rows.filter(row => !row.dropped).length ? cut : 0);
   };
   const cutStarted = () => props.pod.rounds.some(round => round.kind === 'elimination');
-  const colspan = () => (props.tiebreakers ? 6 : 4);
   const several = () => groups().length > 1;
   return (
     <>
@@ -136,10 +135,16 @@ export function StandingsTable(props: TableProps) {
                             </tr>
                             <Show when={row.place === cut() && group.rows.length > cut() && !props.query?.trim()}>
                               <tr class='tm-cut-line'>
-                                <td colSpan={colspan()}>
+                                {/* The tiebreakers' two columns get a cell of their own, hidden with them on a
+                                    phone: spanned by this one, they kept their width in a fixed table and
+                                    squeezed the names to nothing. */}
+                                <td colSpan={4}>
                                   <span class='tm-cut-top'>Top {cut()}</span>
                                   <Show when={split()}>{text => <span class='muted'>{text()}</span>}</Show>
                                 </td>
+                                <Show when={props.tiebreakers}>
+                                  <td class='tm-wide-col' colSpan={2} />
+                                </Show>
                               </tr>
                             </Show>
                           </>
