@@ -15,13 +15,7 @@ import { type Context, sameOrigin } from '../../lib/auth/env.js';
 import { currentUser } from '../../lib/auth/session.js';
 import { MAX_TOURNAMENT_BYTES, privateJson } from '../../lib/tournaments/access.js';
 import { publishAfter } from '../../lib/tournaments/publish.js';
-import {
-  createTournament,
-  listTournaments,
-  loadTournament,
-  ownedCount,
-  TooLarge
-} from '../../lib/tournaments/store.js';
+import { createTournament, listTournaments, ownedCount, TooLarge } from '../../lib/tournaments/store.js';
 import type { Tournament } from '../../../shared/tournament/types.js';
 
 export async function onRequestGet({ request, env }: Context): Promise<Response> {
@@ -104,12 +98,9 @@ export async function onRequestPost(context: Context): Promise<Response> {
     return jsonError('You have too many events; delete an old one first', 429);
   }
   try {
-    const code = await createTournament(db, { ownerId: user.id, mode, tournament, settings });
-    const row = await loadTournament(db, code);
-    if (row) {
-      await publishAfter(context, row);
-    }
-    return privateJson({ code }, 201);
+    const row = await createTournament(db, { ownerId: user.id, mode, tournament, settings });
+    await publishAfter(context, row);
+    return privateJson({ code: row.code }, 201);
   } catch (error) {
     if (error instanceof TooLarge) {
       return jsonError(error.message, 413);

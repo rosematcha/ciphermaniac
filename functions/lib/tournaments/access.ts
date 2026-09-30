@@ -17,9 +17,9 @@ import {
 import { publicReports } from '../../../shared/tournament/reports.js';
 import { jsonError, jsonResponse } from '../api/responses.js';
 import { type Context, param, sameOrigin } from '../auth/env.js';
-import { currentUser, type User } from '../auth/session.js';
+import type { User } from '../auth/session.js';
 import type { D1Like } from '../types.js';
-import { isCode, loadTournament, type Role, roleOf, type TournamentRow } from './store.js';
+import { isCode, openTournament, type Role, type TournamentRow } from './store.js';
 
 export const PRIVATE = { cacheControl: 'no-store', cors: false } as const;
 
@@ -40,12 +40,8 @@ export async function open(context: Context<'code'>): Promise<Access | Response>
     return jsonError('Tournaments are not available', 503);
   }
   const code = param(context.params.code).toUpperCase();
-  const row = isCode(code) ? await loadTournament(db, code) : null;
-  if (!row) {
-    return jsonError('No such tournament', 404);
-  }
-  const user = await currentUser(db, context.request);
-  return { db, user, row, role: await roleOf(db, row, user) };
+  const opened = isCode(code) ? await openTournament(db, code, context.request) : null;
+  return opened ? { db, ...opened } : jsonError('No such tournament', 404);
 }
 
 /** As `open`, for a change only staff may make. */

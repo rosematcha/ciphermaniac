@@ -38,6 +38,7 @@ import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { sha256 } from '../../../lib/auth/session.js';
+import { rowsChanged } from '../../../lib/d1.js';
 import { type Access, open, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
 import { archetypeLabel } from '../../../lib/tournaments/decks.js';
 import { publishAfter } from '../../../lib/tournaments/publish.js';
@@ -231,12 +232,8 @@ async function store(access: Access, submission: Submission, tokenHash: string, 
       tokenHash,
       held
     );
-  await insert.run();
-  const stored = await access.db
-    .prepare('SELECT owner_token FROM decklists WHERE code = ? AND user_id = ?')
-    .bind(access.row.code, key)
-    .first<{ owner_token: string | null }>();
-  if (stored?.owner_token !== tokenHash) {
+  // The upsert changes no row when another device's list is there, so its count is the answer.
+  if (rowsChanged(await insert.run()) === 0) {
     return false;
   }
   if (access.user) {
@@ -383,11 +380,11 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
   const held = new URL(context.request.url).searchParams.get('token') ?? '';
   const { db, row } = access;
   // The token is checked in the delete itself, so a list replaced meanwhile is not the one withdrawn.
-  const deleted = (await db
+  const deleted = await db
     .prepare('DELETE FROM decklists WHERE code = ? AND user_id = ? AND (owner_token IS NULL OR owner_token = ?)')
     .bind(row.code, key, held ? await sha256(held) : '')
-    .run()) as { meta?: { changes?: number } };
-  if ((deleted.meta?.changes ?? 0) === 0 && (await listExists(db, row.code, key))) {
+    .run();
+  if (rowsChanged(deleted) === 0 && (await listExists(db, row.code, key))) {
     return jsonError(LOCKED, 409);
   }
   return NO_CONTENT();

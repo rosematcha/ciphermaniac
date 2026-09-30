@@ -11,11 +11,11 @@ import { jsonError } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { type Access, manageView, open, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
 import {
+  isStaffMember,
   joinStaff,
   listStaff,
   loadTournament,
   removeStaff,
-  roleOf,
   rotateStaff
 } from '../../../lib/tournaments/store.js';
 
@@ -81,9 +81,10 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
   if (access.role) {
     return privateJson({ role: access.role });
   }
-  const joined =
-    typeof value.token === 'string' && (await joinStaff(access.db, access.row.code, access.user.id, value.token));
+  const { db, row, user } = access;
+  const joined = typeof value.token === 'string' && (await joinStaff(db, row.code, user.id, value.token));
   // Not joined can still mean a second join that raced the first in.
-  const role = joined ? 'staff' : await roleOf(access.db, access.row, access.user);
-  return role ? privateJson({ role }) : jsonError('That invite link is no longer valid', 403);
+  return joined || (await isStaffMember(db, row.code, user.id))
+    ? privateJson({ role: 'staff' })
+    : jsonError('That invite link is no longer valid', 403);
 }

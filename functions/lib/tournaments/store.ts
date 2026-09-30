@@ -18,7 +18,8 @@ import {
   type TournamentSettings
 } from '../../../shared/tournament/view.js';
 import { type PlayerReport, pruneReports } from '../../../shared/tournament/reports.js';
-import { randomToken, type User } from '../auth/session.js';
+import { randomToken, sessionHash, sessionUserQuery, type User, userFromRow, type UserRow } from '../auth/session.js';
+import { firstRow, rowsChanged } from '../d1.js';
 import type { D1Like } from '../types.js';
 
 export interface TournamentRow {
@@ -88,9 +89,57 @@ export function isCode(value: string): boolean {
   return value.length === CODE_LENGTH && [...value].every(char => CODE_ALPHABET.includes(char));
 }
 
+const tournamentQuery = (db: D1Like, code: string) => db.prepare('SELECT * FROM tournaments WHERE code = ?').bind(code);
+
 export async function loadTournament(db: D1Like, code: string): Promise<TournamentRow | null> {
-  const raw = await db.prepare('SELECT * FROM tournaments WHERE code = ?').bind(code).first<RawRow>();
+  const raw = await tournamentQuery(db, code).first<RawRow>();
   return raw ? fromRaw(raw) : null;
+}
+
+export interface Opened {
+  row: TournamentRow;
+  user: User | null;
+  role: Role | null;
+}
+
+/**
+ * The event, the signed-in user and their role in it. Every tournament request
+ * starts here, so for a signed-in asker the three reads go as one batch: one
+ * wait on the database where there were three in a row.
+ */
+export async function openTournament(db: D1Like, code: string, request: Request): Promise<Opened | null> {
+  const hash = await sessionHash(request);
+  if (!hash) {
+    const row = await loadTournament(db, code);
+    return row && { row, user: null, role: null };
+  }
+  const now = Date.now();
+  const [event, account, staff] = await db.batch([
+    tournamentQuery(db, code),
+    sessionUserQuery(db, hash, now),
+    db
+      .prepare(
+        'SELECT 1 AS yes FROM staff JOIN sessions ON sessions.user_id = staff.user_id ' +
+          'WHERE staff.code = ? AND sessions.token_hash = ? AND sessions.expires_at > ?'
+      )
+      .bind(code, hash, now)
+  ]);
+  const raw = firstRow<RawRow>(event);
+  if (!raw) {
+    return null;
+  }
+  const row = fromRaw(raw);
+  const found = firstRow<UserRow>(account);
+  const user = found && userFromRow(found);
+  return { row, user, role: roleIn(row, user, firstRow(staff) !== null) };
+}
+
+/** The organizer owns the event; anyone else signed in is staff once the invite link let them in. */
+function roleIn(row: TournamentRow, user: User | null, joined: boolean): Role | null {
+  if (user?.id === row.ownerId) {
+    return 'owner';
+  }
+  return user && joined ? 'staff' : null;
 }
 
 /** Just the version, for a cheap "has anything changed" check. */
@@ -109,32 +158,32 @@ export interface NewTournament {
   settings?: TournamentSettings;
 }
 
-export async function createTournament(db: D1Like, input: NewTournament): Promise<string> {
+/**
+ * Stores a new event under a code nobody holds, and hands back the row as
+ * stored. The insert itself refuses a code already taken, so two events made
+ * at once cannot land on one code, and there is no read before or after it.
+ */
+export async function createTournament(db: D1Like, input: NewTournament): Promise<TournamentRow> {
+  const { ownerId, mode, tournament } = input;
+  const settings = input.settings ?? DEFAULT_SETTINGS;
+  const state = stateJson(tournament);
+  const keys = assignKeys(tournament, {});
+  const staffToken = randomToken(16);
   const now = Date.now();
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = newCode();
-    const taken = await loadVersion(db, code);
-    if (taken !== null) {
-      continue;
-    }
-    await db
+    const inserted = await db
       .prepare(
-        'INSERT INTO tournaments (code, owner_id, mode, state, settings, player_keys, staff_token, created_at, updated_at) ' +
+        'INSERT OR IGNORE INTO tournaments ' +
+          '(code, owner_id, mode, state, settings, player_keys, staff_token, created_at, updated_at) ' +
           'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
       )
-      .bind(
-        code,
-        input.ownerId,
-        input.mode,
-        stateJson(input.tournament),
-        JSON.stringify(input.settings ?? DEFAULT_SETTINGS),
-        JSON.stringify(assignKeys(input.tournament, {})),
-        randomToken(16),
-        now,
-        now
-      )
+      .bind(code, ownerId, mode, state, JSON.stringify(settings), JSON.stringify(keys), staffToken, now, now)
       .run();
-    return code;
+    if (rowsChanged(inserted) === 1) {
+      const empty = { pending: [], reports: [], decks: {} };
+      return { code, ownerId, mode, tournament, settings, keys, staffToken, version: 1, updatedAt: now, ...empty };
+    }
   }
   throw new Error('Could not find a free tournament code');
 }
@@ -179,17 +228,28 @@ function reportsAfter(row: TournamentRow, changes: Changes): PlayerReport[] {
     : reports;
 }
 
+/**
+ * The row as a change leaves it, short of its new version: the public keys
+ * and the reports follow from the change, and are worked out here once for
+ * both the write and the row handed back.
+ */
+function changedRow(row: TournamentRow, changes: Changes): TournamentRow {
+  // The keys as saved, so a player added by this change is already under a public key.
+  const keys = changes.tournament ? assignKeys(changes.tournament, row.keys) : row.keys;
+  return { ...row, ...changes, keys, reports: reportsAfter(row, changes) };
+}
+
 /** The columns a change writes, and their values: only what it changed. */
-function columnsFor(row: TournamentRow, changes: Changes): [string, string][] {
+function columnsFor(changes: Changes, next: TournamentRow): [string, string][] {
   const { tournament, pending, settings, decks } = changes;
   const columns: [string, string | false | undefined][] = [
     ['state', tournament && stateJson(tournament)],
-    ['player_keys', tournament && JSON.stringify(assignKeys(tournament, row.keys))],
+    ['player_keys', tournament && JSON.stringify(next.keys)],
     ['pending', pending && JSON.stringify(pending)],
     ['settings', settings && JSON.stringify(settings)],
     ['decks', decks && JSON.stringify(decks)],
     // Reports follow the results and the reporting setting, so any of those rewrites them.
-    ['reports', (changes.reports ?? tournament ?? pending ?? settings) && JSON.stringify(reportsAfter(row, changes))]
+    ['reports', (changes.reports ?? tournament ?? pending ?? settings) && JSON.stringify(next.reports)]
   ];
   return columns.filter((column): column is [string, string] => typeof column[1] === 'string');
 }
@@ -198,18 +258,20 @@ function columnsFor(row: TournamentRow, changes: Changes): [string, string][] {
  * Writes the changes if the row is still at `row.version`. Only the columns
  * the change touches are written, so a result reported mid-event does not
  * send the whole document back.
- * @returns The new version, or null when someone else wrote first
+ * @returns The row as written, or null when someone else wrote first
  */
-export async function saveTournament(db: D1Like, row: TournamentRow, changes: Changes): Promise<number | null> {
-  const columns = columnsFor(row, changes);
-  const result = (await db
+async function saveTournament(db: D1Like, row: TournamentRow, changes: Changes): Promise<TournamentRow | null> {
+  const next = changedRow(row, changes);
+  const columns = columnsFor(changes, next);
+  const updatedAt = Date.now();
+  const result = await db
     .prepare(
       `UPDATE tournaments SET ${columns.map(([name]) => `${name} = ?, `).join('')}` +
         'version = version + 1, updated_at = ? WHERE code = ? AND version = ?'
     )
-    .bind(...columns.map(([, value]) => value), Date.now(), row.code, row.version)
-    .run()) as { meta?: { changes?: number } };
-  return (result.meta?.changes ?? 0) === 1 ? row.version + 1 : null;
+    .bind(...columns.map(([, value]) => value), updatedAt, row.code, row.version)
+    .run();
+  return rowsChanged(result) === 1 ? { ...next, version: row.version + 1, updatedAt } : null;
 }
 
 /**
@@ -248,37 +310,38 @@ async function tryChange(
   if (typeof changes === 'string') {
     return { error: changes, status: 400 };
   }
-  const version = await saveTournament(db, row, changes).catch((error: unknown) => {
+  const saved = await saveTournament(db, row, changes).catch((error: unknown) => {
     if (error instanceof TooLarge) {
       return error;
     }
     throw error;
   });
-  if (version instanceof TooLarge) {
-    return { error: version.message, status: 413 };
+  if (saved instanceof TooLarge) {
+    return { error: saved.message, status: 413 };
   }
-  if (version === null) {
-    return null;
-  }
-  // The keys as saved, so a player added by this change is already under a public key.
-  const keys = changes.tournament ? assignKeys(changes.tournament, row.keys) : row.keys;
-  const reports = reportsAfter(row, changes);
-  return { row: { ...row, ...changes, keys, reports, version, updatedAt: Date.now() }, version };
+  return saved && { row: saved, version: saved.version };
 }
 
 /** What the console's polls check before anything else: whether the copy they hold still stands. */
 export interface TournamentHead {
-  ownerId: string;
   version: number;
   reports: PlayerReport[];
+  /** Whether the request's session belongs to the event's organizer or one of its staff. */
+  staff: boolean;
 }
 
-export async function loadHead(db: D1Like, code: string): Promise<TournamentHead | null> {
+/** The head as the request's session sees it, in one read: a console polls this every few seconds. */
+export async function loadHead(db: D1Like, code: string, request: Request): Promise<TournamentHead | null> {
   const raw = await db
-    .prepare('SELECT owner_id, version, reports FROM tournaments WHERE code = ?')
-    .bind(code)
-    .first<{ owner_id: string; version: number; reports: string }>();
-  return raw && { ownerId: raw.owner_id, version: raw.version, reports: JSON.parse(raw.reports) as PlayerReport[] };
+    .prepare(
+      'SELECT version, reports, EXISTS (SELECT 1 FROM sessions WHERE sessions.token_hash = ? ' +
+        'AND sessions.expires_at > ? AND (sessions.user_id = tournaments.owner_id OR EXISTS ' +
+        '(SELECT 1 FROM staff WHERE staff.code = tournaments.code AND staff.user_id = sessions.user_id))) AS staff ' +
+        'FROM tournaments WHERE code = ?'
+    )
+    .bind((await sessionHash(request)) ?? '', Date.now(), code)
+    .first<{ version: number; reports: string; staff: number }>();
+  return raw && { version: raw.version, reports: JSON.parse(raw.reports) as PlayerReport[], staff: raw.staff === 1 };
 }
 
 export async function isStaffMember(db: D1Like, code: string, userId: string): Promise<boolean> {
@@ -289,16 +352,6 @@ export async function isStaffMember(db: D1Like, code: string, userId: string): P
   return staff !== null;
 }
 
-export async function roleOf(db: D1Like, row: TournamentRow, user: User | null): Promise<Role | null> {
-  if (!user) {
-    return null;
-  }
-  if (user.id === row.ownerId) {
-    return 'owner';
-  }
-  return (await isStaffMember(db, row.code, user.id)) ? 'staff' : null;
-}
-
 /**
  * Joins the user to the event's staff if `token` is its invite token at the
  * moment of writing: checked in the insert itself, so a join that read the
@@ -306,14 +359,14 @@ export async function roleOf(db: D1Like, row: TournamentRow, user: User | null):
  * @returns Whether the user joined
  */
 export async function joinStaff(db: D1Like, code: string, userId: string, token: string): Promise<boolean> {
-  const result = (await db
+  const result = await db
     .prepare(
       'INSERT OR IGNORE INTO staff (code, user_id, joined_at) ' +
         'SELECT code, ?, ? FROM tournaments WHERE code = ? AND staff_token = ?'
     )
     .bind(userId, Date.now(), code, token)
-    .run()) as { meta?: { changes?: number } };
-  return (result.meta?.changes ?? 0) === 1;
+    .run();
+  return rowsChanged(result) === 1;
 }
 
 export interface StaffMember {

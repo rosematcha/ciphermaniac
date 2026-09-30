@@ -45,3 +45,39 @@ export function sqliteD1(schema: string): D1Like & { raw: DatabaseSync } {
     }
   };
 }
+
+/**
+ * `db`, counting the round trips made through it: each statement run on its
+ * own is one, and so is a whole batch, which is what D1 charges a request in
+ * waiting.
+ */
+export function countingTrips(db: D1Like): { db: D1Like; trips: () => number } {
+  let trips = 0;
+  const inner = new Map<D1Statement, D1Statement>();
+  const counted = (statement: D1Statement): D1Statement => {
+    const once =
+      <T>(run: () => Promise<T>) =>
+      () => {
+        trips += 1;
+        return run();
+      };
+    const wrapped: D1Statement = {
+      bind: (...values) => counted(statement.bind(...values)),
+      first: once(statement.first) as D1Statement['first'],
+      all: once(statement.all) as D1Statement['all'],
+      run: once(statement.run)
+    };
+    inner.set(wrapped, statement);
+    return wrapped;
+  };
+  return {
+    db: {
+      prepare: sql => counted(db.prepare(sql)),
+      batch: statements => {
+        trips += 1;
+        return db.batch(statements.map(statement => inner.get(statement) ?? statement));
+      }
+    },
+    trips: () => trips
+  };
+}

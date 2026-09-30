@@ -9,12 +9,12 @@ import { readJsonBody } from '../lib/api/body.js';
 import { jsonError, jsonResponse } from '../lib/api/responses.js';
 import { type Context, sameOrigin } from '../lib/auth/env.js';
 import { availableProviders } from '../lib/auth/oauth.js';
-import { currentUser } from '../lib/auth/session.js';
+import { currentAccount } from '../lib/auth/session.js';
 
 const PRIVATE = { cacheControl: 'no-store', cors: false } as const;
 
 export async function onRequestGet({ request, env }: Context): Promise<Response> {
-  const user = env.TOURNAMENT_DB ? await currentUser(env.TOURNAMENT_DB, request) : null;
+  const user = env.TOURNAMENT_DB ? await currentAccount(env.TOURNAMENT_DB, request) : null;
   return jsonResponse({ user, providers: availableProviders(env) }, PRIVATE);
 }
 
@@ -22,7 +22,7 @@ export async function onRequestPut({ request, env }: Context): Promise<Response>
   if (!env.TOURNAMENT_DB || !sameOrigin(request)) {
     return jsonError('Forbidden', 403);
   }
-  const user = await currentUser(env.TOURNAMENT_DB, request);
+  const user = await currentAccount(env.TOURNAMENT_DB, request);
   if (!user) {
     return jsonError('Sign in first', 401);
   }
@@ -43,7 +43,7 @@ export async function onRequestPatch({ request, env }: Context): Promise<Respons
   if (!env.TOURNAMENT_DB || !sameOrigin(request)) {
     return jsonError('Forbidden', 403);
   }
-  const user = await currentUser(env.TOURNAMENT_DB, request);
+  const user = await currentAccount(env.TOURNAMENT_DB, request);
   if (!user) {
     return jsonError('Sign in first', 401);
   }

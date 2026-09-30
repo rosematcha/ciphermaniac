@@ -33,7 +33,7 @@ import { parseTdf } from '../../shared/tournament/tdf.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { publishView } from '../../functions/lib/tournaments/publish.ts';
 import { loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
-import { sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { countingTrips, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 const ORIGIN = 'https://cm.test';
 let env: TournamentEnv;
@@ -1488,4 +1488,138 @@ test('the answer to a change does not wait for its publish where the runtime kee
   release();
   await Promise.all(kept);
   assert.equal(JSON.parse(objects.get(key) ?? '{}').tournament.players.length, 1);
+});
+
+/** Counts the database round trips the functions make from here on. */
+function countTrips(): () => number {
+  const counting = countingTrips(env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>);
+  env.TOURNAMENT_DB = counting.db;
+  return counting.trips;
+}
+
+test('a staff action waits on the database twice, and an idle console poll once', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const console = (cookie: string, since = '') =>
+    hit(manage.onRequestGet as Handler, `/manage${since}`, at(code), { cookie });
+  const helper = await signIn('Helper');
+  await hit(staff.onRequestPost as Handler, '/staff', at(code), {
+    method: 'POST',
+    cookie: helper,
+    body: { token: (await console(owner)).json.staffToken }
+  });
+  for (const cookie of [owner, helper]) {
+    const { version } = (await console(cookie)).json;
+    const trips = countTrips();
+    const before = trips();
+    assert.equal((await console(cookie, `?since=${version}`)).status, 204);
+    assert.equal(trips() - before, 1, 'the poll is one read');
+    const added = await send(code, cookie, { type: 'addPlayer', player: { firstName: 'Late', lastName: cookie } });
+    assert.equal(added.status, 200);
+    assert.equal(trips() - before, 3, 'the action is one read of the event and who asks, and one write');
+  }
+  const strangers = countTrips();
+  assert.equal((await hit(event.onRequestGet as Handler, '/', at(code))).status, 200);
+  assert.equal(strangers(), 1, 'a player with no session reads only the event');
+});
+
+test('the account page names the providers an account signs in with; an event request does not read them', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const seen = recordSql();
+  const trips = countTrips();
+  const account = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: owner });
+  assert.deepEqual(account.json.user.providers, ['dev']);
+  assert.equal(trips(), 1, 'the user and their providers come in one round trip');
+  const saved = await hit(
+    me.onRequestPatch as Handler,
+    '/api/me',
+    {},
+    {
+      method: 'PATCH',
+      cookie: owner,
+      body: { name: 'Renamed' }
+    }
+  );
+  assert.deepEqual([saved.json.user.name, saved.json.user.providers], ['Renamed', ['dev']]);
+  seen.length = 0;
+  assert.equal((await view(code, owner)).viewer.role, 'owner');
+  assert.ok(!seen.some(sql => sql.includes('identities')), 'providers are not read to open an event');
+});
+
+test('nothing the functions ask of the database scans a table', async () => {
+  const { raw } = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const seen = recordSql();
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: owner });
+  await hit(tournaments.onRequestGet as Handler, '/api/tournaments', {}, { cookie: owner });
+  const { staffToken, version } = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner }))
+    .json;
+  const helper = await signIn('Helper');
+  await hit(staff.onRequestPost as Handler, '/staff', at(code), {
+    method: 'POST',
+    cookie: helper,
+    body: { token: staffToken }
+  });
+  await hit(staff.onRequestGet as Handler, '/staff', at(code), { cookie: owner });
+  await hit(manage.onRequestGet as Handler, `/manage?since=${version}`, at(code), { cookie: helper });
+  await settle(code, owner, { decklists: 'open', playerReporting: true });
+  await addPlayers(code, owner, 2);
+  const sent = await submitAs(code, { popId: '900', firstName: 'Player', lastName: '0', birthDate: '02/27/1990' });
+  await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
+  await hit(decklists.onRequestGet as Handler, `/decklists?popId=900&token=${sent.json.token}`, at(code));
+  await hit(decklists.onRequestPatch as Handler, '/decklists?popId=900', at(code), { method: 'PATCH', cookie: owner });
+  await hit(decklists.onRequestDelete as Handler, '/decklists?popId=900', at(code), { method: 'DELETE' });
+  await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  await playerSays(code, { popId: '900', result: 'win' });
+  await hit(report.onRequestDelete as Handler, '/report?player=900', at(code), { method: 'DELETE', cookie: owner });
+  await hit(staff.onRequestPost as Handler, '/staff', at(code), {
+    method: 'POST',
+    cookie: owner,
+    body: { rotate: true }
+  });
+  await hit(logout.onRequestPost as Handler, '/api/auth/logout', {}, { method: 'POST', cookie: helper });
+  await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
+  const statements = [...new Set(seen)];
+  assert.ok(statements.length > 25, 'the flow reached the functions');
+  for (const sql of statements) {
+    const plan = raw.prepare(`EXPLAIN QUERY PLAN ${sql}`).all() as { detail: string }[];
+    const scans = plan.map(step => step.detail).filter(detail => detail.startsWith('SCAN'));
+    assert.deepEqual(scans, [], sql);
+  }
+});
+
+test('an event made on a code already taken gets another, and the first is untouched', async () => {
+  const owner = await signIn('Organizer');
+  // Every draw the same: the second event's first code is the first event's.
+  const random = mock.method(Math, 'random', () => 0);
+  const first = await newSwiss(owner);
+  let draws = 0;
+  random.mock.mockImplementation(() => {
+    draws += 1;
+    return draws <= first.length ? 0 : 0.5;
+  });
+  const second = await newSwiss(owner);
+  random.mock.restore();
+  assert.notEqual(second, first);
+  await addPlayers(second, owner, 1);
+  assert.equal((await view(first)).tournament.players.length, 0);
+  assert.equal((await view(second)).tournament.players.length, 1);
+});
+
+test('the index migration brings an older database in line with the schema', () => {
+  const indexes = (db: ReturnType<typeof sqliteD1>['raw']) =>
+    db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL ORDER BY name").all();
+  const fresh = sqliteD1('tournaments.sql').raw;
+  const older = sqliteD1('tournaments.sql').raw;
+  older.exec('DROP INDEX identities_by_user; DROP INDEX tournaments_of_owner');
+  older.exec('CREATE INDEX tournaments_by_owner ON tournaments (owner_id, updated_at)');
+  const migration = readFileSync(
+    new URL('../../config/d1/migrations/tournaments-0004-indexes.sql', import.meta.url),
+    'utf8'
+  );
+  older.exec(migration);
+  older.exec(migration);
+  assert.deepEqual(indexes(older), indexes(fresh));
 });

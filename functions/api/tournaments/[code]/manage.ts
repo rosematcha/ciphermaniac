@@ -4,17 +4,16 @@
  * the players' reports have settled get written in (see settleIfDue).
  * `?since=<version>` answers 204 when that version still stands and no report
  * is due to settle, which is what the console polls with: an idle console
- * costs a few small reads, not the whole document.
+ * costs one small read, not the whole document.
  */
 
 import { dueResults } from '../../../../shared/tournament/reports.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import { type Context, param } from '../../../lib/auth/env.js';
-import { currentUserId } from '../../../lib/auth/session.js';
 import { manageView, open, privateJson } from '../../../lib/tournaments/access.js';
 import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { settleIfDue } from '../../../lib/tournaments/results.js';
-import { isCode, isStaffMember, loadHead } from '../../../lib/tournaments/store.js';
+import { isCode, loadHead } from '../../../lib/tournaments/store.js';
 
 /** Whether the asker is the event's staff and their copy is still current; anything else takes the full answer. */
 async function unchanged(context: Context<'code'>): Promise<boolean> {
@@ -24,12 +23,8 @@ async function unchanged(context: Context<'code'>): Promise<boolean> {
   if (!since || !db || !isCode(code)) {
     return false;
   }
-  const head = await loadHead(db, code);
-  if (!head || head.version !== since || dueResults(head.reports, Date.now()).length > 0) {
-    return false;
-  }
-  const userId = await currentUserId(db, context.request);
-  return userId !== null && (userId === head.ownerId || (await isStaffMember(db, code, userId)));
+  const head = await loadHead(db, code, context.request);
+  return head !== null && head.staff && head.version === since && dueResults(head.reports, Date.now()).length === 0;
 }
 
 export async function onRequestGet(context: Context<'code'>): Promise<Response> {
