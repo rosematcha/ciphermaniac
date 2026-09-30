@@ -222,11 +222,15 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
   }));
   return {
     info: { ...tournament.info, organizerPopId: '' },
+    // Field by field, so a field added to Player stays private until it is named here:
+    // a fixed table, for one, is an accommodation, not the room's business.
     players: tournament.players.map(player => ({
-      ...player,
       id: key(player.id),
+      firstName: player.firstName,
       lastName: short?.get(player.id) ?? player.lastName,
       birthDate: '',
+      droppedAfter: player.droppedAfter,
+      ...(player.late ? { late: true } : {}),
       created: '',
       modified: ''
     })),

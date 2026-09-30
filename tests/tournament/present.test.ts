@@ -213,6 +213,27 @@ test('the organizer’s and the public’s standings break exact ties the same w
   assert.deepEqual(shown, staff);
 });
 
+test('the public copy names only what the room may see of each player', () => {
+  const t = run(
+    emptyTournament({ name: 'Private' }, true),
+    { type: 'addPlayer', player: { firstName: 'Ash', lastName: 'Ketchum', id: '4242', birthDate: '01/01/1990' } },
+    { type: 'setFixedTable', id: '4242', table: 7 }
+  );
+  const player = { ...(t.players[0] as Tournament['players'][number]), late: true, fromList: true };
+  const keys = assignKeys(t, {});
+  const [shown] = publicTournament({ ...t, players: [player] }, keys).players;
+  assert.deepEqual(shown, {
+    id: keys['4242'],
+    firstName: 'Ash',
+    lastName: 'Ketchum',
+    birthDate: '',
+    droppedAfter: null,
+    late: true,
+    created: '',
+    modified: ''
+  });
+});
+
 test('deck sprites are drawn only while the event tracks archetypes', () => {
   const decks = { '1': 'Gardevoir' };
   assert.deepEqual(shownDecks({ decks, settings: { ...DEFAULT_SETTINGS, deckVisibility: 'after' } }), decks);
