@@ -42,7 +42,9 @@ const NOT_REPORTER = 'Someone else is already reporting for this player. Ask sta
 const NOTES = {
   open: 'You and your opponent both report. When the two reports match, the result counts.',
   reported: 'You can change your report until the timer runs out. After that it waits for your opponent’s.',
-  disputed: 'Your reports don’t match. If you pressed the wrong one, change it. Otherwise, find a judge.'
+  disputed: 'Your reports don’t match. If you pressed the wrong one, change it. Otherwise, find a judge.',
+  /** Once the report is locked there is nothing to change: only the judge is left. */
+  disputedLocked: 'Your reports don’t match. Find a judge.'
 };
 
 interface Props {
@@ -159,7 +161,10 @@ function ReportPanel(props: { report: Report; found: Found; opponent: string }) 
     if (!state?.chosen) {
       return NOTES.open;
     }
-    return state.disputed ? NOTES.disputed : NOTES.reported;
+    if (state.disputed) {
+      return state.locked ? NOTES.disputedLocked : NOTES.disputed;
+    }
+    return NOTES.reported;
   };
   const fixed = () => Boolean(s()?.locked || s()?.final);
   return (
@@ -327,7 +332,10 @@ function MatchBox(props: Props & { me: string }) {
             )}
           </Match>
           <Match when={found()}>
-            {f => <MatchLine {...props} found={f()} report={report} open={open()} onOpen={() => setOpen(true)} />}
+            {/* A dispute opens the panel on its own, so Report result goes whenever the panel shows. */}
+            {f => (
+              <MatchLine {...props} found={f()} report={report} open={Boolean(panel())} onOpen={() => setOpen(true)} />
+            )}
           </Match>
         </Switch>
       </div>
