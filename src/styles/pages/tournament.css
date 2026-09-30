@@ -1191,8 +1191,9 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
     width: 100%;
     justify-content: center;
   }
-  /* A player restacks to a card of lines under a finger: the name and table,
-     then the rounds and deck, then the actions; nothing hides off the side. */
+  /* A player restacks to a card of lines under a finger: the name and their
+     fixed table, then the rounds and the actions, then the deck; nothing
+     hides off the side. Rows part on the zebra, not on a rule. */
   .tm-roster,
   .tm-roster tbody,
   .tm-roster tr,
@@ -1205,9 +1206,13 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   .tm-roster tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'who fixed'
+      'rounds actions'
+      'deck deck';
+    align-items: center;
     gap: 6px 10px;
     padding: 10px 14px;
-    border-bottom: 1px solid var(--rule);
   }
   .tm-roster td {
     padding: 0;
@@ -1216,23 +1221,38 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
     min-width: 0;
   }
   .tm-roster .tm-who {
-    grid-column: 1;
+    grid-area: who;
+    min-width: 0;
+  }
+  .tm-roster .tm-who-sub {
+    white-space: normal;
   }
   .tm-roster .tm-fixed-cell {
-    grid-column: 2;
-    grid-row: 1;
+    grid-area: fixed;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
   }
-  .tm-roster .tm-rounds-cell,
-  .tm-roster .tm-deck-cell,
-  .tm-roster .tm-extra-col {
-    grid-column: 1 / -1;
+  /* The column head is hidden here, so the field says what it is. */
+  .tm-roster .tm-fixed-cell::before {
+    content: 'Table';
+    font-size: var(--text-sm);
+    color: var(--muted);
+  }
+  .tm-roster .tm-rounds-cell {
+    grid-area: rounds;
+  }
+  .tm-roster .tm-deck-cell {
+    grid-area: deck;
   }
   .tm-roster .tm-extra-col {
+    grid-area: actions;
     width: auto;
   }
   .tm-roster .tm-extra-col .tm-row-actions {
     flex-wrap: wrap;
-    margin-left: -8px;
+    margin-right: -8px;
   }
 }
 
