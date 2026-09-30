@@ -5,6 +5,7 @@
  */
 
 import { divisionLookup } from '../../shared/tournament/divisions.ts';
+import { juniorsCutApart } from '../__utils__/divisionCuts.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test, { describe } from 'node:test';
@@ -34,6 +35,7 @@ import {
   nextStep,
   outcomeLabel,
   plannedRounds,
+  podLabel,
   podProgress,
   podStandings,
   recordsBefore,
@@ -161,11 +163,11 @@ test('finds matches by either player’s name', () => {
 
 test('lists who a re-pair would seat', () => {
   let t = run(
-    emptyTournament({ name: 'Seats' }, true),
+    emptyTournament({ name: 'Seats' }),
     ...[0, 1, 2, 3].map(
       i => ({ type: 'addPlayer', player: { firstName: 'P', lastName: `${i}`, id: `${10 + i}` } }) as Command
     ),
-    { type: 'pairRound', pod: 'mixed' }
+    { type: 'pairRound', pod: 'masters' }
   );
   assert.deepEqual(unseated(t, t.pods[0] as Pod), []);
   t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'One', id: '99' } });
@@ -195,12 +197,12 @@ test('exports pending results into the .tdf, finalized once the event closes', (
     }));
   assert.match(tdfText({ tournament: CHALLENGE, pending: completed, finished: true }), /<standings>/);
   assert.equal(tdfFilename(CHALLENGE), 'Fixture Challenge Friends.tdf');
-  assert.equal(tdfFilename(emptyTournament({ name: '???' }, true)), 'tournament.tdf');
+  assert.equal(tdfFilename(emptyTournament({ name: '???' })), 'tournament.tdf');
 });
 
 test('the organizer’s and the public’s standings break exact ties the same way', () => {
   const t = run(
-    emptyTournament({ name: 'Ties' }, true),
+    emptyTournament({ name: 'Ties' }),
     ...['9', '10', '4', '3'].map(id => ({ type: 'addPlayer', player: { firstName: 'P', lastName: id, id } }) as Command)
   );
   const keys = assignKeys(t, {});
@@ -215,7 +217,7 @@ test('the organizer’s and the public’s standings break exact ties the same w
 
 test('the public copy names only what the room may see of each player', () => {
   const t = run(
-    emptyTournament({ name: 'Private' }, true),
+    emptyTournament({ name: 'Private' }),
     { type: 'addPlayer', player: { firstName: 'Ash', lastName: 'Ketchum', id: '4242', birthDate: '01/01/1990' } },
     { type: 'setFixedTable', id: '4242', table: 7 }
   );
@@ -232,6 +234,24 @@ test('the public copy names only what the room may see of each player', () => {
     created: '',
     modified: ''
   });
+});
+
+test('divisions that played together each take their places from their own cut', () => {
+  const t = juniorsCutApart();
+  const mixed = t.pods.find(p => p.category === 'mixed') as Pod;
+  const juniorCut = t.pods.find(p => p.category === 'junior') as Pod;
+  const groups = podStandings(t, mixed, divisionLookup(t));
+  assert.deepEqual(
+    groups.map(g => [g.division, g.cut, g.cutStarted, g.rows.length]),
+    [
+      ['junior', 4, true, 4],
+      ['masters', 0, false, 4]
+    ]
+  );
+  const final = juniorCut.rounds.at(-1)?.matches[0];
+  assert.equal(groups[0]?.rows[0]?.playerId, final?.p1, 'the Juniors’ champion first');
+  assert.deepEqual(podStandings(t, juniorCut, divisionLookup(t)), [groups[0]], 'the cut reads as its division');
+  assert.equal(podLabel(juniorCut), 'Juniors top cut');
 });
 
 test('deck sprites are drawn only while the event tracks archetypes', () => {
@@ -368,11 +388,11 @@ test('the rounds are Play! Pokémon’s structure for the attendance, held to th
 test('each division cuts by its own attendance, and not past the players still in', () => {
   assert.deepEqual(
     divisionCuts(fieldOf(16), podOf(16), () => 'masters'),
-    [{ division: 'masters', active: 16, cut: 4 }]
+    [{ division: 'masters', active: 16, cut: 4, started: false }]
   );
   assert.deepEqual(
     divisionCuts(fieldOf(24, 17), podOf(24), () => 'masters'),
-    [{ division: 'masters', active: 7, cut: 0 }],
+    [{ division: 'masters', active: 7, cut: 0, started: false }],
     'drops left too few for a top 8'
   );
   // 20 Masters and 5 Juniors played together: a top 4 of Masters, no cut for Juniors.
@@ -380,8 +400,8 @@ test('each division cuts by its own attendance, and not past the players still i
   assert.deepEqual(
     divisionCuts(fieldOf(25), podOf(25), id => (juniors.has(id) ? 'junior' : 'masters')),
     [
-      { division: 'junior', active: 5, cut: 0 },
-      { division: 'masters', active: 20, cut: 4 }
+      { division: 'junior', active: 5, cut: 0, started: false },
+      { division: 'masters', active: 20, cut: 4, started: false }
     ]
   );
 });

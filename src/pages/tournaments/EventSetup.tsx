@@ -17,7 +17,6 @@ import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
 export interface Setup {
   name: string;
-  combined: boolean;
   roundTime: number;
   settings: Partial<TournamentSettings>;
 }
@@ -37,7 +36,6 @@ export function EventSetup(props: {
   const [name, setName] = createSignal('');
   const [sanctioned, setSanctioned] = createSignal(false);
   const [playToolsConfirmed, setPlayToolsConfirmed] = createSignal(false);
-  const [combined, setCombined] = createSignal(true);
   const [format, setFormat] = createSignal('Standard');
   const [startsAt, setStartsAt] = createSignal('');
   const [roundTime, setRoundTime] = createSignal(DEFAULT_ROUND_MINUTES);
@@ -57,7 +55,6 @@ export function EventSetup(props: {
     }
     props.onCreate({
       name: name().trim(),
-      combined: combined() || !sanctioned(),
       roundTime: roundTime(),
       settings: {
         format: format(),
@@ -120,11 +117,6 @@ export function EventSetup(props: {
                 I’ve created this event in Play! Tools
               </label>
             </div>
-          </SettingRow>
-        </Show>
-        <Show when={swiss() && sanctioned()}>
-          <SettingRow label='Divisions'>
-            <Toggle label='Divisions' value={combined()} on='Together' off='Apart' onChange={setCombined} />
           </SettingRow>
         </Show>
         <SettingRow label='Format' for='setup-format'>

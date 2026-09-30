@@ -22,29 +22,35 @@ const suggestedCut = (entry: DivisionCut | undefined) => (entry ? entry.cut || l
 
 /**
  * The top cut's size, then the button that starts it. `cuts` are the
- * divisions the pod plays (see divisionCuts); with more than one, each cuts
- * on its own, so the division is asked too, and picking one offers its own
- * cut first.
+ * divisions the pod plays that have yet to cut (see divisionCuts); in a pod
+ * of several (`divided`), each cuts on its own, so the division is named too,
+ * asked when more than one is left, and picking one offers its own cut first.
  */
 export function TopCutControl(props: {
   state: ManageState;
   pod: Pod;
   cuts: readonly DivisionCut[];
+  divided: boolean;
   primary?: boolean;
 }) {
   // eslint-disable-next-line solid/reactivity -- a starting suggestion; the organizer's pick wins from then on
   const [division, setDivision] = createSignal<Division>(props.cuts.at(-1)?.division ?? 'masters');
+  // The pick, while it is still a division left to cut; the last one left otherwise.
   const entry = () => props.cuts.find(c => c.division === division()) ?? props.cuts.at(-1);
 
-  const [size, setSize] = createSignal(suggestedCut(entry()));
+  // A size picked stays with the division it was picked for; another division offers its own first.
+  const [picked, setPicked] = createSignal<{ division: Division | undefined; size: number } | null>(null);
+  const size = () => {
+    const choice = picked();
+    return choice && choice.division === entry()?.division ? choice.size : suggestedCut(entry());
+  };
+  const setSize = (next: number) => setPicked({ division: entry()?.division, size: next });
   const several = () => props.cuts.length > 1;
-  function pickDivision(next: Division) {
-    setDivision(next);
-    setSize(suggestedCut(entry()));
-  }
+  const pickDivision = (next: Division) => setDivision(next);
   function start() {
     const cut = { type: 'startTopCut' as const, pod: props.pod.category, size: size() };
-    void props.state.send(several() ? { ...cut, division: division() } : cut);
+    const picked = entry()?.division;
+    void props.state.send(props.divided && picked ? { ...cut, division: picked } : cut);
   }
   return (
     <span class='tm-inline-form'>
@@ -56,7 +62,7 @@ export function TopCutControl(props: {
         >
           <For each={props.cuts}>
             {c => (
-              <option value={c.division} selected={c.division === division()}>
+              <option value={c.division} selected={c.division === entry()?.division}>
                 {DIVISION_LABELS[c.division]}
               </option>
             )}

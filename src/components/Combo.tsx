@@ -28,11 +28,18 @@
  * the whole of `options` and shows the best few. A caller with a long tail can
  * therefore keep the tail findable without making it the first thing anyone
  * sees.
+ *
+ * The list is a popover, so it draws in the top layer: a box in a table row is
+ * not cut off by a `.table-wrap` that clips its overflow. It keeps its place in
+ * the DOM, and with it the styles of whatever the box sits in, and is placed
+ * by hand against the field (see placeComboList), turning upward near the
+ * bottom of the screen.
  * @module components/Combo
  */
 
-import { createEffect, createMemo, createSignal, createUniqueId, For, type JSX, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, createUniqueId, For, type JSX, onCleanup, Show } from 'solid-js';
 import { rankByQuery, SUGGESTION_LIMIT } from '../lib/rankByQuery';
+import { type Band, placeComboList } from '../utils/comboListPlacement';
 
 interface ComboProps<T> {
   /** Placeholder and accessible name; the box carries no visible label. */
@@ -76,11 +83,49 @@ export function splitMatch(name: string, query: string): [string, string, string
   return [name.slice(0, at), name.slice(at, at + q.length), name.slice(at + q.length)];
 }
 
+/** What can be seen of the viewport, which a phone's keyboard shortens. */
+function visibleBand(): Band {
+  const view = window.visualViewport;
+  return view ? { top: view.offsetTop, height: view.height } : { top: 0, height: window.innerHeight };
+}
+
+/** Puts an open list against its field. */
+function placeList(list: HTMLElement, field: HTMLElement): void {
+  const place = placeComboList(field.getBoundingClientRect(), visibleBand());
+  list.setAttribute('data-side', place.side);
+  Object.assign(list.style, {
+    left: `${place.left}px`,
+    top: `${place.top}px`,
+    width: `${place.width}px`,
+    maxHeight: `${place.maxHeight}px`
+  });
+}
+
+/**
+ * Draws an open list over everything and keeps it on its field while the page
+ * scrolls or the viewport changes under it: a fixed layer would otherwise stay
+ * where it was drawn.
+ */
+function followField(list: HTMLElement, field: HTMLElement): void {
+  const place = (): void => placeList(list, field);
+  list.showPopover();
+  place();
+  const stop = new AbortController();
+  const { signal } = stop;
+  for (const target of [window, window.visualViewport]) {
+    target?.addEventListener('scroll', place, { capture: true, signal });
+    target?.addEventListener('resize', place, { signal });
+  }
+  onCleanup(() => stop.abort());
+}
+
 export function Combo<T>(props: ComboProps<T>): JSX.Element {
   const listId = createUniqueId();
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal(false);
   const [active, setActive] = createSignal(0);
+  let field: HTMLInputElement | undefined;
+  let list: HTMLUListElement | undefined;
 
   // Memoised: with a browse list running to a hundred entries this is read
   // several times per render, and every read would otherwise re-rank.
@@ -103,6 +148,14 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
   const stands = (): boolean => props.selected !== undefined;
   /** The idle box shows what it stands for; an open one shows what is typed. */
   const shown = (): string => (open() || props.selected === undefined ? query() : props.label(props.selected));
+
+  // Ahead of the scroll below, which can only bring a row along in a list
+  // that is showing.
+  createEffect(() => {
+    if (open() && list?.isConnected && field) {
+      followField(list, field);
+    }
+  });
 
   // A browsable list is taller than its own window, so walking it with the
   // arrow keys has to bring the active row along. `nearest` keeps a click-then-
@@ -178,6 +231,7 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
     >
       <Show when={props.selected}>{item => <span class='tl-combo-lead'>{props.adorn?.(item())}</span>}</Show>
       <input
+        ref={el => (field = el)}
         type='text'
         class='search'
         role='combobox'
@@ -201,7 +255,7 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
         onKeyDown={onKeyDown}
       />
       <Show when={open()}>
-        <ul class='tl-list' id={listId} role='listbox'>
+        <ul ref={el => (list = el)} class='tl-list' id={listId} role='listbox' popover='manual'>
           <Show when={results().length > 0} fallback={<li class='none'>Nothing matches.</li>}>
             <For each={results()}>
               {(item, i) => (

@@ -26,7 +26,7 @@ test('reads every well-formed command', () => {
   const good = [
     {
       type: 'addPlayer',
-      player: { firstName: 'A', lastName: 'B', id: '1', birthDate: '02/27/2000', division: 'senior' }
+      player: { firstName: 'A', lastName: 'B', id: '1', birthDate: '02/27/2000' }
     },
     { type: 'editPlayer', id: '1', firstName: 'A', lastName: 'B', birthDate: '' },
     { type: 'removePlayer', id: '1' },
@@ -58,7 +58,7 @@ test('refuses malformed commands', () => {
     { type: 'toString' },
     { type: 'pairRound', pod: 'everyone' },
     { type: 'addPlayer', player: { firstName: 'A' } },
-    { type: 'addPlayer', player: { firstName: 'A', lastName: 'B', division: 'toddler' } },
+    { type: 'addPlayer', player: { firstName: 'A', lastName: 'B', birthDate: 20000227 } },
     { type: 'addPlayer', player: { firstName: 'A', lastName: 'B', id: 7 } },
     { type: 'reportResult', pod: 'mixed', round: 1, table: 1, p1: '1', p2: null, outcome: 'bye' },
     { type: 'reportResult', pod: 'mixed', round: 1, table: 1, p1: '1', outcome: 'p1' },
@@ -77,7 +77,7 @@ test('a tournament document must be whole and consistent', () => {
   const t = parseTdf(readFileSync(new URL('../fixtures/tdf/cup-finalized.tdf', import.meta.url), 'utf8'));
   const copy = () => JSON.parse(JSON.stringify(t));
   assert.ok(readTournament(copy()));
-  assert.ok(readTournament({ ...emptyTournament({ name: 'x' }, true) })?.combined);
+  assert.ok(readTournament({ ...emptyTournament({ name: 'x' }) }));
   const strangerInMatch = copy();
   strangerInMatch.pods[0].rounds[0].matches[0].p2 = 'ghost';
   const duplicatePlayer = copy();

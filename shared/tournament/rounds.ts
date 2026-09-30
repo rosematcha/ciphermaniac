@@ -5,16 +5,65 @@
 
 import type { Pairing, PairingHistory } from './pairing.js';
 import { matchPoints, tallySwiss } from './standings.js';
-import type { Match, Pod, PodCategory, Round, Tournament } from './types.js';
+import type { Division, Match, Pod, PodCategory, Round, Tournament } from './types.js';
 
 /** The pod's current round: the last one paired. */
 export function latestRound(pod: Pod | undefined): Round | undefined {
   return pod?.rounds.at(-1);
 }
 
-/** The pod a player plays in. */
+/**
+ * The pod a player plays in now: their division's top cut once they are in
+ * one (see Pod.cutOf), which comes after the pod they played Swiss in.
+ */
 export function podOf(tournament: Tournament, playerId: string): Pod | undefined {
-  return tournament.pods.find(pod => pod.playerIds.includes(playerId));
+  for (let i = tournament.pods.length - 1; i >= 0; i -= 1) {
+    const pod = tournament.pods[i] as Pod;
+    if (pod.playerIds.includes(playerId)) {
+      return pod;
+    }
+  }
+  return undefined;
+}
+
+/** The pods playing the divisions' top cuts out of `pod`, a pod of several divisions. */
+export function cutPodsOf(tournament: Tournament, pod: Pod): Pod[] {
+  return tournament.pods.filter(p => p.cutOf === pod.category);
+}
+
+/** The pod playing `division`'s top cut out of `pod`, once it has started. */
+export function cutPodOf(tournament: Tournament, pod: Pod, division: Division): Pod | undefined {
+  return tournament.pods.find(p => p.cutOf === pod.category && p.category === division);
+}
+
+/**
+ * The pods still in play: a pod of several divisions drops out once its
+ * divisions go on to their top cuts, since it has no round left to play.
+ */
+export function livePods(tournament: Tournament): Pod[] {
+  return tournament.pods.filter(pod => !tournament.pods.some(p => p.cutOf === pod.category));
+}
+
+/**
+ * A division's top cut with the Swiss rounds that seeded it ahead of its own,
+ * so records and seeds read from it as from a pod of one division; any other
+ * pod as it is.
+ */
+export function withSwiss(tournament: Tournament, pod: Pod): Pod {
+  const swiss = pod.cutOf && tournament.pods.find(p => p.category === pod.cutOf);
+  return swiss ? { ...pod, rounds: [...swiss.rounds, ...pod.rounds] } : pod;
+}
+
+/**
+ * Every round a player has played, as one pod: the pod they played Swiss in,
+ * with the rounds of the top cut they went on to after its own. Their record,
+ * history and final place all read from it.
+ */
+export function playerPod(tournament: Tournament, playerId: string): Pod | undefined {
+  const theirs = tournament.pods.filter(pod => pod.playerIds.includes(playerId));
+  const swiss = theirs.find(pod => !pod.cutOf);
+  const cut = theirs.find(pod => pod.cutOf);
+  return swiss && cut ? { ...swiss, rounds: [...swiss.rounds, ...cut.rounds] } : (swiss ?? cut);
 }
 
 /** Whether any round has been paired: before that the event is still taking players. */

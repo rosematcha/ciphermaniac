@@ -11,9 +11,9 @@
 import { useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, lazy, onCleanup, onMount, Show } from 'solid-js';
 import { parseTomDate } from '../../../shared/tournament/divisions';
-import { hasStarted, latestRound, podOf } from '../../../shared/tournament/rounds';
+import { hasStarted, latestRound, livePods, playerPod, podOf, withSwiss } from '../../../shared/tournament/rounds';
 import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
-import { type Pod, POD_LABELS, type PodCategory, type Round } from '../../../shared/tournament/types';
+import type { Pod, PodCategory, Round } from '../../../shared/tournament/types';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
 import {
   decklistsOpen,
@@ -45,6 +45,7 @@ import {
   filterMatches,
   firstRoundTime,
   namesById,
+  podLabel,
   podStandings,
   roundCapOf,
   roundLabel,
@@ -279,7 +280,8 @@ function OpenPlayer(props: {
   onForget: () => void;
   onOpen: (id: string | null) => void;
 }) {
-  const pod = createMemo(() => podOf(props.view.tournament, props.id) ?? props.fallback);
+  // Every round they played, their division's top cut included, as one pod (see playerPod).
+  const pod = createMemo(() => playerPod(props.view.tournament, props.id) ?? props.fallback);
   const division = () => divisionHeading(props.view.divisions[props.id] ?? null);
   // Memos: the sheet reads these once per row of the player's history, and ranking a pod is a pass over its every match.
   const standings = createMemo(() => {
@@ -369,7 +371,9 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
   );
   const pods = () => props.view.tournament.pods;
   const myPod = () => podOf(props.view.tournament, me() ?? '')?.category ?? null;
-  const pod = createMemo(() => pods().find(p => p.category === (podChoice() ?? myPod())) ?? pods()[0]);
+  const pod = createMemo(
+    () => pods().find(p => p.category === (podChoice() ?? myPod())) ?? livePods(props.view.tournament)[0] ?? pods()[0]
+  );
   const round = createMemo(() => pod()?.rounds.find(r => r.number === roundChoice()) ?? latestRound(pod()));
   const names = createMemo(() => namesById(props.view.tournament));
   const divisionOf = (id: string) => props.view.divisions[id] ?? 'masters';
@@ -382,7 +386,7 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
     <>
       <Show when={pods().length > 1}>
         <Segmented
-          options={pods().map(p => ({ value: p.category, label: POD_LABELS[p.category] }))}
+          options={pods().map(p => ({ value: p.category, label: podLabel(p) }))}
           selected={pod()?.category ?? 'masters'}
           onSelect={value => {
             setPodChoice(value);
@@ -427,7 +431,7 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
             fallback={<RegisteredList view={props.view} me={me()} query={query()} onPlayer={setOpen} />}
           >
             <MatchTable
-              pod={pod()!}
+              pod={withSwiss(props.view.tournament, pod()!)}
               round={round()!}
               matches={filterMatches(round()!.matches, names(), query())}
               names={names()}

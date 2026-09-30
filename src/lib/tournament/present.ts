@@ -25,7 +25,7 @@ import {
   swissStandings,
   tallySwiss
 } from '../../../shared/tournament/standings';
-import { latestRound } from '../../../shared/tournament/rounds';
+import { cutPodOf, latestRound, livePods } from '../../../shared/tournament/rounds';
 import { ordinal } from '../format';
 import { recommendedStructure } from '../../../shared/tournament/structure';
 import {
@@ -37,6 +37,7 @@ import {
   type Outcome,
   playerName,
   type Pod,
+  POD_LABELS,
   type Round,
   type Tournament
 } from '../../../shared/tournament/types';
@@ -108,12 +109,16 @@ export interface DivisionCut {
   active: number;
   /** 0 when the attendance calls for none, or too few are left to fill it. */
   cut: number;
+  /** Whether its top cut has started, in a pod of its own (see Pod.cutOf). */
+  started: boolean;
 }
 
 /**
- * The top cut of each division a pod plays, in division order: Play! Pokémon's
- * cut for everyone who played in it, and none bigger than the players still
- * in. A pod that plays divisions together still cuts each on its own.
+ * The top cut of each division a pod plays, in division order: Play!
+ * Pokémon's cut for everyone of that division who played in it, and none
+ * bigger than the players still in. A pod that plays divisions together still
+ * cuts each on its own, by its own attendance (Tournament Rules Handbook
+ * §5.2.1; every attendance table counts competitors per age division).
  */
 export function divisionCuts(tournament: Tournament, pod: Pod, divisionOf: (id: string) => Division): DivisionCut[] {
   const dropped = new Set(tournament.players.filter(p => p.droppedAfter !== null).map(p => p.id));
@@ -121,8 +126,14 @@ export function divisionCuts(tournament: Tournament, pod: Pod, divisionOf: (id: 
     const ids = pod.playerIds.filter(id => divisionOf(id) === division);
     const active = ids.filter(id => !dropped.has(id)).length;
     const { cut } = recommendedStructure(ids.length);
-    return ids.length ? [{ division, active, cut: cut <= active ? cut : 0 }] : [];
+    const started = cutPodOf(tournament, pod, division) !== undefined;
+    return ids.length ? [{ division, active, cut: cut <= active ? cut : 0, started }] : [];
   });
+}
+
+/** A pod's name on the page: its divisions, or for one division's top cut, that. */
+export function podLabel(pod: Pod): string {
+  return pod.cutOf ? `${POD_LABELS[pod.category]} top cut` : POD_LABELS[pod.category];
 }
 
 /** The round cap a status line counts rounds against: none for a TOM event, whose rounds are TOM's to decide. */
@@ -223,7 +234,7 @@ export function eventStatus(
   },
   now: number
 ): string[] {
-  const pod = tournament.pods.find(p => p.rounds.length > 0);
+  const pod = livePods(tournament).find(p => p.rounds.length > 0);
   if (!pod) {
     const players = tournament.players.filter(player => player.droppedAfter === null).length;
     return ['Registration', plural(players, 'player'), ...(event.firstRound ? [`Round 1 at ${event.firstRound}`] : [])];
@@ -279,23 +290,49 @@ export function seatMark(outcome: Outcome, seat: 1 | 2): string {
 export interface DivisionStandings {
   division: Division | null;
   rows: Standing[];
+  /** The top cut it plays to: the one started, or before then, the one its attendance calls for (0 for none). */
+  cut: number;
+  /** Whether its top cut has started. */
+  cutStarted: boolean;
+}
+
+/** The cut a division's attendance calls for, while enough are still in to fill it (see divisionCuts). */
+function plannedCut(rows: readonly Standing[]): number {
+  const { cut } = recommendedStructure(rows.length);
+  return cut <= rows.filter(row => !row.dropped).length ? cut : 0;
+}
+
+/** One division's table: Swiss places from `pod`, then the top cut `bracket` plays, if any. */
+function standingsOf(tournament: Tournament, pod: Pod, only?: ReadonlySet<string>, bracket?: Pod) {
+  const played = bracket ?? pod;
+  const rows = placeFinals(played, swissStandings(pod, tournament.players, only ? { only } : {}));
+  const cutStarted = played.rounds.some(round => round.kind === 'elimination');
+  return { rows, cut: cutStarted ? played.cut : plannedCut(rows), cutStarted };
 }
 
 /**
- * A pod's standings. A pod of one division is one table; a combined pod is
- * ranked per division, since each division keeps its own standings and cut.
+ * A pod's standings. A pod of one division is one table; a pod of several is
+ * ranked per division, since each division keeps its own standings and top
+ * cut (Tournament Rules Handbook §5.2.1), and each takes its final places
+ * from its own cut's pod (see Pod.cutOf). A division's cut pod reads as its
+ * division's table.
  */
 export function podStandings(
   tournament: Tournament,
   pod: Pod,
   divisionOf: (id: string) => Division
 ): DivisionStandings[] {
+  const swiss = pod.cutOf && tournament.pods.find(p => p.category === pod.cutOf);
+  if (swiss) {
+    return podStandings(tournament, swiss, divisionOf).filter(group => group.division === pod.category);
+  }
   if (isDivision(pod.category)) {
-    return [{ division: null, rows: placeFinals(pod, swissStandings(pod, tournament.players)) }];
+    return [{ division: null, ...standingsOf(tournament, pod) }];
   }
   const groups = DIVISIONS.flatMap(division => {
     const only = new Set(pod.playerIds.filter(id => divisionOf(id) === division));
-    return only.size ? [{ division, rows: placeFinals(pod, swissStandings(pod, tournament.players, { only })) }] : [];
+    const bracket = cutPodOf(tournament, pod, division);
+    return only.size ? [{ division, ...standingsOf(tournament, pod, only, bracket) }] : [];
   });
   // One division among them, as at an unsanctioned event: one table, with no division to name.
   return groups.length === 1 ? groups.map(group => ({ ...group, division: null })) : groups;
@@ -340,7 +377,7 @@ export function currentMatchOf(
   tournament: Tournament,
   playerId: string
 ): { pod: Pod; round: Round; match: Match } | null {
-  for (const pod of tournament.pods) {
+  for (const pod of livePods(tournament)) {
     const round = latestRound(pod);
     const match = round?.matches.find(m => m.p1 === playerId || m.p2 === playerId);
     if (round && match) {

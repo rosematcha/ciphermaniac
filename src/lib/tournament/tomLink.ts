@@ -76,13 +76,32 @@ export interface FileRead {
   lastModified: number;
 }
 
-/** The file's text, or null when it has not changed since `lastModified`. */
-export async function readIfChanged(handle: TdfHandle, lastModified: number): Promise<FileRead | null> {
+/** How long a read may take before the link gives up on it and reads again. */
+export const READ_TIMEOUT_MS = 15_000;
+
+async function readFile(handle: TdfHandle, lastModified: number): Promise<FileRead | null> {
   const file = await handle.getFile();
   if (file.lastModified === lastModified) {
     return null;
   }
   return { text: await file.text(), lastModified: file.lastModified };
+}
+
+/**
+ * The file's text, or null when it has not changed since `lastModified`. A
+ * read that never finishes (the file held by another program, a drive gone
+ * quiet) fails after READ_TIMEOUT_MS instead of holding the link forever.
+ */
+export async function readIfChanged(handle: TdfHandle, lastModified: number): Promise<FileRead | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Reading the file took too long')), READ_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([readFile(handle, lastModified), late]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function writeFile(handle: TdfHandle, text: string): Promise<void> {

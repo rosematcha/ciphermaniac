@@ -4663,20 +4663,25 @@ tr.row-expansion > td {
    outlined in `--muted` — #a4998a against a #25221f fill, which reads as a
    white halo, not an edge. */
 
+/* A popover in the top layer, placed by Combo against its field: in a table
+   row it would otherwise be cut off by the `.table-wrap` that clips it. Its
+   place, width and height come from there; this undoes the browser's own
+   popover centring and colours. */
 .tl-list {
-  position: absolute;
-  z-index: 60;
-  left: 0;
-  right: 0;
-  top: calc(100% + 4px);
+  inset: auto;
   margin: 0;
   padding: 4px;
   list-style: none;
-  max-height: 296px;
   overflow-y: auto;
+  color: inherit;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+}
+/* Turned upward, Combo sets its top at the field, and it rises from there
+   whatever its height. */
+.tl-list[data-side='above'] {
+  translate: 0 -100%;
 }
 .tl-list[hidden] {
   display: none;

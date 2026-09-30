@@ -48,6 +48,19 @@ export type LinkState = 'none' | 'reconnect' | 'watching';
 const lostFile = (err: unknown) =>
   err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'NotFoundError');
 
+/**
+ * Runs one step of following the file. A failure names the step, so the strip
+ * says whether the file could not be read, did not parse, or was not taken,
+ * and keeps what failed as its cause.
+ */
+async function during<T>(step: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (err) {
+    throw new Error(`Could not ${step} the .tdf: ${errorText(err)}`, { cause: err });
+  }
+}
+
 export const readTime = (at: Date) =>
   at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 
@@ -66,6 +79,8 @@ export function createTomLink(props: { manage: () => Manage; onSynced: (answer?:
   /** The revision this browser's last sync left; null until it has synced, when the console's copy is the base. */
   let synced: string | null = null;
   let reading = false;
+  /** A refresh asked for while a read was under way, done once that read ends. */
+  let again = false;
   /** What asked to write, for focus to return to if the organizer keeps the file as it is. */
   let opener: HTMLElement | null = null;
   const code = () => props.manage().code;
@@ -79,11 +94,12 @@ export function createTomLink(props: { manage: () => Manage; onSynced: (answer?:
 
   /** Sends the parsed file if it differs from what was last sent. */
   async function push(text: string) {
-    const parsed = parseTdf(text);
+    const parsed = await during('parse', async () => parseTdf(text));
     const json = JSON.stringify(parsed);
     if (json !== lastSent) {
       const base = synced ?? (await revisionOf(props.manage().tournament));
-      const answer = await syncTournament(code(), parsed, base).catch(conflicted);
+      const event = code();
+      const answer = await during('send', () => syncTournament(event, parsed, base).catch(conflicted));
       synced = answer.revision;
       lastSent = json;
       await props.onSynced(answer);
@@ -107,14 +123,9 @@ export function createTomLink(props: { manage: () => Manage; onSynced: (answer?:
     throw err;
   }
 
-  async function tick(force = false) {
-    const current = handle();
-    if (!current || state() !== 'watching' || reading) {
-      return;
-    }
-    reading = true;
+  async function readOnce(current: TdfHandle, force: boolean) {
     try {
-      const read = await readIfChanged(current, force ? 0 : lastModified);
+      const read = await during('read', () => readIfChanged(current, force ? 0 : lastModified));
       if (read) {
         await push(read.text);
         ({ lastModified } = read);
@@ -123,14 +134,34 @@ export function createTomLink(props: { manage: () => Manage; onSynced: (answer?:
         setReadAt(new Date());
       }
     } catch (err) {
-      // TOM may be halfway through a save; the next look reads the finished file.
+      // TOM may be halfway through a save, or the site slow to answer; the next look tries again.
       // A file the page may no longer read, or that is gone, will not come back on its own.
-      if (lostFile(err)) {
+      if (err instanceof Error && lostFile(err.cause)) {
         setState('reconnect');
       }
       setError(errorText(err));
+    }
+  }
+
+  async function tick(force = false) {
+    const current = handle();
+    if (!current || state() !== 'watching') {
+      return;
+    }
+    if (reading) {
+      // Dropping a refresh here would leave the organizer looking at a button that did nothing.
+      again ||= force;
+      return;
+    }
+    reading = true;
+    try {
+      await readOnce(current, force);
     } finally {
       reading = false;
+    }
+    if (again) {
+      again = false;
+      await tick(true);
     }
   }
 

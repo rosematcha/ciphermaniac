@@ -58,7 +58,7 @@ function paired(count = 4): Tournament {
     type: 'addPlayer',
     player: { firstName, lastName, id: String(100 + i) }
   }));
-  return run(emptyTournament({ name: 'Cup' }, true), ...adds, { type: 'pairRound', pod: 'mixed' });
+  return run(emptyTournament({ name: 'Cup' }), ...adds, { type: 'pairRound', pod: 'masters' });
 }
 
 const matchesOf = (t: Tournament): Match[] => t.pods[0]?.rounds.at(-1)?.matches ?? [];
@@ -97,7 +97,7 @@ test('agreeing reports stand once both have locked, and not before', () => {
   assert.equal(due.length, 1, 'one result per match');
   assert.deepEqual(resultOf(due[0] as PlayerReport), {
     type: 'reportResult',
-    pod: 'mixed',
+    pod: 'masters',
     round: 1,
     table: match.table,
     p1: match.p1,
@@ -114,7 +114,7 @@ test('two ties agree, but two wins are a dispute that never stands on its own', 
   assert.equal(dueResults(ties, REPORT_WINDOW_MS)[0]?.outcome, 'tie');
   const wins = [report(t, match.p1, 'win', 0), report(t, match.p2, 'win', 0)];
   assert.deepEqual(dueResults(wins, REPORT_WINDOW_MS * 10), []);
-  assert.ok(isDisputed(reportsFor(wins, 'mixed', 1, match)));
+  assert.ok(isDisputed(reportsFor(wins, 'masters', 1, match)));
 });
 
 test('a player can change their report inside the window, and not after', () => {
@@ -139,7 +139,7 @@ test('only an open match against an opponent in the current round can be reporte
   const [match] = matchesOf(t);
   assert.ok(match?.p2);
   const pending = [
-    { pod: 'mixed' as const, round: 1, table: match.table, p1: match.p1, p2: match.p2, outcome: 'p1' as const, at: 0 }
+    { pod: 'masters' as const, round: 1, table: match.table, p1: match.p1, p2: match.p2, outcome: 'p1' as const, at: 0 }
   ];
   assert.equal(reportableMatch(applyPending(t, pending), match.p1), 'This match already has a result');
   assert.equal(reportableMatch(t, 'nobody'), 'You are not paired this round');
@@ -148,9 +148,9 @@ test('only an open match against an opponent in the current round can be reporte
 test('a top cut match takes no tie from a player', () => {
   let t = paired();
   for (const m of matchesOf(t)) {
-    t = run(t, { type: 'reportResult', pod: 'mixed', round: 1, table: m.table, p1: m.p1, p2: m.p2, outcome: 'p1' });
+    t = run(t, { type: 'reportResult', pod: 'masters', round: 1, table: m.table, p1: m.p1, p2: m.p2, outcome: 'p1' });
   }
-  t = run(t, { type: 'startTopCut', pod: 'mixed', size: 2, division: 'masters' });
+  t = run(t, { type: 'startTopCut', pod: 'masters', size: 2 });
   const [final] = matchesOf(t);
   assert.ok(final);
   assert.equal(playerReport(openFor(t, final.p1), final.p1, 'tie', { at: 0 }), 'A top cut match needs a winner');
@@ -163,7 +163,7 @@ test('reports go once their match has a result or is re-paired, and go public un
   const reports = [report(t, first.p1, 'win'), report(t, second.p1, 'win')];
   const decided = run(t, {
     type: 'reportResult',
-    pod: 'mixed',
+    pod: 'masters',
     round: 1,
     table: first.table,
     p1: first.p1,
@@ -174,9 +174,26 @@ test('reports go once their match has a result or is re-paired, and go public un
     pruneReports(decided, reports).map(r => r.table),
     [second.table]
   );
-  const repaired = run(t, { type: 'repairRound', pod: 'mixed', keepReported: false });
+  const repaired = run(t, { type: 'repairRound', pod: 'masters', keepReported: false });
   const kept = pruneReports(repaired, reports);
   assert.ok(kept.every(r => matchesOf(repaired).some(m => m.table === r.table && m.p1 === r.p1 && m.p2 === r.p2)));
   const shown = publicReports(reports.slice(0, 1), { [first.p1]: '1', [first.p2]: '2' });
   assert.deepEqual([shown[0]?.p1, shown[0]?.p2, shown[0]?.by], ['1', '2', '1']);
+});
+
+test('a report follows its players when a late player of a new division renames their pod', () => {
+  const t = paired();
+  const [first] = matchesOf(t);
+  assert.ok(first?.p2);
+  const filed = [report(t, first.p1, 'win')];
+  // A Senior when nobody else is one joins the Masters, whose pod then plays both.
+  const joined = run(t, {
+    type: 'addPlayer',
+    player: { firstName: 'Late', lastName: 'Senior', birthDate: '01/01/2012' }
+  });
+  assert.equal(joined.pods[0]?.category, 'senior-masters');
+  assert.deepEqual(
+    pruneReports(joined, filed).map(r => [r.pod, r.table]),
+    [['senior-masters', first.table]]
+  );
 });

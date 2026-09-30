@@ -234,8 +234,7 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
       created: '',
       modified: ''
     })),
-    pods,
-    ...(tournament.combined ? { combined: true } : {})
+    pods
   };
 }
 

@@ -44,7 +44,13 @@ function reportAll(t: Tournament): Tournament {
   const round = pod?.rounds.at(-1);
   const reports: Command[] = (round?.matches ?? [])
     .filter(m => m.p2 !== null && m.outcome === 'pending')
-    .map(m => ({ type: 'reportResult', pod: 'mixed', round: round?.number ?? 0, ...m, outcome: 'p1' }));
+    .map(m => ({
+      type: 'reportResult',
+      pod: pod?.category ?? 'masters',
+      round: round?.number ?? 0,
+      ...m,
+      outcome: 'p1'
+    }));
   return run(t, ...reports);
 }
 
@@ -54,11 +60,11 @@ function event(players: number, rounds: number, paired: boolean): Tournament {
     type: 'addPlayer',
     player: { firstName: `Player${i + 1}`, lastName: 'Test' }
   }));
-  let t = run(emptyTournament({ name: 'Friday League' }, true), ...adds);
+  let t = run(emptyTournament({ name: 'Friday League' }), ...adds);
   for (let r = 0; r < rounds; r += 1) {
-    t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
+    t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   }
-  return paired ? run(t, { type: 'pairRound', pod: 'mixed' }) : t;
+  return paired ? run(t, { type: 'pairRound', pod: 'masters' }) : t;
 }
 
 const settingsOf = (patch: Partial<TournamentSettings>): TournamentSettings => ({
@@ -143,7 +149,7 @@ test('a result shows in its row while it is on its way, and its answer is not re
   });
   await page.route(`**/api/tournaments/${CODE}/commands`, async route => {
     await held;
-    const tournament = run(t, { type: 'reportResult', pod: 'mixed', round: 1, ...table, outcome: 'p1' });
+    const tournament = run(t, { type: 'reportResult', pod: 'masters', round: 1, ...table, outcome: 'p1' });
     const manage = { code: CODE, mode: 'swiss', version: 4, updatedAt: 0, tournament, pending: [], reports: [] };
     return route.fulfill({
       json: { ...manage, settings: settingsOf({}), decks: {}, role: 'owner', staffToken: 'invite' }
@@ -191,7 +197,7 @@ test("an open table shows its players' reports in its one row, and a lone report
     throw new Error('the event has no first two tables');
   }
   const report = (m: Match, by: string, outcome: PlayerReport['outcome']): PlayerReport => ({
-    pod: 'mixed',
+    pod: 'masters',
     round: 1,
     table: m.table,
     p1: m.p1,
@@ -252,13 +258,36 @@ test('decks are named from the pairings, and a name the list lacks is taken as t
     .toEqual([{ playerId: t.pods[0]?.rounds[0]?.matches[0]?.p1, archetype: 'Homebrew Box' }]);
 });
 
+test('a deck list opened in the last row is drawn whole, not cut off at the table', async ({ page }) => {
+  // The tables clip their overflow, and the list used to hang inside them: in
+  // the bottom row it showed as a sliver under the field.
+  await mockConsole(page, event(8, 0, true), settingsOf({ deckVisibility: 'always' }));
+  await page.getByRole('button', { name: 'Enter decks' }).click();
+  await page.getByRole('combobox', { name: 'Deck' }).last().focus();
+  const list = page.getByRole('listbox');
+  await expect(list).toBeVisible();
+  const drawn = await list.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    const corners: [number, number][] = [
+      [r.left + 4, r.top + 4],
+      [r.right - 4, r.bottom - 4]
+    ];
+    return {
+      tall: r.height > 100,
+      onScreen: r.top >= 0 && r.bottom <= window.innerHeight,
+      uncovered: corners.every(([x, y]) => el.contains(document.elementFromPoint(x, y)))
+    };
+  });
+  expect(drawn).toEqual({ tall: true, onScreen: true, uncovered: true });
+});
+
 test('the big screen marks who won each finished table', async ({ page }) => {
   let t = event(8, 0, true);
   const first = t.pods[0]?.rounds[0]?.matches[0];
   if (!first) {
     throw new Error('no table');
   }
-  t = run(t, { type: 'reportResult', pod: 'mixed', round: 1, ...first, outcome: 'p2' });
+  t = run(t, { type: 'reportResult', pod: 'masters', round: 1, ...first, outcome: 'p2' });
   const keys = assignKeys(t, {});
   const view: TournamentView = {
     code: CODE,
@@ -301,4 +330,29 @@ test('on a phone a roster question takes its own line instead of squeezing the n
   expect((asked?.x ?? 0) + (asked?.width ?? Infinity)).toBeLessThanOrEqual(360);
   const name = await row.locator('.tm-who').boundingBox();
   expect(name?.width ?? 0).toBeGreaterThan(120);
+});
+
+test('a division that cut from a shared pod plays its own bracket, and the shared pod pairs no more', async ({
+  page
+}) => {
+  // Five Juniors play Swiss with ten Seniors (§5.2.1); the Seniors then cut to a top 4 of their own.
+  const adds: Command[] = [...Array(5).fill('2016'), ...Array(10).fill('2012')].map((year: string, i) => ({
+    type: 'addPlayer',
+    player: { firstName: `Player${i + 1}`, lastName: 'Test', birthDate: `02/27/${year}` }
+  }));
+  let t = run(emptyTournament({ name: 'Friday League' }), ...adds, { type: 'pairRound', pod: 'junior-senior' });
+  t = run(reportAll(t), { type: 'startTopCut', pod: 'junior-senior', size: 4, division: 'senior' });
+  const sent = await mockConsole(page, t, settingsOf({}));
+  const pods = page.getByRole('tablist', { name: 'Division' });
+  await expect(pods.getByRole('tab')).toHaveText(['Juniors and Seniors', 'Seniors top cut']);
+  // The console opens on what is still playing: the Seniors' semifinals.
+  await expect(pods.getByRole('tab', { name: 'Seniors top cut' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: 'Pair the final' })).toBeDisabled();
+  await pods.getByRole('tab', { name: 'Juniors and Seniors' }).click();
+  await expect(page.locator('.tm-hero')).toContainText('top cuts under way');
+  await expect(page.getByRole('button', { name: /^Pair round/ })).toHaveCount(0);
+  await expect(page.getByRole('combobox', { name: 'Division to cut' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'End event' })).toHaveClass(/btn-secondary/);
+  await page.getByRole('button', { name: 'Start top cut' }).click();
+  await expect.poll(() => sent.at(-1)).toMatchObject({ type: 'startTopCut', pod: 'junior-senior', division: 'junior' });
 });

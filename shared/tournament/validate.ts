@@ -145,7 +145,8 @@ function pod(value: unknown): Pod {
     rounds: arr(o.rounds, LIMITS.rounds).map(round),
     cut: int(o.cut, 0, 512),
     playoff3rd4th: o.playoff3rd4th === true,
-    startingTable: int(o.startingTable, 0, 100_000)
+    startingTable: int(o.startingTable, 0, 100_000),
+    ...(o.cutOf === undefined ? {} : { cutOf: oneOf(o.cutOf, POD_CATEGORIES) })
   };
 }
 
@@ -207,7 +208,6 @@ export function readTournament(body: unknown): Tournament | null {
       info: info(o.info),
       players: arr(o.players, LIMITS.players).map(player),
       pods: arr(o.pods, POD_CATEGORIES.length).map(pod),
-      ...(o.combined === true ? { combined: true } : {}),
       ...(o.passthrough === undefined ? {} : { passthrough: passthrough(o.passthrough) })
     };
     return consistent(tournament) ? tournament : null;

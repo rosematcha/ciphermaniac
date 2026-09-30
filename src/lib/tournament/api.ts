@@ -103,7 +103,6 @@ export const listTournaments = () => call<{ tournaments: TournamentSummary[] }>(
 /** What the setup asks before a Swiss event starts; the settings left out keep their defaults. */
 export interface SwissSetup {
   name: string;
-  combined: boolean;
   roundTime?: number;
   settings?: Partial<TournamentSettings>;
 }
@@ -164,9 +163,29 @@ export function fetchManage(code: string, since?: number) {
 export const sendCommand = (code: string, command: Command) =>
   call<Manage>(`${base(code)}/commands`, json('POST', { command, localTime: tomDateTime(new Date()) }));
 
-/** Sends the parsed .tdf, taken only if the site still holds the copy `revision` names (see shared/tournament/revision.ts). */
-export const syncTournament = (code: string, tournament: Tournament, revision: string) =>
-  call<Manage & { revision: string }>(`${base(code)}/sync`, json('PUT', { tournament, base: revision }));
+/** How long a sync may take before the link gives up on it and tries again. */
+export const SYNC_TIMEOUT_MS = 30_000;
+
+/**
+ * Sends the parsed .tdf, taken only if the site still holds the copy `revision` names (see shared/tournament/revision.ts).
+ * A sync that hangs is abandoned, so the link following TOM's file is not stuck waiting on it; one that landed
+ * anyway is the copy the site holds when the link sends again, which the server takes as a match.
+ */
+export async function syncTournament(code: string, tournament: Tournament, revision: string) {
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new ApiError('The site took too long to answer', 0)),
+    SYNC_TIMEOUT_MS
+  );
+  try {
+    return await call<Manage & { revision: string }>(`${base(code)}/sync`, {
+      ...json('PUT', { tournament, base: revision }),
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export const setDeck = (code: string, playerId: string, archetype: string | null) =>
   call<Manage>(`${base(code)}/decks`, json('PUT', { playerId, archetype }));

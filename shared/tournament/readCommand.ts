@@ -21,10 +21,17 @@ function newPlayer(value: unknown): NewPlayer | null {
     return null;
   }
   const optional = ['id', 'birthDate'].every(key => value[key] === undefined || isStr(value[key], 20));
-  if (!optional || (value.division !== undefined && !isDivision(value.division))) {
+  if (!optional) {
     return null;
   }
-  return value as unknown as NewPlayer;
+  // Only what staff may say of a player: nothing else in the body rides along.
+  const { firstName, lastName, id, birthDate } = value as unknown as NewPlayer;
+  return {
+    firstName,
+    lastName,
+    ...(id === undefined ? {} : { id }),
+    ...(birthDate === undefined ? {} : { birthDate })
+  };
 }
 
 const INFO_TEXT: EditableInfo[] = ['name', 'city', 'state', 'country', 'startDate'];

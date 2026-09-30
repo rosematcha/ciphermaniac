@@ -20,7 +20,7 @@
 
 import { createEffect, createMemo, createSignal, For, lazy, on, Show, Suspense } from 'solid-js';
 import { isDisputed, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
-import { latestRound } from '../../../shared/tournament/rounds';
+import { latestRound, withSwiss } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import { decksEnabled } from '../../../shared/tournament/view';
 import type { Manage } from '../../lib/tournament/api';
@@ -483,7 +483,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               onDeckMode={setDeckMode}
             />
             <MatchTable
-              pod={props.pod}
+              pod={withSwiss(props.manage.tournament, props.pod)}
               round={r()}
               matches={shown()}
               names={names()}
