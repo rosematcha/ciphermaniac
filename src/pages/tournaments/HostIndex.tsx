@@ -84,7 +84,7 @@ function EventRow(props: { event: TournamentSummary }) {
 function EventTable(props: { title: string; events: readonly TournamentSummary[] }) {
   return (
     <section class='tm-host-section'>
-      <h2 class='tm-th tm-box-head'>{props.title}</h2>
+      <h2 class='tm-subhead tm-box-head'>{props.title}</h2>
       <div class='tm-box'>
         <div class='table-wrap'>
           <table class='data tm-host-table'>

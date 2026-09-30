@@ -85,7 +85,7 @@ function AccountName(props: { user: Me }) {
   }
   return (
     <section>
-      <h2 class='tm-th tm-box-head'>Account name</h2>
+      <h2 class='tm-subhead tm-box-head'>Account name</h2>
       <form class='tm-box' onSubmit={event => void save(event)}>
         <div class='tm-box-bar'>
           <input
@@ -146,7 +146,7 @@ function Profile(props: { user: Me }) {
 
   return (
     <section>
-      <h2 class='tm-th tm-box-head'>Player profile</h2>
+      <h2 class='tm-subhead tm-box-head'>Player profile</h2>
       <form class='tm-box' onSubmit={event => void save(event)}>
         <p class='tm-box-bar muted'>Filled in automatically when you submit a decklist or look for your table.</p>
         <div class='tm-box-bar tm-profile-bar'>

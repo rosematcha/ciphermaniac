@@ -200,15 +200,24 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
       title={props.manage.tournament.info.name}
       status={status()}
       meta={
+        // Each part keeps the dot after it, so the line wraps between parts and never starts on a dot.
         <>
-          <span class='num'>{props.manage.code}</span>
-          <span class='dot'>·</span>
-          {props.manage.mode === 'tom' ? 'Run in TOM' : 'Swiss on this site'}
-          <span class='dot'>·</span>
-          {props.manage.tournament.players.length} players
-          <span class='dot'>·</span>
-          <A href={`/t/${props.manage.code}`}>Public page</A>
-          <span class='dot'>·</span>
+          <span class='tm-meta-part'>
+            <span class='num'>{props.manage.code}</span>
+            <span class='dot'>·</span>
+          </span>
+          <span class='tm-meta-part'>
+            {props.manage.mode === 'tom' ? 'Run in TOM' : 'Swiss on this site'}
+            <span class='dot'>·</span>
+          </span>
+          <span class='tm-meta-part'>
+            {props.manage.tournament.players.length} players
+            <span class='dot'>·</span>
+          </span>
+          <span class='tm-meta-part'>
+            <A href={`/t/${props.manage.code}`}>Public page</A>
+            <span class='dot'>·</span>
+          </span>
           {/* Its own tab, since it goes on the projector while the console keeps running. */}
           <a href={`/t/${props.manage.code}?screen=1`} target='_blank' rel='noopener'>
             Big screen

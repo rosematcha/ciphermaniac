@@ -5,6 +5,37 @@
    pairings row, the clock, the player sheet and the projector view. Fields
    sit on the page background, so they take --surface, as /feedback's do. */
 
+/* ---------- Tone ----------
+   These pages are read at arm's length in a busy room, so they pull the
+   site's tiers further apart than the rest of the site does: a box sits
+   clearly above the page, as HIG's base and elevated backgrounds do, rows
+   get a separator you can see, and dark mode's edge clears the 3:1 the
+   tokens promise on the page and both surfaces (the site's dark --border is
+   1.5:1 on the page). The dark blocks outrank the light one, which would
+   otherwise win on source order. */
+body:has(.tm-page) {
+  --bg: #e9e4db;
+  --surface: #fcfbf8;
+  --surface-2: #ece7df;
+  --rule: #d2cbc0;
+}
+body[data-mode='dark']:has(.tm-page) {
+  --bg: #131110;
+  --surface: #252220;
+  --surface-2: #302c29;
+  --border: #7d746c;
+  --rule: #3a3633;
+}
+@media (prefers-color-scheme: dark) {
+  body:not([data-mode]):has(.tm-page) {
+    --bg: #131110;
+    --surface: #252220;
+    --surface-2: #302c29;
+    --border: #7d746c;
+    --rule: #3a3633;
+  }
+}
+
 .tm-narrow {
   max-width: 640px;
 }
@@ -18,8 +49,10 @@
 .tm-page .hero {
   margin-bottom: var(--space-4);
 }
-/* A link in the meta line is set apart by more than its colour (WCAG 1.4.1). */
+/* A link in the meta line is set apart by more than its colour (WCAG 1.4.1),
+   and never breaks across two lines. */
 .tm-page .hero-meta a {
+  white-space: nowrap;
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
   text-underline-offset: 3px;
@@ -30,6 +63,10 @@
 .tm-page .tabs {
   margin-bottom: var(--space-3);
 }
+/* The current tab is underlined in ink: the edge grey is 1.5:1 in dark mode. */
+.tm-page .tabs button.active::after {
+  background: var(--fg);
+}
 .tm-subhead {
   font-size: var(--text-body);
   font-weight: 600;
@@ -37,6 +74,7 @@
 }
 .tm-standings > .tm-subhead {
   margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-lg);
 }
 
 /* A grid child keeps its content's width by default, and a table's content is
@@ -78,6 +116,9 @@
   font-variant-numeric: tabular-nums;
 }
 .tm-hero .hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   margin: 0;
 }
 .tm-hero .hero-meta a {
@@ -171,6 +212,43 @@
 /* A question asked in place, in the bar it belongs to. */
 .tm-ask {
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+/* Rows. The column heads close on the drawn edge; every other row steps
+   toward --surface-2 so a long row can be followed across the box (the cut
+   line in standings is not counted); hover is one ink tint over either. */
+.tm-page .data thead th {
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+.tm-page .data tbody tr:nth-child(even of :not(.tm-cut-line)) {
+  background: color-mix(in srgb, var(--surface-2) 55%, var(--surface));
+}
+.tm-page .data tbody td {
+  border-bottom-color: transparent;
+}
+.tm-page .data tbody tr:hover {
+  background: color-mix(in srgb, var(--fg) 12%, var(--surface));
+}
+/* A row is read for its names and results, so its text-only actions take the
+   secondary label and come up to full ink on the row in hand. A bar's actions
+   stay in ink at a lighter weight: faded, they read as unavailable. */
+.tm-page td .btn-ghost {
+  color: var(--muted);
+  font-weight: 500;
+}
+.tm-page .data tbody tr:is(:hover, :focus-within) .btn-ghost {
+  color: var(--fg);
+}
+.tm-page .tm-box-bar .btn-ghost {
+  font-weight: 500;
+}
+/* A step that cannot be taken yet keeps its place and words, faded as every
+   disabled button is but from a neutral fill: a faded marigold reads as a
+   muddy brown in dark mode. */
+.tm-page .btn-primary:disabled {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--fg);
 }
 
 /* A player's rounds: W filled, L and T outlined in the muted ink so they hold
@@ -717,6 +795,20 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 .tm-deck-link:hover {
   color: var(--accent-ink);
 }
+/* The deck stats: every name starts in line, however many sprites its deck has. */
+.tm-deck-stats .tm-deck {
+  min-width: 44px;
+}
+/* The public page's switch and search, above every division's box. */
+.tm-standings-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tm-standings-bar + .tm-standings > .tm-subhead {
+  margin-top: var(--space-3);
+}
 .tm-share-col {
   width: 140px;
 }
@@ -826,6 +918,22 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   .tm-standings.has-decks .tm-seat-link:not(:has(.tm-deck))::before {
     min-width: 34px;
   }
+  /* A standing keeps to its two lines on a phone: the name a step down, so
+     most fit whole beside the record and points. */
+  .tm-standings .tm-who-name {
+    font-size: var(--text-base);
+  }
+  .tm-standings .tm-who-sub {
+    font-size: var(--text-sm);
+  }
+  /* The deck stats fit a phone without a sideways scroll: the deck, how many
+     play it and how it is doing; share and matches are left to wider screens. */
+  .tm-deck-stats :is(th, td):is(:nth-child(3), :nth-child(4)) {
+    display: none;
+  }
+  .tm-deck-stats .data :is(th, td) {
+    padding: 0 8px;
+  }
 }
 /* Under a finger, every control is a 44px target. */
 @media (max-width: 640px), (pointer: coarse) {
@@ -929,8 +1037,26 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   font-weight: 600;
   color: var(--fg);
 }
+/* Both classes, so the strip keeps its side padding over .tm-champion's own. */
 .tm-strip.tm-champion {
-  padding-block: 10px;
+  padding: 10px 14px;
+}
+/* The public page's Playing is the console's Open: the same dot before it. */
+.tm-status-col strong::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 1px;
+}
+/* A picked deck's name starts in one place, whether its deck has one sprite
+   or two (the second selector outranks the picker's own two-sprite padding). */
+:is(.tm-deck-cell, .tm-seat-deck) .tl-picker .search,
+:is(.tm-deck-cell, .tm-seat-deck) .tl-picker:has(.tl-combo-lead .arche-icon + .arche-icon) .search {
+  padding-left: 62px;
 }
 .tm-strip .tm-champion-name {
   font-size: var(--text-lg);
@@ -971,11 +1097,12 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   display: flex;
   align-items: center;
   min-width: 0;
-  font-weight: 600;
+  font-size: var(--text-body);
+  font-weight: 500;
 }
 .tm-who-sub {
   display: block;
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   color: var(--muted);
 }
 .data tr.is-dropped .tm-who-name {
@@ -1012,7 +1139,19 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   text-underline-offset: 3px;
 }
 .tm-roster td {
-  padding-block: 6px;
+  padding-block: 8px;
+}
+/* A chosen deck reads as a value in the row, not as a heading. */
+:is(.tm-deck-cell, .tm-seat-deck) .tl-picker .search {
+  font-weight: 500;
+}
+/* A row's actions sit at its end, so the last one lines up down the column
+   however many come before it (players, decklists). */
+.tm-page td.tm-extra-col:has(> .tm-row-actions) {
+  text-align: right;
+}
+.tm-page td.tm-extra-col > .tm-row-actions {
+  justify-content: flex-end;
 }
 @media (max-width: 640px) {
   .tm-add-row .tm-field,
@@ -1081,6 +1220,17 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A standing is two lines (the name, the deck under it), so its row is
+   taller than a pairing's and set at the names' size; the tiebreakers are
+   one step down, since only the cut reads them. */
+.tm-standings .data td {
+  height: 54px;
+  padding-block: 6px;
+  font-size: var(--text-body);
+}
+.tm-standings .data td.tm-wide-col {
+  font-size: var(--text-base);
+}
 .tm-place {
   color: var(--muted);
 }
@@ -1091,12 +1241,13 @@ tr.is-in .tm-place {
 .tm-points {
   font-weight: 700;
 }
-/* The cut: a marigold hairline and what split the last one in from the first one out. */
+/* The cut: a marigold rule and what split the last one in from the first one out. */
 .data tr.tm-cut-line td {
   height: auto;
-  padding: 6px 14px;
-  border-top: 1px solid var(--accent);
-  font-size: var(--text-sm);
+  padding: 7px 14px;
+  border-top: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent-fill) 10%, var(--surface));
+  font-size: var(--text-base);
   font-variant-numeric: tabular-nums;
 }
 .tm-cut-top {
@@ -1175,7 +1326,7 @@ tr.is-in .tm-place {
 
 /* ---------- Console decklists ---------- */
 .tm-bar-link {
-  color: var(--fg);
+  color: var(--accent-ink);
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
   text-underline-offset: 3px;
@@ -1320,10 +1471,17 @@ tr.is-in .tm-place {
   justify-content: space-between;
   gap: 12px;
 }
+/* The chosen segment is drawn with the edge and the weight as well as the
+   fill: the site's pill, a shade off its track, left On and Off hard to tell
+   apart at a glance. Marigold would make Off read as on. */
+.tm-page .segmented button.active {
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--border);
+}
 .tm-set-foot {
   justify-content: flex-end;
   border-top: 1px solid var(--rule);
-  background: var(--bg);
+  background: transparent;
   border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 .tm-event-panel {
