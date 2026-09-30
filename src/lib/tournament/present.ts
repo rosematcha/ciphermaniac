@@ -462,6 +462,12 @@ export interface ReportState {
   locked: boolean;
   /** The result stands: entered by staff, or reported alike by both and locked. */
   final: boolean;
+  /**
+   * Final by the reports alone, with no result written yet: asking the server
+   * writes it in. A result staff entered, or one a TOM event holds for TOM,
+   * is already written, so there is nothing to ask for.
+   */
+  due: boolean;
 }
 
 const asResult = (outcome: Outcome, seat: 1 | 2): PlayerResult => sideResult(outcome, seat) ?? 'loss';
@@ -478,19 +484,21 @@ export function reportState(
   const seat = match.p1 === me ? 1 : 2;
   const shown = shownOutcome(match, pod, round, pending).outcome;
   if (shown !== 'pending') {
-    return { chosen: asResult(shown, seat), disputed: false, locked: true, final: true };
+    return { chosen: asResult(shown, seat), disputed: false, locked: true, final: true, due: false };
   }
   const forMatch = reportsFor(reports, pod.category, round.number, match);
   const mine = forMatch.find(report => report.by === me);
   const theirs = forMatch.find(report => report.by !== me);
   if (!mine) {
-    return { chosen: null, disputed: false, locked: false, final: false };
+    return { chosen: null, disputed: false, locked: false, final: false, due: false };
   }
+  const final = settles(mine, theirs, now);
   return {
     chosen: asResult(mine.outcome, seat),
     disputed: isDisputed(forMatch),
     locked: isLocked(mine, now),
-    final: settles(mine, theirs, now)
+    final,
+    due: final
   };
 }
 

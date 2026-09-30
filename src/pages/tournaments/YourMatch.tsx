@@ -135,7 +135,7 @@ function createReport(props: Props & { me: string }, found: () => Found | null) 
   // Once both reports agree and lock, asking again writes the result in, so it shows as it stands.
   createEffect(() => {
     const { claim } = props;
-    if (claim && state()?.final && found()?.match.outcome === 'pending' && !settling()) {
+    if (claim && state()?.due && !settling()) {
       void settle(claim);
     }
   });

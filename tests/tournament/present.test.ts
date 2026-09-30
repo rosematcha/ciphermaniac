@@ -225,24 +225,26 @@ test('a player’s report state: pressed, disputed, locked, and final once it st
   const at = { pod, round: round2, match };
   const mine = { pod: pod.category, round: 2, table: match.table, p1: match.p1, p2: match.p2, at: 0 };
   const none = reportState(at, { pending: [], reports: [] }, match.p1, 0);
-  assert.deepEqual(none, { chosen: null, disputed: false, locked: false, final: false });
+  assert.deepEqual(none, { chosen: null, disputed: false, locked: false, final: false, due: false });
   const won = [{ ...mine, by: match.p1, outcome: 'p1' as const }];
   assert.deepEqual(reportState(at, { pending: [], reports: won }, match.p1, 1000), {
     chosen: 'win',
     disputed: false,
     locked: false,
-    final: false
+    final: false,
+    due: false
   });
   const both = [...won, { ...mine, by: match.p2, outcome: 'p2' as const }];
   const disputed = reportState(at, { pending: [], reports: both }, match.p2, 30_000);
-  assert.deepEqual(disputed, { chosen: 'win', disputed: true, locked: true, final: false });
+  assert.deepEqual(disputed, { chosen: 'win', disputed: true, locked: true, final: false, due: false });
   const agreed = [...won, { ...mine, by: match.p2, outcome: 'p1' as const }];
   assert.equal(reportState(at, { pending: [], reports: agreed }, match.p2, 29_999).final, false);
   assert.deepEqual(reportState(at, { pending: [], reports: agreed }, match.p2, 30_000), {
     chosen: 'loss',
     disputed: false,
     locked: true,
-    final: true
+    final: true,
+    due: true
   });
   const oneDevice = agreed.map(report => ({ ...report, device: 'shared' }));
   assert.equal(
@@ -255,8 +257,13 @@ test('a player’s report state: pressed, disputed, locked, and final once it st
     chosen: 'tie',
     disputed: false,
     locked: true,
-    final: true
+    final: true,
+    due: false
   });
+  // A TOM event holds the agreed result as pending until TOM takes it in: it stands, and
+  // the page has nothing to ask the server for, however long TOM takes.
+  const held = [{ ...mine, outcome: 'p1' as const }];
+  assert.equal(reportState(at, { pending: held, reports: agreed }, match.p2, 600_000).due, false);
 });
 
 test('the console’s next step: pair when every table is in, wait while any is open, close after the final', () => {
