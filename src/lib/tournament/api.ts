@@ -103,7 +103,6 @@ export const listTournaments = () => call<{ tournaments: TournamentSummary[] }>(
 /** What the setup asks before a Swiss event starts; the settings left out keep their defaults. */
 export interface SwissSetup {
   name: string;
-  combined: boolean;
   roundTime?: number;
   settings?: Partial<TournamentSettings>;
 }

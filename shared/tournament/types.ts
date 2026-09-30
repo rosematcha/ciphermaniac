@@ -3,7 +3,7 @@
  *
  * The shape follows the .tdf closely so a file read in can be written back out
  * without losing anything TOM put there: players, pods (one per age division,
- * or one for a combined event), rounds and matches. What TOM stores as numeric
+ * or one for divisions played together), rounds and matches. What TOM stores as numeric
  * codes is named here, and `shared/tournament/tdf.ts` is the only place that
  * knows the numbers.
  */
@@ -112,7 +112,7 @@ export interface Round {
 
 export interface Pod {
   category: PodCategory;
-  /** Player IDs in the pod, in TOM's order. A combined event puts every division here. */
+  /** Player IDs in the pod, in TOM's order: every division it plays (see podding.ts). */
   playerIds: string[];
   rounds: Round[];
   /** Top cut size once one is set; 0 for none. */
@@ -142,8 +142,6 @@ export interface Tournament {
   info: TournamentInfo;
   players: Player[];
   pods: Pod[];
-  /** A Swiss event that plays every division in one pod, as small events do. */
-  combined?: boolean;
   /**
    * What a read .tdf carried that this model does not use, kept verbatim so
    * writing the file back loses none of it. Absent on a Swiss event until its

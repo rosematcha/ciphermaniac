@@ -107,7 +107,7 @@ test('the parsed document survives the wire check', () => {
 });
 
 test('an event run on the site exports a file that reads back the same', () => {
-  let t: Tournament = emptyTournament({ name: 'Site Cup', startDate: '10/10/2026' }, true);
+  let t: Tournament = emptyTournament({ name: 'Site Cup', startDate: '10/10/2026' });
   const ctx = { now: 0, localTime: '10/10/2026 11:00:00', season: 2027, random: seededRandom(4) };
   for (let i = 0; i < 5; i += 1) {
     const added = applyCommand(
@@ -118,11 +118,11 @@ test('an event run on the site exports a file that reads back the same', () => {
     assert.ok(added.ok);
     t = added.tournament;
   }
-  const paired = applyCommand(t, { type: 'pairRound', pod: 'mixed' }, ctx);
+  const paired = applyCommand(t, { type: 'pairRound', pod: 'masters' }, ctx);
   assert.ok(paired.ok);
   const written = writeTdf(paired.tournament);
   assert.match(written, /<tournament type="3" stage="4" version="1.86" gametype="TRADING_CARD_GAME" mode="TCG1DAY">/);
-  assert.match(written, /<pod category="10" stage="0">/);
+  assert.match(written, /<pod category="2" stage="0">/);
   const read = parseTdf(written);
   assert.deepEqual(
     read.pods[0]?.rounds[0]?.matches,

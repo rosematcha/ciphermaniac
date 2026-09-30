@@ -27,7 +27,7 @@ const NAMES: [string, string][] = [
 ];
 
 function field(): Tournament {
-  let t = emptyTournament({ name: 'Cup' }, true);
+  let t = emptyTournament({ name: 'Cup' });
   NAMES.forEach(([firstName, lastName], i) => {
     const command: Command = { type: 'addPlayer', player: { firstName, lastName, id: String(100 + i) } };
     const result = applyCommand(t, command, { now: 0, localTime: '', season: 2027, random: seededRandom(1) });

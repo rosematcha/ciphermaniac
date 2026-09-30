@@ -44,7 +44,7 @@ function reportAll(t: Tournament): Tournament {
   const round = pod?.rounds.at(-1);
   const reports: Command[] = (round?.matches ?? [])
     .filter(m => m.p2 !== null && m.outcome === 'pending')
-    .map(m => ({ type: 'reportResult', pod: 'mixed', round: round?.number ?? 0, ...m, outcome: 'p1' }));
+    .map(m => ({ type: 'reportResult', pod: 'masters', round: round?.number ?? 0, ...m, outcome: 'p1' }));
   return run(t, ...reports);
 }
 
@@ -54,11 +54,11 @@ function event(players: number, rounds: number, paired: boolean): Tournament {
     type: 'addPlayer',
     player: { firstName: `Player${i + 1}`, lastName: 'Test' }
   }));
-  let t = run(emptyTournament({ name: 'Friday League' }, true), ...adds);
+  let t = run(emptyTournament({ name: 'Friday League' }), ...adds);
   for (let r = 0; r < rounds; r += 1) {
-    t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
+    t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   }
-  return paired ? run(t, { type: 'pairRound', pod: 'mixed' }) : t;
+  return paired ? run(t, { type: 'pairRound', pod: 'masters' }) : t;
 }
 
 const settingsOf = (patch: Partial<TournamentSettings>): TournamentSettings => ({
@@ -143,7 +143,7 @@ test('a result shows in its row while it is on its way, and its answer is not re
   });
   await page.route(`**/api/tournaments/${CODE}/commands`, async route => {
     await held;
-    const tournament = run(t, { type: 'reportResult', pod: 'mixed', round: 1, ...table, outcome: 'p1' });
+    const tournament = run(t, { type: 'reportResult', pod: 'masters', round: 1, ...table, outcome: 'p1' });
     const manage = { code: CODE, mode: 'swiss', version: 4, updatedAt: 0, tournament, pending: [], reports: [] };
     return route.fulfill({
       json: { ...manage, settings: settingsOf({}), decks: {}, role: 'owner', staffToken: 'invite' }
@@ -191,7 +191,7 @@ test("an open table shows its players' reports in its one row, and a lone report
     throw new Error('the event has no first two tables');
   }
   const report = (m: Match, by: string, outcome: PlayerReport['outcome']): PlayerReport => ({
-    pod: 'mixed',
+    pod: 'masters',
     round: 1,
     table: m.table,
     p1: m.p1,
@@ -258,7 +258,7 @@ test('the big screen marks who won each finished table', async ({ page }) => {
   if (!first) {
     throw new Error('no table');
   }
-  t = run(t, { type: 'reportResult', pod: 'mixed', round: 1, ...first, outcome: 'p2' });
+  t = run(t, { type: 'reportResult', pod: 'masters', round: 1, ...first, outcome: 'p2' });
   const keys = assignKeys(t, {});
   const view: TournamentView = {
     code: CODE,

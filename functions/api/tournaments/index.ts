@@ -43,10 +43,11 @@ const isMinutes = (value: unknown): value is number =>
 
 /**
  * A Swiss event from the setup's answers: a name, and optionally the round
- * length and the settings to start with. Without birth years there are no
- * divisions to split, so an unsanctioned event always pairs everyone together.
+ * length and the settings to start with. Its pods follow the players' age
+ * divisions (see shared/tournament/podding.ts); without birth years everyone
+ * reads as Masters, so an unsanctioned event pairs everyone together.
  */
-function swissFrom(body: Body, settings: TournamentSettings): Tournament | null {
+function swissFrom(body: Body): Tournament | null {
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, 120) : '';
   // TOM wants a start date in the file; today's stands in until the organizer sets one.
   const info = {
@@ -54,7 +55,7 @@ function swissFrom(body: Body, settings: TournamentSettings): Tournament | null 
     startDate: tomDateTime(new Date()).slice(0, 10),
     ...(isMinutes(body.roundTime) ? { roundTime: body.roundTime } : {})
   };
-  return name ? emptyTournament(info, body.combined !== false || !settings.sanctioned) : null;
+  return name ? emptyTournament(info) : null;
 }
 
 /** The settings a new event starts with; closing it is not something it starts as. */
@@ -71,7 +72,7 @@ async function readNew(request: Request): Promise<NewEvent | string> {
     return 'Not a tournament';
   }
   const mode = value.mode === 'tom' ? 'tom' : 'swiss';
-  const tournament = mode === 'tom' ? readTournament(value.tournament) : swissFrom(value, settings);
+  const tournament = mode === 'tom' ? readTournament(value.tournament) : swissFrom(value);
   if (!tournament) {
     return mode === 'tom' ? 'That file did not read as a tournament' : 'The event needs a name';
   }

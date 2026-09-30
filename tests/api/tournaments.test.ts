@@ -99,7 +99,7 @@ async function newSwiss(cookie: string): Promise<string> {
     {
       method: 'POST',
       cookie,
-      body: { mode: 'swiss', name: 'Test Cup', combined: true }
+      body: { mode: 'swiss', name: 'Test Cup' }
     }
   );
   assert.equal(created.status, 201);
@@ -348,10 +348,10 @@ test('only staff change an event, and bad commands are refused', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
   const stranger = await signIn('Stranger');
-  assert.equal((await send(code, stranger, { type: 'pairRound', pod: 'mixed' })).status, 403);
+  assert.equal((await send(code, stranger, { type: 'pairRound', pod: 'masters' })).status, 403);
   assert.equal((await send(code, owner, { type: 'launchMissiles' })).status, 400);
   assert.equal(
-    (await send(code, owner, { type: 'pairRound', pod: 'mixed' })).json.error,
+    (await send(code, owner, { type: 'pairRound', pod: 'masters' })).json.error,
     'Add at least two players first'
   );
   assert.equal((await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: stranger })).status, 403);
@@ -361,11 +361,11 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 5);
-  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const table = paired.json.tournament.pods[0].rounds[0].matches[0];
   await send(code, owner, {
     type: 'reportResult',
-    pod: 'mixed',
+    pod: 'masters',
     round: 1,
     table: table.table,
     p1: table.p1,
@@ -373,7 +373,7 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
     outcome: 'p1'
   });
   await send(code, owner, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Arrival', id: '999' } });
-  const repaired = await send(code, owner, { type: 'repairRound', pod: 'mixed', keepReported: true });
+  const repaired = await send(code, owner, { type: 'repairRound', pod: 'masters', keepReported: true });
   const seated = repaired.json.tournament.pods[0].rounds[0].matches.flatMap((m: { p1: string; p2: string | null }) => [
     m.p1,
     m.p2
@@ -784,7 +784,6 @@ test('an event starts with the settings its setup chose', async () => {
       body: {
         mode: 'swiss',
         name: 'Friday Locals',
-        combined: false,
         roundTime: 25,
         settings: { sanctioned: false, playerReporting: true, format: 'Expanded', finished: true, roundCap: 3 }
       }
@@ -794,7 +793,6 @@ test('an event starts with the settings its setup chose', async () => {
   const code = created.json.code as string;
   const made = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
   assert.equal(made.tournament.info.roundTime, 25);
-  assert.equal(made.tournament.combined, true, 'no birth years, so no divisions to split');
   assert.equal(made.settings.sanctioned, false);
   assert.equal(made.settings.playerReporting, true);
   assert.equal(made.settings.format, 'Expanded');
@@ -836,7 +834,7 @@ test('players report their own results: agreement stands once locked, disagreeme
   mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 4);
-  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const [first, second] = paired.json.tournament.pods[0].rounds[0].matches;
   assert.equal((await playerSays(code, { popId: first.p1, result: 'win' })).status, 403, 'off until staff turn it on');
   await settle(code, owner, { playerReporting: true });
@@ -891,7 +889,7 @@ test('players report their own results: agreement stands once locked, disagreeme
   );
   const overridden = await send(code, owner, {
     type: 'reportResult',
-    pod: 'mixed',
+    pod: 'masters',
     round: 1,
     table: second.table,
     p1: second.p1,
@@ -903,7 +901,7 @@ test('players report their own results: agreement stands once locked, disagreeme
 
   await send(code, owner, {
     type: 'reportResult',
-    pod: 'mixed',
+    pod: 'masters',
     round: 1,
     table: first.table,
     p1: first.p1,
@@ -926,7 +924,7 @@ test('a result the console poll settles is stamped with the venue clock the poll
   mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 2);
-  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const [match] = paired.json.tournament.pods[0].rounds[0].matches;
   await settle(code, owner, { playerReporting: true });
   const { version } = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
@@ -947,7 +945,7 @@ test('players cannot report once the event has ended', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 2);
-  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const [match] = paired.json.tournament.pods[0].rounds[0].matches;
   await settle(code, owner, { playerReporting: true });
   const phone = await phoneOf(code, match.p1);
@@ -962,16 +960,16 @@ test('a report for the match a stale page showed does not land on the next round
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 2);
   await settle(code, owner, { playerReporting: true });
-  const [first] = (await send(code, owner, { type: 'pairRound', pod: 'mixed' })).json.tournament.pods[0].rounds[0]
+  const [first] = (await send(code, owner, { type: 'pairRound', pod: 'masters' })).json.tournament.pods[0].rounds[0]
     .matches;
   const phone = await phoneOf(code, first.p1);
   const token = phone.said.json.reportToken as string;
-  const shownFirst = { pod: 'mixed', round: 1, table: first.table };
+  const shownFirst = { pod: 'masters', round: 1, table: first.table };
   const says = (match: unknown) =>
     playerSays(code, { popId: first.p1, result: 'win', match, device: `phone-${first.p1}`, reportToken: token });
   assert.equal((await says(shownFirst)).status, 200, 'the match the page showed takes the report');
   await send(code, owner, { type: 'reportResult', ...shownFirst, p1: first.p1, p2: first.p2, outcome: 'p1' });
-  await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const stale = await says(shownFirst);
   assert.equal(stale.status, 400);
   assert.match(stale.json.error, /pairing has changed/);
@@ -1185,7 +1183,7 @@ test('two agreeing reports from one device wait for staff, and staff can free a 
   mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 4);
-  const paired = await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const [first] = paired.json.tournament.pods[0].rounds[0].matches;
   await settle(code, owner, { playerReporting: true });
   // One phone claims both seats before either player does.
@@ -1648,7 +1646,7 @@ test('nothing the functions ask of the database scans a table', async () => {
   await hit(decklists.onRequestGet as Handler, `/decklists?popId=900&token=${sent.json.token}`, at(code));
   await hit(decklists.onRequestPatch as Handler, '/decklists?popId=900', at(code), { method: 'PATCH', cookie: owner });
   await hit(decklists.onRequestDelete as Handler, '/decklists?popId=900', at(code), { method: 'DELETE' });
-  await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  await send(code, owner, { type: 'pairRound', pod: 'masters' });
   await playerSays(code, { popId: '900', result: 'win' });
   await hit(report.onRequestDelete as Handler, '/report?player=900', at(code), { method: 'DELETE', cookie: owner });
   await hit(staff.onRequestPost as Handler, '/staff', at(code), {

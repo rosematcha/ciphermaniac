@@ -7,7 +7,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { applyCommand, type Command, type CommandContext, secondsLeft } from '../../shared/tournament/commands.ts';
+import {
+  applyCommand,
+  type Command,
+  type CommandContext,
+  type NewPlayer,
+  secondsLeft
+} from '../../shared/tournament/commands.ts';
 import { DEFAULT_ROUND_MINUTES, emptyTournament } from '../../shared/tournament/create.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
 import { swissStandings } from '../../shared/tournament/standings.ts';
@@ -41,7 +47,7 @@ function withPlayers(count: number): Tournament {
     type: 'addPlayer',
     player: { firstName: 'Player', lastName: String(i + 1), id: String(100 + i), birthDate: '01/01/1990' }
   }));
-  return run(emptyTournament({ name: 'Test Cup' }, true), ...adds);
+  return run(emptyTournament({ name: 'Test Cup' }), ...adds);
 }
 
 /** Reports every open match in the current round as a win for player one. */
@@ -51,7 +57,7 @@ function reportAll(t: Tournament): Tournament {
     .filter(m => m.outcome === 'pending')
     .map(m => ({
       type: 'reportResult',
-      pod: 'mixed',
+      pod: pod(t).category,
       round: r.number,
       table: m.table,
       p1: m.p1,
@@ -62,7 +68,7 @@ function reportAll(t: Tournament): Tournament {
 }
 
 test('pairs a first round with a bye for the odd player out', () => {
-  const t = run(withPlayers(5), { type: 'pairRound', pod: 'mixed' });
+  const t = run(withPlayers(5), { type: 'pairRound', pod: 'masters' });
   const { matches } = round(t);
   assert.equal(matches.length, 3);
   assert.deepEqual(
@@ -73,12 +79,12 @@ test('pairs a first round with a bye for the odd player out', () => {
 });
 
 test('will not pair the next round while results are missing', () => {
-  const t = run(withPlayers(4), { type: 'pairRound', pod: 'mixed' });
-  assert.match(attempt(t, { type: 'pairRound', pod: 'mixed' }), /Report every match/);
+  const t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
+  assert.match(attempt(t, { type: 'pairRound', pod: 'masters' }), /Report every match/);
 });
 
 test('a late player gets a loss for each round they missed', () => {
-  let t = reportAll(run(withPlayers(4), { type: 'pairRound', pod: 'mixed' }));
+  let t = reportAll(run(withPlayers(4), { type: 'pairRound', pod: 'masters' }));
   t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Comer', id: '999' } });
   const missed = round(t).matches.find(m => m.p1 === '999');
   assert.deepEqual(missed && { p2: missed.p2, outcome: missed.outcome }, { p2: null, outcome: 'loss' });
@@ -87,12 +93,12 @@ test('a late player gets a loss for each round they missed', () => {
 });
 
 test('re-pairing a round keeps reported matches and seats a late arrival', () => {
-  let t = run(withPlayers(6), { type: 'pairRound', pod: 'mixed' });
+  let t = run(withPlayers(6), { type: 'pairRound', pod: 'masters' });
   const first = round(t).matches[0];
   assert.ok(first);
   t = run(t, {
     type: 'reportResult',
-    pod: 'mixed',
+    pod: 'masters',
     round: 1,
     table: first.table,
     p1: first.p1,
@@ -100,7 +106,7 @@ test('re-pairing a round keeps reported matches and seats a late arrival', () =>
     outcome: 'p2'
   });
   t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Comer', id: '999' } });
-  t = run(t, { type: 'repairRound', pod: 'mixed', keepReported: true });
+  t = run(t, { type: 'repairRound', pod: 'masters', keepReported: true });
   const { matches } = round(t);
   assert.deepEqual(
     matches.find(m => m.table === first.table),
@@ -114,8 +120,8 @@ test('re-pairing a round keeps reported matches and seats a late arrival', () =>
 });
 
 test('later rounds avoid rematches and dropped players are not paired', () => {
-  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'mixed' }));
-  t = run(t, { type: 'dropPlayer', id: '100' }, { type: 'pairRound', pod: 'mixed' });
+  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
+  t = run(t, { type: 'dropPlayer', id: '100' }, { type: 'pairRound', pod: 'masters' });
   const second = round(t);
   assert.ok(!second.matches.some(m => m.p1 === '100' || m.p2 === '100'));
   const firstPairs = new Set(round(t, 1).matches.map(m => [m.p1, m.p2].sort().join('v')));
@@ -126,40 +132,40 @@ test('later rounds avoid rematches and dropped players are not paired', () => {
 });
 
 test('swaps two players between tables in the current round', () => {
-  const t = run(withPlayers(4), { type: 'pairRound', pod: 'mixed' });
+  const t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
   const [a, b] = round(t).matches;
   assert.ok(a && b && a.p2);
-  const swapped = run(t, { type: 'swapPlayers', pod: 'mixed', a: a.p2, b: b.p1 });
+  const swapped = run(t, { type: 'swapPlayers', pod: 'masters', a: a.p2, b: b.p1 });
   assert.equal(round(swapped).matches[0]?.p2, b.p1);
   assert.equal(round(swapped).matches[1]?.p1, a.p2);
 });
 
 test('a player who has played cannot be removed, only dropped', () => {
-  const t = run(withPlayers(4), { type: 'pairRound', pod: 'mixed' });
+  const t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
   assert.match(attempt(t, { type: 'removePlayer', id: '100' }), /drop them instead/);
   const before = run(withPlayers(3), { type: 'removePlayer', id: '101' });
   assert.equal(before.players.length, 2);
 });
 
 test('deletes an unreported round, not a reported one', () => {
-  const t = run(withPlayers(4), { type: 'pairRound', pod: 'mixed' });
-  assert.equal(pod(run(t, { type: 'deleteRound', pod: 'mixed' })).rounds.length, 0);
-  assert.match(attempt(reportAll(t), { type: 'deleteRound', pod: 'mixed' }), /Clear this round/);
+  const t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
+  assert.equal(pod(run(t, { type: 'deleteRound', pod: 'masters' })).rounds.length, 0);
+  assert.match(attempt(reportAll(t), { type: 'deleteRound', pod: 'masters' }), /Clear this round/);
 });
 
 test('a player who joined during round 1 is on time once round 1 is deleted', () => {
-  let t = run(withPlayers(4), { type: 'pairRound', pod: 'mixed' });
+  let t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
   t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Comer', id: '999' } });
   assert.equal(t.players.find(p => p.id === '999')?.late, true);
-  t = run(t, { type: 'deleteRound', pod: 'mixed' });
+  t = run(t, { type: 'deleteRound', pod: 'masters' });
   assert.equal(t.players.find(p => p.id === '999')?.late, undefined);
 });
 
 test('a top cut seeds from standings and plays down to a winner', () => {
-  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'mixed' }));
-  t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
+  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   // Everyone is a Master, so the combined pod cuts as a whole with no division asked.
-  t = run(t, { type: 'startTopCut', pod: 'mixed', size: 4 });
+  t = run(t, { type: 'startTopCut', pod: 'masters', size: 4 });
   const seeds = swissStandings(pod(t), t.players)
     .slice(0, 4)
     .map(row => row.playerId);
@@ -175,7 +181,7 @@ test('a top cut seeds from standings and plays down to a winner', () => {
   assert.match(
     attempt(t, {
       type: 'reportResult',
-      pod: 'mixed',
+      pod: 'masters',
       round: 3,
       table: semi.table,
       p1: semi.p1,
@@ -185,12 +191,12 @@ test('a top cut seeds from standings and plays down to a winner', () => {
     /needs a winner/
   );
   t = reportAll(t);
-  t = run(t, { type: 'pairRound', pod: 'mixed' });
+  t = run(t, { type: 'pairRound', pod: 'masters' });
   assert.equal(round(t).matches.length, 1);
   assert.match(
     attempt(t, {
       type: 'reportResult',
-      pod: 'mixed',
+      pod: 'masters',
       round: 3,
       table: semi.table,
       p1: semi.p1,
@@ -200,52 +206,70 @@ test('a top cut seeds from standings and plays down to a winner', () => {
     /already paired/
   );
   t = reportAll(t);
-  assert.match(attempt(t, { type: 'pairRound', pod: 'mixed' }), /top cut is finished/);
+  assert.match(attempt(t, { type: 'pairRound', pod: 'masters' }), /top cut is finished/);
 });
 
 test('a fixed table does not move a top cut player to another side of the bracket', () => {
-  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'mixed' }));
-  t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
+  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   const seeds = swissStandings(pod(t), t.players).map(row => row.playerId);
   // The first seed sits at the last quarterfinal table, after the others in table order.
-  t = run(t, { type: 'setFixedTable', id: seeds[0] ?? '', table: 4 }, { type: 'startTopCut', pod: 'mixed', size: 8 });
-  t = run(reportAll(t), { type: 'pairRound', pod: 'mixed' });
+  t = run(t, { type: 'setFixedTable', id: seeds[0] ?? '', table: 4 }, { type: 'startTopCut', pod: 'masters', size: 8 });
+  t = run(reportAll(t), { type: 'pairRound', pod: 'masters' });
   const semis = round(t).matches.map(m => new Set([m.p1, m.p2]));
   assert.deepEqual(semis, [new Set([seeds[0], seeds[3]]), new Set([seeds[1], seeds[2]])]);
 });
 
-test('separate divisions pair apart', () => {
-  const t = run(
-    emptyTournament({ name: 'Split' }, false),
-    { type: 'addPlayer', player: { firstName: 'A', lastName: 'Kid', birthDate: '01/01/2016' } },
-    { type: 'addPlayer', player: { firstName: 'B', lastName: 'Kid', birthDate: '01/01/2017' } },
-    { type: 'addPlayer', player: { firstName: 'C', lastName: 'Adult', birthDate: '01/01/1990' } },
-    { type: 'addPlayer', player: { firstName: 'D', lastName: 'Adult', birthDate: '01/01/1991' } }
+test('before round 1 the pods follow the field: a division under six plays with the next', () => {
+  const kid = (i: number) => ({ firstName: 'Kid', lastName: `${i}`, birthDate: '01/01/2016' });
+  const adult = (i: number) => ({ firstName: 'Adult', lastName: `${i}`, birthDate: '01/01/1990' });
+  const add = (player: NewPlayer): Command => ({ type: 'addPlayer', player });
+  const shape = (t: Tournament) => t.pods.map(p => [p.category, p.playerIds.length]);
+  let t = run(emptyTournament({ name: 'Split' }), ...[1, 2].map(kid).map(add), ...[1, 2].map(adult).map(add));
+  assert.deepEqual(shape(t), [['mixed', 4]], 'two Juniors play with the Masters');
+  t = run(t, ...[3, 4, 5, 6].map(kid).map(add), ...[3, 4, 5, 6].map(adult).map(add));
+  assert.deepEqual(
+    shape(t),
+    [
+      ['junior', 6],
+      ['masters', 6]
+    ],
+    'six of each play apart'
   );
+  const leaving = t.players.find(p => p.lastName === '6' && p.birthDate.endsWith('2016'));
+  t = run(t, { type: 'removePlayer', id: leaving?.id ?? '' });
+  assert.deepEqual(shape(t), [['mixed', 11]], 'and together again when one falls under six');
+});
+
+test('once play starts the pods stand, and a late player of a division nobody played joins the next pod', () => {
+  const adults = Array.from({ length: 6 }, (_, i) => ({
+    type: 'addPlayer' as const,
+    player: { firstName: 'Adult', lastName: `${i}`, birthDate: '01/01/1990' }
+  }));
+  let t = run(emptyTournament({ name: 'Late' }), ...adults, { type: 'pairRound', pod: 'masters' });
+  t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Senior', birthDate: '01/01/2012' } });
   assert.deepEqual(
     t.pods.map(p => [p.category, p.playerIds.length]),
-    [
-      ['junior', 2],
-      ['masters', 2]
-    ]
+    [['senior-masters', 7]]
   );
+  assert.equal(t.pods[0]?.rounds.length, 1, 'the round played stays with the pod');
 });
 
 test('the clock runs, stops and takes extra time', () => {
-  let t = run(withPlayers(2), { type: 'pairRound', pod: 'mixed' });
-  const started = applyCommand(t, { type: 'startClock', pod: 'mixed' }, context(1, 0));
+  let t = run(withPlayers(2), { type: 'pairRound', pod: 'masters' });
+  const started = applyCommand(t, { type: 'startClock', pod: 'masters' }, context(1, 0));
   assert.ok(started.ok);
   t = started.tournament;
   assert.equal(secondsLeft(round(t), 60_000), DEFAULT_ROUND_MINUTES * 60 - 60);
-  const stopped = applyCommand(t, { type: 'stopClock', pod: 'mixed' }, context(1, 120_000));
+  const stopped = applyCommand(t, { type: 'stopClock', pod: 'masters' }, context(1, 120_000));
   assert.ok(stopped.ok);
-  t = run(stopped.tournament, { type: 'adjustClock', pod: 'mixed', seconds: 180 });
+  t = run(stopped.tournament, { type: 'adjustClock', pod: 'masters', seconds: 180 });
   assert.equal(secondsLeft(round(t), 999_999), DEFAULT_ROUND_MINUTES * 60 - 120 + 180);
 });
 
 test('a combined pod cuts one division at a time, seeded from that division', () => {
   let t = run(
-    emptyTournament({ name: 'Mixed' }, true),
+    emptyTournament({ name: 'Mixed' }),
     ...['2016', '2016', '2016', '2016', '1990', '1990'].map(
       (year, i) =>
         ({
@@ -262,13 +286,13 @@ test('a combined pod cuts one division at a time, seeded from that division', ()
 });
 
 test('a report for a match that has since changed is refused', () => {
-  const t = run(withPlayers(4), { type: 'pairRound', pod: 'mixed' });
+  const t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
   const [first] = round(t).matches;
   assert.ok(first);
   assert.match(
     attempt(t, {
       type: 'reportResult',
-      pod: 'mixed',
+      pod: 'masters',
       round: 1,
       table: first.table,
       p1: first.p1,
@@ -279,22 +303,30 @@ test('a report for a match that has since changed is refused', () => {
   );
   const cleared = run(
     t,
-    { type: 'reportResult', pod: 'mixed', round: 1, table: first.table, p1: first.p1, p2: first.p2, outcome: 'p1' },
-    { type: 'reportResult', pod: 'mixed', round: 1, table: first.table, p1: first.p1, p2: first.p2, outcome: 'pending' }
+    { type: 'reportResult', pod: 'masters', round: 1, table: first.table, p1: first.p1, p2: first.p2, outcome: 'p1' },
+    {
+      type: 'reportResult',
+      pod: 'masters',
+      round: 1,
+      table: first.table,
+      p1: first.p1,
+      p2: first.p2,
+      outcome: 'pending'
+    }
   );
   assert.equal(round(cleared).matches[0]?.timestamp, round(cleared).pairTime, 'an open match carries its pairing time');
 });
 
 test('a drop can be taken back until the next round is paired, not after', () => {
-  let t = run(withPlayers(4), { type: 'pairRound', pod: 'mixed' }, { type: 'dropPlayer', id: '100' });
+  let t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' }, { type: 'dropPlayer', id: '100' });
   t = run(t, { type: 'undropPlayer', id: '100' }, { type: 'dropPlayer', id: '100' });
-  t = run(reportAll(t), { type: 'pairRound', pod: 'mixed' });
+  t = run(reportAll(t), { type: 'pairRound', pod: 'masters' });
   assert.match(attempt(t, { type: 'undropPlayer', id: '100' }), /before round 2 was paired/);
 });
 
 test('static seating keeps a player at their table every round, re-pairs included', () => {
   let t = run(withPlayers(8), { type: 'setFixedTable', id: '105', table: 3 });
-  t = run(t, { type: 'pairRound', pod: 'mixed' });
+  t = run(t, { type: 'pairRound', pod: 'masters' });
   const at = (id: string) => round(t).matches.find(m => m.p1 === id || m.p2 === id)?.table;
   assert.equal(at('105'), 3);
   assert.deepEqual(
@@ -304,9 +336,9 @@ test('static seating keeps a player at their table every round, re-pairs include
   );
   t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'One', id: '990' } });
   t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Two', id: '991' } });
-  t = run(t, { type: 'repairRound', pod: 'mixed', keepReported: true });
+  t = run(t, { type: 'repairRound', pod: 'masters', keepReported: true });
   assert.equal(at('105'), 3);
-  t = run(reportAll(t), { type: 'pairRound', pod: 'mixed' });
+  t = run(reportAll(t), { type: 'pairRound', pod: 'masters' });
   assert.equal(at('105'), 3);
 });
 

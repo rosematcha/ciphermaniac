@@ -161,11 +161,11 @@ test('finds matches by either player’s name', () => {
 
 test('lists who a re-pair would seat', () => {
   let t = run(
-    emptyTournament({ name: 'Seats' }, true),
+    emptyTournament({ name: 'Seats' }),
     ...[0, 1, 2, 3].map(
       i => ({ type: 'addPlayer', player: { firstName: 'P', lastName: `${i}`, id: `${10 + i}` } }) as Command
     ),
-    { type: 'pairRound', pod: 'mixed' }
+    { type: 'pairRound', pod: 'masters' }
   );
   assert.deepEqual(unseated(t, t.pods[0] as Pod), []);
   t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'One', id: '99' } });
@@ -195,12 +195,12 @@ test('exports pending results into the .tdf, finalized once the event closes', (
     }));
   assert.match(tdfText({ tournament: CHALLENGE, pending: completed, finished: true }), /<standings>/);
   assert.equal(tdfFilename(CHALLENGE), 'Fixture Challenge Friends.tdf');
-  assert.equal(tdfFilename(emptyTournament({ name: '???' }, true)), 'tournament.tdf');
+  assert.equal(tdfFilename(emptyTournament({ name: '???' })), 'tournament.tdf');
 });
 
 test('the organizer’s and the public’s standings break exact ties the same way', () => {
   const t = run(
-    emptyTournament({ name: 'Ties' }, true),
+    emptyTournament({ name: 'Ties' }),
     ...['9', '10', '4', '3'].map(id => ({ type: 'addPlayer', player: { firstName: 'P', lastName: id, id } }) as Command)
   );
   const keys = assignKeys(t, {});
@@ -215,7 +215,7 @@ test('the organizer’s and the public’s standings break exact ties the same w
 
 test('the public copy names only what the room may see of each player', () => {
   const t = run(
-    emptyTournament({ name: 'Private' }, true),
+    emptyTournament({ name: 'Private' }),
     { type: 'addPlayer', player: { firstName: 'Ash', lastName: 'Ketchum', id: '4242', birthDate: '01/01/1990' } },
     { type: 'setFixedTable', id: '4242', table: 7 }
   );

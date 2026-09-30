@@ -75,11 +75,11 @@ afterEach(() => {
 test('every call goes to its endpoint with its body', async () => {
   answer(200, { ok: true });
   const profile = { popId: '1', firstName: 'A', lastName: 'B', birthDate: '02/27/2000' };
-  const t = emptyTournament({ name: 'X' }, true);
+  const t = emptyTournament({ name: 'X' });
   await fetchSession();
   await saveProfile(profile);
   await listTournaments();
-  await createSwiss({ name: 'Cup', combined: false });
+  await createSwiss({ name: 'Cup' });
   await createFromTdf(t);
   await fetchView('ABC', 3);
   await fetchManage('ABC');
@@ -128,7 +128,7 @@ test('every call goes to its endpoint with its body', async () => {
   assert.match(decklist.localTime, /^\d{2}\/\d{2}\/\d{4} /, 'a list can add its submitter, so it carries the clock');
   const command = sent[8]?.body as { localTime: string };
   assert.match(command.localTime, /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/, 'stamped with the venue clock');
-  assert.deepEqual(sent[3]?.body, { mode: 'swiss', name: 'Cup', combined: false });
+  assert.deepEqual(sent[3]?.body, { mode: 'swiss', name: 'Cup' });
 });
 
 test('a player identifies and reports through one endpoint, stamped with the venue clock', async () => {

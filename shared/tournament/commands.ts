@@ -11,14 +11,16 @@
  * round rather than waiting for the next one.
  */
 
-import { divisionFor, divisionLookup } from './divisions.js';
+import { divisionFor, divisionLookup, parseTomDate, seasonOf } from './divisions.js';
 import { type Pairing, pairNextElimination, pairSwiss, pairTopCut } from './pairing.js';
+import { categoryFor, divisionsOf, poddingFor } from './podding.js';
 import type { Random } from './random.js';
 import {
   activeIds,
   findMatch,
   fixedTables,
   hasPlayed,
+  hasStarted,
   isReported,
   latestRound,
   type MatchStamp,
@@ -33,6 +35,7 @@ import {
 import { eliminationResult, swissStandings } from './standings.js';
 import {
   type Division,
+  DIVISIONS,
   isDivision,
   type Match,
   type Outcome,
@@ -51,8 +54,6 @@ export interface NewPlayer {
   /** POP ID; one is generated when blank. */
   id?: string;
   birthDate?: string;
-  /** Overrides the division the birth date gives. */
-  division?: Division;
   /** Set when the player's own decklist submission adds them (see functions/api/tournaments/[code]/decklists.ts). */
   fromList?: boolean;
 }
@@ -142,22 +143,71 @@ function missedRounds(pod: Pod, id: string, timestamp: string): Pod {
   return { ...pod, playerIds: [...pod.playerIds, id], rounds };
 }
 
-function podFor(tournament: Tournament, division: Division): Pod {
-  const category: PodCategory = tournament.combined ? 'mixed' : division;
-  return findPod(tournament, category) ?? newPod(category);
+/** Where a division nobody played in goes once play has started: the pods §5.2.1 would have combined it into. */
+const JOINS: Record<Division, readonly Division[]> = {
+  junior: ['senior', 'masters'],
+  senior: ['masters', 'junior'],
+  masters: ['senior', 'junior']
+};
+
+/**
+ * The pod a player joins once play has started, when the pods stand: the one
+ * that plays their division, or for a division nobody played in, the one it
+ * would have been combined into, which plays it from then on. `replaces` is
+ * the pod as it stood, when it changes category.
+ */
+function podFor(tournament: Tournament, division: Division): { pod: Pod; replaces?: Pod } {
+  const plays = (d: Division) => tournament.pods.find(pod => divisionsOf(pod.category).includes(d));
+  const playing = plays(division);
+  if (playing) {
+    return { pod: playing, replaces: playing };
+  }
+  const into = JOINS[division].map(plays).find(pod => pod !== undefined);
+  if (!into) {
+    return { pod: newPod(division) };
+  }
+  return { pod: { ...into, category: categoryFor([...divisionsOf(into.category), division]) }, replaces: into };
+}
+
+/** A division's age as the pods list them: the youngest a pod plays. */
+const youngest = (category: PodCategory) => DIVISIONS.indexOf(divisionsOf(category)[0] as Division);
+
+/**
+ * Before round 1, the pods §5.2.1 makes of the field (see podding.ts),
+ * youngest first, each keeping its own settings. The field is counted by the
+ * players still in; one who dropped before play joins their division's pod,
+ * or the first when theirs has none. Once a round is paired the pods stand.
+ */
+function podded(tournament: Tournament, season: number): Tournament {
+  if (hasStarted(tournament)) {
+    return tournament;
+  }
+  const divisionOf = (player: Player) => divisionFor(player.birthDate, season);
+  const counts: Record<Division, number> = { junior: 0, senior: 0, masters: 0 };
+  for (const player of tournament.players) {
+    counts[divisionOf(player)] += player.droppedAfter === null ? 1 : 0;
+  }
+  const podding = poddingFor(counts);
+  const categories = [...new Set(podding.values())].sort((a, b) => youngest(a) - youngest(b));
+  const categoryOf = (player: Player) => podding.get(divisionOf(player)) ?? categories[0] ?? divisionOf(player);
+  const pods = [...new Set([...categories, ...tournament.players.map(categoryOf)])].map(category => ({
+    ...(findPod(tournament, category) ?? newPod(category)),
+    playerIds: tournament.players.filter(player => categoryOf(player) === category).map(player => player.id)
+  }));
+  return { ...tournament, pods };
 }
 
 /** A player as they join: late once their pod has paired a round, and marked when their decklist added them. */
 function newPlayer(
   fields: Pick<Player, 'id' | 'firstName' | 'lastName' | 'birthDate'> & { fromList?: boolean | undefined },
-  pod: Pod,
+  late: boolean,
   ctx: CommandContext
 ): Player {
   const { fromList, ...rest } = fields;
   return {
     ...rest,
     droppedAfter: null,
-    ...(pod.rounds.length > 0 ? { late: true } : {}),
+    ...(late ? { late: true } : {}),
     ...(fromList ? { fromList: true } : {}),
     created: ctx.localTime,
     modified: ctx.localTime
@@ -178,12 +228,16 @@ function addPlayer(tournament: Tournament, input: NewPlayer, ctx: CommandContext
     return fail('That POP ID is already registered');
   }
   const birthDate = input.birthDate?.trim() ?? '';
-  const pod = podFor(tournament, input.division ?? divisionFor(birthDate, ctx.season));
-  const player = newPlayer({ id, firstName, lastName, birthDate, fromList: input.fromList }, pod, ctx);
+  const fields = { id, firstName, lastName, birthDate, fromList: input.fromList };
+  if (!hasStarted(tournament)) {
+    // Every roster change before round 1 pods the field again (see podded), so any pod will do.
+    const player = newPlayer(fields, false, ctx);
+    return done({ ...tournament, players: [...tournament.players, player] });
+  }
+  const { pod, replaces } = podFor(tournament, divisionFor(birthDate, ctx.season));
+  const player = newPlayer(fields, pod.rounds.length > 0, ctx);
   const joined = missedRounds(pod, id, ctx.localTime);
-  const pods = tournament.pods.some(p => p.category === pod.category)
-    ? tournament.pods.map(p => (p.category === pod.category ? joined : p))
-    : [...tournament.pods, joined];
+  const pods = replaces ? tournament.pods.map(p => (p === replaces ? joined : p)) : [...tournament.pods, joined];
   return done({ ...tournament, players: [...tournament.players, player], pods });
 }
 
@@ -589,7 +643,23 @@ const HANDLERS: Handlers = {
   updateInfo: (t, c) => updateInfo(t, c.info)
 };
 
+/** The commands that change who plays or in which season, after which the field is podded again before round 1. */
+const ROSTER: ReadonlySet<Command['type']> = new Set([
+  'addPlayer',
+  'editPlayer',
+  'removePlayer',
+  'dropPlayer',
+  'undropPlayer',
+  'updateInfo'
+]);
+
 export function applyCommand(tournament: Tournament, command: Command, ctx: CommandContext): CommandResult {
   const handler = HANDLERS[command.type] as (t: Tournament, c: Command, x: CommandContext) => CommandResult;
-  return handler(tournament, command, ctx);
+  const result = handler(tournament, command, ctx);
+  if (!result.ok || !ROSTER.has(command.type)) {
+    return result;
+  }
+  // The command's season, unless the change itself gave the event a start date that sets another.
+  const dated = parseTomDate(result.tournament.info.startDate);
+  return done(podded(result.tournament, dated ? seasonOf(dated) : ctx.season));
 }
