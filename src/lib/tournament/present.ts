@@ -487,7 +487,8 @@ export function reportState(
     return { chosen: null, disputed: false, locked: false, final: false };
   }
   const locked = isLocked(mine, now);
-  const agreed = theirs?.outcome === mine.outcome && locked && isLocked(theirs, now);
+  // Two reports from one device wait for staff (see dueResults).
+  const agreed = theirs?.outcome === mine.outcome && locked && isLocked(theirs, now) && !oneDevice(mine, theirs);
   return { chosen: asResult(mine.outcome, seat), disputed: isDisputed(forMatch), locked, final: agreed };
 }
 

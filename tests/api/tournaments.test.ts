@@ -1155,6 +1155,11 @@ test('two agreeing reports from one device wait for staff, and staff can free a 
   mock.timers.tick(REPORT_WINDOW_MS);
   const after = await playerSays(code, { popId: first.p1, device: 'one-phone' });
   assert.equal(after.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'pending', 'not settled');
+  assert.deepEqual(
+    after.json.view.reports.map((r: { device?: string }) => r.device),
+    ['shared', 'shared'],
+    'the public view says only that one device sent both, so the page does not call it settled'
+  );
   const staffView = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
   const [a, b] = staffView.reports as { device?: string }[];
   assert.ok(a?.device && a.device === b?.device, 'staff can see both came from one device');

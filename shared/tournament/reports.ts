@@ -31,7 +31,10 @@ export interface PlayerReport {
   by: string;
   outcome: ReportedOutcome;
   at: number;
-  /** The hashed device that filed it; kept from the public view. */
+  /**
+   * The hashed device that filed it. The public view only says whether both
+   * of a match's reports came from one device (see publicReports).
+   */
   device?: string;
 }
 
@@ -168,15 +171,21 @@ export function pruneReports(tournament: Tournament, reports: readonly PlayerRep
   });
 }
 
+/** One mark on both of a match's public reports when one device sent them, so its page does not call them settled. */
+const SHARED_DEVICE = 'shared';
+
+function publicDevice(reports: readonly PlayerReport[], report: PlayerReport): Pick<PlayerReport, 'device'> {
+  const other = reports.find(r => sameMatch(r, report) && r.by !== report.by);
+  return other && oneDevice(report, other) ? { device: SHARED_DEVICE } : {};
+}
+
 /** The reports under public keys, without the devices they came from. */
 export function publicReports(reports: readonly PlayerReport[], keys: Record<string, string>): PlayerReport[] {
   const key = (id: string) => keys[id] ?? id;
-  return reports.map(({ device: _device, ...report }) => ({
-    ...report,
-    p1: key(report.p1),
-    p2: key(report.p2),
-    by: key(report.by)
-  }));
+  return reports.map(report => {
+    const { device: _device, ...rest } = report;
+    return { ...rest, ...publicDevice(reports, report), p1: key(report.p1), p2: key(report.p2), by: key(report.by) };
+  });
 }
 
 /** The result a settled report stands for, as the command staff would send. */

@@ -244,6 +244,12 @@ test('a player’s report state: pressed, disputed, locked, and final once it st
     locked: true,
     final: true
   });
+  const oneDevice = agreed.map(report => ({ ...report, device: 'shared' }));
+  assert.equal(
+    reportState(at, { pending: [], reports: oneDevice }, match.p2, 30_000).final,
+    false,
+    'reports from one device wait for staff'
+  );
   const staff = [{ ...mine, outcome: 'tie' as const }];
   assert.deepEqual(reportState(at, { pending: staff, reports: both }, match.p1, 0), {
     chosen: 'tie',
