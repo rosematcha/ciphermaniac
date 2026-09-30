@@ -82,12 +82,13 @@ function claimed(pairing: Pairing, stamp: MatchStamp, used: ReadonlySet<number>)
 }
 
 /**
- * Pairings as table-numbered matches, best at the lowest table. A match with
- * a fixed-seat player takes that player's table; the rest fill the tables
- * left, skipping any a kept match already holds. A bye sits at no table and
- * is already decided.
+ * Pairings as table-numbered matches, in the pairings' own order. A match
+ * with a fixed-seat player takes that player's table; the rest fill the
+ * tables left, skipping any a kept match already holds. A bye sits at no
+ * table and is already decided. A top cut keeps this order, as its next
+ * round pairs neighbouring matches' winners; pages sort by table.
  */
-export function toMatches(pairings: readonly Pairing[], stamp: MatchStamp): Match[] {
+export function seatPairings(pairings: readonly Pairing[], stamp: MatchStamp): Match[] {
   const used = new Set(stamp.taken ?? []);
   const tables = pairings.map(pairing => {
     const table = pairing.p2 === null ? 0 : claimed(pairing, stamp, used);
@@ -105,12 +106,16 @@ export function toMatches(pairings: readonly Pairing[], stamp: MatchStamp): Matc
     next += 1;
     return next - 1;
   };
-  const matches: Match[] = pairings.map(({ p1, p2 }, i) =>
+  return pairings.map(({ p1, p2 }, i) =>
     p2 === null
       ? { table: 0, p1, p2: null, outcome: 'bye' as const, timestamp: stamp.timestamp }
       : { table: tables[i] ?? nextFree(), p1, p2, outcome: 'pending' as const, timestamp: stamp.timestamp }
   );
-  return sortMatches(matches);
+}
+
+/** Swiss pairings as table-numbered matches (see seatPairings), best at the lowest table. */
+export function toMatches(pairings: readonly Pairing[], stamp: MatchStamp): Match[] {
+  return sortMatches(seatPairings(pairings, stamp));
 }
 
 /** Tables first, the bye and missed-round entries last. */
