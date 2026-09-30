@@ -17,8 +17,24 @@ export interface D1Like {
   batch: (statements: D1Statement[]) => Promise<{ results?: unknown[] }[]>;
 }
 
+/** What R2 says of an object it holds: enough to write over exactly that object. */
+export interface PublishedObject {
+  etag: string;
+  customMetadata?: Record<string, string>;
+}
+
 /** The slice of an R2 bucket binding the functions write with. */
 export interface PublishBucket {
-  put: (key: string, value: string, options: { httpMetadata: Record<string, string> }) => Promise<unknown>;
+  head: (key: string) => Promise<PublishedObject | null>;
+  /** Null when `onlyIf` did not hold, and nothing was written. */
+  put: (
+    key: string,
+    value: string,
+    options: {
+      httpMetadata: Record<string, string>;
+      customMetadata: Record<string, string>;
+      onlyIf: { etagMatches: string } | Headers;
+    }
+  ) => Promise<PublishedObject | null>;
   delete: (key: string) => Promise<unknown>;
 }
