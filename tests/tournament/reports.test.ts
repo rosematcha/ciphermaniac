@@ -180,3 +180,20 @@ test('reports go once their match has a result or is re-paired, and go public un
   const shown = publicReports(reports.slice(0, 1), { [first.p1]: '1', [first.p2]: '2' });
   assert.deepEqual([shown[0]?.p1, shown[0]?.p2, shown[0]?.by], ['1', '2', '1']);
 });
+
+test('a report follows its players when a late player of a new division renames their pod', () => {
+  const t = paired();
+  const [first] = matchesOf(t);
+  assert.ok(first?.p2);
+  const filed = [report(t, first.p1, 'win')];
+  // A Senior when nobody else is one joins the Masters, whose pod then plays both.
+  const joined = run(t, {
+    type: 'addPlayer',
+    player: { firstName: 'Late', lastName: 'Senior', birthDate: '01/01/2012' }
+  });
+  assert.equal(joined.pods[0]?.category, 'senior-masters');
+  assert.deepEqual(
+    pruneReports(joined, filed).map(r => [r.pod, r.table]),
+    [['senior-masters', first.table]]
+  );
+});

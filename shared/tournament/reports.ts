@@ -163,7 +163,22 @@ export function isDisputed(forMatch: readonly PlayerReport[]): boolean {
  * As with reportableMatch, pending results are laid over `tournament`.
  */
 export function pruneReports(tournament: Tournament, reports: readonly PlayerReport[]): PlayerReport[] {
-  return reports.filter(report => isOpenMatch(tournament, report));
+  return reports.map(report => followPod(tournament, report)).filter(report => isOpenMatch(tournament, report));
+}
+
+/**
+ * A report whose pod was renamed under it, as when a late player of a
+ * division nobody played joins it, follows its players to the pod they play
+ * that round in.
+ */
+function followPod(tournament: Tournament, report: PlayerReport): PlayerReport {
+  if (tournament.pods.some(pod => pod.category === report.pod)) {
+    return report;
+  }
+  const pod = tournament.pods.find(
+    p => p.playerIds.includes(report.p1) && p.rounds.some(round => round.number === report.round)
+  );
+  return pod ? { ...report, pod: pod.category } : report;
 }
 
 /** One mark on both of a match's public reports when one device sent them, so its page does not call them settled. */
