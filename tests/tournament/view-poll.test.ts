@@ -105,6 +105,26 @@ test('staff see more than the file only while decks are theirs alone', () => {
   assert.equal(seesMoreThanPublished(player), false);
 });
 
+test('a staff copy taken from the file is asked for whole, since the API would call it current', async () => {
+  const sinces: number[] = [];
+  let own = false;
+  const s = source({
+    shown: viewAt(3, 'staff'),
+    ownCopy: () => own,
+    published: async () => ({ version: 4 }) as PublishedView,
+    api: async since => {
+      sinces.push(since);
+      return since === 0 ? viewAt(4, 'staff') : null;
+    }
+  });
+  await s.poll();
+  assert.equal(s.shown()?.version, 4, 'decks shown to all: the file will do');
+  own = true;
+  await s.poll();
+  await s.poll();
+  assert.deepEqual(sinces, [0, 4], 'whole once, then only what changed');
+});
+
 test('a change the console announced asks the API once, until the file catches up', async () => {
   let announced = 5;
   let file = 3;

@@ -63,7 +63,7 @@ export interface ViewSource {
   /** Loads the page again when its first load failed; whether the page has its event now. */
   reload: () => Promise<boolean>;
   published: () => Promise<PublishedView | null>;
-  /** The view if it changed since `since`, or null. */
+  /** The view if it changed since `since`, or null; the whole view for 0. */
   api: (since: number) => Promise<TournamentView | null>;
   apply: (view: TournamentView) => void;
   now: () => number;
@@ -72,16 +72,23 @@ export interface ViewSource {
 /** One look at the event: true when it went through, false when it failed and the next should wait. */
 export function createViewPoll(source: ViewSource): () => Promise<boolean> {
   let askedApiAt = Number.NEGATIVE_INFINITY;
+  /** The version of the last copy the API gave; a copy from anywhere else lacks what only the API has. */
+  let fromApi = -1;
 
-  /** Asks the API: each time when `due`, otherwise no more than every half minute. */
-  async function askApi(current: TournamentView, due: boolean): Promise<boolean> {
+  /**
+   * Asks the API: each time when `due`, otherwise no more than every half
+   * minute. `own` asks for the viewer's own copy, whole unless the one held
+   * came from the API.
+   */
+  async function askApi(current: TournamentView, due: boolean, own = false): Promise<boolean> {
     if (!due && source.now() - askedApiAt < FALLBACK_MS) {
       return true;
     }
     askedApiAt = source.now();
     try {
-      const next = await source.api(current.version);
+      const next = await source.api(own && current.version !== fromApi ? 0 : current.version);
       if (next) {
+        fromApi = next.version;
         source.apply(next);
       }
       return true;
@@ -96,7 +103,7 @@ export function createViewPoll(source: ViewSource): () => Promise<boolean> {
       return source.reload();
     }
     if (source.ownCopy(current)) {
-      return askApi(current, true);
+      return askApi(current, true, true);
     }
     const published = await source.published().catch(() => null);
     if (!published) {

@@ -69,6 +69,9 @@ type Tab = 'pairings' | 'standings' | 'decks' | 'decklist';
 /** No event has this code: asking again will not find one. */
 const missing = (error: unknown) => error instanceof ApiError && error.status === 404;
 
+const sameViewer = (a: TournamentView['viewer'], b: TournamentView['viewer']) =>
+  a.role === b.role && a.me === b.me && a.signedIn === b.signedIn;
+
 /**
  * The event, polled while the tab is visible (see lib/tournament/viewPoll.ts),
  * every `every` ms; a poll that finds nothing new costs one tiny request. It
@@ -81,11 +84,17 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
   const [view, { mutate, refetch }] = createResource(code, c =>
     firstView({ published: () => fetchPublished(c), api: () => fromApi(c) })
   );
-  /** Takes a copy no older than the one shown, of the same event: answers can land out of order. */
+  /**
+   * Takes a copy no older than the one shown, of the same event: answers can
+   * land out of order. An older one still says who the viewer is, which the
+   * copy shown may not know yet.
+   */
   function accept(next: TournamentView) {
     const current = latestValue(view);
     if (!current || (current.code === next.code && next.version >= current.version)) {
       mutate(shared(current, next));
+    } else if (current.code === next.code && !sameViewer(current.viewer, next.viewer)) {
+      mutate({ ...current, viewer: next.viewer });
     }
   }
   // The published file knows nobody. A signed-in viewer's copy comes from the API: staff see
