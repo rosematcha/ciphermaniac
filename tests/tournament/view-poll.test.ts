@@ -11,6 +11,8 @@ import type { PublishedView, TournamentView } from '../../shared/tournament/view
 import {
   createViewPoll,
   FALLBACK_MS,
+  firstView,
+  lookOnReturn,
   POLL_MS,
   pollDelay,
   schedulePolls,
@@ -214,5 +216,46 @@ test('a look asked for while one is under way follows it at once', async () => {
     polls.stop();
   } finally {
     mock.timers.reset();
+  }
+});
+
+test('a page first shows the published file as nobody, and asks the API only when it cannot be read', async () => {
+  let asked = 0;
+  const api = async () => {
+    asked += 1;
+    return viewAt(7, 'owner');
+  };
+  const read = await firstView({ published: async () => ({ version: 6 }) as PublishedView, api });
+  assert.deepEqual([read.version, read.viewer], [6, { role: null, me: null, signedIn: false }]);
+  assert.equal(asked, 0, 'a room opening the page asks the functions for nothing');
+  assert.equal((await firstView({ published: async () => null, api })).version, 7, 'not published yet');
+  const unreachable = await firstView({ published: () => Promise.reject(new Error('blocked')), api });
+  assert.equal(unreachable.viewer.role, 'owner', 'the API says who is asking');
+  assert.equal(asked, 2);
+});
+
+test('a page back in view or back online looks at once, until it closes', () => {
+  const heard = new Map<string, () => void>();
+  const target = {
+    addEventListener: (name: string, listener: () => void) => void heard.set(name, listener),
+    removeEventListener: (name: string) => void heard.delete(name)
+  };
+  const page = { ...target, hidden: true };
+  const globals = globalThis as { document?: unknown; window?: unknown };
+  const before = { document: globals.document, window: globals.window };
+  Object.assign(globals, { document: page, window: target });
+  try {
+    let looks = 0;
+    const forget = lookOnReturn({ soon: () => void (looks += 1), stop: () => undefined });
+    heard.get('visibilitychange')?.();
+    assert.equal(looks, 0, 'going out of view is not a reason to look');
+    page.hidden = false;
+    heard.get('visibilitychange')?.();
+    heard.get('online')?.();
+    assert.equal(looks, 2);
+    forget();
+    assert.equal(heard.size, 0);
+  } finally {
+    Object.assign(globals, before);
   }
 });

@@ -30,14 +30,15 @@ import {
 } from '../../../../shared/tournament/reports.js';
 import type { PodCategory } from '../../../../shared/tournament/types.js';
 import { applyPending, isSanctioned } from '../../../../shared/tournament/view.js';
-import { readJsonBody } from '../../../lib/api/body.js';
+import { readJsonObject } from '../../../lib/api/body.js';
 import { createRateLimiter } from '../../../lib/api/rateLimiter.js';
-import { jsonError } from '../../../lib/api/responses.js';
+import { jsonError, noContent } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { type Access, open, openForStaff, privateJson, publicViewOf } from '../../../lib/tournaments/access.js';
+import { settled } from '../../../lib/tournaments/answers.js';
 import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { type Claim, claimReporter, releaseReporter } from '../../../lib/tournaments/reporters.js';
-import { mutateSettled, settleIfDue } from '../../../lib/tournaments/results.js';
+import { mutateSettled } from '../../../lib/tournaments/results.js';
 import type { Changes, TournamentRow } from '../../../lib/tournaments/store.js';
 
 type Body = Record<string, unknown>;
@@ -145,10 +146,7 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
 /** Who the player is, whether this device reports for them, and the event with any due results settled. */
 async function identify(context: Context<'code'>, access: Access, body: Body, id: string) {
   const standing = await claimReporter(access.db, access.row.code, id, { held: body.reportToken, device: body.device });
-  const row = await settleIfDue(access.db, access.row, body.localTime);
-  if (row !== access.row) {
-    await publishAfter(context, row);
-  }
+  const row = await settled(context, access, body.localTime);
   return privateJson({ key: row.keys[id] ?? null, view: publicViewOf(row), ...standingOf(standing) });
 }
 
@@ -163,7 +161,7 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
     return jsonError('No such player', 404);
   }
   await releaseReporter(access.db, access.row.code, player);
-  return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+  return noContent();
 }
 
 export async function onRequestPost(context: Context<'code'>): Promise<Response> {
@@ -171,8 +169,7 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
   if (access instanceof Response) {
     return access;
   }
-  const read = await readJsonBody(context.request, 1024);
-  const body: Body = read.ok && typeof read.value === 'object' && read.value ? (read.value as Body) : {};
+  const body: Body = (await readJsonObject(context.request, 1024)) ?? {};
   if (body.result !== undefined && !access.row.settings.playerReporting) {
     return jsonError('Results at this event are reported to staff', 403);
   }

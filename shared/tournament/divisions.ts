@@ -57,9 +57,13 @@ export function isTomDateTime(value: unknown): value is string {
   return typeof value === 'string' && TOM_DATE_TIME_RE.test(value);
 }
 
+/** The season an event belongs to: its start date's, or until it has one, the season `now` falls in. */
+export function eventSeason(tournament: Tournament, now = new Date()): number {
+  return seasonOf(parseTomDate(tournament.info.startDate) ?? now);
+}
+
 /** Every player's age division in the event's season. */
-export function divisionLookup(tournament: Tournament): (id: string) => Division {
-  const season = seasonOf(parseTomDate(tournament.info.startDate) ?? new Date());
+export function divisionLookup(tournament: Tournament, season = eventSeason(tournament)): (id: string) => Division {
   const births = new Map(tournament.players.map(p => [p.id, p.birthDate]));
   return id => divisionFor(births.get(id) ?? '', season);
 }

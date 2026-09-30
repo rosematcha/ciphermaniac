@@ -12,7 +12,8 @@ import {
   oneDevice,
   type PlayerReport,
   type PlayerResult,
-  reportsFor
+  reportsFor,
+  settles
 } from '../../../shared/tournament/reports';
 import {
   eliminationResult,
@@ -24,11 +25,14 @@ import {
   swissStandings,
   tallySwiss
 } from '../../../shared/tournament/standings';
+import { latestRound } from '../../../shared/tournament/rounds';
+import { ordinal } from '../format';
 import { recommendedStructure } from '../../../shared/tournament/structure';
 import {
   type Division,
   DIVISION_LABELS,
   DIVISIONS,
+  isDivision,
   type Match,
   type Outcome,
   playerName,
@@ -45,10 +49,6 @@ import {
 
 export function namesById(tournament: Tournament): Map<string, string> {
   return new Map(tournament.players.map(player => [player.id, playerName(player)]));
-}
-
-export function currentRound(pod: Pod | undefined): Round | undefined {
-  return pod?.rounds.at(-1);
 }
 
 const CUT_ROUND_NAMES: Record<number, string> = { 2: 'Final', 4: 'Semifinals', 8: 'Quarterfinals' };
@@ -81,7 +81,7 @@ export interface PodProgress {
 }
 
 export function podProgress(pod: Pod, pending: readonly PendingResult[]): PodProgress {
-  const round = currentRound(pod);
+  const round = latestRound(pod);
   const played = round?.matches.filter(m => m.p2 !== null) ?? [];
   const open = round ? played.filter(m => shownOutcome(m, pod, round, pending).outcome === 'pending').length : 0;
   return { round, tables: played.length, open, champion: champion(round) };
@@ -290,7 +290,7 @@ export function podStandings(
   pod: Pod,
   divisionOf: (id: string) => Division
 ): DivisionStandings[] {
-  if ((DIVISIONS as readonly string[]).includes(pod.category)) {
+  if (isDivision(pod.category)) {
     return [{ division: null, rows: placeFinals(pod, swissStandings(pod, tournament.players)) }];
   }
   const groups = DIVISIONS.flatMap(division => {
@@ -341,7 +341,7 @@ export function currentMatchOf(
   playerId: string
 ): { pod: Pod; round: Round; match: Match } | null {
   for (const pod of tournament.pods) {
-    const round = currentRound(pod);
+    const round = latestRound(pod);
     const match = round?.matches.find(m => m.p1 === playerId || m.p2 === playerId);
     if (round && match) {
       return { pod, round, match };
@@ -437,7 +437,7 @@ export function recordsBefore(pod: Pod, round: Round): Map<string, string> {
  * after pairing. Re-pairing the round seats them.
  */
 export function unseated(tournament: Tournament, pod: Pod): string[] {
-  const round = currentRound(pod);
+  const round = latestRound(pod);
   if (!round || round.kind !== 'swiss') {
     return [];
   }
@@ -486,10 +486,12 @@ export function reportState(
   if (!mine) {
     return { chosen: null, disputed: false, locked: false, final: false };
   }
-  const locked = isLocked(mine, now);
-  // Two reports from one device wait for staff (see dueResults).
-  const agreed = theirs?.outcome === mine.outcome && locked && isLocked(theirs, now) && !oneDevice(mine, theirs);
-  return { chosen: asResult(mine.outcome, seat), disputed: isDisputed(forMatch), locked, final: agreed };
+  return {
+    chosen: asResult(mine.outcome, seat),
+    disputed: isDisputed(forMatch),
+    locked: isLocked(mine, now),
+    final: settles(mine, theirs, now)
+  };
 }
 
 const OUTCOME_WORDS: Partial<Record<Outcome, string>> = {
@@ -574,11 +576,9 @@ export function staffReport(
     : { label: 'Reported', problem, tags, detail: `Reported: ${outcomeLabel(first.outcome, match, names)}` };
 }
 
-export const ordinal = (n: number) => {
-  const tens = n % 100;
-  const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10];
-  return `${n}${suffix ?? 'th'}`;
-};
+/** The start of round 1 as a time, when the organizer set one. */
+export const firstRoundTime = (startsAt: string): string | null =>
+  startsAt ? new Date(startsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : null;
 
 /** What put the last player in above the first one out: points, then OWP, then OOWP. */
 export function cutSplit(rows: readonly Standing[], cut: number): string | null {

@@ -1623,3 +1623,34 @@ test('the index migration brings an older database in line with the schema', () 
   older.exec(migration);
   assert.deepEqual(indexes(older), indexes(fresh));
 });
+
+/** Has another write land just ahead of each of the functions' next `times` writes to the event. */
+function raceWrites(times: number) {
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  let left = times;
+  env.TOURNAMENT_DB = {
+    ...db,
+    prepare: sql => {
+      if (left > 0 && sql.startsWith('UPDATE tournaments SET')) {
+        left -= 1;
+        db.raw.exec('UPDATE tournaments SET version = version + 1');
+      }
+      return db.prepare(sql);
+    }
+  };
+}
+
+test('a change beaten to the row by other writes lands on what they left, and gives up only after five tries', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  const add = (lastName: string) => send(code, owner, { type: 'addPlayer', player: { firstName: 'Ash', lastName } });
+  raceWrites(4);
+  const landed = await add('Ketchum');
+  assert.equal(landed.status, 200);
+  assert.equal(landed.json.tournament.players.length, 1);
+  assert.equal(landed.json.version, 6, 'four writes ahead of it, then its own');
+  raceWrites(5);
+  const busy = await add('Oak');
+  assert.deepEqual([busy.status, busy.json.error], [409, 'Busy; try again']);
+  assert.equal((await view(code)).tournament.players.length, 1, 'nothing half-written');
+});

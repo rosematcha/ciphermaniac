@@ -5,7 +5,7 @@
  */
 
 import { readProfile } from '../../shared/tournament/profile.js';
-import { readJsonBody } from '../lib/api/body.js';
+import { readJsonBody, readJsonObject } from '../lib/api/body.js';
 import { jsonError, jsonResponse } from '../lib/api/responses.js';
 import { type Context, sameOrigin } from '../lib/auth/env.js';
 import { availableProviders } from '../lib/auth/oauth.js';
@@ -47,11 +47,7 @@ export async function onRequestPatch({ request, env }: Context): Promise<Respons
   if (!user) {
     return jsonError('Sign in first', 401);
   }
-  const body = await readJsonBody(request, 256);
-  const value: unknown =
-    body.ok && typeof body.value === 'object' && body.value !== null
-      ? (body.value as Record<string, unknown>).name
-      : null;
+  const value = (await readJsonObject(request, 256))?.name;
   const name = typeof value === 'string' ? value.trim() : '';
   if (!name || name.length > 40) {
     return jsonError('Enter a name up to 40 characters', 400);

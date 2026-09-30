@@ -20,6 +20,7 @@ import type { Tournament } from '../../../shared/tournament/types';
 import {
   createFromTdf,
   createSwiss,
+  errorText,
   fetchView,
   listTournaments,
   type TournamentSummary
@@ -33,8 +34,6 @@ import { TournamentHero } from './Hero';
 import { session } from './session';
 
 const HostHome = lazy(() => import('./HostHome').then(m => ({ default: m.HostHome })));
-
-const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 const shortDate = (startDate: string) =>
   parseTomDate(startDate)?.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }) ?? '';

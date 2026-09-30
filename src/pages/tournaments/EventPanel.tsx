@@ -14,6 +14,7 @@ import { recommendedStructure } from '../../../shared/tournament/structure';
 import { isSanctioned, SETTINGS_LIMITS, type TournamentSettings } from '../../../shared/tournament/view';
 import {
   deleteTournament,
+  errorText,
   fetchStaff,
   type Manage,
   removeStaff,
@@ -393,7 +394,7 @@ function DeleteEvent(props: { manage: Manage }) {
       await deleteTournament(props.manage.code);
       navigate('/host');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorText(err));
     }
   }
   return (

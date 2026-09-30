@@ -11,12 +11,22 @@
 import { useLocation, useParams } from '@solidjs/router';
 import { lazy, Match, Show, Switch } from 'solid-js';
 import '../styles/pages/tournament.css';
+import { latestValue } from '../lib/resource';
+import { preloadPublished } from '../lib/tournament/api';
 import { AccountStrip } from './tournaments/AccountStrip';
+import { session } from './tournaments/session';
 
 const SettingsPage = lazy(() => import('./tournaments/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const HostIndex = lazy(() => import('./tournaments/HostIndex').then(m => ({ default: m.HostIndex })));
 const ManageEvent = lazy(() => import('./tournaments/ManageEvent').then(m => ({ default: m.ManageEvent })));
 const PublicEvent = lazy(() => import('./tournaments/PublicEvent').then(m => ({ default: m.PublicEvent })));
+
+// A page opened on an event asks for it now, as this module loads, so the event and the
+// public page's own code arrive side by side instead of one after the other.
+const opened = /^\/t\/(\w+)/.exec(window.location.pathname)?.[1];
+if (opened) {
+  preloadPublished(opened.toUpperCase());
+}
 
 export function TournamentsPage() {
   const location = useLocation();
@@ -35,7 +45,7 @@ export function TournamentsPage() {
           <SettingsPage />
         </Match>
         <Match when={location.pathname.startsWith('/t/') && code()}>
-          <PublicEvent code={code()} />
+          <PublicEvent code={code()} signedIn={Boolean(latestValue(session)?.user)} />
         </Match>
         <Match when={location.pathname.startsWith('/host/') && code()}>
           <ManageEvent code={code()} />

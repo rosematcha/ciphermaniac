@@ -8,39 +8,36 @@
  */
 
 import { dueResults } from '../../../../shared/tournament/reports.js';
-import { jsonError } from '../../../lib/api/responses.js';
-import { type Context, param } from '../../../lib/auth/env.js';
-import { manageView, open, privateJson } from '../../../lib/tournaments/access.js';
-import { publishAfter } from '../../../lib/tournaments/publish.js';
-import { settleIfDue } from '../../../lib/tournaments/results.js';
-import { isCode, loadHead } from '../../../lib/tournaments/store.js';
+import { jsonError, noContent } from '../../../lib/api/responses.js';
+import type { Context } from '../../../lib/auth/env.js';
+import { manageView, open, pollOf, privateJson } from '../../../lib/tournaments/access.js';
+import { settled } from '../../../lib/tournaments/answers.js';
+import { loadHead } from '../../../lib/tournaments/store.js';
 
 /** Whether the asker is the event's staff and their copy is still current; anything else takes the full answer. */
 async function unchanged(context: Context<'code'>): Promise<boolean> {
-  const since = Number(new URL(context.request.url).searchParams.get('since'));
-  const db = context.env.TOURNAMENT_DB;
-  const code = param(context.params.code).toUpperCase();
-  if (!since || !db || !isCode(code)) {
-    return false;
-  }
-  const head = await loadHead(db, code, context.request);
-  return head !== null && head.staff && head.version === since && dueResults(head.reports, Date.now()).length === 0;
+  const poll = pollOf(context);
+  const head = poll && (await loadHead(poll.db, poll.code, context.request));
+  return (
+    poll !== null &&
+    head !== null &&
+    head.staff &&
+    head.version === poll.since &&
+    dueResults(head.reports, Date.now()).length === 0
+  );
 }
 
 export async function onRequestGet(context: Context<'code'>): Promise<Response> {
   if (await unchanged(context)) {
-    return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+    return noContent();
   }
   const access = await open(context);
   if (access instanceof Response) {
     return access;
   }
-  if (!access.role) {
+  const { role } = access;
+  if (!role) {
     return jsonError(access.user ? 'Only this event’s staff can do that' : 'Sign in first', access.user ? 403 : 401);
   }
-  const row = await settleIfDue(access.db, access.row);
-  if (row !== access.row) {
-    await publishAfter(context, row);
-  }
-  return privateJson(manageView({ ...access, row }));
+  return privateJson(manageView({ ...access, role, row: await settled(context, access) }));
 }

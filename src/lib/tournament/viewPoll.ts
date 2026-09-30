@@ -11,7 +11,7 @@
  * keeps trying on the same schedule.
  */
 
-import type { PublishedView, TournamentView } from '../../../shared/tournament/view';
+import type { PublishedView, TournamentView, Viewer } from '../../../shared/tournament/view';
 
 export const POLL_MS = 10_000;
 /** The big screen's poll: it is what the room reads, and one per venue. */
@@ -23,6 +23,23 @@ const MAX_WAIT_MS = 5 * 60_000;
 /** The wait before the next look, after `failures` failed looks in a row, for a page that looks every `every` ms. */
 export function pollDelay(failures: number, every = POLL_MS): number {
   return Math.min(MAX_WAIT_MS, every * 2 ** failures);
+}
+
+/** Who reads the published file: nobody the event knows. */
+const NOBODY: Viewer = { role: null, me: null, signedIn: false };
+
+/**
+ * The event as a page first shows it: the published file, which is read from
+ * the edge and costs the functions nothing, and the API only when the file
+ * cannot be read. A room opening the page at once asks the functions for
+ * nothing; a signed-in viewer's page asks the API afterwards for who they are.
+ */
+export async function firstView(source: {
+  published: () => Promise<PublishedView | null>;
+  api: () => Promise<TournamentView>;
+}): Promise<TournamentView> {
+  const published = await source.published().catch(() => null);
+  return published ? { ...published, viewer: NOBODY } : source.api();
 }
 
 export interface ViewSource {
@@ -124,5 +141,21 @@ export function schedulePolls(poll: () => Promise<boolean>, hidden: () => boolea
       stopped = true;
       clearTimeout(timer);
     }
+  };
+}
+
+/** Looks again the moment the page is back in view or back online, without waiting out the schedule; returns the undo. */
+export function lookOnReturn(polls: Polls): () => void {
+  const soon = () => polls.soon();
+  const shown = () => {
+    if (!document.hidden) {
+      polls.soon();
+    }
+  };
+  window.addEventListener('online', soon);
+  document.addEventListener('visibilitychange', shown);
+  return () => {
+    window.removeEventListener('online', soon);
+    document.removeEventListener('visibilitychange', shown);
   };
 }

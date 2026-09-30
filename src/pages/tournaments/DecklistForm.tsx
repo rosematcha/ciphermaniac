@@ -20,6 +20,7 @@ import { SETTINGS_LIMITS } from '../../../shared/tournament/view';
 import {
   ApiError,
   type Decklist,
+  errorText,
   fetchMyDecklist,
   type Registration,
   submitDecklist,
@@ -149,7 +150,7 @@ function createDecklistForm(props: FormProps) {
     setTouched(true);
     apply();
   };
-  const fail = (err: unknown) => setError(err instanceof Error ? err.message : String(err));
+  const fail = (err: unknown) => setError(errorText(err));
 
   async function send() {
     setSending(true);

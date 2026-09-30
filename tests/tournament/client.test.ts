@@ -23,6 +23,7 @@ import {
   joinStaff,
   linkUrl,
   listTournaments,
+  preloadPublished,
   removeStaff,
   reportAsPlayer,
   rotateStaffToken,
@@ -170,6 +171,21 @@ test('reads the published view from the data origin, and a missing one as null',
   assert.match(sent[0]?.url ?? '', /\/tournaments\/v1\/ABC\.json$/);
   answer(404, { error: 'missing' });
   assert.equal(await fetchPublished('ABC'), null);
+});
+
+test('a published view asked for ahead of its page is read once, and only for that event', async () => {
+  answer(200, { code: 'ABC', version: 3 });
+  preloadPublished('ABC');
+  assert.deepEqual(await fetchPublished('ABC'), { code: 'ABC', version: 3 });
+  assert.equal(sent.length, 1, 'the page takes the read already under way');
+  await fetchPublished('ABC');
+  assert.equal(sent.length, 2, 'and reads afresh from then on');
+  preloadPublished('ABC');
+  await fetchPublished('XYZ');
+  assert.match(sent.at(-1)?.url ?? '', /XYZ\.json$/, 'another event is not answered with this one');
+  globalThis.fetch = (() => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
+  preloadPublished('ABC');
+  assert.equal(await fetchPublished('ABC'), null, 'a read that failed ahead of the page is an unreadable file');
 });
 
 test('a 204 answers null', async () => {

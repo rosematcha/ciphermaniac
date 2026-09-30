@@ -16,7 +16,7 @@ import { revisionOf } from '../../../../shared/tournament/revision.js';
 import type { Tournament } from '../../../../shared/tournament/types.js';
 import { readTournament } from '../../../../shared/tournament/validate.js';
 import { prunePending } from '../../../../shared/tournament/view.js';
-import { readJsonBody } from '../../../lib/api/body.js';
+import { asObject, readJsonBody } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
 import { MAX_TOURNAMENT_BYTES, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
@@ -36,7 +36,7 @@ async function readUpload(request: Request): Promise<Upload | Response> {
   if (!body.ok) {
     return jsonError('That file is too large', 413);
   }
-  const value = typeof body.value === 'object' && body.value ? (body.value as Record<string, unknown>) : {};
+  const value = asObject(body.value) ?? {};
   const tournament = readTournament(value.tournament);
   if (!tournament) {
     return jsonError('That file did not read as a tournament', 400);
@@ -81,7 +81,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   }
   await publishAfter(context, outcome.row);
   return privateJson({
-    version: outcome.version,
+    version: outcome.row.version,
     pending: outcome.row.pending,
     revision: sent
   });

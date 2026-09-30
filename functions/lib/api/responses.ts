@@ -2,6 +2,11 @@ export function jsonError(message: string, status: number, headers?: Record<stri
   return jsonResponse({ error: message, status }, { status, cacheControl: 'no-store', cors: false, headers });
 }
 
+/** Done, with nothing to say and nothing to cache. */
+export function noContent(): Response {
+  return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+}
+
 export function jsonSuccess<T>(data: T, status = 200): Response {
   return jsonResponse(data, { status });
 }

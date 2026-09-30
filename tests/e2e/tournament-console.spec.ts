@@ -123,6 +123,44 @@ test('a double click on a player records their win without asking', async ({ pag
   await expect(page.getByRole('button', { name: 'Record' })).toHaveCount(0);
 });
 
+test('a result shows in its row while it is on its way, and its answer is not read a second time', async ({ page }) => {
+  const t = event(8, 0, true);
+  const table = t.pods[0]?.rounds[0]?.matches[0];
+  if (!table) {
+    throw new Error('no table');
+  }
+  await mockConsole(page, t, settingsOf({}));
+  const rows = page.locator('.tm-matches tbody tr');
+  await expect(rows).toHaveCount(4);
+  let answer = () => undefined as void;
+  const held = new Promise<void>(resolve => {
+    answer = resolve;
+  });
+  const reads: string[] = [];
+  await page.route(`**/api/tournaments/${CODE}/manage*`, route => {
+    reads.push(route.request().url());
+    return route.fulfill({ status: 204 });
+  });
+  await page.route(`**/api/tournaments/${CODE}/commands`, async route => {
+    await held;
+    const tournament = run(t, { type: 'reportResult', pod: 'mixed', round: 1, ...table, outcome: 'p1' });
+    const manage = { code: CODE, mode: 'swiss', version: 4, updatedAt: 0, tournament, pending: [], reports: [] };
+    return route.fulfill({
+      json: { ...manage, settings: settingsOf({}), decks: {}, role: 'owner', staffToken: 'invite' }
+    });
+  });
+  await rows.evaluateAll(els => els.forEach(el => el.setAttribute('data-kept', '')));
+  await page.getByRole('button', { name: 'Report Player' }).first().dblclick();
+  const first = rows.first();
+  await expect(first.locator('.tm-result-label')).toHaveText('1–0');
+  await expect(first.locator('.tm-mark.is-unconfirmed')).toHaveText([/^W/, /^L/]);
+  answer();
+  await expect(first.locator('.tm-mark.is-win')).toHaveText('W');
+  await expect(first.locator('.tm-mark.is-unconfirmed')).toHaveCount(0);
+  await expect(page.locator('.tm-matches tbody tr[data-kept]')).toHaveCount(3);
+  expect(reads).toEqual([]);
+});
+
 test('after the planned rounds the console offers the top cut, another round and ending the event', async ({
   page
 }) => {

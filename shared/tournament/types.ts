@@ -12,6 +12,11 @@ export type Division = 'junior' | 'senior' | 'masters';
 
 export const DIVISIONS: readonly Division[] = ['junior', 'senior', 'masters'];
 
+/** Whether a value, a pod's category among them, names one age division rather than several played together. */
+export function isDivision(value: unknown): value is Division {
+  return (DIVISIONS as readonly unknown[]).includes(value);
+}
+
 export const DIVISION_LABELS: Record<Division, string> = {
   junior: 'Juniors',
   senior: 'Seniors',

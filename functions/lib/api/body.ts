@@ -65,3 +65,14 @@ export async function readJsonBody(request: Request, maxBytes: number): Promise<
     return refused(error === TOO_LARGE ? 'too-large' : 'unparseable');
   }
 }
+
+/** A parsed value as an object to read fields from; null for anything else. */
+export function asObject(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
+}
+
+/** A request's JSON body as an object to read fields from; null when it is too large, not JSON or not an object. */
+export async function readJsonObject(request: Request, maxBytes: number): Promise<Record<string, unknown> | null> {
+  const body = await readJsonBody(request, maxBytes);
+  return body.ok ? asObject(body.value) : null;
+}

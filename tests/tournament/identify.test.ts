@@ -8,7 +8,13 @@ import test from 'node:test';
 
 import { applyCommand, type Command } from '../../shared/tournament/commands.ts';
 import { emptyTournament } from '../../shared/tournament/create.ts';
-import { decklistPlayer, findPlayer, nameKey, shortLastNames } from '../../shared/tournament/identify.ts';
+import {
+  decklistMatcher,
+  decklistPlayer,
+  findPlayer,
+  nameKey,
+  shortLastNames
+} from '../../shared/tournament/identify.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
 import type { Tournament } from '../../shared/tournament/types.ts';
 
@@ -79,4 +85,21 @@ test('an unsanctioned event shows last names as short as they can be and still t
   assert.equal(short.get('4'), 'K.', 'only players with the same first name compete');
   assert.equal(short.get('5'), 'Oak', 'two identical names keep the whole name');
   assert.equal(short.get('7'), 'Ke', 'a name no prefix can separate is shown whole');
+});
+
+test('one matcher finds every list its player, and none where two players share the name', () => {
+  let t = field();
+  const twin: Command = { type: 'addPlayer', player: { firstName: 'gary', lastName: 'Oak ', id: '200' } };
+  const added = applyCommand(t, twin, { now: 0, localTime: '', season: 2027, random: seededRandom(1) });
+  assert.ok(added.ok);
+  t = added.tournament;
+  const byName = decklistMatcher(t, false);
+  const named = (firstName: string, lastName: string) => byName({ popId: '', firstName, lastName });
+  assert.equal(named('ASH', ' ketchum'), '100');
+  assert.equal(named('Daisy', 'Oak'), '104');
+  assert.equal(named('Gary', 'Oak'), undefined, 'two players by that name: staff tell them apart');
+  assert.equal(named('Ash Ketchum', ''), undefined, 'the two names are kept apart');
+  const byId = decklistMatcher(t, true);
+  assert.equal(byId({ popId: '200', firstName: '', lastName: '' }), '200');
+  assert.equal(byId({ popId: '', firstName: 'Ash', lastName: 'Ketchum' }), undefined);
 });

@@ -21,8 +21,15 @@ export function nameKey(name: string): string {
   return name.normalize('NFKD').replace(/\p{M}/gu, '').trim().toLowerCase();
 }
 
-const named = (players: readonly Player[], key: 'firstName' | 'lastName', name: string) =>
-  players.filter(player => nameKey(player[key]) === nameKey(name));
+function named(players: readonly Player[], key: 'firstName' | 'lastName', name: string): Player[] {
+  const wanted = nameKey(name);
+  return players.filter(player => nameKey(player[key]) === wanted);
+}
+
+/** A first and last name as one key. The two stay apart, so "Mary Ann" + "Smith" and "Mary" + "Ann Smith" are two people. */
+export function fullNameKey(person: { firstName: string; lastName: string }): string {
+  return JSON.stringify([nameKey(person.firstName), nameKey(person.lastName)]);
+}
 
 function byName(tournament: Tournament, claim: PlayerClaim): Found {
   const sameLast = named(tournament.players, 'lastName', claim.lastName ?? '');
@@ -46,26 +53,44 @@ export function findPlayer(tournament: Tournament, sanctioned: boolean, claim: P
   return player ? { ok: true, id: player.id } : { ok: false, error: 'No player with that Player ID is in this event' };
 }
 
-/** The player a decklist belongs to: by Player ID, or unsanctioned, by first and last name. */
-export function decklistPlayer(
-  tournament: Tournament,
-  list: { popId: string; firstName: string; lastName: string },
-  sanctioned: boolean
-): string | undefined {
-  if (sanctioned) {
-    return tournament.players.find(p => p.id === list.popId)?.id;
-  }
-  const matches = named(named(tournament.players, 'lastName', list.lastName), 'firstName', list.firstName);
-  return matches.length === 1 ? matches[0]?.id : undefined;
+interface ListOwner {
+  popId: string;
+  firstName: string;
+  lastName: string;
 }
 
-/** Whether `name` starts with `prefix`, as nameKey compares them. */
-const startsAs = (name: string, prefix: string) => nameKey(name).startsWith(nameKey(prefix));
+/**
+ * Finds the player each decklist belongs to: by Player ID, or unsanctioned,
+ * by first and last name when exactly one player has them. The roster is read
+ * once, so matching an event's every list is a pass over the lists, not a
+ * pass over the roster for each.
+ */
+export function decklistMatcher(tournament: Tournament, sanctioned: boolean): (list: ListOwner) => string | undefined {
+  if (sanctioned) {
+    const ids = new Set(tournament.players.map(player => player.id));
+    return list => (ids.has(list.popId) ? list.popId : undefined);
+  }
+  const byName = new Map<string, string[]>();
+  for (const player of tournament.players) {
+    const key = fullNameKey(player);
+    byName.set(key, [...(byName.get(key) ?? []), player.id]);
+  }
+  return list => {
+    const ids = byName.get(fullNameKey(list)) ?? [];
+    return ids.length === 1 ? ids[0] : undefined;
+  };
+}
 
-/** The shortest start of `last` that no rival's last name shares; the whole name when none will do. */
-function shortest(last: string, rivals: readonly Player[]): string {
+/** The player one decklist belongs to (see decklistMatcher). */
+export function decklistPlayer(tournament: Tournament, list: ListOwner, sanctioned: boolean): string | undefined {
+  return decklistMatcher(tournament, sanctioned)(list);
+}
+
+/** The shortest start of `last` that none of `rivals` (last names, as nameKey has them) shares; the whole name when none will do. */
+function shortest(last: string, rivals: readonly string[]): string {
   for (let n = 1; n < last.length; n += 1) {
-    if (!rivals.some(rival => startsAs(rival.lastName, last.slice(0, n)))) {
+    const prefix = nameKey(last.slice(0, n));
+    if (!rivals.some(rival => rival.startsWith(prefix))) {
       return `${last.slice(0, n)}.`;
     }
   }
@@ -75,13 +100,27 @@ function shortest(last: string, rivals: readonly Player[]): string {
 /**
  * Each player's last name as an unsanctioned event shows it publicly: an
  * initial, or as many letters as it takes to tell two players with the same
- * first name apart (Ash Ket. and Ash Kel.).
+ * first name apart (Ash Ket. and Ash Kel.). Players are grouped by first name
+ * once, so a large field costs a pass over it, not a pass per player.
  */
 export function shortLastNames(players: readonly Player[]): Map<string, string> {
-  return new Map(
-    players.map(player => {
-      const rivals = players.filter(o => o !== player && nameKey(o.firstName) === nameKey(player.firstName));
-      return [player.id, shortest(player.lastName.trim(), rivals)];
-    })
-  );
+  const sharing = new Map<string, Player[]>();
+  for (const player of players) {
+    const first = nameKey(player.firstName);
+    const group = sharing.get(first);
+    if (group) {
+      group.push(player);
+    } else {
+      sharing.set(first, [player]);
+    }
+  }
+  const short = new Map<string, string>();
+  for (const group of sharing.values()) {
+    const lasts = group.map(player => nameKey(player.lastName));
+    group.forEach((player, i) => {
+      const rivals = lasts.filter((_, other) => other !== i);
+      short.set(player.id, shortest(player.lastName.trim(), rivals));
+    });
+  }
+  return short;
 }

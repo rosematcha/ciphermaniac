@@ -13,9 +13,12 @@ import {
   assignKeys,
   DEFAULT_SETTINGS,
   type PendingResult,
+  type Role,
+  type StaffMember,
   storedSettings,
   type TournamentMode,
-  type TournamentSettings
+  type TournamentSettings,
+  type TournamentSummary
 } from '../../../shared/tournament/view.js';
 import { type PlayerReport, pruneReports } from '../../../shared/tournament/reports.js';
 import { randomToken, sessionHash, sessionUserQuery, type User, userFromRow, type UserRow } from '../auth/session.js';
@@ -53,8 +56,6 @@ interface RawRow {
   version: number;
   updated_at: number;
 }
-
-export type Role = 'owner' | 'staff';
 
 function fromRaw(raw: RawRow): TournamentRow {
   return {
@@ -274,30 +275,40 @@ async function saveTournament(db: D1Like, row: TournamentRow, changes: Changes):
   return rowsChanged(result) === 1 ? { ...next, version: row.version + 1, updatedAt } : null;
 }
 
+/** What a change comes to: the row as written, or why it was refused. */
+export type Mutation = { row: TournamentRow } | { error: string; status: number };
+
 /**
- * Reads, changes and writes, retrying from a fresh read when another write got
- * there first. Given the row a request already read, the first try uses it
- * rather than reading it again. `change` returns the changes or an error message.
+ * A round's end is many writes to one row at once, each player's report among
+ * them; this many tries lets them all through in turn.
+ */
+const MAX_TRIES = 5;
+
+/**
+ * Changes the row a request read and writes it, trying again from a fresh
+ * read each time another write got there first. `change` returns the changes
+ * or an error message.
  */
 export async function mutate(
   db: D1Like,
-  from: string | TournamentRow,
+  read: TournamentRow,
   change: (row: TournamentRow) => Changes | string
-): Promise<{ row: TournamentRow; version: number } | { error: string; status: number }> {
-  const code = typeof from === 'string' ? from : from.code;
-  let known = typeof from === 'string' ? null : from;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const row = known ?? (await loadTournament(db, code));
-    known = null;
-    if (!row) {
-      return { error: 'No such tournament', status: 404 };
-    }
+): Promise<Mutation> {
+  let row = read;
+  for (let tries = 1; ; tries += 1) {
     const outcome = await tryChange(db, row, change);
     if (outcome) {
       return outcome;
     }
+    if (tries === MAX_TRIES) {
+      return { error: 'Busy; try again', status: 409 };
+    }
+    const fresh = await loadTournament(db, row.code);
+    if (!fresh) {
+      return { error: 'No such tournament', status: 404 };
+    }
+    row = fresh;
   }
-  return { error: 'Busy; try again', status: 409 };
 }
 
 /** One read-change-write; null when another write got there first. */
@@ -305,7 +316,7 @@ async function tryChange(
   db: D1Like,
   row: TournamentRow,
   change: (row: TournamentRow) => Changes | string
-): Promise<{ row: TournamentRow; version: number } | { error: string; status: number } | null> {
+): Promise<Mutation | null> {
   const changes = change(row);
   if (typeof changes === 'string') {
     return { error: changes, status: 400 };
@@ -319,7 +330,7 @@ async function tryChange(
   if (saved instanceof TooLarge) {
     return { error: saved.message, status: 413 };
   }
-  return saved && { row: saved, version: saved.version };
+  return saved && { row: saved };
 }
 
 /** What the console's polls check before anything else: whether the copy they hold still stands. */
@@ -369,13 +380,6 @@ export async function joinStaff(db: D1Like, code: string, userId: string, token:
   return rowsChanged(result) === 1;
 }
 
-export interface StaffMember {
-  id: string;
-  name: string;
-  /** When they joined through the invite link; null for anyone who joined before that was kept. */
-  joinedAt: number | null;
-}
-
 /** Everyone the invite link has let onto the event's staff, earliest first. */
 export async function listStaff(db: D1Like, code: string): Promise<StaffMember[]> {
   const { results } = await db
@@ -390,20 +394,6 @@ export async function listStaff(db: D1Like, code: string): Promise<StaffMember[]
 
 export async function removeStaff(db: D1Like, code: string, userId: string): Promise<void> {
   await db.prepare('DELETE FROM staff WHERE code = ? AND user_id = ?').bind(code, userId).run();
-}
-
-export interface TournamentSummary {
-  code: string;
-  mode: TournamentMode;
-  name: string;
-  role: Role;
-  players: number;
-  /** MM/DD/YYYY, as TOM writes it; '' when unset. */
-  startDate: string;
-  finished: boolean;
-  /** Rounds the event's first pod has paired: 0 before round 1. */
-  rounds: number;
-  updatedAt: number;
 }
 
 interface SummaryRow {

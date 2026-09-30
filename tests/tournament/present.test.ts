@@ -18,6 +18,7 @@ import type { PlayerReport } from '../../shared/tournament/reports.ts';
 import type { Match, Pod, Round, Tournament } from '../../shared/tournament/types.ts';
 import { assignKeys, DEFAULT_SETTINGS, publicTournament } from '../../shared/tournament/view.ts';
 import { tdfFilename, tdfText } from '../../src/lib/tournament/exportTdf.ts';
+import { ordinal } from '../../src/lib/format.ts';
 import {
   champion,
   clockLabel,
@@ -31,7 +32,6 @@ import {
   matchHistory,
   namesById,
   nextStep,
-  ordinal,
   outcomeLabel,
   plannedRounds,
   podProgress,

@@ -8,11 +8,11 @@
  */
 
 import { readCommand } from '../../../../shared/tournament/readCommand.js';
-import { readJsonBody } from '../../../lib/api/body.js';
+import { readJsonObject } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
-import { manageView, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
-import { publishAfter } from '../../../lib/tournaments/publish.js';
+import { openForStaff } from '../../../lib/tournaments/access.js';
+import { answerStaff } from '../../../lib/tournaments/answers.js';
 import { commandChanges, mutateSettled } from '../../../lib/tournaments/results.js';
 
 export async function onRequestPost(context: Context<'code'>): Promise<Response> {
@@ -20,9 +20,7 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
   if (access instanceof Response) {
     return access;
   }
-  const body = await readJsonBody(context.request, 4096);
-  const value =
-    body.ok && typeof body.value === 'object' && body.value !== null ? (body.value as Record<string, unknown>) : null;
+  const value = await readJsonObject(context.request, 4096);
   const command = value ? readCommand(value.command) : null;
   if (!command) {
     return jsonError('Not a command', 400);
@@ -33,9 +31,5 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
     row => commandChanges(row, command, value?.localTime),
     value?.localTime
   );
-  if ('error' in outcome) {
-    return jsonError(outcome.error, outcome.status);
-  }
-  await publishAfter(context, outcome.row);
-  return privateJson(manageView({ ...access, row: outcome.row }));
+  return answerStaff(context, access, outcome);
 }

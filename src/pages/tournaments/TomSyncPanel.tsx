@@ -23,7 +23,7 @@ import { createSignal, onCleanup, onMount, Show } from 'solid-js';
 import { revisionOf } from '../../../shared/tournament/revision';
 import { parseTdf } from '../../../shared/tournament/tdf';
 import type { Tournament } from '../../../shared/tournament/types';
-import { ApiError, type Manage, syncTournament } from '../../lib/tournament/api';
+import { ApiError, errorText, type Manage, syncTournament } from '../../lib/tournament/api';
 import { tdfFilename, tdfText } from '../../lib/tournament/exportTdf';
 import {
   canLinkFiles,
@@ -48,12 +48,10 @@ export type LinkState = 'none' | 'reconnect' | 'watching';
 const lostFile = (err: unknown) =>
   err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'NotFoundError');
 
-const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
-
 export const readTime = (at: Date) =>
   at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 
-export function createTomLink(props: { manage: () => Manage; onSynced: () => Promise<void> }) {
+export function createTomLink(props: { manage: () => Manage; onSynced: () => Promise<unknown> }) {
   const [handle, setHandle] = createSignal<TdfHandle | null>(null);
   const [state, setState] = createSignal<LinkState>('none');
   const [readAt, setReadAt] = createSignal<Date | null>(null);

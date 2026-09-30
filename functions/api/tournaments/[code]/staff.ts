@@ -6,10 +6,10 @@
  * DELETE ?user=<id> — the organizer removes one of them.
  */
 
-import { readJsonBody } from '../../../lib/api/body.js';
+import { readJsonObject } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
-import { type Access, manageView, open, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
+import { type Access, manageView, open, openForOwner, privateJson } from '../../../lib/tournaments/access.js';
 import {
   isStaffMember,
   joinStaff,
@@ -18,15 +18,6 @@ import {
   removeStaff,
   rotateStaff
 } from '../../../lib/tournaments/store.js';
-
-/** The event, when the organizer is the one asking; the refusal otherwise. */
-async function openForOwner(context: Context<'code'>): Promise<Access | Response> {
-  const access = await openForStaff(context);
-  if (access instanceof Response) {
-    return access;
-  }
-  return access.role === 'owner' ? access : jsonError('Only the organizer can do that', 403);
-}
 
 export async function onRequestGet(context: Context<'code'>): Promise<Response> {
   const access = await openForOwner(context);
@@ -59,7 +50,7 @@ async function rotate(access: Access): Promise<Response> {
   }
   await rotateStaff(access.db, access.row.code);
   const row = await loadTournament(access.db, access.row.code);
-  return row ? privateJson(manageView({ ...access, row })) : jsonError('No such tournament', 404);
+  return row ? privateJson(manageView({ ...access, role: 'owner', row })) : jsonError('No such tournament', 404);
 }
 
 export async function onRequestPost(context: Context<'code'>): Promise<Response> {
@@ -73,8 +64,7 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
   if (!access.user) {
     return jsonError('Sign in first', 401);
   }
-  const body = await readJsonBody(context.request, 512);
-  const value = body.ok && typeof body.value === 'object' && body.value ? (body.value as Record<string, unknown>) : {};
+  const value = (await readJsonObject(context.request, 512)) ?? {};
   if (value.rotate === true) {
     return rotate(access);
   }

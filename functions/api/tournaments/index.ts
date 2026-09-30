@@ -9,7 +9,7 @@ import { emptyTournament } from '../../../shared/tournament/create.js';
 import { tomDateTime } from '../../../shared/tournament/divisions.js';
 import { readTournament } from '../../../shared/tournament/validate.js';
 import { DEFAULT_SETTINGS, readSettings, type TournamentSettings } from '../../../shared/tournament/view.js';
-import { readJsonBody } from '../../lib/api/body.js';
+import { readJsonObject } from '../../lib/api/body.js';
 import { jsonError } from '../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../lib/auth/env.js';
 import { currentUser } from '../../lib/auth/session.js';
@@ -65,8 +65,7 @@ function initialSettings(body: Body): TournamentSettings | null {
 
 /** The event a create request describes, or why it describes none. */
 async function readNew(request: Request): Promise<NewEvent | string> {
-  const body = await readJsonBody(request, MAX_TOURNAMENT_BYTES);
-  const value = (body.ok && typeof body.value === 'object' && body.value) as Body | false;
+  const value = await readJsonObject(request, MAX_TOURNAMENT_BYTES);
   const settings = value && initialSettings(value);
   if (!value || !settings) {
     return 'Not a tournament';

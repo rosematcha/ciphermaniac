@@ -23,10 +23,12 @@
  */
 
 import { divisionLookup } from './divisions.js';
+import { hasStarted } from './rounds.js';
 import { placeFinals, swissStandings } from './standings.js';
 import {
   type Division,
   DIVISIONS,
+  isDivision,
   type Match,
   type Outcome,
   type Player,
@@ -494,10 +496,6 @@ function divisionPlayers(t: Tournament, divisionOf: (id: string) => Division): M
   return pods;
 }
 
-function isDivision(category: PodCategory): category is Division {
-  return (DIVISIONS as readonly string[]).includes(category);
-}
-
 function writeStandings(t: Tournament, divisionOf: (id: string) => Division): string[] {
   const byDivision = divisionPlayers(t, divisionOf);
   const pods = ([...DIVISIONS].reverse() as Division[]).flatMap(division => {
@@ -557,7 +555,7 @@ function rootStage(t: Tournament, finalized: boolean): string {
   if (kept && kept !== FINALIZED) {
     return kept;
   }
-  return t.pods.some(pod => pod.rounds.length > 0) ? '4' : '1';
+  return hasStarted(t) ? '4' : '1';
 }
 
 function rootAttrs(t: Tournament, finalized: boolean): string {

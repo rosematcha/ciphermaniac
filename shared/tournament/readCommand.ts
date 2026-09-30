@@ -5,7 +5,7 @@
  */
 
 import type { Command, EditableInfo, NewPlayer } from './commands.js';
-import { type Division, DIVISIONS, type Outcome, POD_CATEGORIES, type PodCategory } from './types.js';
+import { isDivision, type Outcome, POD_CATEGORIES, type PodCategory } from './types.js';
 
 type Obj = Record<string, unknown>;
 
@@ -14,7 +14,6 @@ const OUTCOMES: readonly Outcome[] = ['pending', 'p1', 'p2', 'tie', 'double-loss
 const isObj = (value: unknown): value is Obj => typeof value === 'object' && value !== null && !Array.isArray(value);
 const isStr = (value: unknown, max = 100): value is string => typeof value === 'string' && value.length <= max;
 const isInt = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value);
-const isDivision = (value: unknown): value is Division => DIVISIONS.includes(value as Division);
 const isPod = (value: unknown): value is PodCategory => POD_CATEGORIES.includes(value as PodCategory);
 
 function newPlayer(value: unknown): NewPlayer | null {
