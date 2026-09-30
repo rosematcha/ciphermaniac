@@ -338,10 +338,11 @@ const joinedOn = (at: number) => new Date(at).toLocaleDateString(undefined, { mo
  * can be removed.
  */
 function StaffList(props: { manage: Manage }) {
-  // A new link removes everyone, so the list is asked for again with each one.
+  // A new link removes everyone, so the list is asked for again with each one. The key is a
+  // string: an object made afresh from each copy of the event would ask again after every result.
   const [staff, { mutate }] = createResource(
-    () => ({ code: props.manage.code, token: props.manage.staffToken }),
-    ({ code }) => fetchStaff(code).then(result => result.staff)
+    () => `${props.manage.code} ${props.manage.staffToken ?? ''}`,
+    () => fetchStaff(props.manage.code).then(result => result.staff)
   );
   // Only the organizer sees this list, so the organizer is whoever is signed in.
   const organizer = () => latestValue(session)?.user?.name;

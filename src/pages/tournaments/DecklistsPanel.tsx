@@ -147,8 +147,9 @@ function DecklistRow(props: RowProps) {
   }
   /** Lets the player send the list again from another device; the next list sent under these details takes it over. */
   async function unlock() {
-    await unlockDecklist(props.manage.code, props.list).catch(() => undefined);
-    props.onChanged();
+    if (await props.state.act(unlockDecklist(props.manage.code, props.list))) {
+      props.onChanged();
+    }
   }
   const canUseDeck = () =>
     archetypes() && playerId() && props.list.archetype && props.manage.decks[playerId() ?? ''] !== props.list.archetype;

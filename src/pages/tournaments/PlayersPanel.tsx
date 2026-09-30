@@ -185,7 +185,7 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             label='Reset reporting'
             question={`Let another device report for ${playerName(props.player)}?`}
             confirmLabel='Reset'
-            onConfirm={() => void releaseReporter(props.manage.code, props.player.id).catch(() => undefined)}
+            onConfirm={() => void props.state.act(releaseReporter(props.manage.code, props.player.id))}
           />
         </Show>
         {/* Once paired, a player is dropped rather than removed, so their opponents keep the match. */}

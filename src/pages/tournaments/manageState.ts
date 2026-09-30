@@ -22,6 +22,8 @@ export interface ManageState {
   load: () => Promise<boolean>;
   /** Runs a request that answers with the event, and takes its answer. */
   run: (request: () => Promise<Manage>) => Promise<boolean>;
+  /** Waits on a request that changes something beside the event, and shows why if it fails; whether it went through. */
+  act: (request: Promise<unknown>) => Promise<boolean>;
   send: (command: Command) => Promise<boolean>;
   clearError: () => void;
 }
@@ -66,11 +68,11 @@ export function createManage(code: () => string): ManageState {
     }
   }
 
-  async function run(request: () => Promise<Manage>): Promise<boolean> {
+  async function act(request: Promise<unknown>): Promise<boolean> {
     setSending(count => count + 1);
     setError(null);
     try {
-      take(await request());
+      await request;
       return true;
     } catch (err) {
       setError(errorText(err));
@@ -86,8 +88,10 @@ export function createManage(code: () => string): ManageState {
     error,
     busy,
     load,
-    run,
-    send: command => run(() => sendCommand(code(), command)),
+    // Started inside a promise, so a request that throws before it sends still shows why.
+    run: request => act(Promise.resolve().then(request).then(take)),
+    act,
+    send: command => act(sendCommand(code(), command).then(take)),
     clearError: () => setError(null)
   };
 }

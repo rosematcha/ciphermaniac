@@ -328,8 +328,13 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const [swapMode, setSwapMode] = createSignal(false);
   const [swapPick, setSwapPick] = createSignal<string | null>(null);
   const [asking, setAsking] = createSignal<Asking | null>(null);
-  /** Results sent and not answered yet, by table: each row shows its own until the answer lands or fails. */
-  const [sent, setSent] = createSignal<ReadonlyMap<number, Outcome>>(new Map());
+  /**
+   * Results sent and not answered yet, by match: each row shows its own until
+   * the answer lands or fails. The panel outlives a switch to another division
+   * or round, so a table number alone would show one on another's table.
+   */
+  const [sent, setSent] = createSignal<ReadonlyMap<string, Outcome>>(new Map());
+  const sentKey = (r: Round, match: Match) => `${props.pod.category}|${r.number}|${match.table}|${match.p1}`;
   const [query, setQuery] = createSignal('');
   const [openOnly, setOpenOnly] = createSignal(false);
   const [deckMode, setDeckMode] = createSignal(false);
@@ -394,10 +399,11 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
       return;
     }
     const { table, p1, p2 } = match;
-    setSent(tables => new Map(tables).set(table, outcome));
+    const key = sentKey(r, match);
+    setSent(matches => new Map(matches).set(key, outcome));
     void props.state
       .send({ type: 'reportResult', pod: props.pod.category, round: r.number, table, p1, p2, outcome })
-      .finally(() => setSent(tables => new Map([...tables].filter(([sentTable]) => sentTable !== table))));
+      .finally(() => setSent(matches => new Map([...matches].filter(([sentMatch]) => sentMatch !== key))));
   }
 
   function record(match: Match) {
@@ -497,7 +503,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                   : undefined
               }
               confirming={asking()}
-              sent={match => sent().get(match.table)}
+              sent={match => sent().get(sentKey(r(), match))}
               tag={(match, id) => staffReport(openReports(match, r()), match, names())?.tags.get(id) ?? null}
               extra={match => (
                 <Result
@@ -507,7 +513,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                   round={r()}
                   manage={props.manage}
                   reports={openReports(match, r())}
-                  sent={sent().get(match.table)}
+                  sent={sent().get(sentKey(r(), match))}
                   names={names()}
                   asking={isAsking(match) ? asking() : null}
                   onReport={o => report(match, o)}
