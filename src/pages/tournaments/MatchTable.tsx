@@ -10,7 +10,7 @@
  * site's live pairings do, so the opponent is never behind a sideways scroll.
  */
 
-import { For, type JSX, Show, Switch, Match as When } from 'solid-js';
+import { createMemo, For, type JSX, Show, Switch, Match as When } from 'solid-js';
 import { sortMatches } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import type { PendingResult } from '../../../shared/tournament/view';
@@ -155,7 +155,7 @@ function StatusCell(props: MatchTableProps & { match: Match }) {
 }
 
 export function MatchTable(props: MatchTableProps) {
-  const records = () => recordsBefore(props.pod, props.round);
+  const records = createMemo(() => recordsBefore(props.pod, props.round));
   const hasDecks = () => Object.keys(props.decks).length > 0;
   const mine = (match: Match) => props.me != null && (match.p1 === props.me || match.p2 === props.me);
   return (

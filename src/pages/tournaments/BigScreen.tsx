@@ -124,7 +124,7 @@ const MARK_WORDS: Record<string, string> = { W: 'Won', L: 'Lost', T: 'Tie' };
 /** A pod's tables in order, table number first. */
 function TableRows(props: { view: TournamentView; pod: Pod; round: Round; heading: boolean }) {
   const names = createMemo(() => namesById(props.view.tournament));
-  const records = () => recordsBefore(props.pod, props.round);
+  const records = createMemo(() => recordsBefore(props.pod, props.round));
   const seeds = createMemo(() =>
     props.round.kind === 'elimination'
       ? new Map(swissStandings(props.pod, props.view.tournament.players).map(row => [row.playerId, row.place]))
