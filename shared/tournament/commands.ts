@@ -23,6 +23,7 @@ import {
   pairingHistory,
   pointsBefore,
   roundComplete,
+  seatPairings,
   sortMatches,
   toMatches
 } from './rounds.js';
@@ -302,7 +303,7 @@ function nextEliminationRound(tournament: Tournament, pod: Pod, latest: Round, c
     pairTime: ctx.localTime,
     startTime: '',
     clockStartedAt: null,
-    matches: toMatches(pairNextElimination(winners), {
+    matches: seatPairings(pairNextElimination(winners), {
       firstTable: pod.startingTable,
       timestamp: ctx.localTime,
       fixed: fixedTables(tournament)
@@ -531,7 +532,7 @@ function startTopCut(
     pairTime: ctx.localTime,
     startTime: '',
     clockStartedAt: null,
-    matches: toMatches(pairTopCut(seeds), {
+    matches: seatPairings(pairTopCut(seeds), {
       firstTable: pod.startingTable,
       timestamp: ctx.localTime,
       fixed: fixedTables(tournament)

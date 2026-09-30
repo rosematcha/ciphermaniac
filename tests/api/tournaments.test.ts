@@ -927,6 +927,27 @@ test('players report their own results: agreement stands once locked, disagreeme
   assert.equal((await playerSays(code, { popId: '0000000' })).status, 404, 'a Player ID not in the event finds nobody');
 });
 
+test('a report for the match a stale page showed does not land on the next round', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  await settle(code, owner, { playerReporting: true });
+  const [first] = (await send(code, owner, { type: 'pairRound', pod: 'mixed' })).json.tournament.pods[0].rounds[0]
+    .matches;
+  const phone = await phoneOf(code, first.p1);
+  const token = phone.said.json.reportToken as string;
+  const shownFirst = { pod: 'mixed', round: 1, table: first.table };
+  const says = (match: unknown) =>
+    playerSays(code, { popId: first.p1, result: 'win', match, device: `phone-${first.p1}`, reportToken: token });
+  assert.equal((await says(shownFirst)).status, 200, 'the match the page showed takes the report');
+  await send(code, owner, { type: 'reportResult', ...shownFirst, p1: first.p1, p2: first.p2, outcome: 'p1' });
+  await send(code, owner, { type: 'pairRound', pod: 'mixed' });
+  const stale = await says(shownFirst);
+  assert.equal(stale.status, 400);
+  assert.match(stale.json.error, /pairing has changed/);
+  assert.deepEqual((await view(code)).reports, [], 'nothing was filed against round 2');
+});
+
 test('an unsanctioned event finds players by last name, asking for a first name when two share it', async () => {
   const owner = await signIn('Organizer');
   const code = await newSwiss(owner);
@@ -1019,7 +1040,13 @@ test('a player with no account submits a list, reads it back with its device tok
   assert.equal(again.json.registration, 'matched', 'the sending device replaces the list, and they are already in');
   const staffLists = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   assert.equal(staffLists.json.decklists.length, 1, 'one list per identity');
-  assert.equal((await listOf(code, `popId=4242&token=${token}`)).json.mine, null, 'a new submission has a new token');
+  assert.equal(
+    again.json.token,
+    token,
+    'the device keeps its token, so a retry after a lost answer still owns the list'
+  );
+  const retried = await submitAs(code, profile, { token });
+  assert.equal(retried.status, 200);
 
   const forged = await hit(decklists.onRequestDelete as Handler, '/decklists?popId=4242', at(code), {
     method: 'DELETE'
@@ -1034,6 +1061,11 @@ test('a player with no account submits a list, reads it back with its device tok
   assert.equal(withdrawn.status, 204);
   const after = await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   assert.equal(after.json.decklists.length, 0);
+
+  const own = 'device-made-token-0001';
+  const first = await submitAs(code, { ...profile, popId: '4243' }, { token: own });
+  assert.equal(first.json.token, own, 'a first list takes the token its device made before sending');
+  assert.equal((await submitAs(code, { ...profile, popId: '4243' }, { token: own })).status, 200);
   const foreign = await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
     method: 'PUT',
     origin: 'https://elsewhere.test',
@@ -1134,6 +1166,11 @@ test('two agreeing reports from one device wait for staff, and staff can free a 
   mock.timers.tick(REPORT_WINDOW_MS);
   const after = await playerSays(code, { popId: first.p1, device: 'one-phone' });
   assert.equal(after.json.view.tournament.pods[0].rounds[0].matches[0].outcome, 'pending', 'not settled');
+  assert.deepEqual(
+    after.json.view.reports.map((r: { device?: string }) => r.device),
+    ['shared', 'shared'],
+    'the public view says only that one device sent both, so the page does not call it settled'
+  );
   const staffView = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
   const [a, b] = staffView.reports as { device?: string }[];
   assert.ok(a?.device && a.device === b?.device, 'staff can see both came from one device');

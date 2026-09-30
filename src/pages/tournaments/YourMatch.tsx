@@ -105,13 +105,15 @@ function createReport(props: Props & { me: string }, found: () => Found | null) 
 
   async function send(result: PlayerResult) {
     const { claim } = props;
-    if (!claim) {
+    const shown = found();
+    if (!claim || !shown) {
       return;
     }
+    const match = { pod: shown.pod.category, round: shown.round.number, table: shown.match.table };
     setBusy(true);
     setError(null);
     try {
-      props.onView((await reportAsPlayer(props.view.code, claim, result, props.reportToken)).view);
+      props.onView((await reportAsPlayer(props.view.code, claim, { result, match }, props.reportToken)).view);
     } catch (err) {
       setError(errorText(err));
     } finally {

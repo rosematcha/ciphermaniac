@@ -250,3 +250,17 @@ test('the big screen marks who won each finished table', async ({ page }) => {
   await expect(done.locator('.tm-screen-seat.is-out .tm-screen-mark')).toHaveText('L');
   await expect(page.locator('.tm-screen-mark')).toHaveCount(2);
 });
+
+test('on a phone a roster question takes its own line instead of squeezing the name', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await mockConsole(page, event(4, 0, false), settingsOf({ playerReporting: true }));
+  await page.getByRole('tab', { name: 'Players' }).click();
+  await page.getByRole('button', { name: 'Reset reporting' }).first().click();
+  const question = page.getByRole('group', { name: /Let another device report for/ });
+  await expect(question).toBeVisible();
+  const row = page.locator('.tm-roster tbody tr').filter({ has: question });
+  const asked = await question.boundingBox();
+  expect((asked?.x ?? 0) + (asked?.width ?? Infinity)).toBeLessThanOrEqual(360);
+  const name = await row.locator('.tm-who').boundingBox();
+  expect(name?.width ?? 0).toBeGreaterThan(120);
+});

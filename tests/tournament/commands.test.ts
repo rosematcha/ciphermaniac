@@ -195,6 +195,17 @@ test('a top cut seeds from standings and plays down to a winner', () => {
   assert.match(attempt(t, { type: 'pairRound', pod: 'mixed' }), /top cut is finished/);
 });
 
+test('a fixed table does not move a top cut player to another side of the bracket', () => {
+  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'mixed' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
+  const seeds = swissStandings(pod(t), t.players).map(row => row.playerId);
+  // The first seed sits at the last quarterfinal table, after the others in table order.
+  t = run(t, { type: 'setFixedTable', id: seeds[0] ?? '', table: 4 }, { type: 'startTopCut', pod: 'mixed', size: 8 });
+  t = run(reportAll(t), { type: 'pairRound', pod: 'mixed' });
+  const semis = round(t).matches.map(m => new Set([m.p1, m.p2]));
+  assert.deepEqual(semis, [new Set([seeds[0], seeds[3]]), new Set([seeds[1], seeds[2]])]);
+});
+
 test('separate divisions pair apart', () => {
   const t = run(
     emptyTournament({ name: 'Split' }, false),

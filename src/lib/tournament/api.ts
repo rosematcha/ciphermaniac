@@ -8,7 +8,7 @@ import type { Command } from '../../../shared/tournament/commands';
 import { tomDateTime } from '../../../shared/tournament/divisions';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
-import type { PlayerReport, PlayerResult } from '../../../shared/tournament/reports';
+import type { PlayerReport, PlayerResult, ShownMatch } from '../../../shared/tournament/reports';
 import type { Tournament } from '../../../shared/tournament/types';
 import {
   type PendingResult,
@@ -229,11 +229,16 @@ export const identifyPlayer = (code: string, claim: PlayerClaim, reportToken?: s
     json('POST', { ...claim, reportToken, device: deviceId(), localTime: tomDateTime(new Date()) })
   );
 
-/** A player reports their current match, with the token of the device that reports for them. */
-export const reportAsPlayer = (code: string, claim: PlayerClaim, result: PlayerResult, reportToken: string | null) =>
+/** A player reports the match their page shows, with the token of the device that reports for them. */
+export const reportAsPlayer = (
+  code: string,
+  claim: PlayerClaim,
+  report: { result: PlayerResult; match: ShownMatch },
+  reportToken: string | null
+) =>
   call<PlayerAnswer>(
     `${base(code)}/report`,
-    json('POST', { ...claim, result, reportToken, device: deviceId(), localTime: tomDateTime(new Date()) })
+    json('POST', { ...claim, ...report, reportToken, device: deviceId(), localTime: tomDateTime(new Date()) })
   );
 
 /** Staff let another device report for a player, as when they change phones. */

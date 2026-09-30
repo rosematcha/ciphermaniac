@@ -12,7 +12,7 @@
  */
 
 import { A } from '@solidjs/router';
-import { createMemo, createResource, createSignal, For, Show } from 'solid-js';
+import { createMemo, createResource, createSignal, For, Match, onCleanup, onMount, Show, Switch } from 'solid-js';
 import { birthYear } from '../../../shared/tournament/divisions';
 import { type DeckSection, parseDecklist } from '../../../shared/tournament/decklist';
 import { decklistPlayer } from '../../../shared/tournament/identify';
@@ -233,11 +233,45 @@ function ordered(lists: readonly Decklist[], manage: Manage): Decklist[] {
   return [...lists].sort((a, b) => rank(a) - rank(b) || a.submittedAt - b.submittedAt);
 }
 
+/** How often the tab looks for new lists while it is open. */
+const LISTS_REFRESH_MS = 30_000;
+
+/** What stands in for the table with no lists to show: loading, a failed load, or none sent yet. */
+function NoLists(props: { loading: boolean; failed: boolean; onRetry: () => void }) {
+  return (
+    <Switch fallback={<p class='muted tm-empty'>No decklists yet.</p>}>
+      <Match when={props.failed}>
+        <p class='muted tm-empty'>
+          The decklists could not be loaded.{' '}
+          <button type='button' class='btn btn-secondary tm-small' onClick={() => props.onRetry()}>
+            Retry
+          </button>
+        </p>
+      </Match>
+      <Match when={props.loading}>
+        <p class='muted tm-empty'>Loading decklists…</p>
+      </Match>
+    </Switch>
+  );
+}
+
 export function DecklistsPanel(props: { state: ManageState; manage: Manage }) {
-  const [lists, { refetch }] = createResource(
+  const [lists, { refetch, mutate }] = createResource(
     () => props.manage.code,
     code => fetchDecklists(code).then(result => result.decklists)
   );
+  // A list from a player already entered does not change the event, so the console's own refresh misses it.
+  // A failed look keeps the lists shown; the next one tries again.
+  onMount(() => {
+    const timer = setInterval(() => {
+      if (!document.hidden && lists.state === 'ready') {
+        void fetchDecklists(props.manage.code)
+          .then(result => mutate(result.decklists))
+          .catch(() => undefined);
+      }
+    }, LISTS_REFRESH_MS);
+    onCleanup(() => clearInterval(timer));
+  });
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal<string | null>(null);
   const all = () => latestValue(lists) ?? [];
@@ -291,7 +325,10 @@ export function DecklistsPanel(props: { state: ManageState; manage: Manage }) {
             onInput={e => setQuery(e.currentTarget.value)}
           />
         </div>
-        <Show when={all().length} fallback={<p class='muted tm-empty'>No decklists yet.</p>}>
+        <Show
+          when={all().length}
+          fallback={<NoLists loading={lists.loading} failed={Boolean(lists.error)} onRetry={() => void refetch()} />}
+        >
           <div class='table-wrap'>
             <table class='data tm-lists'>
               <thead>

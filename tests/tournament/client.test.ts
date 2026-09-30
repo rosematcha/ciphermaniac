@@ -128,7 +128,8 @@ test('every call goes to its endpoint with its body', async () => {
 test('a player identifies and reports through one endpoint, stamped with the venue clock', async () => {
   answer(200, { key: '4' });
   await identifyPlayer('ABC', { lastName: 'Oak' });
-  await reportAsPlayer('ABC', { popId: '12' }, 'win', 'seat-token');
+  const match = { pod: 'masters' as const, round: 2, table: 5 };
+  await reportAsPlayer('ABC', { popId: '12' }, { result: 'win', match }, 'seat-token');
   assert.deepEqual(
     sent.map(s => `${s.method} ${s.url}`),
     ['POST /api/tournaments/ABC/report', 'POST /api/tournaments/ABC/report']
@@ -140,8 +141,15 @@ test('a player identifies and reports through one endpoint, stamped with the ven
     /^\d{2}\/\d{2}\/\d{4} /,
     'identifying can settle a result, so it carries the clock too'
   );
-  const reported = sent[1]?.body as { popId: string; result: string; localTime: string; reportToken: string };
+  const reported = sent[1]?.body as {
+    popId: string;
+    result: string;
+    match: unknown;
+    localTime: string;
+    reportToken: string;
+  };
   assert.deepEqual([reported.popId, reported.result, reported.reportToken], ['12', 'win', 'seat-token']);
+  assert.deepEqual(reported.match, match, 'names the match the page showed');
   const devices = sent.map(s => (s.body as { device?: string }).device);
   assert.ok(devices.every(Boolean), 'each carries a device ID (a fresh one each here, with no storage to keep it)');
   assert.match(reported.localTime, /^\d{2}\/\d{2}\/\d{4} /);
