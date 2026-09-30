@@ -18,6 +18,8 @@ export interface Claim {
   token: string | null;
   /** Whether the asker is the device that reports for this player. */
   reporter: boolean;
+  /** The hashed device that reports for this player, when one has claimed them. */
+  device: string | null;
 }
 
 interface ClaimRow {
@@ -35,28 +37,47 @@ const read = (db: D1Like, code: string, playerId: string) =>
 export const deviceOf = async (device: unknown) =>
   sha256(typeof device === 'string' && device ? device.slice(0, 80) : randomToken(16));
 
-/** The asker's standing for `playerId`: claiming them if no device has, or checking the token they hold. */
+/**
+ * The asker's standing for `playerId`: checking the token they hold against
+ * the device that claimed them, or claiming them if no device has.
+ */
 export async function claimReporter(
   db: D1Like,
   code: string,
   playerId: string,
   asker: { held: unknown; device: unknown }
 ): Promise<Claim> {
-  const { held, device } = asker;
+  const claimed = await read(db, code, playerId);
+  return claimed ? standingFor(claimed, asker.held) : claim(db, code, playerId, asker);
+}
+
+const standingFor = async (row: ClaimRow, held: unknown): Promise<Claim> => ({
+  token: null,
+  reporter: await matches(row, held),
+  device: row.device
+});
+
+/** Claims `playerId` for the asker, unless another device got there between the read and this write. */
+async function claim(
+  db: D1Like,
+  code: string,
+  playerId: string,
+  asker: { held: unknown; device: unknown }
+): Promise<Claim> {
   const token = randomToken(24);
   const hash = await sha256(token);
   await db
     .prepare(
       'INSERT OR IGNORE INTO report_devices (code, player_id, token_hash, device, claimed_at) VALUES (?, ?, ?, ?, ?)'
     )
-    .bind(code, playerId, hash, await deviceOf(device), Date.now())
+    .bind(code, playerId, hash, await deviceOf(asker.device), Date.now())
     .run();
   // Whoever's hash is stored claimed them: this request, or a device that got there first.
   const row = await read(db, code, playerId);
   if (row?.token_hash === hash) {
-    return { token, reporter: true };
+    return { token, reporter: true, device: row.device };
   }
-  return { token: null, reporter: row ? await matches(row, held) : false };
+  return row ? standingFor(row, asker.held) : { token: null, reporter: false, device: null };
 }
 
 const matches = async (row: ClaimRow, held: unknown) =>
@@ -66,11 +87,6 @@ const matches = async (row: ClaimRow, held: unknown) =>
 export async function holds(db: D1Like, code: string, playerId: string, held: unknown): Promise<boolean> {
   const row = await read(db, code, playerId);
   return row ? matches(row, held) : false;
-}
-
-/** The hashed device that reports for `playerId`, if one has claimed them. */
-export async function reporterDevice(db: D1Like, code: string, playerId: string): Promise<string | null> {
-  return (await read(db, code, playerId))?.device ?? null;
 }
 
 /** Lets another device claim `playerId`, as staff do when a player changes phones. */

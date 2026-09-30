@@ -32,7 +32,7 @@ import { jsonError } from '../../../lib/api/responses.js';
 import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { type Access, open, openForStaff, privateJson, publicViewOf } from '../../../lib/tournaments/access.js';
 import { publishView } from '../../../lib/tournaments/publish.js';
-import { type Claim, claimReporter, releaseReporter, reporterDevice } from '../../../lib/tournaments/reporters.js';
+import { type Claim, claimReporter, releaseReporter } from '../../../lib/tournaments/reporters.js';
 import { mutateSettled, settleIfDue } from '../../../lib/tournaments/results.js';
 import type { Changes, TournamentRow } from '../../../lib/tournaments/store.js';
 
@@ -102,7 +102,7 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
   if (!standing.reporter) {
     return jsonError(NOT_REPORTER, 403);
   }
-  const device = (await reporterDevice(db, row.code, who.id)) ?? '';
+  const device = standing.device ?? '';
   const outcome = await mutateSettled(db, row, r => reportChanges(r, who.claim, result, device), body.localTime);
   if ('error' in outcome) {
     return jsonError(outcome.error, outcome.status);
