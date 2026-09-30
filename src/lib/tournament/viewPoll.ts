@@ -1,8 +1,9 @@
 /**
- * How the event's public page keeps up. Players read the published file,
- * which costs the functions nothing; staff, who see decks before the public
- * does, ask the API, as does anyone the file cannot reach (not published yet,
- * or a local server).
+ * How the event's public page keeps up. Everyone reads the published file,
+ * which costs the functions nothing. The API is asked only by staff whose copy
+ * shows decks the public cannot see yet, by anyone the file cannot reach (not
+ * published yet, or a local server), and once for each change the console in
+ * another tab of this browser announces before the file has it.
  *
  * A room of players falling back to the API at once (R2 unreachable) would
  * spend the day's function requests within hours, so a player's fallback asks
@@ -11,7 +12,13 @@
  * keeps trying on the same schedule.
  */
 
-import type { PublishedView, TournamentView, Viewer } from '../../../shared/tournament/view';
+import {
+  decksEnabled,
+  decksVisible,
+  type PublishedView,
+  type TournamentView,
+  type Viewer
+} from '../../../shared/tournament/view';
 
 export const POLL_MS = 10_000;
 /** The big screen's poll: it is what the room reads, and one per venue. */
@@ -42,8 +49,17 @@ export async function firstView(source: {
   return published ? { ...published, viewer: NOBODY } : source.api();
 }
 
+/** Whether the viewer's copy holds what the published file does not: decks staff see before the public does. */
+export function seesMoreThanPublished(view: TournamentView): boolean {
+  return view.viewer.role !== null && decksEnabled(view.settings) && !decksVisible(view.settings);
+}
+
 export interface ViewSource {
   current: () => TournamentView | undefined;
+  /** Whether this page shows the viewer something the published file lacks, so only the API will do. */
+  ownCopy: (view: TournamentView) => boolean;
+  /** The newest version another tab of this browser announced (see changes.ts); 0 for none. */
+  announced: () => number;
   /** Loads the page again when its first load failed; whether the page has its event now. */
   reload: () => Promise<boolean>;
   published: () => Promise<PublishedView | null>;
@@ -57,8 +73,9 @@ export interface ViewSource {
 export function createViewPoll(source: ViewSource): () => Promise<boolean> {
   let askedApiAt = Number.NEGATIVE_INFINITY;
 
-  async function askApi(current: TournamentView): Promise<boolean> {
-    if (!current.viewer.role && source.now() - askedApiAt < FALLBACK_MS) {
+  /** Asks the API: each time when `due`, otherwise no more than every half minute. */
+  async function askApi(current: TournamentView, due: boolean): Promise<boolean> {
+    if (!due && source.now() - askedApiAt < FALLBACK_MS) {
       return true;
     }
     askedApiAt = source.now();
@@ -78,14 +95,18 @@ export function createViewPoll(source: ViewSource): () => Promise<boolean> {
     if (!current) {
       return source.reload();
     }
-    const published = current.viewer.role ? null : await source.published().catch(() => null);
+    if (source.ownCopy(current)) {
+      return askApi(current, true);
+    }
+    const published = await source.published().catch(() => null);
     if (!published) {
-      return askApi(current);
+      return askApi(current, false);
     }
     if (published.version > current.version) {
       source.apply({ ...published, viewer: current.viewer });
     }
-    return true;
+    // The console's word arrives before its publish does; the API has the change already.
+    return Math.max(published.version, current.version) < source.announced() ? askApi(current, true) : true;
   };
 }
 

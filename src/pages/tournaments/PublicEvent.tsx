@@ -36,7 +36,8 @@ import {
   lookOnReturn,
   POLL_MS,
   schedulePolls,
-  SCREEN_POLL_MS
+  SCREEN_POLL_MS,
+  seesMoreThanPublished
 } from '../../lib/tournament/viewPoll';
 import {
   divisionHeading,
@@ -72,13 +73,21 @@ const missing = (error: unknown) => error instanceof ApiError && error.status ==
  * The event, polled while the tab is visible (see lib/tournament/viewPoll.ts),
  * every `every` ms; a poll that finds nothing new costs one tiny request. It
  * also looks the moment the tab is shown again, and when the console in
- * another tab of this browser changes the event.
+ * another tab of this browser changes the event. `decks` is whether the page
+ * shows decks, the only thing staff see that the published file does not.
  */
-function createView(code: () => string, signedIn: () => boolean, every: number) {
+function createView(code: () => string, signedIn: () => boolean, options: { every: number; decks: boolean }) {
   const fromApi = (c: string) => fetchView(c).then(v => v as TournamentView);
   const [view, { mutate, refetch }] = createResource(code, c =>
     firstView({ published: () => fetchPublished(c), api: () => fromApi(c) })
   );
+  /** Takes a copy no older than the one shown, of the same event: answers can land out of order. */
+  function accept(next: TournamentView) {
+    const current = latestValue(view);
+    if (!current || (current.code === next.code && next.version >= current.version)) {
+      mutate(shared(current, next));
+    }
+  }
   // The published file knows nobody. A signed-in viewer's copy comes from the API: staff see
   // decks before the public does, and an account's Player ID marks its player.
   let asked = '';
@@ -88,7 +97,7 @@ function createView(code: () => string, signedIn: () => boolean, every: number) 
     if (signedIn() && shown && !shown.viewer.signedIn && asked !== shown.code) {
       asked = shown.code;
       void fromApi(shown.code)
-        .then(known => mutate(current => (current?.code === known.code ? shared(current, known) : current)))
+        .then(accept)
         .catch(() => undefined);
     }
   });
@@ -107,18 +116,22 @@ function createView(code: () => string, signedIn: () => boolean, every: number) 
     }
   }
   onMount(() => {
+    let announced = 0;
     const poll = createViewPoll({
       current: () => latestValue(view),
+      ownCopy: shown => options.decks && seesMoreThanPublished(shown),
+      announced: () => announced,
       reload,
       published: () => fetchPublished(code()),
       api: since => fetchView(code(), since),
-      apply: next => mutate(shared(latestValue(view), next)),
+      apply: accept,
       now: Date.now
     });
-    const polls = schedulePolls(poll, () => document.hidden, every);
+    const polls = schedulePolls(poll, () => document.hidden, options.every);
     const forget = lookOnReturn(polls);
     const unsubscribe = onChange(code(), version => {
       if (version > (latestValue(view)?.version ?? 0)) {
+        announced = Math.max(announced, version);
         polls.soon();
       }
     });
@@ -131,8 +144,8 @@ function createView(code: () => string, signedIn: () => boolean, every: number) 
   /** Takes a fresher copy handed over by an action, such as a player's report. */
   function take(published: PublishedView) {
     const current = latestValue(view);
-    if (current && published.version >= current.version) {
-      mutate(shared(current, { ...published, viewer: current.viewer }));
+    if (current) {
+      accept({ ...published, viewer: current.viewer });
     }
   }
   return { view, take, retry: () => void reload() };
@@ -554,10 +567,15 @@ function Hero(props: { view: TournamentView }) {
 export function PublicEvent(props: { code: string; signedIn: boolean }) {
   const [params] = useSearchParams<{ screen?: string }>();
   // The page is the big screen or not for as long as it is open.
+  const screen = params.screen === '1';
+  // The big screen draws no decks, so it reads the published file even in a staff browser.
   const { view, take, retry } = createView(
     () => props.code,
     () => props.signedIn,
-    params.screen === '1' ? SCREEN_POLL_MS : POLL_MS
+    {
+      every: screen ? SCREEN_POLL_MS : POLL_MS,
+      decks: !screen
+    }
   );
   const current = () => latestValue(view);
   // A past format's sprites come with its archetype list, loaded only when there are decks to draw.
@@ -591,7 +609,7 @@ export function PublicEvent(props: { code: string; signedIn: boolean }) {
       }
     >
       {v => (
-        <Show when={params.screen !== '1'} fallback={<BigScreen view={v()} />}>
+        <Show when={!screen} fallback={<BigScreen view={v()} />}>
           <div class='tm-page tm-public'>
             <Hero view={v()} />
             <EventBody view={v()} onView={take} />
