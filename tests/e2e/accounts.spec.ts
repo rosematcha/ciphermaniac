@@ -2,7 +2,8 @@
  * The player-account pages against mocked functions and mocked public
  * copies: History lists the account's events with the place and record read
  * from each event's copy, and a row opens to its rounds; a public profile
- * shows the same, read-only. The events are the hand-written mid-event .tdf
+ * shows the same, read-only; Settings turns the profile on and points a POP
+ * ID clash to feedback. The events are the hand-written mid-event .tdf
  * fixture and a finished event with a top cut, run through the same
  * public-view code the functions publish with.
  */
@@ -10,6 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, type Page, type Route, test } from '@playwright/test';
 
+import type { AccountRole } from '../../shared/accounts/roles';
 import type { HistoryEntry } from '../../shared/accounts/types';
 import { parseTdf } from '../../shared/tournament/tdf';
 import type { Tournament } from '../../shared/tournament/types';
@@ -98,8 +100,8 @@ const ME = {
   firstName: 'Mary',
   lastName: 'Jackson',
   birthDate: '02/27/1995',
-  role: null,
-  publicSlug: null,
+  role: null as AccountRole | null,
+  publicSlug: null as string | null,
   providers: ['google']
 };
 
@@ -216,4 +218,59 @@ test('a public profile shows the name and History read-only, and an unknown addr
   await page.goto('/u/NOPE2345');
   await expect(page.getByRole('heading', { name: /not found/ })).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+/** Settings against a mocked account, recording what the page sends. */
+async function mockSettings(page: Page, user: typeof ME) {
+  const sent: { method: string; path: string; body: unknown }[] = [];
+  let current = user;
+  await page.route('**/api/**', route => {
+    const request = route.request();
+    const { pathname } = new URL(request.url());
+    const body = request.postDataJSON() as Record<string, unknown> | null;
+    sent.push({ method: request.method(), path: pathname, body });
+    if (pathname === '/api/me' && request.method() === 'PATCH') {
+      current = { ...current, publicSlug: body?.publicProfile ? 'ABCD2345' : null };
+      return route.fulfill({ json: { user: current } });
+    }
+    if (pathname === '/api/me' && request.method() === 'PUT') {
+      return route.fulfill({
+        status: 409,
+        json: { error: 'This POP ID is on another account', popIdTaken: true }
+      });
+    }
+    return route.fulfill({ json: { user: current, providers: ['google', 'discord'] } });
+  });
+  return sent;
+}
+
+test('Settings: the public profile switch shows its link, and a POP ID clash points to feedback @mobile', async ({
+  page
+}) => {
+  const sent = await mockSettings(page, ME);
+  await page.goto('/settings');
+  await expect(page.getByRole('link', { name: 'View history' })).toHaveAttribute('href', '/history');
+  await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0);
+  const profile = page.getByRole('tablist', { name: 'Public profile' });
+  await profile.getByRole('tab', { name: 'On' }).click();
+  await expect(page.getByRole('link', { name: /\/u\/ABCD2345$/ })).toHaveAttribute('href', '/u/ABCD2345');
+  await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible();
+  expect(sent.find(s => s.method === 'PATCH')?.body).toEqual({ publicProfile: true });
+  await profile.getByRole('tab', { name: 'Off' }).click();
+  await expect(page.getByRole('button', { name: 'Copy' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Save profile' }).click();
+  const alert = page.getByRole('alert');
+  await expect(alert).toContainText('This POP ID is on another account');
+  await expect(alert.getByRole('link', { name: 'Feedback' })).toHaveAttribute('href', '/feedback?from=/settings');
+});
+
+test('Settings shows an admin the way to the admin page, and the strip offers History', async ({ page }) => {
+  await mockSettings(page, { ...ME, role: 'admin' });
+  await page.goto('/settings');
+  await expect(page.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
+  await page.getByRole('link', { name: 'View history' }).click();
+  await expect(page.locator('.tm-account-strip').getByRole('link', { name: 'History' })).toHaveAttribute(
+    'href',
+    '/history'
+  );
 });

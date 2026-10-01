@@ -35,6 +35,7 @@ import {
   saveSettings,
   sendCommand,
   setDeck,
+  setPublicProfile,
   signInUrl,
   signOut,
   submitDecklist,
@@ -254,10 +255,16 @@ test('sign-in links carry where to return and the dev name', () => {
   assert.equal(linkUrl('discord'), '/api/auth/login/discord?next=%2Fsettings&link=1');
 });
 
-test('a public profile is read by its address', async () => {
+test('a public profile is read by its address, and turned on and off on the account', async () => {
   answer(200, { name: 'Mary', avatar: null, entries: [] });
   await fetchProfile('ABCD2345');
-  assert.deepEqual(sent, [{ url: '/api/profiles/ABCD2345', method: 'GET', body: undefined }]);
+  await setPublicProfile(true);
+  await setPublicProfile(false);
+  assert.deepEqual(sent, [
+    { url: '/api/profiles/ABCD2345', method: 'GET', body: undefined },
+    { url: '/api/me', method: 'PATCH', body: { publicProfile: true } },
+    { url: '/api/me', method: 'PATCH', body: { publicProfile: false } }
+  ]);
 });
 
 test('account name uses the account endpoint', async () => {

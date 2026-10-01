@@ -100,6 +100,9 @@ export const fetchHistory = () => call<{ entries: HistoryEntry[] }>('/api/histor
 /** A public profile by its address; not found once its account turns it off. */
 export const fetchProfile = (slug: string) => call<PublicProfile>(`/api/profiles/${encodeURIComponent(slug)}`);
 
+/** Turns the account's public profile on, at a new address, or off. */
+export const setPublicProfile = (on: boolean) => call<{ user: Me }>('/api/me', json('PATCH', { publicProfile: on }));
+
 export function signInUrl(provider: Provider, next: string, name?: string): string {
   const query = new URLSearchParams({ next, ...(name ? { name } : {}) });
   return `/api/auth/login/${provider}?${query}`;
