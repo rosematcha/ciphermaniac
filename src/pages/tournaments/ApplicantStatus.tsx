@@ -7,7 +7,7 @@
  */
 
 import { A } from '@solidjs/router';
-import { createResource, createSignal, Match, Show, Switch } from 'solid-js';
+import { createEffect, createResource, createSignal, Match, Show, Switch } from 'solid-js';
 import type { AccountRole } from '../../../shared/accounts/roles';
 import type { MyApplication } from '../../../shared/accounts/types';
 import { errorText } from '../../lib/tournament/api';
@@ -21,6 +21,7 @@ import {
 import { resolved } from '../../lib/resource';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
+import { refreshSession } from './session';
 import '../../styles/pages/tournament-apply.css';
 
 const STAGE_WORDS: Record<ApplicantStage, string> = {
@@ -170,13 +171,32 @@ export function ApplicantStatus(props: {
 }
 
 /**
+ * Rereads who is signed in, once, when the account's Application was
+ * approved after the page read it as a player: until then the page offers
+ * an Organizer neither the way to start events nor the way to apply.
+ */
+export function createSessionCatchUp(role: () => AccountRole | null, latest: () => MyApplication | null | undefined) {
+  let reread = false;
+  createEffect(() => {
+    if (!reread && role() === null && latest()?.status === 'approved') {
+      reread = true;
+      void refreshSession();
+    }
+  });
+}
+
+/**
  * /host's line for an account that may not start events: the way to apply,
  * or where its Application stands. `primary`: applying is the page's one
  * step, with no event of its own running.
  */
 export function ApplicantLine(props: { role: AccountRole | null; primary: boolean }) {
   const [state] = createResource(fetchApplication);
-  // Unread, the way to apply still shows: the apply page says where things stand.
+  createSessionCatchUp(
+    () => props.role,
+    () => resolved(state)?.application
+  );
+  // Unread for an error, the way to apply still shows: the apply page says where things stand.
   const stage = () => {
     const current = resolved(state);
     return current || state.error ? applicantStage(props.role, current?.application ?? null) : null;

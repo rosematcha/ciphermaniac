@@ -25,10 +25,10 @@ import {
   uploadProof
 } from '../../lib/tournament/applications';
 import { latestValue } from '../../lib/resource';
-import { ApplicantStatus } from './ApplicantStatus';
+import { ApplicantStatus, createSessionCatchUp } from './ApplicantStatus';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
-import { session } from './session';
+import { refreshSession, session } from './session';
 import { SignIn } from './SignIn';
 
 const TITLE = 'Apply to run events';
@@ -249,6 +249,10 @@ function Applying(props: { user: Me }) {
   // Settings' Apply again opens the form as the page opens.
   const [again, setAgain] = createSignal(params.again !== undefined);
   const current = () => latestValue(state);
+  createSessionCatchUp(
+    () => props.user.role,
+    () => current()?.application
+  );
   const stage = () => applicantStage(props.user.role, current()?.application ?? null);
   const open = () => stage() === 'none' || ((stage() === 'rejected' || stage() === 'revoked') && again());
   const sent = (application: MyApplication) => mutate(prev => prev && { ...prev, application, proof: null });
@@ -288,7 +292,14 @@ function Applying(props: { user: Me }) {
                   </p>
                 }
               >
-                <ApplicationForm proof={s().proof} onSent={sent} onStale={() => void refetch()} />
+                <ApplicationForm
+                  proof={s().proof}
+                  onSent={sent}
+                  onStale={() => {
+                    void refetch();
+                    void refreshSession();
+                  }}
+                />
               </Show>
             </Show>
           </div>

@@ -53,12 +53,15 @@ interface Asked {
 interface Options {
   /** Holds an upload's answer until it settles. */
   upload?: Promise<void>;
+  /** The account as /api/me reads it the second time, after a decision the page has not seen. */
+  reread?: typeof ME;
 }
 
 /** The applicant endpoints, holding the account's state as the functions would, and every ask they get. */
 async function mockApplicant(page: Page, start: ApplicationState, user: typeof ME | null = ME, options: Options = {}) {
   const asks: Asked[] = [];
   let state = start;
+  let reads = 0;
   await page.route('**/api/**', async route => {
     const request = route.request();
     const method = request.method();
@@ -66,7 +69,9 @@ async function mockApplicant(page: Page, start: ApplicationState, user: typeof M
     const key = `${method} ${pathname}`;
     asks.push({ method, path: pathname, body: method === 'POST' ? request.postDataJSON() : null });
     if (key === 'GET /api/me') {
-      return route.fulfill({ json: { user, providers: ['google', 'discord'] } });
+      reads += 1;
+      const current = reads > 1 && options.reread ? options.reread : user;
+      return route.fulfill({ json: { user: current, providers: ['google', 'discord'] } });
     }
     if (key === 'GET /api/applications/mine') {
       return route.fulfill({ json: state });
@@ -244,6 +249,16 @@ test('Send application waits for an upload in flight', async ({ page }) => {
   await expect(send).toBeEnabled();
   // The explanation being written keeps the focus when the upload lands.
   await expect(page.getByLabel('Explanation')).toBeFocused();
+});
+
+test('an account approved since the page read it is read again, and starts events', async ({ page }) => {
+  const asks = await mockApplicant(page, { ...NONE, application: application('approved') }, ME, {
+    reread: { ...ME, role: 'organizer' }
+  });
+  await page.route('**/api/tournaments', route => route.fulfill({ json: { tournaments: [] } }));
+  await page.goto('/host');
+  await expect(page.getByRole('button', { name: 'Start an event' })).toBeVisible();
+  expect(asks.filter(a => a.path === '/api/me')).toHaveLength(2);
 });
 
 // ---------- Settings: where the account stands ----------
