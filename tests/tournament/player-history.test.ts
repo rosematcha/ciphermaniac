@@ -1,7 +1,7 @@
 /**
  * One player's event as History reads it from the public copy: place,
  * division, record, deck and rounds, the same as the event page's standings
- * say.
+ * say, and the day an event is on.
  */
 
 import assert from 'node:assert/strict';
@@ -22,7 +22,7 @@ import {
   type PublishedView,
   type TournamentSettings
 } from '../../shared/tournament/view.ts';
-import { playerResult } from '../../src/lib/tournament/history.ts';
+import { eventDay, playerResult, readEntry } from '../../src/lib/tournament/history.ts';
 import { namesById, podStandings } from '../../src/lib/tournament/present.ts';
 import { juniorsCutApart } from '../__utils__/divisionCuts.ts';
 
@@ -40,6 +40,14 @@ function run(tournament: Tournament, ...commands: Command[]): Tournament {
     return result.tournament;
   }, tournament);
 }
+
+test('an event’s day: the organizer’s start time, else TOM’s date, with the year only outside this one', () => {
+  const thisYear = new Date().getFullYear();
+  assert.match(eventDay(`${thisYear}-10-03T11:00`, ''), /Oct 3/);
+  assert.doesNotMatch(eventDay(`${thisYear}-10-03T11:00`, ''), new RegExp(String(thisYear)));
+  assert.match(eventDay('', '10/03/2025'), /Oct 3, 2025|3 Oct 2025/);
+  assert.equal(eventDay('', ''), '', 'neither set');
+});
 
 describe('one player’s event, read from the public copy as History reads it', () => {
   /** The copy the site publishes of `t`, as the event page and History fetch it. */
@@ -202,4 +210,36 @@ describe('one player’s event, read from the public copy as History reads it', 
       'the copy carries the names the public page shows'
     );
   });
+});
+
+test('a History row takes the names, and the decks only while the public may see them', () => {
+  const keys = assignKeys(CHALLENGE, {});
+  const view: PublishedView = {
+    code: 'ABCDEF',
+    mode: 'tom',
+    version: 1,
+    updatedAt: 0,
+    tournament: publicTournament(CHALLENGE, keys),
+    pending: [],
+    reports: [],
+    divisions: publicDivisions(CHALLENGE, keys, Date.UTC(2026, 9, 3)),
+    decks: publicDecks({ '7200001': 'Gardevoir ex' }, keys),
+    settings: { ...DEFAULT_SETTINGS, deckVisibility: 'after' }
+  };
+  const entry = {
+    code: 'ABCDEF',
+    key: keys['7200001'] ?? '',
+    name: 'Fixture Challenge & Friends',
+    startDate: '10/03/2026',
+    startsAt: '',
+    format: 'Standard',
+    mode: 'tom' as const,
+    status: 'live' as const
+  };
+  const hidden = readEntry(entry, view);
+  assert.deepEqual(hidden?.decks, {});
+  assert.equal(hidden?.names.get(keys['7200002'] ?? ''), 'Dorothy Vaughan');
+  const shown = readEntry(entry, { ...view, settings: { ...view.settings, deckVisibility: 'always' } });
+  assert.deepEqual(shown?.decks, view.decks);
+  assert.equal(readEntry({ ...entry, key: '999' }, view), null);
 });

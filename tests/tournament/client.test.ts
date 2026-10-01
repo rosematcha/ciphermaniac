@@ -13,6 +13,7 @@ import {
   createSwiss,
   deleteTournament,
   fetchDecklists,
+  fetchHistory,
   fetchManage,
   fetchMyDecklist,
   fetchPublished,
@@ -205,6 +206,20 @@ test('a published view asked for ahead of its page is read once, and only for th
   globalThis.fetch = (() => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
   preloadPublished('ABC');
   assert.equal(await fetchPublished('ABC'), null, 'a read that failed ahead of the page is an unreadable file');
+});
+
+test('History is the account’s own, and a finished event’s copy may come from the browser’s cache', async () => {
+  answer(200, { entries: [] });
+  assert.deepEqual(await fetchHistory(), { entries: [] });
+  assert.equal(sent[0]?.url, '/api/history');
+  const caches: (RequestCache | undefined)[] = [];
+  globalThis.fetch = (async (_url: string, init: RequestInit = {}) => {
+    caches.push(init.cache);
+    return Response.json({ code: 'ABC' });
+  }) as typeof fetch;
+  await fetchPublished('ABC', 'default');
+  await fetchPublished('ABC');
+  assert.deepEqual(caches, ['default', 'no-cache']);
 });
 
 test('a 204 answers null', async () => {

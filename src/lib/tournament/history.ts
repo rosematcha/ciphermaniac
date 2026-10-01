@@ -6,11 +6,34 @@
  * page's player sheet takes its place from here too.
  */
 
+import type { HistoryEntry } from '../../../shared/accounts/types';
+import { parseTomDate } from '../../../shared/tournament/divisions';
 import { playerPod } from '../../../shared/tournament/rounds';
 import type { MatchRecord, Standing } from '../../../shared/tournament/standings';
 import type { Division, Pod } from '../../../shared/tournament/types';
 import { decksVisible, isSanctioned, type PublishedView } from '../../../shared/tournament/view';
-import { type HistoryRow, matchHistory, podStandings, roundLabel } from './present';
+import { type HistoryRow, matchHistory, namesById, podStandings, roundLabel } from './present';
+
+const sameYear = (date: Date) => date.getFullYear() === new Date().getFullYear();
+
+/** "Sat, Oct 3", with the year only outside this one. */
+export const dayLabel = (date: Date, timeZone?: string) =>
+  date.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear(date) ? {} : { year: 'numeric' }),
+    ...(timeZone ? { timeZone } : {})
+  });
+
+/** The day an event is on: the organizer's start time, else TOM's start date; '' with neither. */
+export function eventDay(startsAt: string, startDate: string): string {
+  if (startsAt) {
+    return dayLabel(new Date(startsAt));
+  }
+  const tom = parseTomDate(startDate);
+  return tom ? dayLabel(tom, 'UTC') : '';
+}
 
 /** How one player's event went, as the public copy of it says. */
 export interface PlayerFinish {
@@ -70,4 +93,21 @@ export function playerResult(view: PublishedView, key: string): PlayerFinish | n
     dropped: player.droppedAfter !== null,
     rounds: pod ? namedRounds(pod, key) : []
   };
+}
+
+/** One entry's event as its History row shows it, once the copy is in. */
+export interface EntryResult {
+  finish: PlayerFinish;
+  /** Everyone's name by public key, for the opponents in the rounds. */
+  names: Map<string, string>;
+  /** Everyone's deck by public key, while the public may see them. */
+  decks: Record<string, string>;
+}
+
+/** The entry's event, or null when its copy has no player by the entry's key (a row left behind). */
+export function readEntry(entry: HistoryEntry, view: PublishedView): EntryResult | null {
+  const finish = playerResult(view, entry.key);
+  return finish
+    ? { finish, names: namesById(view.tournament), decks: decksVisible(view.settings) ? view.decks : {} }
+    : null;
 }

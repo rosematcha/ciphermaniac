@@ -1,0 +1,189 @@
+/* History (/history) and the public profile (/u/:slug), loaded with their
+   list (HistoryList): one box of events, each opening to its rounds. */
+
+/* The house rows, with hairlines between events rather than the stripe: an
+   opened event's rounds sit under it on their own tint, and a stripe would
+   count them as a row. Fixed columns, so the figures share one edge and a
+   long event name gives way rather than pushing them off a phone. */
+.tm-hist table.data {
+  table-layout: fixed;
+}
+.tm-page .tm-hist .data tbody tr {
+  background: none;
+}
+.tm-page .tm-hist .data tbody tr.is-link:hover {
+  background: color-mix(in srgb, var(--fg) 8%, var(--surface));
+}
+.tm-page .tm-hist .data tbody td {
+  border-bottom-color: var(--rule);
+}
+.tm-hist .data td {
+  height: 58px;
+  padding-block: 8px;
+}
+.tm-hist th.tm-hist-deck {
+  width: 280px;
+}
+.tm-hist th.tm-hist-place {
+  width: 84px;
+}
+.tm-hist th.tm-hist-record {
+  width: 96px;
+}
+/* The name and its line under it; on a phone the deck's sprites lead them. */
+.tm-hist-event {
+  display: block;
+  min-width: 0;
+}
+.tm-hist-text {
+  display: block;
+  min-width: 0;
+}
+.tm-hist-phone-deck {
+  display: none;
+}
+.tm-hist-name,
+.tm-hist-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-hist-name {
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+.tm-hist-sub {
+  margin-top: 2px;
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+.tm-hist-deck-in {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--text-base);
+}
+/* A deck's name starts in one place whether it has one sprite, two or none. */
+:is(.tm-hist-deck-in, .tm-hist-opp) .tm-deck {
+  min-width: 38px;
+}
+.tm-hist .data td.tm-hist-place,
+.tm-hist .data td.tm-hist-record {
+  font-size: var(--text-body);
+}
+.tm-hist .data td.tm-hist-place {
+  font-weight: 700;
+}
+
+/* ---------- An opened event: its rounds, then its page ---------- */
+.tm-page .tm-hist .data tr.row-expansion {
+  background: var(--surface-2);
+}
+.tm-hist .data tr.row-expansion > td {
+  height: auto;
+  padding: 4px 14px 12px 42px;
+}
+.tm-hist-more {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+.tm-hist-more > p {
+  margin: 8px 0 0;
+}
+.tm-hist-rounds {
+  display: grid;
+  width: 100%;
+  max-width: 560px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tm-hist-rounds li {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-base);
+}
+.tm-hist-round {
+  display: grid;
+  line-height: 1.25;
+  font-weight: 600;
+}
+.tm-hist-round small {
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+.tm-hist-opp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.tm-hist-mark {
+  justify-self: end;
+}
+
+@media (max-width: 640px) {
+  .tm-hist .data th,
+  .tm-hist .data td {
+    padding: 0 6px;
+  }
+  /* The deck's column folds to nothing rather than going, so an opened
+     row's span still matches the columns. */
+  .tm-hist .data .tm-hist-deck {
+    width: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  .tm-hist td.tm-hist-deck > * {
+    display: none;
+  }
+  .tm-hist th.tm-hist-place {
+    width: 44px;
+  }
+  .tm-hist th.tm-hist-record {
+    width: 64px;
+  }
+  .tm-hist .data :is(th, td):last-child {
+    padding-right: 12px;
+  }
+  .tm-hist .data td {
+    height: 64px;
+    padding-block: 10px;
+  }
+  /* A name wraps rather than losing its end: it is what the row is read for. */
+  .tm-hist-event {
+    display: flex;
+    align-items: flex-start;
+  }
+  .tm-hist-phone-deck {
+    display: contents;
+  }
+  .tm-hist-phone-deck .arche-icons {
+    margin: 1px 8px 0 0;
+  }
+  .tm-hist-name,
+  .tm-hist-sub {
+    white-space: normal;
+  }
+  .tm-hist-name .tm-flag {
+    margin-left: 4px;
+  }
+  .tm-hist .data tr.row-expansion > td {
+    padding: 4px 12px 12px;
+  }
+  .tm-hist-rounds li {
+    grid-template-columns: 88px minmax(0, 1fr) auto;
+    gap: 8px;
+    min-height: 44px;
+  }
+  .tm-hist-more .btn {
+    min-height: 44px;
+  }
+}

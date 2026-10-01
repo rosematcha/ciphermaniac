@@ -5,6 +5,7 @@
  */
 
 import type { AccountRole } from '../../../shared/accounts/roles';
+import type { HistoryEntry } from '../../../shared/accounts/types';
 import type { Command } from '../../../shared/tournament/commands';
 import { tomDateTime } from '../../../shared/tournament/divisions';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
@@ -24,7 +25,7 @@ import {
 } from '../../../shared/tournament/view';
 import { R2_ORIGIN } from '../constants';
 
-export type { Decklist, Manage, Registration, StaffMember, TournamentSummary };
+export type { Decklist, HistoryEntry, Manage, Registration, StaffMember, TournamentSummary };
 
 export class ApiError extends Error {
   constructor(
@@ -93,6 +94,9 @@ export const saveAccountName = (name: string) => call<{ user: Me }>('/api/me', j
 
 export const signOut = () => call<null>('/api/auth/logout', { method: 'POST' });
 
+/** The signed-in account's History, newest first. */
+export const fetchHistory = () => call<{ entries: HistoryEntry[] }>('/api/history');
+
 export function signInUrl(provider: Provider, next: string, name?: string): string {
   const query = new URLSearchParams({ next, ...(name ? { name } : {}) });
   return `/api/auth/login/${provider}?${query}`;
@@ -122,16 +126,18 @@ const base = (code: string) => `/api/tournaments/${encodeURIComponent(code)}`;
 /**
  * The view published to R2 (see PublishedView), or null when it cannot be
  * read: not published yet, or a data origin that does not carry it. Revalidated
- * rather than cached, so a poll sees the edge's copy, which is seconds old.
+ * rather than cached, so a poll sees the edge's copy, which is seconds old; a
+ * page reading an event that no longer changes may let the browser's cache
+ * answer (`cache: 'default'`).
  */
-export function fetchPublished(code: string): Promise<PublishedView | null> {
+export function fetchPublished(code: string, cache: RequestCache = 'no-cache'): Promise<PublishedView | null> {
   const started = early?.code === code ? early.read : null;
   early = null;
-  return started ?? readPublished(code);
+  return started ?? readPublished(code, cache);
 }
 
-async function readPublished(code: string): Promise<PublishedView | null> {
-  const response = await fetch(`${R2_ORIGIN}/${publishedViewKey(code)}`, { cache: 'no-cache' });
+async function readPublished(code: string, cache: RequestCache = 'no-cache'): Promise<PublishedView | null> {
+  const response = await fetch(`${R2_ORIGIN}/${publishedViewKey(code)}`, { cache });
   return response.ok ? ((await response.json()) as PublishedView) : null;
 }
 

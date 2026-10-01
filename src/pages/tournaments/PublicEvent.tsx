@@ -10,7 +10,6 @@
 
 import { useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, lazy, onCleanup, onMount, Show } from 'solid-js';
-import { parseTomDate } from '../../../shared/tournament/divisions';
 import { hasStarted, latestRound, livePods, playerPod, podOf, withSwiss } from '../../../shared/tournament/rounds';
 import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
 import type { Pod, PodCategory, Round } from '../../../shared/tournament/types';
@@ -29,7 +28,6 @@ import { ApiError, fetchPublished, fetchView, identifyPlayer } from '../../lib/t
 import { ordinal } from '../../lib/format';
 import { latestValue } from '../../lib/resource';
 import { onChange } from '../../lib/tournament/changes';
-import { playerResult } from '../../lib/tournament/history';
 import { shared } from '../../lib/tournament/share';
 import {
   createViewPoll,
@@ -40,6 +38,7 @@ import {
   SCREEN_POLL_MS,
   seesMoreThanPublished
 } from '../../lib/tournament/viewPoll';
+import { dayLabel, eventDay, playerResult } from '../../lib/tournament/history';
 import {
   divisionHeading,
   eventStatus,
@@ -500,26 +499,10 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
   );
 }
 
-const sameYear = (date: Date) => date.getFullYear() === new Date().getFullYear();
-
-/** "Sat, Oct 3", with the year only outside this one. */
-const dayLabel = (date: Date, timeZone?: string) =>
-  date.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    ...(sameYear(date) ? {} : { year: 'numeric' }),
-    ...(timeZone ? { timeZone } : {})
-  });
-
-/** One date format across the page: the organizer's start time, else TOM's start date. */
+/** One date format across the page: the organizer's start time, else TOM's start date (see eventDay). */
 function eventDate(startsAt: string, startDate: string): string {
-  if (startsAt) {
-    const date = new Date(startsAt);
-    return `${dayLabel(date)} · ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
-  }
-  const tom = parseTomDate(startDate);
-  return tom ? dayLabel(tom, 'UTC') : '';
+  const day = eventDay(startsAt, startDate);
+  return startsAt ? `${day} · ${firstRoundTime(startsAt) ?? ''}` : day;
 }
 
 /** When the page last changed: a time today, a date before that. */
