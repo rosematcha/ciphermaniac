@@ -20,6 +20,7 @@ import * as commands from '../../functions/api/tournaments/[code]/commands.ts';
 import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts';
 import * as decks from '../../functions/api/tournaments/[code]/decks.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
+import * as idle from '../../functions/api/tournaments/idle.ts';
 import * as manage from '../../functions/api/tournaments/[code]/manage.ts';
 import * as pairing from '../../functions/api/tournaments/[code]/pairing.ts';
 import * as report from '../../functions/api/tournaments/[code]/report.ts';
@@ -1738,6 +1739,126 @@ test('the account page names the providers an account signs in with; an event re
   assert.ok(!seen.some(sql => sql.includes('identities')), 'providers are not read to open an event');
 });
 
+const SWEEP_TOKEN = 'sweep-token';
+
+/** The scheduled sweep that ends idle events, as its workflow calls it. */
+function sweep(authorization = `Bearer ${SWEEP_TOKEN}`) {
+  env.IDLE_SWEEP_TOKEN = SWEEP_TOKEN;
+  const call = new Request(`${ORIGIN}/api/tournaments/idle`, { method: 'POST', headers: { authorization } });
+  return idle.onRequestPost({ request: call, env, params: {} }).then(async response => ({
+    status: response.status,
+    json: (await response.json()) as { ended: string[] }
+  }));
+}
+
+/** Leaves the event as if nobody had changed it for `ms`. */
+function age(code: string, ms: number) {
+  const { raw } = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  raw.prepare('UPDATE tournaments SET updated_at = ? WHERE code = ?').run(Date.now() - ms, code);
+}
+
+const HOUR = 60 * 60 * 1000;
+
+/** An event with round 1 paired. */
+async function underWay(cookie: string): Promise<string> {
+  const code = await newSwiss(cookie);
+  await addPlayers(code, cookie, 4);
+  assert.equal((await send(code, cookie, { type: 'pairRound', pod: 'masters' })).status, 200);
+  return code;
+}
+
+test('the sweep ends an event under way that has gone two hours without a change, and publishes it', async () => {
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer');
+  const idleOne = await underWay(owner);
+  const busy = await underWay(owner);
+  const unstarted = await newSwiss(owner);
+  age(idleOne, 2 * HOUR + 1000);
+  age(busy, 2 * HOUR - 60_000);
+  age(unstarted, 48 * HOUR);
+  const swept = await sweep();
+  assert.equal(swept.status, 200);
+  assert.deepEqual(swept.json.ended, [idleOne]);
+  assert.equal((await loadTournament(env.TOURNAMENT_DB!, idleOne))?.settings.finished, true);
+  assert.equal((await loadTournament(env.TOURNAMENT_DB!, busy))?.settings.finished, false);
+  assert.equal(
+    (await loadTournament(env.TOURNAMENT_DB!, unstarted))?.settings.finished,
+    false,
+    'set up ahead of its day'
+  );
+  const published = JSON.parse(objects.get(`tournaments/v1/${idleOne}.json`)?.body ?? '{}') as TournamentView;
+  assert.equal(published.settings.finished, true, 'players see the event over');
+  assert.deepEqual((await sweep()).json.ended, [], 'an ended event is left alone');
+});
+
+test('an event the organizer reopens after the sweep ended it runs another two hours', async () => {
+  const owner = await signIn('Organizer');
+  const code = await underWay(owner);
+  age(code, 3 * HOUR);
+  await sweep();
+  const reopened = await hit(settings.onRequestPut as Handler, '/settings', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { finished: false }
+  });
+  assert.equal(reopened.status, 200);
+  assert.deepEqual((await sweep()).json.ended, []);
+  assert.equal((await loadTournament(env.TOURNAMENT_DB!, code))?.settings.finished, false);
+});
+
+test('a change that lands while the sweep runs keeps the event going', async () => {
+  const owner = await signIn('Organizer');
+  const code = await underWay(owner);
+  age(code, 3 * HOUR);
+  const db = env.TOURNAMENT_DB!;
+  const { raw } = db as ReturnType<typeof sqliteD1>;
+  env.TOURNAMENT_DB = {
+    ...db,
+    prepare: sql => {
+      const statement = db.prepare(sql);
+      if (!sql.includes('updated_at < ?')) {
+        return statement;
+      }
+      // The sweep has read the event; a result comes in before it writes.
+      return {
+        ...statement,
+        bind: (...args: unknown[]) => {
+          const bound = statement.bind(...args);
+          return {
+            ...bound,
+            all: async <T>() => {
+              const read = await bound.all<T>();
+              raw
+                .prepare('UPDATE tournaments SET version = version + 1, updated_at = ? WHERE code = ?')
+                .run(Date.now(), code);
+              return read;
+            }
+          };
+        }
+      };
+    }
+  };
+  assert.deepEqual((await sweep()).json.ended, []);
+  assert.equal((await loadTournament(db, code))?.settings.finished, false);
+});
+
+test('only the sweep’s token runs the sweep', async () => {
+  const owner = await signIn('Organizer');
+  const code = await underWay(owner);
+  age(code, 3 * HOUR);
+  assert.equal((await sweep('')).status, 403);
+  assert.equal((await sweep('Bearer wrong')).status, 403);
+  assert.equal((await sweep(SWEEP_TOKEN)).status, 403, 'the scheme is part of it');
+  delete env.IDLE_SWEEP_TOKEN;
+  const unset = await idle.onRequestPost({
+    request: new Request(`${ORIGIN}/api/tournaments/idle`, { method: 'POST', headers: { authorization: 'Bearer ' } }),
+    env,
+    params: {}
+  });
+  assert.equal(unset.status, 403, 'no token configured runs nothing');
+  assert.equal((await loadTournament(env.TOURNAMENT_DB!, code))?.settings.finished, false);
+});
+
 test('nothing the functions ask of the database scans a table', async () => {
   const { raw } = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
   const seen = recordSql();
@@ -1770,6 +1891,7 @@ test('nothing the functions ask of the database scans a table', async () => {
     cookie: owner,
     body: { rotate: true }
   });
+  await sweep();
   await hit(logout.onRequestPost as Handler, '/api/auth/logout', {}, { method: 'POST', cookie: helper });
   await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
   const statements = [...new Set(seen)];

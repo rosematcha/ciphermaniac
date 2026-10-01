@@ -7,6 +7,8 @@ export interface TournamentEnv extends AuthEnv {
   TOURNAMENT_DB?: D1Like;
   /** The data bucket r2.ciphermaniac.com serves; event views are published to it. */
   REPORTS?: PublishBucket;
+  /** What the scheduled sweep that ends idle events sends as its bearer token (functions/api/tournaments/idle.ts). */
+  IDLE_SWEEP_TOKEN?: string;
 }
 
 export interface Context<Params extends string = never> {

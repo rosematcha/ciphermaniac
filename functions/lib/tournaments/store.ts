@@ -97,6 +97,22 @@ export async function loadTournament(db: D1Like, code: string): Promise<Tourname
   return raw ? fromRaw(raw) : null;
 }
 
+/**
+ * Events under way and not ended that nobody has changed since `before`, at
+ * most `limit` of them. Under way means round 1 is paired: an event set up
+ * ahead of its day may sit untouched for as long as it likes.
+ */
+export async function loadIdle(db: D1Like, before: number, limit: number): Promise<TournamentRow[]> {
+  const { results } = await db
+    .prepare(
+      "SELECT * FROM tournaments WHERE coalesce(json_extract(settings, '$.finished'), 0) = 0 " +
+        "AND updated_at < ? AND json_array_length(state, '$.pods[0].rounds') > 0 LIMIT ?"
+    )
+    .bind(before, limit)
+    .all<RawRow>();
+  return results.map(fromRaw);
+}
+
 export interface Opened {
   row: TournamentRow;
   user: User | null;
