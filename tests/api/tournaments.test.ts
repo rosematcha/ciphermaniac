@@ -283,7 +283,7 @@ test('creating an event needs a signed-in, same-origin request', async () => {
     }
   );
   assert.equal(anonymous.status, 401);
-  const cookie = await signIn('Organizer');
+  const cookie = await signIn('Organizer', 'organizer');
   const crossSite = await hit(
     tournaments.onRequestPost as Handler,
     '/api/tournaments',
@@ -304,8 +304,40 @@ test('creating an event needs a signed-in, same-origin request', async () => {
   );
 });
 
+test('only organizers and admins start events, and a revoked organizer still runs its own', async () => {
+  const create = (cookie: string) =>
+    hit(
+      tournaments.onRequestPost as Handler,
+      '/api/tournaments',
+      {},
+      {
+        method: 'POST',
+        cookie,
+        body: { mode: 'swiss', name: 'Test Cup' }
+      }
+    );
+  const player = await create(await signIn('Player'));
+  assert.deepEqual(
+    [player.status, player.json.error, player.json.apply],
+    [403, 'Only organizers can start events', true],
+    'a player is offered an application'
+  );
+  assert.equal((await create(await signIn('Admin', 'admin'))).status, 201);
+  const organizer = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(organizer);
+  // The same account, its role taken away.
+  const revoked = await signIn('Organizer', 'revoked');
+  assert.equal((await create(revoked)).status, 403);
+  await addPlayers(code, revoked, 2);
+  assert.equal((await settle(code, revoked, { decklists: 'open' })).status, 200);
+  assert.equal(
+    (await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: revoked })).status,
+    204
+  );
+});
+
 test('only staff change an event, and bad commands are refused', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const stranger = await signIn('Stranger');
   assert.equal((await send(code, stranger, { type: 'pairRound', pod: 'masters' })).status, 403);
@@ -318,7 +350,7 @@ test('only staff change an event, and bad commands are refused', async () => {
 });
 
 test('a Swiss event pairs, reports, seats a late arrival and hides private fields publicly', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 5);
   const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
@@ -361,7 +393,7 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
 });
 
 test('staff join by invite link, and a new link retires the old one', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const { staffToken } = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
   const helper = await signIn('Helper');
@@ -408,7 +440,7 @@ test('staff join by invite link, and a new link retires the old one', async () =
 });
 
 test('a TOM event holds site results as pending until the synced file settles them', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
   const created = await hit(
     tournaments.onRequestPost as Handler,
@@ -480,7 +512,7 @@ test('a TOM event holds site results as pending until the synced file settles th
 });
 
 test('a TOM event runs the site’s clock, which a synced file’s timer does not touch', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
   const created = await hit(
     tournaments.onRequestPost as Handler,
@@ -594,7 +626,7 @@ test('a TOM event’s first round and a Swiss event are not paired through the f
 });
 
 test('a Swiss event cannot be synced from a file', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const refused = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
     method: 'PUT',
@@ -605,7 +637,7 @@ test('a Swiss event cannot be synced from a file', async () => {
 });
 
 test('decklists come in only while open, and decks show as the visibility setting allows', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const player = await signIn('Player');
   const submission = {
@@ -722,7 +754,7 @@ test('sign-in only ever returns to a path on this site', async () => {
 });
 
 test('an event too large for one D1 row is refused with a message', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
   const long = 'x'.repeat(190);
   const players = Array.from({ length: 4800 }, (_, i) => ({
@@ -747,7 +779,7 @@ test('an event too large for one D1 row is refused with a message', async () => 
 
 test('every change publishes the public view to R2, and deleting the event removes it', async () => {
   const objects = memoryBucket();
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const key = `tournaments/v1/${code}.json`;
   assert.ok(objects.has(key), 'published on creation');
@@ -794,7 +826,7 @@ test('a failed publish does not fail the change', async () => {
   const log = console.error;
   console.error = () => undefined;
   try {
-    const owner = await signIn('Organizer');
+    const owner = await signIn('Organizer', 'organizer');
     const code = await newSwiss(owner);
     assert.equal(
       (await send(code, owner, { type: 'addPlayer', player: { firstName: 'A', lastName: 'B' } })).status,
@@ -810,7 +842,7 @@ test('a failed publish does not fail the change', async () => {
 });
 
 test('only the organizer deletes an event', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const other = await signIn('Other');
   assert.equal(
@@ -849,7 +881,7 @@ async function phoneOf(code: string, popId: string, device = `phone-${popId}`) {
 }
 
 test('an event starts with the settings its setup chose', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const created = await hit(
     tournaments.onRequestPost as Handler,
     '/api/tournaments',
@@ -886,7 +918,7 @@ test('an event starts with the settings its setup chose', async () => {
 });
 
 test('an unsanctioned event takes decklists by name and leaves the account’s Player ID alone', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { sanctioned: false, decklists: 'open' });
   await send(code, owner, { type: 'addPlayer', player: { firstName: 'Pat', lastName: 'Player' } });
@@ -906,7 +938,7 @@ test('an unsanctioned event takes decklists by name and leaves the account’s P
 });
 
 test('a decklist never gives an account a Player ID, and refreshes the details of the account that holds it', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { decklists: 'open' });
   const player = await signIn('Player');
@@ -931,7 +963,7 @@ test('a decklist never gives an account a Player ID, and refreshes the details o
 });
 
 test('players report their own results: agreement stands once locked, disagreement waits for staff', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 4);
@@ -1021,7 +1053,7 @@ test('players report their own results: agreement stands once locked, disagreeme
 });
 
 test('a result the console poll settles is stamped with the venue clock the poll sent', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 2);
@@ -1043,7 +1075,7 @@ test('a result the console poll settles is stamped with the venue clock the poll
 });
 
 test('players cannot report once the event has ended', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 2);
   const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
@@ -1057,7 +1089,7 @@ test('players cannot report once the event has ended', async () => {
 });
 
 test('a report for the match a stale page showed does not land on the next round', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 2);
   await settle(code, owner, { playerReporting: true });
@@ -1078,7 +1110,7 @@ test('a report for the match a stale page showed does not land on the next round
 });
 
 test('an unsanctioned event finds players by last name, asking for a first name when two share it', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { sanctioned: false, playerReporting: true });
   for (const [firstName, lastName] of [
@@ -1102,7 +1134,7 @@ test('an unsanctioned event finds players by last name, asking for a first name 
 });
 
 test('at a TOM event an agreed report becomes a pending result for TOM', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
   const created = await hit(
@@ -1144,7 +1176,7 @@ function listOf(code: string, query: string) {
 }
 
 test('a player with no account submits a list, reads it back with its device token, and withdraws it', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { decklists: 'open' });
   const profile = { popId: '4242', firstName: 'Nia', lastName: 'Okafor', birthDate: '02/27/2001' };
@@ -1204,7 +1236,7 @@ test('a player with no account submits a list, reads it back with its device tok
 });
 
 test('a submitter is only added to an open Swiss event, and an unsanctioned one by name', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { decklists: 'open', finished: true });
   const closed = await submitAs(code, { popId: '5151', firstName: 'Ada', lastName: 'Byron', birthDate: '02/27/1990' });
@@ -1223,7 +1255,7 @@ test('a submitter is only added to an open Swiss event, and an unsanctioned one 
 });
 
 test('a signed-in player’s profile reads no list without the device token', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { decklists: 'open' });
   const player = await signIn('Player');
@@ -1249,7 +1281,7 @@ test('a signed-in player’s profile reads no list without the device token', as
 });
 
 test('names split differently are different players’ lists', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { decklists: 'open', sanctioned: false });
   await submitAs(code, { firstName: 'Mary Ann', lastName: 'Smith' });
@@ -1259,7 +1291,7 @@ test('names split differently are different players’ lists', async () => {
 });
 
 test('staff unlock a list for a player on a new device, who then takes it over', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { decklists: 'open' });
   const profile = { popId: '7373', firstName: 'Ren', lastName: 'Aoki', birthDate: '02/27/2001' };
@@ -1280,7 +1312,7 @@ test('staff unlock a list for a player on a new device, who then takes it over',
 });
 
 test('two agreeing reports from one device wait for staff, and staff can free a player’s device', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 4);
@@ -1315,7 +1347,7 @@ test('two agreeing reports from one device wait for staff, and staff can free a 
 
 /** An event with one member of staff, who joined through the invite link. */
 async function withHelper() {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const token = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json.staffToken;
   const helper = await signIn('Helper');
@@ -1362,7 +1394,7 @@ function recordSql(): string[] {
 }
 
 test('a change reads the event once and writes only the columns it changed', async () => {
-  const cookie = await signIn('Organizer');
+  const cookie = await signIn('Organizer', 'organizer');
   const code = await newSwiss(cookie);
   await addPlayers(code, cookie, 2);
   const seen = recordSql();
@@ -1380,7 +1412,7 @@ test('a change reads the event once and writes only the columns it changed', asy
 });
 
 test('a join that read the old invite link cannot land after the organizer replaces it', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const { staffToken } = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json;
   const helper = await signIn('Helper');
@@ -1409,7 +1441,7 @@ test('a join that read the old invite link cannot land after the organizer repla
 });
 
 test('a list cannot be withdrawn once submission closes, even with its token', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { decklists: 'open' });
   const sent = await submitAs(code, { popId: '4343', firstName: 'Ola', lastName: 'Nordmann', birthDate: '02/27/2001' });
@@ -1464,7 +1496,7 @@ const bodyOf = (stored: Stored | undefined) => JSON.parse(stored?.body ?? '{}');
 
 test('a publish that lands late leaves the newer copy up, and cannot bring back a deleted event', async () => {
   const objects = memoryBucket();
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const key = `tournaments/v1/${code}.json`;
   const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
@@ -1499,7 +1531,7 @@ test('a publish that lands late leaves the newer copy up, and cannot bring back 
 
 test('a publish that never gets a write in takes the copy down rather than leave it behind', async () => {
   const objects = memoryBucket();
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const bucket = env.REPORTS as NonNullable<TournamentEnv['REPORTS']>;
   let refused = 0;
@@ -1523,7 +1555,7 @@ test('a publish that never gets a write in takes the copy down rather than leave
 
 test('a publish R2 refuses takes the stale copy down, so the page asks the API', async () => {
   const objects = memoryBucket();
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   assert.ok(objects.has(`tournaments/v1/${code}.json`));
   const bucket = env.REPORTS as NonNullable<TournamentEnv['REPORTS']>;
@@ -1539,7 +1571,7 @@ test('a publish R2 refuses takes the stale copy down, so the page asks the API',
 });
 
 test('a .tdf sent from a copy the site no longer holds is refused, not synced over newer rounds', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
   const created = await hit(
     tournaments.onRequestPost as Handler,
@@ -1588,7 +1620,7 @@ test('a .tdf sent from a copy the site no longer holds is refused, not synced ov
 });
 
 test('a sync that would leave a TOM event with nobody in it is refused', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
   const created = await hit(
     tournaments.onRequestPost as Handler,
@@ -1608,7 +1640,7 @@ test('a sync that would leave a TOM event with nobody in it is refused', async (
 });
 
 test('an idle console poll answers 204 to staff only, and a change or a due report sends the document', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const poll = (since: number, cookie?: string) =>
     hit(manage.onRequestGet as Handler, `/manage?since=${since}`, at(code), { cookie });
@@ -1626,7 +1658,7 @@ test('an idle console poll answers 204 to staff only, and a change or a due repo
 });
 
 test('a field sending lists from one venue address is not turned away', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { decklists: 'open', sanctioned: false });
   for (let i = 0; i < 40; i += 1) {
@@ -1637,7 +1669,7 @@ test('a field sending lists from one venue address is not turned away', async ()
 
 test('the answer to a change does not wait for its publish where the runtime keeps the function alive', async () => {
   const objects = memoryBucket();
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const key = `tournaments/v1/${code}.json`;
   const before = objects.get(key);
@@ -1674,7 +1706,7 @@ function countTrips(): () => number {
 }
 
 test('a staff action waits on the database twice, and an idle console poll once', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const console = (cookie: string, since = '') =>
     hit(manage.onRequestGet as Handler, `/manage${since}`, at(code), { cookie });
@@ -1700,7 +1732,7 @@ test('a staff action waits on the database twice, and an idle console poll once'
 });
 
 test('the account page names the providers an account signs in with; an event request does not read them', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const seen = recordSql();
   const trips = countTrips();
@@ -1846,7 +1878,7 @@ test('only the sweep’s token runs the sweep', async () => {
 test('nothing the functions ask of the database scans a table', async () => {
   const { raw } = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
   const seen = recordSql();
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: owner });
   await hit(tournaments.onRequestGet as Handler, '/api/tournaments', {}, { cookie: owner });
@@ -1901,7 +1933,7 @@ test('nothing the functions ask of the database scans a table', async () => {
 });
 
 test('an event made on a code already taken gets another, and the first is untouched', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   // Every draw the same: the second event's first code is the first event's.
   const random = mock.method(Math, 'random', () => 0);
   const first = await newSwiss(owner);
@@ -1951,7 +1983,7 @@ function raceWrites(times: number) {
 }
 
 test('a change beaten to the row by other writes lands on what they left, and gives up only after five tries', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   const add = (lastName: string) => send(code, owner, { type: 'addPlayer', player: { firstName: 'Ash', lastName } });
   raceWrites(4);
