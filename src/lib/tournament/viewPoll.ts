@@ -187,3 +187,21 @@ export function lookOnReturn(polls: Polls): () => void {
     document.removeEventListener('visibilitychange', shown);
   };
 }
+
+/**
+ * Asks `ask` when the page is back in view, at most once every `every` ms;
+ * returns the undo. Who the viewer is can change with no change to the
+ * event, as when their account claims the player on another device or staff
+ * release it, so no poll hears of it: this is when the page catches up.
+ */
+export function askOnReturn(ask: () => void, now: () => number, every = FALLBACK_MS): () => void {
+  let askedAt = Number.NEGATIVE_INFINITY;
+  const shown = () => {
+    if (!document.hidden && now() - askedAt >= every) {
+      askedAt = now();
+      ask();
+    }
+  };
+  document.addEventListener('visibilitychange', shown);
+  return () => document.removeEventListener('visibilitychange', shown);
+}

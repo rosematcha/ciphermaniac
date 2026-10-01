@@ -37,6 +37,7 @@ import { latestValue } from '../../lib/resource';
 import { onChange } from '../../lib/tournament/changes';
 import { shared } from '../../lib/tournament/share';
 import {
+  askOnReturn,
   createViewPoll,
   firstView,
   lookOnReturn,
@@ -131,6 +132,15 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
       return false;
     }
   }
+  /**
+   * Asks the API who the viewer is: polls only ask when the event changes, and
+   * who the viewer is can change without it (their own action, another of
+   * their devices, staff).
+   */
+  const whoAmI = () =>
+    void fromApi(code())
+      .then(accept)
+      .catch(() => undefined);
   onMount(() => {
     let announced = 0;
     const poll = createViewPoll({
@@ -145,6 +155,12 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
     });
     const polls = schedulePolls(poll, () => document.hidden, options.every);
     const forget = lookOnReturn(polls);
+    // Back in view, a signed-in viewer catches up on a Claim made or released elsewhere.
+    const forgetViewer = askOnReturn(() => {
+      if (signedIn()) {
+        whoAmI();
+      }
+    }, Date.now);
     const unsubscribe = onChange(code(), version => {
       if (version > (latestValue(view)?.version ?? 0)) {
         announced = Math.max(announced, version);
@@ -155,6 +171,7 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
       polls.stop();
       unsubscribe();
       forget();
+      forgetViewer();
     });
   });
   /** Takes a fresher copy handed over by an action, such as a player's report. */
@@ -164,11 +181,6 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
       accept({ ...published, viewer: current.viewer });
     }
   }
-  /** Asks the API who the viewer is, after their own action changed it: polls only ask when the event changes. */
-  const whoAmI = () =>
-    void fromApi(code())
-      .then(accept)
-      .catch(() => undefined);
   /** The account is no longer a player here, as its own undo just made it: no need to ask the API. */
   function unlinked() {
     const current = latestValue(view);
@@ -419,7 +431,8 @@ function EventBody(props: {
   view: TournamentView;
   session: Session | undefined;
   onView: (view: PublishedView) => void;
-  onLinked: () => void;
+  /** Asks the API who the viewer is, when the page has reason to think it changed. */
+  onWhoAmI: () => void;
   onUnlinked: () => void;
 }) {
   const [params, setParams] = useSearchParams<{ tab?: string }>();
@@ -429,7 +442,7 @@ function EventBody(props: {
   const [open, setOpen] = createSignal<string | null>(null);
   const { me, claim, reportToken, identified, forget } = createMe(() => props.view, {
     onView: view => props.onView(view),
-    onLinked: () => props.onLinked(),
+    onLinked: () => props.onWhoAmI(),
     popId: () => props.session?.user?.popId
   });
   /** The account's Claim undone: gone from its History, and from this device. */
@@ -493,6 +506,7 @@ function EventBody(props: {
         signedIn={Boolean(props.session?.user)}
         providers={props.session?.providers ?? []}
         onUnlink={unlink}
+        onStale={() => props.onWhoAmI()}
       />
       <Tabs options={tabs()} selected={tab()} onSelect={value => setParams({ tab: value }, { replace: true })} />
       <Show when={tab() === 'pairings'}>
@@ -684,7 +698,7 @@ export function PublicEvent(props: { code: string; session: Session | undefined 
         <Show when={!screen} fallback={<BigScreen view={v()} />}>
           <div class='tm-page tm-public'>
             <Hero view={v()} />
-            <EventBody view={v()} session={props.session} onView={take} onLinked={whoAmI} onUnlinked={unlinked} />
+            <EventBody view={v()} session={props.session} onView={take} onWhoAmI={whoAmI} onUnlinked={unlinked} />
           </div>
         </Show>
       )}

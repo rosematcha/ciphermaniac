@@ -312,7 +312,11 @@ function roundOne(sanctioned: boolean): Tournament {
 }
 
 /** The event page's API for an event where players report: the view, who the viewer is, and the asks it gets. */
-async function mockEvent(page: Page, t: Tournament, options: { sanctioned: boolean; user: typeof ME | null }) {
+async function mockEvent(
+  page: Page,
+  t: Tournament,
+  options: { sanctioned: boolean; user: typeof ME | null; linked?: boolean; refuse?: boolean }
+) {
   const code = 'LEAGUE';
   const keys = assignKeys(t, {});
   const published: PublishedView = {
@@ -329,7 +333,7 @@ async function mockEvent(page: Page, t: Tournament, options: { sanctioned: boole
   };
   const asks: { method: string; path: string; body: unknown }[] = [];
   const ash = t.players.find(p => p.lastName === 'Ketchum')?.id ?? '';
-  let linked = options.sanctioned && Boolean(options.user);
+  let linked = options.linked ?? (options.sanctioned && Boolean(options.user));
   await page.route(`**/tournaments/v1/${code}.json`, route =>
     route.fulfill({ json: published, headers: { 'access-control-allow-origin': '*' } })
   );
@@ -341,6 +345,9 @@ async function mockEvent(page: Page, t: Tournament, options: { sanctioned: boole
       return route.fulfill({ json: { user: options.user, providers: ['google', 'discord'] } });
     }
     if (pathname === `/api/tournaments/${code}/report`) {
+      if (options.refuse && (request.postDataJSON() as { result?: string }).result) {
+        return route.fulfill({ status: 403, json: { error: 'Someone else is already reporting for this player.' } });
+      }
       linked = Boolean(options.user);
       return route.fulfill({
         json: { key: keys[ash], view: published, reporter: true, linked, reportToken: 'seat' }
@@ -357,8 +364,25 @@ async function mockEvent(page: Page, t: Tournament, options: { sanctioned: boole
     }
     return route.fulfill({ status: 404, json: { error: 'Not found' } });
   });
-  return { code, asks };
+  return {
+    code,
+    asks,
+    /** Staff release the player, or the account's Claim is made on another device. */
+    setLinked: (value: boolean) => {
+      linked = value;
+    }
+  };
 }
+
+/** The tab hidden and shown again, as when the player comes back to it from another app. */
+const showAgain = (page: Page) =>
+  page.evaluate(() => {
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
+/** The full reads of the event page's API copy: who the viewer is. */
+const viewReads = (asks: { method: string; path: string }[], code: string) =>
+  asks.filter(a => a.method === 'GET' && a.path === `/api/tournaments/${code}`).length;
 
 test('signed in at an unsanctioned event, answering the question links the player, and Not you? undoes it @mobile', async ({
   page
@@ -392,6 +416,44 @@ test('signed in at a sanctioned event as the player by POP ID, there is no quest
     .poll(() => asks.filter(a => a.path.endsWith('/report')).map(a => (a.body as { popId?: string }).popId))
     .toEqual(['1001']);
   await expect(page.getByRole('button', { name: 'Report result' })).toBeVisible();
+});
+
+test('a Claim released or made elsewhere reaches the open page when it is shown again, at most every half minute', async ({
+  page
+}) => {
+  await page.clock.install();
+  const { code, asks, setLinked } = await mockEvent(page, roundOne(false), {
+    sanctioned: false,
+    user: { ...ME, popId: null },
+    linked: true
+  });
+  await page.goto(`/t/${code}`);
+  await expect(page.locator('.tm-you-who')).toContainText('Linked to your account');
+  setLinked(false);
+  await showAgain(page);
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
+  const reads = viewReads(asks, code);
+  setLinked(true);
+  await showAgain(page);
+  await page.clock.runFor(1000);
+  expect(viewReads(asks, code), 'shown again within the half minute, nothing more is asked').toBe(reads);
+  await page.clock.runFor(30_000);
+  await showAgain(page);
+  await expect(page.locator('.tm-you-who')).toContainText('Linked to your account');
+});
+
+test('a report refused as not the player’s asks again who the viewer is', async ({ page }) => {
+  const { code, asks } = await mockEvent(page, roundOne(true), {
+    sanctioned: true,
+    user: { ...ME, popId: '1001' },
+    refuse: true
+  });
+  await page.goto(`/t/${code}`);
+  await page.getByRole('button', { name: 'Report result' }).click();
+  const reads = viewReads(asks, code);
+  await page.getByRole('button', { name: 'I won' }).click();
+  await expect(page.getByRole('alert')).toContainText('Someone else is already reporting');
+  await expect.poll(() => viewReads(asks, code)).toBe(reads + 1);
 });
 
 test('signed out, the question offers sign-in that comes back to the event', async ({ page }) => {

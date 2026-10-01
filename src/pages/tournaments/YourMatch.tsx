@@ -22,7 +22,7 @@ import { recordLabel, sideResult } from '../../../shared/tournament/standings';
 import { hasStarted, podOf, withSwiss } from '../../../shared/tournament/rounds';
 import type { Pod, Round, Match as TableMatch } from '../../../shared/tournament/types';
 import { isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
-import { errorText, identifyPlayer, type Provider, reportAsPlayer } from '../../lib/tournament/api';
+import { ApiError, errorText, identifyPlayer, type Provider, reportAsPlayer } from '../../lib/tournament/api';
 import {
   currentMatchOf,
   divisionHeading,
@@ -73,6 +73,8 @@ interface Props {
   providers: readonly Provider[];
   /** Ends the signed-in account's Claim on the player, then forgets it on this device. */
   onUnlink: () => Promise<void>;
+  /** Asks the server again who the viewer is: a report was refused, so who the page thinks they are may be out of date. */
+  onStale: () => void;
 }
 
 interface Found {
@@ -152,6 +154,10 @@ function createReport(props: Props & { me: string }, found: () => Found | null) 
       props.onView((await reportAsPlayer(props.view.code, claim, { result, match }, props.reportToken)).view);
     } catch (err) {
       setError(errorText(err));
+      // Not theirs to report (released, or linked elsewhere since), or the event moved on.
+      if (err instanceof ApiError && (err.status === 403 || err.status === 409)) {
+        props.onStale();
+      }
     } finally {
       setSending(null);
     }
