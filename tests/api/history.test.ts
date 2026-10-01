@@ -481,3 +481,26 @@ test('a profile is one wait on the database, and an address that asks too often 
   assert.equal((await profileAt(slug)).status, 429);
   profiles._resetRateLimitStore();
 });
+
+test('an event that becomes sanctioned ends its Claims, and its devices keep reporting', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { sanctioned: false, playerReporting: true });
+  await send(code, owner, { type: 'addPlayer', player: { firstName: 'Ash', lastName: 'Ketchum' } });
+  await send(code, owner, { type: 'addPlayer', player: { firstName: 'Gary', lastName: 'Oak' } });
+  const ash = await signIn('Ash');
+  const said = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  assert.deepEqual(await codesOf(ash), [code]);
+  await settle(code, owner, { sanctioned: true });
+  assert.deepEqual(await codesOf(ash), [], 'a Claim made by name links no one at a sanctioned event');
+  const ids = (await loadTournament(db(), code))?.tournament.players.map(player => player.id) ?? [];
+  const holders = db().raw.prepare('SELECT user_id FROM report_devices WHERE code = ?').all(code) as {
+    user_id: string | null;
+  }[];
+  assert.deepEqual(
+    holders.map(row => row.user_id),
+    [null]
+  );
+  const again = await playerSays(code, { popId: ids[0], device: 'ash-phone', reportToken: said.json.reportToken });
+  assert.equal(again.json.reporter, true, 'the phone still reports');
+});

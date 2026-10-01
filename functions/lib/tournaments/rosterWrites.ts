@@ -2,7 +2,7 @@
  * The writes a change to an event's player list makes beside the event's own
  * row: the history index (`pop_history`, see shared/tournament/history.ts),
  * and the reporter rows of players taken off the list, so a Claim never
- * outlives its player.
+ * outlives its player, nor an unsanctioned event's Claims its sanctioning.
  *
  * They go in the same batch as the event's write, and each checks first that
  * the event's row is still the one this write read. A D1 batch is one
@@ -13,6 +13,7 @@
  */
 
 import { chunks, type IndexedEvent, indexedIds, rosterDiff } from '../../../shared/tournament/history.js';
+import { isSanctioned } from '../../../shared/tournament/view.js';
 import type { D1Like, D1Statement } from '../types.js';
 
 /**
@@ -59,6 +60,19 @@ function deleteGuarded(
   );
 }
 
+/**
+ * Ends the event's Claims, when it becomes sanctioned: there an account is
+ * the player whose POP ID it holds, and a Claim made by name links no one.
+ * The devices that hold the rows keep reporting.
+ */
+function endClaims(db: D1Like, at: { code: string; guard: Guard }): D1Statement {
+  return db
+    .prepare(
+      `UPDATE report_devices SET user_id = NULL WHERE code = ?1 AND user_id IS NOT NULL AND EXISTS (${guardSql(at.guard)})`
+    )
+    .bind(at.code, at.guard.value);
+}
+
 /** What saving `after` over `before` writes beside the event's row; none when its players and sanction stand. */
 export function rosterWrites(
   db: D1Like,
@@ -71,7 +85,8 @@ export function rosterWrites(
   return [
     ...addIndexed(db, at.code, at.guard, add),
     ...deleteGuarded(db, { table: 'pop_history', column: 'pop_id' }, at, remove),
-    ...deleteGuarded(db, { table: 'report_devices', column: 'player_id' }, at, gone)
+    ...deleteGuarded(db, { table: 'report_devices', column: 'player_id' }, at, gone),
+    ...(isSanctioned(after) && !isSanctioned(before) ? [endClaims(db, at)] : [])
   ];
 }
 

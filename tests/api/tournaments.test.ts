@@ -1890,6 +1890,7 @@ const ACCOUNT_STATEMENTS = [
   'INSERT OR IGNORE INTO pop_history',
   'DELETE FROM pop_history WHERE code = ?1',
   'DELETE FROM report_devices WHERE code = ?1',
+  'UPDATE report_devices SET user_id = NULL',
   'DELETE FROM pop_history WHERE code = ? AND',
   'SELECT player_id FROM report_devices WHERE user_id = ?',
   'UPDATE OR IGNORE report_devices SET user_id',
