@@ -346,7 +346,7 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
   assert.ok(!text.includes('999') && !text.includes('900'), 'no Player IDs');
   assert.ok(!text.includes('02/27/1990'), 'no birth dates');
   assert.equal(publicView.tournament.players.length, 6);
-  assert.deepEqual(publicView.viewer, { role: null, me: null, signedIn: false });
+  assert.deepEqual(publicView.viewer, { role: null, me: null, via: null, signedIn: false });
 
   const unchanged = await event.onRequestGet({
     request: request(`/api/tournaments/${code}?since=${publicView.version}`),

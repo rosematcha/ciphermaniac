@@ -33,7 +33,7 @@ export async function onRequestGet(context: Context<'code'>): Promise<Response> 
   if (await unchanged(context)) {
     return noContent();
   }
-  const access = await open(context);
+  const access = await open(context, { claim: true });
   return access instanceof Response ? access : privateJson(viewOf(access));
 }
 

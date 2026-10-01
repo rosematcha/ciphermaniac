@@ -172,7 +172,10 @@ export interface TournamentView {
 
 export interface Viewer {
   role: 'owner' | 'staff' | null;
+  /** The viewer's public key in the event, when their account is one of its players. */
   me: string | null;
+  /** How the account is that player: its POP ID at a sanctioned event, or its Claim at an unsanctioned one. */
+  via: 'pop' | 'claim' | null;
   signedIn: boolean;
 }
 

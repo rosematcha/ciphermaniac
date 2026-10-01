@@ -18,13 +18,14 @@ import * as event from '../../functions/api/tournaments/[code]/index.ts';
 import * as manage from '../../functions/api/tournaments/[code]/manage.ts';
 import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
+import type { Viewer } from '../../shared/tournament/view.ts';
 import { apiCalls, type Handler } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
-import { sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { countingTrips, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 const { hit, signIn } = apiCalls(() => env);
-const { newSwiss, send, addPlayers, settle, playerSays } = eventCalls(hit);
+const { newSwiss, send, addPlayers, settle, playerSays, view } = eventCalls(hit);
 
 beforeEach(() => {
   env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true' };
@@ -250,4 +251,61 @@ test('undoing a Claim takes away the account’s reporting', async () => {
   await playerSays(code, { lastName: 'Ketchum', device: 'someone' });
   const blocked = await playerSays(code, { lastName: 'Ketchum', result: 'win', device: 'ash-laptop' }, { cookie: ash });
   assert.equal(blocked.status, 403, 'once someone else holds the player');
+});
+
+/** Who the event page says the viewer is. */
+const pick = ({ me, via, signedIn }: Viewer) => ({ me, via, signedIn });
+
+test('the event page knows which player a signed-in account is, and how', async () => {
+  const { owner, code } = await casualEvent();
+  const ash = await signIn('Ash');
+  assert.deepEqual(pick((await view(code, ash)).viewer), { me: null, via: null, signedIn: true });
+  const said = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  assert.deepEqual(pick((await view(code, ash)).viewer), { me: said.json.key, via: 'claim', signedIn: true });
+  assert.deepEqual(pick((await view(code)).viewer), { me: null, via: null, signedIn: false });
+  await hit(claim.onRequestDelete as Handler, '/claim', at(code), { method: 'DELETE', cookie: ash });
+  assert.deepEqual(pick((await view(code, ash)).viewer), { me: null, via: null, signedIn: true });
+  // A POP ID means nothing at an unsanctioned event, where IDs are the site's own.
+  const ids = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json.tournament
+    .players as { id: string }[];
+  raw().prepare("UPDATE users SET pop_id = ? WHERE name = 'Ash'").run(ids[0]!.id);
+  assert.equal((await view(code, ash)).viewer.via, null);
+});
+
+test('at a sanctioned event the account is the player whose POP ID it holds, without saying so', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  const player = await signIn('Player');
+  assert.equal((await view(code, player)).viewer.via, null);
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profileOf('901') });
+  const listed = (await view(code, player)).viewer;
+  assert.equal(listed.via, 'pop');
+  assert.equal(listed.me, (await playerSays(code, { popId: '901' })).json.key);
+  await send(code, owner, { type: 'removePlayer', id: '901' });
+  assert.deepEqual(pick((await view(code, player)).viewer), { me: null, via: null, signedIn: true }, 'off the list');
+});
+
+test('the event page reads the account’s Claim in the batch that opens the event; the console, commands and asks do not', async () => {
+  const { owner, code } = await casualEvent();
+  const ash = await signIn('Ash');
+  await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  const counting = countingTrips(env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>);
+  const seen: string[] = [];
+  env.TOURNAMENT_DB = {
+    ...counting.db,
+    prepare: sql => {
+      seen.push(sql);
+      return counting.db.prepare(sql);
+    }
+  };
+  const readsClaim = () => seen.some(sql => sql.startsWith('SELECT player_id FROM report_devices JOIN sessions'));
+  await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner });
+  await send(code, owner, { type: 'startClock', pod: 'masters' });
+  await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  assert.ok(!readsClaim(), 'the console, a command and a player’s ask do not');
+  const before = counting.trips();
+  assert.equal((await view(code, ash)).viewer.via, 'claim');
+  assert.ok(readsClaim());
+  assert.equal(counting.trips() - before, 1, 'one wait on the database');
 });

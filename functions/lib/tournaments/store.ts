@@ -119,21 +119,39 @@ export interface Opened {
   row: TournamentRow;
   user: User | null;
   role: Role | null;
+  /**
+   * The player the signed-in account is at this event through a reporter row
+   * it holds (its Claim, see reporters.ts), when the route asked; null when it
+   * holds none, or the route did not ask.
+   */
+  claimed: string | null;
+}
+
+/** What a route asks of `openTournament` beyond the event and who is asking. */
+export interface OpenOptions {
+  /** Read the asking account's Claim too, in the same batch. */
+  claim?: boolean;
 }
 
 /**
  * The event, the signed-in user and their role in it. Every tournament request
  * starts here, so for a signed-in asker the three reads go as one batch: one
- * wait on the database where there were three in a row.
+ * wait on the database where there were three in a row. A route that shows
+ * the asker who they are in the event asks for their Claim as a fourth.
  */
-export async function openTournament(db: D1Like, code: string, request: Request): Promise<Opened | null> {
+export async function openTournament(
+  db: D1Like,
+  code: string,
+  request: Request,
+  options: OpenOptions = {}
+): Promise<Opened | null> {
   const hash = await sessionHash(request);
   if (!hash) {
     const row = await loadTournament(db, code);
-    return row && { row, user: null, role: null };
+    return row && { row, user: null, role: null, claimed: null };
   }
   const now = Date.now();
-  const [event, account, staff] = await db.batch([
+  const [event, account, staff, claim] = await db.batch([
     tournamentQuery(db, code),
     sessionUserQuery(db, hash, now),
     db
@@ -141,7 +159,8 @@ export async function openTournament(db: D1Like, code: string, request: Request)
         'SELECT 1 AS yes FROM staff JOIN sessions ON sessions.user_id = staff.user_id ' +
           'WHERE staff.code = ? AND sessions.token_hash = ? AND sessions.expires_at > ?'
       )
-      .bind(code, hash, now)
+      .bind(code, hash, now),
+    ...(options.claim ? [claimQuery(db, code, hash, now)] : [])
   ]);
   const raw = firstRow<RawRow>(event);
   if (!raw) {
@@ -150,8 +169,18 @@ export async function openTournament(db: D1Like, code: string, request: Request)
   const row = fromRaw(raw);
   const found = firstRow<UserRow>(account);
   const user = found && userFromRow(found);
-  return { row, user, role: roleIn(row, user, firstRow(staff) !== null) };
+  const claimed = firstRow<{ player_id: string }>(claim)?.player_id ?? null;
+  return { row, user, role: roleIn(row, user, firstRow(staff) !== null), claimed };
 }
+
+/** The player the session's account holds a reporter row for at the event. */
+const claimQuery = (db: D1Like, code: string, hash: string, now: number) =>
+  db
+    .prepare(
+      'SELECT player_id FROM report_devices JOIN sessions ON sessions.user_id = report_devices.user_id ' +
+        'WHERE report_devices.code = ? AND sessions.token_hash = ? AND sessions.expires_at > ?'
+    )
+    .bind(code, hash, now);
 
 /** The organizer owns the event; anyone else signed in is staff once the invite link let them in. */
 function roleIn(row: TournamentRow, user: User | null, joined: boolean): Role | null {

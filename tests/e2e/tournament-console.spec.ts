@@ -317,7 +317,7 @@ test('the big screen marks who won each finished table', async ({ page }) => {
     divisions: publicDivisions(t, keys, 0),
     decks: {},
     settings: settingsOf({}),
-    viewer: { role: null, me: null, signedIn: false }
+    viewer: { role: null, me: null, via: null, signedIn: false }
   };
   await page.route('**/api/**', route => {
     const url = new URL(route.request().url());
