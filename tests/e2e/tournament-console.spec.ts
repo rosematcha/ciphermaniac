@@ -258,6 +258,29 @@ test('decks are named from the pairings, and a name the list lacks is taken as t
     .toEqual([{ playerId: t.pods[0]?.rounds[0]?.matches[0]?.p1, archetype: 'Homebrew Box' }]);
 });
 
+test('a deck list opened in the last row is drawn whole, not cut off at the table', async ({ page }) => {
+  // The tables clip their overflow, and the list used to hang inside them: in
+  // the bottom row it showed as a sliver under the field.
+  await mockConsole(page, event(8, 0, true), settingsOf({ deckVisibility: 'always' }));
+  await page.getByRole('button', { name: 'Enter decks' }).click();
+  await page.getByRole('combobox', { name: 'Deck' }).last().focus();
+  const list = page.getByRole('listbox');
+  await expect(list).toBeVisible();
+  const drawn = await list.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    const corners: [number, number][] = [
+      [r.left + 4, r.top + 4],
+      [r.right - 4, r.bottom - 4]
+    ];
+    return {
+      tall: r.height > 100,
+      onScreen: r.top >= 0 && r.bottom <= window.innerHeight,
+      uncovered: corners.every(([x, y]) => el.contains(document.elementFromPoint(x, y)))
+    };
+  });
+  expect(drawn).toEqual({ tall: true, onScreen: true, uncovered: true });
+});
+
 test('the big screen marks who won each finished table', async ({ page }) => {
   let t = event(8, 0, true);
   const first = t.pods[0]?.rounds[0]?.matches[0];
