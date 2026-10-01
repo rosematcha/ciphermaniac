@@ -576,7 +576,7 @@ function pairNext(code: string, cookie: string, base: string) {
 }
 
 test('a TOM event’s next round is paired over the site’s results and lands only with the file', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
   const code = await newTom(owner, tdf);
   const base = await revisionNow(code, owner);
@@ -609,7 +609,7 @@ test('a TOM event’s next round is paired over the site’s results and lands o
 });
 
 test('a TOM event’s first round and a Swiss event are not paired through the file', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
   const fresh = await newTom(owner, { ...tdf, pods: tdf.pods.map(pod => ({ ...pod, rounds: [] })) });
   assert.match((await pairNext(fresh, owner, await revisionNow(fresh, owner))).json.error, /Pair round 1 in TOM/);
