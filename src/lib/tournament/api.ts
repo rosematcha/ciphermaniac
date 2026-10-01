@@ -273,6 +273,9 @@ export const reportAsPlayer = (
     json('POST', { ...claim, ...report, reportToken, device: deviceId(), localTime: tomDateTime(new Date()) })
   );
 
+/** The signed-in account stops being its player at the event: its Claim, or the row its POP ID made. */
+export const leaveEvent = (code: string) => call<null>(`${base(code)}/claim`, { method: 'DELETE' });
+
 /** Staff let another device report for a player, as when they change phones. */
 export const releaseReporter = (code: string, playerId: string) =>
   call<null>(`${base(code)}/report?${new URLSearchParams({ player: playerId }).toString()}`, { method: 'DELETE' });

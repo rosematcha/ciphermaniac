@@ -23,6 +23,7 @@ import {
   fetchView,
   identifyPlayer,
   joinStaff,
+  leaveEvent,
   linkUrl,
   listTournaments,
   pairNextRound,
@@ -265,6 +266,12 @@ test('a public profile is read by its address, and turned on and off on the acco
     { url: '/api/me', method: 'PATCH', body: { publicProfile: true } },
     { url: '/api/me', method: 'PATCH', body: { publicProfile: false } }
   ]);
+});
+
+test('an account undoes its Claim at an event', async () => {
+  answer(204, null);
+  assert.equal(await leaveEvent('ABC'), null);
+  assert.deepEqual(sent, [{ url: '/api/tournaments/ABC/claim', method: 'DELETE', body: undefined }]);
 });
 
 test('account name uses the account endpoint', async () => {

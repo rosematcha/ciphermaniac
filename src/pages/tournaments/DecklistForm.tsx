@@ -10,9 +10,13 @@
  * remembers who sent the list and the token the server gave it, so coming
  * back shows the list to update or withdraw. The list is locked to that
  * device: another one sending the same details is refused, until staff
- * unlock it. A signed-in player's profile fills the form in.
+ * unlock it. A signed-in player's profile fills the form in, and once a
+ * list is in at a sanctioned event, the account can take its POP ID ("Save
+ * to my account"): sending a list never sets one, since a list may be sent
+ * for a friend.
  */
 
+import { A } from '@solidjs/router';
 import { createEffect, createResource, createSignal, For, Show } from 'solid-js';
 import { type DeckSection, parseDecklist } from '../../../shared/tournament/decklist';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
@@ -23,6 +27,7 @@ import {
   errorText,
   fetchMyDecklist,
   type Registration,
+  saveProfile,
   submitDecklist,
   withdrawDecklist
 } from '../../lib/tournament/api';
@@ -32,7 +37,7 @@ import { ConfirmAction } from './ConfirmAction';
 import { createDeckOptions } from './deckOptions';
 import { ErrorLine } from './Field';
 import { birthYearOf, emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
-import { session } from './session';
+import { session, setSession } from './session';
 
 interface FormProps {
   code: string;
@@ -200,6 +205,27 @@ function createDecklistForm(props: FormProps) {
     }
   }
 
+  // The account taking the list's POP ID, its name and birth year with it; refused when another account holds it.
+  const [accountSaved, setAccountSaved] = createSignal(false);
+  const [clash, setClash] = createSignal(false);
+  async function saveToAccount() {
+    setError(null);
+    setClash(false);
+    try {
+      const { user } = await saveProfile(profile());
+      setSession(prev => (prev ? { ...prev, user } : prev));
+      setAccountSaved(true);
+    } catch (err) {
+      fail(err);
+      setClash(err instanceof ApiError && err.body?.popIdTaken === true);
+    }
+  }
+  /** Offered to a signed-in account whose POP ID is not the sent list's yet. */
+  const offerSave = () => {
+    const user = latestValue(session)?.user;
+    return props.sanctioned && current() !== null && Boolean(user) && user?.popId !== profile().popId;
+  };
+
   /** Someone else on this device: forget who sent the list, and start again. */
   function notYou() {
     remember(props.code, null);
@@ -227,7 +253,11 @@ function createDecklistForm(props: FormProps) {
     setArchetype: (value: string) => edit(() => setArchetype(value)),
     send,
     withdraw,
-    notYou
+    notYou,
+    offerSave,
+    accountSaved,
+    clash,
+    saveToAccount
   };
 }
 
@@ -259,6 +289,16 @@ function YouRow(props: { form: DecklistState; sanctioned: boolean }) {
             <span class='muted tm-num'>
               {' '}
               · {f().profile().popId} · {birthYearOf(f().profile().birthDate)}
+            </span>
+          </Show>
+          <Show when={f().offerSave()}>
+            <button type='button' class='btn btn-secondary tm-small' onClick={() => void f().saveToAccount()}>
+              Save to my account
+            </button>
+          </Show>
+          <Show when={f().accountSaved() && !f().offerSave()}>
+            <span class='muted' role='status'>
+              Saved
             </span>
           </Show>
           <button type='button' class='btn btn-ghost tm-small' onClick={() => f().notYou()}>
@@ -400,7 +440,17 @@ export function DecklistForm(props: FormProps) {
       </Show>
       <ListRow form={form} />
       <Foot form={form} />
-      <ErrorLine message={form.error()} />
+      <Show when={form.clash()} fallback={<ErrorLine message={form.error()} />}>
+        <p class='tm-error' role='alert'>
+          {form.error()}
+          <span class='dot' aria-hidden='true'>
+            {' · '}
+          </span>
+          <A class='tm-link-inline' href={`/feedback?from=/t/${props.code}`}>
+            Feedback
+          </A>
+        </p>
+      </Show>
     </form>
   );
 }

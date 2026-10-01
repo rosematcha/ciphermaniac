@@ -54,7 +54,7 @@ export function TournamentsPage() {
           {slug => <ProfilePage slug={slug().toUpperCase()} />}
         </Match>
         <Match when={location.pathname.startsWith('/t/') && code()}>
-          <PublicEvent code={code()} signedIn={Boolean(latestValue(session)?.user)} />
+          <PublicEvent code={code()} session={latestValue(session)} />
         </Match>
         <Match when={location.pathname.startsWith('/host/') && code()}>
           <ManageEvent code={code()} />

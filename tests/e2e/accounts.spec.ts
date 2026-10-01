@@ -3,9 +3,10 @@
  * copies: History lists the account's events with the place and record read
  * from each event's copy, and a row opens to its rounds; a public profile
  * shows the same, read-only; Settings turns the profile on and points a POP
- * ID clash to feedback. The events are the hand-written mid-event .tdf
- * fixture and a finished event with a top cut, run through the same
- * public-view code the functions publish with.
+ * ID clash to feedback; and the event page knows a signed-in player by their
+ * POP ID or their Claim, which they can undo. The events are the
+ * hand-written mid-event .tdf fixture and Swiss events built with the shared
+ * commands, run through the same public-view code the functions publish with.
  */
 
 import { readFileSync } from 'node:fs';
@@ -13,6 +14,9 @@ import { expect, type Page, type Route, test } from '@playwright/test';
 
 import type { AccountRole } from '../../shared/accounts/roles';
 import type { HistoryEntry } from '../../shared/accounts/types';
+import { applyCommand, type Command } from '../../shared/tournament/commands';
+import { emptyTournament } from '../../shared/tournament/create';
+import { seededRandom } from '../../shared/tournament/random';
 import { parseTdf } from '../../shared/tournament/tdf';
 import type { Tournament } from '../../shared/tournament/types';
 import {
@@ -96,7 +100,7 @@ const ME = {
   id: 'acct-1',
   name: 'Mary',
   avatar: null,
-  popId: '7200001',
+  popId: '7200001' as string | null,
   firstName: 'Mary',
   lastName: 'Jackson',
   birthDate: '02/27/1995',
@@ -273,4 +277,186 @@ test('Settings shows an admin the way to the admin page, and the strip offers Hi
     'href',
     '/history'
   );
+});
+
+// ---------- The event page: a signed-in player ----------
+
+function run(tournament: Tournament, ...commands: Command[]): Tournament {
+  return commands.reduce((current, command) => {
+    const result = applyCommand(current, command, {
+      now: 0,
+      localTime: '10/10/2026 10:00:00',
+      season: 2027,
+      random: seededRandom(3)
+    });
+    if (!result.ok) {
+      throw new Error(`${command.type}: ${result.error}`);
+    }
+    return result.tournament;
+  }, tournament);
+}
+
+/** A Swiss event of four with round 1 paired, its players known by Player ID at a sanctioned one. */
+function roundOne(sanctioned: boolean): Tournament {
+  const names = [
+    ['Ash', 'Ketchum', '1001'],
+    ['Misty', 'Waterflower', '1002'],
+    ['Brock', 'Harrison', '1003'],
+    ['Gary', 'Oak', '1004']
+  ];
+  const adds = names.map(
+    ([firstName, lastName, id]) =>
+      ({ type: 'addPlayer', player: { firstName, lastName, ...(sanctioned ? { id } : {}) } }) as Command
+  );
+  return run(emptyTournament({ name: 'Friday League' }), ...adds, { type: 'pairRound', pod: 'masters' });
+}
+
+/** The event page's API for an event where players report: the view, who the viewer is, and the asks it gets. */
+async function mockEvent(page: Page, t: Tournament, options: { sanctioned: boolean; user: typeof ME | null }) {
+  const code = 'LEAGUE';
+  const keys = assignKeys(t, {});
+  const published: PublishedView = {
+    code,
+    mode: 'swiss',
+    version: 2,
+    updatedAt: 0,
+    tournament: publicTournament(t, keys, !options.sanctioned),
+    pending: [],
+    reports: [],
+    divisions: publicDivisions(t, keys, Date.UTC(2026, 9, 3)),
+    decks: {},
+    settings: { ...DEFAULT_SETTINGS, sanctioned: options.sanctioned, playerReporting: true }
+  };
+  const asks: { method: string; path: string; body: unknown }[] = [];
+  const ash = t.players.find(p => p.lastName === 'Ketchum')?.id ?? '';
+  let linked = options.sanctioned && Boolean(options.user);
+  await page.route(`**/tournaments/v1/${code}.json`, route =>
+    route.fulfill({ json: published, headers: { 'access-control-allow-origin': '*' } })
+  );
+  await page.route('**/api/**', route => {
+    const request = route.request();
+    const { pathname } = new URL(request.url());
+    asks.push({ method: request.method(), path: pathname, body: request.postDataJSON() as unknown });
+    if (pathname === '/api/me') {
+      return route.fulfill({ json: { user: options.user, providers: ['google', 'discord'] } });
+    }
+    if (pathname === `/api/tournaments/${code}/report`) {
+      linked = Boolean(options.user);
+      return route.fulfill({
+        json: { key: keys[ash], view: published, reporter: true, linked, reportToken: 'seat' }
+      });
+    }
+    if (pathname === `/api/tournaments/${code}/claim`) {
+      linked = false;
+      return route.fulfill({ status: 204 });
+    }
+    if (pathname === `/api/tournaments/${code}`) {
+      const via = options.sanctioned ? 'pop' : 'claim';
+      const viewer = { role: null, me: linked ? keys[ash] : null, via: linked ? via : null, signedIn: true };
+      return route.fulfill({ json: { ...published, viewer } });
+    }
+    return route.fulfill({ status: 404, json: { error: 'Not found' } });
+  });
+  return { code, asks };
+}
+
+test('signed in at an unsanctioned event, answering the question links the player, and Not you? undoes it @mobile', async ({
+  page
+}) => {
+  const { code, asks } = await mockEvent(page, roundOne(false), { sanctioned: false, user: { ...ME, popId: null } });
+  await page.goto(`/t/${code}`);
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in' })).toHaveCount(0);
+  await page.getByLabel('Last name').fill('Ketchum');
+  await page.getByRole('button', { name: 'Find my match' }).click();
+  const who = page.locator('.tm-you-who');
+  await expect(who).toContainText('Ash K.');
+  await expect(who).toContainText('Linked to your account');
+  await who.getByRole('button', { name: 'Not you?' }).click();
+  await page.getByRole('button', { name: 'Unlink' }).click();
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
+  expect(asks.filter(a => a.method === 'DELETE').map(a => a.path)).toEqual([`/api/tournaments/${code}/claim`]);
+});
+
+test('signed in at a sanctioned event as the player by POP ID, there is no question to answer', async ({ page }) => {
+  const { code, asks } = await mockEvent(page, roundOne(true), {
+    sanctioned: true,
+    user: { ...ME, popId: '1001' }
+  });
+  await page.goto(`/t/${code}`);
+  await expect(page.locator('.tm-you-who')).toContainText('Ash Ketchum');
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toHaveCount(0);
+  await expect(page.locator('.tm-you-who').getByRole('button', { name: 'Not you?' })).toHaveCount(0);
+  // The account takes the reporting seat for its player, once, by its POP ID.
+  await expect
+    .poll(() => asks.filter(a => a.path.endsWith('/report')).map(a => (a.body as { popId?: string }).popId))
+    .toEqual(['1001']);
+  await expect(page.getByRole('button', { name: 'Report result' })).toBeVisible();
+});
+
+test('signed out, the question offers sign-in that comes back to the event', async ({ page }) => {
+  const { code } = await mockEvent(page, roundOne(false), { sanctioned: false, user: null });
+  await page.goto(`/t/${code}`);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('link', { name: 'Sign in with Google' })).toHaveAttribute(
+    'href',
+    `/api/auth/login/google?next=%2Ft%2F${code}`
+  );
+});
+
+test('a signed-in player saves the POP ID their decklist went in under to their account', async ({ page }) => {
+  const code = 'DECKS1';
+  const t = run(emptyTournament({ name: 'Cup' }));
+  const keys = assignKeys(t, {});
+  const published: PublishedView = {
+    code,
+    mode: 'swiss',
+    version: 1,
+    updatedAt: 0,
+    tournament: publicTournament(t, keys),
+    pending: [],
+    reports: [],
+    divisions: {},
+    decks: {},
+    settings: { ...DEFAULT_SETTINGS, decklists: 'open' }
+  };
+  const profile = { popId: '1001', firstName: 'Mary', lastName: 'Jackson', birthDate: '02/27/1995' };
+  const mine = {
+    ...profile,
+    deck: '60 Grass Energy',
+    archetype: null,
+    submittedAt: 0,
+    problems: [],
+    registered: true,
+    fromList: true,
+    locked: true
+  };
+  const saved: unknown[] = [];
+  await page.addInitScript(
+    ([key, value]) => localStorage.setItem(key, value),
+    [`cm-decklist:${code}`, JSON.stringify({ profile, token: 'kept' })]
+  );
+  await page.route(`**/tournaments/v1/${code}.json`, route =>
+    route.fulfill({ json: published, headers: { 'access-control-allow-origin': '*' } })
+  );
+  await page.route('**/api/**', route => {
+    const request = route.request();
+    const { pathname } = new URL(request.url());
+    if (pathname === '/api/me' && request.method() === 'PUT') {
+      saved.push(request.postDataJSON());
+      return route.fulfill({ json: { user: { ...ME, ...profile } } });
+    }
+    if (pathname === '/api/me') {
+      return route.fulfill({ json: { user: { ...ME, popId: null }, providers: [] } });
+    }
+    if (pathname === `/api/tournaments/${code}/decklists`) {
+      return route.fulfill({ json: { mine } });
+    }
+    return route.fulfill({ json: { ...published, viewer: { role: null, me: null, via: null, signedIn: true } } });
+  });
+  await page.goto(`/t/${code}?tab=decklist`);
+  await page.getByRole('button', { name: 'Save to my account' }).click();
+  await expect(page.locator('.tm-known').getByRole('status')).toHaveText('Saved');
+  await expect(page.getByRole('button', { name: 'Save to my account' })).toHaveCount(0);
+  expect(saved).toEqual([profile]);
 });
