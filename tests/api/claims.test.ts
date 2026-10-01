@@ -607,3 +607,52 @@ test('a device that claims the player between the read and the write keeps them'
   assert.deepEqual([said.status, said.json.reporter, said.json.linked], [200, false, false]);
   assert.deepEqual(holders(code), { [idOf('Ketchum')]: null });
 });
+
+test('a list is not the account’s to withdraw once its Claim was undone since the request read it', async () => {
+  const { owner, code } = await casualEvent();
+  await settle(code, owner, { decklists: 'open' });
+  const ash = await signIn('Ash');
+  await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  await listCall(code, 'PUT', '', {
+    cookie: ash,
+    body: { deck: DECK, profile: { firstName: 'Ash', lastName: 'Ketchum' } }
+  });
+  ahead('DELETE FROM decklists', () => raw().prepare('DELETE FROM report_devices WHERE code = ?').run(code));
+  const withdrawn = await listCall(code, 'DELETE', 'firstName=Ash&lastName=Ketchum', { cookie: ash });
+  assert.equal(withdrawn.status, 409);
+  assert.equal(listAccount(code).length, 1);
+});
+
+test('a list is not the account’s to replace once it gave up the POP ID since the request read it', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklists: 'open' });
+  const player = await signIn('Player');
+  const lin = profileOf('6161');
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: lin });
+  await listCall(code, 'PUT', '', { cookie: player, body: { deck: DECK, profile: lin } });
+  ahead('INSERT INTO decklists', () => raw().exec("UPDATE users SET pop_id = '7171' WHERE name = 'Player'"));
+  const replaced = await listCall(code, 'PUT', '', {
+    cookie: player,
+    body: { deck: '60 Basic {G} Energy SVE 1', profile: lin }
+  });
+  assert.equal(replaced.status, 409);
+  assert.equal((raw().prepare('SELECT deck FROM decklists WHERE code = ?').get(code) as { deck: string }).deck, DECK);
+});
+
+test('a first list is the device’s alone when the account stopped being its player since the request read it', async () => {
+  const { owner, code } = await casualEvent();
+  await settle(code, owner, { decklists: 'open' });
+  const ash = await signIn('Ash');
+  await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  ahead('INSERT INTO decklists', () => raw().prepare('DELETE FROM report_devices WHERE code = ?').run(code));
+  const sent = await listCall(code, 'PUT', '', {
+    cookie: ash,
+    body: { deck: DECK, profile: { firstName: 'Ash', lastName: 'Ketchum' } }
+  });
+  assert.equal(sent.status, 200);
+  assert.deepEqual(
+    listAccount(code).map(row => row.account),
+    [null]
+  );
+});

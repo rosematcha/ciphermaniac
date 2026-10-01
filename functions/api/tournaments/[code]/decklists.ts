@@ -124,19 +124,38 @@ function detailsFrom(request: Request, sanctioned: boolean): Details | null {
  * The signed-in account, when it is the player the details name, so the list
  * may be the account's: by the POP ID it holds at a sanctioned event; at an
  * unsanctioned one, by its Claim here, on a player with the list's name. A
- * list sent before any Claim is a device's only.
+ * list sent before any Claim is a device's only. A write names the account
+ * by `sql` (bound to `values`), which reads as its ID only while it is still
+ * that player when the write lands: the POP ID or the Claim read may be gone.
  */
-function matchingAccount(access: Access, details: Details): string | null {
+interface ListAccount {
+  id: string;
+  sql: string;
+  values: unknown[];
+}
+
+function matchingAccount(access: Access, details: Details): ListAccount | null {
   const { user, row, claimed } = access;
   if (!user) {
     return null;
   }
   if (isSanctioned(row)) {
-    return user.popId === details.popId ? user.id : null;
+    return user.popId === details.popId
+      ? { id: user.id, sql: '(SELECT id FROM users WHERE id = ? AND pop_id = ?)', values: [user.id, user.popId] }
+      : null;
   }
   const player = row.tournament.players.find(candidate => candidate.id === claimed);
-  return player && fullNameKey(player) === fullNameKey(details) ? user.id : null;
+  return player && fullNameKey(player) === fullNameKey(details)
+    ? {
+        id: user.id,
+        sql: '(SELECT user_id FROM report_devices WHERE code = ? AND player_id = ? AND user_id = ?)',
+        values: [row.code, player.id, user.id]
+      }
+    : null;
 }
+
+/** No account: a write names none, and no list's account matches it. */
+const NO_ACCOUNT: ListAccount = { id: '', sql: 'NULL', values: [] };
 
 /** Whether the asker owns the list: the token their device holds, or the account that is its player. */
 async function owns(row: DecklistRow, token: string, account: string | null): Promise<boolean> {
@@ -154,7 +173,7 @@ async function owns(row: DecklistRow, token: string, account: string | null): Pr
 async function ownList(access: Access, request: Request): Promise<DecklistRow | null> {
   const details = detailsFrom(request, isSanctioned(access.row));
   const token = new URL(request.url).searchParams.get('token') ?? '';
-  const account = details && matchingAccount(access, details);
+  const account = details && matchingAccount(access, details)?.id;
   if (!details || !(token || account)) {
     return null;
   }
@@ -162,7 +181,7 @@ async function ownList(access: Access, request: Request): Promise<DecklistRow | 
     .prepare('SELECT * FROM decklists WHERE code = ? AND user_id = ?')
     .bind(access.row.code, identityKey(details, isSanctioned(access.row)))
     .first<DecklistRow>();
-  return row && (await owns(row, token, account)) ? row : null;
+  return row && (await owns(row, token, account ?? null)) ? row : null;
 }
 
 export async function onRequestGet(context: Context<'code'>): Promise<Response> {
@@ -245,18 +264,19 @@ async function store(access: Access, submission: Submission, tokenHash: string, 
   const { profile, deck } = submission;
   const key = identityKey(profile, isSanctioned(access.row));
   const held = typeof submission.held === 'string' && submission.held ? await sha256(submission.held) : '';
-  const account = matchingAccount(access, profile);
+  const account = matchingAccount(access, profile) ?? NO_ACCOUNT;
   const insert = access.db
     .prepare(
       'INSERT INTO decklists (code, user_id, pop_id, first_name, last_name, birth_date, deck, archetype, submitted_at, ' +
-        'owner_token, account) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (code, user_id) DO UPDATE SET ' +
+        `owner_token, account) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${account.sql}) ` +
+        'ON CONFLICT (code, user_id) DO UPDATE SET ' +
         'pop_id = excluded.pop_id, first_name = excluded.first_name, last_name = excluded.last_name, ' +
         'birth_date = excluded.birth_date, deck = excluded.deck, archetype = excluded.archetype, ' +
         'submitted_at = excluded.submitted_at, owner_token = excluded.owner_token, ' +
         'account = CASE WHEN excluded.account IS NOT NULL THEN excluded.account ' +
         'WHEN decklists.owner_token = ? THEN decklists.account ELSE NULL END ' +
         'WHERE decklists.owner_token IS NULL OR decklists.owner_token = ? ' +
-        'OR (decklists.account IS NOT NULL AND decklists.account = ?)'
+        'OR (decklists.account IS NOT NULL AND decklists.account = excluded.account)'
     )
     .bind(
       access.row.code,
@@ -269,10 +289,9 @@ async function store(access: Access, submission: Submission, tokenHash: string, 
       submission.archetype,
       now,
       tokenHash,
-      account,
+      ...account.values,
       held,
-      held,
-      account ?? ''
+      held
     );
   // The upsert changes no row when another device's or account's list is there, so its count is the answer.
   if (rowsChanged(await insert.run()) === 0) {
@@ -421,19 +440,29 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
   }
   const key = identityKey(details, isSanctioned(access.row));
   const held = new URL(context.request.url).searchParams.get('token') ?? '';
-  const { db, row } = access;
-  // The owner is checked in the delete itself, so a list replaced meanwhile is not the one withdrawn.
-  const deleted = await db
-    .prepare(
-      'DELETE FROM decklists WHERE code = ? AND user_id = ? ' +
-        'AND (owner_token IS NULL OR owner_token = ? OR (account IS NOT NULL AND account = ?))'
-    )
-    .bind(row.code, key, held ? await sha256(held) : '', matchingAccount(access, details) ?? '')
-    .run();
-  if (rowsChanged(deleted) === 0 && (await listExists(db, row.code, key))) {
+  if (!(await withdraw(access, details, held)) && (await listExists(access.db, access.row.code, key))) {
     return jsonError(LOCKED, 409);
   }
   return noContent();
+}
+
+/**
+ * Withdraws the list under the details, when the token or the account owns
+ * it. The owner is checked in the delete itself, so a list replaced
+ * meanwhile is not the one withdrawn, nor one whose account stopped being
+ * its player. Whether a list went.
+ */
+async function withdraw(access: Access, details: Details, held: string): Promise<boolean> {
+  const { db, row } = access;
+  const account = matchingAccount(access, details) ?? NO_ACCOUNT;
+  const deleted = await db
+    .prepare(
+      'DELETE FROM decklists WHERE code = ? AND user_id = ? ' +
+        `AND (owner_token IS NULL OR owner_token = ? OR account = ${account.sql})`
+    )
+    .bind(row.code, identityKey(details, isSanctioned(row)), held ? await sha256(held) : '', ...account.values)
+    .run();
+  return rowsChanged(deleted) === 1;
 }
 
 async function listExists(db: Access['db'], code: string, key: string): Promise<boolean> {
