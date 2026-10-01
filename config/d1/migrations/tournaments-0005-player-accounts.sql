@@ -1,9 +1,9 @@
 -- Adds player accounts (see config/d1/tournaments.sql) to a database made
 -- before them: account roles and the public profile's address, the account a
 -- reporter row or a decklist belongs to, the history index, and organizer
--- applications. Holds each POP ID to one account, clearing duplicates first,
--- and makes Reese the first admin. Run once, after 0004; SQLite refuses to add
--- a column twice.
+-- applications with the proofs uploaded for them. Holds each POP ID to one
+-- account, clearing duplicates first, and makes Reese the first admin. Run
+-- once, after 0004; SQLite refuses to add a column twice.
 
 ALTER TABLE users ADD COLUMN role TEXT;
 ALTER TABLE users ADD COLUMN role_at INTEGER;
@@ -29,7 +29,6 @@ CREATE TABLE IF NOT EXISTS applications (
   proof_key TEXT,
   proof_type TEXT,
   proof_size INTEGER,
-  proof_etag TEXT,
   created_at INTEGER NOT NULL,
   decided_at INTEGER,
   decided_by TEXT,
@@ -38,6 +37,13 @@ CREATE TABLE IF NOT EXISTS applications (
 CREATE INDEX IF NOT EXISTS applications_by_user ON applications (user_id, created_at);
 CREATE INDEX IF NOT EXISTS applications_by_status ON applications (status, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS applications_one_pending ON applications (user_id) WHERE status = 'pending';
+
+CREATE TABLE IF NOT EXISTS proof_uploads (
+  user_id TEXT PRIMARY KEY,
+  key TEXT NOT NULL,
+  type TEXT NOT NULL,
+  size INTEGER NOT NULL
+) WITHOUT ROWID;
 
 CREATE INDEX IF NOT EXISTS users_by_role ON users (role) WHERE role IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS users_by_public_slug ON users (public_slug) WHERE public_slug IS NOT NULL;

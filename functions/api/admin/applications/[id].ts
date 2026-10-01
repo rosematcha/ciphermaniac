@@ -41,9 +41,10 @@ function readDecision(body: Record<string, unknown> | null): Decision | string {
 }
 
 /**
- * The decision's writes, then the Application read back. Each write holds
- * only while the Application is still pending, inside the one transaction a
- * batch is, so two Admins deciding at once cannot both land.
+ * The key of the proof the Application was sent with, the decision's writes,
+ * then the Application read back. Each write holds only while the
+ * Application is still pending, inside the one transaction a batch is, so
+ * two Admins deciding at once cannot both land.
  */
 function decisionWrites(db: D1Like, id: string, decision: Decision, adminId: string): D1Statement[] {
   const now = Date.now();
@@ -61,7 +62,8 @@ function decisionWrites(db: D1Like, id: string, decision: Decision, adminId: str
     )
     .bind(id, decision.approve ? 'approved' : 'rejected', now, adminId, decision.note);
   const read = db.prepare(`${ADMIN_APPLICATIONS} WHERE a.id = ?`).bind(id);
-  return decision.approve ? [approve, decide, read] : [decide, read];
+  const proof = db.prepare("SELECT proof_key FROM applications WHERE id = ? AND status = 'pending'").bind(id);
+  return decision.approve ? [proof, approve, decide, read] : [proof, decide, read];
 }
 
 export async function onRequestPost(context: Context<'id'>): Promise<Response> {
@@ -81,6 +83,6 @@ export async function onRequestPost(context: Context<'id'>): Promise<Response> {
   if (rowsChanged(results.at(-2)) === 0) {
     return jsonError('Already decided', 409);
   }
-  await dropProof(context, row.user_id);
+  await dropProof(context, firstRow<{ proof_key: string | null }>(results[0])?.proof_key);
   return privateJson({ application: adminApplication(row) });
 }

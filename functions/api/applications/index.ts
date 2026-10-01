@@ -1,7 +1,7 @@
 /**
  * POST /api/applications — sends the signed-in account's Application to run
- * events: { explanation, proof }, where `proof` says to send the file in the
- * account's proof slot (PUT /api/applications/proof uploads it). It needs a
+ * events: { explanation, proof }, where `proof` says to send the proof the
+ * account has uploaded (PUT /api/applications/proof uploads it). It needs a
  * proof, an explanation, or both. The account's POP ID and name go with it
  * as they stand now. Answers 201 { application }. One Application is
  * pending at a time; a rejected account may send another at once.
@@ -11,19 +11,20 @@ import { EXPLANATION_MAX } from '../../../shared/accounts/applications.js';
 import type { MyApplication } from '../../../shared/accounts/types.js';
 import {
   type Applicant,
+  APPLICATION_COLUMNS,
+  type ApplicationRow,
   applyRefusal,
   dropProof,
-  type HeldProof,
-  openApplicant,
-  proofIn,
-  proofKey
+  heldUpload,
+  myApplication,
+  openApplicant
 } from '../../lib/accounts/applications.js';
 import { readJsonObject } from '../../lib/api/body.js';
 import { createRateLimiter } from '../../lib/api/rateLimiter.js';
 import { jsonError } from '../../lib/api/responses.js';
 import type { Context } from '../../lib/auth/env.js';
 import { randomToken } from '../../lib/auth/session.js';
-import { rowsChanged } from '../../lib/d1.js';
+import { firstRow } from '../../lib/d1.js';
 import { privateJson } from '../../lib/tournaments/access.js';
 
 const rateLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, maxRequests: 10 });
@@ -49,46 +50,49 @@ function readAsked(body: Record<string, unknown> | null): Asked | string {
 }
 
 /**
- * Stores the Application, answering it as sent; null when the account no
- * longer stands as it was read (its role, POP ID or profile changed since),
- * or another Application is pending, which the unique index on pending ones
- * decides. The POP ID and name are taken from the account's row as the
- * Application lands, guarded on the values the eligibility check read.
+ * Stores the Application, answering it as stored and the key of an upload
+ * it left out; null when the account no longer stands as it was read (its
+ * role or profile changed since, or the upload asked for is gone), or
+ * another Application is pending, which the unique index on pending ones
+ * decides. The POP ID and name are the account row's as the Application
+ * lands, guarded on the values the eligibility check read, and its proof is
+ * the upload the account holds then, which becomes the Application's.
  */
-async function send(applicant: Applicant, asked: Asked, slot: HeldProof | null): Promise<MyApplication | null> {
-  const { db, user } = applicant;
-  const application: MyApplication = {
-    id: randomToken(12),
-    status: 'pending',
-    explanation: asked.explanation,
-    proofType: slot?.type ?? null,
-    createdAt: Date.now(),
-    decidedAt: null,
-    note: null
-  };
-  const stored = await db
-    .prepare(
-      'INSERT OR IGNORE INTO applications (id, user_id, status, pop_id, first_name, last_name, explanation, ' +
-        "proof_key, proof_type, proof_size, proof_etag, created_at) SELECT ?1, id, 'pending', pop_id, first_name, " +
-        "last_name, ?3, ?4, ?5, ?6, ?7, ?8 FROM users WHERE id = ?2 AND (role IS NULL OR role = 'revoked') " +
-        'AND pop_id IS ?9 AND first_name IS ?10 AND last_name IS ?11 AND birth_date IS ?12'
-    )
-    .bind(
-      application.id,
-      user.id,
-      application.explanation,
-      slot ? proofKey(user.id) : null,
-      application.proofType,
-      slot?.size ?? null,
-      slot?.etag ?? null,
-      application.createdAt,
-      user.popId,
-      user.firstName,
-      user.lastName,
-      user.birthDate
-    )
-    .run();
-  return rowsChanged(stored) === 1 ? application : null;
+async function send(
+  { db, user }: Applicant,
+  asked: Asked
+): Promise<{ application: MyApplication; leftOut: string | null } | null> {
+  const id = randomToken(12);
+  const [held, , , stored] = await db.batch([
+    heldUpload(db, user.id),
+    db
+      .prepare(
+        'INSERT OR IGNORE INTO applications (id, user_id, status, pop_id, first_name, last_name, explanation, ' +
+          "proof_key, proof_type, proof_size, created_at) SELECT ?1, u.id, 'pending', u.pop_id, u.first_name, " +
+          'u.last_name, ?3, p.key, p.type, p.size, ?4 FROM users u LEFT JOIN proof_uploads p ON p.user_id = u.id ' +
+          "AND ?5 WHERE u.id = ?2 AND (u.role IS NULL OR u.role = 'revoked') AND u.pop_id IS ?6 " +
+          'AND u.first_name IS ?7 AND u.last_name IS ?8 AND u.birth_date IS ?9 AND (?5 = 0 OR p.key IS NOT NULL)'
+      )
+      .bind(
+        id,
+        user.id,
+        asked.explanation,
+        Date.now(),
+        asked.proof ? 1 : 0,
+        user.popId,
+        user.firstName,
+        user.lastName,
+        user.birthDate
+      ),
+    // Sent, the upload is the Application's, or left out of it.
+    db
+      .prepare('DELETE FROM proof_uploads WHERE EXISTS (SELECT 1 FROM applications WHERE id = ?1) AND user_id = ?2')
+      .bind(id, user.id),
+    db.prepare(`SELECT ${APPLICATION_COLUMNS} FROM applications a WHERE a.id = ?`).bind(id)
+  ]);
+  const row = firstRow<ApplicationRow>(stored);
+  const heldKey = firstRow<{ key: string }>(held)?.key ?? null;
+  return row && { application: myApplication(row), leftOut: asked.proof ? null : heldKey };
 }
 
 /**
@@ -104,16 +108,13 @@ async function attempt(context: Context, applicant: Applicant, asked: Asked): Pr
   if (refusal) {
     return refusal;
   }
-  const slot = asked.proof ? await proofIn(context.env.PROOFS, applicant.user.id) : null;
-  if (asked.proof && !slot) {
+  if (asked.proof && !applicant.upload) {
     return jsonError('Upload the proof first', 400);
   }
-  const application = await send(applicant, asked, slot);
-  if (application && !slot) {
-    // Sent without proof: a file uploaded and left out goes.
-    await dropProof(context, applicant.user.id);
-  }
-  return application && privateJson({ application }, 201);
+  const sent = await send(applicant, asked);
+  // Sent without proof: a file uploaded and left out goes.
+  await dropProof(context, sent?.leftOut);
+  return sent && privateJson({ application: sent.application }, 201);
 }
 
 export async function onRequestPost(context: Context): Promise<Response> {
