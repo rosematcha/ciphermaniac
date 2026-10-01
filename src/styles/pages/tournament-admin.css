@@ -1,0 +1,256 @@
+/* The admin page (/admin): the Applications queue, the Organizers table and
+   the POP ID lookup. Desktop first, where the queue is worked; a phone
+   restacks each to one column. */
+
+/* ---------- An Application, or an account found ----------
+   Who at left (the name, then label and value pairs), what at right (the
+   explanation, the proof, the decision); rows part on the hairline. */
+:is(.tm-app, .tm-found) {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-5);
+  padding: 16px 14px;
+  border-top: 1px solid var(--rule);
+}
+.tm-box > :is(.tm-app, .tm-found):first-of-type {
+  border-top: 0;
+}
+.tm-box-bar + :is(.tm-app, .tm-found) {
+  border-top: 0;
+}
+:is(.tm-app, .tm-found) h3 {
+  margin: 0 0 8px;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.tm-app-facts {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font-size: var(--text-base);
+}
+.tm-app-facts > div {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+}
+.tm-app-facts dt {
+  color: var(--muted);
+}
+.tm-app-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.tm-app-what {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 12px;
+  min-width: 0;
+}
+.tm-app-what p {
+  margin: 0;
+}
+/* The applicant's own words, kept as they wrote them, at reading length. */
+.tm-app-explanation {
+  max-width: 70ch;
+  font-size: var(--text-body);
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.tm-app-note {
+  max-width: 70ch;
+  font-size: var(--text-base);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.tm-app-decide {
+  display: grid;
+  gap: 6px;
+  justify-self: stretch;
+  max-width: 640px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+:is(.tm-app-decide-row, .tm-lookup-row, .tm-move-row) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+:is(.tm-app-decide-row, .tm-lookup-row, .tm-move-row) .tm-input {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+:is(.tm-app-decide, .tm-move) .tm-error {
+  margin: 0;
+}
+/* The proof as large as the sheet holds it, whole. */
+.tm-proof-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(80vh - 140px);
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+/* ---------- Organizers ---------- */
+.tm-people td {
+  height: 48px;
+}
+.tm-person-name {
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+.tm-people tr.is-revoked .tm-person-name {
+  color: var(--muted);
+}
+.tm-person-acts {
+  text-align: right;
+}
+.tm-person-acts .tm-row-actions {
+  justify-content: flex-end;
+}
+.tm-person-acts .tm-error {
+  margin: 0;
+}
+.tm-admin .tm-phone-only {
+  display: none;
+}
+
+/* ---------- POP IDs ---------- */
+.tm-lookup {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+.tm-lookup-row {
+  max-width: 560px;
+}
+.tm-found-acts {
+  display: grid;
+  align-content: start;
+  justify-items: end;
+  gap: 6px;
+}
+/* A question asked in place wraps under its account rather than running off the box. */
+.tm-found-acts > .tm-row-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.tm-found .tm-confirm-label {
+  white-space: normal;
+}
+.tm-move {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 520px);
+}
+.tm-move-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tm-move-row .tm-confirm {
+  flex-wrap: wrap;
+}
+.tm-move-row .tm-confirm-label {
+  white-space: normal;
+}
+.tm-admin .tm-mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: var(--text-sm);
+}
+.tm-admin .tm-select-all {
+  user-select: all;
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 720px) {
+  /* A role holder restacks: the name and its action, the email under it,
+     then POP ID, role, since and events on one muted line. */
+  .tm-people,
+  .tm-people tbody,
+  .tm-people tr,
+  .tm-people td {
+    display: block;
+  }
+  .tm-people thead {
+    display: none;
+  }
+  .tm-people tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 14px;
+    padding: 10px 14px;
+  }
+  .table-wrap .tm-people td {
+    height: auto;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+    white-space: normal;
+  }
+  .tm-people .tm-person-name {
+    flex: 1 1 0;
+    order: 0;
+  }
+  .tm-people .tm-person-acts {
+    order: 1;
+    width: auto;
+  }
+  .tm-people .tm-person-email {
+    flex-basis: 100%;
+    order: 2;
+    overflow-wrap: anywhere;
+  }
+  .tm-people :is(.tm-person-pop, .tm-person-role, .tm-person-since, .tm-person-events) {
+    order: 3;
+    font-size: var(--text-sm);
+    color: var(--muted);
+  }
+  .tm-people td:empty {
+    display: none;
+  }
+  /* Asked in place, the question takes a line of its own under the row. */
+  .tm-people tr:has(.tm-confirm) .tm-person-acts {
+    flex-basis: 100%;
+    order: 4;
+    padding-top: 6px;
+  }
+  .tm-people .tm-person-acts .tm-row-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .tm-admin .tm-phone-only {
+    display: inline;
+  }
+  .tm-admin .tm-wide-only {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  :is(.tm-app, .tm-found) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tm-found-acts {
+    justify-items: start;
+  }
+  .tm-found-acts > .tm-row-actions {
+    justify-content: flex-start;
+  }
+  /* Under 16px, iOS zooms the page when a field takes focus. */
+  .tm-admin .tm-input.tm-mono {
+    font-size: 16px;
+  }
+  .tm-app-decide-row .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .tm-app-decide-row .tm-input {
+    flex-basis: 100%;
+  }
+}
