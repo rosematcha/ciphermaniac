@@ -19,7 +19,7 @@ import { parseCardUid } from '../../shared/data/cardIdentity';
 import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '../components/Skeleton';
 import { CardImage } from '../components/CardImage';
-import SPRITE_SLUGS from '../data/pokemon-sprites.json';
+import SPRITE_SLUGS from '../../shared/pokemon/sprites.json';
 import {
   fetchFormatArchetypes,
   getArchetypeIconMap,

@@ -38,6 +38,7 @@ import {
   reportableArchetypes
 } from '../../../shared/live/reports.js';
 import { isEventLive, LIVE_SCHEDULE_KEY } from '../../../shared/live/schedule.js';
+import { SPECIES_LABELS } from '../../../shared/pokemon/species.js';
 import type { LiveSchedule } from '../../../shared/live/types.js';
 import { ARCHETYPE_INDEX_KEY } from '../../lib/api/archetypeIndexKey.js';
 import { readJsonBody } from '../../lib/api/body.js';
@@ -119,7 +120,11 @@ async function knownArchetypes(bucket: Bucket): Promise<string[]> {
     readJson<{ label: string }[]>(bucket, ARCHETYPE_INDEX_KEY),
     readJson<Record<string, unknown>>(bucket, ARCHETYPE_ICONS_KEY)
   ]);
-  return reportableArchetypes(Array.isArray(index) ? index.map(entry => entry.label) : [], Object.keys(icons ?? {}));
+  return reportableArchetypes(
+    Array.isArray(index) ? index.map(entry => entry.label) : [],
+    Object.keys(icons ?? {}),
+    SPECIES_LABELS
+  );
 }
 
 /** The seats whose published archetype the settled counts would change. */

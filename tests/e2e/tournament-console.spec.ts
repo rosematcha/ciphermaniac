@@ -281,6 +281,22 @@ test('a deck list opened in the last row is drawn whole, not cut off at the tabl
   expect(drawn).toEqual({ tall: true, onScreen: true, uncovered: true });
 });
 
+test('a Pokémon no archetype list names is offered with its sprite', async ({ page }) => {
+  const t = event(8, 0, true);
+  const sent = await mockConsole(page, t, settingsOf({ deckVisibility: 'always' }));
+  await page.getByRole('button', { name: 'Enter decks' }).click();
+  const picker = page.getByRole('combobox', { name: 'Deck' }).first();
+  await picker.fill('Tyrantrum');
+  const option = page.getByRole('option', { name: /Tyrantrum/ });
+  await expect(option).toHaveCount(1);
+  await expect(option).not.toContainText('Custom');
+  await expect(option.locator('img[src$="/tyrantrum.png"]')).toHaveCount(1);
+  await picker.press('Enter');
+  await expect
+    .poll(() => sent.decks)
+    .toEqual([{ playerId: t.pods[0]?.rounds[0]?.matches[0]?.p1, archetype: 'Tyrantrum' }]);
+});
+
 test('the big screen marks who won each finished table', async ({ page }) => {
   let t = event(8, 0, true);
   const first = t.pods[0]?.rounds[0]?.matches[0];

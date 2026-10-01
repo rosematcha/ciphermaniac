@@ -1,7 +1,7 @@
 import { createSignal, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { Combo, splitMatch } from '../../components/Combo';
-import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
+import { deckIcons } from '../../lib/deckIcons';
 
 /** An archetype a report can name, by label, with the index's own icons when it has an entry there. */
 export interface ReportedDeck {
@@ -18,10 +18,6 @@ export interface ReportedDeck {
   played?: boolean;
   /** Typed in by hand: a name the list did not have. */
   custom?: boolean;
-}
-
-export function deckIcons(deck: ReportedDeck): string[] {
-  return resolveArchetypeIcons(deck, getArchetypeIconMap());
 }
 
 /** A reported archetype the way the rest of the site writes one: sprites, then the name. */

@@ -86,7 +86,7 @@ async function collectSlugs(): Promise<Set<string>> {
       }
     }
   }
-  const pickerSprites = JSON.parse(await readFile('src/data/pokemon-sprites.json', 'utf-8')) as string[];
+  const pickerSprites = JSON.parse(await readFile('shared/pokemon/sprites.json', 'utf-8')) as string[];
   for (const slug of pickerSprites) {
     slugs.add(slug);
   }

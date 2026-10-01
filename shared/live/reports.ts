@@ -3,8 +3,9 @@
  * event ends, so viewers say what a player is on; an archetype is shown for a
  * seat once more than half of that seat's reports agree on it, which a single
  * report does. Archetypes are picked from the site's own lists, never typed:
- * the online meta's index, and the archetype icon map, which is far longer and
- * names the decks a regional sees that the online meta does not.
+ * the online meta's index, the archetype icon map, which is far longer and
+ * names the decks a regional sees that the online meta does not, and every
+ * Pokémon, for the deck neither has seen.
  * @module shared/live/reports
  */
 
@@ -105,10 +106,17 @@ export function leadingArchetype(tallies: readonly ArchetypeTally[]): string | n
   return tallies.find(tally => tally.votes * 2 > total)?.archetype ?? null;
 }
 
-/** Labels a report may name: the online index's, then the rest of the icon map's, without repeats. */
-export function reportableArchetypes(indexLabels: readonly string[], iconMapLabels: readonly string[]): string[] {
+/**
+ * Labels a report may name: the online index's, then the rest of the icon
+ * map's, then every other Pokémon's (`shared/pokemon/species`), without repeats.
+ */
+export function reportableArchetypes(
+  indexLabels: readonly string[],
+  iconMapLabels: readonly string[],
+  speciesLabels: readonly string[]
+): string[] {
   const seen = new Set<string>();
-  return [...indexLabels, ...[...iconMapLabels].sort((a, b) => a.localeCompare(b))].filter(label => {
+  return [...indexLabels, ...[...iconMapLabels].sort((a, b) => a.localeCompare(b)), ...speciesLabels].filter(label => {
     const key = label.toLowerCase();
     return !seen.has(key) && Boolean(seen.add(key));
   });

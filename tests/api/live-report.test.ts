@@ -207,6 +207,11 @@ test('an archetype named only by the icon map is reportable, apostrophe and all'
   assert.equal((await shown(response)).archetype, "Ethan's Typhlosion");
 });
 
+test('a deck named for a Pokémon neither list has is reportable', async () => {
+  const response = await post(report('Tyrantrum', 1));
+  assert.equal((await shown(response)).archetype, 'Tyrantrum');
+});
+
 test('an archetype outside the index, an event that is not on, and a malformed body are refused', async () => {
   assert.equal((await post(report('Made Up Deck', 1))).status, 400);
   assert.equal((await post({ ...report('Dragapult', 1), slug: 'elsewhere-2027' })).status, 404);

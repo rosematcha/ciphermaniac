@@ -1,5 +1,5 @@
 import { createMemo, createSignal, For, Show } from 'solid-js';
-import SPRITE_SLUGS from '../data/pokemon-sprites.json';
+import SPRITE_SLUGS from '../../shared/pokemon/sprites.json';
 import { spriteUrl } from '../lib/labelmaker/renderLabel';
 
 const SLUGS = SPRITE_SLUGS as string[];
