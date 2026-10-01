@@ -13,8 +13,11 @@ export interface D1Statement {
 
 export interface D1Like {
   prepare: (sql: string) => D1Statement;
-  /** Runs the statements in order, in one transaction and one round trip. */
-  batch: (statements: D1Statement[]) => Promise<{ results?: unknown[] }[]>;
+  /**
+   * Runs the statements in order, in one transaction and one round trip. Each
+   * result carries the rows a statement read and how many rows it changed.
+   */
+  batch: (statements: D1Statement[]) => Promise<{ results?: unknown[]; meta?: { changes?: number } }[]>;
 }
 
 /** What R2 says of an object it holds: enough to write over exactly that object. */
