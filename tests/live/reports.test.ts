@@ -99,11 +99,9 @@ test('an archetype leads with more than half the reports: one report does, a spl
   assert.equal(leadingArchetype([]), null);
 });
 
-test('the picker offers the online index first, then the rest of the icon map by name, once each', () => {
-  assert.deepEqual(reportableArchetypes(['Slowking', 'Dragapult'], ['Ceruledge', 'dragapult', 'Alakazam']), [
-    'Slowking',
-    'Dragapult',
-    'Alakazam',
-    'Ceruledge'
-  ]);
+test('the picker offers the online index first, then the rest of the icon map by name, then every other Pokémon, once each', () => {
+  assert.deepEqual(
+    reportableArchetypes(['Slowking', 'Dragapult'], ['Ceruledge', 'dragapult', 'Alakazam'], ['Alakazam', 'Tyrantrum']),
+    ['Slowking', 'Dragapult', 'Alakazam', 'Ceruledge', 'Tyrantrum']
+  );
 });

@@ -11,7 +11,8 @@ import {
 } from '../../../shared/live/view';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { useLiveFollows } from '../../lib/liveFollows';
-import { deckIcons, type ReportedDeck } from './LiveDeck';
+import { deckIcons } from '../../lib/deckIcons';
+import type { ReportedDeck } from './LiveDeck';
 import { seatHref, seatName } from './links';
 import { OutcomeMark } from './LiveRun';
 

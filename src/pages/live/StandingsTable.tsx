@@ -2,7 +2,7 @@ import { A } from '@solidjs/router';
 import { For, Show } from 'solid-js';
 import { matchStatus, recordLabel, type Standing } from '../../../shared/live/view';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
-import { deckIcons } from './LiveDeck';
+import { deckIcons } from '../../lib/deckIcons';
 import { seatHref, seatName } from './links';
 import { FollowButton, type SeatPresenter } from './PairingsTable';
 import { STATUS_LABEL } from './LiveRun';

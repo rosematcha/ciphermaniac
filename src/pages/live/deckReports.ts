@@ -14,6 +14,7 @@ import type { LiveIndex } from '../../../shared/live/types';
 import { seatKey, type SeatRef, type SeatReport } from '../../../shared/live/view';
 import { fetchArchetypeLabels, fetchOnlineArchetypes } from '../../lib/data';
 import { type DeckReportAnswer, fetchLiveReports, submitDeckReports } from '../../lib/data/liveReports';
+import { loadSpecies } from '../../lib/deckIcons';
 import { liveVoterId } from '../../lib/liveFollows';
 import { createPolled, liveDelay } from '../../lib/livePoll';
 import { reportKey, shownDeck, useMyReports } from '../../lib/liveReports';
@@ -50,6 +51,7 @@ export function useDeckReports(slug: () => string, index: () => LiveIndex | null
   const reports = createPolled(slug, fetchLiveReports, () => liveDelay(index()));
   const [archetypes] = createResource(fetchOnlineArchetypes);
   const [iconLabels] = createResource(fetchArchetypeLabels);
+  const [species] = createResource(loadSpecies);
 
   // Most played first; the index's own icons beat the icon map's for a label both carry.
   const indexed = createMemo(() =>
@@ -62,7 +64,12 @@ export function useDeckReports(slug: () => string, index: () => LiveIndex | null
   const decks = createMemo<ReportedDeck[]>(() => {
     const byLabel = new Map(indexed().map(entry => [entry.label, entry]));
     const here = new Set(Object.values(latestValue(reports)?.decks ?? {}));
-    return reportableArchetypes([...byLabel.keys()], resolved(iconLabels) ?? []).map(label => ({
+    const labels = reportableArchetypes(
+      [...byLabel.keys()],
+      resolved(iconLabels) ?? [],
+      resolved(species)?.SPECIES_LABELS ?? []
+    );
+    return labels.map(label => ({
       label,
       icons: byLabel.get(label)?.icons,
       percent: byLabel.get(label)?.percent,

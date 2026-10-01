@@ -1,6 +1,7 @@
 import { createSignal, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
-import { getArchetypeIconMap, normalizeArchetypeKey, resolveArchetypeIcons } from '../../lib/data';
+import { normalizeArchetypeKey } from '../../lib/data';
+import { deckIcons } from '../../lib/deckIcons';
 
 /**
  * Sprites for archetypes the site's own icon map does not name, as a past
@@ -21,8 +22,7 @@ export function learnDeckIcons(decks: readonly { label: string; icons?: string[]
 
 /** A player's archetype the way the site writes one: its sprites, the name kept for assistive tech. */
 export function DeckIcons(props: { label: string | undefined; size?: number }) {
-  const slugs = (label: string) =>
-    learned().get(normalizeArchetypeKey(label)) ?? resolveArchetypeIcons({ label }, getArchetypeIconMap());
+  const slugs = (label: string) => learned().get(normalizeArchetypeKey(label)) ?? deckIcons({ label });
   return (
     <Show when={props.label}>
       {label => (
