@@ -158,7 +158,12 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
       accept({ ...published, viewer: current.viewer });
     }
   }
-  return { view, take, retry: () => void reload() };
+  /** Asks the API who the viewer is, after their own action changed it: polls only ask when the event changes. */
+  const whoAmI = () =>
+    void fromApi(code())
+      .then(accept)
+      .catch(() => undefined);
+  return { view, take, whoAmI, retry: () => void reload() };
 }
 
 const meKey = (code: string) => `cm-tournament-me:${code}`;
@@ -188,7 +193,7 @@ function keep(key: string, value: string | null) {
  * Identify). A player marked on this device before proof was asked for is
  * not taken on its word.
  */
-function createMe(view: () => TournamentView, onView: (view: PublishedView) => void) {
+function createMe(view: () => TournamentView, onView: (view: PublishedView) => void, onLinked: () => void) {
   const code = () => view().code;
   const stored = storedClaim(code());
   const [claim, setClaim] = createSignal(stored);
@@ -204,6 +209,10 @@ function createMe(view: () => TournamentView, onView: (view: PublishedView) => v
     keep(tokenKey(code()), token);
     setReportToken(token);
     onView(found.view);
+    // A Claim just made is news to the page's copy, which says who the viewer is as of its last API read.
+    if (found.linked && view().viewer.me !== found.key) {
+      onLinked();
+    }
   }
   function forget() {
     [meKey, claimKey, tokenKey].forEach(key => localStorage.removeItem(key(code())));
@@ -359,7 +368,7 @@ function RegisteredList(props: {
   );
 }
 
-function EventBody(props: { view: TournamentView; onView: (view: PublishedView) => void }) {
+function EventBody(props: { view: TournamentView; onView: (view: PublishedView) => void; onLinked: () => void }) {
   const [params, setParams] = useSearchParams<{ tab?: string }>();
   const [podChoice, setPodChoice] = createSignal<PodCategory | null>(null);
   const [roundChoice, setRoundChoice] = createSignal<number | null>(null);
@@ -367,7 +376,8 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
   const [open, setOpen] = createSignal<string | null>(null);
   const { me, claim, reportToken, identified, forget } = createMe(
     () => props.view,
-    view => props.onView(view)
+    view => props.onView(view),
+    () => props.onLinked()
   );
   const pods = () => props.view.tournament.pods;
   const myPod = () => podOf(props.view.tournament, me() ?? '')?.category ?? null;
@@ -582,7 +592,7 @@ export function PublicEvent(props: { code: string; signedIn: boolean }) {
   // The page is the big screen or not for as long as it is open.
   const screen = params.screen === '1';
   // The big screen draws no decks, so it reads the published file even in a staff browser.
-  const { view, take, retry } = createView(
+  const { view, take, whoAmI, retry } = createView(
     () => props.code,
     () => props.signedIn,
     {
@@ -625,7 +635,7 @@ export function PublicEvent(props: { code: string; signedIn: boolean }) {
         <Show when={!screen} fallback={<BigScreen view={v()} />}>
           <div class='tm-page tm-public'>
             <Hero view={v()} />
-            <EventBody view={v()} onView={take} />
+            <EventBody view={v()} onView={take} onLinked={whoAmI} />
           </div>
         </Show>
       )}

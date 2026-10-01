@@ -238,6 +238,8 @@ export interface PlayerAnswer {
   /** The token to keep, when this device just became the one that reports for the player. */
   reportToken?: string;
   reporter?: boolean;
+  /** Whether the player is the signed-in account's at this event. */
+  linked?: boolean;
 }
 
 /** A player says who they are; their public key, to follow their pairings with, and the event as it stands. */

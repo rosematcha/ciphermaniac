@@ -20,6 +20,8 @@ export interface Identified {
   reportToken?: string;
   /** False when another device reports for them. */
   reporter?: boolean;
+  /** Whether the player is the signed-in account's at this event. */
+  linked?: boolean;
 }
 
 export function IdentifyForm(props: {
