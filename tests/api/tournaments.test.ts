@@ -36,10 +36,11 @@ import type { Round, Tournament } from '../../shared/tournament/types.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { publishView } from '../../functions/lib/tournaments/publish.ts';
 import { loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
+import { apiCalls, type Handler, ORIGIN, request } from '../__utils__/apiCalls.ts';
 import { countingTrips, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
-const ORIGIN = 'https://cm.test';
 let env: TournamentEnv;
+const { hit, signIn } = apiCalls(() => env);
 
 beforeEach(() => {
   env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true' };
@@ -47,50 +48,6 @@ beforeEach(() => {
   report._resetRateLimitStore();
   event._resetRateLimitStore();
 });
-
-interface Call {
-  method?: string;
-  body?: unknown;
-  cookie?: string;
-  origin?: string | null;
-}
-
-function request(path: string, call: Call = {}): Request {
-  const method = call.method ?? 'GET';
-  const headers: Record<string, string> = {};
-  if (call.cookie) {
-    headers.cookie = call.cookie;
-  }
-  if (method !== 'GET' && call.origin !== null) {
-    headers.origin = call.origin ?? ORIGIN;
-  }
-  if (call.body !== undefined) {
-    headers['content-type'] = 'application/json';
-  }
-  return new Request(ORIGIN + path, {
-    method,
-    headers,
-    body: call.body === undefined ? undefined : JSON.stringify(call.body)
-  });
-}
-
-type Handler = (context: never) => Promise<Response>;
-
-async function hit(handler: Handler, path: string, params: Record<string, string>, call: Call = {}) {
-  const response = await handler({ request: request(path, call), env, params } as never);
-  const text = await response.text();
-  return { status: response.status, headers: response.headers, json: text ? (JSON.parse(text) as any) : null };
-}
-
-async function signIn(name: string): Promise<string> {
-  const response = await login.onRequestGet({
-    request: request(`/api/auth/login/dev?name=${encodeURIComponent(name)}&next=/host`),
-    env,
-    params: { provider: 'dev' }
-  } as never);
-  assert.equal(response.status, 302);
-  return (response.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
-}
 
 const at = (code: string) => ({ code });
 
