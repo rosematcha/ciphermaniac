@@ -1,6 +1,6 @@
 /** What every tournament and account function needs from its environment. */
 
-import type { D1Like, PublishBucket } from '../types.js';
+import type { D1Like, ProofBucket, PublishBucket } from '../types.js';
 import type { AuthEnv } from './oauth.js';
 
 export interface TournamentEnv extends AuthEnv {
@@ -9,6 +9,8 @@ export interface TournamentEnv extends AuthEnv {
   REPORTS?: PublishBucket;
   /** What the scheduled sweep that ends idle events sends as its bearer token (functions/api/tournaments/idle.ts). */
   IDLE_SWEEP_TOKEN?: string;
+  /** The private bucket organizer Applications' proofs are kept in; never served but to an admin. */
+  PROOFS?: ProofBucket;
 }
 
 export interface Context<Params extends string = never> {

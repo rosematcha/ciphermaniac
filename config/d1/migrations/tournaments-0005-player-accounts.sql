@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS applications (
   proof_key TEXT,
   proof_type TEXT,
   proof_size INTEGER,
+  proof_etag TEXT,
   created_at INTEGER NOT NULL,
   decided_at INTEGER,
   decided_by TEXT,

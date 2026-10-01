@@ -16,6 +16,12 @@ id = "c43f84feaa1049488390313c619610d8"
 bucket_name = "ciphermaniac-reports"
 binding = "REPORTS"
 
+# Private R2 bucket for the proof an organizer application carries. It has no
+# custom domain and no r2.dev URL: only the admin function reads it back.
+[[r2_buckets]]
+bucket_name = "ciphermaniac-proofs"
+binding = "PROOFS"
+
 # D1 binding for live-event deck reports (schema: config/d1/live.sql)
 [[d1_databases]]
 binding = "LIVE_DB"
@@ -40,6 +46,11 @@ id = "c43f84feaa1049488390313c619610d8"
 [[env.production.r2_buckets]]
 bucket_name = "ciphermaniac-reports"
 binding = "REPORTS"
+
+# Private proofs bucket for production (create it before the first deploy that carries this)
+[[env.production.r2_buckets]]
+bucket_name = "ciphermaniac-proofs"
+binding = "PROOFS"
 
 # D1 binding for production
 [[env.production.d1_databases]]

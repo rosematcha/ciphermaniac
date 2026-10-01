@@ -4,6 +4,7 @@
  */
 
 import type { TournamentMode } from '../tournament/view.js';
+import type { AccountRole } from './roles.js';
 
 /**
  * One event in an account's History. Place, record, deck and the rounds are
@@ -29,4 +30,66 @@ export interface PublicProfile {
   name: string;
   avatar: string | null;
   entries: HistoryEntry[];
+}
+
+/** An uploaded proof: its type, and its size in bytes. */
+export interface ProofSlot {
+  type: string;
+  size: number;
+}
+
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
+
+/** An Application as the account that sent it sees it. */
+export interface MyApplication {
+  id: string;
+  status: ApplicationStatus;
+  explanation: string;
+  /** The proof's type, kept as a record that one was sent after the file itself is deleted; null without one. */
+  proofType: string | null;
+  createdAt: number;
+  decidedAt: number | null;
+  /** The deciding admin's note to the applicant. */
+  note: string | null;
+}
+
+/** GET /api/applications/mine: the account's latest Application, a proof uploaded for the next, and whether it may apply. */
+export interface ApplicationState {
+  application: MyApplication | null;
+  /** A proof uploaded and not yet sent; null while an Application is pending, since its proof is the one sent. */
+  proof: ProofSlot | null;
+  eligible: { profile: boolean; role: boolean };
+}
+
+/** An Application as an admin sees it: who sent it, as they are now and as they applied. */
+export interface AdminApplication extends MyApplication {
+  account: { id: string; name: string; email: string | null; popId: string | null; role: AccountRole | null };
+  /** The profile as it stood when the account applied. */
+  applied: { popId: string; firstName: string; lastName: string };
+  /** Whether the proof file is still there to see; it is deleted once the Application is decided. */
+  hasProof: boolean;
+  decidedBy: { id: string; name: string } | null;
+}
+
+/** An account with a role, as the admin's list of Organizers and Admins shows it. */
+export interface RoleHolder {
+  id: string;
+  name: string;
+  email: string | null;
+  popId: string | null;
+  role: AccountRole;
+  /** When the role last changed; null when a migration set it. */
+  roleAt: number | null;
+  /** How many events the account owns. */
+  events: number;
+}
+
+/** An account an admin looked up. */
+export interface FoundAccount {
+  id: string;
+  name: string;
+  email: string | null;
+  popId: string | null;
+  role: AccountRole | null;
+  createdAt: number;
 }

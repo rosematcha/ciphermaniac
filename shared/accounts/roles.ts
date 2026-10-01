@@ -22,3 +22,8 @@ export function canCreateEvents(role: AccountRole | null): boolean {
 export function isAdmin(role: AccountRole | null): boolean {
   return role === 'admin';
 }
+
+/** Whether the account may apply to run events: a player may, and so may an Organizer whose access was removed. */
+export function canApply(role: AccountRole | null): boolean {
+  return role === null || role === 'revoked';
+}
