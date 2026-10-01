@@ -163,24 +163,20 @@ function EntryRow(props: { entry: HistoryEntry; watch: Watch }) {
             ▸
           </button>
         </td>
-        <td>
-          {/* On a phone the deck's own column gives way, and its sprites lead the name, as in standings. */}
-          <span class='tm-hist-event'>
+        <td class='tm-hist-event'>
+          <span class='tm-hist-name'>
+            {props.entry.name || props.entry.code}
+            <Show when={STATUS_FLAGS[props.entry.status]}>{flag => <span class='tm-flag'>{flag()}</span>}</Show>
+          </span>
+          <span class='tm-hist-sub'>
+            {/* On a phone the deck's own column gives way, and its sprites lead this line. */}
             <span class='tm-hist-phone-deck'>
               <DeckIcons label={finish()?.deck ?? undefined} />
             </span>
-            <span class='tm-hist-text'>
-              <span class='tm-hist-name'>
-                {props.entry.name || props.entry.code}
-                <Show when={STATUS_FLAGS[props.entry.status]}>{flag => <span class='tm-flag'>{flag()}</span>}</Show>
-              </span>
-              <span class='tm-hist-sub'>
-                {sub()}
-                <Show when={finish()?.dropped}>
-                  <span class='tm-flag'>Dropped</span>
-                </Show>
-              </span>
-            </span>
+            {sub()}
+            <Show when={finish()?.dropped}>
+              <span class='tm-flag'>Dropped</span>
+            </Show>
           </span>
         </td>
         <td class='tm-hist-deck'>

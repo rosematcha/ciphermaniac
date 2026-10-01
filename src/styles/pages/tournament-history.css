@@ -30,13 +30,8 @@
 .tm-hist th.tm-hist-record {
   width: 96px;
 }
-/* The name and its line under it; on a phone the deck's sprites lead them. */
+/* The name and its line under it; on a phone the deck's sprites lead that line. */
 .tm-hist-event {
-  display: block;
-  min-width: 0;
-}
-.tm-hist-text {
-  display: block;
   min-width: 0;
 }
 .tm-hist-phone-deck {
@@ -158,15 +153,12 @@
     padding-block: 10px;
   }
   /* A name wraps rather than losing its end: it is what the row is read for. */
-  .tm-hist-event {
-    display: flex;
-    align-items: flex-start;
-  }
   .tm-hist-phone-deck {
-    display: contents;
+    display: inline;
   }
   .tm-hist-phone-deck .arche-icons {
-    margin: 1px 8px 0 0;
+    margin-right: 6px;
+    vertical-align: -5px;
   }
   .tm-hist-name,
   .tm-hist-sub {
