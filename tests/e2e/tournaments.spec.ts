@@ -224,7 +224,9 @@ async function mockOrganizer(page: Page) {
   await page.route('**/api/**', route => {
     const { pathname } = new URL(route.request().url());
     if (pathname === '/api/me') {
-      return route.fulfill({ json: { user: { id: 'organizer', name: 'Organizer' }, providers: [] } });
+      return route.fulfill({
+        json: { user: { id: 'organizer', name: 'Organizer', role: 'organizer' }, providers: [] }
+      });
     }
     if (pathname === '/api/tournaments' && route.request().method() === 'POST') {
       submissions.push(route.request().postDataJSON());
@@ -431,7 +433,8 @@ async function tomConsole(
     const url = new URL(route.request().url());
     if (url.pathname === '/api/me') {
       const user = { id: 'u1', name: 'Organizer', avatar: null, popId: null, firstName: null, lastName: null };
-      return route.fulfill({ json: { user: { ...user, birthDate: null, providers: ['dev'] }, providers: ['dev'] } });
+      const account = { ...user, birthDate: null, role: 'organizer', publicSlug: null, providers: ['dev'] };
+      return route.fulfill({ json: { user: account, providers: ['dev'] } });
     }
     if (url.pathname === `/api/tournaments/${CODE}/manage`) {
       return url.searchParams.has('since') ? route.fulfill({ status: 204 }) : route.fulfill({ json: manage });

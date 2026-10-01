@@ -7,6 +7,7 @@
  * single indexed lookup with no write.
  */
 
+import { type AccountRole, readAccountRole } from '../../../shared/accounts/roles.js';
 import type { D1Like, D1Statement } from '../types.js';
 import { readCookie, SESSION_COOKIE } from './cookies.js';
 import type { Profile } from './oauth.js';
@@ -23,6 +24,10 @@ export interface User {
   firstName: string | null;
   lastName: string | null;
   birthDate: string | null;
+  /** What the account may do beyond playing (shared/accounts/roles.ts). */
+  role: AccountRole | null;
+  /** The public profile's address, /u/<slug>; null while history is private. */
+  publicSlug: string | null;
   providers?: string[];
 }
 
@@ -35,6 +40,8 @@ export interface UserRow {
   first_name: string | null;
   last_name: string | null;
   birth_date: string | null;
+  role: string | null;
+  public_slug: string | null;
 }
 
 export function userFromRow(row: UserRow): User {
@@ -46,7 +53,9 @@ export function userFromRow(row: UserRow): User {
     popId: row.pop_id,
     firstName: row.first_name,
     lastName: row.last_name,
-    birthDate: row.birth_date
+    birthDate: row.birth_date,
+    role: readAccountRole(row.role),
+    publicSlug: row.public_slug
   };
 }
 
@@ -64,7 +73,7 @@ export async function sha256(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-const USER_COLUMNS = 'users.id, name, email, avatar, pop_id, first_name, last_name, birth_date';
+const USER_COLUMNS = 'users.id, name, email, avatar, pop_id, first_name, last_name, birth_date, role, public_slug';
 
 /** The SHA-256 of the request's session token, as the sessions table keys it; null without the cookie. */
 export async function sessionHash(request: Request): Promise<string | null> {

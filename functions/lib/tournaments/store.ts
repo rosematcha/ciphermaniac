@@ -78,9 +78,10 @@ function fromRaw(raw: RawRow): TournamentRow {
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const CODE_LENGTH = 6;
 
-export function newCode(random: () => number = Math.random): string {
+/** A random code in that alphabet; a public profile's address is a longer one (functions/lib/accounts/publicProfile.ts). */
+export function newCode(length = CODE_LENGTH, random: () => number = Math.random): string {
   let code = '';
-  for (let i = 0; i < CODE_LENGTH; i += 1) {
+  for (let i = 0; i < length; i += 1) {
     code += CODE_ALPHABET[Math.floor(random() * CODE_ALPHABET.length)];
   }
   return code;

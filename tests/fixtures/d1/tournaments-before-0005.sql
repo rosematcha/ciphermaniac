@@ -1,3 +1,7 @@
+-- config/d1/tournaments.sql as it stood before migration 0005, the schema
+-- a live database had when 0005 was written: the migration test applies 0005
+-- to it and compares the result with a fresh tournaments.sql.
+
 -- D1 database `ciphermaniac-tournaments` (binding TOURNAMENT_DB): accounts,
 -- sessions, and the tournaments organizers run on the site. Applied by hand;
 -- rerunning is safe.
@@ -16,23 +20,9 @@ CREATE TABLE IF NOT EXISTS users (
   first_name TEXT,
   last_name TEXT,
   birth_date TEXT,
-  created_at INTEGER NOT NULL,
-  -- What the account may do beyond playing: NULL for a player, 'organizer'
-  -- (may start events), 'revoked' (was an organizer; keeps the events it owns)
-  -- or 'admin'. `role_at` and `role_by` say when and by which admin it last
-  -- changed; `role_by` is NULL when a migration set it.
-  role TEXT,
-  role_at INTEGER,
-  role_by TEXT,
-  -- NULL keeps the account's history private; set, it is public at /u/<slug>.
-  public_slug TEXT
+  created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS users_by_email ON users (email);
--- At most one account holds a POP ID. Partial, like the indexes below: most
--- rows hold NULL, and a NULL costs no index row on write.
-CREATE UNIQUE INDEX IF NOT EXISTS users_by_pop_id ON users (pop_id) WHERE pop_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS users_by_role ON users (role) WHERE role IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS users_by_public_slug ON users (public_slug) WHERE public_slug IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS identities (
   provider TEXT NOT NULL,
@@ -77,9 +67,6 @@ CREATE TABLE IF NOT EXISTS tournaments (
 -- by every save, a second row written each time, and the organizer's list
 -- sorts its few rows itself.
 CREATE INDEX IF NOT EXISTS tournaments_of_owner ON tournaments (owner_id);
--- Events not yet ended, for the sweep that ends one left idle (functions/api/tournaments/idle.ts).
--- On the finished flag alone, which only an end or a reopen rewrites.
-CREATE INDEX IF NOT EXISTS tournaments_by_finished ON tournaments (coalesce(json_extract(settings, '$.finished'), 0));
 
 -- Who joined an event's staff through its invite link, and when, so the
 -- organizer can see everyone the link let in and remove one of them.
@@ -111,10 +98,6 @@ CREATE TABLE IF NOT EXISTS decklists (
   archetype TEXT,
   submitted_at INTEGER NOT NULL,
   owner_token TEXT,
-  -- The account the list belongs to, when a signed-in account that is the
-  -- list's player sent it; that account may replace or withdraw it from any
-  -- device.
-  account TEXT,
   PRIMARY KEY (code, user_id)
 ) WITHOUT ROWID;
 
@@ -131,49 +114,5 @@ CREATE TABLE IF NOT EXISTS report_devices (
   token_hash TEXT NOT NULL,
   device TEXT NOT NULL,
   claimed_at INTEGER NOT NULL,
-  -- The account that is this player at this event, when an account made or
-  -- took the row: its Claim at an unsanctioned event, or its POP ID at a
-  -- sanctioned one. That account reports from any of its devices.
-  user_id TEXT,
   PRIMARY KEY (code, player_id)
 ) WITHOUT ROWID;
--- An account's Claims, for its history; unique, so an account is one player per event.
-CREATE UNIQUE INDEX IF NOT EXISTS report_devices_by_account ON report_devices (user_id, code) WHERE user_id IS NOT NULL;
-
--- The events each POP ID plays in, at sanctioned events only (an event's
--- player IDs are POP IDs there), whether or not an account holds that POP ID
--- yet: an account that enters it later sees every past event at once. Kept
--- with every change to an event's player list or sanctioned setting.
-CREATE TABLE IF NOT EXISTS pop_history (
-  pop_id TEXT NOT NULL,
-  code TEXT NOT NULL,
-  PRIMARY KEY (pop_id, code)
-) WITHOUT ROWID;
-
--- Accounts asking to become organizers, and what an admin decided. The POP
--- ID and name are the profile as it stood when the account applied. The
--- proof of certification is a file in a private bucket under `proof_key`,
--- deleted once the application is decided; its type stays as a record that a
--- proof was seen.
-CREATE TABLE IF NOT EXISTS applications (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  -- 'pending', 'approved' or 'rejected'.
-  status TEXT NOT NULL,
-  pop_id TEXT NOT NULL,
-  first_name TEXT NOT NULL,
-  last_name TEXT NOT NULL,
-  explanation TEXT NOT NULL DEFAULT '',
-  proof_key TEXT,
-  proof_type TEXT,
-  proof_size INTEGER,
-  created_at INTEGER NOT NULL,
-  decided_at INTEGER,
-  -- The deciding admin's account id, and their note to the applicant.
-  decided_by TEXT,
-  note TEXT
-);
-CREATE INDEX IF NOT EXISTS applications_by_user ON applications (user_id, created_at);
--- Not partial on 'pending': a lookup against a partial index on a value plans as a scan of it.
-CREATE INDEX IF NOT EXISTS applications_by_status ON applications (status, created_at);
-CREATE UNIQUE INDEX IF NOT EXISTS applications_one_pending ON applications (user_id) WHERE status = 'pending';

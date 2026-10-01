@@ -31,10 +31,14 @@ export function sqliteD1(schema: string): D1Like & { raw: DatabaseSync } {
     prepare: sql => statement(db, sql),
     batch: async statements => {
       db.exec('BEGIN');
+      // How many rows the statements so far changed, to tell each one's share as D1's `meta.changes` does.
+      const changed = () => (db.prepare('SELECT total_changes() AS n').get() as { n: number }).n;
       try {
-        const results: { results?: unknown[] }[] = [];
+        const results: { results?: unknown[]; meta: { changes: number } }[] = [];
         for (const item of statements) {
-          results.push(await item.all());
+          const before = changed();
+          const { results: rows } = await item.all();
+          results.push({ results: rows, meta: { changes: changed() - before } });
         }
         db.exec('COMMIT');
         return results;

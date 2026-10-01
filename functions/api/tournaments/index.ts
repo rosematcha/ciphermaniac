@@ -2,9 +2,11 @@
  * GET /api/tournaments — the events the signed-in user owns or staffs.
  * POST /api/tournaments — starts one: a Swiss event from the setup's answers,
  * or a TOM-run event from the tournament its .tdf was parsed into in the
- * browser. Either may carry the settings it starts with.
+ * browser. Either may carry the settings it starts with. Only an Organizer or
+ * an Admin starts events; anyone signed in may still be an event's staff.
  */
 
+import { canCreateEvents } from '../../../shared/accounts/roles.js';
 import { emptyTournament } from '../../../shared/tournament/create.js';
 import { tomDateTime } from '../../../shared/tournament/divisions.js';
 import { withSiteClocks } from '../../../shared/tournament/tomClock.js';
@@ -95,6 +97,10 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const user = await currentUser(db, request);
   if (!user) {
     return jsonError('Sign in first', 401);
+  }
+  if (!canCreateEvents(user.role)) {
+    // `apply` tells the page to offer an application rather than the message alone.
+    return privateJson({ error: 'Only organizers can start events', apply: true }, 403);
   }
   const read = await readNew(request);
   if (typeof read === 'string') {
