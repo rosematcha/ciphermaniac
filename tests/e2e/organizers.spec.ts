@@ -51,6 +51,8 @@ interface Asked {
 }
 
 interface Options {
+  /** The Application the account's latest is once a pending one is withdrawn: the one decided before it, or none. */
+  afterWithdraw?: MyApplication | null;
   /** Holds an upload's answer until it settles. */
   upload?: Promise<void>;
   /** The account as /api/me reads it the second time, after a decision the page has not seen. */
@@ -99,7 +101,7 @@ async function mockApplicant(page: Page, start: ApplicationState, user: typeof M
       return route.fulfill({ status: 201, json: { application: sent } });
     }
     if (key === 'DELETE /api/applications/mine') {
-      state = { ...state, application: null };
+      state = { ...state, application: options.afterWithdraw ?? null };
       return route.fulfill({ status: 204 });
     }
     return route.fulfill({ status: 404, json: { error: 'Not found' } });
@@ -203,7 +205,7 @@ test('an organizer whose access was removed sees so, and applies again from ther
 test('an approved account sees it is an organizer, with the way to its events', async ({ page }) => {
   await mockApplicant(page, { ...NONE, application: application('approved') }, { ...ME, role: 'organizer' });
   await page.goto('/apply');
-  await expect(page.locator('.tm-applicant')).toContainText('Organizer');
+  await expect(page.locator('.tm-applicant-stage strong')).toHaveText('Organizer');
   await expect(page.locator('.tm-applicant').getByRole('link', { name: 'Your events' })).toHaveAttribute(
     'href',
     '/host'
@@ -296,7 +298,9 @@ test('Settings shows each applicant stage with its step @mobile', async ({ page 
     const status = page.locator('.tm-applicant');
     await expect(status.getByRole('link', { name: step, exact: true })).toHaveAttribute('href', href);
     if (words) {
-      await expect(status).toContainText(words);
+      await expect(status.locator('.tm-applicant-stage strong')).toHaveText(words);
+    } else {
+      await expect(status.locator('.tm-applicant-stage')).toHaveCount(0);
     }
     // Your events is offered once: under Organizer for an account that runs events, by the name otherwise.
     await expect(page.getByRole('link', { name: 'Your events' })).toHaveCount(1);
@@ -324,6 +328,24 @@ test('Settings shows a pending Application with its day, and withdraws it', asyn
     .click();
   await expect(status.getByRole('link', { name: 'Apply to run events' })).toBeVisible();
   expect(asks.filter(a => a.method === 'DELETE').map(a => a.path)).toEqual(['/api/applications/mine']);
+});
+
+test('withdrawn, an Application gives way to the decision before it @mobile', async ({ page }) => {
+  const rejected = application('rejected', { id: 'app-0', note: 'Send your certificate.' });
+  await mockApplicant(page, { ...NONE, application: application('pending') }, ME, { afterWithdraw: rejected });
+  // The narrowest phones, where the question and its buttons are wider than the box.
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('/settings');
+  const status = page.locator('.tm-applicant');
+  await status.getByRole('button', { name: 'Withdraw' }).click();
+  const question = status.getByRole('group', { name: 'Withdraw your application?' });
+  // The question wraps inside the screen rather than running past it.
+  const asked = await question.boundingBox();
+  expect((asked?.x ?? 0) + (asked?.width ?? 0)).toBeLessThanOrEqual(320);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  await question.getByRole('button', { name: 'Withdraw' }).click();
+  await expect(status.locator('.tm-applicant-stage strong')).toHaveText('Not approved');
+  await expect(status).toContainText('Send your certificate.');
 });
 
 test('Apply again on Settings opens the apply page at its form', async ({ page }) => {
