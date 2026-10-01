@@ -12,6 +12,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, mock, test } from 'node:test';
 
+import * as adminAccounts from '../../functions/api/admin/accounts.ts';
+import * as adminApplications from '../../functions/api/admin/applications/index.ts';
+import * as adminDecide from '../../functions/api/admin/applications/[id].ts';
+import * as adminProof from '../../functions/api/admin/applications/[id]/proof.ts';
+import * as adminOrganizers from '../../functions/api/admin/organizers/index.ts';
+import * as adminOrganizer from '../../functions/api/admin/organizers/[id].ts';
+import * as adminPopIds from '../../functions/api/admin/pop-ids.ts';
+import * as applications from '../../functions/api/applications/index.ts';
+import * as myApplication from '../../functions/api/applications/mine.ts';
+import * as proof from '../../functions/api/applications/proof.ts';
 import * as callback from '../../functions/api/auth/callback/[provider].ts';
 import * as login from '../../functions/api/auth/login/[provider].ts';
 import * as logout from '../../functions/api/auth/logout.ts';
@@ -41,6 +51,7 @@ import { publishView } from '../../functions/lib/tournaments/publish.ts';
 import { loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
 import { apiCalls, type Handler, ORIGIN, request } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
+import { memoryProofs } from '../__utils__/proofBucket.ts';
 import { countingTrips, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
@@ -1885,6 +1896,98 @@ async function accountsFlow(owner: string, player: string) {
   await hit(event.onRequestDelete as Handler, '/', at(tom), { method: 'DELETE', cookie: owner });
 }
 
+/**
+ * What applications and the admin routes add, for the scan check below: an
+ * account uploads a proof, applies, withdraws and applies again; an Admin
+ * lists the queue, sees the proof and approves it, lists the Organizers,
+ * revokes and reinstates one, looks accounts up every way, and moves and
+ * clears a POP ID. `owner` is an Organizer.
+ */
+async function applicationsFlow(owner: string) {
+  env.PROOFS = memoryProofs();
+  const applicant = await signIn('Applicant');
+  const profile = { popId: '980', firstName: 'Apply', lastName: 'Ing', birthDate: '02/27/1990' };
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: applicant, body: profile });
+  const uploaded = await proof.onRequestPut({
+    request: new Request(`${ORIGIN}/api/applications/proof`, {
+      method: 'PUT',
+      headers: { origin: ORIGIN, cookie: applicant },
+      body: new TextEncoder().encode('%PDF-1.7\n')
+    }),
+    env,
+    params: {}
+  } as never);
+  assert.equal(uploaded.status, 200);
+  await hit(myApplication.onRequestGet as Handler, '/api/applications/mine', {}, { cookie: applicant });
+  const apply = (body: unknown) =>
+    hit(applications.onRequestPost as Handler, '/api/applications', {}, { method: 'POST', cookie: applicant, body });
+  await apply({ explanation: 'First try', proof: true });
+  await hit(
+    myApplication.onRequestDelete as Handler,
+    '/api/applications/mine',
+    {},
+    {
+      method: 'DELETE',
+      cookie: applicant
+    }
+  );
+  await hit(proof.onRequestDelete as Handler, '/api/applications/proof', {}, { method: 'DELETE', cookie: applicant });
+  const { id } = (await apply({ explanation: 'Second try', proof: false })).json.application;
+  const admin = await signIn('Admin', 'admin');
+  await hit(adminApplications.onRequestGet as Handler, '/api/admin/applications', {}, { cookie: admin });
+  await adminProof.onRequestGet({
+    request: new Request(`${ORIGIN}/api/admin/applications/${id}/proof`, { headers: { cookie: admin } }),
+    env,
+    params: { id }
+  } as never);
+  await hit(
+    adminDecide.onRequestPost as Handler,
+    `/api/admin/applications/${id}`,
+    { id },
+    {
+      method: 'POST',
+      cookie: admin,
+      body: { decision: 'approve' }
+    }
+  );
+  await hit(
+    adminApplications.onRequestGet as Handler,
+    '/api/admin/applications?status=approved',
+    {},
+    { cookie: admin }
+  );
+  await hit(adminOrganizers.onRequestGet as Handler, '/api/admin/organizers', {}, { cookie: admin });
+  const applicantId = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: applicant })).json.user.id;
+  for (const role of ['revoked', 'organizer']) {
+    await hit(
+      adminOrganizer.onRequestPost as Handler,
+      `/api/admin/organizers/${applicantId}`,
+      { id: applicantId },
+      {
+        method: 'POST',
+        cookie: admin,
+        body: { role }
+      }
+    );
+  }
+  for (const query of ['popId=980', 'email=nobody%40example.com', `id=${applicantId}`]) {
+    await hit(adminAccounts.onRequestGet as Handler, `/api/admin/accounts?${query}`, {}, { cookie: admin });
+  }
+  const ownerId = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: owner })).json.user.id;
+  for (const accountId of [ownerId, null]) {
+    await hit(
+      adminPopIds.onRequestPost as Handler,
+      '/api/admin/pop-ids',
+      {},
+      {
+        method: 'POST',
+        cookie: admin,
+        body: { popId: '980', accountId }
+      }
+    );
+  }
+}
+
 /** A piece of each statement player accounts added, which the scan check must have seen. */
 const ACCOUNT_STATEMENTS = [
   'INSERT OR IGNORE INTO pop_history',
@@ -1899,7 +2002,26 @@ const ACCOUNT_STATEMENTS = [
   'decklists.account = ?',
   'JOIN pop_history h',
   'JOIN report_devices d',
-  'u.public_slug = ?'
+  'u.public_slug = ?',
+  'FROM sessions s JOIN applications a',
+  'INSERT OR IGNORE INTO applications',
+  "DELETE FROM applications WHERE user_id = ? AND status = 'pending'",
+  'WHERE a.status = ? ORDER BY a.created_at ASC',
+  'WHERE a.status = ? ORDER BY a.created_at DESC',
+  'SELECT proof_key FROM applications WHERE id = ?',
+  "UPDATE users SET role = 'organizer'",
+  'UPDATE applications SET status = ?2',
+  'WHERE a.id = ?',
+  "WHERE u.role IN ('organizer', 'revoked', 'admin')",
+  'FROM users u WHERE u.id = ?',
+  "UPDATE users SET role = ?, role_at = ?, role_by = ? WHERE id = ? AND role IN ('organizer', 'revoked')",
+  'FROM users WHERE pop_id = ? LIMIT',
+  'FROM users WHERE email = ? LIMIT',
+  'FROM users WHERE id = ? LIMIT',
+  'DELETE FROM report_devices WHERE player_id = ?1',
+  'UPDATE users SET pop_id = NULL WHERE pop_id = ?1',
+  'DELETE FROM report_devices WHERE user_id = ?2',
+  'UPDATE users SET pop_id = ?1 WHERE id = ?2'
 ];
 
 test('nothing the functions ask of the database scans a table', async () => {
@@ -1966,6 +2088,7 @@ test('nothing the functions ask of the database scans a table', async () => {
   });
   await sweep();
   await accountsFlow(owner, helper);
+  await applicationsFlow(owner);
   await hit(logout.onRequestPost as Handler, '/api/auth/logout', {}, { method: 'POST', cookie: helper });
   await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
   const statements = [...new Set(seen)];
