@@ -88,9 +88,26 @@ const sameViewer = (a: TournamentView['viewer'], b: TournamentView['viewer']) =>
  * shows decks, the only thing staff see that the published file does not.
  */
 function createView(code: () => string, signedIn: () => boolean, options: { every: number; decks: boolean }) {
-  const fromApi = (c: string) => fetchView(c).then(v => v as TournamentView);
+  // Moved on by every read of who the viewer is, and by their own undo (see fromApi).
+  let generation = 0;
+  /**
+   * The API's copy, or null when nothing is newer than `since`. What it says
+   * of the viewer counts only if nothing since it was asked knows better: a
+   * later read of who they are, or their own undo. Its event counts either way.
+   */
+  async function fromApi(c: string, since?: number): Promise<TournamentView | null> {
+    const asked = generation;
+    const next = await fetchView(c, since);
+    const shown = latestValue(view);
+    return next && shown && asked !== generation ? { ...next, viewer: shown.viewer } : next;
+  }
+  /** Asks the API who the viewer is: the answer outdates every read asked before it. */
+  function askWho(c: string): Promise<TournamentView> {
+    generation += 1;
+    return fromApi(c).then(v => v as TournamentView);
+  }
   const [view, { mutate, refetch }] = createResource(code, c =>
-    firstView({ published: () => fetchPublished(c), api: () => fromApi(c) })
+    firstView({ published: () => fetchPublished(c), api: () => fromApi(c).then(v => v as TournamentView) })
   );
   /**
    * Takes a copy no older than the one shown, of the same event: answers can
@@ -113,7 +130,7 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
     // Asked once an event: an answer that still knows nobody is not asked for again.
     if (signedIn() && shown && !shown.viewer.signedIn && asked !== shown.code) {
       asked = shown.code;
-      void fromApi(shown.code)
+      void askWho(shown.code)
         .then(accept)
         .catch(() => undefined);
     }
@@ -138,7 +155,7 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
    * their devices, staff).
    */
   const whoAmI = () =>
-    void fromApi(code())
+    void askWho(code())
       .then(accept)
       .catch(() => undefined);
   onMount(() => {
@@ -149,7 +166,7 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
       announced: () => announced,
       reload,
       published: () => fetchPublished(code()),
-      api: since => fetchView(code(), since),
+      api: since => fromApi(code(), since),
       apply: accept,
       now: Date.now
     });
@@ -183,6 +200,7 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
   }
   /** The account is no longer a player here, as its own undo just made it: no need to ask the API. */
   function unlinked() {
+    generation += 1;
     const current = latestValue(view);
     if (current) {
       const { role, signedIn } = current.viewer;

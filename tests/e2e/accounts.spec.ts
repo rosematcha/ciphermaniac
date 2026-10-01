@@ -342,10 +342,11 @@ async function mockEvent(
   const ash = t.players.find(p => p.lastName === 'Ketchum')?.id ?? '';
   let linked = options.linked ?? (options.sanctioned && Boolean(options.user));
   let reporter = true;
+  let held: Promise<void> | null = null;
   await page.route(`**/tournaments/v1/${code}.json`, route =>
     route.fulfill({ json: published, headers: { 'access-control-allow-origin': '*' } })
   );
-  await page.route('**/api/**', route => {
+  await page.route('**/api/**', async route => {
     const request = route.request();
     const { pathname } = new URL(request.url());
     asks.push({ method: request.method(), path: pathname, body: request.postDataJSON() as unknown });
@@ -377,6 +378,10 @@ async function mockEvent(
       const viewer = linked
         ? { role: null, me: keys[ash], via, claim, signedIn: true }
         : { role: null, me: null, via: null, signedIn: true };
+      // A held read answers as the account stood when it was asked.
+      const wait = held;
+      held = null;
+      await wait;
       return route.fulfill({ json: { ...published, viewer } });
     }
     return route.fulfill({ status: 404, json: { error: 'Not found' } });
@@ -391,6 +396,14 @@ async function mockEvent(
     /** Staff reset reporting for the player, and another device took the seat. */
     takeSeat: () => {
       reporter = false;
+    },
+    /** Holds the next read of the view until the returned function lets it go. */
+    holdNextRead: () => {
+      let release = () => undefined as void;
+      held = new Promise(resolve => {
+        release = resolve;
+      });
+      return release;
     }
   };
 }
@@ -508,6 +521,37 @@ test('an account whose POP ID is no longer the player’s stops being shown as t
   await showAgain(page);
   await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
   await expect(page.locator('.tm-you-who')).toHaveCount(0);
+});
+
+test('a read of who the viewer is that lands after they unlink does not link them again', async ({ page }) => {
+  const { code, holdNextRead } = await mockEvent(page, roundOne(false), {
+    sanctioned: false,
+    user: { ...ME, popId: null },
+    linked: true
+  });
+  await page.goto(`/t/${code}`);
+  const who = page.locator('.tm-you-who');
+  await expect(who).toContainText('Linked to your account');
+  const release = holdNextRead();
+  const read = page.waitForRequest(
+    r => r.method() === 'GET' && new URL(r.url()).pathname === `/api/tournaments/${code}`
+  );
+  await showAgain(page);
+  await read;
+  await who.getByRole('button', { name: 'Not you?' }).click();
+  await page.getByRole('button', { name: 'Unlink' }).click();
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
+  const answered = page.waitForResponse(r => new URL(r.url()).pathname === `/api/tournaments/${code}`);
+  release();
+  await (await answered).finished();
+  await page.evaluate(
+    () =>
+      new Promise(resolve => {
+        setTimeout(resolve, 100);
+      })
+  );
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
+  await expect(page.getByText('Linked to your account')).toHaveCount(0);
 });
 
 /** The result reports the page sent: what they said and the token with it. */
