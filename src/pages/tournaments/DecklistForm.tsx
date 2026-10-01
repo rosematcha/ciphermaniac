@@ -17,7 +17,7 @@
  */
 
 import { A } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, Show, untrack } from 'solid-js';
 import { type DeckSection, parseDecklist } from '../../../shared/tournament/decklist';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import { SETTINGS_LIMITS } from '../../../shared/tournament/view';
@@ -154,15 +154,36 @@ function createDecklistForm(props: FormProps) {
   const parsed = () => parseDecklist(deck());
   const current = () => latestValue(mine) ?? null;
 
-  // The list the device sent fills the form, until the player starts changing it.
+  function fill(list: Decklist) {
+    setDeck(list.deck);
+    setArchetype(list.archetype);
+    const { popId, firstName, lastName, birthDate } = list;
+    setProfile({ popId, firstName, lastName, birthDate });
+    setKnown(true);
+  }
+  /** Another owner's list is another player's: the form starts again from it, or from nothing. */
+  function startAgain(list: Decklist | null) {
+    setTouched(false);
+    setRegistration(null);
+    if (list) {
+      fill(list);
+    } else {
+      setDeck('');
+      setArchetype(null);
+      setProfile(emptyProfile(latestValue(session)?.user));
+      setKnown(false);
+    }
+  }
+  // The list the device sent fills the form, until the player starts changing it; another owner's, once it is read.
+  let filledFor = untrack(whose);
   createEffect(() => {
     const existing = current();
-    if (existing && !touched()) {
-      setDeck(existing.deck);
-      setArchetype(existing.archetype);
-      const { popId, firstName, lastName, birthDate } = existing;
-      setProfile({ popId, firstName, lastName, birthDate });
-      setKnown(true);
+    const owner = whose();
+    if (mine.state === 'ready' && owner !== filledFor) {
+      filledFor = owner;
+      startAgain(existing);
+    } else if (existing && !touched()) {
+      fill(existing);
     }
   });
 
@@ -210,10 +231,11 @@ function createDecklistForm(props: FormProps) {
     mutate(null);
   }
 
-  async function withdraw() {
+  // The list shown is the one withdrawn, whatever the fields above it say now.
+  async function withdraw(list: Decklist) {
     setError(null);
     try {
-      await withdrawDecklist(props.code, profile(), recall(props.code)?.token ?? null);
+      await withdrawDecklist(props.code, list, recall(props.code)?.token ?? null);
       clearList();
     } catch (err) {
       fail(err);
@@ -406,14 +428,16 @@ function Foot(props: { form: DecklistState }) {
       <Show when={reason()}>{text => <span class='muted'>{text()}</span>}</Show>
       <span class='tm-grow' />
       <Show when={f().current()}>
-        <ConfirmAction
-          class='btn btn-ghost'
-          label='Withdraw'
-          question='Withdraw your decklist?'
-          confirmLabel='Withdraw'
-          danger
-          onConfirm={() => void f().withdraw()}
-        />
+        {list => (
+          <ConfirmAction
+            class='btn btn-ghost'
+            label='Withdraw'
+            question='Withdraw your decklist?'
+            confirmLabel='Withdraw'
+            danger
+            onConfirm={() => void f().withdraw(list())}
+          />
+        )}
       </Show>
       <p class='tm-decklist-note muted'>
         {f().current()

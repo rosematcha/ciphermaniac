@@ -623,13 +623,24 @@ test('a signed-in player saves the POP ID their decklist went in under to their 
   expect(saved).toEqual([profile]);
 });
 
-/** An event taking decklists, whose functions hold one list the signed-in account owns, read by whose it is and no token. */
+/**
+ * An event taking decklists, whose functions hold a list for each of its two
+ * players, each read by whose it is and no token; the signed-in account owns
+ * the first, until `claim` makes its Claim the second's (unsanctioned).
+ */
 async function mockOwnList(page: Page, sanctioned: boolean) {
   const code = 'DECKS2';
-  const t = run(emptyTournament({ name: 'Cup' }), {
-    type: 'addPlayer',
-    player: { firstName: 'Mary', lastName: 'Jackson', ...(sanctioned ? { id: '1001' } : {}) }
-  });
+  const players = [
+    { firstName: 'Mary', lastName: 'Jackson', popId: '1001', deck: '60 Grass Energy' },
+    { firstName: 'Ash', lastName: 'Ketchum', popId: '1002', deck: '60 Fire Energy' }
+  ];
+  const t = run(
+    emptyTournament({ name: 'Cup' }),
+    ...players.map(
+      ({ firstName, lastName, popId }) =>
+        ({ type: 'addPlayer', player: { firstName, lastName, ...(sanctioned ? { id: popId } : {}) } }) as Command
+    )
+  );
   const keys = assignKeys(t, {});
   const published: PublishedView = {
     code,
@@ -643,29 +654,28 @@ async function mockOwnList(page: Page, sanctioned: boolean) {
     decks: {},
     settings: { ...DEFAULT_SETTINGS, decklists: 'open', sanctioned }
   };
-  const mine = {
-    popId: sanctioned ? '1001' : '',
-    firstName: 'Mary',
-    lastName: 'Jackson',
+  const listOf = (player: (typeof players)[number]) => ({
+    popId: sanctioned ? player.popId : '',
+    firstName: player.firstName,
+    lastName: player.lastName,
     birthDate: sanctioned ? '02/27/1995' : '',
-    deck: '60 Grass Energy',
+    deck: player.deck,
     archetype: null,
     submittedAt: 0,
     problems: [],
     registered: true,
     fromList: true,
     locked: true
+  });
+  let owned = 0;
+  const viewerOf = (index: number) => {
+    const { firstName, lastName, popId } = players[index]!;
+    const me = keys[t.players[index]!.id];
+    return sanctioned
+      ? { role: null, me, via: 'pop', claim: { popId }, signedIn: true }
+      : { role: null, me, via: 'claim', claim: { firstName, lastName }, signedIn: true };
   };
   const lists: { method: string; query: Record<string, string> }[] = [];
-  const viewer = sanctioned
-    ? { role: null, me: keys['1001'], via: 'pop', claim: { popId: '1001' }, signedIn: true }
-    : {
-        role: null,
-        me: keys[t.players[0]!.id],
-        via: 'claim',
-        claim: { firstName: 'Mary', lastName: 'Jackson' },
-        signedIn: true
-      };
   await page.route(`**/tournaments/v1/${code}.json`, route =>
     route.fulfill({ json: published, headers: { 'access-control-allow-origin': '*' } })
   );
@@ -678,15 +688,27 @@ async function mockOwnList(page: Page, sanctioned: boolean) {
     if (url.pathname === `/api/tournaments/${code}/decklists`) {
       const query = Object.fromEntries(url.searchParams);
       lists.push({ method: request.method(), query });
-      const own = sanctioned ? query.popId === '1001' : query.lastName === 'Jackson' && query.firstName === 'Mary';
+      const asked = players.findIndex(player =>
+        sanctioned
+          ? query.popId === player.popId
+          : query.lastName === player.lastName && query.firstName === player.firstName
+      );
+      const own = asked === owned && !query.token;
       if (request.method() === 'DELETE') {
         return route.fulfill({ status: own ? 204 : 409, json: own ? undefined : { error: 'Locked' } });
       }
-      return route.fulfill({ json: { decklists: [], mine: own && !query.token ? mine : null } });
+      return route.fulfill({ json: { decklists: [], mine: own ? listOf(players[asked]!) : null } });
     }
-    return route.fulfill({ json: { ...published, viewer } });
+    return route.fulfill({ json: { ...published, viewer: viewerOf(owned) } });
   });
-  return { code, lists };
+  return {
+    code,
+    lists,
+    /** The account's Claim made the second player's, on another device. */
+    claim: () => {
+      owned = 1;
+    }
+  };
 }
 
 for (const sanctioned of [true, false]) {
@@ -711,3 +733,23 @@ for (const sanctioned of [true, false]) {
     }
   });
 }
+
+test('a list whose owner changes while the form is being edited shows the new owner’s, and withdraws theirs', async ({
+  page
+}) => {
+  const { code, lists, claim } = await mockOwnList(page, false);
+  await page.goto(`/t/${code}?tab=decklist`);
+  const deck = page.locator('#deck-list');
+  await expect(deck).toHaveValue('60 Grass Energy');
+  await deck.fill('59 Grass Energy');
+  claim();
+  await showAgain(page);
+  await expect(deck).toHaveValue('60 Fire Energy');
+  await expect(page.locator('.tm-known')).toContainText('Ash Ketchum');
+  await page.getByRole('button', { name: 'Withdraw' }).click();
+  await page.getByRole('group', { name: 'Withdraw your decklist?' }).getByRole('button', { name: 'Withdraw' }).click();
+  await expect(page.locator('.tm-decklist-status')).toContainText('Not submitted');
+  expect(lists.filter(ask => ask.method === 'DELETE').map(ask => ask.query)).toEqual([
+    { popId: '', firstName: 'Ash', lastName: 'Ketchum' }
+  ]);
+});
