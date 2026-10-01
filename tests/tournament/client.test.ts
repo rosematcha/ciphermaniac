@@ -23,6 +23,7 @@ import {
   joinStaff,
   linkUrl,
   listTournaments,
+  pairNextRound,
   preloadPublished,
   removeStaff,
   reportAsPlayer,
@@ -159,6 +160,19 @@ test('a player identifies and reports through one endpoint, stamped with the ven
   const devices = sent.map(s => (s.body as { device?: string }).device);
   assert.ok(devices.every(Boolean), 'each carries a device ID (a fresh one each here, with no storage to keep it)');
   assert.match(reported.localTime, /^\d{2}\/\d{2}\/\d{4} /);
+});
+
+test('a TOM event’s next round is asked for over the copy synced, stamped with the venue clock', async () => {
+  answer(200, { tournament: emptyTournament({ name: 'X' }) });
+  const { tournament } = await pairNextRound('ABC', 'masters', 'rev');
+  assert.equal(tournament.info.name, 'X');
+  assert.deepEqual(
+    sent.map(s => `${s.method} ${s.url}`),
+    ['POST /api/tournaments/ABC/pairing']
+  );
+  const asked = sent[0]?.body as { pod: string; base: string; localTime: string };
+  assert.deepEqual([asked.pod, asked.base], ['masters', 'rev']);
+  assert.match(asked.localTime, /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/);
 });
 
 test('an error that says more than a message keeps the rest', async () => {

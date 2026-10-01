@@ -6,9 +6,14 @@
  * it again on demand. Results entered on the site wait here until they are
  * written into the file, which TOM then has to reopen (see
  * lib/tournament/tomLink.ts for why), so writing asks first with TOM's own
- * instruction. After a reload the browser may need permission again; until
- * it has it, the console holds off result entry, since the site can no
- * longer see what TOM has.
+ * instruction. Once a round's results are all in, the next round can be
+ * paired here too: the file as TOM last saved it goes up first, the site
+ * pairs the round over it and the results entered here, and the round is
+ * written into the file, whose next read sends it up like any save of TOM's,
+ * so players see their tables while TOM reopens it.
+ * After a reload the browser may need permission again; until it has it, the
+ * console holds off result entry, since the site can no longer see what TOM
+ * has.
  *
  * Each sync names the copy of the event it follows on from, so a browser with
  * an older copy of the file cannot overwrite rounds another one synced: the
@@ -22,8 +27,8 @@
 import { createSignal, onCleanup, onMount, Show } from 'solid-js';
 import { revisionOf } from '../../../shared/tournament/revision';
 import { parseTdf } from '../../../shared/tournament/tdf';
-import type { Tournament } from '../../../shared/tournament/types';
-import { ApiError, errorText, type Manage, syncTournament } from '../../lib/tournament/api';
+import type { PodCategory, Tournament } from '../../../shared/tournament/types';
+import { ApiError, errorText, type Manage, pairNextRound, syncTournament } from '../../lib/tournament/api';
 import { tdfFilename, tdfText } from '../../lib/tournament/exportTdf';
 import {
   canLinkFiles,
@@ -47,6 +52,11 @@ export type LinkState = 'none' | 'reconnect' | 'watching';
 /** The browser took back permission to read the file, or it was moved or deleted. */
 const lostFile = (err: unknown) =>
   err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'NotFoundError');
+
+/** What a write puts into TOM's file: the results entered here, or those and `pod`'s next round, paired here. */
+export type FileWrite = { kind: 'results' } | { kind: 'pair'; pod: PodCategory; label: string };
+
+const RESULTS: FileWrite = { kind: 'results' };
 
 /**
  * Runs one step of following the file. A failure names the step, so the strip
@@ -73,7 +83,7 @@ export function createTomLink(props: { manage: () => Manage; onSynced: (answer?:
   const [state, setState] = createSignal<LinkState>('none');
   const [readAt, setReadAt] = createSignal<Date | null>(null);
   const [error, setError] = createSignal<string | null>(null);
-  const [askingWrite, setAskingWrite] = createSignal(false);
+  const [askingWrite, setAskingWrite] = createSignal<FileWrite | null>(null);
   let lastModified = 0;
   let lastSent = '';
   /** The revision this browser's last sync left; null until it has synced, when the console's copy is the base. */
@@ -217,31 +227,55 @@ export function createTomLink(props: { manage: () => Manage; onSynced: (answer?:
   const exported = (tournament: Tournament) =>
     tdfText({ tournament, pending: props.manage().pending, finished: false });
 
-  /** Sends the file as it is now and writes the results into it, with the watch held off meanwhile. */
-  async function readAndWrite(current: TdfHandle) {
+  /** Pairs `pod`'s next round on the site, over the copy this browser last sent. */
+  async function paired(pod: PodCategory): Promise<Tournament> {
+    const base = synced ?? (await revisionOf(props.manage().tournament));
+    return (await pairNextRound(code(), pod, base).catch(conflicted)).tournament;
+  }
+
+  /** The event `write` puts into the file: as read, or with the next round paired. */
+  const written = (tournament: Tournament, write: FileWrite) =>
+    write.kind === 'pair' ? paired(write.pod) : Promise.resolve(tournament);
+
+  /** Waits out a read under way, so its sync cannot land in the middle of a write. */
+  const readDone = (): Promise<void> =>
+    reading
+      ? new Promise<void>(resolve => {
+          setTimeout(resolve, 100);
+        }).then(readDone)
+      : Promise.resolve();
+
+  /** Sends the file as it is now and writes into it, with the watch held off meanwhile. */
+  async function readAndWrite(current: TdfHandle, write: FileWrite) {
+    await readDone();
     reading = true;
     try {
       const text = await (await current.getFile()).text();
       await push(text);
-      await writeFile(current, exported(parseTdf(text)));
+      await writeFile(current, exported(await written(parseTdf(text), write)));
     } finally {
       reading = false;
     }
   }
 
   /**
-   * Writes the results into TOM's file as it is now, not as the site last saw
-   * it: TOM may have saved since, and its newer rounds must survive the write.
-   * Without a linked file, the results go out as a download to open in TOM.
+   * Writes into TOM's file as it is now, not as the site last saw it: TOM may
+   * have saved since, and its newer rounds must survive the write (a round is
+   * paired only over the file as sent). Without a linked file, the results go
+   * out as a download to open in TOM; pairing needs the file itself, so the
+   * round reaches the site from it.
    */
-  async function writeBack() {
-    setAskingWrite(false);
+  async function writeBack(write: FileWrite) {
+    setAskingWrite(null);
     const current = handle();
     try {
       if (current && state() === 'watching' && (await ensurePermission(current, 'readwrite', true))) {
-        await readAndWrite(current);
+        await readAndWrite(current, write);
         await tick();
         return;
+      }
+      if (write.kind === 'pair') {
+        throw new Error('Allow this page to save the .tdf to pair the round here');
       }
       const text = exported(props.manage().tournament);
       downloadBlob(new Blob([text], { type: 'application/xml' }), tdfFilename(props.manage().tournament));
@@ -267,13 +301,18 @@ export function createTomLink(props: { manage: () => Manage; onSynced: (answer?:
     link,
     unlink,
     upload,
-    askWrite: () => {
+    /** Writes into the file once the strip has asked (TOM must be closed first), or downloads it at once. */
+    write: (write: FileWrite = RESULTS) => {
+      if (state() !== 'watching') {
+        return writeBack(write);
+      }
       opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      setAskingWrite(true);
+      setAskingWrite(write);
+      return Promise.resolve();
     },
     /** Backs out of writing, and puts focus back on what asked. */
     keepWrite: () => {
-      setAskingWrite(false);
+      setAskingWrite(null);
       opener?.focus();
     },
     writeBack
@@ -283,6 +322,8 @@ export function createTomLink(props: { manage: () => Manage; onSynced: (answer?:
 export type TomLink = ReturnType<typeof createTomLink>;
 
 const results = (n: number) => `${n} result${n === 1 ? '' : 's'}`;
+
+const pairLabel = (write: FileWrite) => (write.kind === 'pair' ? write.label : null);
 
 /** The file's name and where it stands, as one data-built line. */
 function FileLine(props: { link: TomLink }) {
@@ -382,29 +423,31 @@ export function TomStrip(props: { link: TomLink }) {
         <UploadButton link={link()} label='Upload .tdf' class='btn btn-secondary tm-small' />
       </Show>
       <Show when={link().askingWrite()}>
-        <span
-          class='tm-ask tm-ask-line'
-          role='group'
-          aria-label='Write results to the .tdf'
-          onKeyDown={event => {
-            if (event.key === 'Escape') {
-              link().keepWrite();
-            }
-          }}
-        >
-          <span class='tm-confirm-label'>Close the event in TOM before writing, then reopen the file in TOM.</span>
-          <button
-            type='button'
-            class='btn btn-primary tm-small'
-            ref={el => queueMicrotask(() => el.focus())}
-            onClick={() => void link().writeBack()}
+        {write => (
+          <span
+            class='tm-ask tm-ask-line'
+            role='group'
+            aria-label={write().kind === 'pair' ? 'Pair into the .tdf' : 'Write results to the .tdf'}
+            onKeyDown={event => {
+              if (event.key === 'Escape') {
+                link().keepWrite();
+              }
+            }}
           >
-            Write {results(link().pending())}
-          </button>
-          <button type='button' class='btn btn-ghost tm-small' onClick={() => link().keepWrite()}>
-            Keep
-          </button>
-        </span>
+            <span class='tm-confirm-label'>Close the event in TOM before writing, then reopen the file in TOM.</span>
+            <button
+              type='button'
+              class='btn btn-primary tm-small'
+              ref={el => queueMicrotask(() => el.focus())}
+              onClick={() => void link().writeBack(write())}
+            >
+              {pairLabel(write()) ?? `Write ${results(link().pending())}`}
+            </button>
+            <button type='button' class='btn btn-ghost tm-small' onClick={() => link().keepWrite()}>
+              Keep
+            </button>
+          </span>
+        )}
       </Show>
       <ErrorLine message={link().error()} />
     </section>
@@ -412,12 +455,15 @@ export function TomStrip(props: { link: TomLink }) {
 }
 
 /**
- * The console's next step for a TOM event: reconnect the file, write the
- * results TOM does not have yet (asked first, in the strip, when the file is
- * linked; a download otherwise), or read the file again.
+ * The console's next step for a TOM event: reconnect the file; once the
+ * round's results are all in (`pair`), pair the next round into the linked
+ * file; write the results TOM does not have yet; or read the file again.
+ * Writing into a linked file asks first, in the strip; without one, the
+ * results download. Past the rounds planned, the pairing is not primary.
  */
-export function TomNextStep(props: { link: TomLink }) {
+export function TomNextStep(props: { link: TomLink; pair: FileWrite | null; planned: boolean }) {
   const link = () => props.link;
+  const pair = () => (link().state() === 'watching' ? props.pair : null);
   return (
     <Show
       when={link().state() !== 'reconnect'}
@@ -427,24 +473,37 @@ export function TomNextStep(props: { link: TomLink }) {
         </button>
       }
     >
-      <Show
-        when={link().pending() > 0}
-        fallback={
-          <Show when={link().state() === 'watching'}>
-            <button type='button' class='btn btn-secondary' onClick={() => void link().refresh()}>
-              Refresh .tdf
+      <span class='tm-next-acts'>
+        <Show when={pair()}>
+          {next => (
+            <button
+              type='button'
+              class={props.planned ? 'btn btn-primary' : 'btn btn-secondary'}
+              onClick={() => void link().write(next())}
+            >
+              {pairLabel(next())}
             </button>
-          </Show>
-        }
-      >
-        <button
-          type='button'
-          class='btn btn-primary'
-          onClick={() => (link().state() === 'watching' ? link().askWrite() : void link().writeBack())}
+          )}
+        </Show>
+        <Show
+          when={link().pending() > 0}
+          fallback={
+            <Show when={!pair() && link().state() === 'watching'}>
+              <button type='button' class='btn btn-secondary' onClick={() => void link().refresh()}>
+                Refresh .tdf
+              </button>
+            </Show>
+          }
         >
-          {link().state() === 'watching' ? 'Write' : 'Download'} {results(link().pending())} to .tdf
-        </button>
-      </Show>
+          <button
+            type='button'
+            class={pair() && props.planned ? 'btn btn-secondary' : 'btn btn-primary'}
+            onClick={() => void link().write()}
+          >
+            {link().state() === 'watching' ? 'Write' : 'Download'} {results(link().pending())} to .tdf
+          </button>
+        </Show>
+      </span>
     </Show>
   );
 }

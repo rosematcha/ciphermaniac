@@ -21,6 +21,7 @@ import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts'
 import * as decks from '../../functions/api/tournaments/[code]/decks.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
 import * as manage from '../../functions/api/tournaments/[code]/manage.ts';
+import * as pairing from '../../functions/api/tournaments/[code]/pairing.ts';
 import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import * as settings from '../../functions/api/tournaments/[code]/settings.ts';
 import * as staff from '../../functions/api/tournaments/[code]/staff.ts';
@@ -29,7 +30,8 @@ import * as tournaments from '../../functions/api/tournaments/index.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { REPORT_WINDOW_MS } from '../../shared/tournament/reports.ts';
 import { revisionOf } from '../../shared/tournament/revision.ts';
-import { parseTdf } from '../../shared/tournament/tdf.ts';
+import { parseTdf, writeTdf } from '../../shared/tournament/tdf.ts';
+import type { Round, Tournament } from '../../shared/tournament/types.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { publishView } from '../../functions/lib/tournaments/publish.ts';
 import { loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
@@ -517,6 +519,120 @@ test('a TOM event holds site results as pending until the synced file settles th
   });
   assert.equal(synced.status, 200);
   assert.deepEqual(synced.json.pending, []);
+});
+
+test('a TOM event runs the site’s clock, which a synced file’s timer does not touch', async () => {
+  const owner = await signIn('Organizer');
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const created = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf } }
+  );
+  const { code } = created.json;
+  const base = await revisionNow(code, owner);
+  const fresh = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json.tournament;
+  assert.equal(fresh.pods[0].rounds[0].timeLeft, 30 * 60, 'TOM’s timer is set aside from the start');
+
+  const started = await send(code, owner, { type: 'startClock', pod: 'mixed' });
+  assert.equal(started.status, 200);
+  assert.notEqual(started.json.tournament.pods[0].rounds[1].clockStartedAt, null);
+  assert.equal((await send(code, owner, { type: 'adjustClock', pod: 'mixed', seconds: -60 })).status, 200);
+
+  // TOM saved with its own timer at 42 seconds; the file was followed on from the copy before the clock started.
+  const saved = {
+    ...tdf,
+    pods: tdf.pods.map(pod => ({ ...pod, rounds: pod.rounds.map(round => ({ ...round, timeLeft: 42 })) }))
+  };
+  const settled = {
+    ...saved,
+    pods: saved.pods.map(pod => ({
+      ...pod,
+      rounds: pod.rounds.map(round =>
+        round.number === 2
+          ? { ...round, matches: round.matches.map((m, i) => (i === 0 ? { ...m, outcome: 'p1' as const } : m)) }
+          : round
+      )
+    }))
+  };
+  const synced = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: settled, base }
+  });
+  assert.equal(synced.status, 200, 'starting the clock is not a different copy of the event');
+  const round = synced.json.tournament.pods[0].rounds[1];
+  assert.equal(round.matches[0].outcome, 'p1', 'the file’s results land');
+  assert.equal(round.timeLeft, 30 * 60 - 60, 'the site’s clock stands');
+  assert.equal(round.clockStartedAt, started.json.tournament.pods[0].rounds[1].clockStartedAt);
+});
+
+async function newTom(cookie: string, tournament: Tournament): Promise<string> {
+  const created = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    { method: 'POST', cookie, body: { mode: 'tom', tournament } }
+  );
+  return created.json.code as string;
+}
+
+function pairNext(code: string, cookie: string, base: string) {
+  return hit(pairing.onRequestPost as Handler, '/pairing', at(code), {
+    method: 'POST',
+    cookie,
+    body: { pod: 'mixed', base, localTime: '10/10/2026 13:00:00' }
+  });
+}
+
+test('a TOM event’s next round is paired over the site’s results and lands only with the file', async () => {
+  const owner = await signIn('Organizer');
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const code = await newTom(owner, tdf);
+  const base = await revisionNow(code, owner);
+  assert.match((await pairNext(code, owner, base)).json.error, /Report every match/);
+  const open = tdf.pods[0]!.rounds[1]!.matches.filter(m => m.p2 !== null && m.outcome === 'pending');
+  for (const { table, p1, p2 } of open) {
+    await send(code, owner, { type: 'reportResult', pod: 'mixed', round: 2, table, p1, p2, outcome: 'p1' });
+  }
+  assert.equal((await pairNext(code, owner, 'another copy')).status, 409, 'only over the file the browser sent');
+  const paired = await pairNext(code, owner, base);
+  assert.equal(paired.status, 200);
+  const [, second, third] = paired.json.tournament.pods[0].rounds as Round[];
+  assert.ok(
+    second?.matches.every(m => m.outcome !== 'pending'),
+    'the site’s results are in the round'
+  );
+  assert.equal(third?.number, 3);
+  assert.equal(third?.pairTime, '10/10/2026 13:00:00', 'stamped with the venue clock');
+  const held = await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner });
+  assert.equal(held.json.tournament.pods[0].rounds.length, 2, 'nothing is stored until the file has it');
+  assert.equal(held.json.pending.length, open.length, 'so the results still wait on TOM');
+  const synced = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: parseTdf(writeTdf(paired.json.tournament)), base }
+  });
+  assert.equal(synced.status, 200, 'the file the round was written into syncs as any save of TOM’s');
+  assert.equal(synced.json.tournament.pods[0].rounds.length, 3);
+  assert.deepEqual(synced.json.pending, []);
+});
+
+test('a TOM event’s first round and a Swiss event are not paired through the file', async () => {
+  const owner = await signIn('Organizer');
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const fresh = await newTom(owner, { ...tdf, pods: tdf.pods.map(pod => ({ ...pod, rounds: [] })) });
+  assert.match((await pairNext(fresh, owner, await revisionNow(fresh, owner))).json.error, /Pair round 1 in TOM/);
+  const swiss = await newSwiss(owner);
+  assert.equal((await pairNext(swiss, owner, await revisionNow(swiss, owner))).status, 400);
+  const tom = await newTom(owner, tdf);
+  const junk = await hit(pairing.onRequestPost as Handler, '/pairing', at(tom), {
+    method: 'POST',
+    cookie: owner,
+    body: { pod: 'nonsense', base: await revisionNow(tom, owner) }
+  });
+  assert.equal(junk.status, 400);
 });
 
 test('a Swiss event cannot be synced from a file', async () => {

@@ -2,9 +2,9 @@
  * POST /api/tournaments/:code/commands — one organizer action (see
  * shared/tournament/commands.ts), from the event's staff.
  *
- * A Swiss event applies it to the document. A TOM-run event only takes
- * results: TOM owns its pairings, so a result entered here is held as pending
- * and shown until the .tdf that TOM writes has its own.
+ * A Swiss event applies it to the document. A TOM-run event takes results,
+ * held as pending until the .tdf that TOM writes has its own, and the round
+ * clock, which the site runs (see functions/lib/tournaments/results.ts).
  */
 
 import { readCommand } from '../../../../shared/tournament/readCommand.js';

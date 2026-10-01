@@ -11,9 +11,14 @@
  * event, with the revision it now holds, so the console need not ask again. A file sent from a copy the site no longer holds
  * is refused (409) rather than taken over rounds another browser synced; one
  * that is the copy the site already holds changes nothing and succeeds.
+ *
+ * The file's round clocks are set aside for the ones the site runs (see
+ * shared/tournament/tomClock.ts), so a copy that differs only in its clocks
+ * is the copy the site holds.
  */
 
 import { revisionOf } from '../../../../shared/tournament/revision.js';
+import { withoutClocks, withSiteClocks } from '../../../../shared/tournament/tomClock.js';
 import type { Tournament } from '../../../../shared/tournament/types.js';
 import { readTournament } from '../../../../shared/tournament/validate.js';
 import { prunePending } from '../../../../shared/tournament/view.js';
@@ -70,11 +75,12 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if (tournament.players.length === 0 && access.row.tournament.players.length > 0) {
     return jsonError('That file has nobody in it; link the file TOM is using', 400);
   }
-  // Only a sync changes a TOM event's document, so a retry after another write still finds the one checked.
-  const checked = JSON.stringify(access.row.tournament);
+  // Besides a sync, only the clock changes a TOM event's document, so a retry after another write finds the copy checked.
+  const unclocked = (held: Tournament) => JSON.stringify(withoutClocks(held));
+  const checked = unclocked(access.row.tournament);
   const outcome = await mutate(access.db, access.row, row =>
-    row === access.row || JSON.stringify(row.tournament) === checked
-      ? { tournament, pending: prunePending(tournament, row.pending) }
+    row === access.row || unclocked(row.tournament) === checked
+      ? { tournament: withSiteClocks(tournament, row.tournament), pending: prunePending(tournament, row.pending) }
       : CONFLICT
   );
   if ('error' in outcome) {

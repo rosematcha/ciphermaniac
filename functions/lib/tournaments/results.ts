@@ -2,15 +2,17 @@
  * What one organizer action changes in the stored event, shared by the staff
  * commands endpoint and the players' own reports once they agree and lock.
  *
- * A Swiss event applies the command to the document. A TOM-run event only
- * takes results: TOM owns its pairings, so a result entered here is held as
- * pending and shown until the .tdf that TOM writes has its own.
+ * A Swiss event applies the command to the document. A TOM-run event takes
+ * results and the round clock: TOM owns its pairings, so a result entered here
+ * is held as pending and shown until the .tdf that TOM writes has its own,
+ * while the clock is the site's (see shared/tournament/tomClock.ts).
  */
 
 import { applyCommand, type Command } from '../../../shared/tournament/commands.js';
 import { dueResults, resultOf } from '../../../shared/tournament/reports.js';
 import { isOpenMatch } from '../../../shared/tournament/rounds.js';
-import { prunePending, withPending } from '../../../shared/tournament/view.js';
+import type { PodCategory, Tournament } from '../../../shared/tournament/types.js';
+import { applyPending, prunePending, withPending } from '../../../shared/tournament/view.js';
 import type { D1Like } from '../types.js';
 import { commandContext } from './commandContext.js';
 import { type Changes, mutate, type TournamentRow } from './store.js';
@@ -28,19 +30,38 @@ function pendingChange(row: TournamentRow, command: Extract<Command, { type: 're
   return { pending: withPending(prunePending(row.tournament, row.pending), next) };
 }
 
+/** What a TOM-run event takes from the site: results for TOM, and the round clock, which the site runs. */
+const TOM_COMMANDS: ReadonlySet<Command['type']> = new Set(['reportResult', 'startClock', 'stopClock', 'adjustClock']);
+
 /** The changes `command` makes, or why it cannot run. */
 export function commandChanges(row: TournamentRow, command: Command, localTime: unknown): Changes | string {
-  if (row.mode === 'tom' && command.type !== 'reportResult') {
+  if (row.mode === 'tom' && !TOM_COMMANDS.has(command.type)) {
     return 'TOM runs this event; make that change in TOM';
   }
   const result = applyCommand(row.tournament, command, commandContext(row.tournament, localTime));
   if (!result.ok) {
     return result.error;
   }
-  if (row.mode === 'swiss') {
-    return { tournament: result.tournament };
+  if (row.mode === 'tom' && command.type === 'reportResult') {
+    return pendingChange(row, command);
   }
-  return command.type === 'reportResult' ? pendingChange(row, command) : 'Not a result';
+  return { tournament: result.tournament };
+}
+
+/**
+ * A TOM event's next round in `pod`, paired over the results entered here,
+ * or why it cannot be. Nothing is stored: the console writes the round into
+ * TOM's file, and the site takes it from the file's next sync, so until the
+ * file has it the results stay pending and no round is held that it lacks.
+ * Round 1 is TOM's, which pods the field.
+ */
+export function tomNextRound(row: TournamentRow, pod: PodCategory, localTime: unknown): Tournament | string {
+  if (!row.tournament.pods.find(p => p.category === pod)?.rounds.length) {
+    return 'Pair round 1 in TOM';
+  }
+  const tournament = applyPending(row.tournament, row.pending);
+  const result = applyCommand(tournament, { type: 'pairRound', pod }, commandContext(row.tournament, localTime));
+  return result.ok ? result.tournament : result.error;
 }
 
 /**

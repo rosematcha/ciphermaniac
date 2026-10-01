@@ -274,6 +274,8 @@ interface RoundBarProps {
   tom: boolean;
   /** The round can still be acted on: its latest, no champion, not TOM's. */
   live: boolean;
+  /** The round's clock can be run: its latest, no champion, TOM's or not (the site runs a TOM event's clock). */
+  timed: boolean;
   played: number;
   open: number;
   waiting: boolean;
@@ -313,7 +315,7 @@ function RoundBar(props: RoundBarProps) {
       <Show when={props.live && props.nothingReported}>
         <DeleteRound state={props.state} pod={props.pod} round={props.round} />
       </Show>
-      <Show when={running()}>
+      <Show when={props.timed && props.round.status !== 'finished'}>
         <ClockControls state={props.state} pod={props.pod} round={props.round} />
       </Show>
     </div>
@@ -353,8 +355,10 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
       : 0;
   };
   const nothingReported = () => played().every(m => m.outcome === 'pending');
-  /** The staff controls that act on the round, offered only on its latest round and never for TOM. */
-  const live = () => !tom() && isLatest() && winner() === null;
+  /** The round's clock, run from its latest round until there is a champion, TOM's or not. */
+  const timed = () => isLatest() && winner() === null;
+  /** The staff controls that act on the round, offered only where its clock is and never for TOM. */
+  const live = () => !tom() && timed();
   const isAsking = (match: Match) => asking()?.table === match.table && asking()?.p1 === match.p1;
   const roundReports = createMemo(() => {
     const r = round();
@@ -456,6 +460,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               round={r()}
               tom={tom()}
               live={live()}
+              timed={timed()}
               played={played().length}
               open={openCount()}
               waiting={waiting().length > 0}

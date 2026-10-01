@@ -18,6 +18,7 @@ import {
   untrack
 } from 'solid-js';
 import { activeIds, cutPodsOf, latestRound, livePods, roundComplete } from '../../../shared/tournament/rounds';
+import { wasFinalized } from '../../../shared/tournament/tdf';
 import type { Pod, PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
 import { Tabs } from '../../components/Tabs';
@@ -35,6 +36,7 @@ import {
   podProgress,
   shownDecks,
   statusParts,
+  type SwissPlan,
   unseated
 } from '../../lib/tournament/present';
 import { session } from './session';
@@ -48,7 +50,7 @@ import { createNow } from './now';
 import { TopCutControl } from './RoundControls';
 import { RoundPanel } from './RoundPanel';
 import { SignIn } from './SignIn';
-import { createTomLink, type TomLink, TomNextStep, TomStrip } from './TomSyncPanel';
+import { createTomLink, type FileWrite, type TomLink, TomNextStep, TomStrip } from './TomSyncPanel';
 
 // Pairings is the tab a running event lives on, so only it loads with the page;
 // the others load when opened (decklists are read before the event, the
@@ -81,6 +83,28 @@ function tomPart(tom: TomLink): string {
   }
   const n = tom.pending();
   return n ? `${n} result${n === 1 ? '' : 's'} to write` : 'TOM has every result';
+}
+
+/**
+ * A TOM event's next round, once every result of its latest is in: paired on
+ * the site into TOM's file (see TomSyncPanel), and `planned` while the Swiss
+ * rounds the attendance calls for are not all played. Round 1 and the top cut
+ * start in TOM, which pods the field and sizes the cut, and a file TOM has
+ * finalized takes no more rounds.
+ */
+function tomPairing(
+  manage: Manage,
+  pod: Pod | undefined,
+  progress: PodProgress,
+  plan: SwissPlan | null
+): { pair: FileWrite | null; planned: boolean } {
+  const step = nextStep(progress, manage.settings.finished, plan);
+  const open = pod && progress.round && !wasFinalized(manage.tournament);
+  const pair =
+    open && (step.kind === 'pair' || step.kind === 'decide') && step.ready
+      ? { kind: 'pair' as const, pod: pod.category, label: step.label }
+      : null;
+  return { pair, planned: step.kind === 'pair' };
 }
 
 /** Pairing the pod's next round or stage. */
@@ -223,7 +247,7 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
     const rounds = tom ? null : (plan()?.rounds ?? null);
     // A console that cannot reach the site says so, rather than showing an old round as the current one.
     const stale = props.state.loadError() ? ['not updating'] : [];
-    return [...statusParts(progress(), finished(), tom ? null : clock(), rounds), ...extra, ...stale].join(' · ');
+    return [...statusParts(progress(), finished(), clock(), rounds), ...extra, ...stale].join(' · ');
   };
   const step = () => (props.tom ? ({ kind: 'none' } as NextStep) : nextStep(progress(), finished(), plan()));
   const pairStep = () => {
@@ -276,7 +300,12 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
       }
       action={
         <Switch>
-          <Match when={props.tom}>{tom => <TomNextStep link={tom()} />}</Match>
+          <Match when={props.tom}>
+            {tom => {
+              const next = () => tomPairing(props.manage, swissOver() ? undefined : props.pod, progress(), plan());
+              return <TomNextStep link={tom()} pair={next().pair} planned={next().planned} />;
+            }}
+          </Match>
           <Match when={props.pod && roundEnd()}>
             {s => (
               <RoundEndStep

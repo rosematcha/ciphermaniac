@@ -104,6 +104,11 @@ export function isOpenMatch(tournament: Tournament, key: MatchKey): boolean {
   return findMatch(tournament, key)?.match.outcome === 'pending';
 }
 
+/** A full round's clock, in seconds: Swiss rounds and top cut rounds each run their own length. */
+export function fullRoundSeconds(tournament: Tournament, kind: Round['kind']): number {
+  return (kind === 'swiss' ? tournament.info.roundTime : tournament.info.finalsRoundTime) * 60;
+}
+
 export function roundComplete(round: Round): boolean {
   return round.matches.every(isReported);
 }

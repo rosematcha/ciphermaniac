@@ -9,7 +9,7 @@ import { tomDateTime } from '../../../shared/tournament/divisions';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import type { PlayerResult, ShownMatch } from '../../../shared/tournament/reports';
-import type { Tournament } from '../../../shared/tournament/types';
+import type { PodCategory, Tournament } from '../../../shared/tournament/types';
 import {
   type Decklist,
   type Manage,
@@ -162,6 +162,13 @@ export function fetchManage(code: string, since?: number) {
 /** Sends one command, stamped with the venue's clock (see functions/lib/tournaments/commandContext.ts). */
 export const sendCommand = (code: string, command: Command) =>
   call<Manage>(`${base(code)}/commands`, json('POST', { command, localTime: tomDateTime(new Date()) }));
+
+/** A TOM event's next round, paired over the copy `revision` names, for the console to write into TOM's file. */
+export const pairNextRound = (code: string, pod: PodCategory, revision: string) =>
+  call<{ tournament: Tournament }>(
+    `${base(code)}/pairing`,
+    json('POST', { pod, base: revision, localTime: tomDateTime(new Date()) })
+  );
 
 /** How long a sync may take before the link gives up on it and tries again. */
 export const SYNC_TIMEOUT_MS = 30_000;
