@@ -2008,7 +2008,7 @@ const ACCOUNT_STATEMENTS = [
   "DELETE FROM applications WHERE user_id = ? AND status = 'pending'",
   'WHERE a.status = ? ORDER BY a.created_at ASC',
   'WHERE a.status = ? ORDER BY a.created_at DESC',
-  'SELECT proof_key FROM applications WHERE id = ?',
+  'SELECT proof_key, proof_etag FROM applications WHERE id = ?',
   "UPDATE users SET role = 'organizer'",
   'UPDATE applications SET status = ?2',
   'WHERE a.id = ?',

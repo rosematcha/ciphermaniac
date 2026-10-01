@@ -22,9 +22,10 @@ export async function onRequestGet(context: Context): Promise<Response> {
     return applicant;
   }
   const { user, latest } = applicant;
+  const held = isPending(applicant) ? null : await proofIn(context.env.PROOFS, user.id);
   const state: ApplicationState = {
     application: latest && myApplication(latest),
-    proof: isPending(applicant) ? null : await proofIn(context.env.PROOFS, user.id),
+    proof: held && { type: held.type, size: held.size },
     eligible: { profile: profileComplete(user), role: canApply(user.role) }
   };
   return privateJson(state);

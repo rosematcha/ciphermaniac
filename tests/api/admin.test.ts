@@ -296,10 +296,8 @@ test('a proof goes to an Admin inert: its own type, never cached, never sniffed,
     'a PDF is not drawn on the site'
   );
   // Whatever else a slot came to hold is only ever bytes to download.
-  proofs.objects.set(`proofs/${await idOf(document.cookie)}`, {
-    bytes: new Uint8Array([60, 104]),
-    contentType: 'text/html'
-  });
+  const key = `proofs/${await idOf(document.cookie)}`;
+  proofs.objects.set(key, { ...proofs.objects.get(key)!, bytes: new Uint8Array([60, 104]), contentType: 'text/html' });
   const odd = await viewProof(admin, document.id);
   assert.equal(odd.headers.get('content-type'), 'application/octet-stream');
   assert.equal(odd.headers.get('content-disposition'), 'attachment; filename="proof.bin"');
@@ -315,6 +313,47 @@ test('there is no proof to see without one, for an unknown Application, or witho
   assert.equal((await viewProof(admin, withFile.id)).status, 404, 'a file gone from the bucket');
   delete env.PROOFS;
   assert.equal((await viewProof(admin, withFile.id)).status, 503);
+});
+
+test('a proof uploaded while its Application is being sent is never shown as the one sent', async () => {
+  const admin = await signIn('Admin', 'admin');
+  const cookie = await player('Applicant', '114');
+  await upload(cookie, PNG);
+  let id = '';
+  // A second file is still arriving when another tab sends the Application with the first.
+  const late = new ReadableStream<Uint8Array>(
+    {
+      async pull(controller) {
+        const sent = await hit(
+          applications.onRequestPost as Handler,
+          '/api/applications',
+          {},
+          {
+            method: 'POST',
+            cookie,
+            body: { explanation: '', proof: true }
+          }
+        );
+        id = sent.json.application.id as string;
+        controller.enqueue(PDF);
+        controller.close();
+      }
+    },
+    { highWaterMark: 0 }
+  );
+  const request = new Request(`${ORIGIN}/api/applications/proof`, {
+    method: 'PUT',
+    headers: { origin: ORIGIN, cookie },
+    body: late,
+    duplex: 'half'
+  } as RequestInit);
+  const replaced = await proof.onRequestPut({ request, env, params: {} } as never);
+  assert.equal(replaced.status, 200, 'the upload passed its checks before the send landed');
+  const [listed] = (await list(admin)).json.applications;
+  assert.deepEqual([listed.id, listed.proofType, listed.hasProof], [id, 'image/png', true]);
+  const shown = await viewProof(admin, id);
+  assert.equal(shown.status, 409);
+  assert.equal(shown.bytes.byteLength > 0 && shown.headers.get('content-type'), 'application/json');
 });
 
 test('approving makes an Organizer, records who decided, and deletes the proof; a second decision is refused', async () => {

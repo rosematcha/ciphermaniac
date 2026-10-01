@@ -8,11 +8,12 @@
  */
 
 import { EXPLANATION_MAX } from '../../../shared/accounts/applications.js';
-import type { MyApplication, ProofSlot } from '../../../shared/accounts/types.js';
+import type { MyApplication } from '../../../shared/accounts/types.js';
 import {
   type Applicant,
   applyRefusal,
   dropProof,
+  type HeldProof,
   openApplicant,
   pendingRefusal,
   proofIn,
@@ -52,7 +53,7 @@ function readAsked(body: Record<string, unknown> | null): Asked | string {
  * Stores the Application, answering it as sent; null when another is
  * pending, which the unique index on pending ones decides.
  */
-async function send(applicant: Applicant, asked: Asked, slot: ProofSlot | null): Promise<MyApplication | null> {
+async function send(applicant: Applicant, asked: Asked, slot: HeldProof | null): Promise<MyApplication | null> {
   const { db, user } = applicant;
   const application: MyApplication = {
     id: randomToken(12),
@@ -66,7 +67,7 @@ async function send(applicant: Applicant, asked: Asked, slot: ProofSlot | null):
   const stored = await db
     .prepare(
       'INSERT OR IGNORE INTO applications (id, user_id, status, pop_id, first_name, last_name, explanation, ' +
-        "proof_key, proof_type, proof_size, created_at) VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)"
+        "proof_key, proof_type, proof_size, proof_etag, created_at) VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .bind(
       application.id,
@@ -78,6 +79,7 @@ async function send(applicant: Applicant, asked: Asked, slot: ProofSlot | null):
       slot ? proofKey(user.id) : null,
       application.proofType,
       slot?.size ?? null,
+      slot?.etag ?? null,
       application.createdAt
     )
     .run();

@@ -7,7 +7,9 @@
  * The proof is a file in the private PROOFS bucket, one slot per account
  * (`proofs/<account id>`): uploading again writes over it, so an upload never
  * sent leaves nothing behind. The slot is emptied once the Application is
- * decided or withdrawn, or sent without proof.
+ * decided or withdrawn, or sent without proof. An Application keeps the etag
+ * of the file it was sent with, so an upload that lands after it was sent is
+ * never shown as its proof.
  */
 
 import { profileComplete } from '../../../shared/accounts/applications.js';
@@ -139,10 +141,13 @@ export function applyRefusal(applicant: Applicant): Response | null {
   return isPending(applicant) ? pendingRefusal() : null;
 }
 
+/** A proof in an account's slot, and which upload it is. */
+export type HeldProof = ProofSlot & { etag: string };
+
 /** The proof in the account's slot, or null when it holds none. */
-export async function proofIn(bucket: ProofBucket | undefined, userId: string): Promise<ProofSlot | null> {
+export async function proofIn(bucket: ProofBucket | undefined, userId: string): Promise<HeldProof | null> {
   const object = await bucket?.head(proofKey(userId));
-  return object ? { type: object.httpMetadata?.contentType ?? '', size: object.size } : null;
+  return object ? { type: object.httpMetadata?.contentType ?? '', size: object.size, etag: object.etag } : null;
 }
 
 /**
