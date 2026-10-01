@@ -2635,113 +2635,6 @@ tr.row-expansion > td {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Chart card ---------- */
-.chart-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px 18px;
-}
-.chart {
-  width: 100%;
-  height: 220px;
-  display: block;
-}
-.chart .grid line {
-  stroke: var(--rule);
-  stroke-width: 1;
-}
-
-/* ---------- Archetype trend chart (Trends page) ---------- */
-.trend-chart {
-  width: 100%;
-  /* Height comes from the svg height attribute — TrendsPage renders 240px on
-     phone-width containers, 320px otherwise (F5). */
-  height: auto;
-  /* Horizontal drags scrub the crosshair (see TrendsPage pointer handlers);
-     vertical pans stay with the browser so the page still scrolls. */
-  touch-action: pan-y;
-}
-.trend-chart .grid line {
-  stroke: var(--rule);
-  stroke-width: 1;
-}
-.trend-chart .axis-label {
-  font-size: 10.5px;
-  font-weight: 500;
-  fill: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.chart-svg-wrap {
-  position: relative;
-}
-.trend-chart .hover-line {
-  stroke: var(--fg);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-  opacity: 0.4;
-}
-.trend-chart .hover-dot {
-  stroke: var(--surface);
-  stroke-width: 2;
-  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3));
-}
-.chart-tooltip {
-  position: absolute;
-  top: 8px;
-  /* `left` is computed in TrendsPage against the measured tooltip width, so the
-     card flips sides only when it would actually overflow the chart box. */
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-  font-size: 12px;
-  pointer-events: none;
-  width: max-content;
-  min-width: 200px;
-  max-width: 300px;
-  z-index: 2;
-}
-.chart-tooltip-date {
-  font-weight: 600;
-  color: var(--fg);
-  margin-bottom: 6px;
-  font-variant-numeric: tabular-nums;
-}
-.chart-tooltip-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.chart-tooltip-list li {
-  display: grid;
-  grid-template-columns: 8px auto 1fr auto;
-  align-items: center;
-  gap: 8px;
-  color: var(--fg);
-  font-variant-numeric: tabular-nums;
-}
-.chart-tooltip-list .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.chart-tooltip-list .label {
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.chart-tooltip-list .value {
-  font-weight: 600;
-}
-/* On touch devices, the chart tooltip + crosshair are driven by tap-to-pin
-   (see TrendsPage.tsx). The visibility of these elements is already gated by
-   the `hoverData()` memo, so no media-query hide is needed. */
-
 /* ---------- Archetype Pokémon icons ----------
    Compact Limitless sprite(s) shown beside an archetype name (list view,
    trends legend, etc.). Up to two; paired icons overlap slightly. */
@@ -4066,8 +3959,7 @@ tr.row-expansion > td {
 .r2-lens details[open] > summary {
   color: var(--fg);
 }
-.r2-lens-plus,
-.mu-lens-plus {
+.r2-lens-plus {
   color: var(--accent-ink);
   font-weight: 700;
   font-size: 14px;

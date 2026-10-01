@@ -159,9 +159,33 @@ test('archetype matchups show ranges for rows and the card lens', async ({ page 
   await expect(page.locator('.r2-lens-hint')).toContainText('95% interval');
 });
 
-test('trends renders without reaching the network for live data', async ({ page }) => {
+test('trends renders its chart and preserves vertical touch scrolling @mobile', async ({ page }) => {
+  await page.route('**/trends.json', route =>
+    route.fulfill({
+      json: {
+        trendReport: {
+          series: [
+            {
+              base: 'Dragapult',
+              displayName: 'Dragapult',
+              avgShare: 25,
+              timeline: [
+                { date: '2026-09-01', share: 20 },
+                { date: '2026-09-02', share: 30 }
+              ]
+            }
+          ]
+        },
+        cardTrends: { rising: [], falling: [] }
+      }
+    })
+  );
   await gotoClean(page, '/trends');
-  await expect(page.locator('main')).toBeVisible();
+  const chart = page.locator('.trend-chart');
+  await expect(chart).toBeVisible();
+  await expect(chart).toHaveCSS('display', 'block');
+  await expect(chart).toHaveCSS('touch-action', 'pan-y');
+  await expect(page.locator('.trends-chart-card')).toHaveCSS('border-top-width', '1px');
 });
 
 test('players index ranks the fixture players with a rank switch', async ({ page }) => {

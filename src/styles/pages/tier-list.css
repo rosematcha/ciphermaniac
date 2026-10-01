@@ -648,29 +648,6 @@ body:not(.tl-labels) .tl-ico {
   line-height: 1.2;
 }
 
-/* palette popover */
-.tl-pal {
-  display: grid;
-  grid-template-columns: repeat(12, 18px);
-  gap: 3px;
-  padding: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-}
-.tl-pal i {
-  display: block;
-  width: 18px;
-  height: 18px;
-  border-radius: 2px;
-  border: 1px solid rgba(0, 0, 0, 0.22);
-  cursor: pointer;
-}
-.tl-pal i:hover {
-  outline: 1px solid var(--fg);
-  outline-offset: 1px;
-}
-
 /* add-tier control, outside the board */
 .tl-add {
   margin-top: 10px;
@@ -1062,7 +1039,6 @@ body:not(.tl-labels) .tl-ico {
 .tl-qface img {
   image-rendering: -webkit-optimize-contrast;
 }
-.tl-qface .tl-art-img,
 .tl-qface > img:not(.arche-icon) {
   width: 150px;
   border-radius: 4px;
