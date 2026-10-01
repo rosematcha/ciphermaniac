@@ -1,14 +1,24 @@
 /**
- * Where an account stands on running events (see applicantStage): the stage
- * in words, its day, the admin's note on a rejection, and the step it leaves
- * (apply, withdraw, apply again, the events, the admin page).
+ * Where an account stands on running events (see applicantStage), on
+ * Settings and the apply page: the stage in words, its day, the admin's note
+ * on a rejection, and the step it leaves (apply, withdraw, apply again, the
+ * events, the admin page). On /host, one line in the hero: the stage and its
+ * step, for an account that may not start events.
  */
 
 import { A } from '@solidjs/router';
-import { createSignal, Match, Show, Switch } from 'solid-js';
+import { createResource, createSignal, Match, Show, Switch } from 'solid-js';
+import type { AccountRole } from '../../../shared/accounts/roles';
 import type { MyApplication } from '../../../shared/accounts/types';
 import { errorText } from '../../lib/tournament/api';
-import { type ApplicantStage, dayOf, withdrawApplication } from '../../lib/tournament/applications';
+import {
+  type ApplicantStage,
+  applicantStage,
+  dayOf,
+  fetchApplication,
+  withdrawApplication
+} from '../../lib/tournament/applications';
+import { resolved } from '../../lib/resource';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import '../../styles/pages/tournament-apply.css';
@@ -108,7 +118,7 @@ function StageStep(props: {
       </Match>
       <Match when={props.stage === 'admin'}>
         <A class='btn btn-secondary' href='/admin'>
-          Admin
+          Admin page
         </A>
         <A class='btn btn-ghost' href='/host'>
           Your events
@@ -156,5 +166,40 @@ export function ApplicantStatus(props: {
       </div>
       <Show when={note()}>{text => <p class='tm-box-bar tm-applicant-note'>{text()}</p>}</Show>
     </div>
+  );
+}
+
+/**
+ * /host's line for an account that may not start events: the way to apply,
+ * or where its Application stands. `primary`: applying is the page's one
+ * step, with no event of its own running.
+ */
+export function ApplicantLine(props: { role: AccountRole | null; primary: boolean }) {
+  const [state] = createResource(fetchApplication);
+  // Unread, the way to apply still shows: the apply page says where things stand.
+  const stage = () => {
+    const current = resolved(state);
+    return current || state.error ? applicantStage(props.role, current?.application ?? null) : null;
+  };
+  return (
+    <Show when={stage()}>
+      {current => (
+        <span class='tm-hero-acts tm-applicant-line'>
+          <Show
+            when={STAGE_WORDS[current()]}
+            fallback={
+              <A class={props.primary ? 'btn btn-primary' : 'btn btn-secondary'} href='/apply'>
+                Apply to run events
+              </A>
+            }
+          >
+            {words => <span class='tm-applicant-words'>{words()}</span>}
+          </Show>
+          <Show when={current() === 'rejected' || current() === 'revoked'}>
+            <ApplyAgain onApply={undefined} />
+          </Show>
+        </span>
+      )}
+    </Show>
   );
 }

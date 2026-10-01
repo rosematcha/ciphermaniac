@@ -3,7 +3,9 @@
  * event here is, and sign-in for organizers). Signed in, the events they run
  * or staff: a hero with the count of each and the ways to start one, the
  * events running now each in its own box with the console a press away, then the
- * rest in a table.
+ * rest in a table. Only an Organizer or an Admin starts events; any other
+ * account sees where it stands on applying instead (see ApplicantLine), and
+ * still runs the events it owns or staffs.
  *
  * An event starts two ways. A Swiss event is run entirely on the site. A TOM
  * event starts from the .tdf TOM saves to, on desktop where TOM runs; on a
@@ -14,10 +16,12 @@
 
 import { A, useNavigate } from '@solidjs/router';
 import { createResource, createSignal, For, lazy, Match, onMount, Show, Switch } from 'solid-js';
+import { canCreateEvents } from '../../../shared/accounts/roles';
 import { parseTomDate } from '../../../shared/tournament/divisions';
 import { parseTdf } from '../../../shared/tournament/tdf';
 import type { Tournament } from '../../../shared/tournament/types';
 import {
+  ApiError,
   createFromTdf,
   createSwiss,
   errorText,
@@ -28,10 +32,11 @@ import {
 import { canLinkFiles, pickTdf, rememberHandle, type TdfHandle } from '../../lib/tournament/tomLink';
 import { latestValue } from '../../lib/resource';
 import { eventStatus, roundCapOf } from '../../lib/tournament/present';
+import { ApplicantLine } from './ApplicantStatus';
 import { EventSetup, type Setup } from './EventSetup';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
-import { session } from './session';
+import { refreshSession, session } from './session';
 
 const HostHome = lazy(() => import('./HostHome').then(m => ({ default: m.HostHome })));
 
@@ -209,6 +214,7 @@ function LinkTdf(props: {
 
 function Organizer(props: { onOpened: (code: string) => void }) {
   const user = () => latestValue(session)?.user;
+  const role = () => user()?.role ?? null;
   const [events] = createResource(user, () => listTournaments().then(result => result.tournaments));
   const [stage, setStage] = createSignal<Stage>({ kind: 'lists' });
   const [busy, setBusy] = createSignal(false);
@@ -238,6 +244,12 @@ function Organizer(props: { onOpened: (code: string) => void }) {
       }
     } catch (err) {
       setError(errorText(err));
+      // The account may no longer start events (its access was removed since the page read it): back to
+      // the lists, which reread who it is and offer the way to apply instead.
+      if (err instanceof ApiError && err.body?.apply === true) {
+        setStage({ kind: 'lists' });
+        void refreshSession();
+      }
     } finally {
       setBusy(false);
     }
@@ -257,12 +269,17 @@ function Organizer(props: { onOpened: (code: string) => void }) {
           title='Run an event'
           status={<span class='muted'>{counts()}</span>}
           action={
-            <span class='tm-hero-acts'>
-              <button type='button' class={startClass()} onClick={() => setStage({ kind: 'swiss' })}>
-                Start an event
-              </button>
-              <LinkTdf busy={busy()} class='btn btn-secondary' onRead={tdfRead} onError={setError} />
-            </span>
+            <Show
+              when={canCreateEvents(role())}
+              fallback={<ApplicantLine role={role()} primary={live().length === 0} />}
+            >
+              <span class='tm-hero-acts'>
+                <button type='button' class={startClass()} onClick={() => setStage({ kind: 'swiss' })}>
+                  Start an event
+                </button>
+                <LinkTdf busy={busy()} class='btn btn-secondary' onRead={tdfRead} onError={setError} />
+              </span>
+            </Show>
           }
         />
         <ErrorLine message={error()} />

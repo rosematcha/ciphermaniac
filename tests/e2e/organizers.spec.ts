@@ -199,3 +199,148 @@ test('signed out, the apply page offers sign-in that comes back to it', async ({
   await page.goto('/apply');
   await expect(page.getByRole('link', { name: 'Sign in with Google' })).toHaveAttribute('href', /next=%2Fapply/);
 });
+
+// ---------- Settings: where the account stands ----------
+
+test('Settings shows each applicant stage with its step @mobile', async ({ page }) => {
+  const stages: [ApplicationState, typeof ME, string, string, string][] = [
+    [NONE, ME, '', 'Apply to run events', '/apply'],
+    [
+      { ...NONE, application: application('rejected', { note: 'Send your certificate.' }) },
+      ME,
+      'Not approved',
+      'Apply again',
+      '/apply?again=1'
+    ],
+    [
+      { ...NONE, application: application('approved') },
+      { ...ME, role: 'organizer' },
+      'Organizer',
+      'Your events',
+      '/host'
+    ],
+    [
+      { ...NONE, application: application('approved') },
+      { ...ME, role: 'revoked' },
+      'Organizer access removed',
+      'Apply again',
+      '/apply?again=1'
+    ],
+    [NONE, { ...ME, role: 'admin' }, 'Admin', 'Admin page', '/admin']
+  ];
+  for (const [state, user, words, step, href] of stages) {
+    await page.unrouteAll();
+    const asks = await mockApplicant(page, state, user);
+    await page.goto('/settings');
+    const status = page.locator('.tm-applicant');
+    await expect(status.getByRole('link', { name: step, exact: true })).toHaveAttribute('href', href);
+    if (words) {
+      await expect(status).toContainText(words);
+    }
+    // Your events is offered once: under Organizer for an account that runs events, by the name otherwise.
+    await expect(page.getByRole('link', { name: 'Your events' })).toHaveCount(1);
+    const asked = asks.some(a => a.path === '/api/applications/mine');
+    expect(asked, `${user.role ?? 'player'} asks for its Application`).toBe(
+      user.role === null || user.role === 'revoked'
+    );
+  }
+  await expect(page.locator('.tm-applicant').getByRole('link', { name: 'Your events' })).toHaveAttribute(
+    'href',
+    '/host'
+  );
+});
+
+test('Settings shows a pending Application with its day, and withdraws it', async ({ page }) => {
+  const asks = await mockApplicant(page, { ...NONE, application: application('pending') });
+  await page.goto('/settings');
+  const status = page.locator('.tm-applicant');
+  await expect(status).toContainText('Application pending');
+  await expect(status).toContainText(/Sent .*2026/);
+  await status.getByRole('button', { name: 'Withdraw' }).click();
+  await status
+    .getByRole('group', { name: 'Withdraw your application?' })
+    .getByRole('button', { name: 'Withdraw' })
+    .click();
+  await expect(status.getByRole('link', { name: 'Apply to run events' })).toBeVisible();
+  expect(asks.filter(a => a.method === 'DELETE').map(a => a.path)).toEqual(['/api/applications/mine']);
+});
+
+test('Apply again on Settings opens the apply page at its form', async ({ page }) => {
+  await mockApplicant(page, { ...NONE, application: application('rejected') });
+  await page.goto('/settings');
+  await page.locator('.tm-applicant').getByRole('link', { name: 'Apply again' }).click();
+  await expect(page).toHaveURL(/\/apply\?again=1$/);
+  await expect(page.locator('.tm-applicant')).toContainText('Not approved');
+  await expect(page.getByRole('button', { name: 'Send application' })).toBeVisible();
+});
+
+// ---------- /host: only Organizers start events ----------
+
+const SUMMARY = {
+  code: 'OWNED1',
+  name: 'Thursday Locals',
+  startDate: '09/24/2026',
+  mode: 'swiss',
+  players: 12,
+  rounds: 4,
+  finished: true,
+  role: 'owner',
+  updatedAt: 0
+};
+
+/** /host for an account, its events listed, and an event start refused as the functions refuse it. */
+async function mockHost(page: Page, user: typeof ME, state: ApplicationState = NONE) {
+  const asks: Asked[] = [];
+  let current = user;
+  await page.route('**/api/**', route => {
+    const request = route.request();
+    const { pathname } = new URL(request.url());
+    asks.push({ method: request.method(), path: pathname, body: null });
+    if (pathname === '/api/me') {
+      return route.fulfill({ json: { user: current, providers: ['google', 'discord'] } });
+    }
+    if (pathname === '/api/applications/mine') {
+      return route.fulfill({ json: state });
+    }
+    if (pathname === '/api/tournaments' && request.method() === 'POST') {
+      current = { ...current, role: 'revoked' };
+      return route.fulfill({ status: 403, json: { error: 'Only organizers can start events', apply: true } });
+    }
+    return route.fulfill({ json: { tournaments: [SUMMARY] } });
+  });
+  return asks;
+}
+
+test('/host: an account that is not an Organizer starts no event, applies instead, and keeps its events @mobile', async ({
+  page
+}) => {
+  await mockHost(page, ME);
+  await page.goto('/host');
+  await expect(page.getByRole('link', { name: 'Apply to run events' })).toHaveAttribute('href', '/apply');
+  await expect(page.getByRole('button', { name: 'Start an event' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Link .tdf file' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Thursday Locals' })).toHaveAttribute('href', '/host/OWNED1');
+});
+
+test('/host: a pending Application shows in place of the way to apply', async ({ page }) => {
+  await mockHost(page, ME, { ...NONE, application: application('pending') });
+  await page.goto('/host');
+  await expect(page.locator('.tm-applicant-line')).toHaveText('Application pending');
+  await expect(page.getByRole('link', { name: 'Apply to run events' })).toHaveCount(0);
+});
+
+test('/host: an Organizer whose access goes while the page is open is refused, and offered the way to apply', async ({
+  page
+}) => {
+  const asks = await mockHost(page, { ...ME, role: 'organizer' });
+  await page.goto('/host');
+  await page.getByRole('button', { name: 'Start an event' }).click();
+  await page.getByRole('textbox', { name: 'Event name' }).fill('Tuesday League');
+  await page.getByRole('button', { name: 'Create event' }).click();
+  await expect(page.locator('.tm-error')).toHaveText('Only organizers can start events');
+  await expect(page.locator('.tm-applicant-line')).toContainText('Organizer access removed');
+  await expect(page.getByRole('button', { name: 'Start an event' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Thursday Locals' })).toBeVisible();
+  // The Organizer's page asked for no Application until the account read as one that may apply.
+  expect(asks.filter(a => a.path === '/api/applications/mine')).toHaveLength(1);
+});

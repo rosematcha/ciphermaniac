@@ -1,5 +1,5 @@
-/* Applying to run events: where an account stands (ApplicantStatus) and
-   the apply page's form. */
+/* Applying to run events: where an account stands (ApplicantStatus, on
+   Settings, /apply and /host) and the apply page's form. */
 
 /* The stage and its day at left, its step at right; on a phone the step
    takes the line under the words. */
@@ -33,6 +33,16 @@
   font-size: var(--text-body);
   white-space: pre-line;
   overflow-wrap: anywhere;
+}
+
+/* /host: the stage beside its step, in the hero's action slot. */
+.tm-applicant-line {
+  align-items: center;
+  justify-content: flex-end;
+}
+.tm-applicant-words {
+  font-size: var(--text-body);
+  font-weight: 600;
 }
 
 /* ---------- The apply page ---------- */
