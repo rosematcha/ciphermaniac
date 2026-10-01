@@ -12,27 +12,36 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 
+import * as accounts from '../../functions/api/admin/accounts.ts';
 import * as adminApplications from '../../functions/api/admin/applications/index.ts';
 import * as decide from '../../functions/api/admin/applications/[id].ts';
 import * as proofFile from '../../functions/api/admin/applications/[id]/proof.ts';
+import * as organizers from '../../functions/api/admin/organizers/index.ts';
+import * as organizer from '../../functions/api/admin/organizers/[id].ts';
+import * as popIds from '../../functions/api/admin/pop-ids.ts';
 import * as applications from '../../functions/api/applications/index.ts';
 import * as proof from '../../functions/api/applications/proof.ts';
+import * as history from '../../functions/api/history.ts';
 import * as me from '../../functions/api/me.ts';
+import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import * as tournaments from '../../functions/api/tournaments/index.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { apiCalls, type Call, type Handler, ORIGIN } from '../__utils__/apiCalls.ts';
+import { at, eventCalls } from '../__utils__/eventCalls.ts';
 import { memoryProofs } from '../__utils__/proofBucket.ts';
 import { sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 let proofs: ReturnType<typeof memoryProofs>;
 const { hit, signIn } = apiCalls(() => env);
+const { newSwiss, send, addPlayers, settle, playerSays } = eventCalls(hit);
 
 beforeEach(() => {
   proofs = memoryProofs();
   env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true', PROOFS: proofs };
   proof._resetRateLimitStore();
   applications._resetRateLimitStore();
+  report._resetRateLimitStore();
 });
 
 /** The test database itself, for what no request sets. */
@@ -113,6 +122,24 @@ async function viewProof(cookie: string | undefined, id: string) {
   return { status: response.status, headers: response.headers, bytes: new Uint8Array(await response.arrayBuffer()) };
 }
 
+const setRole = (cookie: string, id: string, role: unknown) =>
+  hit(
+    organizer.onRequestPost as Handler,
+    `/api/admin/organizers/${id}`,
+    { id },
+    {
+      method: 'POST',
+      cookie,
+      body: { role }
+    }
+  );
+
+const lookUp = (cookie: string, query: string) =>
+  hit(accounts.onRequestGet as Handler, `/api/admin/accounts?${query}`, {}, { cookie });
+
+const move = (cookie: string, body: unknown) =>
+  hit(popIds.onRequestPost as Handler, '/api/admin/pop-ids', {}, { method: 'POST', cookie, body });
+
 const createEvent = (cookie: string) =>
   hit(
     tournaments.onRequestPost as Handler,
@@ -127,10 +154,50 @@ const createEvent = (cookie: string) =>
 
 test('every admin route answers only an Admin', async () => {
   const { id } = await applied('Applicant', '100', PNG);
+  const target = await idOf(await signIn('Target', 'organizer'));
   const calls: [string, (call: Call) => Promise<{ status: number }>][] = [
     ['list', call => hit(adminApplications.onRequestGet as Handler, '/api/admin/applications', {}, call)],
-    ['decide', call => decision(call.cookie ?? '', id, { decision: 'approve' })],
-    ['proof', call => viewProof(call.cookie, id)]
+    [
+      'decide',
+      call =>
+        hit(
+          decide.onRequestPost as Handler,
+          `/x/${id}`,
+          { id },
+          { ...call, method: 'POST', body: { decision: 'approve' } }
+        )
+    ],
+    ['proof', call => viewProof(call.cookie, id)],
+    ['organizers', call => hit(organizers.onRequestGet as Handler, '/api/admin/organizers', {}, call)],
+    [
+      'revoke',
+      call =>
+        hit(
+          organizer.onRequestPost as Handler,
+          `/x/${target}`,
+          { id: target },
+          {
+            ...call,
+            method: 'POST',
+            body: { role: 'revoked' }
+          }
+        )
+    ],
+    ['accounts', call => hit(accounts.onRequestGet as Handler, '/api/admin/accounts?popId=100', {}, call)],
+    [
+      'pop-ids',
+      call =>
+        hit(
+          popIds.onRequestPost as Handler,
+          '/api/admin/pop-ids',
+          {},
+          {
+            ...call,
+            method: 'POST',
+            body: { popId: '100', accountId: null }
+          }
+        )
+    ]
   ];
   const askers: [string | undefined, number][] = [
     [undefined, 401],
@@ -144,22 +211,29 @@ test('every admin route answers only an Admin', async () => {
     }
   }
   const admin = await signIn('Admin', 'admin');
-  assert.equal((await list(admin)).status, 200);
+  assert.equal(
+    (await hit(organizers.onRequestGet as Handler, '/api/admin/organizers', {}, { cookie: admin })).status,
+    200
+  );
   const fromElsewhere = await hit(
-    decide.onRequestPost as Handler,
-    `/x/${id}`,
-    { id },
+    organizer.onRequestPost as Handler,
+    `/x/${target}`,
+    { id: target },
     {
       method: 'POST',
       cookie: admin,
       origin: 'https://elsewhere.test',
-      body: { decision: 'approve' }
+      body: { role: 'revoked' }
     }
   );
   assert.equal(fromElsewhere.status, 403);
+  assert.equal(raw().prepare('SELECT role FROM users WHERE id = ?').get(target)?.role, 'organizer');
   assert.equal(raw().prepare('SELECT status FROM applications WHERE id = ?').get(id)?.status, 'pending');
   delete env.TOURNAMENT_DB;
-  assert.equal((await list(admin)).status, 503);
+  assert.equal(
+    (await hit(organizers.onRequestGet as Handler, '/api/admin/organizers', {}, { cookie: admin })).status,
+    503
+  );
 });
 
 test('pending Applications come oldest first, with the account as it is now and as it applied', async () => {
@@ -329,4 +403,156 @@ test('a decision that loses the race to another Admin’s changes nothing', asyn
   env.TOURNAMENT_DB = db;
   assert.equal(late.status, 409);
   assert.equal(raw().prepare("SELECT role FROM users WHERE name = 'Applicant'").get()?.role, null);
+});
+
+test('the Organizers list holds every account with a role and how many events it owns', async () => {
+  const admin = await signIn('Admin', 'admin');
+  const owner = await signIn('Busy', 'organizer');
+  await createEvent(owner);
+  await createEvent(owner);
+  await signIn('Gone', 'revoked');
+  await signIn('Plain');
+  const listed = await hit(organizers.onRequestGet as Handler, '/api/admin/organizers', {}, { cookie: admin });
+  assert.deepEqual(
+    listed.json.accounts.map((account: { name: string; role: string; events: number }) => [
+      account.name,
+      account.role,
+      account.events
+    ]),
+    [
+      ['Admin', 'admin', 0],
+      ['Busy', 'organizer', 2],
+      ['Gone', 'revoked', 0]
+    ]
+  );
+  const [first] = listed.json.accounts;
+  assert.deepEqual(Object.keys(first).sort(), ['email', 'events', 'id', 'name', 'popId', 'role', 'roleAt']);
+});
+
+test('an Organizer’s access is removed and given back; an Admin’s and a player’s are not an Organizer’s', async () => {
+  const admin = await signIn('Admin', 'admin');
+  const adminId = await idOf(admin);
+  const owner = await signIn('Owner', 'organizer');
+  const ownerId = await idOf(owner);
+  const code = (await createEvent(owner)).json.code as string;
+  const revoked = await setRole(admin, ownerId, 'revoked');
+  assert.equal(revoked.status, 200);
+  assert.deepEqual([revoked.json.account.role, revoked.json.account.events], ['revoked', 1]);
+  assert.equal(raw().prepare('SELECT role_by AS roleBy FROM users WHERE id = ?').get(ownerId)?.roleBy, adminId);
+  assert.equal((await createEvent(owner)).status, 403);
+  await addPlayers(code, owner, 1);
+  assert.equal(
+    raw().prepare('SELECT COUNT(*) AS n FROM pop_history WHERE code = ?').get(code)?.n,
+    1,
+    'it still runs its own'
+  );
+  assert.equal((await setRole(admin, ownerId, 'organizer')).json.account.role, 'organizer');
+  assert.equal((await createEvent(owner)).status, 201);
+  const notOne = await setRole(admin, adminId, 'revoked');
+  assert.deepEqual([notOne.status, notOne.json.error], [404, 'Not an organizer']);
+  assert.equal(raw().prepare('SELECT role FROM users WHERE id = ?').get(adminId)?.role, 'admin');
+  assert.equal((await setRole(admin, await idOf(await signIn('Plain')), 'organizer')).status, 404, 'no back door');
+  assert.equal((await setRole(admin, ownerId, 'admin')).status, 400);
+});
+
+test('an Admin finds accounts by POP ID, email or ID, exactly', async () => {
+  const admin = await signIn('Admin', 'admin');
+  const cookie = await player('Holder', '4242');
+  const id = await idOf(cookie);
+  raw().prepare("UPDATE users SET email = 'holder@example.com' WHERE id = ?").run(id);
+  const byPopId = await lookUp(admin, 'popId=4242');
+  assert.deepEqual(
+    byPopId.json.accounts.map((account: { id: string }) => account.id),
+    [id]
+  );
+  const [found] = byPopId.json.accounts;
+  assert.deepEqual(
+    [found.name, found.email, found.popId, found.role, typeof found.createdAt],
+    ['Holder', 'holder@example.com', '4242', null, 'number']
+  );
+  assert.equal((await lookUp(admin, 'email=holder%40example.com')).json.accounts[0].id, id);
+  assert.equal((await lookUp(admin, `id=${id}`)).json.accounts[0].name, 'Holder');
+  assert.deepEqual((await lookUp(admin, 'popId=424')).json.accounts, [], 'no partial matches');
+  assert.equal((await lookUp(admin, '')).status, 400);
+  assert.equal((await lookUp(admin, 'popId=%20')).status, 400);
+});
+
+/** A sanctioned event with `popId` and one other on its list, where `cookie`'s account reports as `popId`. */
+async function playing(owner: string, cookie: string, popId: string) {
+  const code = await newSwiss(owner);
+  await settle(code, owner, { playerReporting: true });
+  for (const id of [popId, '999']) {
+    await send(code, owner, {
+      type: 'addPlayer',
+      player: { firstName: 'Player', lastName: id, id, birthDate: '02/27/1990' }
+    });
+  }
+  const said = await playerSays(code, { popId, device: `phone-${popId}` }, { cookie });
+  assert.equal(said.json.linked, true);
+  return code;
+}
+
+/** Who holds each player's reporter row at `code`: an account id, or null for a device. */
+const holders = (code: string) =>
+  Object.fromEntries(
+    (
+      raw().prepare('SELECT player_id, user_id FROM report_devices WHERE code = ?').all(code) as {
+        player_id: string;
+        user_id: string | null;
+      }[]
+    ).map(row => [row.player_id, row.user_id])
+  );
+
+const historyCodes = async (cookie: string) =>
+  ((await hit(history.onRequestGet as Handler, '/api/history', {}, { cookie })).json.entries as { code: string }[]).map(
+    entry => entry.code
+  );
+
+test('a POP ID moved to another account takes its History, and both accounts let go of its players', async () => {
+  const admin = await signIn('Admin', 'admin');
+  const owner = await signIn('Organizer', 'organizer');
+  const squatter = await player('Squatter', '900');
+  const rightful = await player('Rightful', '555');
+  const disputed = await playing(owner, squatter, '900');
+  const own = await playing(owner, rightful, '555');
+  const [squatterId, rightfulId] = [await idOf(squatter), await idOf(rightful)];
+  assert.deepEqual([await historyCodes(squatter), await historyCodes(rightful)], [[disputed], [own]]);
+  const moved = await move(admin, { popId: '900', accountId: rightfulId });
+  assert.deepEqual([moved.status, moved.json], [200, { from: squatterId, to: rightfulId }]);
+  const held = raw().prepare('SELECT name, pop_id AS popId FROM users WHERE pop_id IS NOT NULL ORDER BY name').all();
+  assert.deepEqual(
+    held.map(row => ({ ...row })),
+    [{ name: 'Rightful', popId: '900' }]
+  );
+  assert.deepEqual(holders(disputed), {}, 'the old holder no longer reports as the player');
+  assert.deepEqual(holders(own), {}, 'the new holder lets go of the player it was under its old POP ID');
+  assert.deepEqual([await historyCodes(squatter), await historyCodes(rightful)], [[], [disputed]]);
+  const again = await move(admin, { popId: '900', accountId: rightfulId });
+  assert.deepEqual(again.json, { from: rightfulId, to: rightfulId }, 'moving it to its holder changes nothing');
+  assert.equal(raw().prepare('SELECT pop_id FROM users WHERE id = ?').get(rightfulId)?.pop_id, '900');
+});
+
+test('a POP ID is taken off its holder with no account to go to, and a move to no such account changes nothing', async () => {
+  const admin = await signIn('Admin', 'admin');
+  const owner = await signIn('Organizer', 'organizer');
+  const holder = await player('Holder', '900');
+  const code = await playing(owner, holder, '900');
+  const missing = await move(admin, { popId: '900', accountId: 'nobody' });
+  assert.deepEqual([missing.status, missing.json.error], [404, 'No such account']);
+  assert.equal(raw().prepare("SELECT pop_id FROM users WHERE name = 'Holder'").get()?.pop_id, '900');
+  assert.deepEqual(holders(code), { 900: await idOf(holder) });
+  const cleared = await move(admin, { popId: '900', accountId: null });
+  assert.deepEqual([cleared.status, cleared.json], [200, { from: await idOf(holder), to: null }]);
+  assert.equal(raw().prepare("SELECT pop_id FROM users WHERE name = 'Holder'").get()?.pop_id, null);
+  assert.deepEqual(holders(code), {});
+  assert.deepEqual(await historyCodes(holder), []);
+  assert.deepEqual((await move(admin, { popId: '900', accountId: null })).json, { from: null, to: null });
+});
+
+test('a move names a POP ID and an account or none', async () => {
+  const admin = await signIn('Admin', 'admin');
+  assert.equal((await move(admin, { popId: 'P-900', accountId: null })).status, 400);
+  assert.equal((await move(admin, { popId: '12345678901', accountId: null })).status, 400);
+  assert.equal((await move(admin, { popId: '900' })).status, 400);
+  assert.equal((await move(admin, { popId: '900', accountId: 7 })).status, 400);
 });

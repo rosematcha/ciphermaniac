@@ -17,6 +17,9 @@ export const NAME_MAX = 40;
 const POP_ID_RE = /^\d{1,10}$/;
 const DATE_RE = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/(19|20)\d\d$/;
 
+/** Whether `value` is a POP ID as players enter one: up to ten digits. */
+export const isPopId = (value: string) => POP_ID_RE.test(value);
+
 function field(body: Record<string, unknown>, key: string): string {
   const value = body[key];
   return typeof value === 'string' ? value.trim() : '';
@@ -28,7 +31,7 @@ function field(body: Record<string, unknown>, key: string): string {
  */
 export function profileErrors(profile: PlayerProfile, sanctioned = true): Partial<Record<keyof PlayerProfile, string>> {
   const errors: Partial<Record<keyof PlayerProfile, string>> = {};
-  if (sanctioned && !POP_ID_RE.test(profile.popId)) {
+  if (sanctioned && !isPopId(profile.popId)) {
     errors.popId = 'A POP ID is up to ten digits';
   }
   if (!profile.firstName || profile.firstName.length > NAME_MAX) {

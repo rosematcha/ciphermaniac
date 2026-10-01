@@ -70,3 +70,26 @@ export interface AdminApplication extends MyApplication {
   hasProof: boolean;
   decidedBy: { id: string; name: string } | null;
 }
+
+/** An account with a role, as the admin's list of Organizers and Admins shows it. */
+export interface RoleHolder {
+  id: string;
+  name: string;
+  email: string | null;
+  popId: string | null;
+  role: AccountRole;
+  /** When the role last changed; null when a migration set it. */
+  roleAt: number | null;
+  /** How many events the account owns. */
+  events: number;
+}
+
+/** An account an admin looked up. */
+export interface FoundAccount {
+  id: string;
+  name: string;
+  email: string | null;
+  popId: string | null;
+  role: AccountRole | null;
+  createdAt: number;
+}
