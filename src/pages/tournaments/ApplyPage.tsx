@@ -25,10 +25,10 @@ import {
   uploadProof
 } from '../../lib/tournament/applications';
 import { latestValue } from '../../lib/resource';
-import { ApplicantStatus } from './ApplicantStatus';
+import { ApplicantStatus, createSessionCatchUp } from './ApplicantStatus';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
-import { session } from './session';
+import { refreshSession, session } from './session';
 import { SignIn } from './SignIn';
 
 const TITLE = 'Apply to run events';
@@ -54,14 +54,30 @@ function SignedOut(props: { providers: readonly Provider[] }) {
   );
 }
 
-/** The proof row: pick a file and it uploads; once up, its name and size, and Remove. */
+/** Focus lost with the control that held it (it was replaced) goes to `next`; focus elsewhere stays put. */
+function refocus(next: () => HTMLElement | undefined) {
+  queueMicrotask(() => {
+    if (document.activeElement === document.body || document.activeElement === null) {
+      next()?.focus();
+    }
+  });
+}
+
+/**
+ * The proof row: pick a file and it uploads; once up, its name and size,
+ * and Remove. Nothing changes it while the Application is being sent
+ * (`locked`); while it uploads, `onUploading` holds Send back.
+ */
 function ProofField(props: {
   proof: Proof | null;
+  locked: boolean;
   onChange: (proof: Proof | null) => void;
-  onBusy: (busy: boolean) => void;
+  onUploading: (uploading: boolean) => void;
 }) {
   const [uploading, setUploading] = createSignal<string | null>(null);
   const [error, setError] = createSignal<string | null>(null);
+  let picker: HTMLInputElement | undefined;
+  let removeButton: HTMLButtonElement | undefined;
   async function upload(file: File) {
     setError(null);
     if (file.size > PROOF_MAX_BYTES) {
@@ -69,7 +85,7 @@ function ProofField(props: {
       return;
     }
     setUploading(file.name);
-    props.onBusy(true);
+    props.onUploading(true);
     try {
       const { proof } = await uploadProof(file);
       props.onChange({ ...proof, name: file.name });
@@ -77,7 +93,8 @@ function ProofField(props: {
       setError(errorText(err));
     } finally {
       setUploading(null);
-      props.onBusy(false);
+      props.onUploading(false);
+      refocus(() => removeButton ?? picker);
     }
   }
   async function remove() {
@@ -85,13 +102,16 @@ function ProofField(props: {
     try {
       await removeProof();
       props.onChange(null);
+      refocus(() => picker);
     } catch (err) {
       setError(errorText(err));
     }
   }
   return (
     <div class='tm-box-bar tm-form-row'>
-      <span class='tm-form-row-label'>Proof</span>
+      <span class='tm-form-row-label' id='apply-proof'>
+        Proof
+      </span>
       <div class='tm-apply-proof'>
         <Show
           when={props.proof}
@@ -99,13 +119,15 @@ function ProofField(props: {
             <Show
               when={uploading()}
               fallback={
-                <label class='btn btn-secondary tm-apply-pick'>
-                  Choose file
+                <label class='btn btn-secondary tm-apply-pick' classList={{ 'is-disabled': props.locked }}>
+                  <span id='apply-pick'>Choose file</span>
                   <input
+                    ref={el => (picker = el)}
                     type='file'
                     class='sr-only'
-                    aria-label='Proof'
+                    aria-labelledby='apply-proof apply-pick'
                     accept='.png,.jpg,.jpeg,.webp,.pdf'
+                    disabled={props.locked}
                     onChange={event => {
                       const input = event.currentTarget;
                       const file = input.files?.[0];
@@ -131,7 +153,13 @@ function ProofField(props: {
             <span class='tm-apply-file'>
               <span class='tm-apply-name'>{proof().name ?? proofKind(proof().type)}</span>
               <span class='muted tm-num tm-nowrap'>{fileSize(proof().size)}</span>
-              <button type='button' class='btn btn-ghost tm-small' onClick={() => void remove()}>
+              <button
+                ref={el => (removeButton = el)}
+                type='button'
+                class='btn btn-ghost tm-small'
+                disabled={props.locked}
+                onClick={() => void remove()}
+              >
                 Remove
               </button>
             </span>
@@ -145,8 +173,9 @@ function ProofField(props: {
 
 /**
  * The Application: the proof, the explanation with its count, and Send
- * application, which waits for one or the other. A refusal over the profile
- * or a pending Application rereads the account (`onStale`).
+ * application, which waits for one or the other, and for an upload to
+ * finish. A refusal over the profile, the role or a pending Application
+ * rereads the account (`onStale`).
  */
 function ApplicationForm(props: {
   proof: ProofSlot | null;
@@ -160,12 +189,16 @@ function ApplicationForm(props: {
     return current === undefined ? props.proof && { ...props.proof, name: null } : current;
   };
   const [explanation, setExplanation] = createSignal('');
-  const [busy, setBusy] = createSignal(false);
+  const [uploading, setUploading] = createSignal(false);
+  const [sending, setSending] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const ready = () => proof() !== null || explanation().trim() !== '';
+  const ready = () => (proof() !== null || explanation().trim() !== '') && !uploading() && !sending();
   async function send(event: Event) {
     event.preventDefault();
-    setBusy(true);
+    if (!ready()) {
+      return;
+    }
+    setSending(true);
     setError(null);
     try {
       const { application } = await sendApplication(explanation(), proof() !== null);
@@ -176,12 +209,12 @@ function ApplicationForm(props: {
         props.onStale();
       }
     } finally {
-      setBusy(false);
+      setSending(false);
     }
   }
   return (
     <form class='tm-box tm-apply-form' onSubmit={event => void send(event)}>
-      <ProofField proof={proof()} onChange={setProof} onBusy={setBusy} />
+      <ProofField proof={proof()} locked={sending()} onChange={setProof} onUploading={setUploading} />
       <div class='tm-box-bar tm-form-row'>
         <label class='tm-form-row-label' for='apply-explanation'>
           Explanation
@@ -200,7 +233,7 @@ function ApplicationForm(props: {
         </div>
       </div>
       <div class='tm-box-bar tm-apply-foot'>
-        <button type='submit' class='btn btn-primary' disabled={!ready() || busy()}>
+        <button type='submit' class='btn btn-primary' disabled={!ready()}>
           Send application
         </button>
         <ErrorLine message={error()} />
@@ -216,6 +249,10 @@ function Applying(props: { user: Me }) {
   // Settings' Apply again opens the form as the page opens.
   const [again, setAgain] = createSignal(params.again !== undefined);
   const current = () => latestValue(state);
+  createSessionCatchUp(
+    () => props.user.role,
+    () => current()?.application
+  );
   const stage = () => applicantStage(props.user.role, current()?.application ?? null);
   const open = () => stage() === 'none' || ((stage() === 'rejected' || stage() === 'revoked') && again());
   const sent = (application: MyApplication) => mutate(prev => prev && { ...prev, application, proof: null });
@@ -255,7 +292,14 @@ function Applying(props: { user: Me }) {
                   </p>
                 }
               >
-                <ApplicationForm proof={s().proof} onSent={sent} onStale={() => void refetch()} />
+                <ApplicationForm
+                  proof={s().proof}
+                  onSent={sent}
+                  onStale={() => {
+                    void refetch();
+                    void refreshSession();
+                  }}
+                />
               </Show>
             </Show>
           </div>

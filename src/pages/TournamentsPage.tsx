@@ -3,7 +3,8 @@
  * organizer's events), /host/:code (running one), /t/:code (the public page
  * players follow), /settings (sign-in, sign-out and the player profile;
  * /account is its older name), /history (the events an account played),
- * /u/:slug (an account's public profile) and /apply (applying to run events).
+ * /u/:slug (an account's public profile), /apply (applying to run events)
+ * and /admin (an Admin's page).
  * One route rather than one each, because each route added to main.tsx is
  * paid for in the app shell; each page is still its own chunk, so a player
  * following pairings never downloads the organizer's console.
@@ -24,6 +25,7 @@ const PublicEvent = lazy(() => import('./tournaments/PublicEvent').then(m => ({ 
 const HistoryPage = lazy(() => import('./tournaments/HistoryPage').then(m => ({ default: m.HistoryPage })));
 const ProfilePage = lazy(() => import('./tournaments/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const ApplyPage = lazy(() => import('./tournaments/ApplyPage').then(m => ({ default: m.ApplyPage })));
+const AdminPage = lazy(() => import('./tournaments/AdminPage').then(m => ({ default: m.AdminPage })));
 
 // A page opened on an event asks for it now, as this module loads, so the event and the
 // public page's own code arrive side by side instead of one after the other.
@@ -53,6 +55,9 @@ export function TournamentsPage() {
         </Match>
         <Match when={location.pathname.startsWith('/apply')}>
           <ApplyPage />
+        </Match>
+        <Match when={location.pathname.startsWith('/admin')}>
+          <AdminPage />
         </Match>
         <Match when={location.pathname.startsWith('/u/') && params.slug}>
           {slug => <ProfilePage slug={slug().toUpperCase()} />}

@@ -50,23 +50,39 @@ interface Asked {
   body: unknown;
 }
 
+interface Options {
+  /** The Application the account's latest is once a pending one is withdrawn: the one decided before it, or none. */
+  afterWithdraw?: MyApplication | null;
+  /** Holds an upload's answer until it settles. */
+  upload?: Promise<void>;
+  /** The account as /api/me reads it the second time, after a decision the page has not seen. */
+  reread?: typeof ME;
+}
+
 /** The applicant endpoints, holding the account's state as the functions would, and every ask they get. */
-async function mockApplicant(page: Page, start: ApplicationState, user: typeof ME | null = ME) {
+async function mockApplicant(page: Page, start: ApplicationState, user: typeof ME | null = ME, options: Options = {}) {
   const asks: Asked[] = [];
   let state = start;
-  await page.route('**/api/**', route => {
+  let reads = 0;
+  await page.route('**/api/**', async route => {
     const request = route.request();
     const method = request.method();
     const { pathname } = new URL(request.url());
     const key = `${method} ${pathname}`;
     asks.push({ method, path: pathname, body: method === 'POST' ? request.postDataJSON() : null });
     if (key === 'GET /api/me') {
-      return route.fulfill({ json: { user, providers: ['google', 'discord'] } });
+      reads += 1;
+      const current = reads > 1 && options.reread ? options.reread : user;
+      return route.fulfill({ json: { user: current, providers: ['google', 'discord'] } });
     }
     if (key === 'GET /api/applications/mine') {
       return route.fulfill({ json: state });
     }
     if (key === 'PUT /api/applications/proof') {
+      await options.upload;
+      if (request.postDataBuffer()?.subarray(0, 4).toString() === 'text') {
+        return route.fulfill({ status: 400, json: { error: 'Use a PNG, JPEG, WebP or PDF' } });
+      }
       const proof = { type: 'image/png', size: request.postDataBuffer()?.byteLength ?? 0 };
       state = { ...state, proof };
       return route.fulfill({ json: { proof } });
@@ -85,7 +101,7 @@ async function mockApplicant(page: Page, start: ApplicationState, user: typeof M
       return route.fulfill({ status: 201, json: { application: sent } });
     }
     if (key === 'DELETE /api/applications/mine') {
-      state = { ...state, application: null };
+      state = { ...state, application: options.afterWithdraw ?? null };
       return route.fulfill({ status: 204 });
     }
     return route.fulfill({ status: 404, json: { error: 'Not found' } });
@@ -105,8 +121,11 @@ test('the apply page uploads the proof on pick, then sends it with the explanati
   await expect(page.locator('.tm-apply-file')).toContainText('certificate.png');
   await expect(page.locator('.tm-apply-file')).toContainText('1 KB');
   await expect(send).toBeEnabled();
+  // The picker it replaced held the focus, so the focus goes on to Remove, then back to the picker.
+  await expect(page.getByRole('button', { name: 'Remove' })).toBeFocused();
   await page.getByRole('button', { name: 'Remove' }).click();
   await expect(page.locator('.tm-apply-file')).toHaveCount(0);
+  await expect(page.getByLabel('Proof')).toBeFocused();
   await expect(send).toBeDisabled();
   await page.getByLabel('Proof').setInputFiles({ name: 'certificate.png', mimeType: 'image/png', buffer: PNG });
   await expect(page.getByRole('button', { name: 'Remove' })).toBeVisible();
@@ -186,7 +205,7 @@ test('an organizer whose access was removed sees so, and applies again from ther
 test('an approved account sees it is an organizer, with the way to its events', async ({ page }) => {
   await mockApplicant(page, { ...NONE, application: application('approved') }, { ...ME, role: 'organizer' });
   await page.goto('/apply');
-  await expect(page.locator('.tm-applicant')).toContainText('Organizer');
+  await expect(page.locator('.tm-applicant-stage strong')).toHaveText('Organizer');
   await expect(page.locator('.tm-applicant').getByRole('link', { name: 'Your events' })).toHaveAttribute(
     'href',
     '/host'
@@ -198,6 +217,50 @@ test('signed out, the apply page offers sign-in that comes back to it', async ({
   await mockApplicant(page, NONE, null);
   await page.goto('/apply');
   await expect(page.getByRole('link', { name: 'Sign in with Google' })).toHaveAttribute('href', /next=%2Fapply/);
+});
+
+test('a refused upload says why, and a file over 8 MB is refused before it is sent', async ({ page }) => {
+  const asks = await mockApplicant(page, NONE);
+  await page.goto('/apply');
+  await page
+    .getByLabel('Proof')
+    .setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('text') });
+  await expect(page.getByRole('alert')).toHaveText('Use a PNG, JPEG, WebP or PDF');
+  await expect(page.getByRole('button', { name: 'Send application' })).toBeDisabled();
+  const big = Buffer.alloc(8 * 1024 * 1024 + 1);
+  await page.getByLabel('Proof').setInputFiles({ name: 'scan.pdf', mimeType: 'application/pdf', buffer: big });
+  await expect(page.getByRole('alert')).toHaveText('Up to 8 MB');
+  expect(asks.filter(a => a.method === 'PUT')).toHaveLength(1);
+});
+
+test('Send application waits for an upload in flight', async ({ page }) => {
+  let land = () => undefined as void;
+  const upload = new Promise<void>(resolve => {
+    land = resolve;
+  });
+  await mockApplicant(page, NONE, ME, { upload });
+  await page.goto('/apply');
+  const send = page.getByRole('button', { name: 'Send application' });
+  await page.getByLabel('Explanation').fill('I run a league.');
+  await expect(send).toBeEnabled();
+  await page.getByLabel('Proof').setInputFiles({ name: 'certificate.png', mimeType: 'image/png', buffer: PNG });
+  await expect(page.getByRole('status')).toHaveText('Uploading certificate.png');
+  await expect(send).toBeDisabled();
+  land();
+  await expect(page.getByRole('button', { name: 'Remove' })).toBeVisible();
+  await expect(send).toBeEnabled();
+  // The explanation being written keeps the focus when the upload lands.
+  await expect(page.getByLabel('Explanation')).toBeFocused();
+});
+
+test('an account approved since the page read it is read again, and starts events', async ({ page }) => {
+  const asks = await mockApplicant(page, { ...NONE, application: application('approved') }, ME, {
+    reread: { ...ME, role: 'organizer' }
+  });
+  await page.route('**/api/tournaments', route => route.fulfill({ json: { tournaments: [] } }));
+  await page.goto('/host');
+  await expect(page.getByRole('button', { name: 'Start an event' })).toBeVisible();
+  expect(asks.filter(a => a.path === '/api/me')).toHaveLength(2);
 });
 
 // ---------- Settings: where the account stands ----------
@@ -235,7 +298,9 @@ test('Settings shows each applicant stage with its step @mobile', async ({ page 
     const status = page.locator('.tm-applicant');
     await expect(status.getByRole('link', { name: step, exact: true })).toHaveAttribute('href', href);
     if (words) {
-      await expect(status).toContainText(words);
+      await expect(status.locator('.tm-applicant-stage strong')).toHaveText(words);
+    } else {
+      await expect(status.locator('.tm-applicant-stage')).toHaveCount(0);
     }
     // Your events is offered once: under Organizer for an account that runs events, by the name otherwise.
     await expect(page.getByRole('link', { name: 'Your events' })).toHaveCount(1);
@@ -263,6 +328,24 @@ test('Settings shows a pending Application with its day, and withdraws it', asyn
     .click();
   await expect(status.getByRole('link', { name: 'Apply to run events' })).toBeVisible();
   expect(asks.filter(a => a.method === 'DELETE').map(a => a.path)).toEqual(['/api/applications/mine']);
+});
+
+test('withdrawn, an Application gives way to the decision before it @mobile', async ({ page }) => {
+  const rejected = application('rejected', { id: 'app-0', note: 'Send your certificate.' });
+  await mockApplicant(page, { ...NONE, application: application('pending') }, ME, { afterWithdraw: rejected });
+  // The narrowest phones, where the question and its buttons are wider than the box.
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('/settings');
+  const status = page.locator('.tm-applicant');
+  await status.getByRole('button', { name: 'Withdraw' }).click();
+  const question = status.getByRole('group', { name: 'Withdraw your application?' });
+  // The question wraps inside the screen rather than running past it.
+  const asked = await question.boundingBox();
+  expect((asked?.x ?? 0) + (asked?.width ?? 0)).toBeLessThanOrEqual(320);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  await question.getByRole('button', { name: 'Withdraw' }).click();
+  await expect(status.locator('.tm-applicant-stage strong')).toHaveText('Not approved');
+  await expect(status).toContainText('Send your certificate.');
 });
 
 test('Apply again on Settings opens the apply page at its form', async ({ page }) => {

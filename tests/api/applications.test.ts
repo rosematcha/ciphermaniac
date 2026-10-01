@@ -62,8 +62,9 @@ async function upload(cookie: string | null, body: BodyInit, headers: Record<str
   const request = new Request(`${ORIGIN}/api/applications/proof`, {
     method: 'PUT',
     headers: { origin: ORIGIN, ...(cookie ? { cookie } : {}), ...headers },
-    body
-  });
+    body,
+    duplex: 'half'
+  } as RequestInit);
   const response = await proof.onRequestPut({ request, env, params: {} } as never);
   const text = await response.text();
   return { status: response.status, json: text ? (JSON.parse(text) as any) : null };
@@ -342,6 +343,62 @@ test('a send that keeps losing to changes to the account gives up, and one whose
   });
   assert.equal((await apply(cookie, { explanation: 'Hello', proof: false })).status, 401);
   assert.equal(raw().prepare('SELECT COUNT(*) AS n FROM applications').get()?.n, 0);
+});
+
+/** Uploads `bytes` with `meanwhile` run while the file is still arriving, after the upload has read the account. */
+function uploadWhile(cookie: string, bytes: Uint8Array, meanwhile: () => void) {
+  const slow = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        meanwhile();
+        controller.enqueue(bytes);
+        controller.close();
+      }
+    },
+    { highWaterMark: 0 }
+  );
+  return upload(cookie, slow, { 'content-type': 'application/octet-stream' });
+}
+
+test('an upload holds to the account as it is when the file lands, and a refused one leaves no file', async () => {
+  const cookie = await applicant();
+  const setUser = (sql: string) => () => raw().prepare(`UPDATE users SET ${sql} WHERE name = 'Applicant'`).run();
+  const nothingKept = () => {
+    assert.equal(raw().prepare('SELECT COUNT(*) AS n FROM proof_uploads').get()?.n, 0);
+    assert.equal(proofs.objects.size, 0);
+  };
+  // An Admin reinstates the account while its proof is still arriving.
+  const reinstated = await uploadWhile(cookie, PNG, setUser("role = 'organizer'"));
+  assert.deepEqual([reinstated.status, reinstated.json.error], [409, 'Already an organizer']);
+  nothingKept();
+  setUser('role = NULL')();
+  const cleared = await uploadWhile(cookie, PNG, setUser('pop_id = NULL'));
+  assert.deepEqual([cleared.status, cleared.json], [400, { error: 'Complete your profile first', profile: true }]);
+  nothingKept();
+  setUser("pop_id = '1234567'")();
+  // Renamed meanwhile, the account may still apply, so the upload is kept.
+  const renamed = await uploadWhile(cookie, PNG, setUser("last_name = 'Renamed'"));
+  assert.deepEqual([renamed.status, renamed.json], [200, { proof: { type: 'image/png', size: PNG.byteLength } }]);
+  assert.equal(proofs.objects.size, 1);
+});
+
+test('an upload that keeps losing to changes to the account gives up, and one whose account is gone keeps nothing', async () => {
+  const cookie = await applicant();
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  let renames = 0;
+  const rename = () => {
+    renames += 1;
+    raw().prepare("UPDATE users SET last_name = ? WHERE name = 'Applicant'").run(`Renamed${renames}`);
+  };
+  env.TOURNAMENT_DB = racing(db, 'INSERT INTO proof_uploads', rename, 3);
+  const busy = await upload(cookie, PNG);
+  assert.deepEqual([busy.status, busy.json.error, renames], [409, 'Busy; try again', 3]);
+  env.TOURNAMENT_DB = racing(db, 'INSERT INTO proof_uploads', () => {
+    raw().prepare("DELETE FROM users WHERE name = 'Applicant'").run();
+  });
+  assert.equal((await upload(cookie, PNG)).status, 401);
+  assert.equal(raw().prepare('SELECT COUNT(*) AS n FROM proof_uploads').get()?.n, 0);
+  assert.equal(proofs.objects.size, 0);
 });
 
 test('withdrawing takes the pending Application and its proof; with none pending there is nothing to take', async () => {
