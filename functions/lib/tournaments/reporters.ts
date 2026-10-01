@@ -128,9 +128,13 @@ async function linkedAs(seat: Seat, row: ClaimRow, asker: Asker & { holder: bool
   if (!asker.holder) {
     return false;
   }
+  // Only the row whose token was checked: staff may have let another device claim the player since.
   const taken = await seat.db
-    .prepare('UPDATE OR IGNORE report_devices SET user_id = ? WHERE code = ? AND player_id = ? AND user_id IS NULL')
-    .bind(asker.account, seat.code, seat.playerId)
+    .prepare(
+      'UPDATE OR IGNORE report_devices SET user_id = ? ' +
+        'WHERE code = ? AND player_id = ? AND token_hash = ? AND user_id IS NULL'
+    )
+    .bind(asker.account, seat.code, seat.playerId, row.token_hash)
     .run();
   return rowsChanged(taken) === 1;
 }

@@ -438,3 +438,33 @@ test('at an unsanctioned event a list is the account’s through its Claim, when
   const mine = await listCall(code, 'GET', 'firstName=Ash&lastName=Ketchum', { cookie: ash });
   assert.equal(mine.json.mine?.lastName, 'KETCHUM');
 });
+
+test('a device’s claim becomes the account’s only while that device still holds the player', async () => {
+  const { code, idOf } = await casualEvent();
+  const before = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' });
+  const ash = await signIn('Ash');
+  // Staff let another device claim Ash between this request's read and its write.
+  const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  env.TOURNAMENT_DB = {
+    ...inner,
+    prepare: sql => {
+      if (sql.startsWith('UPDATE OR IGNORE report_devices')) {
+        inner.raw.prepare('DELETE FROM report_devices WHERE code = ?').run(code);
+        inner.raw
+          .prepare(
+            'INSERT INTO report_devices (code, player_id, token_hash, device, claimed_at) ' +
+              "VALUES (?, ?, 'another', 'another', 1)"
+          )
+          .run(code, idOf('Ketchum'));
+      }
+      return inner.prepare(sql);
+    }
+  };
+  const said = await playerSays(
+    code,
+    { lastName: 'Ketchum', device: 'ash-phone', reportToken: before.json.reportToken },
+    { cookie: ash }
+  );
+  assert.equal(said.json.linked, false);
+  assert.deepEqual(holders(code), { [idOf('Ketchum')]: null }, 'the other device’s claim stays its own');
+});
