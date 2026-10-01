@@ -386,9 +386,12 @@ const tomManage = () => ({
   staffToken: 'invite'
 });
 
-async function tomConsole(page: Page, sync: () => { status: number; json: unknown }) {
+type SyncAnswer = { status: number; json: unknown } | null;
+
+/** A console following a linked file; `sync` answers each sync, and null leaves one hanging. */
+async function tomConsole(page: Page, sync: (body: string) => SyncAnswer | Promise<SyncAnswer>) {
   await page.addInitScript(source => {
-    const file = { modified: 1, lost: false };
+    const file = { modified: 1, lost: false, text: source };
     Object.assign(window, {
       tdfFile: file,
       showOpenFilePicker: async () => [
@@ -398,7 +401,7 @@ async function tomConsole(page: Page, sync: () => { status: number; json: unknow
             if (file.lost) {
               throw new DOMException('The file cannot be read', 'NotAllowedError');
             }
-            return new File([source], 'event.tdf', { lastModified: file.modified });
+            return new File([file.text], 'event.tdf', { lastModified: file.modified });
           },
           createWritable: async () => ({ write: async () => undefined, close: async () => undefined }),
           queryPermission: async () => 'granted',
@@ -417,7 +420,9 @@ async function tomConsole(page: Page, sync: () => { status: number; json: unknow
       return url.searchParams.has('since') ? route.fulfill({ status: 204 }) : route.fulfill({ json: tomManage() });
     }
     if (url.pathname === `/api/tournaments/${CODE}/sync`) {
-      return route.fulfill(sync());
+      return Promise.resolve(sync(route.request().postData() ?? '')).then(answer =>
+        answer ? route.fulfill(answer) : undefined
+      );
     }
     return route.fulfill({ status: 404, json: { error: 'Not found' } });
   });
@@ -438,4 +443,60 @@ test('a TOM console holds off results when the browser takes back the file', asy
     (window as unknown as { tdfFile: { lost: boolean } }).tdfFile.lost = true;
   });
   await expect(page.getByRole('button', { name: 'Reconnect event.tdf' })).toBeVisible();
+});
+
+const synced = () => ({ status: 200, json: { ...tomManage(), version: 5, revision: 'next' } });
+
+test('a TOM console gives up on a sync that hangs and sends the file again', async ({ page }) => {
+  await page.clock.install();
+  let syncs = 0;
+  await tomConsole(page, () => (++syncs === 1 ? null : synced()));
+  await expect.poll(() => syncs).toBe(1);
+  await page.clock.fastForward(31_000);
+  await expect(page.getByText('Could not send the .tdf: The site took too long to answer')).toBeVisible();
+  await page.clock.fastForward(2_000);
+  await expect(page.getByText('The site took too long to answer')).toBeHidden();
+  expect(syncs).toBeGreaterThan(1);
+});
+
+test('a TOM console reads the file again for a refresh pressed while a sync is under way', async ({ page }) => {
+  const bodies: string[] = [];
+  let release = () => undefined as void;
+  const held = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  await tomConsole(page, async body => {
+    bodies.push(body);
+    if (bodies.length === 2) {
+      await held;
+    }
+    return synced();
+  });
+  await expect(page.getByRole('button', { name: 'Refresh .tdf' }).first()).toBeVisible();
+  await page.evaluate(() => {
+    const file = (window as unknown as { tdfFile: { text: string; modified: number } }).tdfFile;
+    file.text = file.text.replace('Fixture Challenge', 'Saved Once');
+    file.modified = 2;
+  });
+  await expect.poll(() => bodies.length).toBe(2);
+  // TOM saves again within the same modified time, which only a refresh picks up.
+  await page.evaluate(() => {
+    const file = (window as unknown as { tdfFile: { text: string } }).tdfFile;
+    file.text = file.text.replace('Saved Once', 'Saved Twice');
+  });
+  await page.getByRole('button', { name: 'Refresh .tdf' }).first().click();
+  release();
+  await expect.poll(() => bodies.length).toBe(3);
+  expect(bodies[2]).toContain('Saved Twice');
+});
+
+test('a TOM console says when the file TOM saved does not parse', async ({ page }) => {
+  await tomConsole(page, synced);
+  await expect(page.getByRole('button', { name: 'Refresh .tdf' }).first()).toBeVisible();
+  await page.evaluate(() => {
+    const file = (window as unknown as { tdfFile: { text: string; modified: number } }).tdfFile;
+    file.text = file.text.replace('outcome="1"', 'outcome="4"');
+    file.modified = 2;
+  });
+  await expect(page.getByText('Could not parse the .tdf: Unknown match outcome "4"')).toBeVisible();
 });
