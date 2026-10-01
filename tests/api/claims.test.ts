@@ -309,3 +309,132 @@ test('the event page reads the account’s Claim in the batch that opens the eve
   assert.ok(readsClaim());
   assert.equal(counting.trips() - before, 1, 'one wait on the database');
 });
+
+const DECK = '60 Basic {P} Energy SVE 5';
+
+/** A decklist request from a device: `query` says whose list, `call` adds a session or a body. */
+function listCall(code: string, method: string, query: string, call: { cookie?: string; body?: unknown } = {}) {
+  const handler = { GET: decklists.onRequestGet, PUT: decklists.onRequestPut, DELETE: decklists.onRequestDelete }[
+    method as 'GET'
+  ];
+  return hit(handler as Handler, `/decklists?${query}`, at(code), { method, ...call });
+}
+
+const listAccount = (code: string) =>
+  (
+    raw().prepare('SELECT user_id AS who, account FROM decklists WHERE code = ?').all(code) as {
+      who: string;
+      account: string | null;
+    }[]
+  ).map(row => ({ ...row }));
+
+test('a list sent by the account that is its player is the account’s, from any of its devices', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklists: 'open' });
+  const player = await signIn('Player');
+  const lin = { ...profileOf('6161'), firstName: 'Lin' };
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: lin });
+  const sent = await listCall(code, 'PUT', '', { cookie: player, body: { deck: DECK, profile: lin } });
+  assert.equal(sent.status, 200);
+  assert.deepEqual(listAccount(code), [{ who: 'pop:6161', account: await accountId(player) }]);
+
+  const mine = await listCall(code, 'GET', 'popId=6161', { cookie: player });
+  assert.equal(mine.json.mine?.firstName, 'Lin', 'read back with no token');
+  assert.equal((await listCall(code, 'GET', 'popId=6161')).json.mine, null, 'not signed out');
+  const replaced = await listCall(code, 'PUT', '', {
+    cookie: player,
+    body: { deck: '60 Basic {G} Energy SVE 1', profile: lin }
+  });
+  assert.equal(replaced.status, 200, 'replaced from a device with no token');
+  assert.notEqual(replaced.json.token, sent.json.token);
+  assert.equal(
+    (await listCall(code, 'PUT', '', { body: { deck: DECK, profile: lin } })).status,
+    409,
+    'signed out, it is locked'
+  );
+
+  const stranger = await signIn('Stranger');
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: stranger, body: profileOf('7171') });
+  assert.equal((await listCall(code, 'GET', 'popId=6161', { cookie: stranger })).json.mine, null);
+  assert.equal((await listCall(code, 'DELETE', 'popId=6161', { cookie: stranger })).status, 409);
+  assert.equal(
+    (await listCall(code, 'DELETE', 'popId=6161', { cookie: player })).status,
+    204,
+    'withdrawn with no token'
+  );
+  assert.deepEqual(listAccount(code), []);
+});
+
+test('a list a device sent first stays that device’s, against the account that is its player', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklists: 'open' });
+  const lin = profileOf('6161');
+  const device = await listCall(code, 'PUT', '', { body: { deck: DECK, profile: lin } });
+  const player = await signIn('Player');
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: lin });
+  assert.equal((await listCall(code, 'PUT', '', { cookie: player, body: { deck: DECK, profile: lin } })).status, 409);
+  assert.equal((await listCall(code, 'GET', 'popId=6161', { cookie: player })).json.mine, null);
+  assert.equal((await listCall(code, 'DELETE', 'popId=6161', { cookie: player })).status, 409);
+  // The device that sent it, signed in now as the player, makes it the account's.
+  const taken = await listCall(code, 'PUT', '', {
+    cookie: player,
+    body: { deck: DECK, profile: lin, token: device.json.token }
+  });
+  assert.equal(taken.status, 200);
+  assert.equal(listAccount(code)[0]?.account, await accountId(player));
+  const signedOut = await listCall(code, 'PUT', '', { body: { deck: DECK, profile: lin, token: device.json.token } });
+  assert.equal(signedOut.status, 200, 'the device keeps its list signed out');
+  assert.equal(listAccount(code)[0]?.account, await accountId(player), 'and the list stays the account’s');
+});
+
+test('staff unlocking a list frees it from its account too', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklists: 'open' });
+  const player = await signIn('Player');
+  const lin = profileOf('6161');
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: lin });
+  await listCall(code, 'PUT', '', { cookie: player, body: { deck: DECK, profile: lin } });
+  const unlocked = await hit(decklists.onRequestPatch as Handler, '/decklists?popId=6161', at(code), {
+    method: 'PATCH',
+    cookie: owner
+  });
+  assert.equal(unlocked.status, 204);
+  assert.deepEqual(listAccount(code), [{ who: 'pop:6161', account: null }]);
+  assert.equal(
+    (await listCall(code, 'PUT', '', { body: { deck: DECK, profile: lin } })).status,
+    200,
+    'a new device takes it'
+  );
+  assert.equal(listAccount(code)[0]?.account, null);
+  assert.equal(
+    (await listCall(code, 'GET', 'popId=6161', { cookie: player })).json.mine,
+    null,
+    'no longer the account’s'
+  );
+});
+
+test('at an unsanctioned event a list is the account’s through its Claim, when the names agree', async () => {
+  const { owner, code } = await casualEvent();
+  await settle(code, owner, { decklists: 'open' });
+  const ash = await signIn('Ash');
+  const named = (firstName: string, lastName: string) => ({ deck: DECK, profile: { firstName, lastName } });
+  await listCall(code, 'PUT', '', { cookie: ash, body: named('Ash', 'Ketchum') });
+  assert.equal(listAccount(code)[0]?.account, null, 'before its Claim, a list is a device’s only');
+  await hit(decklists.onRequestPatch as Handler, '/decklists?firstName=Ash&lastName=Ketchum', at(code), {
+    method: 'PATCH',
+    cookie: owner
+  });
+  await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  await listCall(code, 'PUT', '', { cookie: ash, body: named('ash', 'KETCHUM') });
+  await listCall(code, 'PUT', '', { cookie: ash, body: named('Gary', 'Oak') });
+  assert.deepEqual(
+    listAccount(code).map(row => row.account !== null),
+    [true, false],
+    'Ash’s own list is the account’s; one sent for Gary is not'
+  );
+  const mine = await listCall(code, 'GET', 'firstName=Ash&lastName=Ketchum', { cookie: ash });
+  assert.equal(mine.json.mine?.lastName, 'KETCHUM');
+});

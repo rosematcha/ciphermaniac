@@ -6,7 +6,10 @@
  * so the list belongs to the device that sent it: the token it was given is
  * the only way to read, replace or withdraw it. Staff can unlock a list for a
  * player who changed devices, and the next submission under those details
- * takes it over.
+ * takes it over. A signed-in account that is the list's player (by its POP
+ * ID, or by its Claim at an unsanctioned event) owns its list as well, on the
+ * same first-come terms, and reads, replaces or withdraws it from any of its
+ * devices without the token.
  *
  * GET — staff see every list. A player sees their own with the details they
  * submitted under (query popId / firstName / lastName) and their token.
@@ -21,7 +24,8 @@
  * under the account's own Player ID; a list never sets an account's Player ID.
  * DELETE — withdraws the list under the details and token in the query,
  * while submission is open.
- * PATCH — staff unlock the list under the details in the query.
+ * PATCH — staff unlock the list under the details in the query, from its
+ * device and its account alike.
  */
 
 import { MAX_DECKLIST_CHARS, parseDecklist } from '../../../../shared/tournament/decklist.js';
@@ -58,6 +62,8 @@ interface DecklistRow {
   archetype: string | null;
   submitted_at: number;
   owner_token: string | null;
+  /** The account the list belongs to, when one that is its player sent it. */
+  account: string | null;
 }
 
 /** A list as stored, before it is checked against the roster (see presenter). */
@@ -100,38 +106,67 @@ export function identityKey(profile: Pick<PlayerProfile, 'popId' | 'firstName' |
   return sanctioned ? `pop:${profile.popId.trim()}` : `name:${fullNameKey(profile)}`;
 }
 
-/** The details a player gave in a query string, as the identity their list is kept under. */
-function claimFrom(request: Request, sanctioned: boolean): string | null {
+type Details = Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>;
+
+/** The details a player gave in a query string, when they say whose list it is. */
+function detailsFrom(request: Request, sanctioned: boolean): Details | null {
   const query = new URL(request.url).searchParams;
-  const profile = {
+  const details = {
     popId: query.get('popId') ?? '',
     firstName: query.get('firstName') ?? '',
     lastName: query.get('lastName') ?? ''
   };
-  const complete = sanctioned ? /^\d{1,10}$/.test(profile.popId) : Boolean(profile.firstName && profile.lastName);
-  return complete ? identityKey(profile, sanctioned) : null;
+  const complete = sanctioned ? /^\d{1,10}$/.test(details.popId) : Boolean(details.firstName && details.lastName);
+  return complete ? details : null;
 }
 
 /**
- * The asker's own list, by the details and the device token they hold. Only
- * the token reads a list back: a profile anyone can edit to someone else's
- * details must not show that person's list.
+ * The signed-in account, when it is the player the details name, so the list
+ * may be the account's: by the POP ID it holds at a sanctioned event; at an
+ * unsanctioned one, by its Claim here, on a player with the list's name. A
+ * list sent before any Claim is a device's only.
+ */
+function matchingAccount(access: Access, details: Details): string | null {
+  const { user, row, claimed } = access;
+  if (!user) {
+    return null;
+  }
+  if (isSanctioned(row)) {
+    return user.popId === details.popId ? user.id : null;
+  }
+  const player = row.tournament.players.find(candidate => candidate.id === claimed);
+  return player && fullNameKey(player) === fullNameKey(details) ? user.id : null;
+}
+
+/** Whether the asker owns the list: the token their device holds, or the account that is its player. */
+async function owns(row: DecklistRow, token: string, account: string | null): Promise<boolean> {
+  if (account !== null && row.account === account) {
+    return true;
+  }
+  return row.owner_token !== null && token !== '' && row.owner_token === (await sha256(token));
+}
+
+/**
+ * The asker's own list, by the details and the device token they hold, or
+ * the account that is its player. Nothing else reads a list back: a profile
+ * anyone can edit to someone else's details must not show that person's list.
  */
 async function ownList(access: Access, request: Request): Promise<DecklistRow | null> {
-  const claim = claimFrom(request, isSanctioned(access.row));
+  const details = detailsFrom(request, isSanctioned(access.row));
   const token = new URL(request.url).searchParams.get('token') ?? '';
-  if (!claim || !token) {
+  const account = details && matchingAccount(access, details);
+  if (!details || !(token || account)) {
     return null;
   }
   const row = await access.db
     .prepare('SELECT * FROM decklists WHERE code = ? AND user_id = ?')
-    .bind(access.row.code, claim)
+    .bind(access.row.code, identityKey(details, isSanctioned(access.row)))
     .first<DecklistRow>();
-  return row?.owner_token && row.owner_token === (await sha256(token)) ? row : null;
+  return row && (await owns(row, token, account)) ? row : null;
 }
 
 export async function onRequestGet(context: Context<'code'>): Promise<Response> {
-  const access = await open(context);
+  const access = await open(context, { claim: true });
   if (access instanceof Response) {
     return access;
   }
@@ -200,20 +235,28 @@ function saveToAccount(access: Access, userId: string, profile: PlayerProfile) {
 
 /**
  * Stores the list under its identity with the new token's hash: a first list,
- * one staff unlocked, or a replacement from the device that holds the token.
- * False when another device's list is there, which stays as it was.
+ * one staff unlocked, or a replacement from the device that holds the token
+ * or by the account the list belongs to. A list sent by the account that is
+ * its player is that account's; the device that holds the token keeps the
+ * account its list had. False when another device's or account's list is
+ * there, which stays as it was.
  */
 async function store(access: Access, submission: Submission, tokenHash: string, now: number): Promise<boolean> {
   const { profile, deck } = submission;
   const key = identityKey(profile, isSanctioned(access.row));
   const held = typeof submission.held === 'string' && submission.held ? await sha256(submission.held) : '';
+  const account = matchingAccount(access, profile);
   const insert = access.db
     .prepare(
-      'INSERT INTO decklists (code, user_id, pop_id, first_name, last_name, birth_date, deck, archetype, submitted_at, owner_token) ' +
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (code, user_id) DO UPDATE SET pop_id = excluded.pop_id, ' +
-        'first_name = excluded.first_name, last_name = excluded.last_name, birth_date = excluded.birth_date, ' +
-        'deck = excluded.deck, archetype = excluded.archetype, submitted_at = excluded.submitted_at, ' +
-        'owner_token = excluded.owner_token WHERE decklists.owner_token IS NULL OR decklists.owner_token = ?'
+      'INSERT INTO decklists (code, user_id, pop_id, first_name, last_name, birth_date, deck, archetype, submitted_at, ' +
+        'owner_token, account) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (code, user_id) DO UPDATE SET ' +
+        'pop_id = excluded.pop_id, first_name = excluded.first_name, last_name = excluded.last_name, ' +
+        'birth_date = excluded.birth_date, deck = excluded.deck, archetype = excluded.archetype, ' +
+        'submitted_at = excluded.submitted_at, owner_token = excluded.owner_token, ' +
+        'account = CASE WHEN excluded.account IS NOT NULL THEN excluded.account ' +
+        'WHEN decklists.owner_token = ? THEN decklists.account ELSE NULL END ' +
+        'WHERE decklists.owner_token IS NULL OR decklists.owner_token = ? ' +
+        'OR (decklists.account IS NOT NULL AND decklists.account = ?)'
     )
     .bind(
       access.row.code,
@@ -226,9 +269,12 @@ async function store(access: Access, submission: Submission, tokenHash: string, 
       submission.archetype,
       now,
       tokenHash,
-      held
+      account,
+      held,
+      held,
+      account ?? ''
     );
-  // The upsert changes no row when another device's list is there, so its count is the answer.
+  // The upsert changes no row when another device's or account's list is there, so its count is the answer.
   if (rowsChanged(await insert.run()) === 0) {
     return false;
   }
@@ -327,7 +373,7 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if (!sameOrigin(context.request)) {
     return jsonError('Forbidden', 403);
   }
-  const access = await open(context);
+  const access = await open(context, { claim: true });
   if (access instanceof Response) {
     return access;
   }
@@ -362,23 +408,27 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
   if (!sameOrigin(context.request)) {
     return jsonError('Forbidden', 403);
   }
-  const access = await open(context);
+  const access = await open(context, { claim: true });
   if (access instanceof Response) {
     return access;
   }
   if (!decklistsOpen(access.row.settings)) {
     return notTaking(access.row.settings);
   }
-  const key = claimFrom(context.request, isSanctioned(access.row));
-  if (!key) {
+  const details = detailsFrom(context.request, isSanctioned(access.row));
+  if (!details) {
     return jsonError('Say whose list to withdraw', 400);
   }
+  const key = identityKey(details, isSanctioned(access.row));
   const held = new URL(context.request.url).searchParams.get('token') ?? '';
   const { db, row } = access;
-  // The token is checked in the delete itself, so a list replaced meanwhile is not the one withdrawn.
+  // The owner is checked in the delete itself, so a list replaced meanwhile is not the one withdrawn.
   const deleted = await db
-    .prepare('DELETE FROM decklists WHERE code = ? AND user_id = ? AND (owner_token IS NULL OR owner_token = ?)')
-    .bind(row.code, key, held ? await sha256(held) : '')
+    .prepare(
+      'DELETE FROM decklists WHERE code = ? AND user_id = ? ' +
+        'AND (owner_token IS NULL OR owner_token = ? OR (account IS NOT NULL AND account = ?))'
+    )
+    .bind(row.code, key, held ? await sha256(held) : '', matchingAccount(access, details) ?? '')
     .run();
   if (rowsChanged(deleted) === 0 && (await listExists(db, row.code, key))) {
     return jsonError(LOCKED, 409);
@@ -400,13 +450,13 @@ export async function onRequestPatch(context: Context<'code'>): Promise<Response
   if (access instanceof Response) {
     return access;
   }
-  const key = claimFrom(context.request, isSanctioned(access.row));
-  if (!key) {
+  const details = detailsFrom(context.request, isSanctioned(access.row));
+  if (!details) {
     return jsonError('Say whose list to unlock', 400);
   }
   await access.db
-    .prepare('UPDATE decklists SET owner_token = NULL WHERE code = ? AND user_id = ?')
-    .bind(access.row.code, key)
+    .prepare('UPDATE decklists SET owner_token = NULL, account = NULL WHERE code = ? AND user_id = ?')
+    .bind(access.row.code, identityKey(details, isSanctioned(access.row)))
     .run();
   return noContent();
 }
