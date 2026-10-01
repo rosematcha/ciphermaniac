@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 
 import * as me from '../../functions/api/me.ts';
+import * as claim from '../../functions/api/tournaments/[code]/claim.ts';
 import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
 import * as manage from '../../functions/api/tournaments/[code]/manage.ts';
@@ -211,4 +212,42 @@ test('at a sanctioned event an account is the player whose POP ID it holds, and 
   raw().exec("UPDATE users SET pop_id = '900' WHERE name = 'Player'");
   await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profileOf('778') });
   assert.equal(holders(code)['900'], undefined, 'saving another POP ID lets the row go');
+});
+
+const unclaim = (code: string, cookie?: string, origin?: string) =>
+  hit(claim.onRequestDelete as Handler, '/claim', at(code), { method: 'DELETE', cookie, origin });
+
+test('the account undoes its own Claim, even once the event is over, and nobody else’s', async () => {
+  const { owner, code, idOf } = await casualEvent();
+  const ash = await signIn('Ash');
+  const gary = await signIn('Gary');
+  await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  await playerSays(code, { lastName: 'Oak', device: 'gary-phone' }, { cookie: gary });
+  assert.equal((await unclaim(code)).status, 401);
+  assert.equal((await unclaim(code, ash, 'https://evil.test')).status, 403);
+  assert.equal((await unclaim('ZZZZZZ', ash)).status, 404);
+  await settle(code, owner, { finished: true });
+  assert.equal((await unclaim(code, ash)).status, 204);
+  assert.deepEqual(holders(code), { [idOf('Oak')]: await accountId(gary) }, 'Gary’s Claim stands');
+  assert.equal((await unclaim(code, ash)).status, 204, 'nothing left to undo is no error');
+  const again = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  assert.equal(again.json.linked, false, 'a finished event takes no new Claim');
+});
+
+test('undoing a Claim takes away the account’s reporting', async () => {
+  const { owner, code, idOf } = await casualEvent();
+  const ash = await signIn('Ash');
+  await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  await pair(code, owner, idOf('Ketchum'));
+  await unclaim(code, ash);
+  const fromLaptop = await playerSays(
+    code,
+    { lastName: 'Ketchum', result: 'win', device: 'ash-laptop' },
+    { cookie: ash }
+  );
+  assert.deepEqual([fromLaptop.status, fromLaptop.json.linked], [200, true], 'free again, so the account claims anew');
+  await unclaim(code, ash);
+  await playerSays(code, { lastName: 'Ketchum', device: 'someone' });
+  const blocked = await playerSays(code, { lastName: 'Ketchum', result: 'win', device: 'ash-laptop' }, { cookie: ash });
+  assert.equal(blocked.status, 403, 'once someone else holds the player');
 });
