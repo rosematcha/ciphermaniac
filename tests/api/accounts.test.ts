@@ -1,6 +1,6 @@
 /**
  * Player accounts end to end, against the real schema in SQLite. What must
- * hold: migration 0005 brings a live database in line with the schema, with
+ * hold: migration 0006 brings a live database in line with the schema, with
  * each POP ID left on one account and Reese the only admin; an account's
  * role and public profile come with who is signed in; one account holds a
  * POP ID, and lets go of the players it was as an old one; a public profile
@@ -42,15 +42,18 @@ function shape(db: DatabaseSync) {
   };
 }
 
-/** Accounts and events as a live database held them before 0005. */
-function seedBefore0005(db: DatabaseSync) {
+/** Reese's account in production, which the migration makes the first admin. */
+const REESE = 'nR5TwUcAaKMoilB6';
+
+/** Accounts and events as a live database held them before 0006. */
+function seedBefore0006(db: DatabaseSync) {
   const user = db.prepare('INSERT INTO users (id, name, email, pop_id, created_at) VALUES (?, ?, ?, ?, ?)');
   user.run('first', 'First', null, '111', 1);
   user.run('second', 'Second', null, '111', 2);
   user.run('blank', 'Blank', null, '', 2);
   user.run('tie-a', 'Tie A', null, '222', 3);
   user.run('tie-b', 'Tie B', null, '222', 3);
-  user.run('reese', 'Reese', 'Reese@Rosematcha.com', null, 4);
+  user.run(REESE, 'Reese', null, null, 4);
   user.run('owner', 'Owner', 'owner@example.com', '333', 5);
   const event = db.prepare(
     'INSERT INTO tournaments (code, owner_id, mode, state, settings, staff_token, created_at, updated_at) ' +
@@ -61,15 +64,15 @@ function seedBefore0005(db: DatabaseSync) {
   event.run('SANCTN', 'owner', 'swiss', players('111', '222'), '{}', 'a');
   event.run('CASUAL', 'owner', 'swiss', players('9000000001'), '{"sanctioned":false}', 'b');
   // A TOM event is sanctioned whatever its settings say.
-  event.run('TOMRUN', 'reese', 'tom', players('333'), '{"sanctioned":false}', 'c');
+  event.run('TOMRUN', REESE, 'tom', players('333'), '{"sanctioned":false}', 'c');
 }
 
-test('migration 0005 brings a database made before accounts in line with the schema', () => {
+test('migration 0006 brings a database made before accounts in line with the schema', () => {
   const db = new DatabaseSync(':memory:');
-  db.exec(sql('../fixtures/d1/tournaments-before-0005.sql'));
-  seedBefore0005(db);
-  db.exec(sql('../../config/d1/migrations/tournaments-0005-player-accounts.sql'));
-  const backfill = sql('../../config/d1/migrations/tournaments-0006-pop-history-backfill.sql');
+  db.exec(sql('../fixtures/d1/tournaments-before-0006.sql'));
+  seedBefore0006(db);
+  db.exec(sql('../../config/d1/migrations/tournaments-0006-player-accounts.sql'));
+  const backfill = sql('../../config/d1/migrations/tournaments-0007-pop-history-backfill.sql');
   db.exec(backfill);
   db.exec(backfill);
 
@@ -80,15 +83,15 @@ test('migration 0005 brings a database made before accounts in line with the sch
     [
       { id: 'blank', popId: null, role: null, roleBy: null },
       { id: 'first', popId: '111', role: null, roleBy: null },
+      { id: REESE, popId: null, role: 'admin', roleBy: null },
       { id: 'owner', popId: '333', role: null, roleBy: null },
-      { id: 'reese', popId: null, role: 'admin', roleBy: null },
       { id: 'second', popId: null, role: null, roleBy: null },
       { id: 'tie-a', popId: '222', role: null, roleBy: null },
       { id: 'tie-b', popId: null, role: null, roleBy: null }
     ],
     'the oldest account keeps a POP ID, an empty one is none, Reese is admin and an event owner is not an organizer'
   );
-  const seeded = db.prepare("SELECT role_at AS roleAt FROM users WHERE id = 'reese'").get() as { roleAt: number };
+  const seeded = db.prepare('SELECT role_at AS roleAt FROM users WHERE id = ?').get(REESE) as { roleAt: number };
   assert.ok(Math.abs(seeded.roleAt - Date.now()) < 60_000, 'the seed records when, in milliseconds');
   const history = db.prepare('SELECT pop_id AS popId, code FROM pop_history ORDER BY code, pop_id').all();
   assert.deepEqual(
