@@ -72,11 +72,12 @@ function listOwner(profile: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastNam
   return query.toString();
 }
 
-async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** One call to the functions: a JSON body (see `json`) is sent as JSON; a file goes as it is. */
+export async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(path, {
     ...init,
     credentials: 'same-origin',
-    headers: init.body ? { 'Content-Type': 'application/json' } : undefined
+    headers: typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : undefined
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ({ error?: string } & Record<string, unknown>) | null;
@@ -85,7 +86,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (response.status === 204 ? null : await response.json()) as T;
 }
 
-const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
+export const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
 
 export const fetchSession = () => call<Session>('/api/me');
 

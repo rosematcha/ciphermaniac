@@ -1,4 +1,4 @@
-import { type JSX, Show } from 'solid-js';
+import { children, type JSX, Show } from 'solid-js';
 
 /**
  * The head of every tournament page: the title, one sentence built from the
@@ -14,6 +14,8 @@ export function TournamentHero(props: {
   /** Why the action can't be taken yet, or what it is waiting on. */
   reason?: string | undefined;
 }) {
+  // Read once: a prop's JSX is built again on every read, and the action is read twice below.
+  const action = children(() => props.action);
   return (
     <section class='tm-hero'>
       <div class='tm-hero-text'>
@@ -25,9 +27,9 @@ export function TournamentHero(props: {
           <p class='hero-meta'>{props.meta}</p>
         </Show>
       </div>
-      <Show when={props.action || props.reason}>
+      <Show when={action() || props.reason}>
         <div class='tm-next'>
-          {props.action}
+          {action()}
           <Show when={props.reason}>
             <span class='tm-next-reason'>{props.reason}</span>
           </Show>

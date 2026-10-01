@@ -1,0 +1,106 @@
+/* Applying to run events: where an account stands (ApplicantStatus, on
+   Settings, /apply and /host) and the apply page's form. */
+
+/* The stage and its day at left, its step at right; on a phone the step
+   takes the line under the words. */
+.tm-applicant .tm-box-bar {
+  min-height: 56px;
+}
+.tm-applicant-stage {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.tm-applicant-stage strong {
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+.tm-applicant-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.tm-applicant-step .tm-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+/* The admin's own words to the applicant, kept as they wrote them. */
+.tm-applicant-note {
+  margin: 0;
+  max-width: 70ch;
+  font-size: var(--text-body);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* /host: the stage beside its step, in the hero's action slot. */
+.tm-applicant-line {
+  align-items: center;
+  justify-content: flex-end;
+}
+.tm-applicant-words {
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+
+/* ---------- The apply page ---------- */
+.tm-apply {
+  display: grid;
+  gap: var(--space-4);
+}
+.tm-apply-form .tm-form-row {
+  padding: 14px;
+}
+.tm-apply-proof,
+.tm-apply-explain {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.tm-apply-proof {
+  justify-items: start;
+}
+/* The file once it is up: its name, which gives way, its size, and Remove. */
+.tm-apply-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  min-height: var(--control-h);
+  font-size: var(--text-base);
+}
+.tm-apply-name {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.tm-apply-pick:focus-within {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+.tm-apply-explain .tm-textarea {
+  min-height: 160px;
+}
+.tm-apply-count {
+  justify-self: end;
+  font-size: var(--text-sm);
+}
+.tm-apply-foot .tm-error {
+  margin: 0;
+}
+.tm-apply-profile {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .tm-applicant-step {
+    margin-left: 0;
+  }
+  .tm-apply-foot .btn-primary,
+  .tm-apply-profile .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
