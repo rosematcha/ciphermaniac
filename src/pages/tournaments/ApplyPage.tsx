@@ -94,7 +94,8 @@ function ProofField(props: {
     } finally {
       setUploading(null);
       props.onUploading(false);
-      refocus(() => removeButton ?? picker);
+      // The control the row shows now: the Remove of a proof removed before is gone from the page.
+      refocus(() => (removeButton?.isConnected ? removeButton : picker));
     }
   }
   async function remove() {

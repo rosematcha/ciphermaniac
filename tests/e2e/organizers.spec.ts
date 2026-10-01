@@ -233,6 +233,18 @@ test('a refused upload says why, and a file over 8 MB is refused before it is se
   expect(asks.filter(a => a.method === 'PUT')).toHaveLength(1);
 });
 
+test('a refused upload after a removed one gives the focus back to the picker', async ({ page }) => {
+  await mockApplicant(page, NONE);
+  await page.goto('/apply');
+  const picker = page.getByLabel('Proof');
+  await picker.setInputFiles({ name: 'certificate.png', mimeType: 'image/png', buffer: PNG });
+  await page.getByRole('button', { name: 'Remove' }).click();
+  await expect(picker).toBeFocused();
+  await picker.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('text') });
+  await expect(page.getByRole('alert')).toHaveText('Use a PNG, JPEG, WebP or PDF');
+  await expect(picker).toBeFocused();
+});
+
 test('Send application waits for an upload in flight', async ({ page }) => {
   let land = () => undefined as void;
   const upload = new Promise<void>(resolve => {
