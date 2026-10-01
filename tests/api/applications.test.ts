@@ -19,7 +19,7 @@ import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { PROOF_MAX_BYTES } from '../../shared/accounts/applications.ts';
 import { apiCalls, type Handler, ORIGIN } from '../__utils__/apiCalls.ts';
 import { memoryProofs } from '../__utils__/proofBucket.ts';
-import { sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 let proofs: ReturnType<typeof memoryProofs>;
@@ -263,6 +263,64 @@ test('an Application keeps the profile as it stood when the account applied', as
     .prepare('SELECT pop_id AS popId, first_name AS firstName, last_name AS lastName FROM applications')
     .get();
   assert.deepEqual({ ...row }, { popId: '1234567', firstName: 'Pat', lastName: 'Player' });
+});
+
+/** Sends the Application with `meanwhile` run while its body is still arriving, after the send has read the account. */
+async function applyWhile(cookie: string, body: unknown, meanwhile: () => void) {
+  const slow = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        meanwhile();
+        controller.enqueue(new TextEncoder().encode(JSON.stringify(body)));
+        controller.close();
+      }
+    },
+    { highWaterMark: 0 }
+  );
+  const request = new Request(`${ORIGIN}/api/applications`, {
+    method: 'POST',
+    headers: { origin: ORIGIN, cookie, 'content-type': 'application/json' },
+    body: slow,
+    duplex: 'half'
+  } as RequestInit);
+  const response = await applications.onRequestPost({ request, env, params: {} } as never);
+  return { status: response.status, json: (await response.json()) as any };
+}
+
+test('a send holds to the account as it is when the Application lands, not as it was read', async () => {
+  const cookie = await applicant();
+  const setUser = (sql: string) => () => raw().prepare(`UPDATE users SET ${sql} WHERE name = 'Applicant'`).run();
+  // An Admin takes the POP ID off the account while its Application is still arriving.
+  const cleared = await applyWhile(cookie, { explanation: 'Hello', proof: false }, setUser('pop_id = NULL'));
+  assert.deepEqual([cleared.status, cleared.json], [400, { error: 'Complete your profile first', profile: true }]);
+  setUser("pop_id = '1234567'")();
+  const reinstated = await applyWhile(cookie, { explanation: 'Hello', proof: false }, setUser("role = 'organizer'"));
+  assert.deepEqual([reinstated.status, reinstated.json.error], [409, 'Already an organizer']);
+  assert.equal(raw().prepare('SELECT COUNT(*) AS n FROM applications').get()?.n, 0);
+  setUser("role = 'revoked'")();
+  // Renamed meanwhile, the account applies under the name it has now.
+  const renamed = await applyWhile(cookie, { explanation: 'Hello', proof: false }, setUser("last_name = 'Renamed'"));
+  assert.equal(renamed.status, 201);
+  const row = raw().prepare('SELECT pop_id AS popId, last_name AS lastName FROM applications').get();
+  assert.deepEqual({ ...row }, { popId: '1234567', lastName: 'Renamed' });
+});
+
+test('a send that keeps losing to changes to the account gives up, and one whose account is gone stores nothing', async () => {
+  const cookie = await applicant();
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  let renames = 0;
+  const rename = () => {
+    renames += 1;
+    raw().prepare("UPDATE users SET last_name = ? WHERE name = 'Applicant'").run(`Renamed${renames}`);
+  };
+  env.TOURNAMENT_DB = racing(db, 'INSERT OR IGNORE INTO applications', rename, 3);
+  const busy = await apply(cookie, { explanation: 'Hello', proof: false });
+  assert.deepEqual([busy.status, busy.json.error, renames], [409, 'Busy; try again', 3]);
+  env.TOURNAMENT_DB = racing(db, 'INSERT OR IGNORE INTO applications', () => {
+    raw().prepare("DELETE FROM users WHERE name = 'Applicant'").run();
+  });
+  assert.equal((await apply(cookie, { explanation: 'Hello', proof: false })).status, 401);
+  assert.equal(raw().prepare('SELECT COUNT(*) AS n FROM applications').get()?.n, 0);
 });
 
 test('withdrawing takes the pending Application and its proof; with none pending there is nothing to take', async () => {
