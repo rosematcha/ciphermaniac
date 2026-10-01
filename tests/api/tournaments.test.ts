@@ -1994,7 +1994,6 @@ const ACCOUNT_STATEMENTS = [
   'DELETE FROM pop_history WHERE code = ?1',
   'DELETE FROM report_devices WHERE code = ?1',
   'UPDATE report_devices SET user_id = NULL',
-  'DELETE FROM pop_history WHERE code = ? AND',
   'SELECT player_id FROM report_devices WHERE user_id = ?',
   'UPDATE OR IGNORE report_devices SET user_id',
   'SELECT player_id FROM report_devices JOIN sessions',
@@ -2024,7 +2023,9 @@ const ACCOUNT_STATEMENTS = [
   'UPDATE users SET pop_id = ?1 WHERE id = ?2',
   'player_id = (SELECT pop_id FROM users WHERE id = ?1)',
   'WHERE id = ? AND public_slug IS NULL',
-  'FROM tournaments WHERE code = ?3 AND version = ?8'
+  'FROM tournaments WHERE code = ?3 AND version = ?8',
+  'DELETE FROM decklists WHERE code = ?1 AND EXISTS',
+  'DELETE FROM tournaments WHERE code = ? AND version = ?'
 ];
 
 test('nothing the functions ask of the database scans a table', async () => {

@@ -24,7 +24,7 @@ import { type PlayerReport, pruneReports } from '../../../shared/tournament/repo
 import { randomToken, sessionHash, sessionUserQuery, type User, userFromRow, type UserRow } from '../auth/session.js';
 import { firstRow, rowsChanged } from '../d1.js';
 import type { D1Like } from '../types.js';
-import { firstIndexWrites, indexDeletes, rosterWrites } from './rosterWrites.js';
+import { deleteWrites, firstIndexWrites, rosterWrites } from './rosterWrites.js';
 
 export interface TournamentRow {
   code: string;
@@ -510,14 +510,28 @@ export async function ownedCount(db: D1Like, userId: string): Promise<number> {
   return row?.n ?? 0;
 }
 
-/** The event and everything kept under its code, its players' places in the history index included. */
-export async function deleteTournament(db: D1Like, row: TournamentRow): Promise<void> {
-  const { code } = row;
-  await db.batch([
-    db.prepare('DELETE FROM tournaments WHERE code = ?').bind(code),
-    db.prepare('DELETE FROM staff WHERE code = ?').bind(code),
-    db.prepare('DELETE FROM decklists WHERE code = ?').bind(code),
-    db.prepare('DELETE FROM report_devices WHERE code = ?').bind(code),
-    ...indexDeletes(db, row)
-  ]);
+/**
+ * Deletes the event and everything kept under its code, its players' places
+ * in the history index included, all on the version `row` read (see
+ * deleteWrites): a change between means a fresh read and another try, so no
+ * player it gained meanwhile stays in the index.
+ * @returns Whether the event is gone; false when other writes kept getting there first
+ */
+export async function deleteTournament(db: D1Like, row: TournamentRow): Promise<boolean> {
+  let current: TournamentRow | null = row;
+  for (let tries = 1; current; tries += 1) {
+    const results = await db.batch([
+      ...deleteWrites(db, current),
+      db.prepare('DELETE FROM tournaments WHERE code = ? AND version = ?').bind(current.code, current.version)
+    ]);
+    if (rowsChanged(results.at(-1)) === 1) {
+      return true;
+    }
+    if (tries === MAX_TRIES) {
+      return false;
+    }
+    current = await loadTournament(db, row.code);
+  }
+  // Deleted by another request meanwhile, which took its rows with it.
+  return true;
 }

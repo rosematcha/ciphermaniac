@@ -95,11 +95,20 @@ export function firstIndexWrites(db: D1Like, event: IndexedEvent & { code: strin
   return addIndexed(db, event.code, { column: 'staff_token', value: event.staffToken }, [...indexedIds(event)]);
 }
 
-/** What deleting an event writes beside its rows: its players out of the index. */
-export function indexDeletes(db: D1Like, event: IndexedEvent & { code: string }) {
-  return chunks([...indexedIds(event)]).map(run =>
-    db
-      .prepare(`DELETE FROM pop_history WHERE code = ? AND pop_id IN (${run.map(() => '?').join(', ')})`)
-      .bind(event.code, ...run)
-  );
+/**
+ * What deleting an event writes ahead of its row, landing only while the row
+ * is still at the version read: its players out of the index (which has no
+ * lookup by code alone, so they go by the list read), and everything else
+ * kept under its code.
+ */
+export function deleteWrites(db: D1Like, event: IndexedEvent & { code: string; version: number }): D1Statement[] {
+  const at = { code: event.code, guard: { column: 'version', value: event.version } as const };
+  return [
+    ...deleteGuarded(db, { table: 'pop_history', column: 'pop_id' }, at, [...indexedIds(event)]),
+    ...(['staff', 'decklists', 'report_devices'] as const).map(table =>
+      db
+        .prepare(`DELETE FROM ${table} WHERE code = ?1 AND EXISTS (${guardSql(at.guard)})`)
+        .bind(at.code, at.guard.value)
+    )
+  ];
 }
