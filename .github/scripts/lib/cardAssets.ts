@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { completedStage, pipelineStore } from './pipelineStore';
 import { builderRevision } from './build/revision';
-import { loadEventSources } from './build/productionRelease';
+import { loadEventSources, productionScopeRoot } from './build/productionRelease';
 import { boolEnv } from './env';
 import { inputFingerprint } from './build/provenance';
 import { loadOnlineDecks } from './build/onlineDecks';
@@ -99,7 +99,15 @@ async function synonyms(store: Store): Promise<void> {
 }
 
 async function images(store: Store): Promise<void> {
-  const inputs = content(await store.read('assets/card-synonyms.json'));
+  // The mirror discovers cards from every live event and the online release,
+  // so those roots are inputs: a card new to today's online meta must rerun it
+  // even on a day the synonyms happen not to change.
+  const { release, sources } = await loadEventSources(store);
+  const inputs = {
+    synonyms: content(await store.read('assets/card-synonyms.json')),
+    sources,
+    online: productionScopeRoot(release, 'online')
+  };
   await completedStage(store, 'card-images', {
     inputs,
     revision: await builderRevision(['scripts/convert-card-images.ts', '.github/scripts/build-art-groups.py']),

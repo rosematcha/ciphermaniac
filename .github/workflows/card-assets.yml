@@ -1,7 +1,12 @@
 name: Card Assets
 on:
-  schedule:
-    - cron: '37 6 * * *'
+  # Chained, not scheduled: the image mirror discovers cards from the live
+  # online release, so running before Daily Data publishes mirrors yesterday's
+  # meta and any card new to today's thumbnails 404s on R2 until tomorrow.
+  # Scheduled starts drift by hours, so cron offsets cannot hold the order.
+  workflow_run:
+    workflows: [Daily Data]
+    types: [completed]
   workflow_dispatch:
     inputs:
       force:

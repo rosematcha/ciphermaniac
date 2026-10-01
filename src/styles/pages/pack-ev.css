@@ -115,6 +115,7 @@
   aspect-ratio: 63 / 88;
   border-radius: var(--radius-lg);
   background: var(--surface-2);
+  opacity: 1;
 }
 .is-tiny .packev-art {
   border-radius: var(--radius-sm);

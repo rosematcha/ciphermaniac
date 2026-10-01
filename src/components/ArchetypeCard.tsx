@@ -82,7 +82,8 @@ export function ArchetypeCard(props: ArchetypeCardProps) {
       onFocus={prefetchArchetypePage}
     >
       <div class='arche-thumb' aria-hidden='true'>
-        <CardStack thumbnails={thumbnails()} size='xs' lazy={!props.eagerImage} />
+        {/* Slot widths, measured: ~43px in a narrow gallery, ≤90px otherwise. */}
+        <CardStack thumbnails={thumbnails()} size='sm' sizes='(max-width: 640px) 48px, 92px' lazy={!props.eagerImage} />
       </div>
       <div class='arche-name'>{props.entry.label || props.entry.name}</div>
       <div class='arche-stats'>

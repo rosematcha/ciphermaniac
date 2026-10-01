@@ -11,7 +11,7 @@
  * unit tests, where it is cheaper and more precise.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, type Route, test } from '@playwright/test';
 
 /** Fail loudly if a page reaches production R2 — the fixture wiring is broken. */
 test.beforeEach(async ({ page }) => {
@@ -109,6 +109,106 @@ test('a variant card URL resolves to its canonical card', async ({ page }) => {
   await expect(page.locator('body')).toContainText('Dragapult ex');
 });
 
+/** Card-sized art: a 1px image under a `274w` srcset descriptor has a natural width of 0. */
+const CARD_ART = '<svg xmlns="http://www.w3.org/2000/svg" width="460" height="644"/>';
+
+test('card art stays hidden until it has decoded, then shows whole', async ({ page }) => {
+  // A streaming image paints top-down and a failed source flashes its alt
+  // text; both read as flicker. Holding the art open makes the pending window
+  // observable — `vite preview` runs no /thumbnails Function, so the art has to
+  // be served from here anyway.
+  let release = () => {};
+  const held = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  await page.route('**/thumbnails/**', async route => {
+    await held;
+    await route.fulfill({ status: 200, contentType: 'image/svg+xml', body: CARD_ART });
+  });
+  await gotoClean(page, '/cards/MEG/114');
+  const hero = page.locator('.card-image-real img');
+  await expect(hero).toBeAttached();
+  await expect(hero).not.toHaveAttribute('data-loaded', '');
+  await expect(hero).toHaveCSS('opacity', '0');
+  // Above the fold, so it should not queue behind the printings strip.
+  await expect(hero).toHaveAttribute('fetchpriority', 'high');
+
+  release();
+  await expect(hero).toHaveAttribute('data-loaded', '', { timeout: 10_000 });
+  await expect(hero).toHaveCSS('opacity', '1');
+});
+
+test('card art already in memory shows at once instead of fading in again', async ({ page }) => {
+  await page.route('**/thumbnails/**', route =>
+    route.fulfill({ status: 200, contentType: 'image/svg+xml', body: CARD_ART })
+  );
+  await gotoClean(page, '/cards/MEG/114');
+  await expect(page.locator('.card-image-real img')).toHaveAttribute('data-loaded', '', { timeout: 10_000 });
+  await page.locator('.topnav').getByRole('link', { name: 'Archetypes', exact: true }).first().click();
+  await expect(page.locator('.card-image-real')).toHaveCount(0);
+
+  // Mutation callbacks run before the next paint, so whatever they see is
+  // what the first frame of the returning hero would show.
+  await page.evaluate(() => {
+    const seen: (boolean | null)[] = [];
+    (window as unknown as { heroSeen: typeof seen }).heroSeen = seen;
+    new MutationObserver(() => {
+      const hero = document.querySelector('.card-image-real img');
+      if (hero && seen.length === 0) {
+        seen.push(hero.hasAttribute('data-loaded'));
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  await page.goBack();
+  await expect(page.locator('.card-image-real img')).toBeAttached();
+  expect(await page.evaluate(() => (window as unknown as { heroSeen: boolean[] }).heroSeen)).toEqual([true]);
+});
+
+test('reused card art hides a failed source instead of showing it @mobile', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'quick rank is the phone layout, on the phone project');
+  // Quick rank keeps one <img> and hands it the next card. When that card's
+  // first source fails, the element drops the old art for a broken image, so
+  // it has to go back to hidden until the retry lands. The tray requests the
+  // same URLs, so every request is held until the test decides it: otherwise
+  // the next card is already cached and nothing fails.
+  type Verdict = 'serve' | 'fail';
+  const held = new Map<string, Route[]>();
+  const verdicts = new Map<string, Verdict>();
+  const settle = (route: Route, verdict: Verdict) =>
+    route.fulfill(
+      verdict === 'serve' ? { status: 200, contentType: 'image/svg+xml', body: CARD_ART } : { status: 404, body: '' }
+    );
+  const decide = async (path: string, verdict: Verdict) => {
+    verdicts.set(path, verdict);
+    await Promise.all((held.get(path) ?? []).map(route => settle(route, verdict)));
+    held.delete(path);
+  };
+  await page.route('**/thumbnails/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    const verdict = verdicts.get(path);
+    if (verdict) {
+      await settle(route, verdict);
+    } else {
+      held.set(path, [...(held.get(path) ?? []), route]);
+    }
+  });
+  await gotoClean(page, '/tools/tier-list');
+  await page.getByRole('tab', { name: 'Card arts', exact: true }).click();
+  await page.locator('.tl-rank').tap();
+  const face = page.locator('.tl-queue .tl-qface img');
+  await decide((await face.getAttribute('src'))!, 'serve');
+  await expect(face).toHaveAttribute('data-loaded', '', { timeout: 10_000 });
+
+  const first = await face.getAttribute('src');
+  await page.locator('.tl-queue .tl-skip').tap();
+  await expect(face).not.toHaveAttribute('src', first!);
+  // Its first source fails; the XS retry stays held open.
+  await decide((await face.getAttribute('src'))!, 'fail');
+  await expect(face).toHaveAttribute('src', /\/thumbnails\/xs\//);
+  await expect(face).not.toHaveAttribute('data-loaded', '');
+  await expect(face).toHaveCSS('opacity', '0');
+});
+
 test('archetypes index lists archetypes @mobile', async ({ page }) => {
   const icons = page.waitForResponse(response =>
     new URL(response.url()).pathname.endsWith('/assets/aaaaaaaaaaaa/archetype-icons.json')
@@ -116,6 +216,19 @@ test('archetypes index lists archetypes @mobile', async ({ page }) => {
   await gotoClean(page, '/archetypes');
   expect((await icons).ok()).toBe(true);
   await expect(page.locator('body')).toContainText('Dragapult');
+});
+
+test('archetype thumbnails take the smallest tier that covers their slot', async ({ page }) => {
+  // Fixed tiers had home's stories fetch SM and its archetype tiles XS of the
+  // same art. With a `sizes` hint both resolve to XS at 1x, so it is one file.
+  // Served art, or the srcset pick fails over to the XS retry and proves nothing.
+  await page.route('**/thumbnails/**', route =>
+    route.fulfill({ status: 200, contentType: 'image/svg+xml', body: CARD_ART })
+  );
+  await gotoClean(page, '/archetypes');
+  const art = page.locator('.arche-thumb img').first();
+  await expect(art).toHaveAttribute('data-loaded', '', { timeout: 10_000 });
+  expect(await art.evaluate(el => (el as HTMLImageElement).currentSrc)).toMatch(/\/thumbnails\/xs\//);
 });
 
 test('an archetype page renders its card list', async ({ page }) => {
@@ -459,6 +572,8 @@ test('a tier list tile carries a placeholder until its art paints @mobile', asyn
   await expect(art).toBeAttached();
   await expect(art).not.toHaveAttribute('data-loaded', '');
   expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('skeleton-shimmer');
+  // The shimmer is painted on the image, so pending art here must stay visible.
+  await expect(art).toHaveCSS('opacity', '1');
   // And the placeholder gets out of the way the moment the bitmap lands.
   await expect(art).toHaveAttribute('data-loaded', '', { timeout: 10_000 });
   expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('none');

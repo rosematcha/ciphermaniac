@@ -1082,6 +1082,15 @@
   height: auto;
   user-select: none;
   -webkit-user-drag: none;
+  transition: opacity var(--ms-base) var(--ease-base);
+}
+/* Art appears whole or not at all: a streaming image would otherwise paint
+   top-down, and each card landing on its own beat reads as flicker. The frame
+   behind it is the placeholder. Zero specificity on purpose: an image that
+   paints its own placeholder (the tier list's shimmer, the pickers' framed
+   thumbnails, pack EV tiles) opts out with a plain `opacity: 1` beside it. */
+:where(.card-img:not([data-loaded])) {
+  opacity: 0;
 }
 .card-image-fallback {
   display: grid;
@@ -2430,6 +2439,7 @@ tr.row-expansion > td {
   aspect-ratio: 5 / 7;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  background: var(--surface-2);
 }
 .card-image-real img {
   width: 100%;
@@ -4549,6 +4559,7 @@ tr.row-expansion > td {
   border-radius: 2px;
   border: 1px solid var(--rule);
   background: var(--surface-2);
+  opacity: 1;
 }
 /* No dark-mode overrides for these: `--border` already carries the mode's
    edge. Restating it by hand is how the popover and the typeahead ended up
@@ -4605,6 +4616,7 @@ tr.row-expansion > td {
   border-radius: 2px;
   border: 1px solid var(--rule);
   background: var(--surface-2);
+  opacity: 1;
 }
 .tl-list li b {
   font-weight: 500;

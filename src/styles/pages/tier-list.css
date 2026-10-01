@@ -218,6 +218,7 @@ body.tl-rowdrag {
   background: linear-gradient(90deg, var(--rule), color-mix(in srgb, var(--rule) 45%, var(--surface)), var(--rule));
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  opacity: 1;
 }
 .tl-item:active {
   cursor: grabbing;

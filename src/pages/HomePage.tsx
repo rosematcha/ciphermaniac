@@ -805,7 +805,9 @@ function StoryCard(props: { story: Story; hasDay2: boolean }) {
     <A class={`story-card story-card-${props.story.tag}`} href={href()}>
       <div class='story-card-art'>
         <Show when={thumbnails().length > 0}>
-          <CardStack thumbnails={thumbnails()} size='sm' />
+          {/* Slots run 80-123px. At 1x this and the archetype tiles both pick
+              XS, at 2x both SM, so the same art is one download, not two. */}
+          <CardStack thumbnails={thumbnails()} size='sm' sizes='124px' />
         </Show>
       </div>
       <div class='story-card-head'>

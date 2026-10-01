@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For, on, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, on, onMount, Show } from 'solid-js';
 import { type ArtSource, buildAttempts, buildSrcset, type CardImageSize, R2_CARD_IMAGES } from './cardImage/sources';
 
 /**
@@ -189,24 +189,47 @@ export function CardImage(props: CardImageProps) {
   const [attemptIndex, setAttemptIndex] = createSignal(0);
   const [errored, setErrored] = createSignal(false);
   const [loaded, setLoaded] = createSignal(false);
+  let img: HTMLImageElement | undefined;
+
+  // Art already in the memory cache is complete before first paint: reveal it
+  // now, or every revisit would replay the fade-in over art that never left.
+  onMount(() => {
+    if (img?.complete && img.naturalWidth > 0) {
+      setLoaded(true);
+    }
+  });
 
   // A reused instance must not carry card A's retry/error state over to card B.
+  // `loaded` survives the swap: the browser keeps painting A until B is ready,
+  // so hiding the element meanwhile would blink the card page's hero on every
+  // printing hover. A failed attempt hides it again (see onError).
   createEffect(
     on(
       () => [props.set, props.number],
       () => {
         setAttemptIndex(0);
         setErrored(false);
-        setLoaded(false);
       },
       { defer: true }
     )
   );
 
+  // `load` means downloaded, not decoded: revealing then can still fade in an
+  // empty frame on large art. Never rejects, so a decode failure still reveals.
+  function onLoad() {
+    void img
+      ?.decode()
+      .catch(() => undefined)
+      .then(() => setLoaded(true));
+  }
+
   const src = () => attempts()[attemptIndex()];
   const alt = () => props.alt ?? `${props.set}/${props.number} card image`;
 
   function onError() {
+    // A failed source replaces whatever was painted, broken icon and alt text
+    // included, so hide it again until the next attempt lands.
+    setLoaded(false);
     if (attemptIndex() < attempts().length - 1) {
       setAttemptIndex(attemptIndex() + 1);
     } else {
@@ -227,6 +250,7 @@ export function CardImage(props: CardImageProps) {
       }
     >
       <img
+        ref={img}
         src={src()}
         srcset={
           props.sizes && attemptIndex() === 0
@@ -238,14 +262,17 @@ export function CardImage(props: CardImageProps) {
         width='274'
         height='381'
         loading={props.lazy === false ? undefined : 'lazy'}
+        // Above-the-fold art should not queue behind thumbnails further down.
+        fetchpriority={props.lazy === false ? 'high' : undefined}
         decoding='async'
         class={`card-img ${props.class ?? ''}`}
         style={props.style}
         // The attribute is the loading contract callers style against: absent
-        // until the bitmap has painted, so a pending image can carry a
-        // placeholder rather than sitting transparent (see `.tl-item`).
+        // until the bitmap is decoded. `.card-img` stays hidden until then, so
+        // a slow image never paints half a card and a failed attempt never
+        // flashes its alt text on the way to the next source.
         data-loaded={loaded() ? '' : undefined}
-        onLoad={() => setLoaded(true)}
+        onLoad={onLoad}
         onError={onError}
         referrerpolicy='no-referrer'
       />
@@ -257,7 +284,7 @@ export function CardImage(props: CardImageProps) {
  * Stack of up to three card images, fanned slightly, used for archetype thumbnails.
  * Accepts a thumbnails array in the format `["SET/NUMBER", "SET/NUMBER", ...]`.
  */
-export function CardStack(props: { thumbnails: string[]; size?: CardImageSize; lazy?: boolean }) {
+export function CardStack(props: { thumbnails: string[]; size?: CardImageSize; sizes?: string; lazy?: boolean }) {
   const cards = createMemo(() =>
     props.thumbnails
       .map(t => {
@@ -286,7 +313,7 @@ export function CardStack(props: { thumbnails: string[]; size?: CardImageSize; l
       <For each={cards()}>
         {c => (
           <div class='card-stack-slot'>
-            <CardImage set={c.set} number={c.number} size={props.size ?? 'xs'} lazy={props.lazy} />
+            <CardImage set={c.set} number={c.number} size={props.size ?? 'xs'} sizes={props.sizes} lazy={props.lazy} />
           </div>
         )}
       </For>
