@@ -341,6 +341,7 @@ async function mockEvent(
   const asks: { method: string; path: string; body: unknown }[] = [];
   const ash = t.players.find(p => p.lastName === 'Ketchum')?.id ?? '';
   let linked = options.linked ?? (options.sanctioned && Boolean(options.user));
+  let reporter = true;
   await page.route(`**/tournaments/v1/${code}.json`, route =>
     route.fulfill({ json: published, headers: { 'access-control-allow-origin': '*' } })
   );
@@ -352,7 +353,7 @@ async function mockEvent(
       return route.fulfill({ json: { user: options.user, providers: ['google', 'discord'] } });
     }
     if (pathname === `/api/tournaments/${code}/report`) {
-      if (options.refuse && (request.postDataJSON() as { result?: string }).result) {
+      if ((options.refuse || !reporter) && (request.postDataJSON() as { result?: string }).result) {
         return route.fulfill({ status: 403, json: { error: 'Someone else is already reporting for this player.' } });
       }
       linked = Boolean(options.user);
@@ -360,9 +361,9 @@ async function mockEvent(
         json: {
           key: keys[ash],
           view: published,
-          reporter: true,
-          linked,
-          ...(options.tokenless ? {} : { reportToken: 'seat' })
+          reporter,
+          linked: linked && reporter,
+          ...(options.tokenless || !reporter ? {} : { reportToken: 'seat' })
         }
       });
     }
@@ -386,6 +387,10 @@ async function mockEvent(
     /** Staff release the player, or the account's Claim is made on another device. */
     setLinked: (value: boolean) => {
       linked = value;
+    },
+    /** Staff reset reporting for the player, and another device took the seat. */
+    takeSeat: () => {
+      reporter = false;
     }
   };
 }
@@ -470,6 +475,39 @@ test('a report refused as not the player’s asks again who the viewer is', asyn
   await page.getByRole('button', { name: 'I won' }).click();
   await expect(page.getByRole('alert')).toContainText('Someone else is already reporting');
   await expect.poll(() => viewReads(asks, code)).toBe(reads + 1);
+});
+
+test('a report refused once another device took the seat asks for it again, and stops offering to report', async ({
+  page
+}) => {
+  const { code, asks, takeSeat } = await mockEvent(page, roundOne(true), {
+    sanctioned: true,
+    user: { ...ME, popId: '1001' },
+    tokenless: true
+  });
+  await page.goto(`/t/${code}`);
+  await page.getByRole('button', { name: 'Report result' }).click();
+  takeSeat();
+  await showAgain(page);
+  await page.getByRole('button', { name: 'I won' }).click();
+  await expect(page.locator('p.tm-you-panel')).toContainText('Someone else is already reporting');
+  await expect(page.getByRole('button', { name: 'I won' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Report result' })).toHaveCount(0);
+  const seatAsks = asks.filter(a => a.path.endsWith('/report') && !(a.body as { result?: string }).result);
+  expect(seatAsks.map(a => (a.body as { popId?: string }).popId)).toEqual(['1001', '1001']);
+});
+
+test('an account whose POP ID is no longer the player’s stops being shown as them on this device', async ({ page }) => {
+  const { code, setLinked } = await mockEvent(page, roundOne(true), {
+    sanctioned: true,
+    user: { ...ME, popId: '1001' }
+  });
+  await page.goto(`/t/${code}`);
+  await expect(page.getByRole('button', { name: 'Report result' })).toBeVisible();
+  setLinked(false);
+  await showAgain(page);
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
+  await expect(page.locator('.tm-you-who')).toHaveCount(0);
 });
 
 /** The result reports the page sent: what they said and the token with it. */

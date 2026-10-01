@@ -215,22 +215,23 @@ function keep(key: string, value: string | null) {
 
 /**
  * What the device asks the server of its own accord once the page knows who
- * is signed in, at most once a page: an account that is the player by its POP
- * ID, where players report and this device holds no token for them, says so,
- * so its account holds the reporting seat if nobody does; and a device that
- * proved who it is before signing in, at an unsanctioned event, says so again
- * with its token, which makes that player the account's Claim.
+ * is signed in, once for each player the account is: an account that is the
+ * player by its POP ID, where players report and this device holds no token
+ * for them, says so, so its account holds the reporting seat if nobody does;
+ * and a device that proved who it is before signing in, at an unsanctioned
+ * event, says so again with its token, which makes that player the account's
+ * Claim.
  */
 function accountStep(
   view: TournamentView,
-  device: { claim: PlayerClaim | null; token: string | null; popId: string | null | undefined }
+  device: { claim: PlayerClaim | null; token: string | null }
 ): { claim: PlayerClaim; token?: string } | null {
   const { viewer, settings } = view;
   if (!viewer.signedIn || settings.finished) {
     return null;
   }
-  if (viewer.via === 'pop' && device.popId && settings.playerReporting && !device.token) {
-    return { claim: { popId: device.popId } };
+  if (viewer.via === 'pop' && viewer.claim && settings.playerReporting && !device.token) {
+    return { claim: viewer.claim };
   }
   const { claim, token } = device;
   return viewer.via === null && !isSanctioned(view) && claim && token ? { claim, token } : null;
@@ -243,12 +244,11 @@ function accountStep(
  * for is not taken on its word, and what this device proved for another
  * player says nothing for the account's. The viewer reports from here when
  * this device holds the token, or when their account holds the player's
- * seat: its Claim does, and the server says so of its POP ID when asked.
+ * seat: its Claim does, and the server says so of its POP ID when asked. That
+ * answer is the account's, not the device's: nothing of it is kept here, and
+ * it counts only while the account is still that player.
  */
-function createMe(
-  view: () => TournamentView,
-  events: { onView: (view: PublishedView) => void; onLinked: () => void; popId: () => string | null | undefined }
-) {
+function createMe(view: () => TournamentView, events: { onView: (view: PublishedView) => void; onLinked: () => void }) {
   const code = () => view().code;
   const stored = storedClaim(code());
   const [claim, setClaim] = createSignal(stored);
@@ -285,6 +285,14 @@ function createMe(
       identified({ ...answer, claim: said, key: answer.key });
     }
   }
+  /** Whether the account holds its player's seat by its POP ID: asked as the account, so the device keeps nothing. */
+  async function seat(said: PlayerClaim) {
+    const answer = await identifyPlayer(code(), said).catch(() => null);
+    if (answer?.key) {
+      setAccountSeat(answer.linked && answer.reporter ? answer.key : null);
+      events.onView(answer.view);
+    }
+  }
   onMount(() => {
     const said = claim();
     if (said && !reportToken()) {
@@ -299,14 +307,16 @@ function createMe(
   const me = () => view().viewer.me ?? chosen();
   const accountReports = () => {
     const { viewer } = view();
-    return me() !== null && (accountSeat() === me() || (viewer.via === 'claim' && viewer.me === me()));
+    return viewer.me !== null && (accountSeat() === viewer.me || viewer.via === 'claim');
   };
-  let stepped = false;
+  // The player the account last stepped as (see accountStep): it steps again as another, or once a report is refused.
+  const [stepped, setStepped] = createSignal<string | null>(null);
   createEffect(() => {
-    const step = stepped ? null : accountStep(view(), { claim: ownClaim(), token: ownToken(), popId: events.popId() });
+    const as = view().viewer.me ?? '';
+    const step = stepped() === as ? null : accountStep(view(), { claim: ownClaim(), token: ownToken() });
     if (step) {
-      stepped = true;
-      void claimNow(step.claim, step.token);
+      setStepped(as);
+      void (step.token ? claimNow(step.claim, step.token) : seat(step.claim));
     }
   });
   return {
@@ -315,7 +325,9 @@ function createMe(
     reportToken: ownToken,
     reports: () => ownToken() !== null || accountReports(),
     identified,
-    forget
+    forget,
+    /** A report was refused: the account's seat may have gone to another device since it last asked. */
+    recheck: () => setStepped(null)
   };
 }
 
@@ -459,10 +471,9 @@ function EventBody(props: {
   const [roundChoice, setRoundChoice] = createSignal<number | null>(null);
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal<string | null>(null);
-  const { me, claim, reportToken, reports, identified, forget } = createMe(() => props.view, {
+  const { me, claim, reportToken, reports, identified, forget, recheck } = createMe(() => props.view, {
     onView: view => props.onView(view),
-    onLinked: () => props.onWhoAmI(),
-    popId: () => props.session?.user?.popId
+    onLinked: () => props.onWhoAmI()
   });
   /** The account's Claim undone: gone from its History, and from this device. */
   async function unlink() {
@@ -539,7 +550,10 @@ function EventBody(props: {
         signedIn={Boolean(props.session?.user)}
         providers={props.session?.providers ?? []}
         onUnlink={unlink}
-        onStale={() => props.onWhoAmI()}
+        onStale={() => {
+          recheck();
+          props.onWhoAmI();
+        }}
       />
       <Tabs options={tabs()} selected={tab()} onSelect={value => setParams({ tab: value }, { replace: true })} />
       <Show when={tab() === 'pairings'}>
