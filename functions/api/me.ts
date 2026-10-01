@@ -5,9 +5,12 @@
  * the first to save it: another account saving it gets a 409 and none of its
  * profile is saved. An account that changes its POP ID lets go of the players
  * it was at events as the old one.
+ * PATCH /api/me — one change to the account itself: its name ({ name }), or
+ * its public profile on or off ({ publicProfile }).
  */
 
 import { type PlayerProfile, readProfile } from '../../shared/tournament/profile.js';
+import { setPublicProfile } from '../lib/accounts/publicProfile.js';
 import { readJsonBody, readJsonObject } from '../lib/api/body.js';
 import { jsonError, jsonResponse } from '../lib/api/responses.js';
 import { type Context, sameOrigin } from '../lib/auth/env.js';
@@ -67,19 +70,41 @@ export async function onRequestPut({ request, env }: Context): Promise<Response>
   return jsonResponse({ user: { ...user, ...profile } }, PRIVATE);
 }
 
+type AccountChange = { name: string } | { publicProfile: boolean };
+
+/** The one change a PATCH body asks for, or why it asks for none. */
+function readChange(body: Record<string, unknown>): AccountChange | string {
+  if ('publicProfile' in body) {
+    if ('name' in body) {
+      return 'Change one thing at a time';
+    }
+    return typeof body.publicProfile === 'boolean' ? { publicProfile: body.publicProfile } : 'Not a valid change';
+  }
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  return name && name.length <= 40 ? { name } : 'Enter a name up to 40 characters';
+}
+
+/** Makes the change, and answers the fields of the account it changed. */
+async function applyChange(db: D1Like, user: User, change: AccountChange): Promise<Partial<User>> {
+  if ('publicProfile' in change) {
+    return { publicSlug: await setPublicProfile(db, user, change.publicProfile) };
+  }
+  await db.prepare('UPDATE users SET name = ? WHERE id = ?').bind(change.name, user.id).run();
+  return { name: change.name };
+}
+
 export async function onRequestPatch({ request, env }: Context): Promise<Response> {
-  if (!env.TOURNAMENT_DB || !sameOrigin(request)) {
+  const db = env.TOURNAMENT_DB;
+  if (!db || !sameOrigin(request)) {
     return jsonError('Forbidden', 403);
   }
-  const user = await currentAccount(env.TOURNAMENT_DB, request);
+  const user = await currentAccount(db, request);
   if (!user) {
     return jsonError('Sign in first', 401);
   }
-  const value = (await readJsonObject(request, 256))?.name;
-  const name = typeof value === 'string' ? value.trim() : '';
-  if (!name || name.length > 40) {
-    return jsonError('Enter a name up to 40 characters', 400);
+  const change = readChange((await readJsonObject(request, 256)) ?? {});
+  if (typeof change === 'string') {
+    return jsonError(change, 400);
   }
-  await env.TOURNAMENT_DB.prepare('UPDATE users SET name = ? WHERE id = ?').bind(name, user.id).run();
-  return jsonResponse({ user: { ...user, name } }, PRIVATE);
+  return jsonResponse({ user: { ...user, ...(await applyChange(db, user, change)) } }, PRIVATE);
 }

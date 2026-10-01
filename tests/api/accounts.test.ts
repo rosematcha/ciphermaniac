@@ -3,13 +3,14 @@
  * hold: migration 0005 brings a live database in line with the schema, with
  * each POP ID left on one account and Reese the only admin; an account's
  * role and public profile come with who is signed in; one account holds a
- * POP ID, and lets go of the players it was as an old one.
+ * POP ID, and lets go of the players it was as an old one; a public profile
+ * gets an address of its own, and a new one each time it is turned on.
  */
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { beforeEach, test } from 'node:test';
+import { beforeEach, mock, test } from 'node:test';
 
 import * as me from '../../functions/api/me.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
@@ -183,4 +184,50 @@ test('an account that changes its POP ID frees the old one and lets go of the pl
   );
   assert.equal((await saveProfile(second, profileOf('111'))).status, 200, 'the old POP ID is free');
   assert.equal((await accountOf(second)).popId, '111');
+});
+
+const patchAccount = (cookie: string, body: unknown) =>
+  hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body });
+
+test('the public profile turns on at an address of its own, and off again', async () => {
+  const cookie = await signIn('Player');
+  const on = await patchAccount(cookie, { publicProfile: true });
+  const slug = on.json.user.publicSlug as string;
+  assert.match(slug, /^[A-HJKMNP-Z2-9]{8}$/, 'eight characters of the event-code alphabet');
+  assert.equal((await accountOf(cookie)).publicSlug, slug);
+  assert.equal(
+    (await patchAccount(cookie, { publicProfile: true })).json.user.publicSlug,
+    slug,
+    'on stays where it is'
+  );
+  const renamed = await patchAccount(cookie, { name: 'Pat' });
+  assert.deepEqual([renamed.json.user.name, renamed.json.user.publicSlug], ['Pat', slug]);
+
+  assert.equal((await patchAccount(cookie, { publicProfile: false })).json.user.publicSlug, null);
+  assert.equal((await accountOf(cookie)).publicSlug, null);
+  const again = (await patchAccount(cookie, { publicProfile: true })).json.user.publicSlug as string;
+  assert.notEqual(again, slug, 'turned on again, a link shared before stays dead');
+
+  const both = await patchAccount(cookie, { name: 'Pat', publicProfile: false });
+  assert.deepEqual([both.status, both.json.error], [400, 'Change one thing at a time']);
+  assert.equal((await patchAccount(cookie, { publicProfile: 'yes' })).status, 400);
+  assert.equal((await accountOf(cookie)).publicSlug, again, 'a refused change changes nothing');
+});
+
+test('a profile address another account holds is drawn again', async () => {
+  const random = mock.method(Math, 'random', () => 0);
+  try {
+    const first = await patchAccount(await signIn('First'), { publicProfile: true });
+    assert.equal(first.json.user.publicSlug, 'AAAAAAAA');
+    // The second account's first draw is the first's address; its next is free.
+    let draws = 0;
+    random.mock.mockImplementation(() => {
+      draws += 1;
+      return draws <= 8 ? 0 : 0.5;
+    });
+    const second = await patchAccount(await signIn('Second'), { publicProfile: true });
+    assert.equal(second.json.user.publicSlug, 'SSSSSSSS');
+  } finally {
+    random.mock.restore();
+  }
 });

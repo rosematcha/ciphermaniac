@@ -1903,6 +1903,18 @@ test('nothing the functions ask of the database scans a table', async () => {
     { method: 'PUT', cookie: helper, body: { ...profile, popId: '950' } }
   );
   await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: helper, body: profile });
+  await hit(
+    me.onRequestPatch as Handler,
+    '/api/me',
+    {},
+    { method: 'PATCH', cookie: helper, body: { publicProfile: true } }
+  );
+  await hit(
+    me.onRequestPatch as Handler,
+    '/api/me',
+    {},
+    { method: 'PATCH', cookie: helper, body: { publicProfile: false } }
+  );
   await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
     method: 'PUT',
     cookie: helper,
