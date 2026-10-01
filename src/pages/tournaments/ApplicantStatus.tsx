@@ -1,0 +1,160 @@
+/**
+ * Where an account stands on running events (see applicantStage): the stage
+ * in words, its day, the admin's note on a rejection, and the step it leaves
+ * (apply, withdraw, apply again, the events, the admin page).
+ */
+
+import { A } from '@solidjs/router';
+import { createSignal, Match, Show, Switch } from 'solid-js';
+import type { MyApplication } from '../../../shared/accounts/types';
+import { errorText } from '../../lib/tournament/api';
+import { type ApplicantStage, dayOf, withdrawApplication } from '../../lib/tournament/applications';
+import { ConfirmAction } from './ConfirmAction';
+import { ErrorLine } from './Field';
+import '../../styles/pages/tournament-apply.css';
+
+const STAGE_WORDS: Record<ApplicantStage, string> = {
+  none: '',
+  pending: 'Application pending',
+  rejected: 'Not approved',
+  organizer: 'Organizer',
+  revoked: 'Organizer access removed',
+  admin: 'Admin'
+};
+
+/** The day under the stage: when a pending Application went in, or when a rejection came. */
+function stageDay(stage: ApplicantStage, application: MyApplication | null): string | null {
+  if (stage === 'pending' && application) {
+    return `Sent ${dayOf(application.createdAt)}`;
+  }
+  return stage === 'rejected' && application?.decidedAt ? dayOf(application.decidedAt) : null;
+}
+
+/** Apply again: to the apply page's form, or, on that page, opening it in place. */
+function ApplyAgain(props: { onApply: (() => void) | undefined }) {
+  return (
+    <Show
+      when={props.onApply}
+      fallback={
+        <A class='btn btn-secondary' href='/apply?again=1'>
+          Apply again
+        </A>
+      }
+    >
+      {apply => (
+        <button type='button' class='btn btn-secondary' onClick={() => apply()()}>
+          Apply again
+        </button>
+      )}
+    </Show>
+  );
+}
+
+/** Withdrawing a pending Application, asked first: it takes the proof with it. */
+function Withdraw(props: { onWithdrawn: () => void }) {
+  const [busy, setBusy] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+  async function withdraw() {
+    setBusy(true);
+    setError(null);
+    try {
+      await withdrawApplication();
+      props.onWithdrawn();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <ConfirmAction
+        class='btn btn-secondary'
+        label='Withdraw'
+        question='Withdraw your application?'
+        danger
+        disabled={busy()}
+        onConfirm={() => void withdraw()}
+      />
+      <ErrorLine message={error()} />
+    </>
+  );
+}
+
+/** The step each stage leaves. `again` is left out on the apply page once its form is open. */
+function StageStep(props: {
+  stage: ApplicantStage;
+  again: boolean;
+  onApplyAgain: (() => void) | undefined;
+  onChanged: () => void;
+}) {
+  return (
+    <Switch>
+      <Match when={props.stage === 'none'}>
+        <A class='btn btn-secondary' href='/apply'>
+          Apply to run events
+        </A>
+      </Match>
+      <Match when={props.stage === 'pending'}>
+        <Withdraw onWithdrawn={props.onChanged} />
+      </Match>
+      <Match when={(props.stage === 'rejected' || props.stage === 'revoked') && props.again}>
+        <ApplyAgain onApply={props.onApplyAgain} />
+      </Match>
+      <Match when={props.stage === 'organizer'}>
+        <A class='btn btn-secondary' href='/host'>
+          Your events
+        </A>
+      </Match>
+      <Match when={props.stage === 'admin'}>
+        <A class='btn btn-secondary' href='/admin'>
+          Admin
+        </A>
+        <A class='btn btn-ghost' href='/host'>
+          Your events
+        </A>
+      </Match>
+    </Switch>
+  );
+}
+
+/**
+ * The stage in full, in a box: its words and day at left, its step at right,
+ * and the admin's note to the applicant under a rejection. On Settings,
+ * Apply again leads to the apply page; there, `onApplyAgain` opens the form
+ * instead, and `again: false` drops the step once it is open.
+ */
+export function ApplicantStatus(props: {
+  stage: ApplicantStage;
+  application: MyApplication | null;
+  again?: boolean;
+  onApplyAgain?: () => void;
+  onChanged: () => void;
+}) {
+  const note = () => (props.stage === 'rejected' ? props.application?.note : null);
+  return (
+    <div class='tm-box tm-applicant'>
+      <div class='tm-box-bar'>
+        <Show when={STAGE_WORDS[props.stage]}>
+          {words => (
+            <span class='tm-applicant-stage'>
+              <strong>{words()}</strong>
+              <Show when={stageDay(props.stage, props.application)}>
+                {day => <span class='muted tm-num'>{day()}</span>}
+              </Show>
+            </span>
+          )}
+        </Show>
+        <span class='tm-applicant-step'>
+          <StageStep
+            stage={props.stage}
+            again={props.again ?? true}
+            onApplyAgain={props.onApplyAgain}
+            onChanged={props.onChanged}
+          />
+        </span>
+      </div>
+      <Show when={note()}>{text => <p class='tm-box-bar tm-applicant-note'>{text()}</p>}</Show>
+    </div>
+  );
+}
