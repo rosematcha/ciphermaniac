@@ -20,7 +20,9 @@ import * as commands from '../../functions/api/tournaments/[code]/commands.ts';
 import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts';
 import * as decks from '../../functions/api/tournaments/[code]/decks.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
+import * as idle from '../../functions/api/tournaments/idle.ts';
 import * as manage from '../../functions/api/tournaments/[code]/manage.ts';
+import * as pairing from '../../functions/api/tournaments/[code]/pairing.ts';
 import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import * as settings from '../../functions/api/tournaments/[code]/settings.ts';
 import * as staff from '../../functions/api/tournaments/[code]/staff.ts';
@@ -29,7 +31,8 @@ import * as tournaments from '../../functions/api/tournaments/index.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { REPORT_WINDOW_MS } from '../../shared/tournament/reports.ts';
 import { revisionOf } from '../../shared/tournament/revision.ts';
-import { parseTdf } from '../../shared/tournament/tdf.ts';
+import { parseTdf, writeTdf } from '../../shared/tournament/tdf.ts';
+import type { Round, Tournament } from '../../shared/tournament/types.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { publishView } from '../../functions/lib/tournaments/publish.ts';
 import { loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
@@ -517,6 +520,120 @@ test('a TOM event holds site results as pending until the synced file settles th
   });
   assert.equal(synced.status, 200);
   assert.deepEqual(synced.json.pending, []);
+});
+
+test('a TOM event runs the site’s clock, which a synced file’s timer does not touch', async () => {
+  const owner = await signIn('Organizer');
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const created = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf } }
+  );
+  const { code } = created.json;
+  const base = await revisionNow(code, owner);
+  const fresh = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json.tournament;
+  assert.equal(fresh.pods[0].rounds[0].timeLeft, 30 * 60, 'TOM’s timer is set aside from the start');
+
+  const started = await send(code, owner, { type: 'startClock', pod: 'mixed' });
+  assert.equal(started.status, 200);
+  assert.notEqual(started.json.tournament.pods[0].rounds[1].clockStartedAt, null);
+  assert.equal((await send(code, owner, { type: 'adjustClock', pod: 'mixed', seconds: -60 })).status, 200);
+
+  // TOM saved with its own timer at 42 seconds; the file was followed on from the copy before the clock started.
+  const saved = {
+    ...tdf,
+    pods: tdf.pods.map(pod => ({ ...pod, rounds: pod.rounds.map(round => ({ ...round, timeLeft: 42 })) }))
+  };
+  const settled = {
+    ...saved,
+    pods: saved.pods.map(pod => ({
+      ...pod,
+      rounds: pod.rounds.map(round =>
+        round.number === 2
+          ? { ...round, matches: round.matches.map((m, i) => (i === 0 ? { ...m, outcome: 'p1' as const } : m)) }
+          : round
+      )
+    }))
+  };
+  const synced = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: settled, base }
+  });
+  assert.equal(synced.status, 200, 'starting the clock is not a different copy of the event');
+  const round = synced.json.tournament.pods[0].rounds[1];
+  assert.equal(round.matches[0].outcome, 'p1', 'the file’s results land');
+  assert.equal(round.timeLeft, 30 * 60 - 60, 'the site’s clock stands');
+  assert.equal(round.clockStartedAt, started.json.tournament.pods[0].rounds[1].clockStartedAt);
+});
+
+async function newTom(cookie: string, tournament: Tournament): Promise<string> {
+  const created = await hit(
+    tournaments.onRequestPost as Handler,
+    '/api/tournaments',
+    {},
+    { method: 'POST', cookie, body: { mode: 'tom', tournament } }
+  );
+  return created.json.code as string;
+}
+
+function pairNext(code: string, cookie: string, base: string) {
+  return hit(pairing.onRequestPost as Handler, '/pairing', at(code), {
+    method: 'POST',
+    cookie,
+    body: { pod: 'mixed', base, localTime: '10/10/2026 13:00:00' }
+  });
+}
+
+test('a TOM event’s next round is paired over the site’s results and lands only with the file', async () => {
+  const owner = await signIn('Organizer');
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const code = await newTom(owner, tdf);
+  const base = await revisionNow(code, owner);
+  assert.match((await pairNext(code, owner, base)).json.error, /Report every match/);
+  const open = tdf.pods[0]!.rounds[1]!.matches.filter(m => m.p2 !== null && m.outcome === 'pending');
+  for (const { table, p1, p2 } of open) {
+    await send(code, owner, { type: 'reportResult', pod: 'mixed', round: 2, table, p1, p2, outcome: 'p1' });
+  }
+  assert.equal((await pairNext(code, owner, 'another copy')).status, 409, 'only over the file the browser sent');
+  const paired = await pairNext(code, owner, base);
+  assert.equal(paired.status, 200);
+  const [, second, third] = paired.json.tournament.pods[0].rounds as Round[];
+  assert.ok(
+    second?.matches.every(m => m.outcome !== 'pending'),
+    'the site’s results are in the round'
+  );
+  assert.equal(third?.number, 3);
+  assert.equal(third?.pairTime, '10/10/2026 13:00:00', 'stamped with the venue clock');
+  const held = await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner });
+  assert.equal(held.json.tournament.pods[0].rounds.length, 2, 'nothing is stored until the file has it');
+  assert.equal(held.json.pending.length, open.length, 'so the results still wait on TOM');
+  const synced = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: parseTdf(writeTdf(paired.json.tournament)), base }
+  });
+  assert.equal(synced.status, 200, 'the file the round was written into syncs as any save of TOM’s');
+  assert.equal(synced.json.tournament.pods[0].rounds.length, 3);
+  assert.deepEqual(synced.json.pending, []);
+});
+
+test('a TOM event’s first round and a Swiss event are not paired through the file', async () => {
+  const owner = await signIn('Organizer');
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const fresh = await newTom(owner, { ...tdf, pods: tdf.pods.map(pod => ({ ...pod, rounds: [] })) });
+  assert.match((await pairNext(fresh, owner, await revisionNow(fresh, owner))).json.error, /Pair round 1 in TOM/);
+  const swiss = await newSwiss(owner);
+  assert.equal((await pairNext(swiss, owner, await revisionNow(swiss, owner))).status, 400);
+  const tom = await newTom(owner, tdf);
+  const junk = await hit(pairing.onRequestPost as Handler, '/pairing', at(tom), {
+    method: 'POST',
+    cookie: owner,
+    body: { pod: 'nonsense', base: await revisionNow(tom, owner) }
+  });
+  assert.equal(junk.status, 400);
 });
 
 test('a Swiss event cannot be synced from a file', async () => {
@@ -1622,6 +1739,126 @@ test('the account page names the providers an account signs in with; an event re
   assert.ok(!seen.some(sql => sql.includes('identities')), 'providers are not read to open an event');
 });
 
+const SWEEP_TOKEN = 'sweep-token';
+
+/** The scheduled sweep that ends idle events, as its workflow calls it. */
+function sweep(authorization = `Bearer ${SWEEP_TOKEN}`) {
+  env.IDLE_SWEEP_TOKEN = SWEEP_TOKEN;
+  const call = new Request(`${ORIGIN}/api/tournaments/idle`, { method: 'POST', headers: { authorization } });
+  return idle.onRequestPost({ request: call, env, params: {} }).then(async response => ({
+    status: response.status,
+    json: (await response.json()) as { ended: string[] }
+  }));
+}
+
+/** Leaves the event as if nobody had changed it for `ms`. */
+function age(code: string, ms: number) {
+  const { raw } = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  raw.prepare('UPDATE tournaments SET updated_at = ? WHERE code = ?').run(Date.now() - ms, code);
+}
+
+const HOUR = 60 * 60 * 1000;
+
+/** An event with round 1 paired. */
+async function underWay(cookie: string): Promise<string> {
+  const code = await newSwiss(cookie);
+  await addPlayers(code, cookie, 4);
+  assert.equal((await send(code, cookie, { type: 'pairRound', pod: 'masters' })).status, 200);
+  return code;
+}
+
+test('the sweep ends an event under way that has gone two hours without a change, and publishes it', async () => {
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer');
+  const idleOne = await underWay(owner);
+  const busy = await underWay(owner);
+  const unstarted = await newSwiss(owner);
+  age(idleOne, 2 * HOUR + 1000);
+  age(busy, 2 * HOUR - 60_000);
+  age(unstarted, 48 * HOUR);
+  const swept = await sweep();
+  assert.equal(swept.status, 200);
+  assert.deepEqual(swept.json.ended, [idleOne]);
+  assert.equal((await loadTournament(env.TOURNAMENT_DB!, idleOne))?.settings.finished, true);
+  assert.equal((await loadTournament(env.TOURNAMENT_DB!, busy))?.settings.finished, false);
+  assert.equal(
+    (await loadTournament(env.TOURNAMENT_DB!, unstarted))?.settings.finished,
+    false,
+    'set up ahead of its day'
+  );
+  const published = JSON.parse(objects.get(`tournaments/v1/${idleOne}.json`)?.body ?? '{}') as TournamentView;
+  assert.equal(published.settings.finished, true, 'players see the event over');
+  assert.deepEqual((await sweep()).json.ended, [], 'an ended event is left alone');
+});
+
+test('an event the organizer reopens after the sweep ended it runs another two hours', async () => {
+  const owner = await signIn('Organizer');
+  const code = await underWay(owner);
+  age(code, 3 * HOUR);
+  await sweep();
+  const reopened = await hit(settings.onRequestPut as Handler, '/settings', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { finished: false }
+  });
+  assert.equal(reopened.status, 200);
+  assert.deepEqual((await sweep()).json.ended, []);
+  assert.equal((await loadTournament(env.TOURNAMENT_DB!, code))?.settings.finished, false);
+});
+
+test('a change that lands while the sweep runs keeps the event going', async () => {
+  const owner = await signIn('Organizer');
+  const code = await underWay(owner);
+  age(code, 3 * HOUR);
+  const db = env.TOURNAMENT_DB!;
+  const { raw } = db as ReturnType<typeof sqliteD1>;
+  env.TOURNAMENT_DB = {
+    ...db,
+    prepare: sql => {
+      const statement = db.prepare(sql);
+      if (!sql.includes('updated_at < ?')) {
+        return statement;
+      }
+      // The sweep has read the event; a result comes in before it writes.
+      return {
+        ...statement,
+        bind: (...args: unknown[]) => {
+          const bound = statement.bind(...args);
+          return {
+            ...bound,
+            all: async <T>() => {
+              const read = await bound.all<T>();
+              raw
+                .prepare('UPDATE tournaments SET version = version + 1, updated_at = ? WHERE code = ?')
+                .run(Date.now(), code);
+              return read;
+            }
+          };
+        }
+      };
+    }
+  };
+  assert.deepEqual((await sweep()).json.ended, []);
+  assert.equal((await loadTournament(db, code))?.settings.finished, false);
+});
+
+test('only the sweep’s token runs the sweep', async () => {
+  const owner = await signIn('Organizer');
+  const code = await underWay(owner);
+  age(code, 3 * HOUR);
+  assert.equal((await sweep('')).status, 403);
+  assert.equal((await sweep('Bearer wrong')).status, 403);
+  assert.equal((await sweep(SWEEP_TOKEN)).status, 403, 'the scheme is part of it');
+  delete env.IDLE_SWEEP_TOKEN;
+  const unset = await idle.onRequestPost({
+    request: new Request(`${ORIGIN}/api/tournaments/idle`, { method: 'POST', headers: { authorization: 'Bearer ' } }),
+    env,
+    params: {}
+  });
+  assert.equal(unset.status, 403, 'no token configured runs nothing');
+  assert.equal((await loadTournament(env.TOURNAMENT_DB!, code))?.settings.finished, false);
+});
+
 test('nothing the functions ask of the database scans a table', async () => {
   const { raw } = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
   const seen = recordSql();
@@ -1654,6 +1891,7 @@ test('nothing the functions ask of the database scans a table', async () => {
     cookie: owner,
     body: { rotate: true }
   });
+  await sweep();
   await hit(logout.onRequestPost as Handler, '/api/auth/logout', {}, { method: 'POST', cookie: helper });
   await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
   const statements = [...new Set(seen)];

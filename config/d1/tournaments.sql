@@ -63,6 +63,9 @@ CREATE TABLE IF NOT EXISTS tournaments (
 -- by every save, a second row written each time, and the organizer's list
 -- sorts its few rows itself.
 CREATE INDEX IF NOT EXISTS tournaments_of_owner ON tournaments (owner_id);
+-- Events not yet ended, for the sweep that ends one left idle (functions/api/tournaments/idle.ts).
+-- On the finished flag alone, which only an end or a reopen rewrites.
+CREATE INDEX IF NOT EXISTS tournaments_by_finished ON tournaments (coalesce(json_extract(settings, '$.finished'), 0));
 
 -- Who joined an event's staff through its invite link, and when, so the
 -- organizer can see everyone the link let in and remove one of them.

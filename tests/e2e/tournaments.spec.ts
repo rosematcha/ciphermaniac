@@ -9,8 +9,11 @@
 import { readFileSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 
+import { applyCommand } from '../../shared/tournament/commands';
+import { seededRandom } from '../../shared/tournament/random';
 import { parseTdf } from '../../shared/tournament/tdf';
 import {
+  applyPending,
   assignKeys,
   DEFAULT_SETTINGS,
   isSanctioned,
@@ -386,10 +389,18 @@ const tomManage = () => ({
   staffToken: 'invite'
 });
 
-type SyncAnswer = { status: number; json: unknown } | null;
+type Answer = { status: number; json: unknown };
+type SyncAnswer = Answer | null;
 
-/** A console following a linked file; `sync` answers each sync, and null leaves one hanging. */
-async function tomConsole(page: Page, sync: (body: string) => SyncAnswer | Promise<SyncAnswer>) {
+/**
+ * A console following a linked file; `sync` answers each sync, and null leaves
+ * one hanging; `pairing` answers each ask for the next round.
+ */
+async function tomConsole(
+  page: Page,
+  sync: (body: string) => SyncAnswer | Promise<SyncAnswer>,
+  { manage = tomManage(), pairing }: { manage?: unknown; pairing?: (body: unknown) => Answer } = {}
+) {
   await page.addInitScript(source => {
     const file = { modified: 1, lost: false, text: source };
     Object.assign(window, {
@@ -403,7 +414,13 @@ async function tomConsole(page: Page, sync: (body: string) => SyncAnswer | Promi
             }
             return new File([file.text], 'event.tdf', { lastModified: file.modified });
           },
-          createWritable: async () => ({ write: async () => undefined, close: async () => undefined }),
+          createWritable: async () => ({
+            write: async (text: string) => {
+              file.text = text;
+              file.modified += 1;
+            },
+            close: async () => undefined
+          }),
           queryPermission: async () => 'granted',
           requestPermission: async () => 'granted'
         }
@@ -417,12 +434,15 @@ async function tomConsole(page: Page, sync: (body: string) => SyncAnswer | Promi
       return route.fulfill({ json: { user: { ...user, birthDate: null, providers: ['dev'] }, providers: ['dev'] } });
     }
     if (url.pathname === `/api/tournaments/${CODE}/manage`) {
-      return url.searchParams.has('since') ? route.fulfill({ status: 204 }) : route.fulfill({ json: tomManage() });
+      return url.searchParams.has('since') ? route.fulfill({ status: 204 }) : route.fulfill({ json: manage });
     }
     if (url.pathname === `/api/tournaments/${CODE}/sync`) {
       return Promise.resolve(sync(route.request().postData() ?? '')).then(answer =>
         answer ? route.fulfill(answer) : undefined
       );
+    }
+    if (url.pathname === `/api/tournaments/${CODE}/pairing` && pairing) {
+      return route.fulfill(pairing(route.request().postDataJSON()));
     }
     return route.fulfill({ status: 404, json: { error: 'Not found' } });
   });
@@ -499,4 +519,61 @@ test('a TOM console says when the file TOM saved does not parse', async ({ page 
     file.modified = 2;
   });
   await expect(page.getByText('Could not parse the .tdf: Unknown match outcome "4"')).toBeVisible();
+});
+
+test('a TOM console pairs the next round into the file once every result is in', async ({ page }) => {
+  const pod = tdf.pods[0]!;
+  const round = pod.rounds.at(-1)!;
+  const pending = round.matches
+    .filter(m => m.p2 !== null && m.outcome === 'pending')
+    .map(m => ({
+      pod: pod.category,
+      round: round.number,
+      table: m.table,
+      p1: m.p1,
+      p2: m.p2,
+      outcome: 'p1' as const,
+      at: 0
+    }));
+  const settled = () => ({ status: 200, json: { ...tomManage(), pending, version: 5, revision: 'next' } });
+  const asked: unknown[] = [];
+  // The site pairs over the results entered on it, as the pairing function does for a TOM event.
+  const paired = applyCommand(
+    applyPending(tdf, pending),
+    { type: 'pairRound', pod: pod.category },
+    { now: 0, localTime: '09/30/2026 13:00:00', season: 2027, random: seededRandom(7) }
+  );
+  const pairing = (body: unknown) => {
+    asked.push(body);
+    return paired.ok
+      ? { status: 200, json: { tournament: paired.tournament } }
+      : { status: 400, json: { error: paired.error } };
+  };
+  await tomConsole(page, settled, { manage: { ...tomManage(), pending }, pairing });
+  await expect(page.getByRole('button', { name: 'Write 2 results to .tdf' })).toBeVisible();
+  const sent = page.waitForRequest(
+    request => request.url().endsWith('/sync') && request.postDataJSON().tournament.pods[0].rounds.length === 3
+  );
+  await page.getByRole('button', { name: 'Pair round 3' }).click();
+  const ask = page.getByRole('group', { name: 'Pair into the .tdf' });
+  await expect(ask).toContainText('Close the event in TOM before writing, then reopen the file in TOM.');
+  await ask.getByRole('button', { name: 'Pair round 3' }).click();
+  const followed = await sent;
+  expect(asked).toEqual([expect.objectContaining({ pod: pod.category, base: 'next' })]);
+  expect(followed.postDataJSON().base).toBe('next');
+  const written = parseTdf(
+    await page.evaluate(() => (window as unknown as { tdfFile: { text: string } }).tdfFile.text)
+  );
+  const [, second, third] = written.pods[0]!.rounds;
+  expect(second?.matches.every(m => m.outcome !== 'pending')).toBe(true);
+  expect(third?.number).toBe(3);
+  expect(third?.matches.filter(m => m.p2 !== null).every(m => m.outcome === 'pending')).toBe(true);
+});
+
+test('a TOM console offers no next round once TOM has finalized the file', async ({ page }) => {
+  const finalized = parseTdf(readFileSync(new URL('../fixtures/tdf/cup-finalized.tdf', import.meta.url), 'utf8'));
+  const done = { ...tomManage(), tournament: finalized };
+  await tomConsole(page, () => ({ status: 200, json: { ...done, version: 5, revision: 'next' } }), { manage: done });
+  await expect(page.getByRole('button', { name: 'Refresh .tdf' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Pair / })).toHaveCount(0);
 });

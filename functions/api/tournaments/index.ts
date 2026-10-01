@@ -7,6 +7,7 @@
 
 import { emptyTournament } from '../../../shared/tournament/create.js';
 import { tomDateTime } from '../../../shared/tournament/divisions.js';
+import { withSiteClocks } from '../../../shared/tournament/tomClock.js';
 import { readTournament } from '../../../shared/tournament/validate.js';
 import { DEFAULT_SETTINGS, readSettings, type TournamentSettings } from '../../../shared/tournament/view.js';
 import { readJsonObject } from '../../lib/api/body.js';
@@ -64,6 +65,12 @@ function initialSettings(body: Body): TournamentSettings | null {
   return settings && { ...settings, finished: false };
 }
 
+/** A TOM event's parsed file, its round clocks left for the site to run. */
+function tomEvent(value: unknown): Tournament | null {
+  const file = readTournament(value);
+  return file && withSiteClocks(file, null);
+}
+
 /** The event a create request describes, or why it describes none. */
 async function readNew(request: Request): Promise<NewEvent | string> {
   const value = await readJsonObject(request, MAX_TOURNAMENT_BYTES);
@@ -72,7 +79,7 @@ async function readNew(request: Request): Promise<NewEvent | string> {
     return 'Not a tournament';
   }
   const mode = value.mode === 'tom' ? 'tom' : 'swiss';
-  const tournament = mode === 'tom' ? readTournament(value.tournament) : swissFrom(value);
+  const tournament = mode === 'tom' ? tomEvent(value.tournament) : swissFrom(value);
   if (!tournament) {
     return mode === 'tom' ? 'That file did not read as a tournament' : 'The event needs a name';
   }
