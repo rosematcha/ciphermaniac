@@ -29,6 +29,7 @@ import { ApiError, fetchPublished, fetchView, identifyPlayer } from '../../lib/t
 import { ordinal } from '../../lib/format';
 import { latestValue } from '../../lib/resource';
 import { onChange } from '../../lib/tournament/changes';
+import { playerResult } from '../../lib/tournament/history';
 import { shared } from '../../lib/tournament/share';
 import {
   createViewPoll,
@@ -46,7 +47,6 @@ import {
   firstRoundTime,
   namesById,
   podLabel,
-  podStandings,
   roundCapOf,
   roundLabel,
   STATUS_LABELS
@@ -298,15 +298,10 @@ function OpenPlayer(props: {
     return p ? swissStandings(p, props.view.tournament.players) : [];
   });
   const records = createMemo(() => new Map(standings().map(row => [row.playerId, recordLabel(row.record)])));
+  // The place History gives the same player (see playerResult).
   const place = createMemo(() => {
-    const p = pod();
-    const divisionOf = (id: string) => props.view.divisions[id] ?? 'masters';
-    const row = p
-      ? podStandings(props.view.tournament, p, divisionOf)
-          .flatMap(group => group.rows)
-          .find(r => r.playerId === props.id)
-      : undefined;
-    return row && p?.rounds.length ? `${ordinal(row.place)} in ${division()}` : `${division()} · Registered`;
+    const at = playerResult(props.view, props.id)?.place;
+    return at ? `${ordinal(at)} in ${division()}` : `${division()} · Registered`;
   });
   return (
     <Show when={pod()}>
