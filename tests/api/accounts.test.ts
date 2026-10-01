@@ -2,7 +2,8 @@
  * Player accounts end to end, against the real schema in SQLite. What must
  * hold: migration 0005 brings a live database in line with the schema, with
  * each POP ID left on one account and Reese the only admin; an account's
- * role and public profile come with who is signed in.
+ * role and public profile come with who is signed in; one account holds a
+ * POP ID, and lets go of the players it was as an old one.
  */
 
 import assert from 'node:assert/strict';
@@ -110,4 +111,76 @@ test('who is signed in comes with their role and public profile address', async 
   raw().exec("UPDATE users SET role = 'superuser'");
   const unknown = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie })).json.user;
   assert.equal(unknown.role, null, 'a role the code does not know grants nothing');
+});
+
+const profileOf = (popId: string, firstName = 'Pat') => ({
+  popId,
+  firstName,
+  lastName: 'Player',
+  birthDate: '02/27/2001'
+});
+
+const saveProfile = (cookie: string, profile: ReturnType<typeof profileOf>) =>
+  hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie, body: profile });
+
+const accountOf = async (cookie: string) =>
+  (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie })).json.user;
+
+test('one account holds a POP ID: the second to save it is refused, and none of its profile is saved', async () => {
+  const first = await signIn('First');
+  const second = await signIn('Second');
+  assert.equal((await saveProfile(first, profileOf('1234567'))).status, 200);
+  const again = await saveProfile(first, profileOf('1234567', 'Patricia'));
+  assert.equal(again.status, 200, 'saving the POP ID the account holds is no clash');
+  await saveProfile(second, profileOf('7654321', 'Sam'));
+  const taken = await saveProfile(second, profileOf('1234567', 'Robin'));
+  assert.equal(taken.status, 409);
+  assert.deepEqual([taken.json.error, taken.json.popIdTaken], ['This POP ID is on another account', true]);
+  const kept = await accountOf(second);
+  assert.deepEqual([kept.popId, kept.firstName], ['7654321', 'Sam']);
+  assert.deepEqual([(await accountOf(first)).popId, (await accountOf(first)).firstName], ['1234567', 'Patricia']);
+});
+
+/** A reporter row: which player a device, or an account through its Claim or POP ID, is at an event. */
+function holdPlayer(code: string, playerId: string, userId: string | null) {
+  raw()
+    .prepare(
+      'INSERT INTO report_devices (code, player_id, token_hash, device, claimed_at, user_id) ' +
+        "VALUES (?, ?, 'token', 'device', 1, ?)"
+    )
+    .run(code, playerId, userId);
+}
+
+const heldRows = () =>
+  raw()
+    .prepare('SELECT code, player_id AS playerId FROM report_devices ORDER BY code')
+    .all()
+    .map(row => ({ ...row }));
+
+test('an account that changes its POP ID frees the old one and lets go of the players it was as it', async () => {
+  const first = await signIn('First');
+  const second = await signIn('Second');
+  await saveProfile(first, profileOf('111'));
+  await saveProfile(second, profileOf('333'));
+  const firstId = (await accountOf(first)).id as string;
+  holdPlayer('AAAAAA', '111', firstId);
+  holdPlayer('BBBBBB', '111', firstId);
+  // A Claim at an unsanctioned event is under another player ID, and a device's row belongs to no account.
+  holdPlayer('CCCCCC', '5', firstId);
+  holdPlayer('DDDDDD', '111', null);
+  holdPlayer('EEEEEE', '333', (await accountOf(second)).id as string);
+
+  assert.equal((await saveProfile(first, profileOf('222'))).status, 200);
+  assert.deepEqual(heldRows(), [
+    { code: 'CCCCCC', playerId: '5' },
+    { code: 'DDDDDD', playerId: '111' },
+    { code: 'EEEEEE', playerId: '333' }
+  ]);
+  assert.equal((await saveProfile(second, profileOf('222'))).status, 409);
+  assert.ok(
+    heldRows().some(row => row.code === 'EEEEEE'),
+    'a refused change keeps the players the account already is'
+  );
+  assert.equal((await saveProfile(second, profileOf('111'))).status, 200, 'the old POP ID is free');
+  assert.equal((await accountOf(second)).popId, '111');
 });

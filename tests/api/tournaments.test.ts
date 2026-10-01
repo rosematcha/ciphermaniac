@@ -691,6 +691,8 @@ test('decklists come in only while open, and decks show as the visibility settin
     body: { finished: true }
   });
   assert.deepEqual(Object.values((await view(code)).decks), ['Gardevoir ex']);
+  // The account page saves a Player ID; the list did not.
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: submission.profile });
   const playerView = await view(code, player);
   assert.equal(playerView.viewer.me, playerView.tournament.players[0]?.id, 'the profile finds the player');
 
@@ -901,6 +903,31 @@ test('an unsanctioned event takes decklists by name and leaves the account’s P
   assert.equal(sent.json.decklist.registered, true, 'matched to the list by name');
   const account = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: player });
   assert.equal(account.json.user.popId, '1234567');
+});
+
+test('a decklist never gives an account a Player ID, and refreshes the details of the account that holds it', async () => {
+  const owner = await signIn('Organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklists: 'open' });
+  const player = await signIn('Player');
+  const lin = { popId: '6161', firstName: 'Lin', lastName: 'Park', birthDate: '02/27/2001' };
+  const sendList = (profile: typeof lin, token?: string) =>
+    hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
+      method: 'PUT',
+      cookie: player,
+      body: { deck: '60 Basic {P} Energy SVE 5', profile, token }
+    });
+  const accountNow = async () => (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: player })).json.user;
+  const first = await sendList(lin);
+  assert.equal(first.status, 200);
+  assert.deepEqual([(await accountNow()).popId, (await accountNow()).firstName], [null, null]);
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: lin });
+  // Sent for a friend from this phone: the account stays who it is.
+  assert.equal((await sendList({ ...lin, popId: '7171', firstName: 'Kai' })).status, 200);
+  assert.deepEqual([(await accountNow()).popId, (await accountNow()).firstName], ['6161', 'Lin']);
+  assert.equal((await sendList({ ...lin, firstName: 'Linda', birthDate: '03/01/2001' }, first.json.token)).status, 200);
+  const refreshed = await accountNow();
+  assert.deepEqual([refreshed.popId, refreshed.firstName, refreshed.birthDate], ['6161', 'Linda', '03/01/2001']);
 });
 
 test('players report their own results: agreement stands once locked, disagreement waits for staff', async () => {
@@ -1836,6 +1863,19 @@ test('nothing the functions ask of the database scans a table', async () => {
   await settle(code, owner, { decklists: 'open', playerReporting: true });
   await addPlayers(code, owner, 2);
   const sent = await submitAs(code, { popId: '900', firstName: 'Player', lastName: '0', birthDate: '02/27/1990' });
+  const profile = { popId: '901', firstName: 'Player', lastName: '1', birthDate: '02/27/1990' };
+  await hit(
+    me.onRequestPut as Handler,
+    '/api/me',
+    {},
+    { method: 'PUT', cookie: helper, body: { ...profile, popId: '950' } }
+  );
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: helper, body: profile });
+  await hit(decklists.onRequestPut as Handler, '/decklists', at(code), {
+    method: 'PUT',
+    cookie: helper,
+    body: { ...LIST, profile }
+  });
   await hit(decklists.onRequestGet as Handler, '/decklists', at(code), { cookie: owner });
   await hit(decklists.onRequestGet as Handler, `/decklists?popId=900&token=${sent.json.token}`, at(code));
   await hit(decklists.onRequestPatch as Handler, '/decklists?popId=900', at(code), { method: 'PATCH', cookie: owner });

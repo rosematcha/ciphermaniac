@@ -17,8 +17,8 @@
  * event still open), marked as added from a list; the answer says whether
  * they were added, matched or not added, and carries the device's new token.
  * The archetype stays on the list until staff apply it. A signed-in
- * submitter's profile is saved to their account unless it already names
- * another Player ID.
+ * submitter's name and birth date refresh their account's when the list is
+ * under the account's own Player ID; a list never sets an account's Player ID.
  * DELETE — withdraws the list under the details and token in the query,
  * while submission is open.
  * PATCH — staff unlock the list under the details in the query.
@@ -177,20 +177,19 @@ async function readSubmission(request: Request, sanctioned: boolean): Promise<Su
 
 /**
  * Saves a signed-in submitter's details to their account, so pages that know
- * them can find them. An account that already names a different Player ID
- * keeps its own details: a list sent under someone else's does not rewrite
- * who the account says it is. An unsanctioned event asked only for the name,
- * so the Player ID and birth year already there stay.
+ * them can find them. Only an account that already holds the list's Player ID
+ * takes them: a POP ID carries an account's history and who it is at events,
+ * and a list sent for a friend from your own phone must not give your account
+ * theirs. The account page saves a POP ID, where one account holds each. An
+ * unsanctioned event asked only for the name, so the Player ID and birth year
+ * already there stay.
  */
 function saveToAccount(access: Access, userId: string, profile: PlayerProfile) {
   const { db } = access;
   return isSanctioned(access.row)
     ? db
-        .prepare(
-          'UPDATE users SET pop_id = ?, first_name = ?, last_name = ?, birth_date = ? ' +
-            "WHERE id = ? AND (pop_id IS NULL OR pop_id = '' OR pop_id = ?)"
-        )
-        .bind(profile.popId, profile.firstName, profile.lastName, profile.birthDate, userId, profile.popId)
+        .prepare('UPDATE users SET first_name = ?, last_name = ?, birth_date = ? WHERE id = ? AND pop_id = ?')
+        .bind(profile.firstName, profile.lastName, profile.birthDate, userId, profile.popId)
     : db
         .prepare(
           'UPDATE users SET first_name = ?, last_name = ? ' +
