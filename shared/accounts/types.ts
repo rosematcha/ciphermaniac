@@ -4,6 +4,7 @@
  */
 
 import type { TournamentMode } from '../tournament/view.js';
+import type { AccountRole } from './roles.js';
 
 /**
  * One event in an account's History. Place, record, deck and the rounds are
@@ -58,4 +59,14 @@ export interface ApplicationState {
   /** A proof uploaded and not yet sent; null while an Application is pending, since its proof is the one sent. */
   proof: ProofSlot | null;
   eligible: { profile: boolean; role: boolean };
+}
+
+/** An Application as an admin sees it: who sent it, as they are now and as they applied. */
+export interface AdminApplication extends MyApplication {
+  account: { id: string; name: string; email: string | null; popId: string | null; role: AccountRole | null };
+  /** The profile as it stood when the account applied. */
+  applied: { popId: string; firstName: string; lastName: string };
+  /** Whether the proof file is still there to see; it is deleted once the Application is decided. */
+  hasProof: boolean;
+  decidedBy: { id: string; name: string } | null;
 }

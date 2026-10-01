@@ -11,8 +11,8 @@
  */
 
 import { profileComplete } from '../../../shared/accounts/applications.js';
-import { canApply } from '../../../shared/accounts/roles.js';
-import type { ApplicationStatus, MyApplication, ProofSlot } from '../../../shared/accounts/types.js';
+import { canApply, readAccountRole } from '../../../shared/accounts/roles.js';
+import type { AdminApplication, ApplicationStatus, MyApplication, ProofSlot } from '../../../shared/accounts/types.js';
 import { jsonError } from '../api/responses.js';
 import { type Context, sameOrigin } from '../auth/env.js';
 import { sessionHash, sessionUserQuery, type User, userFromRow, type UserRow } from '../auth/session.js';
@@ -53,6 +53,34 @@ export const myApplication = (row: ApplicationRow): MyApplication => ({
   createdAt: row.created_at,
   decidedAt: row.decided_at,
   note: row.note
+});
+
+/** An application with the account that sent it, as it is now, and the name of the admin who decided it. */
+export interface AdminApplicationRow extends ApplicationRow {
+  name: string;
+  email: string | null;
+  role: string | null;
+  account_pop_id: string | null;
+  decider_name: string | null;
+}
+
+/** The read of applications as admins see them; the caller adds the WHERE. */
+export const ADMIN_APPLICATIONS =
+  `SELECT ${APPLICATION_COLUMNS}, u.name, u.email, u.role, u.pop_id AS account_pop_id, d.name AS decider_name ` +
+  'FROM applications a JOIN users u ON u.id = a.user_id LEFT JOIN users d ON d.id = a.decided_by';
+
+export const adminApplication = (row: AdminApplicationRow): AdminApplication => ({
+  ...myApplication(row),
+  account: {
+    id: row.user_id,
+    name: row.name,
+    email: row.email,
+    popId: row.account_pop_id,
+    role: readAccountRole(row.role)
+  },
+  applied: { popId: row.pop_id, firstName: row.first_name, lastName: row.last_name },
+  hasProof: row.proof_key !== null,
+  decidedBy: row.decided_by ? { id: row.decided_by, name: row.decider_name ?? '' } : null
 });
 
 /** The signed-in account and its latest Application. */

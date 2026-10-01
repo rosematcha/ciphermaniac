@@ -13,6 +13,9 @@ export const PROOF_MAX_BYTES = 8 * 1024 * 1024;
 /** The longest explanation, in characters as a text field counts them. */
 export const EXPLANATION_MAX = 2000;
 
+/** The longest note an admin leaves the applicant with a decision. */
+export const NOTE_MAX = 500;
+
 /** The profile fields an account holds, each unset until the player saves it. */
 interface StoredProfile {
   popId: string | null;
