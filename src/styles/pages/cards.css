@@ -429,7 +429,7 @@
 }
 
 /* ---------- Played in (CardPage) ----------
-   One row per archetype: inclusion, usual copies, its best finish, list count.
+   One row per archetype: inclusion, usual copies, list count.
    Opening a row shows the copy split and then the lists themselves, each of
    which opens to the full decklist. Rows use the .au-* idiom above; the finish
    control sits beside the heading. */
@@ -464,24 +464,10 @@
   background: var(--surface-2);
 }
 .au-head.pi-arch {
-  grid-template-columns: 18px minmax(0, 1fr) 44px 92px minmax(0, 1.1fr) 76px;
+  grid-template-columns: 18px minmax(0, 1fr) 44px 92px 76px;
 }
 .au-head.pi-arch.no-lists {
   grid-template-columns: 18px minmax(0, 1fr) 44px 92px;
-}
-.pi-teaser {
-  font-size: 12px;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.pi-teaser b {
-  color: var(--fg);
-}
-.pi-teaser.is-hidden {
-  visibility: hidden;
 }
 .pi-count {
   font-size: 12px;
@@ -639,14 +625,9 @@
 @media (max-width: 760px) {
   .au-head.pi-arch {
     grid-template-columns: 14px minmax(0, 1fr) 40px 40px;
-    row-gap: 2px;
   }
   .au-head.pi-arch .au-modal-share {
     display: none;
-  }
-  .au-head.pi-arch .pi-teaser {
-    grid-column: 2 / 5;
-    grid-row: 2;
   }
   .au-head.pi-arch .pi-count {
     display: none;

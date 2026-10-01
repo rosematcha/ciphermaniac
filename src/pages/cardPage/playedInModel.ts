@@ -14,7 +14,6 @@ export const FINISH_OPTIONS: { value: string; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'top50', label: 'Top 50%' },
   { value: 'top25', label: 'Top 25%' },
-  { value: 'top8', label: 'Top 8' },
   { value: 'winner', label: 'Winners' }
 ];
 

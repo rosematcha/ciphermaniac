@@ -51,7 +51,7 @@ function useToggleSet<T>() {
 
 /**
  * "Played in": every archetype that plays the card as one row — its inclusion,
- * usual copy count and best finish — opening to the copy split and the lists
+ * usual copy count and list count — opening to the copy split and the lists
  * behind it. The finish control re-scopes the lists and the ranking; the block
  * folds after six archetypes when enough would hide to be worth it.
  */
@@ -115,7 +115,6 @@ interface RowProps {
 
 function PlayedInRow(props: RowProps) {
   const entry = () => props.group.usage.entry;
-  const best = () => props.group.lists[0];
   const detailId = () => `pi-detail-${entry().name.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
   return (
     <div class='au-row pi-row' classList={{ 'is-open': props.open }}>
@@ -153,15 +152,6 @@ function PlayedInRow(props: RowProps) {
           </Show>
         </span>
         <Show when={props.hasLists}>
-          <span class='pi-teaser' classList={{ 'is-hidden': props.open }}>
-            <Show when={best()} keyed>
-              {b => (
-                <>
-                  <Finish record={b.record} /> · {b.record.player}
-                </>
-              )}
-            </Show>
-          </span>
           <span class='pi-count'>{props.group.lists.length.toLocaleString()} lists</span>
         </Show>
       </div>
