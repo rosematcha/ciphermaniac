@@ -61,6 +61,8 @@ interface Props {
   claim: PlayerClaim | null;
   /** The token of the device that reports for them, when this device is it. */
   reportToken: string | null;
+  /** Whether they report from here: this device holds the token, or their account holds the seat. */
+  reports: boolean;
   onIdentified: (found: Identified) => void;
   onForget: () => void;
   onView: (view: PublishedView) => void;
@@ -269,7 +271,7 @@ function MatchLine(props: Props & { me: string; found: Found; report: Report; op
   const names = () => namesById(props.view.tournament);
   const opponent = () => (props.found.match.p1 === props.me ? props.found.match.p2 : props.found.match.p1);
   const result = () => decided(props.report, props.found, props.me, props.view);
-  const canReport = () => Boolean(props.report.state()) && Boolean(props.reportToken) && !props.open;
+  const canReport = () => Boolean(props.report.state()) && props.reports && !props.open;
   return (
     <Show
       when={opponent()}
@@ -345,12 +347,12 @@ function MatchBox(props: Props & { me: string }) {
   const started = () => hasStarted(props.view.tournament);
   const panel = () => {
     const state = report.state();
-    return props.reportToken && state && !state.final && (open() || state.disputed) ? state : null;
+    return props.reports && state && !state.final && (open() || state.disputed) ? state : null;
   };
   /** Another device reports for this player: this one follows the table and says why it cannot report. */
   const followsOnly = () => {
     const state = report.state();
-    return !props.reportToken && state !== null && !state.final;
+    return !props.reports && state !== null && !state.final;
   };
   const division = () => divisionHeading(props.view.divisions[props.me] ?? null);
   return (

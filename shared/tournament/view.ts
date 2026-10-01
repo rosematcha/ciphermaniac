@@ -9,7 +9,7 @@
  */
 
 import { divisionFor, eventSeason } from './divisions.js';
-import { shortLastNames } from './identify.js';
+import { type PlayerClaim, shortLastNames } from './identify.js';
 import type { PlayerProfile } from './profile.js';
 import type { PlayerReport } from './reports.js';
 import { isOpenMatch, type MatchKey, sameMatch } from './rounds.js';
@@ -176,6 +176,12 @@ export interface Viewer {
   me: string | null;
   /** How the account is that player: its POP ID at a sanctioned event, or its Claim at an unsanctioned one. */
   via: 'pop' | 'claim' | null;
+  /**
+   * What that player answers "Which player are you?" with: the POP ID, or at
+   * an unsanctioned event the full name the public copy shortens. A device
+   * that never asked reports as the player with it.
+   */
+  claim?: PlayerClaim;
   signedIn: boolean;
 }
 

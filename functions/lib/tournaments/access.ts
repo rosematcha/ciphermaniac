@@ -114,19 +114,22 @@ export function publicViewOf(row: TournamentRow): PublishedView {
 const NOT_PLAYING = { me: null, via: null } as const;
 
 /**
- * Which player the viewer is, and how the page knows: at a sanctioned event
- * the one whose POP ID the account holds, at an unsanctioned one the one its
- * Claim names.
+ * Which player the viewer is, how the page knows, and what the player says
+ * to report: at a sanctioned event the one whose POP ID the account holds,
+ * at an unsanctioned one the one its Claim names, by their full name.
  */
-function identityOf(access: Access): Pick<Viewer, 'me' | 'via'> {
+function identityOf(access: Access): Pick<Viewer, 'me' | 'via' | 'claim'> {
   const { row, user, claimed } = access;
   if (isSanctioned(row)) {
     const popId = user?.popId ?? '';
     const listed = row.tournament.players.some(player => player.id === popId);
-    return listed ? { me: row.keys[popId] ?? null, via: 'pop' } : NOT_PLAYING;
+    return listed ? { me: row.keys[popId] ?? null, via: 'pop', claim: { popId } } : NOT_PLAYING;
   }
-  const key = claimed ? row.keys[claimed] : undefined;
-  return key ? { me: key, via: 'claim' } : NOT_PLAYING;
+  const player = row.tournament.players.find(candidate => candidate.id === claimed);
+  const key = player && row.keys[player.id];
+  return key
+    ? { me: key, via: 'claim', claim: { lastName: player.lastName, firstName: player.firstName } }
+    : NOT_PLAYING;
 }
 
 /** What the event's public page reads from the API, shaped for the viewer: staff see decks before the public does. */

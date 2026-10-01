@@ -185,7 +185,8 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
   function unlinked() {
     const current = latestValue(view);
     if (current) {
-      mutate({ ...current, viewer: { ...current.viewer, me: null, via: null } });
+      const { role, signedIn } = current.viewer;
+      mutate({ ...current, viewer: { role, me: null, via: null, signedIn } });
     }
   }
   return { view, take, whoAmI, unlinked, retry: () => void reload() };
@@ -240,7 +241,9 @@ function accountStep(
  * its Claim), or the one they proved on this device with a Player ID or last
  * name (see Identify). A player marked on this device before proof was asked
  * for is not taken on its word, and what this device proved for another
- * player says nothing for the account's.
+ * player says nothing for the account's. The viewer reports from here when
+ * this device holds the token, or when their account holds the player's
+ * seat: its Claim does, and the server says so of its POP ID when asked.
  */
 function createMe(
   view: () => TournamentView,
@@ -251,6 +254,8 @@ function createMe(
   const [claim, setClaim] = createSignal(stored);
   const [chosen, setChosen] = createSignal(stored ? localStorage.getItem(meKey(code())) : null);
   const [reportToken, setReportToken] = createSignal(stored ? localStorage.getItem(tokenKey(code())) : null);
+  /** The player whose seat the account holds, as the server last answered; no token goes with that. */
+  const [accountSeat, setAccountSeat] = createSignal<string | null>(null);
   function identified(found: Identified) {
     keep(meKey(code()), found.key);
     keep(claimKey(code()), JSON.stringify(found.claim));
@@ -260,6 +265,7 @@ function createMe(
     const token = found.reportToken ?? (found.reporter === false ? null : reportToken());
     keep(tokenKey(code()), token);
     setReportToken(token);
+    setAccountSeat(found.linked && found.reporter ? found.key : null);
     events.onView(found.view);
     // A Claim just made is news to the page's copy, which says who the viewer is as of its last API read.
     if (found.linked && view().viewer.me !== found.key) {
@@ -287,8 +293,14 @@ function createMe(
   });
   // What this device proved counts only for the player the account is, when it is one.
   const own = () => !view().viewer.me || chosen() === view().viewer.me;
-  const ownClaim = () => (own() ? claim() : null);
+  // A device that never said who the player is says what the account's player answers with.
+  const ownClaim = () => (own() ? claim() : null) ?? view().viewer.claim ?? null;
   const ownToken = () => (own() ? reportToken() : null);
+  const me = () => view().viewer.me ?? chosen();
+  const accountReports = () => {
+    const { viewer } = view();
+    return me() !== null && (accountSeat() === me() || (viewer.via === 'claim' && viewer.me === me()));
+  };
   let stepped = false;
   createEffect(() => {
     const step = stepped ? null : accountStep(view(), { claim: ownClaim(), token: ownToken(), popId: events.popId() });
@@ -297,7 +309,14 @@ function createMe(
       void claimNow(step.claim, step.token);
     }
   });
-  return { me: () => view().viewer.me ?? chosen(), claim: ownClaim, reportToken: ownToken, identified, forget };
+  return {
+    me,
+    claim: ownClaim,
+    reportToken: ownToken,
+    reports: () => ownToken() !== null || accountReports(),
+    identified,
+    forget
+  };
 }
 
 function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
@@ -440,7 +459,7 @@ function EventBody(props: {
   const [roundChoice, setRoundChoice] = createSignal<number | null>(null);
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal<string | null>(null);
-  const { me, claim, reportToken, identified, forget } = createMe(() => props.view, {
+  const { me, claim, reportToken, reports, identified, forget } = createMe(() => props.view, {
     onView: view => props.onView(view),
     onLinked: () => props.onWhoAmI(),
     popId: () => props.session?.user?.popId
@@ -498,6 +517,7 @@ function EventBody(props: {
         me={me()}
         claim={claim()}
         reportToken={reportToken()}
+        reports={reports()}
         onIdentified={identified}
         onForget={forget}
         onView={props.onView}

@@ -315,7 +315,14 @@ function roundOne(sanctioned: boolean): Tournament {
 async function mockEvent(
   page: Page,
   t: Tournament,
-  options: { sanctioned: boolean; user: typeof ME | null; linked?: boolean; refuse?: boolean }
+  options: {
+    sanctioned: boolean;
+    user: typeof ME | null;
+    linked?: boolean;
+    refuse?: boolean;
+    /** The account holds the player's seat already, so a device asking with it is given no token. */
+    tokenless?: boolean;
+  }
 ) {
   const code = 'LEAGUE';
   const keys = assignKeys(t, {});
@@ -350,7 +357,13 @@ async function mockEvent(
       }
       linked = Boolean(options.user);
       return route.fulfill({
-        json: { key: keys[ash], view: published, reporter: true, linked, reportToken: 'seat' }
+        json: {
+          key: keys[ash],
+          view: published,
+          reporter: true,
+          linked,
+          ...(options.tokenless ? {} : { reportToken: 'seat' })
+        }
       });
     }
     if (pathname === `/api/tournaments/${code}/claim`) {
@@ -359,7 +372,10 @@ async function mockEvent(
     }
     if (pathname === `/api/tournaments/${code}`) {
       const via = options.sanctioned ? 'pop' : 'claim';
-      const viewer = { role: null, me: linked ? keys[ash] : null, via: linked ? via : null, signedIn: true };
+      const claim = options.sanctioned ? { popId: '1001' } : { lastName: 'Ketchum', firstName: 'Ash' };
+      const viewer = linked
+        ? { role: null, me: keys[ash], via, claim, signedIn: true }
+        : { role: null, me: null, via: null, signedIn: true };
       return route.fulfill({ json: { ...published, viewer } });
     }
     return route.fulfill({ status: 404, json: { error: 'Not found' } });
@@ -454,6 +470,52 @@ test('a report refused as not the player’s asks again who the viewer is', asyn
   await page.getByRole('button', { name: 'I won' }).click();
   await expect(page.getByRole('alert')).toContainText('Someone else is already reporting');
   await expect.poll(() => viewReads(asks, code)).toBe(reads + 1);
+});
+
+/** The result reports the page sent: what they said and the token with it. */
+const reportsSent = (asks: { path: string; body: unknown }[]) =>
+  asks
+    .filter(a => a.path.endsWith('/report') && (a.body as { result?: string }).result)
+    .map(a => {
+      const { popId, lastName, firstName, reportToken } = a.body as Record<string, unknown>;
+      return { popId, lastName, firstName, reportToken: reportToken ?? null };
+    });
+
+test('on a device that never asked, an account linked by its Claim reports as its player without the question @mobile', async ({
+  page
+}) => {
+  const { code, asks } = await mockEvent(page, roundOne(false), {
+    sanctioned: false,
+    user: { ...ME, popId: null },
+    linked: true,
+    tokenless: true
+  });
+  await page.goto(`/t/${code}`);
+  await expect(page.locator('.tm-you-who')).toContainText('Linked to your account');
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Report result' }).click();
+  await page.getByRole('button', { name: 'I won' }).click();
+  await expect
+    .poll(() => reportsSent(asks))
+    .toEqual([{ popId: undefined, lastName: 'Ketchum', firstName: 'Ash', reportToken: null }]);
+});
+
+test('on a device that never asked, an account that holds its player’s seat by POP ID reports without a token', async ({
+  page
+}) => {
+  const { code, asks } = await mockEvent(page, roundOne(true), {
+    sanctioned: true,
+    user: { ...ME, popId: '1001' },
+    tokenless: true
+  });
+  await page.goto(`/t/${code}`);
+  await expect(page.locator('.tm-you-who')).toContainText('Ash Ketchum');
+  await page.getByRole('button', { name: 'Report result' }).click();
+  await page.getByRole('button', { name: 'I won' }).click();
+  await expect
+    .poll(() => reportsSent(asks))
+    .toEqual([{ popId: '1001', lastName: undefined, firstName: undefined, reportToken: null }]);
+  await expect(page.getByText('Someone else is already reporting')).toHaveCount(0);
 });
 
 test('signed out, the question offers sign-in that comes back to the event', async ({ page }) => {

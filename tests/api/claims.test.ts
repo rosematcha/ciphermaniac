@@ -286,6 +286,25 @@ test('at a sanctioned event the account is the player whose POP ID it holds, wit
   assert.deepEqual(pick((await view(code, player)).viewer), { me: null, via: null, signedIn: true }, 'off the list');
 });
 
+test('the event page tells an account what its player answers with, so a device that never asked can report', async () => {
+  const { owner, code, idOf } = await casualEvent();
+  const ash = await signIn('Ash');
+  assert.equal((await view(code, ash)).viewer.claim, undefined, 'not a player here');
+  await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  // The public copy shortens the name; the account's own answer is the whole of it.
+  const { claim: said } = (await view(code, ash)).viewer;
+  assert.deepEqual(said, { firstName: 'Ash', lastName: 'Ketchum' });
+  assert.equal((await view(code)).viewer.claim, undefined, 'nobody else is told');
+  await pair(code, owner, idOf('Ketchum'));
+  const fromLaptop = await playerSays(code, { ...said, result: 'win', device: 'ash-laptop' }, { cookie: ash });
+  assert.deepEqual([fromLaptop.status, fromLaptop.json.reporter], [200, true]);
+  const sanctioned = await newSwiss(owner);
+  await addPlayers(sanctioned, owner, 2);
+  const player = await signIn('Player');
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profileOf('901') });
+  assert.deepEqual((await view(sanctioned, player)).viewer.claim, { popId: '901' });
+});
+
 test('the event page reads the account’s Claim in the batch that opens the event; the console, commands and asks do not', async () => {
   const { owner, code } = await casualEvent();
   const ash = await signIn('Ash');
