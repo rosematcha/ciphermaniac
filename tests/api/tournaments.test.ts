@@ -37,10 +37,12 @@ import type { TournamentView } from '../../shared/tournament/view.ts';
 import { publishView } from '../../functions/lib/tournaments/publish.ts';
 import { loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
 import { apiCalls, type Handler, ORIGIN, request } from '../__utils__/apiCalls.ts';
+import { at, eventCalls } from '../__utils__/eventCalls.ts';
 import { countingTrips, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 const { hit, signIn } = apiCalls(() => env);
+const { newSwiss, send, addPlayers, settle, playerSays, view } = eventCalls(hit);
 
 beforeEach(() => {
   env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true' };
@@ -49,48 +51,10 @@ beforeEach(() => {
   event._resetRateLimitStore();
 });
 
-const at = (code: string) => ({ code });
-
-async function newSwiss(cookie: string): Promise<string> {
-  const created = await hit(
-    tournaments.onRequestPost as Handler,
-    '/api/tournaments',
-    {},
-    {
-      method: 'POST',
-      cookie,
-      body: { mode: 'swiss', name: 'Test Cup' }
-    }
-  );
-  assert.equal(created.status, 201);
-  return created.json.code as string;
-}
-
-function send(code: string, cookie: string, command: unknown) {
-  return hit(commands.onRequestPost as Handler, `/api/tournaments/${code}/commands`, at(code), {
-    method: 'POST',
-    cookie,
-    body: { command, localTime: '10/10/2026 12:00:00' }
-  });
-}
-
-async function addPlayers(code: string, cookie: string, count: number) {
-  for (let i = 0; i < count; i += 1) {
-    const added = await send(code, cookie, {
-      type: 'addPlayer',
-      player: { firstName: 'Player', lastName: `${i}`, id: `${900 + i}`, birthDate: '02/27/1990' }
-    });
-    assert.equal(added.status, 200);
-  }
-}
-
 /** The revision of the event's document as the console loads it, as the browser following the .tdf sends it. */
 async function revisionNow(code: string, cookie: string): Promise<string> {
   return revisionOf((await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie })).json.tournament);
 }
-
-const view = async (code: string, cookie?: string) =>
-  (await hit(event.onRequestGet as Handler, `/api/tournaments/${code}`, at(code), { cookie })).json as TournamentView;
 
 test('dev sign-in starts a session that /api/me reads, and sign-out ends it', async () => {
   const cookie = await signIn('Organizer');
@@ -861,17 +825,6 @@ afterEach(() => {
   delete env.ENVIRONMENT;
   delete env.REPORTS;
 });
-
-function settle(code: string, cookie: string, change: Record<string, unknown>) {
-  return hit(settings.onRequestPut as Handler, '/settings', at(code), { method: 'PUT', cookie, body: change });
-}
-
-function playerSays(code: string, body: Record<string, unknown>) {
-  return hit(report.onRequestPost as Handler, '/report', at(code), {
-    method: 'POST',
-    body: { ...body, localTime: '10/10/2026 12:00:00' }
-  });
-}
 
 /** A player's phone: it says who they are once, keeps the token it is given, and reports with it. */
 async function phoneOf(code: string, popId: string, device = `phone-${popId}`) {
