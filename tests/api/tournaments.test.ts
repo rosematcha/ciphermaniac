@@ -2022,7 +2022,8 @@ const ACCOUNT_STATEMENTS = [
   'UPDATE users SET pop_id = NULL WHERE pop_id = ?1',
   'DELETE FROM report_devices WHERE user_id = ?2',
   'UPDATE users SET pop_id = ?1 WHERE id = ?2',
-  'player_id = (SELECT pop_id FROM users WHERE id = ?1)'
+  'player_id = (SELECT pop_id FROM users WHERE id = ?1)',
+  'WHERE id = ? AND public_slug IS NULL'
 ];
 
 test('nothing the functions ask of the database scans a table', async () => {

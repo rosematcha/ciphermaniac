@@ -244,6 +244,39 @@ test('the public profile turns on at an address of its own, and off again', asyn
   assert.equal((await accountOf(cookie)).publicSlug, again, 'a refused change changes nothing');
 });
 
+test('two requests turning the profile on at once both answer the one address it keeps', async () => {
+  const cookie = await signIn('Player');
+  // The other request read the profile off too, and its address lands first.
+  beforeWrite('UPDATE OR IGNORE users SET public_slug', () => {
+    raw().exec("UPDATE users SET public_slug = 'K7PQ2MXA'");
+  });
+  const on = await patchAccount(cookie, { publicProfile: true });
+  assert.equal(on.json.user.publicSlug, 'K7PQ2MXA');
+  assert.equal((await accountOf(cookie)).publicSlug, 'K7PQ2MXA', 'the first address still works');
+});
+
+test('turning on a profile that another request turned off meanwhile gives it an address that works', async () => {
+  const cookie = await signIn('Player');
+  await patchAccount(cookie, { publicProfile: true });
+  // This request reads the profile on; the other turns it off before this one answers.
+  const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  let pending = true;
+  env.TOURNAMENT_DB = {
+    ...inner,
+    batch: async statements => {
+      const results = await inner.batch(statements);
+      if (pending) {
+        pending = false;
+        raw().exec('UPDATE users SET public_slug = NULL');
+      }
+      return results;
+    }
+  };
+  const again = (await patchAccount(cookie, { publicProfile: true })).json.user.publicSlug as string | null;
+  assert.notEqual(again, null);
+  assert.equal((await accountOf(cookie)).publicSlug, again);
+});
+
 test('a profile address another account holds is drawn again', async () => {
   const random = mock.method(Math, 'random', () => 0);
   try {
