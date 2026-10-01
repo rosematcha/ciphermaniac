@@ -27,26 +27,25 @@ export async function onRequestGet({ request, env }: Context): Promise<Response>
 }
 
 /**
- * The writes that save a profile, the profile itself first. The unique POP ID
- * index makes the update ignore a POP ID another account holds, and it counts
- * a row it matched as changed even when nothing in it differs, so no change
- * means the POP ID is taken. With a new POP ID, the account's reporter rows
- * under the old one go too, but only once the update has landed.
+ * The writes that save a profile. The unique POP ID index makes the update
+ * ignore a POP ID another account holds, and it counts a row it matched as
+ * changed even when nothing in it differs, so no change means the POP ID is
+ * taken. A new POP ID lets go of the account's reporter rows under the old
+ * one: the release goes first and reads the POP ID the account holds as the
+ * batch runs, not the one this request read, since another change may have
+ * landed between, and it lands only where the update will.
  */
 function profileWrites(db: D1Like, user: User, profile: PlayerProfile) {
+  const release = db
+    .prepare(
+      'DELETE FROM report_devices WHERE user_id = ?1 AND player_id = (SELECT pop_id FROM users WHERE id = ?1) ' +
+        'AND player_id IS NOT ?2 AND NOT EXISTS (SELECT 1 FROM users WHERE pop_id = ?2 AND id <> ?1)'
+    )
+    .bind(user.id, profile.popId);
   const update = db
     .prepare('UPDATE OR IGNORE users SET pop_id = ?, first_name = ?, last_name = ?, birth_date = ? WHERE id = ?')
     .bind(profile.popId, profile.firstName, profile.lastName, profile.birthDate, user.id);
-  if (!user.popId || user.popId === profile.popId) {
-    return [update];
-  }
-  const release = db
-    .prepare(
-      'DELETE FROM report_devices WHERE user_id = ? AND player_id = ? ' +
-        'AND EXISTS (SELECT 1 FROM users WHERE id = ? AND pop_id = ?)'
-    )
-    .bind(user.id, user.popId, user.id, profile.popId);
-  return [update, release];
+  return [release, update];
 }
 
 export async function onRequestPut({ request, env }: Context): Promise<Response> {
@@ -63,7 +62,7 @@ export async function onRequestPut({ request, env }: Context): Promise<Response>
   if (!profile) {
     return jsonError('Not a valid profile', 400);
   }
-  const [saved] = await db.batch(profileWrites(db, user, profile));
+  const [, saved] = await db.batch(profileWrites(db, user, profile));
   if (rowsChanged(saved) === 0) {
     return jsonResponse({ error: 'This POP ID is on another account', popIdTaken: true }, { ...PRIVATE, status: 409 });
   }

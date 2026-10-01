@@ -186,6 +186,36 @@ test('an account that changes its POP ID frees the old one and lets go of the pl
   assert.equal((await accountOf(second)).popId, '111');
 });
 
+/** Runs `meanwhile` once, just before the functions next prepare a statement that starts with `prefix`. */
+function beforeWrite(prefix: string, meanwhile: () => void) {
+  const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  let pending = true;
+  env.TOURNAMENT_DB = {
+    ...inner,
+    prepare: sql => {
+      if (pending && sql.startsWith(prefix)) {
+        pending = false;
+        meanwhile();
+      }
+      return inner.prepare(sql);
+    }
+  };
+}
+
+test('a POP ID change lets go of the players the account is as the POP ID it holds when the change lands', async () => {
+  const cookie = await signIn('Player');
+  await saveProfile(cookie, profileOf('111'));
+  const id = (await accountOf(cookie)).id as string;
+  // Another change, to 222, lands after this request read 111, and the account is a player as 222.
+  beforeWrite('UPDATE OR IGNORE users', () => {
+    raw().prepare("UPDATE users SET pop_id = '222' WHERE id = ?").run(id);
+    holdPlayer('AAAAAA', '222', id);
+  });
+  assert.equal((await saveProfile(cookie, profileOf('333'))).status, 200);
+  assert.equal((await accountOf(cookie)).popId, '333');
+  assert.deepEqual(heldRows(), [], 'the players as 222 are let go');
+});
+
 const patchAccount = (cookie: string, body: unknown) =>
   hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body });
 
