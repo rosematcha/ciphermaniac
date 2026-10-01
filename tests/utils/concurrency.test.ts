@@ -57,3 +57,31 @@ test('a failed job frees its place for the job waiting on it', async () => {
   await assert.rejects(failing, /offline/);
   assert.equal(await next, 'next');
 });
+
+test('a job that turns up as another finishes waits behind the one already waiting', async () => {
+  const limit = createLimiter(1);
+  let active = 0;
+  let peak = 0;
+  const started: string[] = [];
+  const job = (name: string) => async () => {
+    started.push(name);
+    active += 1;
+    peak = Math.max(peak, active);
+    await new Promise<void>(resolve => {
+      setTimeout(resolve, 5);
+    });
+    active -= 1;
+  };
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  const first = limit(() => gate);
+  const queued = limit(job('queued'));
+  // Asked in the same turn as the first job's place is given up, before the waiting job takes it.
+  const late = gate.then(() => limit(job('late')));
+  release();
+  await Promise.all([first, queued, late]);
+  assert.deepEqual(started, ['queued', 'late']);
+  assert.equal(peak, 1);
+});

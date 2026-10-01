@@ -22,7 +22,7 @@ import { recordLabel, sideResult } from '../../../shared/tournament/standings';
 import { hasStarted, podOf, withSwiss } from '../../../shared/tournament/rounds';
 import type { Pod, Round, Match as TableMatch } from '../../../shared/tournament/types';
 import { isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
-import { errorText, identifyPlayer, type Provider, reportAsPlayer } from '../../lib/tournament/api';
+import { ApiError, errorText, identifyPlayer, type Provider, reportAsPlayer } from '../../lib/tournament/api';
 import {
   currentMatchOf,
   divisionHeading,
@@ -61,6 +61,8 @@ interface Props {
   claim: PlayerClaim | null;
   /** The token of the device that reports for them, when this device is it. */
   reportToken: string | null;
+  /** Whether they report from here: this device holds the token, or their account holds the seat. */
+  reports: boolean;
   onIdentified: (found: Identified) => void;
   onForget: () => void;
   onView: (view: PublishedView) => void;
@@ -73,6 +75,8 @@ interface Props {
   providers: readonly Provider[];
   /** Ends the signed-in account's Claim on the player, then forgets it on this device. */
   onUnlink: () => Promise<void>;
+  /** Asks the server again who the viewer is: a report was refused, so who the page thinks they are may be out of date. */
+  onStale: () => void;
 }
 
 interface Found {
@@ -152,6 +156,10 @@ function createReport(props: Props & { me: string }, found: () => Found | null) 
       props.onView((await reportAsPlayer(props.view.code, claim, { result, match }, props.reportToken)).view);
     } catch (err) {
       setError(errorText(err));
+      // Not theirs to report (released, or linked elsewhere since), or the event moved on.
+      if (err instanceof ApiError && (err.status === 403 || err.status === 409)) {
+        props.onStale();
+      }
     } finally {
       setSending(null);
     }
@@ -263,7 +271,7 @@ function MatchLine(props: Props & { me: string; found: Found; report: Report; op
   const names = () => namesById(props.view.tournament);
   const opponent = () => (props.found.match.p1 === props.me ? props.found.match.p2 : props.found.match.p1);
   const result = () => decided(props.report, props.found, props.me, props.view);
-  const canReport = () => Boolean(props.report.state()) && Boolean(props.reportToken) && !props.open;
+  const canReport = () => Boolean(props.report.state()) && props.reports && !props.open;
   return (
     <Show
       when={opponent()}
@@ -339,12 +347,12 @@ function MatchBox(props: Props & { me: string }) {
   const started = () => hasStarted(props.view.tournament);
   const panel = () => {
     const state = report.state();
-    return props.reportToken && state && !state.final && (open() || state.disputed) ? state : null;
+    return props.reports && state && !state.final && (open() || state.disputed) ? state : null;
   };
   /** Another device reports for this player: this one follows the table and says why it cannot report. */
   const followsOnly = () => {
     const state = report.state();
-    return !props.reportToken && state !== null && !state.final;
+    return !props.reports && state !== null && !state.final;
   };
   const division = () => divisionHeading(props.view.divisions[props.me] ?? null);
   return (

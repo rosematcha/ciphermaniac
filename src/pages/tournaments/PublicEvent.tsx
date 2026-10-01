@@ -37,6 +37,7 @@ import { latestValue } from '../../lib/resource';
 import { onChange } from '../../lib/tournament/changes';
 import { shared } from '../../lib/tournament/share';
 import {
+  askOnReturn,
   createViewPoll,
   firstView,
   lookOnReturn,
@@ -87,9 +88,26 @@ const sameViewer = (a: TournamentView['viewer'], b: TournamentView['viewer']) =>
  * shows decks, the only thing staff see that the published file does not.
  */
 function createView(code: () => string, signedIn: () => boolean, options: { every: number; decks: boolean }) {
-  const fromApi = (c: string) => fetchView(c).then(v => v as TournamentView);
+  // Moved on by every read of who the viewer is, and by their own undo (see fromApi).
+  let generation = 0;
+  /**
+   * The API's copy, or null when nothing is newer than `since`. What it says
+   * of the viewer counts only if nothing since it was asked knows better: a
+   * later read of who they are, or their own undo. Its event counts either way.
+   */
+  async function fromApi(c: string, since?: number): Promise<TournamentView | null> {
+    const asked = generation;
+    const next = await fetchView(c, since);
+    const shown = latestValue(view);
+    return next && shown && asked !== generation ? { ...next, viewer: shown.viewer } : next;
+  }
+  /** Asks the API who the viewer is: the answer outdates every read asked before it. */
+  function askWho(c: string): Promise<TournamentView> {
+    generation += 1;
+    return fromApi(c).then(v => v as TournamentView);
+  }
   const [view, { mutate, refetch }] = createResource(code, c =>
-    firstView({ published: () => fetchPublished(c), api: () => fromApi(c) })
+    firstView({ published: () => fetchPublished(c), api: () => fromApi(c).then(v => v as TournamentView) })
   );
   /**
    * Takes a copy no older than the one shown, of the same event: answers can
@@ -112,7 +130,7 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
     // Asked once an event: an answer that still knows nobody is not asked for again.
     if (signedIn() && shown && !shown.viewer.signedIn && asked !== shown.code) {
       asked = shown.code;
-      void fromApi(shown.code)
+      void askWho(shown.code)
         .then(accept)
         .catch(() => undefined);
     }
@@ -131,6 +149,15 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
       return false;
     }
   }
+  /**
+   * Asks the API who the viewer is: polls only ask when the event changes, and
+   * who the viewer is can change without it (their own action, another of
+   * their devices, staff).
+   */
+  const whoAmI = () =>
+    void askWho(code())
+      .then(accept)
+      .catch(() => undefined);
   onMount(() => {
     let announced = 0;
     const poll = createViewPoll({
@@ -139,12 +166,18 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
       announced: () => announced,
       reload,
       published: () => fetchPublished(code()),
-      api: since => fetchView(code(), since),
+      api: since => fromApi(code(), since),
       apply: accept,
       now: Date.now
     });
     const polls = schedulePolls(poll, () => document.hidden, options.every);
     const forget = lookOnReturn(polls);
+    // Back in view, a signed-in viewer catches up on a Claim made or released elsewhere.
+    const forgetViewer = askOnReturn(() => {
+      if (signedIn()) {
+        whoAmI();
+      }
+    }, Date.now);
     const unsubscribe = onChange(code(), version => {
       if (version > (latestValue(view)?.version ?? 0)) {
         announced = Math.max(announced, version);
@@ -155,6 +188,7 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
       polls.stop();
       unsubscribe();
       forget();
+      forgetViewer();
     });
   });
   /** Takes a fresher copy handed over by an action, such as a player's report. */
@@ -164,16 +198,13 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
       accept({ ...published, viewer: current.viewer });
     }
   }
-  /** Asks the API who the viewer is, after their own action changed it: polls only ask when the event changes. */
-  const whoAmI = () =>
-    void fromApi(code())
-      .then(accept)
-      .catch(() => undefined);
   /** The account is no longer a player here, as its own undo just made it: no need to ask the API. */
   function unlinked() {
+    generation += 1;
     const current = latestValue(view);
     if (current) {
-      mutate({ ...current, viewer: { ...current.viewer, me: null, via: null } });
+      const { role, signedIn } = current.viewer;
+      mutate({ ...current, viewer: { role, me: null, via: null, signedIn } });
     }
   }
   return { view, take, whoAmI, unlinked, retry: () => void reload() };
@@ -202,22 +233,23 @@ function keep(key: string, value: string | null) {
 
 /**
  * What the device asks the server of its own accord once the page knows who
- * is signed in, at most once a page: an account that is the player by its POP
- * ID, where players report and this device holds no token for them, says so,
- * so its account holds the reporting seat if nobody does; and a device that
- * proved who it is before signing in, at an unsanctioned event, says so again
- * with its token, which makes that player the account's Claim.
+ * is signed in, once for each player the account is: an account that is the
+ * player by its POP ID, where players report and this device holds no token
+ * for them, says so, so its account holds the reporting seat if nobody does;
+ * and a device that proved who it is before signing in, at an unsanctioned
+ * event, says so again with its token, which makes that player the account's
+ * Claim.
  */
 function accountStep(
   view: TournamentView,
-  device: { claim: PlayerClaim | null; token: string | null; popId: string | null | undefined }
+  device: { claim: PlayerClaim | null; token: string | null }
 ): { claim: PlayerClaim; token?: string } | null {
   const { viewer, settings } = view;
   if (!viewer.signedIn || settings.finished) {
     return null;
   }
-  if (viewer.via === 'pop' && device.popId && settings.playerReporting && !device.token) {
-    return { claim: { popId: device.popId } };
+  if (viewer.via === 'pop' && viewer.claim && settings.playerReporting && !device.token) {
+    return { claim: viewer.claim };
   }
   const { claim, token } = device;
   return viewer.via === null && !isSanctioned(view) && claim && token ? { claim, token } : null;
@@ -228,17 +260,20 @@ function accountStep(
  * its Claim), or the one they proved on this device with a Player ID or last
  * name (see Identify). A player marked on this device before proof was asked
  * for is not taken on its word, and what this device proved for another
- * player says nothing for the account's.
+ * player says nothing for the account's. The viewer reports from here when
+ * this device holds the token, or when their account holds the player's
+ * seat: its Claim does, and the server says so of its POP ID when asked. That
+ * answer is the account's, not the device's: nothing of it is kept here, and
+ * it counts only while the account is still that player.
  */
-function createMe(
-  view: () => TournamentView,
-  events: { onView: (view: PublishedView) => void; onLinked: () => void; popId: () => string | null | undefined }
-) {
+function createMe(view: () => TournamentView, events: { onView: (view: PublishedView) => void; onLinked: () => void }) {
   const code = () => view().code;
   const stored = storedClaim(code());
   const [claim, setClaim] = createSignal(stored);
   const [chosen, setChosen] = createSignal(stored ? localStorage.getItem(meKey(code())) : null);
   const [reportToken, setReportToken] = createSignal(stored ? localStorage.getItem(tokenKey(code())) : null);
+  /** The player whose seat the account holds, as the server last answered; no token goes with that. */
+  const [accountSeat, setAccountSeat] = createSignal<string | null>(null);
   function identified(found: Identified) {
     keep(meKey(code()), found.key);
     keep(claimKey(code()), JSON.stringify(found.claim));
@@ -248,6 +283,7 @@ function createMe(
     const token = found.reportToken ?? (found.reporter === false ? null : reportToken());
     keep(tokenKey(code()), token);
     setReportToken(token);
+    setAccountSeat(found.linked && found.reporter ? found.key : null);
     events.onView(found.view);
     // A Claim just made is news to the page's copy, which says who the viewer is as of its last API read.
     if (found.linked && view().viewer.me !== found.key) {
@@ -267,6 +303,14 @@ function createMe(
       identified({ ...answer, claim: said, key: answer.key });
     }
   }
+  /** Whether the account holds its player's seat by its POP ID: asked as the account, so the device keeps nothing. */
+  async function seat(said: PlayerClaim) {
+    const answer = await identifyPlayer(code(), said).catch(() => null);
+    if (answer?.key) {
+      setAccountSeat(answer.linked && answer.reporter ? answer.key : null);
+      events.onView(answer.view);
+    }
+  }
   onMount(() => {
     const said = claim();
     if (said && !reportToken()) {
@@ -275,17 +319,34 @@ function createMe(
   });
   // What this device proved counts only for the player the account is, when it is one.
   const own = () => !view().viewer.me || chosen() === view().viewer.me;
-  const ownClaim = () => (own() ? claim() : null);
+  // A device that never said who the player is says what the account's player answers with.
+  const ownClaim = () => (own() ? claim() : null) ?? view().viewer.claim ?? null;
   const ownToken = () => (own() ? reportToken() : null);
-  let stepped = false;
+  const me = () => view().viewer.me ?? chosen();
+  const accountReports = () => {
+    const { viewer } = view();
+    return viewer.me !== null && (accountSeat() === viewer.me || viewer.via === 'claim');
+  };
+  // The player the account last stepped as (see accountStep): it steps again as another, or once a report is refused.
+  const [stepped, setStepped] = createSignal<string | null>(null);
   createEffect(() => {
-    const step = stepped ? null : accountStep(view(), { claim: ownClaim(), token: ownToken(), popId: events.popId() });
+    const as = view().viewer.me ?? '';
+    const step = stepped() === as ? null : accountStep(view(), { claim: ownClaim(), token: ownToken() });
     if (step) {
-      stepped = true;
-      void claimNow(step.claim, step.token);
+      setStepped(as);
+      void (step.token ? claimNow(step.claim, step.token) : seat(step.claim));
     }
   });
-  return { me: () => view().viewer.me ?? chosen(), claim: ownClaim, reportToken: ownToken, identified, forget };
+  return {
+    me,
+    claim: ownClaim,
+    reportToken: ownToken,
+    reports: () => ownToken() !== null || accountReports(),
+    identified,
+    forget,
+    /** A report was refused: the account's seat may have gone to another device since it last asked. */
+    recheck: () => setStepped(null)
+  };
 }
 
 function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
@@ -419,7 +480,8 @@ function EventBody(props: {
   view: TournamentView;
   session: Session | undefined;
   onView: (view: PublishedView) => void;
-  onLinked: () => void;
+  /** Asks the API who the viewer is, when the page has reason to think it changed. */
+  onWhoAmI: () => void;
   onUnlinked: () => void;
 }) {
   const [params, setParams] = useSearchParams<{ tab?: string }>();
@@ -427,10 +489,9 @@ function EventBody(props: {
   const [roundChoice, setRoundChoice] = createSignal<number | null>(null);
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal<string | null>(null);
-  const { me, claim, reportToken, identified, forget } = createMe(() => props.view, {
+  const { me, claim, reportToken, reports, identified, forget, recheck } = createMe(() => props.view, {
     onView: view => props.onView(view),
-    onLinked: () => props.onLinked(),
-    popId: () => props.session?.user?.popId
+    onLinked: () => props.onWhoAmI()
   });
   /** The account's Claim undone: gone from its History, and from this device. */
   async function unlink() {
@@ -450,6 +511,19 @@ function EventBody(props: {
   const tab = () => pickTab(tabs(), params.tab, props.view);
   // A memo: the bar is drawn from it, and a bar drawn again on every new copy drops the search mid-word.
   const started = createMemo(() => hasStarted(props.view.tournament));
+  // Whose list the account owns (see DecklistForm): the same owner in a new copy of the event reads nothing again.
+  const listOwner = createMemo(
+    () => {
+      const popId = props.session?.user?.popId;
+      const said = props.view.viewer.claim;
+      if (isSanctioned(props.view)) {
+        return popId ? { popId, firstName: '', lastName: '' } : null;
+      }
+      return said ? { popId: '', firstName: said.firstName ?? '', lastName: said.lastName ?? '' } : null;
+    },
+    null,
+    { equals: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
+  );
 
   const bar = (withRounds: boolean) => (
     <>
@@ -485,6 +559,7 @@ function EventBody(props: {
         me={me()}
         claim={claim()}
         reportToken={reportToken()}
+        reports={reports()}
         onIdentified={identified}
         onForget={forget}
         onView={props.onView}
@@ -493,6 +568,10 @@ function EventBody(props: {
         signedIn={Boolean(props.session?.user)}
         providers={props.session?.providers ?? []}
         onUnlink={unlink}
+        onStale={() => {
+          recheck();
+          props.onWhoAmI();
+        }}
       />
       <Tabs options={tabs()} selected={tab()} onSelect={value => setParams({ tab: value }, { replace: true })} />
       <Show when={tab() === 'pairings'}>
@@ -547,6 +626,7 @@ function EventBody(props: {
           archetypes={decksEnabled(props.view.settings)}
           format={props.view.settings.format}
           sanctioned={isSanctioned(props.view)}
+          owner={listOwner()}
         />
       </Show>
       <Show when={open()}>
@@ -684,7 +764,7 @@ export function PublicEvent(props: { code: string; session: Session | undefined 
         <Show when={!screen} fallback={<BigScreen view={v()} />}>
           <div class='tm-page tm-public'>
             <Hero view={v()} />
-            <EventBody view={v()} session={props.session} onView={take} onLinked={whoAmI} onUnlinked={unlinked} />
+            <EventBody view={v()} session={props.session} onView={take} onWhoAmI={whoAmI} onUnlinked={unlinked} />
           </div>
         </Show>
       )}

@@ -1850,6 +1850,53 @@ tr.is-in .tm-place {
   .tm-live-event-acts .btn:first-child {
     flex-basis: 100%;
   }
+  /* An event restacks to two lines, its name and players, then its status and
+     links, as the roster does: nothing waits off the side. */
+  .tm-host-table,
+  .tm-host-table tbody,
+  .tm-host-table td {
+    display: block;
+  }
+  .tm-host-table thead,
+  .tm-host-table .tm-wide-col {
+    display: none;
+  }
+  .tm-host-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas:
+      'name players'
+      'status actions';
+    align-items: center;
+    gap: 0 10px;
+    padding: 4px 14px;
+  }
+  .tm-host-table td {
+    padding: 0;
+    border: 0;
+    height: auto;
+    min-width: 0;
+  }
+  .tm-host-table .tm-host-name {
+    grid-area: name;
+  }
+  .tm-host-table .tm-host-players {
+    grid-area: players;
+  }
+  .tm-host-table .tm-host-players::after {
+    content: ' ' attr(data-unit);
+    color: var(--muted);
+  }
+  .tm-host-table .tm-host-status {
+    grid-area: status;
+  }
+  .tm-host-table .tm-extra-col {
+    grid-area: actions;
+    width: auto;
+  }
+  .tm-host-table .tm-row-actions {
+    margin-right: -8px;
+  }
 }
 
 /* ---------- Round header and clock ---------- */

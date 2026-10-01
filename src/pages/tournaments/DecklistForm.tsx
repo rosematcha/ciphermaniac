@@ -13,11 +13,11 @@
  * unlock it. A signed-in player's profile fills the form in, and once a
  * list is in at a sanctioned event, the account can take its POP ID ("Save
  * to my account"): sending a list never sets one, since a list may be sent
- * for a friend.
+ * for a friend. An account that owns its list sees it on any of its devices.
  */
 
 import { A } from '@solidjs/router';
-import { createEffect, createResource, createSignal, For, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, Show, untrack } from 'solid-js';
 import { type DeckSection, parseDecklist } from '../../../shared/tournament/decklist';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import { SETTINGS_LIMITS } from '../../../shared/tournament/view';
@@ -46,7 +46,15 @@ interface FormProps {
   format: string;
   /** Unsanctioned, the form asks for the name alone. */
   sanctioned: boolean;
+  /**
+   * Whose list the signed-in account owns here, when it is a player: its POP
+   * ID, or the full name of its Claim. A device that kept no list reads the
+   * account's with it, and no token.
+   */
+  owner: ListOwner | null;
 }
+
+type ListOwner = Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>;
 
 /** Who sent this device's list, and the token that reads it back. */
 interface Remembered {
@@ -72,10 +80,13 @@ function remember(code: string, value: Remembered | null) {
   }
 }
 
-/** This device's list, by the details and token it kept. */
-async function loadMine(code: string): Promise<Decklist | null> {
+/** This device's list, by the details and token it kept; on a device that kept none, the account's own. */
+async function loadMine([code, owner]: readonly [string, ListOwner | null]): Promise<Decklist | null> {
   const kept = recall(code);
-  return kept ? (await fetchMyDecklist(code, kept.profile, kept.token)).mine : null;
+  if (kept) {
+    return (await fetchMyDecklist(code, kept.profile, kept.token)).mine;
+  }
+  return owner ? (await fetchMyDecklist(code, owner, '')).mine : null;
 }
 
 const SECTION_LABELS: Record<DeckSection, string> = { pokemon: 'Pokémon', trainer: 'Trainer', energy: 'Energy' };
@@ -127,7 +138,11 @@ function missing(profile: PlayerProfile, deck: string, sanctioned: boolean): str
 function createDecklistForm(props: FormProps) {
   // eslint-disable-next-line solid/reactivity -- read once for the event the page opened on
   const kept = recall(props.code);
-  const [mine, { mutate }] = createResource(() => props.code, loadMine);
+  // Read again only for another owner, not for every new copy of the event the props come from; a device's own list has none.
+  const whose = createMemo(() => [props.code, kept ? null : props.owner] as const, undefined, {
+    equals: (a, b) => a[0] === b[0] && a[1] === b[1]
+  });
+  const [mine, { mutate }] = createResource(whose, loadMine);
   const [profile, setProfile] = createSignal<PlayerProfile>(kept?.profile ?? emptyProfile(latestValue(session)?.user));
   const [known, setKnown] = createSignal(kept !== null);
   const [deck, setDeck] = createSignal('');
@@ -139,15 +154,36 @@ function createDecklistForm(props: FormProps) {
   const parsed = () => parseDecklist(deck());
   const current = () => latestValue(mine) ?? null;
 
-  // The list the device sent fills the form, until the player starts changing it.
+  function fill(list: Decklist) {
+    setDeck(list.deck);
+    setArchetype(list.archetype);
+    const { popId, firstName, lastName, birthDate } = list;
+    setProfile({ popId, firstName, lastName, birthDate });
+    setKnown(true);
+  }
+  /** Another owner's list is another player's: the form starts again from it, or from nothing. */
+  function startAgain(list: Decklist | null) {
+    setTouched(false);
+    setRegistration(null);
+    if (list) {
+      fill(list);
+    } else {
+      setDeck('');
+      setArchetype(null);
+      setProfile(emptyProfile(latestValue(session)?.user));
+      setKnown(false);
+    }
+  }
+  // The list the device sent fills the form, until the player starts changing it; another owner's, once it is read.
+  let filledFor = untrack(whose);
   createEffect(() => {
     const existing = current();
-    if (existing && !touched()) {
-      setDeck(existing.deck);
-      setArchetype(existing.archetype);
-      const { popId, firstName, lastName, birthDate } = existing;
-      setProfile({ popId, firstName, lastName, birthDate });
-      setKnown(true);
+    const owner = whose();
+    if (mine.state === 'ready' && owner !== filledFor) {
+      filledFor = owner;
+      startAgain(existing);
+    } else if (existing && !touched()) {
+      fill(existing);
     }
   });
 
@@ -195,10 +231,11 @@ function createDecklistForm(props: FormProps) {
     mutate(null);
   }
 
-  async function withdraw() {
+  // The list shown is the one withdrawn, whatever the fields above it say now.
+  async function withdraw(list: Decklist) {
     setError(null);
     try {
-      await withdrawDecklist(props.code, profile(), recall(props.code)?.token ?? null);
+      await withdrawDecklist(props.code, list, recall(props.code)?.token ?? null);
       clearList();
     } catch (err) {
       fail(err);
@@ -391,14 +428,16 @@ function Foot(props: { form: DecklistState }) {
       <Show when={reason()}>{text => <span class='muted'>{text()}</span>}</Show>
       <span class='tm-grow' />
       <Show when={f().current()}>
-        <ConfirmAction
-          class='btn btn-ghost'
-          label='Withdraw'
-          question='Withdraw your decklist?'
-          confirmLabel='Withdraw'
-          danger
-          onConfirm={() => void f().withdraw()}
-        />
+        {list => (
+          <ConfirmAction
+            class='btn btn-ghost'
+            label='Withdraw'
+            question='Withdraw your decklist?'
+            confirmLabel='Withdraw'
+            danger
+            onConfirm={() => void f().withdraw(list())}
+          />
+        )}
       </Show>
       <p class='tm-decklist-note muted'>
         {f().current()

@@ -1,5 +1,5 @@
--- config/d1/tournaments.sql as it stood before migration 0005, the schema
--- a live database had when 0005 was written: the migration test applies 0005
+-- config/d1/tournaments.sql as it stood before migration 0006, the schema
+-- a live database had when 0006 was written: the migration test applies 0006
 -- to it and compares the result with a fresh tournaments.sql.
 
 -- D1 database `ciphermaniac-tournaments` (binding TOURNAMENT_DB): accounts,
@@ -67,6 +67,9 @@ CREATE TABLE IF NOT EXISTS tournaments (
 -- by every save, a second row written each time, and the organizer's list
 -- sorts its few rows itself.
 CREATE INDEX IF NOT EXISTS tournaments_of_owner ON tournaments (owner_id);
+-- Events not yet ended, for the sweep that ends one left idle (functions/api/tournaments/idle.ts).
+-- On the finished flag alone, which only an end or a reopen rewrites.
+CREATE INDEX IF NOT EXISTS tournaments_by_finished ON tournaments (coalesce(json_extract(settings, '$.finished'), 0));
 
 -- Who joined an event's staff through its invite link, and when, so the
 -- organizer can see everyone the link let in and remove one of them.

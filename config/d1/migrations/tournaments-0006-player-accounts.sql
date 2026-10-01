@@ -3,7 +3,7 @@
 -- reporter row or a decklist belongs to, the history index, and organizer
 -- applications with the proofs uploaded for them. Holds each POP ID to one
 -- account, clearing duplicates first, and makes Reese the first admin. Run
--- once, after 0004; SQLite refuses to add a column twice.
+-- once, after 0005; SQLite refuses to add a column twice.
 
 ALTER TABLE users ADD COLUMN role TEXT;
 ALTER TABLE users ADD COLUMN role_at INTEGER;
@@ -62,9 +62,9 @@ UPDATE users SET pop_id = NULL
            OR (earlier.created_at = users.created_at AND earlier.id < users.id)));
 CREATE UNIQUE INDEX IF NOT EXISTS users_by_pop_id ON users (pop_id) WHERE pop_id IS NOT NULL;
 
--- Reese is the first admin. Another admin is this same UPDATE by hand with
--- their email; no request grants admin rights. No event owner is made an
--- organizer here: Reese is the only account running events today. With no
--- account under this email yet, sign in once and run this UPDATE again.
+-- Reese's account is the first admin. Another admin is this same UPDATE by
+-- hand with their account's id; no request grants admin rights. No event
+-- owner is made an organizer here: Reese is the only account running events
+-- today.
 UPDATE users SET role = 'admin', role_at = CAST(strftime('%s', 'now') AS INTEGER) * 1000
- WHERE lower(email) = 'admin@example.com';
+ WHERE id = 'nR5TwUcAaKMoilB6';

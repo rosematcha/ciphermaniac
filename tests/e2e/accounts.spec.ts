@@ -312,7 +312,18 @@ function roundOne(sanctioned: boolean): Tournament {
 }
 
 /** The event page's API for an event where players report: the view, who the viewer is, and the asks it gets. */
-async function mockEvent(page: Page, t: Tournament, options: { sanctioned: boolean; user: typeof ME | null }) {
+async function mockEvent(
+  page: Page,
+  t: Tournament,
+  options: {
+    sanctioned: boolean;
+    user: typeof ME | null;
+    linked?: boolean;
+    refuse?: boolean;
+    /** The account holds the player's seat already, so a device asking with it is given no token. */
+    tokenless?: boolean;
+  }
+) {
   const code = 'LEAGUE';
   const keys = assignKeys(t, {});
   const published: PublishedView = {
@@ -329,11 +340,13 @@ async function mockEvent(page: Page, t: Tournament, options: { sanctioned: boole
   };
   const asks: { method: string; path: string; body: unknown }[] = [];
   const ash = t.players.find(p => p.lastName === 'Ketchum')?.id ?? '';
-  let linked = options.sanctioned && Boolean(options.user);
+  let linked = options.linked ?? (options.sanctioned && Boolean(options.user));
+  let reporter = true;
+  let held: Promise<void> | null = null;
   await page.route(`**/tournaments/v1/${code}.json`, route =>
     route.fulfill({ json: published, headers: { 'access-control-allow-origin': '*' } })
   );
-  await page.route('**/api/**', route => {
+  await page.route('**/api/**', async route => {
     const request = route.request();
     const { pathname } = new URL(request.url());
     asks.push({ method: request.method(), path: pathname, body: request.postDataJSON() as unknown });
@@ -341,9 +354,18 @@ async function mockEvent(page: Page, t: Tournament, options: { sanctioned: boole
       return route.fulfill({ json: { user: options.user, providers: ['google', 'discord'] } });
     }
     if (pathname === `/api/tournaments/${code}/report`) {
+      if ((options.refuse || !reporter) && (request.postDataJSON() as { result?: string }).result) {
+        return route.fulfill({ status: 403, json: { error: 'Someone else is already reporting for this player.' } });
+      }
       linked = Boolean(options.user);
       return route.fulfill({
-        json: { key: keys[ash], view: published, reporter: true, linked, reportToken: 'seat' }
+        json: {
+          key: keys[ash],
+          view: published,
+          reporter,
+          linked: linked && reporter,
+          ...(options.tokenless || !reporter ? {} : { reportToken: 'seat' })
+        }
       });
     }
     if (pathname === `/api/tournaments/${code}/claim`) {
@@ -352,13 +374,49 @@ async function mockEvent(page: Page, t: Tournament, options: { sanctioned: boole
     }
     if (pathname === `/api/tournaments/${code}`) {
       const via = options.sanctioned ? 'pop' : 'claim';
-      const viewer = { role: null, me: linked ? keys[ash] : null, via: linked ? via : null, signedIn: true };
+      const claim = options.sanctioned ? { popId: '1001' } : { lastName: 'Ketchum', firstName: 'Ash' };
+      const viewer = linked
+        ? { role: null, me: keys[ash], via, claim, signedIn: true }
+        : { role: null, me: null, via: null, signedIn: true };
+      // A held read answers as the account stood when it was asked.
+      const wait = held;
+      held = null;
+      await wait;
       return route.fulfill({ json: { ...published, viewer } });
     }
     return route.fulfill({ status: 404, json: { error: 'Not found' } });
   });
-  return { code, asks };
+  return {
+    code,
+    asks,
+    /** Staff release the player, or the account's Claim is made on another device. */
+    setLinked: (value: boolean) => {
+      linked = value;
+    },
+    /** Staff reset reporting for the player, and another device took the seat. */
+    takeSeat: () => {
+      reporter = false;
+    },
+    /** Holds the next read of the view until the returned function lets it go. */
+    holdNextRead: () => {
+      let release = () => undefined as void;
+      held = new Promise(resolve => {
+        release = resolve;
+      });
+      return release;
+    }
+  };
 }
+
+/** The tab hidden and shown again, as when the player comes back to it from another app. */
+const showAgain = (page: Page) =>
+  page.evaluate(() => {
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
+/** The full reads of the event page's API copy: who the viewer is. */
+const viewReads = (asks: { method: string; path: string }[], code: string) =>
+  asks.filter(a => a.method === 'GET' && a.path === `/api/tournaments/${code}`).length;
 
 test('signed in at an unsanctioned event, answering the question links the player, and Not you? undoes it @mobile', async ({
   page
@@ -392,6 +450,154 @@ test('signed in at a sanctioned event as the player by POP ID, there is no quest
     .poll(() => asks.filter(a => a.path.endsWith('/report')).map(a => (a.body as { popId?: string }).popId))
     .toEqual(['1001']);
   await expect(page.getByRole('button', { name: 'Report result' })).toBeVisible();
+});
+
+test('a Claim released or made elsewhere reaches the open page when it is shown again, at most every half minute', async ({
+  page
+}) => {
+  await page.clock.install();
+  const { code, asks, setLinked } = await mockEvent(page, roundOne(false), {
+    sanctioned: false,
+    user: { ...ME, popId: null },
+    linked: true
+  });
+  await page.goto(`/t/${code}`);
+  await expect(page.locator('.tm-you-who')).toContainText('Linked to your account');
+  setLinked(false);
+  await showAgain(page);
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
+  const reads = viewReads(asks, code);
+  setLinked(true);
+  await showAgain(page);
+  await page.clock.runFor(1000);
+  expect(viewReads(asks, code), 'shown again within the half minute, nothing more is asked').toBe(reads);
+  await page.clock.runFor(30_000);
+  await showAgain(page);
+  await expect(page.locator('.tm-you-who')).toContainText('Linked to your account');
+});
+
+test('a report refused as not the player’s asks again who the viewer is', async ({ page }) => {
+  const { code, asks } = await mockEvent(page, roundOne(true), {
+    sanctioned: true,
+    user: { ...ME, popId: '1001' },
+    refuse: true
+  });
+  await page.goto(`/t/${code}`);
+  await page.getByRole('button', { name: 'Report result' }).click();
+  const reads = viewReads(asks, code);
+  await page.getByRole('button', { name: 'I won' }).click();
+  await expect(page.getByRole('alert')).toContainText('Someone else is already reporting');
+  await expect.poll(() => viewReads(asks, code)).toBe(reads + 1);
+});
+
+test('a report refused once another device took the seat asks for it again, and stops offering to report', async ({
+  page
+}) => {
+  const { code, asks, takeSeat } = await mockEvent(page, roundOne(true), {
+    sanctioned: true,
+    user: { ...ME, popId: '1001' },
+    tokenless: true
+  });
+  await page.goto(`/t/${code}`);
+  await page.getByRole('button', { name: 'Report result' }).click();
+  takeSeat();
+  await showAgain(page);
+  await page.getByRole('button', { name: 'I won' }).click();
+  await expect(page.locator('p.tm-you-panel')).toContainText('Someone else is already reporting');
+  await expect(page.getByRole('button', { name: 'I won' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Report result' })).toHaveCount(0);
+  const seatAsks = asks.filter(a => a.path.endsWith('/report') && !(a.body as { result?: string }).result);
+  expect(seatAsks.map(a => (a.body as { popId?: string }).popId)).toEqual(['1001', '1001']);
+});
+
+test('an account whose POP ID is no longer the player’s stops being shown as them on this device', async ({ page }) => {
+  const { code, setLinked } = await mockEvent(page, roundOne(true), {
+    sanctioned: true,
+    user: { ...ME, popId: '1001' }
+  });
+  await page.goto(`/t/${code}`);
+  await expect(page.getByRole('button', { name: 'Report result' })).toBeVisible();
+  setLinked(false);
+  await showAgain(page);
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
+  await expect(page.locator('.tm-you-who')).toHaveCount(0);
+});
+
+test('a read of who the viewer is that lands after they unlink does not link them again', async ({ page }) => {
+  const { code, holdNextRead } = await mockEvent(page, roundOne(false), {
+    sanctioned: false,
+    user: { ...ME, popId: null },
+    linked: true
+  });
+  await page.goto(`/t/${code}`);
+  const who = page.locator('.tm-you-who');
+  await expect(who).toContainText('Linked to your account');
+  const release = holdNextRead();
+  const read = page.waitForRequest(
+    r => r.method() === 'GET' && new URL(r.url()).pathname === `/api/tournaments/${code}`
+  );
+  await showAgain(page);
+  await read;
+  await who.getByRole('button', { name: 'Not you?' }).click();
+  await page.getByRole('button', { name: 'Unlink' }).click();
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
+  const answered = page.waitForResponse(r => new URL(r.url()).pathname === `/api/tournaments/${code}`);
+  release();
+  await (await answered).finished();
+  await page.evaluate(
+    () =>
+      new Promise(resolve => {
+        setTimeout(resolve, 100);
+      })
+  );
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toBeVisible();
+  await expect(page.getByText('Linked to your account')).toHaveCount(0);
+});
+
+/** The result reports the page sent: what they said and the token with it. */
+const reportsSent = (asks: { path: string; body: unknown }[]) =>
+  asks
+    .filter(a => a.path.endsWith('/report') && (a.body as { result?: string }).result)
+    .map(a => {
+      const { popId, lastName, firstName, reportToken } = a.body as Record<string, unknown>;
+      return { popId, lastName, firstName, reportToken: reportToken ?? null };
+    });
+
+test('on a device that never asked, an account linked by its Claim reports as its player without the question @mobile', async ({
+  page
+}) => {
+  const { code, asks } = await mockEvent(page, roundOne(false), {
+    sanctioned: false,
+    user: { ...ME, popId: null },
+    linked: true,
+    tokenless: true
+  });
+  await page.goto(`/t/${code}`);
+  await expect(page.locator('.tm-you-who')).toContainText('Linked to your account');
+  await expect(page.getByRole('heading', { name: 'Which player are you?' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Report result' }).click();
+  await page.getByRole('button', { name: 'I won' }).click();
+  await expect
+    .poll(() => reportsSent(asks))
+    .toEqual([{ popId: undefined, lastName: 'Ketchum', firstName: 'Ash', reportToken: null }]);
+});
+
+test('on a device that never asked, an account that holds its player’s seat by POP ID reports without a token', async ({
+  page
+}) => {
+  const { code, asks } = await mockEvent(page, roundOne(true), {
+    sanctioned: true,
+    user: { ...ME, popId: '1001' },
+    tokenless: true
+  });
+  await page.goto(`/t/${code}`);
+  await expect(page.locator('.tm-you-who')).toContainText('Ash Ketchum');
+  await page.getByRole('button', { name: 'Report result' }).click();
+  await page.getByRole('button', { name: 'I won' }).click();
+  await expect
+    .poll(() => reportsSent(asks))
+    .toEqual([{ popId: '1001', lastName: undefined, firstName: undefined, reportToken: null }]);
+  await expect(page.getByText('Someone else is already reporting')).toHaveCount(0);
 });
 
 test('signed out, the question offers sign-in that comes back to the event', async ({ page }) => {
@@ -459,4 +665,135 @@ test('a signed-in player saves the POP ID their decklist went in under to their 
   await expect(page.locator('.tm-known').getByRole('status')).toHaveText('Saved');
   await expect(page.getByRole('button', { name: 'Save to my account' })).toHaveCount(0);
   expect(saved).toEqual([profile]);
+});
+
+/**
+ * An event taking decklists, whose functions hold a list for each of its two
+ * players, each read by whose it is and no token; the signed-in account owns
+ * the first, until `claim` makes its Claim the second's (unsanctioned).
+ */
+async function mockOwnList(page: Page, sanctioned: boolean) {
+  const code = 'DECKS2';
+  const players = [
+    { firstName: 'Mary', lastName: 'Jackson', popId: '1001', deck: '60 Grass Energy' },
+    { firstName: 'Ash', lastName: 'Ketchum', popId: '1002', deck: '60 Fire Energy' }
+  ];
+  const t = run(
+    emptyTournament({ name: 'Cup' }),
+    ...players.map(
+      ({ firstName, lastName, popId }) =>
+        ({ type: 'addPlayer', player: { firstName, lastName, ...(sanctioned ? { id: popId } : {}) } }) as Command
+    )
+  );
+  const keys = assignKeys(t, {});
+  const published: PublishedView = {
+    code,
+    mode: 'swiss',
+    version: 1,
+    updatedAt: 0,
+    tournament: publicTournament(t, keys, !sanctioned),
+    pending: [],
+    reports: [],
+    divisions: {},
+    decks: {},
+    settings: { ...DEFAULT_SETTINGS, decklists: 'open', sanctioned }
+  };
+  const listOf = (player: (typeof players)[number]) => ({
+    popId: sanctioned ? player.popId : '',
+    firstName: player.firstName,
+    lastName: player.lastName,
+    birthDate: sanctioned ? '02/27/1995' : '',
+    deck: player.deck,
+    archetype: null,
+    submittedAt: 0,
+    problems: [],
+    registered: true,
+    fromList: true,
+    locked: true
+  });
+  let owned = 0;
+  const viewerOf = (index: number) => {
+    const { firstName, lastName, popId } = players[index]!;
+    const me = keys[t.players[index]!.id];
+    return sanctioned
+      ? { role: null, me, via: 'pop', claim: { popId }, signedIn: true }
+      : { role: null, me, via: 'claim', claim: { firstName, lastName }, signedIn: true };
+  };
+  const lists: { method: string; query: Record<string, string> }[] = [];
+  await page.route(`**/tournaments/v1/${code}.json`, route =>
+    route.fulfill({ json: published, headers: { 'access-control-allow-origin': '*' } })
+  );
+  await page.route('**/api/**', route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname === '/api/me') {
+      return route.fulfill({ json: { user: { ...ME, popId: sanctioned ? '1001' : null }, providers: [] } });
+    }
+    if (url.pathname === `/api/tournaments/${code}/decklists`) {
+      const query = Object.fromEntries(url.searchParams);
+      lists.push({ method: request.method(), query });
+      const asked = players.findIndex(player =>
+        sanctioned
+          ? query.popId === player.popId
+          : query.lastName === player.lastName && query.firstName === player.firstName
+      );
+      const own = asked === owned && !query.token;
+      if (request.method() === 'DELETE') {
+        return route.fulfill({ status: own ? 204 : 409, json: own ? undefined : { error: 'Locked' } });
+      }
+      return route.fulfill({ json: { decklists: [], mine: own ? listOf(players[asked]!) : null } });
+    }
+    return route.fulfill({ json: { ...published, viewer: viewerOf(owned) } });
+  });
+  return {
+    code,
+    lists,
+    /** The account's Claim made the second player's, on another device. */
+    claim: () => {
+      owned = 1;
+    }
+  };
+}
+
+for (const sanctioned of [true, false]) {
+  test(`on a device that kept no list, the account sees and withdraws its own, ${sanctioned ? 'by its POP ID' : 'by its Claim'}`, async ({
+    page
+  }) => {
+    const { code, lists } = await mockOwnList(page, sanctioned);
+    await page.goto(`/t/${code}?tab=decklist`);
+    await expect(page.locator('.tm-decklist-status')).toContainText('Submitted');
+    await expect(page.locator('#deck-list')).toHaveValue('60 Grass Energy');
+    await page.getByRole('button', { name: 'Withdraw' }).click();
+    await page
+      .getByRole('group', { name: 'Withdraw your decklist?' })
+      .getByRole('button', { name: 'Withdraw' })
+      .click();
+    await expect(page.locator('.tm-decklist-status')).toContainText('Not submitted');
+    const owner = sanctioned ? { popId: '1001' } : { firstName: 'Mary', lastName: 'Jackson' };
+    expect(lists.map(ask => ask.method)).toEqual(['GET', 'DELETE']);
+    for (const ask of lists) {
+      expect(ask.query).toMatchObject(owner);
+      expect(ask.query.token).toBeUndefined();
+    }
+  });
+}
+
+test('a list whose owner changes while the form is being edited shows the new owner’s, and withdraws theirs', async ({
+  page
+}) => {
+  const { code, lists, claim } = await mockOwnList(page, false);
+  await page.goto(`/t/${code}?tab=decklist`);
+  const deck = page.locator('#deck-list');
+  await expect(deck).toHaveValue('60 Grass Energy');
+  await deck.fill('59 Grass Energy');
+  claim();
+  await showAgain(page);
+  await expect(deck).toHaveValue('60 Fire Energy');
+  await expect(page.locator('.tm-known')).toContainText('Ash Ketchum');
+  await page.getByRole('button', { name: 'Withdraw' }).click();
+  await page.getByRole('group', { name: 'Withdraw your decklist?' }).getByRole('button', { name: 'Withdraw' }).click();
+  await expect(page.locator('.tm-decklist-status')).toContainText('Not submitted');
+  expect(lists.filter(ask => ask.method === 'DELETE').map(ask => ask.query)).toEqual([
+    { popId: '', firstName: 'Ash', lastName: 'Ketchum' }
+  ]);
 });

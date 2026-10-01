@@ -11,6 +11,7 @@ import test, { mock } from 'node:test';
 
 import { DEFAULT_SETTINGS, type PublishedView, type TournamentView } from '../../shared/tournament/view.ts';
 import {
+  askOnReturn,
   createViewPoll,
   FALLBACK_MS,
   firstView,
@@ -327,5 +328,39 @@ test('a page back in view or back online looks at once, until it closes', () => 
     assert.equal(heard.size, 0);
   } finally {
     Object.assign(globals, before);
+  }
+});
+
+test('a page back in view asks who the viewer is at most every half minute, until it closes', () => {
+  const heard = new Map<string, () => void>();
+  const page = {
+    hidden: true,
+    addEventListener: (name: string, listener: () => void) => void heard.set(name, listener),
+    removeEventListener: (name: string) => void heard.delete(name)
+  };
+  const globals = globalThis as { document?: unknown };
+  const before = globals.document;
+  globals.document = page;
+  try {
+    let now = 0;
+    let asks = 0;
+    const forget = askOnReturn(
+      () => void (asks += 1),
+      () => now
+    );
+    heard.get('visibilitychange')?.();
+    assert.equal(asks, 0, 'going out of view is not a reason to ask');
+    page.hidden = false;
+    heard.get('visibilitychange')?.();
+    now = FALLBACK_MS - 1;
+    heard.get('visibilitychange')?.();
+    assert.equal(asks, 1, 'back again within the half minute asks nothing more');
+    now = FALLBACK_MS;
+    heard.get('visibilitychange')?.();
+    assert.equal(asks, 2);
+    forget();
+    assert.equal(heard.size, 0);
+  } finally {
+    globals.document = before;
   }
 });

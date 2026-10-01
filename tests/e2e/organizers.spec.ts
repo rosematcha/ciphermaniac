@@ -233,6 +233,18 @@ test('a refused upload says why, and a file over 8 MB is refused before it is se
   expect(asks.filter(a => a.method === 'PUT')).toHaveLength(1);
 });
 
+test('a refused upload after a removed one gives the focus back to the picker', async ({ page }) => {
+  await mockApplicant(page, NONE);
+  await page.goto('/apply');
+  const picker = page.getByLabel('Proof');
+  await picker.setInputFiles({ name: 'certificate.png', mimeType: 'image/png', buffer: PNG });
+  await page.getByRole('button', { name: 'Remove' }).click();
+  await expect(picker).toBeFocused();
+  await picker.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('text') });
+  await expect(page.getByRole('alert')).toHaveText('Use a PNG, JPEG, WebP or PDF');
+  await expect(picker).toBeFocused();
+});
+
 test('Send application waits for an upload in flight', async ({ page }) => {
   let land = () => undefined as void;
   const upload = new Promise<void>(resolve => {
@@ -403,6 +415,23 @@ test('/host: an account that is not an Organizer starts no event, applies instea
   await expect(page.getByRole('button', { name: 'Start an event' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Link .tdf file' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Thursday Locals' })).toHaveAttribute('href', '/host/OWNED1');
+});
+
+test('/host: on a phone, an event row keeps its links on screen without scrolling sideways @mobile', async ({
+  page
+}) => {
+  await mockHost(page, { ...ME, role: 'organizer' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/host');
+  const row = page.locator('.tm-host-table tbody tr').first();
+  for (const name of ['Results', 'Public page']) {
+    const box = await row.getByRole('link', { name }).boundingBox();
+    expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(390);
+  }
+  const wrap = page.locator('.tm-host-section .table-wrap').first();
+  expect(await wrap.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
+  await expect(row.locator('.tm-host-players')).toHaveAttribute('data-unit', 'players');
 });
 
 test('/host: a pending Application shows in place of the way to apply', async ({ page }) => {

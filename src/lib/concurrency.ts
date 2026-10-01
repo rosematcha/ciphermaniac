@@ -33,16 +33,22 @@ export function createLimiter(limit: number): <T>(job: () => Promise<T>) => Prom
   const waiting: (() => void)[] = [];
   return async job => {
     if (running >= limit) {
+      // A job that finishes hands its place straight to this one, so nothing turning up meanwhile can take it.
       await new Promise<void>(resolve => {
         waiting.push(resolve);
       });
+    } else {
+      running += 1;
     }
-    running += 1;
     try {
       return await job();
     } finally {
-      running -= 1;
-      waiting.shift()?.();
+      const next = waiting.shift();
+      if (next) {
+        next();
+      } else {
+        running -= 1;
+      }
     }
   };
 }
