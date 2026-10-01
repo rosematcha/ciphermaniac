@@ -50,11 +50,16 @@ interface Asked {
   body: unknown;
 }
 
+interface Options {
+  /** Holds an upload's answer until it settles. */
+  upload?: Promise<void>;
+}
+
 /** The applicant endpoints, holding the account's state as the functions would, and every ask they get. */
-async function mockApplicant(page: Page, start: ApplicationState, user: typeof ME | null = ME) {
+async function mockApplicant(page: Page, start: ApplicationState, user: typeof ME | null = ME, options: Options = {}) {
   const asks: Asked[] = [];
   let state = start;
-  await page.route('**/api/**', route => {
+  await page.route('**/api/**', async route => {
     const request = route.request();
     const method = request.method();
     const { pathname } = new URL(request.url());
@@ -67,6 +72,10 @@ async function mockApplicant(page: Page, start: ApplicationState, user: typeof M
       return route.fulfill({ json: state });
     }
     if (key === 'PUT /api/applications/proof') {
+      await options.upload;
+      if (request.postDataBuffer()?.subarray(0, 4).toString() === 'text') {
+        return route.fulfill({ status: 400, json: { error: 'Use a PNG, JPEG, WebP or PDF' } });
+      }
       const proof = { type: 'image/png', size: request.postDataBuffer()?.byteLength ?? 0 };
       state = { ...state, proof };
       return route.fulfill({ json: { proof } });
@@ -105,8 +114,11 @@ test('the apply page uploads the proof on pick, then sends it with the explanati
   await expect(page.locator('.tm-apply-file')).toContainText('certificate.png');
   await expect(page.locator('.tm-apply-file')).toContainText('1 KB');
   await expect(send).toBeEnabled();
+  // The picker it replaced held the focus, so the focus goes on to Remove, then back to the picker.
+  await expect(page.getByRole('button', { name: 'Remove' })).toBeFocused();
   await page.getByRole('button', { name: 'Remove' }).click();
   await expect(page.locator('.tm-apply-file')).toHaveCount(0);
+  await expect(page.getByLabel('Proof')).toBeFocused();
   await expect(send).toBeDisabled();
   await page.getByLabel('Proof').setInputFiles({ name: 'certificate.png', mimeType: 'image/png', buffer: PNG });
   await expect(page.getByRole('button', { name: 'Remove' })).toBeVisible();
@@ -198,6 +210,40 @@ test('signed out, the apply page offers sign-in that comes back to it', async ({
   await mockApplicant(page, NONE, null);
   await page.goto('/apply');
   await expect(page.getByRole('link', { name: 'Sign in with Google' })).toHaveAttribute('href', /next=%2Fapply/);
+});
+
+test('a refused upload says why, and a file over 8 MB is refused before it is sent', async ({ page }) => {
+  const asks = await mockApplicant(page, NONE);
+  await page.goto('/apply');
+  await page
+    .getByLabel('Proof')
+    .setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('text') });
+  await expect(page.getByRole('alert')).toHaveText('Use a PNG, JPEG, WebP or PDF');
+  await expect(page.getByRole('button', { name: 'Send application' })).toBeDisabled();
+  const big = Buffer.alloc(8 * 1024 * 1024 + 1);
+  await page.getByLabel('Proof').setInputFiles({ name: 'scan.pdf', mimeType: 'application/pdf', buffer: big });
+  await expect(page.getByRole('alert')).toHaveText('Up to 8 MB');
+  expect(asks.filter(a => a.method === 'PUT')).toHaveLength(1);
+});
+
+test('Send application waits for an upload in flight', async ({ page }) => {
+  let land = () => undefined as void;
+  const upload = new Promise<void>(resolve => {
+    land = resolve;
+  });
+  await mockApplicant(page, NONE, ME, { upload });
+  await page.goto('/apply');
+  const send = page.getByRole('button', { name: 'Send application' });
+  await page.getByLabel('Explanation').fill('I run a league.');
+  await expect(send).toBeEnabled();
+  await page.getByLabel('Proof').setInputFiles({ name: 'certificate.png', mimeType: 'image/png', buffer: PNG });
+  await expect(page.getByRole('status')).toHaveText('Uploading certificate.png');
+  await expect(send).toBeDisabled();
+  land();
+  await expect(page.getByRole('button', { name: 'Remove' })).toBeVisible();
+  await expect(send).toBeEnabled();
+  // The explanation being written keeps the focus when the upload lands.
+  await expect(page.getByLabel('Explanation')).toBeFocused();
 });
 
 // ---------- Settings: where the account stands ----------

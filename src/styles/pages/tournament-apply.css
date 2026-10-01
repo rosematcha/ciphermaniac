@@ -77,6 +77,10 @@
   font-weight: 600;
   overflow-wrap: anywhere;
 }
+.tm-apply-pick.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .tm-apply-pick:focus-within {
   outline: var(--focus-width) solid var(--accent);
   outline-offset: var(--focus-offset);
