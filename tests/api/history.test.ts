@@ -378,6 +378,27 @@ test('an account’s History lists the sanctioned events its POP ID plays in, as
   assert.deepEqual(await codesOf(player), [], 'a deleted event is gone');
 });
 
+test('an event is live in History once any of its pods has paired, not only its first', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  for (let i = 0; i < 6; i += 1) {
+    await send(code, owner, {
+      type: 'addPlayer',
+      player: { firstName: 'Junior', lastName: `${i}`, id: `${800 + i}`, birthDate: '02/27/2016' }
+    });
+  }
+  await addPlayers(code, owner, 6);
+  const player = await signIn('Player');
+  await saveProfile(player, '901');
+  await send(code, owner, { type: 'pairRound', pod: 'masters' });
+  const pods = (await loadTournament(db(), code))?.tournament.pods.map(pod => [pod.category, pod.rounds.length]);
+  assert.deepEqual(pods, [
+    ['junior', 0],
+    ['masters', 1]
+  ]);
+  assert.equal((await historyOf(player)).json.entries[0].status, 'live');
+});
+
 test('History follows the player list: removed, added late, by decklist, or by a TOM file and its syncs', async () => {
   const owner = await signIn('Organizer', 'organizer');
   const swiss = await newSwiss(owner);
