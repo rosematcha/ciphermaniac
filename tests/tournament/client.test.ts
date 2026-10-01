@@ -13,14 +13,17 @@ import {
   createSwiss,
   deleteTournament,
   fetchDecklists,
+  fetchHistory,
   fetchManage,
   fetchMyDecklist,
+  fetchProfile,
   fetchPublished,
   fetchSession,
   fetchStaff,
   fetchView,
   identifyPlayer,
   joinStaff,
+  leaveEvent,
   linkUrl,
   listTournaments,
   pairNextRound,
@@ -33,6 +36,7 @@ import {
   saveSettings,
   sendCommand,
   setDeck,
+  setPublicProfile,
   signInUrl,
   signOut,
   submitDecklist,
@@ -207,6 +211,20 @@ test('a published view asked for ahead of its page is read once, and only for th
   assert.equal(await fetchPublished('ABC'), null, 'a read that failed ahead of the page is an unreadable file');
 });
 
+test('History is the account’s own, and a finished event’s copy may come from the browser’s cache', async () => {
+  answer(200, { entries: [] });
+  assert.deepEqual(await fetchHistory(), { entries: [] });
+  assert.equal(sent[0]?.url, '/api/history');
+  const caches: (RequestCache | undefined)[] = [];
+  globalThis.fetch = (async (_url: string, init: RequestInit = {}) => {
+    caches.push(init.cache);
+    return Response.json({ code: 'ABC' });
+  }) as typeof fetch;
+  await fetchPublished('ABC', 'default');
+  await fetchPublished('ABC');
+  assert.deepEqual(caches, ['default', 'no-cache']);
+});
+
 test('a 204 answers null', async () => {
   answer(204, null);
   assert.equal(await fetchView('ABC', 3), null);
@@ -236,6 +254,24 @@ test('sign-in links carry where to return and the dev name', () => {
   assert.equal(signInUrl('google', '/host'), '/api/auth/login/google?next=%2Fhost');
   assert.equal(signInUrl('dev', '/t/ABC', 'Pat'), '/api/auth/login/dev?next=%2Ft%2FABC&name=Pat');
   assert.equal(linkUrl('discord'), '/api/auth/login/discord?next=%2Fsettings&link=1');
+});
+
+test('a public profile is read by its address, and turned on and off on the account', async () => {
+  answer(200, { name: 'Mary', avatar: null, entries: [] });
+  await fetchProfile('ABCD2345');
+  await setPublicProfile(true);
+  await setPublicProfile(false);
+  assert.deepEqual(sent, [
+    { url: '/api/profiles/ABCD2345', method: 'GET', body: undefined },
+    { url: '/api/me', method: 'PATCH', body: { publicProfile: true } },
+    { url: '/api/me', method: 'PATCH', body: { publicProfile: false } }
+  ]);
+});
+
+test('an account undoes its Claim at an event', async () => {
+  answer(204, null);
+  assert.equal(await leaveEvent('ABC'), null);
+  assert.deepEqual(sent, [{ url: '/api/tournaments/ABC/claim', method: 'DELETE', body: undefined }]);
 });
 
 test('account name uses the account endpoint', async () => {

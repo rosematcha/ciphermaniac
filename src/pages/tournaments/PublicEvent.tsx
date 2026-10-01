@@ -10,7 +10,6 @@
 
 import { useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, lazy, onCleanup, onMount, Show } from 'solid-js';
-import { parseTomDate } from '../../../shared/tournament/divisions';
 import { hasStarted, latestRound, livePods, playerPod, podOf, withSwiss } from '../../../shared/tournament/rounds';
 import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
 import type { Pod, PodCategory, Round } from '../../../shared/tournament/types';
@@ -25,7 +24,14 @@ import {
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { Tabs } from '../../components/Tabs';
-import { ApiError, fetchPublished, fetchView, identifyPlayer } from '../../lib/tournament/api';
+import {
+  ApiError,
+  fetchPublished,
+  fetchView,
+  identifyPlayer,
+  leaveEvent,
+  type Session
+} from '../../lib/tournament/api';
 import { ordinal } from '../../lib/format';
 import { latestValue } from '../../lib/resource';
 import { onChange } from '../../lib/tournament/changes';
@@ -39,6 +45,7 @@ import {
   SCREEN_POLL_MS,
   seesMoreThanPublished
 } from '../../lib/tournament/viewPoll';
+import { dayLabel, eventDay, playerResult } from '../../lib/tournament/history';
 import {
   divisionHeading,
   eventStatus,
@@ -46,7 +53,6 @@ import {
   firstRoundTime,
   namesById,
   podLabel,
-  podStandings,
   roundCapOf,
   roundLabel,
   STATUS_LABELS
@@ -71,7 +77,7 @@ type Tab = 'pairings' | 'standings' | 'decks' | 'decklist';
 const missing = (error: unknown) => error instanceof ApiError && error.status === 404;
 
 const sameViewer = (a: TournamentView['viewer'], b: TournamentView['viewer']) =>
-  a.role === b.role && a.me === b.me && a.signedIn === b.signedIn;
+  a.role === b.role && a.me === b.me && a.via === b.via && a.signedIn === b.signedIn;
 
 /**
  * The event, polled while the tab is visible (see lib/tournament/viewPoll.ts),
@@ -163,7 +169,14 @@ function createView(code: () => string, signedIn: () => boolean, options: { ever
     void fromApi(code())
       .then(accept)
       .catch(() => undefined);
-  return { view, take, whoAmI, retry: () => void reload() };
+  /** The account is no longer a player here, as its own undo just made it: no need to ask the API. */
+  function unlinked() {
+    const current = latestValue(view);
+    if (current) {
+      mutate({ ...current, viewer: { ...current.viewer, me: null, via: null } });
+    }
+  }
+  return { view, take, whoAmI, unlinked, retry: () => void reload() };
 }
 
 const meKey = (code: string) => `cm-tournament-me:${code}`;
@@ -188,12 +201,39 @@ function keep(key: string, value: string | null) {
 }
 
 /**
- * Which player the viewer is: the one their profile's Player ID matches, or
- * the one they proved on this device with a Player ID or last name (see
- * Identify). A player marked on this device before proof was asked for is
- * not taken on its word.
+ * What the device asks the server of its own accord once the page knows who
+ * is signed in, at most once a page: an account that is the player by its POP
+ * ID, where players report and this device holds no token for them, says so,
+ * so its account holds the reporting seat if nobody does; and a device that
+ * proved who it is before signing in, at an unsanctioned event, says so again
+ * with its token, which makes that player the account's Claim.
  */
-function createMe(view: () => TournamentView, onView: (view: PublishedView) => void, onLinked: () => void) {
+function accountStep(
+  view: TournamentView,
+  device: { claim: PlayerClaim | null; token: string | null; popId: string | null | undefined }
+): { claim: PlayerClaim; token?: string } | null {
+  const { viewer, settings } = view;
+  if (!viewer.signedIn || settings.finished) {
+    return null;
+  }
+  if (viewer.via === 'pop' && device.popId && settings.playerReporting && !device.token) {
+    return { claim: { popId: device.popId } };
+  }
+  const { claim, token } = device;
+  return viewer.via === null && !isSanctioned(view) && claim && token ? { claim, token } : null;
+}
+
+/**
+ * Which player the viewer is: the one their account is (by its POP ID, or
+ * its Claim), or the one they proved on this device with a Player ID or last
+ * name (see Identify). A player marked on this device before proof was asked
+ * for is not taken on its word, and what this device proved for another
+ * player says nothing for the account's.
+ */
+function createMe(
+  view: () => TournamentView,
+  events: { onView: (view: PublishedView) => void; onLinked: () => void; popId: () => string | null | undefined }
+) {
   const code = () => view().code;
   const stored = storedClaim(code());
   const [claim, setClaim] = createSignal(stored);
@@ -208,10 +248,10 @@ function createMe(view: () => TournamentView, onView: (view: PublishedView) => v
     const token = found.reportToken ?? (found.reporter === false ? null : reportToken());
     keep(tokenKey(code()), token);
     setReportToken(token);
-    onView(found.view);
+    events.onView(found.view);
     // A Claim just made is news to the page's copy, which says who the viewer is as of its last API read.
     if (found.linked && view().viewer.me !== found.key) {
-      onLinked();
+      events.onLinked();
     }
   }
   function forget() {
@@ -221,8 +261,8 @@ function createMe(view: () => TournamentView, onView: (view: PublishedView) => v
     setReportToken(null);
   }
   // A device that said who the player is before reporting took a token asks for one now, if nobody has it.
-  async function claimNow(said: PlayerClaim) {
-    const answer = await identifyPlayer(code(), said).catch(() => null);
+  async function claimNow(said: PlayerClaim, token?: string) {
+    const answer = await identifyPlayer(code(), said, token).catch(() => null);
     if (answer?.key) {
       identified({ ...answer, claim: said, key: answer.key });
     }
@@ -233,7 +273,19 @@ function createMe(view: () => TournamentView, onView: (view: PublishedView) => v
       void claimNow(said);
     }
   });
-  return { me: () => view().viewer.me ?? chosen(), claim, reportToken, identified, forget };
+  // What this device proved counts only for the player the account is, when it is one.
+  const own = () => !view().viewer.me || chosen() === view().viewer.me;
+  const ownClaim = () => (own() ? claim() : null);
+  const ownToken = () => (own() ? reportToken() : null);
+  let stepped = false;
+  createEffect(() => {
+    const step = stepped ? null : accountStep(view(), { claim: ownClaim(), token: ownToken(), popId: events.popId() });
+    if (step) {
+      stepped = true;
+      void claimNow(step.claim, step.token);
+    }
+  });
+  return { me: () => view().viewer.me ?? chosen(), claim: ownClaim, reportToken: ownToken, identified, forget };
 }
 
 function tabsFor(view: TournamentView): { value: Tab; label: string }[] {
@@ -298,15 +350,10 @@ function OpenPlayer(props: {
     return p ? swissStandings(p, props.view.tournament.players) : [];
   });
   const records = createMemo(() => new Map(standings().map(row => [row.playerId, recordLabel(row.record)])));
+  // The place History gives the same player (see playerResult).
   const place = createMemo(() => {
-    const p = pod();
-    const divisionOf = (id: string) => props.view.divisions[id] ?? 'masters';
-    const row = p
-      ? podStandings(props.view.tournament, p, divisionOf)
-          .flatMap(group => group.rows)
-          .find(r => r.playerId === props.id)
-      : undefined;
-    return row && p?.rounds.length ? `${ordinal(row.place)} in ${division()}` : `${division()} · Registered`;
+    const at = playerResult(props.view, props.id)?.place;
+    return at ? `${ordinal(at)} in ${division()}` : `${division()} · Registered`;
   });
   return (
     <Show when={pod()}>
@@ -368,17 +415,29 @@ function RegisteredList(props: {
   );
 }
 
-function EventBody(props: { view: TournamentView; onView: (view: PublishedView) => void; onLinked: () => void }) {
+function EventBody(props: {
+  view: TournamentView;
+  session: Session | undefined;
+  onView: (view: PublishedView) => void;
+  onLinked: () => void;
+  onUnlinked: () => void;
+}) {
   const [params, setParams] = useSearchParams<{ tab?: string }>();
   const [podChoice, setPodChoice] = createSignal<PodCategory | null>(null);
   const [roundChoice, setRoundChoice] = createSignal<number | null>(null);
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal<string | null>(null);
-  const { me, claim, reportToken, identified, forget } = createMe(
-    () => props.view,
-    view => props.onView(view),
-    () => props.onLinked()
-  );
+  const { me, claim, reportToken, identified, forget } = createMe(() => props.view, {
+    onView: view => props.onView(view),
+    onLinked: () => props.onLinked(),
+    popId: () => props.session?.user?.popId
+  });
+  /** The account's Claim undone: gone from its History, and from this device. */
+  async function unlink() {
+    await leaveEvent(props.view.code);
+    forget();
+    props.onUnlinked();
+  }
   const pods = () => props.view.tournament.pods;
   const myPod = () => podOf(props.view.tournament, me() ?? '')?.category ?? null;
   const pod = createMemo(
@@ -431,6 +490,9 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
         onView={props.onView}
         onPlayer={setOpen}
         firstRound={firstRoundTime(props.view.settings.startsAt)}
+        signedIn={Boolean(props.session?.user)}
+        providers={props.session?.providers ?? []}
+        onUnlink={unlink}
       />
       <Tabs options={tabs()} selected={tab()} onSelect={value => setParams({ tab: value }, { replace: true })} />
       <Show when={tab() === 'pairings'}>
@@ -505,26 +567,10 @@ function EventBody(props: { view: TournamentView; onView: (view: PublishedView) 
   );
 }
 
-const sameYear = (date: Date) => date.getFullYear() === new Date().getFullYear();
-
-/** "Sat, Oct 3", with the year only outside this one. */
-const dayLabel = (date: Date, timeZone?: string) =>
-  date.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    ...(sameYear(date) ? {} : { year: 'numeric' }),
-    ...(timeZone ? { timeZone } : {})
-  });
-
-/** One date format across the page: the organizer's start time, else TOM's start date. */
+/** One date format across the page: the organizer's start time, else TOM's start date (see eventDay). */
 function eventDate(startsAt: string, startDate: string): string {
-  if (startsAt) {
-    const date = new Date(startsAt);
-    return `${dayLabel(date)} · ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
-  }
-  const tom = parseTomDate(startDate);
-  return tom ? dayLabel(tom, 'UTC') : '';
+  const day = eventDay(startsAt, startDate);
+  return startsAt ? `${day} · ${firstRoundTime(startsAt) ?? ''}` : day;
 }
 
 /** When the page last changed: a time today, a date before that. */
@@ -586,15 +632,18 @@ function Hero(props: { view: TournamentView }) {
   );
 }
 
-/** `signedIn`: whether an account is signed in, which the page's own copy of the event cannot say (see createView). */
-export function PublicEvent(props: { code: string; signedIn: boolean }) {
+/**
+ * `session`: who is signed in, which the page's own copy of the event cannot
+ * say (see createView), and the sign-ins the server offers.
+ */
+export function PublicEvent(props: { code: string; session: Session | undefined }) {
   const [params] = useSearchParams<{ screen?: string }>();
   // The page is the big screen or not for as long as it is open.
   const screen = params.screen === '1';
   // The big screen draws no decks, so it reads the published file even in a staff browser.
-  const { view, take, whoAmI, retry } = createView(
+  const { view, take, whoAmI, unlinked, retry } = createView(
     () => props.code,
-    () => props.signedIn,
+    () => Boolean(props.session?.user),
     {
       every: screen ? SCREEN_POLL_MS : POLL_MS,
       decks: !screen
@@ -635,7 +684,7 @@ export function PublicEvent(props: { code: string; signedIn: boolean }) {
         <Show when={!screen} fallback={<BigScreen view={v()} />}>
           <div class='tm-page tm-public'>
             <Hero view={v()} />
-            <EventBody view={v()} onView={take} onLinked={whoAmI} />
+            <EventBody view={v()} session={props.session} onView={take} onLinked={whoAmI} onUnlinked={unlinked} />
           </div>
         </Show>
       )}

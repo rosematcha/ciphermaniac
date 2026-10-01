@@ -1746,6 +1746,36 @@ tr.is-in .tm-place {
   margin: 0;
   font-size: var(--text-base);
 }
+/* Wider than a phone, the page is a centered column and the identity one line:
+   avatar, then name over linked accounts, then the actions at the right. */
+@media (min-width: 641px) {
+  .tm-settings {
+    max-width: 720px;
+    margin-inline: auto;
+  }
+  .tm-identity {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    justify-items: start;
+    column-gap: var(--space-4);
+    padding: var(--space-4) 0;
+    text-align: left;
+  }
+  .tm-identity > :first-child {
+    grid-row: 1 / span 2;
+  }
+  .tm-identity h1 {
+    grid-column: 2;
+  }
+  .tm-identity-acts {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+  .tm-identity-links {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
 .tm-link-inline {
   color: var(--accent-ink);
 }

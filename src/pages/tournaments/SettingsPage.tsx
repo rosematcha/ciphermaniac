@@ -1,39 +1,37 @@
 /**
  * /settings (and the older /account). Signed in: who you are (a small
- * picture or initial, your name, your events, sign out, and which sign-ins
- * are linked), your account name, and the player profile that decklists and
- * "find my table" fill themselves in from. Signed out: one box to sign in,
- * which only organizers and staff need.
+ * picture or initial, your name, your events, the admin page for an admin,
+ * sign out, and which sign-ins are linked), your account name, the player
+ * profile that decklists and "find my table" fill themselves in from, and
+ * History: the way to it, and whether it is public at /u/<address>. A POP ID
+ * another account holds is refused, with the way to the feedback form, where
+ * an admin settles who holds it. Signed out: one box to sign in.
  */
 
 import { A, useNavigate, useSearchParams } from '@solidjs/router';
 import { createEffect, createSignal, For, onMount, Show } from 'solid-js';
+import { isAdmin } from '../../../shared/accounts/roles';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import {
+  ApiError,
   errorText,
   linkUrl,
   type Me,
   type Provider,
   saveAccountName,
   saveProfile,
+  setPublicProfile,
   signOut
 } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
+import { Avatar } from './Avatar';
 import { ErrorLine } from './Field';
 import { emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
 import { refreshSession, session, setSession } from './session';
+import { SettingRow, Toggle } from './SettingControls';
 import { SignIn } from './SignIn';
 
 const PROVIDER_NAMES: Record<Exclude<Provider, 'dev'>, string> = { google: 'Google', discord: 'Discord' };
-
-/** A small picture, or the name's initial where the provider gave none. */
-function Avatar(props: { user: Me }) {
-  return (
-    <Show when={props.user.avatar} fallback={<span class='tm-avatar tm-initial'>{props.user.name.slice(0, 1)}</span>}>
-      {src => <img class='tm-avatar' src={src()} alt='' width='40' height='40' />}
-    </Show>
-  );
-}
 
 function Identity(props: { user: Me; providers: readonly Provider[] }) {
   const navigate = useNavigate();
@@ -45,12 +43,17 @@ function Identity(props: { user: Me; providers: readonly Provider[] }) {
   const offered = () => (['google', 'discord'] as const).filter(provider => props.providers.includes(provider));
   return (
     <section class='tm-identity'>
-      <Avatar user={props.user} />
+      <Avatar name={props.user.name} src={props.user.avatar} />
       <h1>{props.user.name}</h1>
       <div class='tm-identity-acts'>
         <A class='btn btn-secondary' href='/host'>
           Your events
         </A>
+        <Show when={isAdmin(props.user.role)}>
+          <A class='btn btn-secondary' href='/admin'>
+            Admin
+          </A>
+        </Show>
         <button type='button' class='btn btn-ghost' onClick={() => void leave()}>
           Sign out
         </button>
@@ -127,6 +130,8 @@ function Profile(props: { user: Me }) {
   const [touched, setTouched] = createSignal(false);
   const [status, setStatus] = createSignal<'idle' | 'saving' | 'saved'>('idle');
   const [error, setError] = createSignal<string | null>(null);
+  /** Whether the POP ID was refused as another account's, which the feedback form is the way to settle. */
+  const [clash, setClash] = createSignal(false);
   createEffect(() => {
     if (!touched()) {
       setProfile(emptyProfile(props.user));
@@ -142,12 +147,14 @@ function Profile(props: { user: Me }) {
     }
     setStatus('saving');
     setError(null);
+    setClash(false);
     try {
       const { user } = await saveProfile(profile());
       setSession(prev => (prev ? { ...prev, user } : prev));
       setStatus('saved');
     } catch (err) {
       setError(errorText(err));
+      setClash(err instanceof ApiError && err.body?.popIdTaken === true);
       setStatus('idle');
     }
   }
@@ -156,7 +163,6 @@ function Profile(props: { user: Me }) {
     <section>
       <h2 class='tm-subhead tm-box-head'>Player profile</h2>
       <form class='tm-box' onSubmit={event => void save(event)}>
-        <p class='tm-box-bar muted'>Filled in automatically when you submit a decklist or look for your table.</p>
         <div class='tm-box-bar tm-profile-bar'>
           <ProfileFields
             idPrefix='settings'
@@ -180,6 +186,87 @@ function Profile(props: { user: Me }) {
           </button>
         </div>
       </form>
+      <Show when={clash()} fallback={<ErrorLine message={error()} />}>
+        <p class='tm-error' role='alert'>
+          {error()}
+          <span class='dot' aria-hidden='true'>
+            {' · '}
+          </span>
+          <A class='tm-link-inline' href='/feedback?from=/settings'>
+            Feedback
+          </A>
+        </p>
+      </Show>
+    </section>
+  );
+}
+
+/** The public profile's address in full, as it is shared. */
+const profileUrl = (slug: string) => `${location.origin}/u/${slug}`;
+
+/**
+ * History: the way to it, and the public profile, off unless the account
+ * turns it on; on, its link and a way to copy it. Turned off and on again,
+ * the profile gets a new address, so an old shared link stays dead.
+ */
+function HistorySection(props: { user: Me }) {
+  const [busy, setBusy] = createSignal(false);
+  const [copied, setCopied] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+  async function turn(on: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      const { user } = await setPublicProfile(on);
+      setSession(prev => (prev ? { ...prev, user } : prev));
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function copy(slug: string) {
+    await navigator.clipboard.writeText(profileUrl(slug));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+  return (
+    <section>
+      <h2 class='tm-subhead tm-box-head'>History</h2>
+      <div class='tm-box'>
+        <SettingRow label='Your history'>
+          <A class='btn btn-secondary' href='/history'>
+            View history
+          </A>
+        </SettingRow>
+        <SettingRow label='Public profile'>
+          <span class='tm-set-inline' aria-busy={busy()}>
+            <Toggle
+              label='Public profile'
+              value={props.user.publicSlug !== null}
+              onChange={on => {
+                if (!busy()) {
+                  void turn(on);
+                }
+              }}
+            />
+          </span>
+        </SettingRow>
+        <Show when={props.user.publicSlug}>
+          {slug => (
+            <SettingRow label='Profile link'>
+              <span class='tm-set-inline tm-profile-link'>
+                <A class='tm-link-inline tm-num' href={`/u/${slug()}`}>
+                  {profileUrl(slug()).replace(/^https?:\/\//, '')}
+                </A>
+                <button type='button' class='btn btn-secondary' onClick={() => void copy(slug())}>
+                  {copied() ? 'Copied' : 'Copy'}
+                </button>
+              </span>
+            </SettingRow>
+          )}
+        </Show>
+      </div>
       <ErrorLine message={error()} />
     </section>
   );
@@ -231,6 +318,7 @@ export function SettingsPage() {
                 <Identity user={user()} providers={s().providers} />
                 <AccountName user={user()} />
                 <Profile user={user()} />
+                <HistorySection user={user()} />
               </>
             )}
           </Show>

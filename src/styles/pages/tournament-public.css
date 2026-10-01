@@ -73,12 +73,20 @@
 }
 .tm-you-who {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
   padding: 6px 8px 6px 14px;
   border-top: 1px solid var(--rule);
   font-size: var(--text-sm);
+}
+/* Who it is keeps its line; asked to unlink, the question takes the next one rather than squeezing it. */
+.tm-you-who > .muted {
+  flex: 1 1 14em;
+}
+.tm-you-who > .tm-confirm {
+  margin-left: auto;
 }
 .tm-you-ask {
   display: grid;
@@ -89,6 +97,20 @@
   margin: 0;
   font-size: var(--text-lg);
   font-weight: 600;
+}
+/* Sign-in, a link set under the question, so the form stays the box's one step. */
+.tm-you-signin {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 .tm-identify {
   display: flex;
@@ -132,7 +154,8 @@
   }
   .tm-you-end .btn,
   .tm-you-who .btn,
-  .tm-identify .btn {
+  .tm-identify .btn,
+  .tm-you-signin {
     min-height: 44px;
   }
   .tm-identify .tm-field,

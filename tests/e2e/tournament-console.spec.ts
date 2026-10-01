@@ -2,8 +2,9 @@
  * A Swiss event's console and big screen against mocked functions: a double
  * click on a player records their win at once, the console's head offers the
  * top cut, another round and ending the event once the planned rounds are
- * played, decks are named from the pairings, and the big screen marks each
- * table's winner as results come in.
+ * played, decks are named from the pairings, the big screen marks each
+ * table's winner as results come in, and staff can unlink a player from an
+ * account at an unsanctioned event.
  * The event is built with the same shared commands the functions apply.
  */
 
@@ -372,4 +373,25 @@ test('a division that cut from a shared pod plays its own bracket, and the share
   await expect(page.getByRole('button', { name: 'End event' })).toHaveClass(/btn-secondary/);
   await page.getByRole('button', { name: 'Start top cut' }).click();
   await expect.poll(() => sent.at(-1)).toMatchObject({ type: 'startTopCut', pod: 'junior-senior', division: 'junior' });
+});
+
+test('at an unsanctioned event where players do not report, staff can unlink a player from an account', async ({
+  page
+}) => {
+  const released: string[] = [];
+  page.on('request', request => {
+    if (request.method() === 'DELETE') {
+      released.push(new URL(request.url()).search);
+    }
+  });
+  const t = event(4, 0, false);
+  await mockConsole(page, t, settingsOf({ playerReporting: false }));
+  await page.getByRole('tab', { name: 'Players' }).click();
+  await expect(page.getByRole('button', { name: 'Reset reporting' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Unlink account' }).first().click();
+  await page
+    .getByRole('group', { name: /from their account\?$/ })
+    .getByRole('button', { name: 'Unlink' })
+    .click();
+  await expect.poll(() => released).toEqual([`?player=${t.players[0]?.id ?? ''}`]);
 });

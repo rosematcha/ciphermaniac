@@ -8,18 +8,21 @@
  * they are registered; once the event ends, where they placed.
  *
  * The viewer says who they are once (see Identify), and the device
- * remembers it; the page holds that (see PublicEvent).
+ * remembers it; the page holds that (see PublicEvent). A signed-in account
+ * that is the player is not asked: by its POP ID at a sanctioned event, or
+ * by its Claim at an unsanctioned one, which it can undo from here. A
+ * signed-out player is offered sign-in under the question.
  */
 
 import { ordinal } from '../../lib/format';
-import { createEffect, createSignal, For, Match, Show, Switch } from 'solid-js';
+import { createEffect, createSignal, For, lazy, Match, Show, Suspense, Switch } from 'solid-js';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
 import type { PlayerResult } from '../../../shared/tournament/reports';
 import { recordLabel, sideResult } from '../../../shared/tournament/standings';
 import { hasStarted, podOf, withSwiss } from '../../../shared/tournament/rounds';
 import type { Pod, Round, Match as TableMatch } from '../../../shared/tournament/types';
 import { isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
-import { errorText, identifyPlayer, reportAsPlayer } from '../../lib/tournament/api';
+import { errorText, identifyPlayer, type Provider, reportAsPlayer } from '../../lib/tournament/api';
 import {
   currentMatchOf,
   divisionHeading,
@@ -30,9 +33,13 @@ import {
   shownOutcome
 } from '../../lib/tournament/present';
 import { Clock } from './Clock';
+import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { type Identified, IdentifyForm } from './Identify';
 import { createNow } from './now';
+
+// Loaded on asking: most players never sign in from here, and Settings has these already.
+const SignIn = lazy(() => import('./SignIn').then(m => ({ default: m.SignIn })));
 
 const SAID: Record<PlayerResult, string> = { win: 'won', loss: 'lost', tie: 'tied' };
 
@@ -60,12 +67,37 @@ interface Props {
   onPlayer?: (id: string) => void;
   /** The start of round 1, formatted, or null when unset. */
   firstRound: string | null;
+  /** Whether an account is signed in, which the page's copy of the event cannot say until the API answers. */
+  signedIn: boolean;
+  /** The sign-ins the server offers, for a player who is signed out. */
+  providers: readonly Provider[];
+  /** Ends the signed-in account's Claim on the player, then forgets it on this device. */
+  onUnlink: () => Promise<void>;
 }
 
 interface Found {
   pod: Pod;
   round: Round;
   match: TableMatch;
+}
+
+/** Sign-in, asked for in place: a link until pressed, then the providers, coming back to the event. */
+function SignInHere(props: { code: string; providers: readonly Provider[] }) {
+  const [open, setOpen] = createSignal(false);
+  return (
+    <Show
+      when={open()}
+      fallback={
+        <button type='button' class='tm-link-inline tm-you-signin' onClick={() => setOpen(true)}>
+          Sign in
+        </button>
+      }
+    >
+      <Suspense>
+        <SignIn providers={props.providers} next={`/t/${props.code}`} />
+      </Suspense>
+    </Show>
+  );
 }
 
 /** "Which player are you?", where players report and a round is on. */
@@ -79,6 +111,9 @@ function WhichPlayer(props: Props) {
         Enter your {sanctioned() ? 'Player ID' : 'last name'} to see your table and report your result. This phone will
         remember you.
       </p>
+      <Show when={!props.signedIn}>
+        <SignInHere code={props.view.code} providers={props.providers} />
+      </Show>
     </section>
   );
 }
@@ -360,16 +395,57 @@ function MatchBox(props: Props & { me: string }) {
           />
         )}
       </Show>
+      <WhoLine {...props} division={division()} />
+    </section>
+  );
+}
+
+/**
+ * Who the box is for, and the way out when it is someone else's: forgetting
+ * them on this device, or for an account's Claim, undoing it. An account
+ * that is the player by its POP ID is that player wherever it signs in.
+ */
+function WhoLine(props: Props & { me: string; division: string }) {
+  const [error, setError] = createSignal<string | null>(null);
+  // How the signed-in account is this player, if it is: by its POP ID, or by its Claim.
+  const via = () => (props.view.viewer.me === props.me ? props.view.viewer.via : null);
+  async function unlink() {
+    setError(null);
+    try {
+      await props.onUnlink();
+    } catch (err) {
+      setError(errorText(err));
+    }
+  }
+  return (
+    <>
       <div class='tm-you-who'>
         <span class='muted'>
           {namesById(props.view.tournament).get(props.me)}
-          {division() ? ` · ${division()}` : ''}
+          {props.division ? ` · ${props.division}` : ''}
+          {via() === 'claim' ? ' · Linked to your account' : ''}
         </span>
-        <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onForget()}>
-          Not you?
-        </button>
+        <Switch
+          fallback={
+            <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onForget()}>
+              Not you?
+            </button>
+          }
+        >
+          <Match when={via() === 'pop'}>{null}</Match>
+          <Match when={via() === 'claim'}>
+            <ConfirmAction
+              label='Not you?'
+              question='Unlink from your account?'
+              confirmLabel='Unlink'
+              danger
+              onConfirm={() => void unlink()}
+            />
+          </Match>
+        </Switch>
       </div>
-    </section>
+      <ErrorLine message={error()} />
+    </>
   );
 }
 
@@ -382,9 +458,11 @@ function MatchBox(props: Props & { me: string }) {
 export function YourMatch(props: Props) {
   const reporting = () => props.view.settings.playerReporting;
   const live = () => !props.view.settings.finished && hasStarted(props.view.tournament);
+  // An account that is the player needs no proof from this device to be shown its table.
+  const known = () => props.me !== null && (props.claim !== null || props.view.viewer.me === props.me);
   return (
     <Switch>
-      <Match when={reporting() && live() && (!props.claim || !props.me)}>
+      <Match when={reporting() && live() && !known()}>
         <WhichPlayer {...props} />
       </Match>
       <Match when={props.me}>{me => <MatchBox {...props} me={me()} claim={reporting() ? props.claim : null} />}</Match>

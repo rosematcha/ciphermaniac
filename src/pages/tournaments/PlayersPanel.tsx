@@ -153,11 +153,32 @@ function FixedTableCell(props: { state: ManageState; player: Player }) {
 }
 
 /**
+ * Lets another device report for a player, as when they change phones or
+ * someone else claimed them first, where players report. At an unsanctioned
+ * event the same release undoes the Claim a signed-in account made on the
+ * player, reporting or not, and there it reads as unlinking them. Staff are
+ * not shown which players an account holds.
+ */
+function ReleaseAction(props: { state: ManageState; manage: Manage; player: Player }) {
+  const reporting = () => props.manage.settings.playerReporting && props.player.droppedAfter === null;
+  const name = () => playerName(props.player);
+  return (
+    <Show when={reporting() || !isSanctioned(props.manage)}>
+      <ConfirmAction
+        label={reporting() ? 'Reset reporting' : 'Unlink account'}
+        question={reporting() ? `Let another device report for ${name()}?` : `Unlink ${name()} from their account?`}
+        confirmLabel={reporting() ? 'Reset' : 'Unlink'}
+        onConfirm={() => void props.state.act(releaseReporter(props.manage.code, props.player.id))}
+      />
+    </Show>
+  );
+}
+
+/**
  * Drop, reinstate, remove (only before the player's first match: after it
  * they are dropped). A drop can be taken back only until the next round
- * is paired (see undropPlayer in shared/tournament/commands.ts). Where players
- * report, staff can also let another device report for a player, as when
- * they change phones or someone else claimed them first.
+ * is paired (see undropPlayer in shared/tournament/commands.ts). Staff can
+ * also free the player for another device or account (see ReleaseAction).
  */
 function PlayerActions(props: { state: ManageState; manage: Manage; player: Player }) {
   const send = (type: 'dropPlayer' | 'undropPlayer' | 'removePlayer') =>
@@ -180,14 +201,7 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             Reinstate
           </button>
         </Show>
-        <Show when={props.manage.settings.playerReporting && dropped() === null}>
-          <ConfirmAction
-            label='Reset reporting'
-            question={`Let another device report for ${playerName(props.player)}?`}
-            confirmLabel='Reset'
-            onConfirm={() => void props.state.act(releaseReporter(props.manage.code, props.player.id))}
-          />
-        </Show>
+        <ReleaseAction state={props.state} manage={props.manage} player={props.player} />
         {/* Once paired, a player is dropped rather than removed, so their opponents keep the match. */}
         <Show when={!hasPlayed(pod(), props.player.id)}>
           <ConfirmAction
