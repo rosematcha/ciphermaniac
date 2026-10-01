@@ -88,8 +88,9 @@ export function newCode(length = CODE_LENGTH, random: () => number = Math.random
   return code;
 }
 
-export function isCode(value: string): boolean {
-  return value.length === CODE_LENGTH && [...value].every(char => CODE_ALPHABET.includes(char));
+/** Whether `value` could be a code `length` long: an event's, or a public profile's address. */
+export function isCode(value: string, length = CODE_LENGTH): boolean {
+  return value.length === length && [...value].every(char => CODE_ALPHABET.includes(char));
 }
 
 const tournamentQuery = (db: D1Like, code: string) => db.prepare('SELECT * FROM tournaments WHERE code = ?').bind(code);

@@ -11,6 +11,10 @@
 import assert from 'node:assert/strict';
 import { beforeEach, mock, test } from 'node:test';
 
+import * as history from '../../functions/api/history.ts';
+import * as me from '../../functions/api/me.ts';
+import * as profiles from '../../functions/api/profiles/[slug].ts';
+import * as claim from '../../functions/api/tournaments/[code]/claim.ts';
 import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
 import * as manage from '../../functions/api/tournaments/[code]/manage.ts';
@@ -18,6 +22,7 @@ import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import * as sync from '../../functions/api/tournaments/[code]/sync.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { loadTournament } from '../../functions/lib/tournaments/store.ts';
+import type { HistoryEntry } from '../../shared/accounts/types.ts';
 import { emptyTournament } from '../../shared/tournament/create.ts';
 import { indexedIds } from '../../shared/tournament/history.ts';
 import { revisionOf } from '../../shared/tournament/revision.ts';
@@ -35,6 +40,7 @@ beforeEach(() => {
   decklists._resetRateLimitStore();
   report._resetRateLimitStore();
   event._resetRateLimitStore();
+  profiles._resetRateLimitStore();
 });
 
 const db = () => env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
@@ -276,4 +282,202 @@ test('a player taken off the list is no one there any more, at either kind of ev
     reporters(code),
     roster.players.filter((p: Player) => p.id !== ashId).map((p: Player) => p.id)
   );
+});
+
+const saveProfile = (cookie: string, popId: string) =>
+  hit(
+    me.onRequestPut as Handler,
+    '/api/me',
+    {},
+    {
+      method: 'PUT',
+      cookie,
+      body: { popId, firstName: 'Pat', lastName: 'Player', birthDate: '02/27/2001' }
+    }
+  );
+
+const historyOf = async (cookie?: string) => hit(history.onRequestGet as Handler, '/api/history', {}, { cookie });
+
+/** The codes in the account's History, newest first. */
+const codesOf = async (cookie: string) =>
+  ((await historyOf(cookie)).json.entries as HistoryEntry[]).map(entry => entry.code);
+
+const keyOf = async (code: string, playerId: string) => (await loadTournament(db(), code))?.keys[playerId];
+
+test('an account’s History lists the sanctioned events its POP ID plays in, as each stands', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { format: 'Expanded', startsAt: '2026-10-10T11:00' });
+  await addPlayers(code, owner, 4);
+  const player = await signIn('Player');
+  assert.deepEqual((await historyOf(player)).json, { entries: [] });
+  await saveProfile(player, '901');
+  const [entry] = (await historyOf(player)).json.entries as HistoryEntry[];
+  assert.deepEqual(entry, {
+    code,
+    key: await keyOf(code, '901'),
+    name: 'Test Cup',
+    startDate: (await loadTournament(db(), code))?.tournament.info.startDate,
+    startsAt: '2026-10-10T11:00',
+    format: 'Expanded',
+    mode: 'swiss',
+    status: 'upcoming'
+  });
+  await send(code, owner, { type: 'pairRound', pod: 'masters' });
+  assert.equal((await historyOf(player)).json.entries[0].status, 'live');
+  await settle(code, owner, { finished: true });
+  assert.equal((await historyOf(player)).json.entries[0].status, 'finished');
+  await settle(code, owner, { sanctioned: false });
+  assert.deepEqual(await codesOf(player), [], 'an event no longer sanctioned leaves History');
+  await settle(code, owner, { sanctioned: true });
+  assert.deepEqual(await codesOf(player), [code], 'and comes back with it');
+  await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
+  assert.deepEqual(await codesOf(player), [], 'a deleted event is gone');
+});
+
+test('History follows the player list: removed, added late, by decklist, or by a TOM file and its syncs', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const swiss = await newSwiss(owner);
+  await addPlayers(swiss, owner, 2);
+  const player = await signIn('Player');
+  await saveProfile(player, '901');
+  await remove(swiss, owner, '901');
+  assert.deepEqual(await codesOf(player), []);
+  await send(swiss, owner, { type: 'addPlayer', player: { firstName: 'On', lastName: 'Time', id: '902' } });
+  await send(swiss, owner, { type: 'pairRound', pod: 'masters' });
+  const late = await signIn('Late');
+  await saveProfile(late, '999');
+  await send(swiss, owner, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Arrival', id: '999' } });
+  assert.deepEqual(await codesOf(late), [swiss]);
+
+  const listed = await newSwiss(owner);
+  await settle(listed, owner, { decklists: 'open' });
+  const nia = await signIn('Nia');
+  await saveProfile(nia, '4242');
+  await hit(decklists.onRequestPut as Handler, '/decklists', at(listed), {
+    method: 'PUT',
+    body: {
+      deck: '60 Basic {P} Energy SVE 5',
+      profile: { popId: '4242', firstName: 'Nia', lastName: 'Okafor', birthDate: '02/27/2001' }
+    }
+  });
+  assert.deepEqual(await codesOf(nia), [listed]);
+
+  const tom = await newTom(owner, ['7200001', '4242']);
+  assert.deepEqual((await codesOf(nia)).sort(), [listed, tom].sort());
+  await syncFile(tom, owner, ['7200001', '4243']);
+  assert.deepEqual(await codesOf(nia), [listed], 'TOM changed the ID');
+  const other = await signIn('Other');
+  await saveProfile(other, '4243');
+  assert.deepEqual(await codesOf(other), [tom]);
+});
+
+test('History lists an unsanctioned event through the account’s Claim, until it undoes it', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { sanctioned: false });
+  await send(code, owner, { type: 'addPlayer', player: { firstName: 'Ash', lastName: 'Ketchum' } });
+  const ash = await signIn('Ash');
+  const said = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  const entries = (await historyOf(ash)).json.entries as HistoryEntry[];
+  assert.deepEqual(
+    entries.map(entry => [entry.code, entry.key]),
+    [[code, said.json.key]]
+  );
+  await hit(claim.onRequestDelete as Handler, '/claim', at(code), { method: 'DELETE', cookie: ash });
+  assert.deepEqual(await codesOf(ash), []);
+});
+
+test('at a sanctioned event the account’s own reporter row does not list the event twice', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  const player = await signIn('Player');
+  await saveProfile(player, '900');
+  await playerSays(code, { popId: '900', device: 'phone' }, { cookie: player });
+  assert.deepEqual(await codesOf(player), [code]);
+});
+
+test('History is newest first: by start time, then date, then last change', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const player = await signIn('Player');
+  await saveProfile(player, '900');
+  const eventOn = async (info: { startDate?: string }, startsAt = '') => {
+    const code = await newSwiss(owner);
+    await addPlayers(code, owner, 1);
+    await settle(code, owner, { startsAt });
+    if (info.startDate) {
+      await send(code, owner, { type: 'updateInfo', info });
+    }
+    return code;
+  };
+  const autumn = await eventOn({ startDate: '10/01/2026' });
+  const later = await eventOn({}, '2026-12-05T10:00');
+  const spring = await eventOn({ startDate: '04/01/2026' });
+  const winter = await eventOn({}, '2026-12-01T10:00');
+  const sameDay = await eventOn({ startDate: '04/01/2026' });
+  assert.deepEqual(await codesOf(player), [later, winter, autumn, sameDay, spring]);
+});
+
+test('History needs a signed-in account, and is one wait on the database', async () => {
+  assert.equal((await historyOf()).status, 401);
+  assert.equal((await historyOf('cm_session=forged')).status, 401);
+  const player = await signIn('Player');
+  const { trips } = watch();
+  assert.equal((await historyOf(player)).status, 200);
+  assert.equal(trips(), 1);
+});
+
+const profileAt = (slug: string) => hit(profiles.onRequestGet as Handler, `/api/profiles/${slug}`, { slug });
+
+const turnProfile = async (cookie: string, publicProfile: boolean) =>
+  (await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body: { publicProfile } })).json
+    .user.publicSlug as string | null;
+
+test('a public profile shows the account’s name and History to anyone with its address, and nothing private', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  const player = await signIn('Pat Player');
+  await saveProfile(player, '901');
+  db().raw.exec(
+    "UPDATE users SET email = 'pat@example.com', avatar = 'https://cdn.test/pat.png' WHERE name = 'Pat Player'"
+  );
+  const slug = (await turnProfile(player, true)) ?? '';
+  const shown = await profileAt(slug);
+  assert.equal(shown.status, 200);
+  assert.deepEqual([shown.json.name, shown.json.avatar], ['Pat Player', 'https://cdn.test/pat.png']);
+  assert.deepEqual(shown.json.entries, (await historyOf(player)).json.entries);
+  const text = JSON.stringify({
+    ...shown.json,
+    entries: shown.json.entries.map((e: HistoryEntry) => ({ ...e, code: '' }))
+  });
+  assert.ok(!text.includes('901') && !text.includes('pat@example.com'), 'no POP ID, no email');
+  assert.equal(shown.headers.get('Cache-Control'), 'public, max-age=60');
+  assert.equal(shown.headers.get('X-Robots-Tag'), 'noindex');
+  assert.equal((await profileAt(slug.toLowerCase())).status, 200, 'an address typed in lower case');
+
+  await turnProfile(player, false);
+  const off = await profileAt(slug);
+  const unknown = await profileAt('ZZZZZZZZ');
+  assert.deepEqual([off.status, off.json], [404, unknown.json], 'off reads as no profile at all');
+  assert.equal(unknown.status, 404);
+  assert.equal((await profileAt('nope')).status, 404);
+  const again = (await turnProfile(player, true)) ?? '';
+  assert.equal((await profileAt(slug)).status, 404, 'the old address stays dead');
+  assert.equal((await profileAt(again)).status, 200);
+});
+
+test('a profile is one wait on the database, and an address that asks too often is turned away', async () => {
+  const player = await signIn('Player');
+  const slug = (await turnProfile(player, true)) ?? '';
+  const { trips } = watch();
+  assert.equal((await profileAt(slug)).status, 200);
+  assert.equal(trips(), 1);
+  profiles._resetRateLimitStore();
+  for (let i = 0; i < 1200; i += 1) {
+    await profileAt('nope');
+  }
+  assert.equal((await profileAt(slug)).status, 429);
+  profiles._resetRateLimitStore();
 });
