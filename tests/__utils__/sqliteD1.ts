@@ -85,3 +85,27 @@ export function countingTrips(db: D1Like): { db: D1Like; trips: () => number } {
     trips: () => trips
   };
 }
+
+/**
+ * `db`, with `meanwhile` run just ahead of the next `times` statements whose
+ * SQL starts with `prefix`, as they are prepared: another request's write
+ * landing between a request's read and its own write.
+ */
+export function racing(
+  db: ReturnType<typeof sqliteD1>,
+  prefix: string,
+  meanwhile: () => void,
+  times = 1
+): ReturnType<typeof sqliteD1> {
+  let left = times;
+  return {
+    ...db,
+    prepare: sql => {
+      if (left > 0 && sql.startsWith(prefix)) {
+        left -= 1;
+        meanwhile();
+      }
+      return db.prepare(sql);
+    }
+  };
+}

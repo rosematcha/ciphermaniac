@@ -21,7 +21,7 @@ import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import type { Viewer } from '../../shared/tournament/view.ts';
 import { apiCalls, type Handler } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
-import { countingTrips, sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { countingTrips, racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 const { hit, signIn } = apiCalls(() => env);
@@ -444,22 +444,10 @@ test('a device’s claim becomes the account’s only while that device still ho
   const before = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' });
   const ash = await signIn('Ash');
   // Staff let another device claim Ash between this request's read and its write.
-  const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
-  env.TOURNAMENT_DB = {
-    ...inner,
-    prepare: sql => {
-      if (sql.startsWith('UPDATE OR IGNORE report_devices')) {
-        inner.raw.prepare('DELETE FROM report_devices WHERE code = ?').run(code);
-        inner.raw
-          .prepare(
-            'INSERT INTO report_devices (code, player_id, token_hash, device, claimed_at) ' +
-              "VALUES (?, ?, 'another', 'another', 1)"
-          )
-          .run(code, idOf('Ketchum'));
-      }
-      return inner.prepare(sql);
-    }
-  };
+  ahead('UPDATE OR IGNORE report_devices', () => {
+    raw().prepare('DELETE FROM report_devices WHERE code = ?').run(code);
+    holdAs(code, idOf('Ketchum'), null);
+  });
   const said = await playerSays(
     code,
     { lastName: 'Ketchum', device: 'ash-phone', reportToken: before.json.reportToken },
@@ -467,4 +455,155 @@ test('a device’s claim becomes the account’s only while that device still ho
   );
   assert.equal(said.json.linked, false);
   assert.deepEqual(holders(code), { [idOf('Ketchum')]: null }, 'the other device’s claim stays its own');
+});
+
+/** Has `meanwhile` land between the request's read and its next `times` writes that start with `prefix`. */
+const ahead = (prefix: string, meanwhile: () => void, times = 1) => {
+  env.TOURNAMENT_DB = racing(env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>, prefix, meanwhile, times);
+};
+
+/** Another device's reporter row for `playerId`, the account `userId`'s when one is named. */
+function holdAs(code: string, playerId: string, userId: string | null) {
+  raw()
+    .prepare(
+      'INSERT INTO report_devices (code, player_id, token_hash, device, claimed_at, user_id) ' +
+        "VALUES (?, ?, 'another', 'another', 1, ?)"
+    )
+    .run(code, playerId, userId);
+}
+
+const CLAIM_WRITE = 'INSERT OR IGNORE INTO report_devices';
+const UPGRADE_WRITE = 'UPDATE OR IGNORE report_devices';
+
+test('an account whose other request claimed another player first is told so, not answered as a stranger', async () => {
+  const { code, idOf } = await casualEvent();
+  const ash = await signIn('Ash');
+  const id = await accountId(ash);
+  ahead(CLAIM_WRITE, () => holdAs(code, idOf('Oak'), id));
+  const lost = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  assert.equal(lost.status, 409);
+  assert.equal(lost.json.linkedKey, (await playerSays(code, { lastName: 'Oak' })).json.key);
+  assert.deepEqual(holders(code), { [idOf('Oak')]: id }, 'Ash is still free');
+});
+
+test('a device’s claim the account would take is refused when the account took another player meanwhile', async () => {
+  const { code, idOf } = await casualEvent();
+  const before = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' });
+  const ash = await signIn('Ash');
+  const id = await accountId(ash);
+  ahead(UPGRADE_WRITE, () => holdAs(code, idOf('Oak'), id));
+  const lost = await playerSays(
+    code,
+    { lastName: 'Ketchum', device: 'ash-phone', reportToken: before.json.reportToken },
+    { cookie: ash }
+  );
+  assert.equal(lost.status, 409);
+  assert.equal(lost.json.linkedKey, (await playerSays(code, { lastName: 'Oak' })).json.key);
+  assert.equal(holders(code)[idOf('Ketchum')], null);
+});
+
+/** Ends the event in the database, as a save from staff would: a new version. */
+const finishNow = (code: string) =>
+  raw()
+    .prepare(
+      "UPDATE tournaments SET settings = json_set(settings, '$.finished', json('true')), version = version + 1 " +
+        'WHERE code = ?'
+    )
+    .run(code);
+
+/** Takes `playerId` off the event's list in the database, as a save from staff would. */
+function removeNow(code: string, playerId: string) {
+  const { state } = raw().prepare('SELECT state FROM tournaments WHERE code = ?').get(code) as { state: string };
+  const tournament = JSON.parse(state) as { players: { id: string }[] };
+  tournament.players = tournament.players.filter(player => player.id !== playerId);
+  raw()
+    .prepare('UPDATE tournaments SET state = ?, version = version + 1 WHERE code = ?')
+    .run(JSON.stringify(tournament), code);
+}
+
+test('a Claim does not land once the event has ended since the request read it', async () => {
+  const { code, idOf } = await casualEvent();
+  const ash = await signIn('Ash');
+  ahead(CLAIM_WRITE, () => finishNow(code));
+  const said = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  assert.deepEqual([said.status, said.json.reporter, said.json.linked], [200, true, false]);
+  assert.deepEqual(holders(code), { [idOf('Ketchum')]: null }, 'the device follows the player, unlinked');
+});
+
+test('a device’s claim does not become the account’s once the event has ended since the request read it', async () => {
+  const { code, idOf } = await casualEvent();
+  const before = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' });
+  const ash = await signIn('Ash');
+  ahead(UPGRADE_WRITE, () => finishNow(code));
+  const said = await playerSays(
+    code,
+    { lastName: 'Ketchum', device: 'ash-phone', reportToken: before.json.reportToken },
+    { cookie: ash }
+  );
+  assert.deepEqual([said.status, said.json.reporter, said.json.linked], [200, true, false]);
+  assert.deepEqual(holders(code), { [idOf('Ketchum')]: null });
+});
+
+test('nobody claims a player staff took off the list since the request read it', async () => {
+  const { code, idOf } = await casualEvent();
+  const ash = await signIn('Ash');
+  const ketchum = idOf('Ketchum');
+  ahead(CLAIM_WRITE, () => removeNow(code, ketchum));
+  const said = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  assert.equal(said.status, 404);
+  assert.deepEqual(holders(code), {}, 'no row, so nothing in History');
+});
+
+test('a claim beaten to the event by other writes lands on what they left, and gives up after five tries', async () => {
+  const { code, idOf } = await casualEvent();
+  const ash = await signIn('Ash');
+  const bump = () => raw().prepare('UPDATE tournaments SET version = version + 1 WHERE code = ?').run(code);
+  ahead(CLAIM_WRITE, bump, 4);
+  const said = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  assert.deepEqual([said.status, said.json.linked], [200, true]);
+  ahead(CLAIM_WRITE, bump, 5);
+  const busy = await playerSays(code, { lastName: 'Oak', device: 'gary-phone' });
+  assert.deepEqual([busy.status, busy.json.error], [409, 'Busy; try again']);
+  assert.deepEqual(Object.keys(holders(code)), [idOf('Ketchum')]);
+});
+
+test('an account is not the player as a POP ID it gave up since the request read it', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  const player = await signIn('Player');
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profileOf('900') });
+  // The account's profile moves to 901 between this request's read and its claim.
+  ahead(CLAIM_WRITE, () => raw().exec("UPDATE users SET pop_id = '901' WHERE name = 'Player'"));
+  const stale = await playerSays(code, { popId: '900', device: 'phone' }, { cookie: player });
+  assert.deepEqual([stale.status, stale.json.linked], [200, false]);
+  assert.deepEqual(holders(code), { '900': null }, 'the device follows 900, unlinked');
+  const own = await playerSays(code, { popId: '901', device: 'phone' }, { cookie: player });
+  assert.deepEqual([own.status, own.json.linked], [200, true], 'and the account is 901 here');
+});
+
+test('a device’s claim does not become the account’s as a POP ID it gave up since the request read it', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  const before = await playerSays(code, { popId: '900', device: 'phone' });
+  const player = await signIn('Player');
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profileOf('900') });
+  ahead(UPGRADE_WRITE, () => raw().exec("UPDATE users SET pop_id = '901' WHERE name = 'Player'"));
+  const stale = await playerSays(
+    code,
+    { popId: '900', device: 'phone', reportToken: before.json.reportToken },
+    { cookie: player }
+  );
+  assert.deepEqual([stale.status, stale.json.reporter, stale.json.linked], [200, true, false]);
+  assert.deepEqual(holders(code), { '900': null });
+});
+
+test('a device that claims the player between the read and the write keeps them', async () => {
+  const { code, idOf } = await casualEvent();
+  const ash = await signIn('Ash');
+  ahead(CLAIM_WRITE, () => holdAs(code, idOf('Ketchum'), null));
+  const said = await playerSays(code, { lastName: 'Ketchum', device: 'ash-phone' }, { cookie: ash });
+  assert.deepEqual([said.status, said.json.reporter, said.json.linked], [200, false, false]);
+  assert.deepEqual(holders(code), { [idOf('Ketchum')]: null });
 });

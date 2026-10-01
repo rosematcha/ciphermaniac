@@ -15,7 +15,7 @@ import { beforeEach, mock, test } from 'node:test';
 import * as me from '../../functions/api/me.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { apiCalls, type Handler } from '../__utils__/apiCalls.ts';
-import { sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 const { hit, signIn } = apiCalls(() => env);
@@ -186,21 +186,10 @@ test('an account that changes its POP ID frees the old one and lets go of the pl
   assert.equal((await accountOf(second)).popId, '111');
 });
 
-/** Runs `meanwhile` once, just before the functions next prepare a statement that starts with `prefix`. */
-function beforeWrite(prefix: string, meanwhile: () => void) {
-  const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
-  let pending = true;
-  env.TOURNAMENT_DB = {
-    ...inner,
-    prepare: sql => {
-      if (pending && sql.startsWith(prefix)) {
-        pending = false;
-        meanwhile();
-      }
-      return inner.prepare(sql);
-    }
-  };
-}
+/** Has `meanwhile` land between the request's read and its next write that starts with `prefix`. */
+const beforeWrite = (prefix: string, meanwhile: () => void) => {
+  env.TOURNAMENT_DB = racing(env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>, prefix, meanwhile);
+};
 
 test('a POP ID change lets go of the players the account is as the POP ID it holds when the change lands', async () => {
   const cookie = await signIn('Player');
