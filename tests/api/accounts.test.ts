@@ -1,15 +1,29 @@
 /**
  * Player accounts end to end, against the real schema in SQLite. What must
  * hold: migration 0005 brings a live database in line with the schema, with
- * each POP ID left on one account and Reese the only admin.
+ * each POP ID left on one account and Reese the only admin; an account's
+ * role and public profile come with who is signed in.
  */
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { test } from 'node:test';
+import { beforeEach, test } from 'node:test';
 
+import * as me from '../../functions/api/me.ts';
+import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
+import { apiCalls, type Handler } from '../__utils__/apiCalls.ts';
 import { sqliteD1 } from '../__utils__/sqliteD1.ts';
+
+let env: TournamentEnv;
+const { hit, signIn } = apiCalls(() => env);
+
+beforeEach(() => {
+  env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true' };
+});
+
+/** The test database itself, for what no request sets yet. */
+const raw = () => (env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>).raw;
 
 const sql = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -84,4 +98,16 @@ test('migration 0005 brings a database made before accounts in line with the sch
     ],
     'sanctioned events only, once each however often the back-fill runs'
   );
+});
+
+test('who is signed in comes with their role and public profile address', async () => {
+  const cookie = await signIn('Player');
+  const player = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie })).json.user;
+  assert.deepEqual([player.role, player.publicSlug], [null, null]);
+  raw().exec("UPDATE users SET role = 'organizer', public_slug = 'K7PQ2MXA'");
+  const organizer = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie })).json.user;
+  assert.deepEqual([organizer.role, organizer.publicSlug], ['organizer', 'K7PQ2MXA']);
+  raw().exec("UPDATE users SET role = 'superuser'");
+  const unknown = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie })).json.user;
+  assert.equal(unknown.role, null, 'a role the code does not know grants nothing');
 });

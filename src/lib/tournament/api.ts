@@ -4,6 +4,7 @@
  * show as-is: the functions word their errors for people.
  */
 
+import type { AccountRole } from '../../../shared/accounts/roles';
 import type { Command } from '../../../shared/tournament/commands';
 import { tomDateTime } from '../../../shared/tournament/divisions';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
@@ -47,6 +48,9 @@ export interface Me {
   firstName: string | null;
   lastName: string | null;
   birthDate: string | null;
+  role: AccountRole | null;
+  /** The public profile's address, /u/<slug>; null while history is private. */
+  publicSlug: string | null;
   providers: Provider[];
 }
 
