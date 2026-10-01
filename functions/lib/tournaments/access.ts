@@ -14,14 +14,15 @@ import {
   publicTournament,
   type PublishedView,
   type Role,
-  type TournamentView
+  type TournamentView,
+  type Viewer
 } from '../../../shared/tournament/view.js';
 import { publicReports } from '../../../shared/tournament/reports.js';
 import { jsonError, jsonResponse } from '../api/responses.js';
 import { type Context, param, sameOrigin } from '../auth/env.js';
 import type { User } from '../auth/session.js';
 import type { D1Like } from '../types.js';
-import { isCode, openTournament, type TournamentRow } from './store.js';
+import { isCode, type OpenOptions, openTournament, type TournamentRow } from './store.js';
 
 export const PRIVATE = { cacheControl: 'no-store', cors: false } as const;
 
@@ -33,16 +34,18 @@ export interface Access {
   user: User | null;
   row: TournamentRow;
   role: Role | null;
+  /** The player the account's Claim makes it here, when the route asked for it (see openTournament). */
+  claimed: string | null;
 }
 
 /** The tournament and who is asking; a Response when either cannot be had. */
-export async function open(context: Context<'code'>): Promise<Access | Response> {
+export async function open(context: Context<'code'>, options: OpenOptions = {}): Promise<Access | Response> {
   const db = context.env.TOURNAMENT_DB;
   if (!db) {
     return jsonError('Tournaments are not available', 503);
   }
   const code = codeOf(context);
-  const opened = isCode(code) ? await openTournament(db, code, context.request) : null;
+  const opened = isCode(code) ? await openTournament(db, code, context.request, options) : null;
   return opened ? { db, ...opened } : jsonError('No such tournament', 404);
 }
 
@@ -108,15 +111,32 @@ export function publicViewOf(row: TournamentRow): PublishedView {
   };
 }
 
+const NOT_PLAYING = { me: null, via: null } as const;
+
+/**
+ * Which player the viewer is, and how the page knows: at a sanctioned event
+ * the one whose POP ID the account holds, at an unsanctioned one the one its
+ * Claim names.
+ */
+function identityOf(access: Access): Pick<Viewer, 'me' | 'via'> {
+  const { row, user, claimed } = access;
+  if (isSanctioned(row)) {
+    const popId = user?.popId ?? '';
+    const listed = row.tournament.players.some(player => player.id === popId);
+    return listed ? { me: row.keys[popId] ?? null, via: 'pop' } : NOT_PLAYING;
+  }
+  const key = claimed ? row.keys[claimed] : undefined;
+  return key ? { me: key, via: 'claim' } : NOT_PLAYING;
+}
+
 /** What the event's public page reads from the API, shaped for the viewer: staff see decks before the public does. */
 export function viewOf(access: Access): TournamentView {
   const { row, user, role } = access;
-  const me = user?.popId ? (row.keys[user.popId] ?? null) : null;
   const decks = role && decksEnabled(row.settings) ? publicDecks(row.decks, row.keys) : undefined;
   return {
     ...publicViewOf(row),
     ...(decks ? { decks } : {}),
-    viewer: { role, me, signedIn: user !== null }
+    viewer: { role, ...identityOf(access), signedIn: user !== null }
   };
 }
 

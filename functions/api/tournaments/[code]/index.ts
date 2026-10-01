@@ -33,7 +33,7 @@ export async function onRequestGet(context: Context<'code'>): Promise<Response> 
   if (await unchanged(context)) {
     return noContent();
   }
-  const access = await open(context);
+  const access = await open(context, { claim: true });
   return access instanceof Response ? access : privateJson(viewOf(access));
 }
 
@@ -42,7 +42,7 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
   if (access instanceof Response) {
     return access;
   }
-  await deleteTournament(access.db, access.row.code);
+  await deleteTournament(access.db, access.row);
   await unpublishView(context.env.REPORTS, access.row.code);
   return noContent();
 }

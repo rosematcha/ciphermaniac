@@ -17,6 +17,13 @@
  * who the player is was given (see lib/tournaments/reporters.ts): nobody can
  * report for both seats of a match. Staff can override any result, and
  * release a player's device (DELETE, { player }) when they change phones.
+ *
+ * A player who is signed in may be the player as their account as well:
+ * the one whose POP ID it holds, or at an unsanctioned event the one it says
+ * it is, which links the event to the account (see accountFor). The account
+ * then reports from any of its devices without the token, and the answer
+ * says `linked`. An account is one player per event: naming another while
+ * linked is refused (409) with the linked player's public key.
  */
 
 import { findPlayer, type PlayerClaim } from '../../../../shared/tournament/identify.js';
@@ -38,7 +45,14 @@ import { type Context, sameOrigin } from '../../../lib/auth/env.js';
 import { type Access, open, openForStaff, privateJson, publicViewOf } from '../../../lib/tournaments/access.js';
 import { settled } from '../../../lib/tournaments/answers.js';
 import { publishAfter } from '../../../lib/tournaments/publish.js';
-import { type Claim, claimReporter, releaseReporter } from '../../../lib/tournaments/reporters.js';
+import {
+  accountFor,
+  type Asker,
+  type Claim,
+  claimReporter,
+  type Elsewhere,
+  releaseReporter
+} from '../../../lib/tournaments/reporters.js';
 import { mutateSettled } from '../../../lib/tournaments/results.js';
 import type { Changes, TournamentRow } from '../../../lib/tournaments/store.js';
 
@@ -130,9 +144,24 @@ async function reachable(context: Context<'code'>): Promise<Access | Response> {
   return open(context);
 }
 
-/** What the answer says of the asker's device: the token when it just claimed the player, and whether it reports. */
+/** Who the request asks as, for the player it named: its device's token and ID, and its account (see accountFor). */
+const askerOf = (access: Access, body: Body, playerId: string): Asker => ({
+  held: body.reportToken,
+  device: body.device,
+  account: accountFor(access, playerId)
+});
+
+/** The refusal for an account that is already another player here, naming that player by their public key. */
+const linkedElsewhere = (row: TournamentRow, standing: Elsewhere) =>
+  privateJson({ error: 'You’re linked to another player here', linkedKey: row.keys[standing.elsewhere] ?? null }, 409);
+
+/**
+ * What the answer says of the asker: the token when its device just claimed
+ * the player, whether it reports, and whether the player is its account's.
+ */
 const standingOf = (claim: Claim) => ({
   reporter: claim.reporter,
+  linked: claim.linked,
   ...(claim.token ? { reportToken: claim.token } : {})
 });
 
@@ -143,7 +172,10 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
     return jsonError('Not a result', 400);
   }
   const { db, row } = access;
-  const standing = await claimReporter(db, row.code, who.id, { held: body.reportToken, device: body.device });
+  const standing = await claimReporter(db, row.code, who.id, askerOf(access, body, who.id));
+  if ('elsewhere' in standing) {
+    return linkedElsewhere(row, standing);
+  }
   if (!standing.reporter) {
     return jsonError(NOT_REPORTER, 403);
   }
@@ -162,7 +194,10 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
 
 /** Who the player is, whether this device reports for them, and the event with any due results settled. */
 async function identify(context: Context<'code'>, access: Access, body: Body, id: string) {
-  const standing = await claimReporter(access.db, access.row.code, id, { held: body.reportToken, device: body.device });
+  const standing = await claimReporter(access.db, access.row.code, id, askerOf(access, body, id));
+  if ('elsewhere' in standing) {
+    return linkedElsewhere(access.row, standing);
+  }
   const row = await settled(context, access, body.localTime);
   return privateJson({ key: row.keys[id] ?? null, view: publicViewOf(row), ...standingOf(standing) });
 }

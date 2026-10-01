@@ -33,7 +33,7 @@ export function pollDelay(failures: number, every = POLL_MS): number {
 }
 
 /** Who reads the published file: nobody the event knows. */
-const NOBODY: Viewer = { role: null, me: null, signedIn: false };
+const NOBODY: Viewer = { role: null, me: null, via: null, signedIn: false };
 
 /**
  * The event as a page first shows it: the published file, which is read from

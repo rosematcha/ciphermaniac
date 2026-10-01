@@ -296,7 +296,7 @@ test('a page first shows the published file as nobody, and asks the API only whe
     return viewAt(7, 'owner');
   };
   const read = await firstView({ published: async () => ({ version: 6 }) as PublishedView, api });
-  assert.deepEqual([read.version, read.viewer], [6, { role: null, me: null, signedIn: false }]);
+  assert.deepEqual([read.version, read.viewer], [6, { role: null, me: null, via: null, signedIn: false }]);
   assert.equal(asked, 0, 'a room opening the page asks the functions for nothing');
   assert.equal((await firstView({ published: async () => null, api })).version, 7, 'not published yet');
   const unreachable = await firstView({ published: () => Promise.reject(new Error('blocked')), api });

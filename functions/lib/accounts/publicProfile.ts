@@ -6,11 +6,14 @@
 
 import type { User } from '../auth/session.js';
 import { rowsChanged } from '../d1.js';
-import { newCode } from '../tournaments/store.js';
+import { isCode, newCode } from '../tournaments/store.js';
 import type { D1Like } from '../types.js';
 
 /** Eight characters of the event-code alphabet: easy to read out, and too many to stumble on. */
 const SLUG_LENGTH = 8;
+
+/** Whether `value` could be a profile's address, before asking the database whose it is. */
+export const isProfileSlug = (value: string) => isCode(value, SLUG_LENGTH);
 
 /** A new address for the account's profile, drawn again while the unique index refuses one another account holds. */
 async function drawSlug(db: D1Like, userId: string): Promise<string> {
