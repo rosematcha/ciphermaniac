@@ -97,6 +97,46 @@ test('the public page shows the round, finds a player and opens their history @m
   expect(errors).toEqual([]);
 });
 
+test('a signed-in player whose account just became the player asks once who the page says they are', async ({
+  page
+}) => {
+  const hedy = tdf.players.find(p => p.lastName === 'Lamarr');
+  const key = keys[hedy?.id ?? ''] ?? null;
+  let linked = false;
+  let wholeViews = 0;
+  await page.route('**/api/**', route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/me') {
+      return route.fulfill({ json: { user: { id: 'hedy', name: 'Hedy' }, providers: [] } });
+    }
+    if (url.pathname === `/api/tournaments/${CODE}/report`) {
+      linked = true;
+      const { viewer: _viewer, ...published } = VIEW;
+      return route.fulfill({ json: { key, view: published, reporter: true, linked: true } });
+    }
+    if (url.pathname === `/api/tournaments/${CODE}` && !url.searchParams.has('since')) {
+      wholeViews += 1;
+      const viewer = { role: null, me: linked ? key : null, via: linked ? 'pop' : null, signedIn: true } as const;
+      return route.fulfill({ json: { ...VIEW, viewer } });
+    }
+    return route.fulfill({ status: 404, json: { error: 'Not found' } });
+  });
+  await page.goto(`/t/${CODE}`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fixture Challenge & Friends');
+  expect(wholeViews).toBe(1);
+  await page
+    .locator('.tm-matches')
+    .getByRole('button', { name: /Hedy Lamarr/ })
+    .first()
+    .click();
+  const sheet = page.getByRole('dialog');
+  await sheet.getByRole('button', { name: 'This is me' }).click();
+  await sheet.getByLabel('Player ID').fill(hedy?.id ?? '');
+  await sheet.getByRole('button', { name: 'Confirm' }).click();
+  await expect(sheet.getByRole('button', { name: 'This isn’t me' })).toBeVisible();
+  await expect.poll(() => wholeViews).toBe(2);
+});
+
 /** The event's published file on the data origin: what the page reads first, and then polls. */
 async function publish(page: Page, current: () => TournamentView) {
   await page.route(`**/tournaments/v1/${CODE}.json`, route => {

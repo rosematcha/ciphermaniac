@@ -42,10 +42,9 @@ export interface PublishBucket {
   delete: (key: string) => Promise<unknown>;
 }
 
-/** What R2 says of a proof it holds: which upload it is, how big, and the type it was stored as. */
+/** What R2 holds of a proof: its bytes, and the type it was stored as. */
 export interface ProofObject {
-  etag: string;
-  size: number;
+  body: ReadableStream<Uint8Array>;
   httpMetadata?: { contentType?: string };
 }
 
@@ -54,12 +53,7 @@ export interface ProofObject {
  * Nothing public reads it; only an admin's request streams a proof back.
  */
 export interface ProofBucket {
-  head: (key: string) => Promise<ProofObject | null>;
-  /** Without a body when `onlyIf` did not hold. */
-  get: (
-    key: string,
-    options?: { onlyIf: { etagMatches: string } }
-  ) => Promise<(ProofObject & { body?: ReadableStream<Uint8Array> }) | null>;
+  get: (key: string) => Promise<ProofObject | null>;
   put: (key: string, value: Uint8Array, options: { httpMetadata: { contentType: string } }) => Promise<unknown>;
   delete: (key: string) => Promise<unknown>;
 }

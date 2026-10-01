@@ -167,8 +167,6 @@ CREATE TABLE IF NOT EXISTS applications (
   proof_key TEXT,
   proof_type TEXT,
   proof_size INTEGER,
-  -- The file's R2 etag when the account applied: the admin sees that file or none.
-  proof_etag TEXT,
   created_at INTEGER NOT NULL,
   decided_at INTEGER,
   -- The deciding admin's account id, and their note to the applicant.
@@ -179,3 +177,14 @@ CREATE INDEX IF NOT EXISTS applications_by_user ON applications (user_id, create
 -- Not partial on 'pending': a lookup against a partial index on a value plans as a scan of it.
 CREATE INDEX IF NOT EXISTS applications_by_status ON applications (status, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS applications_one_pending ON applications (user_id) WHERE status = 'pending';
+
+-- The proof an account has uploaded and not yet sent with an Application,
+-- one at a time. Each upload is a file of its own in the private bucket,
+-- under a key never used again; a new upload takes this row's place and its
+-- file goes. Sending the Application moves the key onto it.
+CREATE TABLE IF NOT EXISTS proof_uploads (
+  user_id TEXT PRIMARY KEY,
+  key TEXT NOT NULL,
+  type TEXT NOT NULL,
+  size INTEGER NOT NULL
+) WITHOUT ROWID;

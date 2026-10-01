@@ -2,8 +2,8 @@
  * Applications to run events, from the applicant's side, against the real
  * schema in SQLite and a bucket in memory. What must hold: only a signed-in
  * account with a complete profile and no Organizer role applies; a proof is
- * a PNG, JPEG, WebP or PDF by its bytes, up to 8 MB, in one slot per
- * account; an Application carries a proof, an explanation or both, one
+ * a PNG, JPEG, WebP or PDF by its bytes, up to 8 MB, each a file of its
+ * own, and an account keeps one not yet sent; an Application carries a proof, an explanation or both, one
  * pending at a time, with the profile as it stood; while it is pending its
  * proof stays as sent; withdrawing takes the Application and its proof.
  */
@@ -18,8 +18,8 @@ import * as me from '../../functions/api/me.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { PROOF_MAX_BYTES } from '../../shared/accounts/applications.ts';
 import { apiCalls, type Handler, ORIGIN } from '../__utils__/apiCalls.ts';
-import { memoryProofs } from '../__utils__/proofBucket.ts';
-import { sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { memoryProofs, stalledDeletes } from '../__utils__/proofBucket.ts';
+import { racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 let proofs: ReturnType<typeof memoryProofs>;
@@ -133,14 +133,16 @@ test('a proof is kept by what its bytes say it is, never by the type sent with i
   const id = await idOf(cookie);
   const png = await upload(cookie, PNG, { 'content-type': 'application/pdf' });
   assert.deepEqual([png.status, png.json], [200, { proof: { type: 'image/png', size: PNG.byteLength } }]);
-  assert.equal(proofs.objects.get(`proofs/${id}`)?.contentType, 'image/png');
+  const [key] = [...proofs.objects.keys()];
+  assert.ok(key?.startsWith(`proofs/${id}/`));
+  assert.equal(proofs.objects.get(key)?.contentType, 'image/png');
   const svg = await upload(cookie, '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', {
     'content-type': 'image/png'
   });
   assert.deepEqual([svg.status, svg.json.error], [400, 'Use a PNG, JPEG, WebP or PDF']);
   const empty = await upload(cookie, new Uint8Array(0));
   assert.deepEqual([empty.status, empty.json.error], [400, 'The file is empty']);
-  assert.equal(proofs.objects.get(`proofs/${id}`)?.contentType, 'image/png', 'a refused upload leaves the slot alone');
+  assert.deepEqual([...proofs.objects.keys()], [key], 'a refused upload leaves the one kept alone');
 });
 
 test('a proof over 8 MB is refused, by its declared length or by what arrives', async () => {
@@ -156,15 +158,33 @@ test('a proof over 8 MB is refused, by its declared length or by what arrives', 
   assert.deepEqual(fits.json, { proof: { type: 'application/pdf', size: PROOF_MAX_BYTES } });
 });
 
-test('each account has one proof slot: uploading again replaces it, and removing empties it', async () => {
+test('an account keeps one proof not yet sent: uploading again replaces it, and removing deletes it', async () => {
   const cookie = await applicant();
   await upload(cookie, PNG);
   await upload(cookie, PDF);
-  assert.equal(proofs.objects.size, 1);
+  assert.deepEqual(
+    [...proofs.objects.values()].map(kept => kept.contentType),
+    ['application/pdf'],
+    'the replaced file is deleted'
+  );
   assert.deepEqual((await state(cookie)).proof, { type: 'application/pdf', size: PDF.byteLength });
   assert.equal((await removeProof(cookie)).status, 204);
   assert.equal(proofs.objects.size, 0);
   assert.equal((await state(cookie)).proof, null);
+  assert.equal((await removeProof(cookie)).status, 204, 'with none kept there is nothing to delete');
+});
+
+test('two uploads at once keep the one that lands last, and leave no other file behind', async () => {
+  const cookie = await applicant();
+  const both = await Promise.all([upload(cookie, PNG), upload(cookie, PDF)]);
+  assert.deepEqual(
+    both.map(sent => sent.status),
+    [200, 200]
+  );
+  const kept = raw().prepare('SELECT key, type FROM proof_uploads').all();
+  assert.equal(kept.length, 1);
+  assert.deepEqual([...proofs.objects.keys()], [kept[0]?.key]);
+  assert.equal((await state(cookie)).proof.type, kept[0]?.type);
 });
 
 test('an Application carries a proof, an explanation or both, and a proof only once uploaded', async () => {
@@ -183,8 +203,9 @@ test('an Application carries a proof, an explanation or both, and a proof only o
   assert.equal(sent.json.application.proofType, 'application/pdf');
   const id = await idOf(cookie);
   const row = raw().prepare('SELECT proof_key AS key, proof_type AS type, proof_size AS size FROM applications').get();
-  assert.deepEqual({ ...row }, { key: `proofs/${id}`, type: 'application/pdf', size: PDF.byteLength });
-  assert.ok(proofs.objects.has(`proofs/${id}`), 'the proof stays for the admin to see');
+  assert.deepEqual({ ...row, key: null }, { key: null, type: 'application/pdf', size: PDF.byteLength });
+  assert.ok(String(row?.key).startsWith(`proofs/${id}/`));
+  assert.ok(proofs.objects.has(String(row?.key)), 'the proof stays for the admin to see');
 });
 
 test('sent with an explanation alone, a proof uploaded and left out is deleted', async () => {
@@ -265,6 +286,64 @@ test('an Application keeps the profile as it stood when the account applied', as
   assert.deepEqual({ ...row }, { popId: '1234567', firstName: 'Pat', lastName: 'Player' });
 });
 
+/** Sends the Application with `meanwhile` run while its body is still arriving, after the send has read the account. */
+async function applyWhile(cookie: string, body: unknown, meanwhile: () => void) {
+  const slow = new ReadableStream<Uint8Array>(
+    {
+      pull(controller) {
+        meanwhile();
+        controller.enqueue(new TextEncoder().encode(JSON.stringify(body)));
+        controller.close();
+      }
+    },
+    { highWaterMark: 0 }
+  );
+  const request = new Request(`${ORIGIN}/api/applications`, {
+    method: 'POST',
+    headers: { origin: ORIGIN, cookie, 'content-type': 'application/json' },
+    body: slow,
+    duplex: 'half'
+  } as RequestInit);
+  const response = await applications.onRequestPost({ request, env, params: {} } as never);
+  return { status: response.status, json: (await response.json()) as any };
+}
+
+test('a send holds to the account as it is when the Application lands, not as it was read', async () => {
+  const cookie = await applicant();
+  const setUser = (sql: string) => () => raw().prepare(`UPDATE users SET ${sql} WHERE name = 'Applicant'`).run();
+  // An Admin takes the POP ID off the account while its Application is still arriving.
+  const cleared = await applyWhile(cookie, { explanation: 'Hello', proof: false }, setUser('pop_id = NULL'));
+  assert.deepEqual([cleared.status, cleared.json], [400, { error: 'Complete your profile first', profile: true }]);
+  setUser("pop_id = '1234567'")();
+  const reinstated = await applyWhile(cookie, { explanation: 'Hello', proof: false }, setUser("role = 'organizer'"));
+  assert.deepEqual([reinstated.status, reinstated.json.error], [409, 'Already an organizer']);
+  assert.equal(raw().prepare('SELECT COUNT(*) AS n FROM applications').get()?.n, 0);
+  setUser("role = 'revoked'")();
+  // Renamed meanwhile, the account applies under the name it has now.
+  const renamed = await applyWhile(cookie, { explanation: 'Hello', proof: false }, setUser("last_name = 'Renamed'"));
+  assert.equal(renamed.status, 201);
+  const row = raw().prepare('SELECT pop_id AS popId, last_name AS lastName FROM applications').get();
+  assert.deepEqual({ ...row }, { popId: '1234567', lastName: 'Renamed' });
+});
+
+test('a send that keeps losing to changes to the account gives up, and one whose account is gone stores nothing', async () => {
+  const cookie = await applicant();
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  let renames = 0;
+  const rename = () => {
+    renames += 1;
+    raw().prepare("UPDATE users SET last_name = ? WHERE name = 'Applicant'").run(`Renamed${renames}`);
+  };
+  env.TOURNAMENT_DB = racing(db, 'INSERT OR IGNORE INTO applications', rename, 3);
+  const busy = await apply(cookie, { explanation: 'Hello', proof: false });
+  assert.deepEqual([busy.status, busy.json.error, renames], [409, 'Busy; try again', 3]);
+  env.TOURNAMENT_DB = racing(db, 'INSERT OR IGNORE INTO applications', () => {
+    raw().prepare("DELETE FROM users WHERE name = 'Applicant'").run();
+  });
+  assert.equal((await apply(cookie, { explanation: 'Hello', proof: false })).status, 401);
+  assert.equal(raw().prepare('SELECT COUNT(*) AS n FROM applications').get()?.n, 0);
+});
+
 test('withdrawing takes the pending Application and its proof; with none pending there is nothing to take', async () => {
   const cookie = await applicant();
   assert.deepEqual([(await withdraw(cookie)).status], [404]);
@@ -274,6 +353,30 @@ test('withdrawing takes the pending Application and its proof; with none pending
   assert.equal(raw().prepare('SELECT COUNT(*) AS n FROM applications').get()?.n, 0);
   assert.equal(proofs.objects.size, 0);
   assert.deepEqual(await state(cookie), { application: null, proof: null, eligible: { profile: true, role: true } });
+});
+
+test('the delete after a withdrawal takes that Application’s proof alone, however late it lands', async () => {
+  const cookie = await applicant();
+  await upload(cookie, PNG);
+  await apply(cookie, { explanation: '', proof: true });
+  const stalled = stalledDeletes(proofs);
+  env.PROOFS = stalled.bucket;
+  const kept: Promise<unknown>[] = [];
+  const withdrawn = await mine.onRequestDelete({
+    request: new Request(`${ORIGIN}/api/applications/mine`, { method: 'DELETE', headers: { origin: ORIGIN, cookie } }),
+    env,
+    params: {},
+    waitUntil: (work: Promise<unknown>) => kept.push(work)
+  } as never);
+  assert.equal(withdrawn.status, 204);
+  // The account applies again with another file before R2 has deleted the first.
+  await upload(cookie, PDF);
+  assert.equal((await apply(cookie, { explanation: '', proof: true })).status, 201);
+  stalled.release();
+  await Promise.all(kept);
+  const key = raw().prepare('SELECT proof_key FROM applications').get()?.proof_key as string;
+  assert.equal(proofs.objects.get(key)?.contentType, 'application/pdf');
+  assert.equal(proofs.objects.size, 1, 'the first proof is gone');
 });
 
 test('a decided Application stays: it cannot be withdrawn, and a rejected account applies again', async () => {
@@ -319,7 +422,8 @@ test('without the bucket, uploads are not available, and the state shows no proo
 
 test('a withdrawal does not wait on the bucket where the runtime keeps the function alive, and a failed delete fails nothing', async () => {
   const cookie = await applicant();
-  await apply(cookie, { explanation: 'Hello', proof: false });
+  await upload(cookie, PNG);
+  await apply(cookie, { explanation: '', proof: true });
   const failed = mock.method(console, 'error', () => undefined);
   env.PROOFS = { ...proofs, delete: () => Promise.reject(new Error('R2 is down')) };
   const kept: Promise<unknown>[] = [];

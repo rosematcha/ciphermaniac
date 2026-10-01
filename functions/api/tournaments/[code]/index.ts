@@ -42,7 +42,9 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
   if (access instanceof Response) {
     return access;
   }
-  await deleteTournament(access.db, access.row);
+  if (!(await deleteTournament(access.db, access.row))) {
+    return jsonError('Busy; try again', 409);
+  }
   await unpublishView(context.env.REPORTS, access.row.code);
   return noContent();
 }

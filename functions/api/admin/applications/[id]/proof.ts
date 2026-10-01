@@ -3,11 +3,11 @@
  * streamed from the private bucket to an Admin and to no one else; there is
  * no public or signed address for it. The type is the one told from the
  * file's bytes at upload. An image shows inline, for the admin page's <img>;
- * a PDF comes as a download, never drawn on the site's own origin. Only the
- * file the Application was sent with is shown: one uploaded over it since is
- * a 409, so the proof never changes under the Admin deciding. The file
- * name is the server's, never the uploader's. Nothing caches it, nothing
- * sniffs it as anything else, and opened on its own it runs nothing.
+ * a PDF comes as a download, never drawn on the site's own origin. The file
+ * is the one the Application was sent with, under a key no later upload
+ * uses, so it never changes under the Admin deciding. The file name is the
+ * server's, never the uploader's. Nothing caches it, nothing sniffs it as
+ * anything else, and opened on its own it runs nothing.
  */
 
 import { jsonError } from '../../../../lib/api/responses.js';
@@ -46,17 +46,11 @@ export async function onRequestGet(context: Context<'id'>): Promise<Response> {
     return jsonError('Proofs are not available', 503);
   }
   const row = await access.db
-    .prepare('SELECT proof_key, proof_etag FROM applications WHERE id = ?')
+    .prepare('SELECT proof_key FROM applications WHERE id = ?')
     .bind(param(context.params.id))
-    .first<{ proof_key: string | null; proof_etag: string | null }>();
-  const object = row?.proof_key
-    ? await bucket.get(row.proof_key, { onlyIf: { etagMatches: row.proof_etag ?? '' } })
-    : null;
-  if (!object) {
-    return jsonError('No proof', 404);
-  }
-  // R2 leaves the body out when the file is not the one the Application was sent with.
-  return object.body
+    .first<{ proof_key: string | null }>();
+  const object = row?.proof_key ? await bucket.get(row.proof_key) : null;
+  return object
     ? new Response(object.body, { headers: proofHeaders(object.httpMetadata?.contentType) })
-    : jsonError('The proof changed after it was sent', 409);
+    : jsonError('No proof', 404);
 }

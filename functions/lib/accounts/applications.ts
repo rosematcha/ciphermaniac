@@ -4,12 +4,13 @@
  * certification, an explanation, or both; the row keeps its POP ID and name
  * as they stood when it applied.
  *
- * The proof is a file in the private PROOFS bucket, one slot per account
- * (`proofs/<account id>`): uploading again writes over it, so an upload never
- * sent leaves nothing behind. The slot is emptied once the Application is
- * decided or withdrawn, or sent without proof. An Application keeps the etag
- * of the file it was sent with, so an upload that lands after it was sent is
- * never shown as its proof.
+ * The proof is a file in the private PROOFS bucket. Every upload is a file
+ * of its own, under a key never used again (`proofs/<account id>/<random>`),
+ * so nothing written later can change or delete the file an Application was
+ * sent with. An account holds one upload not yet sent (`proof_uploads`): a
+ * new one takes its place and the old file goes. Sending the Application
+ * moves the key onto it, and the file goes once the Application is decided
+ * or withdrawn; one left out of an Application goes when it is sent.
  */
 
 import { profileComplete } from '../../../shared/accounts/applications.js';
@@ -17,13 +18,13 @@ import { canApply, readAccountRole } from '../../../shared/accounts/roles.js';
 import type { AdminApplication, ApplicationStatus, MyApplication, ProofSlot } from '../../../shared/accounts/types.js';
 import { jsonError } from '../api/responses.js';
 import { type Context, sameOrigin } from '../auth/env.js';
-import { sessionHash, sessionUserQuery, type User, userFromRow, type UserRow } from '../auth/session.js';
+import { randomToken, sessionHash, sessionUserQuery, type User, userFromRow, type UserRow } from '../auth/session.js';
 import { firstRow } from '../d1.js';
 import { privateJson } from '../tournaments/access.js';
-import type { D1Like, ProofBucket } from '../types.js';
+import type { D1Like } from '../types.js';
 
-/** The account's one proof slot. */
-export const proofKey = (userId: string) => `proofs/${userId}`;
+/** A key for one upload of the account's, never given to another. */
+export const newProofKey = (userId: string) => `proofs/${userId}/${randomToken(12)}`;
 
 export interface ApplicationRow {
   id: string;
@@ -85,27 +86,36 @@ export const adminApplication = (row: AdminApplicationRow): AdminApplication => 
   decidedBy: row.decided_by ? { id: row.decided_by, name: row.decider_name ?? '' } : null
 });
 
-/** The signed-in account and its latest Application. */
+/** The signed-in account, its latest Application, and the proof it has uploaded and not yet sent. */
 export interface Applicant {
   db: D1Like;
   user: User;
   latest: ApplicationRow | null;
+  upload: ProofSlot | null;
 }
 
-/** The account a session belongs to and its newest Application, read in one round trip. */
+/** The account a session belongs to, its newest Application and its upload, read in one round trip. */
 async function readApplicant(db: D1Like, hash: string): Promise<Omit<Applicant, 'db'> | null> {
   const now = Date.now();
-  const [account, latest] = await db.batch([
+  const [account, latest, upload] = await db.batch([
     sessionUserQuery(db, hash, now),
     db
       .prepare(
         `SELECT ${APPLICATION_COLUMNS} FROM sessions s JOIN applications a ON a.user_id = s.user_id ` +
           'WHERE s.token_hash = ? AND s.expires_at > ? ORDER BY a.created_at DESC LIMIT 1'
       )
+      .bind(hash, now),
+    db
+      .prepare(
+        'SELECT p.type, p.size FROM sessions s JOIN proof_uploads p ON p.user_id = s.user_id ' +
+          'WHERE s.token_hash = ? AND s.expires_at > ?'
+      )
       .bind(hash, now)
   ]);
   const row = firstRow<UserRow>(account);
-  return row ? { user: userFromRow(row), latest: firstRow<ApplicationRow>(latest) } : null;
+  return row
+    ? { user: userFromRow(row), latest: firstRow<ApplicationRow>(latest), upload: firstRow<ProofSlot>(upload) }
+    : null;
 }
 
 /** The applicant asking, or the answer that turns the request away. */
@@ -141,22 +151,22 @@ export function applyRefusal(applicant: Applicant): Response | null {
   return isPending(applicant) ? pendingRefusal() : null;
 }
 
-/** A proof in an account's slot, and which upload it is. */
-export type HeldProof = ProofSlot & { etag: string };
-
-/** The proof in the account's slot, or null when it holds none. */
-export async function proofIn(bucket: ProofBucket | undefined, userId: string): Promise<HeldProof | null> {
-  const object = await bucket?.head(proofKey(userId));
-  return object ? { type: object.httpMetadata?.contentType ?? '', size: object.size, etag: object.etag } : null;
-}
+/** The key of the account's upload not yet sent; the batch it goes in decides which upload that is. */
+export const heldUpload = (db: D1Like, userId: string) =>
+  db.prepare('SELECT key FROM proof_uploads WHERE user_id = ?').bind(userId);
 
 /**
- * Empties the account's proof slot after the answer, where the runtime keeps
- * the function alive for it. A delete that fails fails nothing else: the
- * next upload writes over the file anyway.
+ * Deletes the proof file under `key`, if any, after the answer, where the
+ * runtime keeps the function alive for it. The key is the one the request
+ * took off its Application or upload, never one read again later, so a late
+ * delete cannot touch a file uploaded since. A delete that fails fails
+ * nothing else; the file is left over.
  */
-export function dropProof(context: Pick<Context, 'env' | 'waitUntil'>, userId: string): Promise<void> {
-  const dropped = Promise.resolve(context.env.PROOFS?.delete(proofKey(userId))).then(
+export function dropProof(context: Pick<Context, 'env' | 'waitUntil'>, key: string | null | undefined): Promise<void> {
+  if (!key) {
+    return Promise.resolve();
+  }
+  const dropped = Promise.resolve(context.env.PROOFS?.delete(key)).then(
     () => undefined,
     (error: unknown) => console.error('Proof delete failed', error)
   );

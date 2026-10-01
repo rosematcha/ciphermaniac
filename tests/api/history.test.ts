@@ -29,7 +29,7 @@ import { revisionOf } from '../../shared/tournament/revision.ts';
 import type { Player, Tournament } from '../../shared/tournament/types.ts';
 import { apiCalls, type Handler } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
-import { countingTrips, sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { countingTrips, racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 const { hit, signIn } = apiCalls(() => env);
@@ -171,6 +171,49 @@ test('deleting an event takes its players out of the index', async () => {
   assert.equal(deleted.status, 204);
   assert.deepEqual(indexed(code), []);
   assert.deepEqual(indexed(other), ['7200001'], 'another event keeps its own');
+});
+
+test('deleting an event takes out the players it has when the delete lands, not only those it read', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newTom(owner, ['7200001', '7200002']);
+  // A sync adds a player between the delete's read and its write.
+  const inner = db();
+  env.TOURNAMENT_DB = racing(inner, 'DELETE FROM', () => {
+    inner.raw.prepare("INSERT INTO pop_history (pop_id, code) VALUES ('7200003', ?)").run(code);
+    inner.raw
+      .prepare(
+        'UPDATE tournaments SET state = json_insert(state, \'$.players[#]\', json(\'{"id":"7200003"}\')), ' +
+          'version = version + 1 WHERE code = ?'
+      )
+      .run(code);
+  });
+  const deleted = await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
+  assert.equal(deleted.status, 204);
+  assert.deepEqual(indexed(code), []);
+  assert.equal(await loadTournament(inner, code), null);
+});
+
+test('a delete beaten to the event by other writes gives up after five tries, and changes nothing', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newTom(owner, ['7200001']);
+  const bump = () => db().raw.prepare('UPDATE tournaments SET version = version + 1 WHERE code = ?').run(code);
+  env.TOURNAMENT_DB = racing(db(), 'DELETE FROM tournaments', bump, 5);
+  const busy = await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
+  assert.deepEqual([busy.status, busy.json.error], [409, 'Busy; try again']);
+  assert.deepEqual(indexed(code), ['7200001']);
+  assert.notEqual(await loadTournament(db(), code), null);
+});
+
+test('a delete that another delete beat to the event is done', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newTom(owner, ['7200001']);
+  const other = () => {
+    db().raw.prepare('DELETE FROM pop_history WHERE code = ?').run(code);
+    db().raw.prepare('DELETE FROM tournaments WHERE code = ?').run(code);
+  };
+  env.TOURNAMENT_DB = racing(db(), 'DELETE FROM', other);
+  const deleted = await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
+  assert.equal(deleted.status, 204);
 });
 
 test('an event made on a code already taken leaves the first event’s index alone', async () => {
@@ -333,6 +376,27 @@ test('an account’s History lists the sanctioned events its POP ID plays in, as
   assert.deepEqual(await codesOf(player), [code], 'and comes back with it');
   await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
   assert.deepEqual(await codesOf(player), [], 'a deleted event is gone');
+});
+
+test('an event is live in History once any of its pods has paired, not only its first', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  for (let i = 0; i < 6; i += 1) {
+    await send(code, owner, {
+      type: 'addPlayer',
+      player: { firstName: 'Junior', lastName: `${i}`, id: `${800 + i}`, birthDate: '02/27/2016' }
+    });
+  }
+  await addPlayers(code, owner, 6);
+  const player = await signIn('Player');
+  await saveProfile(player, '901');
+  await send(code, owner, { type: 'pairRound', pod: 'masters' });
+  const pods = (await loadTournament(db(), code))?.tournament.pods.map(pod => [pod.category, pod.rounds.length]);
+  assert.deepEqual(pods, [
+    ['junior', 0],
+    ['masters', 1]
+  ]);
+  assert.equal((await historyOf(player)).json.entries[0].status, 'live');
 });
 
 test('History follows the player list: removed, added late, by decklist, or by a TOM file and its syncs', async () => {

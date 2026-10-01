@@ -46,7 +46,6 @@ import { type Access, open, openForStaff, privateJson, publicViewOf } from '../.
 import { settled } from '../../../lib/tournaments/answers.js';
 import { publishAfter } from '../../../lib/tournaments/publish.js';
 import {
-  accountFor,
   type Asker,
   type Claim,
   claimReporter,
@@ -144,12 +143,21 @@ async function reachable(context: Context<'code'>): Promise<Access | Response> {
   return open(context);
 }
 
-/** Who the request asks as, for the player it named: its device's token and ID, and its account (see accountFor). */
-const askerOf = (access: Access, body: Body, playerId: string): Asker => ({
+/** Who the request asks as: its device's token and ID, and who is signed in (see accountFor). */
+const askerOf = (access: Access, body: Body): Asker => ({
   held: body.reportToken,
   device: body.device,
-  account: accountFor(access, playerId)
+  user: access.user
 });
+
+/** The asker's standing for player `id`, or the answer that refuses them: linked elsewhere, or no standing to be had. */
+async function standingIn(access: Access, body: Body, id: string): Promise<Claim | Response> {
+  const standing = await claimReporter(access.db, access.row, id, askerOf(access, body));
+  if ('elsewhere' in standing) {
+    return linkedElsewhere(access.row, standing);
+  }
+  return 'error' in standing ? jsonError(standing.error, standing.status) : standing;
+}
 
 /** The refusal for an account that is already another player here, naming that player by their public key. */
 const linkedElsewhere = (row: TournamentRow, standing: Elsewhere) =>
@@ -172,9 +180,9 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
     return jsonError('Not a result', 400);
   }
   const { db, row } = access;
-  const standing = await claimReporter(db, row.code, who.id, askerOf(access, body, who.id));
-  if ('elsewhere' in standing) {
-    return linkedElsewhere(row, standing);
+  const standing = await standingIn(access, body, who.id);
+  if (standing instanceof Response) {
+    return standing;
   }
   if (!standing.reporter) {
     return jsonError(NOT_REPORTER, 403);
@@ -194,9 +202,9 @@ async function report(context: Context<'code'>, access: Access, body: Body, who:
 
 /** Who the player is, whether this device reports for them, and the event with any due results settled. */
 async function identify(context: Context<'code'>, access: Access, body: Body, id: string) {
-  const standing = await claimReporter(access.db, access.row.code, id, askerOf(access, body, id));
-  if ('elsewhere' in standing) {
-    return linkedElsewhere(access.row, standing);
+  const standing = await standingIn(access, body, id);
+  if (standing instanceof Response) {
+    return standing;
   }
   const row = await settled(context, access, body.localTime);
   return privateJson({ key: row.keys[id] ?? null, view: publicViewOf(row), ...standingOf(standing) });

@@ -12,6 +12,7 @@
 
 import type { HistoryEntry, PublicProfile } from '../../../shared/accounts/types.js';
 import { parseTomDate } from '../../../shared/tournament/divisions.js';
+import { POD_CATEGORIES } from '../../../shared/tournament/types.js';
 import { DEFAULT_SETTINGS } from '../../../shared/tournament/view.js';
 import { firstRow } from '../d1.js';
 import type { D1Like, D1Statement } from '../types.js';
@@ -33,12 +34,22 @@ function accountSql(whose: Whose): { from: string; where: string; values: unknow
 /** An account appears in a few hundred events at most; this bounds a read that goes wrong. */
 const MAX_ENTRIES = 500;
 
+/**
+ * How many rounds the event has paired across its pods: any pod may pair
+ * first, as each division plays on its own. A stored event has no more pods
+ * than there are pod categories (shared/tournament/validate.ts), so these
+ * slots are all of them.
+ */
+const roundsSql = POD_CATEGORIES.map((_, i) => `ifnull(json_array_length(t.state, '$.pods[${i}].rounds'), 0)`).join(
+  ' + '
+);
+
 /** The event's columns an entry needs, `player` being the player's ID there. */
 const entryColumns = (player: string) =>
   `t.code, t.mode, t.updated_at, json_extract(t.player_keys, '$."' || ${player} || '"') AS key, ` +
   "json_extract(t.state, '$.info.name') AS name, json_extract(t.state, '$.info.startDate') AS start_date, " +
   "json_extract(t.settings, '$.startsAt') AS starts_at, json_extract(t.settings, '$.format') AS format, " +
-  "json_extract(t.settings, '$.finished') AS finished, json_array_length(t.state, '$.pods[0].rounds') AS rounds";
+  `json_extract(t.settings, '$.finished') AS finished, ${roundsSql} AS rounds`;
 
 interface EntryRow {
   code: string;

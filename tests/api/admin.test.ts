@@ -28,7 +28,7 @@ import * as tournaments from '../../functions/api/tournaments/index.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { apiCalls, type Call, type Handler, ORIGIN } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
-import { memoryProofs } from '../__utils__/proofBucket.ts';
+import { memoryProofs, stalledDeletes } from '../__utils__/proofBucket.ts';
 import { sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
@@ -296,7 +296,7 @@ test('a proof goes to an Admin inert: its own type, never cached, never sniffed,
     'a PDF is not drawn on the site'
   );
   // Whatever else a slot came to hold is only ever bytes to download.
-  const key = `proofs/${await idOf(document.cookie)}`;
+  const key = raw().prepare('SELECT proof_key FROM applications WHERE id = ?').get(document.id)?.proof_key as string;
   proofs.objects.set(key, { ...proofs.objects.get(key)!, bytes: new Uint8Array([60, 104]), contentType: 'text/html' });
   const odd = await viewProof(admin, document.id);
   assert.equal(odd.headers.get('content-type'), 'application/octet-stream');
@@ -315,13 +315,13 @@ test('there is no proof to see without one, for an unknown Application, or witho
   assert.equal((await viewProof(admin, withFile.id)).status, 503);
 });
 
-test('a proof uploaded while its Application is being sent is never shown as the one sent', async () => {
+test('a proof uploaded while its Application is being sent leaves the one sent as it was', async () => {
   const admin = await signIn('Admin', 'admin');
   const cookie = await player('Applicant', '114');
   await upload(cookie, PNG);
   let id = '';
   // A second file is still arriving when another tab sends the Application with the first.
-  const late = new ReadableStream<Uint8Array>(
+  const arriving = new ReadableStream<Uint8Array>(
     {
       async pull(controller) {
         const sent = await hit(
@@ -344,16 +344,53 @@ test('a proof uploaded while its Application is being sent is never shown as the
   const request = new Request(`${ORIGIN}/api/applications/proof`, {
     method: 'PUT',
     headers: { origin: ORIGIN, cookie },
-    body: late,
+    body: arriving,
     duplex: 'half'
   } as RequestInit);
-  const replaced = await proof.onRequestPut({ request, env, params: {} } as never);
-  assert.equal(replaced.status, 200, 'the upload passed its checks before the send landed');
+  const late = await proof.onRequestPut({ request, env, params: {} } as never);
+  // It passed its checks before the send landed, and is refused when it lands after.
+  assert.deepEqual(
+    [late.status, ((await late.json()) as { error: string }).error],
+    [409, 'Your application is pending']
+  );
   const [listed] = (await list(admin)).json.applications;
   assert.deepEqual([listed.id, listed.proofType, listed.hasProof], [id, 'image/png', true]);
   const shown = await viewProof(admin, id);
-  assert.equal(shown.status, 409);
-  assert.equal(shown.bytes.byteLength > 0 && shown.headers.get('content-type'), 'application/json');
+  assert.deepEqual([shown.status, shown.bytes], [200, PNG]);
+  assert.equal(proofs.objects.size, 1, 'the refused file is not kept');
+});
+
+test('the delete after a decision takes that Application’s proof alone, however late it lands', async () => {
+  const admin = await signIn('Admin', 'admin');
+  const { cookie, id } = await applied('Applicant', '115', PNG);
+  const stalled = stalledDeletes(proofs);
+  env.PROOFS = stalled.bucket;
+  const kept: Promise<unknown>[] = [];
+  const rejected = await decide.onRequestPost({
+    request: new Request(`${ORIGIN}/api/admin/applications/${id}`, {
+      method: 'POST',
+      headers: { origin: ORIGIN, cookie: admin, 'content-type': 'application/json' },
+      body: JSON.stringify({ decision: 'reject' })
+    }),
+    env,
+    params: { id },
+    waitUntil: (work: Promise<unknown>) => kept.push(work)
+  } as never);
+  assert.equal(rejected.status, 200);
+  // The account applies again with another file before R2 has deleted the first.
+  await upload(cookie, PDF);
+  const again = await hit(
+    applications.onRequestPost as Handler,
+    '/api/applications',
+    {},
+    { method: 'POST', cookie, body: { explanation: '', proof: true } }
+  );
+  assert.equal(again.status, 201);
+  stalled.release();
+  await Promise.all(kept);
+  const shown = await viewProof(admin, again.json.application.id as string);
+  assert.deepEqual([shown.status, shown.bytes], [200, PDF]);
+  assert.equal(proofs.objects.size, 1, 'the first proof is gone');
 });
 
 test('approving makes an Organizer, records who decided, and deletes the proof; a second decision is refused', async () => {
