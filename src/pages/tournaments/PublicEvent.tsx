@@ -482,6 +482,19 @@ function EventBody(props: {
   const tab = () => pickTab(tabs(), params.tab, props.view);
   // A memo: the bar is drawn from it, and a bar drawn again on every new copy drops the search mid-word.
   const started = createMemo(() => hasStarted(props.view.tournament));
+  // Whose list the account owns (see DecklistForm): the same owner in a new copy of the event reads nothing again.
+  const listOwner = createMemo(
+    () => {
+      const popId = props.session?.user?.popId;
+      const said = props.view.viewer.claim;
+      if (isSanctioned(props.view)) {
+        return popId ? { popId, firstName: '', lastName: '' } : null;
+      }
+      return said ? { popId: '', firstName: said.firstName ?? '', lastName: said.lastName ?? '' } : null;
+    },
+    null,
+    { equals: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
+  );
 
   const bar = (withRounds: boolean) => (
     <>
@@ -581,6 +594,7 @@ function EventBody(props: {
           archetypes={decksEnabled(props.view.settings)}
           format={props.view.settings.format}
           sanctioned={isSanctioned(props.view)}
+          owner={listOwner()}
         />
       </Show>
       <Show when={open()}>

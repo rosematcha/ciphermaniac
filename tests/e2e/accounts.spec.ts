@@ -584,3 +584,92 @@ test('a signed-in player saves the POP ID their decklist went in under to their 
   await expect(page.getByRole('button', { name: 'Save to my account' })).toHaveCount(0);
   expect(saved).toEqual([profile]);
 });
+
+/** An event taking decklists, whose functions hold one list the signed-in account owns, read by whose it is and no token. */
+async function mockOwnList(page: Page, sanctioned: boolean) {
+  const code = 'DECKS2';
+  const t = run(emptyTournament({ name: 'Cup' }), {
+    type: 'addPlayer',
+    player: { firstName: 'Mary', lastName: 'Jackson', ...(sanctioned ? { id: '1001' } : {}) }
+  });
+  const keys = assignKeys(t, {});
+  const published: PublishedView = {
+    code,
+    mode: 'swiss',
+    version: 1,
+    updatedAt: 0,
+    tournament: publicTournament(t, keys, !sanctioned),
+    pending: [],
+    reports: [],
+    divisions: {},
+    decks: {},
+    settings: { ...DEFAULT_SETTINGS, decklists: 'open', sanctioned }
+  };
+  const mine = {
+    popId: sanctioned ? '1001' : '',
+    firstName: 'Mary',
+    lastName: 'Jackson',
+    birthDate: sanctioned ? '02/27/1995' : '',
+    deck: '60 Grass Energy',
+    archetype: null,
+    submittedAt: 0,
+    problems: [],
+    registered: true,
+    fromList: true,
+    locked: true
+  };
+  const lists: { method: string; query: Record<string, string> }[] = [];
+  const viewer = sanctioned
+    ? { role: null, me: keys['1001'], via: 'pop', claim: { popId: '1001' }, signedIn: true }
+    : {
+        role: null,
+        me: keys[t.players[0]!.id],
+        via: 'claim',
+        claim: { firstName: 'Mary', lastName: 'Jackson' },
+        signedIn: true
+      };
+  await page.route(`**/tournaments/v1/${code}.json`, route =>
+    route.fulfill({ json: published, headers: { 'access-control-allow-origin': '*' } })
+  );
+  await page.route('**/api/**', route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.pathname === '/api/me') {
+      return route.fulfill({ json: { user: { ...ME, popId: sanctioned ? '1001' : null }, providers: [] } });
+    }
+    if (url.pathname === `/api/tournaments/${code}/decklists`) {
+      const query = Object.fromEntries(url.searchParams);
+      lists.push({ method: request.method(), query });
+      const own = sanctioned ? query.popId === '1001' : query.lastName === 'Jackson' && query.firstName === 'Mary';
+      if (request.method() === 'DELETE') {
+        return route.fulfill({ status: own ? 204 : 409, json: own ? undefined : { error: 'Locked' } });
+      }
+      return route.fulfill({ json: { decklists: [], mine: own && !query.token ? mine : null } });
+    }
+    return route.fulfill({ json: { ...published, viewer } });
+  });
+  return { code, lists };
+}
+
+for (const sanctioned of [true, false]) {
+  test(`on a device that kept no list, the account sees and withdraws its own, ${sanctioned ? 'by its POP ID' : 'by its Claim'}`, async ({
+    page
+  }) => {
+    const { code, lists } = await mockOwnList(page, sanctioned);
+    await page.goto(`/t/${code}?tab=decklist`);
+    await expect(page.locator('.tm-decklist-status')).toContainText('Submitted');
+    await expect(page.locator('#deck-list')).toHaveValue('60 Grass Energy');
+    await page.getByRole('button', { name: 'Withdraw' }).click();
+    await page
+      .getByRole('group', { name: 'Withdraw your decklist?' })
+      .getByRole('button', { name: 'Withdraw' })
+      .click();
+    await expect(page.locator('.tm-decklist-status')).toContainText('Not submitted');
+    const owner = sanctioned ? { popId: '1001' } : { firstName: 'Mary', lastName: 'Jackson' };
+    expect(lists.map(ask => ask.method)).toEqual(['GET', 'DELETE']);
+    for (const ask of lists) {
+      expect(ask.query).toMatchObject(owner);
+      expect(ask.query.token).toBeUndefined();
+    }
+  });
+}

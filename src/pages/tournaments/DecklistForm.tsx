@@ -13,11 +13,11 @@
  * unlock it. A signed-in player's profile fills the form in, and once a
  * list is in at a sanctioned event, the account can take its POP ID ("Save
  * to my account"): sending a list never sets one, since a list may be sent
- * for a friend.
+ * for a friend. An account that owns its list sees it on any of its devices.
  */
 
 import { A } from '@solidjs/router';
-import { createEffect, createResource, createSignal, For, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, Show } from 'solid-js';
 import { type DeckSection, parseDecklist } from '../../../shared/tournament/decklist';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import { SETTINGS_LIMITS } from '../../../shared/tournament/view';
@@ -46,7 +46,15 @@ interface FormProps {
   format: string;
   /** Unsanctioned, the form asks for the name alone. */
   sanctioned: boolean;
+  /**
+   * Whose list the signed-in account owns here, when it is a player: its POP
+   * ID, or the full name of its Claim. A device that kept no list reads the
+   * account's with it, and no token.
+   */
+  owner: ListOwner | null;
 }
+
+type ListOwner = Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>;
 
 /** Who sent this device's list, and the token that reads it back. */
 interface Remembered {
@@ -72,10 +80,13 @@ function remember(code: string, value: Remembered | null) {
   }
 }
 
-/** This device's list, by the details and token it kept. */
-async function loadMine(code: string): Promise<Decklist | null> {
+/** This device's list, by the details and token it kept; on a device that kept none, the account's own. */
+async function loadMine([code, owner]: readonly [string, ListOwner | null]): Promise<Decklist | null> {
   const kept = recall(code);
-  return kept ? (await fetchMyDecklist(code, kept.profile, kept.token)).mine : null;
+  if (kept) {
+    return (await fetchMyDecklist(code, kept.profile, kept.token)).mine;
+  }
+  return owner ? (await fetchMyDecklist(code, owner, '')).mine : null;
 }
 
 const SECTION_LABELS: Record<DeckSection, string> = { pokemon: 'Pokémon', trainer: 'Trainer', energy: 'Energy' };
@@ -127,7 +138,11 @@ function missing(profile: PlayerProfile, deck: string, sanctioned: boolean): str
 function createDecklistForm(props: FormProps) {
   // eslint-disable-next-line solid/reactivity -- read once for the event the page opened on
   const kept = recall(props.code);
-  const [mine, { mutate }] = createResource(() => props.code, loadMine);
+  // Read again only for another owner, not for every new copy of the event the props come from; a device's own list has none.
+  const whose = createMemo(() => [props.code, kept ? null : props.owner] as const, undefined, {
+    equals: (a, b) => a[0] === b[0] && a[1] === b[1]
+  });
+  const [mine, { mutate }] = createResource(whose, loadMine);
   const [profile, setProfile] = createSignal<PlayerProfile>(kept?.profile ?? emptyProfile(latestValue(session)?.user));
   const [known, setKnown] = createSignal(kept !== null);
   const [deck, setDeck] = createSignal('');
