@@ -7,7 +7,7 @@
  * the caller (see `mutate`).
  */
 
-import type { Tournament } from '../../../shared/tournament/types.js';
+import { POD_CATEGORIES, type Tournament } from '../../../shared/tournament/types.js';
 import {
   applyPending,
   assignKeys,
@@ -452,6 +452,15 @@ export async function removeStaff(db: D1Like, code: string, userId: string): Pro
   await db.prepare('DELETE FROM staff WHERE code = ? AND user_id = ?').bind(code, userId).run();
 }
 
+/**
+ * How many rounds the event in the `state` column has paired across its
+ * pods: any pod may pair first, as each division plays on its own. A stored
+ * event has no more pods than there are pod categories
+ * (shared/tournament/validate.ts), so these slots are all of them.
+ */
+export const pairedRounds = (state: string) =>
+  POD_CATEGORIES.map((_, i) => `ifnull(json_array_length(${state}, '$.pods[${i}].rounds'), 0)`).join(' + ');
+
 interface SummaryRow {
   code: string;
   mode: string;
@@ -471,7 +480,7 @@ export async function listTournaments(db: D1Like, userId: string): Promise<Tourn
       "SELECT code, mode, json_extract(state, '$.info.name') AS name, " +
         "json_array_length(state, '$.players') AS players, json_extract(state, '$.info.startDate') AS start_date, " +
         "json_extract(settings, '$.finished') AS finished, " +
-        "json_array_length(state, '$.pods[0].rounds') AS rounds, owner_id, updated_at FROM tournaments " +
+        `${pairedRounds('state')} AS rounds, owner_id, updated_at FROM tournaments ` +
         'WHERE owner_id = ? OR code IN (SELECT code FROM staff WHERE user_id = ?) ORDER BY updated_at DESC LIMIT 200'
     )
     .bind(userId, userId)

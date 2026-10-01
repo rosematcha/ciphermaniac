@@ -282,6 +282,27 @@ test('creating an event needs a signed-in, same-origin request', async () => {
   );
 });
 
+test('the event list counts an event as paired once any of its pods has paired, not only its first', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  for (let i = 0; i < 6; i += 1) {
+    await send(code, owner, {
+      type: 'addPlayer',
+      player: { firstName: 'Junior', lastName: `${i}`, id: `${800 + i}`, birthDate: '02/27/2016' }
+    });
+  }
+  await addPlayers(code, owner, 6);
+  await send(code, owner, { type: 'pairRound', pod: 'masters' });
+  const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
+  const pods = (await loadTournament(db, code))?.tournament.pods.map(pod => [pod.category, pod.rounds.length]);
+  assert.deepEqual(pods, [
+    ['junior', 0],
+    ['masters', 1]
+  ]);
+  const list = await hit(tournaments.onRequestGet as Handler, '/api/tournaments', {}, { cookie: owner });
+  assert.equal(list.json.tournaments[0].rounds, 1);
+});
+
 test('only organizers and admins start events, and a revoked organizer still runs its own', async () => {
   const create = (cookie: string) =>
     hit(

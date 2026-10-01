@@ -314,7 +314,7 @@ export interface TournamentSummary {
   /** MM/DD/YYYY, as TOM writes it; '' when unset. */
   startDate: string;
   finished: boolean;
-  /** Rounds the event's first pod has paired: 0 before round 1. */
+  /** Rounds the event has paired across its pods: 0 before round 1. */
   rounds: number;
   updatedAt: number;
 }
