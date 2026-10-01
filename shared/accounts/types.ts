@@ -30,3 +30,32 @@ export interface PublicProfile {
   avatar: string | null;
   entries: HistoryEntry[];
 }
+
+/** An uploaded proof: its type, and its size in bytes. */
+export interface ProofSlot {
+  type: string;
+  size: number;
+}
+
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
+
+/** An Application as the account that sent it sees it. */
+export interface MyApplication {
+  id: string;
+  status: ApplicationStatus;
+  explanation: string;
+  /** The proof's type, kept as a record that one was sent after the file itself is deleted; null without one. */
+  proofType: string | null;
+  createdAt: number;
+  decidedAt: number | null;
+  /** The deciding admin's note to the applicant. */
+  note: string | null;
+}
+
+/** GET /api/applications/mine: the account's latest Application, a proof uploaded for the next, and whether it may apply. */
+export interface ApplicationState {
+  application: MyApplication | null;
+  /** A proof uploaded and not yet sent; null while an Application is pending, since its proof is the one sent. */
+  proof: ProofSlot | null;
+  eligible: { profile: boolean; role: boolean };
+}
