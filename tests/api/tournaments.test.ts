@@ -15,7 +15,10 @@ import { afterEach, beforeEach, mock, test } from 'node:test';
 import * as callback from '../../functions/api/auth/callback/[provider].ts';
 import * as login from '../../functions/api/auth/login/[provider].ts';
 import * as logout from '../../functions/api/auth/logout.ts';
+import * as history from '../../functions/api/history.ts';
 import * as me from '../../functions/api/me.ts';
+import * as profiles from '../../functions/api/profiles/[slug].ts';
+import * as claim from '../../functions/api/tournaments/[code]/claim.ts';
 import * as commands from '../../functions/api/tournaments/[code]/commands.ts';
 import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts';
 import * as decks from '../../functions/api/tournaments/[code]/decks.ts';
@@ -42,7 +45,7 @@ import { countingTrips, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 const { hit, signIn } = apiCalls(() => env);
-const { newSwiss, send, addPlayers, settle, playerSays, view } = eventCalls(hit);
+const { newEvent, newSwiss, send, addPlayers, settle, playerSays, view } = eventCalls(hit);
 
 beforeEach(() => {
   env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true' };
@@ -1738,7 +1741,7 @@ async function underWay(cookie: string): Promise<string> {
 
 test('the sweep ends an event under way that has gone two hours without a change, and publishes it', async () => {
   const objects = memoryBucket();
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const idleOne = await underWay(owner);
   const busy = await underWay(owner);
   const unstarted = await newSwiss(owner);
@@ -1761,7 +1764,7 @@ test('the sweep ends an event under way that has gone two hours without a change
 });
 
 test('an event the organizer reopens after the sweep ended it runs another two hours', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await underWay(owner);
   age(code, 3 * HOUR);
   await sweep();
@@ -1776,7 +1779,7 @@ test('an event the organizer reopens after the sweep ended it runs another two h
 });
 
 test('a change that lands while the sweep runs keeps the event going', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await underWay(owner);
   age(code, 3 * HOUR);
   const db = env.TOURNAMENT_DB!;
@@ -1812,7 +1815,7 @@ test('a change that lands while the sweep runs keeps the event going', async () 
 });
 
 test('only the sweep’s token runs the sweep', async () => {
-  const owner = await signIn('Organizer');
+  const owner = await signIn('Organizer', 'organizer');
   const code = await underWay(owner);
   age(code, 3 * HOUR);
   assert.equal((await sweep('')).status, 403);
@@ -1827,6 +1830,76 @@ test('only the sweep’s token runs the sweep', async () => {
   assert.equal(unset.status, 403, 'no token configured runs nothing');
   assert.equal((await loadTournament(env.TOURNAMENT_DB!, code))?.settings.finished, false);
 });
+
+/**
+ * What player accounts add to an event's life, for the scan check below: a
+ * TOM file and its sync, an account's Claim at an unsanctioned event, the
+ * page that shows it, its decklist, its History and public profile, and the
+ * Claim undone. `player` is signed in with a POP ID.
+ */
+async function accountsFlow(owner: string, player: string) {
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  const tom = await newEvent(owner, { mode: 'tom', tournament: tdf });
+  const extra = { ...tdf.players[0]!, id: '7200099', lastName: 'Extra' };
+  await hit(sync.onRequestPut as Handler, '/sync', at(tom), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: { ...tdf, players: [...tdf.players, extra] }, base: await revisionNow(tom, owner) }
+  });
+  await view(tom, player);
+  const casual = await newSwiss(owner);
+  await settle(casual, owner, { sanctioned: false, decklists: 'open' });
+  await send(casual, owner, { type: 'addPlayer', player: { firstName: 'Ash', lastName: 'Ketchum' } });
+  await send(casual, owner, { type: 'addPlayer', player: { firstName: 'Gary', lastName: 'Oak' } });
+  const gary = await playerSays(casual, { lastName: 'Oak', device: 'gary' });
+  await playerSays(casual, { lastName: 'Ketchum', device: 'ash' }, { cookie: player });
+  await view(casual, player);
+  const ash = { firstName: 'Ash', lastName: 'Ketchum' };
+  await hit(decklists.onRequestPut as Handler, '/decklists', at(casual), {
+    method: 'PUT',
+    cookie: player,
+    body: { ...LIST, profile: ash }
+  });
+  const query = 'firstName=Ash&lastName=Ketchum';
+  await hit(decklists.onRequestGet as Handler, `/decklists?${query}`, at(casual), { cookie: player });
+  await hit(decklists.onRequestDelete as Handler, `/decklists?${query}`, at(casual), {
+    method: 'DELETE',
+    cookie: player
+  });
+  await hit(history.onRequestGet as Handler, '/api/history', {}, { cookie: player });
+  const on = await hit(
+    me.onRequestPatch as Handler,
+    '/api/me',
+    {},
+    {
+      method: 'PATCH',
+      cookie: player,
+      body: { publicProfile: true }
+    }
+  );
+  const slug = on.json.user.publicSlug as string;
+  await hit(profiles.onRequestGet as Handler, `/api/profiles/${slug}`, { slug });
+  await hit(claim.onRequestDelete as Handler, '/claim', at(casual), { method: 'DELETE', cookie: player });
+  // Gary's phone, signed in now, makes its claim the account's.
+  await playerSays(casual, { lastName: 'Oak', device: 'gary', reportToken: gary.json.reportToken }, { cookie: player });
+  await hit(event.onRequestDelete as Handler, '/', at(tom), { method: 'DELETE', cookie: owner });
+}
+
+/** A piece of each statement player accounts added, which the scan check must have seen. */
+const ACCOUNT_STATEMENTS = [
+  'INSERT OR IGNORE INTO pop_history',
+  'DELETE FROM pop_history WHERE code = ?1',
+  'DELETE FROM report_devices WHERE code = ?1',
+  'DELETE FROM pop_history WHERE code = ? AND',
+  'SELECT player_id FROM report_devices WHERE user_id = ?',
+  'UPDATE OR IGNORE report_devices SET user_id',
+  'SELECT player_id FROM report_devices JOIN sessions',
+  'DELETE FROM report_devices WHERE code = ? AND user_id = ?',
+  'decklists.account = ?',
+  'JOIN pop_history h',
+  'JOIN report_devices d',
+  'u.public_slug = ?'
+];
 
 test('nothing the functions ask of the database scans a table', async () => {
   const { raw } = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
@@ -1877,6 +1950,11 @@ test('nothing the functions ask of the database scans a table', async () => {
   await hit(decklists.onRequestGet as Handler, `/decklists?popId=900&token=${sent.json.token}`, at(code));
   await hit(decklists.onRequestPatch as Handler, '/decklists?popId=900', at(code), { method: 'PATCH', cookie: owner });
   await hit(decklists.onRequestDelete as Handler, '/decklists?popId=900', at(code), { method: 'DELETE' });
+  // The history index: a player in and out of a sanctioned event, and the event out of the index and back.
+  await send(code, owner, { type: 'addPlayer', player: { firstName: 'Gone', lastName: 'Soon', id: '960' } });
+  await send(code, owner, { type: 'removePlayer', id: '960' });
+  await settle(code, owner, { sanctioned: false });
+  await settle(code, owner, { sanctioned: true });
   await send(code, owner, { type: 'pairRound', pod: 'masters' });
   await playerSays(code, { popId: '900', result: 'win' });
   await hit(report.onRequestDelete as Handler, '/report?player=900', at(code), { method: 'DELETE', cookie: owner });
@@ -1886,10 +1964,17 @@ test('nothing the functions ask of the database scans a table', async () => {
     body: { rotate: true }
   });
   await sweep();
+  await accountsFlow(owner, helper);
   await hit(logout.onRequestPost as Handler, '/api/auth/logout', {}, { method: 'POST', cookie: helper });
   await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
   const statements = [...new Set(seen)];
   assert.ok(statements.length > 25, 'the flow reached the functions');
+  for (const part of ACCOUNT_STATEMENTS) {
+    assert.ok(
+      statements.some(sql => sql.includes(part)),
+      `the flow reached ${part}`
+    );
+  }
   for (const sql of statements) {
     const plan = raw.prepare(`EXPLAIN QUERY PLAN ${sql}`).all() as { detail: string }[];
     const scans = plan.map(step => step.detail).filter(detail => detail.startsWith('SCAN'));
