@@ -45,6 +45,7 @@ import { fetchCardFacets } from '../lib/data/cardFacets';
 import { sortByDeckOrder } from '../lib/cardOrder';
 import { createListsState, ListsControls } from './archetypePage/listsControls';
 import '../styles/pages/archetype.css';
+import '../styles/pages/archetype-tiers.css';
 
 type ArchTab = 'cards' | 'lists' | 'matchups' | 'advanced';
 
@@ -432,29 +433,35 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
         <Show when={props.tab === 'cards'}>
           <Show when={orderedCards().length > 0} fallback={<EmptyState title='No cards in this report.' />}>
             <Show when={coreCards().length > 0}>
-              <CardList
-                title='Cards in ≥ 90% of lists'
-                items={coreCards()}
-                viewMode={props.viewMode}
-                emptyMessage='No core cards above 90% inclusion in this archetype yet.'
-              />
+              <div class='arche-tier'>
+                <CardList
+                  title='Cards in ≥ 90% of lists'
+                  items={coreCards()}
+                  viewMode={props.viewMode}
+                  emptyMessage='No core cards above 90% inclusion in this archetype yet.'
+                />
+              </div>
             </Show>
             <Show when={techCards().length > 0}>
-              <CardList
-                title='Cards in 30–90% of lists'
-                items={techCards()}
-                viewMode={props.viewMode}
-                emptyMessage='No tech-tier cards in this archetype yet.'
-              />
+              <div class='arche-tier'>
+                <CardList
+                  title='Cards in 30–90% of lists'
+                  items={techCards()}
+                  viewMode={props.viewMode}
+                  emptyMessage='No tech-tier cards in this archetype yet.'
+                />
+              </div>
             </Show>
             <Show when={fringeCards().length > 0}>
-              <CardList
-                title='All other cards'
-                items={fringeCards()}
-                viewMode={props.viewMode}
-                emptyMessage='No other cards in this report.'
-                initialLimit={60}
-              />
+              <div class='arche-tier'>
+                <CardList
+                  title='All other cards'
+                  items={fringeCards()}
+                  viewMode={props.viewMode}
+                  emptyMessage='No other cards in this report.'
+                  initialLimit={60}
+                />
+              </div>
             </Show>
           </Show>
         </Show>

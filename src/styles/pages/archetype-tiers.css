@@ -1,0 +1,13 @@
+/* =====================================================================
+   Archetype page's Cards tab. Owned by ArchetypePage alone, so routes that
+   share archetype.css through its components don't carry it.
+   ===================================================================== */
+
+/* ---------- Card tiers ----------
+   Core, tech and the rest stack on the Cards tab. A rule and real space
+   between them keep each heading with its own cards, not the grid above. */
+.arche-tier + .arche-tier {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--rule);
+}
