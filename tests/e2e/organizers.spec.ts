@@ -417,6 +417,23 @@ test('/host: an account that is not an Organizer starts no event, applies instea
   await expect(page.getByRole('link', { name: 'Thursday Locals' })).toHaveAttribute('href', '/host/OWNED1');
 });
 
+test('/host: on a phone, an event row keeps its links on screen without scrolling sideways @mobile', async ({
+  page
+}) => {
+  await mockHost(page, { ...ME, role: 'organizer' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/host');
+  const row = page.locator('.tm-host-table tbody tr').first();
+  for (const name of ['Results', 'Public page']) {
+    const box = await row.getByRole('link', { name }).boundingBox();
+    expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(390);
+  }
+  const wrap = page.locator('.tm-host-section .table-wrap').first();
+  expect(await wrap.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
+  await expect(row.locator('.tm-host-players')).toHaveAttribute('data-unit', 'players');
+});
+
 test('/host: a pending Application shows in place of the way to apply', async ({ page }) => {
   await mockHost(page, ME, { ...NONE, application: application('pending') });
   await page.goto('/host');

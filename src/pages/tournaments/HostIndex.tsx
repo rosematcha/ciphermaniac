@@ -59,7 +59,7 @@ function EventRow(props: { event: TournamentSummary }) {
   const finished = () => props.event.finished;
   return (
     <tr>
-      <td>
+      <td class='tm-host-name'>
         <A class='tm-event-name' href={`/host/${props.event.code}`}>
           {props.event.name || props.event.code}
         </A>
@@ -67,10 +67,13 @@ function EventRow(props: { event: TournamentSummary }) {
           <span class='tm-flag'>Staff</span>
         </Show>
       </td>
-      <td class='muted-cell'>{PHASE_WORDS[phaseOf(props.event)]}</td>
+      <td class='muted-cell tm-host-status'>{PHASE_WORDS[phaseOf(props.event)]}</td>
       <td class='muted-cell tm-nowrap tm-wide-col'>{shortDate(props.event.startDate)}</td>
       <td class='muted-cell tm-wide-col'>{props.event.mode === 'tom' ? 'TOM' : 'Swiss'}</td>
-      <td class='num'>{props.event.players}</td>
+      {/* The unit shows on a phone, where the column heads do not. */}
+      <td class='num tm-host-players' data-unit={props.event.players === 1 ? 'player' : 'players'}>
+        {props.event.players}
+      </td>
       <td class='tm-extra-col'>
         <span class='tm-row-actions'>
           <A class='btn btn-ghost tm-small' href={`/host/${props.event.code}${finished() ? '?tab=standings' : ''}`}>
