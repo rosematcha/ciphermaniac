@@ -1,9 +1,10 @@
 /**
  * The player-account pages against mocked functions and mocked public
  * copies: History lists the account's events with the place and record read
- * from each event's copy, and a row opens to its rounds. The events are the
- * hand-written mid-event .tdf fixture and a finished event with a top cut,
- * run through the same public-view code the functions publish with.
+ * from each event's copy, and a row opens to its rounds; a public profile
+ * shows the same, read-only. The events are the hand-written mid-event .tdf
+ * fixture and a finished event with a top cut, run through the same
+ * public-view code the functions publish with.
  */
 
 import { readFileSync } from 'node:fs';
@@ -193,4 +194,26 @@ test('History with no events says so', async ({ page }) => {
   });
   await page.goto('/history');
   await expect(page.locator('.tm-empty')).toHaveText('No events yet');
+});
+
+test('a public profile shows the name and History read-only, and an unknown address is not found @mobile', async ({
+  page
+}) => {
+  const errors = await mockAccount(page, null);
+  await publishCopies(page);
+  await page.route('**/api/profiles/**', route => {
+    const slug = new URL(route.request().url()).pathname.split('/').pop();
+    return slug === 'ABCD2345'
+      ? route.fulfill({ json: { name: 'Mary Jackson', avatar: null, entries: ENTRIES } })
+      : route.fulfill({ status: 404, json: { error: 'No such profile' } });
+  });
+  await page.goto('/u/abcd2345');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mary Jackson');
+  const rows = page.locator('.tm-hist tbody tr.is-link');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.first().locator('.tm-hist-place')).toHaveText('1st');
+  await expect(page.locator('main').getByRole('button', { name: /Sign in|Save|Remove/ })).toHaveCount(0);
+  await page.goto('/u/NOPE2345');
+  await expect(page.getByRole('heading', { name: /not found/ })).toBeVisible();
+  expect(errors).toEqual([]);
 });

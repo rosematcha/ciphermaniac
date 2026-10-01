@@ -16,6 +16,7 @@ import {
   fetchHistory,
   fetchManage,
   fetchMyDecklist,
+  fetchProfile,
   fetchPublished,
   fetchSession,
   fetchStaff,
@@ -251,6 +252,12 @@ test('sign-in links carry where to return and the dev name', () => {
   assert.equal(signInUrl('google', '/host'), '/api/auth/login/google?next=%2Fhost');
   assert.equal(signInUrl('dev', '/t/ABC', 'Pat'), '/api/auth/login/dev?next=%2Ft%2FABC&name=Pat');
   assert.equal(linkUrl('discord'), '/api/auth/login/discord?next=%2Fsettings&link=1');
+});
+
+test('a public profile is read by its address', async () => {
+  answer(200, { name: 'Mary', avatar: null, entries: [] });
+  await fetchProfile('ABCD2345');
+  assert.deepEqual(sent, [{ url: '/api/profiles/ABCD2345', method: 'GET', body: undefined }]);
 });
 
 test('account name uses the account endpoint', async () => {

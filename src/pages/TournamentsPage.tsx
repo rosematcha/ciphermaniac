@@ -2,7 +2,8 @@
  * Every tournament route through one entry in main.tsx: /host (an
  * organizer's events), /host/:code (running one), /t/:code (the public page
  * players follow), /settings (sign-in, sign-out and the player profile;
- * /account is its older name), and /history (the events an account played).
+ * /account is its older name), /history (the events an account played) and
+ * /u/:slug (an account's public profile).
  * One route rather than one each, because each route added to main.tsx is
  * paid for in the app shell; each page is still its own chunk, so a player
  * following pairings never downloads the organizer's console.
@@ -21,6 +22,7 @@ const HostIndex = lazy(() => import('./tournaments/HostIndex').then(m => ({ defa
 const ManageEvent = lazy(() => import('./tournaments/ManageEvent').then(m => ({ default: m.ManageEvent })));
 const PublicEvent = lazy(() => import('./tournaments/PublicEvent').then(m => ({ default: m.PublicEvent })));
 const HistoryPage = lazy(() => import('./tournaments/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const ProfilePage = lazy(() => import('./tournaments/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
 // A page opened on an event asks for it now, as this module loads, so the event and the
 // public page's own code arrive side by side instead of one after the other.
@@ -31,7 +33,7 @@ if (opened) {
 
 export function TournamentsPage() {
   const location = useLocation();
-  const params = useParams<{ code?: string }>();
+  const params = useParams<{ code?: string; slug?: string }>();
   const code = () => (params.code ?? '').toUpperCase();
   const screen = () => new URLSearchParams(location.search).get('screen') === '1';
   const settings = () => location.pathname.startsWith('/account') || location.pathname.startsWith('/settings');
@@ -47,6 +49,9 @@ export function TournamentsPage() {
         </Match>
         <Match when={location.pathname.startsWith('/history')}>
           <HistoryPage />
+        </Match>
+        <Match when={location.pathname.startsWith('/u/') && params.slug}>
+          {slug => <ProfilePage slug={slug().toUpperCase()} />}
         </Match>
         <Match when={location.pathname.startsWith('/t/') && code()}>
           <PublicEvent code={code()} signedIn={Boolean(latestValue(session)?.user)} />

@@ -1,6 +1,16 @@
 /* History (/history) and the public profile (/u/:slug), loaded with their
    list (HistoryList): one box of events, each opening to its rounds. */
 
+/* A public profile's head: the account's picture beside its name. */
+.tm-hero.tm-profile-hero {
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+}
+.tm-profile-hero .tm-status {
+  margin-bottom: 0;
+}
+
 /* The house rows, with hairlines between events rather than the stripe: an
    opened event's rounds sit under it on their own tint, and a stripe would
    count them as a row. Fixed columns, so the figures share one edge and a

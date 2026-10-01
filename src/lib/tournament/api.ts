@@ -5,7 +5,7 @@
  */
 
 import type { AccountRole } from '../../../shared/accounts/roles';
-import type { HistoryEntry } from '../../../shared/accounts/types';
+import type { HistoryEntry, PublicProfile } from '../../../shared/accounts/types';
 import type { Command } from '../../../shared/tournament/commands';
 import { tomDateTime } from '../../../shared/tournament/divisions';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
@@ -25,7 +25,7 @@ import {
 } from '../../../shared/tournament/view';
 import { R2_ORIGIN } from '../constants';
 
-export type { Decklist, HistoryEntry, Manage, Registration, StaffMember, TournamentSummary };
+export type { Decklist, HistoryEntry, Manage, PublicProfile, Registration, StaffMember, TournamentSummary };
 
 export class ApiError extends Error {
   constructor(
@@ -96,6 +96,9 @@ export const signOut = () => call<null>('/api/auth/logout', { method: 'POST' });
 
 /** The signed-in account's History, newest first. */
 export const fetchHistory = () => call<{ entries: HistoryEntry[] }>('/api/history');
+
+/** A public profile by its address; not found once its account turns it off. */
+export const fetchProfile = (slug: string) => call<PublicProfile>(`/api/profiles/${encodeURIComponent(slug)}`);
 
 export function signInUrl(provider: Provider, next: string, name?: string): string {
   const query = new URLSearchParams({ next, ...(name ? { name } : {}) });
