@@ -335,8 +335,12 @@ export function pairTopCut(seeds: readonly string[]): Pairing[] {
   return pairings;
 }
 
-/** The next elimination round: each pair of adjacent matches' winners meet. */
-export function pairNextElimination(winners: readonly string[]): Pairing[] {
+/**
+ * The next elimination round: each pair of adjacent matches' winners meet.
+ * From the semifinals, a cut that plays for third place also pairs their two
+ * losers, after the final.
+ */
+export function pairNextElimination(winners: readonly string[], thirdPlace: readonly string[] = []): Pairing[] {
   const pairings: Pairing[] = [];
   for (let i = 0; i < winners.length; i += 2) {
     const p1 = winners[i];
@@ -344,5 +348,6 @@ export function pairNextElimination(winners: readonly string[]): Pairing[] {
       pairings.push({ p1, p2: winners[i + 1] ?? null });
     }
   }
-  return pairings;
+  const [third, fourth] = thirdPlace;
+  return winners.length === 2 && third && fourth ? [...pairings, { p1: third, p2: fourth }] : pairings;
 }

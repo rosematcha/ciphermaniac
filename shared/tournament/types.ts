@@ -65,6 +65,12 @@ export interface Player {
   /** Set after the round the player dropped in; null while they are still playing. */
   droppedAfter: number | null;
   /**
+   * Dropped by disqualification: out of the standings altogether, though
+   * their matches still count for their opponents. TOM's own code for it is
+   * unknown, so a .tdf carries it as a drop.
+   */
+  disqualified?: true;
+  /**
    * Tagged late in TOM (its "Is late?" box); ranks below other players on the
    * same points. A player the site adds mid-event is not tagged: their missed
    * rounds are losses instead (see joinedLate in rounds.ts).
@@ -133,6 +139,21 @@ export interface Pod {
   cutOf?: PodCategory;
 }
 
+/**
+ * The kind of local event, which sets its structure: a League Challenge plays
+ * Swiss rounds only, a League Cup Swiss rounds then a top cut, each on its own
+ * attendance table (Tournament Rules Handbook §5.5.6). TOM writes a Challenge
+ * with root and Swiss round type 2, a Cup with 3.
+ */
+export type EventType = 'challenge' | 'cup';
+
+export const EVENT_TYPES: readonly EventType[] = ['cup', 'challenge'];
+
+export const EVENT_TYPE_LABELS: Record<EventType, string> = {
+  cup: 'League Cup',
+  challenge: 'League Challenge'
+};
+
 export interface TournamentInfo {
   name: string;
   /** Play! Pokémon sanction ID, e.g. 12-34-567890, or '' for an unsanctioned event. */
@@ -147,6 +168,8 @@ export interface TournamentInfo {
   organizerName: string;
   /** MM/DD/YYYY. */
   startDate: string;
+  /** Absent on events from before the choice existed, which play as League Cups (see eventTypeOf). */
+  eventType?: EventType;
 }
 
 export interface Tournament {

@@ -104,9 +104,24 @@ test('saved standings accept regional-sized blocks and refuse malformed or exces
   assert.equal(readTournament({ ...tournament, passthrough: { ...tournament.passthrough, standings: null } }), null);
 });
 
+test('a new League Challenge is written as TOM writes one: root and Swiss rounds of type 2', () => {
+  const tournament = parseTdf(fixture('tom-184-mixed-drop.tdf'));
+  delete tournament.passthrough;
+  tournament.info.eventType = 'challenge';
+  const root = parseXml(writeTdf(tournament));
+  assert.equal(attr(root, 'type'), '2');
+  assert.equal(attr(root, 'mode'), 'LEAGUECHALLENGE');
+  const rounds = children(child(child(child(root, 'pods'), 'pod'), 'rounds'), 'round');
+  assert.ok(rounds.length > 0 && rounds.every(r => attr(r, 'type') === '2'));
+  assert.equal(parseTdf(writeTdf(tournament)).info.eventType, 'challenge');
+  assert.equal(parseTdf(fixture('tom-184-challenge.tdf')).info.eventType, 'challenge', 'TOM’s own Challenge');
+});
+
 test('new files contain TOM event, roster, round, standings, and top-cut fields', () => {
   const tournament = parseTdf(fixture('tom-184-mixed-drop.tdf'));
   delete tournament.passthrough;
+  // A Custom event in TOM, which writes type 2 as a Challenge does: read as a Cup.
+  assert.equal(tournament.info.eventType, undefined);
   tournament.pods[0]!.cut = 4;
   const written = writeTdf(tournament, { finalized: true });
   const root = parseXml(written);

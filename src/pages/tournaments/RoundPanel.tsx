@@ -50,7 +50,7 @@ function RoundPicker(props: { pod: Pod; selected: number; onSelect: (n: number) 
       <For each={props.pod.rounds}>
         {round => (
           <option value={round.number} selected={round.number === props.selected}>
-            {roundLabel(round)}
+            {roundLabel(round, props.pod)}
           </option>
         )}
       </For>
@@ -346,7 +346,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const names = createMemo(() => namesById(props.manage.tournament));
   const waiting = () => (tom() || latest()?.kind !== 'swiss' ? [] : unseated(props.manage.tournament, props.pod));
   const isLatest = () => round()?.number === latest()?.number;
-  const winner = () => champion(latest());
+  const winner = () => champion(latest(), props.pod);
   const played = () => round()?.matches.filter(m => m.p2 !== null) ?? [];
   const openCount = () => {
     const r = round();

@@ -26,9 +26,11 @@ import { divisionLookup } from './divisions.js';
 import { divisionsOf } from './podding.js';
 import { cutPodOf, hasStarted } from './rounds.js';
 import { placeFinals, swissStandings } from './standings.js';
+import { eventTypeOf } from './structure.js';
 import {
   type Division,
   DIVISIONS,
+  type EventType,
   isDivision,
   type Match,
   type Outcome,
@@ -73,14 +75,22 @@ const STAGE_FINAL = '8';
 const FINALIZED = '5';
 const FINISHED_STAGES = new Set(['5', STAGE_FINISHED, STAGE_FINAL]);
 
-/** What a new file says about itself: TOM 1.86, a one-day TCG event. */
-export const DEFAULT_ROOT_ATTRS: [string, string][] = [
-  ['type', '3'],
-  ['stage', '1'],
-  ['version', '1.86'],
-  ['gametype', 'TRADING_CARD_GAME'],
-  ['mode', 'TCG1DAY']
-];
+/** TOM's root and Swiss round type, and its mode, for each kind of event. */
+const EVENT_CODES: Record<EventType, { type: string; mode: string }> = {
+  cup: { type: '3', mode: 'TCG1DAY' },
+  challenge: { type: '2', mode: 'LEAGUECHALLENGE' }
+};
+
+/** What a new file says about itself: TOM 1.86, a League Cup or League Challenge. */
+export function defaultRootAttrs(type: EventType): [string, string][] {
+  return [
+    ['type', EVENT_CODES[type].type],
+    ['stage', '1'],
+    ['version', '1.86'],
+    ['gametype', 'TRADING_CARD_GAME'],
+    ['mode', EVENT_CODES[type].mode]
+  ];
+}
 
 // ---------- reading ----------
 
@@ -137,9 +147,14 @@ const int = (value: string, fallback = 0) => {
   return Number.isFinite(number) ? number : fallback;
 };
 
-function readInfo(data: XmlElement | undefined): TournamentInfo {
+/**
+ * TOM's mode names the kind of event; its type (2 or 3) only says whether
+ * Swiss rounds lead to a cut, and Custom and Prerelease events write 2 too.
+ */
+function readInfo(data: XmlElement | undefined, mode: string): TournamentInfo {
   const organizer = child(data, 'organizer');
   return {
+    ...(mode === EVENT_CODES.challenge.mode ? { eventType: 'challenge' as const } : {}),
     name: childText(data, 'name'),
     sanctionId: childText(data, 'id'),
     city: childText(data, 'city'),
@@ -273,7 +288,7 @@ export function parseTdf(source: string): Tournament {
   const podElements = children(child(root, 'pods'), 'pod');
   const finals = child(root, 'finalsoptions');
   const tournament: Tournament = {
-    info: readInfo(data),
+    info: readInfo(data, attr(root, 'mode')),
     players: playerElements.map(readPlayer),
     pods: applyCuts(podElements.map(readPod), finals),
     passthrough: {
@@ -306,6 +321,7 @@ function standingsState(t: Tournament): string {
       'id',
       'birthDate',
       'droppedAfter',
+      'disqualified',
       'late',
       'category',
       'playerIds',
@@ -468,7 +484,7 @@ const NEW_POD_EXTRAS = [
 
 function writePod(t: Tournament, pod: Pod, finalized: boolean): string[] {
   const extra = t.passthrough?.podExtras[pod.category];
-  const swissType = t.passthrough?.rootAttrs.find(([key]) => key === 'type')?.[1] ?? '3';
+  const swissType = t.passthrough?.rootAttrs.find(([key]) => key === 'type')?.[1] ?? EVENT_CODES[eventTypeOf(t)].type;
   const rounds = pod.rounds.flatMap((round, i) =>
     writeRound(round, {
       swissType,
@@ -526,7 +542,8 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
     const places = (byDivision.get(division) ?? []).flatMap(pod => {
       const full = t.pods.find(p => p.category === pod.category) ?? pod;
       const only = new Set(pod.playerIds);
-      return placeFinals(cutPodOf(t, full, division) ?? full, swissStandings(full, t.players, { only }));
+      const swiss = swissStandings(full, t.players, { only, withDisqualified: true });
+      return placeFinals(cutPodOf(t, full, division) ?? full, swiss);
     });
     const code = CATEGORY_CODES[division];
     const rows = places.map(row => `<player id="${esc(row.playerId)}" place="${row.place}" />`);
@@ -588,7 +605,7 @@ function rootStage(t: Tournament, finalized: boolean): string {
 
 function rootAttrs(t: Tournament, finalized: boolean): string {
   const stage = rootStage(t, finalized);
-  return (t.passthrough?.rootAttrs ?? DEFAULT_ROOT_ATTRS)
+  return (t.passthrough?.rootAttrs ?? defaultRootAttrs(eventTypeOf(t)))
     .map(([key, value]) => ` ${key}="${esc(key === 'stage' ? stage : value)}"`)
     .join('');
 }

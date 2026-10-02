@@ -18,6 +18,7 @@ import {
   decksVisible,
   DEFAULT_SETTINGS,
   readSettings,
+  sanctionedSettingsError,
   storedSettings
 } from '../../shared/tournament/view.ts';
 import { decodeEntities, encodeEntities } from '../../shared/tournament/xml.ts';
@@ -78,6 +79,12 @@ test('a tournament document must be whole and consistent', () => {
   const copy = () => JSON.parse(JSON.stringify(t));
   assert.ok(readTournament(copy()));
   assert.ok(readTournament({ ...emptyTournament({ name: 'x' }) }));
+  assert.equal(readTournament(emptyTournament({ name: 'x', eventType: 'challenge' }))?.info.eventType, 'challenge');
+  const notDropped = copy();
+  notDropped.players[0].disqualified = true;
+  assert.equal(readTournament(notDropped)?.players[0]?.disqualified, undefined, 'a disqualification is a drop');
+  const badEventType = copy();
+  badEventType.info.eventType = 'regionals';
   const strangerInMatch = copy();
   strangerInMatch.pods[0].rounds[0].matches[0].p2 = 'ghost';
   const duplicatePlayer = copy();
@@ -97,11 +104,30 @@ test('a tournament document must be whole and consistent', () => {
     badCategory,
     tooLongName,
     badPassthrough,
+    badEventType,
     null,
     'x'
   ]) {
     assert.equal(readTournament(broken), null);
   }
+});
+
+test('a sanctioned event cannot be capped under three Swiss rounds or turned sanctioned with short rounds', () => {
+  const judge = (change: object, current = DEFAULT_SETTINGS, info = { roundTime: 30, finalsRoundTime: 75 }) =>
+    sanctionedSettingsError(change, current, readSettings(change, current) ?? current, info);
+  assert.match(judge({ roundCap: 2 }) ?? '', /at least 3 Swiss rounds/);
+  assert.equal(judge({ roundCap: 3 }), null);
+  assert.equal(judge({ roundCap: 2, sanctioned: false }), null);
+  const unsanctioned = { ...DEFAULT_SETTINGS, sanctioned: false, roundCap: 1 };
+  assert.match(judge({ sanctioned: true }, unsanctioned) ?? '', /at least 3 Swiss rounds/);
+  assert.equal(
+    judge({ finished: true }, { ...DEFAULT_SETTINGS, roundCap: 2 }),
+    null,
+    'an event stored with a low cap still ends'
+  );
+  const short = { roundTime: 20, finalsRoundTime: 75 };
+  assert.match(judge({ sanctioned: true }, { ...DEFAULT_SETTINGS, sanctioned: false }, short) ?? '', /30 minutes/);
+  assert.equal(judge({ format: 'Expanded' }, DEFAULT_SETTINGS, short), null);
 });
 
 test('settings changes are checked field by field', () => {

@@ -21,10 +21,11 @@ const largestCut = (active: number) => TOP_CUT_SIZES.filter(n => n <= Math.min(8
 const suggestedCut = (entry: DivisionCut | undefined) => (entry ? entry.cut || largestCut(entry.active) : 2);
 
 /**
- * The top cut's size, then the button that starts it. `cuts` are the
- * divisions the pod plays that have yet to cut (see divisionCuts); in a pod
- * of several (`divided`), each cuts on its own, so the division is named too,
- * asked when more than one is left, and picking one offers its own cut first.
+ * The top cut's size, whether it plays for third place, then the button
+ * that starts it. `cuts` are the divisions the pod plays that have yet to cut
+ * (see divisionCuts); in a pod of several (`divided`), each cuts on its own,
+ * so the division is named too, asked when more than one is left, and
+ * picking one offers its own cut first.
  */
 export function TopCutControl(props: {
   state: ManageState;
@@ -47,8 +48,16 @@ export function TopCutControl(props: {
   const setSize = (next: number) => setPicked({ division: entry()?.division, size: next });
   const several = () => props.cuts.length > 1;
   const pickDivision = (next: Division) => setDivision(next);
+  // Optional, and announced before the cut starts; it needs two semifinal losers.
+  const [thirdPlace, setThirdPlace] = createSignal(false);
+  const playsThird = () => thirdPlace() && size() >= 4;
   function start() {
-    const cut = { type: 'startTopCut' as const, pod: props.pod.category, size: size() };
+    const cut = {
+      type: 'startTopCut' as const,
+      pod: props.pod.category,
+      size: size(),
+      ...(playsThird() ? { playoff3rd4th: true } : {})
+    };
     const picked = entry()?.division;
     void props.state.send(props.divided && picked ? { ...cut, division: picked } : cut);
   }
@@ -78,6 +87,12 @@ export function TopCutControl(props: {
           )}
         </For>
       </select>
+      <Show when={size() >= 4}>
+        <label class='tm-check'>
+          <input type='checkbox' checked={thirdPlace()} onChange={e => setThirdPlace(e.currentTarget.checked)} />
+          Third place match
+        </label>
+      </Show>
       <button
         type='button'
         class={props.primary ? 'btn btn-primary' : 'btn btn-secondary'}

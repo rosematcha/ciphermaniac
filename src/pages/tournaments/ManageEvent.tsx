@@ -19,6 +19,7 @@ import {
 } from 'solid-js';
 import { activeIds, cutPodsOf, latestRound, livePods, roundComplete } from '../../../shared/tournament/rounds';
 import { wasFinalized } from '../../../shared/tournament/tdf';
+import { eventTypeOf } from '../../../shared/tournament/structure';
 import type { Pod, PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
 import { Tabs } from '../../components/Tabs';
@@ -74,7 +75,7 @@ const TABS: { value: Tab; label: string }[] = [
 const REFRESH_MS = 15_000;
 
 /** A division with no pod yet: nothing paired, nothing playing. */
-const NO_PROGRESS: PodProgress = { round: undefined, tables: 0, open: 0, champion: null };
+const NO_PROGRESS: PodProgress = { round: undefined, tables: 0, open: 0, champion: null, label: '', next: '' };
 
 /** What a TOM event's head adds to the round: whether TOM has every result entered here. */
 function tomPart(tom: TomLink): string {
@@ -172,7 +173,9 @@ function RoundEndStep(props: {
   othersPlaying: boolean;
 }) {
   const open = () => props.cuts.filter(c => !c.started);
-  const canCut = () => props.step === 'cut' || open().some(c => c.active >= 4);
+  // A League Challenge plays Swiss rounds only.
+  const canCut = () =>
+    eventTypeOf(props.manage.tournament) === 'cup' && (props.step === 'cut' || open().some(c => c.active >= 4));
   return (
     <Show
       when={props.ready}
@@ -232,7 +235,7 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
   const plan = () =>
     props.pod
       ? {
-          rounds: plannedRounds(props.pod, props.manage.settings.roundCap),
+          rounds: plannedRounds(props.pod, props.manage.settings.roundCap, eventTypeOf(props.manage.tournament)),
           cut:
             cuts()
               .filter(c => !c.started)
@@ -258,6 +261,11 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
     const s = step();
     return s.kind === 'decide' ? s : null;
   };
+  /** The champion is known; a third-place match still playing holds the end back. */
+  const closeStep = () => {
+    const s = step();
+    return s.kind === 'close' ? s : null;
+  };
   /** A Swiss round's end, as RoundEndStep lays it out; round one and the top cut's rounds only pair. */
   const roundEnd = () => {
     const s = step();
@@ -268,7 +276,7 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
     return s.kind === 'pair' && progress().round?.kind === 'swiss' ? { ...s, end: 'pair' as RoundEnd } : null;
   };
   const firstBlocked = () => pairStep()?.label === 'Pair round 1' && active() < 2;
-  const reason = () => (firstBlocked() ? 'Add players to pair' : (pairStep() ?? decideStep())?.reason);
+  const reason = () => (firstBlocked() ? 'Add players to pair' : (pairStep() ?? decideStep() ?? closeStep())?.reason);
   return (
     <TournamentHero
       title={props.manage.tournament.info.name}
@@ -326,8 +334,19 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
               <PairButton state={props.state} pod={props.pod} label={s().label} ready={s().ready && !firstBlocked()} />
             )}
           </Match>
-          <Match when={step().kind === 'close'}>
-            <EndEvent state={props.state} manage={props.manage} primary={!othersPlaying()} />
+          <Match when={closeStep()}>
+            {s => (
+              <Show
+                when={s().ready}
+                fallback={
+                  <button type='button' class='btn btn-primary' disabled>
+                    End event
+                  </button>
+                }
+              >
+                <EndEvent state={props.state} manage={props.manage} primary={!othersPlaying()} />
+              </Show>
+            )}
           </Match>
         </Switch>
       }

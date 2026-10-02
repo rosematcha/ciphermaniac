@@ -377,16 +377,18 @@ const deckNote = (view: TournamentView) =>
 
 function RoundSelect(props: { pod: Pod | undefined; round: Round | undefined; onSelect: (n: number) => void }) {
   return (
-    <Show when={props.pod?.rounds.length}>
-      <select class='tm-select' aria-label='Round' onChange={e => props.onSelect(Number(e.currentTarget.value))}>
-        <For each={props.pod?.rounds ?? []}>
-          {r => (
-            <option value={r.number} selected={r.number === props.round?.number}>
-              {roundLabel(r)} · {STATUS_LABELS[r.status]}
-            </option>
-          )}
-        </For>
-      </select>
+    <Show when={props.pod?.rounds.length ? props.pod : undefined}>
+      {pod => (
+        <select class='tm-select' aria-label='Round' onChange={e => props.onSelect(Number(e.currentTarget.value))}>
+          <For each={pod().rounds}>
+            {r => (
+              <option value={r.number} selected={r.number === props.round?.number}>
+                {roundLabel(r, pod())} · {STATUS_LABELS[r.status]}
+              </option>
+            )}
+          </For>
+        </select>
+      )}
     </Show>
   );
 }

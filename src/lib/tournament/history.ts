@@ -9,7 +9,7 @@
 import type { HistoryEntry } from '../../../shared/accounts/types';
 import { parseTomDate } from '../../../shared/tournament/divisions';
 import { playerPod } from '../../../shared/tournament/rounds';
-import type { MatchRecord, Standing } from '../../../shared/tournament/standings';
+import { type MatchRecord, type Standing, thirdPlaceMatch } from '../../../shared/tournament/standings';
 import type { Division, Pod } from '../../../shared/tournament/types';
 import { decksVisible, isSanctioned, type PublishedView } from '../../../shared/tournament/view';
 import { type HistoryRow, matchHistory, namesById, podStandings, roundLabel } from './present';
@@ -68,8 +68,18 @@ function shownOf(view: PublishedView, key: string): Pick<PlayerFinish, 'division
 
 /** A player's rounds, each named as the event page names it. */
 function namedRounds(pod: Pod, key: string): PlayerFinish['rounds'] {
-  const labels = new Map(pod.rounds.map(round => [round.number, roundLabel(round)]));
-  return matchHistory(pod, key).map(row => ({ ...row, label: labels.get(row.round) ?? `Round ${row.round}` }));
+  const labels = new Map(pod.rounds.map(round => [round.number, roundLabel(round, pod)]));
+  // The match for third shares the final's round, so it is named for itself.
+  const third = new Set(
+    pod.rounds.flatMap(round => {
+      const match = thirdPlaceMatch(pod, round);
+      return match && (match.p1 === key || match.p2 === key) ? [round.number] : [];
+    })
+  );
+  return matchHistory(pod, key).map(row => ({
+    ...row,
+    label: third.has(row.round) ? 'Third place' : (labels.get(row.round) ?? `Round ${row.round}`)
+  }));
 }
 
 /**

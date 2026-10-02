@@ -1044,7 +1044,7 @@ test('a result the console poll settles is stamped with the venue clock the poll
   const owner = await signIn('Organizer', 'organizer');
   mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const code = await newSwiss(owner);
-  await addPlayers(code, owner, 2);
+  await addPlayers(code, owner, 4);
   const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const [match] = paired.json.tournament.pods[0].rounds[0].matches;
   await settle(code, owner, { playerReporting: true });
@@ -1065,7 +1065,7 @@ test('a result the console poll settles is stamped with the venue clock the poll
 test('players cannot report once the event has ended', async () => {
   const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
-  await addPlayers(code, owner, 2);
+  await addPlayers(code, owner, 4);
   const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const [match] = paired.json.tournament.pods[0].rounds[0].matches;
   await settle(code, owner, { playerReporting: true });
@@ -1076,13 +1076,39 @@ test('players cannot report once the event has ended', async () => {
   assert.equal((await playerSays(code, { popId: match.p1 })).status, 200, 'a player can still find their table');
 });
 
+test('a sanctioned event cannot start with rounds under 30 minutes', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const create = (settings: Record<string, unknown>) =>
+    hit(
+      tournaments.onRequestPost as Handler,
+      '/api/tournaments',
+      {},
+      { method: 'POST', cookie: owner, body: { mode: 'swiss', name: 'Quick Cup', roundTime: 20, settings } }
+    );
+  const refused = await create({ sanctioned: true });
+  assert.equal(refused.status, 400);
+  assert.match(refused.json.error, /at least 30 minutes/);
+  assert.equal((await create({ sanctioned: false })).status, 201);
+});
+
+test('a sanctioned event cannot cap its Swiss rounds under three, and says why', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  const put = (body: Record<string, unknown>) =>
+    hit(settings.onRequestPut as Handler, '/settings', at(code), { method: 'PUT', cookie: owner, body });
+  const refused = await put({ roundCap: 2 });
+  assert.equal(refused.status, 400);
+  assert.match(refused.json.error, /at least 3 Swiss rounds/);
+  assert.equal((await put({ roundCap: 3 })).status, 200);
+});
+
 test('a report for the match a stale page showed does not land on the next round', async () => {
   const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
-  await addPlayers(code, owner, 2);
+  await addPlayers(code, owner, 4);
   await settle(code, owner, { playerReporting: true });
-  const [first] = (await send(code, owner, { type: 'pairRound', pod: 'masters' })).json.tournament.pods[0].rounds[0]
-    .matches;
+  const [first, second] = (await send(code, owner, { type: 'pairRound', pod: 'masters' })).json.tournament.pods[0]
+    .rounds[0].matches;
   const phone = await phoneOf(code, first.p1);
   const token = phone.said.json.reportToken as string;
   const shownFirst = { pod: 'masters', round: 1, table: first.table };
@@ -1090,6 +1116,8 @@ test('a report for the match a stale page showed does not land on the next round
     playerSays(code, { popId: first.p1, result: 'win', match, device: `phone-${first.p1}`, reportToken: token });
   assert.equal((await says(shownFirst)).status, 200, 'the match the page showed takes the report');
   await send(code, owner, { type: 'reportResult', ...shownFirst, p1: first.p1, p2: first.p2, outcome: 'p1' });
+  const shownSecond = { pod: 'masters', round: 1, table: second.table, p1: second.p1, p2: second.p2 };
+  await send(code, owner, { type: 'reportResult', ...shownSecond, outcome: 'p1' });
   await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const stale = await says(shownFirst);
   assert.equal(stale.status, 400);

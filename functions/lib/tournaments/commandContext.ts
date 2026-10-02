@@ -10,10 +10,11 @@ import type { Tournament } from '../../../shared/tournament/types.js';
  * venue knows that zone, so the page sends its own clock reading. Without one
  * the server's UTC stands in.
  */
-export function commandContext(tournament: Tournament, localTime: unknown): CommandContext {
+export function commandContext(tournament: Tournament, localTime: unknown, sanctioned: boolean): CommandContext {
   const now = Date.now();
   return {
     now,
+    sanctioned,
     localTime: isTomDateTime(localTime) ? localTime : tomDateTime(new Date(now)),
     season: eventSeason(tournament, new Date(now)),
     random: seededRandom(crypto.getRandomValues(new Uint32Array(1))[0] ?? now)

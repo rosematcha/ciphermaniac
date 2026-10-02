@@ -10,8 +10,9 @@
 
 import { useNavigate } from '@solidjs/router';
 import { createResource, createSignal, For, type JSX, Show } from 'solid-js';
+import { eventTypeOf, recommendedStructure, SANCTIONED } from '../../../shared/tournament/structure';
+import type { EventType } from '../../../shared/tournament/types';
 import { swissAttendance } from '../../../shared/tournament/rounds';
-import { recommendedStructure } from '../../../shared/tournament/structure';
 import { isSanctioned, SETTINGS_LIMITS, type TournamentSettings } from '../../../shared/tournament/view';
 import {
   deleteTournament,
@@ -30,7 +31,7 @@ import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
 import { session } from './session';
 import type { ManageState } from './manageState';
-import { DecklistsSwitch, RoundsSelect } from './SettingChoices';
+import { DecklistsSwitch, EventTypeSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
 /** A box of settings with its heading, and a foot with Save and whether anything is unsaved. */
@@ -70,9 +71,9 @@ function SettingsBox(props: {
  * pairs everyone together, as most do; none while divisions pair apart, each
  * on its own count, or before anyone is in.
  */
-function recommendedRounds(manage: Manage): number | undefined {
+function recommendedRounds(manage: Manage, type: EventType): number | undefined {
   const [pod, ...others] = manage.tournament.pods;
-  return pod && others.length === 0 ? recommendedStructure(swissAttendance(pod)).rounds : undefined;
+  return pod && others.length === 0 ? recommendedStructure(swissAttendance(pod), type).rounds : undefined;
 }
 
 function EventDetails(props: { state: ManageState; manage: Manage }) {
@@ -80,15 +81,20 @@ function EventDetails(props: { state: ManageState; manage: Manage }) {
   const [name, setName] = createSignal(info().name);
   const [roundTime, setRoundTime] = createSignal(info().roundTime);
   const [finals, setFinals] = createSignal(info().finalsRoundTime);
+  const [eventType, setEventType] = createSignal(eventTypeOf({ info: info() }));
+  const minMinutes = () => (isSanctioned(props.manage) ? SANCTIONED.minutes : 1);
   // eslint-disable-next-line solid/reactivity -- the form edits a copy taken when it opens; saving replaces the event
   const [roundCap, setRoundCap] = createSignal(props.manage.settings.roundCap);
   const infoDirty = () =>
-    name() !== info().name || roundTime() !== info().roundTime || finals() !== info().finalsRoundTime;
+    name() !== info().name ||
+    roundTime() !== info().roundTime ||
+    finals() !== info().finalsRoundTime ||
+    eventType() !== eventTypeOf(props.manage.tournament);
   const capDirty = () => roundCap() !== props.manage.settings.roundCap;
   // The rounds are a setting and the rest the event's own details, so each goes where it is kept.
   async function save() {
     const { code } = props.manage;
-    const details = { name: name(), roundTime: roundTime(), finalsRoundTime: finals() };
+    const details = { name: name(), roundTime: roundTime(), finalsRoundTime: finals(), eventType: eventType() };
     const saved = !infoDirty() || (await props.state.send({ type: 'updateInfo', info: details }));
     const cap = roundCap();
     if (saved && capDirty()) {
@@ -100,12 +106,15 @@ function EventDetails(props: { state: ManageState; manage: Manage }) {
       <SettingRow label='Event name' for='info-name'>
         <input id='info-name' class='tm-input' value={name()} onInput={e => setName(e.currentTarget.value)} />
       </SettingRow>
+      <SettingRow label='Event type'>
+        <EventTypeSwitch value={eventType()} onChange={setEventType} />
+      </SettingRow>
       <SettingRow label='Round minutes' for='info-round'>
         <input
           id='info-round'
           class='tm-input tm-set-minutes'
           type='number'
-          min='1'
+          min={minMinutes()}
           max='180'
           value={roundTime()}
           onInput={e => setRoundTime(Number(e.currentTarget.value))}
@@ -116,7 +125,7 @@ function EventDetails(props: { state: ManageState; manage: Manage }) {
           id='info-finals'
           class='tm-input tm-set-minutes'
           type='number'
-          min='1'
+          min={minMinutes()}
           max='180'
           value={finals()}
           onInput={e => setFinals(Number(e.currentTarget.value))}
@@ -126,7 +135,8 @@ function EventDetails(props: { state: ManageState; manage: Manage }) {
         <RoundsSelect
           id='info-rounds'
           value={roundCap()}
-          recommended={recommendedRounds(props.manage)}
+          recommended={recommendedRounds(props.manage, eventType())}
+          min={isSanctioned(props.manage) ? SANCTIONED.swissRounds : 1}
           onChange={setRoundCap}
         />
       </SettingRow>

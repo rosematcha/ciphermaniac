@@ -252,7 +252,7 @@ function watch() {
 test('a result, a clock or a setting that leaves the list alone writes nothing to the index', async () => {
   const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
-  await addPlayers(code, owner, 2);
+  await addPlayers(code, owner, 4);
   const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const [match] = paired.json.tournament.pods[0].rounds[0].matches;
   const { seen, trips } = watch();

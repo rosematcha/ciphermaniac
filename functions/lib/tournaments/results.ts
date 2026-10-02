@@ -12,7 +12,7 @@ import { applyCommand, type Command } from '../../../shared/tournament/commands.
 import { dueResults, resultOf } from '../../../shared/tournament/reports.js';
 import { isOpenMatch } from '../../../shared/tournament/rounds.js';
 import type { PodCategory, Tournament } from '../../../shared/tournament/types.js';
-import { applyPending, prunePending, withPending } from '../../../shared/tournament/view.js';
+import { applyPending, isSanctioned, prunePending, withPending } from '../../../shared/tournament/view.js';
 import type { D1Like } from '../types.js';
 import { commandContext } from './commandContext.js';
 import { type Changes, mutate, type TournamentRow } from './store.js';
@@ -38,7 +38,7 @@ export function commandChanges(row: TournamentRow, command: Command, localTime: 
   if (row.mode === 'tom' && !TOM_COMMANDS.has(command.type)) {
     return 'TOM runs this event; make that change in TOM';
   }
-  const result = applyCommand(row.tournament, command, commandContext(row.tournament, localTime));
+  const result = applyCommand(row.tournament, command, commandContext(row.tournament, localTime, isSanctioned(row)));
   if (!result.ok) {
     return result.error;
   }
@@ -60,7 +60,8 @@ export function tomNextRound(row: TournamentRow, pod: PodCategory, localTime: un
     return 'Pair round 1 in TOM';
   }
   const tournament = applyPending(row.tournament, row.pending);
-  const result = applyCommand(tournament, { type: 'pairRound', pod }, commandContext(row.tournament, localTime));
+  const context = commandContext(row.tournament, localTime, isSanctioned(row));
+  const result = applyCommand(tournament, { type: 'pairRound', pod }, context);
   return result.ok ? result.tournament : result.error;
 }
 

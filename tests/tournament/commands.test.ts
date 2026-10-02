@@ -15,9 +15,11 @@ import {
   secondsLeft
 } from '../../shared/tournament/commands.ts';
 import { DEFAULT_ROUND_MINUTES, emptyTournament } from '../../shared/tournament/create.ts';
+import { readCommand } from '../../shared/tournament/readCommand.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
+import { writeTdf } from '../../shared/tournament/tdf.ts';
 import { joinedLate, playerPod, podOf } from '../../shared/tournament/rounds.ts';
-import { swissStandings } from '../../shared/tournament/standings.ts';
+import { bracketMatches, placeFinals, swissStandings, thirdPlaceMatch } from '../../shared/tournament/standings.ts';
 import type { Pod, Round, Tournament } from '../../shared/tournament/types.ts';
 
 function context(seed = 1, now = 1_000_000): CommandContext {
@@ -160,6 +162,160 @@ test('a player added mid-event is not tagged late, and is known by the round the
   assert.equal(t.players.find(p => p.id === '999')?.late, undefined);
   assert.ok(joinedLate(pod(t), '999'));
   assert.ok(!joinedLate(pod(t), t.players[0]?.id ?? ''));
+});
+
+test('a player who drops mid-round loses the match they are in', () => {
+  const t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
+  const [match] = round(t).matches;
+  assert.ok(match?.p2);
+  const dropped = run(t, { type: 'dropPlayer', id: match.p2 });
+  const after = round(dropped).matches.find(m => m.table === match.table);
+  assert.equal(after?.outcome, 'p1', 'their opponent wins');
+  assert.equal(round(dropped).matches.filter(m => m.outcome === 'pending').length, 1, 'other tables play on');
+  const done = reportAll(t);
+  const late = run(done, { type: 'dropPlayer', id: match.p1 });
+  assert.deepEqual(
+    round(late).matches.map(m => m.outcome),
+    round(done).matches.map(m => m.outcome),
+    'a drop after the match leaves its result alone'
+  );
+  const back = run(dropped, { type: 'undropPlayer', id: match.p2 });
+  assert.equal(round(back).matches.find(m => m.table === match.table)?.outcome, 'pending', 'reinstating reopens it');
+  const decided = run(
+    dropped,
+    { type: 'reportResult', pod: 'masters', round: 1, table: match.table, p1: match.p1, p2: match.p2, outcome: 'tie' },
+    { type: 'undropPlayer', id: match.p2 }
+  );
+  assert.equal(
+    round(decided).matches.find(m => m.table === match.table)?.outcome,
+    'tie',
+    'a result entered since the drop stands'
+  );
+});
+
+test('a disqualified player leaves the standings but still counts for their opponents', () => {
+  const t = reportAll(run(withPlayers(4), { type: 'pairRound', pod: 'masters' }));
+  const [match] = round(t).matches;
+  assert.ok(match?.p2);
+  // Their record counts for their opponent as a dropped player's would, capped at 75%.
+  const drop = run(t, { type: 'dropPlayer', id: match.p1 });
+  const before = swissStandings(pod(drop), drop.players).find(row => row.playerId === match.p2);
+  const out = run(t, { type: 'disqualifyPlayer', id: match.p1 });
+  const rows = swissStandings(pod(out), out.players);
+  assert.equal(rows.length, 3);
+  assert.ok(!rows.some(row => row.playerId === match.p1));
+  assert.deepEqual(
+    rows.map(row => row.place),
+    [1, 2, 3]
+  );
+  assert.equal(rows.find(row => row.playerId === match.p2)?.owp, before?.owp);
+  assert.equal(out.players.find(p => p.id === match.p1)?.droppedAfter, 1);
+  const back = run(out, { type: 'undropPlayer', id: match.p1 });
+  assert.equal(back.players.find(p => p.id === match.p1)?.disqualified, undefined);
+  assert.equal(readCommand({ type: 'disqualifyPlayer', id: '1' })?.type, 'disqualifyPlayer');
+  const written = writeTdf(out, { finalized: true });
+  assert.match(
+    written,
+    new RegExp(`<player id="${match.p1}" place="\\d+" />`),
+    'the .tdf ranks them as the drop it carries'
+  );
+});
+
+test('a sanctioned event needs four players, three Swiss rounds before a cut, and 30-minute rounds', () => {
+  const sanctioned = { ...context(), sanctioned: true };
+  const refused = (t: Tournament, command: Command) => {
+    const result = applyCommand(t, command, sanctioned);
+    return result.ok ? '' : result.error;
+  };
+  assert.match(refused(withPlayers(3), { type: 'pairRound', pod: 'masters' }), /at least 4 players/);
+  assert.ok(applyCommand(withPlayers(3), { type: 'pairRound', pod: 'masters' }, context()).ok, 'unsanctioned');
+  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  assert.match(refused(t, { type: 'startTopCut', pod: 'masters', size: 4 }), /at least 3 Swiss rounds/);
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  assert.ok(applyCommand(t, { type: 'startTopCut', pod: 'masters', size: 4 }, sanctioned).ok);
+  assert.match(refused(t, { type: 'updateInfo', info: { roundTime: 25 } }), /at least 30 minutes/);
+  assert.match(refused(t, { type: 'updateInfo', info: { finalsRoundTime: 20 } }), /at least 30 minutes/);
+  assert.ok(applyCommand(t, { type: 'updateInfo', info: { roundTime: 50 } }, sanctioned).ok);
+});
+
+test('a League Challenge has no top cut, and its type can be set as event info', () => {
+  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
+  t = run(t, { type: 'updateInfo', info: { eventType: 'challenge' } });
+  assert.equal(t.info.eventType, 'challenge');
+  assert.match(attempt(t, { type: 'startTopCut', pod: 'masters', size: 4 }), /League Challenge has no top cut/);
+  assert.equal(readCommand({ type: 'updateInfo', info: { eventType: 'challenge' } })?.type, 'updateInfo');
+  assert.equal(readCommand({ type: 'updateInfo', info: { eventType: 'regionals' } }), null);
+});
+
+test('a top cut that plays for third pairs the semifinal losers beside the final, and places them third and fourth', () => {
+  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'startTopCut', pod: 'masters', size: 4, playoff3rd4th: true }));
+  assert.equal(pod(t).playoff3rd4th, true);
+  assert.match(writeTdf(t), /<playoff3rd4th>true<\/playoff3rd4th>/, 'TOM sees the match announced');
+  const semis = round(t).matches;
+  const [winners, losers] = [semis.map(m => m.p1), semis.map(m => m.p2)];
+  t = run(t, { type: 'pairRound', pod: 'masters' });
+  const last = round(t);
+  assert.deepEqual(
+    last.matches.map(m => [m.p1, m.p2]),
+    [winners, losers],
+    'the final first, then the match for third'
+  );
+  assert.equal(thirdPlaceMatch(pod(t), last), last.matches[1]);
+  assert.deepEqual(bracketMatches(pod(t), last), [last.matches[0]]);
+  t = reportAll(t);
+  assert.match(attempt(t, { type: 'pairRound', pod: 'masters' }), /top cut is finished/);
+  const places = placeFinals(pod(t), swissStandings(pod(t), t.players)).slice(0, 4);
+  assert.deepEqual(
+    places.map(row => row.playerId),
+    [winners[0], winners[1], losers[0], losers[1]]
+  );
+});
+
+test('a semifinal loser who has dropped forfeits the match for third', () => {
+  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'startTopCut', pod: 'masters', size: 4, playoff3rd4th: true }));
+  const losers = round(t).matches.map(m => m.p2 as string);
+  const one = run(run(t, { type: 'dropPlayer', id: losers[0] as string }), { type: 'pairRound', pod: 'masters' });
+  assert.deepEqual(
+    round(one).matches.map(m => [m.p1, m.p2, m.outcome]),
+    [
+      [round(one).matches[0]?.p1, round(one).matches[0]?.p2, 'pending'],
+      [losers[0], losers[1], 'p2']
+    ]
+  );
+  const both = run(
+    t,
+    { type: 'dropPlayer', id: losers[0] as string },
+    { type: 'dropPlayer', id: losers[1] as string },
+    { type: 'pairRound', pod: 'masters' }
+  );
+  assert.equal(round(both).matches.length, 1, 'with both gone, only the final is played');
+});
+
+test('the event type stays as it is once the top cut has started', () => {
+  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  t = run(t, { type: 'startTopCut', pod: 'masters', size: 4 });
+  assert.match(attempt(t, { type: 'updateInfo', info: { eventType: 'challenge' } }), /top cut has started/);
+  assert.equal(run(t, { type: 'updateInfo', info: { name: 'Renamed' } }).info.name, 'Renamed');
+});
+
+test('a top cut of two cannot play for third, and one without the match plays the final alone', () => {
+  let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  assert.equal(
+    run(t, { type: 'startTopCut', pod: 'masters', size: 2, playoff3rd4th: true }).pods[0]?.playoff3rd4th,
+    false
+  );
+  t = reportAll(run(t, { type: 'startTopCut', pod: 'masters', size: 4 }));
+  assert.equal(round(run(t, { type: 'pairRound', pod: 'masters' })).matches.length, 1);
 });
 
 test('a top cut seeds from standings and plays down to a winner', () => {

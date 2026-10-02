@@ -9,15 +9,18 @@
 
 import { createSignal, Show } from 'solid-js';
 import { DEFAULT_ROUND_MINUTES } from '../../../shared/tournament/create';
+import { SANCTIONED } from '../../../shared/tournament/structure';
+import type { EventType } from '../../../shared/tournament/types';
 import type { DecklistMode, DeckVisibility, TournamentSettings } from '../../../shared/tournament/view';
 import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
-import { DecklistsSwitch, RoundsSelect } from './SettingChoices';
+import { DecklistsSwitch, EventTypeSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
 export interface Setup {
   name: string;
   roundTime: number;
+  eventType: EventType;
   settings: Partial<TournamentSettings>;
 }
 
@@ -43,10 +46,19 @@ export function EventSetup(props: {
   const [archetypes, setArchetypes] = createSignal<DeckVisibility>('off');
   const [decklists, setDecklists] = createSignal<DecklistMode>('off');
   const [roundCap, setRoundCap] = createSignal(0);
+  const [eventType, setEventType] = createSignal<EventType>('cup');
   const swiss = () => props.mode === 'swiss';
   const needsName = () => swiss() && !name().trim();
   const needsPlayTools = () => (swiss() ? sanctioned() : props.tdfSanctioned);
-  const cannotCreate = () => props.busy || needsName() || (needsPlayTools() && !playToolsConfirmed());
+  const shortRounds = () => swiss() && sanctioned() && roundTime() < SANCTIONED.minutes;
+  const cannotCreate = () => props.busy || needsName() || shortRounds() || (needsPlayTools() && !playToolsConfirmed());
+  /** A sanctioned event plays at least three rounds, so a lower cap goes back to the recommendation. */
+  function setSanctionedTo(value: boolean) {
+    setSanctioned(value);
+    if (value && roundCap() > 0 && roundCap() < SANCTIONED.swissRounds) {
+      setRoundCap(0);
+    }
+  }
 
   function submit(event: Event) {
     event.preventDefault();
@@ -56,6 +68,7 @@ export function EventSetup(props: {
     props.onCreate({
       name: name().trim(),
       roundTime: roundTime(),
+      eventType: eventType(),
       settings: {
         format: format(),
         startsAt: startsAt(),
@@ -93,7 +106,7 @@ export function EventSetup(props: {
       <div class='tm-box'>
         <Show when={swiss()}>
           <SettingRow label='Sanctioned'>
-            <Toggle label='Sanctioned' value={sanctioned()} on='Yes' off='No' onChange={setSanctioned} />
+            <Toggle label='Sanctioned' value={sanctioned()} on='Yes' off='No' onChange={setSanctionedTo} />
           </SettingRow>
         </Show>
         <Show when={needsPlayTools()}>
@@ -132,19 +145,27 @@ export function EventSetup(props: {
           />
         </SettingRow>
         <Show when={swiss()}>
+          <SettingRow label='Event type'>
+            <EventTypeSwitch value={eventType()} onChange={setEventType} />
+          </SettingRow>
           <SettingRow label='Round minutes' for='setup-minutes'>
             <input
               id='setup-minutes'
               class='tm-input tm-set-minutes'
               type='number'
-              min='1'
+              min={sanctioned() ? SANCTIONED.minutes : 1}
               max='180'
               value={roundTime()}
               onInput={e => setRoundTime(Number(e.currentTarget.value))}
             />
           </SettingRow>
           <SettingRow label='Swiss rounds' for='setup-rounds'>
-            <RoundsSelect id='setup-rounds' value={roundCap()} onChange={setRoundCap} />
+            <RoundsSelect
+              id='setup-rounds'
+              value={roundCap()}
+              min={sanctioned() ? SANCTIONED.swissRounds : 1}
+              onChange={setRoundCap}
+            />
           </SettingRow>
         </Show>
         <SettingRow label='Player reporting'>
@@ -160,6 +181,9 @@ export function EventSetup(props: {
       <div class='tm-setup-foot'>
         <Show when={needsName()}>
           <span class='muted'>Name the event to create it</span>
+        </Show>
+        <Show when={!needsName() && shortRounds()}>
+          <span class='muted'>Sanctioned rounds are at least {SANCTIONED.minutes} minutes</span>
         </Show>
         <button type='submit' class='btn btn-primary' disabled={cannotCreate()}>
           Create event

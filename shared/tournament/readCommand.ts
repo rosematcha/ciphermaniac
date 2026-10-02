@@ -5,7 +5,7 @@
  */
 
 import type { Command, EditableInfo, NewPlayer } from './commands.js';
-import { isDivision, type Outcome, POD_CATEGORIES, type PodCategory } from './types.js';
+import { EVENT_TYPES, type EventType, isDivision, type Outcome, POD_CATEGORIES, type PodCategory } from './types.js';
 
 type Obj = Record<string, unknown>;
 
@@ -45,7 +45,8 @@ function infoPatch(value: unknown): Obj | null {
   for (const [key, entry] of Object.entries(value)) {
     const text = INFO_TEXT.includes(key as EditableInfo) && isStr(entry);
     const minutes = INFO_MINUTES.includes(key as EditableInfo) && isInt(entry);
-    if (!text && !minutes) {
+    const type = key === 'eventType' && EVENT_TYPES.includes(entry as EventType);
+    if (!text && !minutes && !type) {
       return null;
     }
     patch[key] = entry;
@@ -59,6 +60,7 @@ const SHAPES: { [T in Command['type']]: (body: Obj) => boolean } = {
   editPlayer: body => isStr(body.id, 20) && isStr(body.firstName) && isStr(body.lastName) && isStr(body.birthDate, 20),
   removePlayer: body => isStr(body.id, 20),
   dropPlayer: body => isStr(body.id, 20),
+  disqualifyPlayer: body => isStr(body.id, 20),
   undropPlayer: body => isStr(body.id, 20),
   setFixedTable: body => isStr(body.id, 20) && (body.table === null || isInt(body.table)),
   pairRound: body => isPod(body.pod),
@@ -76,7 +78,10 @@ const SHAPES: { [T in Command['type']]: (body: Obj) => boolean } = {
     OUTCOMES.includes(body.outcome as Outcome),
   swapPlayers: body => isPod(body.pod) && isStr(body.a, 20) && isStr(body.b, 20),
   startTopCut: body =>
-    isPod(body.pod) && isInt(body.size) && (body.division === undefined || isDivision(body.division)),
+    isPod(body.pod) &&
+    isInt(body.size) &&
+    (body.division === undefined || isDivision(body.division)) &&
+    (body.playoff3rd4th === undefined || typeof body.playoff3rd4th === 'boolean'),
   updateInfo: body => infoPatch(body.info) !== null
 };
 

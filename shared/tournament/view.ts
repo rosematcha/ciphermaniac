@@ -9,11 +9,12 @@
  */
 
 import { divisionFor, eventSeason } from './divisions.js';
+import { SANCTIONED, sanctionedMinutesError } from './structure.js';
 import { type PlayerClaim, shortLastNames } from './identify.js';
 import type { PlayerProfile } from './profile.js';
 import type { PlayerReport } from './reports.js';
 import { isOpenMatch, type MatchKey, sameMatch } from './rounds.js';
-import type { Division, Outcome, Pod, Tournament } from './types.js';
+import type { Division, Outcome, Pod, Tournament, TournamentInfo } from './types.js';
 
 export type TournamentMode = 'swiss' | 'tom';
 
@@ -122,6 +123,27 @@ export function readSettings(body: unknown, current: TournamentSettings): Tourna
     next[key] = value;
   }
   return next as unknown as TournamentSettings;
+}
+
+/**
+ * Why a settings change would leave a sanctioned event invalid (see
+ * SANCTIONED), or null: a cap under three Swiss rounds, or turning a Swiss
+ * event with short rounds sanctioned. Only what the change itself sets is
+ * judged, so an event stored before these checks can still be changed and
+ * ended.
+ */
+export function sanctionedSettingsError(
+  change: object,
+  current: TournamentSettings,
+  next: TournamentSettings,
+  info: Pick<TournamentInfo, 'roundTime' | 'finalsRoundTime'>
+): string | null {
+  const touches = (key: keyof TournamentSettings) => Object.hasOwn(change, key);
+  const capped = next.roundCap > 0 && next.roundCap < SANCTIONED.swissRounds;
+  if (next.sanctioned && capped && (touches('roundCap') || touches('sanctioned'))) {
+    return `A sanctioned event plays at least ${SANCTIONED.swissRounds} Swiss rounds`;
+  }
+  return next.sanctioned && !current.sanctioned ? sanctionedMinutesError(info) : null;
 }
 
 /**
@@ -239,6 +261,7 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
       lastName: short?.get(player.id) ?? player.lastName,
       birthDate: '',
       droppedAfter: player.droppedAfter,
+      ...(player.disqualified ? { disqualified: true as const } : {}),
       ...(player.late ? { late: true } : {}),
       created: '',
       modified: ''

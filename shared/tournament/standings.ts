@@ -22,7 +22,7 @@
  * `placeFinals` lays those places over the Swiss order.
  */
 
-import type { Match, Outcome, Player, Pod } from './types.js';
+import type { Match, Outcome, Player, Pod, Round } from './types.js';
 
 export const WIN_POINTS = 3;
 export const TIE_POINTS = 1;
@@ -119,12 +119,16 @@ export function tallySwiss(pod: Pod, throughRound = Infinity): Map<string, Tally
     if (round.kind !== 'swiss' || round.number > throughRound) {
       continue;
     }
-    for (const match of round.matches) {
-      countSeat(tallies, match, 1);
-      countSeat(tallies, match, 2);
-    }
+    countRound(tallies, round);
   }
   return tallies;
+}
+
+function countRound(tallies: Map<string, Tally>, round: Round): void {
+  for (const match of round.matches) {
+    countSeat(tallies, match, 1);
+    countSeat(tallies, match, 2);
+  }
 }
 
 export function matchPoints(record: MatchRecord): number {
@@ -139,8 +143,12 @@ export function winRate(tally: Tally, dropped: boolean): number {
   return Math.min(dropped ? DROPPED_MAX_WIN_RATE : 1, Math.max(MIN_WIN_RATE, rate));
 }
 
-function average(values: readonly number[]): number {
-  return values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length;
+function opponentAverage(opponents: readonly string[], values: ReadonlyMap<string, number>): number {
+  let sum = 0;
+  for (const id of opponents) {
+    sum += values.get(id) ?? 0;
+  }
+  return opponents.length === 0 ? 0 : sum / opponents.length;
 }
 
 /** Floating-point noise must not decide a tiebreak two equal records share. */
@@ -184,56 +192,114 @@ function headToHead(rows: Row[], tallies: Map<string, Tally>): Row[] {
   return out;
 }
 
-/** Everyone's OWP and OOWP over the Swiss rounds through one round. */
 interface Tiebreakers {
-  owp: ReadonlyMap<string, number>;
-  oowp: ReadonlyMap<string, number>;
+  owp: number;
+  oowp: number;
 }
 
-function tiebreakersThrough(pod: Pod, dropped: (id: string) => boolean, throughRound?: number): Tiebreakers {
-  const tallies = tallySwiss(pod, throughRound);
-  const rate = new Map([...tallies].map(([id, tally]) => [id, winRate(tally, dropped(id))]));
-  const owp = new Map([...tallies].map(([id, tally]) => [id, average(tally.opponents.map(o => rate.get(o) ?? 0))]));
-  const oowp = new Map([...tallies].map(([id, tally]) => [id, average(tally.opponents.map(o => owp.get(o) ?? 0))]));
-  return { owp, oowp };
+/** O(P + E): look up cached opponent rates rather than walking opponents' opponents. */
+function tiebreakersFor(tallies: ReadonlyMap<string, Tally>, dropped: (id: string) => boolean): Map<string, number> {
+  const rates = new Map<string, number>();
+  for (const [id, tally] of tallies) {
+    rates.set(id, winRate(tally, dropped(id)));
+  }
+  const owp = new Map<string, number>();
+  for (const [id, tally] of tallies) {
+    owp.set(id, opponentAverage(tally.opponents, rates));
+  }
+  return owp;
+}
+
+function playerTiebreakers(id: string, tally: Tally, owp: ReadonlyMap<string, number>): Tiebreakers {
+  return { owp: owp.get(id) ?? 0, oowp: opponentAverage(tally.opponents, owp) };
+}
+
+function ranked(id: string, byId: ReadonlyMap<string, Player>, options: StandingsOptions): boolean {
+  return (!options.only || options.only.has(id)) && (options.withDisqualified === true || !byId.get(id)?.disqualified);
+}
+
+function dropRounds(pod: Pod, rounds: readonly Round[], byId: ReadonlyMap<string, Player>, options: StandingsOptions) {
+  const through = options.throughRound ?? Infinity;
+  // Include match participants absent from the pod roster, just as tallySwiss does.
+  const ids = new Set([
+    ...pod.playerIds,
+    ...rounds.flatMap(round => round.matches.flatMap(match => [match.p1, match.p2]))
+  ]);
+  const drops = new Map<number, string[]>();
+  for (const id of ids) {
+    if (id === null || !ranked(id, byId, options)) {
+      continue;
+    }
+    const at = byId.get(id)?.droppedAfter ?? null;
+    if (at !== null && at < through) {
+      const group = drops.get(at) ?? [];
+      group.push(id);
+      drops.set(at, group);
+    }
+  }
+  return drops;
+}
+
+/** Tally each match once; snapshots retain only the rows that freeze at that cutoff. */
+function standingsTallies(pod: Pod, byId: ReadonlyMap<string, Player>, options: StandingsOptions) {
+  const through = options.throughRound ?? Infinity;
+  const rounds = pod.rounds.filter(round => round.kind === 'swiss' && round.number <= through);
+  const tallies = new Map<string, Tally>();
+  for (const id of pod.playerIds) {
+    tallyFor(tallies, id);
+  }
+  const drops = dropRounds(pod, rounds, byId, options);
+  const frozen = new Map<string, Tiebreakers>();
+  const remaining = rounds.sort((a, b) => a.number - b.number)[Symbol.iterator]();
+  let next = remaining.next();
+  for (const [at, droppedIds] of [...drops].sort(([a], [b]) => a - b)) {
+    while (!next.done && next.value.number <= at) {
+      countRound(tallies, next.value);
+      next = remaining.next();
+    }
+    const owp = tiebreakersFor(tallies, id => (byId.get(id)?.droppedAfter ?? Infinity) <= at);
+    for (const id of droppedIds) {
+      const tally = tallies.get(id);
+      frozen.set(id, tally ? playerTiebreakers(id, tally, owp) : { owp: 0, oowp: 0 });
+    }
+  }
+  while (!next.done) {
+    countRound(tallies, next.value);
+    next = remaining.next();
+  }
+  return { tallies, frozen };
 }
 
 export interface StandingsOptions {
   throughRound?: number;
   /** Rank only these players (one division of a combined pod); everyone still counts as an opponent. */
   only?: ReadonlySet<string>;
+  /** Rank disqualified players too, as a dropped player ranks: a .tdf carries a disqualification as a drop. */
+  withDisqualified?: boolean;
 }
 
 /** The pod's Swiss standings, best first. */
 export function swissStandings(pod: Pod, players: readonly Player[], options: StandingsOptions = {}): Standing[] {
-  const tallies = tallySwiss(pod, options.throughRound);
   const byId = new Map(players.map(player => [player.id, player]));
-  const droppedAfter = (id: string) => byId.get(id)?.droppedAfter ?? null;
-  const dropped = (id: string) => droppedAfter(id) !== null;
-  const now = tiebreakersThrough(pod, dropped, options.throughRound);
-  const frozen = new Map<number, Tiebreakers>();
-  /** The tiebreakers a player ranks on: as they stood when they dropped, or as they stand. */
-  const tiebreakersOf = (id: string): Tiebreakers => {
-    const at = droppedAfter(id);
-    if (at === null || at >= (options.throughRound ?? Infinity)) {
-      return now;
+  const dropped = (id: string) => (byId.get(id)?.droppedAfter ?? null) !== null;
+  const { tallies, frozen } = standingsTallies(pod, byId, options);
+  const owp = tiebreakersFor(tallies, dropped);
+  // A disqualified player leaves the standings; their matches still count for their opponents.
+  const rows: Row[] = [];
+  for (const [id, tally] of tallies) {
+    if (!ranked(id, byId, options)) {
+      continue;
     }
-    // As they stood then: a player who dropped later was still in, so not yet capped at 75%.
-    const kept = frozen.get(at) ?? tiebreakersThrough(pod, other => (droppedAfter(other) ?? Infinity) <= at, at);
-    frozen.set(at, kept);
-    return kept;
-  };
-  const rows: Row[] = [...tallies]
-    .filter(([id]) => !options.only || options.only.has(id))
-    .map(([id, tally]) => ({
+    const rates = frozen.get(id) ?? playerTiebreakers(id, tally, owp);
+    rows.push({
       playerId: id,
       record: tally.record,
       points: matchPoints(tally.record),
-      owp: tiebreakersOf(id).owp.get(id) ?? 0,
-      oowp: tiebreakersOf(id).oowp.get(id) ?? 0,
+      ...rates,
       dropped: dropped(id),
       late: byId.get(id)?.late === true
-    }));
+    });
+  }
   const order = new Map(players.map((player, i) => [player.id, i]));
   return headToHead(rows.sort(compareStandings(order)), tallies).map((row, i) => ({ ...row, place: i + 1 }));
 }
@@ -252,21 +318,49 @@ export function eliminationResult(match: Match): { winner: string; loser: string
   return null;
 }
 
-/** How deep each top-cut player went: the round they lost in, or past the last round for the winner. */
+/**
+ * The match for third place in a top cut that plays one: in the final's
+ * round, between the two players the semifinals knocked out.
+ */
+export function thirdPlaceMatch(pod: Pod, round: Round): Match | undefined {
+  const semis = pod.rounds.find(r => r.number === round.number - 1);
+  if (round.kind !== 'elimination' || round.matches.length !== 2 || semis?.kind !== 'elimination') {
+    return undefined;
+  }
+  if (semis.matches.length !== 2) {
+    return undefined;
+  }
+  const out = new Set(semis.matches.map(match => eliminationResult(match)?.loser));
+  return round.matches.find(match => match.p2 !== null && out.has(match.p1) && out.has(match.p2));
+}
+
+/** A top-cut round's bracket: every match but a third-place one. */
+export function bracketMatches(pod: Pod, round: Round): Match[] {
+  const playoff = thirdPlaceMatch(pod, round);
+  return round.matches.filter(match => match !== playoff);
+}
+
+/**
+ * How deep each top-cut player went: the round they lost in, or past the last
+ * round for the winner. The third-place match's winner sits half a round
+ * above its loser, both below the final's loser.
+ */
 function eliminationDepth(pod: Pod): Map<string, number> {
   const depth = new Map<string, number>();
   for (const round of pod.rounds) {
     if (round.kind !== 'elimination') {
       continue;
     }
+    const playoff = thirdPlaceMatch(pod, round);
     for (const match of round.matches) {
       const result = eliminationResult(match);
-      depth.set(match.p1, round.number + 1);
+      const [won, lost] = match === playoff ? [round.number - 0.5, round.number - 1] : [round.number + 1, round.number];
+      depth.set(match.p1, won);
       if (match.p2 !== null) {
-        depth.set(match.p2, round.number + 1);
+        depth.set(match.p2, won);
       }
       if (result?.loser) {
-        depth.set(result.loser, round.number);
+        depth.set(result.loser, lost);
       }
     }
   }

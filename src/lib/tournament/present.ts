@@ -16,6 +16,7 @@ import {
   settles
 } from '../../../shared/tournament/reports';
 import {
+  bracketMatches,
   eliminationResult,
   percentLabel,
   placeFinals,
@@ -25,13 +26,14 @@ import {
   swissStandings,
   tallySwiss
 } from '../../../shared/tournament/standings';
-import { cutPodOf, latestRound, livePods, swissAttendance } from '../../../shared/tournament/rounds';
+import { attendees, cutPodOf, latestRound, livePods, swissAttendance } from '../../../shared/tournament/rounds';
 import { ordinal } from '../format';
-import { recommendedStructure } from '../../../shared/tournament/structure';
+import { eventTypeOf, recommendedStructure } from '../../../shared/tournament/structure';
 import {
   type Division,
   DIVISION_LABELS,
   DIVISIONS,
+  type EventType,
   isDivision,
   type Match,
   type Outcome,
@@ -54,21 +56,20 @@ export function namesById(tournament: Tournament): Map<string, string> {
 
 const CUT_ROUND_NAMES: Record<number, string> = { 2: 'Final', 4: 'Semifinals', 8: 'Quarterfinals' };
 
-export function roundLabel(round: Round): string {
+/** A round's name: its number in Swiss, its stage in a top cut, whose final may also hold the match for third. */
+export function roundLabel(round: Round, pod: Pod): string {
   if (round.kind === 'swiss') {
     return `Round ${round.number}`;
   }
-  const remaining = round.matches.length * 2;
+  const remaining = bracketMatches(pod, round).length * 2;
   return CUT_ROUND_NAMES[remaining] ?? `Top ${remaining}`;
 }
 
 /** The winner of a finished final, or null while the event is still going. */
-export function champion(round: Round | undefined): string | null {
-  if (round?.kind !== 'elimination' || round.matches.length !== 1) {
-    return null;
-  }
-  const [final] = round.matches;
-  return final ? (eliminationResult(final)?.winner ?? null) : null;
+export function champion(round: Round | undefined, pod: Pod): string | null {
+  const bracket = round?.kind === 'elimination' ? bracketMatches(pod, round) : [];
+  const [final] = bracket;
+  return final && bracket.length === 1 ? (eliminationResult(final)?.winner ?? null) : null;
 }
 
 /** Where a pod's current round stands: how many tables are still playing, and any champion. */
@@ -79,21 +80,26 @@ export interface PodProgress {
   /** Of those, the ones with no result yet (a result entered on the site counts). */
   open: number;
   champion: string | null;
+  /** The round's name (see roundLabel), and in a top cut, the stage it leads to (see nextStageName). */
+  label: string;
+  next: string;
 }
 
 export function podProgress(pod: Pod, pending: readonly PendingResult[]): PodProgress {
   const round = latestRound(pod);
   const played = round?.matches.filter(m => m.p2 !== null) ?? [];
   const open = round ? played.filter(m => shownOutcome(m, pod, round, pending).outcome === 'pending').length : 0;
-  return { round, tables: played.length, open, champion: champion(round) };
+  const label = round ? roundLabel(round, pod) : '';
+  const next = round?.kind === 'elimination' ? nextStageName(bracketMatches(pod, round).length) : '';
+  return { round, tables: played.length, open, champion: champion(round, pod), label, next };
 }
 
 const tablesWord = (n: number, kind: Round['kind']) =>
   kind === 'elimination' ? (n === 1 ? 'match' : 'matches') : n === 1 ? 'table' : 'tables';
 
-/** The name of the stage a finished cut round leads to: "semifinals", "the final". */
-function nextStageName(round: Round): string {
-  const name = CUT_ROUND_NAMES[round.matches.length] ?? `top ${round.matches.length}`;
+/** The name of the stage a cut round of `matches` bracket matches leads to: "semifinals", "the final". */
+function nextStageName(matches: number): string {
+  const name = CUT_ROUND_NAMES[matches] ?? `top ${matches}`;
   return name === 'Final' ? 'the final' : name.toLowerCase();
 }
 
@@ -115,19 +121,21 @@ export interface DivisionCut {
 
 /**
  * The top cut of each division a pod plays, in division order: Play!
- * Pokémon's cut for everyone of that division who played in it, and none
+ * Pokémon's cut for that division's attendance (see attendees), and none
  * bigger than the players still in. A pod that plays divisions together still
  * cuts each on its own, by its own attendance (Tournament Rules Handbook
  * §5.2.1; every attendance table counts competitors per age division).
  */
 export function divisionCuts(tournament: Tournament, pod: Pod, divisionOf: (id: string) => Division): DivisionCut[] {
   const dropped = new Set(tournament.players.filter(p => p.droppedAfter !== null).map(p => p.id));
+  const came = attendees(pod);
   return DIVISIONS.flatMap(division => {
     const ids = pod.playerIds.filter(id => divisionOf(id) === division);
     const active = ids.filter(id => !dropped.has(id)).length;
-    const { cut } = recommendedStructure(ids.length);
+    const attendance = came.filter(id => divisionOf(id) === division).length;
+    const cut = plannedCut(attendance, active, eventTypeOf(tournament));
     const started = cutPodOf(tournament, pod, division) !== undefined;
-    return ids.length ? [{ division, active, cut: cut <= active ? cut : 0, started }] : [];
+    return ids.length ? [{ division, active, cut, started }] : [];
   });
 }
 
@@ -145,8 +153,8 @@ export function roundCapOf(event: { mode: TournamentMode; settings: TournamentSe
  * The Swiss rounds a pod plans: Play! Pokémon's number for its attendance
  * (see swissAttendance), held to the event's cap when it sets one.
  */
-export function plannedRounds(pod: Pod, roundCap: number): number {
-  const { rounds } = recommendedStructure(swissAttendance(pod));
+export function plannedRounds(pod: Pod, roundCap: number, type: EventType): number {
+  const { rounds } = recommendedStructure(swissAttendance(pod), type);
   return roundCap > 0 ? Math.min(roundCap, rounds) : rounds;
 }
 
@@ -155,12 +163,13 @@ export function plannedRounds(pod: Pod, roundCap: number): number {
  * round or stage (disabled, with the reason, while tables are still open);
  * once the plan's Swiss rounds are played, decide between the top cut (when
  * the plan has one), another round and ending the event; or end it once the
- * final has a champion.
+ * final has a champion (and the match for third, when the cut plays one, a
+ * result).
  */
 export type NextStep =
   | { kind: 'pair'; label: string; ready: boolean; reason?: string }
   | { kind: 'decide'; label: string; cut: number; ready: boolean; reason?: string }
-  | { kind: 'close'; champion: string }
+  | { kind: 'close'; champion: string; ready: boolean; reason?: string }
   | { kind: 'none' };
 
 export function nextStep(progress: PodProgress, finished: boolean, plan: SwissPlan | null = null): NextStep {
@@ -168,15 +177,15 @@ export function nextStep(progress: PodProgress, finished: boolean, plan: SwissPl
   if (finished) {
     return { kind: 'none' };
   }
-  if (winner) {
-    return { kind: 'close', champion: winner };
-  }
   if (!round) {
     return { kind: 'pair', label: 'Pair round 1', ready: true };
   }
-  const swiss = round.kind === 'swiss';
-  const label = swiss ? `Pair round ${round.number + 1}` : `Pair ${nextStageName(round)}`;
   const waiting = open > 0 ? { ready: false, reason: `${open} ${tablesWord(open, round.kind)} open` } : { ready: true };
+  if (winner) {
+    return { kind: 'close', champion: winner, ...waiting };
+  }
+  const swiss = round.kind === 'swiss';
+  const label = swiss ? `Pair round ${round.number + 1}` : `Pair ${progress.next}`;
   return plan && swiss && round.number >= plan.rounds
     ? { kind: 'decide', label, cut: plan.cut, ...waiting }
     : { kind: 'pair', label, ...waiting };
@@ -187,10 +196,11 @@ export function nextStep(progress: PodProgress, finished: boolean, plan: SwissPl
 const timeWords = (clock: string) => (clock.startsWith('-') ? `${clock.slice(1)} over` : `${clock} left`);
 
 /** "Round 2 of 5" while a Swiss round is within the plan's `rounds`; the round's own name past it or without one. */
-function roundOf(round: Round, rounds: number | null): string {
+function roundOf(progress: PodProgress & { round: Round }, rounds: number | null): string {
+  const { round } = progress;
   return round.kind === 'swiss' && rounds !== null && round.number <= rounds
     ? `Round ${round.number} of ${rounds}`
-    : roundLabel(round);
+    : progress.label;
 }
 
 export function statusParts(
@@ -206,14 +216,14 @@ export function statusParts(
   if (!round) {
     return ['Registration'];
   }
-  if (progress.champion) {
-    return [roundLabel(round), 'final played'];
+  if (progress.champion && open === 0) {
+    return [progress.label, 'final played'];
   }
   const doing =
     open === 0
       ? `all ${tables} ${tablesWord(tables, round.kind)} in`
       : `${open} ${tablesWord(open, round.kind)} playing`;
-  return [roundOf(round, rounds), doing, ...(open > 0 && clock ? [timeWords(clock)] : [])];
+  return [roundOf({ ...progress, round }, rounds), doing, ...(open > 0 && clock ? [timeWords(clock)] : [])];
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -246,7 +256,12 @@ export function eventStatus(
   const progress = podProgress(pod, event.pending);
   const { round } = progress;
   const clock = round && (round.clockStartedAt != null || round.startTime) ? clockLabel(round, now) : null;
-  return statusParts(progress, false, clock, event.roundCap === null ? null : plannedRounds(pod, event.roundCap));
+  return statusParts(
+    progress,
+    false,
+    clock,
+    event.roundCap === null ? null : plannedRounds(pod, event.roundCap, eventTypeOf(tournament))
+  );
 }
 
 /** A match's result as the pairings show it. */
@@ -297,9 +312,9 @@ export interface DivisionStandings {
 }
 
 /** The cut a division's attendance calls for, while enough are still in to fill it (see divisionCuts). */
-function plannedCut(rows: readonly Standing[]): number {
-  const { cut } = recommendedStructure(rows.length);
-  return cut <= rows.filter(row => !row.dropped).length ? cut : 0;
+function plannedCut(attendance: number, active: number, type: EventType): number {
+  const { cut } = recommendedStructure(attendance, type);
+  return cut <= active ? cut : 0;
 }
 
 /** One division's table: Swiss places from `pod`, then the top cut `bracket` plays, if any. */
@@ -307,7 +322,9 @@ function standingsOf(tournament: Tournament, pod: Pod, only?: ReadonlySet<string
   const played = bracket ?? pod;
   const rows = placeFinals(played, swissStandings(pod, tournament.players, only ? { only } : {}));
   const cutStarted = played.rounds.some(round => round.kind === 'elimination');
-  return { rows, cut: cutStarted ? played.cut : plannedCut(rows), cutStarted };
+  const attendance = attendees(pod).filter(id => !only || only.has(id)).length;
+  const active = rows.filter(row => !row.dropped).length;
+  return { rows, cut: cutStarted ? played.cut : plannedCut(attendance, active, eventTypeOf(tournament)), cutStarted };
 }
 
 /**

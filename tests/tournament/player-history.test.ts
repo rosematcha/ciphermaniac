@@ -75,6 +75,42 @@ describe('one player’s event, read from the public copy as History reads it', 
     };
   }
 
+  test('the match for third is named for itself, not for the final it shares a round with', () => {
+    const latest = (t: Tournament) => t.pods[0]?.rounds.at(-1);
+    const reportAll = (t: Tournament): Tournament => {
+      const round = latest(t);
+      const open = round?.matches.filter(m => m.outcome === 'pending') ?? [];
+      return run(
+        t,
+        ...open.map(m => ({
+          type: 'reportResult' as const,
+          pod: 'masters' as const,
+          round: round?.number ?? 0,
+          table: m.table,
+          p1: m.p1,
+          p2: m.p2,
+          outcome: 'p1' as const
+        }))
+      );
+    };
+    const adds: Command[] = Array.from({ length: 8 }, (_, i) => ({
+      type: 'addPlayer',
+      player: { firstName: 'Player', lastName: String(i), id: String(300 + i), birthDate: '01/01/1990' }
+    }));
+    let t = run(emptyTournament({ name: 'Cup' }), ...adds);
+    for (let i = 0; i < 3; i += 1) {
+      t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+    }
+    t = reportAll(run(t, { type: 'startTopCut', pod: 'masters', size: 4, playoff3rd4th: true }));
+    t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+    const [final, third] = latest(t)?.matches ?? [];
+    const { view, keys } = copyOf(t, { mode: 'swiss' });
+    const lastLabel = (id: string | undefined) => playerResult(view, keys[id ?? ''] ?? '')?.rounds.at(-1)?.label;
+    assert.equal(lastLabel(final?.p2 ?? undefined), 'Final');
+    assert.equal(lastLabel(third?.p1), 'Third place');
+    assert.equal(playerResult(view, keys[third?.p1 ?? ''] ?? '')?.place, 3);
+  });
+
   test('mid-event: place in the division, record, every round with a bye, and who dropped', () => {
     const { view, keys } = copyOf(CHALLENGE);
     const mary = playerResult(view, keys['7200001'] ?? '');

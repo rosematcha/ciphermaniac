@@ -11,7 +11,7 @@ import { tomDateTime } from '../../../shared/tournament/divisions';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import type { PlayerResult, ShownMatch } from '../../../shared/tournament/reports';
-import type { PodCategory, Tournament } from '../../../shared/tournament/types';
+import type { EventType, PodCategory, Tournament } from '../../../shared/tournament/types';
 import {
   type Decklist,
   type Manage,
@@ -119,6 +119,7 @@ export const listTournaments = () => call<{ tournaments: TournamentSummary[] }>(
 export interface SwissSetup {
   name: string;
   roundTime?: number;
+  eventType?: EventType;
   settings?: Partial<TournamentSettings>;
 }
 

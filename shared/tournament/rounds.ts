@@ -156,18 +156,24 @@ export function joinedLate(pod: Pod | undefined, id: string): boolean {
 }
 
 /**
- * The attendance a pod's Swiss rounds are planned on: the players its first
- * round seated (a bye included), or before then everyone in it. Players added
- * after round 1 was paired do not count (Tournament Rules Handbook §5.5.6).
+ * The players a pod's structure is planned on: those its first round seated
+ * (a bye included), or before then everyone in it. Players added after round
+ * 1 was paired do not count toward the rounds or the cut (Tournament Rules
+ * Handbook §5.5.6).
  */
-export function swissAttendance(pod: Pod): number {
+export function attendees(pod: Pod): string[] {
   const first = pod.rounds.find(round => round.kind === 'swiss');
   if (!first) {
-    return pod.playerIds.length;
+    return pod.playerIds;
   }
   return first.matches
     .filter(match => match.outcome !== 'loss' || match.p2 !== null)
-    .flatMap(match => (match.p2 === null ? [match.p1] : [match.p1, match.p2])).length;
+    .flatMap(match => (match.p2 === null ? [match.p1] : [match.p1, match.p2]));
+}
+
+/** How many players a pod's Swiss rounds are planned on (see attendees). */
+export function swissAttendance(pod: Pod): number {
+  return attendees(pod).length;
 }
 
 /** Players in the pod who have not dropped. */

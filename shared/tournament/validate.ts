@@ -7,6 +7,7 @@
  */
 
 import {
+  EVENT_TYPES,
   type Match,
   type Outcome,
   type Player,
@@ -92,7 +93,8 @@ function info(value: unknown): TournamentInfo {
     finalsRoundTime: int(o.finalsRoundTime, 0, 600),
     organizerPopId: str(o.organizerPopId),
     organizerName: str(o.organizerName),
-    startDate: str(o.startDate)
+    startDate: str(o.startDate),
+    ...(o.eventType === undefined ? {} : { eventType: oneOf(o.eventType, EVENT_TYPES) })
   };
 }
 
@@ -104,6 +106,8 @@ function player(value: unknown): Player {
     lastName: str(o.lastName),
     birthDate: str(o.birthDate, 20),
     droppedAfter: o.droppedAfter === null ? null : int(o.droppedAfter, 0, LIMITS.rounds),
+    // A disqualification is a drop: without one it would leave a player paired but out of the standings.
+    ...(o.disqualified === true && o.droppedAfter !== null ? { disqualified: true as const } : {}),
     ...(o.late === true ? { late: true } : {}),
     ...(o.fixedTable === undefined ? {} : { fixedTable: int(o.fixedTable, 1, 9999) }),
     ...(o.fromList === true ? { fromList: true } : {}),

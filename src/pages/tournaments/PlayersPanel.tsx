@@ -175,13 +175,14 @@ function ReleaseAction(props: { state: ManageState; manage: Manage; player: Play
 }
 
 /**
- * Drop, reinstate, remove (only before the player's first match: after it
- * they are dropped). A drop can be taken back only until the next round
- * is paired (see undropPlayer in shared/tournament/commands.ts). Staff can
- * also free the player for another device or account (see ReleaseAction).
+ * Drop, disqualify, reinstate, remove (only before the player's first match:
+ * after it they are dropped). A drop or disqualification can be taken back
+ * only until the next round is paired (see undropPlayer in
+ * shared/tournament/commands.ts). Staff can also free the player for another
+ * device or account (see ReleaseAction).
  */
 function PlayerActions(props: { state: ManageState; manage: Manage; player: Player }) {
-  const send = (type: 'dropPlayer' | 'undropPlayer' | 'removePlayer') =>
+  const send = (type: 'dropPlayer' | 'disqualifyPlayer' | 'undropPlayer' | 'removePlayer') =>
     void props.state.send({ type, id: props.player.id });
   const pod = () => podOf(props.manage.tournament, props.player.id);
   const dropped = () => props.player.droppedAfter;
@@ -194,6 +195,12 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             question={`Drop ${playerName(props.player)}?`}
             danger
             onConfirm={() => send('dropPlayer')}
+          />
+          <ConfirmAction
+            label='Disqualify'
+            question={`Disqualify ${playerName(props.player)}?`}
+            danger
+            onConfirm={() => send('disqualifyPlayer')}
           />
         </Show>
         <Show when={dropped() !== null && canUndrop(props.manage.tournament, props.player)}>
@@ -243,7 +250,9 @@ function PlayerRow(props: RowProps) {
     [
       sanctioned() ? props.player.id : '',
       sanctioned() ? DIVISION_LABELS[divisionFor(props.player.birthDate, props.season)] : '',
-      props.player.droppedAfter !== null ? `dropped after round ${props.player.droppedAfter}` : ''
+      props.player.droppedAfter !== null
+        ? `${props.player.disqualified ? 'disqualified' : 'dropped'} after round ${props.player.droppedAfter}`
+        : ''
     ]
       .filter(Boolean)
       .join(' · ');
@@ -259,7 +268,7 @@ function PlayerRow(props: RowProps) {
             <span class='tm-flag'>Late</span>
           </Show>
           <Show when={props.player.droppedAfter !== null}>
-            <span class='tm-flag'>Dropped</span>
+            <span class='tm-flag'>{props.player.disqualified ? 'Disqualified' : 'Dropped'}</span>
           </Show>
         </span>
         <Show when={sub()}>

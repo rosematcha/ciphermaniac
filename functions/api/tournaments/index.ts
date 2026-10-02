@@ -7,6 +7,7 @@
  */
 
 import { canCreateEvents } from '../../../shared/accounts/roles.js';
+import { sanctionedMinutesError } from '../../../shared/tournament/structure.js';
 import { emptyTournament } from '../../../shared/tournament/create.js';
 import { tomDateTime } from '../../../shared/tournament/divisions.js';
 import { withSiteClocks } from '../../../shared/tournament/tomClock.js';
@@ -19,7 +20,7 @@ import { currentUser } from '../../lib/auth/session.js';
 import { MAX_TOURNAMENT_BYTES, privateJson } from '../../lib/tournaments/access.js';
 import { publishAfter } from '../../lib/tournaments/publish.js';
 import { createTournament, listTournaments, ownedCount, TooLarge } from '../../lib/tournaments/store.js';
-import type { Tournament } from '../../../shared/tournament/types.js';
+import { EVENT_TYPES, type EventType, type Tournament } from '../../../shared/tournament/types.js';
 
 export async function onRequestGet({ request, env }: Context): Promise<Response> {
   const db = env.TOURNAMENT_DB;
@@ -46,9 +47,10 @@ const isMinutes = (value: unknown): value is number =>
 
 /**
  * A Swiss event from the setup's answers: a name, and optionally the round
- * length and the settings to start with. Its pods follow the players' age
- * divisions (see shared/tournament/podding.ts); without birth years everyone
- * reads as Masters, so an unsanctioned event pairs everyone together.
+ * length, the kind of event and the settings to start with. Its pods follow
+ * the players' age divisions (see shared/tournament/podding.ts); without
+ * birth years everyone reads as Masters, so an unsanctioned event pairs
+ * everyone together.
  */
 function swissFrom(body: Body): Tournament | null {
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, 120) : '';
@@ -56,7 +58,8 @@ function swissFrom(body: Body): Tournament | null {
   const info = {
     name,
     startDate: tomDateTime(new Date()).slice(0, 10),
-    ...(isMinutes(body.roundTime) ? { roundTime: body.roundTime } : {})
+    ...(isMinutes(body.roundTime) ? { roundTime: body.roundTime } : {}),
+    ...(EVENT_TYPES.includes(body.eventType as EventType) ? { eventType: body.eventType as EventType } : {})
   };
   return name ? emptyTournament(info) : null;
 }
@@ -85,7 +88,8 @@ async function readNew(request: Request): Promise<NewEvent | string> {
   if (!tournament) {
     return mode === 'tom' ? 'That file did not read as a tournament' : 'The event needs a name';
   }
-  return { mode, tournament, settings };
+  const short = mode === 'swiss' && settings.sanctioned ? sanctionedMinutesError(tournament.info) : null;
+  return short ?? { mode, tournament, settings };
 }
 
 export async function onRequestPost(context: Context): Promise<Response> {
