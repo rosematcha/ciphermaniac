@@ -12,51 +12,16 @@
  * helpers below just wire it to the data layer.
  */
 import { fetchArchetypeMatchupsOnline, fetchMatchupProfiles, type MatchupProfile, normalizeArchetypeKey } from './data';
+import { aggregateEventWinRate, type WinRateAggregate } from '../../shared/data/archetypes/winRate';
+import { ONLINE_META_NAME } from './constants';
+import type { ArchetypeIndexEntry } from '../types';
+export { aggregateEventWinRate, type WinRateAggregate } from '../../shared/data/archetypes/winRate';
+
 import { type MatchupRowCore, pointsWinRate, rowsFromMajorsProfile, rowsFromOnlineMatchups } from './matchups';
 
 /** Prefer the quality-weighted majors profile, falling back to the unweighted `all`. */
 function pickMajorsProfile(profiles: Awaited<ReturnType<typeof fetchMatchupProfiles>>): MatchupProfile | undefined {
   return profiles?.profiles.qualityWeighted ?? profiles?.profiles.all;
-}
-
-/** Below this many games the aggregate is noise — render "—" instead of a number. */
-
-export interface WinRateAggregate {
-  wins: number;
-  losses: number;
-  ties: number;
-  /** Total recorded games (includes ties and double losses in the denominator). */
-  games: number;
-  /** 0..100 valuing a tie at 1/3, or null when there are no games. */
-  winRate: number | null;
-}
-
-/**
- * Sum W/L/T and games across every non-mirror opponent, then compute a single
- * match-points win rate. `games` is the true denominator (ties and double losses
- * included), so `winRate = (Σwins + Σties/3) / Σgames`.
- */
-export function aggregateEventWinRate(rows: MatchupRowCore[]): WinRateAggregate {
-  let wins = 0;
-  let losses = 0;
-  let ties = 0;
-  let games = 0;
-  for (const r of rows) {
-    if (r.isMirror) {
-      continue;
-    }
-    wins += r.wins;
-    losses += r.losses;
-    ties += r.ties;
-    games += r.matches;
-  }
-  return {
-    wins,
-    losses,
-    ties,
-    games,
-    winRate: games > 0 ? pointsWinRate(wins, ties, games) : null
-  };
 }
 
 /** Prefer the quality-weighted majors profile; the aggregate itself is raw W/L/T. */
@@ -79,20 +44,18 @@ export async function fetchArchetypeWinRate(
   return aggregateEventWinRate(await fetchRowsForLabel(tournament, slug, label));
 }
 
-/**
- * Every archetype's aggregate win rate, keyed by index `name` (slug).
- *
- * Majors ship one `matchupProfiles.json` with all pairs, so the whole table costs
- * a single request. The online meta has no such file — each archetype's record
- * lives in its own tiny `trends.json` — so that path fans out one small (CDN
- * cached) request per archetype. Callers gate this to the list view, where the
- * win-rate column is actually shown, to keep the request fan-out off the grid.
- */
+/** Index aggregates require no extra downloads; legacy majors use one shared profile. */
 export async function fetchAllArchetypeWinRates(
   tournament: string,
-  entries: { name: string; label: string }[]
+  entries: Pick<ArchetypeIndexEntry, 'name' | 'label' | 'winRateAggregate'>[]
 ): Promise<Map<string, WinRateAggregate>> {
   const out = new Map<string, WinRateAggregate>();
+  for (const entry of entries) {
+    out.set(entry.name, entry.winRateAggregate ?? aggregateEventWinRate([]));
+  }
+  if (tournament === ONLINE_META_NAME || entries.every(entry => entry.winRateAggregate !== undefined)) {
+    return out;
+  }
   const profiles = await fetchMatchupProfiles(tournament);
   const majorsProfile = pickMajorsProfile(profiles);
   if (majorsProfile) {
@@ -129,11 +92,5 @@ export async function fetchAllArchetypeWinRates(
     }
     return out;
   }
-  await Promise.all(
-    entries.map(async e => {
-      const online = await fetchArchetypeMatchupsOnline(tournament, e.name);
-      out.set(e.name, aggregateEventWinRate(online ? rowsFromOnlineMatchups(online, e.label) : []));
-    })
-  );
   return out;
 }

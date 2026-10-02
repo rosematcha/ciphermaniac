@@ -1,0 +1,14 @@
+{
+  "refreshedAt": "2026-10-02T00:00:00.000Z",
+  "source": "https://limitlesstcg.com/tournaments/upcoming?game=PTCG",
+  "events": [
+    {
+      "date": "2027-01-16",
+      "country": "CA",
+      "name": "Regional Championship Toronto",
+      "format": "standard",
+      "type": "regional",
+      "limitlessUrl": "https://limitlesstcg.com/tournaments/536"
+    }
+  ]
+}

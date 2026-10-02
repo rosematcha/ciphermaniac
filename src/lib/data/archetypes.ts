@@ -8,6 +8,9 @@
  * @module src/lib/data/archetypes
  */
 
+import { normalizeArchetypeKey } from '../../../shared/data/archetypes/winRate';
+export { normalizeArchetypeKey } from '../../../shared/data/archetypes/winRate';
+
 import { dataClient } from './client';
 import { canonicalizeReportCached, normalizeIndexPercentScale } from './compat';
 import { ONLINE, tournamentPath } from './paths';
@@ -20,20 +23,6 @@ const { fetchJson } = dataClient;
 export async function fetchArchetypes(tournament: string = ONLINE): Promise<ArchetypeIndexEntry[]> {
   const list = await fetchJson<ArchetypeIndexEntry[]>(`${tournamentPath(tournament)}/archetypes/index.json`);
   return normalizeIndexPercentScale(list);
-}
-
-/**
- * Normalizes an archetype name/label to the key form used by the icon override
- * map. Mirrors `normalize_deck_label` in download-tournament.py so the same key
- * matches both archetype `label`/`name` and trends `series.name` (the base slug,
- * e.g. "Dragapult Dusknoir" → "dragapult_dusknoir").
- */
-export function normalizeArchetypeKey(name: string | null | undefined): string {
-  return String(name ?? '')
-    .replace(/['’]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .toLowerCase();
 }
 
 const [archetypeIconMap, setArchetypeIconMap] = createSignal(new Map<string, string[]>());

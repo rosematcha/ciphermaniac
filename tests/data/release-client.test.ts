@@ -42,6 +42,7 @@ test('with an embedded manifest, scope paths resolve to immutable release roots'
     events: { '2026-01-16, Regional X': '/releases/v1/events/2026-01-16, Regional X/999' },
     dependencies: {}
   });
+  assert.strictEqual(resolvePathWith(resolver, '/upcoming.json'), '/upcoming.json');
   // Served keys rewrite to their immutable roots.
   assert.strictEqual(
     resolvePathWith(resolver, '/reports/Online - Last 14 Days/master.json'),

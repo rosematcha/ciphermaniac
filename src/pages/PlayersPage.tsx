@@ -13,6 +13,7 @@ import { debounced } from '../lib/debounce';
 import { prefetchPlayerProfilePage } from '../lib/prefetch';
 import type { PlayerIndexSlimEntry } from '../types';
 import { foldSearch } from '../utils/searchFold';
+import { filterSortedPlayers } from '../utils/playerSearch';
 import { comparePlayers, type PlayerSortDir, type PlayerSortKey, RATE_MIN_EVENTS, winPct } from '../utils/playerSort';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/players.css';
@@ -58,28 +59,28 @@ export function PlayersPage() {
   // error fallbacks below actually render (see lib/resource.ts).
   const indexData = () => resolved(index);
 
-  // Fold names once per index load and retain only the strings. Avoiding a
-  // second array of wrapper objects matters for this large, session-long index.
-  const foldedNames = createMemo(() => (indexData() ?? []).map(entry => foldSearch(entry.name)));
+  // Fold once per index load; lookup stays aligned when the ranking changes.
+  const foldedNames = createMemo(() => new Map((indexData() ?? []).map(entry => [entry, foldSearch(entry.name)])));
+
+  // Search never invalidates this memo: only data or ranking changes re-sort.
+  const sortedBase = createMemo(() => [...(indexData() ?? [])].sort(comparePlayers(sortKey(), sortDir())));
 
   const filtered = createMemo<PlayerIndexSlimEntry[]>(() => {
     const q = foldSearch(debouncedQuery().trim());
-    const rows = indexData() ?? [];
-    if (!q) {
-      return rows;
-    }
-    const folded = foldedNames();
-    return rows.filter((_, i) => folded[i].includes(q));
+    return filterSortedPlayers(sortedBase(), foldedNames(), q);
   });
-
-  const sorted = createMemo(() => [...filtered()].sort(comparePlayers(sortKey(), sortDir())));
 
   const pageParam = createQueryPageSignal(
     () => params.page,
     page => setParams({ page }, { replace: true })
   );
   // No resetOn list: setQuery and the sort setters already clear `page` themselves.
-  const { page, totalPages, pageItems: pageRows, setPage } = createPagination(sorted, PAGE_SIZE, undefined, pageParam);
+  const {
+    page,
+    totalPages,
+    pageItems: pageRows,
+    setPage
+  } = createPagination(filtered, PAGE_SIZE, undefined, pageParam);
 
   const writeSort = (key: PlayerSortKey, dir: PlayerSortDir) =>
     setParams(

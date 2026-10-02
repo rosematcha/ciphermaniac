@@ -52,10 +52,8 @@ export function ArchetypesIndexPage() {
   const [viewMode, setViewMode] = createPersistentViewMode('cm:archetypesView');
   const navigate = useNavigate();
 
-  // Win rates are only shown in the list view's column. Gate the fetch on that
-  // view (and on the full index, not the filtered subset, so typing doesn't
-  // refetch) — majors resolve in one request; the online meta fans out per
-  // archetype, so we don't want it firing behind the grid.
+  // Online aggregates arrive with the index. Legacy majors load their shared
+  // matchup profile only when its win-rate column is visible.
   const [winRates] = createResource(
     () => {
       const list = archetypesData();

@@ -59,6 +59,19 @@ test('home renders its meta summary @mobile', async ({ page }) => {
   await expect(page.locator('body')).toContainText(/Ciphermaniac|meta|deck/i);
 });
 
+test('home reads the published upcoming schedule without invoking the API @mobile', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', request => {
+    const path = new URL(request.url()).pathname;
+    if (path.includes('upcoming')) {
+      requests.push(path);
+    }
+  });
+  await gotoClean(page, '/');
+  await expect(page.getByRole('link', { name: /Regional Championship Toronto/ })).toBeVisible();
+  expect(requests).toEqual(['/upcoming.json']);
+});
+
 test('cards index lists cards from the fixture master report @mobile', async ({ page }) => {
   await gotoClean(page, '/cards');
   // The fixture's top card. If the index rendered from real data this would be
@@ -1378,4 +1391,37 @@ test('saving a custom archetype preserves fetched tiles and both artwork modes',
   await page.getByRole('tab', { name: 'Previews', exact: true }).click();
   await expect(page.locator('.tl-tray .tl-item')).toHaveCount(before + 1);
   await expect(page.locator('.tl-tray')).toContainText('Test deck');
+});
+
+test('archetype list renders and sorts 39 embedded rates without matchup downloads', async ({ page }) => {
+  const index = Array.from({ length: 39 }, (_, i) => ({
+    name: `deck_${i}`,
+    label: `Deck ${i}`,
+    deckCount: 100,
+    percent: 1 / 39,
+    thumbnails: [],
+    winRateAggregate: { wins: 50 + i, losses: 50 - i, ties: 0, games: 100, winRate: 50 + i }
+  }));
+  await page.addInitScript(() => localStorage.setItem('cm:archetypesView', 'list'));
+  await page.route('**/archetypes/index.json', route => route.fulfill({ json: index }));
+  const matchupRequests: string[] = [];
+  page.on('request', request => {
+    if (/\/archetypes\/[^/]+\/trends\.json|\/matchupProfiles\.json/.test(request.url())) {
+      matchupRequests.push(request.url());
+    }
+  });
+  await gotoClean(page, '/archetypes');
+  const rows = page.locator('.arche-list tbody tr');
+  await expect(rows).toHaveCount(39);
+  await expect(rows.first()).toContainText('50.0%');
+  await page.getByRole('button', { name: 'Win rate' }).click();
+  await expect(rows.first()).toContainText('Deck 38');
+  await expect(rows.first()).toContainText('88.0%');
+  await page.getByPlaceholder('Search archetypes by name...').fill('Deck 38');
+  await expect(rows).toHaveCount(1);
+  await page.getByRole('tab', { name: 'Grid', exact: true }).click();
+  await expect(page.locator('.gallery-grid')).toBeVisible();
+  await page.getByRole('tab', { name: 'List', exact: true }).click();
+  await expect(rows.first()).toContainText('88.0%');
+  expect(matchupRequests).toEqual([]);
 });

@@ -11,6 +11,7 @@
  * @module src/lib/data
  */
 
+import { fetchUpcoming } from './data/tournaments';
 import type { UpcomingPayload } from '../../shared/upcomingTypes.js';
 
 export type { UpcomingPayload };
@@ -67,14 +68,6 @@ export {
 } from './data/prices';
 export type { PriceMoverList, PriceMoverMetric, PriceMoverRow, PricePoint, PricingEntry } from './data/prices';
 
-export async function fetchUpcomingTournaments(): Promise<UpcomingPayload | null> {
-  try {
-    const response = await fetch('/api/limitless/upcoming', { mode: 'cors' });
-    if (!response.ok) {
-      return null;
-    }
-    return (await response.json()) as UpcomingPayload;
-  } catch {
-    return null;
-  }
+export function fetchUpcomingTournaments(): Promise<UpcomingPayload | null> {
+  return fetchUpcoming();
 }

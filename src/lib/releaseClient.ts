@@ -73,7 +73,7 @@ export function resolveDataPath(path: string): string {
  * @returns The resolved path (unchanged in legacy mode)
  */
 export function resolvePathWith(withResolver: ReleaseResolver, path: string): string {
-  if (!withResolver.isReleaseAware) {
+  if (path === '/upcoming.json' || !withResolver.isReleaseAware) {
     return path;
   }
   const normalized = path.replace(

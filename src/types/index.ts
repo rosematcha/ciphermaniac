@@ -1,3 +1,4 @@
+import type { WinRateAggregate } from '../../shared/data/archetypes/winRate';
 export interface CardDistributionEntry {
   copies?: number;
   players?: number;
@@ -103,6 +104,8 @@ interface SignatureCardEntry {
 }
 
 export interface ArchetypeIndexEntry {
+  /** Non-mirror match-points aggregate, published with the online index. */
+  winRateAggregate?: WinRateAggregate;
   name: string;
   label: string;
   deckCount: number | null;

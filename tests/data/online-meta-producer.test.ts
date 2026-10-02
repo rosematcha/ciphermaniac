@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { aggregateEventWinRate } from '../../src/lib/archetypeWinRate';
+import { rowsFromOnlineMatchups } from '../../src/lib/matchups';
+import type { ArchetypeIndexEntry } from '../../src/types';
+import type { TrendReport } from '../../shared/data/analysis/archetypeTrends';
 
 import { type OnlineMetaOptions, type OnlineMetaStore, runOnlineMeta } from '../../.github/scripts/lib/onlineMeta';
 
@@ -56,9 +60,10 @@ interface Limitless {
   tournaments?: unknown[];
   standings?: unknown[];
   failPairings?: boolean;
+  pairings?: unknown[];
 }
 
-function limitless({ tournaments, standings = STANDINGS, failPairings = false }: Limitless = {}) {
+function limitless({ tournaments, standings = STANDINGS, failPairings = false, pairings = [] }: Limitless = {}) {
   const events = tournaments ?? [{ id: 't1', name: 'Weekly', date: '2026-08-20T18:00:00.000Z', players: 16 }];
   const fetchJson: OnlineMetaOptions['fetchJson'] = async path => {
     if (path === '/tournaments') {
@@ -74,7 +79,7 @@ function limitless({ tournaments, standings = STANDINGS, failPairings = false }:
       if (failPairings) {
         throw new Error('pairings unavailable');
       }
-      return [];
+      return pairings;
     }
     return standings;
   };
@@ -299,4 +304,30 @@ test('failed archetype uploads block pruning, deck indexes, and the final meta p
   assert.deepEqual(bucket.removed, []);
   assert.ok(!bucket.writes.includes(`${BASE}/decks/index.json`));
   assert.ok(!bucket.writes.includes(`${BASE}/meta.json`));
+});
+
+test('published index aggregates match the detail rows, including ties and mirrors', async () => {
+  const bucket = seeded();
+  const pairings = [
+    ...Array.from({ length: 20 }, () => ({ player1: 'p1', player2: 'p11', winner: 'p1' })),
+    ...Array.from({ length: 10 }, () => ({ player1: 'p1', player2: 'p11', winner: 0 })),
+    ...Array.from({ length: 20 }, () => ({ player1: 'p1', player2: 'p2', winner: 'p1' }))
+  ];
+  await runOnlineMeta(options(bucket.store, { fetchJson: limitless({ pairings }) }));
+  const index = bucket.objects.get(`${BASE}/archetypes/index.json`) as ArchetypeIndexEntry[];
+  for (const entry of index) {
+    const trends = bucket.objects.get(`${BASE}/archetypes/${entry.name}/trends.json`) as TrendReport;
+    const expected = aggregateEventWinRate(rowsFromOnlineMatchups(trends.matchups, entry.label));
+    assert.deepEqual(entry.winRateAggregate, expected);
+    assert.equal(entry.winRateAggregate?.games, 30);
+  }
+});
+
+test('an index without pairings publishes explicit empty aggregates', async () => {
+  const bucket = seeded();
+  await runOnlineMeta(options(bucket.store));
+  const index = bucket.objects.get(`${BASE}/archetypes/index.json`) as ArchetypeIndexEntry[];
+  for (const entry of index) {
+    assert.deepEqual(entry.winRateAggregate, { wins: 0, losses: 0, ties: 0, games: 0, winRate: null });
+  }
 });

@@ -15,6 +15,7 @@
  * (run-online-meta.ts) supplies R2 and the network; tests supply memory.
  */
 
+import { aggregateOnlineWinRate } from '../../../shared/data/archetypes/winRate';
 import type { CardTypesDatabase } from '../../../shared/data/cardTypesDatabase.js';
 import { generateArchetypeTrends, MIN_MATCHUP_GAMES } from '../../../shared/data/analysis/archetypeTrends.js';
 import { generateReportFromDecks, listedDeckCount } from '../../../shared/data/reports/cardReport.js';
@@ -319,8 +320,11 @@ interface TrendBuildInput {
   pairingsData: PairingData[];
 }
 
-function buildArchetypeTrends(run: Run, input: TrendBuildInput): Map<string, unknown> {
-  const trendsByBase = new Map<string, unknown>();
+function buildArchetypeTrends(
+  run: Run,
+  input: TrendBuildInput
+): Map<string, ReturnType<typeof generateArchetypeTrends>> {
+  const trendsByBase = new Map<string, ReturnType<typeof generateArchetypeTrends>>();
   if (!run.generateArchetypes) {
     return trendsByBase;
   }
@@ -356,7 +360,7 @@ interface PublishInput {
   masterReport: unknown;
   cardSuccess: ReturnType<typeof buildCardSuccessIndex>;
   archetypes: ArchetypeBuildResult;
-  trendsByBase: Map<string, unknown>;
+  trendsByBase: Map<string, ReturnType<typeof generateArchetypeTrends>>;
   meta: unknown;
 }
 
@@ -384,7 +388,14 @@ async function publishArchetypes(run: Run, input: PublishInput): Promise<void> {
   }
   const { files, index, decksByBase } = input.archetypes;
   run.log('[online-meta] Uploading archetype reports...');
-  await publish(run, 'archetypes/index.json', index);
+  await publish(
+    run,
+    'archetypes/index.json',
+    index.map(entry => ({
+      ...entry,
+      winRateAggregate: aggregateOnlineWinRate(input.trendsByBase.get(entry.name)?.matchups ?? {}, entry.label)
+    }))
+  );
   await publish(run, 'cardUsage.json', buildCardUsageIndex(files));
   const listIndex = buildListIndex(input.reportDecks);
   if (listIndex) {

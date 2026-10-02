@@ -1,61 +1,64 @@
-import { detectParseBreakage, parseUpcoming } from '../../../shared/api/upcomingParser.js';
+import { scrapeUpcoming } from '../../../shared/api/upcomingFetcher';
 import { corsPreflight, jsonError, jsonResponse } from '../../lib/api/responses.js';
-import type { UpcomingPayload } from '../../../shared/upcomingTypes';
 
-const UPCOMING_URL = 'https://limitlesstcg.com/tournaments/upcoming?game=PTCG';
-const CACHE_TTL_SECONDS = 60 * 60 * 6; // 6 hours
-
-type CfRequestInit = RequestInit & { cf?: unknown };
-
-// Upcoming events change rarely; browser-cache 1h, edge-cache 6h.
-const RESPONSE_CACHE_CONTROL = `public, max-age=3600, s-maxage=${CACHE_TTL_SECONDS}`;
+const RESPONSE_CACHE_CONTROL = 'public, max-age=3600, s-maxage=21600';
 const JSON_CHARSET_HEADER = { 'Content-Type': 'application/json; charset=utf-8' } as const;
 const ERROR_HEADERS = { ...JSON_CHARSET_HEADER, 'Access-Control-Allow-Origin': '*' } as const;
 
+type UpcomingBucket = { get(key: string): Promise<{ text(): Promise<string> } | null> };
+
 interface Context {
   request: Request;
+  env?: { BUCKET?: UpcomingBucket; REPORTS?: UpcomingBucket };
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
-export async function onRequest(_context: Context): Promise<Response> {
-  let html: string;
-  try {
-    const init: CfRequestInit = {
-      cf: { cacheTtl: CACHE_TTL_SECONDS, cacheEverything: true },
+async function readUpcoming(context: Context): Promise<Response> {
+  const bucket = context.env?.BUCKET ?? context.env?.REPORTS;
+  const object = await bucket?.get('upcoming.json');
+  if (object) {
+    return new Response(await object.text(), {
       headers: {
-        // A real-looking UA avoids any over-eager bot blocking on Limitless's side.
-        'User-Agent': 'Mozilla/5.0 (compatible; Ciphermaniac/1.0; +https://ciphermaniac.com)',
-        Accept: 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9'
+        ...JSON_CHARSET_HEADER,
+        'Cache-Control': RESPONSE_CACHE_CONTROL,
+        'Access-Control-Allow-Origin': '*'
       }
-    };
-    const response = await fetch(UPCOMING_URL, init);
-    if (!response.ok) {
-      return jsonError(`Upstream ${response.status}`, 502, ERROR_HEADERS);
-    }
-    html = await response.text();
+    });
+  }
+  const payload = await scrapeUpcoming();
+  if (payload.parseWarning) {
+    console.warn(`upcoming: ${payload.parseWarning}`);
+  }
+  return jsonResponse(payload, { cacheControl: RESPONSE_CACHE_CONTROL, headers: JSON_CHARSET_HEADER });
+}
+
+export async function onRequest(context: Context): Promise<Response> {
+  const cache = typeof caches === 'undefined' ? undefined : caches.default;
+  const url = new URL(context.request.url);
+  url.search = '';
+  const key = new Request(url, { method: 'GET' });
+  const hit = await cache?.match(key).catch(err => {
+    console.warn('upcoming cache read failed', err);
+    return undefined;
+  });
+  if (hit) {
+    return hit;
+  }
+  let response: Response;
+  try {
+    response = await readUpcoming(context);
   } catch (err) {
     return jsonError(`Fetch failed: ${err instanceof Error ? err.message : String(err)}`, 502, ERROR_HEADERS);
   }
-
-  const result = parseUpcoming(html);
-  // Structural breakage must not read as an authoritative empty schedule, so it
-  // is both logged for us and surfaced to the frontend as a soft warning.
-  const parseWarning = detectParseBreakage(result);
-  if (parseWarning) {
-    console.warn(`upcoming: ${parseWarning} rowsSeen=${result.rowsSeen} rowsSkipped=${result.rowsSkipped}`);
+  if (cache) {
+    const write = cache.put(key, response.clone()).catch(err => console.warn('upcoming cache write failed', err));
+    if (context.waitUntil) {
+      context.waitUntil(write);
+    } else {
+      await write;
+    }
   }
-
-  const payload: UpcomingPayload = {
-    refreshedAt: new Date().toISOString(),
-    source: UPCOMING_URL,
-    events: result.events,
-    ...(parseWarning ? { parseWarning } : {})
-  };
-
-  return jsonResponse(payload, {
-    cacheControl: RESPONSE_CACHE_CONTROL,
-    headers: { ...JSON_CHARSET_HEADER }
-  });
+  return response;
 }
 
 export async function onRequestOptions(): Promise<Response> {
