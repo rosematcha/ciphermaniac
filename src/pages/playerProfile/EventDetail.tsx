@@ -6,7 +6,7 @@ import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
 import type { PlayerDeckCard, PlayerRound, PlayerTournamentEntry } from '../../types';
-import { groupRoundsByPhase, OUTCOME_LETTER, outcomeTone } from './model';
+import { groupRoundsByPhase, OUTCOME_LETTER, outcomeTone, type RoundGroup } from './model';
 
 type Pane = 'decklist' | 'rounds';
 
@@ -21,10 +21,10 @@ const PANE_OPTIONS: { value: Pane; label: string }[] = [
 
 /**
  * Where the opened row's data comes from. Decklists and rounds live in two
- * lazy files; the page owns both resources and hands the row accessors.
+ * payloads; rounds are in the profile and only decklists are fetched lazily.
  */
 export interface EventDetailSource {
-  /** Start the lazy fetches; safe to call repeatedly. */
+  /** Start the lazy decklist fetch; safe to call repeatedly. */
   ensure: () => void;
   cards: (tournamentId: string) => PlayerDeckCard[] | undefined;
   rounds: (tournamentId: string) => PlayerRound[] | undefined;
@@ -45,7 +45,8 @@ export function EventDetail(props: EventDetailProps) {
   // eslint-disable-next-line solid/reactivity -- opening pane only; the row owns the switch after that
   const [pane, setPane] = createSignal<Pane>(props.entry.deckId ? 'decklist' : 'rounds');
   const cards = () => props.source.cards(props.entry.tournamentId);
-  const rounds = () => props.source.rounds(props.entry.tournamentId);
+  const rounds = createMemo(() => props.source.rounds(props.entry.tournamentId));
+  const groups = createMemo(() => groupRoundsByPhase(rounds() ?? []));
 
   return (
     <div class='event-detail'>
@@ -66,9 +67,9 @@ export function EventDetail(props: EventDetailProps) {
       <Show when={pane() === 'rounds'}>
         <Show
           when={rounds()?.length}
-          fallback={<DetailEmpty loading={props.source.loading()} text='No round data published for this event.' />}
+          fallback={<DetailEmpty loading={false} text='No round data published for this event.' />}
         >
-          <RoundsList rounds={rounds()!} dropRound={props.entry.dropRound ?? null} />
+          <RoundsList groups={groups()} dropRound={props.entry.dropRound ?? null} />
         </Show>
       </Show>
     </div>
@@ -85,12 +86,11 @@ function DetailEmpty(props: { loading: boolean; text: string }) {
   );
 }
 
-function RoundsList(props: { rounds: PlayerRound[]; dropRound: number | null }) {
-  const groups = createMemo(() => groupRoundsByPhase(props.rounds));
+function RoundsList(props: { groups: RoundGroup[]; dropRound: number | null }) {
   const iconMap = getArchetypeIconMap();
   return (
     <ol class='rounds'>
-      <For each={groups()}>
+      <For each={props.groups}>
         {group => (
           <>
             <li class='rounds-phase'>{group.label}</li>

@@ -3,13 +3,10 @@ import assert from 'node:assert/strict';
 
 import type { PlayerProfile, PlayerRound } from '../../shared/playerTypes.ts';
 import {
+  careerRoundAggregates,
   careerSummary,
-  distinctOpponents,
   finishLabel,
   groupRoundsByPhase,
-  matchupRollup,
-  phaseSplit,
-  repeatOpponents,
   shortTournamentName
 } from '../../src/pages/playerProfile/model.ts';
 
@@ -63,8 +60,8 @@ test('finishLabel names a win, a whole-number top share, or a bare placement', (
   assert.equal(finishLabel({ placement: null, totalPlayers: 100 }), '—');
 });
 
-test('matchupRollup counts each opponent deck, most-faced first, and skips byes', () => {
-  const rows = matchupRollup(rounds());
+test('career matchups counts each opponent deck, most-faced first, and skips byes', () => {
+  const rows = careerRoundAggregates(rounds()).matchups;
   assert.deepEqual(
     rows.map(r => [r.archetype, r.wins, r.losses, r.ties, r.games]),
     [
@@ -76,19 +73,19 @@ test('matchupRollup counts each opponent deck, most-faced first, and skips byes'
   assert.equal(rows[0].winRate, 1 / 3);
 });
 
-test('phaseSplit records Day 1, Day 2 and top cut in order, counting the bye as a win', () => {
+test('career phases records Day 1, Day 2 and top cut in order, counting the bye as a win', () => {
   // The Day 1 row holds the New Orleans bye. Upstream standings count a bye as
   // a win, and these three rows split the same career record the hero band
   // prints, so leaving it out put the band a win behind the figure above it.
-  assert.deepEqual(phaseSplit(rounds()), [
+  assert.deepEqual(careerRoundAggregates(rounds()).phases, [
     { label: 'Day 1', wins: 2, losses: 2, ties: 2 },
     { label: 'Day 2', wins: 1, losses: 0, ties: 0 },
     { label: 'Top cut', wins: 1, losses: 0, ties: 0 }
   ]);
 });
 
-test('repeatOpponents keys by career id, counts meetings and lists events newest first', () => {
-  const rows = repeatOpponents(rounds());
+test('career opponents keys by career id, counts meetings and lists events newest first', () => {
+  const rows = careerRoundAggregates(rounds()).repeats;
   // "Someone" (no career id, keyed by name) was met four times; Tim three.
   assert.deepEqual(
     rows.map(r => [r.name, r.meetings]),
@@ -102,7 +99,7 @@ test('repeatOpponents keys by career id, counts meetings and lists events newest
   assert.equal(tim.meetings, 3);
   assert.deepEqual([tim.wins, tim.losses, tim.ties], [1, 1, 1]);
   assert.deepEqual(tim.events, [B, A]);
-  assert.equal(distinctOpponents(rounds()), 2);
+  assert.equal(careerRoundAggregates(rounds()).opponents, 2);
 });
 
 test('groupRoundsByPhase splits consecutive phases and labels them', () => {
@@ -200,4 +197,93 @@ test('careerSummary derives the record line, rates and median finish', () => {
   // Shares sorted: 0.001, 0.05, 0.1, 0.7 → upper median 0.1 → Top 10%.
   assert.equal(summary.medianFinish, 'Top 10%');
   assert.equal(summary.titleEvent, 'Indianapolis Regionals');
+});
+
+test('career aggregates handle missing histories and events with no rounds', () => {
+  const empty = { hasEvents: false, matchups: [], phases: [], repeats: [], opponents: 0 };
+  assert.deepEqual(careerRoundAggregates({}), empty);
+  assert.deepEqual(careerRoundAggregates({ [A]: [] }), { ...empty, hasEvents: true });
+});
+
+test('career aggregates preserve tie-only rates and ignore undecided results in records', () => {
+  const result = careerRoundAggregates({
+    [A]: [
+      round({ outcome: 'tie', phase: null, opponentArchetype: 'Tie only' }),
+      round({ outcome: 'unknown', opponentArchetype: 'Undecided' }),
+      round({ outcome: 'unpaired', opponentName: null, opponentArchetype: null }),
+      round({ outcome: 'bye', opponentName: null, opponentArchetype: null })
+    ]
+  });
+  assert.deepEqual(result.matchups, [
+    { archetype: 'Tie only', wins: 0, losses: 0, ties: 1, games: 1, winRate: null },
+    { archetype: 'Undecided', wins: 0, losses: 0, ties: 0, games: 0, winRate: null }
+  ]);
+  assert.deepEqual(result.phases, [{ label: 'Day 1', wins: 1, losses: 0, ties: 0 }]);
+  assert.equal(result.opponents, 1);
+  assert.deepEqual([result.repeats[0].wins, result.repeats[0].losses, result.repeats[0].ties], [0, 0, 1]);
+});
+
+test('career aggregates use newest opponent metadata and deduplicate events without mutating rounds', () => {
+  const history = {
+    [A]: [round({ opponentId: '1', opponentName: 'Old name', opponentCountry: 'US' })],
+    [B]: [
+      round({ opponentId: '1', opponentName: 'New name', opponentCountry: 'CA', outcome: 'loss' }),
+      round({ opponentId: '1', opponentName: 'New name', outcome: 'tie' }),
+      round({ opponentId: '2', opponentName: 'New name' })
+    ]
+  };
+  const original = structuredClone(history);
+  for (const eventRounds of Object.values(history)) {
+    eventRounds.forEach(Object.freeze);
+    Object.freeze(eventRounds);
+  }
+  Object.freeze(history);
+  const result = careerRoundAggregates(history);
+  assert.equal(result.opponents, 2);
+  assert.deepEqual(result.repeats, [
+    {
+      playerId: '1',
+      name: 'New name',
+      country: 'CA',
+      meetings: 3,
+      wins: 1,
+      losses: 1,
+      ties: 1,
+      events: [B, A]
+    }
+  ]);
+  assert.deepEqual(history, original);
+  assert.deepEqual(careerRoundAggregates(history), result);
+});
+
+test('career aggregates traverse each event once across long tournament histories', () => {
+  const history: NonNullable<PlayerProfile['rounds']> = {};
+  const visits = { reads: 0 };
+  for (let event = 0; event < 100; event += 1) {
+    const eventRounds = [
+      round({ opponentId: '1', outcome: 'win' }),
+      round({ opponentId: '1', outcome: 'double_loss', phase: 2 }),
+      round({ opponentId: '2', outcome: 'tie', phase: 3 })
+    ];
+    Object.defineProperty(history, `event-${String(event).padStart(3, '0')}`, {
+      enumerable: true,
+      get() {
+        visits.reads += 1;
+        return eventRounds;
+      }
+    });
+  }
+  const result = careerRoundAggregates(history);
+  assert.equal(visits.reads, 100);
+  assert.equal(result.matchups[0].games, 300);
+  assert.equal(result.matchups[0].winRate, 0.5);
+  assert.equal(result.opponents, 2);
+  assert.equal(result.repeats[0].meetings, 200);
+  assert.equal(result.repeats[0].events.length, 100);
+  assert.equal(result.repeats[0].events[0], 'event-099');
+  assert.deepEqual(result.phases, [
+    { label: 'Day 1', wins: 100, losses: 0, ties: 0 },
+    { label: 'Day 2', wins: 0, losses: 100, ties: 0 },
+    { label: 'Top cut', wins: 0, losses: 0, ties: 100 }
+  ]);
 });

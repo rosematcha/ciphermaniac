@@ -23,17 +23,24 @@ function priced(sealed: SealedProduct[]): PricedProduct[] {
  * Exact rather than at-least: the opener rips the packs it pays for, so a
  * bundle's six packs can't be priced as a box with thirty left over.
  */
-export function cheapestCost(sealed: SealedProduct[], packs: number): number | null {
+export function createCostCalculator(sealed: SealedProduct[]): (packs: number) => number | null {
   const products = priced(sealed);
   const best = [0];
-  for (let count = 1; count <= packs; count += 1) {
-    best[count] = products.reduce(
-      (least, product) =>
-        product.packs <= count ? Math.min(least, best[count - product.packs] + product.price) : least,
-      Infinity
-    );
-  }
-  return Number.isFinite(best[packs]) ? best[packs] : null;
+  return packs => {
+    for (let count = best.length; count <= packs; count += 1) {
+      best[count] = products.reduce(
+        (least, product) =>
+          product.packs <= count ? Math.min(least, best[count - product.packs] + product.price) : least,
+        Infinity
+      );
+    }
+    return Number.isFinite(best[packs]) ? best[packs] : null;
+  };
+}
+
+/** Price a single opening; repeated openings can share a calculator. */
+export function cheapestCost(sealed: SealedProduct[], packs: number): number | null {
+  return createCostCalculator(sealed)(packs);
 }
 
 export interface CheapestPack {

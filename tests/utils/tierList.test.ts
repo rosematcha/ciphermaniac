@@ -415,3 +415,42 @@ test('a tier never drops an entry, so the tail stays findable', () => {
     ['Dragapult Charizard']
   );
 });
+
+test('drops copy only affected zones and remove repeated IDs within a zone', () => {
+  const untouched = Object.freeze(['c']);
+  const source = Object.freeze(['a', 'a', 'b']);
+  const start = new Map([
+    ['t1', source],
+    ['t2', untouched]
+  ]);
+  const moved = withDroppedItem(start, 'a', 't3', 0);
+  assert.deepEqual(moved.get('t1'), ['b']);
+  assert.deepEqual(moved.get('t3'), ['a']);
+  assert.equal(moved.get('t2'), untouched);
+  assert.deepEqual(start.get('t1'), ['a', 'a', 'b']);
+});
+
+test('a tray drop pins the visible order in one update without copying other tiers', () => {
+  const untouched = Object.freeze(['x']);
+  const start = new Map([['t1', untouched]]);
+  const order = Object.freeze(['a', 'b', 'c', 'd']);
+  const moved = withDroppedItem(start, 'a', 'tray', { index: 3, trayOrder: order });
+  assert.deepEqual(moved.get('tray'), ['b', 'c', 'd', 'a']);
+  assert.equal(moved.get('t1'), untouched);
+  assert.equal(start.has('tray'), false);
+  assert.deepEqual(order, ['a', 'b', 'c', 'd']);
+});
+
+test('renaming copies affected zones and an unchanged name preserves placement', () => {
+  const untouched = Object.freeze(['x']);
+  const source = Object.freeze(['Rogue', 'Rogue']);
+  const start = new Map([
+    ['t1', source],
+    ['t2', untouched]
+  ]);
+  assert.equal(withRenamedPlacement(start, 'Rogue', 'Rogue'), start);
+  const renamed = withRenamedPlacement(start, 'Rogue', 'New');
+  assert.deepEqual(renamed.get('t1'), ['New', 'New']);
+  assert.equal(renamed.get('t2'), untouched);
+  assert.deepEqual(start.get('t1'), ['Rogue', 'Rogue']);
+});

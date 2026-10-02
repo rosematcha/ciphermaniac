@@ -15,19 +15,45 @@ const isRecord = (value: unknown): value is Json =>
 
 /** Lists pair up by position: results change a match in place, and new players and rounds join at the end. */
 function sharedList(before: readonly unknown[], after: readonly unknown[]): readonly unknown[] {
-  const items = after.map((item, i) => shared(before[i], item));
-  return items.length === before.length && items.every((item, i) => item === before[i]) ? before : items;
+  let items: unknown[] | undefined;
+  for (let i = 0; i < after.length; i += 1) {
+    const item = shared(before[i], after[i]);
+    if (!items && (i >= before.length || item !== before[i])) {
+      items = before.slice(0, i);
+    }
+    items?.push(item);
+  }
+  return items ?? (after.length === before.length ? before : before.slice(0, after.length));
 }
 
+function setSharedValue(r: Json, key: string, value: unknown): void {
+  if (key === '__proto__') {
+    Object.defineProperty(r, key, { value, enumerable: true, configurable: true, writable: true });
+  } else {
+    r[key] = value;
+  }
+}
+
+/** A changed record keeps `after`'s key order, as the server sent it. */
 function sharedRecord(before: Json, after: Json): Json {
   const keys = Object.keys(after);
-  const entries = keys.map(key => [key, shared(before[key], after[key])] as const);
-  const same = keys.length === Object.keys(before).length && entries.every(([key, value]) => value === before[key]);
-  return same ? before : Object.fromEntries(entries);
+  const values = keys.map(key => shared(before[key], after[key]));
+  const same =
+    keys.length === Object.keys(before).length &&
+    keys.every((key, i) => Object.hasOwn(before, key) && values[i] === before[key]);
+  if (same) {
+    return before;
+  }
+  const result: Json = {};
+  keys.forEach((key, i) => setSharedValue(result, key, values[i]));
+  return result;
 }
 
 /** `after`, with every part that says what its counterpart in `before` said being that counterpart. */
 export function shared<T>(before: unknown, after: T): T {
+  if (before === after) {
+    return after;
+  }
   if (Array.isArray(before) && Array.isArray(after)) {
     return sharedList(before, after) as T;
   }

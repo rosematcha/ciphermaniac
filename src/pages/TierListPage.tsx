@@ -13,7 +13,18 @@
  * @module pages/TierListPage
  */
 
-import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import {
+  type Accessor,
+  batch,
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show
+} from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
 import { parseCardUid } from '../../shared/data/cardIdentity';
 import { EmptyState } from '../components/EmptyState';
@@ -50,6 +61,7 @@ import {
   defaultTiers,
   distribute,
   encodeShare,
+  type Placement,
   type Tier,
   type TierItem,
   type TierMode,
@@ -59,7 +71,6 @@ import {
   withDroppedItem,
   withEditedTier,
   withMovedTier,
-  withPinnedTray,
   withRenamedPlacement,
   withTierOrder
 } from './tierList/model';
@@ -142,7 +153,7 @@ function spriteLabel(slug: string): string {
  */
 const SPRITES: SpriteOption[] = [...new Set(SPRITE_SLUGS)].sort().map(slug => ({ slug, label: spriteLabel(slug) }));
 
-export function TierListPage() {
+function useTierListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [artCards] = createResource(fetchArtCards);
   const [synonyms] = createResource(getSynonymDatabase);
@@ -150,7 +161,7 @@ export function TierListPage() {
   const [mode, setMode] = createSignal<TierMode>('icons');
   const [labelChoice, setLabelChoice] = createSignal<boolean | null>(null);
   const [tiers, setTiers] = createSignal<Tier[]>(defaultTiers());
-  const [placement, setPlacement] = createSignal<Map<string, string[]>>(new Map());
+  const [placement, setPlacement] = createSignal<Placement>(new Map());
   const [custom, setCustom] = createSignal<CustomArchetype[]>([]);
   const [cardKey, setCardKey] = createSignal('');
   const [title, setTitle] = createSignal('');
@@ -235,8 +246,8 @@ export function TierListPage() {
   createEffect(() => {
     void mode();
     void labels();
-    void split();
-    measureTile();
+    void items();
+    measureTierTile(mode(), labels());
   });
 
   /**
@@ -279,113 +290,25 @@ export function TierListPage() {
     // off the screen, gets clamped to a much shorter list.
     const trayOrder = drop.zone === TRAY ? split().tray.map(item => item.id) : null;
     setPlacement(map =>
-      withDroppedItem(trayOrder ? withPinnedTray(map, trayOrder) : map, drop.itemId, drop.zone, drop.index)
+      withDroppedItem(map, drop.itemId, drop.zone, trayOrder ? { index: drop.index, trayOrder } : drop.index)
     );
   };
 
   // -------------------------------------------------------------- content
 
-  const items = createMemo<TierItem[]>(() => {
-    if (mode() === 'arts') {
-      return (activeCard()?.arts ?? []).map(art => ({
-        id: art.ref,
-        label: `${art.set} ${art.number}`,
-        kind: 'art' as const,
-        set: art.set,
-        number: art.number
-      }));
-    }
-    const kind = mode() === 'icons' ? ('icon' as const) : ('preview' as const);
-    // The online-meta index ships no `icons`; only event indexes do. The shared
-    // resolver falls back to the committed override map so sprites appear on
-    // every view rather than only on tournaments that predate nothing.
-    const iconMap = getArchetypeIconMap();
-    const scraped: TierItem[] = (latestValue(archetypes) ?? []).map(entry => ({
-      id: entry.name,
-      label: entry.label || entry.name,
-      kind,
-      icons: resolveArchetypeIcons(entry, iconMap),
-      thumbs: entry.thumbnails ?? []
-    }));
-    const invented: TierItem[] = custom().map(c => ({
-      id: c.name,
-      label: c.name,
-      kind,
-      icons: c.icons,
-      thumbs: c.cards,
-      customId: c.id
-    }));
-    return [...scraped, ...invented];
-  });
-
-  const split = createMemo(() => distribute(items(), tiers(), placement()));
-
-  const heldItem = (): TierItem | undefined => {
-    const id = held();
-    return id === null ? undefined : items().find(item => item.id === id);
-  };
-
-  const editorTarget = createMemo<EditorTarget | null>(() => {
-    const subject = editing();
-    if (!subject) {
-      return null;
-    }
-    if (subject.kind === 'tier') {
-      const tier = tiers().find(t => t.id === subject.id);
-      return tier ? { kind: 'tier', tier } : null;
-    }
-    return { kind: 'archetype', draft: custom().find(c => c.id === subject.id) ?? null };
-  });
-
-  const canonicals = createMemo<CanonicalOption[]>(() => {
-    const database = latestValue(synonyms);
-    if (!database?.canonicals) {
-      return [];
-    }
-    return Object.entries(database.canonicals)
-      .map(([name, uid]) => {
-        const parsed = parseCardUid(uid);
-        return parsed ? { name, set: parsed.set, number: parsed.number } : null;
-      })
-      .filter((c): c is CanonicalOption => c !== null)
-      .sort((a, b) => a.name.localeCompare(b.name));
+  const { items, split, heldItem, editorTarget, canonicals } = useTierContent({
+    mode,
+    activeCard,
+    archetypes: () => latestValue(archetypes),
+    custom,
+    tiers,
+    placement,
+    held,
+    editing,
+    synonyms: () => latestValue(synonyms)
   });
 
   // -------------------------------------------------------------- state
-
-  /**
-   * Publish the height of a real tile so an empty tier reserves exactly the
-   * room one will take, and the board does not jolt as the first tile lands.
-   * Measured rather than hardcoded: it changes with the view, the label toggle,
-   * and anything done to tile sizes later.
-   *
-   * Read on the next frame, not synchronously after a render — measuring
-   * mid-layout under-reserves by a few pixels, which is the jolt this exists to
-   * remove. Re-read once art lands, since a thumbnail with no intrinsic size
-   * yet is shorter than the real thing.
-   *
-   * Seeded from NOMINAL_ITEM_H first: until the index lands there is nothing to
-   * measure, and the board rendered its empty rows against the stylesheet's
-   * 68px fallback, then snapped down by 32px — the largest shift on any tools
-   * page. The seed lands within a pixel or two; the measurement takes it from
-   * there.
-   */
-  function measureTile(): void {
-    document.body.style.setProperty('--tl-item-h', `${NOMINAL_ITEM_H[mode()][labels() ? 'labelled' : 'bare']}px`);
-    const apply = (): void => {
-      const tiles = document.querySelectorAll<HTMLElement>('.tl-tray .tl-item, .tl-board .tl-item');
-      if (tiles.length === 0) {
-        return;
-      }
-      const tallest = Math.max(...[...tiles].map(t => t.getBoundingClientRect().height));
-      document.body.style.setProperty('--tl-item-h', `${Math.ceil(tallest)}px`);
-    };
-    requestAnimationFrame(() => requestAnimationFrame(apply));
-    const art = document.querySelector<HTMLImageElement>('.tl-tray .tl-item img, .tl-board .tl-item img');
-    if (art && !art.complete) {
-      art.addEventListener('load', () => requestAnimationFrame(apply), { once: true });
-    }
-  }
 
   /** The row collapses first, so the rows below have something to follow. */
   function deleteTier(id: string): void {
@@ -393,40 +316,48 @@ export function TierListPage() {
     // eslint-disable-next-line solid/reactivity -- deliberately late: the commit runs after the collapse animation, and must delete against the state as it is then, not as it was 140ms earlier
     collapseRow(id, () => {
       const next = withDeletedTier(tiers(), placement(), id);
-      setTiers(next.tiers);
-      setPlacement(next.placement);
+      batch(() => {
+        setTiers(next.tiers);
+        setPlacement(next.placement);
+      });
     });
   }
 
   function saveArchetype(draft: CustomArchetype): void {
-    const existing = draft.id ? custom().find(c => c.id === draft.id) : null;
-    if (existing) {
-      setPlacement(map => withRenamedPlacement(map, existing.name, draft.name));
-      setCustom(list => list.map(c => (c.id === draft.id ? { ...draft } : c)));
-    } else {
-      nextCustomId += 1;
-      setCustom(list => [...list, { ...draft, id: nextCustomId }]);
-    }
-    setEditing(null);
+    batch(() => {
+      const existing = draft.id ? custom().find(c => c.id === draft.id) : null;
+      if (existing) {
+        setPlacement(map => withRenamedPlacement(map, existing.name, draft.name));
+        setCustom(list => list.map(c => (c.id === draft.id ? { ...draft } : c)));
+      } else {
+        nextCustomId += 1;
+        setCustom(list => [...list, { ...draft, id: nextCustomId }]);
+      }
+      setEditing(null);
+    });
   }
 
   function deleteArchetype(id: number): void {
-    const gone = custom().find(c => c.id === id);
-    if (gone) {
-      setPlacement(map => {
-        const next = new Map(map);
-        next.delete(gone.name);
-        return next;
-      });
-      setCustom(list => list.filter(c => c.id !== id));
-    }
-    setEditing(null);
+    batch(() => {
+      const gone = custom().find(c => c.id === id);
+      if (gone) {
+        setPlacement(map => {
+          const next = new Map(map);
+          next.delete(gone.name);
+          return next;
+        });
+        setCustom(list => list.filter(c => c.id !== id));
+      }
+      setEditing(null);
+    });
   }
 
   function resetAll(): void {
-    setPlacement(new Map());
-    setTiers(defaultTiers());
-    setEditing(null);
+    batch(() => {
+      setPlacement(new Map());
+      setTiers(defaultTiers());
+      setEditing(null);
+    });
   }
 
   // -------------------------------------------------------------- sharing
@@ -473,6 +404,118 @@ export function TierListPage() {
 
   // -------------------------------------------------------------- export
 
+  const { exportJpg } = useTierExport({
+    board: () => board,
+    mode,
+    activeCard,
+    format,
+    title,
+    setShot,
+    setHeld,
+    setBusy,
+    setError
+  });
+
+  return {
+    setSearchParams,
+    mode,
+    setMode,
+    format,
+    labels,
+    setLabelChoice,
+    cards,
+    browseCards,
+    activeCard,
+    setCardKey,
+    phone,
+    busy,
+    resetAll,
+    share,
+    exportJpg,
+    error,
+    artCards,
+    tiers,
+    setTiers,
+    split,
+    title,
+    setTitle,
+    setBoard: (el: HTMLDivElement) => {
+      board = el;
+    },
+    deleteTier,
+    setEditing,
+    heldItem,
+    setHeld,
+    setRanking,
+    held,
+    placeHeld,
+    editorTarget,
+    canonicals,
+    editing,
+    saveArchetype,
+    deleteArchetype,
+    ranking,
+    placeAtEnd,
+    shot,
+    setShot
+  };
+}
+
+/**
+ * Publish the height of a real tile so an empty tier reserves exactly the
+ * room one will take, and the board does not jolt as the first tile lands.
+ * Measured rather than hardcoded: it changes with the view, the label toggle,
+ * and anything done to tile sizes later.
+ *
+ * Read on the next frame, not synchronously after a render — measuring
+ * mid-layout under-reserves by a few pixels, which is the jolt this exists to
+ * remove. Re-read once art lands, since a thumbnail with no intrinsic size
+ * yet is shorter than the real thing.
+ *
+ * Seeded from NOMINAL_ITEM_H first: until the index lands there is nothing to
+ * measure, and the board rendered its empty rows against the stylesheet's
+ * 68px fallback, then snapped down by 32px — the largest shift on any tools
+ * page. The seed lands within a pixel or two; the measurement takes it from
+ * there.
+ */
+function measureTierTile(mode: TierMode, labels: boolean): void {
+  document.body.style.setProperty('--tl-item-h', `${NOMINAL_ITEM_H[mode][labels ? 'labelled' : 'bare']}px`);
+  const apply = (): void => {
+    const tiles = document.querySelectorAll<HTMLElement>('.tl-tray .tl-item, .tl-board .tl-item');
+    if (tiles.length === 0) {
+      return;
+    }
+    const tallest = Math.max(...[...tiles].map(t => t.getBoundingClientRect().height));
+    document.body.style.setProperty('--tl-item-h', `${Math.ceil(tallest)}px`);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(apply));
+  const art = document.querySelector<HTMLImageElement>('.tl-tray .tl-item img, .tl-board .tl-item img');
+  if (art && !art.complete) {
+    art.addEventListener('load', () => requestAnimationFrame(apply), { once: true });
+  }
+}
+
+function useTierExport({
+  board,
+  mode,
+  activeCard,
+  format,
+  title,
+  setShot,
+  setHeld,
+  setBusy,
+  setError
+}: {
+  board: Accessor<HTMLDivElement | undefined>;
+  mode: Accessor<TierMode>;
+  activeCard: Accessor<ArtCard | undefined>;
+  format: Accessor<TierFormat>;
+  title: Accessor<string>;
+  setShot: (file: File) => void;
+  setHeld: (id: null) => void;
+  setBusy: (busy: boolean) => void;
+  setError: (error: string | null) => void;
+}) {
   function exportName(): string {
     const subject = mode() === 'arts' ? (activeCard()?.name ?? 'cards') : format().label;
     const slug = (title() || subject)
@@ -496,7 +539,7 @@ export function TierListPage() {
   }
 
   async function exportJpg(): Promise<void> {
-    const node = board;
+    const node = board();
     if (!node) {
       return;
     }
@@ -543,9 +586,158 @@ export function TierListPage() {
       setBusy(false);
     }
   }
+  return { exportJpg };
+}
 
-  // -------------------------------------------------------------- render
+function useTierContent({
+  mode,
+  activeCard,
+  archetypes,
+  custom,
+  tiers,
+  placement,
+  held,
+  editing,
+  synonyms
+}: {
+  mode: Accessor<TierMode>;
+  activeCard: Accessor<ArtCard | undefined>;
+  archetypes: Accessor<Awaited<ReturnType<typeof fetchFormatArchetypes>> | undefined>;
+  custom: Accessor<CustomArchetype[]>;
+  tiers: Accessor<Tier[]>;
+  placement: Accessor<Placement>;
+  held: Accessor<string | null>;
+  editing: Accessor<EditSubject | null>;
+  synonyms: Accessor<Awaited<ReturnType<typeof getSynonymDatabase>> | undefined>;
+}) {
+  const scrapedItems = createMemo<TierItem[]>(() => {
+    // The online-meta index ships no `icons`; only event indexes do. The shared
+    // resolver falls back to the committed override map so sprites appear on
+    // every view rather than only on tournaments that predate nothing.
+    const iconMap = getArchetypeIconMap();
+    return (archetypes() ?? []).map(entry => ({
+      id: entry.name,
+      label: entry.label || entry.name,
+      get kind() {
+        return mode() === 'icons' ? ('icon' as const) : ('preview' as const);
+      },
+      icons: resolveArchetypeIcons(entry, iconMap),
+      thumbs: entry.thumbnails ?? []
+    }));
+  });
 
+  const customItems = createMemo<TierItem[]>(() => {
+    return custom().map(c => ({
+      id: c.name,
+      label: c.name,
+      get kind() {
+        return mode() === 'icons' ? ('icon' as const) : ('preview' as const);
+      },
+      icons: c.icons,
+      thumbs: c.cards,
+      customId: c.id
+    }));
+  });
+
+  const items = createMemo<TierItem[]>(() => {
+    if (mode() === 'arts') {
+      return (activeCard()?.arts ?? []).map(art => ({
+        id: art.ref,
+        label: `${art.set} ${art.number}`,
+        kind: 'art' as const,
+        set: art.set,
+        number: art.number
+      }));
+    }
+    return [...scrapedItems(), ...customItems()];
+  });
+
+  // Names and colours do not affect placement. Keep redistribution tied to
+  // the ordered IDs so typing in the tier editor does not rebuild every zone.
+  const tierOrder = createMemo(tiers, undefined, {
+    equals: (before, after) =>
+      before.length === after.length && before.every((tier, index) => tier.id === after[index]?.id)
+  });
+  const split = createMemo(() => distribute(items(), tierOrder(), placement()));
+
+  const heldItem = (): TierItem | undefined => {
+    const id = held();
+    return id === null ? undefined : items().find(item => item.id === id);
+  };
+
+  const editorTarget = createMemo<EditorTarget | null>(() => {
+    const subject = editing();
+    if (!subject) {
+      return null;
+    }
+    if (subject.kind === 'tier') {
+      const tier = tiers().find(t => t.id === subject.id);
+      return tier ? { kind: 'tier', tier } : null;
+    }
+    return { kind: 'archetype', draft: custom().find(c => c.id === subject.id) ?? null };
+  });
+
+  const canonicals = createMemo<CanonicalOption[]>(() => {
+    const database = synonyms();
+    if (!database?.canonicals) {
+      return [];
+    }
+    return Object.entries(database.canonicals)
+      .flatMap(([name, uid]) => {
+        const parsed = parseCardUid(uid);
+        return parsed ? [{ name, set: parsed.set, number: parsed.number }] : [];
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  return { items, split, heldItem, editorTarget, canonicals };
+}
+
+export function TierListPage() {
+  return renderTierList(useTierListPage());
+}
+
+function renderTierList(state: ReturnType<typeof useTierListPage>) {
+  const {
+    setSearchParams,
+    mode,
+    setMode,
+    format,
+    labels,
+    setLabelChoice,
+    cards,
+    browseCards,
+    activeCard,
+    setCardKey,
+    phone,
+    busy,
+    resetAll,
+    share,
+    exportJpg,
+    error,
+    artCards,
+    tiers,
+    setTiers,
+    split,
+    title,
+    setTitle,
+    deleteTier,
+    setEditing,
+    heldItem,
+    setHeld,
+    setRanking,
+    held,
+    placeHeld,
+    editorTarget,
+    canonicals,
+    editing,
+    saveArchetype,
+    deleteArchetype,
+    ranking,
+    placeAtEnd,
+    shot,
+    setShot
+  } = state;
   return (
     <>
       <section class='hero'>
@@ -678,9 +870,7 @@ export function TierListPage() {
             buckets={split().buckets}
             tray={split().tray}
             title={title()}
-            boardRef={el => {
-              board = el;
-            }}
+            boardRef={state.setBoard}
             onTitle={setTitle}
             onMove={(id, step) => animateRows(() => setTiers(list => withMovedTier(list, id, step)))}
             onDelete={deleteTier}

@@ -107,17 +107,14 @@ export function withDeletedTier(
   tiers: readonly Tier[],
   placement: Placement,
   id: string
-): { tiers: Tier[]; placement: Map<string, string[]> } {
-  const next = clone(placement);
+): { tiers: Tier[]; placement: Placement } {
+  const next = new Map(placement);
   if (tiers.length <= 1) {
     return { tiers: [...tiers], placement: next };
   }
   next.delete(id);
   return { tiers: tiers.filter(t => t.id !== id), placement: next };
 }
-
-const clone = (placement: Placement): Map<string, string[]> =>
-  new Map([...placement].map(([zone, ids]) => [zone, [...ids]]));
 
 /**
  * Moves an item to `zone` at `index`, removing it from wherever it was.
@@ -130,19 +127,25 @@ export function withDroppedItem(
   placement: Placement,
   itemId: string,
   zone: string,
-  index: number
-): Map<string, string[]> {
-  const next = clone(placement);
+  destination: number | { index: number; trayOrder: readonly string[] }
+): Placement {
+  const { index, trayOrder } = typeof destination === 'number' ? { index: destination, trayOrder: null } : destination;
+  const next = new Map(placement);
+  if (trayOrder) {
+    next.set(TRAY, trayOrder);
+  }
   for (const [key, ids] of next) {
-    const at = ids.indexOf(itemId);
-    if (at >= 0) {
-      ids.splice(at, 1);
-      if (ids.length === 0 && key !== zone) {
-        next.delete(key);
-      }
+    if (key === zone || !ids.includes(itemId)) {
+      continue;
+    }
+    const remaining = ids.filter(id => id !== itemId);
+    if (remaining.length === 0) {
+      next.delete(key);
+    } else {
+      next.set(key, remaining);
     }
   }
-  const list = next.get(zone) ?? [];
+  const list = (next.get(zone) ?? []).filter(id => id !== itemId);
   list.splice(Math.max(0, Math.min(index, list.length)), 0, itemId);
   next.set(zone, list);
   return next;
@@ -163,8 +166,8 @@ export function withDroppedItem(
  * index means what it says. Called only when the tray is the destination; a
  * tier's stored list is already everything it renders.
  */
-export function withPinnedTray(placement: Placement, order: readonly string[]): Map<string, string[]> {
-  const next = clone(placement);
+export function withPinnedTray(placement: Placement, order: readonly string[]): Placement {
+  const next = new Map(placement);
   next.set(TRAY, [...order]);
   return next;
 }
@@ -181,7 +184,7 @@ export function withEditedTier(tiers: readonly Tier[], id: string, patch: Partia
  */
 export function distribute(
   items: readonly TierItem[],
-  tiers: readonly Tier[],
+  tiers: readonly Pick<Tier, 'id'>[],
   placement: Placement
 ): { buckets: Map<string, TierItem[]>; tray: TierItem[] } {
   const byId = new Map(items.map(item => [item.id, item]));
@@ -220,12 +223,17 @@ export function distribute(
  * Renaming a custom archetype changes its item id, so its placement has to be
  * carried across or the archetype drops back to the tray on the next render.
  */
-export function withRenamedPlacement(placement: Placement, from: string, to: string): Map<string, string[]> {
-  const next = clone(placement);
-  for (const ids of next.values()) {
-    const at = ids.indexOf(from);
-    if (at >= 0) {
-      ids.splice(at, 1, to);
+export function withRenamedPlacement(placement: Placement, from: string, to: string): Placement {
+  if (from === to) {
+    return placement;
+  }
+  const next = new Map(placement);
+  for (const [zone, ids] of placement) {
+    if (ids.includes(from)) {
+      next.set(
+        zone,
+        ids.map(id => (id === from ? to : id))
+      );
     }
   }
   return next;

@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { juiceFrames, staggerDelay } from '../../src/pages/packEv/juice.ts';
+import { juiceFrames, queueTilePaint, staggerDelay } from '../../src/pages/packEv/juice.ts';
 import { countAt } from '../../src/pages/packEv/tween.ts';
 
 function scaleOf(frame: Keyframe): number {
@@ -41,4 +41,48 @@ test('a count starts fast, lands exactly, and never overshoots', () => {
   assert.equal(countAt(10, 20, 1), 20);
   assert.equal(countAt(10, 20, 3), 20);
   assert.equal(countAt(20, 10, 1), 10);
+});
+
+test('tile paints share a frame, defer animation writes, and discard unmounted tiles', t => {
+  let callback!: FrameRequestCallback;
+  const frames: number[] = [];
+  const cancelled: number[] = [];
+  const originalRequest = globalThis.requestAnimationFrame;
+  const originalCancel = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = paint => {
+    callback = paint;
+    frames.push(frames.length + 1);
+    return frames.length;
+  };
+  globalThis.cancelAnimationFrame = frame => {
+    cancelled.push(frame);
+  };
+  t.after(() => {
+    globalThis.requestAnimationFrame = originalRequest;
+    globalThis.cancelAnimationFrame = originalCancel;
+  });
+  const painted: number[] = [];
+  queueTilePaint(() => {
+    painted.push(1);
+  });
+  const remove = queueTilePaint(() => {
+    painted.push(2);
+  });
+  queueTilePaint(() => {
+    painted.push(3);
+  });
+  assert.equal(painted.length, 0);
+  assert.equal(frames.length, 1);
+  remove();
+  callback(0);
+  assert.deepEqual(painted, [1, 3]);
+  const stop = queueTilePaint(() => assert.fail('removed tile painted'));
+  stop();
+  assert.deepEqual(cancelled, []);
+  queueTilePaint(() => {
+    painted.push(4);
+  });
+  callback(16);
+  assert.equal(frames.length, 2);
+  assert.deepEqual(painted, [1, 3, 4]);
 });

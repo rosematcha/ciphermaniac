@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { cheapestCost, cheapestPerPack } from '../../shared/packEv/cost.ts';
+import { cheapestCost, cheapestPerPack, createCostCalculator } from '../../shared/packEv/cost.ts';
 import type { SealedProduct } from '../../shared/packEv/types.ts';
 
 function sealed(kind: SealedProduct['kind'], packs: number, price: number | null): SealedProduct {
@@ -60,4 +60,28 @@ test('the headline cost per pack is the cheapest product per pack', () => {
   assert.equal(cheapestPerPack(PBL)?.product.kind, 'case');
   assert.equal(cents(cheapestPerPack(PBL)?.costPerPack ?? null), '4.87');
   assert.equal(cheapestPerPack([sealed('box', 36, null)]), null);
+});
+
+test('a shared cost calculator extends its table once and reuses smaller and repeated requests', () => {
+  let reads = 0;
+  const product = sealed('pack', 1, 2);
+  Object.defineProperty(product, 'price', {
+    get: () => {
+      reads++;
+      return 2;
+    }
+  });
+  const cost = createCostCalculator([product]);
+  assert.equal(cost(6), 12);
+  const afterSix = reads;
+  assert.equal(cost(1), 2);
+  assert.equal(cost(6), 12);
+  assert.equal(reads, afterSix);
+  assert.equal(cost(10), 20);
+  assert.equal(reads - afterSix, 4);
+  assert.equal(cost(0), 0);
+  for (const packs of [1, 6, 36, 42, 216]) {
+    assert.equal(cents(createCostCalculator(PBL)(packs)), cents(cheapestCost(PBL, packs)));
+  }
+  assert.equal(createCostCalculator([])(1), null);
 });

@@ -4,13 +4,9 @@ import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { EmptyState } from '../../components/EmptyState';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
 import {
-  type CareerRounds,
-  distinctOpponents,
+  type CareerRoundAggregates,
   MATCHUP_MIN_GAMES,
-  matchupRollup,
-  phaseSplit,
   REPEAT_MIN_MEETINGS,
-  repeatOpponents,
   shortTournamentName,
   winRateWhole
 } from './model';
@@ -20,10 +16,10 @@ import {
  * by opponent deck and the opponents met more than once. All three roll up from
  * the rounds the profile already carries, so this tab needs no fetch of its own.
  */
-export function MatchupsTab(props: { rounds: CareerRounds }) {
+export function MatchupsTab(props: { aggregates: CareerRoundAggregates }) {
   return (
     <Show
-      when={Object.keys(props.rounds).length > 0}
+      when={props.aggregates.hasEvents}
       fallback={
         <EmptyState
           title='No round data for this player.'
@@ -31,18 +27,18 @@ export function MatchupsTab(props: { rounds: CareerRounds }) {
         />
       }
     >
-      <MatchupsBody rounds={props.rounds} />
+      <MatchupsBody aggregates={props.aggregates} />
     </Show>
   );
 }
 
-function MatchupsBody(props: { rounds: CareerRounds }) {
-  const rows = createMemo(() => matchupRollup(props.rounds));
+function MatchupsBody(props: { aggregates: CareerRoundAggregates }) {
+  const rows = () => props.aggregates.matchups;
   const shown = createMemo(() => rows().filter(r => r.games >= MATCHUP_MIN_GAMES));
   const rare = createMemo(() => rows().length - shown().length);
-  const phases = createMemo(() => phaseSplit(props.rounds));
-  const repeats = createMemo(() => repeatOpponents(props.rounds));
-  const opponents = createMemo(() => distinctOpponents(props.rounds));
+  const phases = () => props.aggregates.phases;
+  const repeats = () => props.aggregates.repeats;
+  const opponents = () => props.aggregates.opponents;
   const iconMap = getArchetypeIconMap();
 
   return (

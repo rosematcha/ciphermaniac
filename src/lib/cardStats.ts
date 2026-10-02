@@ -43,11 +43,16 @@ export function averageCopiesValue(item: { dist?: CardDistributionEntry[] }): nu
   if (!dist || dist.length === 0) {
     return null;
   }
-  const players = dist.reduce((acc, d) => acc + (d.players ?? 0), 0);
+  let players = 0;
+  let copies = 0;
+  for (const entry of dist) {
+    const count = entry.players ?? 0;
+    players += count;
+    copies += (entry.copies ?? 0) * count;
+  }
   if (!players) {
     return null;
   }
-  const copies = dist.reduce((acc, d) => acc + (d.copies ?? 0) * (d.players ?? 0), 0);
   return copies / players;
 }
 

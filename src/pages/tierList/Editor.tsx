@@ -14,7 +14,7 @@
  * @module pages/tierList/Editor
  */
 
-import { createEffect, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
 import { CardImage } from '../../components/CardImage';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { Combo, splitMatch } from '../../components/Combo';
@@ -106,10 +106,14 @@ export function Editor(props: EditorProps): JSX.Element {
     });
   });
 
+  const subjectKey = createMemo(() =>
+    props.target.kind === 'tier' ? `tier:${props.target.tier.id}` : `archetype:${props.target.draft?.id ?? 'new'}`
+  );
+
   createEffect(() => {
     // Re-anchor when the subject changes — not on every edit to it. A rename
     // replaces the tier object on each keystroke and moves nothing.
-    void (props.target.kind === 'tier' ? props.target.tier.id : props.target.draft?.id);
+    void subjectKey();
     queueMicrotask(place);
   });
 
@@ -239,8 +243,9 @@ function ArchetypeFields(props: {
   // mid-edit.
   /* eslint-disable solid/reactivity */
   const [name, setName] = createSignal(props.existing?.name ?? '');
-  const [icons, setIcons] = createSignal<string[]>([...(props.existing?.icons ?? [])]);
-  const [cards, setCards] = createSignal<string[]>([...(props.existing?.cards ?? [])]);
+  // Picks share the saved arrays until an add/remove replaces them.
+  const [icons, setIcons] = createSignal<string[]>(props.existing?.icons ?? []);
+  const [cards, setCards] = createSignal<string[]>(props.existing?.cards ?? []);
   /* eslint-enable solid/reactivity */
 
   const save = (): void => {

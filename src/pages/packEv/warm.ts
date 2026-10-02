@@ -9,27 +9,22 @@
  * @module src/pages/packEv/warm
  */
 
-import { preloadCardImage, preloadImage } from '../../components/CardImage';
+import { preloadImage } from '../../components/cardImage/loading';
+import { buildAttempts } from '../../components/cardImage/sources';
 import type { PossibleHit } from '../../../shared/packEv/simulate';
 import { artNumber, productImage } from './model';
 
 /** Parallel fetches: enough to finish quickly without crowding out the page's own requests. */
 const CONCURRENCY = 4;
 
-/** Cards already warmed or in flight this session, by product id. */
-const warmed = new Set<number>();
-
-/** Whether the visitor has asked browsers to save data. */
-function savingData(): boolean {
-  const { connection } = navigator as Navigator & { connection?: { saveData?: boolean } };
-  return connection?.saveData === true;
-}
+/** Art already warmed or in flight this session, by the URL the tile requests. */
+const warmed = new Set<string>();
 
 /** The same URL a hit tile requests: TCGplayer's photo for a reprint, else hotlinked `sm` art. */
-function warmCard(set: string, hit: PossibleHit): Promise<void> {
+function artUrl(set: string, hit: PossibleHit): string | undefined {
   return hit.card.reprint
-    ? preloadImage(productImage(hit.card.id))
-    : preloadCardImage(set, artNumber(hit.card.number), 'sm', { hotlink: true });
+    ? productImage(hit.card.id)
+    : buildAttempts(set, artNumber(hit.card.number), 'sm', 'hotlink')[0];
 }
 
 /**
@@ -38,14 +33,23 @@ function warmCard(set: string, hit: PossibleHit): Promise<void> {
  */
 export function warmHits(set: string, hits: PossibleHit[]): () => void {
   let stopped = false;
-  const queue = savingData() ? [] : hits.filter(hit => !warmed.has(hit.card.id));
+  const saveData =
+    typeof window === 'undefined' ||
+    (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+  const queue = saveData ? [] : hits.map(hit => artUrl(set, hit));
+  let next = 0;
   const pump = (): Promise<void> => {
-    const hit = queue.shift();
-    if (stopped || !hit) {
+    if (stopped) {
       return Promise.resolve();
     }
-    warmed.add(hit.card.id);
-    return warmCard(set, hit).then(pump);
+    while (next < queue.length) {
+      const url = queue[next++];
+      if (url && !warmed.has(url)) {
+        warmed.add(url);
+        return preloadImage(url).then(pump);
+      }
+    }
+    return Promise.resolve();
   };
   for (let worker = 0; worker < CONCURRENCY; worker += 1) {
     void pump();

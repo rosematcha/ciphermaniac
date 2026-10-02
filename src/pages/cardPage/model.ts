@@ -22,6 +22,7 @@ import type { Day2CardStat } from '../../lib/data/events';
 import type { PricePoint, PricingEntry } from '../../lib/data/prices';
 import { snapshotSourceKey } from '../../lib/data/paths';
 import { ONLINE_META_NAME } from '../../lib/constants';
+import { averageCopiesValue } from '../../lib/cardStats';
 import { nameFromTournamentKey } from '../../lib/format';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../../types';
 
@@ -187,19 +188,26 @@ export function findCardInArchetypeReport(report: ArchetypeReport, card: CardIte
   }
   const setU = card.set?.toUpperCase();
   const numKey = card.number != null ? cardNumberIndexKey(card.number) : null;
+  let nameMatch: CardItem | null = null;
   for (const item of report.items) {
-    if (setU && numKey && item.set && item.number !== undefined) {
-      if (item.set.toUpperCase() === setU && cardNumberIndexKey(item.number) === numKey) {
-        return item;
-      }
-    }
-  }
-  for (const item of report.items) {
-    if (item.name && card.name && item.name === card.name) {
+    if (matchesSetNumber(item, setU, numKey)) {
       return item;
     }
+    if (nameMatch === null && item.name && item.name === card.name) {
+      nameMatch = item;
+    }
   }
-  return null;
+  return nameMatch;
+}
+
+function matchesSetNumber(item: CardItem, set: string | undefined, number: string | null): boolean {
+  return Boolean(
+    set &&
+    number &&
+    item.set?.toUpperCase() === set &&
+    item.number !== undefined &&
+    cardNumberIndexKey(item.number) === number
+  );
 }
 
 /**
@@ -225,7 +233,10 @@ export function buildUsageRowsFromIndex(
   if (!entries) {
     return [];
   }
-  const bySlug = new Map(list.map(e => [e.name, e]));
+  const bySlug = new Map<string, ArchetypeIndexEntry>();
+  for (const entry of list) {
+    bySlug.set(entry.name, entry);
+  }
   const rows: ArchetypeUsageRow[] = [];
   for (const usage of entries) {
     const entry = bySlug.get(usage.slug);
@@ -292,13 +303,7 @@ export function findConversionStat(
  * @returns The average, or null when the card has no distribution
  */
 export function averageCopies(card: Pick<CardItem, 'dist'>): number | null {
-  const dist = card.dist ?? [];
-  const players = dist.reduce((acc, d) => acc + (d.players ?? 0), 0);
-  if (!players) {
-    return null;
-  }
-  const copies = dist.reduce((acc, d) => acc + (d.copies ?? 0) * (d.players ?? 0), 0);
-  return copies / players;
+  return averageCopiesValue(card);
 }
 
 /**

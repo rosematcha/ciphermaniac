@@ -11,7 +11,7 @@ import type { EventDetailSource } from './playerProfile/EventDetail';
 import { DecksTab } from './playerProfile/DecksTab';
 import { HistoryTable } from './playerProfile/HistoryTable';
 import { MatchupsTab } from './playerProfile/MatchupsTab';
-import { type CareerRounds, careerSummary } from './playerProfile/model';
+import { careerRoundAggregates, careerSummary } from './playerProfile/model';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/players.css';
 
@@ -65,6 +65,8 @@ export function PlayerProfilePage() {
 }
 
 function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
+  const careerRounds = createMemo(() => props.profile.rounds ?? {});
+  const aggregates = createMemo(() => careerRoundAggregates(careerRounds()));
   const summary = createMemo(() => careerSummary(props.profile));
   const s = () => props.profile.summary;
 
@@ -90,8 +92,6 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
   };
 
   const archetypeName = (base: string | null): string => (base ? (props.profile.archetypeNames[base] ?? base) : '');
-  // A profile cached before the aggregator started emitting rounds has none.
-  const careerRounds = (): CareerRounds => props.profile.rounds ?? {};
 
   return (
     <>
@@ -163,7 +163,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
           <DecksTab profile={props.profile} archetypeName={archetypeName} playerId={props.playerId} source={source} />
         </Show>
         <Show when={tab() === 'matchups'}>
-          <MatchupsTab rounds={careerRounds()} />
+          <MatchupsTab aggregates={aggregates()} />
         </Show>
       </section>
     </>

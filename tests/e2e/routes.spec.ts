@@ -405,6 +405,47 @@ test('the Matchups tab rolls the rounds up', async ({ page }) => {
   await expect(page.locator('.phase-band .phase-figure').first()).toContainText('Day 1');
 });
 
+test('career matchup records survive switching profile tabs', async ({ page }) => {
+  await gotoClean(page, '/players/1272?tab=matchups');
+  const table = page.locator('.matchup-table');
+  await expect(table.locator('tbody tr').first()).toBeVisible();
+  const records = await table.innerText();
+  const phases = await page.locator('.phase-band').innerText();
+  await page.getByRole('tab', { name: 'History', exact: true }).click();
+  await page.getByRole('tab', { name: 'Decks', exact: true }).click();
+  await page.getByRole('tab', { name: 'Matchups', exact: true }).click();
+  await expect(table).toHaveText(records, { useInnerText: true });
+  await expect(page.locator('.phase-band')).toHaveText(phases, { useInnerText: true });
+});
+
+test('missing rounds do not wait for the lazy decklist request', async ({ page }) => {
+  await page.route('**/players/aaaaaaaaaaaa/1272/profile.json', async route => {
+    const response = await route.fetch();
+    const profile = (await response.json()) as Record<string, unknown>;
+    delete profile.rounds;
+    await route.fulfill({ response, json: profile });
+  });
+  let releaseDecks: () => void = () => undefined;
+  const decksReady = new Promise<void>(resolve => {
+    releaseDecks = resolve;
+  });
+  await page.route('**/players/aaaaaaaaaaaa/1272/decks.json', async route => {
+    await decksReady;
+    await route.continue();
+  });
+  try {
+    await gotoClean(page, '/players/1272');
+    await page.locator('.history-table tbody > tr').first().locator('.history-name').click();
+    const detail = page.locator('.row-expansion .event-detail');
+    await expect(detail.locator('.skeleton')).toBeVisible();
+    await detail.getByRole('tab', { name: 'Rounds' }).click();
+    await expect(detail.getByText('No round data published for this event.')).toBeVisible();
+    await expect(detail.locator('.skeleton')).toHaveCount(0);
+  } finally {
+    releaseDecks();
+  }
+});
+
 test('compare pairs two players on the events they both attended', async ({ page }) => {
   await gotoClean(page, '/players/compare?a=1272&b=999');
 
@@ -1203,4 +1244,50 @@ test('the footer feedback link carries the page it was clicked from', async ({ p
   await page.locator('.site-footer').getByRole('link', { name: 'Feedback' }).click();
   await expect(page).toHaveURL(/\/feedback\?from=%2Fcards$/);
   await expect(page.getByRole('radio', { name: /Something to say/ })).toBeVisible();
+});
+
+test('tier renames preserve tray tiles and avoid repositioning the editor', async ({ page }) => {
+  await gotoClean(page, '/tools/tier-list');
+  const tile = page.locator('.tl-tray .tl-item').first();
+  await expect(tile).toBeVisible();
+  await tile.evaluate(node => node.setAttribute('data-render-probe', 'retained'));
+  const plate = page.locator('.tl-plate').first();
+  await plate.hover();
+  await plate.locator('[data-tier-id]').click();
+  const panel = page.locator('.tl-pop');
+  await expect(panel).toBeVisible();
+  await panel.evaluate(async node => {
+    await new Promise<void>(resolve => {
+      requestAnimationFrame(() => resolve());
+    });
+    const measure = node.getBoundingClientRect.bind(node);
+    node.dataset.measurements = '0';
+    node.getBoundingClientRect = () => {
+      node.dataset.measurements = String(Number(node.dataset.measurements) + 1);
+      return measure();
+    };
+  });
+  await panel.locator('input').fill('Top');
+  await expect(plate.locator('.tl-plate-name')).toHaveText('Top');
+  await expect(tile).toHaveAttribute('data-render-probe', 'retained');
+  await expect(panel).toHaveAttribute('data-measurements', '0');
+});
+
+test('saving a custom archetype preserves fetched tiles and both artwork modes', async ({ page }) => {
+  await gotoClean(page, '/tools/tier-list');
+  const tile = page.locator('.tl-tray .tl-item').first();
+  await expect(tile).toBeVisible();
+  await tile.evaluate(node => node.setAttribute('data-render-probe', 'retained'));
+  const before = await page.locator('.tl-tray .tl-item').count();
+  await page.locator('[data-addarch]').click();
+  const panel = page.locator('.tl-pop');
+  await panel.getByPlaceholder('Archetype name').fill('Test deck');
+  await panel.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(panel).toHaveCount(0);
+  await expect(page.locator('.tl-tray .tl-item')).toHaveCount(before + 1);
+  await expect(tile).toHaveAttribute('data-render-probe', 'retained');
+  await expect(page.locator('.tl-tray')).toContainText('Test deck');
+  await page.getByRole('tab', { name: 'Previews', exact: true }).click();
+  await expect(page.locator('.tl-tray .tl-item')).toHaveCount(before + 1);
+  await expect(page.locator('.tl-tray')).toContainText('Test deck');
 });

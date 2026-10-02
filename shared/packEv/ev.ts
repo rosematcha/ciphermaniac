@@ -75,12 +75,35 @@ export function poolCardValue(card: PackCard, spec: PoolSpec, inputs: EvInputs):
 export function selectPool(cards: PackCard[], spec: PoolSpec): PackCard[] {
   const wanted = spec.pattern ?? 'base';
   const rarities = new Set(spec.rarities);
-  return cards.filter(card => {
-    if (!rarities.has(card.rarity)) {
-      return false;
+  return cards.filter(card => rarities.has(card.rarity) && (card.pattern ?? 'base') === wanted);
+}
+
+/** Resolve each distinct pool once per calculation, without retaining mutable input data. */
+export function createPoolEvaluator(inputs: EvInputs) {
+  const pools = new Map<string, { card: PackCard; value: number; notable: boolean }[]>();
+  return (spec: PoolSpec) => {
+    const key = JSON.stringify([
+      [...new Set(spec.rarities)].sort(),
+      spec.pattern ?? 'base',
+      spec.printing,
+      spec.bulk,
+      spec.unpriced
+    ]);
+    const cached = pools.get(key);
+    if (cached) {
+      return cached;
     }
-    return (card.pattern ?? 'base') === wanted;
-  });
+    const evaluated = selectPool(inputs.cards, spec).map(card => {
+      const value = poolCardValue(card, spec, inputs);
+      return { card, value, notable: value > inputs.bulk[spec.bulk] };
+    });
+    pools.set(key, evaluated);
+    return evaluated;
+  };
+}
+
+interface EvaluationInputs extends EvInputs {
+  evaluatePool: ReturnType<typeof createPoolEvaluator>;
 }
 
 /** An outcome's named rate, from `chance` or from "1 in `odds`". */
@@ -115,23 +138,20 @@ export function resolveChances(outcomes: SlotOutcome[]): number[] {
 }
 
 /** Mean value of a uniform draw from a pool, and the pool's size. */
-function poolAverage(spec: PoolSpec, inputs: EvInputs): { poolSize: number; averageValue: number } {
-  const pool = selectPool(inputs.cards, spec);
-  if (pool.length === 0) {
-    return { poolSize: 0, averageValue: 0 };
-  }
-  const total = pool.reduce((sum, card) => sum + poolCardValue(card, spec, inputs), 0);
-  return { poolSize: pool.length, averageValue: total / pool.length };
+function poolAverage(spec: PoolSpec, inputs: EvaluationInputs): { poolSize: number; averageValue: number } {
+  const pool = inputs.evaluatePool(spec);
+  const total = pool.reduce((sum, row) => sum + row.value, 0);
+  return { poolSize: pool.length, averageValue: pool.length ? total / pool.length : 0 };
 }
 
-function outcomeAverage(outcome: SlotOutcome, inputs: EvInputs): { poolSize: number; averageValue: number } {
+function outcomeAverage(outcome: SlotOutcome, inputs: EvaluationInputs): { poolSize: number; averageValue: number } {
   if (outcome.flat) {
     return { poolSize: 0, averageValue: inputs.bulk[outcome.flat] };
   }
   return outcome.pool ? poolAverage(outcome.pool, inputs) : { poolSize: 0, averageValue: 0 };
 }
 
-function slotEv(slot: PackSlot, inputs: EvInputs): SlotEv {
+function slotEv(slot: PackSlot, inputs: EvaluationInputs): SlotEv {
   const count = slot.count ?? 1;
   const chances = resolveChances(slot.outcomes);
   const outcomes: OutcomeEv[] = slot.outcomes.map((outcome, index) => {
@@ -165,18 +185,18 @@ export function resolveRef(cards: PackCard[], ref: CardRef): PackCard | undefine
   return cards.find(card => !card.pattern && card.name === ref.name && card.rarity === ref.rarity);
 }
 
-function refValue(ref: CardRef, inputs: EvInputs): number {
+function refValue(ref: CardRef, inputs: EvaluationInputs): number {
   const card = resolveRef(inputs.cards, ref);
   const { printing, bulk } = refTerms(ref.rarity);
   return card ? cardValue(card, printing, inputs.bulk[bulk], inputs.threshold) : inputs.bulk[bulk];
 }
 
-function refsValue(refs: CardRef[], inputs: EvInputs): number {
+function refsValue(refs: CardRef[], inputs: EvaluationInputs): number {
   return refs.reduce((sum, ref) => sum + refValue(ref, inputs), 0);
 }
 
 /** Expected value of one special-pack draw. */
-function drawValue(draw: SpecialDraw, inputs: EvInputs): number {
+function drawValue(draw: SpecialDraw, inputs: EvaluationInputs): number {
   if (draw.kind === 'cards') {
     return refsValue(draw.cards, inputs);
   }
@@ -188,7 +208,7 @@ function drawValue(draw: SpecialDraw, inputs: EvInputs): number {
 }
 
 /** Expected value of a special pack: its kept slots plus its draws. */
-function specialValue(special: SpecialPack, slots: SlotEv[], inputs: EvInputs): number {
+function specialValue(special: SpecialPack, slots: SlotEv[], inputs: EvaluationInputs): number {
   const kept = new Set(special.keepSlots);
   const keptValue = slots.filter(slot => kept.has(slot.label)).reduce((sum, slot) => sum + slot.contribution, 0);
   return keptValue + special.draws.reduce((sum, draw) => sum + drawValue(draw, inputs), 0);
@@ -202,7 +222,8 @@ function specialValue(special: SpecialPack, slots: SlotEv[], inputs: EvInputs): 
  * keep their full contributions, so the table still sums to the pack's EV
  * without scaling every row by a rate of one in a thousand.
  */
-export function computePackEv(inputs: EvInputs): PackEv {
+export function computePackEv(source: EvInputs): PackEv {
+  const inputs = { ...source, evaluatePool: createPoolEvaluator(source) };
   const slots = inputs.slots.map(slot => slotEv(slot, inputs));
   const ordinary = slots.reduce((sum, slot) => sum + slot.contribution, 0);
   const specials = inputs.specialPacks ?? [];
@@ -226,19 +247,17 @@ export function computePackEv(inputs: EvInputs): PackEv {
 }
 
 /** One contribution row per pool card worth more than bulk, at `chance` for the whole pool. */
-function poolCardRows(spec: PoolSpec, chance: number, inputs: EvInputs): CardContribution[] {
-  const pool = selectPool(inputs.cards, spec);
-  const bulkRate = inputs.bulk[spec.bulk];
+function poolCardRows(spec: PoolSpec, chance: number, inputs: EvaluationInputs): CardContribution[] {
+  const pool = inputs.evaluatePool(spec);
   const { printing } = spec;
   const perCard = chance / pool.length;
-  return pool
-    .map(card => ({ card, printing, value: poolCardValue(card, spec, inputs) }))
-    .filter(row => row.value > bulkRate)
-    .map(row => ({ ...row, chance: perCard, contribution: perCard * row.value }));
+  return pool.flatMap(({ card, value, notable }) =>
+    notable ? [{ card, printing, value, chance: perCard, contribution: perCard * value }] : []
+  );
 }
 
 /** Rows for named cards, each at `chance`. */
-function refRows(refs: CardRef[], chance: number, inputs: EvInputs): CardContribution[] {
+function refRows(refs: CardRef[], chance: number, inputs: EvaluationInputs): CardContribution[] {
   return refs.flatMap(ref => {
     const card = resolveRef(inputs.cards, ref);
     const { printing, bulk } = refTerms(ref.rarity);
@@ -247,7 +266,7 @@ function refRows(refs: CardRef[], chance: number, inputs: EvInputs): CardContrib
   });
 }
 
-function specialRows(special: SpecialPack, inputs: EvInputs): CardContribution[] {
+function specialRows(special: SpecialPack, inputs: EvaluationInputs): CardContribution[] {
   const chance = 1 / special.odds;
   return special.draws.flatMap(draw => {
     if (draw.kind === 'cards') {
@@ -260,7 +279,7 @@ function specialRows(special: SpecialPack, inputs: EvInputs): CardContribution[]
   });
 }
 
-function slotRows(slot: PackSlot, inputs: EvInputs): CardContribution[] {
+function slotRows(slot: PackSlot, inputs: EvaluationInputs): CardContribution[] {
   const count = slot.count ?? 1;
   const chances = resolveChances(slot.outcomes);
   return slot.outcomes.flatMap((outcome, index) =>
@@ -284,7 +303,8 @@ function slotRows(slot: PackSlot, inputs: EvInputs): CardContribution[] {
  * draw one pool, and a god pack repeats SIRs the SIR outcome already lists —
  * so rows merge on card and printing.
  */
-export function topCardContributions(inputs: EvInputs, limit: number): CardContribution[] {
+export function topCardContributions(source: EvInputs, limit: number): CardContribution[] {
+  const inputs = { ...source, evaluatePool: createPoolEvaluator(source) };
   const rows = [
     ...inputs.slots.flatMap(slot => slotRows(slot, inputs)),
     ...(inputs.specialPacks ?? []).flatMap(special => specialRows(special, inputs))
@@ -293,12 +313,12 @@ export function topCardContributions(inputs: EvInputs, limit: number): CardContr
   for (const row of rows) {
     const key = `${row.card.id}:${row.printing}`;
     const existing = merged.get(key);
-    merged.set(
-      key,
-      existing
-        ? { ...existing, chance: existing.chance + row.chance, contribution: existing.contribution + row.contribution }
-        : row
-    );
+    if (existing) {
+      existing.chance += row.chance;
+      existing.contribution += row.contribution;
+    } else {
+      merged.set(key, row);
+    }
   }
   return [...merged.values()].sort((a, b) => b.contribution - a.contribution).slice(0, limit);
 }

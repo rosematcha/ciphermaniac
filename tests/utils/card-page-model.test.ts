@@ -156,6 +156,15 @@ test('a card is found in an archetype report by set and number, or by name when 
   }
 });
 
+test('an exact set/number match wins over an earlier name fallback; otherwise the first name wins', () => {
+  const first = { ...CARD, set: 'OTHER', number: '1' };
+  const second = { ...CARD, set: 'OTHER', number: '2' };
+  const report = { items: [first, second, CARD] } as ArchetypeReport;
+  assert.equal(findCardInArchetypeReport(report, CARD), CARD);
+  report.items.pop();
+  assert.equal(findCardInArchetypeReport(report, CARD), first);
+});
+
 // ---------------------------------------------------------------------------
 // Usage rows
 // ---------------------------------------------------------------------------
@@ -221,6 +230,8 @@ test('average copies weights each count by its players, and is null without a di
   assert.equal(averageCopies(card), (1 * 1 + 3 * 3) / 4);
   assert.equal(averageCopies({ dist: [] }), null);
   assert.equal(averageCopies({}), null);
+  assert.equal(averageCopies({ dist: [{ copies: 3 }, { players: 2 }, { copies: 2, players: 2 }] }), 1);
+  assert.equal(averageCopies({ dist: [{ copies: 4, players: 0 }] }), null);
 });
 
 test('conversion caveats flag a near-universal card and a tiny sample', () => {

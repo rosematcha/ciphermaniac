@@ -109,3 +109,36 @@ test('an unnumbered basic Energy (000P) resolves to its bare type letter', () =>
   assert.ok(attempts[0].endsWith('/TEU/TEU_P_R_EN_LG.png'), attempts[0]);
   assert.equal(attempts[1], `${PROXY}/lg/TEU/P`);
 });
+
+test('responsive sources never exceed the requested Limitless tier', () => {
+  for (const source of ['r2', 'proxy', 'hotlink'] as const) {
+    for (const [size, widths] of [
+      ['xs', ['136w']],
+      ['sm', ['136w', '274w']],
+      ['lg', ['136w', '274w', '460w']]
+    ] as const) {
+      const srcset = buildSrcset('SLG', '068A', size, source);
+      assert.deepEqual(
+        srcset.split(', ').map(entry => entry.split(' ')[1]),
+        [...widths]
+      );
+      assert.ok(srcset.includes('068a'), 'srcset and fallback normalize variant suffixes identically');
+      assert.ok(buildAttempts('SLG', '068A', size, source)[0].includes('068a'));
+    }
+  }
+});
+
+test('every fallback URL is unique, preserves tier order, and ends at xs', () => {
+  for (const source of ['r2', 'proxy', 'hotlink'] as const) {
+    for (const size of ['xs', 'sm', 'lg'] as const) {
+      const attempts = buildAttempts('SVI', 1, size, source);
+      assert.equal(new Set(attempts).size, attempts.length);
+      const tiers = size === 'lg' ? ['lg', 'sm', 'xs'] : size === 'sm' ? ['sm', 'xs'] : ['xs'];
+      assert.deepEqual(
+        attempts.filter(url => url.startsWith(PROXY)).map(url => url.split('/')[2]),
+        tiers
+      );
+      assert.equal(attempts.length, tiers.length + Number(source !== 'proxy'));
+    }
+  }
+});

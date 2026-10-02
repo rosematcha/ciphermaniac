@@ -30,6 +30,7 @@
     "build:card-types": "node scripts/build-card-types.mjs",
     "check:card-types": "node scripts/check-card-types.mjs",
     "bench:routes": "tsx scripts/benchmark-routes.ts",
+    "bench:search": "tsx scripts/benchmark-search.ts",
     "bench:panel": "tsx tests/perf/advanced-panel.bench.ts",
     "bench:budget": "tsx scripts/check-route-budget.ts",
     "prepare": "husky",

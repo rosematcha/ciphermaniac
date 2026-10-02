@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildSearchIndex, createSearchLoader, type SearchSources, searchTiered } from '../../src/lib/globalSearch';
+import {
+  buildSearchIndex,
+  createSearchLoader,
+  type SearchEntry,
+  type SearchHit,
+  type SearchKind,
+  type SearchSources,
+  searchTiered
+} from '../../src/lib/globalSearch';
 import type { PlayerIndexSlimEntry } from '../../shared/playerTypes';
 import type { ArchetypeIndexEntry, CardItem } from '../../src/types';
 
@@ -120,6 +128,85 @@ test('caps apply per kind and in total', () => {
   assert.equal(def.hits.length, 10);
   assert.equal(def.hits[0].entry.label, 'Ball 8');
   assert.equal(searchTiered(many, 'ball', { perKind: 5, total: 7 }).hits.length, 7);
+});
+
+function compareReference(a: SearchHit, b: SearchHit): number {
+  const kinds = ['archetype', 'card', 'player', 'tournament'];
+  return (
+    a.tier - b.tier ||
+    kinds.indexOf(a.entry.kind) - kinds.indexOf(b.entry.kind) ||
+    b.entry.weight - a.entry.weight ||
+    a.entry.label.localeCompare(b.entry.label) ||
+    a.entry.href.localeCompare(b.entry.href)
+  );
+}
+
+test('bounded selection equals exhaustive ranking across queries, input orders and limits', () => {
+  const many = buildSearchIndex({
+    cards: Array.from({ length: 90 }, (_, i) => card(`Ball ${i % 13}`, 'SVI', String(i), i % 7)),
+    players: Array.from({ length: 90 }, (_, i) => player(String(i), `Ball Player ${i % 13}`, i % 7)),
+    archetypes: Array.from({ length: 90 }, (_, i) => archetype(`Ball_${i}`, `Ball Archetype ${i % 13}`, i % 7)),
+    tournaments: sources.tournaments
+  });
+  for (const entries of [many, [...many].reverse()]) {
+    for (const query of ['ball', 'ball 1', 'a', 'svi/1', 'player', 'milwaukee', 'not found']) {
+      const exhaustive = searchTiered(entries, query, { perKind: entries.length, total: entries.length });
+      const ranked = [...exhaustive.hits].sort(compareReference);
+      for (const limits of [
+        { perKind: 1, total: 2 },
+        { perKind: 5, total: 7 },
+        { perKind: 50, total: 200 }
+      ]) {
+        const counts = new Map<SearchKind, number>();
+        const groups = new Map<SearchKind, SearchHit[]>();
+        let kept = 0;
+        for (const hit of ranked) {
+          const count = counts.get(hit.entry.kind) ?? 0;
+          if (kept >= limits.total || count >= limits.perKind) {
+            continue;
+          }
+          counts.set(hit.entry.kind, count + 1);
+          const group = groups.get(hit.entry.kind) ?? [];
+          group.push(hit);
+          groups.set(hit.entry.kind, group);
+          kept++;
+        }
+        const expected = [...groups].map(([kind, hits]) => ({ kind, hits }));
+        assert.deepEqual(
+          searchTiered(entries, query, limits),
+          {
+            groups: expected,
+            hits: expected.flatMap(group => group.hits)
+          },
+          `${query}: ${JSON.stringify(limits)}`
+        );
+      }
+    }
+  }
+});
+
+test('ties preserve input order, caps may be empty, and the input index is untouched', () => {
+  const original = index.find(entry => entry.label === 'Arven')!;
+  const entries: SearchEntry[] = [
+    { ...original, sublabel: 'first' },
+    { ...original, sublabel: 'second' },
+    { ...original, sublabel: 'third' }
+  ];
+  const before = structuredClone(entries);
+  assert.deepEqual(
+    searchTiered(entries, 'arven', { perKind: 2, total: 20 }).hits.map(hit => hit.entry.sublabel),
+    ['first', 'second']
+  );
+  assert.deepEqual(searchTiered(entries, 'arven', { perKind: 0, total: 20 }), { groups: [], hits: [] });
+  assert.deepEqual(searchTiered(entries, 'arven', { perKind: 5, total: 0 }), { groups: [], hits: [] });
+  assert.deepEqual(entries, before);
+});
+
+test('a later exact key outranks earlier substring keys and a label prefix', () => {
+  const entry = { ...index[0], keys: ['dragapult dusknoir', 'drag'] };
+  assert.equal(searchTiered([entry], 'drag dusk').hits[0].tier, 3);
+  entry.keys.push('dusk');
+  assert.equal(searchTiered([entry], 'drag dusk').hits[0].tier, 1);
 });
 
 test('diacritics fold on both sides', () => {

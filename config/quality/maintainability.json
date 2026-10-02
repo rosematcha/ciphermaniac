@@ -267,12 +267,6 @@
     "max-lines-per-function:3ad37711c8ffc05a9c75e4c4625ac31edbec15990776881f0af0a637b65f86d7:Function 'SocialGraphicsPage' has too many lines (304). Maximum allowed is 250.",
     "complexity:3ad37711c8ffc05a9c75e4c4625ac31edbec15990776881f0af0a637b65f86d7:Function 'SocialGraphicsPage' has a complexity of 24. Maximum allowed is 12."
   ],
-  "src/pages/TierListPage.tsx": [
-    "max-lines-per-function:5def441bf8b96fd64a307e76c447cbbbff1b86339f1cb1c990bf1c8774c09949:Function 'TierListPage' has too many lines (484). Maximum allowed is 250."
-  ],
-  "src/pages/cardPage/model.ts": [
-    "complexity:0793c5ccb2b3c502d8166fb3a66763f3ffe97873f376f96f3a8107b557498982:Function 'findCardInArchetypeReport' has a complexity of 16. Maximum allowed is 12."
-  ],
   "src/pages/socialGraphics/model.ts": [
     "complexity:ef17683d80b0001d52123f5bf2cc5ae3b127eb085f4e97166ecf85afa6e6ec89:Function 'collapseEvolutions' has a complexity of 13. Maximum allowed is 12."
   ],

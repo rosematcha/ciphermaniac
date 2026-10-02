@@ -1,5 +1,6 @@
-import { createEffect, createMemo, createSignal, For, on, onMount, Show } from 'solid-js';
-import { type ArtSource, buildAttempts, buildSrcset, type CardImageSize, R2_CARD_IMAGES } from './cardImage/sources';
+import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js';
+import { createReadinessProbe, preloadImage } from './cardImage/loading';
+import { type ArtSource, buildAttempts, buildSrcset, type CardImageSize } from './cardImage/sources';
 
 /**
  * Our R2 bucket serves the same art re-encoded as WebP at ~25% of the PNG
@@ -17,36 +18,7 @@ const [r2Ready, setR2Ready] = createSignal(false);
  * art on cold loads. Safe to call more than once; only fires the network
  * request when nothing is cached yet.
  */
-export function probeR2Ready(): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  let cached: string | null = null;
-  try {
-    cached = sessionStorage.getItem('cm:r2CardImages');
-  } catch {
-    /* storage unavailable */
-  }
-  if (cached === '1') {
-    setR2Ready(true);
-  } else if (cached === null) {
-    fetch(`${R2_CARD_IMAGES}/_ready`)
-      .then(res => {
-        void res.body?.cancel();
-        try {
-          sessionStorage.setItem('cm:r2CardImages', res.ok ? '1' : '0');
-        } catch {
-          /* storage unavailable */
-        }
-        if (res.ok) {
-          setR2Ready(true);
-        }
-      })
-      .catch(() => {
-        /* leave limitless as the source this session */
-      });
-  }
-}
+export const probeR2Ready = createReadinessProbe(() => setR2Ready(true));
 
 interface CardImageProps {
   set: string;
@@ -97,37 +69,7 @@ type SourceOptions = Pick<CardImageProps, 'skipR2' | 'hotlink'>;
 
 /** Hotlink when asked, R2 once probed unless skipped, else the proxy. */
 function artSource(r2Probed: boolean, options: SourceOptions): ArtSource {
-  if (options.hotlink) {
-    return 'hotlink';
-  }
-  return r2Probed && options.skipR2 !== true ? 'r2' : 'proxy';
-}
-
-/**
- * Warms the browser cache for one image URL. Deliberately never attached to
- * the document: assigning .src starts the fetch and populates the same HTTP +
- * decoded-bitmap caches a real element will hit.
- *
- * Resolves once the bitmap is actually ready to paint, not merely downloaded:
- * `decode()` covers the fetch *and* the decode, which is the difference
- * between a caller being able to reveal fully-formed art and revealing an
- * empty frame that fills in a beat later (see CardHoverPreview).
- *
- * Never rejects. A 404 or decode failure resolves like any other outcome —
- * callers gate presentation on this, so a hard failure must let them proceed
- * and fall through to the element's own retry chain rather than hang.
- * @param url - Exactly the URL the eventual render requests.
- * @returns Resolves when the image is decoded, or when it has definitively failed.
- */
-export function preloadImage(url: string): Promise<void> {
-  if (typeof window === 'undefined') {
-    return Promise.resolve();
-  }
-  const img = new Image();
-  // As on the rendered <img>.
-  img.referrerPolicy = 'no-referrer';
-  img.src = url;
-  return img.decode().catch(() => undefined);
+  return options.hotlink ? 'hotlink' : r2Probed && !options.skipR2 ? 'r2' : 'proxy';
 }
 
 /**
@@ -189,38 +131,34 @@ export function CardImage(props: CardImageProps) {
   const [attemptIndex, setAttemptIndex] = createSignal(0);
   const [errored, setErrored] = createSignal(false);
   const [loaded, setLoaded] = createSignal(false);
-  let img: HTMLImageElement | undefined;
+  let img!: HTMLImageElement;
 
   // Art already in the memory cache is complete before first paint: reveal it
   // now, or every revisit would replay the fade-in over art that never left.
-  onMount(() => {
-    if (img?.complete && img.naturalWidth > 0) {
-      setLoaded(true);
-    }
-  });
+  onMount(() => setLoaded(img.complete && img.naturalWidth > 0));
 
-  // A reused instance must not carry card A's retry/error state over to card B.
+  // Reset retries when the card, preferred size, or source changes.
   // `loaded` survives the swap: the browser keeps painting A until B is ready,
   // so hiding the element meanwhile would blink the card page's hero on every
   // printing hover. A failed attempt hides it again (see onError).
-  createEffect(
-    on(
-      () => [props.set, props.number],
-      () => {
-        setAttemptIndex(0);
-        setErrored(false);
-      },
-      { defer: true }
-    )
-  );
+  createEffect(() => {
+    attempts();
+    setAttemptIndex(0);
+    setErrored(false);
+  });
 
   // `load` means downloaded, not decoded: revealing then can still fade in an
   // empty frame on large art. Never rejects, so a decode failure still reveals.
   function onLoad() {
+    const loadedSrc = src();
     void img
-      ?.decode()
-      .catch(() => undefined)
-      .then(() => setLoaded(true));
+      .decode()
+      .catch(() => {})
+      .then(() => {
+        if (src() === loadedSrc) {
+          setLoaded(true);
+        }
+      });
   }
 
   const src = () => attempts()[attemptIndex()];

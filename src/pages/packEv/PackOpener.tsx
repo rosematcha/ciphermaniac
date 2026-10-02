@@ -1,10 +1,10 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { CardImage } from '../../components/CardImage';
 import { Segmented } from '../../components/Segmented';
-import { cheapestCost } from '../../../shared/packEv/cost';
+import { createCostCalculator } from '../../../shared/packEv/cost';
 import { openPack, possibleHits, preparePack, type Pull } from '../../../shared/packEv/simulate';
 import type { PackEvSetPayload, RipSize } from '../../../shared/packEv/types';
-import { attention, callout, juice, kick, staggerDelay } from './juice';
+import { attention, callout, juice, kick, queueTilePaint, staggerDelay } from './juice';
 import { createCount } from './tween';
 import {
   artNumber,
@@ -100,14 +100,16 @@ function StackTile(props: StackTileProps) {
   onMount(() => {
     const big = props.size === 'sm';
     const delay = staggerDelay(props.index);
-    juice(
-      figure,
-      { scale: big ? 0.11 : 0.08, rotation: kick(big ? 5 : 3), pop: props.stack.first === props.rip },
-      delay
+    const options = { scale: big ? 0.11 : 0.08, rotation: kick(big ? 5 : 3), pop: props.stack.first === props.rip };
+    const chase = isChase(props.stack.pull);
+    onCleanup(
+      queueTilePaint(() => {
+        juice(figure, options, delay);
+        if (chase) {
+          callout(figure, delay);
+        }
+      })
     );
-    if (isChase(props.stack.pull)) {
-      callout(figure, delay);
-    }
   });
   return (
     <figure class='packev-tile' ref={figure}>
@@ -178,6 +180,7 @@ export function PackOpener(props: PackOpenerProps) {
   // The whole payload, not a hand-picked subset of it: a field left out here
   // (special packs, once) silently opens a different pack than the table prices.
   const pack = createMemo(() => preparePack(props.payload));
+  const cost = createMemo(() => createCostCalculator(props.payload.sealed));
   const [opened, setOpened] = createSignal<OpenedState>(EMPTY);
   const [sort, setSort] = createSignal<Exclude<StackSort, 'count'>>('value');
   const spent = () => opened().spent;
@@ -207,8 +210,8 @@ export function PackOpener(props: PackOpenerProps) {
     for (let index = 0; index < packs; index += 1) {
       pulls.push(...openPack(prepared, Math.random));
     }
-    const cost = cheapestCost(props.payload.sealed, packs);
-    setOpened(current => tally(current, packs, cost, pulls));
+    const spent = cost()(packs);
+    setOpened(current => tally(current, packs, spent, pulls));
   }
 
   return (

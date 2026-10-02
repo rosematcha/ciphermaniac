@@ -138,6 +138,24 @@ test('without an index, groups rank by decks running the card and keep every arc
   assert.deepEqual(groups[0].lists, []);
 });
 
+test('distribution skips incomplete and empty buckets and keeps the first modal count on ties', () => {
+  const usage = row('Dragapult', 10, 50);
+  usage.item.dist = [
+    { players: 10 },
+    { copies: 1, players: 0 },
+    { copies: 4 },
+    { copies: 2, players: 5 },
+    { copies: 3, players: 5 }
+  ];
+  const [group] = buildPlayedInGroups([usage], null, 'all');
+  assert.deepEqual(group.dist, [
+    { copies: 2, players: 5 },
+    { copies: 3, players: 5 }
+  ]);
+  assert.equal(group.modal, usage.item.dist[3]);
+  assert.deepEqual(buildPlayedInGroups([usage], [], 'all'), []);
+});
+
 test('the fold shows six and only hides five or more', () => {
   assert.equal(foldedCount(6), 6);
   assert.equal(foldedCount(10), 10);
@@ -150,4 +168,7 @@ test('a single-event report is detected so rows can drop the event column', () =
   assert.equal(singleEvent(all), false);
   assert.equal(singleEvent(all.filter(r => r.event?.id === 't1')), true);
   assert.equal(singleEvent([]), true);
+  const missing = { ...all[0], event: null };
+  assert.equal(singleEvent([missing, missing]), true);
+  assert.equal(singleEvent([missing, all[0]]), false);
 });

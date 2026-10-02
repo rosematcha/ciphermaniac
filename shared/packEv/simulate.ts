@@ -11,7 +11,7 @@
  * @module shared/packEv/simulate
  */
 
-import { cardValue, type EvInputs, poolCardValue, refTerms, resolveChances, resolveRef, selectPool } from './ev';
+import { cardValue, createPoolEvaluator, type EvInputs, refTerms, resolveChances, resolveRef } from './ev';
 import type { CardRef, PackCard, PackSlot, PoolSpec, Printing, SpecialDraw } from './types';
 
 /** One card out of one pack. `card` is null for the basic energy slot. */
@@ -38,10 +38,8 @@ export interface PossibleHit {
 
 /** A pool with its per-card values resolved, ready to draw from. */
 interface PreparedPool {
-  pool: PackCard[];
-  values: number[];
+  pool: (Candidate & { card: PackCard })[];
   printing: Printing | null;
-  bulkRate: number;
 }
 
 interface PreparedOutcome extends PreparedPool {
@@ -73,42 +71,32 @@ export interface PreparedPack {
   specials: PreparedSpecial[];
 }
 
-function preparePool(spec: PoolSpec, inputs: EvInputs): PreparedPool {
-  const pool = selectPool(inputs.cards, spec);
-  const bulkRate = inputs.bulk[spec.bulk];
-  const values = pool.map(card => poolCardValue(card, spec, inputs));
-  return { pool, values, printing: spec.printing, bulkRate };
+interface PreparationInputs extends EvInputs {
+  evaluatePool: ReturnType<typeof createPoolEvaluator>;
 }
 
-function prepareSlot(slot: PackSlot, inputs: EvInputs): PreparedSlot {
+function preparePool(spec: PoolSpec, inputs: PreparationInputs): PreparedPool {
+  return { pool: inputs.evaluatePool(spec), printing: spec.printing };
+}
+
+function prepareSlot(slot: PackSlot, inputs: PreparationInputs): PreparedSlot {
   const chances = resolveChances(slot.outcomes);
   let running = 0;
   const outcomes = slot.outcomes.map((outcome, index) => {
     running += chances[index];
     const flatRate = inputs.bulk[outcome.flat ?? 'commonUncommon'];
-    const prepared = outcome.pool
-      ? preparePool(outcome.pool, inputs)
-      : { pool: [], values: [], printing: null, bulkRate: flatRate };
+    const prepared = outcome.pool ? preparePool(outcome.pool, inputs) : { pool: [], printing: null };
     return { ...prepared, label: outcome.label, cumulative: running, flatValue: outcome.flat ? flatRate : 0 };
   });
   return { label: slot.label, count: slot.count ?? 1, outcomes };
 }
 
-function poolCandidate(pool: PreparedPool, index: number): Candidate & { card: PackCard } {
-  const value = pool.values[index];
-  return { card: pool.pool[index], value, notable: value > pool.bulkRate };
-}
-
-function poolCandidates(pool: PreparedPool): Candidate[] {
-  return pool.pool.map((_, index) => poolCandidate(pool, index));
-}
-
 function drawFromPool(pool: PreparedPool, rng: Rng): Candidate & { card: PackCard } {
-  return poolCandidate(pool, Math.min(pool.pool.length - 1, Math.floor(rng() * pool.pool.length)));
+  return pool.pool[Math.min(pool.pool.length - 1, Math.floor(rng() * pool.pool.length))];
 }
 
 /** A named card as a pull; a reference the set doesn't carry pulls as bulk. */
-function refPull(ref: CardRef, label: string, inputs: EvInputs): Pull {
+function refPull(ref: CardRef, label: string, inputs: PreparationInputs): Pull {
   const card = resolveRef(inputs.cards, ref) ?? null;
   const { printing, bulk } = refTerms(ref.rarity);
   const bulkRate = inputs.bulk[bulk];
@@ -116,15 +104,12 @@ function refPull(ref: CardRef, label: string, inputs: EvInputs): Pull {
   return { slot: label, outcome: ref.rarity, card, printing, value, notable: value > bulkRate };
 }
 
-function prepareDraw(draw: SpecialDraw, label: string, inputs: EvInputs): PreparedDraw {
-  if (draw.kind === 'cards') {
-    const pulls = draw.cards.map(ref => refPull(ref, label, inputs));
-    return { draw: () => [...pulls], candidates: pulls };
-  }
-  if (draw.kind === 'oneOf') {
-    const groups = draw.groups.map(group => group.map(ref => refPull(ref, label, inputs)));
+function prepareDraw(draw: SpecialDraw, label: string, inputs: PreparationInputs): PreparedDraw {
+  if (draw.kind !== 'random') {
+    const refs = draw.kind === 'cards' ? [draw.cards] : draw.groups;
+    const groups = refs.map(group => group.map(ref => refPull(ref, label, inputs)));
     return {
-      draw: rng => [...groups[Math.min(groups.length - 1, Math.floor(rng() * groups.length))]],
+      draw: rng => groups[draw.kind === 'cards' ? 0 : Math.min(groups.length - 1, Math.floor(rng() * groups.length))],
       candidates: groups.flat()
     };
   }
@@ -138,12 +123,13 @@ function prepareDraw(draw: SpecialDraw, label: string, inputs: EvInputs): Prepar
         printing: pool.printing,
         ...drawFromPool(pool, rng)
       })),
-    candidates: poolCandidates(pool)
+    candidates: pool.pool
   };
 }
 
 /** Resolve pools, per-card values and special packs once, for repeated openings. */
-export function preparePack(inputs: EvInputs): PreparedPack {
+export function preparePack(source: EvInputs): PreparedPack {
+  const inputs = { ...source, evaluatePool: createPoolEvaluator(source) };
   const slots = inputs.slots.map(slot => prepareSlot(slot, inputs));
   let running = 0;
   const specials = (inputs.specialPacks ?? []).map(special => {
@@ -223,7 +209,7 @@ export function openPack(pack: PreparedPack, rng: Rng): Pull[] {
  */
 export function possibleHits(pack: PreparedPack): PossibleHit[] {
   const candidates = [
-    ...pack.slots.flatMap(slot => slot.outcomes.flatMap(outcome => poolCandidates(outcome))),
+    ...pack.slots.flatMap(slot => slot.outcomes.flatMap(outcome => outcome.pool)),
     ...pack.specials.flatMap(special => special.candidates)
   ];
   const best = new Map<number, PossibleHit>();

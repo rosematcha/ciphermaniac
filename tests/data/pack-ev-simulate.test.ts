@@ -208,3 +208,27 @@ test('the possible hits are every card any pack can clear bulk with, once each a
     ]
   );
 });
+
+test('preparation shares repeated pools and refreshes their values on the next preparation', () => {
+  let scans = 0;
+  const pricedCard: PackCard = { ...CARDS[0], prices: { normal: 4 } };
+  Object.defineProperty(pricedCard, 'rarity', {
+    get: () => {
+      scans++;
+      return 'Common';
+    }
+  });
+  const slot = SLOTS[0];
+  const inputs = { ...INPUTS, cards: [pricedCard], slots: [slot, { ...slot, label: 'Repeated' }] };
+  const prepared = preparePack(inputs);
+  assert.equal(scans, 1);
+  assert.equal(
+    openPack(prepared, () => 0).reduce((sum, pull) => sum + pull.value, 0),
+    24
+  );
+  pricedCard.prices.normal = 10;
+  assert.equal(
+    openPack(preparePack(inputs), () => 0).reduce((sum, pull) => sum + pull.value, 0),
+    60
+  );
+});

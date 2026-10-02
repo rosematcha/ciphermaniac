@@ -272,8 +272,11 @@ test('a look asked for while one is under way follows it at once', async () => {
     );
     mock.timers.tick(SCREEN_POLL_MS);
     assert.equal(looks, 1);
-    // The console changed the event after this look had already read it.
-    polls.soon();
+    // A burst of changes during one request becomes one follow-up request.
+    for (let i = 0; i < 1000; i += 1) {
+      polls.soon();
+    }
+    assert.equal(looks, 1, 'announcements never overlap the request in flight');
     finish(true);
     await settle();
     mock.timers.tick(0);

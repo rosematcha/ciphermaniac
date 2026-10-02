@@ -81,6 +81,8 @@ export interface LiveState {
   finished?: boolean;
   /** Hash of the last published matches. */
   hash: string;
+  /** In-memory snapshot of the published matches; omitted when resuming from an index. */
+  matches?: readonly LiveMatch[];
   /** Matches in the last published round; a round never loses tables. */
   matchCount: number;
   /** Tables in the last published round without a result. */

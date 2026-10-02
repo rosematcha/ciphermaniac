@@ -12,6 +12,7 @@ import test from 'node:test';
 import {
   cardValue,
   computePackEv,
+  createPoolEvaluator,
   poolCardValue,
   refTerms,
   resolveChances,
@@ -235,4 +236,48 @@ test('named cards are priced by rarity: commons plain, hits holo', () => {
   assert.deepEqual(refTerms('Rare'), { printing: 'holofoil', bulk: 'rare' });
   assert.deepEqual(refTerms('Double Rare'), { printing: 'holofoil', bulk: 'doubleRare' });
   assert.deepEqual(refTerms('Special Illustration Rare'), { printing: 'holofoil', bulk: 'hit' });
+});
+
+test('pool memoization shares equivalent specs and separates every value-affecting term', () => {
+  const evaluate = createPoolEvaluator(INPUTS);
+  const spec = { rarities: ['Common', 'Rare'], printing: 'normal' as const, bulk: 'commonUncommon' as const };
+  const first = evaluate(spec);
+  assert.equal(evaluate({ ...spec, rarities: ['Rare', 'Common', 'Common'], pattern: 'base' }), first);
+  for (const variant of [
+    { ...spec, printing: 'reverse' as const },
+    { ...spec, bulk: 'reverse' as const },
+    { ...spec, pattern: 'pokeball' },
+    { ...spec, unpriced: 0 },
+    { ...spec, rarities: ['Common'] }
+  ]) {
+    assert.notEqual(evaluate(variant), first);
+  }
+  assert.deepEqual(evaluate({ ...spec, rarities: ['Missing'] }), []);
+});
+
+test('EV and contribution calculations reuse repeated pools but refresh changed prices and thresholds', () => {
+  let scans = 0;
+  const pricedCard = card({ id: 99, prices: { normal: 4 } });
+  Object.defineProperty(pricedCard, 'rarity', {
+    get: () => {
+      scans++;
+      return 'Common';
+    }
+  });
+  const slot: PackSlot = {
+    label: 'Common',
+    outcomes: [{ label: 'Common', pool: { rarities: ['Common'], printing: 'normal', bulk: 'commonUncommon' } }]
+  };
+  const inputs = { ...INPUTS, cards: [pricedCard], slots: [slot, { ...slot, label: 'Another' }] };
+  assert.equal(computePackEv(inputs).perPack, 8);
+  assert.equal(scans, 1);
+  scans = 0;
+  assert.equal(topCardContributions(inputs, 1)[0].contribution, 8);
+  assert.equal(scans, 1);
+  pricedCard.prices.normal = 10;
+  assert.equal(computePackEv(inputs).perPack, 20);
+  assert.equal(topCardContributions(inputs, 1)[0].value, 10);
+  inputs.threshold = 10;
+  assert.equal(computePackEv(inputs).perPack, 2 * BULK.commonUncommon);
+  assert.deepEqual(topCardContributions(inputs, 1), []);
 });

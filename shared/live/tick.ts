@@ -22,6 +22,7 @@
 import { ACTIVE_WINDOW_MS, awaitsNextRound, type LivePace, nextCheck, PROBE_INTERVAL_MS } from './pace';
 import { detectRoundBreakage, parseRk9Round } from './rk9Pairings';
 import { isDecided } from './view';
+import { sameMatches } from './sameMatches';
 import type { LiveCut, LiveEvent, LiveIndex, LiveRound, LiveRoundParse, LiveState } from './types';
 
 export interface TickDeps {
@@ -134,7 +135,7 @@ function buildIndex(event: LiveEvent, round: LiveRound, hash: string, state: Liv
     round: round.round,
     matches: round.matches.length,
     hash,
-    playing: round.matches.filter(match => !isDecided(match)).length,
+    playing: state.playing ?? 0,
     updatedAt: round.updatedAt,
     ...(state.cut ? { cut: state.cut } : {}),
     ...(state.round2At ? { round2At: state.round2At } : {}),
@@ -216,6 +217,7 @@ async function publish(
     roundComplete,
     hash: digest,
     matchCount: matches.length,
+    matches,
     playing: matches.filter(match => !isDecided(match)).length,
     changedAt: updatedAt,
     checkedAt: updatedAt,
@@ -242,9 +244,12 @@ async function settle(event: LiveEvent, deps: TickDeps, state: LiveState, read: 
   if (rejected) {
     return { outcome: rejected, state };
   }
+  if (read.round === state.round && state.matches && sameMatches(state.matches, read.parsed.matches)) {
+    return { outcome: 'unchanged', state };
+  }
   const digest = await deps.hash(JSON.stringify(read.parsed.matches));
   if (read.round === state.round && digest === state.hash) {
-    return { outcome: 'unchanged', state };
+    return { outcome: 'unchanged', state: { ...state, matches: read.parsed.matches } };
   }
   return { outcome: 'written', state: await publish(event, deps, state, { ...read, digest }) };
 }

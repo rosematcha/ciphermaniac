@@ -78,7 +78,7 @@ export interface SearchLimits {
 const DEFAULT_LIMITS: SearchLimits = { perKind: 5, total: 20 };
 
 function splitWords(folded: string): string[] {
-  return folded.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  return folded.match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 
 interface BaseInput {
@@ -180,13 +180,14 @@ function tournamentEntries(keys: readonly string[]): SearchEntry[] {
  * @returns Entries with pre-folded keys
  */
 export function buildSearchIndex(sources: SearchSources): SearchEntry[] {
-  const cards = (sources.cards ?? []).map(cardEntry).filter((e): e is SearchEntry => e !== null);
-  return [
-    ...archetypeEntries(sources.archetypes ?? []),
-    ...cards,
-    ...playerEntries(sources.players ?? []),
-    ...tournamentEntries(sources.tournaments ?? [])
-  ];
+  const entries = archetypeEntries(sources.archetypes ?? []);
+  for (const item of sources.cards ?? []) {
+    const entry = cardEntry(item);
+    if (entry) {
+      entries.push(entry);
+    }
+  }
+  return entries.concat(playerEntries(sources.players ?? []), tournamentEntries(sources.tournaments ?? []));
 }
 
 function wordTier(entry: SearchEntry, word: string): SearchTier | null {
@@ -213,7 +214,9 @@ function entryTier(entry: SearchEntry, phrase: string, words: readonly string[])
     if (tier === null) {
       return null;
     }
-    worst = Math.max(worst, tier) as SearchTier;
+    if (tier > worst) {
+      worst = tier;
+    }
   }
   return worst;
 }
@@ -228,31 +231,34 @@ function compareHits(a: SearchHit, b: SearchHit): number {
   );
 }
 
-function capHits(sorted: readonly SearchHit[], limits: SearchLimits): SearchHit[] {
-  const perKind = new Map<SearchKind, number>();
-  const out: SearchHit[] = [];
-  for (const hit of sorted) {
-    if (out.length >= limits.total) {
-      break;
-    }
-    const count = perKind.get(hit.entry.kind) ?? 0;
-    if (count < limits.perKind) {
-      perKind.set(hit.entry.kind, count + 1);
-      out.push(hit);
-    }
+/** Keep only the best per-kind candidates, preserving input order for ties. */
+function retainHit(bucket: SearchHit[], hit: SearchHit, limit: number): void {
+  let position = bucket.length;
+  while (position > 0 && compareHits(hit, bucket[position - 1]) < 0) {
+    position--;
   }
-  return out;
+  if (position >= limit) {
+    return;
+  }
+  bucket.splice(position, 0, hit);
+  bucket.splice(limit);
 }
 
-/** Group capped hits by kind, groups ordered by their best hit. */
-function groupHits(hits: readonly SearchHit[]): SearchGroup[] {
+/** Cap and group the retained candidates in one scan, then flatten display order. */
+function groupHits(sorted: readonly SearchHit[], total: number): SearchResults {
   const groups = new Map<SearchKind, SearchGroup>();
-  for (const hit of hits) {
+  let count = 0;
+  for (const hit of sorted) {
+    if (count >= total) {
+      break;
+    }
     const group = groups.get(hit.entry.kind) ?? { kind: hit.entry.kind, hits: [] };
     group.hits.push(hit);
     groups.set(hit.entry.kind, group);
+    count++;
   }
-  return [...groups.values()];
+  const ordered = [...groups.values()];
+  return { groups: ordered, hits: ordered.flatMap(group => group.hits) };
 }
 
 /**
@@ -267,21 +273,21 @@ export function searchTiered(
   query: string,
   limits: SearchLimits = DEFAULT_LIMITS
 ): SearchResults {
-  const phrase = splitWords(foldSearch(query)).join(' ');
-  const exactPhrase = foldSearch(query.trim()).replace(/\s+/g, ' ');
-  if (!phrase) {
+  const phrase = foldSearch(query.trim()).replace(/\s+/g, ' ');
+  const words = splitWords(phrase);
+  if (!words.length || !(limits.perKind > 0)) {
     return { groups: [], hits: [] };
   }
-  const words = phrase.split(' ');
-  const matched: SearchHit[] = [];
+  const buckets: SearchHit[][] = [[], [], [], []];
+  const perKind = Math.ceil(limits.perKind);
   for (const entry of index) {
-    const tier = entryTier(entry, exactPhrase, words);
+    const tier = entryTier(entry, phrase, words);
     if (tier !== null) {
-      matched.push({ entry, tier });
+      retainHit(buckets[KIND_PRIORITY[entry.kind]], { entry, tier }, perKind);
     }
   }
-  const groups = groupHits(capHits(matched.sort(compareHits), limits));
-  return { groups, hits: groups.flatMap(g => g.hits) };
+  const retained = buckets.flat();
+  return groupHits(retained.sort(compareHits), limits.total);
 }
 
 export interface SearchFetchers {

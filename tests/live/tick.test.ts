@@ -47,6 +47,7 @@ interface Harness {
   files: Map<string, unknown>;
   puts: string[];
   fetched: number[];
+  hashes: number;
   rounds: Record<number, string>;
   state: LiveState;
   tick: (offsetMs: number) => Promise<TickOutcome>;
@@ -57,12 +58,16 @@ function harness(rounds: Record<number, string>, event: LiveEvent = EVENT): Harn
     files: new Map(),
     puts: [],
     fetched: [],
+    hashes: 0,
     rounds,
     state: initialState(),
     tick: async offsetMs => {
       const result = await tickEvent(event, self.state, {
         now: new Date(START + offsetMs),
-        hash: text => Promise.resolve(`${text.length}:${text}`),
+        hash: text => {
+          self.hashes += 1;
+          return Promise.resolve(`${text.length}:${text}`);
+        },
         publish: (key, value) => {
           self.puts.push(key);
           self.files.set(key, structuredClone(value));
@@ -281,4 +286,34 @@ test('a runner taking over carries the cut, the anchor and the finish', () => {
     [state.cut, state.round2At, state.finished],
     [{ from: 15, size: 8 }, new Date(START).toISOString(), true]
   );
+});
+
+test('unchanged concurrent events hash once, while corrected results hash again', async () => {
+  const events = Array.from({ length: 100 }, (_, i) => harness({ 1: OPEN_ROUND }, { ...EVENT, slug: `event-${i}` }));
+  await Promise.all(events.map(h => h.tick(0)));
+  const snapshots = events.map(h => h.state.matches);
+  for (let minute = 1; minute <= 5; minute += 1) {
+    const outcomes = await Promise.all(events.map(h => h.tick(minute * MINUTE)));
+    assert.ok(outcomes.every(outcome => outcome === 'unchanged'));
+  }
+  for (const [i, h] of events.entries()) {
+    assert.equal(h.hashes, 1);
+    assert.equal(h.puts.length, 2);
+    assert.equal(h.state.matches, snapshots[i]);
+    h.rounds[1] = DONE_ROUND;
+  }
+  assert.ok((await Promise.all(events.map(h => h.tick(6 * MINUTE)))).every(outcome => outcome === 'written'));
+  assert.ok(events.every(h => h.hashes === 2 && h.state.roundComplete));
+});
+
+test('a resumed runner learns the match snapshot without republishing, then skips hashing', async () => {
+  const h = harness({ 1: OPEN_ROUND });
+  await h.tick(0);
+  h.state = resumeState(h.files.get(liveKeys.index(EVENT)) as LiveIndex);
+  assert.equal(h.state.matches, undefined);
+  assert.equal(await h.tick(MINUTE), 'unchanged');
+  assert.equal(h.hashes, 2);
+  assert.equal(await h.tick(2 * MINUTE), 'unchanged');
+  assert.equal(h.hashes, 2);
+  assert.equal(h.puts.length, 2);
 });

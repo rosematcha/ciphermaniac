@@ -11,6 +11,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { onRequest } from '../../functions/cards/[set]/[number].ts';
+import { never } from '../__utils__/deferred.ts';
 
 const SYNONYMS = {
   synonyms: {
@@ -110,4 +111,148 @@ test('anything unresolvable falls through to the SPA shell rather than failing',
     assert.equal(status, 200, label);
     assert.equal(await res.text(), NEXT_BODY, label);
   }
+});
+
+test('concurrent cold and warm card routes share one R2 fetch and parse', async () => {
+  let gets = 0;
+  let parses = 0;
+  const env = {
+    REPORTS: {
+      get: async () => {
+        gets++;
+        await new Promise<void>(resolve => {
+          setImmediate(resolve);
+        });
+        return {
+          text: async () => {
+            parses++;
+            return JSON.stringify(SYNONYMS);
+          }
+        };
+      }
+    } as unknown as R2Bucket
+  };
+  const run = () =>
+    onRequest({
+      request: new Request('https://ciphermaniac.com/cards/TWM/130'),
+      env,
+      params: { set: 'TWM', number: '130' },
+      next: async () => new Response(NEXT_BODY)
+    });
+  const responses = await Promise.all(Array.from({ length: 100 }, run));
+  responses.push(await run());
+  assert.ok(responses.every(res => res.headers.get('Location') === 'https://ciphermaniac.com/cards/PRE/073'));
+  assert.equal(gets, 1);
+  assert.equal(parses, 1);
+});
+
+test('empty card routes skip R2 entirely', async () => {
+  for (const params of [
+    { set: '', number: '130' },
+    { set: 'TWM', number: '' }
+  ]) {
+    const res = await onRequest({
+      request: new Request('https://ciphermaniac.com/cards/'),
+      env: { REPORTS: { get: () => assert.fail('invalid routes must skip R2') } as unknown as R2Bucket },
+      params,
+      next: async () => new Response(NEXT_BODY)
+    });
+    assert.equal(await res.text(), NEXT_BODY);
+  }
+});
+
+test('TTL refresh replaces the route index and coalesces concurrent R2 reads', async t => {
+  let now = 0;
+  t.mock.method(Date, 'now', () => now);
+  let gets = 0;
+  const env = {
+    REPORTS: {
+      get: async () => {
+        gets++;
+        const target = gets === 1 ? 'PRE::073' : 'ASC::160';
+        return {
+          text: async () =>
+            JSON.stringify({ synonyms: { 'Dragapult ex::TWM::130': `Dragapult ex::${target}` }, canonicals: {} })
+        };
+      }
+    } as unknown as R2Bucket
+  };
+  const run = () =>
+    onRequest({
+      request: new Request('https://ciphermaniac.com/cards/TWM/130'),
+      env,
+      params: { set: 'TWM', number: '130' },
+      next: async () => new Response(NEXT_BODY)
+    });
+  assert.equal((await run()).headers.get('Location'), 'https://ciphermaniac.com/cards/PRE/073');
+  now = 60 * 60 * 1000 - 1;
+  await run();
+  assert.equal(gets, 1);
+  now++;
+  const responses = await Promise.all(Array.from({ length: 100 }, run));
+  assert.equal(gets, 2);
+  assert.ok(responses.every(res => res.headers.get('Location') === 'https://ciphermaniac.com/cards/ASC/160'));
+});
+
+for (const failure of ['missing', 'json', 'network']) {
+  test(`R2 ${failure} failure falls through and retries on the next request`, async () => {
+    let gets = 0;
+    const env = {
+      REPORTS: {
+        get: async () => {
+          gets++;
+          if (gets > 1) {
+            return { text: async () => JSON.stringify(SYNONYMS) };
+          }
+          if (failure === 'network') {
+            throw new Error('offline');
+          }
+          return failure === 'missing' ? null : { text: async () => '{broken' };
+        }
+      } as unknown as R2Bucket
+    };
+    const run = () =>
+      onRequest({
+        request: new Request('https://ciphermaniac.com/cards/TWM/130'),
+        env,
+        params: { set: 'TWM', number: '130' },
+        next: async () => new Response(NEXT_BODY)
+      });
+    const responses = await Promise.all(Array.from({ length: 100 }, run));
+    assert.ok(responses.every(res => res.status === 200));
+    assert.equal(gets, 1);
+    assert.equal((await run()).status, 301);
+    assert.equal(gets, 2);
+  });
+}
+
+test('a synonym read that never settles stops holding up later requests', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  let reads = 0;
+  const env = {
+    REPORTS: {
+      // The first read is a canceled request's I/O: it never settles.
+      get: (key: string) => {
+        reads += 1;
+        return reads === 1
+          ? never()
+          : Promise.resolve(
+              key === 'assets/card-synonyms.json' ? { text: async () => JSON.stringify(SYNONYMS) } : null
+            );
+      }
+    } as unknown as R2Bucket
+  };
+  const call = () =>
+    onRequest({
+      request: new Request('https://ciphermaniac.com/cards/TWM/130'),
+      env,
+      params: { set: 'TWM', number: '130' },
+      next: async () => new Response(NEXT_BODY, { status: 200 })
+    } as never);
+  void call();
+  const joiner = call();
+  t.mock.timers.tick(5000);
+  assert.equal((await joiner).status, 301);
+  assert.equal((await call()).status, 301);
+  assert.equal(reads, 2, 'the joiner read once for itself, and its result was cached');
 });

@@ -67,6 +67,21 @@ function thumbTierUrl(setU: string, num: string, size: CardImageSize): string {
   return `${THUMBNAILS_PROXY}/${size}/${setU}/${num}`;
 }
 
+const SIZE_CHAINS: Record<CardImageSize, CardImageSize[]> = {
+  lg: ['lg', 'sm', 'xs'],
+  sm: ['sm', 'xs'],
+  xs: ['xs']
+};
+
+// Limitless filenames use three-digit numbers and lowercase variant suffixes.
+function paddedNumber(number: string | number): string {
+  const stripped = String(number).replace(/^0+/, '') || '0';
+  const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
+  return parts ? `${parts[1].padStart(3, '0')}${(parts[2] ?? '').toLowerCase()}` : stripped;
+}
+
+const TIER_URLS = { r2: r2TierUrl, hotlink: cdnTierUrl, proxy: thumbTierUrl };
+
 /**
  * srcset over every tier up to (and including) the preferred size, using the
  * padded number form. Only used for the first attempt — if anything 404s we
@@ -83,21 +98,17 @@ export function buildSrcset(
   if (joke) {
     return `${joke} ${TIER_WIDTH.lg}w`;
   }
-  const stripped = String(number).replace(/^0+/, '') || '0';
-  const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
-  // Variant suffixes are lowercase in the CDN filenames (SLG_068a) even though
-  // UIDs store them uppercase — and the CDN is case-sensitive.
-  const num = parts ? `${parts[1].padStart(3, '0')}${(parts[2] ?? '').toLowerCase()}` : stripped;
+  const num = paddedNumber(number);
   // Vintage sets live on pokemontcg.io (see utils/ptcgio.ts) — neither R2 nor
   // the Limitless proxy has their scans.
   if (hasPtcgioImages(setU)) {
     return ptcgioSrcset(setU, num) ?? '';
   }
-  const tiers: CardImageSize[] = preferredSize === 'lg' ? ['xs', 'sm', 'lg'] : ['xs', 'sm'];
+  const tiers = [...SIZE_CHAINS[preferredSize]].reverse();
   // R2 WebP when ready, the CDN when the caller asked to hotlink, else the
   // same-origin proxy. A failed srcset pick drops to the attempt chain, which
   // still ends at the proxy.
-  const urlFor = { r2: r2TierUrl, hotlink: cdnTierUrl, proxy: thumbTierUrl }[source];
+  const urlFor = TIER_URLS[source];
   return tiers.map(t => `${urlFor(setU, num, t)} ${TIER_WIDTH[t]}w`).join(', ');
 }
 
@@ -112,49 +123,19 @@ export function buildAttempts(
   if (joke) {
     return [joke];
   }
-  const numStr = String(number);
-  const stripped = numStr.replace(/^0+/, '') || '0';
-  const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
-  // Limitless's CDN uses 3-digit zero-padded numbers (PRE_037, not PRE_37) and
-  // lowercase variant suffixes (SLG_068a) — it is case-sensitive.
-  const padded = parts ? `${parts[1].padStart(3, '0')}${(parts[2] ?? '').toLowerCase()}` : stripped;
-
-  // Size fallback chain: lg → sm → xs.
-  const sizeChain: CardImageSize[] =
-    preferredSize === 'lg' ? ['lg', 'sm', 'xs'] : preferredSize === 'sm' ? ['sm', 'xs'] : ['xs'];
-
-  const seen = new Set<string>();
-  const urls: string[] = [];
-  const push = (url: string) => {
-    if (!seen.has(url)) {
-      seen.add(url);
-      urls.push(url);
-    }
-  };
-
+  const padded = paddedNumber(number);
   // 0. Vintage sets (DP era and older, POP, XY promos): Limitless's CDN has no
   //    scans, so R2 and the proxy would only 404 — go straight to
   //    pokemontcg.io. Hotlinking is safe there: no bot-management cookie.
   if (hasPtcgioImages(setU)) {
-    for (const url of ptcgioImageUrls(setU, padded, preferredSize)) {
-      push(url);
-    }
-    return urls;
+    return ptcgioImageUrls(setU, padded, preferredSize);
   }
 
+  const urls = SIZE_CHAINS[preferredSize].map(size => thumbTierUrl(setU, padded, size));
   // 1. R2 WebP (preferred tier) when the pipeline has run — lightest, our domain.
   //    Or the CDN itself, when the caller hotlinks: no storage, no Function.
-  if (source === 'r2') {
-    push(r2TierUrl(setU, padded, preferredSize));
-  } else if (source === 'hotlink') {
-    push(cdnTierUrl(setU, padded, preferredSize));
-  }
-  // 2. Same-origin proxy for each tier. This is the reliable browser-facing
-  //    source: it dodges the CDN's browser-rejected bot cookie, and the proxy
-  //    normalizes the number itself, so one URL per tier suffices. The chain
-  //    ends here and falls to the placeholder.
-  for (const size of sizeChain) {
-    push(thumbTierUrl(setU, padded, size));
+  if (source !== 'proxy') {
+    urls.unshift(TIER_URLS[source](setU, padded, preferredSize));
   }
   return urls;
 }

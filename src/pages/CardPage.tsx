@@ -110,7 +110,7 @@ export function CardPage() {
       setCanonicalPending(false);
       return;
     }
-    if (findCardBySetNumberCanonical(items, reqSet, reqNumber, db())) {
+    if (liveCard()) {
       setCanonicalPending(false);
       return;
     }

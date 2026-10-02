@@ -6,6 +6,7 @@
  * Core logic is shared with frontend via shared/data/cardIdentity
  */
 
+import { coalescedRead } from '../coalesce';
 import { EMPTY_DATABASE, getCanonicalCardFromData, type SynonymDatabase } from './cardIdentity';
 
 // Re-export core functions with original names for backwards compatibility
@@ -28,29 +29,38 @@ interface WorkerEnv {
 }
 
 const SYNONYM_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-const dbCache = new WeakMap<R2Bucket, { db: SynonymDatabase; at: number }>();
+// Fetching and parsing the whole DB from R2 can outlast a D1 read, so joiners wait longer.
+const SYNONYM_JOIN_MS = 5000;
+const dbCache = new WeakMap<R2Bucket, { db: SynonymDatabase; expiresAt: number }>();
+const readSynonyms = coalescedRead<SynonymDatabase>(SYNONYM_JOIN_MS);
 
-export async function loadCardSynonyms(env: WorkerEnv): Promise<SynonymDatabase> {
+async function fetchCardSynonyms(bucket: R2Bucket): Promise<SynonymDatabase> {
   try {
-    if (env.REPORTS) {
-      const cached = dbCache.get(env.REPORTS);
-      if (cached && Date.now() - cached.at < SYNONYM_CACHE_TTL_MS) {
-        return cached.db;
-      }
-
-      const object = await env.REPORTS.get('assets/card-synonyms.json');
-      if (object) {
-        const text = await object.text();
-        const db = JSON.parse(text) as SynonymDatabase;
-        dbCache.set(env.REPORTS, { db, at: Date.now() });
-        return db;
-      }
+    const object = await bucket.get('assets/card-synonyms.json');
+    if (!object) {
+      console.warn('Card synonyms database not found');
+      return EMPTY_DATABASE;
     }
-
-    console.warn('Card synonyms database not found');
-    return EMPTY_DATABASE;
+    return JSON.parse(await object.text()) as SynonymDatabase;
   } catch (error: unknown) {
     console.error('Failed to load card synonyms database:', error instanceof Error ? error.message : String(error));
     return EMPTY_DATABASE;
   }
+}
+
+/** Only a parsed DB is pinned; a fetch in flight is shared through `coalescedRead`, never cached. */
+export async function loadCardSynonyms(env: WorkerEnv): Promise<SynonymDatabase> {
+  const bucket = env.REPORTS;
+  if (!bucket) {
+    return EMPTY_DATABASE;
+  }
+  const cached = dbCache.get(bucket);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.db;
+  }
+  const db = await readSynonyms(bucket, 'synonyms', () => fetchCardSynonyms(bucket));
+  if (db !== EMPTY_DATABASE) {
+    dbCache.set(bucket, { db, expiresAt: Date.now() + SYNONYM_CACHE_TTL_MS });
+  }
+  return db;
 }

@@ -29,27 +29,28 @@ export interface JuiceOptions {
   pop: boolean;
 }
 
-interface Spring {
-  value: number;
-  velocity: number;
-}
+const paints = new Set<() => void>();
+let paintPending = false;
 
-function step(spring: Spring, target: number, damping: number): Spring {
-  const velocity = damping * spring.velocity + (1 - damping) * (target - spring.value);
-  return { value: spring.value + velocity, velocity };
+/** Start tile animations together after the grid's DOM updates have finished. */
+export function queueTilePaint(paint: () => void): () => void {
+  paints.add(paint);
+  if (!paintPending) {
+    paintPending = true;
+    requestAnimationFrame(() => {
+      paintPending = false;
+      const pending = [...paints];
+      paints.clear();
+      pending.forEach(callback => callback());
+    });
+  }
+  return () => {
+    paints.delete(paint);
+  };
 }
 
 function round(value: number): number {
   return Math.round(value * 1000) / 1000;
-}
-
-/** The juice term at `t` seconds in: a sine under a cubic (scale) or square (rotation) decay. */
-function juiceAt(t: number, options: JuiceOptions): { scale: number; r: number } {
-  const left = Math.max(0, 1 - t / JUICE_SECONDS);
-  return {
-    scale: options.scale * Math.sin(50.8 * t) * left ** 3,
-    r: options.rotation * Math.sin(40.8 * t) * left ** 2
-  };
 }
 
 /** Keyframes plus the duration they span, evenly spaced one frame apart. */
@@ -57,17 +58,24 @@ export function juiceFrames(options: JuiceOptions): { frames: Keyframe[]; durati
   const seconds = options.pop ? POP_SECONDS : JUICE_SECONDS;
   const count = Math.round(seconds * FPS);
   // juice_up kicks the drawn scale down before the wobble starts; a pop starts from nothing.
-  let scale: Spring = { value: options.pop ? 0 : 1 - 0.6 * options.scale, velocity: 0 };
-  let r: Spring = { value: 0, velocity: 0 };
+  let scale = options.pop ? 0 : 1 - 0.6 * options.scale;
+  let scaleVelocity = 0;
+  let rotation = 0;
+  let rotationVelocity = 0;
   const frames: Keyframe[] = [];
   for (let index = 0; index <= count; index += 1) {
-    const juice = juiceAt(index * DT, options);
+    const t = index * DT;
+    const left = Math.max(0, 1 - t / JUICE_SECONDS);
     frames.push({
-      transform: `scale(${round(scale.value)}) rotate(${round(r.value)}deg)`,
+      transform: `scale(${round(scale)}) rotate(${round(rotation)}deg)`,
       opacity: options.pop ? Math.min(1, index / 4) : 1
     });
-    scale = step(scale, 1 + juice.scale, SPRING_SCALE);
-    r = step(r, juice.r, SPRING_R);
+    const targetScale = 1 + options.scale * Math.sin(50.8 * t) * left ** 3;
+    const targetRotation = options.rotation * Math.sin(40.8 * t) * left ** 2;
+    scaleVelocity = SPRING_SCALE * scaleVelocity + (1 - SPRING_SCALE) * (targetScale - scale);
+    scale += scaleVelocity;
+    rotationVelocity = SPRING_R * rotationVelocity + (1 - SPRING_R) * (targetRotation - rotation);
+    rotation += rotationVelocity;
   }
   // Land exactly at rest, so the element hands back to its own styles without a jump.
   frames[frames.length - 1] = { transform: 'none', opacity: 1 };

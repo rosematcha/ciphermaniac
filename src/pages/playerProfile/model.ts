@@ -166,18 +166,9 @@ interface Tally {
   ties: number;
 }
 
-/**
- * Which column of a record one outcome adds to; unpaired rounds add to none.
- *
- * `countByes` is the difference between the two questions a record can answer.
- * Upstream standings count a bye as a win — a career published as 182-103-71
- * has 180 played wins and two byes — so any record that has to reconcile with
- * the one in the hero band counts them too. A record about opponents does not:
- * a bye has no opponent and no deck, so it belongs in neither a matchup line
- * nor a head-to-head.
- */
-function tallyColumn(outcome: PlayerRound['outcome'], countByes: boolean): keyof Tally | null {
-  if (outcome === 'win' || (countByes && outcome === 'bye')) {
+/** Played win / loss / tie bucket; byes are added only to phase records. */
+function tallyColumn(outcome: PlayerRound['outcome']): keyof Tally | null {
+  if (outcome === 'win') {
     return 'wins';
   }
   if (outcome === 'loss' || outcome === 'double_loss') {
@@ -186,13 +177,10 @@ function tallyColumn(outcome: PlayerRound['outcome'], countByes: boolean): keyof
   return outcome === 'tie' ? 'ties' : null;
 }
 
-function tally<T extends Tally>(row: T, outcome: PlayerRound['outcome'], countByes = false): T {
-  const column = tallyColumn(outcome, countByes);
-  return column ? { ...row, [column]: row[column] + 1 } : row;
-}
-
-function allRounds(rounds: CareerRounds): PlayerRound[] {
-  return Object.values(rounds).flat();
+function tally(row: Tally, column: keyof Tally | null): void {
+  if (column) {
+    row[column] += 1;
+  }
 }
 
 export interface MatchupRow extends Tally {
@@ -202,59 +190,11 @@ export interface MatchupRow extends Tally {
   winRate: number | null;
 }
 
-/** Career record against each opponent deck, most-faced first. Byes have no deck and are skipped. */
-export function matchupRollup(rounds: CareerRounds): MatchupRow[] {
-  const byDeck = new Map<string, MatchupRow>();
-  for (const round of allRounds(rounds)) {
-    if (!round.opponentArchetype) {
-      continue;
-    }
-    const row = byDeck.get(round.opponentArchetype) ?? {
-      archetype: round.opponentArchetype,
-      wins: 0,
-      losses: 0,
-      ties: 0,
-      games: 0,
-      winRate: null
-    };
-    byDeck.set(round.opponentArchetype, tally(row, round.outcome));
-  }
-  return [...byDeck.values()]
-    .map(row => ({
-      ...row,
-      games: row.wins + row.losses + row.ties,
-      winRate: row.wins + row.losses ? row.wins / (row.wins + row.losses) : null
-    }))
-    .sort((a, b) => b.games - a.games || a.archetype.localeCompare(b.archetype));
-}
-
 export interface PhaseRow extends Tally {
   label: string;
 }
 
-/**
- * Record in Day 1 Swiss, Day 2 Swiss and top cut, in that order; phases never
- * played are omitted.
- *
- * Byes count as wins here. These three rows are the career record split by
- * phase, and the career record they split is the one the hero band prints from
- * upstream standings — which count byes. Leaving them out made the band read
- * one or two wins short of the figure directly above it.
- */
-export function phaseSplit(rounds: CareerRounds): PhaseRow[] {
-  const rows = new Map<number, PhaseRow>();
-  for (const round of allRounds(rounds)) {
-    if (round.phase == null) {
-      continue;
-    }
-    const row = rows.get(round.phase) ?? { label: phaseLabel(round.phase), wins: 0, losses: 0, ties: 0 };
-    rows.set(round.phase, tally(row, round.outcome, true));
-  }
-  return [...rows.entries()].sort(([a], [b]) => a - b).map(([, row]) => row);
-}
-
 export interface RepeatOpponent extends Tally {
-  /** Career id when they have one, for a profile link. */
   playerId: string | null;
   name: string;
   country: string | null;
@@ -263,52 +203,105 @@ export interface RepeatOpponent extends Tally {
   events: string[];
 }
 
+export interface CareerRoundAggregates {
+  hasEvents: boolean;
+  matchups: MatchupRow[];
+  phases: PhaseRow[];
+  repeats: RepeatOpponent[];
+  opponents: number;
+}
+
+function addMatchup(byDeck: Map<string, MatchupRow>, round: PlayerRound, column: keyof Tally | null): void {
+  if (!round.opponentArchetype) {
+    return;
+  }
+  let row = byDeck.get(round.opponentArchetype);
+  if (!row) {
+    row = { archetype: round.opponentArchetype, wins: 0, losses: 0, ties: 0, games: 0, winRate: null };
+    byDeck.set(round.opponentArchetype, row);
+  }
+  tally(row, column);
+}
+
+function addPhase(byPhase: Map<number, PhaseRow>, round: PlayerRound, column: keyof Tally | null): void {
+  if (round.phase == null) {
+    return;
+  }
+  let row = byPhase.get(round.phase);
+  if (!row) {
+    row = { label: phaseLabel(round.phase), wins: 0, losses: 0, ties: 0 };
+    byPhase.set(round.phase, row);
+  }
+  tally(row, round.outcome === 'bye' ? 'wins' : column);
+}
+
+function addOpponent(
+  byOpponent: Map<string, RepeatOpponent>,
+  round: PlayerRound,
+  tournamentId: string,
+  column: keyof Tally | null
+): void {
+  if (!round.opponentName) {
+    return;
+  }
+  const key = round.opponentId ? `id:${round.opponentId}` : `name:${round.opponentName}`;
+  let row = byOpponent.get(key);
+  if (!row) {
+    row = {
+      playerId: round.opponentId,
+      name: round.opponentName,
+      country: round.opponentCountry,
+      wins: 0,
+      losses: 0,
+      ties: 0,
+      meetings: 0,
+      events: []
+    };
+    byOpponent.set(key, row);
+  }
+  tally(row, column);
+  row.meetings += 1;
+  // Events are visited consecutively, newest first. Only the last key can repeat.
+  if (row.events[row.events.length - 1] !== tournamentId) {
+    row.events.push(tournamentId);
+  }
+}
+
+function finishMatchups(byDeck: Map<string, MatchupRow>): MatchupRow[] {
+  const rows = [...byDeck.values()];
+  for (const row of rows) {
+    row.games = row.wins + row.losses + row.ties;
+    row.winRate = row.wins + row.losses ? row.wins / (row.wins + row.losses) : null;
+  }
+  return rows.sort((a, b) => b.games - a.games || a.archetype.localeCompare(b.archetype));
+}
+
 /**
- * Opponents met at least {@link REPEAT_MIN_MEETINGS} times, most-met first.
- * Keyed by career id when there is one, else by name, so a rename that has
- * already been resolved upstream cannot split one person into two rows.
+ * Roll up every event in one pass without flattening the career history.
+ * Only newly allocated tallies are mutated; profile rounds stay untouched.
+ * Byes count toward phase records, but never opponent records. Opponent names
+ * and countries come from the most recent event, keyed by career id or name.
  */
-export function repeatOpponents(rounds: CareerRounds): RepeatOpponent[] {
-  const byKey = new Map<string, RepeatOpponent>();
+export function careerRoundAggregates(rounds: CareerRounds): CareerRoundAggregates {
+  const byDeck = new Map<string, MatchupRow>();
+  const byPhase = new Map<number, PhaseRow>();
+  const byOpponent = new Map<string, RepeatOpponent>();
   const eventKeys = Object.keys(rounds).sort((a, b) => b.localeCompare(a));
   for (const tournamentId of eventKeys) {
     for (const round of rounds[tournamentId]) {
-      if (!round.opponentName) {
-        continue;
-      }
-      const key = round.opponentId ? `id:${round.opponentId}` : `name:${round.opponentName}`;
-      const row = tally(
-        byKey.get(key) ?? {
-          playerId: round.opponentId,
-          name: round.opponentName,
-          country: round.opponentCountry,
-          wins: 0,
-          losses: 0,
-          ties: 0,
-          meetings: 0,
-          events: []
-        },
-        round.outcome
-      );
-      byKey.set(key, {
-        ...row,
-        meetings: row.meetings + 1,
-        events: row.events.includes(tournamentId) ? row.events : [...row.events, tournamentId]
-      });
+      const column = tallyColumn(round.outcome);
+      addMatchup(byDeck, round, column);
+      addPhase(byPhase, round, column);
+      addOpponent(byOpponent, round, tournamentId, column);
     }
   }
-  return [...byKey.values()]
-    .filter(row => row.meetings >= REPEAT_MIN_MEETINGS)
-    .sort((a, b) => b.meetings - a.meetings || a.name.localeCompare(b.name));
-}
-
-/** How many different opponents the rounds name. */
-export function distinctOpponents(rounds: CareerRounds): number {
-  const seen = new Set<string>();
-  for (const round of allRounds(rounds)) {
-    if (round.opponentName) {
-      seen.add(round.opponentId ? `id:${round.opponentId}` : `name:${round.opponentName}`);
-    }
-  }
-  return seen.size;
+  return {
+    hasEvents: eventKeys.length > 0,
+    matchups: finishMatchups(byDeck),
+    phases: [...byPhase.entries()].sort(([a], [b]) => a - b).map(([, row]) => row),
+    repeats: [...byOpponent.values()]
+      .filter(row => row.meetings >= REPEAT_MIN_MEETINGS)
+      .sort((a, b) => b.meetings - a.meetings || a.name.localeCompare(b.name)),
+    opponents: byOpponent.size
+  };
 }

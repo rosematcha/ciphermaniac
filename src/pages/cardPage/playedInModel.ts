@@ -71,11 +71,17 @@ const fieldSize = (record: ListRecord): number => record.event?.players ?? 0;
 const eventDate = (record: ListRecord): string => record.event?.date ?? '';
 
 function distOf(row: ArchetypeUsageRow): { dist: CardDistributionEntry[]; modal: CardDistributionEntry | null } {
-  const dist = (row.item.dist ?? []).filter(d => d.copies !== undefined && (d.players ?? 0) > 0);
-  const modal = dist.reduce<CardDistributionEntry | null>(
-    (m, d) => (m === null || (d.players ?? 0) > (m.players ?? 0) ? d : m),
-    null
-  );
+  const dist: CardDistributionEntry[] = [];
+  let modal: CardDistributionEntry | null = null;
+  for (const entry of row.item.dist ?? []) {
+    if (entry.copies === undefined || !((entry.players ?? 0) > 0)) {
+      continue;
+    }
+    dist.push(entry);
+    if (modal === null || (entry.players ?? 0) > (modal.players ?? 0)) {
+      modal = entry;
+    }
+  }
   return { dist, modal };
 }
 
@@ -106,17 +112,19 @@ export function buildPlayedInGroups(
       byArchetype.set(key, [list]);
     }
   }
-  const groups = rows.map(usage => {
+  const groups: PlayedInGroup[] = [];
+  for (const usage of rows) {
     const mine = byArchetype.get(normalizeArchetypeName(usage.entry.name)) ?? [];
+    if (lists && mine.length === 0) {
+      continue;
+    }
     mine.sort((a, b) => compareFinish(a.record, b.record));
-    return { usage, ...distOf(usage), lists: mine };
-  });
+    groups.push({ usage, ...distOf(usage), lists: mine });
+  }
   const found = (g: PlayedInGroup) => g.usage.item.found ?? 0;
   const pct = (g: PlayedInGroup) => g.usage.item.pct ?? 0;
   if (lists) {
-    return groups
-      .filter(g => g.lists.length > 0)
-      .sort((a, b) => b.lists.length - a.lists.length || found(b) - found(a));
+    return groups.sort((a, b) => b.lists.length - a.lists.length || found(b) - found(a));
   }
   return groups.sort((a, b) => found(b) - found(a) || pct(b) - pct(a));
 }
@@ -132,6 +140,11 @@ export function foldedCount(total: number): number {
  * twice at one weekly still needs its rows to say where.
  */
 export function singleEvent(records: readonly ListRecord[]): boolean {
-  const ids = new Set(records.map(r => r.event?.id ?? ''));
-  return ids.size <= 1;
+  const firstId = records[0]?.event?.id ?? '';
+  for (const record of records) {
+    if ((record.event?.id ?? '') !== firstId) {
+      return false;
+    }
+  }
+  return true;
 }
