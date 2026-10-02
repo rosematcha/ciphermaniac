@@ -107,3 +107,9 @@ export declare function createReportsBinding(
   bucket: string,
   options?: ReportsBindingOptions
 ): ReportsBinding;
+
+export declare function runR2Batch<T>(
+  items: readonly T[],
+  operation: (item: T) => Promise<unknown>,
+  concurrency?: number
+): Promise<void>;

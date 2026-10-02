@@ -108,13 +108,30 @@ function eventPageUrl(value: unknown, id: string): string {
   return `https://www.pokemon.com/us/pokemon-trainer-club/play-pokemon-tournaments/${id}/`;
 }
 
-function eventIdentity(raw: RawEvent, kind: EventKind): string {
+/** Stable identity shared by normalization and the pull completeness guard. */
+export function eventIdentity(value: unknown): string {
+  if (!value || typeof value !== 'object') {
+    return '';
+  }
+  const raw = value as RawEvent;
   const displayId = text(raw.Display_id);
   if (EVENT_ID.test(displayId)) {
     return displayId;
   }
-  const guid = text(raw.guid) || text(raw.Guid);
-  return kind === 'local' && GUID.test(guid) ? guid.toLowerCase() : '';
+  const guid = [text(raw.guid), text(raw.Guid)].find(candidate => GUID.test(candidate));
+  if (guid) {
+    return guid.toLowerCase();
+  }
+  const listed = safeUrl(raw.pokemon_url);
+  if (!listed) {
+    return '';
+  }
+  const url = new URL(listed);
+  if (url.hostname !== 'pokemon.com' && !url.hostname.endsWith('.pokemon.com')) {
+    return '';
+  }
+  const id = url.pathname.split('/').filter(Boolean).at(-1) ?? '';
+  return EVENT_ID.test(id) || GUID.test(id) ? id.toLowerCase() : '';
 }
 
 function coordinates(latValue: unknown, lonValue: unknown): { lat: number; lon: number } | null {
@@ -309,7 +326,7 @@ export function normalizeEvent(raw: RawEvent, zoneAt?: ZoneLookup): NormalizeRes
   if (isCancelled(raw)) {
     return skip('cancelled');
   }
-  const id = eventIdentity(raw, kind);
+  const id = eventIdentity(raw);
   if (!id) {
     return skip('id');
   }

@@ -249,3 +249,76 @@ test('readJson throws on a transport failure or a corrupt body, keeping the caus
   );
   await assert.rejects(readJson(stubClient(found('{not json')), BUCKET, KEY), /\(corrupt\)/);
 });
+
+test('runR2Batch bounds concurrency and processes every item exactly once', async () => {
+  const { runR2Batch } = await import('../../.github/scripts/lib/r2.mjs');
+  let active = 0;
+  let peak = 0;
+  const seen: number[] = [];
+  await runR2Batch(
+    Array.from({ length: 23 }, (_, index) => index),
+    async item => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise<void>(resolve => {
+        setImmediate(resolve);
+      });
+      seen.push(item);
+      active--;
+    },
+    3
+  );
+  assert.equal(peak, 3);
+  assert.equal(active, 0);
+  assert.deepEqual(
+    seen.sort((left, right) => left - right),
+    Array.from({ length: 23 }, (_, index) => index)
+  );
+});
+
+test('runR2Batch stops scheduling after a fault and drains active work before rejecting', async () => {
+  const { runR2Batch } = await import('../../.github/scripts/lib/r2.mjs');
+  const { deferred } = await import('../__utils__/deferred');
+  const gate = deferred<void>();
+  const started: number[] = [];
+  let settled = false;
+  let finished = false;
+  const fault = new Error('upload failed');
+  const batch = runR2Batch(
+    [0, 1, 2, 3],
+    async item => {
+      started.push(item);
+      if (item === 0) {
+        throw fault;
+      }
+      await gate.promise;
+      finished = true;
+    },
+    2
+  );
+  const rejection = assert.rejects(batch, error => {
+    settled = true;
+    assert.equal(finished, true);
+    return error === fault;
+  });
+  await new Promise<void>(resolve => {
+    setImmediate(resolve);
+  });
+  assert.deepEqual(started, [0, 1]);
+  assert.equal(settled, false);
+  gate.resolve();
+  await rejection;
+});
+
+test('runR2Batch handles empty batches and rejects invalid concurrency before starting work', async () => {
+  const { runR2Batch } = await import('../../.github/scripts/lib/r2.mjs');
+  let calls = 0;
+  const operation = async () => {
+    calls++;
+  };
+  await runR2Batch([], operation);
+  for (const concurrency of [0, -1, 1.5, Number.NaN, Infinity]) {
+    await assert.rejects(runR2Batch([1], operation, concurrency), RangeError);
+  }
+  assert.equal(calls, 0);
+});

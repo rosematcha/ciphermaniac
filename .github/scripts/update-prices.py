@@ -14,6 +14,10 @@ from datetime import datetime, timezone, date, timedelta
 from collections import defaultdict
 from pathlib import Path
 
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 # Shared R2 helpers (retrying client + typed read results). lib/r2.py has an
 # underscore-free name so it imports cleanly regardless of the current directory.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
@@ -31,6 +35,8 @@ CARD_SYNONYMS_KEY = 'assets/card-synonyms.json'
 PRICES_HISTORY_KEY = 'reports/prices-history.json'
 PRICES_CACHE_CONTROL = 'public, max-age=21600'
 HISTORY_WINDOW_DAYS = 90
+MIN_PRICE_COVERAGE = 0.8
+PRICES_KEY = 'reports/prices.json'
 
 # Client-facing derivatives of the rolling history. The monolith above stays the
 # job's own append state (it is the only place the full series lives), but no
@@ -179,10 +185,29 @@ def normalize_card_name(name):
 TCGCSV_USER_AGENT = "ciphermaniac-price-updater/1.0 (+https://ciphermaniac.com)"
 
 
+def create_http_session():
+    """Reuse connections and retry transient GET failures with exponential backoff."""
+    session = requests.Session()
+    session.headers.update({"User-Agent": TCGCSV_USER_AGENT})
+    retries = Retry(
+        total=4,
+        backoff_factor=1,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset({'GET'}),
+        respect_retry_after_header=True,
+    )
+    adapter = HTTPAdapter(max_retries=retries)
+    session.mount('https://', adapter)
+    session.mount('http://', adapter)
+    return session
+
+
+HTTP_SESSION = create_http_session()
+
+
 def fetch_json(url):
-    """Fetch JSON from a URL."""
-    import requests
-    response = requests.get(url, timeout=30, headers={"User-Agent": TCGCSV_USER_AGENT})
+    """Fetch JSON through the shared retrying session."""
+    response = HTTP_SESSION.get(url, timeout=30)
     response.raise_for_status()
     return response.json()
 
@@ -192,7 +217,10 @@ def fetch_tcgcsv_results(url):
     data = fetch_json(url)
     if not data.get('success'):
         raise RuntimeError(f"TCGCSV returned success=false for {url}")
-    return data.get('results', [])
+    results = data.get('results')
+    if not isinstance(results, list):
+        raise RuntimeError(f"TCGCSV returned invalid results for {url}")
+    return results
 
 
 def initialize_r2_client():
@@ -350,7 +378,7 @@ def load_all_event_cards(r2_client, bucket_name, release):
     be read is skipped with a warning: one missing archive costs a little
     coverage. An unreadable *index* aborts the run, because every archive print
     would silently fall out of today's prices and take its history with it
-    (update_price_history keeps only what was priced today).
+    (unavailable sets retain history, but missing archive prints in fetched sets drop out).
     """
     print("\nCollecting cards from every archived event...")
     tournaments = sorted(release['events'])
@@ -815,31 +843,74 @@ def fetch_prices_for_set(set_code, group_id, card_uids):
         return prices
     except Exception as e:
         print(f"    Error fetching {set_code}: {e}")
-        return {}
+        return None
 
 
 def fetch_all_prices(card_sets_map, set_mappings):
-    """Fetch prices for all sets."""
+    """Return fresh prices and sets with missing or failed primary/gallery groups."""
     print("\nFetching prices from TCGCSV...")
     all_prices = {}
+    failed_sets = set()
 
     for set_code, card_uids in card_sets_map.items():
         group_ids = group_ids_for_set(set_code, set_mappings)
         if not group_ids:
             print(f"  Skipping {set_code} (no group ID)")
+            failed_sets.add(set_code)
             continue
 
         set_prices = {}
         for group_id in group_ids:
-            for uid, entry in fetch_prices_for_set(set_code, group_id, card_uids).items():
+            fetched = fetch_prices_for_set(set_code, group_id, card_uids)
+            if fetched is None:
+                failed_sets.add(set_code)
+            for uid, entry in (fetched or {}).items():
                 set_prices.setdefault(uid, entry)
             time.sleep(0.25)  # per TCGCSV FAQ etiquette
         all_prices.update(set_prices)
 
-    return all_prices
+    return all_prices, failed_sets
 
 
-def add_basic_energy_prices(price_data, card_list):
+def load_previous_prices(r2_client, bucket_name):
+    """Read the spot snapshot before any writes; only a verified absence is safe."""
+    result = r2.read_json(r2_client, bucket_name, PRICES_KEY)
+    if result.status == 'missing':
+        return {}
+    if result.status != 'found':
+        raise PriceHistoryReadError(f"Failed to read {PRICES_KEY}: {result.error}")
+    prices = result.value.get('cardPrices') if isinstance(result.value, dict) else None
+    if not isinstance(prices, dict):
+        raise PriceHistoryReadError(f"Invalid cardPrices at {PRICES_KEY}")
+    return prices
+
+
+def validate_price_coverage(price_data, previous_prices, existing_history):
+    """Abort on empty prices or loss of over 20% of previously covered cards.
+
+    Compare UID overlap before retaining failed-set snapshots so stale entries
+    and newly priced cards cannot hide an upstream outage or universe shrink.
+    """
+    baseline = set(previous_prices) | set(existing_history)
+    if not price_data:
+        raise RuntimeError('No fresh prices; refusing to publish')
+    covered = len(baseline & price_data.keys())
+    if baseline and covered / len(baseline) < MIN_PRICE_COVERAGE:
+        raise RuntimeError(
+            f"Price coverage dropped sharply: {covered}/{len(baseline)} previously priced cards "
+            f"(minimum {MIN_PRICE_COVERAGE:.0%}); refusing to publish"
+        )
+
+
+def retain_failed_set_prices(price_data, previous_prices, failed_sets):
+    """Keep prior spot prices for unavailable sets without replacing fresh entries."""
+    for set_code, uids in group_cards_by_set(previous_prices).items():
+        if set_code in failed_sets:
+            for uid in uids:
+                price_data.setdefault(uid, previous_prices[uid])
+
+
+def add_basic_energy_prices(price_data, card_list, failed_sets=()):
     """Add hardcoded $0.01 prices for basic energy.
 
     Covers every tracked basic-energy print, not just the canonicals — older
@@ -848,6 +919,8 @@ def add_basic_energy_prices(price_data, card_list):
     doesn't price directly.
     """
     for uid in card_list:
+        if uid.split('::')[1] in failed_sets:
+            continue
         if uid.split('::')[0] in BASIC_ENERGY_NAMES and uid not in price_data:
             price_data[uid] = {
                 'price': 0.01,
@@ -894,18 +967,35 @@ def load_price_history(r2_client, bucket_name):
         raise PriceHistoryReadError(
             f"Corrupt price history at {PRICES_HISTORY_KEY}: {e}"
         ) from e
-    history = data.get('history', {}) if isinstance(data, dict) else {}
+    history = data.get('history') if isinstance(data, dict) else None
+    if not isinstance(history, dict):
+        raise PriceHistoryReadError(f"Invalid history at {PRICES_HISTORY_KEY}")
     print(f"  Loaded history for {len(history)} cards")
     return history
 
 
-def update_price_history(existing_history, price_data, today, window_days=HISTORY_WINDOW_DAYS):
+def retained_failed_set_history(existing_history, failed_sets, cutoff, today):
+    """Copy failed sets' in-window observations without recording stale prices today."""
+    retained = {}
+    for set_code, shard in shard_history_by_set(existing_history).items():
+        if set_code not in failed_sets:
+            continue
+        for uid, series in shard.items():
+            points = [dict(point) for point in series
+                      if cutoff.isoformat() <= point['d'] <= today.isoformat()]
+            if points:
+                retained[uid] = points
+    return retained
+
+
+def update_price_history(existing_history, price_data, today, window_days=HISTORY_WINDOW_DAYS,
+                         failed_sets=()):
     """
     Append today's prices onto the rolling history and return the new history.
 
     Pure (no I/O) so it's unit-testable. Rules:
-    - Only cards priced today are carried forward (cards that fall out of the
-      report drop out of the file).
+    - Unpriced cards in failed sets keep their prior series without a new point.
+      Other cards that fall out of the report drop out of the file.
     - A day is only stored when the price differs from the card's most recent
       stored point — flat runs collapse to a single point to keep the file small.
     - Points older than `window_days` before `today` are trimmed.
@@ -913,7 +1003,7 @@ def update_price_history(existing_history, price_data, today, window_days=HISTOR
     """
     cutoff = today - timedelta(days=window_days)
     today_str = today.isoformat()
-    new_history = {}
+    new_history = retained_failed_set_history(existing_history, failed_sets, cutoff, today)
 
     for uid, entry in price_data.items():
         price = entry.get('price') if isinstance(entry, dict) else None
@@ -1153,7 +1243,7 @@ def upload_prices_to_r2(r2_client, bucket_name, price_data):
     only canonical UIDs, while the card page uses a selected printing's exact
     entry to link its market price to the matching TCGplayer product.
     """
-    key = 'reports/prices.json'
+    key = PRICES_KEY
 
     # Format for frontend compatibility (matches old API response)
     output = {
@@ -1215,21 +1305,20 @@ def main():
     # Map sets to TCGCSV group IDs
     set_mappings = map_sets_to_group_ids(card_sets_map.keys())
     
-    # Fetch prices
-    price_data = fetch_all_prices(card_sets_map, set_mappings)
-    
-    # Add basic energy prices
-    add_basic_energy_prices(price_data, card_list)
-    
-    # Publish every priced printing: card listings use their canonical entries,
-    # while the card detail strip needs the selected printing's product link.
-    upload_prices_to_r2(r2_client, bucket_name, price_data)
-
-    # Append onto the rolling price history. The monolith is this job's own
-    # append state; the browser reads the shards and the movers artifact.
-    today = datetime.now(timezone.utc).date()
+    # Read both prior artifacts and validate fresh coverage before any writes.
+    previous_prices = load_previous_prices(r2_client, bucket_name)
     existing_history = load_price_history(r2_client, bucket_name)
-    history = update_price_history(existing_history, price_data, today)
+    price_data, failed_sets = fetch_all_prices(card_sets_map, set_mappings)
+    if not price_data:
+        raise RuntimeError('No fresh TCGCSV prices; refusing to publish')
+    add_basic_energy_prices(price_data, card_list, failed_sets=failed_sets)
+    validate_price_coverage(price_data, previous_prices, existing_history)
+
+    # Retained spot prices are not new observations in the rolling history.
+    today = datetime.now(timezone.utc).date()
+    history = update_price_history(existing_history, price_data, today, failed_sets=failed_sets)
+    retain_failed_set_prices(price_data, previous_prices, failed_sets)
+    upload_prices_to_r2(r2_client, bucket_name, price_data)
     upload_price_history_to_r2(r2_client, bucket_name, history)
     upload_derived_artifacts(r2_client, bucket_name, history, price_data, synonyms_data, today,
                              current_canonicals)

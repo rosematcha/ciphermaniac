@@ -255,3 +255,48 @@ test('a store failure mid-publish never reaches meta.json', async () => {
     assert.ok(!bucket.writes.includes(`${BASE}/meta.json`), failing);
   }
 });
+
+test('concurrent archetype uploads complete before deck indexes and the final meta pointer', async () => {
+  const bucket = seeded();
+  const { write } = bucket.store;
+  let active = 0;
+  let peak = 0;
+  bucket.store.write = async (key, value) => {
+    if (key.endsWith('/meta.json') || key.endsWith('/decks/index.json')) {
+      assert.equal(active, 0, `${key} published with pending writes`);
+    }
+    active++;
+    peak = Math.max(peak, active);
+    await new Promise<void>(resolve => {
+      setImmediate(resolve);
+    });
+    await write(key, value);
+    active--;
+  };
+  await runOnlineMeta(options(bucket.store));
+  assert.ok(peak > 1);
+  assert.ok(peak <= 8);
+  assert.equal(bucket.writes.at(-1), `${BASE}/meta.json`);
+});
+
+test('failed archetype uploads block pruning, deck indexes, and the final meta pointer', async () => {
+  const bucket = seeded({ [`${BASE}/archetypes/retired/cards.json`]: {} });
+  const { write } = bucket.store;
+  let active = 0;
+  bucket.store.write = async (key, value) => {
+    if (key.endsWith('/archetypes/Dragapult/cards.json')) {
+      throw new Error('upload failed');
+    }
+    active++;
+    await new Promise<void>(resolve => {
+      setImmediate(resolve);
+    });
+    await write(key, value);
+    active--;
+  };
+  await assert.rejects(runOnlineMeta(options(bucket.store)), /upload failed/);
+  assert.equal(active, 0);
+  assert.deepEqual(bucket.removed, []);
+  assert.ok(!bucket.writes.includes(`${BASE}/decks/index.json`));
+  assert.ok(!bucket.writes.includes(`${BASE}/meta.json`));
+});

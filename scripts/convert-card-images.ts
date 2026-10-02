@@ -25,11 +25,11 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { isMissingObject } from './cdnObject';
 import { loadEventSources, productionScopeRoot } from '../.github/scripts/lib/build/productionRelease';
-import { isNotFound, putJsonIfChanged } from '../.github/scripts/lib/r2.mjs';
+import { createR2Client, putJsonIfChanged, readJson, runR2Batch, withR2Retry } from '../.github/scripts/lib/r2.mjs';
 import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
 import { withinPruneCeiling } from '../.github/scripts/lib/build/pruneCeiling';
 
@@ -60,13 +60,10 @@ if (!DRY_RUN && !r2Configured) {
 }
 
 const s3Client = r2Configured
-  ? new S3Client({
-      region: 'auto',
-      endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!
-      }
+  ? createR2Client({
+      accountId: process.env.R2_ACCOUNT_ID!,
+      accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!
     })
   : null;
 const r2Bucket = process.env.R2_BUCKET_NAME;
@@ -134,28 +131,20 @@ async function getJsonFromR2(key: string): Promise<unknown | null> {
   if (!s3Client || !r2Bucket) {
     return null;
   }
-  try {
-    const res = await s3Client.send(new GetObjectCommand({ Bucket: r2Bucket, Key: key }));
-    const body = await res.Body?.transformToString();
-    return body ? JSON.parse(body) : null;
-  } catch (error) {
-    if (isNotFound(error)) {
-      return null;
-    }
-    throw error;
-  }
+  return readJson(s3Client, r2Bucket, key);
 }
 
 type JsonReader = (path: string) => Promise<unknown | null>;
 
 async function collectReportCards(cards: Map<string, CardRef>, root: string, readJson: JsonReader): Promise<void> {
-  const master = (await readJson(`${root}master.json`)) as { items?: unknown } | null;
+  const [master, archetypeIndex] = (await Promise.all([
+    readJson(`${root}master.json`),
+    readJson(`${root}archetypes/index.json`)
+  ])) as [{ items?: unknown } | null, { archetypes?: { thumbnails?: unknown }[] } | { thumbnails?: unknown }[] | null];
   if (!master) {
     throw new Error(`Required card inventory is missing: ${root}master.json`);
   }
   collectFromItems(master?.items, cards);
-  const archetypeIndex = (await readJson(`${root}archetypes/index.json`)) as
-    { archetypes?: { thumbnails?: unknown }[] } | { thumbnails?: unknown }[] | null;
   const entries = Array.isArray(archetypeIndex) ? archetypeIndex : (archetypeIndex?.archetypes ?? []);
   for (const entry of entries) {
     collectFromThumbnails(entry.thumbnails, cards);
@@ -175,9 +164,7 @@ async function discoverViaS3(cards: Map<string, CardRef>): Promise<void> {
     ...Object.values(sources).map(root => `${root.replace(/^\/+/, '')}/`),
     `${productionScopeRoot(release, 'online')}/`
   ];
-  for (const prefix of prefixes) {
-    await collectReportCards(cards, prefix, getJsonFromR2);
-  }
+  await runR2Batch(prefixes, prefix => collectReportCards(cards, prefix, getJsonFromR2));
 }
 
 /** Discover via the public HTTP edge — the fallback for `--dry-run` with no creds. */
@@ -221,21 +208,6 @@ async function discoverCards(): Promise<CardRef[]> {
   return [...cards.values()];
 }
 
-async function r2Has(key: string): Promise<boolean> {
-  if (!s3Client || !r2Bucket) {
-    return false;
-  }
-  try {
-    await s3Client.send(new HeadObjectCommand({ Bucket: r2Bucket, Key: key }));
-    return true;
-  } catch (error) {
-    if (isNotFound(error)) {
-      return false;
-    }
-    throw error;
-  }
-}
-
 const stats = { uploaded: 0, skipped: 0, missingSource: 0, failed: 0, pngBytes: 0, webpBytes: 0 };
 
 const SOURCE_FETCH_RETRIES = 3;
@@ -273,48 +245,49 @@ async function fetchSourcePng(url: string): Promise<SourceFetch> {
   return { kind: 'failed', reason: lastReason };
 }
 
-async function convertCard(ref: CardRef): Promise<void> {
+async function convertCard(ref: CardRef, tier: (typeof TIERS)[number], existing: Set<string>): Promise<void> {
   const setU = ref.set.toUpperCase();
   const num = paddedNumber(ref.number);
-  for (const tier of TIERS) {
-    const key = `card-images/${setU}/${setU}_${num}_R_EN_${tier}.webp`;
-    if (await r2Has(key)) {
-      stats.skipped++;
-      continue;
-    }
-    const sourceUrl = `${LIMITLESS_CDN}/${setU}/${setU}_${num}_R_EN_${tier}.png`;
-    const source = await fetchSourcePng(sourceUrl);
-    if (source.kind === 'missing') {
-      stats.missingSource++;
-      continue;
-    }
-    if (source.kind === 'failed') {
-      stats.failed++;
-      console.error(`  fetch failed for ${key}: ${source.reason}`);
-      continue;
-    }
-    const png: ArrayBuffer = source.buffer;
-    try {
-      const webp = await sharp(Buffer.from(png)).webp({ quality: WEBP_QUALITY }).toBuffer();
-      stats.pngBytes += png.byteLength;
-      stats.webpBytes += webp.byteLength;
-      if (!DRY_RUN && s3Client && r2Bucket) {
-        await s3Client.send(
+  const key = `card-images/${setU}/${setU}_${num}_R_EN_${tier}.webp`;
+  if (existing.has(key)) {
+    stats.skipped++;
+    return;
+  }
+  const sourceUrl = `${LIMITLESS_CDN}/${setU}/${setU}_${num}_R_EN_${tier}.png`;
+  const source = await fetchSourcePng(sourceUrl);
+  if (source.kind === 'missing') {
+    stats.missingSource++;
+    return;
+  }
+  if (source.kind === 'failed') {
+    stats.failed++;
+    console.error(`  fetch failed for ${key}: ${source.reason}`);
+    return;
+  }
+  const png: ArrayBuffer = source.buffer;
+  try {
+    const webp = await sharp(Buffer.from(png)).webp({ quality: WEBP_QUALITY }).toBuffer();
+    stats.pngBytes += png.byteLength;
+    stats.webpBytes += webp.byteLength;
+    if (!DRY_RUN && s3Client && r2Bucket) {
+      await withR2Retry(() =>
+        s3Client!.send(
           new PutObjectCommand({
-            Bucket: r2Bucket,
+            Bucket: r2Bucket!,
             Key: key,
             Body: webp,
             ContentType: 'image/webp',
             // Card art for a given set/number/tier never changes.
             CacheControl: 'public, max-age=31536000, immutable'
           })
-        );
-      }
-      stats.uploaded++;
-    } catch (err) {
-      stats.failed++;
-      console.error(`  convert/upload failed for ${key}: ${err instanceof Error ? err.message : String(err)}`);
+        )
+      );
     }
+    existing.add(key);
+    stats.uploaded++;
+  } catch (err) {
+    stats.failed++;
+    console.error(`  convert/upload failed for ${key}: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -333,19 +306,9 @@ async function discoverRequiredCards(): Promise<CardRef[]> {
   return cards;
 }
 
-async function processCards(cards: CardRef[]): Promise<void> {
-  let cursor = 0;
-  async function worker(): Promise<void> {
-    while (cursor < cards.length) {
-      const ref = cards[cursor++];
-      await convertCard(ref);
-      const done = cursor;
-      if (done % 100 === 0) {
-        console.log(`  ${done}/${cards.length} cards processed...`);
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+async function processCards(cards: CardRef[], existing: Set<string>): Promise<void> {
+  const tasks = cards.flatMap(ref => TIERS.map(tier => ({ ref, tier })));
+  await runR2Batch(tasks, ({ ref, tier }) => convertCard(ref, tier, existing), CONCURRENCY);
 }
 
 function expectedImageKeys(cards: CardRef[]): Set<string> {
@@ -359,12 +322,12 @@ function expectedImageKeys(cards: CardRef[]): Set<string> {
   ]);
 }
 
-async function pruneCardImages(cards: CardRef[]): Promise<void> {
+async function pruneCardImages(cards: CardRef[], existing: Set<string>): Promise<void> {
   if (DRY_RUN || !s3Client || !r2Bucket || stats.failed > 0) {
     return;
   }
   const expected = expectedImageKeys(cards);
-  const listed = await listR2Keys(s3Client, r2Bucket, 'card-images/');
+  const listed = [...existing];
   const stale = listed.filter(key => !expected.has(key));
   if (!withinPruneCeiling(listed.length, stale.length)) {
     console.log(
@@ -411,8 +374,9 @@ function exitOnFailure(): void {
 
 async function main(): Promise<void> {
   const cards = await discoverRequiredCards();
-  await processCards(cards);
-  await pruneCardImages(cards);
+  const existing = new Set(s3Client && r2Bucket ? await listR2Keys(s3Client, r2Bucket, 'card-images/') : []);
+  await processCards(cards, existing);
+  await pruneCardImages(cards, existing);
   logSummary();
   await writeReadyMarker(cards);
   exitOnFailure();

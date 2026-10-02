@@ -24,8 +24,16 @@
  */
 
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 import { boolEnv, r2Config } from './lib/env.ts';
-import { createLocalPublisher, createR2Publisher, runEventLocator, runLocalsLocator } from './lib/eventLocator.ts';
+import {
+  createLocalPublisher,
+  createR2Publisher,
+  type LocalsRunOptions,
+  runEventLocator,
+  runLocalsLocator,
+  type RunOptions
+} from './lib/eventLocator.ts';
 import { fetchAllEvents, fetchLocalEvents } from './lib/pokedata.ts';
 
 function outDirectory(): string | null {
@@ -38,18 +46,52 @@ async function main(): Promise<void> {
   const out = outDirectory();
   const publisher = out ? createLocalPublisher(out) : createR2Publisher(r2Config());
   const allowShrink = boolEnv('ALLOW_SHRINK');
-  const result = await runEventLocator({ fetchEvents: () => fetchAllEvents({ log }), publisher, allowShrink, log });
+  await runListings(
+    { fetchEvents: () => fetchAllEvents({ log }), publisher, allowShrink, log },
+    { fetchLocals: () => fetchLocalEvents({ log }), publisher, allowShrink, log },
+    out
+  );
+}
+
+/** Finish both independent publications before reporting any failures. */
+export async function runListings(
+  sanctioned: RunOptions,
+  local: LocalsRunOptions,
+  out: string | null = null
+): Promise<void> {
+  const results = await Promise.allSettled([publishSanctioned(sanctioned, out), publishLocal(local)]);
+  const failures = results.flatMap((result, index) => {
+    if (result.status === 'fulfilled') {
+      return [];
+    }
+    const { reason } = result;
+    const message = reason instanceof Error ? reason.message : String(reason);
+    return [new Error(`${index === 0 ? 'Sanctioned' : 'Locals'}: ${message}`, { cause: reason })];
+  });
+  if (failures.length) {
+    throw new AggregateError(failures, failures.map(error => error.message).join('\n'));
+  }
+}
+
+async function publishSanctioned(options: RunOptions, out: string | null): Promise<void> {
+  const result = await runEventLocator(options);
+  const log = options.log ?? (() => undefined);
   log(`Published ${result.total} events in ${result.cells} cells${out ? ` to ${out}` : ''}`);
   if (result.removed.length) {
     log(`Retired the run before last (${result.removed.length} cells)`);
   }
-  const locals = await runLocalsLocator({ fetchLocals: () => fetchLocalEvents({ log }), publisher, allowShrink, log });
-  log(
+}
+
+async function publishLocal(options: LocalsRunOptions): Promise<void> {
+  const locals = await runLocalsLocator(options);
+  options.log?.(
     `Locals: ${locals.total} slots at ${locals.venues} stores; ${locals.written.length} cells written, ${locals.unchanged} unchanged, ${locals.removed.length} removed`
   );
 }
 
-main().catch(error => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(error => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

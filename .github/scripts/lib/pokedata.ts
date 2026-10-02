@@ -14,6 +14,7 @@
  */
 
 import { setTimeout as sleepFor } from 'node:timers/promises';
+import { eventIdentity } from '../../../shared/events/normalize.ts';
 
 export const POKEDATA_API = 'https://pokedata.ovh/events/apiv2/';
 export const POKEDATA_TABLE_API = 'https://www.pokedata.ovh/events/tableapi/index_table.php';
@@ -284,7 +285,7 @@ export async function fetchAllEvents(options: PokedataOptions = {}): Promise<Pok
     }
   }
   // Distinct IDs, not records: repeated pages must not count toward completeness.
-  const distinct = new Set(events.map(event => (event as { Display_id?: unknown })?.Display_id)).size;
+  const distinct = new Set(events.map(eventIdentity).filter(Boolean)).size;
   if (distinct < first.totalItems * MIN_COMPLETE_SHARE) {
     throw new Error(`Pokedata returned ${distinct} distinct of the ${first.totalItems} events it advertised`);
   }

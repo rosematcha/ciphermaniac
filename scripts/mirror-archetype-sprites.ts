@@ -16,12 +16,11 @@
  * Pass --force to re-upload every slug regardless of what's already mirrored.
  */
 
-import { requireEnv } from '../.github/scripts/lib/env.ts';
+import { r2Config, requireEnv } from '../.github/scripts/lib/env.ts';
 import process from 'node:process';
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { readFile } from 'node:fs/promises';
-import { isNotFound } from '../.github/scripts/lib/r2.mjs';
-import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
+import { createR2Client, readJson } from '../.github/scripts/lib/r2.mjs';
+import { mirrorSprites } from '../.github/scripts/lib/mirrorSprites';
 
 const SOURCE_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
 /**
@@ -33,18 +32,8 @@ const SOURCE_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
 const SOURCE_OVERRIDES: Record<string, string> = {
   'crushing-hammer': 'https://www.trainingcourt.app/assets/sprites/crushing-hammer.png'
 };
-const DEST_PREFIX = 'pokemon-sprites/gen9';
-// Sprites for a given gen are effectively frozen once published.
-const CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
-const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${requireEnv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
-    secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
-  }
-});
+const s3Client = createR2Client(r2Config());
 const bucket = requireEnv('R2_BUCKET_NAME');
 
 /**
@@ -60,25 +49,23 @@ const bucket = requireEnv('R2_BUCKET_NAME');
  */
 async function collectSlugs(): Promise<Set<string>> {
   const slugs = new Set<string>();
-  const response = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: 'assets/archetype-icons.json' }));
-  if (!response.Body) {
+  const icons = await readJson<Record<string, string[]>>(s3Client, bucket, 'assets/archetype-icons.json');
+  if (!icons) {
     throw new Error('Archetype icon map is missing from R2');
   }
-  const icons = JSON.parse(await response.Body.transformToString()) as Record<string, string[]>;
   for (const list of Object.values(icons)) {
     for (const slug of list) {
       slugs.add(slug);
     }
   }
-  const formatResponse = await s3Client.send(
-    new GetObjectCommand({ Bucket: bucket, Key: 'assets/format-archetypes.json' })
+  const formats = await readJson<{ formats?: { archetypes?: { icons?: string[] }[] }[] }>(
+    s3Client,
+    bucket,
+    'assets/format-archetypes.json'
   );
-  if (!formatResponse.Body) {
+  if (!formats) {
     throw new Error('Format snapshot is missing from R2');
   }
-  const formats = JSON.parse(await formatResponse.Body.transformToString()) as {
-    formats?: { archetypes?: { icons?: string[] }[] }[];
-  };
   for (const format of formats.formats ?? []) {
     for (const archetype of format.archetypes ?? []) {
       for (const slug of archetype.icons ?? []) {
@@ -93,54 +80,20 @@ async function collectSlugs(): Promise<Set<string>> {
   return slugs;
 }
 
-async function alreadyMirrored(slug: string): Promise<boolean> {
-  try {
-    await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: `${DEST_PREFIX}/${slug}.png` }));
-    return true;
-  } catch (error) {
-    if (isNotFound(error)) {
-      return false;
-    }
-    throw error;
-  }
-}
-
 async function main() {
   // Sprites are immutable once published, so a slug already in the bucket never
   // needs re-fetching. Pass --force to re-upload everything anyway.
   const force = process.argv.includes('--force');
   const slugs = [...(await collectSlugs())].sort();
   console.log(`Mirroring ${slugs.length} sprites${force ? ' (forced)' : ''}…`);
-  let uploaded = 0;
-  let skipped = 0;
-  let missing = 0;
-  for (const slug of slugs) {
-    if (!force && (await alreadyMirrored(slug))) {
-      skipped += 1;
-      continue;
-    }
-    const res = await fetch(SOURCE_OVERRIDES[slug] ?? `${SOURCE_BASE}/${slug}.png`);
-    if (!res.ok) {
-      missing += 1;
-      console.warn(`  ✗ ${slug} (${res.status} from source)`);
-      continue;
-    }
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: `${DEST_PREFIX}/${slug}.png`,
-        Body: Buffer.from(await res.arrayBuffer()),
-        ContentType: 'image/png',
-        CacheControl: CACHE_CONTROL
-      })
-    );
-    uploaded += 1;
-  }
-  const expected = new Set(slugs.map(slug => `${DEST_PREFIX}/${slug}.png`));
-  const stale = (await listR2Keys(s3Client, bucket, `${DEST_PREFIX}/`)).filter(key => !expected.has(key));
-  await deleteR2Keys(s3Client, bucket, stale);
+  const stats = await mirrorSprites(s3Client, {
+    bucket,
+    slugs,
+    force,
+    sourceUrl: slug => SOURCE_OVERRIDES[slug] ?? `${SOURCE_BASE}/${slug}.png`
+  });
   console.log(
-    `Done: ${uploaded} uploaded, ${skipped} already mirrored, ${missing} missing at source, ${stale.length} removed.`
+    `Done: ${stats.uploaded} uploaded, ${stats.skipped} already mirrored, ${stats.missing} missing at source, ${stats.removed} removed.`
   );
 }
 

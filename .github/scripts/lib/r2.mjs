@@ -119,6 +119,39 @@ export async function withR2Retry(operation, options = {}) {
 }
 
 /**
+ * Run a bounded batch, stopping new work on failure and draining active writes
+ * before rejecting so callers cannot publish a completion marker too early.
+ * @template T
+ * @param {readonly T[]} items
+ * @param {(item: T) => Promise<unknown>} operation
+ * @param {number} [concurrency]
+ * @returns {Promise<void>}
+ */
+export async function runR2Batch(items, operation, concurrency = 8) {
+  if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
+    throw new RangeError('R2 concurrency must be a positive safe integer');
+  }
+  let cursor = 0;
+  let stopped = false;
+  async function worker() {
+    while (!stopped && cursor < items.length) {
+      const item = items[cursor++];
+      try {
+        await operation(item);
+      } catch (error) {
+        stopped = true;
+        throw error;
+      }
+    }
+  }
+  const results = await Promise.allSettled(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  const failed = results.find(result => result.status === 'rejected');
+  if (failed) {
+    throw failed.reason;
+  }
+}
+
+/**
  * Coerce the accepted Cloudflare-binding body types into something the S3 SDK
  * accepts. Mirrors the pass-through the inline bindings did (strings and binary
  * bodies untouched); plain objects are serialized as a convenience fallback.

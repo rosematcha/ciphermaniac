@@ -5,6 +5,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { runListings } from '../../.github/scripts/run-event-locator.ts';
+
 import {
   fetchAllEvents,
   fetchLocalEvents,
@@ -361,4 +363,103 @@ test('a collapsed locals listing is refused on its own guard, and nothing is wri
   const shrunk = await localsRun(weeklyLocal('1'), previous, true);
   assert.equal(shrunk.writes.at(-1), 'events/locals/v1/index.json');
   await assert.rejects(localsRun([], previous, true), /no events/);
+});
+
+const withoutDisplayId = Object.fromEntries([['Display_id', null]]);
+
+test('null display IDs count distinct GUIDs and URL identities without accepting duplicates', async () => {
+  const events = [
+    rawEventWithId(1, { ...withoutDisplayId, guid: 'abcdef00-0000-4000-8000-000000000001' }),
+    rawEventWithId(2, { ...withoutDisplayId, guid: 'abcdef00-0000-4000-8000-000000000002' }),
+    rawEventWithId(3, { ...withoutDisplayId, guid: null, Guid: null })
+  ];
+  const pull = await fetchAllEvents({ fetch: async () => respond(pageBody(events, 3, 1)) });
+  assert.equal(pull.events.length, 3);
+  await assert.rejects(
+    fetchAllEvents({
+      fetch: async () => respond(pageBody([events[0]!, events[0]!], 2, 1))
+    }),
+    /1 distinct of the 2 events/
+  );
+  await assert.rejects(
+    fetchAllEvents({
+      fetch: async () => respond(pageBody([{ ...withoutDisplayId }, { ...withoutDisplayId }], 2, 1))
+    }),
+    /0 distinct of the 2 events/
+  );
+});
+
+test('both listings publish and report success independently', async () => {
+  const { publisher, writes } = memoryPublisher();
+  const logged: string[] = [];
+  const options = { publisher, now: NOW, log: (message: string) => logged.push(message) };
+  await runListings(
+    { ...options, fetchEvents: pullOf([rawEventWithId(1)]) },
+    { ...options, fetchLocals: async () => weeklyLocal('42') },
+    'test-output'
+  );
+  assert.ok(writes.includes('events/v1/index.json'));
+  assert.ok(writes.includes('events/locals/v1/index.json'));
+  assert.ok(logged.some(line => line.includes('Published 1 events in 1 cells to test-output')));
+  assert.ok(logged.some(line => line.startsWith('Locals:')));
+});
+
+for (const failed of ['sanctioned', 'locals'] as const) {
+  test(`${failed} failure waits for the other listing to publish`, async () => {
+    const { publisher, writes } = memoryPublisher();
+    let started = 0;
+    let release!: () => void;
+    const bothStarted = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    async function fetchListing<T>(listing: string, value: T): Promise<T> {
+      started++;
+      if (started === 2) {
+        release();
+      }
+      if (listing === failed) {
+        throw new Error('upstream unavailable');
+      }
+      await bothStarted;
+      return value;
+    }
+    await assert.rejects(
+      runListings(
+        {
+          publisher,
+          now: NOW,
+          fetchEvents: () =>
+            fetchListing('sanctioned', {
+              events: [rawEventWithId(1)],
+              totalItems: 1,
+              totalPages: 1
+            })
+        },
+        { publisher, now: NOW, fetchLocals: () => fetchListing('locals', weeklyLocal('42')) }
+      ),
+      failed === 'sanctioned' ? /Sanctioned: upstream unavailable/ : /Locals: upstream unavailable/
+    );
+    assert.ok(writes.includes(failed === 'sanctioned' ? 'events/locals/v1/index.json' : 'events/v1/index.json'));
+  });
+}
+
+test('both listing failures are reported together', async () => {
+  const { publisher } = memoryPublisher();
+  await assert.rejects(
+    runListings(
+      {
+        publisher,
+        fetchEvents: async () => {
+          throw new Error('sanctioned outage');
+        }
+      },
+      {
+        publisher,
+        fetchLocals: async () => {
+          throw new Error('locals outage');
+        }
+      }
+    ),
+    /Sanctioned: sanctioned outage\nLocals: locals outage/
+  );
 });

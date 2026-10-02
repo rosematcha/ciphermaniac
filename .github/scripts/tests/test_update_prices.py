@@ -3,6 +3,11 @@ import json
 import unittest
 from datetime import date, timedelta
 from pathlib import Path
+from contextlib import ExitStack
+from unittest.mock import Mock, patch
+
+import requests
+from urllib3.util.retry import Retry
 
 
 def _load_update_prices_module():
@@ -25,6 +30,157 @@ def _product(product_id, name, number, **extra):
 
 def _price(product_id, subtype, market):
     return {"productId": product_id, "subTypeName": subtype, "marketPrice": market}
+
+
+class FetchJsonTest(unittest.TestCase):
+    def test_session_retries_gets_with_exponential_backoff(self):
+        with update_prices.create_http_session() as session:
+            self.assertEqual(session.headers['User-Agent'], update_prices.TCGCSV_USER_AGENT)
+            retry = session.get_adapter('https://tcgcsv.com').max_retries
+            self.assertEqual(retry.total, 4)
+            self.assertEqual(retry.allowed_methods, frozenset({'GET'}))
+            self.assertTrue(retry.respect_retry_after_header)
+            for status in (429, 500, 502, 503, 504):
+                self.assertTrue(retry.is_retry('GET', status))
+            self.assertFalse(retry.is_retry('GET', 404))
+            backoffs = []
+            for _ in range(4):
+                retry = retry.increment(error=ConnectionError('reset'))
+                backoffs.append(retry.get_backoff_time())
+            self.assertEqual(backoffs, [0, 2, 4, 8])
+            self.assertIsInstance(retry, Retry)
+
+    def test_fetch_uses_shared_session_timeout_and_checks_status(self):
+        response = Mock()
+        response.json.return_value = {'success': True, 'results': []}
+        with patch.object(update_prices.HTTP_SESSION, 'get', return_value=response) as get:
+            self.assertEqual(update_prices.fetch_json('https://example.test'), response.json.return_value)
+        get.assert_called_once_with('https://example.test', timeout=30)
+        response.raise_for_status.assert_called_once_with()
+
+    def test_http_failure_does_not_decode_payload(self):
+        response = Mock()
+        response.raise_for_status.side_effect = requests.HTTPError('503')
+        with patch.object(update_prices.HTTP_SESSION, 'get', return_value=response):
+            with self.assertRaises(requests.HTTPError):
+                update_prices.fetch_json('https://example.test')
+        response.json.assert_not_called()
+
+    def test_invalid_results_are_failures(self):
+        for payload in ({'success': False}, {'success': True}, {'success': True, 'results': {}}):
+            with self.subTest(payload=payload), patch.object(update_prices, 'fetch_json', return_value=payload):
+                with self.assertRaises(RuntimeError):
+                    update_prices.fetch_tcgcsv_results('https://example.test')
+
+
+class FetchAllPricesTest(unittest.TestCase):
+    def test_set_failure_is_distinct_from_valid_empty_prices(self):
+        with patch.object(update_prices, 'fetch_tcgcsv_results', side_effect=requests.Timeout('timeout')):
+            self.assertIsNone(update_prices.fetch_prices_for_set('SCR', 1, []))
+        with patch.object(update_prices, 'fetch_tcgcsv_results', return_value=[]):
+            self.assertEqual(update_prices.fetch_prices_for_set('SCR', 1, []), {})
+
+    def test_gallery_failure_keeps_primary_and_flags_set(self):
+        primary = {'A::BRS::001': {'price': 2}}
+        with patch.object(update_prices, 'fetch_prices_for_set', side_effect=[primary, None, {}]), \
+                patch.object(update_prices.time, 'sleep'):
+            prices, failed = update_prices.fetch_all_prices(
+                {'BRS': ['A::BRS::001'], 'SCR': [], 'UNKNOWN': []}, {'BRS': 1, 'SCR': 2}
+            )
+        self.assertEqual(prices, primary)
+        self.assertEqual(failed, {'BRS', 'UNKNOWN'})
+
+
+class PriceCoverageTest(unittest.TestCase):
+    def test_large_loss_aborts_even_when_new_cards_replace_missing_cards(self):
+        previous = {f'A::SET::{i:03}': {'price': 1} for i in range(10)}
+        fresh = {f'B::NEW::{i:03}': {'price': 1} for i in range(10)}
+        with self.assertRaisesRegex(RuntimeError, 'coverage dropped sharply'):
+            update_prices.validate_price_coverage(fresh, previous, {})
+
+    def test_empty_first_run_aborts(self):
+        with self.assertRaises(RuntimeError):
+            update_prices.validate_price_coverage({}, {}, {})
+
+    def test_twenty_percent_loss_and_first_run_are_allowed(self):
+        previous = {f'A::SET::{i:03}': {'price': 1} for i in range(5)}
+        fresh = dict(list(previous.items())[:4])
+        update_prices.validate_price_coverage(fresh, previous, {})
+        update_prices.validate_price_coverage(fresh, {}, {})
+
+    def test_history_also_provides_baseline(self):
+        with self.assertRaises(RuntimeError):
+            update_prices.validate_price_coverage({'B::SET::002': {'price': 1}}, {}, {'A::SET::001': []})
+
+    def test_failed_energy_set_does_not_get_a_synthetic_observation(self):
+        prices = {}
+        update_prices.add_basic_energy_prices(prices, {'Grass Energy::MEE::001'}, failed_sets={'MEE'})
+        self.assertEqual(prices, {})
+
+    def test_retains_only_failed_set_spot_prices_and_fresh_prices_win(self):
+        previous = {'A::SCR::001': {'price': 1}, 'B::SCR::002': {'price': 2}, 'C::SET::003': {'price': 3}}
+        fresh = {'A::SCR::001': {'price': 4}}
+        update_prices.retain_failed_set_prices(fresh, previous, {'SCR'})
+        self.assertEqual(fresh, {'A::SCR::001': {'price': 4}, 'B::SCR::002': {'price': 2}})
+
+
+class PriceSavingTest(unittest.TestCase):
+    def run_main(self, fresh, failed, previous, history, history_error=None):
+        overrides = {
+            'initialize_r2_client': Mock(),
+            'load_online_meta_report': Mock(return_value={}),
+            'load_card_synonyms': Mock(return_value={}),
+            'extract_unique_cards': Mock(return_value=set(previous)),
+            'extract_current_meta_canonicals': Mock(return_value=set()),
+            'load_all_event_cards': Mock(return_value=set()),
+            'expand_to_clusters': Mock(return_value=set()),
+            'build_print_universe': Mock(return_value=set()),
+            'map_sets_to_group_ids': Mock(return_value={}),
+            'load_previous_prices': Mock(return_value=previous),
+            'load_price_history': Mock(return_value=history, side_effect=history_error),
+            'fetch_all_prices': Mock(return_value=(fresh, failed)),
+            'upload_prices_to_r2': Mock(),
+            'upload_price_history_to_r2': Mock(),
+            'upload_derived_artifacts': Mock(),
+        }
+        with ExitStack() as stack:
+            stack.enter_context(patch.multiple(update_prices, **overrides))
+            stack.enter_context(patch.object(update_prices.r2, 'load_production_release', return_value={}))
+            try:
+                update_prices.main()
+            finally:
+                self.uploads = [overrides[name] for name in (
+                    'upload_prices_to_r2', 'upload_price_history_to_r2', 'upload_derived_artifacts')]
+        return self.uploads
+
+    def test_coverage_failure_prevents_every_upload(self):
+        with self.assertRaises(RuntimeError):
+            self.run_main({'B::NEW::001': {'price': 2}}, {'SCR'}, {'A::SCR::001': {'price': 1}}, {})
+        for upload in self.uploads:
+            upload.assert_not_called()
+
+    def test_total_outage_cannot_publish_only_hardcoded_energy_prices(self):
+        with self.assertRaisesRegex(RuntimeError, 'No fresh TCGCSV prices'):
+            self.run_main({}, {'MEE'}, {'Grass Energy::MEE::001': {'price': 1}}, {})
+        for upload in self.uploads:
+            upload.assert_not_called()
+
+    def test_history_read_failure_prevents_every_upload(self):
+        with self.assertRaises(update_prices.PriceHistoryReadError):
+            self.run_main({'A::SET::001': {'price': 1}}, set(), {}, {},
+                          history_error=update_prices.PriceHistoryReadError('bad'))
+        for upload in self.uploads:
+            upload.assert_not_called()
+
+    def test_partial_failure_retains_snapshot_and_series_without_new_observation(self):
+        today = date.today()
+        points = [{'d': (today - timedelta(days=10)).isoformat(), 'p': 1}]
+        previous = {f'A::S{i}::001': {'price': 1, 'tcgPlayerId': str(i)} for i in range(5)}
+        fresh = {uid: {'price': 2} for uid in list(previous)[:4]}
+        uploads = self.run_main(fresh, {'S4'}, previous, {'A::S4::001': points})
+        self.assertEqual(uploads[0].call_args.args[2]['A::S4::001'], previous['A::S4::001'])
+        self.assertEqual(uploads[1].call_args.args[2]['A::S4::001'], points)
+        self.assertEqual(uploads[2].call_args.args[2]['A::S4::001'], points)
 
 
 class SelectMarketPriceTest(unittest.TestCase):
@@ -185,6 +341,16 @@ class UpdatePriceHistoryTest(unittest.TestCase):
         self.assertNotIn("GONE::SET::002", out)
         self.assertIn("A::SET::001", out)
 
+    def test_failed_set_keeps_window_and_same_day_observation(self):
+        existing = {'A::SCR::001': [
+            {'d': '2026-01-01', 'p': 1},
+            {'d': '2026-07-06', 'p': 2},
+            {'d': '2026-07-07', 'p': 3},
+        ]}
+        out = update_prices.update_price_history(existing, {}, date(2026, 7, 7), failed_sets={'SCR'})
+        self.assertEqual(out['A::SCR::001'], existing['A::SCR::001'][1:])
+        self.assertEqual(len(existing['A::SCR::001']), 3)
+
     def test_skips_unpriced_cards(self):
         out = update_prices.update_price_history(
             {}, {"A::SET::001": {"price": None}, "B::SET::002": {}}, date(2026, 7, 7)
@@ -227,6 +393,8 @@ class LoadPriceHistoryTest(unittest.TestCase):
             ("transport", _FakeR2Client(error=ConnectionError("connection reset"))),
             ("permission", _FakeR2Client(error=_FakeS3Error("AccessDenied"))),
             ("corrupt json", _FakeR2Client(payload=b"{not json")),
+            ("invalid history", _FakeR2Client(payload=b'{"history": []}')),
+            ("missing history", _FakeR2Client(payload=b'{}')),
         ]
         for label, client in cases:
             with self.subTest(label), self.assertRaises(update_prices.PriceHistoryReadError):
@@ -241,6 +409,29 @@ class LoadPriceHistoryTest(unittest.TestCase):
             update_prices.load_price_history(client, "bucket"),
             {"A::SET::001": [{"d": "2026-07-06", "p": 1.5}]},
         )
+
+
+class LoadPreviousPricesTest(unittest.TestCase):
+    def test_verified_missing_snapshot_starts_fresh(self):
+        client = _FakeR2Client(error=_FakeS3Error('NoSuchKey'))
+        self.assertEqual(update_prices.load_previous_prices(client, 'bucket'), {})
+
+    def test_unreadable_or_invalid_snapshot_aborts(self):
+        cases = [
+            _FakeR2Client(error=ConnectionError('reset')),
+            _FakeR2Client(payload=b'invalid json'),
+            _FakeR2Client(payload=b'{}'),
+            _FakeR2Client(payload=b'{"cardPrices": []}'),
+        ]
+        for client in cases:
+            with self.subTest(client=client), self.assertRaises(update_prices.PriceHistoryReadError):
+                update_prices.load_previous_prices(client, 'bucket')
+
+    def test_valid_snapshot_keeps_product_ids(self):
+        prices = {'A::SET::001': {'price': 1, 'tcgPlayerId': '123'}}
+        client = _FakeR2Client(payload=json.dumps({'cardPrices': prices}).encode())
+        self.assertEqual(update_prices.load_previous_prices(client, 'bucket'), prices)
+
 
 
 class ClassifyStandardPrintsTest(unittest.TestCase):

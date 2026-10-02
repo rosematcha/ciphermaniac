@@ -80,7 +80,7 @@ test('event kinds come from the Pokedata type', () => {
 test('records the locator cannot place or name are skipped with a reason', () => {
   assert.equal(skipReason({ type: 'nonpremier VG' }), 'kind');
   assert.equal(skipReason({ Status: 'Cancelled' }), 'cancelled');
-  assert.equal(skipReason({ Display_id: 'abc' }), 'id');
+  assert.equal(skipReason({ Display_id: 'abc', guid: '', Guid: '', pokemon_url: '' }), 'id');
   assert.equal(skipReason({ name: '', Name: '' }), 'name');
   assert.equal(skipReason({ date: '20/09/2026' }), 'date');
   assert.equal(skipReason({ date: '2026-99-99' }), 'date');
@@ -103,7 +103,10 @@ test('a local uses its stable GUID and a useful fallback name', () => {
   assert.equal(event.kind, 'local');
   assert.equal(event.name, 'Weekly local');
   assert.equal(event.url, undefined);
-  assert.equal(skipReason({ type: 'nonpremier TCG', Display_id: '', guid: 'not-a-guid', Guid: '' }), 'id');
+  assert.equal(
+    skipReason({ type: 'nonpremier TCG', Display_id: '', guid: 'not-a-guid', Guid: '', pokemon_url: '' }),
+    'id'
+  );
 });
 
 test('a local takes its start from `when` and its fee from `cost`, the fields its table has', () => {
@@ -245,4 +248,36 @@ test('store descriptions keep paragraphs and are capped near 600 characters', ()
   assert.ok(long.length <= 601, `length ${long.length}`);
   assert.ok(long.endsWith('…'));
   assert.ok(!long.includes('wor…'), 'cuts at a word boundary');
+});
+
+test('sanctioned listings without Display_id use GUIDs and retain their official URL', () => {
+  const guid = 'ABCDEF00-0000-4000-8000-000000000001';
+  const url = `https://events.pokemon.com/en-us/events/${guid}/`;
+  const event = normalized({ Display_id: null, guid, Guid: null, pokemon_url: url });
+  assert.equal(event.id, guid.toLowerCase());
+  assert.equal(event.url, url);
+  assert.equal(normalized({ Display_id: null, guid: null, Guid: guid }).id, guid.toLowerCase());
+});
+
+test('an official URL supplies identity when display ID and GUID are missing', () => {
+  assert.equal(normalized({ Display_id: null, guid: null, Guid: null }).id, '26-09-000001');
+  const guid = 'abcdef00-0000-4000-8000-000000000001';
+  assert.equal(
+    normalized({
+      Display_id: null,
+      guid: null,
+      Guid: null,
+      pokemon_url: `https://events.pokemon.com/en-us/events/${guid}/?language=en`
+    }).id,
+    guid
+  );
+  assert.equal(
+    skipReason({
+      Display_id: null,
+      guid: null,
+      Guid: null,
+      pokemon_url: 'https://pokemon.com.evil.net/play-pokemon-tournaments/26-09-000001/'
+    }),
+    'id'
+  );
 });

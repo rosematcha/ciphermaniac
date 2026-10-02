@@ -24,6 +24,7 @@ import { buildCardUsageIndex } from '../../../shared/data/reports/cardUsage.js';
 import { buildListIndex } from '../../../shared/data/reports/listIndex.js';
 import { buildCardSuccessIndex } from '../../../shared/data/reports/cardSuccess.js';
 import { requireSynonymDatabase, type SynonymDatabase } from '../../../shared/data/cardIdentity.js';
+import { runR2Batch } from './r2.mjs';
 import type { fetchLimitlessJson } from './onlineFetch';
 import {
   compileExclusions,
@@ -389,20 +390,18 @@ async function publishArchetypes(run: Run, input: PublishInput): Promise<void> {
   if (listIndex) {
     await publish(run, 'lists.json', listIndex);
   }
-  for (const file of files) {
+  await runR2Batch(files, async file => {
     await publish(run, `archetypes/${file.base}/cards.json`, file.data);
     const trends = input.trendsByBase.get(file.base);
     if (trends) {
       await publish(run, `archetypes/${file.base}/trends.json`, trends);
     }
-  }
+  });
   const deckShards = partitionDecks(
     input.reportDecks,
     files.map(file => ({ base: file.base, decks: (decksByBase.get(file.base) ?? []) as GatheredDeck[] }))
   );
-  for (const shard of deckShards) {
-    await publish(run, shard.path, shard.decks);
-  }
+  await runR2Batch(deckShards, shard => publish(run, shard.path, shard.decks));
   await publish(run, 'decks/index.json', deckShards.map(shard => shard.path).sort());
   const removed = await removeSupersededOnlineObjects(run);
   run.log(`[online-meta] Removed ${removed} superseded or duplicate object(s)`);

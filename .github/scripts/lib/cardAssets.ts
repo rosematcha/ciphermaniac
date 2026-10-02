@@ -110,7 +110,12 @@ async function images(store: Store): Promise<void> {
   };
   await completedStage(store, 'card-images', {
     inputs,
-    revision: await builderRevision(['scripts/convert-card-images.ts', '.github/scripts/build-art-groups.py']),
+    revision: await builderRevision([
+      'scripts/convert-card-images.ts',
+      '.github/scripts/lib/r2.mjs',
+      '.github/scripts/lib/r2Inventory.mjs',
+      '.github/scripts/build-art-groups.py'
+    ]),
     force: boolEnv('FORCE_REFRESH'),
     run: async () => {
       run('scripts/convert-card-images.ts');
@@ -125,13 +130,9 @@ async function archetypes(store: Store): Promise<void> {
   await completedStage(store, 'archetype-icons', {
     inputs: date.slice(0, 10),
     force,
-    revision: await builderRevision([
-      '.github/scripts/scrape-archetype-icons.py',
-      'scripts/mirror-archetype-sprites.ts'
-    ]),
+    revision: await builderRevision(['.github/scripts/scrape-archetype-icons.py']),
     run: async () => {
       run('.github/scripts/scrape-archetype-icons.py', ['--publish']);
-      run('scripts/mirror-archetype-sprites.ts');
     }
   });
   const requested = process.env.REQUESTED_FORMATS?.trim();
@@ -143,7 +144,23 @@ async function archetypes(store: Store): Promise<void> {
       const formats = requested ? requested.split(/\s+/) : ['expanded'];
       const args = formats.includes('all') ? ['--all'] : formats.flatMap(format => ['--format', format]);
       run('.github/scripts/scrape-format-archetypes.py', ['--publish', ...args]);
-      run('scripts/mirror-archetype-sprites.ts');
+    }
+  });
+  await completedStage(store, 'pokemon-sprites', {
+    inputs: {
+      icons: await store.read('assets/archetype-icons.json'),
+      formats: await store.read('assets/format-archetypes.json')
+    },
+    force,
+    revision: await builderRevision([
+      'scripts/mirror-archetype-sprites.ts',
+      '.github/scripts/lib/mirrorSprites.ts',
+      '.github/scripts/lib/r2.mjs',
+      '.github/scripts/lib/r2Inventory.mjs',
+      'shared/pokemon/sprites.json'
+    ]),
+    run: async () => {
+      run('scripts/mirror-archetype-sprites.ts', force ? ['--force'] : []);
     }
   });
 }
