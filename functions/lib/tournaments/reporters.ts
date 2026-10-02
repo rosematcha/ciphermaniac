@@ -5,9 +5,9 @@
  * Saying who you are is knowing a Player ID, or a last name, and a player
  * knows their opponent's: that alone would let one player report for both
  * seats and settle a match on their own. So the first device to say who a
- * player is claims them and keeps a token, and only that token reports as
- * them. Another device can still follow the player's table. Staff release a
- * claim when a player changes phones.
+ * player is claims them and keeps a token. Its persistent device ID can
+ * recover the seat if that answer is lost. Another device can still follow
+ * the player's table. Staff release a claim when a player changes phones.
  *
  * A signed-in account can hold the row too, on the same first-come terms:
  * as the player whose POP ID it holds at a sanctioned event, or as the one it
@@ -181,9 +181,15 @@ const matches = async (row: ClaimRow, held: unknown) =>
   typeof held === 'string' && held !== '' && row.token_hash === (await sha256(held));
 
 async function standingFor(seat: Seat, row: ClaimRow, asker: Asker): Promise<Standing> {
-  const holder = await matches(row, asker.held);
+  const tokenHeld = await matches(row, asker.held);
+  // The first response can be lost after the seat is stored. The device's
+  // persistent secret recovers it without rotating a token another retry holds.
+  const recovered = !tokenHeld && (await deviceOf(asker.device)) === row.device;
+  const holder = tokenHeld || recovered;
   const linked = await linkedAs(seat, row, holder);
-  return typeof linked === 'boolean' ? { token: null, reporter: holder || linked, device: row.device, linked } : linked;
+  return typeof linked === 'boolean'
+    ? { token: recovered ? String(asker.device) : null, reporter: holder || linked, device: row.device, linked }
+    : linked;
 }
 
 /**

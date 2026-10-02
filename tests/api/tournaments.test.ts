@@ -868,6 +868,43 @@ async function phoneOf(code: string, popId: string, device = `phone-${popId}`) {
   return { said, report: (result: string) => playerSays(code, { popId, result, device, reportToken: token }) };
 }
 
+test('a device recovers a reporting seat after its identify response is lost', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 4);
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
+  const match = paired.json.tournament.pods[0].rounds[0].matches[0];
+  await settle(code, owner, { playerReporting: true });
+  const device = crypto.randomUUID();
+  const lost = await playerSays(code, { popId: match.p1, device });
+  assert.equal(lost.json.reporter, true);
+  // The phone never received the token. Neither knowing the player nor a
+  // different device's ID recovers the reserved seat.
+  for (const stranger of [{}, { device: crypto.randomUUID() }]) {
+    const refused = await playerSays(code, { popId: match.p1, ...stranger });
+    assert.equal(refused.json.reporter, false);
+    assert.equal(refused.json.reportToken, undefined);
+  }
+  const recovered = await playerSays(code, { popId: match.p1, device });
+  assert.equal(recovered.json.reporter, true);
+  assert.ok(recovered.json.reportToken);
+  assert.equal((await playerSays(code, { popId: match.p1, device })).json.reportToken, recovered.json.reportToken);
+  const reported = await playerSays(code, {
+    popId: match.p1,
+    device,
+    reportToken: recovered.json.reportToken,
+    result: 'win'
+  });
+  assert.equal(reported.status, 200);
+  assert.equal(reported.json.view.reports.length, 1);
+  const original = await playerSays(code, { popId: match.p1, device, reportToken: lost.json.reportToken });
+  assert.equal(original.json.reporter, true, 'recovery does not invalidate a delayed original response');
+  await hit(report.onRequestDelete as Handler, `/?player=${match.p1}`, at(code), { method: 'DELETE', cookie: owner });
+  await playerSays(code, { popId: match.p1, device: crypto.randomUUID() });
+  const released = await playerSays(code, { popId: match.p1, device, reportToken: recovered.json.reportToken });
+  assert.equal(released.json.reporter, false, 'the old device cannot recover a seat staff gave to another phone');
+});
+
 test('an event starts with the settings its setup chose', async () => {
   const owner = await signIn('Organizer', 'organizer');
   const created = await hit(

@@ -9,6 +9,7 @@ import { afterEach, test } from 'node:test';
 
 import {
   ApiError,
+  call,
   createFromTdf,
   createSwiss,
   deleteTournament,
@@ -75,6 +76,37 @@ function answer(status: number, body: unknown) {
 afterEach(() => {
   globalThis.fetch = realFetch;
   sent = [];
+});
+
+test('API and published polling time out, reject stalled reads, and can poll again', async context => {
+  for (const read of [() => fetchView('ABC', 3), () => fetchManage('ABC', 3), () => fetchPublished('ABC')]) {
+    const controller = new AbortController();
+    const timeout = context.mock.method(AbortSignal, 'timeout', (milliseconds: number) => {
+      assert.equal(milliseconds, 15_000);
+      return controller.signal;
+    });
+    globalThis.fetch = ((_url: string, init: RequestInit = {}) => {
+      assert.equal(init.signal, controller.signal);
+      return new Promise<Response>((_resolve, reject) => {
+        controller.signal.addEventListener('abort', () => reject(controller.signal.reason), { once: true });
+      });
+    }) as typeof fetch;
+    const pending = read();
+    controller.abort(new DOMException('Timed out', 'TimeoutError'));
+    await assert.rejects(pending, { name: 'TimeoutError' });
+    timeout.mock.restore();
+    answer(200, { version: 4 });
+    assert.deepEqual(await read(), { version: 4 });
+  }
+});
+
+test('API calls preserve an explicit caller abort signal', async () => {
+  const controller = new AbortController();
+  globalThis.fetch = (async (_url: string, init: RequestInit = {}) => {
+    assert.equal(init.signal, controller.signal);
+    return Response.json({ ok: true });
+  }) as typeof fetch;
+  await call('/api/me', { signal: controller.signal });
 });
 
 test('every call goes to its endpoint with its body', async () => {

@@ -76,6 +76,7 @@ function listOwner(profile: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastNam
 export async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(path, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(15_000),
     credentials: 'same-origin',
     headers: typeof init.body === 'string' ? { 'Content-Type': 'application/json' } : undefined
   });
@@ -145,7 +146,10 @@ export function fetchPublished(code: string, cache: RequestCache = 'no-cache'): 
 }
 
 async function readPublished(code: string, cache: RequestCache = 'no-cache'): Promise<PublishedView | null> {
-  const response = await fetch(`${R2_ORIGIN}/${publishedViewKey(code)}`, { cache });
+  const response = await fetch(`${R2_ORIGIN}/${publishedViewKey(code)}`, {
+    cache,
+    signal: AbortSignal.timeout(15_000)
+  });
   return response.ok ? ((await response.json()) as PublishedView) : null;
 }
 

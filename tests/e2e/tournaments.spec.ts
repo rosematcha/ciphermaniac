@@ -97,6 +97,34 @@ test('the public page shows the round, finds a player and opens their history @m
   expect(errors).toEqual([]);
 });
 
+test('retrying a lost identify response restores reporting and remembers the recovered token', async ({ page }) => {
+  const view = { ...VIEW, settings: { ...VIEW.settings, playerReporting: true } };
+  await mockApi(page, view);
+  await publish(page, () => view);
+  const mary = tdf.players.find(player => player.lastName === 'Jackson');
+  const requests: { device: string; reportToken?: string; result?: string }[] = [];
+  await page.route(`**/api/tournaments/${CODE}/report`, route => {
+    const body = route.request().postDataJSON() as (typeof requests)[number];
+    requests.push(body);
+    if (requests.length === 1) {
+      return route.abort('connectionreset');
+    }
+    return route.fulfill({ json: { key: keys[mary?.id ?? ''], view, reporter: true, reportToken: body.device } });
+  });
+  await page.goto(`/t/${CODE}`);
+  await page.getByLabel('Player ID', { exact: true }).fill(mary?.id ?? '');
+  await page.getByRole('button', { name: 'Find my match' }).click();
+  await expect(page.locator('.tm-you-ask .tm-error')).toBeVisible();
+  await page.getByRole('button', { name: 'Find my match' }).click();
+  await expect(page.getByRole('button', { name: 'Report result' })).toBeVisible();
+  expect(requests[1]?.device).toBe(requests[0]?.device);
+  await page.reload();
+  await page.getByRole('button', { name: 'Report result' }).click();
+  await page.getByRole('button', { name: 'I won', exact: true }).click();
+  await expect.poll(() => requests.at(-1)?.result).toBe('win');
+  expect(requests.at(-1)?.reportToken).toBe(requests[0]?.device);
+});
+
 test('a signed-in player whose account just became the player asks once who the page says they are', async ({
   page
 }) => {
