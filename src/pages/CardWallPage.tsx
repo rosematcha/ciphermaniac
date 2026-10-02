@@ -1,7 +1,14 @@
-import { createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { cardKey, loadWallImages, type WallImages } from '../lib/cardWall/images';
-import { buildScene, GIF_FRAME_RATES, type RowSetting, type WallConfig, type WallDeal } from '../lib/cardWall/scene';
-import { createWallPainter, type WallLook } from '../lib/cardWall/render';
+import {
+  buildScene,
+  GIF_FRAME_RATES,
+  type RowSetting,
+  type WallConfig,
+  type WallDeal,
+  type WallScene
+} from '../lib/cardWall/scene';
+import { createWallPainter, type WallLook, type WallPainter } from '../lib/cardWall/render';
 import { describeVideoOutput, estimateGifBytes, exportGif, exportVideo, gifFrameCount } from '../lib/cardWall/export';
 import { WALL_ROSTER } from '../lib/cardWall/roster';
 import { downloadBlob } from '../lib/download';
@@ -124,7 +131,7 @@ function formatLoop(value: number): string {
   return Number.isInteger(value) ? `${value}s` : `${value.toFixed(1)}s`;
 }
 
-export function CardWallPage() {
+function useCardWall() {
   const [aspect, setAspect] = createSignal<AspectKey>('16:9');
   const [rows, setRows] = createSignal(4);
   const [cardsPerRow, setCardsPerRow] = createSignal(8);
@@ -236,27 +243,7 @@ export function CardWallPage() {
     onCleanup(() => observer.disconnect());
   });
 
-  onMount(() => {
-    let raf = 0;
-    let last = performance.now();
-    let t = 0;
-    const frame = (now: number) => {
-      const delta = (now - last) / 1000;
-      last = now;
-      const current = scene();
-      if (playing()) {
-        t = (t + delta) % current.loopSeconds;
-      }
-      const canvas = canvasRef;
-      const ctx = canvas?.getContext('2d');
-      if (canvas && ctx) {
-        painter.paint(ctx, current, images(), t % current.loopSeconds, canvas.width, canvas.height, look());
-      }
-      raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
-    onCleanup(() => cancelAnimationFrame(raf));
-  });
+  onMount(() => mountPreview({ canvas: () => canvasRef, playing, scene, images, look, painter }));
 
   function applyPreset(preset: Preset) {
     const next = preset.config;
@@ -326,6 +313,510 @@ export function CardWallPage() {
     }
   }
 
+  return {
+    applyPreset,
+    aspect,
+    setAspect,
+    background,
+    setBackground,
+    rows,
+    setRows,
+    cardsPerRow,
+    setCardsPerRow,
+    loopSeconds,
+    setLoopSeconds,
+    cardScale,
+    setCardScale,
+    gap,
+    setGap,
+    blur,
+    setBlur,
+    darken,
+    setDarken,
+    rowSettings,
+    setRow,
+    onWall,
+    off,
+    slots,
+    always,
+    setOffRaw,
+    setAlwaysRaw,
+    format,
+    setFormat,
+    exportWidth,
+    exportHeight,
+    setExportWidth,
+    fps,
+    setGifFps,
+    setVideoFps,
+    colors,
+    setColors,
+    loops,
+    setLoops,
+    ready,
+    runExport,
+    busy,
+    progress,
+    lastSize,
+    videoOutput,
+    scene,
+    frameCount,
+    estimatedMb,
+    error,
+    stageSize,
+    loadedCount,
+    setPlaying,
+    playing,
+    setSeed,
+    setStageRef: (el: HTMLDivElement) => {
+      stageRef = el;
+    },
+    setCanvasRef: (el: HTMLCanvasElement) => {
+      canvasRef = el;
+    }
+  };
+}
+
+interface PreviewOptions {
+  canvas: () => HTMLCanvasElement | undefined;
+  playing: () => boolean;
+  scene: () => WallScene;
+  images: () => WallImages;
+  look: () => WallLook;
+  painter: WallPainter;
+}
+
+function mountPreview({ canvas, playing, scene, images, look, painter }: PreviewOptions) {
+  let raf: number | null = null;
+  let last: number | null = null;
+  let t = 0;
+  const scheduleFrame = () => {
+    if (raf === null && !document.hidden) {
+      raf = requestAnimationFrame(frame);
+    }
+  };
+  const frame = (now: number) => {
+    raf = null;
+    if (document.hidden) {
+      last = null;
+      return;
+    }
+    const delta = last === null ? 0 : (now - last) / 1000;
+    last = now;
+    const current = scene();
+    if (playing()) {
+      t = (t + delta) % current.loopSeconds;
+    }
+    const element = canvas();
+    const ctx = element?.getContext('2d');
+    if (element && ctx) {
+      painter.paint(ctx, current, images(), t % current.loopSeconds, element.width, element.height, look());
+    }
+    if (playing()) {
+      scheduleFrame();
+    } else {
+      last = null;
+    }
+  };
+  const stop = () => {
+    if (raf !== null) {
+      cancelAnimationFrame(raf);
+      raf = null;
+    }
+    last = null;
+  };
+  const visibilityChanged = () => {
+    stop();
+    scheduleFrame();
+  };
+  // Paused previews still need one frame when their inputs change. Coalesce
+  // those changes into the pending frame, then sleep until the next change.
+  createEffect(() => {
+    playing();
+    scene();
+    images();
+    look();
+    scheduleFrame();
+  });
+  document.addEventListener('visibilitychange', visibilityChanged);
+  onCleanup(() => {
+    stop();
+    document.removeEventListener('visibilitychange', visibilityChanged);
+  });
+}
+
+type CardWallModel = ReturnType<typeof useCardWall>;
+
+function WallControls(model: CardWallModel) {
+  return (
+    <>
+      <div class='cw-presets'>
+        <For each={PRESETS}>
+          {preset => (
+            <button type='button' class='btn btn-ghost' onClick={() => model.applyPreset(preset)}>
+              {preset.label}
+            </button>
+          )}
+        </For>
+      </div>
+
+      <div class='cw-fields'>
+        <div class='cw-field'>
+          <span class='cw-field-label'>Shape</span>
+          <Segmented
+            options={ASPECT_OPTIONS}
+            selected={model.aspect()}
+            onSelect={model.setAspect}
+            ariaLabel='Aspect ratio'
+          />
+        </div>
+        <div class='cw-field'>
+          <span class='cw-field-label'>Background</span>
+          <Segmented
+            options={BACKGROUND_OPTIONS}
+            selected={model.background()}
+            onSelect={model.setBackground}
+            ariaLabel='Background'
+          />
+        </div>
+        <label class='cw-field'>
+          <span class='cw-field-label'>
+            Rows <b>{model.rows()}</b>
+          </span>
+          <input
+            type='range'
+            min='2'
+            max={MAX_ROWS}
+            step='1'
+            value={model.rows()}
+            onInput={e => model.setRows(Number(e.currentTarget.value))}
+          />
+        </label>
+        <label class='cw-field'>
+          <span class='cw-field-label'>
+            Cards per row <b>{model.cardsPerRow()}</b>
+          </span>
+          <input
+            type='range'
+            min='3'
+            max='14'
+            step='1'
+            value={model.cardsPerRow()}
+            onInput={e => model.setCardsPerRow(Number(e.currentTarget.value))}
+          />
+        </label>
+        <label class='cw-field'>
+          <span class='cw-field-label'>
+            Loop <b>{formatLoop(model.loopSeconds())}</b>
+          </span>
+          <input
+            type='range'
+            min='2'
+            max='60'
+            step='0.5'
+            value={model.loopSeconds()}
+            onInput={e => model.setLoopSeconds(Number(e.currentTarget.value))}
+          />
+        </label>
+        <label class='cw-field'>
+          <span class='cw-field-label'>
+            Card size <b>{Math.round(model.cardScale() * 100)}%</b>
+          </span>
+          <input
+            type='range'
+            min='0.5'
+            max='1'
+            step='0.02'
+            value={model.cardScale()}
+            onInput={e => model.setCardScale(Number(e.currentTarget.value))}
+          />
+        </label>
+        <label class='cw-field'>
+          <span class='cw-field-label'>
+            Spacing <b>{Math.round(model.gap() * 100)}%</b>
+          </span>
+          <input
+            type='range'
+            min='0'
+            max='0.4'
+            step='0.01'
+            value={model.gap()}
+            onInput={e => model.setGap(Number(e.currentTarget.value))}
+          />
+        </label>
+        <label class='cw-field'>
+          <span class='cw-field-label'>
+            Blur <b>{model.blur()}</b>
+          </span>
+          <input
+            type='range'
+            min='0'
+            max='40'
+            step='1'
+            value={model.blur()}
+            onInput={e => model.setBlur(Number(e.currentTarget.value))}
+          />
+        </label>
+        <label class='cw-field'>
+          <span class='cw-field-label'>
+            Darken <b>{Math.round(model.darken() * 100)}%</b>
+          </span>
+          <input
+            type='range'
+            min='0'
+            max='0.8'
+            step='0.02'
+            value={model.darken()}
+            onInput={e => model.setDarken(Number(e.currentTarget.value))}
+          />
+        </label>
+      </div>
+
+      <div class='cw-rows'>
+        <For each={model.rowSettings().slice(0, model.rows())}>
+          {(row, i) => (
+            <div class='cw-row'>
+              <span class='cw-row-name'>Row {i() + 1}</span>
+              <div class='segmented' role='group' aria-label={`Row ${i() + 1} direction`}>
+                <button
+                  type='button'
+                  class={row.direction === 'left' ? 'active' : ''}
+                  onClick={() => model.setRow(i(), { direction: 'left' })}
+                >
+                  &larr;
+                </button>
+                <button
+                  type='button'
+                  class={row.direction === 'right' ? 'active' : ''}
+                  onClick={() => model.setRow(i(), { direction: 'right' })}
+                >
+                  &rarr;
+                </button>
+              </div>
+              <div class='segmented' role='group' aria-label={`Row ${i() + 1} speed`}>
+                <For each={[1, 2, 3]}>
+                  {lap => (
+                    <button
+                      type='button'
+                      class={row.laps === lap ? 'active' : ''}
+                      onClick={() => model.setRow(i(), { laps: lap })}
+                    >
+                      {lap}&times;
+                    </button>
+                  )}
+                </For>
+              </div>
+            </div>
+          )}
+        </For>
+      </div>
+    </>
+  );
+}
+
+function WallCards(model: CardWallModel) {
+  return (
+    <>
+      <div class='cw-cards'>
+        <div class='cw-cards-head'>
+          <span class='cw-field-label'>Cards</span>
+          <span class='cw-readout'>
+            {model.onWall()} of {WALL_ROSTER.length - model.off().size} on {model.slots()} slots
+            <Show when={model.always().size > 0}> · {model.always().size} always</Show>
+          </span>
+          <div class='cw-cards-actions'>
+            <button
+              type='button'
+              class='btn btn-ghost'
+              onClick={() => model.setOffRaw('')}
+              disabled={model.off().size === 0}
+            >
+              Use all
+            </button>
+            <button
+              type='button'
+              class='btn btn-ghost'
+              onClick={() => model.setAlwaysRaw('')}
+              disabled={model.always().size === 0}
+            >
+              Clear always
+            </button>
+          </div>
+        </div>
+        <Show when={model.always().size > model.slots()}>
+          <p class='cw-error' role='status'>
+            {model.always().size} cards are set to always appear, but the wall only has {model.slots()} slots. Add rows
+            or cards per row, or some of them will still miss out.
+          </p>
+        </Show>
+        <div class='cw-card-grid'>
+          <For each={WALL_ROSTER}>
+            {card => {
+              const key = cardKey(card);
+              return (
+                <div
+                  class='cw-card'
+                  classList={{ 'is-off': model.off().has(key), 'is-always': model.always().has(key) }}
+                >
+                  <button
+                    type='button'
+                    class='cw-card-pin'
+                    aria-pressed={model.always().has(key)}
+                    aria-label={`Always include ${card.name}`}
+                    title='Always include this card'
+                    onClick={() => model.setAlwaysRaw(prev => toggleKey(prev, key))}
+                  />
+                  <button
+                    type='button'
+                    class='cw-card-name'
+                    aria-pressed={!model.off().has(key)}
+                    onClick={() => model.setOffRaw(prev => toggleKey(prev, key))}
+                  >
+                    {card.name}
+                  </button>
+                </div>
+              );
+            }}
+          </For>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function WallExport(model: CardWallModel) {
+  return (
+    <>
+      <div class='cw-export'>
+        <div class='cw-field'>
+          <span class='cw-field-label'>Format</span>
+          <Segmented
+            options={FORMAT_OPTIONS}
+            selected={model.format()}
+            onSelect={model.setFormat}
+            ariaLabel='Export format'
+          />
+        </div>
+        <div class='cw-field'>
+          <span class='cw-field-label'>
+            Size{' '}
+            <b>
+              {model.exportWidth()}&times;{model.exportHeight()}
+            </b>
+          </span>
+          <Segmented
+            options={WIDTH_OPTIONS.map(w => ({ value: String(w), label: String(w) }))}
+            selected={String(model.exportWidth())}
+            onSelect={value => model.setExportWidth(Number(value))}
+            ariaLabel='Export width'
+          />
+        </div>
+        <div class='cw-field'>
+          <span class='cw-field-label'>Frame rate</span>
+          <Segmented
+            options={(model.format() === 'gif' ? GIF_FPS_OPTIONS : VIDEO_FPS_OPTIONS).map(f => ({
+              value: String(f),
+              label: String(f)
+            }))}
+            selected={String(model.fps())}
+            onSelect={value =>
+              model.format() === 'gif' ? model.setGifFps(Number(value)) : model.setVideoFps(Number(value))
+            }
+            ariaLabel='Frames per second'
+          />
+        </div>
+        <Show when={model.format() === 'gif'}>
+          <div class='cw-field'>
+            <span class='cw-field-label'>Colours</span>
+            <Segmented
+              options={COLOR_OPTIONS.map(c => ({ value: String(c), label: String(c) }))}
+              selected={String(model.colors())}
+              onSelect={value => model.setColors(Number(value))}
+              ariaLabel='Colours in the GIF palette'
+            />
+          </div>
+        </Show>
+        <Show when={model.format() === 'video'}>
+          <label class='cw-field'>
+            <span class='cw-field-label'>
+              Loops <b>{model.loops()}</b>
+            </span>
+            <input
+              type='range'
+              min='1'
+              max='6'
+              step='1'
+              value={model.loops()}
+              onInput={e => model.setLoops(Number(e.currentTarget.value))}
+            />
+          </label>
+        </Show>
+        <div class='cw-export-action'>
+          <button
+            type='button'
+            class='btn btn-primary'
+            disabled={!model.ready()}
+            onClick={() => void model.runExport()}
+          >
+            {model.busy() ? 'Cancel' : 'Export'}
+          </button>
+          <Show when={model.busy()}>
+            <span class='cw-readout'>{Math.round(model.progress() * 100)}%</span>
+          </Show>
+          <Show when={model.format() === 'video' && model.busy()}>
+            <span class='cw-readout'>recording in real time</span>
+          </Show>
+          <Show when={!model.busy() && model.lastSize() !== null}>
+            <span class='cw-readout'>{(model.lastSize()! / 1_000_000).toFixed(1)} MB</span>
+          </Show>
+        </div>
+      </div>
+
+      <p class='cw-note muted'>
+        <Show
+          when={model.format() === 'gif'}
+          fallback={
+            <Show
+              when={model.videoOutput()}
+              fallback={
+                <Show
+                  when={model.videoOutput.loading}
+                  fallback={<>This browser can neither encode nor record video — use the GIF export.</>}
+                >
+                  Checking what this browser can encode&hellip;
+                </Show>
+              }
+            >
+              {out => (
+                <>
+                  {formatSeconds(model.scene().loopSeconds * model.loops())} of {out().extension.toUpperCase()} at{' '}
+                  {model.exportWidth()}
+                  &times;{model.exportHeight()}.{' '}
+                  {out().realtime
+                    ? 'This browser has no H.264 encoder, so the clip is recorded as it plays — it takes as long as it runs, and the tab has to stay in front.'
+                    : 'Encoded offline, so it finishes faster than it plays.'}
+                </>
+              )}
+            </Show>
+          }
+        >
+          {model.frameCount()} frames at {model.exportWidth()}&times;{model.exportHeight()}, roughly{' '}
+          {model.estimatedMb() >= 10 ? Math.round(model.estimatedMb()) : model.estimatedMb().toFixed(1)} MB. A shorter
+          loop is a proportionally smaller file; more cards per row just scrolls faster.
+        </Show>
+      </p>
+
+      <Show when={model.error()}>
+        <p class='cw-error' role='alert'>
+          {model.error()}
+        </p>
+      </Show>
+    </>
+  );
+}
+
+export function CardWallPage() {
+  const model = useCardWall();
   return (
     <div class='cw-page'>
       <section class='hero'>
@@ -336,360 +827,40 @@ export function CardWallPage() {
       </section>
 
       <section>
-        <div class='cw-stage-frame' style={{ '--cw-aspect': String(ASPECT[aspect()]) }} ref={stageRef}>
+        <div class='cw-stage-frame' style={{ '--cw-aspect': String(ASPECT[model.aspect()]) }} ref={model.setStageRef}>
           <canvas
             class='cw-canvas'
-            ref={canvasRef}
-            width={stageSize().width}
-            height={stageSize().height}
+            ref={model.setCanvasRef}
+            width={model.stageSize().width}
+            height={model.stageSize().height}
             role='img'
-            aria-label={`${rows()} rows of scrolling Pokemon card art`}
+            aria-label={`${model.rows()} rows of scrolling Pokemon card art`}
           />
-          <Show when={!ready()}>
+          <Show when={!model.ready()}>
             <div class='cw-loading'>
-              {loadedCount()} / {WALL_ROSTER.length}
+              {model.loadedCount()} / {WALL_ROSTER.length}
             </div>
           </Show>
         </div>
 
         <div class='cw-stage-bar'>
-          <button type='button' class='btn btn-secondary' onClick={() => setPlaying(p => !p)}>
-            {playing() ? 'Pause' : 'Play'}
+          <button type='button' class='btn btn-secondary' onClick={() => model.setPlaying(p => !p)}>
+            {model.playing() ? 'Pause' : 'Play'}
           </button>
-          <button type='button' class='btn btn-secondary' onClick={() => setSeed(s => s + 1)}>
+          <button type='button' class='btn btn-secondary' onClick={() => model.setSeed(s => s + 1)}>
             Shuffle
           </button>
           <span class='cw-readout'>
-            {scene().cardsPerSecond.toFixed(1)} cards/sec
-            <Show when={format() === 'gif'}> · {frameCount()} frames</Show>
+            {model.scene().cardsPerSecond.toFixed(1)} cards/sec
+            <Show when={model.format() === 'gif'}> · {model.frameCount()} frames</Show>
           </span>
         </div>
       </section>
 
       <section class='cw-panel'>
-        <div class='cw-presets'>
-          <For each={PRESETS}>
-            {preset => (
-              <button type='button' class='btn btn-ghost' onClick={() => applyPreset(preset)}>
-                {preset.label}
-              </button>
-            )}
-          </For>
-        </div>
-
-        <div class='cw-fields'>
-          <div class='cw-field'>
-            <span class='cw-field-label'>Shape</span>
-            <Segmented options={ASPECT_OPTIONS} selected={aspect()} onSelect={setAspect} ariaLabel='Aspect ratio' />
-          </div>
-          <div class='cw-field'>
-            <span class='cw-field-label'>Background</span>
-            <Segmented
-              options={BACKGROUND_OPTIONS}
-              selected={background()}
-              onSelect={setBackground}
-              ariaLabel='Background'
-            />
-          </div>
-          <label class='cw-field'>
-            <span class='cw-field-label'>
-              Rows <b>{rows()}</b>
-            </span>
-            <input
-              type='range'
-              min='2'
-              max={MAX_ROWS}
-              step='1'
-              value={rows()}
-              onInput={e => setRows(Number(e.currentTarget.value))}
-            />
-          </label>
-          <label class='cw-field'>
-            <span class='cw-field-label'>
-              Cards per row <b>{cardsPerRow()}</b>
-            </span>
-            <input
-              type='range'
-              min='3'
-              max='14'
-              step='1'
-              value={cardsPerRow()}
-              onInput={e => setCardsPerRow(Number(e.currentTarget.value))}
-            />
-          </label>
-          <label class='cw-field'>
-            <span class='cw-field-label'>
-              Loop <b>{formatLoop(loopSeconds())}</b>
-            </span>
-            <input
-              type='range'
-              min='2'
-              max='60'
-              step='0.5'
-              value={loopSeconds()}
-              onInput={e => setLoopSeconds(Number(e.currentTarget.value))}
-            />
-          </label>
-          <label class='cw-field'>
-            <span class='cw-field-label'>
-              Card size <b>{Math.round(cardScale() * 100)}%</b>
-            </span>
-            <input
-              type='range'
-              min='0.5'
-              max='1'
-              step='0.02'
-              value={cardScale()}
-              onInput={e => setCardScale(Number(e.currentTarget.value))}
-            />
-          </label>
-          <label class='cw-field'>
-            <span class='cw-field-label'>
-              Spacing <b>{Math.round(gap() * 100)}%</b>
-            </span>
-            <input
-              type='range'
-              min='0'
-              max='0.4'
-              step='0.01'
-              value={gap()}
-              onInput={e => setGap(Number(e.currentTarget.value))}
-            />
-          </label>
-          <label class='cw-field'>
-            <span class='cw-field-label'>
-              Blur <b>{blur()}</b>
-            </span>
-            <input
-              type='range'
-              min='0'
-              max='40'
-              step='1'
-              value={blur()}
-              onInput={e => setBlur(Number(e.currentTarget.value))}
-            />
-          </label>
-          <label class='cw-field'>
-            <span class='cw-field-label'>
-              Darken <b>{Math.round(darken() * 100)}%</b>
-            </span>
-            <input
-              type='range'
-              min='0'
-              max='0.8'
-              step='0.02'
-              value={darken()}
-              onInput={e => setDarken(Number(e.currentTarget.value))}
-            />
-          </label>
-        </div>
-
-        <div class='cw-rows'>
-          <For each={rowSettings().slice(0, rows())}>
-            {(row, i) => (
-              <div class='cw-row'>
-                <span class='cw-row-name'>Row {i() + 1}</span>
-                <div class='segmented' role='group' aria-label={`Row ${i() + 1} direction`}>
-                  <button
-                    type='button'
-                    class={row.direction === 'left' ? 'active' : ''}
-                    onClick={() => setRow(i(), { direction: 'left' })}
-                  >
-                    &larr;
-                  </button>
-                  <button
-                    type='button'
-                    class={row.direction === 'right' ? 'active' : ''}
-                    onClick={() => setRow(i(), { direction: 'right' })}
-                  >
-                    &rarr;
-                  </button>
-                </div>
-                <div class='segmented' role='group' aria-label={`Row ${i() + 1} speed`}>
-                  <For each={[1, 2, 3]}>
-                    {lap => (
-                      <button
-                        type='button'
-                        class={row.laps === lap ? 'active' : ''}
-                        onClick={() => setRow(i(), { laps: lap })}
-                      >
-                        {lap}&times;
-                      </button>
-                    )}
-                  </For>
-                </div>
-              </div>
-            )}
-          </For>
-        </div>
-
-        <div class='cw-cards'>
-          <div class='cw-cards-head'>
-            <span class='cw-field-label'>Cards</span>
-            <span class='cw-readout'>
-              {onWall()} of {WALL_ROSTER.length - off().size} on {slots()} slots
-              <Show when={always().size > 0}> · {always().size} always</Show>
-            </span>
-            <div class='cw-cards-actions'>
-              <button type='button' class='btn btn-ghost' onClick={() => setOffRaw('')} disabled={off().size === 0}>
-                Use all
-              </button>
-              <button
-                type='button'
-                class='btn btn-ghost'
-                onClick={() => setAlwaysRaw('')}
-                disabled={always().size === 0}
-              >
-                Clear always
-              </button>
-            </div>
-          </div>
-          <Show when={always().size > slots()}>
-            <p class='cw-error' role='status'>
-              {always().size} cards are set to always appear, but the wall only has {slots()} slots. Add rows or cards
-              per row, or some of them will still miss out.
-            </p>
-          </Show>
-          <div class='cw-card-grid'>
-            <For each={WALL_ROSTER}>
-              {card => {
-                const key = cardKey(card);
-                return (
-                  <div class='cw-card' classList={{ 'is-off': off().has(key), 'is-always': always().has(key) }}>
-                    <button
-                      type='button'
-                      class='cw-card-pin'
-                      aria-pressed={always().has(key)}
-                      aria-label={`Always include ${card.name}`}
-                      title='Always include this card'
-                      onClick={() => setAlwaysRaw(prev => toggleKey(prev, key))}
-                    />
-                    <button
-                      type='button'
-                      class='cw-card-name'
-                      aria-pressed={!off().has(key)}
-                      onClick={() => setOffRaw(prev => toggleKey(prev, key))}
-                    >
-                      {card.name}
-                    </button>
-                  </div>
-                );
-              }}
-            </For>
-          </div>
-        </div>
-
-        <div class='cw-export'>
-          <div class='cw-field'>
-            <span class='cw-field-label'>Format</span>
-            <Segmented options={FORMAT_OPTIONS} selected={format()} onSelect={setFormat} ariaLabel='Export format' />
-          </div>
-          <div class='cw-field'>
-            <span class='cw-field-label'>
-              Size{' '}
-              <b>
-                {exportWidth()}&times;{exportHeight()}
-              </b>
-            </span>
-            <Segmented
-              options={WIDTH_OPTIONS.map(w => ({ value: String(w), label: String(w) }))}
-              selected={String(exportWidth())}
-              onSelect={value => setExportWidth(Number(value))}
-              ariaLabel='Export width'
-            />
-          </div>
-          <div class='cw-field'>
-            <span class='cw-field-label'>Frame rate</span>
-            <Segmented
-              options={(format() === 'gif' ? GIF_FPS_OPTIONS : VIDEO_FPS_OPTIONS).map(f => ({
-                value: String(f),
-                label: String(f)
-              }))}
-              selected={String(fps())}
-              onSelect={value => (format() === 'gif' ? setGifFps(Number(value)) : setVideoFps(Number(value)))}
-              ariaLabel='Frames per second'
-            />
-          </div>
-          <Show when={format() === 'gif'}>
-            <div class='cw-field'>
-              <span class='cw-field-label'>Colours</span>
-              <Segmented
-                options={COLOR_OPTIONS.map(c => ({ value: String(c), label: String(c) }))}
-                selected={String(colors())}
-                onSelect={value => setColors(Number(value))}
-                ariaLabel='Colours in the GIF palette'
-              />
-            </div>
-          </Show>
-          <Show when={format() === 'video'}>
-            <label class='cw-field'>
-              <span class='cw-field-label'>
-                Loops <b>{loops()}</b>
-              </span>
-              <input
-                type='range'
-                min='1'
-                max='6'
-                step='1'
-                value={loops()}
-                onInput={e => setLoops(Number(e.currentTarget.value))}
-              />
-            </label>
-          </Show>
-          <div class='cw-export-action'>
-            <button type='button' class='btn btn-primary' disabled={!ready()} onClick={() => void runExport()}>
-              {busy() ? 'Cancel' : 'Export'}
-            </button>
-            <Show when={busy()}>
-              <span class='cw-readout'>{Math.round(progress() * 100)}%</span>
-            </Show>
-            <Show when={format() === 'video' && busy()}>
-              <span class='cw-readout'>recording in real time</span>
-            </Show>
-            <Show when={!busy() && lastSize() !== null}>
-              <span class='cw-readout'>{(lastSize()! / 1_000_000).toFixed(1)} MB</span>
-            </Show>
-          </div>
-        </div>
-
-        <p class='cw-note muted'>
-          <Show
-            when={format() === 'gif'}
-            fallback={
-              <Show
-                when={videoOutput()}
-                fallback={
-                  <Show
-                    when={videoOutput.loading}
-                    fallback={<>This browser can neither encode nor record video — use the GIF export.</>}
-                  >
-                    Checking what this browser can encode&hellip;
-                  </Show>
-                }
-              >
-                {out => (
-                  <>
-                    {formatSeconds(scene().loopSeconds * loops())} of {out().extension.toUpperCase()} at {exportWidth()}
-                    &times;{exportHeight()}.{' '}
-                    {out().realtime
-                      ? 'This browser has no H.264 encoder, so the clip is recorded as it plays — it takes as long as it runs, and the tab has to stay in front.'
-                      : 'Encoded offline, so it finishes faster than it plays.'}
-                  </>
-                )}
-              </Show>
-            }
-          >
-            {frameCount()} frames at {exportWidth()}&times;{exportHeight()}, roughly{' '}
-            {estimatedMb() >= 10 ? Math.round(estimatedMb()) : estimatedMb().toFixed(1)} MB. A shorter loop is a
-            proportionally smaller file; more cards per row just scrolls faster.
-          </Show>
-        </p>
-
-        <Show when={error()}>
-          <p class='cw-error' role='alert'>
-            {error()}
-          </p>
-        </Show>
+        <WallControls {...model} />
+        <WallCards {...model} />
+        <WallExport {...model} />
       </section>
     </div>
   );

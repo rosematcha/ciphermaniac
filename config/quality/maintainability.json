@@ -249,9 +249,6 @@
   "src/lib/tierList/rowSortable.ts": [
     "max-lines-per-function:36ca0164f47d31e788d107fbdee3d2b89fb538508e381195a23a64f13cecaf11:Function 'installRowSortable' has too many lines (177). Maximum allowed is 100."
   ],
-  "src/pages/CardWallPage.tsx": [
-    "max-lines-per-function:f2b45c43acf3564f26c13a2599507d7a46801cc512f8533846b375961b97997f:Function 'CardWallPage' has too many lines (538). Maximum allowed is 250."
-  ],
   "src/pages/CardsIndexPage.tsx": [
     "max-lines-per-function:2938348800b6dfeb19ed683d7e48c320157cb1a5399c1d6827d71c87892fc912:Function 'CardsIndexPage' has too many lines (441). Maximum allowed is 250."
   ],
