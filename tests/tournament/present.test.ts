@@ -364,7 +364,32 @@ test('against a plan, the status counts the Swiss rounds, and names a round past
 });
 
 /** A pod of `n` players, for the plan: only its size counts. */
-const podOf = (n: number): Pod => ({ ...pod, playerIds: Array.from({ length: n }, (_, i) => String(i + 1)) });
+const podOf = (n: number): Pod => ({
+  ...pod,
+  rounds: [],
+  playerIds: Array.from({ length: n }, (_, i) => String(i + 1))
+});
+
+/** `pod` with round 1 paired among its players, then `late` more added with that round missed. */
+function lateTo(start: Pod, late: number): Pod {
+  const ids = start.playerIds;
+  const seated = Array.from({ length: ids.length / 2 }, (_, i) => ({
+    table: i + 1,
+    p1: ids[i * 2] as string,
+    p2: ids[i * 2 + 1] as string,
+    outcome: 'pending' as const,
+    timestamp: ''
+  }));
+  const added = Array.from({ length: late }, (_, i) => `late-${i}`);
+  const missed = added.map(id => ({ table: 0, p1: id, p2: null, outcome: 'loss' as const, timestamp: '' }));
+  const round = {
+    ...(CHALLENGE.pods[0]?.rounds[0] as Round),
+    number: 1,
+    kind: 'swiss' as const,
+    matches: [...seated, ...missed]
+  };
+  return { ...start, playerIds: [...ids, ...added], rounds: [round] };
+}
 
 /** A tournament of `n` players, the first `dropped` of them dropped. */
 const fieldOf = (n: number, dropped = 0): Tournament => ({
@@ -381,6 +406,7 @@ test('the rounds are Play! Pokémon’s structure for the attendance, held to th
   assert.equal(plannedRounds(podOf(16), 3), 3, 'a league that plays three rounds');
   assert.equal(plannedRounds(podOf(6), 5), 3, 'a cap above the structure changes nothing');
   assert.equal(plannedRounds(podOf(40), 0), 6);
+  assert.equal(plannedRounds(lateTo(podOf(8), 1), 0), 3, 'a player added after round 1 does not count');
   assert.equal(roundCapOf({ mode: 'tom', settings: { ...DEFAULT_SETTINGS, roundCap: 3 } }), null);
   assert.equal(roundCapOf({ mode: 'swiss', settings: { ...DEFAULT_SETTINGS, roundCap: 3 } }), 3);
 });

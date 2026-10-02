@@ -64,7 +64,11 @@ export interface Player {
   birthDate: string;
   /** Set after the round the player dropped in; null while they are still playing. */
   droppedAfter: number | null;
-  /** Joined after the first round was paired; ranks below on-time players on the same points. */
+  /**
+   * Tagged late in TOM (its "Is late?" box); ranks below other players on the
+   * same points. A player the site adds mid-event is not tagged: their missed
+   * rounds are losses instead (see joinedLate in rounds.ts).
+   */
   late?: boolean;
   /**
    * The table this player sits at every round, for a player who cannot move

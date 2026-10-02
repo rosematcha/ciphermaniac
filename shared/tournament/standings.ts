@@ -3,8 +3,9 @@
  * (Sept 2026, §5.3, §5.5.2, §5.6.1).
  *
  * Players rank by match points (three for a win or a bye, one for a tie). A
- * player who joined late ranks below everyone on time with the same points.
- * Then opponents' win percentage (OWP), then opponents' opponents' (OOWP, the
+ * player TOM tagged late ranks below everyone else on the same points, as TOM
+ * ranks them; the site never tags one (see newPlayer in commands.ts). Then
+ * opponents' win percentage (OWP), then opponents' opponents' (OOWP, the
  * mean of each opponent's OWP), then head-to-head when exactly two players are
  * still level and met.
  *
@@ -12,6 +13,10 @@
  * floored at 25% and capped at 100%, or 75% for a player who dropped. A bye is
  * a win on the record but neither a win nor a round in the percentage, and it
  * gives no opponent to average. A round a late entrant missed is a loss.
+ *
+ * A player who dropped keeps the OWP and OOWP they had when they dropped, as
+ * TOM ranks them: replayed over 51 divisions TOM finalized, this is the only
+ * reading that places every dropped player where TOM did.
  *
  * Only Swiss rounds count here. A top cut is placed by its own bracket, and
  * `placeFinals` lays those places over the Swiss order.
@@ -142,9 +147,10 @@ function average(values: readonly number[]): number {
 const EPSILON = 1e-9;
 
 /**
- * The order two players rank in. The handbook ends on a random draw; this
- * ends on roster order instead, which is as arbitrary but is the same in the
- * organizer's copy and the public one, whose player IDs differ.
+ * The order two players rank in. The handbook ends on a random draw; TOM
+ * ends on the order players were registered (the .tdf's player list), and so
+ * does this, which also keeps the organizer's copy and the public one, whose
+ * player IDs differ, in the same order.
  */
 function compareStandings(order: ReadonlyMap<string, number>) {
   const byRate = (x: number, y: number) => (Math.abs(x - y) < EPSILON ? 0 : y - x);
@@ -178,6 +184,20 @@ function headToHead(rows: Row[], tallies: Map<string, Tally>): Row[] {
   return out;
 }
 
+/** Everyone's OWP and OOWP over the Swiss rounds through one round. */
+interface Tiebreakers {
+  owp: ReadonlyMap<string, number>;
+  oowp: ReadonlyMap<string, number>;
+}
+
+function tiebreakersThrough(pod: Pod, dropped: (id: string) => boolean, throughRound?: number): Tiebreakers {
+  const tallies = tallySwiss(pod, throughRound);
+  const rate = new Map([...tallies].map(([id, tally]) => [id, winRate(tally, dropped(id))]));
+  const owp = new Map([...tallies].map(([id, tally]) => [id, average(tally.opponents.map(o => rate.get(o) ?? 0))]));
+  const oowp = new Map([...tallies].map(([id, tally]) => [id, average(tally.opponents.map(o => owp.get(o) ?? 0))]));
+  return { owp, oowp };
+}
+
 export interface StandingsOptions {
   throughRound?: number;
   /** Rank only these players (one division of a combined pod); everyone still counts as an opponent. */
@@ -188,21 +208,33 @@ export interface StandingsOptions {
 export function swissStandings(pod: Pod, players: readonly Player[], options: StandingsOptions = {}): Standing[] {
   const tallies = tallySwiss(pod, options.throughRound);
   const byId = new Map(players.map(player => [player.id, player]));
-  const dropped = (id: string) => (byId.get(id)?.droppedAfter ?? null) !== null;
-  const rate = new Map([...tallies].map(([id, tally]) => [id, winRate(tally, dropped(id))]));
-  const owp = new Map([...tallies].map(([id, tally]) => [id, average(tally.opponents.map(o => rate.get(o) ?? 0))]));
+  const droppedAfter = (id: string) => byId.get(id)?.droppedAfter ?? null;
+  const dropped = (id: string) => droppedAfter(id) !== null;
+  const now = tiebreakersThrough(pod, dropped, options.throughRound);
+  const frozen = new Map<number, Tiebreakers>();
+  /** The tiebreakers a player ranks on: as they stood when they dropped, or as they stand. */
+  const tiebreakersOf = (id: string): Tiebreakers => {
+    const at = droppedAfter(id);
+    if (at === null || at >= (options.throughRound ?? Infinity)) {
+      return now;
+    }
+    // As they stood then: a player who dropped later was still in, so not yet capped at 75%.
+    const kept = frozen.get(at) ?? tiebreakersThrough(pod, other => (droppedAfter(other) ?? Infinity) <= at, at);
+    frozen.set(at, kept);
+    return kept;
+  };
   const rows: Row[] = [...tallies]
     .filter(([id]) => !options.only || options.only.has(id))
     .map(([id, tally]) => ({
       playerId: id,
       record: tally.record,
       points: matchPoints(tally.record),
-      owp: owp.get(id) ?? 0,
-      oowp: average(tally.opponents.map(o => owp.get(o) ?? 0)),
+      owp: tiebreakersOf(id).owp.get(id) ?? 0,
+      oowp: tiebreakersOf(id).oowp.get(id) ?? 0,
       dropped: dropped(id),
       late: byId.get(id)?.late === true
     }));
-  const order = new Map(pod.playerIds.map((id, i) => [id, i]));
+  const order = new Map(players.map((player, i) => [player.id, i]));
   return headToHead(rows.sort(compareStandings(order)), tallies).map((row, i) => ({ ...row, place: i + 1 }));
 }
 

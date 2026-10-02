@@ -25,7 +25,7 @@ import {
   swissStandings,
   tallySwiss
 } from '../../../shared/tournament/standings';
-import { cutPodOf, latestRound, livePods } from '../../../shared/tournament/rounds';
+import { cutPodOf, latestRound, livePods, swissAttendance } from '../../../shared/tournament/rounds';
 import { ordinal } from '../format';
 import { recommendedStructure } from '../../../shared/tournament/structure';
 import {
@@ -142,11 +142,11 @@ export function roundCapOf(event: { mode: TournamentMode; settings: TournamentSe
 }
 
 /**
- * The Swiss rounds a pod plans: Play! Pokémon's number for everyone who
- * played in it, held to the event's cap when it sets one.
+ * The Swiss rounds a pod plans: Play! Pokémon's number for its attendance
+ * (see swissAttendance), held to the event's cap when it sets one.
  */
 export function plannedRounds(pod: Pod, roundCap: number): number {
-  const { rounds } = recommendedStructure(pod.playerIds.length);
+  const { rounds } = recommendedStructure(swissAttendance(pod));
   return roundCap > 0 ? Math.min(roundCap, rounds) : rounds;
 }
 

@@ -15,7 +15,7 @@ import { useSearchParams } from '@solidjs/router';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { divisionFor, eventSeason } from '../../../shared/tournament/divisions';
 import { canUndrop } from '../../../shared/tournament/commands';
-import { hasPlayed, hasStarted, playerPod, podOf } from '../../../shared/tournament/rounds';
+import { hasPlayed, hasStarted, joinedLate, playerPod, podOf } from '../../../shared/tournament/rounds';
 import { DIVISION_LABELS, type Player, playerName, type Tournament } from '../../../shared/tournament/types';
 import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
 import { type Manage, releaseReporter } from '../../lib/tournament/api';
@@ -253,7 +253,9 @@ function PlayerRow(props: RowProps) {
       <td class='tm-who'>
         <span class='tm-who-name'>
           <span class='tm-name'>{playerName(props.player)}</span>
-          <Show when={props.player.late}>
+          <Show
+            when={props.player.late || joinedLate(playerPod(props.manage.tournament, props.player.id), props.player.id)}
+          >
             <span class='tm-flag'>Late</span>
           </Show>
           <Show when={props.player.droppedAfter !== null}>

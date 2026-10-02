@@ -215,17 +215,21 @@ function podded(tournament: Tournament, season: number): Tournament {
   return { ...tournament, pods };
 }
 
-/** A player as they join: late once their pod has paired a round, and marked when their decklist added them. */
+/**
+ * A player as they join, marked when their decklist added them. One added
+ * once play has started takes losses for the rounds they missed (see
+ * missedRounds) and is not marked late: the handbook ranks late entrants on
+ * their record like anyone else, and TOM writes a player it adds mid-event
+ * as a starter. Only TOM's own late tag, read from a .tdf, marks one late.
+ */
 function newPlayer(
   fields: Pick<Player, 'id' | 'firstName' | 'lastName' | 'birthDate'> & { fromList?: boolean | undefined },
-  late: boolean,
   ctx: CommandContext
 ): Player {
   const { fromList, ...rest } = fields;
   return {
     ...rest,
     droppedAfter: null,
-    ...(late ? { late: true } : {}),
     ...(fromList ? { fromList: true } : {}),
     created: ctx.localTime,
     modified: ctx.localTime
@@ -249,14 +253,14 @@ function addPlayer(tournament: Tournament, input: NewPlayer, ctx: CommandContext
   const fields = { id, firstName, lastName, birthDate, fromList: input.fromList };
   if (!hasStarted(tournament)) {
     // Every roster change before round 1 pods the field again (see podded), so any pod will do.
-    const player = newPlayer(fields, false, ctx);
+    const player = newPlayer(fields, ctx);
     return done({ ...tournament, players: [...tournament.players, player] });
   }
   const { pod, replaces } = podFor(tournament, divisionFor(birthDate, ctx.season));
   if (tournament.pods.some(p => p.cutOf === pod.category || (replaces && p.cutOf === replaces.category))) {
     return fail('Their division’s Swiss rounds are over; the top cuts are under way');
   }
-  const player = newPlayer(fields, pod.rounds.length > 0, ctx);
+  const player = newPlayer(fields, ctx);
   const joined = missedRounds(pod, id, ctx.localTime);
   const pods = replaces ? tournament.pods.map(p => (p === replaces ? joined : p)) : [...tournament.pods, joined];
   return done({ ...tournament, players: [...tournament.players, player], pods });
@@ -482,21 +486,7 @@ function deleteRound(tournament: Tournament, category: PodCategory): CommandResu
     // A division's top cut with no round left has not started: its division is back where the Swiss left it.
     return done({ ...tournament, pods: tournament.pods.filter(p => p !== pod) });
   }
-  const next = withPod(tournament, { ...pod, rounds, cut: rounds.some(r => r.kind === 'elimination') ? pod.cut : 0 });
-  return done(rounds.length > 0 ? next : onTime(next, pod));
-}
-
-/** With no round left in the pod, nobody in it joined after one was paired. */
-function onTime(tournament: Tournament, pod: Pod): Tournament {
-  const inPod = new Set(pod.playerIds);
-  const players = tournament.players.map(player => {
-    if (!player.late || !inPod.has(player.id)) {
-      return player;
-    }
-    const { late: _late, ...onTimeNow } = player;
-    return onTimeNow;
-  });
-  return { ...tournament, players };
+  return done(withPod(tournament, { ...pod, rounds, cut: rounds.some(r => r.kind === 'elimination') ? pod.cut : 0 }));
 }
 
 function outcomeError(round: Round, match: Match, outcome: Outcome): string | null {

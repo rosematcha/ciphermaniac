@@ -10,6 +10,7 @@
 
 import { useNavigate } from '@solidjs/router';
 import { createResource, createSignal, For, type JSX, Show } from 'solid-js';
+import { swissAttendance } from '../../../shared/tournament/rounds';
 import { recommendedStructure } from '../../../shared/tournament/structure';
 import { isSanctioned, SETTINGS_LIMITS, type TournamentSettings } from '../../../shared/tournament/view';
 import {
@@ -71,7 +72,7 @@ function SettingsBox(props: {
  */
 function recommendedRounds(manage: Manage): number | undefined {
   const [pod, ...others] = manage.tournament.pods;
-  return pod && others.length === 0 ? recommendedStructure(pod.playerIds.length).rounds : undefined;
+  return pod && others.length === 0 ? recommendedStructure(swissAttendance(pod)).rounds : undefined;
 }
 
 function EventDetails(props: { state: ManageState; manage: Manage }) {
