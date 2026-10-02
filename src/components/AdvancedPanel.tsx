@@ -36,6 +36,7 @@ import {
   type PersistedRule,
   type Rule
 } from '../utils/buildState';
+import { latestValue, resolved } from '../lib/resource';
 import { CardList, type CardListItem, type ViewMode } from './CardList';
 import { EmptyState } from './EmptyState';
 import { Skeleton } from './Skeleton';
@@ -71,12 +72,24 @@ interface AdvancedPanelProps {
   viewMode: ViewMode;
 }
 
-function useAdvancedPanel(props: AdvancedPanelProps) {
+/** The panel's fetched data, read without suspending (see lib/resource.ts). */
+function usePanelData(props: AdvancedPanelProps) {
   const [decks] = createResource(
     () => ({ t: props.tournament, slug: props.slug }),
     ({ t, slug }) => fetchArchetypeDecks(t, slug)
   );
   const [synonymDb] = createResource(() => getSynonymDatabase());
+  return {
+    // Archetype-keyed: a slug change shows the skeleton, not the old decks.
+    decks: () => resolved(decks),
+    decksLoading: () => decks.loading,
+    // Global, so a refetch keeps the table it already has.
+    synonyms: () => latestValue(synonymDb)
+  };
+}
+
+function useAdvancedPanel(props: AdvancedPanelProps) {
+  const data = usePanelData(props);
 
   // Defer cached-data aggregation until after the shell's first paint.
   const [painted, setPainted] = createSignal(false);
@@ -89,8 +102,8 @@ function useAdvancedPanel(props: AdvancedPanelProps) {
     if (!painted()) {
       return undefined;
     }
-    const raw = decks();
-    const db = synonymDb();
+    const raw = data.decks();
+    const db = data.synonyms();
     if (!raw) {
       return raw;
     }
@@ -102,7 +115,7 @@ function useAdvancedPanel(props: AdvancedPanelProps) {
   });
 
   // Index by the global match key used by persisted rules and canonical decks.
-  const itemByCardId = createMemo(() => indexItemsByCardId(props.report.items as CardItem[], synonymDb() ?? null));
+  const itemByCardId = createMemo(() => indexItemsByCardId(props.report.items as CardItem[], data.synonyms() ?? null));
 
   // Derive the baseline from canonical decks so match keys remain aligned.
   const baselinePct = createMemo(() => buildBaselinePct(canonicalDecks() ?? [], props.report.items));
@@ -240,13 +253,13 @@ function useAdvancedPanel(props: AdvancedPanelProps) {
   // ----- Search/autocomplete -----
 
   const candidates = createMemo<CardItem[]>(() =>
-    searchCandidates(props.report.items, search(), new Set(rules().map(r => r.cardId)), synonymDb() ?? null)
+    searchCandidates(props.report.items, search(), new Set(rules().map(r => r.cardId)), data.synonyms() ?? null)
   );
 
   function ruleFromCard(card: { name: string; set?: string; number?: string | number }): Rule {
     return {
       id: nextRuleId(),
-      cardId: buildCanonicalCardId(card, synonymDb() ?? null) ?? buildCardId(card.set as string, card.number),
+      cardId: buildCanonicalCardId(card, data.synonyms() ?? null) ?? buildCardId(card.set as string, card.number),
       name: card.name,
       set: card.set,
       number: card.number,
@@ -577,7 +590,8 @@ function useAdvancedPanel(props: AdvancedPanelProps) {
     copyMsg,
     copyPtcgl,
     cycleOp,
-    decks,
+    decks: data.decks,
+    decksLoading: data.decksLoading,
     displayedItems,
     highlighted,
     matchCount,
@@ -764,10 +778,10 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
 
         <div class='fb-foot'>
           <Show
-            when={!model.decks.loading && model.decks() !== null}
+            when={model.decks()}
             fallback={
               <span class='fb-count fb-count-muted'>
-                <Show when={model.decks.loading} fallback={<>Decks unavailable for this archetype.</>}>
+                <Show when={model.decksLoading()} fallback={<>Decks unavailable for this archetype.</>}>
                   Loading deck data…
                 </Show>
               </span>
@@ -793,9 +807,9 @@ export function AdvancedPanel(props: AdvancedPanelProps) {
       </div>
 
       <Show
-        when={model.decks() !== null && !model.decks.loading}
+        when={model.decks()}
         fallback={
-          <Show when={model.decks.loading} fallback={<EmptyState title='No per-deck data for this archetype yet.' />}>
+          <Show when={model.decksLoading()} fallback={<EmptyState title='No per-deck data for this archetype yet.' />}>
             <div style={{ 'margin-top': '24px' }}>
               <Skeleton height='320px' />
             </div>

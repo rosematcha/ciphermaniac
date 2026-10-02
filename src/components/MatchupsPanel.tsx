@@ -13,7 +13,7 @@ import {
   toneClass
 } from './matchupsPanel/model';
 import { useNavigate } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, For, on, Show } from 'solid-js';
+import { type Accessor, createEffect, createMemo, createResource, createSignal, For, on, Show } from 'solid-js';
 import {
   fetchArchetypeDecks,
   fetchArchetypeMatches,
@@ -33,6 +33,7 @@ import {
   shrunkWinRate,
   summarizeMatchups
 } from '../lib/matchups';
+import { latestValue, resolved } from '../lib/resource';
 import { foldSearch } from '../utils/searchFold';
 import {
   buildLensRows,
@@ -95,10 +96,13 @@ const LENS_FLOOR = 3;
 const CHIP_COUNT = 4;
 /** Tech-card inclusion band (share of lists), mirrored from ArchetypePage's Tech tab. */
 
-/** Whole-number win-rate readout, or an em-dash placeholder for low-sample rows. */
-export function MatchupsPanel(props: MatchupsPanelProps) {
-  const navigate = useNavigate();
-
+/**
+ * The panel's fetched data, read without suspending (see lib/resource.ts).
+ * Everything keyed on the archetype or event uses `resolved`, so a scope change
+ * never pairs the new label with the old event's rows; the synonym table and
+ * the index fallback keep their last value through a refetch.
+ */
+function useMatchupsData(props: MatchupsPanelProps, engaged: Accessor<boolean>) {
   // Field data: the pre-aggregated matrix (majors) or the online matchups map.
   // Both fetches start immediately in parallel — whichever source has data wins
   // (majors: profiles; online: trends) — rather than waiting on profiles first.
@@ -108,18 +112,6 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
     src => fetchArchetypeMatchupsOnline(src.t, src.slug)
   );
   const [indexFallback] = createResource(() => (props.indexEntries ? false : props.tournament), fetchArchetypes);
-  const indexEntries = (): ArchetypeIndexEntry[] => props.indexEntries ?? indexFallback() ?? [];
-  const indexByKey = createMemo(() => buildArchetypeIndexByKey(indexEntries()));
-
-  const [sortBy, setSortBy] = createSignal<SortBy>('winRate');
-
-  // Card lens state.
-  const [engaged, setEngaged] = createSignal(false); // gates the heavy fetches
-  const [lensCard, setLensCard] = createSignal<{ cardId: string; name: string } | null>(null);
-  const [minCopies, setMinCopies] = createSignal(1);
-  const [search, setSearch] = createSignal('');
-  const [highlighted, setHighlighted] = createSignal(0);
-  const [showAllLens, setShowAllLens] = createSignal(false);
 
   // Heavy, lazy resources — only fetched once the lens is engaged.
   const [decks] = createResource(
@@ -137,6 +129,37 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
     () => getSynonymDatabase()
   );
 
+  return {
+    profiles: () => resolved(profiles),
+    online: () => resolved(onlineMatchups),
+    fieldLoading: () => profiles.loading || onlineMatchups.loading,
+    indexEntries: (): ArchetypeIndexEntry[] => props.indexEntries ?? latestValue(indexFallback) ?? [],
+    decks: () => resolved(decks),
+    matches: () => resolved(matches),
+    synonyms: () => latestValue(synonymDb),
+    // A settled-but-empty lens (failed or missing fetch) falls through to its
+    // empty state instead of an endless loading line.
+    lensLoading: () => decks.loading || matches.loading || synonymDb.loading
+  };
+}
+
+/** Whole-number win-rate readout, or an em-dash placeholder for low-sample rows. */
+export function MatchupsPanel(props: MatchupsPanelProps) {
+  const navigate = useNavigate();
+
+  const [sortBy, setSortBy] = createSignal<SortBy>('winRate');
+
+  // Card lens state.
+  const [engaged, setEngaged] = createSignal(false); // gates the heavy fetches
+  const [lensCard, setLensCard] = createSignal<{ cardId: string; name: string } | null>(null);
+  const [minCopies, setMinCopies] = createSignal(1);
+  const [search, setSearch] = createSignal('');
+  const [highlighted, setHighlighted] = createSignal(0);
+  const [showAllLens, setShowAllLens] = createSignal(false);
+
+  const data = useMatchupsData(props, engaged);
+  const indexByKey = createMemo(() => buildArchetypeIndexByKey(data.indexEntries()));
+
   // Reset when the archetype/tournament changes without unmounting.
   createEffect(
     on(
@@ -153,21 +176,22 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
     )
   );
 
-  const isMajors = () => Boolean(profiles());
-  const isOnline = () => !isMajors() && Boolean(onlineMatchups());
+  const isMajors = () => Boolean(data.profiles());
+  const isOnline = () => !isMajors() && Boolean(data.online());
   // Wait for both sources to settle unless majors already has data (the preferred
   // source), so we don't flash the empty state while online is still in flight.
-  const loading = () => (profiles.loading || onlineMatchups.loading) && !isMajors();
+  const loading = () => data.fieldLoading() && !isMajors();
 
   // ---- Field rows — always quality-weighted for majors. Mirror INCLUDED (it now
   // lives in "Rest of the field" and counts toward the overview as an even row).
   const fieldRows = createMemo<FieldRow[]>(() => {
-    const payload = profiles();
+    const payload = data.profiles();
+    const online = data.online();
     const majorsProfile = payload?.profiles.qualityWeighted ?? payload?.profiles.all;
     const cores: MatchupRowCore[] = majorsProfile
       ? rowsFromMajorsProfile(majorsProfile, props.label)
-      : onlineMatchups()
-        ? rowsFromOnlineMatchups(onlineMatchups()!, props.label)
+      : online
+        ? rowsFromOnlineMatchups(online, props.label)
         : [];
     const base = cores.map(core => {
       const meta = resolveOpponentMeta(core.opponentLabel, indexByKey());
@@ -228,8 +252,8 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
 
   // ---- Lens rows ----
   const lensDecks = createMemo(() => {
-    const raw = decks();
-    return raw ? canonicalizeForLens(raw, synonymDb()) : null;
+    const raw = data.decks();
+    return raw ? canonicalizeForLens(raw, data.synonyms()) : null;
   });
 
   const lensCopies = createMemo(() => {
@@ -243,7 +267,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
 
   const lensTallies = createMemo(() => {
     const copies = lensCopies();
-    const ms = matches();
+    const ms = data.matches();
     if (!copies || !ms) {
       return null;
     }
@@ -251,7 +275,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
     return { part, ...tallyLens(ms, part) };
   });
 
-  const lensLoading = () => Boolean(lensCard()) && !lensTallies();
+  const lensLoading = () => Boolean(lensCard()) && data.lensLoading();
 
   const lensOverall = createMemo(() => {
     const t = lensTallies();
@@ -308,7 +332,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
   // ---- Suggested tech-card chips (reuse the Tech tab's source: report items in
   // the 30-90% inclusion band, most-played first). Empty → search-only fallback.
   const techSuggestions = createMemo<TechSuggestion[]>(() =>
-    suggestTechCards(props.report.items as CardItem[], synonymDb() ?? null, CHIP_COUNT)
+    suggestTechCards(props.report.items as CardItem[], data.synonyms() ?? null, CHIP_COUNT)
   );
 
   // ---- Card search ----
@@ -332,7 +356,7 @@ export function MatchupsPanel(props: MatchupsPanelProps) {
     if (!item.set || item.number === undefined || item.number === null) {
       return;
     }
-    pickCard(buildCanonicalCardId(item, synonymDb() ?? null) ?? buildCardId(item.set, item.number), item.name);
+    pickCard(buildCanonicalCardId(item, data.synonyms() ?? null) ?? buildCardId(item.set, item.number), item.name);
   }
   function clearLens() {
     setLensCard(null);

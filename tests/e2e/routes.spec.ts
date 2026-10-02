@@ -272,6 +272,94 @@ test('archetype matchups show ranges for rows and the card lens', async ({ page 
   await expect(page.locator('.r2-lens-hint')).toContainText('95% interval');
 });
 
+/** Hold every request matching `pattern` until the returned release is called. */
+async function holdRequests(page: import('@playwright/test').Page, pattern: string): Promise<() => Promise<void>> {
+  const held: Route[] = [];
+  let released = false;
+  await page.route(pattern, route => (released ? route.continue() : void held.push(route)));
+  return async () => {
+    released = true;
+    await Promise.all(held.splice(0).map(route => route.continue()));
+  };
+}
+
+/**
+ * Scroll the archetype tabs up under the sticky nav and open `tab`. Returns the
+ * scroll offset the switch has to keep.
+ */
+async function openArchetypeTab(page: import('@playwright/test').Page, tab: string): Promise<number> {
+  // Short enough that a panel's loading state still leaves room for the
+  // offset; a page collapsed to the app fallback does not, and clamps it.
+  await page.setViewportSize({ width: 1280, height: 480 });
+  await expect(page.locator('.card-tile, .card-row, [data-card]').first()).toBeVisible({ timeout: 10_000 });
+  const scrollY = await page.evaluate(() => {
+    // Clear of the nav, or the click would scroll the tab out from under it.
+    const navBottom = document.querySelector('.topnav')!.getBoundingClientRect().bottom;
+    const toolbar = document.querySelector('.arche-toolbar')!;
+    window.scrollTo(0, toolbar.getBoundingClientRect().top + window.scrollY - navBottom - 8);
+    return window.scrollY;
+  });
+  expect(scrollY, 'the hero should push the tabs below the fold').toBeGreaterThan(0);
+  await page.getByRole('tab', { name: tab, exact: true }).click();
+  return scrollY;
+}
+
+/** The page shell stayed mounted: a page-wide fallback would replace the hero. */
+async function expectShellKept(page: import('@playwright/test').Page, scrollY: number): Promise<void> {
+  await expect(page.locator('.arche-title')).toBeAttached();
+  await expect(page.locator('.error-fallback')).toHaveCount(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+}
+
+test('the Filters tab loads its decks under its own skeleton, keeping the page and scroll', async ({ page }) => {
+  const release = await holdRequests(page, '**/archetypes/Dragapult/decks.json');
+  await gotoClean(page, '/archetypes/Dragapult');
+  const scrollY = await openArchetypeTab(page, 'Filters');
+
+  await expect(page.locator('.advanced-panel .skeleton')).toBeVisible();
+  await expect(page.locator('.advanced-panel')).toContainText('Loading deck data');
+  await expectShellKept(page, scrollY);
+
+  await release();
+  await expect(page.locator('.fb-count b')).toBeVisible();
+  await expect(page.locator('.advanced-panel .skeleton')).toHaveCount(0);
+});
+
+test('a failed deck fetch costs the Filters tab, not the page', async ({ page }) => {
+  await page.route('**/archetypes/Dragapult/decks.json', route => route.fulfill({ status: 500, body: '' }));
+  await gotoClean(page, '/archetypes/Dragapult');
+  const scrollY = await openArchetypeTab(page, 'Filters');
+
+  await expect(page.locator('.advanced-panel')).toContainText('Decks unavailable for this archetype.');
+  await expectShellKept(page, scrollY);
+});
+
+test('the Matchups tab loads under its own skeleton, keeping the page and scroll', async ({ page }) => {
+  const releaseProfiles = await holdRequests(page, '**/matchupProfiles.json');
+  const releaseTrends = await holdRequests(page, '**/archetypes/Dragapult/trends.json');
+  await gotoClean(page, '/archetypes/Dragapult');
+  const scrollY = await openArchetypeTab(page, 'Matchups');
+
+  await expect(page.locator('.matchups > .skeleton')).toBeVisible();
+  await expectShellKept(page, scrollY);
+
+  await releaseProfiles();
+  await releaseTrends();
+  await expect(page.locator('.mu-gauge[title^="95% interval"]').first()).toBeVisible();
+});
+
+test('a failed card-lens fetch settles the lens instead of the page', async ({ page }) => {
+  await page.route('**/archetypes/Dragapult/decks.json', route => route.fulfill({ status: 500, body: '' }));
+  await gotoClean(page, '/archetypes/Dragapult?tab=matchups');
+  await expect(page.locator('.mu-gauge').first()).toBeVisible();
+
+  await page.getByText('Compare with a specific card').click();
+  await page.getByRole('button', { name: /Unfair Stamp/ }).click();
+  await expect(page.getByText('Not enough games to compare.')).toBeVisible();
+  await expect(page.getByText('Loading match data…')).toHaveCount(0);
+  await expect(page.locator('.error-fallback')).toHaveCount(0);
+});
+
 test('trends renders its chart and preserves vertical touch scrolling @mobile', async ({ page }) => {
   await page.route('**/trends.json', route =>
     route.fulfill({

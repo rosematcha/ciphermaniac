@@ -328,7 +328,7 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
   // Typical-list cost from card prices; null (renders nothing) when coverage is thin.
   const [prices] = createResource(fetchPrices);
   const deckCost = createMemo(() => {
-    const p = prices();
+    const p = latestValue(prices);
     return p ? estimateDeckCost(props.report.items as CardItem[], p) : null;
   });
 
