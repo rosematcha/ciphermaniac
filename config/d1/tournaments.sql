@@ -27,12 +27,20 @@ CREATE TABLE IF NOT EXISTS users (
   -- NULL keeps the account's history private; set, it is public at /u/<slug>.
   public_slug TEXT
 );
-CREATE INDEX IF NOT EXISTS users_by_email ON users (email);
+-- Provider writes normalize verified emails before storing or looking them up.
+CREATE UNIQUE INDEX IF NOT EXISTS users_by_verified_email ON users (email) WHERE email IS NOT NULL;
 -- At most one account holds a POP ID. Partial, like the indexes below: most
 -- rows hold NULL, and a NULL costs no index row on write.
 CREATE UNIQUE INDEX IF NOT EXISTS users_by_pop_id ON users (pop_id) WHERE pop_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS users_by_role ON users (role) WHERE role IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS users_by_public_slug ON users (public_slug) WHERE public_slug IS NOT NULL;
+
+-- Migration 0008 preserves the original claims it clears from older accounts.
+CREATE TABLE IF NOT EXISTS duplicate_emails_backup (
+  user_id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  cleared_at TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS identities (
   provider TEXT NOT NULL,

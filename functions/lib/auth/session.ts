@@ -122,64 +122,119 @@ export async function currentAccount(db: D1Like, request: Request): Promise<User
   return row ? { ...userFromRow(row), providers: providers.map(identity => identity.provider) } : null;
 }
 
-/** Attach a provider only when its identity is still free or already belongs to this user. */
-export async function linkIdentity(db: D1Like, profile: Profile, userId: string): Promise<boolean> {
+async function identityOwner(db: D1Like, profile: Profile): Promise<string | null> {
   const identity = await db
     .prepare('SELECT user_id FROM identities WHERE provider = ? AND subject = ?')
     .bind(profile.provider, profile.subject)
     .first<{ user_id: string }>();
-  if (identity) {
-    return identity.user_id === userId;
-  }
-  await db
-    .prepare('INSERT INTO identities (provider, subject, user_id) VALUES (?, ?, ?)')
-    .bind(profile.provider, profile.subject, userId)
-    .run();
-  return true;
+  return identity?.user_id ?? null;
 }
 
-async function linkedUser(db: D1Like, profile: Profile): Promise<string | null> {
-  const identity = await db
-    .prepare('SELECT user_id FROM identities WHERE provider = ? AND subject = ?')
-    .bind(profile.provider, profile.subject)
-    .first<{ user_id: string }>();
-  if (identity) {
-    return identity.user_id;
-  }
-  if (!profile.email || !profile.emailVerified) {
+function verifiedEmail(profile: Profile): string | null {
+  return profile.emailVerified ? profile.email?.trim().toLowerCase() || null : null;
+}
+
+async function emailOwner(db: D1Like, profile: Profile): Promise<string | null> {
+  const email = verifiedEmail(profile);
+  if (!email) {
     return null;
   }
-  const byEmail = await db.prepare('SELECT id FROM users WHERE email = ?').bind(profile.email).first<{ id: string }>();
-  return byEmail?.id ?? null;
+  const user = await db
+    .prepare('SELECT id FROM users WHERE email IS NOT NULL AND email = ?')
+    .bind(email)
+    .first<{ id: string }>();
+  return user?.id ?? null;
 }
 
-/**
- * The user this provider account belongs to, creating one on first sign-in.
- * A second provider with the same verified email joins the existing user.
- */
-export async function upsertUser(db: D1Like, profile: Profile): Promise<string> {
-  const existing = await linkedUser(db, profile);
+function identityInsert(db: D1Like, profile: Profile, userId: string): D1Statement {
+  return db
+    .prepare('INSERT INTO identities (provider, subject, user_id) VALUES (?, ?, ?)')
+    .bind(profile.provider, profile.subject, userId);
+}
+
+/** Attach a provider only when its identity is still free or already belongs to this user. */
+export async function linkIdentity(db: D1Like, profile: Profile, userId: string): Promise<boolean> {
+  try {
+    await db.batch([identityInsert(db, profile, userId)]);
+    return true;
+  } catch (error) {
+    const owner = await identityOwner(db, profile);
+    if (!owner) {
+      throw error;
+    }
+    return owner === userId;
+  }
+}
+
+function refreshUser(db: D1Like, profile: Profile, userId: string): D1Statement {
+  const email = verifiedEmail(profile);
+  return db
+    .prepare(
+      'UPDATE users SET avatar = COALESCE(avatar, ?), ' +
+        'email = COALESCE(email, (SELECT ? WHERE NOT EXISTS ' +
+        '(SELECT 1 FROM users WHERE email IS NOT NULL AND email = ?))) WHERE id = ?'
+    )
+    .bind(profile.avatar, email, email, userId);
+}
+
+async function insertAccount(db: D1Like, profile: Profile, existing: string | null): Promise<string> {
   const userId = existing ?? randomToken(12);
-  const statements = [
+  await db.batch([
     existing
-      ? db
-          .prepare('UPDATE users SET avatar = COALESCE(avatar, ?), email = COALESCE(email, ?) WHERE id = ?')
-          .bind(profile.avatar, profile.emailVerified ? profile.email : null, userId)
+      ? refreshUser(db, profile, userId)
       : db
           .prepare('INSERT INTO users (id, name, email, avatar, created_at) VALUES (?, ?, ?, ?, ?)')
           .bind(
             userId,
             profile.provider === 'dev' ? profile.name : 'Player',
-            profile.emailVerified ? profile.email : null,
+            verifiedEmail(profile),
             profile.avatar,
             Date.now()
           ),
-    db
-      .prepare('INSERT OR IGNORE INTO identities (provider, subject, user_id) VALUES (?, ?, ?)')
-      .bind(profile.provider, profile.subject, userId)
-  ];
-  await db.batch(statements);
+    identityInsert(db, profile, userId)
+  ]);
   return userId;
+}
+
+/** Resolve a strict insert's winner; unrelated database failures still fail sign-in. */
+async function resolveAccount(db: D1Like, profile: Profile, error: unknown): Promise<string> {
+  const owner = await identityOwner(db, profile);
+  if (owner) {
+    return owner;
+  }
+  const existing = await emailOwner(db, profile);
+  if (!existing) {
+    throw error;
+  }
+  // The email winner committed first. Link in a fresh transaction, resolving
+  // another identity winner if one lands before this insert.
+  if (await linkIdentity(db, profile, existing)) {
+    return existing;
+  }
+  const winner = await identityOwner(db, profile);
+  if (!winner) {
+    throw error;
+  }
+  return winner;
+}
+
+/**
+ * Identity ownership always takes precedence over email. Only verified emails
+ * are stored and matched, trimmed and case-insensitive, with database uniqueness.
+ * A failed strict identity insert rolls back the entire account batch.
+ */
+export async function upsertUser(db: D1Like, profile: Profile): Promise<string> {
+  const owner = await identityOwner(db, profile);
+  if (owner) {
+    await refreshUser(db, profile, owner).run();
+    return owner;
+  }
+  const existing = await emailOwner(db, profile);
+  try {
+    return await insertAccount(db, profile, existing);
+  } catch (error) {
+    return resolveAccount(db, profile, error);
+  }
 }
 
 /** Starts a session and returns the token for the cookie. */

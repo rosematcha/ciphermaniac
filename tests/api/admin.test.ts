@@ -547,6 +547,7 @@ test('an Admin finds accounts by POP ID, email or ID, exactly', async () => {
     ['Holder', 'holder@example.com', '4242', null, 'number']
   );
   assert.equal((await lookUp(admin, 'email=holder%40example.com')).json.accounts[0].id, id);
+  assert.equal((await lookUp(admin, 'email=%20HoLdEr%40EXAMPLE.COM%20')).json.accounts[0].id, id);
   assert.equal((await lookUp(admin, `id=${id}`)).json.accounts[0].name, 'Holder');
   assert.deepEqual((await lookUp(admin, 'popId=424')).json.accounts, [], 'no partial matches');
   assert.equal((await lookUp(admin, '')).status, 400);

@@ -12,9 +12,13 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { beforeEach, mock, test } from 'node:test';
 
+import * as callback from '../../functions/api/auth/callback/[provider].ts';
 import * as me from '../../functions/api/me.ts';
+import type { Profile } from '../../functions/lib/auth/oauth.ts';
+import { createSession, currentUser, linkIdentity, upsertUser } from '../../functions/lib/auth/session.ts';
+import type { D1Like } from '../../functions/lib/types.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
-import { apiCalls, type Handler } from '../__utils__/apiCalls.ts';
+import { apiCalls, type Handler, request } from '../__utils__/apiCalls.ts';
 import { racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
@@ -75,6 +79,8 @@ test('migration 0006 brings a database made before accounts in line with the sch
   const backfill = sql('../../config/d1/migrations/tournaments-0007-pop-history-backfill.sql');
   db.exec(backfill);
   db.exec(backfill);
+
+  db.exec(sql('../../config/d1/migrations/tournaments-0008-verified-email-uniqueness.sql'));
 
   assert.deepEqual(shape(db), shape(sqliteD1('tournaments.sql').raw));
   const users = db.prepare('SELECT id, pop_id AS popId, role, role_by AS roleBy FROM users ORDER BY id').all();
@@ -285,4 +291,325 @@ test('a profile address another account holds is drawn again', async () => {
   } finally {
     random.mock.restore();
   }
+});
+
+const authProfile = (overrides: Partial<Profile> = {}): Profile => ({
+  provider: 'google',
+  subject: 'google-player',
+  name: 'Player',
+  email: 'player@example.com',
+  emailVerified: true,
+  avatar: null,
+  ...overrides
+});
+
+/** D1 serializes batches; keep concurrent requests' reads free to interleave. */
+function serializedAccounts(): D1Like {
+  const db = env.TOURNAMENT_DB!;
+  let pending: Promise<unknown> = Promise.resolve();
+  return {
+    ...db,
+    batch: statements => {
+      const result = pending.then(() => db.batch(statements));
+      pending = result.catch(() => undefined);
+      return result;
+    }
+  };
+}
+
+const identityRows = () =>
+  raw()
+    .prepare('SELECT user_id FROM identities')
+    .all()
+    .map(row => row.user_id);
+const userCount = () => raw().prepare('SELECT count(*) AS n FROM users').get()?.n;
+
+test('simultaneous first logins return the identity winner and leave no orphan accounts or sessions', async () => {
+  const db = serializedAccounts();
+  const profile = authProfile({ email: null });
+  const ids = await Promise.all([upsertUser(db, profile), upsertUser(db, profile)]);
+  assert.equal(ids[0], ids[1]);
+  assert.deepEqual(identityRows(), [ids[0]]);
+  assert.equal(userCount(), 1);
+  for (const id of ids) {
+    const token = await createSession(db, id);
+    const request = new Request('https://ciphermaniac.test/api/me', { headers: { cookie: `cm_session=${token}` } });
+    assert.equal((await currentUser(db, request))?.id, ids[0]);
+  }
+});
+
+test('concurrent providers sharing a verified email link to one account, including case and whitespace', async () => {
+  const db = serializedAccounts();
+  const profiles = [
+    authProfile(),
+    authProfile({ provider: 'discord', subject: 'discord-player', email: ' Player@Example.COM ' })
+  ];
+  const ids = await Promise.all(profiles.map(profile => upsertUser(db, profile)));
+  assert.equal(ids[0], ids[1]);
+  assert.deepEqual(identityRows(), ids);
+  assert.equal(userCount(), 1);
+  assert.equal(raw().prepare('SELECT email FROM users').get()?.email, 'player@example.com');
+  assert.equal(await upsertUser(db, authProfile({ subject: 'another-google' })), ids[0]);
+});
+
+test('unverified emails never link accounts or reserve verified email ownership', async () => {
+  const db = serializedAccounts();
+  const profiles = [
+    authProfile({ emailVerified: false }),
+    authProfile({ provider: 'discord', subject: 'unverified', emailVerified: false }),
+    authProfile({ subject: 'verified' })
+  ];
+  const ids = await Promise.all(profiles.map(profile => upsertUser(db, profile)));
+  assert.equal(new Set(ids).size, 3);
+  assert.equal(userCount(), 3);
+  assert.equal(raw().prepare('SELECT count(*) AS n FROM users WHERE email IS NULL').get()?.n, 2);
+  assert.equal(await upsertUser(db, profiles[0]!), ids[0]);
+});
+
+test('reauthentication keeps identity ownership even when its verified email belongs to another account', async () => {
+  const db = env.TOURNAMENT_DB!;
+  const first = await upsertUser(db, authProfile());
+  const secondProfile = authProfile({ provider: 'discord', subject: 'second', email: null });
+  const second = await upsertUser(db, secondProfile);
+  assert.notEqual(first, second);
+  assert.equal(await upsertUser(db, { ...secondProfile, email: 'player@example.com', avatar: 'avatar' }), second);
+  assert.equal(raw().prepare('SELECT email FROM users WHERE id = ?').get(second)?.email, null);
+  assert.equal(raw().prepare('SELECT avatar FROM users WHERE id = ?').get(second)?.avatar, 'avatar');
+  assert.equal(await upsertUser(db, { ...secondProfile, email: 'new@example.com' }), second);
+  assert.equal(raw().prepare('SELECT email FROM users WHERE id = ?').get(second)?.email, 'new@example.com');
+});
+
+test('explicit linking refuses an owned identity and is idempotent for its owner', async () => {
+  const db = env.TOURNAMENT_DB!;
+  const profile = authProfile();
+  const owner = await upsertUser(db, profile);
+  const other = await upsertUser(db, authProfile({ subject: 'other', email: null }));
+  assert.equal(await linkIdentity(db, profile, other), false);
+  assert.equal(await linkIdentity(db, profile, owner), true);
+  assert.equal(await linkIdentity(db, authProfile({ provider: 'discord', subject: 'free' }), other), true);
+  assert.deepEqual(identityRows().sort(), [owner, other, other].sort());
+});
+
+test('concurrent explicit linking resolves the identity winner without changing its owner', async () => {
+  const db = serializedAccounts();
+  const first = await upsertUser(db, authProfile({ subject: 'first', email: null }));
+  const second = await upsertUser(db, authProfile({ subject: 'second', email: null }));
+  const profile = authProfile({ provider: 'discord', subject: 'contested' });
+  assert.deepEqual(await Promise.all([linkIdentity(db, profile, first), linkIdentity(db, profile, second)]), [
+    true,
+    false
+  ]);
+  assert.equal(await upsertUser(db, profile), first);
+});
+
+test('an identity winner rolls back updates to an account selected by email', async () => {
+  const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const emailAccount = await upsertUser(inner, authProfile());
+  const winner = await upsertUser(inner, authProfile({ subject: 'winner', email: null }));
+  const profile = authProfile({ provider: 'discord', subject: 'race', avatar: 'loser-avatar' });
+  const db = racing(inner, 'UPDATE users SET avatar', () => {
+    raw().prepare('INSERT INTO identities VALUES (?, ?, ?)').run(profile.provider, profile.subject, winner);
+  });
+  assert.equal(await upsertUser(db, profile), winner);
+  assert.equal(raw().prepare('SELECT avatar FROM users WHERE id = ?').get(emailAccount)?.avatar, null);
+});
+
+test('unrelated database failures roll back account creation and propagate', async () => {
+  raw().exec(
+    "CREATE TRIGGER fail_identity BEFORE INSERT ON identities BEGIN SELECT RAISE(ABORT, 'identity unavailable'); END"
+  );
+  const db = env.TOURNAMENT_DB!;
+  await assert.rejects(upsertUser(db, authProfile()), /identity unavailable/);
+  assert.equal(userCount(), 0);
+  await assert.rejects(linkIdentity(db, authProfile(), 'missing'), /identity unavailable/);
+});
+
+test('email conflict resolution propagates a failed linking transaction', async () => {
+  const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const db = racing(inner, 'INSERT INTO users', () => {
+    raw()
+      .prepare('INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)')
+      .run('winner', 'Player', 'player@example.com', 1);
+    raw().exec(
+      "CREATE TRIGGER fail_identity BEFORE INSERT ON identities BEGIN SELECT RAISE(ABORT, 'identity unavailable'); END"
+    );
+  });
+  await assert.rejects(upsertUser(db, authProfile()), /identity unavailable/);
+  assert.equal(userCount(), 1);
+  assert.deepEqual(identityRows(), []);
+});
+
+test('migration 0008 preserves accounts and identities while assigning duplicate emails to the oldest account', () => {
+  const db = raw();
+  db.exec('DROP INDEX users_by_verified_email; CREATE INDEX users_by_email ON users (email)');
+  const insert = db.prepare('INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)');
+  insert.run('a', 'A', ' Player@Example.COM ', 1);
+  insert.run('b', 'B', 'player@example.com', 1);
+  insert.run('c', 'C', 'PLAYER@example.com', 2);
+  insert.run('blank', 'Blank', ' ', 0);
+  db.exec("INSERT INTO identities VALUES ('google', 'b', 'b')");
+  const migration = sql('../../config/d1/migrations/tournaments-0008-verified-email-uniqueness.sql');
+  db.exec(migration);
+  db.exec(migration);
+  assert.deepEqual(
+    db
+      .prepare('SELECT id, email FROM users ORDER BY id')
+      .all()
+      .map(row => ({ ...row })),
+    [
+      { id: 'a', email: 'player@example.com' },
+      { id: 'b', email: null },
+      { id: 'blank', email: null },
+      { id: 'c', email: null }
+    ]
+  );
+  const backups = db.prepare('SELECT user_id, email, cleared_at FROM duplicate_emails_backup ORDER BY user_id').all();
+  assert.deepEqual(
+    backups.map(row => ({ userId: row.user_id, email: row.email })),
+    [
+      { userId: 'b', email: 'player@example.com' },
+      { userId: 'c', email: 'PLAYER@example.com' }
+    ]
+  );
+  assert.ok(backups.every(row => typeof row.cleared_at === 'string' && Number.isFinite(Date.parse(row.cleared_at))));
+  assert.deepEqual(identityRows(), ['b']);
+  assert.throws(() => insert.run('duplicate', 'D', 'player@example.com', 3), /UNIQUE/);
+  assert.deepEqual(shape(db), shape(sqliteD1('tournaments.sql').raw));
+});
+
+[
+  ['google', 'google'],
+  ['google', 'discord']
+].forEach(providers => {
+  test(`concurrent ${providers.join('/')} callbacks establish sessions for the winning account`, async () => {
+    env.TOURNAMENT_DB = serializedAccounts();
+    env.GOOGLE_CLIENT_ID = 'id';
+    env.GOOGLE_CLIENT_SECRET = 'secret';
+    env.DISCORD_CLIENT_ID = 'id';
+    env.DISCORD_CLIENT_SECRET = 'secret';
+    const fetch = mock.method(globalThis, 'fetch', async (url: string | URL) => {
+      if (String(url).includes('token')) {
+        return new Response('{"access_token":"token"}', { headers: { 'content-type': 'application/json' } });
+      }
+      const body = String(url).includes('discord')
+        ? '{"id":"discord-player","email":"player@example.com","verified":true}'
+        : '{"sub":"google-player","email":"player@example.com","email_verified":true}';
+      return new Response(body, { headers: { 'content-type': 'application/json' } });
+    });
+    try {
+      const responses = await Promise.all(
+        providers.map(provider =>
+          callback.onRequestGet({
+            request: request(`/api/auth/callback/${provider}?code=c&state=state`, {
+              cookie: 'cm_oauth=state%20%2Fhost'
+            }),
+            env,
+            params: { provider }
+          } as never)
+        )
+      );
+      const sessions = responses.map(response => {
+        assert.equal(response.headers.get('location'), '/host');
+        const cookie = response.headers.getSetCookie().find(value => value.startsWith('cm_session='));
+        assert.ok(cookie);
+        return cookie.split(';')[0]!;
+      });
+      const users = await Promise.all(
+        sessions.map(cookie => currentUser(env.TOURNAMENT_DB!, request('/api/me', { cookie })))
+      );
+      assert.ok(users[0]);
+      assert.equal(users[0].id, users[1]?.id);
+      assert.equal(userCount(), 1);
+      assert.ok(identityRows().every(id => id === users[0]?.id));
+      assert.equal(raw().prepare('SELECT count(*) AS n FROM sessions').get()?.n, 2);
+    } finally {
+      fetch.mock.restore();
+    }
+  });
+});
+
+test('email lookup and refresh use the verified email index without scanning users', async () => {
+  const inner = env.TOURNAMENT_DB!;
+  const queries: string[] = [];
+  const db: D1Like = {
+    ...inner,
+    prepare: query => {
+      if (query.includes('WHERE email IS NOT NULL AND email = ?')) {
+        queries.push(query);
+      }
+      return inner.prepare(query);
+    }
+  };
+  const profile = authProfile();
+  const owner = await upsertUser(db, profile);
+  assert.equal(await upsertUser(db, profile), owner);
+  assert.equal(queries.length, 2);
+  for (const query of queries) {
+    const values = query.startsWith('UPDATE') ? [null, profile.email, profile.email, owner] : [profile.email];
+    const details = raw()
+      .prepare(`EXPLAIN QUERY PLAN ${query}`)
+      .all(...values)
+      .map(row => String(row.detail));
+    assert.ok(
+      details.some(detail => /SEARCH users USING (?:COVERING )?INDEX users_by_verified_email/.test(detail)),
+      details.join('\n')
+    );
+    assert.ok(
+      details.every(detail => !detail.includes('SCAN users')),
+      details.join('\n')
+    );
+  }
+  assert.equal(raw().prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'users_by_email'").get()?.n, 0);
+});
+
+test('successful linking to an email race winner skips the final identity read', async () => {
+  const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const raced = racing(inner, 'INSERT INTO users', () => {
+    raw()
+      .prepare('INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)')
+      .run('winner', 'Player', 'player@example.com', 1);
+  });
+  let identityReads = 0;
+  const db: D1Like = {
+    ...raced,
+    prepare: query => {
+      if (query.startsWith('SELECT user_id FROM identities')) {
+        identityReads += 1;
+      }
+      return raced.prepare(query);
+    }
+  };
+  assert.equal(await upsertUser(db, authProfile()), 'winner');
+  assert.equal(identityReads, 2);
+  assert.deepEqual(identityRows(), ['winner']);
+});
+
+test('email conflict resolution still returns an identity that another account wins during linking', async () => {
+  const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const raced = racing(inner, 'INSERT INTO users', () => {
+    raw()
+      .prepare('INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)')
+      .run('email-winner', 'Player', 'player@example.com', 1);
+  });
+  let identityInserts = 0;
+  const db: D1Like = {
+    ...raced,
+    prepare: query => {
+      if (query.startsWith('INSERT INTO identities')) {
+        identityInserts += 1;
+        if (identityInserts === 2) {
+          raw()
+            .prepare('INSERT INTO users (id, name, created_at) VALUES (?, ?, ?)')
+            .run('identity-winner', 'Player', 2);
+          raw()
+            .prepare('INSERT INTO identities (provider, subject, user_id) VALUES (?, ?, ?)')
+            .run('google', 'google-player', 'identity-winner');
+        }
+      }
+      return raced.prepare(query);
+    }
+  };
+  assert.equal(await upsertUser(db, authProfile()), 'identity-winner');
+  assert.deepEqual(identityRows(), ['identity-winner']);
+  assert.equal(userCount(), 2);
 });

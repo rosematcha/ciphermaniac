@@ -37,7 +37,7 @@ function lookupOf(url: URL): { column: string; value: string } | null {
   for (const [name, column] of Object.entries(COLUMNS)) {
     const value = url.searchParams.get(name)?.trim();
     if (value) {
-      return { column, value };
+      return { column, value: name === 'email' ? value.toLowerCase() : value };
     }
   }
   return null;
@@ -52,7 +52,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
   if (!lookup) {
     return jsonError('Look up by POP ID, email or account ID', 400);
   }
-  // Nothing makes an email unique, so a lookup may find more than one; a handful at most.
+  // Verified emails are normalized and unique; retain the accounts response shape.
   const { results } = await access.db
     .prepare(`SELECT id, name, email, pop_id, role, created_at FROM users WHERE ${lookup.column} = ? LIMIT 20`)
     .bind(lookup.value)
