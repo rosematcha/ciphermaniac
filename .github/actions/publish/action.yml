@@ -3,6 +3,9 @@ description: Capture changed scopes, validate the candidate and activate it atom
 runs:
   using: composite
   steps:
+    - name: Reconcile outstanding deployment
+      shell: bash
+      run: npx tsx .github/scripts/deployment-state.ts reconcile
     - name: Capture scopes and report changes
       id: capture
       shell: bash
@@ -16,10 +19,10 @@ runs:
       if: steps.capture.outputs.changed == 'true'
       shell: bash
       run: npx tsx scripts/verify-release.ts production 0 --manifest release-manifest.json
+    - name: Persist validated candidate and pin
+      if: steps.capture.outputs.changed == 'true'
+      shell: bash
+      run: npx tsx .github/scripts/deployment-state.ts persist
     - name: Deploy validated candidate
       if: steps.capture.outputs.changed == 'true'
       uses: ./.github/actions/deploy
-    - name: Promote tooling pointer
-      if: steps.capture.outputs.changed == 'true'
-      shell: bash
-      run: npx tsx .github/scripts/update-channel.ts --manifest release-manifest.json

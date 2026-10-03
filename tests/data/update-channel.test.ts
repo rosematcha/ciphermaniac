@@ -31,6 +31,7 @@ test('refuses to clear malformed or unpromoted pending events', async () => {
     clearPromotedEvents(store, { events: { Missing: '/releases/v1/events/Missing/bbbbbbbbbbbb' } }),
     /unpromoted/
   );
+  assert.equal(await clearPromotedEvents(store, { events: {} }, false), 0);
   body = JSON.stringify({ nope: true });
   await assert.rejects(clearPromotedEvents(store, { events: {} }), /invalid/);
   body = null;

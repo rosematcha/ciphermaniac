@@ -47,6 +47,9 @@ function fixture() {
   objects.push({ key: 'live/v1/schedule.json', size: 20, modified: OLD });
   const removed: string[] = [];
   const store = {
+    async deployed() {
+      return manifest('active', ACTIVE, NOW);
+    },
     async *list(prefix: string) {
       yield* objects.filter(object => object.key.startsWith(prefix));
     },
@@ -278,4 +281,83 @@ test('R2 storage adapter refuses incomplete listings, missing reads, and partial
   await store.remove(['one']);
   responses.push({ Errors: [{ Key: 'one', Code: 'Denied' }] });
   await assert.rejects(store.remove(['one']), /rejected/);
+});
+
+test('Pages deployment and all unresolved candidates survive beyond every grace period', async () => {
+  const f = fixture();
+  f.store.deployed = async () => manifest('expired', EXPIRED);
+  f.bodies.set('deployment/v1/state.json', {
+    version: 1,
+    candidates: { pending: 'releases/v1/manifests/pending.json' },
+    attempts: { interrupted: { releaseId: 'pending', startedAt: new Date(OLD).toISOString() } }
+  });
+  f.bodies.set('releases/v1/manifests/pending.json', manifest('pending', PENDING, OLD - 86_400_000));
+  f.objects.push({ key: 'releases/v1/manifests/pending.json', size: 10, modified: OLD });
+  await pruneReleases(f.store, NOW + 365 * 86_400_000, true);
+  for (const root of [ACTIVE, EXPIRED, PENDING]) {
+    assert.ok(!f.removed.some(key => key.startsWith(root)));
+  }
+  assert.ok(!f.removed.includes('releases/v1/manifests/pending.json'));
+});
+
+test('unreconciled Pages state or a missing candidate manifest blocks all cleanup', async () => {
+  const f = fixture();
+  f.store.deployed = async () => {
+    throw new Error('Pages unavailable');
+  };
+  await assert.rejects(pruneReleases(f.store, NOW, true), /Pages unavailable/);
+  assert.deepEqual(f.removed, []);
+  const g = fixture();
+  g.bodies.set('deployment/v1/state.json', {
+    version: 1,
+    candidates: { missing: 'releases/v1/manifests/missing.json' },
+    attempts: {}
+  });
+  await assert.rejects(pruneReleases(g.store, NOW, true), /manifest/);
+  assert.deepEqual(g.removed, []);
+});
+
+test('retention adapter checks actual Pages manifests against R2 and rechecks deployment identity', async t => {
+  const client = new S3Client({ region: 'auto', credentials: { accessKeyId: 'test', secretAccessKey: 'test' } });
+  const deployed = { id: 'pages-1', url: 'https://pages-1.ciphermaniac.pages.dev', status: 'success' };
+  const release = {
+    ...manifest('active', ACTIVE),
+    contractVersion: 2,
+    dependencies: {},
+    roots: Object.fromEntries(
+      ['online', 'trends', 'players', 'prices', 'catalogs', 'snapshots', 'assets'].map(scope => [
+        scope,
+        `/releases/v1/${scope}/aaaaaaaaaaaa`
+      ])
+    )
+  };
+  let stored: unknown = release;
+  t.mock.method(client, 'send', async () => ({ Body: { transformToString: async () => JSON.stringify(stored) } }));
+  const pages = {
+    async inspect() {
+      return { deployed, deployments: [deployed] };
+    },
+    async manifest() {
+      return release as import('../../shared/data/build/release').ReleaseManifest;
+    }
+  };
+  const store = createRetentionStore(client, 'bucket', pages);
+  assert.equal((await store.deployed()).releaseId, 'active');
+  stored = { ...release, releaseId: 'wrong' };
+  await assert.rejects(store.deployed(), /Cannot reconcile/);
+  stored = release;
+  let calls = 0;
+  pages.inspect = async () => ({
+    deployed: { ...deployed, id: ++calls === 1 ? 'pages-1' : 'pages-2' },
+    deployments: [deployed]
+  });
+  await assert.rejects(store.deployed(), /Pages changed/);
+});
+
+test('conflicting historical content under an active release ID blocks cleanup', async () => {
+  const f = fixture();
+  f.bodies.set('build/v1/releases/active.json', manifest('active', EXPIRED, NOW));
+  f.objects.push({ key: 'build/v1/releases/active.json', size: 10, modified: OLD });
+  await assert.rejects(pruneReleases(f.store, NOW, true), /Conflicting retained manifest/);
+  assert.deepEqual(f.removed, []);
 });

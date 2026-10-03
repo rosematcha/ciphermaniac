@@ -18,17 +18,42 @@ import {
   type StoredObject
 } from './lib/build/retention';
 
+import {
+  DEPLOYMENT_STATE_KEY,
+  type DeploymentAttempt,
+  deploymentState,
+  type PagesReader,
+  reconcileDeployment
+} from './lib/build/deployment';
+import { createR2ObjectStore } from './lib/build/r2ObjectStore.mjs';
+import { pagesReaderFromEnv } from './lib/build/pages';
+import { canonicalStringify } from '../../shared/data/canonicalJson';
+
 const LIVE_RETENTION_MS = 30 * 86_400_000;
 
 interface Store {
+  deployed(attempts?: Record<string, DeploymentAttempt>): Promise<RetainedManifest>;
   list(prefix: string): AsyncIterable<StoredObject>;
   read(key: string): Promise<unknown>;
   readOptional(key: string): Promise<unknown | null>;
   remove(keys: string[]): Promise<void>;
 }
 
-export function createRetentionStore(client: S3Client, bucket: string): Store {
+export function createRetentionStore(client: S3Client, bucket: string, reader?: PagesReader): Store {
   return {
+    async deployed(attempts = {}) {
+      const pages = reader ?? pagesReaderFromEnv();
+      const observed = await pages.inspect(attempts);
+      const manifest = await pages.manifest(observed.deployed);
+      const persisted = await getJsonResult(client, bucket, `releases/v1/manifests/${manifest.releaseId}.json`);
+      if (persisted.status !== 'found' || canonicalStringify(persisted.value) !== canonicalStringify(manifest)) {
+        throw new Error('Cannot reconcile deployed manifest for cleanup');
+      }
+      if ((await pages.inspect(attempts)).deployed.id !== observed.deployed.id) {
+        throw new Error('Pages changed during cleanup reconciliation');
+      }
+      return retentionManifest(manifest);
+    },
     async *list(prefix) {
       for await (const object of listR2Objects(client, bucket, prefix)) {
         if (!object.Key || object.Size === undefined || !object.LastModified) {
@@ -75,15 +100,30 @@ async function activeManifest(store: Store): Promise<RetainedManifest> {
 
 async function retainedState(store: Store, now: number): Promise<{ roots: Set<string>; releaseIds: Set<string> }> {
   const active = await activeManifest(store);
-  const manifests = new Map([[active.releaseId, active]]);
+  const state = deploymentState(await store.readOptional(DEPLOYMENT_STATE_KEY));
+  const deployed = await store.deployed(state.attempts);
+  const pinned = await Promise.all(
+    Object.entries(state.candidates).map(async ([id, key]) => {
+      const manifest = retentionManifest(await store.read(key));
+      if (manifest.releaseId !== id) {
+        throw new Error('Candidate pin and manifest disagree');
+      }
+      return manifest;
+    })
+  );
+  const manifests = new Map([active, deployed, ...pinned].map(manifest => [manifest.releaseId, manifest]));
   for (const prefix of ['build/v1/releases/', 'releases/v1/manifests/']) {
     for await (const object of store.list(prefix)) {
       const manifest = retentionManifest(await store.read(object.key));
+      const existing = manifests.get(manifest.releaseId);
+      if (existing && canonicalStringify(existing) !== canonicalStringify(manifest)) {
+        throw new Error(`Conflicting retained manifest: ${manifest.releaseId}`);
+      }
       manifests.set(manifest.releaseId, manifest);
     }
   }
   const values = [...manifests.values()];
-  const activeIds = new Set([active.releaseId]);
+  const activeIds = new Set([active.releaseId, deployed.releaseId, ...pinned.map(manifest => manifest.releaseId)]);
   const keep = protectedGenerations(values, activeIds, now);
   const releaseIds = protectedReleaseIds(values, activeIds, now);
   const pending = (await store.readOptional('pending-events.json')) as { events?: Record<string, string> } | null;
@@ -240,6 +280,19 @@ export async function pruneReleases(
         throw new Error(`Release became active during cleanup: ${group.prefix}`);
       }
     }
+    for (const object of obsolete) {
+      if (
+        /^(?:build\/v1\/releases|releases\/v1\/manifests)\//.test(object.key) &&
+        fresh.releaseIds.has(
+          object.key
+            .split('/')
+            .pop()!
+            .replace(/\.json$/, '')
+        )
+      ) {
+        throw new Error(`Release became protected during cleanup: ${object.key}`);
+      }
+    }
     await removeGenerations(store, generations, now);
     await removeObjects(store, obsolete);
   }
@@ -248,8 +301,12 @@ export async function pruneReleases(
 
 async function main(): Promise<void> {
   const config = r2Config();
+  const client = createR2Client(config);
+  if (process.argv.includes('--write')) {
+    await reconcileDeployment(createR2ObjectStore(client, config.bucket), pagesReaderFromEnv());
+  }
   const plan = await pruneReleases(
-    createRetentionStore(createR2Client(config), config.bucket),
+    createRetentionStore(client, config.bucket),
     Date.now(),
     process.argv.includes('--write')
   );

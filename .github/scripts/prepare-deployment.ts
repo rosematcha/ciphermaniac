@@ -1,42 +1,33 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { requireEnv } from './lib/env';
-import { validateReleaseManifest } from '../../shared/data/build/release';
+import { dirname } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { r2Config } from './lib/env';
+import { createR2Client } from './lib/r2.mjs';
+import { createR2ObjectStore } from './lib/build/r2ObjectStore.mjs';
+import { type DeploymentStore, type PagesReader, reconcileDeployment } from './lib/build/deployment';
+import { pagesReaderFromEnv } from './lib/build/pages';
 import { renderModule } from './generate-release-module';
 
-const account = requireEnv('R2_ACCOUNT_ID');
-const bucket = requireEnv('R2_BUCKET_NAME');
-const client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${account}.r2.cloudflarestorage.com`,
-  credentials: { accessKeyId: requireEnv('R2_ACCESS_KEY_ID'), secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY') }
-});
-
-async function readJson(key: string): Promise<unknown> {
-  const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-  if (!result.Body) {
-    throw new Error(`Missing R2 object: ${key}`);
-  }
-  return JSON.parse(await result.Body.transformToString()) as unknown;
+export async function prepareDeployment(
+  store: DeploymentStore,
+  pages: PagesReader,
+  output = 'shared/generated/release.ts'
+): Promise<void> {
+  const manifest = await reconcileDeployment(store, pages);
+  await mkdir(dirname(output), { recursive: true });
+  await writeFile(output, renderModule(manifest));
+  console.log(`Embedded reconciled production release ${manifest.releaseId}`);
 }
 
-async function embedCurrentRelease(): Promise<void> {
-  const pointer = (await readJson('current.json')) as { releaseId?: unknown; manifest?: unknown };
-  if (typeof pointer.releaseId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(pointer.releaseId)) {
-    throw new Error('Invalid production release pointer');
-  }
-  const manifestKey =
-    typeof pointer.manifest === 'string'
-      ? pointer.manifest.replace(/^\/+/, '')
-      : `releases/v1/manifests/${pointer.releaseId}.json`;
-  const manifest = await readJson(manifestKey);
-  const errors = validateReleaseManifest(manifest);
-  if (errors.length) {
-    throw new Error(`Invalid production manifest: ${errors.join(', ')}`);
-  }
-  await mkdir('shared/generated', { recursive: true });
-  await writeFile('shared/generated/release.ts', renderModule(manifest));
-  console.log(`Embedded production release ${pointer.releaseId}`);
+async function main(): Promise<void> {
+  const config = r2Config();
+  const store = createR2ObjectStore(createR2Client(config), config.bucket);
+  await prepareDeployment(store, pagesReaderFromEnv());
 }
 
-await embedCurrentRelease();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(error => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

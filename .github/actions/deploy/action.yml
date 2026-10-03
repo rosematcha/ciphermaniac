@@ -9,9 +9,18 @@ runs:
     - name: Build and enforce bundle budget
       shell: bash
       run: npm run verify:build
+    - name: Record deployment attempt and release marker
+      id: attempt
+      shell: bash
+      run: npx tsx .github/scripts/deployment-state.ts attempt
     - name: Deploy to production
+      id: pages
       uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0
       with:
         apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages deploy dist --project-name=ciphermaniac --branch=main --commit-hash=${{ github.sha }}
+        command: pages deploy dist --project-name=ciphermaniac --branch=main --commit-hash=${{ github.sha }} --commit-message=ciphermaniac:${{ steps.attempt.outputs.attempt-id }}
+    - name: Verify deployed release and conditionally promote
+      if: always() && steps.attempt.outcome == 'success'
+      shell: bash
+      run: npx tsx .github/scripts/update-channel.ts ${{ steps.attempt.outputs.attempt-id }}
