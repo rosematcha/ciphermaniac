@@ -13,9 +13,11 @@ import {
   fetchPage,
   LOCAL_PAGE_SIZE,
   localsCutoff,
+  MIN_COMPLETE_SHARE,
   pageUrl,
   parsePage,
-  POKEDATA_TABLE_API
+  POKEDATA_TABLE_API,
+  PokedataCompletenessError
 } from '../../.github/scripts/lib/pokedata.ts';
 import { cellHash, type Publisher, runEventLocator, runLocalsLocator } from '../../.github/scripts/lib/eventLocator.ts';
 import type { LocalsCell, LocalsIndex, LocatorIndex } from '../../shared/events/types.ts';
@@ -196,13 +198,132 @@ test('a page count that moves mid-pull fails the pull', async () => {
 });
 
 test('a pull well short of the advertised total is refused', async () => {
+  const logged: string[] = [];
   await assert.rejects(
     fetchAllEvents({
       fetch: async () => respond(pageBody([rawEventWithId(1)], 300, 1)),
-      sleep: noSleep
+      sleep: noSleep,
+      log: message => logged.push(message)
     }),
     /returned 1 distinct of the 300 events it advertised/
   );
+  assert.deepEqual(JSON.parse(logged[0] ?? ''), {
+    level: 'error',
+    event: 'pokedata_incomplete_pull',
+    reason:
+      'Pokedata returned 1 distinct of the 300 events it advertised; completeness 0.0033333333333333335 is below 0.95',
+    threshold: 0.95,
+    pageCount: 1,
+    fetchedCount: 1,
+    advertisedTotal: 300,
+    missingCount: 299,
+    completenessRatio: 1 / 300,
+    duplicateIdentities: 0,
+    invalidIdentities: 0
+  });
+  assert.equal(logged.length, 1);
+});
+
+test('incomplete pull diagnostics distinguish duplicate and invalid identities across pages', async t => {
+  const warning = t.mock.method(console, 'warn', () => undefined);
+  const pages = [
+    pageBody([rawEventWithId(1), rawEventWithId(2)], 5, 2, 1),
+    pageBody([rawEventWithId(1), {}, {}], 5, 2, 2)
+  ];
+  await assert.rejects(
+    fetchAllEvents({ fetch: async () => respond(pages.shift()!), sleep: noSleep }),
+    (error: unknown) => {
+      assert.ok(error instanceof PokedataCompletenessError);
+      assert.deepEqual(error.diagnostics, {
+        pageCount: 2,
+        fetchedCount: 2,
+        advertisedTotal: 5,
+        missingCount: 3,
+        completenessRatio: 0.4,
+        duplicateIdentities: 1,
+        invalidIdentities: 2
+      });
+      assert.equal(warning.mock.callCount(), 1);
+      assert.deepEqual(JSON.parse(String(warning.mock.calls[0]?.arguments[0])), {
+        level: 'error',
+        event: 'pokedata_incomplete_pull',
+        reason: error.message,
+        threshold: MIN_COMPLETE_SHARE,
+        ...error.diagnostics
+      });
+      return true;
+    }
+  );
+});
+
+test('the completeness guard accepts 95 percent but rejects 94 percent', async () => {
+  assert.equal(MIN_COMPLETE_SHARE, 0.95);
+  const events = Array.from({ length: 95 }, (_, index) => rawEventWithId(index + 1));
+  const logged: string[] = [];
+  const options = { log: (message: string) => logged.push(message) };
+  const pull = await fetchAllEvents({
+    ...options,
+    fetch: async () => respond(pageBody([...events, events[0]!, {}], 100, 1))
+  });
+  assert.equal(pull.events.length, 97);
+  assert.deepEqual(JSON.parse(logged[0] ?? ''), {
+    level: 'info',
+    event: 'pokedata_complete_pull',
+    threshold: 0.95,
+    pageCount: 1,
+    fetchedCount: 95,
+    advertisedTotal: 100,
+    missingCount: 5,
+    completenessRatio: 0.95,
+    duplicateIdentities: 1,
+    invalidIdentities: 1
+  });
+  await assert.rejects(
+    fetchAllEvents({ ...options, fetch: async () => respond(pageBody(events.slice(1), 100, 1)) }),
+    /completeness 0.94 is below 0.95/
+  );
+  assert.equal(logged.length, 2);
+});
+
+test('an empty advertised listing reports complete telemetry without division by zero', async () => {
+  const logged: string[] = [];
+  const pull = await fetchAllEvents({
+    fetch: async () => respond(pageBody([], 0, 0)),
+    log: message => logged.push(message)
+  });
+  assert.deepEqual(pull, { events: [], totalItems: 0, totalPages: 0 });
+  assert.deepEqual(JSON.parse(logged[0] ?? ''), {
+    level: 'info',
+    event: 'pokedata_complete_pull',
+    threshold: 0.95,
+    pageCount: 1,
+    fetchedCount: 0,
+    advertisedTotal: 0,
+    missingCount: 0,
+    completenessRatio: 1,
+    duplicateIdentities: 0,
+    invalidIdentities: 0
+  });
+});
+
+test('a pull above the advertised total logs success with no negative missing count', async t => {
+  const info = t.mock.method(console, 'info', () => undefined);
+  await fetchAllEvents({
+    fetch: async () => respond(pageBody([rawEventWithId(1), rawEventWithId(2)], 1, 1))
+  });
+  assert.equal(info.mock.callCount(), 1);
+  assert.deepEqual(JSON.parse(String(info.mock.calls[0]?.arguments[0])), {
+    level: 'info',
+    event: 'pokedata_complete_pull',
+    threshold: 0.95,
+    pageCount: 1,
+    fetchedCount: 2,
+    advertisedTotal: 1,
+    missingCount: 0,
+    completenessRatio: 2,
+    duplicateIdentities: 0,
+    invalidIdentities: 0
+  });
 });
 
 function memoryPublisher(existing: LocatorIndex | null = null, existingLocals: LocalsIndex | null = null) {

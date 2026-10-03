@@ -71,18 +71,67 @@ ENVIRONMENT = "production"
 # =============================================================================
 # Preview Environment Configuration
 # =============================================================================
-# This environment mirrors production but uses separate resources for testing.
-# Cloudflare Pages automatically uses this for non-production branch deployments.
+# Keep this preview environment active: omitting it exposes top-level storage.
+# Explicit empty overrides deny storage access until isolated resources exist.
+# Preview bindings must never point to production databases or buckets.
+[env.preview]
+kv_namespaces = []
+r2_buckets = []
+d1_databases = []
+
+[env.preview.vars]
+ENVIRONMENT = "preview"
+
+# Enable the binding template below only after every preview resource exists
+# and both preview databases have current schemas.
 #
-# To deploy to preview:
-#   npx wrangler pages deploy --env preview
+# Prerequisites (run in the intended Cloudflare account):
+#   npx wrangler kv namespace create ciphermaniac-preview-prices
+#   npx wrangler r2 bucket create ciphermaniac-preview-reports
+#   npx wrangler r2 bucket create ciphermaniac-preview-proofs
+#   npx wrangler d1 create ciphermaniac-preview-live
+#   npx wrangler d1 create ciphermaniac-preview-tournaments
+# Replace every <REPLACE_...> marker below with the ID returned by creation.
+# Keep the template commented until IDs are real and verified for this account.
 #
-# Required secrets (set via Cloudflare dashboard or wrangler secret):
-#   - POKEMON_TCG_API_KEY: API key for Pokemon TCG data
-#   - GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET: Google sign-in (OAuth client, web type)
-#   - DISCORD_CLIENT_ID / DISCORD_CLIENT_SECRET: Discord sign-in (OAuth2 app)
-#   Redirect URIs: https://ciphermaniac.com/api/auth/callback/{google,discord}
-#   - (Add other secrets your app requires)
+# Copy the verified preview D1 binding blocks into a temporary provisioning
+# config at .scratch/preview-provisioning.toml (uncommented, with actual IDs),
+# keeping this deployment template disabled during initialization.
+# Initialize new preview databases with the current schemas:
+#   npx wrangler d1 execute ciphermaniac-preview-live --config=.scratch/preview-provisioning.toml --remote --file=config/d1/live.sql
+#   npx wrangler d1 execute ciphermaniac-preview-tournaments --config=.scratch/preview-provisioning.toml --remote --file=config/d1/tournaments.sql
+# For existing preview databases, execute each unapplied migration in numeric
+# order from config/d1/migrations/live-*.sql or tournaments-*.sql against its
+# matching preview database with `wrangler d1 execute <preview-name>
+# --config=.scratch/preview-provisioning.toml --remote
+# --file=<migration-file>`. The current schemas already include those changes;
+# do not replay column-adding migrations on freshly initialized databases.
 #
-# No preview environment is configured. Add one only after its KV namespace
-# and R2 bucket exist, so preview deploys fail instead of using placeholders.
+# After provisioning and schema/migration execution, remove the three empty
+# storage arrays above and uncomment the matching binding blocks below.
+# Keep [env.preview] and its vars active throughout. Configure preview secrets
+# in Cloudflare Pages and use preview URLs
+# for OAuth redirects. Verify binding resolution before deploying a preview.
+#
+# # KV namespace: ciphermaniac-preview-prices
+# [[env.preview.kv_namespaces]]
+# binding = "PRICE_DATA"
+# id = "<REPLACE_WITH_PREVIEW_KV_ID>"
+#
+# [[env.preview.r2_buckets]]
+# bucket_name = "ciphermaniac-preview-reports"
+# binding = "REPORTS"
+#
+# [[env.preview.r2_buckets]]
+# bucket_name = "ciphermaniac-preview-proofs"
+# binding = "PROOFS"
+#
+# [[env.preview.d1_databases]]
+# binding = "LIVE_DB"
+# database_name = "ciphermaniac-preview-live"
+# database_id = "<REPLACE_WITH_PREVIEW_LIVE_D1_ID>"
+#
+# [[env.preview.d1_databases]]
+# binding = "TOURNAMENT_DB"
+# database_name = "ciphermaniac-preview-tournaments"
+# database_id = "<REPLACE_WITH_PREVIEW_TOURNAMENTS_D1_ID>"

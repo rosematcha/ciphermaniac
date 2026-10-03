@@ -49,6 +49,29 @@ export interface PokedataPull {
   totalPages: number;
 }
 
+export interface PokedataCompletenessDiagnostics {
+  pageCount: number;
+  /** Distinct valid identities, the count used by the completeness guard. */
+  fetchedCount: number;
+  advertisedTotal: number;
+  missingCount: number;
+  completenessRatio: number;
+  /** Repeated valid identities beyond their first occurrence. */
+  duplicateIdentities: number;
+  /** Records with no usable identity. */
+  invalidIdentities: number;
+}
+
+export class PokedataCompletenessError extends Error {
+  constructor(readonly diagnostics: PokedataCompletenessDiagnostics) {
+    super(
+      `Pokedata returned ${diagnostics.fetchedCount} distinct of the ${diagnostics.advertisedTotal} events it advertised; ` +
+        `completeness ${diagnostics.completenessRatio} is below ${MIN_COMPLETE_SHARE}`
+    );
+    this.name = 'PokedataCompletenessError';
+  }
+}
+
 export interface PokedataOptions {
   fetch?: typeof globalThis.fetch;
   /** Pause between page requests, to be a polite client. */
@@ -265,6 +288,42 @@ export async function fetchPage(page: number, options: PokedataOptions = {}): Pr
   return withAttempts(`page ${page}`, () => fetchOnce(page, fetchImpl), options);
 }
 
+function verifyCompleteness(
+  events: unknown[],
+  advertisedTotal: number,
+  pageCount: number,
+  options: PokedataOptions
+): void {
+  const identities = events.map(eventIdentity).filter(Boolean);
+  const fetchedCount = new Set(identities).size;
+  const diagnostics: PokedataCompletenessDiagnostics = {
+    pageCount,
+    fetchedCount,
+    advertisedTotal,
+    missingCount: Math.max(0, advertisedTotal - fetchedCount),
+    completenessRatio: advertisedTotal === 0 ? 1 : fetchedCount / advertisedTotal,
+    duplicateIdentities: identities.length - fetchedCount,
+    invalidIdentities: events.length - identities.length
+  };
+  if (fetchedCount >= advertisedTotal * MIN_COMPLETE_SHARE) {
+    (options.log ?? console.info)(
+      JSON.stringify({ level: 'info', event: 'pokedata_complete_pull', threshold: MIN_COMPLETE_SHARE, ...diagnostics })
+    );
+    return;
+  }
+  const error = new PokedataCompletenessError(diagnostics);
+  (options.log ?? console.warn)(
+    JSON.stringify({
+      level: 'error',
+      event: 'pokedata_incomplete_pull',
+      reason: error.message,
+      threshold: MIN_COMPLETE_SHARE,
+      ...diagnostics
+    })
+  );
+  throw error;
+}
+
 /**
  * Every Cup, Challenge, and Prerelease Pokedata lists.
  * @throws {Error} When a page fails for good, or the pull comes back incomplete
@@ -285,9 +344,6 @@ export async function fetchAllEvents(options: PokedataOptions = {}): Promise<Pok
     }
   }
   // Distinct IDs, not records: repeated pages must not count toward completeness.
-  const distinct = new Set(events.map(eventIdentity).filter(Boolean)).size;
-  if (distinct < first.totalItems * MIN_COMPLETE_SHARE) {
-    throw new Error(`Pokedata returned ${distinct} distinct of the ${first.totalItems} events it advertised`);
-  }
+  verifyCompleteness(events, first.totalItems, Math.max(1, first.totalPages), options);
   return { events, totalItems: first.totalItems, totalPages: first.totalPages };
 }
