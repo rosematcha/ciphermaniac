@@ -1,0 +1,22 @@
+name: Live Reports Reconcile
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  reconcile:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Reconcile committed live votes
+        env:
+          LIVE_RECONCILE_TOKEN: ${{ secrets.LIVE_RECONCILE_TOKEN }}
+        run: >-
+          curl --fail-with-body --silent --show-error
+          -X POST https://ciphermaniac.pages.dev/api/live/reconcile
+          -H "Authorization: Bearer $LIVE_RECONCILE_TOKEN"

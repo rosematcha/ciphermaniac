@@ -36,4 +36,4 @@ jobs:
           -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$LIVE_DB_ID/query"
           -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
           -H 'Content-Type: application/json'
-          --data '{"sql":"DELETE FROM votes"}'
+          --data '{"sql":"DELETE FROM votes WHERE slug NOT IN (SELECT slug FROM live_report_outbox WHERE revision > published_revision); DELETE FROM live_report_outbox WHERE revision = published_revision AND slug NOT IN (SELECT slug FROM votes)"}'

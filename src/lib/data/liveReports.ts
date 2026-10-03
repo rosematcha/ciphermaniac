@@ -16,7 +16,9 @@ export function fetchLiveReports(slug: string): Promise<LiveReports | null> {
 export interface DeckReportAnswer {
   /** The archetype each seat now shows, by seat key. */
   archetypes: Record<string, string | null>;
-  /** When the published file that shows them was written; null if none has been. */
+  /** True when votes committed but publication is awaiting reconciliation. */
+  pending?: boolean;
+  /** Publication time, or answer time while pending; null if unavailable. */
   updatedAt: string | null;
 }
 

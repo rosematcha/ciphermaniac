@@ -7,12 +7,9 @@
  * read and a write each. A batch is one device on one event, so it is checked
  * once and published in a single rewrite of `reports.json`.
  *
- * The votes go to D1; each seat's reports are then recounted and the archetype
- * shown for it, if more than half agree, is patched into the event's
- * `reports.json` on R2. Browsers only ever read that file, so reading reports
- * costs this function nothing. Two requests landing together can each patch
- * over the other's seats; the next vote for a seat rewrites it, and a recount
- * is always from D1, so the file heals rather than drifts.
+ * Votes and dirty seat revisions commit together in D1. Publication recounts
+ * dirty seats after reading R2, then conditionally replaces that object.
+ * Failed publication stays dirty for the scheduled reconciliation sweep.
  *
  * The archetype has to be one the site already names, by label: the online
  * index or the archetype icon map.
@@ -31,8 +28,6 @@
 import {
   type DeckReport,
   leadingArchetype,
-  type LiveReports,
-  liveReportsKey,
   MAX_REPORTS_PER_REQUEST,
   parseDeckReports,
   reportableArchetypes
@@ -45,6 +40,7 @@ import { readJsonBody } from '../../lib/api/body.js';
 import { createRateLimiter } from '../../lib/api/rateLimiter.js';
 import { jsonError, jsonSuccess } from '../../lib/api/responses.js';
 import type { D1Like } from '../../lib/types.js';
+import { type LiveBucket, publishSeats } from '../../lib/live/publish.js';
 import { createVoteStore, type VoteStore } from '../../lib/live/votes.js';
 
 /** Every field of a report is length-bounded; 512 bytes each leaves a full batch room to spare. */
@@ -55,7 +51,6 @@ const MAX_BODY_BYTES = 512 * MAX_REPORTS_PER_REQUEST;
  * correct or take back a seat it already reported.
  */
 const MAX_SEATS_PER_VOTER = 1500;
-const REPORTS_CACHE_CONTROL = 'public, max-age=30';
 const ARCHETYPE_ICONS_KEY = 'assets/archetype-icons.json';
 
 // In-memory, so per isolate; acceptable at the edge. 60 reports per IP per ten minutes.
@@ -86,13 +81,8 @@ function withinRate(env: { TRUSTED_REPORTERS?: string }, ip: string, reports: nu
   return allowed;
 }
 
-interface Bucket {
-  get: (key: string) => Promise<{ text: () => Promise<string> } | null>;
-  put: (key: string, value: string, options: { httpMetadata: Record<string, string> }) => Promise<unknown>;
-}
-
 interface Env {
-  REPORTS?: Bucket;
+  REPORTS?: LiveBucket;
   LIVE_DB?: D1Like;
   /** Comma-separated addresses the per-IP limit does not apply to; unset trusts nobody. */
   TRUSTED_REPORTERS?: string;
@@ -103,19 +93,19 @@ interface RequestContext {
   env: Env;
 }
 
-async function readJson<T>(bucket: Bucket, key: string): Promise<T | null> {
+async function readJson<T>(bucket: LiveBucket, key: string): Promise<T | null> {
   const object = await bucket.get(key);
   return object ? (JSON.parse(await object.text()) as T) : null;
 }
 
-async function isLiveEvent(bucket: Bucket, slug: string): Promise<boolean> {
+async function isLiveEvent(bucket: LiveBucket, slug: string): Promise<boolean> {
   const schedule = await readJson<LiveSchedule>(bucket, LIVE_SCHEDULE_KEY);
   const event = schedule?.events.find(candidate => candidate.slug === slug);
   return event !== undefined && isEventLive(event, new Date());
 }
 
 /** Same two lists, same union, as the picker on the live page offers; read once per request. */
-async function knownArchetypes(bucket: Bucket): Promise<string[]> {
+async function knownArchetypes(bucket: LiveBucket): Promise<string[]> {
   const [index, icons] = await Promise.all([
     readJson<{ label: string }[]>(bucket, ARCHETYPE_INDEX_KEY),
     readJson<Record<string, unknown>>(bucket, ARCHETYPE_ICONS_KEY)
@@ -127,45 +117,8 @@ async function knownArchetypes(bucket: Bucket): Promise<string[]> {
   );
 }
 
-/** The seats whose published archetype the settled counts would change. */
-function changedSeats(current: LiveReports | null, settled: ReadonlyMap<string, string | null>): string[] {
-  return [...settled.keys()].filter(seat => (current?.decks[seat] ?? null) !== settled.get(seat));
-}
-
-/**
- * Patches the settled seats into the published file.
- * @returns The `updatedAt` of the file that now carries them, so a reporter can
- * tell an edge copy from before the report from one that has it
- */
-async function publishSeats(
-  bucket: Bucket,
-  slug: string,
-  settled: ReadonlyMap<string, string | null>
-): Promise<string | null> {
-  const key = liveReportsKey(slug);
-  const current = await readJson<LiveReports>(bucket, key);
-  const changed = changedSeats(current, settled);
-  if (changed.length === 0) {
-    return current?.updatedAt ?? null;
-  }
-  const decks = { ...current?.decks };
-  for (const seat of changed) {
-    const archetype = settled.get(seat);
-    if (archetype) {
-      decks[seat] = archetype;
-    } else {
-      delete decks[seat];
-    }
-  }
-  const reports: LiveReports = { updatedAt: new Date().toISOString(), decks };
-  await bucket.put(key, JSON.stringify(reports), {
-    httpMetadata: { contentType: 'application/json', cacheControl: REPORTS_CACHE_CONTROL }
-  });
-  return reports.updatedAt;
-}
-
 /** Why the batch must be refused, if it must be; the checks a whole batch shares, read side by side. */
-async function refuse(bucket: Bucket, slug: string, reports: readonly DeckReport[]): Promise<Response | null> {
+async function refuse(bucket: LiveBucket, slug: string, reports: readonly DeckReport[]): Promise<Response | null> {
   const named = reports.flatMap(report => (report.archetype === null ? [] : [report.archetype]));
   const [live, known] = await Promise.all([
     isLiveEvent(bucket, slug),
@@ -223,7 +176,7 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
   if (!withinRate(env, ip, reports.length - 1)) {
     return jsonError('Too many reports. Try again later.', 429);
   }
-  const { slug, seat } = first;
+  const { slug } = first;
   const refused = await refuse(env.REPORTS, slug, reports);
   if (refused) {
     return refused;
@@ -232,8 +185,24 @@ export async function onRequestPost({ request, env }: RequestContext): Promise<R
   if (await overSeatCap(votes, first, reports)) {
     return jsonError('Too many reports. Try again later.', 429);
   }
+  return finishReport(votes, env.REPORTS, reports, first);
+}
+
+async function finishReport(
+  votes: VoteStore,
+  bucket: LiveBucket,
+  reports: readonly DeckReport[],
+  first: DeckReport
+): Promise<Response> {
   const settled = await settle(votes, reports);
-  const updatedAt = await publishSeats(env.REPORTS, slug, settled);
-  // `archetype` is the first seat's, for the single-report callers this grew from.
-  return jsonSuccess({ archetype: settled.get(seat) ?? null, archetypes: Object.fromEntries(settled), updatedAt });
+  const answer = {
+    archetype: settled.get(first.seat) ?? null,
+    archetypes: Object.fromEntries(settled)
+  };
+  try {
+    const updatedAt = await publishSeats(bucket, votes, first.slug);
+    return jsonSuccess({ ...answer, updatedAt });
+  } catch {
+    return jsonSuccess({ ...answer, pending: true, updatedAt: new Date().toISOString() });
+  }
 }

@@ -8,7 +8,7 @@
  * `batch`, one round trip however many seats a run names.
  */
 
-import type { ArchetypeTally, DeckReport } from '../../../shared/live/reports.js';
+import { type ArchetypeTally, type DeckReport, leadingArchetype } from '../../../shared/live/reports.js';
 import type { D1Like, D1Statement } from '../types.js';
 
 /** What one device has already reported at an event. */
@@ -19,7 +19,17 @@ export interface VoterLoad {
   held: number;
 }
 
+export interface DirtySeat {
+  seat: string;
+  revision: number;
+  archetype: string | null;
+}
+
 export interface VoteStore {
+  pending: () => Promise<string[]>;
+  markAttempted: (slug: string, at: number) => Promise<void>;
+  dirty: (slug: string) => Promise<DirtySeat[]>;
+  acknowledge: (slug: string, seats: readonly DirtySeat[]) => Promise<void>;
   /** The device's load at the event, and how much of it the given seats already are. */
   loadOf: (slug: string, voter: string, seats: readonly string[]) => Promise<VoterLoad>;
   /**
@@ -51,6 +61,57 @@ function tallyStatement(db: D1Like, report: DeckReport): D1Statement {
 
 export function createVoteStore(db: D1Like): VoteStore {
   return {
+    async pending() {
+      const { results } = await db
+        .prepare(
+          // Include clean seats so new seats cannot reset a repeatedly attempted event's priority.
+          'SELECT slug FROM live_report_outbox GROUP BY slug HAVING MAX(revision > published_revision) = 1 ' +
+            'ORDER BY MAX(last_attempted), slug LIMIT 10'
+        )
+        .all<{ slug: string }>();
+      return results.map(row => row.slug);
+    },
+    async markAttempted(slug, at) {
+      await db
+        .prepare('UPDATE live_report_outbox SET last_attempted = MAX(last_attempted + 1, ?) WHERE slug = ?')
+        .bind(at, slug)
+        .run();
+    },
+    async dirty(slug) {
+      const { results } = await db
+        .prepare(
+          'SELECT o.seat, o.revision, v.archetype, COUNT(v.voter) AS votes FROM live_report_outbox o ' +
+            'LEFT JOIN votes v ON v.slug = o.slug AND v.seat = o.seat ' +
+            'WHERE o.slug = ? AND o.revision > o.published_revision GROUP BY o.seat, o.revision, v.archetype'
+        )
+        .bind(slug)
+        .all<{ seat: string; revision: number; archetype: string | null; votes: number }>();
+      const seats = new Map<string, { revision: number; tallies: ArchetypeTally[] }>();
+      for (const row of results) {
+        const seat = seats.get(row.seat) ?? { revision: row.revision, tallies: [] };
+        if (row.archetype !== null) {
+          seat.tallies.push({ archetype: row.archetype, votes: row.votes });
+        }
+        seats.set(row.seat, seat);
+      }
+      return [...seats].map(([seat, row]) => ({
+        seat,
+        revision: row.revision,
+        archetype: leadingArchetype(row.tallies)
+      }));
+    },
+    async acknowledge(slug, seats) {
+      if (seats.length === 0) {
+        return;
+      }
+      await db
+        .prepare(
+          'UPDATE live_report_outbox SET published_revision = revision WHERE slug = ? AND (seat, revision) IN ' +
+            "(SELECT json_extract(value, '$.seat'), json_extract(value, '$.revision') FROM json_each(?))"
+        )
+        .bind(slug, JSON.stringify(seats.map(({ seat, revision }) => ({ seat, revision }))))
+        .run();
+    },
     async loadOf(slug, voter, seats) {
       const row = await db
         .prepare(
@@ -64,9 +125,17 @@ export function createVoteStore(db: D1Like): VoteStore {
     async settle(reports, at) {
       const results = await db.batch([
         ...reports.map(report => recordStatement(db, report, at)),
+        ...reports.map(report =>
+          db
+            .prepare(
+              'INSERT INTO live_report_outbox (slug, seat, revision, published_revision) VALUES (?, ?, 1, 0) ' +
+                'ON CONFLICT (slug, seat) DO UPDATE SET revision = revision + 1'
+            )
+            .bind(report.slug, report.seat)
+        ),
         ...reports.map(report => tallyStatement(db, report))
       ]);
-      return results.slice(reports.length).map(result => (result.results ?? []) as ArchetypeTally[]);
+      return results.slice(reports.length * 2).map(result => (result.results ?? []) as ArchetypeTally[]);
     }
   };
 }

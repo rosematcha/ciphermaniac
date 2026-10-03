@@ -47,3 +47,15 @@ test('an answer given before any file existed yields to the first file read', ()
   assert.equal(shownDeck(unpublished, file('2026-09-26T12:00:00.000Z', 'Gardevoir'), SEAT), 'Gardevoir');
   assert.equal(shownDeck(unpublished, null, SEAT), null);
 });
+
+test('a pending answer stays visible over an older file until publication catches up', () => {
+  const pending = { ...answer, pending: true };
+  const older = file('2026-09-26T12:00:00.000Z', 'Gardevoir');
+  assert.equal(shownDeck(pending, older, SEAT), 'Dragapult');
+  assert.equal(shownDeck(pending, null, SEAT), 'Dragapult');
+  assert.equal(shownDeck(pending, file(at, 'Dragapult'), SEAT), 'Dragapult');
+  assert.equal(shownDeck(pending, file('2026-09-26T12:03:00.000Z', 'Gardevoir'), SEAT), 'Gardevoir');
+  const retracted = { ...pending, archetypes: { [SEAT]: null } };
+  assert.equal(shownDeck(retracted, older, SEAT), null);
+  assert.equal(shownDeck(retracted, file('2026-09-26T12:03:00.000Z', 'Gardevoir'), SEAT), 'Gardevoir');
+});

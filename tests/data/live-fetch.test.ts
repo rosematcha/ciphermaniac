@@ -85,3 +85,14 @@ test('every label in the archetype icon map is offered for reports', async () =>
   stubFetch(200, { Ceruledge: ['ceruledge'], "Ethan's Typhlosion": ['typhlosion'] });
   assert.deepEqual(await fetchArchetypeLabels(), ['Ceruledge', "Ethan's Typhlosion"]);
 });
+
+test('a committed report awaiting publication is accepted by the client', async () => {
+  const reports = [{ slug: 'test-2027', seat: 'ada lovelace|GB', archetype: 'Dragapult', voter: 'a'.repeat(16) }];
+  const pending = {
+    pending: true,
+    updatedAt: '2026-10-03T12:00:00.000Z',
+    archetypes: { 'ada lovelace|GB': 'Dragapult' }
+  };
+  stubFetch(200, pending);
+  assert.deepEqual(await submitDeckReports(reports), pending);
+});
