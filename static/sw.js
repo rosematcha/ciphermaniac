@@ -76,28 +76,49 @@ function cacheable(response) {
   return response.ok && !type.includes('text/html');
 }
 
-async function staleWhileRevalidate(request) {
+// Storage failures must not turn a usable network response into a fetch error.
+async function writeCache(cache, request, response, trim = false) {
+  try {
+    await cache.put(request, response);
+    if (trim) {
+      await scheduleJsonTrim();
+    }
+  } catch {
+    // Quota, eviction, and trimming failures are safe to retry next request.
+  }
+}
+
+// Register waitUntil during dispatch, before any cache lookup can yield.
+// The response can resolve while its refresh/write/trim work is still pending.
+function respondWithBackground(event, handler) {
+  const background = [];
+  const response = handler(event.request, work => background.push(work)).catch(() =>
+    // Cache storage can be unavailable even when the network is usable.
+    fetch(event.request).catch(() => Response.error())
+  );
+  event.respondWith(response);
+  event.waitUntil(response.then(() => Promise.all(background)).catch(() => {}));
+}
+
+async function staleWhileRevalidate(request, keepAlive) {
   const cache = await caches.open(JSON_CACHE);
   const cached = await cache.match(request);
-  const refresh = fetch(request)
-    .then(response => {
-      if (cacheable(response)) {
-        cache.put(request, response.clone()).then(scheduleJsonTrim);
+  const refresh = fetch(request).catch(() => null);
+  keepAlive(
+    refresh.then(response => {
+      if (response && cacheable(response)) {
+        return writeCache(cache, request, cached ? response : response.clone(), true);
       }
-      return response;
     })
-    .catch(() => null);
+  );
   if (cached) {
     return cached;
   }
   const fresh = await refresh;
-  if (fresh) {
-    return fresh;
-  }
-  return Response.error();
+  return fresh ?? Response.error();
 }
 
-async function cacheFirst(request) {
+async function cacheFirst(request, keepAlive) {
   const cache = await caches.open(ASSET_CACHE);
   const cached = await cache.match(request);
   if (cached) {
@@ -114,18 +135,18 @@ async function cacheFirst(request) {
     return Response.error();
   }
   if (cacheable(response)) {
-    cache.put(request, response.clone());
+    keepAlive(writeCache(cache, request, response.clone()));
   }
   return response;
 }
 
-async function navigationNetworkFirst(request) {
+async function navigationNetworkFirst(request, keepAlive) {
   const cache = await caches.open(SHELL_CACHE);
   try {
     const response = await fetch(request);
     if (response.ok) {
       // Keep one shell copy purely as the offline fallback.
-      cache.put('/', response.clone());
+      keepAlive(writeCache(cache, '/', response.clone()));
     }
     return response;
   } catch {
@@ -142,30 +163,31 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
 
   if (request.mode === 'navigate') {
-    event.respondWith(navigationNetworkFirst(request));
+    respondWithBackground(event, navigationNetworkFirst);
     return;
   }
-  // Event listings are not cached here: stale-while-revalidate would hand back an
-  // index days old that names a run the producer has since deleted. Their own
-  // six-hour HTTP cache is shorter than the day a run outlives its index.
-  // Live rounds and deck reports are not either: every poll would be answered
-  // with the one before it, and a page keyed on the index hash would then hold
-  // a round's last result until the next round. The page revalidates them itself.
-  // Published tournament views are the same case: pairings polled every few seconds.
+  // Mutable release pointers must always reach the network.
+  //
+  // Event listings bypass the cache: an old index may name a deleted run.
+  // Live rounds and deck reports bypass it too, so each poll gets the latest
+  // result. Published tournament views also need fresh pairings each poll.
   if (
     url.host === 'r2.ciphermaniac.com' &&
+    url.pathname !== '/current.json' &&
+    url.pathname !== '/manifest.webmanifest' &&
+    !url.pathname.startsWith('/channels/') &&
     !url.pathname.startsWith('/card-images/') &&
     !url.pathname.startsWith('/events/') &&
     !url.pathname.startsWith('/live/') &&
     !url.pathname.startsWith('/tournaments/')
   ) {
-    event.respondWith(staleWhileRevalidate(request));
+    respondWithBackground(event, staleWhileRevalidate);
     return;
   }
   if (
     url.origin === self.location.origin &&
     (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/fonts/'))
   ) {
-    event.respondWith(cacheFirst(request));
+    respondWithBackground(event, cacheFirst);
   }
 });

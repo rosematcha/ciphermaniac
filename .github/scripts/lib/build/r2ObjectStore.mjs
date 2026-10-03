@@ -10,7 +10,7 @@
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
-const CONTROL_CACHE_CONTROL = 'no-cache';
+const CONTROL_CACHE_CONTROL = 'no-store, no-cache, must-revalidate';
 
 /** Codes R2/S3 return when a conditional create loses the race. */
 const CONFLICT_CODES = new Set(['PreconditionFailed', 'At least one of the pre-conditions you specified did not hold']);
