@@ -27,7 +27,7 @@ async function authorized({ request, env }: Context): Promise<boolean> {
 
 /** Still idle as the row stands now: a change since the sweep read it keeps the event going. */
 const stillIdle = (row: TournamentRow, before: number): boolean =>
-  !row.settings.finished && row.updatedAt < before && (row.tournament.pods[0]?.rounds.length ?? 0) > 0;
+  !row.settings.finished && row.updatedAt < before && row.tournament.pods.some(pod => pod.rounds.length > 0);
 
 export async function onRequestPost(context: Context): Promise<Response> {
   const db = context.env.TOURNAMENT_DB;

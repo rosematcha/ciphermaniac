@@ -45,14 +45,14 @@ import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { REPORT_WINDOW_MS } from '../../shared/tournament/reports.ts';
 import { revisionOf } from '../../shared/tournament/revision.ts';
 import { parseTdf, writeTdf } from '../../shared/tournament/tdf.ts';
-import type { Round, Tournament } from '../../shared/tournament/types.ts';
+import { DIVISIONS, type Round, type Tournament } from '../../shared/tournament/types.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { publishView } from '../../functions/lib/tournaments/publish.ts';
-import { loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
+import { loadIdle, loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
 import { apiCalls, type Handler, ORIGIN, request } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
 import { memoryProofs } from '../__utils__/proofBucket.ts';
-import { countingTrips, sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { countingTrips, racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 const { hit, signIn } = apiCalls(() => env);
@@ -1835,6 +1835,116 @@ async function underWay(cookie: string): Promise<string> {
   assert.equal((await send(code, cookie, { type: 'pairRound', pod: 'masters' })).status, 200);
   return code;
 }
+
+/** A separate pod per division, with only `pairedPod` under way. */
+function divisionPods(tournament: Tournament, pairedPod: number): Tournament {
+  const paired = tournament.pods.find(pod => pod.rounds.length > 0);
+  assert.ok(paired);
+  return {
+    ...tournament,
+    pods: DIVISIONS.map((category, index) => ({
+      ...paired,
+      category,
+      playerIds: index === pairedPod ? paired.playerIds : [],
+      rounds: index === pairedPod ? paired.rounds : []
+    }))
+  };
+}
+
+[1, 2].forEach(pairedPod => {
+  test(`the sweep ends an idle event with rounds only in pod ${pairedPod} without changing its document`, async () => {
+    const owner = await signIn('Organizer', 'organizer');
+    const code = await underWay(owner);
+    const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+    const row = await loadTournament(db, code);
+    assert.ok(row);
+    db.raw
+      .prepare('UPDATE tournaments SET state = ? WHERE code = ?')
+      .run(JSON.stringify(divisionPods(row.tournament, pairedPod)), code);
+    age(code, 3 * HOUR);
+    const before = await loadTournament(db, code);
+    assert.ok(before);
+    assert.deepEqual((await sweep()).json.ended, [code]);
+    const after = await loadTournament(db, code);
+    assert.ok(after);
+    assert.ok(after.updatedAt > before.updatedAt);
+    assert.deepEqual(after, {
+      ...before,
+      settings: { ...before.settings, finished: true },
+      version: before.version + 1,
+      updatedAt: after.updatedAt
+    });
+  });
+});
+
+test('idle candidates exclude empty pods, unpaired divisions and updates at the cutoff', async () => {
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const owner = await signIn('Organizer', 'organizer');
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const before = Date.now() - 2 * HOUR;
+  for (const pods of [[], DIVISIONS.map(category => ({ category, playerIds: [], rounds: [] }))]) {
+    const code = await newSwiss(owner);
+    const row = await loadTournament(db, code);
+    assert.ok(row);
+    db.raw
+      .prepare('UPDATE tournaments SET state = ?, updated_at = ? WHERE code = ?')
+      .run(JSON.stringify({ ...row.tournament, pods }), before - 1, code);
+  }
+  const atCutoff = await underWay(owner);
+  db.raw.prepare('UPDATE tournaments SET updated_at = ? WHERE code = ?').run(before, atCutoff);
+  assert.deepEqual(await loadIdle(db, before, 10), []);
+  assert.deepEqual((await sweep()).json.ended, [], 'no unpaired event is finished');
+});
+
+test('capped sweeps process oldest events first, break ties by code and drain remaining candidates', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const before = Date.now() - 2 * HOUR;
+  const candidates: { code: string; updatedAt: number }[] = [];
+  for (let index = 0; index < 12; index += 1) {
+    const code = await underWay(owner);
+    const updatedAt = before - Math.floor(index / 2) * HOUR - 1000;
+    db.raw.prepare('UPDATE tournaments SET updated_at = ? WHERE code = ?').run(updatedAt, code);
+    candidates.push({ code, updatedAt });
+  }
+  const ordered = candidates
+    .sort((a, b) => a.updatedAt - b.updatedAt || a.code.localeCompare(b.code))
+    .map(row => row.code);
+  assert.deepEqual(
+    (await loadIdle(db, before, 10)).map(row => row.code),
+    ordered.slice(0, 10)
+  );
+  assert.deepEqual(
+    (await loadIdle(db, before, 10)).map(row => row.code),
+    ordered.slice(0, 10)
+  );
+  assert.deepEqual((await sweep()).json.ended, ordered.slice(0, 10));
+  assert.deepEqual((await sweep()).json.ended, ordered.slice(10));
+  assert.deepEqual((await sweep()).json.ended, []);
+});
+
+[-1, 2].forEach(pairedPod => {
+  test(`the sweep rechecks every pod after a concurrent write leaves rounds in pod ${pairedPod}`, async () => {
+    const owner = await signIn('Organizer', 'organizer');
+    const code = await underWay(owner);
+    age(code, 3 * HOUR);
+    const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+    const row = await loadTournament(db, code);
+    assert.ok(row);
+    const tournament = divisionPods(row.tournament, pairedPod);
+    env.TOURNAMENT_DB = racing(db, 'UPDATE tournaments SET', () => {
+      db.raw
+        .prepare('UPDATE tournaments SET state = ?, version = version + 1 WHERE code = ?')
+        .run(JSON.stringify(tournament), code);
+    });
+    assert.deepEqual((await sweep()).json.ended, pairedPod < 0 ? [] : [code]);
+    const after = await loadTournament(db, code);
+    assert.ok(after);
+    assert.deepEqual(after.tournament, tournament, 'the concurrent document is preserved');
+    assert.equal(after.settings.finished, pairedPod >= 0);
+    assert.equal(after.version, row.version + (pairedPod < 0 ? 1 : 2));
+  });
+});
 
 test('the sweep ends an event under way that has gone two hours without a change, and publishes it', async () => {
   const objects = memoryBucket();

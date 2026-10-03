@@ -109,7 +109,7 @@ export async function loadIdle(db: D1Like, before: number, limit: number): Promi
   const { results } = await db
     .prepare(
       "SELECT * FROM tournaments WHERE coalesce(json_extract(settings, '$.finished'), 0) = 0 " +
-        "AND updated_at < ? AND json_array_length(state, '$.pods[0].rounds') > 0 LIMIT ?"
+        `AND updated_at < ? AND (${pairedRounds('state')}) > 0 ORDER BY updated_at ASC, code ASC LIMIT ?`
     )
     .bind(before, limit)
     .all<RawRow>();
