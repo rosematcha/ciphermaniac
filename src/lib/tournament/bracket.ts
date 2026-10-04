@@ -11,7 +11,7 @@
  */
 
 import { bracketOrder } from '../../../shared/tournament/pairing';
-import { withSwiss } from '../../../shared/tournament/rounds';
+import { regularRounds, withSwiss } from '../../../shared/tournament/rounds';
 import {
   bracketMatches,
   eliminationResult,
@@ -55,10 +55,13 @@ export interface Bracket {
 /** Each top-cut player's seed: their place in the Swiss standings that seeded the cut. */
 export function cutSeeds(tournament: Tournament, pod: Pod): Map<string, number> {
   const played = withSwiss(tournament, pod);
-  const only = pod.cutOf ? { only: new Set(pod.playerIds) } : {};
+  const options = {
+    ...(pod.cutOf ? { only: new Set(pod.playerIds) } : {}),
+    regularRounds: regularRounds(tournament, played)
+  };
   const seeds = new Map(tournament.players.filter(p => p.seed).map(p => [p.id, p.seed!]));
   return new Map(
-    swissStandings(played, tournament.players, only).map(row => [row.playerId, seeds.get(row.playerId) ?? row.place])
+    swissStandings(played, tournament.players, options).map(row => [row.playerId, seeds.get(row.playerId) ?? row.place])
   );
 }
 

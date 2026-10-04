@@ -32,6 +32,7 @@ import {
   divisionBrackets,
   latestRound,
   livePods,
+  regularRounds,
   swissAttendance
 } from '../../../shared/tournament/rounds';
 import { ordinal } from '../format';
@@ -366,7 +367,8 @@ function plannedCut(attendance: number, active: number, type: EventType): number
 /** One division's table: Swiss places from `pod`, then the top cut `bracket` plays, if any. */
 function standingsOf(tournament: Tournament, pod: Pod, only?: ReadonlySet<string>, bracket?: Pod) {
   const played = bracket ?? pod;
-  const rows = placeFinals(played, swissStandings(pod, tournament.players, only ? { only } : {}));
+  const options = { ...(only ? { only } : {}), regularRounds: regularRounds(tournament, pod) };
+  const rows = placeFinals(played, swissStandings(pod, tournament.players, options));
   const cutStarted = (only ? bracket : played)?.rounds.some(round => round.kind === 'elimination') === true;
   const attendance = attendees(pod).filter(id => !only || only.has(id)).length;
   const active = rows.filter(row => !row.dropped).length;

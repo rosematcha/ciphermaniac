@@ -6,6 +6,7 @@
 import { divisionLookup } from './divisions.js';
 import type { Pairing, PairingHistory } from './pairing.js';
 import { matchPoints, tallySwiss } from './standings.js';
+import { eventTypeOf, recommendedStructure } from './structure.js';
 import {
   type Division,
   DIVISIONS,
@@ -272,6 +273,17 @@ export function attendees(pod: Pod): string[] {
 export function swissAttendance(pod: Pod): number {
   const counts = Object.values(pod.divisionCounts ?? {});
   return counts.length ? Math.max(...counts) : attendees(pod).length;
+}
+
+/**
+ * The Swiss rounds TOM plans a pod on: Play! Pokémon's number for its
+ * attendance. A player who dropped having played fewer has their win
+ * percentage capped (see winRate). A site round cap is not part of it: TOM
+ * reads the plan from the attendance in the file, and standings must agree
+ * with TOM's.
+ */
+export function regularRounds(tournament: Tournament, pod: Pod): number {
+  return recommendedStructure(swissAttendance(pod), eventTypeOf(tournament)).rounds;
 }
 
 /** Players in the pod who have not dropped. */

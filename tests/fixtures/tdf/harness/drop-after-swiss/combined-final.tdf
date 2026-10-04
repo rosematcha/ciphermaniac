@@ -1,0 +1,726 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tournament type="3" stage="5" version="1.86" gametype="TRADING_CARD_GAME" mode="TCG1DAY">
+	<data>
+		<name>Harness &amp; Co&apos;s Cup</name>
+		<id>26-10-000001</id>
+		<city>Austin</city>
+		<state>TX</state>
+		<country>United States</country>
+		<roundtime>30</roundtime>
+		<finalsroundtime>50</finalsroundtime>
+		<organizer popid="1234567" name="Test Organizer"/>
+		<startdate>10/04/2026</startdate>
+		<lessswiss>false</lessswiss>
+		<autotablenumber>true</autotablenumber>
+		<overflowtablestart>21</overflowtablestart>
+	</data>
+	<timeelapsed>0</timeelapsed>
+	<players>
+		<player userid="1000020">
+			<firstname>P9</firstname>
+			<lastname>Senior</lastname>
+			<birthdate>02/27/2012</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000019">
+			<firstname>P8</firstname>
+			<lastname>Senior</lastname>
+			<birthdate>02/27/2010</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000004">
+			<firstname>P3</firstname>
+			<lastname>Master</lastname>
+			<birthdate>02/27/1995</birthdate>
+			<starter>true</starter>
+			<order>4</order>
+			<seed>2</seed>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000013">
+			<firstname>P2</firstname>
+			<lastname>Senior</lastname>
+			<birthdate>02/27/2010</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000008">
+			<firstname>P7</firstname>
+			<lastname>Master</lastname>
+			<birthdate>02/27/1994</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000021">
+			<firstname>P0</firstname>
+			<lastname>Junior</lastname>
+			<birthdate>02/27/2016</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000006">
+			<firstname>P5</firstname>
+			<lastname>Master</lastname>
+			<birthdate>02/27/1993</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000017">
+			<firstname>P6</firstname>
+			<lastname>Senior</lastname>
+			<birthdate>02/27/2012</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000011">
+			<firstname>P0</firstname>
+			<lastname>Senior</lastname>
+			<birthdate>02/27/2012</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000018">
+			<firstname>P7</firstname>
+			<lastname>Senior</lastname>
+			<birthdate>02/27/2011</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000003">
+			<firstname>P2</firstname>
+			<lastname>Master</lastname>
+			<birthdate>02/27/1993</birthdate>
+			<starter>true</starter>
+			<order>2</order>
+			<seed>4</seed>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000002">
+			<firstname>P1</firstname>
+			<lastname>Master</lastname>
+			<birthdate>02/27/1994</birthdate>
+			<starter>true</starter>
+			<order>1</order>
+			<seed>1</seed>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000007">
+			<firstname>P6</firstname>
+			<lastname>Master</lastname>
+			<birthdate>02/27/1995</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000014">
+			<firstname>P3</firstname>
+			<lastname>Senior</lastname>
+			<birthdate>02/27/2012</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000010">
+			<firstname>P9</firstname>
+			<lastname>Master</lastname>
+			<birthdate>02/27/1995</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000001">
+			<firstname>P0</firstname>
+			<lastname>Master</lastname>
+			<birthdate>02/27/1995</birthdate>
+			<starter>true</starter>
+			<order>3</order>
+			<seed>3</seed>
+			<byes>1</byes>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000009">
+			<firstname>P8</firstname>
+			<lastname>Master</lastname>
+			<birthdate>02/27/1993</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000015">
+			<firstname>P4</firstname>
+			<lastname>Senior</lastname>
+			<birthdate>02/27/2011</birthdate>
+			<starter>true</starter>
+			<dropped>
+				<status>1</status>
+				<round>3</round>
+				<timestamp>10/04/2026 18:12:17</timestamp>
+			</dropped>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000012">
+			<firstname>P1</firstname>
+			<lastname>Senior</lastname>
+			<birthdate>02/27/2011</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000005">
+			<firstname>P4</firstname>
+			<lastname>Master</lastname>
+			<birthdate>02/27/1994</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000016">
+			<firstname>P5</firstname>
+			<lastname>Senior</lastname>
+			<birthdate>02/27/2010</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000023">
+			<firstname>P2</firstname>
+			<lastname>Junior</lastname>
+			<birthdate>02/27/2014</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+		<player userid="1000022">
+			<firstname>P1</firstname>
+			<lastname>Junior</lastname>
+			<birthdate>02/27/2015</birthdate>
+			<starter>true</starter>
+			<creationdate>10/04/2026 18:12:17</creationdate>
+			<lastmodifieddate>10/04/2026 18:12:17</lastmodifieddate>
+		</player>
+	</players>
+	<pods>
+		<pod category="8" stage="0">
+			<poddata>
+				<startingtable>1</startingtable>
+				<playoff3rd4th>false</playoff3rd4th>
+				<subgroupcount>1</subgroupcount>
+				<additionalrounds>0</additionalrounds>
+				<blockedranges>
+				</blockedranges>
+			</poddata>
+			<subgroups>
+				<subgroup number="1">
+					<players>
+						<player userid="1000021" />
+						<player userid="1000015" />
+						<player userid="1000020" />
+						<player userid="1000012" />
+						<player userid="1000023" />
+						<player userid="1000017" />
+						<player userid="1000014" />
+						<player userid="1000011" />
+						<player userid="1000018" />
+						<player userid="1000022" />
+					</players>
+				</subgroup>
+			</subgroups>
+			<rounds>
+				<round number="1" type="3" stage="6" >
+					<timeleft>1800</timeleft>
+					<pairtime>10/04/2026 18:12:17</pairtime>
+					<starttime>10/04/2026 18:12:17</starttime>
+					<matches>
+						<match outcome="1">
+							<player1 userid="1000012"/>
+							<player2 userid="1000011"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000020"/>
+							<player2 userid="1000014"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000015"/>
+							<player2 userid="1000023"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000017"/>
+							<player2 userid="1000018"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>4</tablenumber>
+						</match>
+						<match outcome="3">
+							<player1 userid="1000021"/>
+							<player2 userid="1000022"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>5</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="2" type="3" stage="6" >
+					<timeleft>1800</timeleft>
+					<pairtime>10/04/2026 18:12:17</pairtime>
+					<starttime>10/04/2026 18:12:17</starttime>
+					<matches>
+						<match outcome="1">
+							<player1 userid="1000020"/>
+							<player2 userid="1000017"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000015"/>
+							<player2 userid="1000012"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000023"/>
+							<player2 userid="1000014"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000018"/>
+							<player2 userid="1000021"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>4</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000022"/>
+							<player2 userid="1000011"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>5</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="3" type="3" stage="8" >
+					<timeleft>1800</timeleft>
+					<pairtime>10/04/2026 18:12:17</pairtime>
+					<starttime>10/04/2026 18:12:17</starttime>
+					<matches>
+						<match outcome="2">
+							<player1 userid="1000020"/>
+							<player2 userid="1000015"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000017"/>
+							<player2 userid="1000023"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000018"/>
+							<player2 userid="1000012"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000011"/>
+							<player2 userid="1000021"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>4</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000022"/>
+							<player2 userid="1000014"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>5</tablenumber>
+						</match>
+					</matches>
+				</round>
+			</rounds>
+		</pod>
+		<pod category="2" stage="1">
+			<poddata>
+				<startingtable>1</startingtable>
+				<playoff3rd4th>false</playoff3rd4th>
+				<subgroupcount>1</subgroupcount>
+				<additionalrounds>0</additionalrounds>
+				<blockedranges>
+				</blockedranges>
+			</poddata>
+			<subgroups>
+				<subgroup number="1">
+					<players>
+						<player userid="1000008" />
+						<player userid="1000001" />
+						<player userid="1000002" />
+						<player userid="1000006" />
+						<player userid="1000004" />
+						<player userid="1000009" />
+						<player userid="1000013" />
+						<player userid="1000019" />
+						<player userid="1000010" />
+						<player userid="1000007" />
+						<player userid="1000005" />
+						<player userid="1000016" />
+						<player userid="1000003" />
+					</players>
+				</subgroup>
+			</subgroups>
+			<rounds>
+				<round number="1" type="3" stage="6" >
+					<timeleft>1800</timeleft>
+					<pairtime>10/04/2026 18:12:17</pairtime>
+					<starttime>10/04/2026 18:12:17</starttime>
+					<matches>
+						<match outcome="4">
+							<player userid="1000001"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>0</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000003"/>
+							<player2 userid="1000009"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>6</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000007"/>
+							<player2 userid="1000006"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>7</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000008"/>
+							<player2 userid="1000010"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>8</tablenumber>
+						</match>
+						<match outcome="3">
+							<player1 userid="1000002"/>
+							<player2 userid="1000005"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>9</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000013"/>
+							<player2 userid="1000019"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>10</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000004"/>
+							<player2 userid="1000016"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>11</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="2" type="3" stage="6" >
+					<timeleft>1800</timeleft>
+					<pairtime>10/04/2026 18:12:17</pairtime>
+					<starttime>10/04/2026 18:12:17</starttime>
+					<matches>
+						<match outcome="5">
+							<player userid="1000006"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>0</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000007"/>
+							<player2 userid="1000004"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>6</tablenumber>
+						</match>
+						<match outcome="3">
+							<player1 userid="1000001"/>
+							<player2 userid="1000003"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>7</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000019"/>
+							<player2 userid="1000008"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>8</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000005"/>
+							<player2 userid="1000009"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>9</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000002"/>
+							<player2 userid="1000016"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>10</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000013"/>
+							<player2 userid="1000010"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>11</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="3" type="3" stage="6" >
+					<timeleft>1800</timeleft>
+					<pairtime>10/04/2026 18:12:17</pairtime>
+					<starttime>10/04/2026 18:12:17</starttime>
+					<matches>
+						<match outcome="5">
+							<player userid="1000013"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>0</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000007"/>
+							<player2 userid="1000019"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>6</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000005"/>
+							<player2 userid="1000001"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>7</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000003"/>
+							<player2 userid="1000002"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>8</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000006"/>
+							<player2 userid="1000008"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>9</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000010"/>
+							<player2 userid="1000004"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>10</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000009"/>
+							<player2 userid="1000016"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>11</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="4" type="3" stage="6" >
+					<timeleft>1800</timeleft>
+					<pairtime>10/04/2026 18:12:17</pairtime>
+					<starttime>10/04/2026 18:12:17</starttime>
+					<matches>
+						<match outcome="5">
+							<player userid="1000016"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>0</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000007"/>
+							<player2 userid="1000001"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000002"/>
+							<player2 userid="1000008"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000019"/>
+							<player2 userid="1000004"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000005"/>
+							<player2 userid="1000003"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>4</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000010"/>
+							<player2 userid="1000006"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>5</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000013"/>
+							<player2 userid="1000009"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>6</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="5" type="3" stage="8" >
+					<timeleft>1800</timeleft>
+					<pairtime>10/04/2026 18:12:17</pairtime>
+					<starttime>10/04/2026 18:12:17</starttime>
+					<matches>
+						<match outcome="5">
+							<player userid="1000009"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>0</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000007"/>
+							<player2 userid="1000002"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000001"/>
+							<player2 userid="1000004"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000003"/>
+							<player2 userid="1000008"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>3</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000019"/>
+							<player2 userid="1000010"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>4</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000013"/>
+							<player2 userid="1000005"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>5</tablenumber>
+						</match>
+						<match outcome="2">
+							<player1 userid="1000006"/>
+							<player2 userid="1000016"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>6</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="6" type="1" stage="6" >
+					<timeleft>3000</timeleft>
+					<pairtime>10/04/2026 18:12:17</pairtime>
+					<starttime>10/04/2026 18:12:17</starttime>
+					<matches>
+						<match outcome="2">
+							<player1 userid="1000002"/>
+							<player2 userid="1000003"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+						<match outcome="1">
+							<player1 userid="1000001"/>
+							<player2 userid="1000004"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>2</tablenumber>
+						</match>
+					</matches>
+				</round>
+				<round number="7" type="1" stage="8" >
+					<timeleft>3000</timeleft>
+					<pairtime>10/04/2026 18:12:17</pairtime>
+					<starttime>10/04/2026 18:12:17</starttime>
+					<matches>
+						<match outcome="2">
+							<player1 userid="1000003"/>
+							<player2 userid="1000001"/>
+							<timestamp>10/04/2026 18:12:17</timestamp>
+							<tablenumber>1</tablenumber>
+						</match>
+					</matches>
+				</round>
+			</rounds>
+		</pod>
+	</pods>
+	<standings>
+		<pod category="2" type="finished">
+			<player id="1000001" place="1" />
+			<player id="1000003" place="2" />
+			<player id="1000002" place="3" />
+			<player id="1000004" place="4" />
+			<player id="1000007" place="5" />
+			<player id="1000019" place="6" />
+			<player id="1000013" place="7" />
+			<player id="1000008" place="8" />
+			<player id="1000016" place="9" />
+			<player id="1000010" place="10" />
+			<player id="1000009" place="11" />
+			<player id="1000005" place="12" />
+			<player id="1000006" place="13" />
+		</pod>
+		<pod category="2" type="dnf">
+		</pod>
+		<pod category="1" type="finished">
+			<player id="1000015" place="1" />
+			<player id="1000020" place="2" />
+			<player id="1000012" place="3" />
+			<player id="1000017" place="4" />
+			<player id="1000023" place="5" />
+			<player id="1000018" place="6" />
+			<player id="1000011" place="7" />
+			<player id="1000014" place="8" />
+		</pod>
+		<pod category="1" type="dnf">
+		</pod>
+		<pod category="0" type="finished">
+			<player id="1000021" place="1" />
+			<player id="1000022" place="2" />
+		</pod>
+		<pod category="0" type="dnf">
+		</pod>
+	</standings>
+	<finalsoptions>
+		<categorycut key="2">
+			<options>
+				<value>0</value>
+				<value>4</value>
+			</options>
+			<cut>4</cut>
+			<playercount>13</playercount>
+			<paired3rd4th>false</paired3rd4th>
+		</categorycut>
+		<categorycut key="1">
+			<options>
+				<value>0</value>
+			</options>
+			<cut>0</cut>
+			<playercount>8</playercount>
+			<paired3rd4th>false</paired3rd4th>
+		</categorycut>
+		<categorycut key="0">
+			<options>
+				<value>0</value>
+			</options>
+			<cut>0</cut>
+			<playercount>2</playercount>
+			<paired3rd4th>false</paired3rd4th>
+		</categorycut>
+	</finalsoptions>
+</tournament>

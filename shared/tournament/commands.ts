@@ -32,6 +32,7 @@ import {
   pairingHistory,
   podOf,
   pointsBefore,
+  regularRounds,
   roundComplete,
   seatPairings,
   toMatches
@@ -822,7 +823,10 @@ function startTopCut(
   if (only && !division) {
     return fail('Pick the division to cut');
   }
-  const seeds = swissStandings(pod, tournament.players, only ? { only } : {})
+  const seeds = swissStandings(pod, tournament.players, {
+    ...(only ? { only } : {}),
+    regularRounds: regularRounds(tournament, pod)
+  })
     .filter(row => !row.dropped)
     .slice(0, size)
     .map(row => row.playerId);

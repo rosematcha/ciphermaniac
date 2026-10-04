@@ -24,7 +24,7 @@
 
 import { divisionLookup, yearOnlyBirthDate } from './divisions.js';
 import { divisionsOf } from './podding.js';
-import { attendees, cutPodOf, fullRoundSeconds, hasStarted, normalizeCutPods } from './rounds.js';
+import { attendees, cutPodOf, fullRoundSeconds, hasStarted, normalizeCutPods, regularRounds } from './rounds.js';
 import { bracketMatches, placeFinals, swissStandings } from './standings.js';
 import { eventTypeOf, recommendedStructure } from './structure.js';
 import {
@@ -792,7 +792,7 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
     const places = fields.flatMap(pod => {
       const full = t.pods.find(p => p.category === pod.category) ?? pod;
       const only = new Set(pod.playerIds);
-      const swiss = swissStandings(full, t.players, { only });
+      const swiss = swissStandings(full, t.players, { only, regularRounds: regularRounds(t, full) });
       return placeFinals(division === 'mixed' ? full : (cutPodOf(t, full, division) ?? full), swiss);
     });
     const only = new Set(fields.flatMap(p => p.playerIds));
