@@ -603,8 +603,8 @@ function writeMatch(match: Match, fixed: ReadonlyMap<string, number>): string[] 
     match.p2 === null
       ? [`<player userid="${esc(match.p1)}"/>`]
       : [
-          `<player1 userid="${match.p1}"${seatAttr(fixed.get(match.p1))}/>`,
-          `<player2 userid="${match.p2}"${seatAttr(fixed.get(match.p2))}/>`
+          `<player1 userid="${esc(match.p1)}"${seatAttr(fixed.get(match.p1))}/>`,
+          `<player2 userid="${esc(match.p2)}"${seatAttr(fixed.get(match.p2))}/>`
         ];
   return [
     `<match outcome="${OUTCOME_CODES[match.outcome]}">`,
@@ -806,7 +806,7 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
       `<pod category="${code}" type="dnf">`,
       ...block(
         1,
-        dnf.map(p => `<player id="${p.id}" />`)
+        dnf.map(p => `<player id="${esc(p.id)}" />`)
       ),
       '</pod>'
     ];
