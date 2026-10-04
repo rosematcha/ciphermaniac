@@ -118,19 +118,9 @@ function findPod(tournament: Tournament, category: PodCategory): Pod | undefined
   return tournament.pods.find(pod => pod.category === category);
 }
 
-/**
- * A pod of several divisions whose divisions have gone on to their top cuts
- * has played its last round: its rounds seed the cuts, so they stand.
- */
-const CUTS_UNDER_WAY = 'Its divisions are playing their top cuts; change those instead';
-
-/** The pod a round command names, or why it cannot take one: none by that name, or its cuts under way. */
+/** The pod a round command names, or why it cannot take one. */
 function roundPod(tournament: Tournament, category: PodCategory): Pod | string {
-  const pod = findPod(tournament, category);
-  if (!pod) {
-    return 'There is no round to change';
-  }
-  return tournament.pods.some(p => p.cutOf === category) ? CUTS_UNDER_WAY : pod;
+  return findPod(tournament, category) ?? 'There is no round to change';
 }
 
 function withPod(tournament: Tournament, pod: Pod): Tournament {
@@ -183,7 +173,7 @@ const JOINS: Record<Division, readonly Division[]> = {
  * the pod as it stood, when it changes category.
  */
 function podFor(tournament: Tournament, division: Division): { pod: Pod; replaces?: Pod } {
-  const plays = (d: Division) => tournament.pods.find(pod => !pod.cutOf && divisionsOf(pod.category).includes(d));
+  const plays = (d: Division) => tournament.pods.find(pod => divisionsOf(pod.category).includes(d));
   const playing = plays(division);
   if (playing) {
     return { pod: playing, replaces: playing };
@@ -572,11 +562,7 @@ function startRoster(tournament: Tournament, ctx: CommandContext): Tournament {
 
 const activePlayers = (tournament: Tournament) => tournament.players.filter(p => p.droppedAfter === null).length;
 
-function pairRound(input: Tournament, category: PodCategory, ctx: CommandContext): CommandResult {
-  const tournament = input;
-  if (tournament.pods.some(p => p.cutOf === category)) {
-    return fail(CUTS_UNDER_WAY);
-  }
+function pairRound(tournament: Tournament, category: PodCategory, ctx: CommandContext): CommandResult {
   const pod = findPod(tournament, category);
   if (!pod || activeIds(tournament, pod).length < 2) {
     return fail('Add at least two players first');
