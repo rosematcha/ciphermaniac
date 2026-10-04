@@ -144,6 +144,7 @@ test('settings changes are checked field by field', () => {
   assert.equal(readSettings(JSON.parse('{"__proto__": 1}'), DEFAULT_SETTINGS), null);
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'always' }), true);
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'after' }), false);
+  assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'after', idle: true }), false);
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'after', finished: true }), true);
   assert.equal(decksVisible({ ...DEFAULT_SETTINGS, deckVisibility: 'off', finished: true }), false);
 });

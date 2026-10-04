@@ -48,6 +48,8 @@ export interface TournamentSettings {
   startsAt: string;
   /** Set when the organizer closes the event; 'after' decks show from then. */
   finished: boolean;
+  /** Write inactivity; does not close reporting or reveal post-event decks. */
+  idle: boolean;
   /**
    * A Play! Pokémon event: players are known by Player ID and birth year, and
    * the event exports a .tdf. An unsanctioned one asks for names only.
@@ -70,6 +72,7 @@ export const DEFAULT_SETTINGS: TournamentSettings = {
   format: 'Standard',
   startsAt: '',
   finished: false,
+  idle: false,
   // Events made before the choice existed asked for Player IDs, so they stay sanctioned.
   sanctioned: true,
   playerReporting: false,
@@ -89,6 +92,7 @@ const SETTING_CHECKS: { [K in keyof TournamentSettings]: SettingCheck } = {
   roundCap: value =>
     typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= SETTINGS_LIMITS.roundCap,
   finished: value => typeof value === 'boolean',
+  idle: value => typeof value === 'boolean',
   sanctioned: value => typeof value === 'boolean',
   playerReporting: value => typeof value === 'boolean',
   deckVisibility: value => VISIBILITIES.includes(value as DeckVisibility),

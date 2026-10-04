@@ -105,13 +105,14 @@ export async function loadTournament(db: D1Like, code: string): Promise<Tourname
  * most `limit` of them. Under way means round 1 is paired: an event set up
  * ahead of its day may sit untouched for as long as it likes.
  */
-export async function loadIdle(db: D1Like, before: number, limit: number): Promise<TournamentRow[]> {
+export async function loadIdle(db: D1Like, before: number, limit: number, expiredBefore = 0): Promise<TournamentRow[]> {
   const { results } = await db
     .prepare(
       "SELECT * FROM tournaments WHERE coalesce(json_extract(settings, '$.finished'), 0) = 0 " +
+        "AND (coalesce(json_extract(settings, '$.idle'), 0) = 0 OR updated_at <= ?) " +
         `AND updated_at < ? AND (${pairedRounds('state')}) > 0 ORDER BY updated_at ASC, code ASC LIMIT ?`
     )
-    .bind(before, limit)
+    .bind(expiredBefore, before, limit)
     .all<RawRow>();
   return results.map(fromRaw);
 }
@@ -259,6 +260,8 @@ function stateJson(tournament: Tournament): string {
 }
 
 export interface Changes {
+  /** Preserve the last activity time when the idle sweep only changes bookkeeping. */
+  updatedAt?: number;
   tournament?: Tournament;
   pending?: PendingResult[];
   reports?: PlayerReport[];
@@ -316,10 +319,12 @@ function columnsFor(changes: Changes, next: TournamentRow): [string, string][] {
  * update alone.
  * @returns The row as written, or null when someone else wrote first
  */
-async function saveTournament(db: D1Like, row: TournamentRow, changes: Changes): Promise<TournamentRow | null> {
+async function saveTournament(db: D1Like, row: TournamentRow, input: Changes): Promise<TournamentRow | null> {
+  const changes =
+    row.settings.idle && !input.settings ? { ...input, settings: { ...row.settings, idle: false } } : input;
   const next = changedRow(row, changes);
   const columns = columnsFor(changes, next);
-  const updatedAt = Date.now();
+  const updatedAt = changes.updatedAt ?? Date.now();
   const roster = changes.tournament || changes.settings ? rosterWrites(db, row, next) : [];
   const update = db
     .prepare(

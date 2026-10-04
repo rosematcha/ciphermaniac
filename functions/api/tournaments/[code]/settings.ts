@@ -29,7 +29,7 @@ function changedSettings(change: unknown, row: TournamentRow): TournamentSetting
   }
   const invalid =
     row.mode === 'swiss' ? sanctionedSettingsError(change as object, row.settings, next, row.tournament.info) : null;
-  return invalid ?? next;
+  return invalid ?? { ...next, idle: false };
 }
 
 export async function onRequestPut(context: Context<'code'>): Promise<Response> {

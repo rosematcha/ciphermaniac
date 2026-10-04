@@ -67,7 +67,7 @@ function swissFrom(body: Body): Tournament | null {
 /** The settings a new event starts with; closing it is not something it starts as. */
 function initialSettings(body: Body): TournamentSettings | null {
   const settings = readSettings(body.settings ?? {}, DEFAULT_SETTINGS);
-  return settings && { ...settings, finished: false };
+  return settings && { ...settings, finished: false, idle: false };
 }
 
 /** A TOM event's parsed file, its round clocks left for the site to run. */

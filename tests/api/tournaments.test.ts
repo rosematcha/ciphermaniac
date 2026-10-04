@@ -919,7 +919,14 @@ test('an event starts with the settings its setup chose', async () => {
         mode: 'swiss',
         name: 'Friday Locals',
         roundTime: 25,
-        settings: { sanctioned: false, playerReporting: true, format: 'Expanded', finished: true, roundCap: 3 }
+        settings: {
+          sanctioned: false,
+          playerReporting: true,
+          format: 'Expanded',
+          finished: true,
+          idle: true,
+          roundCap: 3
+        }
       }
     }
   );
@@ -931,6 +938,7 @@ test('an event starts with the settings its setup chose', async () => {
   assert.equal(made.settings.playerReporting, true);
   assert.equal(made.settings.format, 'Expanded');
   assert.equal(made.settings.finished, false, 'an event does not start closed');
+  assert.equal(made.settings.idle, false, 'an event does not start idle');
   assert.equal(made.settings.deckVisibility, 'off');
   assert.equal(made.settings.decklists, 'off');
   assert.equal(made.settings.roundCap, 3, 'a league that plays three rounds');
@@ -1960,7 +1968,7 @@ function sweep(authorization = `Bearer ${SWEEP_TOKEN}`) {
   const call = new Request(`${ORIGIN}/api/tournaments/idle`, { method: 'POST', headers: { authorization } });
   return idle.onRequestPost({ request: call, env, params: {} }).then(async response => ({
     status: response.status,
-    json: (await response.json()) as { ended: string[] }
+    json: (await response.json()) as { ended: string[]; idle: string[] }
   }));
 }
 
@@ -1996,7 +2004,7 @@ function divisionPods(tournament: Tournament, pairedPod: number): Tournament {
 }
 
 [1, 2].forEach(pairedPod => {
-  test(`the sweep ends an idle event with rounds only in pod ${pairedPod} without changing its document`, async () => {
+  test(`the sweep marks an unresolved event idle with rounds only in pod ${pairedPod} without changing its document`, async () => {
     const owner = await signIn('Organizer', 'organizer');
     const code = await underWay(owner);
     const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
@@ -2008,13 +2016,13 @@ function divisionPods(tournament: Tournament, pairedPod: number): Tournament {
     age(code, 3 * HOUR);
     const before = await loadTournament(db, code);
     assert.ok(before);
-    assert.deepEqual((await sweep()).json.ended, [code]);
+    assert.deepEqual((await sweep()).json.idle, [code]);
     const after = await loadTournament(db, code);
     assert.ok(after);
-    assert.ok(after.updatedAt > before.updatedAt);
+    assert.equal(after.updatedAt, before.updatedAt, 'bookkeeping preserves the last activity time');
     assert.deepEqual(after, {
       ...before,
-      settings: { ...before.settings, finished: true },
+      settings: { ...before.settings, idle: true },
       version: before.version + 1,
       updatedAt: after.updatedAt
     });
@@ -2062,8 +2070,8 @@ test('capped sweeps process oldest events first, break ties by code and drain re
     (await loadIdle(db, before, 10)).map(row => row.code),
     ordered.slice(0, 10)
   );
-  assert.deepEqual((await sweep()).json.ended, ordered.slice(0, 10));
-  assert.deepEqual((await sweep()).json.ended, ordered.slice(10));
+  assert.deepEqual((await sweep()).json.idle, ordered.slice(0, 10));
+  assert.deepEqual((await sweep()).json.idle, ordered.slice(10));
   assert.deepEqual((await sweep()).json.ended, []);
 });
 
@@ -2081,16 +2089,17 @@ test('capped sweeps process oldest events first, break ties by code and drain re
         .prepare('UPDATE tournaments SET state = ?, version = version + 1 WHERE code = ?')
         .run(JSON.stringify(tournament), code);
     });
-    assert.deepEqual((await sweep()).json.ended, pairedPod < 0 ? [] : [code]);
+    assert.deepEqual((await sweep()).json.idle, pairedPod < 0 ? [] : [code]);
     const after = await loadTournament(db, code);
     assert.ok(after);
     assert.deepEqual(after.tournament, tournament, 'the concurrent document is preserved');
-    assert.equal(after.settings.finished, pairedPod >= 0);
+    assert.equal(after.settings.finished, false);
+    assert.equal(after.settings.idle, pairedPod >= 0);
     assert.equal(after.version, row.version + (pairedPod < 0 ? 1 : 2));
   });
 });
 
-test('the sweep ends an event under way that has gone two hours without a change, and publishes it', async () => {
+test('the sweep marks an unresolved event idle that has gone two hours without a change, and publishes it', async () => {
   const objects = memoryBucket();
   const owner = await signIn('Organizer', 'organizer');
   const idleOne = await underWay(owner);
@@ -2101,8 +2110,8 @@ test('the sweep ends an event under way that has gone two hours without a change
   age(unstarted, 48 * HOUR);
   const swept = await sweep();
   assert.equal(swept.status, 200);
-  assert.deepEqual(swept.json.ended, [idleOne]);
-  assert.equal((await loadTournament(env.TOURNAMENT_DB!, idleOne))?.settings.finished, true);
+  assert.deepEqual(swept.json.idle, [idleOne]);
+  assert.equal((await loadTournament(env.TOURNAMENT_DB!, idleOne))?.settings.finished, false);
   assert.equal((await loadTournament(env.TOURNAMENT_DB!, busy))?.settings.finished, false);
   assert.equal(
     (await loadTournament(env.TOURNAMENT_DB!, unstarted))?.settings.finished,
@@ -2110,11 +2119,12 @@ test('the sweep ends an event under way that has gone two hours without a change
     'set up ahead of its day'
   );
   const published = JSON.parse(objects.get(`tournaments/v1/${idleOne}.json`)?.body ?? '{}') as TournamentView;
-  assert.equal(published.settings.finished, true, 'players see the event over');
+  assert.equal(published.settings.finished, false);
+  assert.equal(published.settings.idle, true, 'players see inactivity separately');
   assert.deepEqual((await sweep()).json.ended, [], 'an ended event is left alone');
 });
 
-test('an event the organizer reopens after the sweep ended it runs another two hours', async () => {
+test('a settings change clears idle status and gives the event another two hours', async () => {
   const owner = await signIn('Organizer', 'organizer');
   const code = await underWay(owner);
   age(code, 3 * HOUR);
@@ -2161,6 +2171,185 @@ test('a change that lands while the sweep runs keeps the event going', async () 
       };
     }
   };
+  assert.deepEqual((await sweep()).json.ended, []);
+  assert.equal((await loadTournament(db, code))?.settings.finished, false);
+});
+
+test('idle events keep player reporting open and post-event decks hidden, and activity clears idle', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await underWay(owner);
+  await settle(code, owner, { playerReporting: true, deckVisibility: 'after' });
+  const row = await loadTournament(env.TOURNAMENT_DB!, code);
+  assert.ok(row);
+  const match = row.tournament.pods[0]!.rounds[0]!.matches[0]!;
+  const phone = await phoneOf(code, match.p1);
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  db.raw
+    .prepare('UPDATE tournaments SET decks = ? WHERE code = ?')
+    .run(JSON.stringify({ [match.p1]: 'Dragapult' }), code);
+  age(code, 3 * HOUR);
+  assert.deepEqual((await sweep()).json.idle, [code]);
+  assert.equal((await view(code)).settings.finished, false);
+  assert.deepEqual((await view(code)).decks, {});
+  assert.equal((await phone.report('win')).status, 200);
+  assert.equal((await loadTournament(env.TOURNAMENT_DB!, code))?.settings.idle, false);
+});
+
+/** A complete three-round Swiss event, written as a synced document. */
+async function completedSwiss(owner: string): Promise<string> {
+  const code = await underWay(owner);
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const row = await loadTournament(db, code);
+  assert.ok(row);
+  const pod = row.tournament.pods[0]!;
+  const first = pod.rounds[0]!;
+  const rounds: Round[] = [1, 2, 3].map(number => ({
+    ...first,
+    number,
+    status: 'finished',
+    matches: first.matches.map(match => ({ ...match, outcome: 'p1' }))
+  }));
+  db.raw
+    .prepare('UPDATE tournaments SET state = ? WHERE code = ?')
+    .run(JSON.stringify({ ...row.tournament, pods: [{ ...pod, rounds }] }), code);
+  age(code, 3 * HOUR);
+  return code;
+}
+
+test('the sweep finishes genuinely completed Swiss events and reveals post-event decks', async () => {
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await completedSwiss(owner);
+  await settle(code, owner, { deckVisibility: 'after' });
+  age(code, 3 * HOUR);
+  assert.deepEqual((await sweep()).json.ended, [code]);
+  const published = JSON.parse(objects.get(`tournaments/v1/${code}.json`)?.body ?? '{}') as TournamentView;
+  assert.equal(published.settings.finished, true);
+});
+
+test('the sweep finishes a resolved final but waits for a pending third-place match', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await completedSwiss(owner);
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const row = await loadTournament(db, code);
+  assert.ok(row);
+  const pod = row.tournament.pods[0]!;
+  const last = pod.rounds.at(-1)!;
+  pod.cut = 4;
+  pod.playoff3rd4th = true;
+  const [a, b] = last.matches;
+  assert.ok(a && b && a.p2 && b.p2);
+  pod.rounds.push({ ...last, number: 4, kind: 'elimination' });
+  const final: Round = {
+    ...last,
+    number: 5,
+    kind: 'elimination',
+    matches: [
+      { ...a, p1: a.p1, p2: b.p1, outcome: 'p1' },
+      { ...b, p1: a.p2, p2: b.p2, outcome: 'pending' }
+    ]
+  };
+  pod.rounds.push(final);
+  db.raw.prepare('UPDATE tournaments SET state = ? WHERE code = ?').run(JSON.stringify(row.tournament), code);
+  assert.deepEqual((await sweep()).json.idle, [code]);
+  final.matches[1]!.outcome = 'p2';
+  db.raw
+    .prepare("UPDATE tournaments SET state = ?, settings = json_set(settings, '$.idle', 0) WHERE code = ?")
+    .run(JSON.stringify(row.tournament), code);
+  age(code, 3 * HOUR);
+  assert.deepEqual((await sweep()).json.ended, [code]);
+});
+
+(
+  [
+    'unpaired division',
+    'unfinished round',
+    'pending match',
+    'missing Swiss rounds',
+    'unpaired cut',
+    'semifinals',
+    'pending TOM result'
+  ] as const
+).forEach(defect => {
+  test(`the sweep leaves an event idle with ${defect}`, async () => {
+    const owner = await signIn('Organizer', 'organizer');
+    const code = await completedSwiss(owner);
+    const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+    const row = await loadTournament(db, code);
+    assert.ok(row);
+    const pod = row.tournament.pods[0]!;
+    const last = pod.rounds.at(-1)!;
+    switch (defect) {
+      case 'unpaired division':
+        row.tournament.pods.push({ ...pod, category: 'senior', rounds: [] });
+        break;
+      case 'unfinished round':
+        last.status = 'started';
+        break;
+      case 'pending match':
+        last.matches[0]!.outcome = 'pending';
+        break;
+      case 'missing Swiss rounds':
+        pod.rounds.pop();
+        break;
+      case 'unpaired cut':
+        pod.cut = 4;
+        break;
+      case 'semifinals':
+        pod.cut = 4;
+        pod.rounds.push({ ...last, number: 4, kind: 'elimination' });
+        break;
+      case 'pending TOM result':
+        row.pending.push({ pod: pod.category, round: last.number, ...last.matches[0]!, at: Date.now() });
+        break;
+    }
+    db.raw
+      .prepare('UPDATE tournaments SET state = ?, pending = ? WHERE code = ?')
+      .run(JSON.stringify(row.tournament), JSON.stringify(row.pending), code);
+    assert.deepEqual((await sweep()).json.idle, [code]);
+    assert.equal((await loadTournament(db, code))?.settings.finished, false);
+  });
+});
+
+test('an unresolved idle event expires at seven days from its last activity', async () => {
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const objects = memoryBucket();
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await underWay(owner);
+  const db = env.TOURNAMENT_DB!;
+  age(code, 3 * HOUR);
+  const lastActivity = (await loadTournament(db, code))!.updatedAt;
+  assert.deepEqual((await sweep()).json.idle, [code]);
+  assert.equal((await loadTournament(db, code))?.updatedAt, lastActivity);
+  mock.timers.tick(7 * 24 * HOUR - 3 * HOUR - 1);
+  assert.deepEqual((await sweep()).json.ended, [], 'idle events do not end before seven days');
+  mock.timers.tick(1);
+  assert.deepEqual((await sweep()).json.ended, [code]);
+  const after = await loadTournament(db, code);
+  assert.equal(after?.settings.finished, true);
+  assert.ok(after?.tournament.pods[0]!.rounds[0]!.matches.some(match => match.outcome === 'pending'));
+  const published = JSON.parse(objects.get(`tournaments/v1/${code}.json`)?.body ?? '{}') as TournamentView;
+  assert.equal(published.settings.finished, true);
+  assert.deepEqual((await sweep()).json.ended, [], 'finished events are not processed again');
+});
+
+test('seven-day events end even if no earlier idle sweep ran', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await underWay(owner);
+  age(code, 8 * 24 * HOUR);
+  assert.deepEqual((await sweep()).json.ended, [code]);
+});
+
+test('new activity during an expired idle sweep prevents closure', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await underWay(owner);
+  age(code, 3 * HOUR);
+  await sweep();
+  age(code, 8 * 24 * HOUR);
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  env.TOURNAMENT_DB = racing(db, 'UPDATE tournaments SET', () => {
+    db.raw.prepare('UPDATE tournaments SET updated_at = ?, version = version + 1 WHERE code = ?').run(Date.now(), code);
+  });
   assert.deepEqual((await sweep()).json.ended, []);
   assert.equal((await loadTournament(db, code))?.settings.finished, false);
 });
