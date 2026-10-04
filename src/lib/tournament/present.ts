@@ -56,13 +56,26 @@ export function namesById(tournament: Tournament): Map<string, string> {
 
 const CUT_ROUND_NAMES: Record<number, string> = { 2: 'Final', 4: 'Semifinals', 8: 'Quarterfinals' };
 
+/** A top-cut stage by the players still in it: Final, Semifinals, Quarterfinals, then Top 16 and up. */
+export const cutStageLabel = (players: number): string => CUT_ROUND_NAMES[players] ?? `Top ${players}`;
+
+/** Whether a pod has played into a top cut, so its matches can be shown as a bracket. */
+export const hasCut = (pod: Pod | undefined): boolean => pod?.rounds.some(r => r.kind === 'elimination') === true;
+
+/** How a top cut's matches are shown: the table every round has, or the bracket. */
+export type MatchView = 'table' | 'bracket';
+
+export const MATCH_VIEWS: { value: MatchView; label: string }[] = [
+  { value: 'table', label: 'Table' },
+  { value: 'bracket', label: 'Bracket' }
+];
+
 /** A round's name: its number in Swiss, its stage in a top cut, whose final may also hold the match for third. */
 export function roundLabel(round: Round, pod: Pod): string {
   if (round.kind === 'swiss') {
     return `Round ${round.number}`;
   }
-  const remaining = bracketMatches(pod, round).length * 2;
-  return CUT_ROUND_NAMES[remaining] ?? `Top ${remaining}`;
+  return cutStageLabel(bracketMatches(pod, round).length * 2);
 }
 
 /** The winner of a finished final, or null while the event is still going. */

@@ -1,0 +1,180 @@
+/* The top cut as a bracket, loaded with its chunk (Bracket) the first time
+   anyone asks for it, on the public page, the console or the big screen. */
+
+/* One column per round. Each pair of matches takes an equal share of its
+   column, so the match they feed sits level with the middle of the two, and
+   the lines between them are the pair's right edge and the next match's left
+   stub. On a phone the columns keep their width and scroll sideways. */
+.tm-bracket {
+  --bracket-gap: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-3) 14px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.tm-bracket:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: calc(-1 * var(--focus-width));
+}
+.tm-bracket-cols {
+  display: grid;
+  grid-auto-columns: minmax(220px, 1fr);
+  grid-auto-flow: column;
+  column-gap: var(--bracket-gap);
+}
+.tm-bracket-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tm-bracket-head {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tm-bracket-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.tm-bracket-pair {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.tm-bracket-pair.is-two::after {
+  content: '';
+  position: absolute;
+  top: 25%;
+  bottom: 25%;
+  right: calc(var(--bracket-gap) / -2);
+  width: calc(var(--bracket-gap) / 2);
+  border: 1px solid var(--border);
+  border-left: 0;
+  pointer-events: none;
+}
+.tm-bracket-slot {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  padding: 6px 0;
+}
+.tm-bracket-slot > * {
+  flex: 1;
+  min-width: 0;
+}
+.tm-bracket-col.is-fed .tm-bracket-slot::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: calc(var(--bracket-gap) / -2);
+  width: calc(var(--bracket-gap) / 2);
+  border-top: 1px solid var(--border);
+  pointer-events: none;
+}
+.tm-bracket-match {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.tm-bracket-match.is-me {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+.tm-bracket-meta {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.tm-bracket-meta strong {
+  color: var(--fg);
+}
+.tm-bracket-seat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+}
+.tm-bracket-seat + .tm-bracket-seat {
+  border-top: 1px solid var(--rule);
+}
+.tm-bracket-seed {
+  flex: none;
+  width: 2ch;
+  font-size: var(--text-sm);
+  text-align: right;
+  color: var(--muted);
+}
+.tm-bracket-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-body);
+}
+.tm-bracket-seat .tm-seat-link {
+  margin-left: 0;
+}
+/* The mark keeps the seat's right edge however the name is sized, as on a phone's pairings. */
+.tm-bracket-seat .tm-mark {
+  margin-left: auto;
+}
+.tm-bracket-seat.is-win .tm-bracket-name {
+  font-weight: 600;
+}
+.tm-bracket-seat.is-out .tm-bracket-name,
+.tm-bracket-seat.is-out .tm-seat-link {
+  color: var(--muted);
+}
+.tm-bracket-third {
+  max-width: 320px;
+}
+
+/* The top cut as a bracket, read across the room: the page's bracket at the
+   screen's sizes, the winner marked in the accent as the tables mark it. */
+.tm-bracket.is-screen {
+  --bracket-gap: var(--space-6);
+  padding: 0;
+  overflow: visible;
+  font-size: clamp(var(--text-lg), 1.6vw, var(--text-2xl));
+}
+.tm-bracket.is-screen .tm-bracket-cols {
+  grid-auto-columns: minmax(0, 1fr);
+}
+.tm-bracket.is-screen .tm-bracket-head {
+  font-size: 0.7em;
+}
+.tm-bracket.is-screen .tm-bracket-meta {
+  font-size: 0.65em;
+}
+.tm-bracket.is-screen .tm-bracket-seat {
+  min-height: 2.2em;
+}
+.tm-bracket.is-screen .tm-bracket-name {
+  font-size: 1em;
+  font-weight: 700;
+}
+.tm-bracket.is-screen .tm-bracket-seed {
+  font-size: 0.6em;
+}
+.tm-bracket.is-screen .tm-mark {
+  width: auto;
+  min-width: 1.5em;
+  font-size: 0.6em;
+}
+.tm-bracket.is-screen .is-win .tm-mark {
+  padding: 0.1em 0.3em;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-fill);
+  color: var(--accent-fg);
+}

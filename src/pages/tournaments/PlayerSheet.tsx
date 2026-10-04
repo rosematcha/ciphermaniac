@@ -4,7 +4,7 @@
  * the opponent's record and the result. A side sheet on desktop, a bottom
  * sheet on a phone. It is also where a player marks themselves, proving it
  * with their Player ID or last name, so the page can lead with their table
- * from then on.
+ * from then on, and where a spectator follows them.
  */
 
 import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from 'solid-js';
@@ -29,6 +29,9 @@ export function PlayerSheet(props: {
   records: Map<string, string>;
   decks: Record<string, string>;
   isMe: boolean;
+  /** Whether this device follows the player, for the pairings' Following filter. */
+  following: boolean;
+  onFollow: () => void;
   onIdentified: (found: Identified) => void;
   onForget: () => void;
   onClose: () => void;
@@ -147,6 +150,14 @@ export function PlayerSheet(props: {
           </div>
         </div>
         <div class='tm-sheet-foot'>
+          <button
+            type='button'
+            class='btn btn-secondary tm-follow'
+            aria-pressed={props.following}
+            onClick={() => props.onFollow()}
+          >
+            {props.following ? 'Following' : 'Follow'}
+          </button>
           <Show
             when={!props.isMe}
             fallback={

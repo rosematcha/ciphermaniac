@@ -18,15 +18,19 @@
  * for naming decks as the room is walked.
  */
 
-import { createEffect, createMemo, createSignal, For, lazy, on, Show, Suspense } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, type JSX, lazy, on, Show, Suspense } from 'solid-js';
 import { isDisputed, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
 import { latestRound, withSwiss } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import { decksEnabled } from '../../../shared/tournament/view';
+import { Segmented } from '../../components/Segmented';
 import type { Manage } from '../../lib/tournament/api';
 import {
   champion,
   filterMatches,
+  hasCut,
+  MATCH_VIEWS,
+  type MatchView,
   namesById,
   outcomeLabel,
   RESULT_WORDS,
@@ -42,6 +46,7 @@ import { MatchTable } from './MatchTable';
 import { ChampionLine, ClockControls, DeleteRound, RepairControl } from './RoundControls';
 
 // Decks are named now and then, not every round, so their picker loads when first asked for.
+const CutBracket = lazy(() => import('./Bracket').then(m => ({ default: m.CutBracket })));
 const EventDeckPicker = lazy(() => import('./DeckPicker').then(m => ({ default: m.EventDeckPicker })));
 
 function RoundPicker(props: { pod: Pod; selected: number; onSelect: (n: number) => void }) {
@@ -281,6 +286,8 @@ interface RoundBarProps {
   waiting: boolean;
   nothingReported: boolean;
   swapMode: boolean;
+  /** The Table / Bracket switch, once the pod has a top cut to draw. */
+  views?: JSX.Element;
   onPick: (round: number) => void;
   onSwap: () => void;
 }
@@ -295,6 +302,7 @@ function RoundBar(props: RoundBarProps) {
       <span class='muted tm-num'>
         {STATUS_LABELS[props.round.status]} · {props.played - props.open} of {props.played} in
       </span>
+      {props.views}
       <span class='tm-grow' />
       <Show when={props.tom}>
         <span class='muted'>Paired in TOM</span>
@@ -344,6 +352,10 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   let filterInput: HTMLInputElement | undefined;
   const round = createMemo(() => props.pod.rounds.find(r => r.number === picked()) ?? latest());
   const names = createMemo(() => namesById(props.manage.tournament));
+  const cut = createMemo(() => hasCut(props.pod));
+  // Results are entered in the table, so the bracket is only ever a look at the cut.
+  const [matchView, setMatchView] = createSignal<MatchView>('table');
+  const asBracket = () => cut() && matchView() === 'bracket';
   const waiting = () => (tom() || latest()?.kind !== 'swiss' ? [] : unseated(props.manage.tournament, props.pod));
   const isLatest = () => round()?.number === latest()?.number;
   const winner = () => champion(latest(), props.pod);
@@ -452,89 +464,115 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
       </Show>
       <Show when={winner()}>{id => <ChampionLine name={names().get(id()) ?? id()} />}</Show>
       <Show when={round()} fallback={<p class='muted'>No rounds yet.</p>}>
-        {r => (
-          <section class='tm-box'>
-            <RoundBar
-              state={props.state}
-              pod={props.pod}
-              round={r()}
-              tom={tom()}
-              live={live()}
-              timed={timed()}
-              played={played().length}
-              open={openCount()}
-              waiting={waiting().length > 0}
-              nothingReported={nothingReported()}
-              swapMode={swapMode()}
-              onPick={setPicked}
-              onSwap={() => {
-                setSwapMode(!swapMode());
-                setSwapPick(null);
-              }}
-            />
-            <Show when={swapMode()}>
-              <div class='tm-box-bar tm-ask'>
-                <span>Pick two players to trade seats.</span>
-              </div>
-            </Show>
-            <RoomFilter
-              ref={el => (filterInput = el)}
-              query={query()}
-              openOnly={openOnly()}
-              deckMode={decksEnabled(props.manage.settings) ? deckMode() : null}
-              hint={!swapMode() && !props.locked && openCount() > 0}
-              onQuery={setQuery}
-              onOpenOnly={setOpenOnly}
-              onDeckMode={setDeckMode}
-            />
-            <MatchTable
-              pod={withSwiss(props.manage.tournament, props.pod)}
-              round={r()}
-              matches={shown()}
-              names={names()}
-              decks={shownDecks(props.manage)}
-              pending={props.manage.pending}
-              selected={new Set(swapPick() ? [swapPick() as string] : [])}
-              onReport={swapMode() || props.locked ? undefined : report}
-              onRecord={swapMode() || props.locked ? undefined : send}
-              onPlayer={swapMode() ? pickForSwap : undefined}
-              deckPicker={
-                naming() && !swapMode()
-                  ? id => (
-                      <Suspense fallback={<span class='tm-deck-pick' />}>
-                        <EventDeckPicker state={props.state} manage={props.manage} playerId={id} />
-                      </Suspense>
-                    )
-                  : undefined
-              }
-              confirming={asking()}
-              sent={match => sent().get(sentKey(r(), match))}
-              tag={(match, id) => staffReport(openReports(match, r()), match, names())?.tags.get(id) ?? null}
-              extra={match => (
-                <Result
-                  locked={props.locked ?? false}
-                  match={match}
+        {r => {
+          // The room's tables with result entry; also what a cut shows when it cannot be drawn as a bracket.
+          const roomTable = () => (
+            <>
+              <RoomFilter
+                ref={el => (filterInput = el)}
+                query={query()}
+                openOnly={openOnly()}
+                deckMode={decksEnabled(props.manage.settings) ? deckMode() : null}
+                hint={!swapMode() && !props.locked && openCount() > 0}
+                onQuery={setQuery}
+                onOpenOnly={setOpenOnly}
+                onDeckMode={setDeckMode}
+              />
+              <MatchTable
+                pod={withSwiss(props.manage.tournament, props.pod)}
+                round={r()}
+                matches={shown()}
+                names={names()}
+                decks={shownDecks(props.manage)}
+                pending={props.manage.pending}
+                selected={new Set(swapPick() ? [swapPick() as string] : [])}
+                onReport={swapMode() || props.locked ? undefined : report}
+                onRecord={swapMode() || props.locked ? undefined : send}
+                onPlayer={swapMode() ? pickForSwap : undefined}
+                deckPicker={
+                  naming() && !swapMode()
+                    ? id => (
+                        <Suspense fallback={<span class='tm-deck-pick' />}>
+                          <EventDeckPicker state={props.state} manage={props.manage} playerId={id} />
+                        </Suspense>
+                      )
+                    : undefined
+                }
+                confirming={asking()}
+                sent={match => sent().get(sentKey(r(), match))}
+                tag={(match, id) => staffReport(openReports(match, r()), match, names())?.tags.get(id) ?? null}
+                extra={match => (
+                  <Result
+                    locked={props.locked ?? false}
+                    match={match}
+                    pod={props.pod}
+                    round={r()}
+                    manage={props.manage}
+                    reports={openReports(match, r())}
+                    sent={sent().get(sentKey(r(), match))}
+                    names={names()}
+                    asking={isAsking(match) ? asking() : null}
+                    onReport={o => report(match, o)}
+                    onRecord={() => record(match)}
+                    onKeep={() => {
+                      setAsking(null);
+                      backToFilter();
+                    }}
+                  />
+                )}
+              />
+              <Show when={shown().length === 0}>
+                <p class='muted tm-empty'>No tables match.</p>
+              </Show>
+            </>
+          );
+          return (
+            <section class='tm-box'>
+              <RoundBar
+                state={props.state}
+                pod={props.pod}
+                round={r()}
+                tom={tom()}
+                live={live()}
+                timed={timed()}
+                played={played().length}
+                open={openCount()}
+                waiting={waiting().length > 0}
+                nothingReported={nothingReported()}
+                swapMode={swapMode()}
+                views={
+                  <Show when={cut()}>
+                    <Segmented
+                      options={MATCH_VIEWS}
+                      selected={matchView()}
+                      onSelect={setMatchView}
+                      ariaLabel='Show matches as'
+                    />
+                  </Show>
+                }
+                onPick={setPicked}
+                onSwap={() => {
+                  setSwapMode(!swapMode());
+                  setSwapPick(null);
+                }}
+              />
+              <Show when={swapMode()}>
+                <div class='tm-box-bar tm-ask'>
+                  <span>Pick two players to trade seats.</span>
+                </div>
+              </Show>
+              <Show when={asBracket()} fallback={roomTable()}>
+                <CutBracket
+                  tournament={props.manage.tournament}
                   pod={props.pod}
-                  round={r()}
-                  manage={props.manage}
-                  reports={openReports(match, r())}
-                  sent={sent().get(sentKey(r(), match))}
+                  pending={props.manage.pending}
                   names={names()}
-                  asking={isAsking(match) ? asking() : null}
-                  onReport={o => report(match, o)}
-                  onRecord={() => record(match)}
-                  onKeep={() => {
-                    setAsking(null);
-                    backToFilter();
-                  }}
+                  fallback={roomTable()}
                 />
-              )}
-            />
-            <Show when={shown().length === 0}>
-              <p class='muted tm-empty'>No tables match.</p>
-            </Show>
-          </section>
-        )}
+              </Show>
+            </section>
+          );
+        }}
       </Show>
     </div>
   );

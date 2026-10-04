@@ -5,14 +5,15 @@
  * first. Pairings and standings update on their own, each in one box with the
  * division switch and search in its bar. Decks show only as the event allows
  * (the server leaves hidden ones out), and decklists are submitted from here
- * while the organizer has submission open.
+ * while the organizer has submission open. `?screen=1` makes it the big
+ * screen, and `?stream=table&table=N` one table's overlay for a stream.
  */
 
 import { useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, lazy, onCleanup, onMount, Show } from 'solid-js';
-import { hasStarted, latestRound, livePods, playerPod, podOf, withSwiss } from '../../../shared/tournament/rounds';
+import { hasStarted, latestRound, livePods, playerPod, podOf } from '../../../shared/tournament/rounds';
 import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
-import type { Pod, PodCategory, Round } from '../../../shared/tournament/types';
+import { type Pod, POD_CATEGORIES, type PodCategory, type Round } from '../../../shared/tournament/types';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
 import {
   decklistsOpen,
@@ -36,6 +37,7 @@ import { ordinal } from '../../lib/format';
 import { latestValue } from '../../lib/resource';
 import { onChange } from '../../lib/tournament/changes';
 import { shared } from '../../lib/tournament/share';
+import { readFollowing, toggleFollowing } from '../../lib/tournament/spectate';
 import {
   askOnReturn,
   createViewPoll,
@@ -50,7 +52,6 @@ import { dayLabel, eventDay, playerResult } from '../../lib/tournament/history';
 import {
   divisionHeading,
   eventStatus,
-  filterMatches,
   firstRoundTime,
   namesById,
   podLabel,
@@ -60,15 +61,16 @@ import {
 } from '../../lib/tournament/present';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
-import { MatchTable } from './MatchTable';
 import { createNow } from './now';
 import { PlayerSheet } from './PlayerSheet';
+import { PublicPairings } from './PublicPairings';
 import type { Identified } from './Identify';
 import { StandingsTable } from './StandingsTable';
 import { YourMatch } from './YourMatch';
 import '../../styles/pages/tournament-public.css';
 
 const BigScreen = lazy(() => import('./BigScreen').then(m => ({ default: m.BigScreen })));
+const StreamOverlay = lazy(() => import('./StreamOverlay').then(m => ({ default: m.StreamOverlay })));
 const DeckStats = lazy(() => import('./DeckStats').then(m => ({ default: m.DeckStats })));
 const DecklistForm = lazy(() => import('./DecklistForm').then(m => ({ default: m.DecklistForm })));
 
@@ -400,6 +402,8 @@ function OpenPlayer(props: {
   id: string;
   me: string | null;
   names: Map<string, string>;
+  following: ReadonlySet<string>;
+  onFollow: (id: string) => void;
   onIdentified: (found: Identified) => void;
   onForget: () => void;
   onOpen: (id: string | null) => void;
@@ -431,6 +435,8 @@ function OpenPlayer(props: {
           records={records()}
           decks={props.view.decks}
           isMe={props.me === props.id}
+          following={props.following.has(props.id)}
+          onFollow={() => props.onFollow(props.id)}
           onIdentified={props.onIdentified}
           onForget={props.onForget}
           onClose={() => props.onOpen(null)}
@@ -491,6 +497,9 @@ function EventBody(props: {
   const [roundChoice, setRoundChoice] = createSignal<number | null>(null);
   const [query, setQuery] = createSignal('');
   const [open, setOpen] = createSignal<string | null>(null);
+  // eslint-disable-next-line solid/reactivity -- the page is one event's for as long as it is open
+  const [following, setFollowing] = createSignal(readFollowing(props.view.code));
+  const follow = (id: string) => setFollowing(toggleFollowing(props.view.code, id));
   const { me, claim, reportToken, reports, identified, forget, recheck } = createMe(() => props.view, {
     onView: view => props.onView(view),
     onLinked: () => props.onWhoAmI()
@@ -527,7 +536,7 @@ function EventBody(props: {
     { equals: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
   );
 
-  const bar = (withRounds: boolean) => (
+  const bar = (withRounds: boolean, withSearch = true) => (
     <>
       <Show when={pods().length > 1}>
         <Segmented
@@ -540,14 +549,16 @@ function EventBody(props: {
           ariaLabel='Division'
         />
       </Show>
-      <input
-        class='search tm-grow'
-        type='search'
-        placeholder='Find a player'
-        aria-label='Find a player'
-        value={query()}
-        onInput={e => setQuery(e.currentTarget.value)}
-      />
+      <Show when={withSearch}>
+        <input
+          class='search tm-grow'
+          type='search'
+          placeholder='Find a player'
+          aria-label='Find a player'
+          value={query()}
+          onInput={e => setQuery(e.currentTarget.value)}
+        />
+      </Show>
       <Show when={withRounds}>
         <RoundSelect pod={pod()} round={round()} onSelect={setRoundChoice} />
       </Show>
@@ -578,23 +589,18 @@ function EventBody(props: {
       <Tabs options={tabs()} selected={tab()} onSelect={value => setParams({ tab: value }, { replace: true })} />
       <Show when={tab() === 'pairings'}>
         <section class='tm-box tm-public-pairings'>
-          <div class='tm-box-bar'>{bar(started())}</div>
-          <Show
-            when={pod() && round()}
-            fallback={<RegisteredList view={props.view} me={me()} query={query()} onPlayer={setOpen} />}
-          >
-            <MatchTable
-              pod={withSwiss(props.view.tournament, pod()!)}
-              round={round()!}
-              matches={filterMatches(round()!.matches, names(), query())}
-              names={names()}
-              decks={props.view.decks}
-              pending={props.view.pending}
-              me={me()}
-              onPlayer={setOpen}
-              status
-            />
-          </Show>
+          <PublicPairings
+            view={props.view}
+            pod={pod()}
+            round={round()}
+            names={names()}
+            me={me()}
+            query={query()}
+            bar={bar}
+            following={following()}
+            registered={<RegisteredList view={props.view} me={me()} query={query()} onPlayer={setOpen} />}
+            onPlayer={setOpen}
+          />
           <Show when={started() && deckNote(props.view)}>
             {note => <p class='tm-box-bar tm-box-note muted'>{note()}</p>}
           </Show>
@@ -642,6 +648,8 @@ function EventBody(props: {
             onForget={forget}
             onOpen={setOpen}
             names={names()}
+            following={following()}
+            onFollow={follow}
           />
         )}
       </Show>
@@ -714,14 +722,25 @@ function Hero(props: { view: TournamentView }) {
   );
 }
 
+/** The table a stream overlay shows (`stream=table&table=N`, `pod` to pick a division), or null for none. */
+function streamOf(params: { stream?: string; table?: string; pod?: string }) {
+  const table = Number(params.table);
+  if (params.stream !== 'table' || !Number.isInteger(table) || table < 1) {
+    return null;
+  }
+  const pod = POD_CATEGORIES.find(category => category === params.pod);
+  return { table, pod };
+}
+
 /**
  * `session`: who is signed in, which the page's own copy of the event cannot
  * say (see createView), and the sign-ins the server offers.
  */
 export function PublicEvent(props: { code: string; session: Session | undefined }) {
-  const [params] = useSearchParams<{ screen?: string }>();
-  // The page is the big screen or not for as long as it is open.
-  const screen = params.screen === '1';
+  const [params] = useSearchParams<{ screen?: string; stream?: string; table?: string; pod?: string }>();
+  // The page is the big screen, a stream overlay, or neither, for as long as it is open.
+  const stream = streamOf(params);
+  const screen = params.screen === '1' || stream !== null;
   // The big screen draws no decks, so it reads the published file even in a staff browser.
   const { view, take, whoAmI, unlinked, retry } = createView(
     () => props.code,
@@ -763,7 +782,14 @@ export function PublicEvent(props: { code: string; session: Session | undefined 
       }
     >
       {v => (
-        <Show when={!screen} fallback={<BigScreen view={v()} />}>
+        <Show
+          when={!screen}
+          fallback={
+            <Show when={stream} fallback={<BigScreen view={v()} />}>
+              {s => <StreamOverlay view={v()} table={s().table} pod={s().pod} />}
+            </Show>
+          }
+        >
           <div class='tm-page tm-public'>
             <Hero view={v()} />
             <EventBody view={v()} session={props.session} onView={take} onWhoAmI={whoAmI} onUnlinked={unlinked} />

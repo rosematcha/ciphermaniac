@@ -125,6 +125,14 @@
 .tm-sheet-foot .tm-identify {
   flex: 1;
 }
+/* Following sits apart from saying who you are, at the foot's other end. */
+.tm-sheet-foot .tm-follow {
+  margin-right: auto;
+}
+/* The filters under the pairings' bar: what to show, and one deck. */
+.tm-spectate .tm-select {
+  max-width: 100%;
+}
 .tm-identify .tm-field {
   flex: 1 1 220px;
   max-width: 420px;

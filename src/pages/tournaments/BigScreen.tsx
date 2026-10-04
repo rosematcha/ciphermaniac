@@ -10,19 +10,24 @@
  * and the clock, the largest thing on the screen. Before round 1 is paired it
  * lists everyone registered, so a player can check they are in.
  *
- * Rows per line and the scroll speed are for whoever is at the laptop: the
- * controls show while the pointer moves, S cycles the speed, and both are
- * remembered on the device. The site's chrome is hidden while it is up.
+ * Rows per line, the scroll speed, and once a top cut has started whether it
+ * shows as tables or as a bracket, are for whoever is at the laptop: the
+ * controls show while the pointer moves, S cycles the speed, B switches the
+ * view, and all are remembered on the device. The site's chrome is hidden
+ * while it is up.
  */
 
-import { createMemo, createSignal, For, Index, onCleanup, onMount, Show } from 'solid-js';
-import { swissStandings } from '../../../shared/tournament/standings';
+import { createMemo, createSignal, For, Index, lazy, onCleanup, onMount, Show } from 'solid-js';
 import type { Pod, Round } from '../../../shared/tournament/types';
 import type { TournamentView } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
+import { cutSeeds } from '../../lib/tournament/bracket';
 import {
   eventStatus,
   firstRoundTime,
+  hasCut,
+  MATCH_VIEWS,
+  type MatchView,
   namesById,
   podLabel,
   recordsBefore,
@@ -41,6 +46,7 @@ const PAUSE_MS = 4000;
 const CONTROLS_MS = 3000;
 const SPEED_KEY = 'cm-screen-autoscroll';
 const PER_ROW_KEY = 'cm-screen-per-row';
+const VIEW_KEY = 'cm-screen-view';
 
 type Speed = 'off' | 'slow' | 'moderate' | 'fast';
 
@@ -92,7 +98,15 @@ function createScreenPrefs() {
     localStorage.setItem(PER_ROW_KEY, two() ? '1' : '2');
     setTwoSignal(!two());
   };
-  return { speed, setSpeed, cycle, two, toggleTwo };
+  const [view, setViewSignal] = createSignal<MatchView>(
+    localStorage.getItem(VIEW_KEY) === 'bracket' ? 'bracket' : 'table'
+  );
+  const setView = (next: MatchView) => {
+    localStorage.setItem(VIEW_KEY, next);
+    setViewSignal(next);
+  };
+  const toggleView = () => setView(view() === 'bracket' ? 'table' : 'bracket');
+  return { speed, setSpeed, cycle, two, toggleTwo, view, setView, toggleView };
 }
 
 type Prefs = ReturnType<typeof createScreenPrefs>;
@@ -128,13 +142,9 @@ function TableRows(props: { view: TournamentView; pod: Pod; round: Round; headin
   // A division's top cut reads its records and seeds from the Swiss rounds that seeded it, among its own players.
   const played = createMemo(() => withSwiss(props.view.tournament, props.pod));
   const records = createMemo(() => recordsBefore(played(), props.round));
-  const seeds = createMemo(() => {
-    if (props.round.kind !== 'elimination') {
-      return new Map<string, number>();
-    }
-    const only = props.pod.cutOf ? { only: new Set(props.pod.playerIds) } : {};
-    return new Map(swissStandings(played(), props.view.tournament.players, only).map(row => [row.playerId, row.place]));
-  });
+  const seeds = createMemo(() =>
+    props.round.kind === 'elimination' ? cutSeeds(props.view.tournament, props.pod) : new Map<string, number>()
+  );
   /** W, L or T by a seat once its table has a result; a bye or a missed round is not a table. */
   const mark = (match: Round['matches'][number], seat: 1 | 2) =>
     match.p2 === null ? '' : seatMark(shownOutcome(match, props.pod, props.round, props.view.pending).outcome, seat);
@@ -186,9 +196,44 @@ function Registered(props: { view: TournamentView }) {
   );
 }
 
-function Controls(props: { prefs: Prefs; shown: boolean; tables: boolean; onFocus: () => void }) {
+const CutBracket = lazy(() => import('./Bracket').then(m => ({ default: m.CutBracket })));
+
+/**
+ * A pod's top cut as a bracket, under the pod's name when the screen shows
+ * several; its tables when the cut cannot be drawn as one.
+ */
+function BracketRows(props: { view: TournamentView; pod: Pod; heading: boolean }) {
+  const names = createMemo(() => namesById(props.view.tournament));
+  return (
+    <section class='tm-screen-pod'>
+      <Show when={props.heading}>
+        <h2 class='tm-screen-pod-head'>{podLabel(props.pod)}</h2>
+      </Show>
+      <CutBracket
+        tournament={props.view.tournament}
+        pod={props.pod}
+        pending={props.view.pending}
+        names={names()}
+        class='is-screen'
+        fallback={
+          <TableRows view={props.view} pod={props.pod} round={latestRound(props.pod) as Round} heading={false} />
+        }
+      />
+    </section>
+  );
+}
+
+function Controls(props: { prefs: Prefs; shown: boolean; tables: boolean; bracket: boolean; onFocus: () => void }) {
   return (
     <div class='tm-screen-controls' classList={{ 'is-shown': props.shown }} onFocusIn={() => props.onFocus()}>
+      <Show when={props.bracket}>
+        <Segmented
+          options={MATCH_VIEWS}
+          selected={props.prefs.view()}
+          onSelect={value => props.prefs.setView(value)}
+          ariaLabel='Show matches as'
+        />
+      </Show>
       <Show when={props.tables}>
         <button type='button' class='btn btn-secondary tm-small' onClick={() => props.prefs.toggleTwo()}>
           {props.prefs.two() ? 'Show one per row' : 'Show two per row'}
@@ -215,6 +260,8 @@ export function BigScreen(props: { view: TournamentView }) {
   const url = () => `${location.origin}/t/${props.view.code}`;
   const pods = () => livePods(props.view.tournament).filter(pod => latestRound(pod));
   const lead = () => pods()[0];
+  const anyBracket = createMemo(() => pods().some(hasCut));
+  const asBracket = (pod: Pod) => prefs.view() === 'bracket' && hasCut(pod);
   // An ended event has no clock to run down, whatever it was left on.
   const clockPod = () => (props.view.settings.finished ? undefined : lead());
   const firstRound = () => firstRoundTime(props.view.settings.startsAt);
@@ -239,8 +286,15 @@ export function BigScreen(props: { view: TournamentView }) {
     document.body.classList.add('tm-screen-mode');
     const stop = scroller ? autoScroll(scroller, () => PIXELS[prefs.speed()]) : () => undefined;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === 's' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key === 's') {
         prefs.cycle();
+        reveal();
+      } else if (key === 'b' && anyBracket()) {
+        prefs.toggleView();
         reveal();
       }
     };
@@ -295,17 +349,30 @@ export function BigScreen(props: { view: TournamentView }) {
               send the room's scroll back to the top. */}
           <Index each={pods()}>
             {pod => (
-              <TableRows
-                view={props.view}
-                pod={pod()}
-                round={latestRound(pod()) as Round}
-                heading={pods().length > 1}
-              />
+              <Show
+                when={asBracket(pod())}
+                fallback={
+                  <TableRows
+                    view={props.view}
+                    pod={pod()}
+                    round={latestRound(pod()) as Round}
+                    heading={pods().length > 1}
+                  />
+                }
+              >
+                <BracketRows view={props.view} pod={pod()} heading={pods().length > 1} />
+              </Show>
             )}
           </Index>
         </Show>
       </div>
-      <Controls prefs={prefs} shown={controls()} tables={Boolean(lead())} onFocus={reveal} />
+      <Controls
+        prefs={prefs}
+        shown={controls()}
+        tables={Boolean(lead()) && !(anyBracket() && prefs.view() === 'bracket')}
+        bracket={anyBracket()}
+        onFocus={reveal}
+      />
     </div>
   );
 }

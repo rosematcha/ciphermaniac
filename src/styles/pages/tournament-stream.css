@@ -1,0 +1,114 @@
+/* The stream overlay (/t/:code?stream=table&table=N), loaded with its chunk
+   (StreamOverlay). A browser source lays the page over video, so everything
+   around the one bar is transparent, and the bar is sized for a 1080p canvas. */
+html:has(body.tm-stream-mode),
+body.tm-stream-mode {
+  background: transparent;
+  transition: none;
+}
+body.tm-stream-mode .topnav,
+body.tm-stream-mode .site-footer,
+body.tm-stream-mode .live-banner {
+  display: none;
+}
+body.tm-stream-mode main.page {
+  max-width: none;
+  padding: 0;
+}
+.tm-stream {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: var(--space-5);
+}
+.tm-stream-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  width: min(100%, 1400px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: var(--text-xl);
+}
+.tm-stream-bar.is-empty {
+  display: block;
+  width: auto;
+  padding: var(--space-3) var(--space-5);
+  color: var(--muted);
+}
+.tm-stream-seat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+}
+.tm-stream-seat.is-right {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.tm-stream-who {
+  display: grid;
+  min-width: 0;
+}
+.tm-stream-name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-stream-name small {
+  margin-right: 0.4em;
+  font-size: 0.6em;
+  font-weight: 600;
+  color: var(--muted);
+}
+.tm-stream-detail {
+  overflow: hidden;
+  font-size: var(--text-base);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.tm-stream-seat.is-out .tm-stream-name {
+  color: var(--muted);
+}
+.tm-stream-mark {
+  flex: none;
+  margin-left: auto;
+  padding: 0.1em 0.4em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  font-weight: 800;
+}
+.tm-stream-seat.is-right .tm-stream-mark {
+  margin-right: auto;
+  margin-left: 0;
+}
+.tm-stream-seat.is-win .tm-stream-mark {
+  border-color: var(--accent);
+  background: var(--accent-fill);
+  color: var(--accent-fg);
+}
+.tm-stream-mid {
+  display: grid;
+  justify-items: center;
+  align-self: stretch;
+  align-content: center;
+  padding: var(--space-2) var(--space-4);
+  border-inline: 1px solid var(--rule);
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+.tm-stream-round {
+  font-weight: 600;
+  color: var(--fg);
+}
+.tm-stream-clock {
+  font-size: var(--text-xl);
+  font-weight: 800;
+  color: var(--fg);
+}
