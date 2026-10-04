@@ -105,6 +105,22 @@ test('gap 12: re-pairing preserves earned byes ahead of new pairings', () => {
   }
 });
 
+test('gap 12: multiple earned byes follow the frozen subgroup roster', () => {
+  let t = field(Array<string>(8).fill('1990'));
+  const earned = new Set(t.players.slice(0, 4).map(p => p.id));
+  for (const player of t.players.filter(p => earned.has(p.id))) {
+    player.byes = 1;
+  }
+  t = run(t, { type: 'pairRound', pod: 'masters' });
+  const pod = t.pods[0]!;
+  assert.deepEqual(
+    latestRound(pod)!
+      .matches.filter(m => m.outcome === 'assigned-bye')
+      .map(m => m.p1),
+    pod.playerIds.filter(id => earned.has(id))
+  );
+});
+
 test('gap 14: combined cuts share rounds, Masters first, and every division advances together', () => {
   let t = complete(
     run(field(['2016', '2016', '2016', '2016', '1990', '1990', '1990', '1990']), { type: 'pairRound', pod: 'mixed' })

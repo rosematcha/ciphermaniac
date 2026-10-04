@@ -453,8 +453,9 @@ function swissEntrants(tournament: Tournament, pod: Pod, number: number, ids: st
 function nextSwissRound(tournament: Tournament, pod: Pod, ctx: CommandContext): Round {
   const number = pod.rounds.length + 1;
   const active = new Set(activeIds(tournament, pod));
-  const assigned = tournament.players.filter(p => active.has(p.id) && (p.byes ?? 0) >= number);
-  const given = new Set(assigned.map(p => p.id));
+  const earned = new Map(tournament.players.map(p => [p.id, p.byes ?? 0]));
+  const assigned = [...active].filter(id => (earned.get(id) ?? 0) >= number);
+  const given = new Set(assigned);
   const entrants = swissEntrants(
     tournament,
     pod,
@@ -463,9 +464,9 @@ function nextSwissRound(tournament: Tournament, pod: Pod, ctx: CommandContext): 
   );
   const pairings = sortSwissPairings(pairSwiss(entrants, pairingHistory(pod), ctx.random), entrants);
   const round = pairedRound(tournament, pod, ctx, { number, kind: 'swiss', pairings });
-  const byes: Match[] = assigned.map(p => ({
+  const byes: Match[] = assigned.map(id => ({
     table: 0,
-    p1: p.id,
+    p1: id,
     p2: null,
     outcome: 'assigned-bye',
     timestamp: ctx.localTime
