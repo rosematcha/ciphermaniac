@@ -533,3 +533,33 @@ test('two players cannot share a fixed table, and one can be cleared', () => {
   const cleared = run(t, { type: 'setFixedTable', id: '100', table: null });
   assert.equal(cleared.players[0]?.fixedTable, undefined);
 });
+
+test('a pod of one division starts its top cut once, and deleting the cut clears the seeds it gave', () => {
+  let t = withPlayers(12);
+  for (let i = 0; i < 4; i += 1) {
+    t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  }
+  t = run(t, { type: 'startTopCut', pod: 'masters', size: 4 });
+  assert.equal(round(t).matches.length, 2);
+  assert.equal(t.players.filter(p => p.seed).length, 4);
+  assert.equal(attempt(t, { type: 'startTopCut', pod: 'masters', size: 4 }), 'The top cut has started');
+  assert.equal(
+    attempt(t, { type: 'startTopCut', pod: 'masters', size: 4, division: 'masters' }),
+    'The top cut has started'
+  );
+  const undone = run(t, { type: 'deleteRound', pod: 'masters' });
+  assert.ok(undone.players.every(p => p.seed === undefined && p.order === undefined));
+  assert.equal(pod(undone).cut, 4, 'the cut size chosen stays chosen');
+  assert.ok(!writeTdf(undone).includes('<seed>'));
+});
+
+test('a combined pod whose players are all one division also starts its top cut once', () => {
+  let t = withPlayers(12);
+  t = { ...t, pods: [{ ...pod(t), category: 'mixed' }] };
+  for (let i = 0; i < 4; i += 1) {
+    t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
+  }
+  t = run(t, { type: 'startTopCut', pod: 'mixed', size: 4 });
+  assert.equal(round(t).matches.length, 2);
+  assert.equal(attempt(t, { type: 'startTopCut', pod: 'mixed', size: 4 }), 'The top cut has started');
+});

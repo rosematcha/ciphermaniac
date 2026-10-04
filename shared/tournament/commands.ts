@@ -655,11 +655,15 @@ function deleteRound(tournament: Tournament, category: PodCategory): CommandResu
     return fail('Clear this round’s results before deleting it');
   }
   const rounds = pod.rounds.slice(0, -1);
-  if (pod.cutOf && rounds.length === 0) {
-    // A division's top cut with no round left has not started: its division is back where the Swiss left it.
-    return done({ ...tournament, pods: tournament.pods.filter(p => p !== pod) });
-  }
-  return done(withPod(tournament, { ...pod, rounds, cut: rounds.some(r => r.kind === 'elimination') ? pod.cut : 0 }));
+  const undone = round.kind === 'elimination' && !rounds.some(r => r.kind === 'elimination');
+  return done(withPod(undone ? unseeded(tournament, pod) : tournament, { ...pod, rounds }));
+}
+
+/** The pod's players without the seeds and bracket positions a cut that is gone gave them. */
+function unseeded(tournament: Tournament, pod: Pod): Tournament {
+  const ids = new Set(pod.playerIds);
+  const unseed = ({ seed: _seed, order: _order, ...player }: Player): Player => player;
+  return { ...tournament, players: tournament.players.map(p => (ids.has(p.id) ? unseed(p) : p)) };
 }
 
 function outcomeError(round: Round, match: Match, outcome: Outcome): string | null {
@@ -802,8 +806,17 @@ function cutRefusal(
   if (!(TOP_CUT_SIZES as readonly number[]).includes(command.size)) {
     return 'A top cut is 2, 4, 8, 16 or 32 players';
   }
-  const taken = command.division && cutPodOf(tournament, pod, command.division);
-  return taken ? `The ${DIVISION_LABELS[command.division as Division]} top cut has started` : null;
+  return cutStarted(tournament, pod, command.division, ctx.season);
+}
+
+/** A pod whose players are all one division has one cut (see cutField); a pod of several has one per division. */
+function cutStarted(tournament: Tournament, pod: Pod, division: Division | undefined, season: number): string | null {
+  if (!cutField(tournament, pod, division, season)) {
+    return pod.rounds.some(round => round.kind === 'elimination') ? 'The top cut has started' : null;
+  }
+  return division && cutPodOf(tournament, pod, division)
+    ? `The ${DIVISION_LABELS[division]} top cut has started`
+    : null;
 }
 
 function startTopCut(
