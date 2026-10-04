@@ -24,7 +24,6 @@ import {
   saveSettings
 } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
-import { tdfFilename, tdfText } from '../../lib/tournament/exportTdf';
 import { downloadBlob } from '../../lib/download';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
@@ -219,12 +218,13 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
 function Finish(props: { state: ManageState; manage: Manage }) {
   const download = () => {
     const { manage } = props;
-    void props.state.run(() => {
+    void props.state.run(async () => {
+      const { tdfFilename, tdfText } = await import('../../lib/tournament/exportTdf');
       downloadBlob(
         new Blob([tdfText({ ...manage, finished: manage.settings.finished })], { type: 'application/xml' }),
         tdfFilename(manage.tournament)
       );
-      return Promise.resolve(manage);
+      return manage;
     });
   };
   function setFinished(finished: boolean) {

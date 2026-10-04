@@ -28,9 +28,21 @@ export default defineConfig({
         // chunk of its own and is budgeted apart from the code (see check-bundle-budget).
         codeSplitting: {
           groups: [
+            {
+              name: 'core',
+              priority: 2,
+              test: /src[\\/]lib[\\/](format|concurrency)\.ts$/,
+              includeDependenciesRecursively: false
+            },
             { name: 'release', test: /shared[\\/]generated[\\/]release/ },
-            // These small controls share Solid helpers and are used together in event forms.
-            { name: 'form', test: /tournaments[\\/](Field|FormatSelect|SettingControls)\.tsx$/ }
+            {
+              // Share event models and helpers instead of repeating exports across route chunks.
+              name: 'tournament',
+              test: /(?:shared[\\/]tournament[\\/]|src[\\/]lib[\\/]tournament[\\/](?!admin|applications))/,
+              includeDependenciesRecursively: true
+            },
+            // These controls share Solid helpers and are used together in event forms.
+            { name: 'form', priority: 1, test: /tournaments[\\/](Field|FormatSelect|SettingControls)\.tsx$/ }
           ]
         }
       }
