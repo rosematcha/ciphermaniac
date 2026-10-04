@@ -61,7 +61,7 @@ const LIVE = copyOf('LIVE01', CHALLENGE, {
   settings: { deckVisibility: 'always', format: 'Standard' }
 });
 const DONE = copyOf('CUP001', CUP, { mode: 'swiss', settings: { finished: true } });
-const juniorChampion = CUP.pods.find(p => p.category === 'junior')?.rounds.at(-1)?.matches[0]?.p1 ?? '';
+const juniorChampion = CUP.pods[0]?.rounds.at(-1)?.matches[0]?.p1 ?? '';
 
 const ENTRIES: HistoryEntry[] = [
   {

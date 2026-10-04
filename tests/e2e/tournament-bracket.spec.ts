@@ -94,7 +94,7 @@ test('the public page shows the top cut as a table, or as a bracket kept in its 
   await expect(bracket.locator('.tm-bracket-col').first().locator('.tm-bracket-match')).toHaveCount(4);
   // The quarterfinal winners are through to semifinals not paired yet: seeds 1 and 4, 2 and 3.
   const semis = bracket.locator('.tm-bracket-col').nth(1);
-  await expect(semis.locator('.tm-bracket-seed')).toHaveText(['1', '4', '2', '3']);
+  await expect(semis.locator('.tm-bracket-seed')).toHaveText(['1', '5', '3', '7']);
   await expect(semis.getByRole('group', { name: 'Not paired yet' })).toHaveCount(2);
   await expect(page.locator('.tm-matches')).toHaveCount(0);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

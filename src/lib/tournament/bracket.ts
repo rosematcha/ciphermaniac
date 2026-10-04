@@ -56,7 +56,10 @@ export interface Bracket {
 export function cutSeeds(tournament: Tournament, pod: Pod): Map<string, number> {
   const played = withSwiss(tournament, pod);
   const only = pod.cutOf ? { only: new Set(pod.playerIds) } : {};
-  return new Map(swissStandings(played, tournament.players, only).map(row => [row.playerId, row.place]));
+  const seeds = new Map(tournament.players.filter(p => p.seed).map(p => [p.id, p.seed!]));
+  return new Map(
+    swissStandings(played, tournament.players, only).map(row => [row.playerId, seeds.get(row.playerId) ?? row.place])
+  );
 }
 
 /** A match with the result the pages show for it: TOM's, or one entered on the site and waiting. */

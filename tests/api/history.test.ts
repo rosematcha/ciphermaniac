@@ -390,11 +390,12 @@ test('an event is live in History once any of its pods has paired, not only its 
   await addPlayers(code, owner, 6);
   const player = await signIn('Player');
   await saveProfile(player, '901');
-  await send(code, owner, { type: 'pairRound', pod: 'masters' });
+  const paired = await send(code, owner, { type: 'pairRound', pod: 'senior-masters' });
+  assert.equal(paired.status, 200);
   const pods = (await loadTournament(db(), code))?.tournament.pods.map(pod => [pod.category, pod.rounds.length]);
   assert.deepEqual(pods, [
     ['junior', 0],
-    ['masters', 1]
+    ['senior-masters', 1]
   ]);
   assert.equal((await historyOf(player)).json.entries[0].status, 'live');
 });

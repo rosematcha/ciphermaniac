@@ -350,29 +350,24 @@ test('on a phone a roster question takes its own line instead of squeezing the n
   expect(name?.width ?? 0).toBeGreaterThan(120);
 });
 
-test('a division that cut from a shared pod plays its own bracket, and the shared pod pairs no more', async ({
-  page
-}) => {
-  // Five Juniors play Swiss with ten Seniors (§5.2.1); the Seniors then cut to a top 4 of their own.
+test('a division cut stays in the shared pod and pairs the next bracket round', async ({ page }) => {
+  // TOM combines five Juniors and ten Seniors in category 10; Seniors then cut to their own top four.
   const adds: Command[] = [...Array(5).fill('2016'), ...Array(10).fill('2012')].map((year: string, i) => ({
     type: 'addPlayer',
     player: { firstName: `Player${i + 1}`, lastName: 'Test', birthDate: `02/27/${year}` }
   }));
-  let t = run(emptyTournament({ name: 'Friday League' }), ...adds, { type: 'pairRound', pod: 'junior-senior' });
-  t = run(reportAll(t), { type: 'startTopCut', pod: 'junior-senior', size: 4, division: 'senior' });
-  const sent = await mockConsole(page, t, settingsOf({}));
-  const pods = page.getByRole('tablist', { name: 'Division' });
-  await expect(pods.getByRole('tab')).toHaveText(['Juniors and Seniors', 'Seniors top cut']);
-  // The console opens on what is still playing: the Seniors' semifinals.
-  await expect(pods.getByRole('tab', { name: 'Seniors top cut' })).toHaveAttribute('aria-selected', 'true');
+  let t = run(emptyTournament({ name: 'Friday League' }), ...adds, { type: 'pairRound', pod: 'mixed' });
+  t = run(reportAll(t), { type: 'startTopCut', pod: 'mixed', size: 4, division: 'senior' });
+  await mockConsole(page, t, settingsOf({}));
+  await expect(page.getByRole('tablist', { name: 'Division' })).toHaveCount(0);
+  await expect(page.locator('.tm-hero')).toContainText('Semifinals');
   await expect(page.getByRole('button', { name: 'Pair the final' })).toBeDisabled();
-  await pods.getByRole('tab', { name: 'Juniors and Seniors' }).click();
-  await expect(page.locator('.tm-hero')).toContainText('top cuts under way');
   await expect(page.getByRole('button', { name: /^Pair round/ })).toHaveCount(0);
   await expect(page.getByRole('combobox', { name: 'Division to cut' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'End event' })).toHaveClass(/btn-secondary/);
-  await page.getByRole('button', { name: 'Start top cut' }).click();
-  await expect.poll(() => sent.at(-1)).toMatchObject({ type: 'startTopCut', pod: 'junior-senior', division: 'junior' });
+  const finished = reportAll(t);
+  const sent = await mockConsole(page, finished, settingsOf({}));
+  await page.getByRole('button', { name: 'Pair the final' }).click();
+  await expect.poll(() => sent.at(-1)).toMatchObject({ type: 'pairRound', pod: 'mixed' });
 });
 
 test('at an unsanctioned event where players do not report, staff can unlink a player from an account', async ({

@@ -46,10 +46,11 @@ import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { REPORT_WINDOW_MS } from '../../shared/tournament/reports.ts';
 import { revisionOf } from '../../shared/tournament/revision.ts';
 import { parseTdf, writeTdf } from '../../shared/tournament/tdf.ts';
-import { DIVISIONS, type Round, type Tournament } from '../../shared/tournament/types.ts';
+import { DIVISIONS, type Match, type Round, type Tournament } from '../../shared/tournament/types.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { publishView } from '../../functions/lib/tournaments/publish.ts';
 import { loadIdle, loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
+import { juniorsCutApart } from '../__utils__/divisionCuts.ts';
 import { apiCalls, type Handler, ORIGIN, request } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
 import { memoryProofs } from '../__utils__/proofBucket.ts';
@@ -293,12 +294,12 @@ test('the event list counts an event as paired once any of its pods has paired, 
     });
   }
   await addPlayers(code, owner, 6);
-  await send(code, owner, { type: 'pairRound', pod: 'masters' });
+  await send(code, owner, { type: 'pairRound', pod: 'senior-masters' });
   const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
   const pods = (await loadTournament(db, code))?.tournament.pods.map(pod => [pod.category, pod.rounds.length]);
   assert.deepEqual(pods, [
     ['junior', 0],
-    ['masters', 1]
+    ['senior-masters', 1]
   ]);
   const list = await hit(tournaments.onRequestGet as Handler, '/api/tournaments', {}, { cookie: owner });
   assert.equal(list.json.tournaments[0].rounds, 1);
@@ -354,7 +355,7 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 5);
   const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
-  const table = paired.json.tournament.pods[0].rounds[0].matches[0];
+  const table = paired.json.tournament.pods[0].rounds[0].matches.find((m: Match) => m.p2 !== null);
   await send(code, owner, {
     type: 'reportResult',
     pod: 'masters',
@@ -2712,4 +2713,57 @@ test('a change beaten to the row by other writes lands on what they left, and gi
   const busy = await add('Oak');
   assert.deepEqual([busy.status, busy.json.error], [409, 'Busy; try again']);
   assert.equal((await view(code)).tournament.players.length, 1, 'nothing half-written');
+});
+
+test('the idle sweep waits for combined semifinals and ends only after the final', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await underWay(owner);
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const tournament = juniorsCutApart();
+  const pod = tournament.pods[0]!;
+  pod.rounds.pop();
+  db.raw
+    .prepare('UPDATE tournaments SET state = ?, settings = ? WHERE code = ?')
+    .run(JSON.stringify(tournament), JSON.stringify({ roundCap: 1 }), code);
+  age(code, 3 * HOUR);
+  assert.deepEqual((await sweep()).json.idle, [code]);
+  assert.equal((await loadTournament(db, code))?.settings.finished, false);
+  db.raw
+    .prepare('UPDATE tournaments SET state = ?, settings = ? WHERE code = ?')
+    .run(JSON.stringify(juniorsCutApart()), JSON.stringify({ roundCap: 1 }), code);
+  age(code, 3 * HOUR);
+  assert.deepEqual((await sweep()).json.ended, [code]);
+});
+
+test('loading older separate cut pods migrates their pending results and player reports', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await underWay(owner);
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const tournament = juniorsCutApart();
+  const pod = tournament.pods[0]!;
+  const ids = pod.divisionCuts!.junior!.playerIds!;
+  const cut = {
+    ...pod,
+    category: 'junior' as const,
+    cutOf: pod.category,
+    playerIds: ids,
+    cut: 4,
+    rounds: pod.rounds.filter(r => r.kind === 'elimination')
+  };
+  const final = cut.rounds.at(-1)!;
+  const match = final.matches[0]!;
+  match.outcome = 'pending';
+  const key = { pod: cut.category, round: final.number, ...match, outcome: 'p1', at: Date.now() };
+  tournament.pods = [{ ...pod, divisionCuts: undefined, rounds: pod.rounds.filter(r => r.kind === 'swiss') }, cut];
+  db.raw
+    .prepare('UPDATE tournaments SET state = ?, pending = ?, reports = ? WHERE code = ?')
+    .run(JSON.stringify(tournament), JSON.stringify([key]), JSON.stringify([{ ...key, by: match.p1 }]), code);
+  const loaded = await loadTournament(db, code);
+  assert.ok(loaded);
+  assert.equal(loaded.tournament.pods.length, 1);
+  assert.equal(loaded.tournament.pods[0]!.rounds.at(-1)!.matches[0]!.outcome, 'pending');
+  assert.equal(loaded.pending[0]!.pod, 'mixed');
+  assert.equal(loaded.reports[0]!.pod, 'mixed');
+  const written = parseTdf(writeTdf(loaded.tournament));
+  assert.equal(written.pods.length, 1);
 });

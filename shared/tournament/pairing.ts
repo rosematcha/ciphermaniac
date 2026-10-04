@@ -21,6 +21,8 @@ import { type Random, shuffled } from './random.js';
 export interface Entrant {
   id: string;
   points: number;
+  category?: number;
+  subgroup?: number;
 }
 
 export interface PairingHistory {
@@ -50,7 +52,12 @@ export function rankForPairing(entrants: readonly Entrant[], random: Random): st
       groups.set(entrant.points, [entrant.id]);
     }
   }
-  return [...groups.keys()].sort((a, b) => b - a).flatMap(points => shuffled(groups.get(points) ?? [], random));
+  const categories = new Map(entrants.map(e => [e.id, e.category ?? 2]));
+  return [...groups.keys()]
+    .sort((a, b) => b - a)
+    .flatMap(points =>
+      shuffled(groups.get(points) ?? [], random).sort((a, b) => (categories.get(b) ?? 2) - (categories.get(a) ?? 2))
+    );
 }
 
 /** The lowest-ranked player without a bye yet, or the lowest-ranked of all if everyone has had one. */
@@ -310,13 +317,13 @@ export function pairSwiss(entrants: readonly Entrant[], history: PairingHistory,
 /**
  * Seed order for a single-elimination bracket of `size` (a power of two), so
  * that seed 1 meets seed `size` and the top two seeds can only meet in the
- * final: 8 gives 1, 8, 4, 5, 2, 7, 3, 6.
+ * final: 8 gives 1, 8, 5, 4, 3, 6, 7, 2.
  */
 export function bracketOrder(size: number): number[] {
   let order = [1];
   while (order.length < size) {
     const next = order.length * 2 + 1;
-    order = order.flatMap(seed => [seed, next - seed]);
+    order = order.flatMap((seed, i) => (i % 2 === 0 ? [seed, next - seed] : [next - seed, seed]));
   }
   return order;
 }
@@ -350,4 +357,19 @@ export function pairNextElimination(winners: readonly string[], thirdPlace: read
   }
   const [third, fourth] = thirdPlace;
   return winners.length === 2 && third && fourth ? [...pairings, { p1: third, p2: fourth }] : pairings;
+}
+
+/** TOM's stable MatchComp order, before tables are assigned. */
+export function sortSwissPairings(pairings: readonly Pairing[], entrants: readonly Entrant[]): Pairing[] {
+  const byId = new Map(entrants.map(e => [e.id, e]));
+  const category = (id: string | null) => (id === null ? 10 : (byId.get(id)?.category ?? 2));
+  const points = (id: string | null) => (id === null ? 0 : (byId.get(id)?.points ?? 0));
+  const subgroup = (pairing: Pairing) => byId.get(pairing.p1)?.subgroup ?? 1;
+  return [...pairings].sort(
+    (a, b) =>
+      Number(b.p2 === null) - Number(a.p2 === null) ||
+      subgroup(a) - subgroup(b) ||
+      category(b.p1) + category(b.p2) - (category(a.p1) + category(a.p2)) ||
+      points(b.p1) + points(b.p2) - (points(a.p1) + points(a.p2))
+  );
 }

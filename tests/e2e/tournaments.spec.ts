@@ -594,10 +594,10 @@ test('a TOM console says when the file TOM saved does not parse', async ({ page 
   await expect(page.getByRole('button', { name: 'Refresh .tdf' }).first()).toBeVisible();
   await page.evaluate(() => {
     const file = (window as unknown as { tdfFile: { text: string; modified: number } }).tdfFile;
-    file.text = file.text.replace('outcome="1"', 'outcome="4"');
+    file.text = file.text.replace('outcome="1"', 'outcome="7"');
     file.modified = 2;
   });
-  await expect(page.getByText('Could not parse the .tdf: Unknown match outcome "4"')).toBeVisible();
+  await expect(page.getByText('Could not parse the .tdf: Unknown match outcome "7"')).toBeVisible();
 });
 
 test('a TOM console pairs the next round into the file once every result is in', async ({ page }) => {

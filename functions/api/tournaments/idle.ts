@@ -76,7 +76,9 @@ function stagesComplete(row: TournamentRow, pod: Pod): boolean {
   if (pod.cut > 0) {
     return cutComplete(pod);
   }
-  return isDivision(pod.category) ? planned.cut === 0 : divisionCutsPaired(row, pod);
+  return isDivision(pod.category)
+    ? planned.cut === 0
+    : divisionCutsPaired(row, pod) && cutPodsOf(row.tournament, pod).every(cutComplete);
 }
 
 function podComplete(row: TournamentRow, pod: Pod): boolean {

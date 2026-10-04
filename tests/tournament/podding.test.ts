@@ -1,8 +1,4 @@
-/**
- * Age-combined play as the Tournament Rules Handbook sets it out (§5.2.1,
- * rev. September 1, 2026): a division under six joins the next, Juniors
- * first, and one with nobody in it has no pod.
- */
+/** TOM's age-pod rules, including empty divisions in category selection. */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -51,4 +47,11 @@ test('a category names exactly the divisions its pod plays', () => {
     assert.equal(categoryFor(divisionsOf(category)), category);
   }
   assert.equal(categoryFor(['junior', 'masters']), 'mixed', 'TOM has no pod for Juniors and Masters alone');
+});
+
+test('TOM includes empty divisions in combined category choices without creating empty roster entries', () => {
+  assert.deepEqual(pods(5, 10, 0), { junior: 'mixed', senior: 'mixed' });
+  assert.deepEqual(pods(0, 3, 22), { senior: 'mixed', masters: 'mixed' });
+  assert.deepEqual(pods(0, 6, 22), { senior: 'junior-senior', masters: 'masters' });
+  assert.deepEqual(pods(6, 0, 22), { junior: 'junior', masters: 'senior-masters' });
 });
