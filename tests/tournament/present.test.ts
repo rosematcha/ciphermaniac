@@ -524,12 +524,13 @@ test('the public status names registration, the round in play, or how the event 
   const live = eventStatus(CHALLENGE, { pending: [], finished: false, firstRound: null, roundCap: null }, 0);
   assert.equal(live[0], roundLabel(pod.rounds.at(-1) as Round, pod));
   const swiss = pod.rounds.filter(r => r.kind === 'swiss').length;
-  const cut = { ...CHALLENGE, pods: [{ ...pod, cut: 8 }] };
-  assert.deepEqual(eventStatus(cut, { pending: [], finished: true, firstRound: null, roundCap: 0 }, 0), [
-    'Finished',
-    `${swiss} round${swiss === 1 ? '' : 's'}`,
-    'Top 8'
-  ]);
+  const final: Round = { ...(pod.rounds.at(-1) as Round), number: pod.rounds.length + 1, kind: 'elimination' };
+  const cut = { ...CHALLENGE, pods: [{ ...pod, cut: 8, rounds: [...pod.rounds, final] }] };
+  const finished = { pending: [], finished: true, firstRound: null, roundCap: 0 };
+  assert.deepEqual(eventStatus(cut, finished, 0), ['Finished', `${swiss} round${swiss === 1 ? '' : 's'}`, 'Top 8']);
+  // The cut is chosen when play starts; an event that ended without playing it has no top cut to name.
+  const chosen = { ...CHALLENGE, pods: [{ ...pod, cut: 8 }] };
+  assert.deepEqual(eventStatus(chosen, finished, 0), ['Finished', `${swiss} round${swiss === 1 ? '' : 's'}`]);
 });
 
 test('places read as ordinals and results as the pairings show them', () => {

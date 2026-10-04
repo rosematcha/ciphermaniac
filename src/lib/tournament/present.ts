@@ -294,7 +294,9 @@ export function eventStatus(
   }
   if (event.finished) {
     const swiss = pod.rounds.filter(round => round.kind === 'swiss').length;
-    return ['Finished', plural(swiss, 'round'), ...(pod.cut ? [`Top ${pod.cut}`] : [])];
+    // The cut is chosen when play starts; only one that was played belongs in the summary.
+    const cut = swiss < pod.rounds.length ? pod.cut : 0;
+    return ['Finished', plural(swiss, 'round'), ...(cut ? [`Top ${cut}`] : [])];
   }
   const progress = podProgress(pod, event.pending);
   const { round } = progress;
