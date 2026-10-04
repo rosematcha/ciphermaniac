@@ -19,13 +19,13 @@ export function createListsState() {
   const [picked, setPicked] = createSignal<ReadonlyMap<string, ListCard>>(new Map());
   const techs = createMemo<ReadonlySet<string>>(() => new Set(picked().keys()));
   const [techsOpen, setTechsOpen] = createSignal(false);
-  const toggleTech = (card: ListCard) =>
+  const toggleTech = (key: string, card: ListCard) =>
     setPicked(prev => {
       const next = new Map(prev);
-      if (next.has(card.name)) {
-        next.delete(card.name);
+      if (next.has(key)) {
+        next.delete(key);
       } else {
-        next.set(card.name, card);
+        next.set(key, card);
       }
       return next;
     });
