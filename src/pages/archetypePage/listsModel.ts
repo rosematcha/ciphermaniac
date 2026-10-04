@@ -38,6 +38,9 @@ export function isBasicEnergy(name: string): boolean {
   return BASIC_ENERGY.test(name);
 }
 
+const cardIdentity = (card: ListCard, record: ListRecord): string =>
+  record.canonicalIdentityAvailable === false ? card.name : card.uid || card.name;
+
 const pairKey = (name: string, count: number): string => `${name}|${count}`;
 
 /**
@@ -45,20 +48,21 @@ const pairKey = (name: string, count: number): string => `${name}|${count}`;
  * and 2 PAF Iono are one 4-of Iono. The first printing stands in for the art.
  */
 export function mergedCards(record: ListRecord): ListCard[] {
-  const byName = new Map<string, ListCard>();
+  const byIdentity = new Map<string, ListCard>();
   for (const card of record.cards) {
-    const seen = byName.get(card.name);
-    byName.set(card.name, seen ? { ...seen, count: seen.count + card.count } : card);
+    const identity = cardIdentity(card, record);
+    const seen = byIdentity.get(identity);
+    byIdentity.set(identity, seen ? { ...seen, count: seen.count + card.count } : card);
   }
-  return [...byName.values()];
+  return [...byIdentity.values()];
 }
 
 /** How common each card, and each card at each count, is across an archetype's lists. */
 export interface SlotStats {
-  /** Percent of lists running the card at exactly this count. */
-  pairShare: (name: string, count: number) => number;
-  /** Percent of lists running the card at all. */
-  nameShare: (name: string) => number;
+  /** Percent of lists running the canonical identity (or fallback name) at exactly this count. */
+  pairShare: (identity: string, count: number) => number;
+  /** Percent of lists running the canonical identity (or fallback name) at all. */
+  nameShare: (identity: string) => number;
   /** Slots under this percent are marked. */
   bar: number;
 }
@@ -68,8 +72,9 @@ function countBy(lists: readonly ArchetypeList[]): { names: Map<string, number>;
   const pairs = new Map<string, number>();
   for (const { record } of lists) {
     for (const card of mergedCards(record)) {
-      names.set(card.name, (names.get(card.name) ?? 0) + 1);
-      const key = pairKey(card.name, card.count);
+      const identity = cardIdentity(card, record);
+      names.set(identity, (names.get(identity) ?? 0) + 1);
+      const key = pairKey(identity, card.count);
       pairs.set(key, (pairs.get(key) ?? 0) + 1);
     }
   }
@@ -95,13 +100,13 @@ function percentileBar(shares: number[], percentile: number): number {
 export function slotStats(lists: readonly ArchetypeList[], percentile = MARK_PERCENTILE): SlotStats {
   const total = lists.length || 1;
   const { names, pairs } = countBy(lists);
-  const pairShare = (name: string, count: number) => (100 * (pairs.get(pairKey(name, count)) ?? 0)) / total;
-  const nameShare = (name: string) => (100 * (names.get(name) ?? 0)) / total;
+  const pairShare = (identity: string, count: number) => (100 * (pairs.get(pairKey(identity, count)) ?? 0)) / total;
+  const nameShare = (identity: string) => (100 * (names.get(identity) ?? 0)) / total;
   const shares: number[] = [];
   for (const { record } of lists) {
     for (const card of mergedCards(record)) {
       if (!isBasicEnergy(card.name)) {
-        shares.push(pairShare(card.name, card.count));
+        shares.push(pairShare(cardIdentity(card, record), card.count));
       }
     }
   }
@@ -118,7 +123,7 @@ export interface OddSlot {
 export function oddSlots(record: ListRecord, stats: SlotStats): OddSlot[] {
   return mergedCards(record)
     .filter(card => !isBasicEnergy(card.name))
-    .map(card => ({ card, share: stats.pairShare(card.name, card.count) }))
+    .map(card => ({ card, share: stats.pairShare(cardIdentity(card, record), card.count) }))
     .filter(slot => slot.share < stats.bar)
     .sort((a, b) => a.share - b.share);
 }
@@ -133,7 +138,7 @@ export interface Same60Group {
 
 function signature(record: ListRecord): string {
   return mergedCards(record)
-    .map(card => pairKey(card.name, card.count))
+    .map(card => pairKey(cardIdentity(card, record), card.count))
     .sort()
     .join(';');
 }

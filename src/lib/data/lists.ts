@@ -43,6 +43,8 @@ export interface ListRecord {
   event: { id: string; name: string; date: string; players: number } | null;
   tags: ReadonlySet<string>;
   cards: ListCard[];
+  /** False when decoding without a populated synonym database. Raw UIDs remain available for lookup. */
+  canonicalIdentityAvailable?: boolean;
   /** Global-canonical UID of every card in the list. */
   uids: ReadonlySet<string>;
 }
@@ -62,6 +64,7 @@ function canonicalUids(payload: ListIndexPayload, db: SynonymDatabase | null): s
  */
 export function decodeListIndex(payload: ListIndexPayload, db: SynonymDatabase | null): ListRecord[] {
   const uids = canonicalUids(payload, db);
+  const canonicalIdentityAvailable = Boolean(db && Object.keys(db.synonyms).length > 0);
   const events = payload.events.map(([id, name, date, players]) => ({ id, name, date, players }));
   return payload.decks.map((row, id) => {
     const [player, country, placement, archetype, event, tagBits, pairs] = row;
@@ -94,6 +97,7 @@ export function decodeListIndex(payload: ListIndexPayload, db: SynonymDatabase |
       event: events[event] ?? null,
       tags,
       cards,
+      canonicalIdentityAvailable,
       uids: listUids
     };
   });
