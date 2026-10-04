@@ -10,6 +10,7 @@
 import { ADULT_AGE } from '../../../shared/accounts/age.js';
 import { managesStore, storeRoleOf } from '../../../shared/accounts/stores.js';
 import { DAY_MS, eventDay } from '../../../shared/tournament/limits.js';
+import { type MatchKey, normalizeCutPods } from '../../../shared/tournament/rounds.js';
 import { POD_CATEGORIES, type Tournament } from '../../../shared/tournament/types.js';
 import {
   applyPending,
@@ -68,14 +69,20 @@ interface RawRow {
   community_day: string | null;
 }
 
+function legacyMatchKeys<T extends MatchKey>(tournament: Tournament, keys: T[]): T[] {
+  const parents = new Map(tournament.pods.filter(p => p.cutOf).map(p => [p.category, p.cutOf!]));
+  return keys.map(key => ({ ...key, pod: parents.get(key.pod) ?? key.pod }));
+}
+
 function fromRaw(raw: RawRow): TournamentRow {
+  const tournament = JSON.parse(raw.state) as Tournament;
   return {
     code: raw.code,
     ownerId: raw.owner_id,
     mode: raw.mode === 'tom' ? 'tom' : 'swiss',
-    tournament: JSON.parse(raw.state) as Tournament,
-    pending: JSON.parse(raw.pending) as PendingResult[],
-    reports: JSON.parse(raw.reports) as PlayerReport[],
+    tournament: normalizeCutPods(tournament),
+    pending: legacyMatchKeys(tournament, JSON.parse(raw.pending) as PendingResult[]),
+    reports: legacyMatchKeys(tournament, JSON.parse(raw.reports) as PlayerReport[]),
     settings: storedSettings(JSON.parse(raw.settings) as Record<string, unknown>),
     keys: JSON.parse(raw.player_keys) as Record<string, string>,
     decks: JSON.parse(raw.decks) as Record<string, string>,

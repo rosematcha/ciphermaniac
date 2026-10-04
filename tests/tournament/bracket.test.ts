@@ -79,9 +79,9 @@ test('a top 8 is drawn as quarterfinals, semifinals and a final, seeds placed so
   );
   assert.deepEqual(seedsOf(bracket, 0), [
     [1, 8],
-    [4, 5],
-    [2, 7],
-    [3, 6]
+    [5, 4],
+    [3, 6],
+    [7, 2]
   ]);
   assert.ok(bracket.rounds[0]?.matches.every(m => m.playing && m.table > 0));
   assert.deepEqual(seedsOf(bracket, 1), [
@@ -99,8 +99,8 @@ test('winners go through to a round not paired yet, and the bracket keeps them t
     Array.from({ length: 4 }, () => ['W', 'L'])
   );
   assert.deepEqual(waiting && seedsOf(waiting, 1), [
-    [1, 4],
-    [2, 3]
+    [1, 5],
+    [3, 7]
   ]);
   assert.ok(
     waiting?.rounds[1]?.matches.every(m => m.table === 0 && !m.playing),
@@ -109,8 +109,8 @@ test('winners go through to a round not paired yet, and the bracket keeps them t
   t = run(t, { type: 'pairRound', pod: 'masters' });
   const paired = buildBracket(pod(t), cutSeeds(t, pod(t)), []);
   assert.deepEqual(paired && seedsOf(paired, 1), [
-    [1, 4],
-    [2, 3]
+    [1, 5],
+    [3, 7]
   ]);
   assert.ok(paired?.rounds[1]?.matches.every(m => m.playing && m.table > 0));
 });
@@ -144,7 +144,7 @@ test('the match for third sits apart from the bracket', () => {
     bracket?.rounds.map(r => r.matches.length),
     [2, 1]
   );
-  assert.deepEqual([bracket?.third?.top.seed, bracket?.third?.bottom.seed], [4, 3]);
+  assert.deepEqual([bracket?.third?.top.seed, bracket?.third?.bottom.seed], [4, 2]);
 });
 
 test('a pod with no top cut has no bracket', () => {

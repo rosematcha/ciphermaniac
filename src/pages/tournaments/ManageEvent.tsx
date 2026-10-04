@@ -269,7 +269,7 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
   /** A Swiss round's end, as RoundEndStep lays it out; round one and the top cut's rounds only pair. */
   const roundEnd = () => {
     const s = step();
-    if (s.kind === 'decide' || (s.kind === 'pair' && swissOver())) {
+    if (s.kind === 'decide' || (s.kind === 'pair' && swissOver() && cuts().some(c => !c.started && c.cut > 0))) {
       const cut = plan()?.cut ?? 0;
       return { ...s, end: (cut > 0 ? 'cut' : 'end') as RoundEnd };
     }

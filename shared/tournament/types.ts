@@ -51,7 +51,7 @@ export const POD_LABELS: Record<PodCategory, string> = {
  * with no opponent; `loss` is player one's loss with no opponent, which is how
  * a round a late entrant missed is recorded.
  */
-export type Outcome = 'pending' | 'p1' | 'p2' | 'tie' | 'double-loss' | 'bye' | 'loss';
+export type Outcome = 'pending' | 'p1' | 'p2' | 'tie' | 'double-loss' | 'bye' | 'assigned-bye' | 'deleted' | 'loss';
 
 export const REPORTABLE_OUTCOMES: readonly Outcome[] = ['p1', 'p2', 'tie', 'double-loss'];
 
@@ -66,16 +66,20 @@ export interface Player {
   droppedAfter: number | null;
   /**
    * Dropped by disqualification: out of the standings altogether, though
-   * their matches still count for their opponents. TOM's own code for it is
-   * unknown, so a .tdf carries it as a drop.
+   * their matches still count for their opponents. Written as drop status 2.
    */
   disqualified?: true;
   /**
    * Tagged late in TOM (its "Is late?" box); ranks below other players on the
-   * same points. A player the site adds mid-event is not tagged: their missed
-   * rounds are losses instead (see joinedLate in rounds.ts).
+   * same points. Late additions carry TOM's structured late-entry metadata.
    */
   late?: boolean;
+  /** TOM's starter flag; absent in older site documents, inferred from round 1. */
+  starter?: boolean;
+  lateData?: { round: number; timestamp: string; forcedLoss: boolean; usedForcedLoss: boolean };
+  order?: number;
+  seed?: number;
+  byes?: number;
   /**
    * The table this player sits at every round, for a player who cannot move
    * between tables. Their match takes that table; everyone else fills the rest.
@@ -112,6 +116,8 @@ export interface Round {
   /** MM/DD/YYYY HH:mm:ss, venue time. */
   pairTime: string;
   startTime: string;
+  /** First round start in epoch milliseconds, independent of the venue's time zone. */
+  startedAt?: number;
   /**
    * When the clock last started, in epoch ms; null while it is stopped. The
    * site's own clock, since TOM's times are venue-local with no zone.
@@ -131,12 +137,15 @@ export interface Pod {
   playoff3rd4th: boolean;
   startingTable: number;
   /**
-   * Set on a pod that plays one division's top cut out of a pod of several:
-   * divisions played together share only the Swiss rounds, and each cuts on
-   * its own (Tournament Rules Handbook §5.2.1). Names the pod whose Swiss
-   * standings seed it; its rounds are numbered on from that pod's.
+   * Legacy storage and read-only division views: the original combined pod.
+   * Stored cuts now live in divisionCuts and share this pod's round list.
    */
   cutOf?: PodCategory;
+  /** Per-division brackets in this pod's shared elimination rounds. */
+  divisionCuts?: Partial<Record<Division, { size: number; playoff3rd4th: boolean; playerIds?: string[] }>>;
+  /** Roster frozen at start, including entrants with assigned byes. */
+  startingPlayerIds?: string[];
+  divisionCounts?: Partial<Record<Division, number>>;
 }
 
 /**
@@ -182,6 +191,8 @@ export interface Tournament {
    * first export.
    */
   passthrough?: TdfPassthrough;
+  /** Fixed when the first pod starts; the players array is then the final tiebreak order. */
+  startedAt?: number;
 }
 
 export interface TdfPassthrough {
@@ -194,8 +205,11 @@ export interface TdfPassthrough {
   /** Per pod category: the pod's `stage` and poddata beyond the known fields. */
   podExtras: Partial<Record<PodCategory, { stage: string; extra: [string, string][] }>>;
   /** Per round, keyed `category:number`: TOM's own type and stage codes. */
-  roundCodes: Record<string, { type: string; stage: string }>;
+  roundCodes: Record<string, { type: string; stage: string; timeLeft?: number; startTime?: string }>;
   finalsOptions: string;
+  /** Exact imported bytes and the model they describe. */
+  original?: { xml: string; state: string };
+  finalsState?: string;
   /** TOM's finalized places and the inputs they describe; retained until results or entrants change. */
   standings?: { xml: string; state: string };
 }
