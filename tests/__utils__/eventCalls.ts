@@ -14,6 +14,9 @@ import * as tournaments from '../../functions/api/tournaments/index.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import type { apiCalls, Call, Handler } from './apiCalls.ts';
 
+/** The birth year of every player addPlayers adds. */
+export const PLAYER_BIRTH_YEAR = '1990';
+
 /** The route parameters of an event's routes. */
 export const at = (code: string) => ({ code });
 
@@ -45,7 +48,7 @@ export function eventCalls(hit: ReturnType<typeof apiCalls>['hit']) {
     for (let i = 0; i < count; i += 1) {
       const added = await send(code, cookie, {
         type: 'addPlayer',
-        player: { firstName: 'Player', lastName: `${i}`, id: `${900 + i}`, birthDate: '02/27/1990' }
+        player: { firstName: 'Player', lastName: `${i}`, id: `${900 + i}`, birthDate: `02/27/${PLAYER_BIRTH_YEAR}` }
       });
       assert.equal(added.status, 200);
     }
@@ -55,12 +58,17 @@ export function eventCalls(hit: ReturnType<typeof apiCalls>['hit']) {
     return hit(settings.onRequestPut as Handler, '/settings', at(code), { method: 'PUT', cookie, body: change });
   }
 
-  /** What a player's page sends to say who they are, or to report, with `call` adding a session. */
+  /**
+   * What a player's page sends to say who they are, or to report, with `call`
+   * adding a session. A Player ID goes with the birth year addPlayers gives
+   * everyone, unless the body says another.
+   */
   function playerSays(code: string, body: Record<string, unknown>, call: Call = {}) {
+    const year = body.popId === undefined ? {} : { birthYear: PLAYER_BIRTH_YEAR };
     return hit(report.onRequestPost as Handler, '/report', at(code), {
       ...call,
       method: 'POST',
-      body: { ...body, localTime: '10/10/2026 12:00:00' }
+      body: { ...year, ...body, localTime: '10/10/2026 12:00:00' }
     });
   }
 

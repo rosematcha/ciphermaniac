@@ -1,6 +1,6 @@
 /**
- * How a player proves which player they are: their Player ID at a sanctioned
- * event, their last name at an unsanctioned one (whose public page shows last
+ * How a player proves which player they are: their Player ID and birth year
+ * at a sanctioned event, their last name at an unsanctioned one (whose public page shows last
  * names shortened), with the first name when two players share it. Used by
  * "Which player are you?" and by "This is me" in a player sheet, where the
  * answer has to be that player's.
@@ -37,20 +37,25 @@ export function IdentifyForm(props: {
   const sanctioned = () => isSanctioned(props.view);
   const [value, setValue] = createSignal('');
   const [first, setFirst] = createSignal('');
+  const [year, setYear] = createSignal('');
   const [ambiguous, setAmbiguous] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
-  const wrong = () => `That ${sanctioned() ? 'Player ID' : 'last name'} isn’t this player’s`;
+  const wrong = () => `That ${sanctioned() ? 'Player ID and birth year' : 'last name'} isn’t this player’s`;
 
   const claimOf = (): PlayerClaim =>
     sanctioned()
-      ? { popId: value().trim() }
+      ? { popId: value().trim(), birthYear: year().trim() }
       : { lastName: value().trim(), ...(first().trim() ? { firstName: first().trim() } : {}) };
-  /** Why it failed: in a sheet, any miss is that it isn't this player; two sharing a last name asks for more. */
+  /**
+   * Why it failed: in a sheet, a miss is that it isn't this player; two
+   * sharing a last name asks for more, and too many wrong years says so.
+   */
   const failure = (err: unknown) => {
     const twoShare = err instanceof ApiError && err.body?.ambiguous === true;
+    const miss = err instanceof ApiError && err.status === 404;
     setAmbiguous(twoShare);
-    setError(props.expect !== undefined && !twoShare ? wrong() : errorText(err));
+    setError(props.expect !== undefined && miss && !twoShare ? wrong() : errorText(err));
   };
 
   async function find(event: Event) {
@@ -89,6 +94,19 @@ export function IdentifyForm(props: {
           onInput={e => setValue(sanctioned() ? e.currentTarget.value.replace(/\D/g, '') : e.currentTarget.value)}
         />
       </Field>
+      <Show when={sanctioned()}>
+        <Field id={`${props.idPrefix}-year`} label='Birth year'>
+          <input
+            id={`${props.idPrefix}-year`}
+            class='tm-input'
+            inputmode='numeric'
+            autocomplete='bday-year'
+            maxLength={4}
+            value={year()}
+            onInput={e => setYear(e.currentTarget.value.replace(/\D/g, ''))}
+          />
+        </Field>
+      </Show>
       <Show when={ambiguous()}>
         <Field id={`${props.idPrefix}-first`} label='First name'>
           <input
@@ -100,7 +118,11 @@ export function IdentifyForm(props: {
           />
         </Field>
       </Show>
-      <button type='submit' class='btn btn-primary' disabled={busy() || !value().trim()}>
+      <button
+        type='submit'
+        class='btn btn-primary'
+        disabled={busy() || !value().trim() || (sanctioned() && year().length !== 4)}
+      >
         {props.submitLabel}
       </button>
       <ErrorLine message={error()} />

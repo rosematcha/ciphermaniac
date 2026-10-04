@@ -19,6 +19,11 @@
  * submitter who is not on the event's player list is added to it (a Swiss
  * event still open), marked as added from a list; the answer says whether
  * they were added, matched or not added, and carries the device's new token.
+ * At a sanctioned event the birth year must fit the one the event's player
+ * list has for that Player ID (a listed player with none asks staff), and a
+ * list staff unlocked is only taken over under the birth year it was sent
+ * with: the ID alone is printed on pairings. Wrong tries count against the
+ * Player ID as the report route's do (see lib/tournaments/attempts.ts).
  * The archetype stays on the list until staff apply it. A signed-in
  * submitter's name and birth date refresh their account's when the list is
  * under the account's own Player ID; a list never sets an account's Player ID.
@@ -29,7 +34,8 @@
  */
 
 import { MAX_DECKLIST_CHARS, parseDecklist } from '../../../../shared/tournament/decklist.js';
-import { decklistMatcher, decklistPlayer, fullNameKey } from '../../../../shared/tournament/identify.js';
+import { birthYearFits, decklistMatcher, decklistPlayer, fullNameKey } from '../../../../shared/tournament/identify.js';
+import { birthYear } from '../../../../shared/tournament/divisions.js';
 import { type PlayerProfile, readProfile } from '../../../../shared/tournament/profile.js';
 import {
   type Decklist,
@@ -47,6 +53,7 @@ import { sha256 } from '../../../lib/auth/session.js';
 import { rowsChanged } from '../../../lib/d1.js';
 import { type Access, codeOf, open, openForStaff, privateJson } from '../../../lib/tournaments/access.js';
 import { archetypeLabel } from '../../../lib/tournaments/decks.js';
+import { admitTry, clearFailures, forgive, LOCKED_OUT } from '../../../lib/tournaments/attempts.js';
 import { publishAfter } from '../../../lib/tournaments/publish.js';
 import { commandChanges, mutateSettled } from '../../../lib/tournaments/results.js';
 import type { TournamentRow } from '../../../lib/tournaments/store.js';
@@ -211,6 +218,46 @@ interface Submission {
 }
 
 const LOCKED = 'This list was sent from another device. Send it from that device, or ask staff to reset it.';
+const WRONG_YEAR = 'That birth year doesn’t match this event’s record for that Player ID. Ask staff if yours is right.';
+
+/** What follows a submission the guard let in, once its store has run: whether it landed. */
+interface Admitted {
+  stored: (landed: boolean) => Promise<void>;
+}
+
+const NOTHING_COUNTED: Admitted = { stored: async () => undefined };
+
+/**
+ * The wrong-year guard for a submission at a sanctioned event (see
+ * lib/tournaments/attempts.ts), or the refusal. Each try is let in or refused
+ * by one statement, so lists landing at once are taken one at a time. A
+ * Player ID on the event's list is judged against its birth date there (none
+ * on it fits nothing, until staff add one). One that is not can only be
+ * judged by the store, against a list kept under it, so the try counts before
+ * the store runs and is forgiven when the list lands.
+ */
+async function guardSubmission(access: Access, profile: PlayerProfile): Promise<Admitted | Response> {
+  const { db, row } = access;
+  if (!isSanctioned(row)) {
+    return NOTHING_COUNTED;
+  }
+  const now = Date.now();
+  const player = row.tournament.players.find(candidate => candidate.id === profile.popId);
+  const right = player ? birthYearFits(player.birthDate, String(birthYear(profile.birthDate) ?? '')) : false;
+  if (!(await admitTry({ db, code: row.code, popId: profile.popId, right, now }))) {
+    return jsonError(LOCKED_OUT, 429);
+  }
+  if (player) {
+    return right ? NOTHING_COUNTED : jsonError(WRONG_YEAR, 403);
+  }
+  return {
+    stored: async landed => {
+      if (landed) {
+        await forgive(db, row.code, profile.popId, now);
+      }
+    }
+  };
+}
 
 /** The submission in a request body, or why it is not one. */
 async function readSubmission(request: Request, sanctioned: boolean): Promise<Submission | string> {
@@ -275,7 +322,9 @@ async function store(access: Access, submission: Submission, tokenHash: string, 
         'submitted_at = excluded.submitted_at, owner_token = excluded.owner_token, ' +
         'account = CASE WHEN excluded.account IS NOT NULL THEN excluded.account ' +
         'WHEN decklists.owner_token = ? THEN decklists.account ELSE NULL END ' +
-        'WHERE decklists.owner_token IS NULL OR decklists.owner_token = ? ' +
+        // A list nobody holds is taken over only under the birth year it was sent with.
+        "WHERE (decklists.owner_token IS NULL AND (decklists.birth_date = '' " +
+        'OR substr(decklists.birth_date, -4) = substr(excluded.birth_date, -4))) OR decklists.owner_token = ? ' +
         'OR (decklists.account IS NOT NULL AND decklists.account = excluded.account)'
     )
     .bind(
@@ -403,12 +452,18 @@ export async function onRequestPut(context: Context<'code'>): Promise<Response> 
   if (typeof read === 'string') {
     return jsonError(read, 400);
   }
+  const guard = await guardSubmission(access, read.profile);
+  if (guard instanceof Response) {
+    return guard;
+  }
   // With archetypes off for the event, the player's pick is not kept.
   const submission = decksEnabled(access.row.settings) ? read : { ...read, archetype: null };
   const now = Date.now();
   // The device's own token stays its token, so a retry after a lost answer still owns the list.
   const token = deviceToken(submission.held) ?? crypto.randomUUID();
-  if (!(await store(access, submission, await sha256(token), now))) {
+  const landed = await store(access, submission, await sha256(token), now);
+  await guard.stored(landed);
+  if (!landed) {
     return jsonError(LOCKED, 409);
   }
   const { registration, row } = await register(context, access, submission);
@@ -487,5 +542,9 @@ export async function onRequestPatch(context: Context<'code'>): Promise<Response
     .prepare('UPDATE decklists SET owner_token = NULL, account = NULL WHERE code = ? AND user_id = ?')
     .bind(access.row.code, identityKey(details, isSanctioned(access.row)))
     .run();
+  // Staff vouch for the player, so their Player ID's wrong birth years are forgiven too.
+  if (isSanctioned(access.row)) {
+    await clearFailures(access.db, access.row.code, details.popId);
+  }
   return noContent();
 }

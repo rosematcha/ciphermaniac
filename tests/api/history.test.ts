@@ -565,6 +565,15 @@ test('an event that becomes sanctioned ends its Claims, and its devices keep rep
     holders.map(row => row.user_id),
     [null]
   );
-  const again = await playerSays(code, { popId: ids[0], device: 'ash-phone', reportToken: said.json.reportToken });
-  assert.equal(again.json.reporter, true, 'the phone still reports');
+  const asked = { popId: ids[0], device: 'ash-phone', reportToken: said.json.reportToken };
+  assert.equal((await playerSays(code, asked)).status, 404, 'with no birth date on the list, nobody is Ash yet');
+  await send(code, owner, {
+    type: 'editPlayer',
+    id: ids[0],
+    firstName: 'Ash',
+    lastName: 'Ketchum',
+    birthDate: '02/27/1990'
+  });
+  const again = await playerSays(code, asked);
+  assert.equal(again.json.reporter, true, 'once staff add it, the phone still reports');
 });

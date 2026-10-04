@@ -302,7 +302,7 @@ test('the event page tells an account what its player answers with, so a device 
   await addPlayers(sanctioned, owner, 2);
   const player = await signIn('Player');
   await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profileOf('901') });
-  assert.deepEqual((await view(sanctioned, player)).viewer.claim, { popId: '901' });
+  assert.deepEqual((await view(sanctioned, player)).viewer.claim, { popId: '901', birthYear: '1990' });
 });
 
 test('the event page reads the account’s Claim in the batch that opens the event; the console, commands and asks do not', async () => {

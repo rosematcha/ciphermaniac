@@ -1,6 +1,8 @@
 /**
- * POST /api/tournaments/:code/report — a player says who they are: { popId }
- * at a sanctioned event, or { lastName, firstName? } at an unsanctioned one.
+ * POST /api/tournaments/:code/report — a player says who they are: { popId,
+ * birthYear } at a sanctioned event (the year must fit the player's birth
+ * date on the event's list, and a player with none on it asks staff; past
+ * five wrong years the Player ID is refused a while, see attempts.ts), or { lastName, firstName? } at an unsanctioned one.
  * Alone, that answers with their public key and the event, so the page can
  * follow their pairings; any event takes it, as it is how a player marks
  * themselves. With { result } ('win', 'loss' or 'tie') it also reports their
@@ -52,6 +54,7 @@ import {
   type Elsewhere,
   releaseReporter
 } from '../../../lib/tournaments/reporters.js';
+import { admitTry, clearFailures, LOCKED_OUT } from '../../../lib/tournaments/attempts.js';
 import { mutateSettled } from '../../../lib/tournaments/results.js';
 import type { Changes, TournamentRow } from '../../../lib/tournaments/store.js';
 
@@ -60,7 +63,12 @@ type Body = Record<string, unknown>;
 const text = (value: unknown) => (typeof value === 'string' ? value.slice(0, 60) : undefined);
 
 function claimOf(body: Body): PlayerClaim {
-  return { popId: text(body.popId), lastName: text(body.lastName), firstName: text(body.firstName) };
+  return {
+    popId: text(body.popId),
+    birthYear: text(body.birthYear),
+    lastName: text(body.lastName),
+    firstName: text(body.firstName)
+  };
 }
 
 const NOT_REPORTER = 'Someone else is already reporting for this player. Ask staff if that’s wrong.';
@@ -221,7 +229,31 @@ export async function onRequestDelete(context: Context<'code'>): Promise<Respons
     return jsonError('No such player', 404);
   }
   await releaseReporter(access.db, access.row.code, player);
+  // Staff vouch for the player, so their Player ID's wrong birth years are forgiven too.
+  await clearFailures(access.db, access.row.code, player);
   return noContent();
+}
+
+/** At a sanctioned event, the Player ID asked about when it is on the event's list: the one a wrong year counts against. */
+function listedPopId(row: TournamentRow, claim: PlayerClaim): string | null {
+  const popId = claim.popId?.trim() ?? '';
+  return isSanctioned(row) && row.tournament.players.some(player => player.id === popId) ? popId : null;
+}
+
+/**
+ * The player the claim names, or the refusal: no such player, or a Player ID
+ * refused for too many wrong birth years (see lib/tournaments/attempts.ts),
+ * which a wrong year here counts toward.
+ */
+async function checkedClaim(access: Access, claim: PlayerClaim): Promise<{ id: string } | Response> {
+  const { db, row } = access;
+  const found = findPlayer(row.tournament, isSanctioned(row), claim);
+  // Judged first, then let in or refused by one statement, so tries landing at once are taken one at a time.
+  const popId = listedPopId(row, claim);
+  if (popId && !(await admitTry({ db, code: row.code, popId, right: found.ok, now: Date.now() }))) {
+    return jsonError(LOCKED_OUT, 429);
+  }
+  return found.ok ? found : privateJson({ error: found.error, ambiguous: found.ambiguous === true }, 404);
 }
 
 export async function onRequestPost(context: Context<'code'>): Promise<Response> {
@@ -235,9 +267,9 @@ export async function onRequestPost(context: Context<'code'>): Promise<Response>
     return jsonError(refusal, 403);
   }
   const claim = claimOf(body);
-  const found = findPlayer(access.row.tournament, isSanctioned(access.row), claim);
-  if (!found.ok) {
-    return privateJson({ error: found.error, ambiguous: found.ambiguous === true }, 404);
+  const found = await checkedClaim(access, claim);
+  if (found instanceof Response) {
+    return found;
   }
   return body.result === undefined
     ? identify(context, access, body, found.id)

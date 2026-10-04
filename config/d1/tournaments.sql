@@ -148,6 +148,19 @@ CREATE TABLE IF NOT EXISTS report_devices (
 -- An account's Claims, for its history; unique, so an account is one player per event.
 CREATE UNIQUE INDEX IF NOT EXISTS report_devices_by_account ON report_devices (user_id, code) WHERE user_id IS NOT NULL;
 
+-- Wrong birth years given with a Player ID at a sanctioned event, per event
+-- and Player ID, so the year cannot be guessed: past five, the Player ID is
+-- refused until `locked_until` (epoch ms), a minute and doubling with each
+-- wrong try after, up to an hour. A right year clears the row, and staff
+-- clear it when they free a player's device.
+CREATE TABLE IF NOT EXISTS identify_failures (
+  code TEXT NOT NULL,
+  pop_id TEXT NOT NULL,
+  failures INTEGER NOT NULL,
+  locked_until INTEGER NOT NULL,
+  PRIMARY KEY (code, pop_id)
+) WITHOUT ROWID;
+
 -- The events each POP ID plays in, at sanctioned events only (an event's
 -- player IDs are POP IDs there), whether or not an account holds that POP ID
 -- yet: an account that enters it later sees every past event at once. Kept

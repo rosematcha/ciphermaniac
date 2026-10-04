@@ -71,7 +71,7 @@ function seedBefore0006(db: DatabaseSync) {
   event.run('TOMRUN', REESE, 'tom', players('333'), '{"sanctioned":false}', 'c');
 }
 
-test('migration 0006 brings a database made before accounts in line with the schema', () => {
+test('migrations 0006 to 0009 bring a database made before accounts in line with the schema', () => {
   const db = new DatabaseSync(':memory:');
   db.exec(sql('../fixtures/d1/tournaments-before-0006.sql'));
   seedBefore0006(db);
@@ -81,6 +81,7 @@ test('migration 0006 brings a database made before accounts in line with the sch
   db.exec(backfill);
 
   db.exec(sql('../../config/d1/migrations/tournaments-0008-verified-email-uniqueness.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments-0009-identify-failures.sql'));
 
   assert.deepEqual(shape(db), shape(sqliteD1('tournaments.sql').raw));
   const users = db.prepare('SELECT id, pop_id AS popId, role, role_by AS roleBy FROM users ORDER BY id').all();

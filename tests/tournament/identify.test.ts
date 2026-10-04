@@ -29,7 +29,9 @@ const NAMES: [string, string][] = [
 function field(): Tournament {
   let t = emptyTournament({ name: 'Cup' });
   NAMES.forEach(([firstName, lastName], i) => {
-    const command: Command = { type: 'addPlayer', player: { firstName, lastName, id: String(100 + i) } };
+    // The last player has no birth date on the list.
+    const born = i < NAMES.length - 1 ? { birthDate: `02/27/${1990 + i}` } : {};
+    const command: Command = { type: 'addPlayer', player: { firstName, lastName, id: String(100 + i), ...born } };
     const result = applyCommand(t, command, { now: 0, localTime: '', season: 2027, random: seededRandom(1) });
     assert.ok(result.ok);
     t = result.tournament;
@@ -39,8 +41,14 @@ function field(): Tournament {
 
 test('a player is found by Player ID when sanctioned and by name when not', () => {
   const t = field();
-  assert.deepEqual(findPlayer(t, true, { popId: '101' }), { ok: true, id: '101' });
-  assert.equal(findPlayer(t, true, { popId: '999' }).ok, false);
+  assert.deepEqual(findPlayer(t, true, { popId: '101', birthYear: ' 1991 ' }), { ok: true, id: '101' });
+  assert.equal(findPlayer(t, true, { popId: '101' }).ok, false, 'a Player ID alone does not do');
+  const wrongYear = findPlayer(t, true, { popId: '101', birthYear: '1990' });
+  const wrongId = findPlayer(t, true, { popId: '999', birthYear: '1991' });
+  assert.deepEqual(wrongYear, wrongId, 'one answer for either miss');
+  for (const birthYear of [undefined, '', '1994', '0']) {
+    assert.deepEqual(findPlayer(t, true, { popId: '104', birthYear }), wrongId, 'no year on record fits none');
+  }
   assert.equal(findPlayer(t, true, { lastName: 'Ketchum' }).ok, false, 'a name does not do at a sanctioned event');
   assert.deepEqual(findPlayer(t, false, { lastName: ' ketchum ' }), { ok: true, id: '100' });
   const shared = findPlayer(t, false, { lastName: 'Oak' });

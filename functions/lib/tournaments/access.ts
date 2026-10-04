@@ -17,6 +17,7 @@ import {
   type TournamentView,
   type Viewer
 } from '../../../shared/tournament/view.js';
+import { birthYear } from '../../../shared/tournament/divisions.js';
 import { publicReports } from '../../../shared/tournament/reports.js';
 import { jsonError, jsonResponse } from '../api/responses.js';
 import { type Context, param, sameOrigin } from '../auth/env.js';
@@ -123,7 +124,9 @@ function identityOf(access: Access): Pick<Viewer, 'me' | 'via' | 'claim'> {
   if (isSanctioned(row)) {
     const popId = user?.popId ?? '';
     const listed = row.tournament.players.some(player => player.id === popId);
-    return listed ? { me: row.keys[popId] ?? null, via: 'pop', claim: { popId } } : NOT_PLAYING;
+    const year = birthYear(user?.birthDate ?? '');
+    const claim = { popId, ...(year === null ? {} : { birthYear: String(year) }) };
+    return listed ? { me: row.keys[popId] ?? null, via: 'pop', claim } : NOT_PLAYING;
   }
   const player = row.tournament.players.find(candidate => candidate.id === claimed);
   const key = player && row.keys[player.id];

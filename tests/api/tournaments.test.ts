@@ -30,6 +30,7 @@ import * as me from '../../functions/api/me.ts';
 import * as profiles from '../../functions/api/profiles/[slug].ts';
 import * as claim from '../../functions/api/tournaments/[code]/claim.ts';
 import * as commands from '../../functions/api/tournaments/[code]/commands.ts';
+import { FREE_TRIES } from '../../functions/lib/tournaments/attempts.ts';
 import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts';
 import * as decks from '../../functions/api/tournaments/[code]/decks.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
@@ -1198,8 +1199,8 @@ test('at a TOM event an agreed report becomes a pending result for TOM', async (
   );
   const { code } = created.json;
   await settle(code, owner, { playerReporting: true });
-  await playerSays(code, { popId: '7200001', result: 'tie' });
-  const both = await playerSays(code, { popId: '7200004', result: 'tie' });
+  await playerSays(code, { popId: '7200001', birthYear: '1995', result: 'tie' });
+  const both = await playerSays(code, { popId: '7200004', birthYear: '1988', result: 'tie' });
   assert.equal(both.status, 200, 'a TOM event goes by Player ID whatever its setting says');
   const { version } = both.json.view;
   assert.ok(version > 0, 'the console polls with the version it holds');
@@ -1362,6 +1363,149 @@ test('staff unlock a list for a player on a new device, who then takes it over',
   const newPhone = await submitAs(code, profile, { deck: '60 Basic {W} Energy SVE 3' });
   assert.equal(newPhone.status, 200);
   assert.equal((await submitAs(code, profile)).status, 409, 'and it is locked to the new device');
+});
+
+test('a list for a player on the event’s list takes their birth year, and an unlocked one only its own', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 1);
+  await settle(code, owner, { decklists: 'open' });
+  const listed = { popId: '900', firstName: 'Player', lastName: '0', birthDate: '02/27/1991' };
+  const spoofed = await submitAs(code, listed);
+  assert.deepEqual(
+    [spoofed.status, spoofed.json.error],
+    [403, 'That birth year doesn’t match this event’s record for that Player ID. Ask staff if yours is right.']
+  );
+  const own = await submitAs(code, { ...listed, birthDate: '06/01/1990' });
+  assert.deepEqual([own.status, own.json.registration], [200, 'matched'], 'the year is what counts, not the day');
+
+  const unlisted = { popId: '8080', firstName: 'Ira', lastName: 'Vance', birthDate: '02/27/2003' };
+  await settle(code, owner, { finished: true });
+  assert.equal((await submitAs(code, unlisted)).json.registration, 'not-added', 'so only the list knows the year');
+  await hit(decklists.onRequestPatch as Handler, '/decklists?popId=8080', at(code), { method: 'PATCH', cookie: owner });
+  const takeover = await submitAs(code, { ...unlisted, birthDate: '02/27/2004' });
+  assert.equal(takeover.status, 409, 'an unlocked list is not taken over under another birth year');
+  assert.equal((await submitAs(code, { ...unlisted, firstName: 'Ira J.' })).status, 200, 'its own year takes it over');
+});
+
+test('at a sanctioned event a player says who they are with the birth year the event has for them', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  await send(code, owner, { type: 'pairRound', pod: 'masters' });
+  await settle(code, owner, { playerReporting: true });
+  const wrongYear = await playerSays(code, { popId: '900', birthYear: '1991', device: 'thief' });
+  const wrongId = await playerSays(code, { popId: '999', device: 'thief' });
+  assert.deepEqual([wrongYear.status, wrongYear.json.error], [404, wrongId.json.error], 'one answer for either miss');
+  assert.equal((await playerSays(code, { popId: '900', birthYear: '', device: 'thief' })).status, 404);
+  const spoofed = await playerSays(code, { popId: '900', birthYear: '1991', result: 'win', device: 'thief' });
+  assert.equal(spoofed.status, 404, 'nor reports for them');
+
+  const own = await playerSays(code, { popId: '900', device: 'phone-900' });
+  assert.deepEqual([own.status, own.json.reporter], [200, true], 'the thief’s tries claimed no seat');
+  await send(code, owner, { type: 'editPlayer', id: '901', firstName: 'Player', lastName: '1', birthDate: '' });
+  for (const birthYear of ['', '1990', '2001']) {
+    assert.equal((await playerSays(code, { popId: '901', birthYear })).status, 404, 'no year on record fits none');
+  }
+  await settle(code, owner, { decklists: 'open' });
+  const unrecorded = { popId: '901', firstName: 'Player', lastName: '1', birthDate: '02/27/1990' };
+  assert.equal((await submitAs(code, unrecorded)).status, 403, 'nor sends their list');
+  await send(code, owner, {
+    type: 'editPlayer',
+    id: '901',
+    firstName: 'Player',
+    lastName: '1',
+    birthDate: '02/27/1990'
+  });
+  assert.equal((await playerSays(code, { popId: '901', device: 'phone-901' })).status, 200, 'once staff add it');
+});
+
+/** Seventy-one birth years, every year from 1950 to 2020 but `right`, then `right` last. */
+const burstOf = (right: string) => [
+  ...Array.from({ length: 71 }, (_, i) => String(1950 + i)).filter(year => year !== right),
+  right
+];
+
+test('guesses landing all at once are admitted five at most, so a burst cannot outrun the lockout', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 1);
+  await settle(code, owner, { playerReporting: true });
+  const answers = await Promise.all(
+    burstOf('1990').map(birthYear => playerSays(code, { popId: '900', birthYear, device: crypto.randomUUID() }))
+  );
+  const admitted = answers.filter(answer => answer.status !== 429);
+  assert.ok(admitted.length <= FREE_TRIES, `${admitted.length} guesses were answered`);
+  assert.ok(
+    answers.every(answer => answer.status !== 200 && answer.json.reportToken === undefined),
+    'the right year, last in the burst, is refused with the rest'
+  );
+});
+
+test('a burst of lists cannot outrun the lockout to take over an unlocked list by its year', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { decklists: 'open', finished: true });
+  const unlisted = { popId: '8080', firstName: 'Ira', lastName: 'Vance', birthDate: '02/27/2003' };
+  assert.equal((await submitAs(code, unlisted)).json.registration, 'not-added');
+  await hit(decklists.onRequestPatch as Handler, '/decklists?popId=8080', at(code), { method: 'PATCH', cookie: owner });
+  const answers = await Promise.all(
+    burstOf('2003').map(year => submitAs(code, { ...unlisted, birthDate: `02/27/${year}` }))
+  );
+  const admitted = answers.filter(answer => answer.status !== 429);
+  assert.ok(admitted.length <= FREE_TRIES, `${admitted.length} lists were tried`);
+  assert.ok(
+    answers.every(answer => answer.status !== 200),
+    'the right year, last in the burst, takes nothing over'
+  );
+});
+
+test('five wrong birth years refuse a Player ID a while, doubling, until the right year or staff', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const code = await newSwiss(owner);
+  await addPlayers(code, owner, 2);
+  await send(code, owner, { type: 'pairRound', pod: 'masters' });
+  await settle(code, owner, { playerReporting: true, decklists: 'open' });
+  const guess = (birthYear: string, device = crypto.randomUUID()) =>
+    playerSays(code, { popId: '900', birthYear, device });
+  for (const year of ['1985', '1986', '1987', '1988']) {
+    assert.equal((await guess(year)).status, 404);
+  }
+  const fifth = await guess('1989');
+  assert.equal(fifth.status, 404, 'the fifth wrong year is still answered');
+  const locked = await guess('1990');
+  assert.deepEqual(
+    [locked.status, locked.json.error],
+    [429, 'Too many wrong birth years for this Player ID. Try again later, or ask staff.'],
+    'then even the right year is refused, from any device'
+  );
+  assert.equal((await guess('1990')).status, 429);
+  const list = { popId: '900', firstName: 'Player', lastName: '0', birthDate: '02/27/1990' };
+  assert.equal((await submitAs(code, list)).status, 429, 'decklists count and refuse the same');
+  assert.equal((await playerSays(code, { popId: '901', device: 'phone-901' })).status, 200, 'other players are not');
+
+  mock.timers.tick(60_000);
+  assert.equal((await guess('1991')).status, 404, 'a minute later one more try');
+  assert.equal((await guess('1990')).status, 429, 'and a wrong one doubles the wait');
+  mock.timers.tick(60_000);
+  assert.equal((await guess('1990')).status, 429);
+  mock.timers.tick(60_000);
+  assert.equal((await guess('1990')).status, 200, 'the right year once the wait is over');
+  for (const year of ['1981', '1982', '1983', '1984']) {
+    assert.equal((await guess(year)).status, 404, 'and it starts the count over');
+  }
+
+  for (const year of ['1971', '1972']) {
+    await submitAs(code, { ...list, birthDate: `02/27/${year}` });
+  }
+  assert.equal((await guess('1990')).status, 429, 'wrong years for a list count too');
+  const released = await hit(report.onRequestDelete as Handler, '/report?player=900', at(code), {
+    method: 'DELETE',
+    cookie: owner
+  });
+  assert.equal(released.status, 204);
+  assert.equal((await guess('1990')).status, 200, 'staff freeing the player forgives the wrong years');
 });
 
 test('two agreeing reports from one device wait for staff, and staff can free a player’s device', async () => {

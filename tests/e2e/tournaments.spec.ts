@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 
 import { applyCommand } from '../../shared/tournament/commands';
+import { birthYear } from '../../shared/tournament/divisions';
 import { seededRandom } from '../../shared/tournament/random';
 import { parseTdf } from '../../shared/tournament/tdf';
 import {
@@ -26,6 +27,8 @@ import {
 const CODE = 'ABCDEF';
 const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
 const keys = assignKeys(tdf, {});
+/** The birth year a player says beside their Player ID. */
+const yearOf = (lastName: string) => String(birthYear(tdf.players.find(p => p.lastName === lastName)?.birthDate ?? ''));
 const VIEW: TournamentView = {
   code: CODE,
   mode: 'tom',
@@ -80,11 +83,14 @@ test('the public page shows the round, finds a player and opens their history @m
   await expect(sheet).toContainText('Hedy Lamarr');
   await expect(sheet.locator('.tm-history tbody tr')).toHaveCount(2);
   await sheet.getByRole('button', { name: 'This is me' }).click();
-  // Saying so takes proof: the Player ID at a sanctioned event, the last name at any other.
+  // Saying so takes proof: the Player ID and birth year at a sanctioned event, the last name at any other.
   const hedy = tdf.players.find(p => p.lastName === 'Lamarr');
   const [label, right, wrong] = isSanctioned(VIEW)
     ? ['Player ID', hedy?.id ?? '', '7200001']
     : ['Last name', 'Lamarr', 'Jackson'];
+  if (isSanctioned(VIEW)) {
+    await sheet.getByLabel('Birth year').fill(yearOf('Lamarr'));
+  }
   await sheet.getByLabel(label).fill(wrong);
   await sheet.getByRole('button', { name: 'Confirm' }).click();
   await expect(sheet.locator('.tm-error')).toContainText('isn’t this player’s');
@@ -113,6 +119,7 @@ test('retrying a lost identify response restores reporting and remembers the rec
   });
   await page.goto(`/t/${CODE}`);
   await page.getByLabel('Player ID', { exact: true }).fill(mary?.id ?? '');
+  await page.getByLabel('Birth year').fill(yearOf('Jackson'));
   await page.getByRole('button', { name: 'Find my match' }).click();
   await expect(page.locator('.tm-you-ask .tm-error')).toBeVisible();
   await page.getByRole('button', { name: 'Find my match' }).click();
@@ -160,6 +167,7 @@ test('a signed-in player whose account just became the player asks once who the 
   const sheet = page.getByRole('dialog');
   await sheet.getByRole('button', { name: 'This is me' }).click();
   await sheet.getByLabel('Player ID').fill(hedy?.id ?? '');
+  await sheet.getByLabel('Birth year').fill(yearOf('Lamarr'));
   await sheet.getByRole('button', { name: 'Confirm' }).click();
   await expect(sheet.getByRole('button', { name: 'This isn’t me' })).toBeVisible();
   await expect.poll(() => wholeViews).toBe(2);

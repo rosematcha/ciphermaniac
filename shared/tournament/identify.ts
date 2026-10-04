@@ -5,14 +5,33 @@
  * two who share it.
  */
 
+import { birthYear } from './divisions.js';
 import type { Player, Tournament } from './types.js';
 
-/** What a player types to say who they are. */
+/** What a player types to say who they are; a sanctioned event asks the birth year with the Player ID. */
 export interface PlayerClaim {
   popId?: string;
+  birthYear?: string;
   lastName?: string;
   firstName?: string;
 }
+
+/**
+ * Whether a claimed birth year fits a birth date on record. A Player ID is no
+ * secret, but the year beside it is not on pairings, so asking both keeps a
+ * player who only read someone's ID from acting as them. A record with no
+ * readable year has nothing to check against, so nothing fits it until staff
+ * add the date: an account's POP ID is no proof, as any account may save one
+ * nobody holds yet.
+ */
+export function birthYearFits(recorded: string, claimed: string | undefined): boolean {
+  const year = birthYear(recorded);
+  return year !== null && claimed?.trim() === String(year);
+}
+
+/** One answer for a wrong ID, a wrong year or no year on record, so none of them can be told apart. */
+export const NOT_FOUND_BY_ID =
+  'No player with that Player ID and birth year is in this event. Ask staff if yours is right.';
 
 export type Found = { ok: true; id: string } | { ok: false; error: string; ambiguous?: boolean };
 
@@ -50,7 +69,9 @@ export function findPlayer(tournament: Tournament, sanctioned: boolean, claim: P
   }
   const popId = claim.popId?.trim() ?? '';
   const player = popId ? tournament.players.find(p => p.id === popId) : undefined;
-  return player ? { ok: true, id: player.id } : { ok: false, error: 'No player with that Player ID is in this event' };
+  return player && birthYearFits(player.birthDate, claim.birthYear)
+    ? { ok: true, id: player.id }
+    : { ok: false, error: NOT_FOUND_BY_ID };
 }
 
 interface ListOwner {
