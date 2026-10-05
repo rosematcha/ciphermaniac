@@ -8,6 +8,7 @@
  */
 
 import { ADULT_AGE } from '../../../shared/accounts/age.js';
+import { managesStore, storeRoleOf } from '../../../shared/accounts/stores.js';
 import { DAY_MS, eventDay } from '../../../shared/tournament/limits.js';
 import { POD_CATEGORIES, type Tournament } from '../../../shared/tournament/types.js';
 import {
@@ -206,8 +207,11 @@ const claimQuery = (db: D1Like, code: string, hash: string, now: number) =>
     )
     .bind(code, hash, now);
 
+/** What the account is in the event's store, if it is in it. */
+const storeRoleIn = (staff: StaffRow | null) => (staff?.store_role ? storeRoleOf(staff.store_role) : null);
+
 /**
- * A store's event is the store's: its Managers are as its organizer and its
+ * A store's event is the store's: its Owner and Managers are as its organizer and its
  * Staff as its staff, whoever started it, and anyone who leaves the store
  * leaves its events. Any other event is owned by the account that started
  * it. Either way, anyone the invite link let in is staff.
@@ -216,7 +220,7 @@ function roleIn(row: TournamentRow, user: User | null, staff: StaffRow | null): 
   if (!user) {
     return null;
   }
-  const owner = row.storeId === null ? user.id === row.ownerId : staff?.store_role === 'manager';
+  const owner = row.storeId === null ? user.id === row.ownerId : managesStore(storeRoleIn(staff));
   if (owner) {
     return 'owner';
   }
@@ -666,7 +670,9 @@ export async function listTournaments(db: D1Like, userId: string): Promise<Tourn
     code: row.code,
     mode: row.mode === 'tom' ? 'tom' : 'swiss',
     name: row.name ?? '',
-    role: (row.store_id === null ? row.owner_id === userId : row.store_role === 'manager') ? 'owner' : 'staff',
+    role: (row.store_id === null ? row.owner_id === userId : managesStore(storeRoleOf(row.store_role)))
+      ? 'owner'
+      : 'staff',
     players: row.players ?? 0,
     startDate: row.start_date ?? '',
     finished: row.finished === 1,

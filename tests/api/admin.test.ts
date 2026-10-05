@@ -421,7 +421,7 @@ test('the delete after a decision takes that Application’s proof alone, howeve
   assert.equal(proofs.objects.size, 1, 'the first proof is gone');
 });
 
-test('approving makes the store with the applicant its Manager, records who decided, and deletes the proof', async () => {
+test('approving makes the store with the applicant its Owner, records who decided, and deletes the proof', async () => {
   const admin = await signIn('Admin', 'admin');
   const adminId = await idOf(admin);
   const { cookie, id } = await applied('Applicant', '107', PNG);
@@ -437,7 +437,7 @@ test('approving makes the store with the applicant its Manager, records who deci
   assert.equal(application.account.role, null, 'a store is not a role');
   assert.equal(application.leagueTaken?.name, 'Combat Power Gaming', 'the league is the new store’s now');
   const [store] = await storesOf(cookie);
-  assert.deepEqual([store?.role, store?.leagueId], ['manager', '77107']);
+  assert.deepEqual([store?.role, store?.leagueId], ['owner', '77107']);
   const made = raw().prepare('SELECT time_zone AS zone, nights, lat FROM stores WHERE id = ?').get(store!.id);
   assert.deepEqual(
     [made?.zone, JSON.parse(String(made?.nights)).length, made?.lat],
@@ -589,7 +589,7 @@ test('a Community organizer’s access is removed and given back; an Admin’s a
   assert.equal((await setRole(admin, ownerId, 'admin')).status, 400);
 });
 
-test('an Admin revokes and restores a store, and hands it to a new Manager', async () => {
+test('an Admin revokes and restores a store, adds a Manager, and hands it to a new Owner', async () => {
   const admin = await signIn('Admin', 'admin');
   const manager = await signIn('Manager', 'organizer');
   const [store] = await storesOf(manager);
@@ -602,6 +602,28 @@ test('an Admin revokes and restores a store, and hands it to a new Manager', asy
   const handed = await storeAct(admin, store!.id, { manager: helperId });
   assert.deepEqual(handed.json.store.managers.map((one: { name: string }) => one.name).sort(), ['helper', 'manager']);
   assert.equal((await createEvent(helper, { store: store!.id })).status, 201);
+  const managerId = await idOf(manager);
+  const kept = await storeAct(admin, store!.id, { manager: managerId });
+  assert.deepEqual(
+    kept.json.store.owner,
+    { id: managerId, name: 'manager' },
+    'making the Owner a Manager keeps it Owner'
+  );
+  const stranger = await signIn('Stranger');
+  const strangerId = await idOf(stranger);
+  const owned = await storeAct(admin, store!.id, { owner: strangerId });
+  assert.deepEqual(owned.json.store.owner, { id: strangerId, name: 'stranger' }, 'joined, then handed the store');
+  assert.deepEqual(
+    owned.json.store.managers.map((one: { name: string }) => one.name).sort(),
+    ['helper', 'manager', 'stranger'],
+    'the Owner before stays on as a Manager'
+  );
+  assert.equal(
+    (await storeAct(admin, store!.id, { owner: strangerId })).status,
+    200,
+    'handing to the Owner is a no-op'
+  );
+  assert.equal((await storeAct(admin, store!.id, { owner: 'nobody' })).status, 404);
   assert.equal((await storeAct(admin, 'nope', { status: 'revoked' })).status, 404);
   assert.equal((await storeAct(admin, store!.id, { manager: 'nobody' })).status, 404);
   assert.equal((await storeAct(admin, store!.id, {})).status, 400);

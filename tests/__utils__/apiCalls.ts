@@ -77,7 +77,7 @@ export function apiCalls(envOf: () => TournamentEnv) {
         )
         .run(`store-${id}`, `${name} Games`);
       raw
-        .prepare("INSERT OR IGNORE INTO store_members (store_id, user_id, role, added_at) VALUES (?, ?, 'manager', 1)")
+        .prepare("INSERT OR IGNORE INTO store_members (store_id, user_id, role, added_at) VALUES (?, ?, 'owner', 1)")
         .run(`store-${id}`, id);
     } else if (role) {
       raw

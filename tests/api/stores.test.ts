@@ -4,7 +4,8 @@
  * organizer, and one runs only unsanctioned Swiss events of its own, one per
  * date and three a day, deleted ones counting; a store's Managers and Staff
  * start its events, sanctioned or not, and run every one of them; a store's
- * people come in once through a link and it never loses its last Manager;
+ * people come in once through a link, and it keeps one Owner, who alone
+ * hands it over;
  * its league nights publish to the locator's index; its listings and its
  * league come from the locator's files; and its organizer of record is one
  * of its people with a POP ID.
@@ -426,83 +427,134 @@ test('an invite lets one person in, once and for a week, as what it was made for
   }
 });
 
-test('a store never loses its last Manager; Staff leave by themselves and manage nothing', async () => {
-  const { manager, helper, store } = await staffedStore();
-  const managerId = await idOf(manager);
+const OWNER_STAYS = 'The owner stays until they hand the store to someone else';
+
+/** The members route as `cookie`, at the store. */
+function memberCalls(store: string) {
+  const at = { id: store };
+  return {
+    patch: (cookie: string, body: Record<string, unknown>) =>
+      hit(members.onRequestPatch as Handler, '/members', at, { method: 'PATCH', cookie, body }),
+    remove: (cookie: string, user: string) =>
+      hit(members.onRequestDelete as Handler, `/members?user=${user}`, at, { method: 'DELETE', cookie }),
+    invite: async (cookie: string, role: string) =>
+      (await hit(members.onRequestPost as Handler, '/members', at, { method: 'POST', cookie, body: { invite: role } }))
+        .json.token as string,
+    roles: async (cookie: string) =>
+      (await hit(members.onRequestGet as Handler, '/members', at, { cookie })).json.members.map(
+        (one: { name: string; role: string }) => [one.name, one.role]
+      )
+  };
+}
+
+const joinWith = async (cookie: string, token: string) =>
+  hit(join.onRequestPost as Handler, '/api/stores/join', {}, { method: 'POST', cookie, body: { token } });
+
+test('a store keeps its Owner, never demoted or removed; Staff leave by themselves and manage nothing', async () => {
+  const { manager: owner, helper, store } = await staffedStore();
+  const ownerId = await idOf(owner);
   const helperId = await idOf(helper);
   const at = { id: store };
-  const demote = await hit(members.onRequestPatch as Handler, '/members', at, {
-    method: 'PATCH',
-    cookie: manager,
-    body: { user: managerId, role: 'staff' }
-  });
-  assert.deepEqual([demote.status, demote.json.error], [409, 'A store needs a manager; make someone else one first']);
-  const leave = await hit(members.onRequestDelete as Handler, `/members?user=${managerId}`, at, {
-    method: 'DELETE',
-    cookie: manager
-  });
-  assert.equal(leave.status, 409);
+  const { patch, remove: out, invite } = memberCalls(store);
+  const demote = await patch(owner, { user: ownerId, role: 'staff' });
+  assert.deepEqual([demote.status, demote.json.error], [409, OWNER_STAYS]);
+  assert.equal((await out(owner, ownerId)).status, 409, 'the Owner does not leave without handing over');
   assert.equal((await hit(members.onRequestGet as Handler, '/members', at, { cookie: helper })).status, 403);
-  const kick = await hit(members.onRequestDelete as Handler, `/members?user=${managerId}`, at, {
-    method: 'DELETE',
-    cookie: helper
-  });
-  assert.equal(kick.status, 403, 'Staff take no one else out');
-  const invite = await hit(members.onRequestPost as Handler, '/members', at, {
-    method: 'POST',
-    cookie: manager,
-    body: { invite: 'staff' }
-  });
-  const [open] = (await hit(members.onRequestGet as Handler, '/members', at, { cookie: manager })).json.invites;
+  assert.equal((await out(helper, ownerId)).status, 403, 'Staff take no one else out');
+  const token = await invite(owner, 'staff');
+  const [open] = (await hit(members.onRequestGet as Handler, '/members', at, { cookie: owner })).json.invites;
   const sneaky = await hit(members.onRequestDelete as Handler, `/members?user=${helperId}&invite=${open.id}`, at, {
     method: 'DELETE',
     cookie: helper
   });
   assert.equal(sneaky.status, 403, 'leaving does not cover withdrawing a Manager’s link');
-  const stillOpen = await hit(
-    join.onRequestPost as Handler,
-    '/api/stores/join',
-    {},
-    {
-      method: 'POST',
-      cookie: await signIn('Newcomer'),
-      body: { token: invite.json.token }
-    }
-  );
-  assert.equal(stillOpen.status, 200);
-  const stranger = await hit(members.onRequestPatch as Handler, '/members', at, {
-    method: 'PATCH',
-    cookie: manager,
-    body: { user: 'nobody', role: 'manager' }
-  });
+  assert.equal((await joinWith(await signIn('Newcomer'), token)).status, 200);
+  const stranger = await patch(owner, { user: 'nobody', role: 'manager' });
   assert.deepEqual([stranger.status, stranger.json.error], [404, 'No one by that ID is in this store']);
-  const promoted = await hit(members.onRequestPatch as Handler, '/members', at, {
-    method: 'PATCH',
-    cookie: manager,
-    body: { user: helperId, role: 'manager' }
-  });
+  const promoted = await patch(owner, { user: helperId, role: 'manager' });
   assert.deepEqual(
     promoted.json.members.map((one: { name: string; role: string }) => [one.name, one.role]),
     [
+      ['manager', 'owner'],
       ['helper', 'manager'],
-      ['manager', 'manager'],
       ['newcomer', 'staff']
-    ]
+    ],
+    'the Owner first, then Managers, then Staff'
   );
-  assert.equal(
-    (
-      await hit(members.onRequestDelete as Handler, `/members?user=${managerId}`, at, {
-        method: 'DELETE',
-        cookie: manager
-      })
-    ).status,
-    204,
-    'with another Manager, one may go'
+  assert.equal((await patch(helper, { user: ownerId, role: 'staff' })).status, 409, 'a Manager demotes no Owner');
+  assert.equal((await out(helper, ownerId)).status, 409, 'a Manager removes no Owner');
+  assert.equal((await patch(owner, { user: ownerId, role: 'manager' })).status, 409, 'nor does the Owner, in place');
+  assert.equal((await out(helper, helperId)).status, 204, 'a Manager who is not the Owner may go');
+});
+
+test('only the Owner hands the store over, to someone in it, who becomes the Owner as the Owner becomes a Manager', async () => {
+  const { manager: owner, helper, store } = await staffedStore();
+  const ownerId = await idOf(owner);
+  const helperId = await idOf(helper);
+  const { patch, remove: out, roles } = memberCalls(store);
+  assert.equal((await patch(owner, { user: helperId, role: 'manager' })).status, 200);
+  const refused = await patch(helper, { user: helperId, role: 'owner' });
+  assert.deepEqual(
+    [refused.status, refused.json.error],
+    [403, 'Only this store’s owner can hand it over'],
+    'a Manager takes no store'
   );
-  const both = await Promise.all([
-    hit(members.onRequestDelete as Handler, `/members?user=${helperId}`, at, { method: 'DELETE', cookie: helper })
+  assert.equal((await patch(owner, { user: 'nobody', role: 'owner' })).status, 404);
+  const handed = await patch(owner, { user: helperId, role: 'owner' });
+  assert.equal(handed.status, 200);
+  assert.deepEqual(await roles(helper), [
+    ['helper', 'owner'],
+    ['manager', 'manager']
   ]);
-  assert.equal(both[0]?.status, 409, 'the last one stays');
+  const [mine] = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: owner })).json.user.stores;
+  assert.equal(mine.role, 'manager', 'the session says so');
+  const code = await newEvent(helper, { store });
+  const asNew = await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: helper });
+  assert.equal(asNew.json.role, 'owner', 'the new Owner is as the store’s organizer');
+  assert.equal(
+    (await patch(owner, { user: ownerId, role: 'owner' })).status,
+    403,
+    'nor can the Owner before take it back'
+  );
+  assert.equal((await out(helper, helperId)).status, 409, 'the new Owner stays');
+  assert.equal((await out(owner, ownerId)).status, 204, 'the Owner before may now go');
+  assert.equal(
+    raw().prepare("SELECT COUNT(*) AS n FROM store_members WHERE store_id = ? AND role = 'owner'").get(store)?.n,
+    1
+  );
+});
+
+test('a hand-over that lands after another leaves the store one Owner', async () => {
+  const { manager: owner, helper, store } = await staffedStore();
+  const { patch, invite } = memberCalls(store);
+  const other = await signIn('Other');
+  assert.equal((await joinWith(other, await invite(owner, 'staff'))).status, 200);
+  const [ownerId, helperId, otherId] = [await idOf(owner), await idOf(helper), await idOf(other)];
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  // The Owner's other tab hands the store to Other after this request read the Owner as the Owner.
+  env.TOURNAMENT_DB = racing(db, "UPDATE store_members SET role = 'manager'", () => {
+    db.raw.prepare("UPDATE store_members SET role = 'manager' WHERE user_id = ?").run(ownerId);
+    db.raw.prepare("UPDATE store_members SET role = 'owner' WHERE user_id = ?").run(otherId);
+  });
+  const late = await patch(owner, { user: helperId, role: 'owner' });
+  assert.deepEqual([late.status, late.json.error], [409, 'The store was not handed over']);
+  const owners = raw()
+    .prepare("SELECT user_id FROM store_members WHERE store_id = ? AND role = 'owner'")
+    .all(store)
+    .map(row => row.user_id);
+  assert.deepEqual(owners, [otherId]);
+});
+
+test('an Owner who opens a manager invite stays the Owner; Staff who open one become Managers', async () => {
+  const { manager: owner, helper, store } = await staffedStore();
+  const { invite, roles } = memberCalls(store);
+  assert.equal((await joinWith(owner, await invite(owner, 'manager'))).status, 200);
+  assert.equal((await joinWith(helper, await invite(owner, 'manager'))).status, 200);
+  assert.equal((await joinWith(helper, await invite(owner, 'staff'))).status, 200);
+  assert.deepEqual(await roles(owner), [
+    ['manager', 'owner'],
+    ['helper', 'manager']
+  ]);
 });
 
 test('a store says what it is to anyone, its contact details to its people, and changes only by a Manager', async () => {

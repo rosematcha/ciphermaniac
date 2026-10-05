@@ -3,12 +3,13 @@
  * a Manager or Staff or taken out in place, and the invite links. A link lets
  * one person in, as the role it was made for, for a week; its address shows
  * only as it is made, and every link still open is listed to withdraw. The
- * server keeps a store from losing its last Manager and says so.
+ * Owner's row has no actions: the Owner alone hands the store to someone
+ * else, from that person's row, and becomes a Manager, free to leave.
  */
 
 import { useNavigate } from '@solidjs/router';
 import { createResource, createSignal, For, Show } from 'solid-js';
-import type { StoreRole } from '../../../shared/accounts/stores';
+import type { GivenRole, StoreRole } from '../../../shared/accounts/stores';
 import type { StoreInvite, StoreMember } from '../../../shared/accounts/types';
 import { errorText } from '../../lib/tournament/api';
 import { dayOf } from '../../lib/tournament/applications';
@@ -27,7 +28,7 @@ import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { refreshSession, session } from './session';
 
-const ROLE_WORDS: Record<StoreRole, string> = { manager: 'Manager', staff: 'Staff' };
+const ROLE_WORDS: Record<StoreRole, string> = { owner: 'Owner', manager: 'Manager', staff: 'Staff' };
 
 /**
  * One open link: as what it lets someone in and until when, and Withdraw. The
@@ -74,14 +75,30 @@ function InviteRow(props: { invite: StoreInvite; link: string | null; busy: bool
   );
 }
 
+/** The Owner's way to hand the store to this person, asked first. */
+function HandOver(props: { member: StoreMember; busy: boolean; onHandOver: () => void }) {
+  return (
+    <ConfirmAction
+      class='btn btn-ghost tm-small'
+      label='Make owner'
+      question={`Make ${props.member.name} the owner?`}
+      confirmLabel='Make owner'
+      disabled={props.busy}
+      onConfirm={() => props.onHandOver()}
+    />
+  );
+}
+
 function MemberRow(props: {
   member: StoreMember;
   you: boolean;
+  /** Whether the one looking is the store's Owner, who may hand it over. */
+  owner: boolean;
   busy: boolean;
   onRole: (role: StoreRole) => void;
   onRemove: () => void;
 }) {
-  const other = (): StoreRole => (props.member.role === 'manager' ? 'staff' : 'manager');
+  const other = (): GivenRole => (props.member.role === 'manager' ? 'staff' : 'manager');
   return (
     <tr>
       <td>
@@ -93,25 +110,30 @@ function MemberRow(props: {
       <td>{ROLE_WORDS[props.member.role]}</td>
       <td class='muted-cell tm-wide-col'>{props.member.hasPopId ? 'On file' : 'None'}</td>
       <td class='tm-extra-col'>
-        <span class='tm-row-actions'>
-          <button
-            type='button'
-            class='btn btn-ghost tm-small'
-            disabled={props.busy}
-            onClick={() => props.onRole(other())}
-          >
-            {other() === 'manager' ? 'Make manager' : 'Make staff'}
-          </button>
-          <ConfirmAction
-            class='btn btn-ghost tm-small'
-            label={props.you ? 'Leave' : 'Remove'}
-            question={props.you ? 'Leave this store?' : `Remove ${props.member.name}?`}
-            confirmLabel={props.you ? 'Leave' : 'Remove'}
-            danger
-            disabled={props.busy}
-            onConfirm={() => props.onRemove()}
-          />
-        </span>
+        <Show when={props.member.role !== 'owner'}>
+          <span class='tm-row-actions'>
+            <Show when={props.owner}>
+              <HandOver member={props.member} busy={props.busy} onHandOver={() => props.onRole('owner')} />
+            </Show>
+            <button
+              type='button'
+              class='btn btn-ghost tm-small'
+              disabled={props.busy}
+              onClick={() => props.onRole(other())}
+            >
+              {other() === 'manager' ? 'Make manager' : 'Make staff'}
+            </button>
+            <ConfirmAction
+              class='btn btn-ghost tm-small'
+              label={props.you ? 'Leave' : 'Remove'}
+              question={props.you ? 'Leave this store?' : `Remove ${props.member.name}?`}
+              confirmLabel={props.you ? 'Leave' : 'Remove'}
+              danger
+              disabled={props.busy}
+              onConfirm={() => props.onRemove()}
+            />
+          </span>
+        </Show>
       </td>
     </tr>
   );
@@ -142,10 +164,14 @@ export function StoreStaff(props: { storeId: string }) {
     const store = props.storeId;
     // A Manager who makes themselves Staff can no longer change the store: on to its page.
     const stepping = member.id === me() && role === 'staff';
+    // Handing the store over makes the Owner a Manager, which the session's list of stores says.
+    const handing = role === 'owner';
     void act(async () => {
       mutate(await setMemberRole(store, member.id, role));
-      if (stepping) {
+      if (stepping || handing) {
         await refreshSession();
+      }
+      if (stepping) {
         navigate(`/stores/${store}`);
       }
     });
@@ -163,7 +189,7 @@ export function StoreStaff(props: { storeId: string }) {
       await refetch();
     });
   }
-  function invite(role: StoreRole) {
+  function invite(role: GivenRole) {
     const store = props.storeId;
     void act(async () => {
       const { token } = await createInvite(store, role);
@@ -212,6 +238,7 @@ export function StoreStaff(props: { storeId: string }) {
                       <MemberRow
                         member={member}
                         you={member.id === me()}
+                        owner={current().members.some(one => one.id === me() && one.role === 'owner')}
                         busy={busy()}
                         onRole={role => changeRole(member, role)}
                         onRemove={() => remove(member)}

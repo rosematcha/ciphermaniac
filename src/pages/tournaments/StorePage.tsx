@@ -8,7 +8,7 @@
 
 import { A } from '@solidjs/router';
 import { createEffect, createResource, For, Show } from 'solid-js';
-import { dateIn } from '../../../shared/accounts/stores';
+import { dateIn, managesStore } from '../../../shared/accounts/stores';
 import type { PublicStore, StoreEvent } from '../../../shared/accounts/types';
 import { Skeleton } from '../../components/Skeleton';
 import { errorText } from '../../lib/tournament/api';
@@ -175,7 +175,7 @@ export function StorePage(props: { id: string }) {
               title={answer().store.name}
               meta={<span class='tm-num'>League {answer().store.leagueId}</span>}
               action={
-                <Show when={answer().role === 'manager'}>
+                <Show when={managesStore(answer().role)}>
                   <A class='btn btn-secondary' href={`/stores/${answer().store.id}/settings`}>
                     Store settings
                   </A>

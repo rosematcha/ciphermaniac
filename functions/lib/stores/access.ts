@@ -1,10 +1,11 @@
 /**
  * The checks every store route starts with: is the database bound, is the
  * store real, who is asking, and may they do this. An Admin may do anything
- * a store's Manager may.
+ * a store's Manager may; handing the store over is its Owner's, or an
+ * Admin's through the admin route.
  */
 
-import type { StoreRole } from '../../../shared/accounts/stores.js';
+import { managesStore, type StoreRole, storeRoleOf } from '../../../shared/accounts/stores.js';
 import { isAdmin } from '../../../shared/accounts/roles.js';
 import type { Store } from '../../../shared/accounts/types.js';
 import { jsonError } from '../api/responses.js';
@@ -18,12 +19,32 @@ export interface StoreAccess {
   db: D1Like;
   user: User | null;
   store: Store;
-  /** What the asker is in the store; an Admin reads as its Manager. */
+  /** What the asker is in the store; an Admin not in it reads as its Manager. */
   role: StoreRole | null;
   guard: (need: Exclude<Need, 'anyone'>) => Guard;
 }
 
-export type Need = 'anyone' | 'member' | 'manager';
+export type Need = 'anyone' | 'member' | 'manager' | 'owner';
+
+/** The stored role, an Admin raised to at least a Manager; null for someone not in the store. */
+function roleOf(stored: string | undefined, admin: boolean): StoreRole | null {
+  const role = stored === undefined ? null : storeRoleOf(stored);
+  return admin && !managesStore(role) ? 'manager' : role;
+}
+
+/** Whether `role` meets `need`. */
+const meets = (need: Need, role: StoreRole | null): boolean =>
+  need === 'anyone' ||
+  (need === 'member' && role !== null) ||
+  (need === 'manager' && managesStore(role)) ||
+  (need === 'owner' && role === 'owner');
+
+/** What the guard asks of the asker's row: being in the store, managing it, or owning it. */
+const ROW_NEEDS: Record<Exclude<Need, 'anyone'>, string> = {
+  member: '',
+  manager: " AND m.role IN ('owner', 'manager')",
+  owner: " AND m.role = 'owner'"
+};
 
 /** The asker and their role in the store, read in one round trip with the session. */
 async function asker(db: D1Like, request: Request, storeId: string) {
@@ -44,14 +65,13 @@ async function asker(db: D1Like, request: Request, storeId: string) {
   const row = firstRow<UserRow>(account);
   const user = row && userFromRow(row);
   const stored = firstRow<{ role: string }>(member)?.role;
-  const role: StoreRole | null =
-    isAdmin(user?.role ?? null) || stored === 'manager' ? 'manager' : stored ? 'staff' : null;
-  return { user, role: user ? role : null, hash };
+  return { user, role: user ? roleOf(stored, isAdmin(user.role)) : null, hash };
 }
 
 const REFUSALS: Record<Exclude<Need, 'anyone'>, string> = {
   member: 'Only this store’s staff can do that',
-  manager: 'Only this store’s managers can do that'
+  manager: 'Only this store’s managers can do that',
+  owner: 'Only this store’s owner can do that'
 };
 
 /** The store the route names and who is asking; a Response when either cannot be had or `need` is not met. */
@@ -71,16 +91,15 @@ export async function openStore(context: Context<'id'>, need: Need): Promise<Sto
   if (need !== 'anyone' && !who.user) {
     return jsonError('Sign in first', 401);
   }
-  const allowed = need === 'anyone' || (need === 'member' ? who.role !== null : who.role === 'manager');
   const guard = (required: Exclude<Need, 'anyone'>): Guard => ({
     sql:
       'EXISTS (SELECT 1 FROM sessions s JOIN users u ON u.id = s.user_id ' +
       'WHERE s.token_hash = ? AND s.expires_at > ? AND u.age_checked_at IS NOT NULL AND ' +
-      "(u.role = 'admin' OR EXISTS (SELECT 1 FROM store_members m WHERE m.store_id = ? " +
-      `AND m.user_id = u.id${required === 'manager' ? " AND m.role = 'manager'" : ''})))`,
+      `(${required === 'owner' ? '' : "u.role = 'admin' OR "}EXISTS (SELECT 1 FROM store_members m WHERE m.store_id = ? ` +
+      `AND m.user_id = u.id${ROW_NEEDS[required]})))`,
     values: [who.hash, Date.now(), id]
   });
-  return allowed
+  return meets(need, who.role)
     ? { db, store, user: who.user, role: who.role, guard }
     : jsonError(REFUSALS[need as Exclude<Need, 'anyone'>], 403);
 }

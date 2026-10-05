@@ -5,7 +5,15 @@
 
 import type { TournamentMode } from '../tournament/view.js';
 import type { AccountRole } from './roles.js';
-import type { LeagueNight, NightException, StoreApplication, StoreDetails, StoreRole, StoreStatus } from './stores.js';
+import type {
+  GivenRole,
+  LeagueNight,
+  NightException,
+  StoreApplication,
+  StoreDetails,
+  StoreRole,
+  StoreStatus
+} from './stores.js';
 
 /**
  * One event in an account's History. Place, record, deck and the rounds are
@@ -135,7 +143,7 @@ export interface StoreMember {
 /** An invite link still open, named by the start of its hash: enough to withdraw it, nothing to join with. */
 export interface StoreInvite {
   id: string;
-  role: StoreRole;
+  role: GivenRole;
   createdAt: number;
   expiresAt: number;
 }

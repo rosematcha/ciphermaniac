@@ -6,6 +6,7 @@
  */
 
 import type {
+  GivenRole,
   LeagueNight,
   NightException,
   StoreApplication,
@@ -67,9 +68,10 @@ export interface People {
 export const fetchPeople = (id: string) => call<People>(`${storePath(id)}/members`);
 
 /** A single-use link letting one person in as `role`; its token is only ever shown now. */
-export const createInvite = (id: string, role: StoreRole) =>
+export const createInvite = (id: string, role: GivenRole) =>
   call<{ token: string }>(`${storePath(id)}/members`, json('POST', { invite: role }));
 
+/** Makes someone a Manager or Staff; 'owner', sent by the Owner, hands them the store. */
 export const setMemberRole = (id: string, user: string, role: StoreRole) =>
   call<People>(`${storePath(id)}/members`, json('PATCH', { user, role }));
 

@@ -5,6 +5,7 @@ SELECT store_id, community_day FROM tournaments INDEXED BY tournaments_one_commu
  WHERE community_day IS NOT NULL LIMIT 0;
 SELECT id FROM stores INDEXED BY stores_by_league WHERE 0;
 SELECT user_id, role FROM store_members WHERE 0;
+SELECT user_id FROM store_members INDEXED BY store_members_one_owner WHERE role = 'owner' LIMIT 0;
 SELECT token_hash, expires_at FROM store_invites WHERE 0;
 SELECT owner, at, id FROM event_creations WHERE 0;
 SELECT store FROM applications WHERE 0;

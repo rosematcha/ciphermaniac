@@ -9,6 +9,7 @@
 
 import { displayName, isHandle, randomHandle } from '../../../shared/accounts/handle.js';
 import { type AccountRole, readAccountRole } from '../../../shared/accounts/roles.js';
+import { storeRoleOf } from '../../../shared/accounts/stores.js';
 import type { MyStore } from '../../../shared/accounts/types.js';
 import type { D1Like, D1Statement } from '../types.js';
 import { readCookie, SESSION_COOKIE } from './cookies.js';
@@ -131,7 +132,7 @@ const myStore = (row: MyStoreRow): MyStore => ({
   leagueId: row.league_id,
   status: row.status === 'revoked' ? 'revoked' : 'active',
   timeZone: row.time_zone,
-  role: row.role === 'manager' ? 'manager' : 'staff'
+  role: storeRoleOf(row.role)
 });
 
 /**

@@ -1,17 +1,18 @@
 /**
  * Stores in D1 (shared/accounts/stores.ts): the store, who belongs to it and
- * as what, and the links that let someone in. A store never loses its last
- * Manager: each write that removes or demotes one holds only while another
- * stays, inside the statement itself, so two Managers leaving at once cannot
- * both go.
+ * as what, and the links that let someone in. A store never loses its Owner:
+ * each write that removes or changes a member leaves the Owner's row alone,
+ * inside the statement itself, and the Owner's role moves only by a hand-over
+ * that makes someone else the Owner in the same transaction.
  */
 
-import type {
-  LeagueNight,
-  NightException,
-  StoreDetails,
-  StorePlace,
-  StoreRole
+import {
+  type GivenRole,
+  type LeagueNight,
+  type NightException,
+  type StoreDetails,
+  type StorePlace,
+  storeRoleOf
 } from '../../../shared/accounts/stores.js';
 import type { PublicStore, Store, StoreEvent, StoreInvite, StoreMember } from '../../../shared/accounts/types.js';
 import { randomToken, sha256 } from '../auth/session.js';
@@ -96,7 +97,7 @@ export interface Guard {
 
 const ALWAYS: Guard = { sql: '1 = 1', values: [] };
 
-/** A store to make: under `id`, with `managerId` its Manager, at `now`, each write only while `guard` holds. */
+/** A store to make: under `id`, with `managerId` its Owner, at `now`, each write only while `guard` holds. */
 export interface StoreMaking {
   id: string;
   store: NewStore;
@@ -106,7 +107,7 @@ export interface StoreMaking {
 }
 
 /**
- * The writes that make a store and its first Manager. The unique league
+ * The writes that make a store and its Owner. The unique league
  * index refuses a second store for a league, failing the batch.
  */
 export function storeInserts(db: D1Like, making: StoreMaking): D1Statement[] {
@@ -143,7 +144,7 @@ export function storeInserts(db: D1Like, making: StoreMaking): D1Statement[] {
       ),
     db
       .prepare(
-        `INSERT INTO store_members (store_id, user_id, role, added_at) SELECT ?, ?, 'manager', ? WHERE ${guard.sql}`
+        `INSERT INTO store_members (store_id, user_id, role, added_at) SELECT ?, ?, 'owner', ? WHERE ${guard.sql}`
       )
       .bind(id, managerId, now, ...guard.values)
   ];
@@ -221,7 +222,8 @@ export async function listMembers(db: D1Like, storeId: string): Promise<StoreMem
   const { results } = await db
     .prepare(
       `SELECT m.user_id AS id, ${displayNameSql('u')} AS name, u.pop_id, m.role, m.added_at FROM store_members m ` +
-        'JOIN users u ON u.id = m.user_id WHERE m.store_id = ? ORDER BY m.role, name'
+        'JOIN users u ON u.id = m.user_id WHERE m.store_id = ? ' +
+        "ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'manager' THEN 1 ELSE 2 END, name"
     )
     .bind(storeId)
     .all<{ id: string; name: string; pop_id: string | null; role: string; added_at: number }>();
@@ -229,17 +231,15 @@ export async function listMembers(db: D1Like, storeId: string): Promise<StoreMem
     id: row.id,
     name: row.name,
     hasPopId: Boolean(row.pop_id),
-    role: row.role === 'manager' ? 'manager' : 'staff',
+    role: storeRoleOf(row.role),
     addedAt: row.added_at
   }));
 }
 
-/** Whether `userId` is a Manager the store can lose: not one, or one of several. */
-const ANOTHER_MANAGER =
-  "(role <> 'manager' OR (SELECT COUNT(*) FROM store_members AS others " +
-  "WHERE others.store_id = store_members.store_id AND others.role = 'manager') > 1)";
+/** The row is not the Owner's, which no removal or role change touches. */
+const NOT_OWNER = "role <> 'owner'";
 
-/** Takes someone out of the store; false when they are its last Manager (or not in it). */
+/** Takes someone out of the store; false when they are its Owner (or not in it). */
 export async function removeMember(
   db: D1Like,
   storeId: string,
@@ -247,35 +247,60 @@ export async function removeMember(
   guard: Guard = ALWAYS
 ): Promise<boolean> {
   const done = await db
-    .prepare(`DELETE FROM store_members WHERE store_id = ? AND user_id = ? AND ${ANOTHER_MANAGER} AND ${guard.sql}`)
+    .prepare(`DELETE FROM store_members WHERE store_id = ? AND user_id = ? AND ${NOT_OWNER} AND ${guard.sql}`)
     .bind(storeId, userId, ...guard.values)
     .run();
   return rowsChanged(done) === 1;
 }
 
-/** Makes someone a Manager or Staff; false when that would leave the store without a Manager. */
+/** Makes someone a Manager or Staff; false when they are the Owner (or not in the store). */
 export async function setMemberRole(
   db: D1Like,
   storeId: string,
-  member: { userId: string; role: StoreRole },
+  member: { userId: string; role: GivenRole },
   guard: Guard = ALWAYS
 ): Promise<boolean> {
   const { userId, role } = member;
-  const keepsManager = role === 'manager' ? '1 = 1' : ANOTHER_MANAGER;
   const done = await db
-    .prepare(
-      `UPDATE store_members SET role = ? WHERE store_id = ? AND user_id = ? AND ${keepsManager} AND ${guard.sql}`
-    )
+    .prepare(`UPDATE store_members SET role = ? WHERE store_id = ? AND user_id = ? AND ${NOT_OWNER} AND ${guard.sql}`)
     .bind(role, storeId, userId, ...guard.values)
     .run();
   return rowsChanged(done) === 1;
+}
+
+/**
+ * Hands the store to `userId`, someone already in it: the Owner becomes a
+ * Manager and they become the Owner, in one transaction. The first write
+ * holds only while `guard` does and `userId` is in the store and not its
+ * Owner; the second only once the store has no Owner, so it lands only when
+ * the first did (or the store had none, which an Admin mends this way). The
+ * unique index on Owners refuses a second either way. False when nothing
+ * was handed over.
+ */
+export async function handOver(db: D1Like, storeId: string, userId: string, guard: Guard = ALWAYS): Promise<boolean> {
+  const [, made] = await db.batch([
+    db
+      .prepare(
+        "UPDATE store_members SET role = 'manager' WHERE store_id = ? AND role = 'owner' AND EXISTS " +
+          "(SELECT 1 FROM store_members t WHERE t.store_id = ? AND t.user_id = ? AND t.role <> 'owner') " +
+          `AND ${guard.sql}`
+      )
+      .bind(storeId, storeId, userId, ...guard.values),
+    db
+      .prepare(
+        "UPDATE store_members SET role = 'owner' WHERE store_id = ?1 AND user_id = ?2 AND NOT EXISTS " +
+          "(SELECT 1 FROM store_members o WHERE o.store_id = ?1 AND o.role = 'owner')"
+      )
+      .bind(storeId, userId)
+  ]);
+  return rowsChanged(made) === 1;
 }
 
 /** Makes a link that lets one person into the store as `role`, for a week; returns its token. */
 export async function createInvite(
   db: D1Like,
   storeId: string,
-  role: StoreRole,
+  role: GivenRole,
   options: { now?: number; guard?: Guard } = {}
 ): Promise<string | null> {
   const { now = Date.now(), guard = ALWAYS } = options;
@@ -320,8 +345,9 @@ export async function withdrawInvite(db: D1Like, storeId: string, id: string, gu
 /**
  * Lets the account in through a link, once: joining and using the link up are
  * one transaction, so two people cannot both come in on it. Someone already
- * in keeps the higher of the two roles. The store's id, or null when the link
- * is gone or ran out.
+ * in keeps the higher of the two roles, so Staff become a Manager and the
+ * Owner stays the Owner. The store's id, or null when the link is gone or ran
+ * out.
  */
 export async function acceptInvite(
   db: D1Like,
@@ -335,7 +361,8 @@ export async function acceptInvite(
       .prepare(
         'INSERT INTO store_members (store_id, user_id, role, added_at) ' +
           'SELECT store_id, ?, role, ? FROM store_invites WHERE token_hash = ? AND expires_at > ? ' +
-          "ON CONFLICT (store_id, user_id) DO UPDATE SET role = 'manager' WHERE excluded.role = 'manager'"
+          "ON CONFLICT (store_id, user_id) DO UPDATE SET role = 'manager' " +
+          "WHERE excluded.role = 'manager' AND store_members.role = 'staff'"
       )
       .bind(userId, now, hash, now),
     db.prepare('DELETE FROM store_invites WHERE token_hash = ? AND expires_at > ? RETURNING store_id').bind(hash, now)

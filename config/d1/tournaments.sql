@@ -307,9 +307,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS stores_by_league ON stores (league_id);
 -- The active stores the locator's index lists, and the Admin's list by name.
 CREATE INDEX IF NOT EXISTS stores_by_status ON stores (status, name);
 
--- Who belongs to a store: 'manager' (edits the store, its staff and league
--- nights) or 'staff' (runs every event the store runs). A store always keeps
--- one Manager: the writes that remove or demote one check for another.
+-- Who belongs to a store: 'owner' (a Manager the store is handed over by),
+-- 'manager' (edits the store, its staff and league nights) or 'staff' (runs
+-- every event the store runs). A store has one Owner, never removed or
+-- demoted, so it always keeps someone who manages it.
 CREATE TABLE IF NOT EXISTS store_members (
   store_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
@@ -318,6 +319,7 @@ CREATE TABLE IF NOT EXISTS store_members (
   PRIMARY KEY (store_id, user_id)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS store_members_by_user ON store_members (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS store_members_one_owner ON store_members (store_id) WHERE role = 'owner';
 
 -- A link a Manager made to let one person into the store as `role`, under
 -- the SHA-256 of its token; used once, and good for a week.

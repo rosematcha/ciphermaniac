@@ -1,7 +1,8 @@
 /**
  * Player accounts end to end, against the real schema in SQLite. What must
- * hold: migrations 0006 to 0012 bring a live database in line with the schema, with
- * each POP ID left on one account and Reese the only admin; an account's
+ * hold: migrations 0006 to 0014 bring a live database in line with the schema, with
+ * each POP ID left on one account, Reese the only admin and each store's
+ * first Manager its Owner; an account's
  * role and public profile come with who is signed in; one account holds a
  * POP ID, and lets go of the players it was as an old one; a username is
  * one account's, kept to the rules, held a day once let go and changed at
@@ -73,7 +74,23 @@ function seedBefore0006(db: DatabaseSync) {
   event.run('TOMRUN', REESE, 'tom', players('333'), '{"sanctioned":false}', 'c');
 }
 
-test('migrations 0006 to 0012 bring a database made before accounts in line with the schema', () => {
+/** Two stores as 0012 made them: one with two Managers and Staff, one whose only Manager joined last. */
+function seedStoresBefore0014(db: DatabaseSync) {
+  const store = db.prepare(
+    'INSERT INTO stores (id, league_id, status, name, address, time_zone, created_at, updated_at) ' +
+      "VALUES (?, ?, 'active', ?, '1 Main St', 'America/Chicago', 1, 1)"
+  );
+  store.run('two', '1001', 'Two Managers');
+  store.run('one', '1002', 'One Manager');
+  const member = db.prepare('INSERT INTO store_members (store_id, user_id, role, added_at) VALUES (?, ?, ?, ?)');
+  member.run('two', 'second', 'manager', 20);
+  member.run('two', 'first', 'manager', 10);
+  member.run('two', 'blank', 'staff', 5);
+  member.run('one', 'tie-a', 'staff', 1);
+  member.run('one', 'tie-b', 'manager', 9);
+}
+
+test('migrations 0006 to 0014 bring a database made before accounts in line with the schema', () => {
   const db = new DatabaseSync(':memory:');
   db.exec(sql('../fixtures/d1/tournaments-before-0006.sql'));
   seedBefore0006(db);
@@ -89,8 +106,24 @@ test('migrations 0006 to 0012 bring a database made before accounts in line with
   db.exec(sql('../../config/d1/migrations/tournaments/0011-age-gate.sql'));
   db.exec(sql('../../config/d1/migrations/tournaments/0012-stores.sql'));
   db.exec(sql('../../config/d1/migrations/tournaments/0013-proof-deletions.sql'));
+  seedStoresBefore0014(db);
+  db.exec(sql('../../config/d1/migrations/tournaments/0014-store-owners.sql'));
 
   assert.deepEqual(shape(db), shape(sqliteD1('tournaments.sql').raw));
+  assert.deepEqual(
+    db
+      .prepare('SELECT store_id AS store, user_id AS user, role FROM store_members ORDER BY store_id, user_id')
+      .all()
+      .map(row => ({ ...row })),
+    [
+      { store: 'one', user: 'tie-a', role: 'staff' },
+      { store: 'one', user: 'tie-b', role: 'owner' },
+      { store: 'two', user: 'blank', role: 'staff' },
+      { store: 'two', user: 'first', role: 'owner' },
+      { store: 'two', user: 'second', role: 'manager' }
+    ],
+    'each store’s earliest Manager is its Owner; Staff and later Managers stay as they were'
+  );
   const handles = db
     .prepare('SELECT id, handle, public_profile AS public FROM users ORDER BY id')
     .all()

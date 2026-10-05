@@ -9,7 +9,7 @@
 import { expect, type Page, test } from '@playwright/test';
 
 import type { AccountRole } from '../../shared/accounts/roles';
-import type { StoreRole } from '../../shared/accounts/stores';
+import type { GivenRole, StoreRole } from '../../shared/accounts/stores';
 import type {
   ApplicationState,
   LeagueFound,
@@ -119,6 +119,8 @@ interface Options {
   league?: { league: LeagueFound | null; taken: boolean } | 'fail';
   role?: StoreRole | null;
   listings?: Listing[];
+  /** Who is in the store; an Owner, Mary as a Manager, and Sam as Staff unless said otherwise. */
+  members?: StoreMember[];
 }
 
 /** The functions as the pages call them, holding a store's state as they would, and every ask they get. */
@@ -127,7 +129,11 @@ async function mock(page: Page, options: Options = {}) {
   let user = options.user === undefined ? ME : options.user;
   let state = options.state ?? NONE;
   let store = STORE;
-  let members = [member('acct-1', 'Mary Jackson', 'manager'), member('acct-2', 'Sam Ortiz', 'staff', false)];
+  let members = options.members ?? [
+    member('acct-0', 'Lee Owens', 'owner'),
+    member('acct-1', 'Mary Jackson', 'manager'),
+    member('acct-2', 'Sam Ortiz', 'staff', false)
+  ];
   let invites: StoreInvite[] = [];
   await page.route('https://tile.openstreetmap.org/**', route =>
     route.fulfill({
@@ -195,12 +201,20 @@ async function mock(page: Page, options: Options = {}) {
     if (key === 'POST /api/stores/store-1/members') {
       // The token's hash starts with the id the list gives it, as the server names a link.
       invites = [
-        { id: '2f237cea451ff8f2', role: body?.invite as StoreRole, createdAt: 0, expiresAt: Date.UTC(2099, 9, 11) }
+        { id: '2f237cea451ff8f2', role: body?.invite as GivenRole, createdAt: 0, expiresAt: Date.UTC(2099, 9, 11) }
       ];
       return route.fulfill({ status: 201, json: { token: 'k3QwP9zXr2' } });
     }
     if (key === 'PATCH /api/stores/store-1/members') {
-      members = members.map(m => (m.id === body?.user ? { ...m, role: body.role as StoreRole } : m));
+      // Handing the store over makes the Owner before a Manager.
+      const handing = body?.role === 'owner';
+      members = members.map(m =>
+        m.id === body?.user
+          ? { ...m, role: body.role as StoreRole }
+          : handing && m.role === 'owner'
+            ? { ...m, role: 'manager' as const }
+            : m
+      );
       return route.fulfill({ json: { members, invites } });
     }
     if (key === 'DELETE /api/stores/store-1/members') {
@@ -411,7 +425,7 @@ test('store settings: staff change role, invite links show once and withdraw', a
   const asks = await mock(page, { user: MANAGER });
   await page.goto('/stores/store-1/settings?section=staff');
   const table = page.locator('.tm-store-staff');
-  await expect(table.locator('tbody tr')).toHaveCount(2);
+  await expect(table.locator('tbody tr')).toHaveCount(3);
   const sam = table.locator('tr', { hasText: 'Sam Ortiz' });
   await expect(sam).toContainText('None');
   await sam.getByRole('button', { name: 'Make manager' }).click();
@@ -428,7 +442,40 @@ test('store settings: staff change role, invite links show once and withdraw', a
 
   await sam.getByRole('button', { name: 'Remove' }).click();
   await page.getByRole('group', { name: 'Remove Sam Ortiz?' }).getByRole('button', { name: 'Remove' }).click();
-  await expect(table.locator('tbody tr')).toHaveCount(1);
+  await expect(table.locator('tbody tr')).toHaveCount(2);
+});
+
+test('store settings: a Manager can do nothing to the Owner’s row, or hand the store over', async ({ page }) => {
+  await mock(page, { user: MANAGER });
+  await page.goto('/stores/store-1/settings?section=staff');
+  const owner = page.locator('.tm-store-staff tr', { hasText: 'Lee Owens' });
+  await expect(owner).toContainText('Owner');
+  await expect(owner.getByRole('button')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Make owner' })).toHaveCount(0);
+});
+
+test('store settings: the Owner hands the store over, asked first, and stays on as a Manager free to leave', async ({
+  page
+}) => {
+  const asks = await mock(page, {
+    user: { ...ME, stores: [{ ...MY_STORE, role: 'owner' }] },
+    role: 'owner',
+    members: [member('acct-1', 'Mary Jackson', 'owner'), member('acct-2', 'Sam Ortiz', 'staff')]
+  });
+  await page.goto('/stores/store-1/settings?section=staff');
+  const table = page.locator('.tm-store-staff');
+  const mary = table.locator('tr', { hasText: 'Mary Jackson' });
+  const sam = table.locator('tr', { hasText: 'Sam Ortiz' });
+  await expect(mary.getByRole('button', { name: 'Leave' })).toHaveCount(0);
+  await sam.getByRole('button', { name: 'Make owner' }).click();
+  await expect(sam).toContainText('Make Sam Ortiz the owner?');
+  expect(sentTo(asks, 'PATCH', '/api/stores/store-1/members')).toEqual([]);
+  await sam.getByRole('button', { name: 'Make owner' }).click();
+  await expect(sam.locator('td').nth(1)).toHaveText('Owner');
+  await expect(mary.locator('td').nth(1)).toHaveText('Manager');
+  await expect(mary.getByRole('button', { name: 'Leave' })).toBeVisible();
+  await expect(sam.getByRole('button')).toHaveCount(0);
+  expect(sentTo(asks, 'PATCH', '/api/stores/store-1/members')).toEqual([{ user: 'acct-2', role: 'owner' }]);
 });
 
 test('store settings: details save with the store’s place kept', async ({ page }) => {

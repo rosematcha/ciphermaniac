@@ -2,14 +2,26 @@
  * Stores: certified Play! Pokémon league locations, keyed by their league ID,
  * that run sanctioned events on the site. A store is its own record, not a
  * role: accounts join it as a Manager (edits the store, its staff and league
- * nights) or Staff (runs every event the store runs). What a store says
- * about itself is checked the same way on the page and in the functions.
+ * nights) or Staff (runs every event the store runs). One Manager is its
+ * Owner, the approved applicant to start with: the Owner is never removed or
+ * demoted, and stops being the Owner only by handing the store to someone
+ * else in it. What a store says about itself is checked the same way on the
+ * page and in the functions.
  */
 
 import { type AccountRole, canRunCommunityEvents } from './roles.js';
 
-export type StoreRole = 'manager' | 'staff';
-export const STORE_ROLES: readonly StoreRole[] = ['manager', 'staff'];
+export type StoreRole = 'owner' | 'manager' | 'staff';
+
+/** The roles a Manager gives someone, by an invite or in place; the Owner's is only ever handed over. */
+export type GivenRole = Exclude<StoreRole, 'owner'>;
+export const GIVEN_ROLES: readonly GivenRole[] = ['manager', 'staff'];
+
+/** A stored role as one the code knows; anything else reads as Staff, the least. */
+export const storeRoleOf = (value: unknown): StoreRole => (value === 'owner' || value === 'manager' ? value : 'staff');
+
+/** Whether the role edits the store, its staff and league nights: its Owner and Managers. */
+export const managesStore = (role: StoreRole | null | undefined): boolean => role === 'owner' || role === 'manager';
 
 export type StoreStatus = 'active' | 'revoked';
 

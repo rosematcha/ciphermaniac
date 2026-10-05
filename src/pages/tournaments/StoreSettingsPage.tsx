@@ -10,7 +10,13 @@
 
 import { A, useSearchParams } from '@solidjs/router';
 import { createEffect, createResource, createSignal, For, Match, Show, Switch, untrack } from 'solid-js';
-import { dateIn, type LeagueNight, type NightException, type StoreDetails } from '../../../shared/accounts/stores';
+import {
+  dateIn,
+  type LeagueNight,
+  managesStore,
+  type NightException,
+  type StoreDetails
+} from '../../../shared/accounts/stores';
 import type { PublicStore } from '../../../shared/accounts/types';
 import { Skeleton } from '../../components/Skeleton';
 import { errorText, type Provider } from '../../lib/tournament/api';
@@ -247,7 +253,7 @@ function Settings(props: { id: string }) {
     >
       {answer => (
         <Show
-          when={answer().role === 'manager'}
+          when={managesStore(answer().role)}
           fallback={
             <>
               <TournamentHero title={answer().store.name} />
