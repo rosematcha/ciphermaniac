@@ -21,12 +21,12 @@
 import { createEffect, createMemo, createSignal, For, type JSX, lazy, on, Show, Suspense } from 'solid-js';
 import { isDisputed, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
 import { latestRound, withSwiss } from '../../../shared/tournament/rounds';
-import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
+import { DIVISION_LABELS, type Match, type Outcome, type Pod, type Round } from '../../../shared/tournament/types';
 import { decksEnabled } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import type { Manage } from '../../lib/tournament/api';
 import {
-  champion,
+  champions,
   filterMatches,
   hasCut,
   MATCH_VIEWS,
@@ -358,7 +358,9 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const asBracket = () => cut() && matchView() === 'bracket';
   const waiting = () => (tom() || latest()?.kind !== 'swiss' ? [] : unseated(props.manage.tournament, props.pod));
   const isLatest = () => round()?.number === latest()?.number;
-  const winner = () => champion(latest(), props.pod);
+  // Each division's champion, Masters first, once every final in the pod is decided.
+  const winners = createMemo(() => champions(latest(), props.pod));
+  const winner = () => winners()[0]?.id ?? null;
   const played = () => round()?.matches.filter(m => m.p2 !== null) ?? [];
   const openCount = () => {
     const r = round();
@@ -462,7 +464,14 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
           />
         </div>
       </Show>
-      <Show when={winner()}>{id => <ChampionLine name={names().get(id()) ?? id()} />}</Show>
+      <For each={winners()}>
+        {won => (
+          <ChampionLine
+            label={won.division && winners().length > 1 ? `${DIVISION_LABELS[won.division]} champion` : 'Champion'}
+            name={names().get(won.id) ?? won.id}
+          />
+        )}
+      </For>
       <Show when={round()} fallback={<p class='muted'>No rounds yet.</p>}>
         {r => {
           // The room's tables with result entry; also what a cut shows when it cannot be drawn as a bracket.

@@ -115,6 +115,9 @@ const mean = (values: number[]) =>
         ).toPrecision(4)
       );
 
+/** TOM caps a dropped player only when they played fewer rounds than the pod plans: here, the Swiss rounds paired. */
+const planned = (field: Pod) => field.rounds.filter(r => r.kind === 'swiss').length;
+
 function expectedOpponentRate(
   field: Pod,
   players: Player[],
@@ -133,7 +136,7 @@ function expectedOpponentRate(
     opponents.map(opponent => {
       const tally = tallies.get(opponent)!;
       const dropped = players.find(p => p.id === opponent)?.droppedAfter ?? null;
-      return winRate(tally, dropped !== null && (!historical || dropped <= drop));
+      return winRate(tally, dropped !== null && (!historical || dropped <= drop) && tally.matches < planned(field));
     })
   );
 }
@@ -144,7 +147,7 @@ function expectedRates(field: Pod, players: Player[], at: number, historical: bo
   const rates = new Map(
     [...tallies].map(([id, tally]) => {
       const drop = players.find(p => p.id === id)?.droppedAfter ?? null;
-      return [id, winRate(tally, drop !== null && (!historical || drop <= at))];
+      return [id, winRate(tally, drop !== null && (!historical || drop <= at) && tally.matches < planned(field))];
     })
   );
   const owp = new Map(
@@ -292,4 +295,32 @@ test('deleted TOM matches count opponents without giving either player a record 
     assert.equal(row.owp, 0.25);
     assert.equal(row.oowp, 0.25);
   }
+});
+
+test('a dropped player is capped at 75% only when they played fewer rounds than the pod plans, as TOM caps', () => {
+  // A wins every round and drops after the third; B met A, D and C.
+  const field = pod(
+    ['A', 'B', 'C', 'D'],
+    [
+      round(1, [
+        ['A', 'B'],
+        ['C', 'D']
+      ]),
+      round(2, [
+        ['A', 'C'],
+        ['B', 'D']
+      ]),
+      round(3, [
+        ['A', 'D'],
+        ['B', 'C']
+      ])
+    ]
+  );
+  const players = [player('A', 3), player('B'), player('C'), player('D')];
+  const owpOfB = (regularRounds?: number) =>
+    swissStandings(field, players, regularRounds === undefined ? {} : { regularRounds }).find(r => r.playerId === 'B')
+      ?.owp;
+  assert.equal(owpOfB(3), 0.5278, 'A played every planned round: a full 100% opponent');
+  assert.equal(owpOfB(), 0.5278, 'without a plan, the rounds paired are the plan');
+  assert.equal(owpOfB(4), 0.4444, 'A left a round early: capped at 75%');
 });

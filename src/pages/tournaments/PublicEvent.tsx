@@ -11,7 +11,7 @@
 
 import { useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, createSignal, For, lazy, onCleanup, onMount, Show } from 'solid-js';
-import { hasStarted, latestRound, livePods, playerPod, podOf } from '../../../shared/tournament/rounds';
+import { hasStarted, latestRound, livePods, playerPod, podOf, regularRounds } from '../../../shared/tournament/rounds';
 import { recordLabel, swissStandings } from '../../../shared/tournament/standings';
 import { type Pod, POD_CATEGORIES, type PodCategory, type Round } from '../../../shared/tournament/types';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
@@ -414,7 +414,8 @@ function OpenPlayer(props: {
   // Memos: the sheet reads these once per row of the player's history, and ranking a pod is a pass over its every match.
   const standings = createMemo(() => {
     const p = pod();
-    return p ? swissStandings(p, props.view.tournament.players) : [];
+    const { tournament } = props.view;
+    return p ? swissStandings(p, tournament.players, { regularRounds: regularRounds(tournament, p) }) : [];
   });
   const records = createMemo(() => new Map(standings().map(row => [row.playerId, recordLabel(row.record)])));
   // The place History gives the same player (see playerResult).

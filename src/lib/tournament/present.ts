@@ -32,6 +32,7 @@ import {
   divisionBrackets,
   latestRound,
   livePods,
+  regularRounds,
   swissAttendance
 } from '../../../shared/tournament/rounds';
 import { ordinal } from '../format';
@@ -97,21 +98,38 @@ function bracketSize(pod: Pod, round: Round): number {
     : bracketMatches(pod, round).length;
 }
 
-/** The winner of a finished final, or null while the event is still going. */
-export function champion(round: Round | undefined, pod: Pod): string | null {
+/** A top cut's winner: one division's, or null for a pod's single bracket. */
+export interface Champion {
+  division: Division | null;
+  id: string;
+}
+
+const finalWinner = (pod: Pod, round: Round): string | undefined => {
+  const bracket = bracketMatches(pod, round);
+  return bracket.length === 1 ? eliminationResult(bracket[0]!)?.winner : undefined;
+};
+
+/**
+ * Every bracket's winner once each final is decided, Masters first as TOM
+ * lists divisions; empty while any division's cut is still playing.
+ */
+export function champions(round: Round | undefined, pod: Pod): Champion[] {
   if (round?.kind !== 'elimination') {
-    return null;
+    return [];
   }
-  const cuts = divisionBrackets(pod);
-  if (cuts.length && cuts.some(cut => bracketMatches(cut, latestRound(cut)!).length !== 1)) {
-    return null;
+  const cuts = divisionBrackets(pod).reverse();
+  if (!cuts.length) {
+    const id = finalWinner(pod, round);
+    return id ? [{ division: null, id }] : [];
   }
-  const selected = Object.keys(pod.divisionCuts ?? {}).length;
-  if (selected > cuts.length) {
-    return null;
-  }
-  const bracket = bracketMatches(cuts[0] ?? pod, cuts.length ? latestRound(cuts[0])! : round);
-  return bracket.length === 1 ? (eliminationResult(bracket[0]!)?.winner ?? null) : null;
+  const winners = cuts.map(cut => ({ division: cut.category as Division, id: finalWinner(cut, latestRound(cut)!) }));
+  const all = Object.keys(pod.divisionCuts ?? {}).length <= cuts.length && winners.every(w => w.id !== undefined);
+  return all ? (winners as Champion[]) : [];
+}
+
+/** The winner of a finished final (Masters' for a pod of several), or null while the event is still going. */
+export function champion(round: Round | undefined, pod: Pod): string | null {
+  return champions(round, pod)[0]?.id ?? null;
 }
 
 /** Where a pod's current round stands: how many tables are still playing, and any champion. */
@@ -293,7 +311,9 @@ export function eventStatus(
   }
   if (event.finished) {
     const swiss = pod.rounds.filter(round => round.kind === 'swiss').length;
-    return ['Finished', plural(swiss, 'round'), ...(pod.cut ? [`Top ${pod.cut}`] : [])];
+    // The cut is chosen when play starts; only one that was played belongs in the summary.
+    const cut = swiss < pod.rounds.length ? pod.cut : 0;
+    return ['Finished', plural(swiss, 'round'), ...(cut ? [`Top ${cut}`] : [])];
   }
   const progress = podProgress(pod, event.pending);
   const { round } = progress;
@@ -366,7 +386,8 @@ function plannedCut(attendance: number, active: number, type: EventType): number
 /** One division's table: Swiss places from `pod`, then the top cut `bracket` plays, if any. */
 function standingsOf(tournament: Tournament, pod: Pod, only?: ReadonlySet<string>, bracket?: Pod) {
   const played = bracket ?? pod;
-  const rows = placeFinals(played, swissStandings(pod, tournament.players, only ? { only } : {}));
+  const options = { ...(only ? { only } : {}), regularRounds: regularRounds(tournament, pod) };
+  const rows = placeFinals(played, swissStandings(pod, tournament.players, options));
   const cutStarted = (only ? bracket : played)?.rounds.some(round => round.kind === 'elimination') === true;
   const attendance = attendees(pod).filter(id => !only || only.has(id)).length;
   const active = rows.filter(row => !row.dropped).length;

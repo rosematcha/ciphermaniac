@@ -32,6 +32,7 @@ import {
   pairingHistory,
   podOf,
   pointsBefore,
+  regularRounds,
   roundComplete,
   seatPairings,
   toMatches
@@ -117,19 +118,9 @@ function findPod(tournament: Tournament, category: PodCategory): Pod | undefined
   return tournament.pods.find(pod => pod.category === category);
 }
 
-/**
- * A pod of several divisions whose divisions have gone on to their top cuts
- * has played its last round: its rounds seed the cuts, so they stand.
- */
-const CUTS_UNDER_WAY = 'Its divisions are playing their top cuts; change those instead';
-
-/** The pod a round command names, or why it cannot take one: none by that name, or its cuts under way. */
+/** The pod a round command names, or why it cannot take one. */
 function roundPod(tournament: Tournament, category: PodCategory): Pod | string {
-  const pod = findPod(tournament, category);
-  if (!pod) {
-    return 'There is no round to change';
-  }
-  return tournament.pods.some(p => p.cutOf === category) ? CUTS_UNDER_WAY : pod;
+  return findPod(tournament, category) ?? 'There is no round to change';
 }
 
 function withPod(tournament: Tournament, pod: Pod): Tournament {
@@ -182,7 +173,7 @@ const JOINS: Record<Division, readonly Division[]> = {
  * the pod as it stood, when it changes category.
  */
 function podFor(tournament: Tournament, division: Division): { pod: Pod; replaces?: Pod } {
-  const plays = (d: Division) => tournament.pods.find(pod => !pod.cutOf && divisionsOf(pod.category).includes(d));
+  const plays = (d: Division) => tournament.pods.find(pod => divisionsOf(pod.category).includes(d));
   const playing = plays(division);
   if (playing) {
     return { pod: playing, replaces: playing };
@@ -571,11 +562,7 @@ function startRoster(tournament: Tournament, ctx: CommandContext): Tournament {
 
 const activePlayers = (tournament: Tournament) => tournament.players.filter(p => p.droppedAfter === null).length;
 
-function pairRound(input: Tournament, category: PodCategory, ctx: CommandContext): CommandResult {
-  const tournament = input;
-  if (tournament.pods.some(p => p.cutOf === category)) {
-    return fail(CUTS_UNDER_WAY);
-  }
+function pairRound(tournament: Tournament, category: PodCategory, ctx: CommandContext): CommandResult {
   const pod = findPod(tournament, category);
   if (!pod || activeIds(tournament, pod).length < 2) {
     return fail('Add at least two players first');
@@ -654,11 +641,15 @@ function deleteRound(tournament: Tournament, category: PodCategory): CommandResu
     return fail('Clear this round’s results before deleting it');
   }
   const rounds = pod.rounds.slice(0, -1);
-  if (pod.cutOf && rounds.length === 0) {
-    // A division's top cut with no round left has not started: its division is back where the Swiss left it.
-    return done({ ...tournament, pods: tournament.pods.filter(p => p !== pod) });
-  }
-  return done(withPod(tournament, { ...pod, rounds, cut: rounds.some(r => r.kind === 'elimination') ? pod.cut : 0 }));
+  const undone = round.kind === 'elimination' && !rounds.some(r => r.kind === 'elimination');
+  return done(withPod(undone ? unseeded(tournament, pod) : tournament, { ...pod, rounds }));
+}
+
+/** The pod's players without the seeds and bracket positions a cut that is gone gave them. */
+function unseeded(tournament: Tournament, pod: Pod): Tournament {
+  const ids = new Set(pod.playerIds);
+  const unseed = ({ seed: _seed, order: _order, ...player }: Player): Player => player;
+  return { ...tournament, players: tournament.players.map(p => (ids.has(p.id) ? unseed(p) : p)) };
 }
 
 function outcomeError(round: Round, match: Match, outcome: Outcome): string | null {
@@ -801,8 +792,17 @@ function cutRefusal(
   if (!(TOP_CUT_SIZES as readonly number[]).includes(command.size)) {
     return 'A top cut is 2, 4, 8, 16 or 32 players';
   }
-  const taken = command.division && cutPodOf(tournament, pod, command.division);
-  return taken ? `The ${DIVISION_LABELS[command.division as Division]} top cut has started` : null;
+  return cutStarted(tournament, pod, command.division, ctx.season);
+}
+
+/** A pod whose players are all one division has one cut (see cutField); a pod of several has one per division. */
+function cutStarted(tournament: Tournament, pod: Pod, division: Division | undefined, season: number): string | null {
+  if (!cutField(tournament, pod, division, season)) {
+    return pod.rounds.some(round => round.kind === 'elimination') ? 'The top cut has started' : null;
+  }
+  return division && cutPodOf(tournament, pod, division)
+    ? `The ${DIVISION_LABELS[division]} top cut has started`
+    : null;
 }
 
 function startTopCut(
@@ -822,7 +822,10 @@ function startTopCut(
   if (only && !division) {
     return fail('Pick the division to cut');
   }
-  const seeds = swissStandings(pod, tournament.players, only ? { only } : {})
+  const seeds = swissStandings(pod, tournament.players, {
+    ...(only ? { only } : {}),
+    regularRounds: regularRounds(tournament, pod)
+  })
     .filter(row => !row.dropped)
     .slice(0, size)
     .map(row => row.playerId);

@@ -13,6 +13,7 @@ import {
   collapseSame60,
   filterLists,
   isBasicEnergy,
+  markedCards,
   mergedCards,
   oddSlots,
   slotStats,
@@ -208,4 +209,40 @@ test('a canonical UID matching its raw printing stays canonical with a populated
   assert.equal(collapseSame60(lists).length, 1);
   assert.equal(slotStats(lists).nameShare(uid), 100);
   assert.equal(slotStats(lists).pairShare(uid, 4), 100);
+});
+
+test('tech candidates and the tech filter key on canonical identity, not display name', () => {
+  const a = { ...card('Pikachu', 1, 'SVI', '1'), uid: 'pikachu-a' };
+  const b = { ...card('Pikachu', 1, 'PAF', '2'), uid: 'pikachu-b' };
+  const reprint = { ...card('Pikachu', 1, 'MEW', '3'), uid: 'pikachu-a' };
+  const lists = [
+    list([card('Boss', 3), a]),
+    list([card('Boss', 3), reprint]),
+    list([card('Boss', 3), b]),
+    ...Array.from({ length: 7 }, () => list([card('Boss', 3)]))
+  ];
+  const techs = techCandidates(lists);
+  assert.deepEqual(
+    techs.map(t => [t.key, t.share]),
+    [
+      ['pikachu-a', 20],
+      ['pikachu-b', 10]
+    ]
+  );
+  const shown = filterLists(lists, { finish: 'all', venue: 'all', techs: new Set(['pikachu-a']) });
+  assert.deepEqual(
+    shown.map(l => l.record.cards[1]),
+    [a, reprint]
+  );
+});
+
+test('marked lines cover every printing of an odd slot and only the picked identity', () => {
+  const a = { ...card('Iono', 2, 'PAL', '185'), uid: 'iono' };
+  const b = { ...card('Iono', 2, 'PAF', '80'), uid: 'iono' };
+  const other = { ...card('Pikachu', 1, 'SVI', '1'), uid: 'pikachu-a' };
+  const sameName = { ...card('Pikachu', 1, 'PAF', '2'), uid: 'pikachu-b' };
+  const { record } = list([a, b, other, sameName]);
+  const odd = [{ card: { ...a, count: 4 }, share: 5 }];
+  assert.deepEqual([...markedCards(record, odd, new Set())], [a, b]);
+  assert.deepEqual([...markedCards(record, [], new Set(['pikachu-b']))], [sameName]);
 });

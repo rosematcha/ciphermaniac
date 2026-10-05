@@ -25,9 +25,10 @@ import {
   reportableMatch,
   reportedOutcome,
   reportsFor,
-  resultOf
+  resultOf,
+  stillShown
 } from '../../shared/tournament/reports.ts';
-import type { Match, Tournament } from '../../shared/tournament/types.ts';
+import type { Match, Pod, Round, Tournament } from '../../shared/tournament/types.ts';
 import { applyPending } from '../../shared/tournament/view.ts';
 
 function run(tournament: Tournament, ...commands: Command[]): Tournament {
@@ -196,4 +197,15 @@ test('a report follows its players when a late player of a new division renames 
     pruneReports(joined, filed).map(r => [r.pod, r.table]),
     [['senior-masters', first.table]]
   );
+});
+
+test('a page that names a division still matches its cut in the pod that plays that division', () => {
+  const match: Match = { table: 3, p1: 'a', p2: 'b', outcome: 'pending', timestamp: '' };
+  const round = { number: 5, kind: 'elimination', matches: [match] } as Round;
+  const pod = { category: 'senior-masters', playerIds: ['a', 'b'], rounds: [round] } as unknown as Pod;
+  const open: OpenMatch = { pod, round, match: { ...match, p2: 'b' } };
+  assert.ok(stillShown(open, { pod: 'masters', round: 5, table: 3 }));
+  assert.ok(stillShown(open, { pod: 'senior-masters', round: 5, table: 3 }));
+  assert.ok(!stillShown(open, { pod: 'junior', round: 5, table: 3 }), 'a division the pod does not play');
+  assert.ok(!stillShown(open, { pod: 'masters', round: 5, table: 4 }), 'another table');
 });

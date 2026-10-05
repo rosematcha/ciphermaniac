@@ -37,12 +37,12 @@
 			<lastname>Church</lastname>
 			<birthdate>02/27/1990</birthdate>
 			<starter>true</starter>
-			<creationdate>10/03/2026 12:00:03</creationdate>
-			<lastmodifieddate>10/03/2026 12:40:00</lastmodifieddate>
 			<dropped>
 				<status>1</status>
 				<round>1</round>
 			</dropped>
+			<creationdate>10/03/2026 12:00:03</creationdate>
+			<lastmodifieddate>10/03/2026 12:40:00</lastmodifieddate>
 		</player>
 		<player userid="7200004">
 			<firstname>John</firstname>
@@ -80,7 +80,12 @@
 			<firstname>Late</firstname>
 			<lastname>Arrival</lastname>
 			<birthdate>02/27/1994</birthdate>
-			<starter>false</starter>
+			<late>
+				<round>-1</round>
+				<timestamp>10/03/2026 12:41:00</timestamp>
+				<forcedloss>false</forcedloss>
+				<usedforcedloss>true</usedforcedloss>
+			</late>
 			<creationdate>10/03/2026 12:41:00</creationdate>
 			<lastmodifieddate>10/03/2026 12:41:00</lastmodifieddate>
 		</player>

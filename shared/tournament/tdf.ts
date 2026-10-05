@@ -24,7 +24,15 @@
 
 import { divisionLookup } from './divisions.js';
 import { divisionsOf } from './podding.js';
-import { attendees, cutPodOf, fullRoundSeconds, hasStarted, normalizeCutPods } from './rounds.js';
+import {
+  attendees,
+  cutPodOf,
+  fullRoundSeconds,
+  hasStarted,
+  normalizeCutPods,
+  regularRounds,
+  wasFinalized
+} from './rounds.js';
 import { bracketMatches, placeFinals, swissStandings } from './standings.js';
 import { eventTypeOf, recommendedStructure } from './structure.js';
 import {
@@ -371,11 +379,7 @@ export function parseTdf(source: string): Tournament {
   }
   if (tournament.passthrough) {
     tournament.passthrough.finalsState = finalsState(tournament);
-    if (legacy) {
-      tournament.passthrough.finalsOptions = '';
-    } else {
-      tournament.passthrough.original = { xml: source, state: comparable(tournament) };
-    }
+    tournament.passthrough.finalsOptions = legacy ? '' : tournament.passthrough.finalsOptions;
   }
   return tournament;
 }
@@ -410,24 +414,6 @@ function completePods(t: Tournament, started: boolean, finals: XmlElement | unde
     };
   });
   return { ...t, pods };
-}
-
-/** Stable comparison of plain tournament data across wire validation's property order. */
-function comparable(value: unknown): string {
-  return JSON.stringify(value, (key, entry: unknown) => {
-    if (['original', 'timeLeft', 'startTime', 'clockStartedAt'].includes(key)) {
-      return undefined;
-    }
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
-      return entry;
-    }
-    const record = entry as Record<string, unknown>;
-    return Object.fromEntries(
-      Object.keys(record)
-        .sort()
-        .map(key => [key, record[key]])
-    );
-  });
 }
 
 function finalsState(t: Tournament): string {
@@ -581,14 +567,14 @@ function birthYearDate(date: string): string {
   return year ? `02/27/${year}` : date;
 }
 
-function writePlayer(player: Player, extra: [string, string][], started: boolean, preserved = false): string[] {
+function writePlayer(player: Player, extra: [string, string][], started: boolean): string[] {
   return [
     `<player userid="${esc(player.id)}">`,
     ...block(1, [
       tag('firstname', player.firstName),
       tag('lastname', player.lastName),
       tag('birthdate', birthYearDate(player.birthDate)),
-      ...(preserved ? extra.map(([, xml]) => xml) : playerFields(player, extra, started))
+      ...playerFields(player, extra, started)
     ]),
     '</player>'
   ];
@@ -603,8 +589,8 @@ function writeMatch(match: Match, fixed: ReadonlyMap<string, number>): string[] 
     match.p2 === null
       ? [`<player userid="${esc(match.p1)}"/>`]
       : [
-          `<player1 userid="${match.p1}"${seatAttr(fixed.get(match.p1))}/>`,
-          `<player2 userid="${match.p2}"${seatAttr(fixed.get(match.p2))}/>`
+          `<player1 userid="${esc(match.p1)}"${seatAttr(fixed.get(match.p1))}/>`,
+          `<player2 userid="${esc(match.p2)}"${seatAttr(fixed.get(match.p2))}/>`
         ];
   return [
     `<match outcome="${OUTCOME_CODES[match.outcome]}">`,
@@ -792,7 +778,7 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
     const places = fields.flatMap(pod => {
       const full = t.pods.find(p => p.category === pod.category) ?? pod;
       const only = new Set(pod.playerIds);
-      const swiss = swissStandings(full, t.players, { only });
+      const swiss = swissStandings(full, t.players, { only, regularRounds: regularRounds(t, full) });
       return placeFinals(division === 'mixed' ? full : (cutPodOf(t, full, division) ?? full), swiss);
     });
     const only = new Set(fields.flatMap(p => p.playerIds));
@@ -806,7 +792,7 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
       `<pod category="${code}" type="dnf">`,
       ...block(
         1,
-        dnf.map(p => `<player id="${p.id}" />`)
+        dnf.map(p => `<player id="${esc(p.id)}" />`)
       ),
       '</pod>'
     ];
@@ -912,37 +898,14 @@ export interface WriteOptions {
 }
 
 /** Writes the tournament as a .tdf, in TOM's own layout. */
-function unchangedSource(t: Tournament, finalized: boolean): string | undefined {
-  const original = t.passthrough?.original;
-  return original?.state === comparable(t) && finalized === wasFinalized(t) ? original.xml : undefined;
-}
-
-function writeRoster(t: Tournament): string[] {
-  const original = t.passthrough?.original;
-  const oldPlayers = original ? (JSON.parse(original.state) as Tournament).players : [];
-  const originals = new Map(oldPlayers.map(p => [p.id, p]));
-  return t.players.flatMap(p =>
-    writePlayer(
-      p,
-      t.passthrough?.playerExtras[p.id] ?? [],
-      hasStarted(t),
-      comparable(originals.get(p.id)) === comparable(p)
-    )
-  );
-}
-
 export function writeTdf(input: Tournament, options: WriteOptions = {}): string {
   const t = normalizeCutPods(input);
   const finalized = options.finalized ?? wasFinalized(t);
   if (finalized && t.pods.some(pod => pod.rounds.some(round => round.matches.some(m => m.outcome === 'pending')))) {
     throw new Error('Enter all match results to finalize');
   }
-  const source = unchangedSource(t, finalized);
-  if (source && options.now === undefined) {
-    return source;
-  }
   const divisionOf = options.divisionOf ?? divisionLookup(t);
-  const players = writeRoster(t);
+  const players = t.players.flatMap(p => writePlayer(p, t.passthrough?.playerExtras[p.id] ?? [], hasStarted(t)));
   const pods = t.pods.flatMap(pod =>
     writePod(t, pod, {
       finalized,
@@ -968,9 +931,4 @@ export function writeTdf(input: Tournament, options: WriteOptions = {}): string 
     '</tournament>'
   ];
   return `${lines.join('\n')}\n`;
-}
-
-/** Whether TOM had finalized the file this came from. */
-export function wasFinalized(t: Tournament): boolean {
-  return t.passthrough?.rootAttrs.some(([key, value]) => key === 'stage' && value === FINALIZED) ?? false;
 }

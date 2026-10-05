@@ -10,6 +10,7 @@ import {
   type ArchetypeList,
   collapseSame60,
   filterLists,
+  markedCards,
   type OddSlot,
   oddSlots,
   type Same60Group,
@@ -87,10 +88,10 @@ function emptyMessage(total: number, state: ListsState): string {
 function TechStrip(props: { lists: ArchetypeList[]; state: ListsState }) {
   const candidates = createMemo(() => {
     const found = techCandidates(props.lists);
-    const listed = new Set(found.map(t => t.name));
-    const kept = [...props.state.picked().values()]
-      .filter(card => !listed.has(card.name))
-      .map(card => ({ name: card.name, card, share: 0 }));
+    const listed = new Set(found.map(t => t.key));
+    const kept = [...props.state.picked()]
+      .filter(([key]) => !listed.has(key))
+      .map(([key, card]) => ({ key, name: card.name, card, share: 0 }));
     return [...kept, ...found];
   });
   return (
@@ -102,10 +103,10 @@ function TechStrip(props: { lists: ArchetypeList[]; state: ListsState }) {
               <button
                 type='button'
                 class='lists-frame'
-                classList={{ 'is-picked': props.state.techs().has(t.name) }}
-                aria-pressed={props.state.techs().has(t.name)}
+                classList={{ 'is-picked': props.state.techs().has(t.key) }}
+                aria-pressed={props.state.techs().has(t.key)}
                 title={`${t.name} · in ${Math.round(t.share)}% of lists`}
-                onClick={() => props.state.toggleTech(t.card)}
+                onClick={() => props.state.toggleTech(t.key, t.card)}
               >
                 <CardImage set={t.card.set} number={t.card.number} size='xs' alt={t.name} />
               </button>
@@ -282,8 +283,8 @@ function OddArt(props: { slots: OddSlot[] }) {
 
 function ListDetail(props: { group: Same60Group; odd: OddSlot[]; techs: ReadonlySet<string>; oneEvent: boolean }) {
   const record = () => props.group.face.record;
-  const marked = createMemo(() => new Set(props.odd.map(s => `${s.card.name}|${s.card.count}`)));
-  const highlight = (c: DeckBodyCard) => marked().has(`${c.name}|${c.count}`) || props.techs.has(c.name);
+  const marked = createMemo<ReadonlySet<DeckBodyCard>>(() => markedCards(record(), props.odd, props.techs));
+  const highlight = (c: DeckBodyCard) => marked().has(c);
   return (
     <div class='lists-body'>
       <DeckBody cards={record().cards} highlight={highlight} />

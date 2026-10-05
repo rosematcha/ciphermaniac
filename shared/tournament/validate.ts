@@ -256,7 +256,6 @@ function passthrough(value: unknown): TdfPassthrough {
     }),
     finalsOptions: str(o.finalsOptions, LIMITS.passthrough),
     ...(o.standings === undefined ? {} : { standings: savedStandings(o.standings) }),
-    ...(o.original === undefined ? {} : { original: savedStandings(o.original) }),
     ...(o.finalsState === undefined ? {} : { finalsState: str(o.finalsState, LIMITS.standings) })
   };
 }

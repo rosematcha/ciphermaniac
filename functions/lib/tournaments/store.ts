@@ -66,6 +66,8 @@ function legacyMatchKeys<T extends MatchKey>(tournament: Tournament, keys: T[]):
 
 function fromRaw(raw: RawRow): TournamentRow {
   const tournament = JSON.parse(raw.state) as Tournament;
+  // Rows imported before the writer matched TOM byte for byte carry the file's bytes; the next write drops them.
+  delete (tournament.passthrough as { original?: unknown } | undefined)?.original;
   return {
     code: raw.code,
     ownerId: raw.owner_id,

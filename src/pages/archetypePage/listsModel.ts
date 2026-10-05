@@ -38,7 +38,8 @@ export function isBasicEnergy(name: string): boolean {
   return BASIC_ENERGY.test(name);
 }
 
-const cardIdentity = (card: ListCard, record: ListRecord): string =>
+/** What two printings must share to be one card here: the canonical UID, or the name without synonyms. */
+export const cardIdentity = (card: ListCard, record: ListRecord): string =>
   record.canonicalIdentityAvailable === false ? card.name : card.uid || card.name;
 
 const pairKey = (name: string, count: number): string => `${name}|${count}`;
@@ -167,6 +168,8 @@ export function collapseSame60(lists: readonly ArchetypeList[]): Same60Group[] {
 
 /** A card the tech filter offers, with a printing to show and its share of lists. */
 export interface TechCandidate {
+  /** The card's identity (see cardIdentity), which a pick filters on. */
+  key: string;
   name: string;
   card: ListCard;
   share: number;
@@ -176,18 +179,19 @@ export interface TechCandidate {
 export function techCandidates(lists: readonly ArchetypeList[]): TechCandidate[] {
   const seen = new Map<string, { card: ListCard; lists: number }>();
   for (const { record } of lists) {
-    for (const name of new Set(record.cards.map(card => card.name))) {
-      const entry = seen.get(name);
+    for (const card of mergedCards(record)) {
+      const key = cardIdentity(card, record);
+      const entry = seen.get(key);
       if (entry) {
         entry.lists += 1;
       } else {
-        seen.set(name, { card: record.cards.find(card => card.name === name)!, lists: 1 });
+        seen.set(key, { card, lists: 1 });
       }
     }
   }
   const total = lists.length || 1;
   return [...seen]
-    .map(([name, { card, lists: count }]) => ({ name, card, share: (100 * count) / total }))
+    .map(([key, { card, lists: count }]) => ({ key, name: card.name, card, share: (100 * count) / total }))
     .filter(t => t.share >= TECH_MIN_SHARE && t.share < TECH_MAX_SHARE && !isBasicEnergy(t.name) && t.card.set)
     .sort((a, b) => b.share - a.share)
     .slice(0, TECH_CAP);
@@ -198,7 +202,7 @@ export interface ListFilters {
   /** A finish tier from the card page's FINISH_OPTIONS. */
   finish: string;
   venue: Venue | 'all';
-  /** Card names every shown list must run. */
+  /** Cards every shown list must run, by identity (see cardIdentity). */
   techs: ReadonlySet<string>;
 }
 
@@ -206,13 +210,19 @@ export function inVenue(list: ArchetypeList, venue: ListFilters['venue']): boole
   return venue === 'all' || list.venue === venue;
 }
 
-function runsAll(record: ListRecord, names: ReadonlySet<string>): boolean {
-  for (const name of names) {
-    if (!record.cards.some(card => card.name === name)) {
-      return false;
-    }
-  }
-  return true;
+function runsAll(record: ListRecord, keys: ReadonlySet<string>): boolean {
+  const runs = new Set(record.cards.map(card => cardIdentity(card, record)));
+  return [...keys].every(key => runs.has(key));
+}
+
+/** The list's lines to mark: every printing in an unusual slot or of a picked tech. */
+export function markedCards(
+  record: ListRecord,
+  odd: readonly OddSlot[],
+  techs: ReadonlySet<string>
+): ReadonlySet<ListCard> {
+  const keys = new Set([...techs, ...odd.map(slot => cardIdentity(slot.card, record))]);
+  return new Set(record.cards.filter(card => keys.has(cardIdentity(card, record))));
 }
 
 /** Lists in the finish tier and venue, before the tech filter (the filmstrip is drawn from these). */
