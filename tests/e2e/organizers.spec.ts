@@ -502,3 +502,17 @@ test('/host: an Organizer whose access goes while the page is open is refused, a
   // The Organizer's page asked for no Application until the account read as one that may apply.
   expect(asks.filter(a => a.path === '/api/applications/mine')).toHaveLength(1);
 });
+
+test('/host: with no stores the hero draws no empty meta line, so Start an event sits level with the counts', async ({
+  page
+}) => {
+  await mockHost(page, { ...ME, role: 'community' });
+  await page.goto('/host');
+  const start = page.getByRole('button', { name: 'Start an event' });
+  await expect(start).toBeVisible();
+  await expect(page.locator('.tm-hero .hero-meta')).toHaveCount(0);
+  const text = await page.locator('.tm-hero-text').boundingBox();
+  const button = await start.boundingBox();
+  // Bottom-aligned: the button's foot meets the title block's, the counts line now its last.
+  expect(Math.abs((text?.y ?? 0) + (text?.height ?? 0) - ((button?.y ?? 0) + (button?.height ?? 0)))).toBeLessThan(2);
+});

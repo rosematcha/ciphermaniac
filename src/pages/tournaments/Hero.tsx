@@ -14,17 +14,20 @@ export function TournamentHero(props: {
   /** Why the action can't be taken yet, or what it is waiting on. */
   reason?: string | undefined;
 }) {
-  // Read once: a prop's JSX is built again on every read, and the action is read twice below.
+  // Resolved once each: a prop's JSX is built again on every read, and a `Show` passed in that
+  // renders nothing is still a truthy prop, which drew an empty line and pushed the action down.
+  const status = children(() => props.status);
+  const meta = children(() => props.meta);
   const action = children(() => props.action);
   return (
     <section class='tm-hero'>
       <div class='tm-hero-text'>
         <h1>{props.title}</h1>
-        <Show when={props.status}>
-          <p class='tm-status'>{props.status}</p>
+        <Show when={status()}>
+          <p class='tm-status'>{status()}</p>
         </Show>
-        <Show when={props.meta}>
-          <p class='hero-meta'>{props.meta}</p>
+        <Show when={meta()}>
+          <p class='hero-meta'>{meta()}</p>
         </Show>
       </div>
       <Show when={action() || props.reason}>
