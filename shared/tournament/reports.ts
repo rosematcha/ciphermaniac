@@ -10,8 +10,9 @@
  * reports sent from one device never settle on their own: staff look first.
  */
 
+import { divisionsOf } from './podding.js';
 import { isOpenMatch, latestRound, type MatchKey, podOf, sameMatch } from './rounds.js';
-import type { Match, Pod, PodCategory, Round, Tournament } from './types.js';
+import { isDivision, type Match, type Pod, type PodCategory, type Round, type Tournament } from './types.js';
 
 /** A match's result as one of its players tells it. */
 export type ReportedOutcome = 'p1' | 'p2' | 'tie';
@@ -73,9 +74,16 @@ export function reportableMatch(tournament: Tournament, playerId: string): OpenM
 /** The match a player's page showed them when they reported, so a stale page cannot report the next round's. */
 export type ShownMatch = Pick<PlayerReport, 'pod' | 'round' | 'table'>;
 
-/** Whether `open` is still the match the player's page showed, when it said which. */
+/**
+ * Whether `open` is still the match the player's page showed, when it said
+ * which. A page published before a division's top cut moved into its Swiss
+ * pod names the division; as in TOM, that is the pod playing the division.
+ */
 export const stillShown = (open: OpenMatch, shown: ShownMatch | undefined): boolean =>
-  !shown || (shown.pod === open.pod.category && shown.round === open.round.number && shown.table === open.match.table);
+  !shown || (samePod(shown.pod, open.pod) && shown.round === open.round.number && shown.table === open.match.table);
+
+const samePod = (named: PodCategory, pod: Pod): boolean =>
+  named === pod.category || (isDivision(named) && divisionsOf(pod.category).includes(named));
 
 /** A player's report of their open match, or why it cannot be one. */
 export function playerReport(
