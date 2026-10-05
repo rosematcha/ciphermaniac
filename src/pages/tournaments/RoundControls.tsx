@@ -176,11 +176,11 @@ export function DeleteRound(props: { state: ManageState; pod: Pod; round: Round 
   );
 }
 
-/** Who won; ending the event is the console head's next step once there is a champion. */
-export function ChampionLine(props: { name: string }) {
+/** Who won, one line per division's cut; ending the event is the console head's next step once there is a champion. */
+export function ChampionLine(props: { name: string; label: string }) {
   return (
     <div class='tm-strip tm-champion' role='status'>
-      <span class='tm-champion-label'>Champion</span>
+      <span class='tm-champion-label'>{props.label}</span>
       <strong class='tm-champion-name'>{props.name}</strong>
     </div>
   );

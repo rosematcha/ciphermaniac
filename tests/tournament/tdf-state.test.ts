@@ -11,6 +11,7 @@ import { parseTdf, writeTdf } from '../../shared/tournament/tdf.ts';
 import type { Pod, Tournament } from '../../shared/tournament/types.ts';
 import { assignKeys, publicTournament } from '../../shared/tournament/view.ts';
 import { readTournament } from '../../shared/tournament/validate.ts';
+import { champion, champions } from '../../src/lib/tournament/present.ts';
 
 const ctx = { now: Date.UTC(2026, 9, 4), localTime: '10/04/2026 10:00:00', season: 2027, random: seededRandom(42) };
 function run(t: Tournament, c: Command): Tournament {
@@ -137,7 +138,15 @@ test('gap 14: combined cuts share rounds, Masters first, and every division adva
   assert.equal(cutPodOf(t, pod, 'junior')!.rounds.length, 1);
   t = run(complete(t), { type: 'pairRound', pod: 'mixed' });
   assert.equal(latestRound(t.pods[0])!.matches.length, 2);
+  assert.deepEqual(champions(latestRound(t.pods[0]), t.pods[0]!), [], 'no champion while a final is open');
   t = complete(t);
+  const won = champions(latestRound(t.pods[0]), t.pods[0]!);
+  assert.deepEqual(
+    won.map(c => c.division),
+    ['masters', 'junior'],
+    'each division has its champion, Masters first'
+  );
+  assert.equal(champion(latestRound(t.pods[0]), t.pods[0]!), won[0]!.id);
   assert.equal(readTournament(JSON.parse(JSON.stringify(t)))!.pods.length, 1);
   assert.equal(parseTdf(writeTdf(t, { finalized: true })).pods.length, 1);
 });
