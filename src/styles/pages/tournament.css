@@ -125,6 +125,10 @@ body[data-mode='dark']:has(.tm-page) {
   align-items: baseline;
   margin: 0;
 }
+/* The meta line is a flex row, which drops the spaces around a separator. */
+.tm-hero-dot {
+  margin: 0 6px;
+}
 .tm-hero .hero-meta a {
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
@@ -1727,6 +1731,11 @@ tr.is-in .tm-place {
 }
 .tm-settings-title {
   margin: 0;
+}
+/* Organizer: an Application's standing above the box of ways the account runs events. */
+.tm-organizer {
+  display: grid;
+  gap: var(--space-2);
 }
 .tm-identity {
   display: grid;

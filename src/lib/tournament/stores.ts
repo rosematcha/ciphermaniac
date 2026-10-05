@@ -37,6 +37,9 @@ export const fetchLeague = (idOrPage: string) =>
 /** The account becomes a Community organizer. */
 export const joinCommunity = () => call<{ user: Me }>('/api/community', { method: 'POST' });
 
+/** The account stops being a Community organizer; it keeps the events it owns. */
+export const resignCommunity = () => call<{ user: Me }>('/api/community', { method: 'DELETE' });
+
 /** Sends an Application for a store, with the uploaded proof when `proof` says so. */
 export const sendStoreApplication = (store: StoreApplication, explanation: string, proof: boolean) =>
   call<{ application: MyApplication }>('/api/applications', json('POST', { store, explanation, proof }));

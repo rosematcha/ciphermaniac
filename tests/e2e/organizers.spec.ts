@@ -92,6 +92,8 @@ async function mockApplicant(page: Page, start: ApplicationState, user: typeof M
   const asks: Asked[] = [];
   let state = start;
   let reads = 0;
+  // The account as it stands after a resignation or leaving a store.
+  let live = user;
   await page.route('**/api/**', async route => {
     const request = route.request();
     const method = request.method();
@@ -100,8 +102,17 @@ async function mockApplicant(page: Page, start: ApplicationState, user: typeof M
     asks.push({ method, path: pathname, body: method === 'POST' ? request.postDataJSON() : null });
     if (key === 'GET /api/me') {
       reads += 1;
-      const current = reads > 1 && options.reread ? options.reread : user;
+      const current = reads > 1 && options.reread ? options.reread : live;
       return route.fulfill({ json: { user: current, providers: ['google', 'discord'] } });
+    }
+    if (key === 'DELETE /api/community') {
+      live = live && { ...live, role: null };
+      return route.fulfill({ json: { user: live } });
+    }
+    if (method === 'DELETE' && /^\/api\/stores\/[^/]+\/members$/.test(pathname)) {
+      const left = pathname.split('/')[3];
+      live = live && { ...live, stores: live.stores.filter(store => store.id !== left) };
+      return route.fulfill({ status: 204 });
     }
     if (key === 'GET /api/applications/mine') {
       return route.fulfill({ json: state });
@@ -329,30 +340,19 @@ test('an account approved since the page read it is read again, and starts event
 
 // ---------- Settings: where the account stands ----------
 
-test('Settings shows each applicant stage with its step @mobile', async ({ page }) => {
-  const stages: [ApplicationState, typeof ME, string, string, string][] = [
-    [NONE, ME, '', 'Apply to run events', '/apply'],
+test('Settings shows where an Application stands, with its step @mobile', async ({ page }) => {
+  const stages: [ApplicationState, string, string, string][] = [
+    [NONE, '', 'Apply to run events', '/apply'],
     [
       { ...NONE, application: application('rejected', { note: 'Send your certificate.' }) },
-      ME,
       'Not approved',
       'Apply again',
       '/apply?again=1'
-    ],
-    [
-      { ...NONE, application: application('approved') },
-      { ...ME, stores: [STORE] },
-      'Store approved',
-      'Your events',
-      '/host'
-    ],
-    [NONE, { ...ME, role: 'community' }, 'Community organizer', 'Your events', '/host'],
-    [NONE, { ...ME, role: 'revoked' }, 'Organizer access removed', 'Apply again', '/apply?again=1'],
-    [NONE, { ...ME, role: 'admin' }, 'Admin', 'Admin page', '/admin']
+    ]
   ];
-  for (const [state, user, words, step, href] of stages) {
+  for (const [state, words, step, href] of stages) {
     await page.unrouteAll();
-    const asks = await mockApplicant(page, state, user);
+    const asks = await mockApplicant(page, state, ME);
     await page.goto('/settings');
     const status = page.locator('.tm-applicant');
     await expect(status.getByRole('link', { name: step, exact: true })).toHaveAttribute('href', href);
@@ -361,15 +361,106 @@ test('Settings shows each applicant stage with its step @mobile', async ({ page 
     } else {
       await expect(status.locator('.tm-applicant-stage')).toHaveCount(0);
     }
-    // Your events is offered once: under Organizer for an account that runs events, by the name otherwise.
     await expect(page.getByRole('link', { name: 'Your events' })).toHaveCount(1);
     // Anyone may apply for a store, so every account's page asks where its Application stands.
     expect(asks.some(a => a.path === '/api/applications/mine')).toBe(true);
   }
-  await expect(page.locator('.tm-applicant').getByRole('link', { name: 'Your events' })).toHaveAttribute(
-    'href',
-    '/host'
+});
+
+/** A store the account staffs, beside the one it owns. */
+const STAFFED: MyStore = { ...STORE, id: 'store-2', name: 'Tower Games', leagueId: '6238621', role: 'staff' };
+
+test('Settings lists every way the account runs events, each with its step @mobile', async ({ page }) => {
+  await mockApplicant(
+    page,
+    { ...NONE, application: application('approved') },
+    {
+      ...ME,
+      role: 'community',
+      stores: [{ ...STORE, role: 'owner' }, STAFFED]
+    }
   );
+  await page.goto('/settings');
+  const rows = page.locator('.tm-organizer .tm-set-row');
+  await expect(rows).toHaveCount(4);
+  await expect(rows.nth(0)).toContainText('Community organizer');
+  await expect(rows.nth(0).getByRole('button', { name: 'Resign' })).toBeVisible();
+  await expect(rows.nth(1)).toContainText('Combat Power Gaming');
+  await expect(rows.nth(1)).toContainText('Owner');
+  await expect(rows.nth(1).getByRole('link', { name: 'Store settings' })).toHaveAttribute(
+    'href',
+    '/stores/store-1/settings'
+  );
+  await expect(rows.nth(1).getByRole('button', { name: 'Leave' })).toHaveCount(0);
+  await expect(rows.nth(2)).toContainText('Tower Games');
+  await expect(rows.nth(2)).toContainText('Staff');
+  await expect(rows.nth(2).getByRole('link', { name: 'Store page' })).toHaveAttribute('href', '/stores/store-2');
+  await expect(rows.nth(2).getByRole('button', { name: 'Leave' })).toBeVisible();
+  await expect(rows.nth(3).getByRole('link', { name: 'Apply for a store' })).toHaveAttribute('href', '/apply');
+  // An approved Application says nothing more than the store's own row does.
+  await expect(page.locator('.tm-applicant')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Your events' })).toHaveCount(1);
+});
+
+test('Settings: the account’s standing as a community organizer, for each role', async ({ page }) => {
+  const cases: [typeof ME, string, string][] = [
+    [{ ...ME, stores: [STORE] }, 'Community organizer', 'Join'],
+    [{ ...ME, role: 'revoked' }, 'Community organizer', 'Access removed'],
+    [{ ...ME, role: 'admin' }, 'Admin', 'Admin page']
+  ];
+  for (const [user, label, step] of cases) {
+    await page.unrouteAll();
+    await mockApplicant(page, NONE, user);
+    await page.goto('/settings');
+    const first = page.locator('.tm-organizer .tm-set-row').first();
+    await expect(first.locator('.tm-set-label')).toContainText(label);
+    await expect(first.locator('.tm-set-control')).toContainText(step);
+  }
+});
+
+test('Settings: resigning as a community organizer and leaving a store are asked first, then gone', async ({
+  page
+}) => {
+  const asks = await mockApplicant(page, NONE, { ...ME, role: 'community', stores: [STAFFED] });
+  await page.goto('/settings');
+  const organizer = page.locator('.tm-organizer');
+  await organizer.getByRole('button', { name: 'Resign' }).click();
+  expect(asks.filter(a => a.method === 'DELETE')).toEqual([]);
+  await organizer
+    .getByRole('group', { name: 'Resign as a community organizer?' })
+    .getByRole('button', { name: 'Resign' })
+    .click();
+  await expect(organizer.getByRole('link', { name: 'Join' })).toHaveAttribute('href', '/apply');
+  await organizer.getByRole('button', { name: 'Leave' }).click();
+  await organizer.getByRole('group', { name: 'Leave Tower Games?' }).getByRole('button', { name: 'Leave' }).click();
+  await expect(organizer).not.toContainText('Tower Games');
+  expect(asks.filter(a => a.method === 'DELETE').map(a => a.path)).toEqual([
+    '/api/community',
+    '/api/stores/store-2/members'
+  ]);
+});
+
+test('Settings: an account that ran a store and left it is offered the way to apply, not its old approval', async ({
+  page
+}) => {
+  await mockApplicant(page, { ...NONE, application: application('approved') }, ME);
+  await page.goto('/settings');
+  await expect(page.locator('.tm-applicant').getByRole('link', { name: 'Apply to run events' })).toBeVisible();
+  await expect(page.locator('.tm-applicant-stage')).toHaveCount(0);
+});
+
+test('Settings: after a rejection, Apply again is the one way to apply', async ({ page }) => {
+  await mockApplicant(page, { ...NONE, application: application('rejected') }, { ...ME, role: 'community' });
+  await page.goto('/settings');
+  await expect(page.locator('.tm-applicant').getByRole('link', { name: 'Apply again' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Apply for a store' })).toHaveCount(0);
+});
+
+test('Settings: with an Application pending, no second one is offered', async ({ page }) => {
+  await mockApplicant(page, { ...NONE, application: application('pending') }, { ...ME, role: 'community' });
+  await page.goto('/settings');
+  await expect(page.locator('.tm-applicant')).toContainText('Application pending');
+  await expect(page.getByRole('link', { name: 'Apply for a store' })).toHaveCount(0);
 });
 
 test('Settings shows a pending Application with its day, and withdraws it', async ({ page }) => {
@@ -503,18 +594,45 @@ test('/host: an Organizer whose access goes while the page is open is refused, a
   expect(asks.filter(a => a.path === '/api/applications/mine')).toHaveLength(1);
 });
 
-test('/host: with no stores the hero draws no empty meta line, so Start an event sits level with the counts', async ({
+test('/host: a hero with nothing for its meta line draws none, so its action sits level with the counts', async ({
   page
 }) => {
-  await mockHost(page, { ...ME, role: 'community' });
+  await mockHost(page, ME);
   await page.goto('/host');
-  const start = page.getByRole('button', { name: 'Start an event' });
-  await expect(start).toBeVisible();
+  const apply = page.getByRole('link', { name: 'Apply to run events' });
+  await expect(apply).toBeVisible();
   await expect(page.locator('.tm-hero .hero-meta')).toHaveCount(0);
   const text = await page.locator('.tm-hero-text').boundingBox();
-  const button = await start.boundingBox();
-  // Bottom-aligned: the button's foot meets the title block's, the counts line now its last.
+  const button = await apply.boundingBox();
+  // Bottom-aligned: the action's foot meets the title block's, the counts line now its last.
   expect(Math.abs((text?.y ?? 0) + (text?.height ?? 0) - ((button?.y ?? 0) + (button?.height ?? 0)))).toBeLessThan(2);
+});
+
+test('/host: an account that runs events is offered a store, after the stores it already has', async ({ page }) => {
+  await mockHost(page, { ...ME, role: 'community' });
+  await page.goto('/host');
+  const meta = page.locator('.tm-hero .hero-meta');
+  await expect(meta.getByRole('link')).toHaveText(['Apply for a store']);
+  await page.unrouteAll();
+  await mockHost(page, {
+    ...ME,
+    stores: [
+      { ...STORE, role: 'owner' },
+      { ...STORE, id: 'store-2', name: 'Tower Games', role: 'staff' }
+    ]
+  });
+  await page.goto('/host');
+  await expect(meta.getByRole('link')).toHaveText(['Combat Power Gaming settings', 'Tower Games', 'Apply for a store']);
+  await expect(meta.getByRole('link', { name: 'Tower Games' })).toHaveAttribute('href', '/stores/store-2');
+});
+
+test('/host: an account whose only store was revoked keeps its link, and applies through the hero action', async ({
+  page
+}) => {
+  await mockHost(page, { ...ME, stores: [{ ...STORE, role: 'staff', status: 'revoked' }] });
+  await page.goto('/host');
+  await expect(page.locator('.tm-hero .hero-meta').getByRole('link')).toHaveText(['Combat Power Gaming']);
+  await expect(page.getByRole('link', { name: 'Apply to run events' })).toBeVisible();
 });
 
 test('the new event setup explains player reporting, archetypes and decklists, each set Disabled to start', async ({

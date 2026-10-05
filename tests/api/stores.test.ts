@@ -5,7 +5,7 @@
  * date and three a day, deleted ones counting; a store's Managers and Staff
  * start its events, sanctioned or not, and run every one of them; a store's
  * people come in once through a link, and it keeps one Owner, who alone
- * hands it over;
+ * hands it over; a Community organizer may resign and join again;
  * its league nights publish to the locator's index; its listings and its
  * league come from the locator's files; and its organizer of record is one
  * of its people with a POP ID.
@@ -120,6 +120,31 @@ test('any adult account becomes a Community organizer by asking; a removed one c
     }
   );
   assert.equal(foreign.status, 403);
+});
+
+test('a Community organizer resigns: it starts no more events, keeps running its own, and may join again', async () => {
+  const player = await signIn('Player', 'community');
+  const resign = (cookie: string) =>
+    hit(community.onRequestDelete as Handler, '/api/community', {}, { method: 'DELETE', cookie });
+  const code = (await create(player, onDay(2))).json.code as string;
+  const resigned = await resign(player);
+  assert.deepEqual([resigned.status, resigned.json.user.role], [200, null]);
+  assert.equal((await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: player })).json.user.role, null);
+  assert.equal((await create(player, onDay(3))).status, 403, 'no new events under its own name');
+  const own = await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: player });
+  assert.deepEqual([own.status, own.json.role], [200, 'owner'], 'its event stays its own');
+  assert.deepEqual(
+    [(await resign(player)).status, (await resign(player)).json.error],
+    [409, 'You are not a community organizer']
+  );
+  assert.equal((await resign(await signIn('Revoked', 'revoked'))).status, 409, 'removed access is not resigned away');
+  assert.equal((await resign(await signIn('Boss', 'admin'))).status, 409, 'an Admin is not one');
+  const back = await hit(community.onRequestPost as Handler, '/api/community', {}, { method: 'POST', cookie: player });
+  assert.deepEqual([back.status, back.json.user.role], [200, 'community']);
+  assert.equal(
+    (await hit(community.onRequestDelete as Handler, '/api/community', {}, { method: 'DELETE' })).status,
+    401
+  );
 });
 
 test('a Community organizer’s events are unsanctioned Swiss events of no Play! Pokémon kind', async () => {

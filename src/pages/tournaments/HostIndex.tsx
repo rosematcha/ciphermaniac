@@ -18,7 +18,7 @@
 import { A, useNavigate, useSearchParams } from '@solidjs/router';
 import { createResource, createSignal, For, lazy, Match, onMount, Show, Switch, untrack } from 'solid-js';
 import { canRunCommunityEvents } from '../../../shared/accounts/roles';
-import { canCreateEvents } from '../../../shared/accounts/stores';
+import { canCreateEvents, managesStore } from '../../../shared/accounts/stores';
 import { parseTomDate } from '../../../shared/tournament/divisions';
 import { parseTdf } from '../../../shared/tournament/tdf';
 import type { Tournament } from '../../../shared/tournament/types';
@@ -29,6 +29,7 @@ import {
   errorText,
   fetchView,
   listTournaments,
+  type Me,
   type TournamentSummary
 } from '../../lib/tournament/api';
 import { canLinkFiles, pickTdf, rememberHandle, type TdfHandle } from '../../lib/tournament/tomLink';
@@ -218,21 +219,52 @@ function LinkTdf(props: {
   );
 }
 
-/** The stores the account belongs to, each to its settings for a Manager and its page for Staff. */
-function StoreLinks(props: { stores: readonly MyStore[] }) {
+/**
+ * The stores the account belongs to, each to its settings for its Owner and
+ * Managers and its page for Staff, then the way to apply for another (or a
+ * first, for a Community organizer: the way from running events under its
+ * own name to running a store's).
+ */
+function StoreLinks(props: { stores: readonly MyStore[]; apply: boolean }) {
   return (
-    <For each={props.stores}>
-      {(store, i) => (
-        <>
-          <Show when={i() > 0}>
-            <span aria-hidden='true'> · </span>
-          </Show>
-          <A href={store.role === 'manager' ? `/stores/${store.id}/settings` : `/stores/${store.id}`}>
-            {store.role === 'manager' ? `${store.name} settings` : store.name}
-          </A>
-        </>
-      )}
-    </For>
+    <>
+      <For each={props.stores}>
+        {(store, i) => (
+          <>
+            <Show when={i() > 0}>
+              <span class='tm-hero-dot' aria-hidden='true'>
+                ·
+              </span>
+            </Show>
+            <A href={managesStore(store.role) ? `/stores/${store.id}/settings` : `/stores/${store.id}`}>
+              {managesStore(store.role) ? `${store.name} settings` : store.name}
+            </A>
+          </>
+        )}
+      </For>
+      <Show when={props.apply}>
+        <Show when={props.stores.length > 0}>
+          <span class='tm-hero-dot' aria-hidden='true'>
+            ·
+          </span>
+        </Show>
+        <A href='/apply'>Apply for a store</A>
+      </Show>
+    </>
+  );
+}
+
+/**
+ * /host's meta line: the account's stores, and the way to apply for one when
+ * it may start events; one that may not is offered a way by ApplicantLine.
+ */
+function HeroMeta(props: { user: Me | null | undefined }) {
+  const stores = () => props.user?.stores ?? [];
+  const mayCreate = () => canCreateEvents(props.user?.role ?? null, stores());
+  return (
+    <Show when={stores().length > 0 || mayCreate()}>
+      <StoreLinks stores={stores()} apply={mayCreate()} />
+    </Show>
   );
 }
 
@@ -302,11 +334,7 @@ function Organizer(props: { onOpened: (code: string) => void }) {
         <TournamentHero
           title='Run an event'
           status={<span class='muted'>{counts()}</span>}
-          meta={
-            <Show when={(user()?.stores ?? []).length > 0}>
-              <StoreLinks stores={user()?.stores ?? []} />
-            </Show>
-          }
+          meta={<HeroMeta user={user()} />}
           action={
             <Show
               when={canCreateEvents(role(), user()?.stores ?? [])}

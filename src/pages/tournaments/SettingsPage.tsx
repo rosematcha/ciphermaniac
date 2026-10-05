@@ -14,7 +14,6 @@
 import { A, useNavigate, useSearchParams } from '@solidjs/router';
 import { createEffect, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { displayName, HANDLE_MAX, handleProblem, normalizeHandle } from '../../../shared/accounts/handle';
-import { canCreateEvents } from '../../../shared/accounts/stores';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import {
   ApiError,
@@ -32,6 +31,7 @@ import { applicantStage, fetchApplication } from '../../lib/tournament/applicati
 import { latestValue } from '../../lib/resource';
 import { Skeleton } from '../../components/Skeleton';
 import { ApplicantStatus } from './ApplicantStatus';
+import { OrganizerRoles } from './OrganizerRoles';
 import { Avatar } from './Avatar';
 import { ErrorLine } from './Field';
 import { emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
@@ -71,12 +71,9 @@ function Identity(props: { user: Me; providers: readonly Provider[] }) {
       <Avatar name={props.user.name} src={props.user.avatar} />
       <h1>{props.user.name}</h1>
       <div class='tm-identity-acts'>
-        {/* An Organizer's or Admin's events are under Organizer, below. */}
-        <Show when={!canCreateEvents(props.user.role, props.user.stores)}>
-          <A class='btn btn-secondary' href='/host'>
-            Your events
-          </A>
-        </Show>
+        <A class='btn btn-secondary' href='/host'>
+          Your events
+        </A>
         <button type='button' class='btn btn-ghost' onClick={() => void leave()}>
           Sign out
         </button>
@@ -323,14 +320,21 @@ function HistorySection(props: { user: Me }) {
 }
 
 /**
- * Organizer: where the account stands on running events (see
- * ApplicantStatus). Its Application is only asked for while it may apply;
- * an Organizer's or Admin's stage is its role.
+ * Organizer: a store Application pending or not approved (see
+ * ApplicantStatus), then every way the account runs events (OrganizerRoles).
+ * An account that runs none and has applied for nothing sees only the way to
+ * apply.
  */
 function OrganizerSection(props: { user: Me }) {
-  // Keyed by what the role leaves to ask; a false key would never resolve.
   const [state, { refetch }] = createResource(fetchApplication);
   const current = () => latestValue(state);
+  const runs = () => props.user.role !== null || props.user.stores.length > 0;
+  /** Only an Application still open or turned down is told apart from the rows below; anything else reads as none. */
+  const stage = () => {
+    const read = applicantStage(props.user.role, current()?.application ?? null);
+    return read === 'pending' || read === 'rejected' ? read : 'none';
+  };
+  const status = () => stage() !== 'none' || !runs();
   return (
     <section>
       <h2 class='tm-subhead tm-box-head'>Organizer</h2>
@@ -345,11 +349,18 @@ function OrganizerSection(props: { user: Me }) {
           </Show>
         }
       >
-        <ApplicantStatus
-          stage={applicantStage(props.user.role, current()?.application ?? null)}
-          application={current()?.application ?? null}
-          onChanged={() => void refetch()}
-        />
+        <div class='tm-organizer'>
+          <Show when={status()}>
+            <ApplicantStatus
+              stage={stage()}
+              application={current()?.application ?? null}
+              onChanged={() => void refetch()}
+            />
+          </Show>
+          <Show when={runs()}>
+            <OrganizerRoles user={props.user} applying={stage() !== 'none'} />
+          </Show>
+        </div>
       </Show>
     </section>
   );
