@@ -89,7 +89,10 @@ test('TOM starter flags map late entrants both ways', () => {
   const source = fixture('tom-182-masters.tdf').replace('<starter>true</starter>', '<starter>false</starter>');
   const tournament = parseTdf(source);
   assert.equal(tournament.players[0]?.late, true);
-  assert.deepEqual(parseXml(writeTdf(tournament)), parseXml(source));
+  // TOM writes no false starter: a late entrant has a <late> block instead.
+  const written = writeTdf(tournament);
+  assert.ok(!written.includes('<starter>false</starter>'));
+  assert.equal(parseTdf(written).players[0]?.late, true);
   delete tournament.passthrough;
   assert.equal(parseTdf(writeTdf(tournament)).players[0]?.late, true);
 });

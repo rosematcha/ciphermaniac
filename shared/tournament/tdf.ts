@@ -371,11 +371,7 @@ export function parseTdf(source: string): Tournament {
   }
   if (tournament.passthrough) {
     tournament.passthrough.finalsState = finalsState(tournament);
-    if (legacy) {
-      tournament.passthrough.finalsOptions = '';
-    } else {
-      tournament.passthrough.original = { xml: source, state: comparable(tournament) };
-    }
+    tournament.passthrough.finalsOptions = legacy ? '' : tournament.passthrough.finalsOptions;
   }
   return tournament;
 }
@@ -410,24 +406,6 @@ function completePods(t: Tournament, started: boolean, finals: XmlElement | unde
     };
   });
   return { ...t, pods };
-}
-
-/** Stable comparison of plain tournament data across wire validation's property order. */
-function comparable(value: unknown): string {
-  return JSON.stringify(value, (key, entry: unknown) => {
-    if (['original', 'timeLeft', 'startTime', 'clockStartedAt'].includes(key)) {
-      return undefined;
-    }
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
-      return entry;
-    }
-    const record = entry as Record<string, unknown>;
-    return Object.fromEntries(
-      Object.keys(record)
-        .sort()
-        .map(key => [key, record[key]])
-    );
-  });
 }
 
 function finalsState(t: Tournament): string {
@@ -581,14 +559,14 @@ function birthYearDate(date: string): string {
   return year ? `02/27/${year}` : date;
 }
 
-function writePlayer(player: Player, extra: [string, string][], started: boolean, preserved = false): string[] {
+function writePlayer(player: Player, extra: [string, string][], started: boolean): string[] {
   return [
     `<player userid="${esc(player.id)}">`,
     ...block(1, [
       tag('firstname', player.firstName),
       tag('lastname', player.lastName),
       tag('birthdate', birthYearDate(player.birthDate)),
-      ...(preserved ? extra.map(([, xml]) => xml) : playerFields(player, extra, started))
+      ...playerFields(player, extra, started)
     ]),
     '</player>'
   ];
@@ -912,37 +890,14 @@ export interface WriteOptions {
 }
 
 /** Writes the tournament as a .tdf, in TOM's own layout. */
-function unchangedSource(t: Tournament, finalized: boolean): string | undefined {
-  const original = t.passthrough?.original;
-  return original?.state === comparable(t) && finalized === wasFinalized(t) ? original.xml : undefined;
-}
-
-function writeRoster(t: Tournament): string[] {
-  const original = t.passthrough?.original;
-  const oldPlayers = original ? (JSON.parse(original.state) as Tournament).players : [];
-  const originals = new Map(oldPlayers.map(p => [p.id, p]));
-  return t.players.flatMap(p =>
-    writePlayer(
-      p,
-      t.passthrough?.playerExtras[p.id] ?? [],
-      hasStarted(t),
-      comparable(originals.get(p.id)) === comparable(p)
-    )
-  );
-}
-
 export function writeTdf(input: Tournament, options: WriteOptions = {}): string {
   const t = normalizeCutPods(input);
   const finalized = options.finalized ?? wasFinalized(t);
   if (finalized && t.pods.some(pod => pod.rounds.some(round => round.matches.some(m => m.outcome === 'pending')))) {
     throw new Error('Enter all match results to finalize');
   }
-  const source = unchangedSource(t, finalized);
-  if (source && options.now === undefined) {
-    return source;
-  }
   const divisionOf = options.divisionOf ?? divisionLookup(t);
-  const players = writeRoster(t);
+  const players = t.players.flatMap(p => writePlayer(p, t.passthrough?.playerExtras[p.id] ?? [], hasStarted(t)));
   const pods = t.pods.flatMap(pod =>
     writePod(t, pod, {
       finalized,

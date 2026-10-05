@@ -2951,3 +2951,29 @@ test('loading older separate cut pods migrates their pending results and player 
   const written = parseTdf(writeTdf(loaded.tournament));
   assert.equal(written.pods.length, 1);
 });
+
+test('a stored copy of the imported file is dropped when the event is read', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await underWay(owner);
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  const row = await loadTournament(db, code);
+  assert.ok(row);
+  const passthrough = { ...defaultPassthrough(), original: { xml: '<tournament/>', state: '{}' } };
+  db.raw
+    .prepare('UPDATE tournaments SET state = ? WHERE code = ?')
+    .run(JSON.stringify({ ...row.tournament, passthrough }), code);
+  const read = await loadTournament(db, code);
+  assert.deepEqual(read?.tournament.passthrough, defaultPassthrough());
+});
+
+function defaultPassthrough() {
+  return {
+    rootAttrs: [],
+    extraData: [],
+    timeElapsed: '0',
+    playerExtras: {},
+    podExtras: {},
+    roundCodes: {},
+    finalsOptions: ''
+  };
+}

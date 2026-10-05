@@ -207,8 +207,6 @@ export interface TdfPassthrough {
   /** Per round, keyed `category:number`: TOM's own type and stage codes. */
   roundCodes: Record<string, { type: string; stage: string; timeLeft?: number; startTime?: string }>;
   finalsOptions: string;
-  /** Exact imported bytes and the model they describe. */
-  original?: { xml: string; state: string };
   finalsState?: string;
   /** TOM's finalized places and the inputs they describe; retained until results or entrants change. */
   standings?: { xml: string; state: string };
