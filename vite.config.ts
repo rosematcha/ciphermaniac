@@ -36,9 +36,10 @@ export default defineConfig({
             },
             { name: 'release', test: /shared[\\/]generated[\\/]release/ },
             {
-              // Share event models and helpers instead of repeating exports across route chunks.
+              // Share event models and helpers instead of repeating exports across route chunks. The TOM
+              // file reader and writer stay out: only organizer pages load them, the download on demand.
               name: 'tournament',
-              test: /(?:shared[\\/]tournament[\\/]|src[\\/]lib[\\/]tournament[\\/](?!admin|applications))/,
+              test: /(?:shared[\\/]tournament[\\/](?!tdf\.|xml\.)|src[\\/]lib[\\/]tournament[\\/](?!admin|applications|exportTdf))/,
               includeDependenciesRecursively: true
             },
             // These controls share Solid helpers and are used together in event forms.

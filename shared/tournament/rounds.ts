@@ -161,6 +161,11 @@ export function playerPod(tournament: Tournament, playerId: string): Pod | undef
   return swiss && cut ? { ...swiss, rounds: [...swiss.rounds, ...cut.rounds] } : (swiss ?? cut);
 }
 
+/** Whether TOM had finalized the file this came from: its root stage is 5. */
+export function wasFinalized(tournament: Tournament): boolean {
+  return tournament.passthrough?.rootAttrs.some(([key, value]) => key === 'stage' && value === '5') ?? false;
+}
+
 /** Whether any round has been paired: before that the event is still taking players. */
 export function hasStarted(tournament: Tournament): boolean {
   return tournament.startedAt !== undefined || tournament.pods.some(pod => pod.rounds.length > 0);

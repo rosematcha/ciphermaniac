@@ -17,8 +17,15 @@ import {
   Switch,
   untrack
 } from 'solid-js';
-import { activeIds, cutPodsOf, latestRound, livePods, roundComplete } from '../../../shared/tournament/rounds';
-import { wasFinalized } from '../../../shared/tournament/tdf';
+import {
+  activeIds,
+  cutPodsOf,
+  latestRound,
+  livePods,
+  roundComplete,
+  wasFinalized
+} from '../../../shared/tournament/rounds';
+
 import { eventTypeOf } from '../../../shared/tournament/structure';
 import type { Pod, PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';

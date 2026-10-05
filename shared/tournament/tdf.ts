@@ -24,7 +24,15 @@
 
 import { divisionLookup, yearOnlyBirthDate } from './divisions.js';
 import { divisionsOf } from './podding.js';
-import { attendees, cutPodOf, fullRoundSeconds, hasStarted, normalizeCutPods, regularRounds } from './rounds.js';
+import {
+  attendees,
+  cutPodOf,
+  fullRoundSeconds,
+  hasStarted,
+  normalizeCutPods,
+  regularRounds,
+  wasFinalized
+} from './rounds.js';
 import { bracketMatches, placeFinals, swissStandings } from './standings.js';
 import { eventTypeOf, recommendedStructure } from './structure.js';
 import {
@@ -923,9 +931,4 @@ export function writeTdf(input: Tournament, options: WriteOptions = {}): string 
     '</tournament>'
   ];
   return `${lines.join('\n')}\n`;
-}
-
-/** Whether TOM had finalized the file this came from. */
-export function wasFinalized(t: Tournament): boolean {
-  return t.passthrough?.rootAttrs.some(([key, value]) => key === 'stage' && value === FINALIZED) ?? false;
 }

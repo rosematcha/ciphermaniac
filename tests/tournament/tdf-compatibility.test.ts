@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { parseTdf, wasFinalized, writeTdf } from '../../shared/tournament/tdf.ts';
+import { wasFinalized } from '../../shared/tournament/rounds.ts';
+import { parseTdf, writeTdf } from '../../shared/tournament/tdf.ts';
 import { LIMITS, readTournament } from '../../shared/tournament/validate.ts';
 import { attr, child, children, childText, parseXml } from '../../shared/tournament/xml.ts';
 import { tdfText } from '../../src/lib/tournament/exportTdf.ts';
