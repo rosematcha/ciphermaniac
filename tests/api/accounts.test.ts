@@ -77,18 +77,18 @@ test('migrations 0006 to 0012 bring a database made before accounts in line with
   const db = new DatabaseSync(':memory:');
   db.exec(sql('../fixtures/d1/tournaments-before-0006.sql'));
   seedBefore0006(db);
-  db.exec(sql('../../config/d1/migrations/tournaments-0006-player-accounts.sql'));
-  const backfill = sql('../../config/d1/migrations/tournaments-0007-pop-history-backfill.sql');
+  db.exec(sql('../../config/d1/migrations/tournaments/0006-player-accounts.sql'));
+  const backfill = sql('../../config/d1/migrations/tournaments/0007-pop-history-backfill.sql');
   db.exec(backfill);
   db.exec(backfill);
 
-  db.exec(sql('../../config/d1/migrations/tournaments-0008-verified-email-uniqueness.sql'));
-  db.exec(sql('../../config/d1/migrations/tournaments-0009-identify-failures.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments/0008-verified-email-uniqueness.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments/0009-identify-failures.sql'));
   db.exec("UPDATE users SET public_slug = 'K7PQ2MXA' WHERE id = 'owner'");
-  db.exec(sql('../../config/d1/migrations/tournaments-0010-usernames.sql'));
-  db.exec(sql('../../config/d1/migrations/tournaments-0011-age-gate.sql'));
-  db.exec(sql('../../config/d1/migrations/tournaments-0012-stores.sql'));
-  db.exec(sql('../../config/d1/migrations/tournaments-0013-proof-deletions.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments/0010-usernames.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments/0011-age-gate.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments/0012-stores.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments/0013-proof-deletions.sql'));
 
   assert.deepEqual(shape(db), shape(sqliteD1('tournaments.sql').raw));
   const handles = db
@@ -555,7 +555,7 @@ test('migration 0008 preserves accounts and identities while assigning duplicate
   insert.run('c', 'c1', 'PLAYER@example.com', 2);
   insert.run('blank', 'blank', ' ', 0);
   db.exec("INSERT INTO identities VALUES ('google', 'b', 'b')");
-  const migration = sql('../../config/d1/migrations/tournaments-0008-verified-email-uniqueness.sql');
+  const migration = sql('../../config/d1/migrations/tournaments/0008-verified-email-uniqueness.sql');
   db.exec(migration);
   db.exec(migration);
   assert.deepEqual(

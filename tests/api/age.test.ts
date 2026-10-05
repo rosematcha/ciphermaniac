@@ -308,10 +308,10 @@ test('migration 0011 signs everyone out, cuts kept birth dates to years, inside 
   const db = new DatabaseSync(':memory:');
   db.exec(sql('../fixtures/d1/tournaments-before-0006.sql'));
   for (const name of ['0006-player-accounts', '0007-pop-history-backfill', '0008-verified-email-uniqueness']) {
-    db.exec(sql(`../../config/d1/migrations/tournaments-${name}.sql`));
+    db.exec(sql(`../../config/d1/migrations/tournaments/${name}.sql`));
   }
-  db.exec(sql('../../config/d1/migrations/tournaments-0009-identify-failures.sql'));
-  db.exec(sql('../../config/d1/migrations/tournaments-0010-usernames.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments/0009-identify-failures.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments/0010-usernames.sql'));
   const players = JSON.stringify({
     players: [
       { id: '1', birthDate: '06/15/2014' },
@@ -330,7 +330,7 @@ test('migration 0011 signs everyone out, cuts kept birth dates to years, inside 
       "('ENDED', 'pop:1', '1', 'A', 'B', '06/15/2014', 'cards', 1), ('ENDED', 'pop:2', '2', 'A', 'B', '01/01/1990', 'cards', 1)," +
       "('LIVE', 'pop:1', '1', 'A', 'B', '06/15/2014', 'cards', 1)"
   );
-  db.exec(sql('../../config/d1/migrations/tournaments-0011-age-gate.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments/0011-age-gate.sql'));
   assert.equal(db.prepare('SELECT count(*) AS n FROM sessions').get()?.n, 0, 'every account passes the check anew');
   const users = db.prepare('SELECT id, birth_date FROM users ORDER BY id').all() as {
     id: string;

@@ -182,7 +182,7 @@ test('deployment preflight rejects incomplete schemas and the deletion migration
   assert.doesNotThrow(() => db().raw.exec(preflight));
   db().raw.exec('DROP TABLE proof_deletions');
   assert.throws(() => db().raw.exec(preflight), /proof_deletions/);
-  db().raw.exec(sql('migrations/tournaments-0013-proof-deletions.sql'));
-  db().raw.exec(sql('migrations/tournaments-0013-proof-deletions.sql'));
+  db().raw.exec(sql('migrations/tournaments/0013-proof-deletions.sql'));
+  db().raw.exec(sql('migrations/tournaments/0013-proof-deletions.sql'));
   assert.doesNotThrow(() => db().raw.exec(preflight));
 });

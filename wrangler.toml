@@ -33,6 +33,7 @@ database_id = "ad51e340-8a8f-418e-98aa-f074c0bf28e4"
 binding = "TOURNAMENT_DB"
 database_name = "ciphermaniac-tournaments"
 database_id = "a384bf93-4d0c-4560-b311-615cfb9bf334"
+migrations_dir = "config/d1/migrations/tournaments"
 
 # Production environment configuration
 [env.production]
@@ -63,6 +64,7 @@ database_id = "ad51e340-8a8f-418e-98aa-f074c0bf28e4"
 binding = "TOURNAMENT_DB"
 database_name = "ciphermaniac-tournaments"
 database_id = "a384bf93-4d0c-4560-b311-615cfb9bf334"
+migrations_dir = "config/d1/migrations/tournaments"
 
 # Environment variables (set these in Cloudflare dashboard)
 [env.production.vars]
@@ -101,7 +103,7 @@ ENVIRONMENT = "preview"
 #   npx wrangler d1 execute ciphermaniac-preview-live --config=.scratch/preview-provisioning.toml --remote --file=config/d1/live.sql
 #   npx wrangler d1 execute ciphermaniac-preview-tournaments --config=.scratch/preview-provisioning.toml --remote --file=config/d1/tournaments.sql
 # For existing preview databases, execute each unapplied migration in numeric
-# order from config/d1/migrations/live-*.sql or tournaments-*.sql against its
+# order from config/d1/migrations/live-*.sql or tournaments/*.sql against its
 # matching preview database with `wrangler d1 execute <preview-name>
 # --config=.scratch/preview-provisioning.toml --remote
 # --file=<migration-file>`. The current schemas already include those changes;

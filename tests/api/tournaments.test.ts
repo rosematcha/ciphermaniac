@@ -2859,7 +2859,7 @@ test('the index migration brings an older database in line with the schema', () 
   older.exec('DROP INDEX identities_by_user; DROP INDEX tournaments_of_owner');
   older.exec('CREATE INDEX tournaments_by_owner ON tournaments (owner_id, updated_at)');
   const migration = readFileSync(
-    new URL('../../config/d1/migrations/tournaments-0004-indexes.sql', import.meta.url),
+    new URL('../../config/d1/migrations/tournaments/0004-indexes.sql', import.meta.url),
     'utf8'
   );
   older.exec(migration);
