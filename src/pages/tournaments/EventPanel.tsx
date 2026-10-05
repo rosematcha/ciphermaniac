@@ -33,6 +33,7 @@ import { session } from './session';
 import type { ManageState } from './manageState';
 import { DecklistsSwitch, EventTypeSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
+import { SETTING_INFO, SettingInfo } from './SettingInfo';
 
 /** A box of settings with its heading, and a foot with Save and whether anything is unsaved. */
 function SettingsBox(props: {
@@ -185,7 +186,7 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
       <SettingRow label='Format' for='set-format'>
         <FormatSelect id='set-format' value={draft().format} onChange={value => set('format', value)} />
       </SettingRow>
-      <SettingRow label='Archetypes' for='set-decks'>
+      <SettingRow label='Archetypes' for='set-decks' info={<SettingInfo text={SETTING_INFO.archetypes} />}>
         <ArchetypesSelect id='set-decks' value={draft().deckVisibility} onChange={v => set('deckVisibility', v)} />
       </SettingRow>
       {/* Only a store's event is sanctioned; one sanctioned before stores existed can still be turned off. */}
@@ -200,10 +201,10 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
           />
         </SettingRow>
       </Show>
-      <SettingRow label='Player reporting'>
+      <SettingRow label='Player reporting' info={<SettingInfo text={SETTING_INFO.playerReporting} />}>
         <Toggle label='Player reporting' value={draft().playerReporting} onChange={v => set('playerReporting', v)} />
       </SettingRow>
-      <SettingRow label='Decklists'>
+      <SettingRow label='Decklists' info={<SettingInfo text={SETTING_INFO.decklists} />}>
         <DecklistsSwitch value={draft().decklists} onChange={v => set('decklists', v)} />
       </SettingRow>
       <SettingRow label='Details for players' for='set-details'>

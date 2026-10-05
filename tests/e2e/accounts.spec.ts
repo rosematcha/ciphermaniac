@@ -265,7 +265,7 @@ test('Settings: the public profile switch shows its link, and a POP ID clash poi
   await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0);
   const profile = page.getByRole('tablist', { name: 'Public profile' });
   await expect(page.getByRole('tablist', { name: 'Name shown' })).toHaveCount(0);
-  await profile.getByRole('tab', { name: 'On' }).click();
+  await profile.getByRole('tab', { name: 'Enabled' }).click();
   await expect(page.getByRole('link', { name: /\/u\/mary$/ })).toHaveAttribute('href', '/u/mary');
   await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible();
   expect(sent.find(s => s.method === 'PATCH')?.body).toEqual({ publicProfile: true });
@@ -274,7 +274,7 @@ test('Settings: the public profile switch shows its link, and a POP ID clash poi
   await shown.getByRole('tab', { name: 'Username' }).click();
   await expect(shown.getByRole('tab', { name: 'Username' })).toHaveAttribute('aria-selected', 'true');
   expect(sent.filter(s => s.method === 'PATCH').at(-1)?.body).toEqual({ profileName: 'handle' });
-  await profile.getByRole('tab', { name: 'Off' }).click();
+  await profile.getByRole('tab', { name: 'Disabled' }).click();
   await expect(page.getByRole('button', { name: 'Copy' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Save profile' }).click();
   const alert = page.getByRole('alert');
@@ -297,7 +297,7 @@ test('Settings: the username is checked as it is typed, saved lowercased, and re
   await input.fill('taken');
   await save.click();
   await expect(page.getByRole('alert')).toHaveText('That username is taken');
-  await page.getByRole('tablist', { name: 'Public profile' }).getByRole('tab', { name: 'On' }).click();
+  await page.getByRole('tablist', { name: 'Public profile' }).getByRole('tab', { name: 'Enabled' }).click();
   await input.fill('Mary.J');
   await expect(page.getByRole('alert')).toHaveCount(0);
   await save.click();

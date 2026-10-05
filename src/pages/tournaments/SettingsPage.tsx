@@ -37,6 +37,7 @@ import { ErrorLine } from './Field';
 import { emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
 import { refreshSession, session, setSession } from './session';
 import { SettingRow, Toggle } from './SettingControls';
+import { SettingInfo } from './SettingInfo';
 import { SignIn } from './SignIn';
 
 /**
@@ -280,7 +281,10 @@ function HistorySection(props: { user: Me }) {
             View history
           </A>
         </SettingRow>
-        <SettingRow label='Public profile'>
+        <SettingRow
+          label='Public profile'
+          info={<SettingInfo text='Enables a public profile page to share your performance at events.' />}
+        >
           <span class='tm-set-inline' aria-busy={busy()}>
             <Toggle
               label='Public profile'
@@ -290,7 +294,7 @@ function HistorySection(props: { user: Me }) {
           </span>
         </SettingRow>
         <Show when={props.user.publicProfile}>
-          <SettingRow label='Name shown'>
+          <SettingRow label='Name shown' info={<SettingInfo text='Affects only what is shown on your profile page.' />}>
             <span class='tm-set-inline' aria-busy={busy()}>
               <Toggle
                 label='Name shown'

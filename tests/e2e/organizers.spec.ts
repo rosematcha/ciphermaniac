@@ -516,3 +516,28 @@ test('/host: with no stores the hero draws no empty meta line, so Start an event
   // Bottom-aligned: the button's foot meets the title block's, the counts line now its last.
   expect(Math.abs((text?.y ?? 0) + (text?.height ?? 0) - ((button?.y ?? 0) + (button?.height ?? 0)))).toBeLessThan(2);
 });
+
+test('the new event setup explains player reporting, archetypes and decklists, each set Disabled to start', async ({
+  page
+}) => {
+  await mockHost(page, { ...ME, role: 'community' });
+  await page.goto('/host');
+  await page.getByRole('button', { name: 'Start an event' }).click();
+  for (const [setting, words] of [
+    ['Player reporting', 'report the results of their match'],
+    ['Archetypes', 'organizer entry of player deck archetypes'],
+    ['Decklists', 'submit their decklists in TCGL format']
+  ]) {
+    const tip = page.locator('.tm-set-row', { hasText: setting }).locator('.info-tip');
+    await tip.hover();
+    await expect(tip.getByRole('tooltip')).toBeVisible();
+    await expect(tip.getByRole('tooltip')).toContainText(words);
+  }
+  await expect(page.getByRole('tablist', { name: 'Player reporting' }).getByRole('tab', { selected: true })).toHaveText(
+    'Disabled'
+  );
+  await expect(page.getByRole('combobox', { name: 'Archetypes', exact: true })).toHaveValue('off');
+  await expect(page.getByRole('combobox', { name: 'Archetypes', exact: true }).locator('option:checked')).toHaveText(
+    'Disabled'
+  );
+});

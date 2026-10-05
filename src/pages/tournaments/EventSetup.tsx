@@ -23,6 +23,7 @@ import { FormatSelect } from './FormatSelect';
 import { ListingPicker } from './ListingPicker';
 import { DecklistsSwitch, EventTypeSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
+import { SETTING_INFO, SettingInfo } from './SettingInfo';
 
 export interface Setup {
   name: string;
@@ -255,13 +256,13 @@ export function EventSetup(props: {
             />
           </SettingRow>
         </Show>
-        <SettingRow label='Player reporting'>
+        <SettingRow label='Player reporting' info={<SettingInfo text={SETTING_INFO.playerReporting} />}>
           <Toggle label='Player reporting' value={reporting()} onChange={setReporting} />
         </SettingRow>
-        <SettingRow label='Archetypes' for='setup-archetypes'>
+        <SettingRow label='Archetypes' for='setup-archetypes' info={<SettingInfo text={SETTING_INFO.archetypes} />}>
           <ArchetypesSelect id='setup-archetypes' value={archetypes()} onChange={setArchetypes} />
         </SettingRow>
-        <SettingRow label='Decklists'>
+        <SettingRow label='Decklists' info={<SettingInfo text={SETTING_INFO.decklists} />}>
           <DecklistsSwitch value={decklists()} onChange={setDecklists} />
         </SettingRow>
       </div>

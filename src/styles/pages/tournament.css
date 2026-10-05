@@ -1607,6 +1607,11 @@ tr.is-in .tm-place {
   gap: 2px;
   font-weight: 600;
 }
+.tm-set-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .tm-set-label small {
   font-size: var(--text-sm);
   font-weight: 400;

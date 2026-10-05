@@ -4,7 +4,8 @@
  * control: a two-way switch for sanctioned and player reporting, and the
  * three-way archetypes choice (the decklists and Swiss rounds choices are in
  * SettingChoices). Each sits in a settings row, the label at left and the
- * control at right.
+ * control at right, and an optional note on what the setting does beside the
+ * label (SettingInfo).
  */
 
 import { For, type JSX, Show } from 'solid-js';
@@ -14,17 +15,31 @@ import { Segmented } from '../../components/Segmented';
 export const VISIBILITY_LABELS: Record<DeckVisibility, string> = {
   always: 'Shown to everyone',
   after: 'Shown once the event ends',
-  off: 'Off'
+  off: 'Disabled'
 };
 
-/** One setting: its label at left, its control at right, and an optional line under the label. */
-export function SettingRow(props: { label: string; for?: string; note?: string; children: JSX.Element }) {
+/**
+ * One setting: its label at left, its control at right, an optional line
+ * under the label, and an optional `info` marker beside the label saying
+ * what it does (outside the <label>, so pressing it does not focus the
+ * control).
+ */
+export function SettingRow(props: {
+  label: string;
+  for?: string;
+  note?: string;
+  info?: JSX.Element;
+  children: JSX.Element;
+}) {
   return (
     <div class='tm-set-row'>
       <span class='tm-set-label'>
-        <Show when={props.for} fallback={<span>{props.label}</span>}>
-          <label for={props.for}>{props.label}</label>
-        </Show>
+        <span class='tm-set-name'>
+          <Show when={props.for} fallback={<span>{props.label}</span>}>
+            <label for={props.for}>{props.label}</label>
+          </Show>
+          {props.info}
+        </span>
         <Show when={props.note}>
           <small>{props.note}</small>
         </Show>
@@ -45,8 +60,8 @@ export function Toggle(props: {
   return (
     <Segmented
       options={[
-        { value: 'on', label: props.on ?? 'On' },
-        { value: 'off', label: props.off ?? 'Off' }
+        { value: 'on', label: props.on ?? 'Enabled' },
+        { value: 'off', label: props.off ?? 'Disabled' }
       ]}
       selected={props.value ? 'on' : 'off'}
       onSelect={value => props.onChange(value === 'on')}
@@ -55,7 +70,7 @@ export function Toggle(props: {
   );
 }
 
-/** Whether and when players see each other's archetypes, or archetypes off for the event. */
+/** Whether and when players see each other's archetypes, or archetypes disabled for the event. */
 export function ArchetypesSelect(props: {
   id: string;
   value: DeckVisibility;
