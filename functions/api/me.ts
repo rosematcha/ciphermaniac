@@ -1,21 +1,26 @@
 /**
  * GET /api/me — who is signed in, and which sign-in buttons to show.
- * PUT /api/me — saves the player profile (POP ID, name, birth date) that
+ * PUT /api/me — saves the player profile (POP ID, name, birth year) that
  * decklist submission and "find my pairing" read. One account holds a POP ID,
  * the first to save it: another account saving it gets a 409 and none of its
  * profile is saved. An account that changes its POP ID lets go of the players
  * it was at events as the old one.
- * PATCH /api/me — one change to the account itself: its name ({ name }), or
- * its public profile on or off ({ publicProfile }).
+ * PATCH /api/me — one change to the account itself: its username
+ * ({ handle }; 409 when someone else holds it or let it go within the day,
+ * 429 past the day's changes), its public profile on or off
+ * ({ publicProfile }), or the name that profile shows ({ profileName }).
  */
 
+import { adultYear } from '../../shared/accounts/age.js';
+import { displayName, handleProblem, normalizeHandle } from '../../shared/accounts/handle.js';
+import { birthYear, yearOnlyBirthDate } from '../../shared/tournament/divisions.js';
 import { type PlayerProfile, readProfile } from '../../shared/tournament/profile.js';
-import { setPublicProfile } from '../lib/accounts/publicProfile.js';
+import { renameAccount } from '../lib/accounts/handles.js';
 import { readJsonBody, readJsonObject } from '../lib/api/body.js';
 import { jsonError, jsonResponse } from '../lib/api/responses.js';
 import { type Context, sameOrigin } from '../lib/auth/env.js';
 import { availableProviders } from '../lib/auth/oauth.js';
-import { currentAccount, type User } from '../lib/auth/session.js';
+import { currentAccount, type ProfileName, type User } from '../lib/auth/session.js';
 import { rowsChanged } from '../lib/d1.js';
 import type { D1Like } from '../lib/types.js';
 
@@ -58,38 +63,67 @@ export async function onRequestPut({ request, env }: Context): Promise<Response>
     return jsonError('Sign in first', 401);
   }
   const body = await readJsonBody(request, 2048);
-  const profile = body.ok ? readProfile(body.value) : null;
-  if (!profile) {
+  const read = body.ok ? readProfile(body.value) : null;
+  if (!read) {
     return jsonError('Not a valid profile', 400);
   }
+  // Accounts are for adults (shared/accounts/age.ts): a year only a minor could be born in is not one to keep.
+  if (!adultYear(birthYear(read.birthDate), new Date())) {
+    return jsonError('Accounts are for people 18 and older; check your birth year', 400);
+  }
+  const profile = { ...read, birthDate: yearOnlyBirthDate(read.birthDate) };
   const [, saved] = await db.batch(profileWrites(db, user, profile));
   if (rowsChanged(saved) === 0) {
     return jsonResponse({ error: 'This POP ID is on another account', popIdTaken: true }, { ...PRIVATE, status: 409 });
   }
-  return jsonResponse({ user: { ...user, ...profile } }, PRIVATE);
+  const updated = { ...user, ...profile };
+  return jsonResponse({ user: { ...updated, name: displayName(updated) } }, PRIVATE);
 }
 
-type AccountChange = { name: string } | { publicProfile: boolean };
+type AccountChange = { handle: string } | { publicProfile: boolean } | { profileName: ProfileName };
+
+const CHANGES = ['handle', 'publicProfile', 'profileName'] as const;
 
 /** The one change a PATCH body asks for, or why it asks for none. */
 function readChange(body: Record<string, unknown>): AccountChange | string {
-  if ('publicProfile' in body) {
-    if ('name' in body) {
-      return 'Change one thing at a time';
-    }
-    return typeof body.publicProfile === 'boolean' ? { publicProfile: body.publicProfile } : 'Not a valid change';
+  const asked = CHANGES.filter(key => key in body);
+  if (asked.length !== 1) {
+    return asked.length > 1 ? 'Change one thing at a time' : 'Not a valid change';
   }
-  const name = typeof body.name === 'string' ? body.name.trim() : '';
-  return name && name.length <= 40 ? { name } : 'Enter a name up to 40 characters';
+  const { handle, publicProfile, profileName } = body;
+  if (asked[0] === 'handle') {
+    const wanted = typeof handle === 'string' ? normalizeHandle(handle) : '';
+    return handleProblem(wanted) ?? { handle: wanted };
+  }
+  if (asked[0] === 'publicProfile') {
+    return typeof publicProfile === 'boolean' ? { publicProfile } : 'Not a valid change';
+  }
+  return profileName === 'real' || profileName === 'handle' ? { profileName } : 'Not a valid change';
 }
 
-/** Makes the change, and answers the fields of the account it changed. */
-async function applyChange(db: D1Like, user: User, change: AccountChange): Promise<Partial<User>> {
-  if ('publicProfile' in change) {
-    return { publicSlug: await setPublicProfile(db, user, change.publicProfile) };
+const REFUSED = {
+  taken: { error: 'That username is taken', status: 409 },
+  limit: { error: 'You can change your username three times a day', status: 429 }
+} as const;
+
+/** Makes the change, and answers the fields of the account it changed, or why it was refused. */
+async function applyChange(db: D1Like, user: User, change: AccountChange): Promise<Partial<User> | Response> {
+  if ('handle' in change) {
+    const refused = await renameAccount(db, user, change.handle);
+    if (refused) {
+      return jsonError(REFUSED[refused].error, REFUSED[refused].status);
+    }
+    return { handle: change.handle, name: displayName({ ...user, handle: change.handle }) };
   }
-  await db.prepare('UPDATE users SET name = ? WHERE id = ?').bind(change.name, user.id).run();
-  return { name: change.name };
+  if ('publicProfile' in change) {
+    await db
+      .prepare('UPDATE users SET public_profile = ? WHERE id = ?')
+      .bind(change.publicProfile ? 1 : 0, user.id)
+      .run();
+    return change;
+  }
+  await db.prepare('UPDATE users SET profile_name = ? WHERE id = ?').bind(change.profileName, user.id).run();
+  return change;
 }
 
 export async function onRequestPatch({ request, env }: Context): Promise<Response> {
@@ -105,5 +139,6 @@ export async function onRequestPatch({ request, env }: Context): Promise<Respons
   if (typeof change === 'string') {
     return jsonError(change, 400);
   }
-  return jsonResponse({ user: { ...user, ...(await applyChange(db, user, change)) } }, PRIVATE);
+  const changed = await applyChange(db, user, change);
+  return changed instanceof Response ? changed : jsonResponse({ user: { ...user, ...changed } }, PRIVATE);
 }

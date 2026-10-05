@@ -26,7 +26,7 @@ export interface PublishedObject {
   customMetadata?: Record<string, string>;
 }
 
-/** The slice of an R2 bucket binding the functions write with. */
+/** The slice of an R2 bucket binding the functions write with, and read the locator's files from. */
 export interface PublishBucket {
   head: (key: string) => Promise<PublishedObject | null>;
   /** Null when `onlyIf` did not hold, and nothing was written. */
@@ -36,10 +36,12 @@ export interface PublishBucket {
     options: {
       httpMetadata: Record<string, string>;
       customMetadata: Record<string, string>;
-      onlyIf: { etagMatches: string } | Headers;
+      onlyIf?: { etagMatches: string } | Headers;
     }
   ) => Promise<PublishedObject | null>;
   delete: (key: string) => Promise<unknown>;
+  /** An object's text; null when there is none. Optional so test doubles that only publish need not have it. */
+  get?: (key: string) => Promise<{ text: () => Promise<string> } | null>;
 }
 
 /** What R2 holds of a proof: its bytes, and the type it was stored as. */

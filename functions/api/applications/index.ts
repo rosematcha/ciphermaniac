@@ -1,13 +1,18 @@
 /**
- * POST /api/applications — sends the signed-in account's Application to run
- * events: { explanation, proof }, where `proof` says to send the proof the
- * account has uploaded (PUT /api/applications/proof uploads it). It needs a
- * proof, an explanation, or both. The account's POP ID and name go with it
- * as they stand now. Answers 201 { application }. One Application is
- * pending at a time; a rejected account may send another at once.
+ * POST /api/applications — sends the signed-in account's Application for a
+ * store: { store, explanation?, proof? }, where `store` is what the
+ * applicant says of it (shared/accounts/stores.ts StoreApplication: its
+ * league, details, time zone, how they run it, their confirmation that they
+ * are a certified organizer or work with one, and league nights), and
+ * `proof` says to send the certificate the account has uploaded (PUT
+ * /api/applications/proof uploads it); neither proof nor note is needed. The
+ * account's POP ID and name go with it as they stand now. Answers 201 {
+ * application }. One Application is pending at a time; a rejected account
+ * may send another at once.
  */
 
 import { EXPLANATION_MAX } from '../../../shared/accounts/applications.js';
+import { readStoreApplication, type StoreApplication } from '../../../shared/accounts/stores.js';
 import type { MyApplication } from '../../../shared/accounts/types.js';
 import {
   type Applicant,
@@ -35,6 +40,7 @@ export function _resetRateLimitStore(): void {
 }
 
 interface Asked {
+  store: StoreApplication;
   explanation: string;
   proof: boolean;
 }
@@ -45,8 +51,8 @@ function readAsked(body: Record<string, unknown> | null): Asked | string {
   if (explanation.length > EXPLANATION_MAX) {
     return `Up to ${EXPLANATION_MAX} characters`;
   }
-  const proof = body?.proof === true;
-  return proof || explanation ? { explanation, proof } : 'Add proof or an explanation';
+  const store = readStoreApplication(body?.store);
+  return typeof store === 'string' ? store : { store, explanation, proof: body?.proof === true };
 }
 
 /**
@@ -68,9 +74,9 @@ async function send(
     db
       .prepare(
         'INSERT OR IGNORE INTO applications (id, user_id, status, pop_id, first_name, last_name, explanation, ' +
-          "proof_key, proof_type, proof_size, created_at) SELECT ?1, u.id, 'pending', u.pop_id, u.first_name, " +
-          'u.last_name, ?3, p.key, p.type, p.size, ?4 FROM users u LEFT JOIN proof_uploads p ON p.user_id = u.id ' +
-          "AND ?5 WHERE u.id = ?2 AND (u.role IS NULL OR u.role = 'revoked') AND u.pop_id IS ?6 " +
+          "proof_key, proof_type, proof_size, created_at, store) SELECT ?1, u.id, 'pending', u.pop_id, u.first_name, " +
+          'u.last_name, ?3, p.key, p.type, p.size, ?4, ?10 FROM users u LEFT JOIN proof_uploads p ON p.user_id = u.id ' +
+          'AND ?5 WHERE u.id = ?2 AND u.pop_id IS ?6 ' +
           'AND u.first_name IS ?7 AND u.last_name IS ?8 AND u.birth_date IS ?9 AND (?5 = 0 OR p.key IS NOT NULL)'
       )
       .bind(
@@ -82,7 +88,8 @@ async function send(
         user.popId,
         user.firstName,
         user.lastName,
-        user.birthDate
+        user.birthDate,
+        JSON.stringify(asked.store)
       ),
     // Sent, the upload is the Application's, or left out of it.
     db

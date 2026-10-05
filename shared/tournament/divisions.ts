@@ -19,6 +19,19 @@ export function birthYear(birthDate: string): number | null {
 }
 
 /**
+ * A birth date as the site keeps it: the year alone, written MM/DD/YYYY with
+ * 02/27 for the day, the placeholder real TOM files carry. The day and month
+ * are never kept; '' when there is no readable year.
+ */
+export function yearOnlyBirthDate(birthDate: string): string {
+  const year = birthYear(birthDate);
+  return year === null ? '' : birthDateOfYear(year);
+}
+
+/** A birth year as the site keeps it (see yearOnlyBirthDate). */
+export const birthDateOfYear = (year: number): string => `02/27/${year}`;
+
+/**
  * Juniors were born in the season's year minus 12 or later, Seniors in the
  * four years before that, Masters before that. For the 2027 season: 2015 and
  * later, 2011 to 2014, 2010 and earlier. No birth date reads as Masters.

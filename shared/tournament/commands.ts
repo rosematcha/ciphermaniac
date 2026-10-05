@@ -11,14 +11,12 @@
  * round rather than waiting for the next one.
  */
 
-import { divisionFor, divisionLookup, parseTomDate, seasonOf } from './divisions.js';
-import { type Pairing, pairNextElimination, pairSwiss, pairTopCut, sortSwissPairings } from './pairing.js';
+import { divisionFor, divisionLookup, parseTomDate, seasonOf, yearOnlyBirthDate } from './divisions.js';
+import { type Pairing, pairNextElimination, pairSwiss, pairTopCut } from './pairing.js';
 import { categoryFor, divisionsOf, poddingFor } from './podding.js';
-import { type Random, shuffled } from './random.js';
+import type { Random } from './random.js';
 import {
   activeIds,
-  cutPodOf,
-  cutPodsOf,
   findMatch,
   fixedTables,
   fullRoundSeconds,
@@ -28,16 +26,16 @@ import {
   latestRound,
   livePods,
   type MatchStamp,
-  normalizeCutPods,
   pairingHistory,
   podOf,
   pointsBefore,
   roundComplete,
   seatPairings,
+  sortMatches,
   toMatches
 } from './rounds.js';
 import { bracketMatches, eliminationResult, swissStandings } from './standings.js';
-import { eventTypeOf, recommendedStructure, SANCTIONED, sanctionedMinutesError } from './structure.js';
+import { eventTypeOf, SANCTIONED, sanctionedMinutesError } from './structure.js';
 import {
   type Division,
   DIVISION_LABELS,
@@ -225,7 +223,9 @@ function podded(tournament: Tournament, season: number): Tournament {
 /**
  * A player as they join, marked when their decklist added them. One added
  * once play has started takes losses for the rounds they missed (see
- * missedRounds), has no starter flag, and carries TOM's structured late tag.
+ * missedRounds) and is not marked late: the handbook ranks late entrants on
+ * their record like anyone else, and TOM writes a player it adds mid-event
+ * as a starter. Only TOM's own late tag, read from a .tdf, marks one late.
  */
 function newPlayer(
   fields: Pick<Player, 'id' | 'firstName' | 'lastName' | 'birthDate'> & { fromList?: boolean | undefined },
@@ -238,20 +238,6 @@ function newPlayer(
     ...(fromList ? { fromList: true } : {}),
     created: ctx.localTime,
     modified: ctx.localTime
-  };
-}
-
-function latePlayer(fields: Parameters<typeof newPlayer>[0], pod: Pod, ctx: CommandContext): Player {
-  return {
-    ...newPlayer(fields, ctx),
-    starter: false,
-    late: true,
-    lateData: {
-      round: latestRound(pod)?.number ?? -1,
-      timestamp: ctx.localTime,
-      forcedLoss: true,
-      usedForcedLoss: true
-    }
   };
 }
 
@@ -268,7 +254,7 @@ function addPlayer(tournament: Tournament, input: NewPlayer, ctx: CommandContext
   if (tournament.players.some(p => p.id === id)) {
     return fail('That POP ID is already registered');
   }
-  const birthDate = input.birthDate?.trim() ?? '';
+  const birthDate = yearOnlyBirthDate(input.birthDate ?? '');
   const fields = { id, firstName, lastName, birthDate, fromList: input.fromList };
   if (!hasStarted(tournament)) {
     // Every roster change before round 1 pods the field again (see podded), so any pod will do.
@@ -276,10 +262,10 @@ function addPlayer(tournament: Tournament, input: NewPlayer, ctx: CommandContext
     return done({ ...tournament, players: [...tournament.players, player] });
   }
   const { pod, replaces } = podFor(tournament, divisionFor(birthDate, ctx.season));
-  if (pod.rounds.some(r => r.kind === 'elimination')) {
+  if (tournament.pods.some(p => p.cutOf === pod.category || (replaces && p.cutOf === replaces.category))) {
     return fail('Their division’s Swiss rounds are over; the top cuts are under way');
   }
-  const player = latePlayer(fields, pod, ctx);
+  const player = newPlayer(fields, ctx);
   const joined = missedRounds(pod, id, ctx.localTime);
   const pods = replaces ? tournament.pods.map(p => (p === replaces ? joined : p)) : [...tournament.pods, joined];
   return done({ ...tournament, players: [...tournament.players, player], pods });
@@ -444,34 +430,12 @@ function pairedRound(
   };
 }
 
-function swissEntrants(tournament: Tournament, pod: Pod, number: number, ids: string[]) {
-  const points = pointsBefore(pod, number);
-  const of = divisionLookup(tournament);
-  return ids.map(id => ({ id, points: points.get(id) ?? 0, category: DIVISIONS.indexOf(of(id)) }));
-}
-
 function nextSwissRound(tournament: Tournament, pod: Pod, ctx: CommandContext): Round {
   const number = pod.rounds.length + 1;
-  const active = new Set(activeIds(tournament, pod));
-  const earned = new Map(tournament.players.map(p => [p.id, p.byes ?? 0]));
-  const assigned = [...active].filter(id => (earned.get(id) ?? 0) >= number);
-  const given = new Set(assigned);
-  const entrants = swissEntrants(
-    tournament,
-    pod,
-    number,
-    [...active].filter(id => !given.has(id))
-  );
-  const pairings = sortSwissPairings(pairSwiss(entrants, pairingHistory(pod), ctx.random), entrants);
-  const round = pairedRound(tournament, pod, ctx, { number, kind: 'swiss', pairings });
-  const byes: Match[] = assigned.map(id => ({
-    table: 0,
-    p1: id,
-    p2: null,
-    outcome: 'assigned-bye',
-    timestamp: ctx.localTime
-  }));
-  return { ...round, matches: [...byes, ...round.matches] };
+  const points = pointsBefore(pod, number);
+  const entrants = activeIds(tournament, pod).map(id => ({ id, points: points.get(id) ?? 0 }));
+  const pairings = pairSwiss(entrants, pairingHistory(pod), ctx.random);
+  return pairedRound(tournament, pod, ctx, { number, kind: 'swiss', pairings });
 }
 
 /**
@@ -492,87 +456,26 @@ function eliminationResults(pod: Pod, round: Round): { winners: string[]; losers
   return { winners, losers };
 }
 
-function advancingPairings(tournament: Tournament, pod: Pod): Pairing[] | null {
-  const latest = latestRound(pod);
-  const results = latest && eliminationResults(pod, latest);
-  if (!results) {
-    return null;
-  }
-  if (results.winners.length < 2) {
-    return [];
-  }
-  const gone = new Set(tournament.players.filter(p => p.droppedAfter !== null).map(p => p.id));
-  const playoff = pod.playoff3rd4th && results.losers.some(id => !gone.has(id)) ? results.losers : [];
-  return pairNextElimination(results.winners, playoff);
-}
-
 function nextEliminationRound(tournament: Tournament, pod: Pod, latest: Round, ctx: CommandContext): CommandResult {
-  const views = cutPodsOf(tournament, pod);
-  const brackets = views.length
-    ? [...views].sort((a, b) => DIVISIONS.indexOf(b.category as Division) - DIVISIONS.indexOf(a.category as Division))
-    : [pod];
-  const next = brackets.map(bracket => advancingPairings(tournament, bracket));
-  if (next.some(p => p === null)) {
+  const results = eliminationResults(pod, latest);
+  if (!results) {
     return fail('Report every match before pairing the next round');
   }
-  const pairings = next.flatMap(p => p ?? []);
-  if (!pairings.length) {
+  if (results.winners.length < 2) {
     return fail('The top cut is finished');
   }
+  const gone = new Set(tournament.players.filter(p => p.droppedAfter !== null).map(p => p.id));
+  // Third place is played while either semifinal loser is still in; one who has left forfeits it.
+  const playoff = pod.playoff3rd4th && results.losers.some(id => !gone.has(id)) ? results.losers : [];
+  const pairings = pairNextElimination(results.winners, playoff);
   const round = pairedRound(tournament, pod, ctx, { number: latest.number + 1, kind: 'elimination', pairings });
   const paired = withPod(tournament, { ...pod, rounds: [...pod.rounds, round] });
-  return done(
-    tournament.players.filter(p => p.droppedAfter !== null).reduce((t, p) => forfeitOpenMatch(t, p.id, ctx), paired)
-  );
-}
-
-function startingCuts(t: Tournament, pod: Pod): Pick<Pod, 'cut' | 'divisionCuts' | 'divisionCounts'> {
-  const of = divisionLookup(t);
-  const divisionCounts: Partial<Record<Division, number>> = Object.fromEntries(
-    divisionsOf(pod.category).map(d => [d, pod.playerIds.filter(id => of(id) === d).length])
-  );
-  const sizes = divisionsOf(pod.category).map(
-    d => [d, recommendedStructure(divisionCounts[d]!, eventTypeOf(t)).cut] as const
-  );
-  if (isDivision(pod.category)) {
-    return { cut: pod.cut || sizes[0]?.[1] || 0, divisionCounts };
-  }
-  return {
-    cut: 0,
-    divisionCounts,
-    divisionCuts: Object.fromEntries(
-      sizes
-        .filter(([, size]) => size > 0)
-        .map(([division, size]) => [
-          division,
-          { size, playoff3rd4th: pod.playoff3rd4th, playerIds: pod.playerIds.filter(id => of(id) === division) }
-        ])
-    )
-  };
-}
-
-function startRoster(tournament: Tournament, ctx: CommandContext): Tournament {
-  if (hasStarted(tournament)) {
-    return tournament;
-  }
-  const players = shuffled(tournament.players, ctx.random).map(p => ({ ...p, starter: true }));
-  const pods = tournament.pods.map(p => {
-    const playerIds = shuffled(p.playerIds, ctx.random);
-    return { ...p, ...startingCuts(tournament, p), playerIds, startingPlayerIds: [...playerIds] };
-  });
-  return {
-    ...tournament,
-    players,
-    pods,
-    startedAt: ctx.now,
-    info: { ...tournament.info, startDate: ctx.localTime.slice(0, 10) }
-  };
+  return done(playoff.filter(id => gone.has(id)).reduce((t, id) => forfeitOpenMatch(t, id, ctx), paired));
 }
 
 const activePlayers = (tournament: Tournament) => tournament.players.filter(p => p.droppedAfter === null).length;
 
-function pairRound(input: Tournament, category: PodCategory, ctx: CommandContext): CommandResult {
-  const tournament = input;
+function pairRound(tournament: Tournament, category: PodCategory, ctx: CommandContext): CommandResult {
   if (tournament.pods.some(p => p.cutOf === category)) {
     return fail(CUTS_UNDER_WAY);
   }
@@ -591,17 +494,13 @@ function pairRound(input: Tournament, category: PodCategory, ctx: CommandContext
     return nextEliminationRound(tournament, pod, latest, ctx);
   }
   const closed = latest ? withRound(pod, { ...latest, status: 'finished', clockStartedAt: null }) : pod;
-  const started = startRoster(tournament, ctx);
-  const ready = findPod(started, category) as Pod;
-  const round = nextSwissRound(started, { ...ready, rounds: closed.rounds }, ctx);
-  return done(withPod(started, { ...ready, rounds: [...closed.rounds, round] }));
+  const round = nextSwissRound(tournament, closed, ctx);
+  return done(withPod(tournament, { ...closed, rounds: [...closed.rounds, round] }));
 }
 
-/** Earned byes survive a re-pair; reported two-player matches can also be retained. */
+/** Matches a re-pair leaves alone: decided between two players. Byes and missed-round losses are re-drawn. */
 function keptMatches(round: Round, keepReported: boolean): Match[] {
-  return round.matches.filter(
-    match => match.outcome === 'assigned-bye' || (keepReported && match.p2 !== null && isReported(match))
-  );
+  return keepReported ? round.matches.filter(match => match.p2 !== null && isReported(match)) : [];
 }
 
 function repairRound(tournament: Tournament, category: PodCategory, keepReported: boolean, ctx: CommandContext) {
@@ -618,21 +517,18 @@ function repairRound(tournament: Tournament, category: PodCategory, keepReported
   }
   const kept = keptMatches(round, keepReported);
   const seated = new Set(kept.flatMap(match => [match.p1, match.p2]));
-  const entrants = swissEntrants(
-    tournament,
-    pod,
-    round.number,
-    activeIds(tournament, pod).filter(id => !seated.has(id))
-  );
-
-  const pairings = sortSwissPairings(pairSwiss(entrants, pairingHistory(pod, round.number), ctx.random), entrants);
+  const points = pointsBefore(pod, round.number);
+  const entrants = activeIds(tournament, pod)
+    .filter(id => !seated.has(id))
+    .map(id => ({ id, points: points.get(id) ?? 0 }));
+  const pairings = pairSwiss(entrants, pairingHistory(pod, round.number), ctx.random);
   const fresh = toMatches(pairings, {
     ...stampFor(tournament, pod, ctx),
     taken: new Set(kept.map(match => match.table))
   });
   // Dropped players keep the missed-round entries they already had in this round.
   const stale = round.matches.filter(m => m.p2 === null && m.outcome === 'loss' && !entrants.some(e => e.id === m.p1));
-  const matches = [...kept, ...fresh, ...stale];
+  const matches = sortMatches([...kept, ...fresh, ...stale]);
   return done(
     withPod(
       tournament,
@@ -695,7 +591,7 @@ function reportResult(
     return fail(error);
   }
   // An open match carries its pairing time, as TOM writes it.
-  const timestamp = ctx.localTime;
+  const timestamp = command.outcome === 'pending' ? round.pairTime : ctx.localTime;
   const matches = round.matches.map(m => (m === match ? { ...m, outcome: command.outcome, timestamp } : m));
   const status = matches.every(isReported) ? 'finished' : round.status === 'finished' ? 'started' : round.status;
   return done(withPod(tournament, withRound(pod, { ...round, matches, status })));
@@ -742,7 +638,6 @@ function startClock(tournament: Tournament, category: PodCategory, ctx: CommandC
           ...round,
           status: round.status === 'finished' ? round.status : 'started',
           startTime: round.startTime || ctx.localTime,
-          startedAt: round.startedAt ?? ctx.now,
           clockStartedAt: ctx.now
         }
   );
@@ -781,6 +676,24 @@ function cutField(tournament: Tournament, pod: Pod, division: Division | undefin
   return new Set(pod.playerIds.filter(id => of(id) === division));
 }
 
+/**
+ * One division's cut out of a pod of several, as a pod of its own (see
+ * Pod.cutOf): its bracket, clock and rounds go on apart from the other
+ * divisions'. Its rounds take tables no other bracket playing holds (see
+ * firstTableFor).
+ */
+function divisionCutPod(pod: Pod, division: Division, seeds: string[], playoff3rd4th: boolean): Pod {
+  return {
+    category: division,
+    cutOf: pod.category,
+    playerIds: seeds,
+    rounds: [],
+    cut: seeds.length,
+    playoff3rd4th,
+    startingTable: pod.startingTable
+  };
+}
+
 /** Why the cut asked for cannot start, or null when it can. */
 function cutRefusal(
   tournament: Tournament,
@@ -788,8 +701,8 @@ function cutRefusal(
   command: Extract<Command, { type: 'startTopCut' }>,
   ctx: CommandContext
 ) {
-  const latest = pod?.rounds.filter(r => r.kind === 'swiss').at(-1);
-  if (!pod || !latest || !roundComplete(latest)) {
+  const latest = pod && latestRound(pod);
+  if (!pod || !latest || latest.kind !== 'swiss' || !roundComplete(latest)) {
     return 'Finish the Swiss rounds first';
   }
   if (ctx.sanctioned && pod.rounds.filter(round => round.kind === 'swiss').length < SANCTIONED.swissRounds) {
@@ -801,7 +714,7 @@ function cutRefusal(
   if (!(TOP_CUT_SIZES as readonly number[]).includes(command.size)) {
     return 'A top cut is 2, 4, 8, 16 or 32 players';
   }
-  const taken = command.division && cutPodOf(tournament, pod, command.division);
+  const taken = command.division && findPod(tournament, command.division);
   return taken ? `The ${DIVISION_LABELS[command.division as Division]} top cut has started` : null;
 }
 
@@ -829,46 +742,18 @@ function startTopCut(
   if (seeds.length < size) {
     return fail('Not enough players for that cut');
   }
-  return openCut(tournament, pod, { seeds, division, playoff3rd4th }, ctx);
-}
-
-function openCut(
-  tournament: Tournament,
-  pod: Pod,
-  config: { seeds: string[]; division: Division | undefined; playoff3rd4th: boolean },
-  ctx: CommandContext
-): CommandResult {
-  const { seeds, division, playoff3rd4th } = config;
-  const size = seeds.length;
-  const swiss = pod.rounds.filter(r => r.kind === 'swiss').at(-1) as Round;
-  const existing = pod.rounds.find(r => r.kind === 'elimination');
-  if (existing && (pod.rounds.at(-1) !== existing || existing.matches.some(m => m.outcome !== 'pending'))) {
-    return fail('The top cut has started; finish configuring divisions before entering results');
-  }
+  const latest = latestRound(pod) as Round;
+  const closed = withRound(pod, { ...latest, status: 'finished', clockStartedAt: null });
   const pairings = pairTopCut(seeds);
-  const seedOf = new Map(seeds.map((id, i) => [id, i + 1]));
-  const orderOf = new Map(pairings.flatMap(p => [p.p1, p.p2]).map((id, i) => [id, i + 1]));
-  const players = tournament.players.map(p =>
-    seedOf.has(p.id) ? { ...p, seed: seedOf.get(p.id)!, order: orderOf.get(p.id)! } : p
-  );
-  const divisionOf = divisionLookup(tournament, ctx.season);
-  const cutDivision = division ?? divisionOf(seeds[0] as string);
-  const divisionCuts = isDivision(pod.category)
-    ? pod.divisionCuts
-    : { ...pod.divisionCuts, [cutDivision]: { size, playoff3rd4th, playerIds: seeds } };
-  const fresh = pairedRound(tournament, pod, ctx, { number: swiss.number + 1, kind: 'elimination', pairings });
-  const matches = [...(existing?.matches ?? []), ...fresh.matches].sort(
-    (a, b) => DIVISIONS.indexOf(divisionOf(b.p1)) - DIVISIONS.indexOf(divisionOf(a.p1))
-  );
-  const seated = seatPairings(matches, { firstTable: pod.startingTable, timestamp: ctx.localTime });
-  const round = { ...fresh, matches: seated };
-  const rounds = [...pod.rounds.filter(r => r.kind === 'swiss'), round];
-  return done(
-    withPod(
-      { ...tournament, players },
-      { ...pod, cut: isDivision(pod.category) ? size : 0, playoff3rd4th, divisionCuts, rounds }
-    )
-  );
+  const number = latest.number + 1;
+  if (!only || !division) {
+    const round = pairedRound(tournament, pod, ctx, { number, kind: 'elimination', pairings });
+    return done(withPod(tournament, { ...closed, cut: size, playoff3rd4th, rounds: [...closed.rounds, round] }));
+  }
+  const cut = divisionCutPod(pod, division, seeds, playoff3rd4th);
+  const round = pairedRound(tournament, cut, ctx, { number, kind: 'elimination', pairings });
+  const opened = withPod(tournament, closed);
+  return done({ ...opened, pods: [...opened.pods, { ...cut, rounds: [round] }] });
 }
 
 function updateInfo(
@@ -910,7 +795,7 @@ const HANDLERS: Handlers = {
       ...p,
       firstName: c.firstName.trim() || p.firstName,
       lastName: c.lastName.trim() || p.lastName,
-      birthDate: c.birthDate.trim(),
+      birthDate: yearOnlyBirthDate(c.birthDate),
       modified: ctx.localTime
     })),
   removePlayer: (t, c) => removePlayer(t, c.id),
@@ -941,8 +826,7 @@ const ROSTER: ReadonlySet<Command['type']> = new Set([
   'updateInfo'
 ]);
 
-export function applyCommand(input: Tournament, command: Command, ctx: CommandContext): CommandResult {
-  const tournament = normalizeCutPods(input);
+export function applyCommand(tournament: Tournament, command: Command, ctx: CommandContext): CommandResult {
   const handler = HANDLERS[command.type] as (t: Tournament, c: Command, x: CommandContext) => CommandResult;
   const result = handler(tournament, command, ctx);
   if (!result.ok || !ROSTER.has(command.type)) {

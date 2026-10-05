@@ -1,0 +1,57 @@
+/* A store's details and league nights as fields, shared by the store
+   application and store settings. */
+
+/* ---------- Store details ---------- */
+.tm-store-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+.tm-store-wide {
+  grid-column: 1 / -1;
+}
+
+/* ---------- League nights ---------- */
+.tm-nights {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+.tm-night-list {
+  display: grid;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tm-night {
+  display: grid;
+  grid-template-columns: 140px 120px minmax(0, 1fr) 88px auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--rule);
+}
+.tm-night:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.tm-night .tm-select {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .tm-store-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tm-night {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tm-night > .tm-input:not(.tm-night-time, .tm-night-fee) {
+    grid-column: 1 / -1;
+  }
+  .tm-night > .btn {
+    justify-self: start;
+  }
+}

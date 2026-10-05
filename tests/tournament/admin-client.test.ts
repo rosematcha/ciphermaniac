@@ -42,7 +42,7 @@ test('each admin call goes to its endpoint with its body', async () => {
   await decideApplication('a2', 'reject', 'Send the certificate');
   await fetchRoleHolders();
   await setOrganizerAccess('u1', 'revoked');
-  await setOrganizerAccess('u1', 'organizer');
+  await setOrganizerAccess('u1', 'community');
   await findAccounts(' 7200001 ');
   await movePopId('7200001', 'u2');
   await movePopId('7200001', null);
@@ -53,7 +53,7 @@ test('each admin call goes to its endpoint with its body', async () => {
     { url: '/api/admin/applications/a2', method: 'POST', body: { decision: 'reject', note: 'Send the certificate' } },
     { url: '/api/admin/organizers', method: 'GET', body: undefined },
     { url: '/api/admin/organizers/u1', method: 'POST', body: { role: 'revoked' } },
-    { url: '/api/admin/organizers/u1', method: 'POST', body: { role: 'organizer' } },
+    { url: '/api/admin/organizers/u1', method: 'POST', body: { role: 'community' } },
     { url: '/api/admin/accounts?popId=7200001', method: 'GET', body: undefined },
     { url: '/api/admin/pop-ids', method: 'POST', body: { popId: '7200001', accountId: 'u2' } },
     { url: '/api/admin/pop-ids', method: 'POST', body: { popId: '7200001', accountId: null } }

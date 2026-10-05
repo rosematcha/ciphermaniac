@@ -94,7 +94,7 @@ test('the public page shows the top cut as a table, or as a bracket kept in its 
   await expect(bracket.locator('.tm-bracket-col').first().locator('.tm-bracket-match')).toHaveCount(4);
   // The quarterfinal winners are through to semifinals not paired yet: seeds 1 and 4, 2 and 3.
   const semis = bracket.locator('.tm-bracket-col').nth(1);
-  await expect(semis.locator('.tm-bracket-seed')).toHaveText(['1', '5', '3', '7']);
+  await expect(semis.locator('.tm-bracket-seed')).toHaveText(['1', '4', '2', '3']);
   await expect(semis.getByRole('group', { name: 'Not paired yet' })).toHaveCount(2);
   await expect(page.locator('.tm-matches')).toHaveCount(0);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -149,13 +149,23 @@ test('the console looks at the top cut as a bracket, and enters results in the t
     settings: SETTINGS,
     decks: {},
     role: 'owner',
-    staffToken: 'invite'
+    staffToken: 'invite',
+    store: 'store-1'
   };
   await page.route('**/api/**', route => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/me') {
       const user = { id: 'u1', name: 'Organizer', avatar: null, popId: null, firstName: null, lastName: null };
-      const account = { ...user, birthDate: null, role: 'organizer', publicSlug: null, providers: ['dev'] };
+      const account = {
+        ...user,
+        birthDate: null,
+        role: 'community',
+        stores: [],
+        handle: 'organizer',
+        publicProfile: false,
+        profileName: 'real',
+        providers: ['dev']
+      };
       return route.fulfill({ json: { user: account, providers: ['dev'] } });
     }
     if (url.pathname === `/api/tournaments/${CODE}/manage`) {

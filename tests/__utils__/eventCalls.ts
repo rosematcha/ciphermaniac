@@ -6,6 +6,7 @@
 
 import assert from 'node:assert/strict';
 
+import * as me from '../../functions/api/me.ts';
 import * as commands from '../../functions/api/tournaments/[code]/commands.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
 import * as report from '../../functions/api/tournaments/[code]/report.ts';
@@ -22,15 +23,27 @@ export const at = (code: string) => ({ code });
 
 /** The event helpers, calling through `hit` (see apiCalls). */
 export function eventCalls(hit: ReturnType<typeof apiCalls>['hit']) {
-  /** Starts an event as the organizer signed in under `cookie`, with `body` laid over a Swiss event's. */
+  /** The first store the account signed in under `cookie` belongs to; null for none. */
+  async function storeOf(cookie: string): Promise<string | null> {
+    const stores = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie })).json.user?.stores as
+      { id: string }[] | undefined;
+    return stores?.[0]?.id ?? null;
+  }
+
+  /**
+   * Starts an event as the organizer signed in under `cookie`, with `body`
+   * laid over a Swiss event's: for its store when it belongs to one and
+   * `body` names none, as its own otherwise.
+   */
   async function newEvent(cookie: string, body: Record<string, unknown> = {}): Promise<string> {
+    const store = 'store' in body ? {} : { store: await storeOf(cookie) };
     const created = await hit(
       tournaments.onRequestPost as Handler,
       '/api/tournaments',
       {},
-      { method: 'POST', cookie, body: { mode: 'swiss', name: 'Test Cup', ...body } }
+      { method: 'POST', cookie, body: { mode: 'swiss', name: 'Test Cup', ...store, ...body } }
     );
-    assert.equal(created.status, 201);
+    assert.equal(created.status, 201, JSON.stringify(created.json));
     return created.json.code as string;
   }
 
@@ -75,5 +88,5 @@ export function eventCalls(hit: ReturnType<typeof apiCalls>['hit']) {
   const view = async (code: string, cookie?: string) =>
     (await hit(event.onRequestGet as Handler, `/api/tournaments/${code}`, at(code), { cookie })).json as TournamentView;
 
-  return { newEvent, newSwiss, send, addPlayers, settle, playerSays, view };
+  return { newEvent, newSwiss, send, addPlayers, settle, playerSays, view, storeOf };
 }

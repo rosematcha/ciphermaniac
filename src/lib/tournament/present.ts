@@ -26,14 +26,7 @@ import {
   swissStandings,
   tallySwiss
 } from '../../../shared/tournament/standings';
-import {
-  attendees,
-  cutPodOf,
-  divisionBrackets,
-  latestRound,
-  livePods,
-  swissAttendance
-} from '../../../shared/tournament/rounds';
+import { attendees, cutPodOf, latestRound, livePods, swissAttendance } from '../../../shared/tournament/rounds';
 import { ordinal } from '../format';
 import { eventTypeOf, recommendedStructure } from '../../../shared/tournament/structure';
 import {
@@ -82,36 +75,14 @@ export function roundLabel(round: Round, pod: Pod): string {
   if (round.kind === 'swiss') {
     return `Round ${round.number}`;
   }
-  return cutStageLabel(bracketSize(pod, round) * 2);
-}
-
-function bracketSize(pod: Pod, round: Round): number {
-  const cuts = divisionBrackets(pod);
-  return cuts.length
-    ? Math.max(
-        ...cuts.map(
-          cut =>
-            bracketMatches(cut, cut.rounds.find(r => r.number === round.number) ?? { ...round, matches: [] }).length
-        )
-      )
-    : bracketMatches(pod, round).length;
+  return cutStageLabel(bracketMatches(pod, round).length * 2);
 }
 
 /** The winner of a finished final, or null while the event is still going. */
 export function champion(round: Round | undefined, pod: Pod): string | null {
-  if (round?.kind !== 'elimination') {
-    return null;
-  }
-  const cuts = divisionBrackets(pod);
-  if (cuts.length && cuts.some(cut => bracketMatches(cut, latestRound(cut)!).length !== 1)) {
-    return null;
-  }
-  const selected = Object.keys(pod.divisionCuts ?? {}).length;
-  if (selected > cuts.length) {
-    return null;
-  }
-  const bracket = bracketMatches(cuts[0] ?? pod, cuts.length ? latestRound(cuts[0])! : round);
-  return bracket.length === 1 ? (eliminationResult(bracket[0]!)?.winner ?? null) : null;
+  const bracket = round?.kind === 'elimination' ? bracketMatches(pod, round) : [];
+  const [final] = bracket;
+  return final && bracket.length === 1 ? (eliminationResult(final)?.winner ?? null) : null;
 }
 
 /** Where a pod's current round stands: how many tables are still playing, and any champion. */
@@ -132,7 +103,7 @@ export function podProgress(pod: Pod, pending: readonly PendingResult[]): PodPro
   const played = round?.matches.filter(m => m.p2 !== null) ?? [];
   const open = round ? played.filter(m => shownOutcome(m, pod, round, pending).outcome === 'pending').length : 0;
   const label = round ? roundLabel(round, pod) : '';
-  const next = round?.kind === 'elimination' ? nextStageName(bracketSize(pod, round)) : '';
+  const next = round?.kind === 'elimination' ? nextStageName(bracketMatches(pod, round).length) : '';
   return { round, tables: played.length, open, champion: champion(round, pod), label, next };
 }
 
@@ -333,11 +304,7 @@ export function shownOutcome(
     return { outcome: match.outcome, unconfirmed: false };
   }
   const entered = pending.find(
-    p =>
-      (p.pod === pod.category || p.pod === pod.cutOf) &&
-      p.round === round.number &&
-      p.table === match.table &&
-      p.p1 === match.p1
+    p => p.pod === pod.category && p.round === round.number && p.table === match.table && p.p1 === match.p1
   );
   return entered ? { outcome: entered.outcome, unconfirmed: true } : { outcome: 'pending', unconfirmed: false };
 }
@@ -367,7 +334,7 @@ function plannedCut(attendance: number, active: number, type: EventType): number
 function standingsOf(tournament: Tournament, pod: Pod, only?: ReadonlySet<string>, bracket?: Pod) {
   const played = bracket ?? pod;
   const rows = placeFinals(played, swissStandings(pod, tournament.players, only ? { only } : {}));
-  const cutStarted = (only ? bracket : played)?.rounds.some(round => round.kind === 'elimination') === true;
+  const cutStarted = played.rounds.some(round => round.kind === 'elimination');
   const attendance = attendees(pod).filter(id => !only || only.has(id)).length;
   const active = rows.filter(row => !row.dropped).length;
   return { rows, cut: cutStarted ? played.cut : plannedCut(attendance, active, eventTypeOf(tournament)), cutStarted };

@@ -12,6 +12,7 @@
 
 import { createDataClient, FETCH_TTL_MS } from './client';
 import { expandLocals } from '../../../shared/events/locals';
+import { STORES_INDEX_KEY, type StoresIndex } from '../../../shared/events/stores';
 import {
   LOCALS_INDEX_KEY,
   type LocalsCell,
@@ -63,6 +64,12 @@ export async function fetchLocatorEvents(index: LocatorIndex, cells: readonly st
     wanted.map(key => client.fetchJson<LocatorCell>(`/${locatorCellPath(index.generation, key)}`))
   );
   return loaded.flatMap(cell => (cell && cell.version === 1 ? cell.events : []));
+}
+
+/** The stores that run their events on Ciphermaniac, or null when none is published (shared/events/storeNights.ts). */
+export async function fetchStoresIndex(): Promise<StoresIndex | null> {
+  const index = await client.fetchJsonOptional<StoresIndex>(indexPath(STORES_INDEX_KEY));
+  return index?.version === 1 ? index : null;
 }
 
 /** The locals index, or null when none has been published. */

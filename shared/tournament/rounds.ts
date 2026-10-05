@@ -3,19 +3,9 @@
  * in, and turning pairings into table-numbered matches.
  */
 
-import { divisionLookup } from './divisions.js';
 import type { Pairing, PairingHistory } from './pairing.js';
 import { matchPoints, tallySwiss } from './standings.js';
-import {
-  type Division,
-  DIVISIONS,
-  isDivision,
-  type Match,
-  type Pod,
-  type PodCategory,
-  type Round,
-  type Tournament
-} from './types.js';
+import type { Division, Match, Pod, PodCategory, Round, Tournament } from './types.js';
 
 /** The pod's current round: the last one paired. */
 export function latestRound(pod: Pod | undefined): Round | undefined {
@@ -38,100 +28,20 @@ export function podOf(tournament: Tournament, playerId: string): Pod | undefined
 
 /** The pods playing the divisions' top cuts out of `pod`, a pod of several divisions. */
 export function cutPodsOf(tournament: Tournament, pod: Pod): Pod[] {
-  return DIVISIONS.flatMap(division => {
-    const cut = cutPodOf(tournament, pod, division);
-    return cut ? [cut] : [];
-  });
+  return tournament.pods.filter(p => p.cutOf === pod.category);
 }
 
-/** A read-only view of one division's bracket in the shared pod. */
+/** The pod playing `division`'s top cut out of `pod`, once it has started. */
 export function cutPodOf(tournament: Tournament, pod: Pod, division: Division): Pod | undefined {
-  const legacy = tournament.pods.find(p => p.cutOf === pod.category && p.category === division);
-  if (legacy) {
-    return legacy;
-  }
-  const cut = pod.divisionCuts?.[division];
-  if (!cut) {
-    return undefined;
-  }
-  const of = divisionLookup(tournament);
-  const ids = cut.playerIds ?? pod.playerIds.filter(id => of(id) === division);
-  return divisionBracket(pod, division, cut, ids);
+  return tournament.pods.find(p => p.cutOf === pod.category && p.category === division);
 }
 
-function divisionBracket(
-  pod: Pod,
-  division: Division,
-  cut: { size: number; playoff3rd4th: boolean },
-  ids: string[]
-): Pod | undefined {
-  const { divisionCuts: _cuts, ...base } = pod;
-  const only = new Set(ids);
-  const rounds = pod.rounds
-    .filter(r => r.kind === 'elimination')
-    .map(r => ({ ...r, matches: r.matches.filter(m => only.has(m.p1)) }))
-    .filter(r => r.matches.length > 0);
-  return rounds.length
-    ? {
-        ...base,
-        category: division,
-        cutOf: pod.category,
-        cut: cut.size,
-        playoff3rd4th: cut.playoff3rd4th,
-        playerIds: ids,
-        rounds
-      }
-    : undefined;
-}
-
-/** Division views using persisted membership, also usable after public IDs replace POP IDs. */
-export function divisionBrackets(pod: Pod): Pod[] {
-  return DIVISIONS.flatMap(d => {
-    const cut = pod.divisionCuts?.[d];
-    const view = cut?.playerIds && divisionBracket(pod, d, cut, cut.playerIds);
-    return view ? [view] : [];
-  });
-}
-
+/**
+ * The pods still in play: a pod of several divisions drops out once its
+ * divisions go on to their top cuts, since it has no round left to play.
+ */
 export function livePods(tournament: Tournament): Pod[] {
   return tournament.pods.filter(pod => !tournament.pods.some(p => p.cutOf === pod.category));
-}
-
-/** Fold old site documents into TOM's one-pod, one-round-list representation. */
-export function normalizeCutPods(tournament: Tournament): Tournament {
-  if (!tournament.pods.some(p => p.cutOf)) {
-    return tournament;
-  }
-  const pods = tournament.pods
-    .filter(p => !p.cutOf)
-    .map(pod =>
-      mergeCutPods(
-        pod,
-        tournament.pods.filter(p => p.cutOf === pod.category)
-      )
-    );
-  return { ...tournament, pods };
-}
-
-function mergeCutPods(pod: Pod, cuts: Pod[]): Pod {
-  if (!cuts.length) {
-    return pod;
-  }
-  const divisionCuts = { ...pod.divisionCuts };
-  const rounds = new Map(pod.rounds.map(r => [r.number, r]));
-  for (const cut of [...cuts].sort(
-    (a, b) => DIVISIONS.indexOf(b.category as Division) - DIVISIONS.indexOf(a.category as Division)
-  )) {
-    if (isDivision(cut.category)) {
-      divisionCuts[cut.category] = { size: cut.cut, playoff3rd4th: cut.playoff3rd4th, playerIds: cut.playerIds };
-    }
-    for (const round of cut.rounds) {
-      const kept = rounds.get(round.number);
-      const matches = [...(kept?.matches ?? []), ...round.matches];
-      rounds.set(round.number, { ...round, matches, status: matches.every(isReported) ? 'finished' : 'paired' });
-    }
-  }
-  return { ...pod, divisionCuts, rounds: [...rounds.values()].sort((a, b) => a.number - b.number) };
 }
 
 /**
@@ -141,7 +51,7 @@ function mergeCutPods(pod: Pod, cuts: Pod[]): Pod {
  */
 export function withSwiss(tournament: Tournament, pod: Pod): Pod {
   const swiss = pod.cutOf && tournament.pods.find(p => p.category === pod.cutOf);
-  return swiss ? { ...pod, rounds: [...swiss.rounds.filter(r => r.kind === 'swiss'), ...pod.rounds] } : pod;
+  return swiss ? { ...pod, rounds: [...swiss.rounds, ...pod.rounds] } : pod;
 }
 
 /**
@@ -153,16 +63,12 @@ export function playerPod(tournament: Tournament, playerId: string): Pod | undef
   const theirs = tournament.pods.filter(pod => pod.playerIds.includes(playerId));
   const swiss = theirs.find(pod => !pod.cutOf);
   const cut = theirs.find(pod => pod.cutOf);
-  if (swiss?.divisionCuts) {
-    const view = cutPodsOf(tournament, swiss).find(p => p.playerIds.includes(playerId));
-    return view ? withSwiss(tournament, view) : { ...swiss, rounds: swiss.rounds.filter(r => r.kind === 'swiss') };
-  }
   return swiss && cut ? { ...swiss, rounds: [...swiss.rounds, ...cut.rounds] } : (swiss ?? cut);
 }
 
 /** Whether any round has been paired: before that the event is still taking players. */
 export function hasStarted(tournament: Tournament): boolean {
-  return tournament.startedAt !== undefined || tournament.pods.some(pod => pod.rounds.length > 0);
+  return tournament.pods.some(pod => pod.rounds.length > 0);
 }
 
 export function isReported(match: Match): boolean {
@@ -256,9 +162,6 @@ export function joinedLate(pod: Pod | undefined, id: string): boolean {
  * Handbook §5.5.6).
  */
 export function attendees(pod: Pod): string[] {
-  if (pod.startingPlayerIds) {
-    return pod.startingPlayerIds;
-  }
   const first = pod.rounds.find(round => round.kind === 'swiss');
   if (!first) {
     return pod.playerIds;
@@ -270,8 +173,7 @@ export function attendees(pod: Pod): string[] {
 
 /** How many players a pod's Swiss rounds are planned on (see attendees). */
 export function swissAttendance(pod: Pod): number {
-  const counts = Object.values(pod.divisionCounts ?? {});
-  return counts.length ? Math.max(...counts) : attendees(pod).length;
+  return attendees(pod).length;
 }
 
 /** Players in the pod who have not dropped. */
@@ -335,7 +237,7 @@ export function seatPairings(pairings: readonly Pairing[], stamp: MatchStamp): M
 
 /** Swiss pairings as table-numbered matches (see seatPairings), best at the lowest table. */
 export function toMatches(pairings: readonly Pairing[], stamp: MatchStamp): Match[] {
-  return seatPairings(pairings, stamp);
+  return sortMatches(seatPairings(pairings, stamp));
 }
 
 /** Tables first, the bye and missed-round entries last. */

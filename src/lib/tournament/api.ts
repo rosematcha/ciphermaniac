@@ -5,7 +5,7 @@
  */
 
 import type { AccountRole } from '../../../shared/accounts/roles';
-import type { HistoryEntry, PublicProfile } from '../../../shared/accounts/types';
+import type { HistoryEntry, MyStore, PublicProfile } from '../../../shared/accounts/types';
 import type { Command } from '../../../shared/tournament/commands';
 import { tomDateTime } from '../../../shared/tournament/divisions';
 import type { PlayerClaim } from '../../../shared/tournament/identify';
@@ -43,16 +43,22 @@ export const errorText = (err: unknown): string => (err instanceof Error ? err.m
 
 export interface Me {
   id: string;
+  /** What the site calls the account: its real name, or its username without one. */
   name: string;
+  handle: string;
   avatar: string | null;
   popId: string | null;
   firstName: string | null;
   lastName: string | null;
   birthDate: string | null;
   role: AccountRole | null;
-  /** The public profile's address, /u/<slug>; null while history is private. */
-  publicSlug: string | null;
+  /** Whether the account's history is public at /u/<handle>. */
+  publicProfile: boolean;
+  /** Which name the public profile shows. */
+  profileName: 'real' | 'handle';
   providers: Provider[];
+  /** The stores the account belongs to, and as what. */
+  stores: MyStore[];
 }
 
 export type Provider = 'google' | 'discord' | 'dev';
@@ -92,18 +98,22 @@ export const json = (method: string, body: unknown): RequestInit => ({ method, b
 export const fetchSession = () => call<Session>('/api/me');
 
 export const saveProfile = (profile: PlayerProfile) => call<{ user: Me }>('/api/me', json('PUT', profile));
-export const saveAccountName = (name: string) => call<{ user: Me }>('/api/me', json('PATCH', { name }));
+export const saveHandle = (handle: string) => call<{ user: Me }>('/api/me', json('PATCH', { handle }));
 
 export const signOut = () => call<null>('/api/auth/logout', { method: 'POST' });
 
 /** The signed-in account's History, newest first. */
 export const fetchHistory = () => call<{ entries: HistoryEntry[] }>('/api/history');
 
-/** A public profile by its address; not found once its account turns it off. */
-export const fetchProfile = (slug: string) => call<PublicProfile>(`/api/profiles/${encodeURIComponent(slug)}`);
+/** A public profile by its username; not found while its account keeps it off. */
+export const fetchProfile = (handle: string) => call<PublicProfile>(`/api/profiles/${encodeURIComponent(handle)}`);
 
-/** Turns the account's public profile on, at a new address, or off. */
+/** Turns the account's public profile on or off; its address stays its username either way. */
 export const setPublicProfile = (on: boolean) => call<{ user: Me }>('/api/me', json('PATCH', { publicProfile: on }));
+
+/** Which name the public profile shows. */
+export const setProfileName = (profileName: Me['profileName']) =>
+  call<{ user: Me }>('/api/me', json('PATCH', { profileName }));
 
 export function signInUrl(provider: Provider, next: string, name?: string): string {
   const query = new URLSearchParams({ next, ...(name ? { name } : {}) });
@@ -122,13 +132,20 @@ export interface SwissSetup {
   roundTime?: number;
   eventType?: EventType;
   settings?: Partial<TournamentSettings>;
+  /** The store that runs it; null for the account's own. */
+  store?: string | null;
+  /** The organizer's own date, for an event set to no start time. */
+  today?: string;
+  /** The store's pokemon.com listing it starts from, by sanction ID. */
+  sanctionId?: string;
 }
 
 export const createSwiss = (setup: SwissSetup) =>
   call<{ code: string }>('/api/tournaments', json('POST', { mode: 'swiss', ...setup }));
 
-export const createFromTdf = (tournament: Tournament, settings?: Partial<TournamentSettings>) =>
-  call<{ code: string }>('/api/tournaments', json('POST', { mode: 'tom', tournament, settings }));
+/** A TOM event, which only a store runs. */
+export const createFromTdf = (tournament: Tournament, store: string | null, settings?: Partial<TournamentSettings>) =>
+  call<{ code: string }>('/api/tournaments', json('POST', { mode: 'tom', tournament, settings, store }));
 
 const base = (code: string) => `/api/tournaments/${encodeURIComponent(code)}`;
 

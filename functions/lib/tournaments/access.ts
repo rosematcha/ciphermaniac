@@ -160,7 +160,8 @@ export function manageView(access: StaffAccess): Manage {
     settings: row.settings,
     decks: row.decks,
     role,
-    staffToken: role === 'owner' ? row.staffToken : null
+    staffToken: role === 'owner' ? row.staffToken : null,
+    store: row.storeId
   };
 }
 

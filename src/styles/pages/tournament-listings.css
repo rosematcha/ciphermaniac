@@ -1,0 +1,78 @@
+/* A store's pokemon.com listings above the setup, one radio row each. */
+.tm-listings {
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+.tm-listings-head {
+  float: left;
+  width: 100%;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+.tm-listing {
+  clear: both;
+  display: grid;
+  grid-template-columns: 18px 96px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+.tm-listings-head + .tm-listing {
+  border-top: 0;
+}
+.tm-listing:hover {
+  background: var(--surface-2);
+}
+.tm-listing.is-on {
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+.tm-listing input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.tm-listing-day {
+  color: var(--muted);
+}
+.tm-listing-name {
+  min-width: 0;
+}
+.tm-listing-kind.cup {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.tm-listing-kind.prerelease {
+  background: color-mix(in srgb, var(--chart-2) 18%, transparent);
+  border-color: color-mix(in srgb, var(--chart-2) 30%, transparent);
+}
+.tm-listing-kind.local {
+  background: color-mix(in srgb, var(--chart-3) 18%, transparent);
+  border-color: color-mix(in srgb, var(--chart-3) 30%, transparent);
+}
+@media (max-width: 640px) {
+  .tm-listing {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    grid-template-areas: 'pick day kind' 'pick name name';
+    row-gap: 2px;
+  }
+  .tm-listing input {
+    grid-area: pick;
+  }
+  .tm-listing-day {
+    grid-area: day;
+  }
+  .tm-listing-name {
+    grid-area: name;
+  }
+  .tm-listing-kind {
+    grid-area: kind;
+  }
+}

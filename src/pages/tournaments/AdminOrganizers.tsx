@@ -17,14 +17,14 @@ import { ErrorLine } from './Field';
 
 const eventCount = (n: number) => `${n} event${n === 1 ? '' : 's'}`;
 
-/** Revoke for an Organizer, Reinstate for a revoked one; nothing for an Admin. */
+/** Revoke for a Community organizer, Reinstate for a revoked one; nothing for an Admin. */
 function Access(props: { account: RoleHolder; onChanged: (account: RoleHolder) => void }) {
   const [error, setError] = createSignal<string | null>(null);
-  const revoking = () => props.account.role === 'organizer';
+  const revoking = () => props.account.role === 'community';
   async function change() {
     setError(null);
     try {
-      const { account } = await setOrganizerAccess(props.account.id, revoking() ? 'revoked' : 'organizer');
+      const { account } = await setOrganizerAccess(props.account.id, revoking() ? 'revoked' : 'community');
       props.onChanged(account);
     } catch (err) {
       setError(errorText(err));

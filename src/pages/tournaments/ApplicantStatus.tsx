@@ -28,7 +28,8 @@ const STAGE_WORDS: Record<ApplicantStage, string> = {
   none: '',
   pending: 'Application pending',
   rejected: 'Not approved',
-  organizer: 'Organizer',
+  store: 'Store approved',
+  community: 'Community organizer',
   revoked: 'Organizer access removed',
   admin: 'Admin'
 };
@@ -112,7 +113,7 @@ function StageStep(props: {
       <Match when={(props.stage === 'rejected' || props.stage === 'revoked') && props.again}>
         <ApplyAgain onApply={props.onApplyAgain} />
       </Match>
-      <Match when={props.stage === 'organizer'}>
+      <Match when={props.stage === 'store' || props.stage === 'community'}>
         <A class='btn btn-secondary' href='/host'>
           Your events
         </A>
@@ -142,7 +143,12 @@ export function ApplicantStatus(props: {
   onApplyAgain?: () => void;
   onChanged: () => void;
 }) {
-  const note = () => (props.stage === 'rejected' ? props.application?.note : null);
+  const note = () =>
+    props.stage === 'rejected'
+      ? props.application?.note
+      : props.stage === 'pending'
+        ? "Thank you for submitting an access request! We'll follow up with you shortly."
+        : null;
   return (
     <div class='tm-box tm-applicant'>
       <div class='tm-box-bar'>

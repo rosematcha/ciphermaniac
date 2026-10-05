@@ -1,7 +1,9 @@
-/** Reading and writing the two cookies sign-in uses. */
+/** Reading and writing the cookies sign-in uses. */
 
 export const SESSION_COOKIE = 'cm_session';
 export const OAUTH_COOKIE = 'cm_oauth';
+/** A sign-up waiting on its age check (see signup.ts). */
+export const SIGNUP_COOKIE = 'cm_signup';
 
 export function readCookie(request: Request, name: string): string | null {
   const header = request.headers.get('Cookie') ?? '';

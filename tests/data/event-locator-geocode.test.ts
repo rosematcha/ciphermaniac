@@ -12,7 +12,8 @@ import {
   fetchLocalEvents,
   fetchLocalsIndex,
   fetchLocatorEvents,
-  fetchLocatorIndex
+  fetchLocatorIndex,
+  fetchStoresIndex
 } from '../../src/lib/data/eventLocator.ts';
 import type { LocalsIndex, LocatorIndex } from '../../shared/events/types.ts';
 
@@ -215,6 +216,17 @@ test('locals cells are optional: a missing one is an empty area, and no index me
   );
   assert.ok(requested.includes('/events/locals/v1/cells/10_15.json'), 'a listed but missing cell is tolerated');
   assert.ok(!requested.some(path => path.includes('10_20')), 'unlisted cells are never requested');
+});
+
+test('the stores index is read from its own path', async () => {
+  const requested: string[] = [];
+  const index = { version: 1, updatedAt: '2026-10-04T00:00:00.000Z', stores: [] };
+  mock.method(globalThis, 'fetch', async (url: string | URL) => {
+    requested.push(new URL(String(url), 'https://r2.test').pathname);
+    return new Response(JSON.stringify(index));
+  });
+  assert.deepEqual(await fetchStoresIndex(), index);
+  assert.ok(requested.some(path => path.endsWith('/events/stores/v1/index.json')));
 });
 
 test('an index in an unknown format is refused', async () => {

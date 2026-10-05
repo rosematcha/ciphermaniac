@@ -2,7 +2,15 @@ import { createEffect, createMemo, createResource, createSignal, For, on, onClea
 import { useSearchParams } from '@solidjs/router';
 import { cellKeyFor, cellsForCircle } from '../../shared/events/cells';
 import type { EventKind } from '../../shared/events/types';
-import { fetchLocalEvents, fetchLocalsIndex, fetchLocatorEvents, fetchLocatorIndex } from '../lib/data/eventLocator';
+import {
+  fetchLocalEvents,
+  fetchLocalsIndex,
+  fetchLocatorEvents,
+  fetchLocatorIndex,
+  fetchStoresIndex
+} from '../lib/data/eventLocator';
+import { addDays } from '../../shared/events/locals';
+import { withStoreNights } from '../../shared/events/storeNights';
 import { latestValue, resolved } from '../lib/resource';
 import { filterEvents, groupByDay, type VenueMarker, venueMarkers } from '../lib/events/filter';
 import { monthDay } from '../lib/events/format';
@@ -65,6 +73,8 @@ export function EventLocatorPage() {
   });
 
   const [index, { refetch: retryIndex }] = createResource(fetchLocatorIndex);
+  // Small, and needed to mark a store's Cups as well as for its league nights; a failed read only loses those.
+  const [storesIndex] = createResource(() => fetchStoresIndex().catch(() => null));
   // Locals are their own artifact, off by default, so nothing about them is
   // fetched until the Locals filter is on. The chip is offered regardless.
   const localsOn = createMemo(() => settings().kinds.includes('local'));
@@ -114,13 +124,22 @@ export function EventLocatorPage() {
     return localsOn() && coversCentre(value) ? (value?.events ?? []) : [];
   };
 
+  /** The last date locals are shown through: the locals index's own horizon, three weeks without one. */
+  const localsHorizon = () => {
+    const li = resolved(localsIndex);
+    return li ? addDays(li.updatedAt.slice(0, 10), li.horizonDays) : addDays(today(), 21);
+  };
   const placed = createMemo(() => {
     const c = center();
     const events = usable();
     if (!c || !events) {
       return [];
     }
-    return filterEvents([...events, ...usableLocals()], {
+    const merged = withStoreNights(events, localsOn() ? usableLocals() : null, latestValue(storesIndex) ?? null, {
+      today: today(),
+      horizon: localsHorizon()
+    });
+    return filterEvents([...merged.listed, ...merged.locals], {
       center: c,
       radiusKm: radiusKm(),
       kinds: kinds(),

@@ -84,7 +84,7 @@ async function keep(
     db
       .prepare(
         'INSERT INTO proof_uploads (user_id, key, type, size) SELECT id, ?2, ?3, ?4 FROM users WHERE id = ?1 ' +
-          "AND (role IS NULL OR role = 'revoked') AND pop_id IS ?5 AND first_name IS ?6 AND last_name IS ?7 " +
+          'AND pop_id IS ?5 AND first_name IS ?6 AND last_name IS ?7 ' +
           'AND birth_date IS ?8 ' +
           "AND NOT EXISTS (SELECT 1 FROM applications WHERE user_id = ?1 AND status = 'pending') " +
           'ON CONFLICT (user_id) DO UPDATE SET key = excluded.key, type = excluded.type, size = excluded.size'

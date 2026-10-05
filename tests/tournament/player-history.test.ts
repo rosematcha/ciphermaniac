@@ -178,7 +178,7 @@ describe('one player’s event, read from the public copy as History reads it', 
   test('a finished event with a top cut: the cut’s rounds by name, and places from the cut', () => {
     const t = juniorsCutApart();
     const { view, keys } = copyOf(t, { mode: 'swiss', settings: { finished: true } });
-    const final = t.pods[0]?.rounds.at(-1)?.matches[0];
+    const final = t.pods.find(p => p.category === 'junior')?.rounds.at(-1)?.matches[0];
     const champion = playerResult(view, keys[final?.p1 ?? ''] ?? '');
     const finalist = playerResult(view, keys[final?.p2 ?? ''] ?? '');
     assert.deepEqual([champion?.place, finalist?.place], [1, 2]);

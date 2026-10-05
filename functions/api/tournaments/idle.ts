@@ -2,7 +2,8 @@
  * POST /api/tournaments/idle — marks events idle after two hours without a
  * write. Completed events end then; abandoned events end after seven days.
  * A scheduled workflow calls this with the sweep token because Pages Functions
- * have no timer.
+ * have no timer, so it also deletes sign-ups that ran out waiting for their
+ * age check (lib/auth/signup.ts).
  */
 
 import { divisionLookup } from '../../../shared/tournament/divisions.js';
@@ -13,6 +14,8 @@ import { DIVISIONS, isDivision, type Pod, type Round } from '../../../shared/tou
 import { jsonError } from '../../lib/api/responses.js';
 import type { Context } from '../../lib/auth/env.js';
 import { sha256 } from '../../lib/auth/session.js';
+import { purgeRejectedProofs } from '../../lib/auth/rejection.js';
+import { sweepSignups } from '../../lib/auth/signup.js';
 import { privateJson } from '../../lib/tournaments/access.js';
 import { publishAfter } from '../../lib/tournaments/publish.js';
 import { loadIdle, mutate, type TournamentRow } from '../../lib/tournaments/store.js';
@@ -76,9 +79,7 @@ function stagesComplete(row: TournamentRow, pod: Pod): boolean {
   if (pod.cut > 0) {
     return cutComplete(pod);
   }
-  return isDivision(pod.category)
-    ? planned.cut === 0
-    : divisionCutsPaired(row, pod) && cutPodsOf(row.tournament, pod).every(cutComplete);
+  return isDivision(pod.category) ? planned.cut === 0 : divisionCutsPaired(row, pod);
 }
 
 function podComplete(row: TournamentRow, pod: Pod): boolean {
@@ -100,6 +101,9 @@ export async function onRequestPost(context: Context): Promise<Response> {
     return jsonError('Forbidden', 403);
   }
   const now = Date.now();
+  // Sign-ups that ran out waiting for their age check go here too, so none outlives its fifteen minutes by much.
+  await sweepSignups(db, now).run();
+  await purgeRejectedProofs(db, context.env.PROOFS);
   const before = now - IDLE_END_MS;
   const expiredBefore = now - MAX_IDLE_MS;
   const ended: string[] = [];

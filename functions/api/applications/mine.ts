@@ -1,14 +1,13 @@
 /**
- * GET /api/applications/mine — the signed-in account's Application to run
- * events as it stands: its latest one, pending or decided, with the admin's
+ * GET /api/applications/mine — the signed-in account's Application for a
+ * store as it stands: its latest one, pending or decided, with the admin's
  * note; a proof it has uploaded and not yet sent; and whether it may apply
- * (a complete profile, and no Organizer or Admin role already).
+ * (a complete profile: a store's events need its organizer's POP ID).
  * DELETE /api/applications/mine — withdraws the pending Application, its
  * proof with it. A decided one stays, as the record of the decision.
  */
 
 import { profileComplete } from '../../../shared/accounts/applications.js';
-import { canApply } from '../../../shared/accounts/roles.js';
 import type { ApplicationState } from '../../../shared/accounts/types.js';
 import { dropProof, myApplication, openApplicant } from '../../lib/accounts/applications.js';
 import { jsonError, noContent } from '../../lib/api/responses.js';
@@ -26,7 +25,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
     application: latest && myApplication(latest),
     // None while an Application is pending: sending it took the upload, and no other is kept until it is decided.
     proof: upload,
-    eligible: { profile: profileComplete(user), role: canApply(user.role) }
+    eligible: { profile: profileComplete(user) }
   };
   return privateJson(state);
 }

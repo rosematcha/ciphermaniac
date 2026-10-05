@@ -25,24 +25,17 @@ export function withSiteClocks(file: Tournament, held: Tournament | null): Tourn
       ...round,
       timeLeft: kept?.timeLeft ?? fullRoundSeconds(file, round.kind),
       startTime: kept?.startTime ?? '',
-      clockStartedAt: kept?.clockStartedAt ?? null,
-      ...(kept?.startedAt === undefined ? {} : { startedAt: kept.startedAt })
+      clockStartedAt: kept?.clockStartedAt ?? null
     };
   };
   return { ...file, pods: file.pods.map(pod => ({ ...pod, rounds: pod.rounds.map(round => timed(pod, round)) })) };
 }
 
-type BareRound = Omit<Round, 'timeLeft' | 'startTime' | 'clockStartedAt' | 'startedAt'>;
+type BareRound = Omit<Round, 'timeLeft' | 'startTime' | 'clockStartedAt'>;
 type Unclocked = Omit<Tournament, 'pods'> & { pods: (Omit<Pod, 'rounds'> & { rounds: BareRound[] })[] };
 
 /** The event without its clocks: what a TOM file and the site's copy are compared on. */
 export function withoutClocks(tournament: Tournament): Unclocked {
-  const bare = ({
-    timeLeft: _left,
-    startTime: _start,
-    clockStartedAt: _at,
-    startedAt: _started,
-    ...round
-  }: Round): BareRound => round;
+  const bare = ({ timeLeft: _left, startTime: _start, clockStartedAt: _at, ...round }: Round): BareRound => round;
   return { ...tournament, pods: tournament.pods.map(pod => ({ ...pod, rounds: pod.rounds.map(bare) })) };
 }

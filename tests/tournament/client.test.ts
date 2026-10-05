@@ -32,11 +32,12 @@ import {
   removeStaff,
   reportAsPlayer,
   rotateStaffToken,
-  saveAccountName,
+  saveHandle,
   saveProfile,
   saveSettings,
   sendCommand,
   setDeck,
+  setProfileName,
   setPublicProfile,
   signInUrl,
   signOut,
@@ -117,7 +118,7 @@ test('every call goes to its endpoint with its body', async () => {
   await saveProfile(profile);
   await listTournaments();
   await createSwiss({ name: 'Cup' });
-  await createFromTdf(t);
+  await createFromTdf(t, 'store-1');
   await fetchView('ABC', 3);
   await fetchManage('ABC');
   await fetchManage('ABC', 4);
@@ -288,15 +289,17 @@ test('sign-in links carry where to return and the dev name', () => {
   assert.equal(linkUrl('discord'), '/api/auth/login/discord?next=%2Fsettings&link=1');
 });
 
-test('a public profile is read by its address, and turned on and off on the account', async () => {
-  answer(200, { name: 'Mary', avatar: null, entries: [] });
-  await fetchProfile('ABCD2345');
+test('a public profile is read by its username, and turned on and off and named on the account', async () => {
+  answer(200, { name: 'Mary', handle: 'mary', avatar: null, entries: [] });
+  await fetchProfile('rose.matcha');
   await setPublicProfile(true);
   await setPublicProfile(false);
+  await setProfileName('handle');
   assert.deepEqual(sent, [
-    { url: '/api/profiles/ABCD2345', method: 'GET', body: undefined },
+    { url: '/api/profiles/rose.matcha', method: 'GET', body: undefined },
     { url: '/api/me', method: 'PATCH', body: { publicProfile: true } },
-    { url: '/api/me', method: 'PATCH', body: { publicProfile: false } }
+    { url: '/api/me', method: 'PATCH', body: { publicProfile: false } },
+    { url: '/api/me', method: 'PATCH', body: { profileName: 'handle' } }
   ]);
 });
 
@@ -306,10 +309,10 @@ test('an account undoes its Claim at an event', async () => {
   assert.deepEqual(sent, [{ url: '/api/tournaments/ABC/claim', method: 'DELETE', body: undefined }]);
 });
 
-test('account name uses the account endpoint', async () => {
-  answer(200, { user: { name: 'Reese' } });
-  await saveAccountName('Reese');
-  assert.deepEqual(sent, [{ url: '/api/me', method: 'PATCH', body: { name: 'Reese' } }]);
+test('the username uses the account endpoint', async () => {
+  answer(200, { user: { handle: 'rosematcha' } });
+  await saveHandle('rosematcha');
+  assert.deepEqual(sent, [{ url: '/api/me', method: 'PATCH', body: { handle: 'rosematcha' } }]);
 });
 
 // ---------- the TOM file link ----------

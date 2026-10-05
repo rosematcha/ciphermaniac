@@ -1,3 +1,4 @@
+import { A } from '@solidjs/router';
 import { Show } from 'solid-js';
 import type { LocatorEvent } from '../../../shared/events/types';
 import { calendarFileName, eventCalendar } from '../../lib/events/calendar';
@@ -54,7 +55,8 @@ function downloadCalendar(event: LocatorEvent): void {
 /**
  * The store's details for one event. Registration is run by each store, so
  * the store's own registration link leads when it has one; pokemon.com holds
- * the official listing and the rest of the event's details.
+ * the official listing and the rest of the event's details. A store that runs
+ * its events on Ciphermaniac also has its page here.
  */
 export function EventDetails(props: { event: LocatorEvent; id: string }) {
   const event = () => props.event;
@@ -139,6 +141,13 @@ export function EventDetails(props: { event: LocatorEvent; id: string }) {
             <a class='btn btn-secondary' href={url()} target='_blank' rel={STORE_LINK_REL}>
               Store website
             </a>
+          )}
+        </Show>
+        <Show when={event().storeId}>
+          {id => (
+            <A class='btn btn-secondary' href={`/stores/${id()}`}>
+              Store page
+            </A>
           )}
         </Show>
         <a class='btn btn-ghost' href={directionsUrl(event())} target='_blank' rel='noopener noreferrer'>

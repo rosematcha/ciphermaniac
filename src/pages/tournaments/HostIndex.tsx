@@ -11,12 +11,14 @@
  * event starts from the .tdf TOM saves to, on desktop where TOM runs; on a
  * browser that can hold a file, the file stays linked so later saves reach
  * the site without another upload. Either way the setup (EventSetup) asks
- * the rest, in place of the lists.
+ * the rest, in place of the lists. `?new=<store>` opens the Swiss setup as
+ * that store, as store settings' Start an event does.
  */
 
-import { A, useNavigate } from '@solidjs/router';
-import { createResource, createSignal, For, lazy, Match, onMount, Show, Switch } from 'solid-js';
-import { canCreateEvents } from '../../../shared/accounts/roles';
+import { A, useNavigate, useSearchParams } from '@solidjs/router';
+import { createResource, createSignal, For, lazy, Match, onMount, Show, Switch, untrack } from 'solid-js';
+import { canRunCommunityEvents } from '../../../shared/accounts/roles';
+import { canCreateEvents } from '../../../shared/accounts/stores';
 import { parseTomDate } from '../../../shared/tournament/divisions';
 import { parseTdf } from '../../../shared/tournament/tdf';
 import type { Tournament } from '../../../shared/tournament/types';
@@ -32,8 +34,9 @@ import {
 import { canLinkFiles, pickTdf, rememberHandle, type TdfHandle } from '../../lib/tournament/tomLink';
 import { latestValue } from '../../lib/resource';
 import { eventStatus, roundCapOf } from '../../lib/tournament/present';
+import type { MyStore } from '../../../shared/accounts/types';
 import { ApplicantLine } from './ApplicantStatus';
-import { EventSetup, type Setup } from './EventSetup';
+import { EventSetup, type RunAs, type Setup } from './EventSetup';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
 import { refreshSession, session } from './session';
@@ -215,11 +218,29 @@ function LinkTdf(props: {
   );
 }
 
+/** The stores the account belongs to, each to its settings for a Manager and its page for Staff. */
+function StoreLinks(props: { stores: readonly MyStore[] }) {
+  return (
+    <For each={props.stores}>
+      {(store, i) => (
+        <>
+          <Show when={i() > 0}>
+            <span aria-hidden='true'> · </span>
+          </Show>
+          <A href={store.role === 'manager' ? `/stores/${store.id}/settings` : `/stores/${store.id}`}>
+            {store.role === 'manager' ? `${store.name} settings` : store.name}
+          </A>
+        </>
+      )}
+    </For>
+  );
+}
+
 function Organizer(props: { onOpened: (code: string) => void }) {
+  const [params, setParams] = useSearchParams<{ new?: string }>();
   const user = () => latestValue(session)?.user;
   const role = () => user()?.role ?? null;
   const [events] = createResource(user, () => listTournaments().then(result => result.tournaments));
-  const [stage, setStage] = createSignal<Stage>({ kind: 'lists' });
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const all = () => latestValue(events) ?? [];
@@ -237,7 +258,7 @@ function Organizer(props: { onOpened: (code: string) => void }) {
     setError(null);
     try {
       if (current.kind === 'tom') {
-        const { code } = await createFromTdf(current.tournament, setup.settings);
+        const { code } = await createFromTdf(current.tournament, setup.store, setup.settings);
         if (current.handle) {
           await rememberHandle(code, current.handle);
         }
@@ -262,6 +283,16 @@ function Organizer(props: { onOpened: (code: string) => void }) {
     setError(null);
     setStage({ kind: 'tom', tournament, handle });
   };
+  /** Who may run a new event: the account's active stores, then the account itself when it may. A TOM event is a store's. */
+  const runAs = (tom: boolean): RunAs[] => [
+    ...(user()?.stores ?? [])
+      .filter(store => store.status === 'active')
+      .map(store => ({ id: store.id, label: store.name })),
+    ...(!tom && canRunCommunityEvents(role()) ? [{ id: null, label: user()?.name ?? '' }] : [])
+  ];
+  /** The store `?new=` asks to start an event as, when the account may. */
+  const asked = untrack(() => runAs(false).find(option => option.id !== null && option.id === params.new)?.id ?? null);
+  const [stage, setStage] = createSignal<Stage>(asked ? { kind: 'swiss' } : { kind: 'lists' });
   /** One primary on the page: starting an event, unless an event is running, whose console is. */
   const startClass = () => (live().length > 0 ? 'btn btn-secondary' : 'btn btn-primary');
 
@@ -271,16 +302,23 @@ function Organizer(props: { onOpened: (code: string) => void }) {
         <TournamentHero
           title='Run an event'
           status={<span class='muted'>{counts()}</span>}
+          meta={
+            <Show when={(user()?.stores ?? []).length > 0}>
+              <StoreLinks stores={user()?.stores ?? []} />
+            </Show>
+          }
           action={
             <Show
-              when={canCreateEvents(role())}
+              when={canCreateEvents(role(), user()?.stores ?? [])}
               fallback={<ApplicantLine role={role()} primary={live().length === 0} />}
             >
               <span class='tm-hero-acts'>
                 <button type='button' class={startClass()} onClick={() => setStage({ kind: 'swiss' })}>
                   Start an event
                 </button>
-                <LinkTdf busy={busy()} class='btn btn-secondary' onRead={tdfRead} onError={setError} />
+                <Show when={runAs(true).length > 0}>
+                  <LinkTdf busy={busy()} class='btn btn-secondary' onRead={tdfRead} onError={setError} />
+                </Show>
               </span>
             </Show>
           }
@@ -296,12 +334,15 @@ function Organizer(props: { onOpened: (code: string) => void }) {
           mode={stage().kind === 'tom' ? 'tom' : 'swiss'}
           tdfName={(stage() as Extract<Stage, { kind: 'tom' }>).tournament?.info.name}
           tdfSanctioned={Boolean((stage() as Extract<Stage, { kind: 'tom' }>).tournament?.info.sanctionId)}
+          runAs={runAs(stage().kind === 'tom')}
+          initialRunAs={asked}
           busy={busy()}
           error={error()}
           onCreate={setup => void create(setup)}
           onCancel={() => {
             setStage({ kind: 'lists' });
             setError(null);
+            setParams({ new: undefined }, { replace: true });
           }}
         />
       </Match>

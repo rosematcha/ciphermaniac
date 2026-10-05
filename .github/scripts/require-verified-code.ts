@@ -43,7 +43,7 @@ export function assertVerifiedCode(sha: string, mainSha: string, checks: CheckRu
 }
 
 function api<T>(path: string): T {
-  return JSON.parse(execFileSync('gh', ['api', path], { encoding: 'utf8' })) as T;
+  return JSON.parse(execFileSync('gh', ['api', path], { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 })) as T;
 }
 
 async function main(): Promise<void> {

@@ -1,7 +1,7 @@
 /**
  * The admin page against mocked admin endpoints: anyone but an Admin finds
  * nothing there; an Admin approves an Application with a note, sees its
- * proof, revokes and reinstates an Organizer, and moves or clears a POP ID
+ * proof, revokes and reinstates a Community organizer, and moves or clears a POP ID
  * after looking its holder up.
  */
 
@@ -19,8 +19,11 @@ const ADMIN = {
   lastName: null,
   birthDate: null,
   role: 'admin' as AccountRole | null,
-  publicSlug: null,
-  providers: ['google']
+  handle: 'reese',
+  publicProfile: false,
+  profileName: 'real',
+  providers: ['google'],
+  stores: []
 };
 
 const DAY = Date.UTC(2026, 8, 28, 12);
@@ -38,6 +41,8 @@ function application(id: string, extra: Partial<AdminApplication> = {}): AdminAp
     applied: { popId: '7200001', firstName: 'Mary', lastName: 'Jackson' },
     hasProof: true,
     decidedBy: null,
+    store: null,
+    leagueTaken: null,
     ...extra
   };
 }
@@ -49,7 +54,7 @@ const HOLDERS: RoleHolder[] = [
     name: 'Ada Lovelace',
     email: 'ada@example.com',
     popId: '1001',
-    role: 'organizer',
+    role: 'community',
     roleAt: DAY,
     events: 1
   }
@@ -132,7 +137,7 @@ async function mockAdmin(page: Page, user: typeof ADMIN | null = ADMIN, decidedE
 const adminAsks = (asks: Asked[]) => asks.filter(a => a.path.startsWith('/api/admin/'));
 
 test('anyone but an Admin finds no admin page, and it asks for nothing', async ({ page }) => {
-  for (const user of [null, { ...ADMIN, role: null }, { ...ADMIN, role: 'organizer' as const }]) {
+  for (const user of [null, { ...ADMIN, role: null }, { ...ADMIN, role: 'community' as const }]) {
     await page.unrouteAll();
     const asks = await mockAdmin(page, user);
     await page.goto('/admin');
@@ -195,13 +200,13 @@ test('an image proof opens in a sheet; a PDF is a download', async ({ page }) =>
   );
 });
 
-test('an Admin revokes an Organizer, asked first, and reinstates them; an Admin is not changed here', async ({
+test('an Admin revokes a Community organizer, asked first, and reinstates them; an Admin is not changed here', async ({
   page
 }) => {
   const asks = await mockAdmin(page);
   await page.goto('/admin?tab=organizers');
   const ada = page.getByRole('row', { name: /Ada Lovelace/ });
-  await expect(ada).toContainText('Organizer');
+  await expect(ada).toContainText('Community organizer');
   await expect(page.getByRole('row', { name: /Reese/ }).getByRole('button')).toHaveCount(0);
   await ada.getByRole('button', { name: 'Revoke' }).click();
   await ada.getByRole('group', { name: 'Revoke access?' }).getByRole('button', { name: 'Revoke' }).click();
@@ -211,7 +216,7 @@ test('an Admin revokes an Organizer, asked first, and reinstates them; an Admin 
   await expect(ada.getByRole('button', { name: 'Revoke' })).toBeVisible();
   expect(adminAsks(asks).filter(a => a.method === 'POST')).toEqual([
     { method: 'POST', path: '/api/admin/organizers/ada', body: { role: 'revoked' } },
-    { method: 'POST', path: '/api/admin/organizers/ada', body: { role: 'organizer' } }
+    { method: 'POST', path: '/api/admin/organizers/ada', body: { role: 'community' } }
   ]);
 });
 

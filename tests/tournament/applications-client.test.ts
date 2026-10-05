@@ -16,10 +16,11 @@ import {
   fileSize,
   proofKind,
   removeProof,
-  sendApplication,
   uploadProof,
   withdrawApplication
 } from '../../src/lib/tournament/applications.ts';
+import { sendStoreApplication } from '../../src/lib/tournament/stores.ts';
+import { storeApplication } from '../__utils__/storeApplication.ts';
 
 interface Sent {
   url: string;
@@ -46,7 +47,7 @@ afterEach(() => {
 test('each applicant call goes to its endpoint, the Application as JSON', async () => {
   answer(200, { ok: true });
   await fetchApplication();
-  await sendApplication('I run a league', true);
+  await sendStoreApplication(storeApplication(), 'I run a league', true);
   answer(204, null);
   assert.equal(await removeProof(), null);
   assert.equal(await withdrawApplication(), null);
@@ -59,7 +60,11 @@ test('each applicant call goes to its endpoint, the Application as JSON', async 
       'DELETE /api/applications/mine'
     ]
   );
-  assert.deepEqual(JSON.parse(String(sent[1]?.body)), { explanation: 'I run a league', proof: true });
+  assert.deepEqual(JSON.parse(String(sent[1]?.body)), {
+    store: storeApplication(),
+    explanation: 'I run a league',
+    proof: true
+  });
   assert.deepEqual(sent[1]?.headers, { 'Content-Type': 'application/json' });
 });
 
@@ -80,13 +85,17 @@ const application = (status: MyApplication['status']): MyApplication => ({
   proofType: null,
   createdAt: 0,
   decidedAt: null,
-  note: null
+  note: null,
+  store: null
 });
 
-test('a role that runs events outranks any Application', () => {
+test('an Admin is one whatever it applied for; an approved Application is a store', () => {
   assert.equal(applicantStage('admin', application('pending')), 'admin');
-  assert.equal(applicantStage('organizer', application('rejected')), 'organizer');
-  assert.equal(applicantStage('organizer', null), 'organizer');
+  assert.equal(applicantStage(null, application('approved')), 'store');
+  assert.equal(applicantStage('community', application('approved')), 'store');
+  assert.equal(applicantStage('community', null), 'community');
+  assert.equal(applicantStage('revoked', null), 'revoked');
+  assert.equal(applicantStage(null, null), 'none');
 });
 
 test('a pending or rejected Application is newer than the role it was sent under', () => {
@@ -96,11 +105,8 @@ test('a pending or rejected Application is newer than the role it was sent under
   assert.equal(applicantStage('revoked', application('rejected')), 'rejected');
 });
 
-test('otherwise the role says it: none, revoked, or approved since the page read the account', () => {
-  assert.equal(applicantStage(null, null), 'none');
-  assert.equal(applicantStage('revoked', null), 'revoked');
-  assert.equal(applicantStage('revoked', application('approved')), 'revoked');
-  assert.equal(applicantStage(null, application('approved')), 'organizer');
+test('a store approved outranks a Community organizer role taken away', () => {
+  assert.equal(applicantStage('revoked', application('approved')), 'store');
 });
 
 test('a proof reads as its type and size', () => {

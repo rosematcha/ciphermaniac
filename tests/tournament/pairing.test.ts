@@ -157,9 +157,9 @@ test('seeds a top cut and advances winners in bracket order', () => {
   const seeds = ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'];
   assert.deepEqual(pairTopCut(seeds), [
     { p1: 's1', p2: 's8' },
-    { p1: 's5', p2: 's4' },
-    { p1: 's3', p2: 's6' },
-    { p1: 's7', p2: 's2' }
+    { p1: 's4', p2: 's5' },
+    { p1: 's2', p2: 's7' },
+    { p1: 's3', p2: 's6' }
   ]);
   assert.deepEqual(pairNextElimination(['s1', 's5', 's2', 's3']), [
     { p1: 's1', p2: 's5' },

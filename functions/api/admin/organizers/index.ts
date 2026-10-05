@@ -1,7 +1,7 @@
 /**
  * GET /api/admin/organizers — every account with a role, by name: the
- * Organizers, those whose access was removed, and the Admins, each with how
- * many events it owns. Admins are listed, not changed here.
+ * Community organizers, those whose access was removed, and the Admins, each
+ * with how many events it owns. Admins are listed, not changed here.
  */
 
 import { roleHolders } from '../../../lib/accounts/organizers.js';

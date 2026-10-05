@@ -10,7 +10,7 @@
  * Every try is let in or refused by one statement, so D1 takes tries landing
  * at once one at a time: a burst gets FREE_TRIES answers, not one per request
  * read before any was counted. A wrong year is counted in the statement that
- * lets it in; a right year is let in by a read, which counts nothing; a try
+ * lets it in; a right year resets unlocked failures in its admission statement; a try
  * whose year only a later write can judge is counted before that write, and
  * forgiven once it lands.
  */
@@ -56,17 +56,15 @@ export function forgive(db: D1Like, code: string, popId: string, now: number) {
 
 /** Lets in a try with the right year unless the Player ID is refused now, forgiving the wrong ones before it. */
 async function admitRight(db: D1Like, code: string, popId: string, now: number): Promise<boolean> {
-  const row = await db
-    .prepare('SELECT failures, locked_until FROM identify_failures WHERE code = ? AND pop_id = ?')
-    .bind(code, popId)
-    .first<{ failures: number; locked_until: number }>();
-  if (row && row.locked_until > now) {
-    return false;
-  }
-  if (row) {
-    await forgive(db, code, popId, now);
-  }
-  return true;
+  const admitted = await db
+    .prepare(
+      'INSERT INTO identify_failures (code, pop_id, failures, locked_until) VALUES (?1, ?2, 0, 0) ' +
+        'ON CONFLICT (code, pop_id) DO UPDATE SET failures = 0, locked_until = 0 ' +
+        'WHERE identify_failures.locked_until <= ?3 RETURNING failures'
+    )
+    .bind(code, popId, now)
+    .first<{ failures: number }>();
+  return admitted !== null;
 }
 
 /** One try: the event, the Player ID it names, whether its year is right, and when it lands. */

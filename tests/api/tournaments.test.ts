@@ -22,12 +22,23 @@ import * as adminPopIds from '../../functions/api/admin/pop-ids.ts';
 import * as applications from '../../functions/api/applications/index.ts';
 import * as myApplication from '../../functions/api/applications/mine.ts';
 import * as proof from '../../functions/api/applications/proof.ts';
+import * as ageCheck from '../../functions/api/auth/age.ts';
 import * as callback from '../../functions/api/auth/callback/[provider].ts';
 import * as login from '../../functions/api/auth/login/[provider].ts';
 import * as logout from '../../functions/api/auth/logout.ts';
 import * as history from '../../functions/api/history.ts';
+import * as community from '../../functions/api/community.ts';
+import * as storeRoute from '../../functions/api/stores/[id]/index.ts';
+import * as storeNights from '../../functions/api/stores/[id]/nights.ts';
+import * as storeMembers from '../../functions/api/stores/[id]/members.ts';
+import * as storeListings from '../../functions/api/stores/[id]/listings.ts';
+import * as storeJoin from '../../functions/api/stores/join.ts';
+import * as leagues from '../../functions/api/leagues/[id].ts';
+import * as adminStores from '../../functions/api/admin/stores/index.ts';
+import * as adminStore from '../../functions/api/admin/stores/[id].ts';
+import * as organizerOfRecord from '../../functions/api/tournaments/[code]/organizer.ts';
 import * as me from '../../functions/api/me.ts';
-import * as profiles from '../../functions/api/profiles/[slug].ts';
+import * as profiles from '../../functions/api/profiles/[handle].ts';
 import * as claim from '../../functions/api/tournaments/[code]/claim.ts';
 import * as commands from '../../functions/api/tournaments/[code]/commands.ts';
 import { FREE_TRIES } from '../../functions/lib/tournaments/attempts.ts';
@@ -46,19 +57,19 @@ import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import { REPORT_WINDOW_MS } from '../../shared/tournament/reports.ts';
 import { revisionOf } from '../../shared/tournament/revision.ts';
 import { parseTdf, writeTdf } from '../../shared/tournament/tdf.ts';
-import { DIVISIONS, type Match, type Round, type Tournament } from '../../shared/tournament/types.ts';
+import { DIVISIONS, type Round, type Tournament } from '../../shared/tournament/types.ts';
 import type { TournamentView } from '../../shared/tournament/view.ts';
 import { publishView } from '../../functions/lib/tournaments/publish.ts';
 import { loadIdle, loadTournament, rotateStaff } from '../../functions/lib/tournaments/store.ts';
-import { juniorsCutApart } from '../__utils__/divisionCuts.ts';
 import { apiCalls, type Handler, ORIGIN, request } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
 import { memoryProofs } from '../__utils__/proofBucket.ts';
+import { storeApplication } from '../__utils__/storeApplication.ts';
 import { countingTrips, racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
 const { hit, signIn } = apiCalls(() => env);
-const { newEvent, newSwiss, send, addPlayers, settle, playerSays, view } = eventCalls(hit);
+const { newEvent, newSwiss, send, addPlayers, settle, playerSays, view, storeOf } = eventCalls(hit);
 
 beforeEach(() => {
   env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true' };
@@ -75,7 +86,7 @@ async function revisionNow(code: string, cookie: string): Promise<string> {
 test('dev sign-in starts a session that /api/me reads, and sign-out ends it', async () => {
   const cookie = await signIn('Organizer');
   const signedIn = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie });
-  assert.equal(signedIn.json.user.name, 'Organizer');
+  assert.equal(signedIn.json.user.name, 'organizer');
   assert.deepEqual(signedIn.json.providers, ['dev']);
   const out = await hit(logout.onRequestPost as Handler, '/api/auth/logout', {}, { method: 'POST', cookie });
   assert.equal(out.status, 204);
@@ -96,30 +107,21 @@ test('a signed-in player saves their profile; a bad one is refused', async () =>
   assert.equal(anonymous.status, 401);
 });
 
-test('an account name is chosen independently of the player profile', async () => {
+test('a username is chosen independently of the player profile, whose name the site calls the account by', async () => {
   const cookie = await signIn('Organizer');
-  const renamed = await hit(
-    me.onRequestPatch as Handler,
-    '/api/me',
-    {},
-    { method: 'PATCH', cookie, body: { name: 'Reese' } }
-  );
-  assert.equal(renamed.json.user.name, 'Reese');
-  const bad = await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body: { name: '' } });
-  assert.equal(bad.status, 400);
-  const missing = await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body: {} });
-  assert.equal(missing.status, 400);
-  const anonymous = await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', body: { name: 'X' } });
+  const patch = (body: unknown, extra = {}) =>
+    hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body, ...extra });
+  const renamed = await patch({ handle: 'reese' });
+  assert.deepEqual([renamed.json.user.handle, renamed.json.user.name], ['reese', 'reese']);
+  assert.equal((await patch({ handle: '' })).status, 400);
+  assert.equal((await patch({})).status, 400);
+  const anonymous = await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', body: { handle: 'x1' } });
   assert.equal(anonymous.status, 401);
-  const foreign = await hit(
-    me.onRequestPatch as Handler,
-    '/api/me',
-    {},
-    { method: 'PATCH', cookie, origin: 'https://evil.test', body: { name: 'X' } }
-  );
-  assert.equal(foreign.status, 403);
+  assert.equal((await patch({ handle: 'x1' }, { origin: 'https://evil.test' })).status, 403);
+  const profile = { popId: '1234567', firstName: 'Reese', lastName: 'Lundquist', birthDate: '02/27/2001' };
+  await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie, body: profile });
   const reread = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie });
-  assert.equal(reread.json.user.name, 'Reese');
+  assert.deepEqual([reread.json.user.handle, reread.json.user.name], ['reese', 'Reese Lundquist']);
 });
 
 test('the dev provider is refused in production', async () => {
@@ -140,7 +142,7 @@ test('linking a provider requires a signed-in account', async () => {
   assert.equal(response.status, 401);
 });
 
-test('Google sign-in: state round-trips, the code is exchanged, a session begins', async () => {
+test('Google sign-in: state round-trips, the code is exchanged, the age check makes the account, a session begins', async () => {
   env.GOOGLE_CLIENT_ID = 'id';
   env.GOOGLE_CLIENT_SECRET = 'secret';
   const start = await login.onRequestGet({
@@ -174,12 +176,33 @@ test('Google sign-in: state round-trips, the code is exchanged, a session begins
       env,
       params: { provider: 'google' }
     } as never);
-    assert.equal(done.headers.get('location'), '/host');
-    const session = done.headers.getSetCookie().find(value => value.startsWith('cm_session=')) ?? '';
+    assert.equal(done.headers.get('location'), '/welcome', 'a new sign-up waits for its age check');
+    assert.ok(!done.headers.getSetCookie().some(value => value.startsWith('cm_session=')), 'with no session yet');
+    const waiting = done.headers.getSetCookie().find(value => value.startsWith('cm_signup=')) ?? '';
+    const checked = await hit(
+      ageCheck.onRequestPost as Handler,
+      '/api/auth/age',
+      {},
+      {
+        method: 'POST',
+        cookie: waiting.split(';')[0],
+        body: { birthDate: '1990-06-15' }
+      }
+    );
+    assert.equal(checked.status, 200);
+    assert.deepEqual(checked.json, { next: '/host' }, 'then goes where sign-in started');
+    const session = checked.headers.getSetCookie().find(value => value.startsWith('cm_session=')) ?? '';
     const who = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: session.split(';')[0] });
     assert.equal(who.json.user.email, 'gia@example.com');
-    assert.equal(who.json.user.name, 'Player');
+    assert.match(who.json.user.name, /^player-[a-z0-9]{8}$/, 'a new account is called by its random username');
     assert.deepEqual(who.json.user.providers, ['google']);
+    assert.equal(who.json.user.birthDate, '02/27/1990', 'the year alone is kept');
+    const again = await callback.onRequestGet({
+      request: request(`/api/auth/callback/google?code=c&state=${state}`, { cookie: oauthCookie }),
+      env,
+      params: { provider: 'google' }
+    } as never);
+    assert.equal(again.headers.get('location'), '/host', 'an account that passed signs straight in');
   } finally {
     globalThis.fetch = realFetch;
   }
@@ -218,7 +241,7 @@ test('a signed-in user links Google with a different email without changing thei
     } as never);
     assert.equal(done.headers.get('location'), '/settings');
     const who = await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: sessionCookie });
-    assert.equal(who.json.user.name, 'Organizer');
+    assert.equal(who.json.user.name, 'organizer');
     assert.deepEqual(who.json.user.providers.sort(), ['dev', 'google']);
   } finally {
     globalThis.fetch = realFetch;
@@ -294,18 +317,18 @@ test('the event list counts an event as paired once any of its pods has paired, 
     });
   }
   await addPlayers(code, owner, 6);
-  await send(code, owner, { type: 'pairRound', pod: 'senior-masters' });
+  await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
   const pods = (await loadTournament(db, code))?.tournament.pods.map(pod => [pod.category, pod.rounds.length]);
   assert.deepEqual(pods, [
     ['junior', 0],
-    ['senior-masters', 1]
+    ['masters', 1]
   ]);
   const list = await hit(tournaments.onRequestGet as Handler, '/api/tournaments', {}, { cookie: owner });
   assert.equal(list.json.tournaments[0].rounds, 1);
 });
 
-test('only organizers and admins start events, and a revoked organizer still runs its own', async () => {
+test('who starts an event of their own: a Community organizer or an Admin; a revoked one still runs its own', async () => {
   const create = (cookie: string) =>
     hit(
       tournaments.onRequestPost as Handler,
@@ -321,13 +344,18 @@ test('only organizers and admins start events, and a revoked organizer still run
   assert.deepEqual(
     [player.status, player.json.error, player.json.apply],
     [403, 'Only organizers can start events', true],
-    'a player is offered an application'
+    'a player is offered a way in'
   );
   assert.equal((await create(await signIn('Admin', 'admin'))).status, 201);
-  const organizer = await signIn('Organizer', 'organizer');
-  const code = await newSwiss(organizer);
+  assert.equal(
+    (await create(await signIn('Store Owner', 'organizer'))).status,
+    403,
+    'a store’s Manager starts the store’s events, not their own'
+  );
+  const community = await signIn('Casual', 'community');
+  const code = await newEvent(community, { settings: { startsAt: '2026-11-01T18:00' } });
   // The same account, its role taken away.
-  const revoked = await signIn('Organizer', 'revoked');
+  const revoked = await signIn('Casual', 'revoked');
   assert.equal((await create(revoked)).status, 403);
   await addPlayers(code, revoked, 2);
   assert.equal((await settle(code, revoked, { decklists: 'open' })).status, 200);
@@ -355,7 +383,7 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 5);
   const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
-  const table = paired.json.tournament.pods[0].rounds[0].matches.find((m: Match) => m.p2 !== null);
+  const table = paired.json.tournament.pods[0].rounds[0].matches[0];
   await send(code, owner, {
     type: 'reportResult',
     pod: 'masters',
@@ -450,7 +478,7 @@ test('a TOM event holds site results as pending until the synced file settles th
     {
       method: 'POST',
       cookie: owner,
-      body: { mode: 'tom', tournament: tdf }
+      body: { mode: 'tom', tournament: tdf, store: await storeOf(owner) }
     }
   );
   const { code } = created.json;
@@ -519,7 +547,7 @@ test('a TOM event runs the site’s clock, which a synced file’s timer does no
     tournaments.onRequestPost as Handler,
     '/api/tournaments',
     {},
-    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf } }
+    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf, store: await storeOf(owner) } }
   );
   const { code } = created.json;
   const base = await revisionNow(code, owner);
@@ -564,7 +592,7 @@ async function newTom(cookie: string, tournament: Tournament): Promise<string> {
     tournaments.onRequestPost as Handler,
     '/api/tournaments',
     {},
-    { method: 'POST', cookie, body: { mode: 'tom', tournament } }
+    { method: 'POST', cookie, body: { mode: 'tom', tournament, store: await storeOf(cookie) } }
   );
   return created.json.code as string;
 }
@@ -772,7 +800,7 @@ test('an event too large for one D1 row is refused with a message', async () => 
     {
       method: 'POST',
       cookie: owner,
-      body: { mode: 'tom', tournament: huge }
+      body: { mode: 'tom', tournament: huge, store: await storeOf(owner) }
     }
   );
   assert.deepEqual([refused.status, refused.json.error], [413, 'This event is too large to store']);
@@ -919,6 +947,7 @@ test('an event starts with the settings its setup chose', async () => {
       body: {
         mode: 'swiss',
         name: 'Friday Locals',
+        store: await storeOf(owner),
         roundTime: 25,
         settings: {
           sanctioned: false,
@@ -972,7 +1001,7 @@ test('an unsanctioned event takes decklists by name and leaves the account’s P
   assert.equal(account.json.user.popId, '1234567');
 });
 
-test('a decklist never gives an account a Player ID, and refreshes the details of the account that holds it', async () => {
+test('a decklist never gives an account a Player ID or birth year, and refreshes the name of the account that holds it', async () => {
   const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   await settle(code, owner, { decklists: 'open' });
@@ -994,7 +1023,7 @@ test('a decklist never gives an account a Player ID, and refreshes the details o
   assert.deepEqual([(await accountNow()).popId, (await accountNow()).firstName], ['6161', 'Lin']);
   assert.equal((await sendList({ ...lin, firstName: 'Linda', birthDate: '03/01/2001' }, first.json.token)).status, 200);
   const refreshed = await accountNow();
-  assert.deepEqual([refreshed.popId, refreshed.firstName, refreshed.birthDate], ['6161', 'Linda', '03/01/2001']);
+  assert.deepEqual([refreshed.popId, refreshed.firstName, refreshed.birthDate], ['6161', 'Linda', '02/27/2001']);
 });
 
 test('players report their own results: agreement stands once locked, disagreement waits for staff', async () => {
@@ -1125,12 +1154,13 @@ test('players cannot report once the event has ended', async () => {
 
 test('a sanctioned event cannot start with rounds under 30 minutes', async () => {
   const owner = await signIn('Organizer', 'organizer');
+  const store = await storeOf(owner);
   const create = (settings: Record<string, unknown>) =>
     hit(
       tournaments.onRequestPost as Handler,
       '/api/tournaments',
       {},
-      { method: 'POST', cookie: owner, body: { mode: 'swiss', name: 'Quick Cup', roundTime: 20, settings } }
+      { method: 'POST', cookie: owner, body: { mode: 'swiss', name: 'Quick Cup', roundTime: 20, settings, store } }
     );
   const refused = await create({ sanctioned: true });
   assert.equal(refused.status, 400);
@@ -1204,7 +1234,11 @@ test('at a TOM event an agreed report becomes a pending result for TOM', async (
     tournaments.onRequestPost as Handler,
     '/api/tournaments',
     {},
-    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf, settings: { sanctioned: false } } }
+    {
+      method: 'POST',
+      cookie: owner,
+      body: { mode: 'tom', tournament: tdf, settings: { sanctioned: false }, store: await storeOf(owner) }
+    }
   );
   const { code } = created.json;
   await settle(code, owner, { playerReporting: true });
@@ -1431,7 +1465,9 @@ test('at a sanctioned event a player says who they are with the birth year the e
 
 /** Seventy-one birth years, every year from 1950 to 2020 but `right`, then `right` last. */
 const burstOf = (right: string) => [
-  ...Array.from({ length: 71 }, (_, i) => String(1950 + i)).filter(year => year !== right),
+  // Years only adults were born in: a minor's year is refused before it counts as a try (at an
+  // event that is over, or under 13 at any).
+  ...Array.from({ length: 71 }, (_, i) => String(1930 + i)).filter(year => year !== right),
   right
 ];
 
@@ -1565,7 +1601,7 @@ test('the organizer sees who joined staff, and when, and removes one of them', a
   const { owner, code, helper } = await withHelper();
   const listed = await hit(staff.onRequestGet as Handler, '/staff', at(code), { cookie: owner });
   assert.equal(listed.json.staff.length, 1);
-  assert.equal(listed.json.staff[0].name, 'Helper');
+  assert.equal(listed.json.staff[0].name, 'helper');
   assert.ok(typeof listed.json.staff[0].joinedAt === 'number');
   assert.equal((await hit(staff.onRequestGet as Handler, '/staff', at(code), { cookie: helper })).status, 403);
   const removed = await hit(staff.onRequestDelete as Handler, `/staff?user=${listed.json.staff[0].id}`, at(code), {
@@ -1674,8 +1710,12 @@ interface Stored {
 function memoryBucket() {
   const objects = new Map<string, Stored>();
   let uploads = 0;
-  const holds = (held: Stored | undefined, onlyIf: { etagMatches: string } | Headers) =>
-    onlyIf instanceof Headers ? onlyIf.get('If-None-Match') === '*' && !held : held?.etag === onlyIf.etagMatches;
+  const holds = (held: Stored | undefined, onlyIf: { etagMatches: string } | Headers | undefined) => {
+    if (!onlyIf) {
+      return true;
+    }
+    return onlyIf instanceof Headers ? onlyIf.get('If-None-Match') === '*' && !held : held?.etag === onlyIf.etagMatches;
+  };
   env.REPORTS = {
     head: async key => {
       const held = objects.get(key);
@@ -1693,6 +1733,10 @@ function memoryBucket() {
     },
     delete: async key => {
       objects.delete(key);
+    },
+    get: async key => {
+      const held = objects.get(key);
+      return held ? { text: async () => held.body } : null;
     }
   };
   return objects;
@@ -1783,7 +1827,7 @@ test('a .tdf sent from a copy the site no longer holds is refused, not synced ov
     tournaments.onRequestPost as Handler,
     '/api/tournaments',
     {},
-    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf } }
+    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf, store: await storeOf(owner) } }
   );
   const { code } = created.json;
   const base = await revisionNow(code, owner);
@@ -1832,7 +1876,7 @@ test('a sync that would leave a TOM event with nobody in it is refused', async (
     tournaments.onRequestPost as Handler,
     '/api/tournaments',
     {},
-    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf } }
+    { method: 'POST', cookie: owner, body: { mode: 'tom', tournament: tdf, store: await storeOf(owner) } }
   );
   const { code } = created.json;
   const emptied = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
@@ -1952,10 +1996,10 @@ test('the account page names the providers an account signs in with; an event re
     {
       method: 'PATCH',
       cookie: owner,
-      body: { name: 'Renamed' }
+      body: { handle: 'renamed' }
     }
   );
-  assert.deepEqual([saved.json.user.name, saved.json.user.providers], ['Renamed', ['dev']]);
+  assert.deepEqual([saved.json.user.handle, saved.json.user.providers], ['renamed', ['dev']]);
   seen.length = 0;
   assert.equal((await view(code, owner)).viewer.role, 'owner');
   assert.ok(!seen.some(sql => sql.includes('identities')), 'providers are not read to open an event');
@@ -2408,18 +2452,17 @@ async function accountsFlow(owner: string, player: string) {
     cookie: player
   });
   await hit(history.onRequestGet as Handler, '/api/history', {}, { cookie: player });
-  const on = await hit(
-    me.onRequestPatch as Handler,
-    '/api/me',
-    {},
-    {
-      method: 'PATCH',
-      cookie: player,
-      body: { publicProfile: true }
-    }
-  );
-  const slug = on.json.user.publicSlug as string;
-  await hit(profiles.onRequestGet as Handler, `/api/profiles/${slug}`, { slug });
+  const patch = (body: Record<string, unknown>) =>
+    hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie: player, body });
+  await patch({ handle: 'ash.k' });
+  // Taken by the owner's account, then the day's changes used up: both refusals read their reason.
+  await patch({ handle: 'organizer' });
+  await patch({ handle: 'ash-k' });
+  await patch({ handle: 'ash_k' });
+  await patch({ handle: 'ashk' });
+  await patch({ publicProfile: true });
+  await patch({ profileName: 'handle' });
+  await hit(profiles.onRequestGet as Handler, '/api/profiles/ashk', { handle: 'ashk' });
   await hit(claim.onRequestDelete as Handler, '/claim', at(casual), { method: 'DELETE', cookie: player });
   // Gary's phone, signed in now, makes its claim the account's.
   await playerSays(casual, { lastName: 'Oak', device: 'gary', reportToken: gary.json.reportToken }, { cookie: player });
@@ -2433,6 +2476,78 @@ async function accountsFlow(owner: string, player: string) {
  * revokes and reinstates one, looks accounts up every way, and moves and
  * clears a POP ID. `owner` is an Organizer.
  */
+/** A store's life after its Application is approved, as its Manager, its Staff and an Admin go through it. */
+async function storesFlow(admin: string, manager: string) {
+  // Bound, so the stores index publishes and its read is seen too.
+  memoryBucket();
+  const { stores } = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: manager })).json.user;
+  const storeId = stores[0].id as string;
+  const at = { id: storeId };
+  const app = storeApplication();
+  await hit(storeRoute.onRequestGet as Handler, `/api/stores/${storeId}`, at, { cookie: manager });
+  await hit(storeRoute.onRequestPatch as Handler, `/api/stores/${storeId}`, at, {
+    method: 'PATCH',
+    cookie: manager,
+    body: { details: app.details, timeZone: app.timeZone }
+  });
+  await hit(storeNights.onRequestPut as Handler, `/api/stores/${storeId}/nights`, at, {
+    method: 'PUT',
+    cookie: manager,
+    body: { nights: app.nights, exceptions: [{ date: '2099-01-04', nightId: 'sun', time: null, note: 'Cup' }] }
+  });
+  const invited = await hit(storeMembers.onRequestPost as Handler, '/members', at, {
+    method: 'POST',
+    cookie: manager,
+    body: { invite: 'staff' }
+  });
+  const helper = await signIn('Store Helper');
+  await hit(
+    storeJoin.onRequestPost as Handler,
+    '/api/stores/join',
+    {},
+    {
+      method: 'POST',
+      cookie: helper,
+      body: { token: invited.json.token }
+    }
+  );
+  await hit(storeMembers.onRequestGet as Handler, '/members', at, { cookie: manager });
+  const helperId = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: helper })).json.user.id;
+  await hit(storeMembers.onRequestPatch as Handler, '/members', at, {
+    method: 'PATCH',
+    cookie: manager,
+    body: { user: helperId, role: 'manager' }
+  });
+  await hit(storeListings.onRequestGet as Handler, '/listings', at, { cookie: helper });
+  await hit(leagues.onRequestGet as Handler, '/api/leagues/6238620', { id: '6238620' }, { cookie: helper });
+  const code = await newEvent(manager, { store: storeId, settings: { startsAt: '2026-11-01T15:00' } });
+  await hit(
+    organizerOfRecord.onRequestPut as Handler,
+    '/organizer',
+    { code },
+    {
+      method: 'PUT',
+      cookie: helper,
+      body: { user: helperId }
+    }
+  );
+  await hit(tournaments.onRequestGet as Handler, '/api/tournaments', {}, { cookie: helper });
+  const own = await newEvent(manager, { store: null, settings: { startsAt: '2026-11-02T15:00' } });
+  await settle(own, manager, { startsAt: '2026-11-03T15:00' });
+  await hit(storeMembers.onRequestDelete as Handler, `/members?user=${helperId}`, at, {
+    method: 'DELETE',
+    cookie: manager
+  });
+  await hit(adminStores.onRequestGet as Handler, '/api/admin/stores', {}, { cookie: admin });
+  for (const body of [{ status: 'revoked' }, { status: 'active' }, { manager: helperId }]) {
+    await hit(adminStore.onRequestPost as Handler, `/api/admin/stores/${storeId}`, at, {
+      method: 'POST',
+      cookie: admin,
+      body
+    });
+  }
+}
+
 async function applicationsFlow(owner: string) {
   env.PROOFS = memoryProofs();
   const applicant = await signIn('Applicant');
@@ -2451,7 +2566,7 @@ async function applicationsFlow(owner: string) {
   await hit(myApplication.onRequestGet as Handler, '/api/applications/mine', {}, { cookie: applicant });
   const apply = (body: unknown) =>
     hit(applications.onRequestPost as Handler, '/api/applications', {}, { method: 'POST', cookie: applicant, body });
-  await apply({ explanation: 'First try', proof: true });
+  await apply({ store: storeApplication(), explanation: 'First try', proof: true });
   await hit(
     myApplication.onRequestDelete as Handler,
     '/api/applications/mine',
@@ -2462,7 +2577,7 @@ async function applicationsFlow(owner: string) {
     }
   );
   await hit(proof.onRequestDelete as Handler, '/api/applications/proof', {}, { method: 'DELETE', cookie: applicant });
-  const { id } = (await apply({ explanation: 'Second try', proof: false })).json.application;
+  const { id } = (await apply({ store: storeApplication(), explanation: 'Second try', proof: false })).json.application;
   const admin = await signIn('Admin', 'admin');
   await hit(adminApplications.onRequestGet as Handler, '/api/admin/applications', {}, { cookie: admin });
   await adminProof.onRequestGet({
@@ -2488,7 +2603,9 @@ async function applicationsFlow(owner: string) {
   );
   await hit(adminOrganizers.onRequestGet as Handler, '/api/admin/organizers', {}, { cookie: admin });
   const applicantId = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: applicant })).json.user.id;
-  for (const role of ['revoked', 'organizer']) {
+  await hit(community.onRequestPost as Handler, '/api/community', {}, { method: 'POST', cookie: applicant });
+  await storesFlow(admin, applicant);
+  for (const role of ['revoked', 'community']) {
     await hit(
       adminOrganizer.onRequestPost as Handler,
       `/api/admin/organizers/${applicantId}`,
@@ -2533,7 +2650,10 @@ const ACCOUNT_STATEMENTS = [
   '(SELECT id FROM users WHERE id = ? AND pop_id = ?)',
   'JOIN pop_history h',
   'JOIN report_devices d',
-  'u.public_slug = ?',
+  'u.handle = ? AND u.public_profile = 1',
+  'INSERT OR IGNORE INTO handle_changes',
+  'DELETE FROM handle_changes WHERE user_id = ?',
+  'SELECT COUNT(*) AS n FROM handle_changes',
   'FROM sessions s JOIN applications a',
   'INSERT OR IGNORE INTO applications',
   "DELETE FROM applications WHERE user_id = ? AND status = 'pending'",
@@ -2548,12 +2668,31 @@ const ACCOUNT_STATEMENTS = [
   'LEFT JOIN proof_uploads p ON p.user_id = u.id',
   'DELETE FROM proof_uploads WHERE EXISTS',
   'DELETE FROM proof_uploads WHERE user_id = ?',
-  "UPDATE users SET role = 'organizer'",
+  'INSERT INTO stores (id, league_id',
+  'INSERT INTO store_members (store_id, user_id, role, added_at) SELECT',
+  "UPDATE users SET role = 'community'",
+  'INSERT INTO store_invites',
+  'DELETE FROM store_invites WHERE token_hash = ?',
+  'SELECT store_id, ?, role, ? FROM store_invites',
+  'UPDATE store_members SET role = ?',
+  'DELETE FROM store_members WHERE store_id = ? AND user_id = ?',
+  'UPDATE stores SET name = ?',
+  'UPDATE stores SET nights = ?',
+  'UPDATE stores SET status = ?',
+  "FROM stores WHERE status = 'active'",
+  'SELECT s.status, s.league_id, s.city, s.region, s.country, s.time_zone FROM store_members m',
+  'INDEXED BY tournaments_of_store',
+  'INSERT OR IGNORE INTO event_creations',
+  'DELETE FROM event_creations WHERE owner = ? AND at <= ?',
+  'store_role FROM sessions',
+  'SELECT u.pop_id, u.first_name, u.last_name FROM store_members m',
+  "FROM stores s WHERE s.status IN ('active', 'revoked')",
+  "SET role = 'manager'",
   'UPDATE applications SET status = ?2',
   'WHERE a.id = ?',
-  "WHERE u.role IN ('organizer', 'revoked', 'admin')",
+  "WHERE u.role IN ('community', 'revoked', 'admin')",
   'FROM users u WHERE u.id = ?',
-  "UPDATE users SET role = ?, role_at = ?, role_by = ? WHERE id = ? AND role IN ('organizer', 'revoked')",
+  "UPDATE users SET role = ?, role_at = ?, role_by = ? WHERE id = ? AND role IN ('community', 'revoked')",
   'FROM users WHERE pop_id = ? LIMIT',
   'FROM users WHERE email = ? LIMIT',
   'FROM users WHERE id = ? LIMIT',
@@ -2562,11 +2701,50 @@ const ACCOUNT_STATEMENTS = [
   'DELETE FROM report_devices WHERE user_id = ?2',
   'UPDATE users SET pop_id = ?1 WHERE id = ?2',
   'player_id = (SELECT pop_id FROM users WHERE id = ?1)',
-  'WHERE id = ? AND public_slug IS NULL',
+  'UPDATE users SET handle = ?3 WHERE id = ?1',
   'FROM tournaments WHERE code = ?3 AND version = ?8',
   'DELETE FROM decklists WHERE code = ?1 AND EXISTS',
-  'DELETE FROM tournaments WHERE code = ? AND version = ?'
+  'DELETE FROM tournaments WHERE code = ? AND version = ?',
+  'SELECT age_checked_at FROM users WHERE id = COALESCE',
+  'INSERT INTO pending_signups',
+  'DELETE FROM pending_signups WHERE token_hash = ?',
+  'DELETE FROM pending_signups WHERE expires_at <= ?',
+  "UPDATE decklists SET deck = ''"
 ];
+
+/** A new sign-up through Google and the age check, as the sign-up's queries run. */
+async function ageCheckFlow() {
+  env.GOOGLE_CLIENT_ID = 'id';
+  env.GOOGLE_CLIENT_SECRET = 'secret';
+  const fetch = mock.method(
+    globalThis,
+    'fetch',
+    async (url: string | URL) =>
+      String(url).includes('token')
+        ? Response.json({ access_token: 'token' }) // eslint-disable-line camelcase
+        : Response.json({ sub: 'g-new', email: 'new@example.com', email_verified: true }) // eslint-disable-line camelcase
+  );
+  try {
+    const waiting = await callback.onRequestGet({
+      request: request('/api/auth/callback/google?code=c&state=state', { cookie: 'cm_oauth=state%20%2Fhost' }),
+      env,
+      params: { provider: 'google' }
+    } as never);
+    const cookie = (waiting.headers.getSetCookie().find(value => value.startsWith('cm_signup=')) ?? '').split(';')[0];
+    await hit(
+      ageCheck.onRequestPost as Handler,
+      '/api/auth/age',
+      {},
+      {
+        method: 'POST',
+        cookie,
+        body: { birthDate: '1990-01-01' }
+      }
+    );
+  } finally {
+    fetch.mock.restore();
+  }
+}
 
 test('nothing the functions ask of the database scans a table', async () => {
   const { raw } = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
@@ -2631,9 +2809,11 @@ test('nothing the functions ask of the database scans a table', async () => {
     body: { rotate: true }
   });
   await sweep();
+  await ageCheckFlow();
   await accountsFlow(owner, helper);
   await applicationsFlow(owner);
   await hit(logout.onRequestPost as Handler, '/api/auth/logout', {}, { method: 'POST', cookie: helper });
+  await settle(code, owner, { finished: true });
   await hit(event.onRequestDelete as Handler, '/', at(code), { method: 'DELETE', cookie: owner });
   const statements = [...new Set(seen)];
   assert.ok(statements.length > 25, 'the flow reached the functions');
@@ -2645,7 +2825,10 @@ test('nothing the functions ask of the database scans a table', async () => {
   }
   for (const sql of statements) {
     const plan = raw.prepare(`EXPLAIN QUERY PLAN ${sql}`).all() as { detail: string }[];
-    const scans = plan.map(step => step.detail).filter(detail => detail.startsWith('SCAN'));
+    // A constant row is the values an INSERT ... SELECT writes, not a table.
+    const scans = plan
+      .map(step => step.detail)
+      .filter(detail => detail.startsWith('SCAN') && detail !== 'SCAN CONSTANT ROW');
     assert.deepEqual(scans, [], sql);
   }
 });
@@ -2713,57 +2896,4 @@ test('a change beaten to the row by other writes lands on what they left, and gi
   const busy = await add('Oak');
   assert.deepEqual([busy.status, busy.json.error], [409, 'Busy; try again']);
   assert.equal((await view(code)).tournament.players.length, 1, 'nothing half-written');
-});
-
-test('the idle sweep waits for combined semifinals and ends only after the final', async () => {
-  const owner = await signIn('Organizer', 'organizer');
-  const code = await underWay(owner);
-  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
-  const tournament = juniorsCutApart();
-  const pod = tournament.pods[0]!;
-  pod.rounds.pop();
-  db.raw
-    .prepare('UPDATE tournaments SET state = ?, settings = ? WHERE code = ?')
-    .run(JSON.stringify(tournament), JSON.stringify({ roundCap: 1 }), code);
-  age(code, 3 * HOUR);
-  assert.deepEqual((await sweep()).json.idle, [code]);
-  assert.equal((await loadTournament(db, code))?.settings.finished, false);
-  db.raw
-    .prepare('UPDATE tournaments SET state = ?, settings = ? WHERE code = ?')
-    .run(JSON.stringify(juniorsCutApart()), JSON.stringify({ roundCap: 1 }), code);
-  age(code, 3 * HOUR);
-  assert.deepEqual((await sweep()).json.ended, [code]);
-});
-
-test('loading older separate cut pods migrates their pending results and player reports', async () => {
-  const owner = await signIn('Organizer', 'organizer');
-  const code = await underWay(owner);
-  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
-  const tournament = juniorsCutApart();
-  const pod = tournament.pods[0]!;
-  const ids = pod.divisionCuts!.junior!.playerIds!;
-  const cut = {
-    ...pod,
-    category: 'junior' as const,
-    cutOf: pod.category,
-    playerIds: ids,
-    cut: 4,
-    rounds: pod.rounds.filter(r => r.kind === 'elimination')
-  };
-  const final = cut.rounds.at(-1)!;
-  const match = final.matches[0]!;
-  match.outcome = 'pending';
-  const key = { pod: cut.category, round: final.number, ...match, outcome: 'p1', at: Date.now() };
-  tournament.pods = [{ ...pod, divisionCuts: undefined, rounds: pod.rounds.filter(r => r.kind === 'swiss') }, cut];
-  db.raw
-    .prepare('UPDATE tournaments SET state = ?, pending = ?, reports = ? WHERE code = ?')
-    .run(JSON.stringify(tournament), JSON.stringify([key]), JSON.stringify([{ ...key, by: match.p1 }]), code);
-  const loaded = await loadTournament(db, code);
-  assert.ok(loaded);
-  assert.equal(loaded.tournament.pods.length, 1);
-  assert.equal(loaded.tournament.pods[0]!.rounds.at(-1)!.matches[0]!.outcome, 'pending');
-  assert.equal(loaded.pending[0]!.pod, 'mixed');
-  assert.equal(loaded.reports[0]!.pod, 'mixed');
-  const written = parseTdf(writeTdf(loaded.tournament));
-  assert.equal(written.pods.length, 1);
 });

@@ -1,10 +1,11 @@
 /**
  * POST /api/admin/applications/:id — an Admin decides a pending Application:
  * { decision: 'approve' | 'reject', note? }, the note being the Admin's own
- * words to the applicant. Approving makes the account an Organizer (an Admin
- * stays one); rejecting leaves its role alone. The proof file goes once the
- * decision lands; its type stays on the row as a record that one was seen.
- * Answers { application }; 409 when it was already decided.
+ * words to the applicant. Approving makes the store it asks for, with the
+ * applicant its Manager; a league that already has a store is refused (409),
+ * since a store changes hands only by an Admin moving it. The proof file goes
+ * once the decision lands; its type stays on the row as a record that one was
+ * seen. Answers { application }; 409 when it was already decided.
  */
 
 import { NOTE_MAX } from '../../../../shared/accounts/applications.js';
@@ -12,8 +13,13 @@ import {
   ADMIN_APPLICATIONS,
   adminApplication,
   type AdminApplicationRow,
-  dropProof
+  dropProof,
+  storeOf
 } from '../../../lib/accounts/applications.js';
+import { randomToken } from '../../../lib/auth/session.js';
+import { breaksLeague, type Guard, storeInserts } from '../../../lib/stores/db.js';
+import { publishStores } from '../../../lib/stores/publish.js';
+import type { StoreApplication } from '../../../../shared/accounts/stores.js';
 import { readJsonObject } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import { openForAdmin } from '../../../lib/auth/admin.js';
@@ -44,17 +50,38 @@ function readDecision(body: Record<string, unknown> | null): Decision | string {
  * The key of the proof the Application was sent with, the decision's writes,
  * then the Application read back. Each write holds only while the
  * Application is still pending, inside the one transaction a batch is, so
- * two Admins deciding at once cannot both land.
+ * two Admins deciding at once cannot both land, and no store is made for an
+ * Application someone else rejected meanwhile.
  */
-function decisionWrites(db: D1Like, id: string, decision: Decision, adminId: string): D1Statement[] {
+function decisionWrites(
+  db: D1Like,
+  application: { id: string; userId: string; store: StoreApplication | null },
+  decision: Decision,
+  adminId: string
+): D1Statement[] {
+  const { id, userId, store } = application;
   const now = Date.now();
-  const approve = db
-    .prepare(
-      "UPDATE users SET role = 'organizer', role_at = ?2, role_by = ?3 " +
-        "WHERE id = (SELECT user_id FROM applications WHERE id = ?1 AND status = 'pending') " +
-        "AND (role IS NULL OR role = 'revoked')"
-    )
-    .bind(id, now, adminId);
+  const pending: Guard = {
+    sql: "EXISTS (SELECT 1 FROM applications WHERE id = ? AND status = 'pending')",
+    values: [id]
+  };
+  const made =
+    decision.approve && store
+      ? storeInserts(db, {
+          id: randomToken(12),
+          store: {
+            leagueId: store.leagueId,
+            details: store.details,
+            lat: store.place?.lat ?? null,
+            lon: store.place?.lon ?? null,
+            timeZone: store.timeZone,
+            nights: store.nights
+          },
+          managerId: userId,
+          now,
+          guard: pending
+        })
+      : [];
   const decide = db
     .prepare(
       'UPDATE applications SET status = ?2, decided_at = ?3, decided_by = ?4, note = ?5, proof_key = NULL ' +
@@ -63,7 +90,7 @@ function decisionWrites(db: D1Like, id: string, decision: Decision, adminId: str
     .bind(id, decision.approve ? 'approved' : 'rejected', now, adminId, decision.note);
   const read = db.prepare(`${ADMIN_APPLICATIONS} WHERE a.id = ?`).bind(id);
   const proof = db.prepare("SELECT proof_key FROM applications WHERE id = ? AND status = 'pending'").bind(id);
-  return decision.approve ? [proof, approve, decide, read] : [proof, decide, read];
+  return [proof, ...made, decide, read];
 }
 
 export async function onRequestPost(context: Context<'id'>): Promise<Response> {
@@ -75,7 +102,28 @@ export async function onRequestPost(context: Context<'id'>): Promise<Response> {
   if (typeof decision === 'string') {
     return jsonError(decision, 400);
   }
-  const results = await access.db.batch(decisionWrites(access.db, param(context.params.id), decision, access.admin.id));
+  const { db } = access;
+  const found = await db
+    .prepare(`${ADMIN_APPLICATIONS} WHERE a.id = ?`)
+    .bind(param(context.params.id))
+    .first<AdminApplicationRow>();
+  if (!found) {
+    return jsonError('No such application', 404);
+  }
+  const store = storeOf(found);
+  if (decision.approve && !store) {
+    return jsonError('This application asks for no store; reject it so they can apply again', 400);
+  }
+  const application = { id: found.id, userId: found.user_id, store };
+  const results = await db.batch(decisionWrites(db, application, decision, access.admin.id)).catch((error: unknown) => {
+    if (breaksLeague(error)) {
+      return null;
+    }
+    throw error;
+  });
+  if (!results) {
+    return jsonError('That league already has a store', 409);
+  }
   const row = firstRow<AdminApplicationRow>(results.at(-1));
   if (!row) {
     return jsonError('No such application', 404);
@@ -84,5 +132,8 @@ export async function onRequestPost(context: Context<'id'>): Promise<Response> {
     return jsonError('Already decided', 409);
   }
   await dropProof(context, firstRow<{ proof_key: string | null }>(results[0])?.proof_key);
+  if (decision.approve) {
+    await publishStores(context);
+  }
   return privateJson({ application: adminApplication(row) });
 }

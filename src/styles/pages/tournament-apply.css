@@ -1,5 +1,6 @@
 /* Applying to run events: where an account stands (ApplicantStatus, on
-   Settings, /apply and /host) and the apply page's form. */
+   Settings, /apply and /host). The apply page's own form is in
+   tournament-store-apply.css. */
 
 /* The stage and its day at left, its step at right; on a phone the step
    takes the line under the words. */
@@ -51,67 +52,8 @@
   font-size: var(--text-body);
   font-weight: 600;
 }
-
-/* ---------- The apply page ---------- */
-.tm-apply {
-  display: grid;
-  gap: var(--space-4);
-}
-.tm-apply-form .tm-form-row {
-  padding: 14px;
-}
-.tm-apply-proof,
-.tm-apply-explain {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-.tm-apply-proof {
-  justify-items: start;
-}
-/* The file once it is up: its name, which gives way, its size, and Remove. */
-.tm-apply-file {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 10px;
-  min-width: 0;
-  min-height: var(--control-h);
-  font-size: var(--text-base);
-}
-.tm-apply-name {
-  min-width: 0;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.tm-apply-pick.is-disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.tm-apply-pick:focus-within {
-  outline: var(--focus-width) solid var(--accent);
-  outline-offset: var(--focus-offset);
-}
-.tm-apply-explain .tm-textarea {
-  min-height: 160px;
-}
-.tm-apply-count {
-  justify-self: end;
-  font-size: var(--text-sm);
-}
-.tm-apply-foot .tm-error {
-  margin: 0;
-}
-.tm-apply-profile {
-  margin: 0;
-}
 @media (max-width: 640px) {
   .tm-applicant-step {
     margin-left: 0;
-  }
-  .tm-apply-foot .btn-primary,
-  .tm-apply-profile .btn {
-    width: 100%;
-    justify-content: center;
   }
 }

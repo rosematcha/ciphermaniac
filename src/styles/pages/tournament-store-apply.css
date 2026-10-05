@@ -1,0 +1,119 @@
+/* The apply page: the two ways in as radio rows, and the store application
+   under the Store row. Built on the tournament pages' boxes and fields
+   (tournament.css); the store's fields are in tournament-store-forms.css. */
+
+.tm-apply,
+.tm-apply-store {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* ---------- The two ways in ---------- */
+.tm-choices {
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+}
+.tm-choice {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 2px 12px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--rule);
+  cursor: pointer;
+}
+.tm-choice:first-of-type {
+  border-top: 0;
+}
+.tm-choice.is-on {
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+.tm-choice input {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+}
+.tm-choice-text {
+  display: grid;
+  gap: 2px;
+  font-size: var(--text-base);
+}
+.tm-choice-text strong {
+  font-size: var(--text-body);
+}
+
+/* ---------- The store application ---------- */
+.tm-apply-league,
+.tm-apply-file {
+  display: flex;
+  gap: var(--space-2);
+}
+.tm-apply-league .tm-input {
+  flex: 1;
+}
+.tm-apply-found {
+  display: grid;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+/* A group of the form starts under a rule, so the long form reads as parts. */
+.tm-apply-head {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--rule);
+}
+.tm-optional {
+  font-weight: 400;
+}
+.tm-optional,
+.tm-apply-kinds,
+.tm-apply-count {
+  font-size: var(--text-sm);
+}
+.tm-apply-proof {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+/* The file once it is up: its name, which gives way, its size, and Remove. */
+.tm-apply-file {
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: var(--control-h);
+}
+.tm-apply-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.tm-apply-pick.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.tm-apply-pick:focus-within {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+.tm-apply-count {
+  justify-self: end;
+}
+.tm-apply-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.tm-apply-foot .tm-error,
+.tm-apply-profile {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .tm-apply-foot .btn-primary,
+  .tm-apply-profile .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

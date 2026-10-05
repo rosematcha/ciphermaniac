@@ -1,0 +1,165 @@
+/* A store's public page: map and address, league nights, upcoming events. */
+
+/* ---------- A store's page ---------- */
+.tm-storepage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--section-gap);
+  max-width: 1080px;
+}
+.tm-storepage .tm-hero {
+  margin-bottom: 0;
+}
+.tm-storepage-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+.tm-storepage-top.has-map {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+}
+.tm-store-map {
+  position: relative;
+  height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.tm-store-map-link {
+  position: absolute;
+  inset: 0;
+}
+.tm-store-map-link:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: calc(-1 * var(--focus-width));
+}
+.tm-store-tile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+}
+body[data-mode='dark'] .tm-store-tile {
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+}
+.tm-store-pin {
+  position: absolute;
+  left: calc(50% - 9px);
+  top: calc(50% - 9px);
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent-fill);
+  outline: 4px solid color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.tm-store-credit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 1px 6px;
+  font-size: var(--text-2xs);
+  color: var(--fg);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border-top-left-radius: var(--radius-sm);
+}
+.tm-storepage-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-5);
+}
+.tm-storepage-where {
+  display: grid;
+  gap: var(--space-3);
+}
+.tm-storepage-address {
+  display: grid;
+  font-size: var(--text-body);
+  font-style: normal;
+  line-height: 1.5;
+}
+.tm-storepage-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-4);
+  margin: 0;
+  font-size: var(--text-base);
+}
+.tm-storepage-links a {
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+.tm-storepage-about {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.tm-storepage-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tm-storepage-list li {
+  display: grid;
+  grid-template-columns: 120px 76px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-base);
+}
+.tm-storepage-list li:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+.tm-storepage-changes {
+  margin-top: var(--space-3);
+}
+.tm-storepage-changes li {
+  grid-template-columns: 120px auto minmax(0, 1fr);
+}
+.tm-storepage-night-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-storepage-zone,
+.tm-storepage-none {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+}
+.tm-storepage-events .tm-flag {
+  margin-left: var(--space-2);
+}
+
+@media (max-width: 760px) {
+  .tm-storepage-top.has-map {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tm-store-map {
+    height: 220px;
+  }
+}
+@media (max-width: 640px) {
+  /* Day, start and fee on one line; the night's name under them. */
+  .tm-storepage-list li {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    row-gap: 2px;
+  }
+  .tm-storepage-list .tm-storepage-night-name {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .tm-storepage-list .tm-storepage-night-name:empty {
+    display: none;
+  }
+  .tm-storepage-changes li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}

@@ -70,6 +70,8 @@ export interface LocatorEvent {
   phone?: string;
   /** The store's description, trimmed. */
   details?: string;
+  /** The Ciphermaniac store that runs this league's events on the site (./stores), when one does. */
+  storeId?: string;
 }
 
 export interface LocatorIndex {

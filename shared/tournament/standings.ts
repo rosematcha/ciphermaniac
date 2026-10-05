@@ -4,9 +4,10 @@
  *
  * Players rank by match points (three for a win or a bye, one for a tie). A
  * player TOM tagged late ranks below everyone else on the same points, as TOM
- * ranks them. Then
+ * ranks them; the site never tags one (see newPlayer in commands.ts). Then
  * opponents' win percentage (OWP), then opponents' opponents' (OOWP, the
- * mean of each opponent's OWP), then head-to-head, then their fixed roster order.
+ * mean of each opponent's OWP), then head-to-head when exactly two players are
+ * still level and met.
  *
  * A win percentage is wins over rounds played, a tie counting half a win,
  * floored at 25% and capped at 100%, or 75% for a player who dropped. A bye is
@@ -57,7 +58,6 @@ export function sideResult(outcome: Outcome, seat: 1 | 2): Side {
       return seat === 1 ? 'win' : 'loss';
     case 'p2':
       return seat === 2 ? 'win' : 'loss';
-    case 'assigned-bye':
     case 'bye':
       return 'win';
     case 'tie':
@@ -65,7 +65,6 @@ export function sideResult(outcome: Outcome, seat: 1 | 2): Side {
     case 'double-loss':
     case 'loss':
       return 'loss';
-    case 'deleted':
     case 'pending':
     default:
       return null;
@@ -75,16 +74,15 @@ export function sideResult(outcome: Outcome, seat: 1 | 2): Side {
 export interface Tally {
   record: MatchRecord;
   byes: number;
-  assignedByes?: number;
   opponents: string[];
-  /** Net wins against each opponent, for head-to-head. */
-  headToHead: Map<string, number>;
+  /** Opponents beaten, for head-to-head. */
+  beat: Set<string>;
 }
 
 function tallyFor(tallies: Map<string, Tally>, id: string): Tally {
   let tally = tallies.get(id);
   if (!tally) {
-    tally = { record: { wins: 0, losses: 0, ties: 0 }, byes: 0, opponents: [], headToHead: new Map() };
+    tally = { record: { wins: 0, losses: 0, ties: 0 }, byes: 0, opponents: [], beat: new Set() };
     tallies.set(id, tally);
   }
   return tally;
@@ -95,28 +93,20 @@ const RECORD_KEY: { [side in Exclude<Side, null>]: keyof MatchRecord } = { win: 
 function countSeat(tallies: Map<string, Tally>, match: Match, seat: 1 | 2): void {
   const id = seat === 1 ? match.p1 : match.p2;
   const side = sideResult(match.outcome, seat);
-  if (id === null || match.outcome === 'pending') {
+  if (id === null || side === null) {
     return;
   }
   const tally = tallyFor(tallies, id);
-  if (side !== null) {
-    tally.record[RECORD_KEY[side]] += 1;
-  }
+  tally.record[RECORD_KEY[side]] += 1;
   tally.byes += match.outcome === 'bye' ? 1 : 0;
-  if (match.outcome === 'assigned-bye') {
-    tally.assignedByes = (tally.assignedByes ?? 0) + 1;
-  }
   const opponent = seat === 1 ? match.p2 : match.p1;
   if (opponent === null) {
     return;
   }
-  countOpponent(tally, opponent, side);
-}
-
-function countOpponent(tally: Tally, opponent: string, side: Side): void {
   tally.opponents.push(opponent);
-  const net = tally.headToHead;
-  net.set(opponent, (net.get(opponent) ?? 0) + (side === 'win' ? 1 : side === 'loss' ? -1 : 0));
+  if (side === 'win') {
+    tally.beat.add(opponent);
+  }
 }
 
 /** Every player's record and opponents over the pod's decided Swiss matches. */
@@ -153,46 +143,54 @@ export function winRate(tally: Tally, dropped: boolean): number {
   return Math.min(dropped ? DROPPED_MAX_WIN_RATE : 1, Math.max(MIN_WIN_RATE, rate));
 }
 
-/** Score.round: HALF_EVEN, four significant figures on the percentage (five at 100%). */
-function tomRate(rate: number): number {
-  if (rate === 0) {
-    return 0;
-  }
-  const percent = rate * 100;
-  const precision = percent >= 100 ? 5 : 4;
-  const scale = 10 ** (precision - 1 - Math.floor(Math.log10(percent)));
-  const scaled = percent * scale;
-  const integer = Math.floor(scaled);
-  const rounded = Math.abs(scaled - integer - 0.5) < 1e-8 ? integer + (integer % 2) : Math.round(scaled);
-  return rounded / (scale * 100);
-}
-
-function opponentAverage(opponents: readonly string[], values: ReadonlyMap<string, number>, assigned = 0): number {
-  let sum = assigned;
+function opponentAverage(opponents: readonly string[], values: ReadonlyMap<string, number>): number {
+  let sum = 0;
   for (const id of opponents) {
     sum += values.get(id) ?? 0;
   }
-  const count = opponents.length + assigned;
-  return count === 0 ? 0 : tomRate(sum / count);
+  return opponents.length === 0 ? 0 : sum / opponents.length;
 }
+
+/** Floating-point noise must not decide a tiebreak two equal records share. */
+const EPSILON = 1e-9;
 
 /**
  * The order two players rank in. The handbook ends on a random draw; TOM
- * ends on the fixed shuffled roster (the .tdf's player list), and so
+ * ends on the order players were registered (the .tdf's player list), and so
  * does this, which also keeps the organizer's copy and the public one, whose
  * player IDs differ, in the same order.
  */
-function compareStandings(order: ReadonlyMap<string, number>, tallies: ReadonlyMap<string, Tally>) {
+function compareStandings(order: ReadonlyMap<string, number>) {
+  const byRate = (x: number, y: number) => (Math.abs(x - y) < EPSILON ? 0 : y - x);
   return (a: Omit<Standing, 'place'>, b: Omit<Standing, 'place'>): number =>
     b.points - a.points ||
     Number(a.late) - Number(b.late) ||
-    b.owp - a.owp ||
-    b.oowp - a.oowp ||
-    -(tallies.get(a.playerId)?.headToHead.get(b.playerId) ?? 0) ||
+    byRate(a.owp, b.owp) ||
+    byRate(a.oowp, b.oowp) ||
     (order.get(a.playerId) ?? 0) - (order.get(b.playerId) ?? 0);
 }
 
 type Row = Omit<Standing, 'place'>;
+
+const level = (a: Row, b: Row) =>
+  a.points === b.points &&
+  a.late === b.late &&
+  Math.abs(a.owp - b.owp) < EPSILON &&
+  Math.abs(a.oowp - b.oowp) < EPSILON;
+
+/** Where exactly two players are level on everything and met, the winner goes first. */
+function headToHead(rows: Row[], tallies: Map<string, Tally>): Row[] {
+  const out = [...rows];
+  for (let i = 0; i + 1 < out.length; i += 1) {
+    const [a, b] = [out[i] as Row, out[i + 1] as Row];
+    const three = (out[i - 1] && level(out[i - 1] as Row, a)) || (out[i + 2] && level(b, out[i + 2] as Row));
+    if (!three && level(a, b) && tallies.get(b.playerId)?.beat.has(a.playerId)) {
+      out[i] = b;
+      out[i + 1] = a;
+    }
+  }
+  return out;
+}
 
 interface Tiebreakers {
   owp: number;
@@ -200,18 +198,14 @@ interface Tiebreakers {
 }
 
 /** O(P + E): look up cached opponent rates rather than walking opponents' opponents. */
-function tiebreakersFor(
-  tallies: ReadonlyMap<string, Tally>,
-  dropped: (id: string) => boolean,
-  frozen: ReadonlyMap<string, Tiebreakers> = new Map()
-): Map<string, number> {
+function tiebreakersFor(tallies: ReadonlyMap<string, Tally>, dropped: (id: string) => boolean): Map<string, number> {
   const rates = new Map<string, number>();
   for (const [id, tally] of tallies) {
     rates.set(id, winRate(tally, dropped(id)));
   }
   const owp = new Map<string, number>();
   for (const [id, tally] of tallies) {
-    owp.set(id, frozen.get(id)?.owp ?? opponentAverage(tally.opponents, rates, tally.assignedByes));
+    owp.set(id, opponentAverage(tally.opponents, rates));
   }
   return owp;
 }
@@ -263,7 +257,7 @@ function standingsTallies(pod: Pod, byId: ReadonlyMap<string, Player>, options: 
       countRound(tallies, next.value);
       next = remaining.next();
     }
-    const owp = tiebreakersFor(tallies, id => (byId.get(id)?.droppedAfter ?? Infinity) <= at, frozen);
+    const owp = tiebreakersFor(tallies, id => (byId.get(id)?.droppedAfter ?? Infinity) <= at);
     for (const id of droppedIds) {
       const tally = tallies.get(id);
       frozen.set(id, tally ? playerTiebreakers(id, tally, owp) : { owp: 0, oowp: 0 });
@@ -280,7 +274,7 @@ export interface StandingsOptions {
   throughRound?: number;
   /** Rank only these players (one division of a combined pod); everyone still counts as an opponent. */
   only?: ReadonlySet<string>;
-  /** Include disqualified players when explicitly requested by a staff view. */
+  /** Rank disqualified players too, as a dropped player ranks: a .tdf carries a disqualification as a drop. */
   withDisqualified?: boolean;
 }
 
@@ -289,7 +283,7 @@ export function swissStandings(pod: Pod, players: readonly Player[], options: St
   const byId = new Map(players.map(player => [player.id, player]));
   const dropped = (id: string) => (byId.get(id)?.droppedAfter ?? null) !== null;
   const { tallies, frozen } = standingsTallies(pod, byId, options);
-  const owp = tiebreakersFor(tallies, dropped, frozen);
+  const owp = tiebreakersFor(tallies, dropped);
   // A disqualified player leaves the standings; their matches still count for their opponents.
   const rows: Row[] = [];
   for (const [id, tally] of tallies) {
@@ -307,16 +301,12 @@ export function swissStandings(pod: Pod, players: readonly Player[], options: St
     });
   }
   const order = new Map(players.map((player, i) => [player.id, i]));
-  const rosterOrder = (a: Row, b: Row) => (order.get(a.playerId) ?? 0) - (order.get(b.playerId) ?? 0);
-  return rows
-    .sort(rosterOrder)
-    .sort(compareStandings(order, tallies))
-    .map((row, i) => ({ ...row, place: i + 1 }));
+  return headToHead(rows.sort(compareStandings(order)), tallies).map((row, i) => ({ ...row, place: i + 1 }));
 }
 
 /** Winner and loser of a decided elimination match, or null while it is open. */
 export function eliminationResult(match: Match): { winner: string; loser: string | null } | null {
-  if (match.outcome === 'bye' || match.outcome === 'assigned-bye' || (match.outcome === 'p1' && match.p2 === null)) {
+  if (match.outcome === 'bye' || (match.outcome === 'p1' && match.p2 === null)) {
     return { winner: match.p1, loser: null };
   }
   if (match.outcome === 'p1') {

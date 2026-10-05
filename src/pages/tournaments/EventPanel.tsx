@@ -24,6 +24,7 @@ import {
   saveSettings
 } from '../../lib/tournament/api';
 import { latestValue } from '../../lib/resource';
+import { tdfFilename, tdfText } from '../../lib/tournament/exportTdf';
 import { downloadBlob } from '../../lib/download';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
@@ -105,9 +106,12 @@ function EventDetails(props: { state: ManageState; manage: Manage }) {
       <SettingRow label='Event name' for='info-name'>
         <input id='info-name' class='tm-input' value={name()} onInput={e => setName(e.currentTarget.value)} />
       </SettingRow>
-      <SettingRow label='Event type'>
-        <EventTypeSwitch value={eventType()} onChange={setEventType} />
-      </SettingRow>
+      {/* An event no store runs is of no Play! Pokémon kind, unless it was sanctioned before stores existed. */}
+      <Show when={props.manage.store !== null || isSanctioned(props.manage)}>
+        <SettingRow label='Event type'>
+          <EventTypeSwitch value={eventType()} onChange={setEventType} />
+        </SettingRow>
+      </Show>
       <SettingRow label='Round minutes' for='info-round'>
         <input
           id='info-round'
@@ -184,7 +188,8 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
       <SettingRow label='Archetypes' for='set-decks'>
         <ArchetypesSelect id='set-decks' value={draft().deckVisibility} onChange={v => set('deckVisibility', v)} />
       </SettingRow>
-      <Show when={props.manage.mode === 'swiss'}>
+      {/* Only a store's event is sanctioned; one sanctioned before stores existed can still be turned off. */}
+      <Show when={props.manage.mode === 'swiss' && (props.manage.store !== null || props.manage.settings.sanctioned)}>
         <SettingRow label='Sanctioned'>
           <Toggle
             label='Sanctioned'
@@ -218,13 +223,12 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
 function Finish(props: { state: ManageState; manage: Manage }) {
   const download = () => {
     const { manage } = props;
-    void props.state.run(async () => {
-      const { tdfFilename, tdfText } = await import('../../lib/tournament/exportTdf');
+    void props.state.run(() => {
       downloadBlob(
         new Blob([tdfText({ ...manage, finished: manage.settings.finished })], { type: 'application/xml' }),
         tdfFilename(manage.tournament)
       );
-      return manage;
+      return Promise.resolve(manage);
     });
   };
   function setFinished(finished: boolean) {

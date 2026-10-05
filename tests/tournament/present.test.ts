@@ -13,7 +13,6 @@ import test, { describe } from 'node:test';
 import { applyCommand, type Command } from '../../shared/tournament/commands.ts';
 import { emptyTournament } from '../../shared/tournament/create.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
-import { cutPodOf } from '../../shared/tournament/rounds.ts';
 import { recommendedStructure } from '../../shared/tournament/structure.ts';
 import { parseTdf } from '../../shared/tournament/tdf.ts';
 import type { PlayerReport } from '../../shared/tournament/reports.ts';
@@ -245,7 +244,7 @@ test('the public copy names only what the room may see of each player', () => {
 test('divisions that played together each take their places from their own cut', () => {
   const t = juniorsCutApart();
   const mixed = t.pods.find(p => p.category === 'mixed') as Pod;
-  const juniorCut = cutPodOf(t, mixed, 'junior') as Pod;
+  const juniorCut = t.pods.find(p => p.category === 'junior') as Pod;
   const groups = podStandings(t, mixed, divisionLookup(t));
   assert.deepEqual(
     groups.map(g => [g.division, g.cut, g.cutStarted, g.rows.length]),
@@ -377,8 +376,6 @@ test('against a plan, the status counts the Swiss rounds, and names a round past
 const podOf = (n: number): Pod => ({
   ...pod,
   rounds: [],
-  startingPlayerIds: undefined,
-  divisionCounts: undefined,
   playerIds: Array.from({ length: n }, (_, i) => String(i + 1))
 });
 
@@ -613,28 +610,4 @@ describe("what staff see of an open match's reports", () => {
     assert.equal(shared?.detail, 'Both reports came from one device. Reported: Ash Ketchum wins');
     assert.equal(shared?.tags.get('misty')?.text, 'Lost');
   });
-});
-
-test('combined cut labels and completion use each division bracket instead of total matches', () => {
-  const tournament = juniorsCutApart();
-  const pod = tournament.pods[0]!;
-  const final = pod.rounds.at(-1)!;
-  const semifinals = pod.rounds.at(-2)!;
-  assert.equal(roundLabel(semifinals, pod), 'Semifinals');
-  assert.equal(roundLabel(final, pod), 'Final');
-  assert.equal(champion(final, pod), final.matches[0]!.p1);
-  const unfinished = { ...pod, rounds: pod.rounds.slice(0, -1) };
-  assert.equal(champion(semifinals, unfinished), null);
-  const waiting = {
-    ...pod,
-    divisionCuts: {
-      ...pod.divisionCuts,
-      masters: {
-        size: 4,
-        playoff3rd4th: false,
-        playerIds: pod.playerIds.filter(id => !pod.divisionCuts!.junior!.playerIds!.includes(id))
-      }
-    }
-  };
-  assert.equal(champion(final, waiting), null);
 });

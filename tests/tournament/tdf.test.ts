@@ -131,24 +131,32 @@ test('an event run on the site exports a file that reads back the same', () => {
   );
   assert.deepEqual(
     read.players.map(p => p.id),
-    paired.tournament.players.map(p => p.id)
+    ['800', '801', '802', '803', '804']
   );
   assert.equal(writeTdf(read), written, 'a file this site wrote also round-trips');
 });
 
-test('divisions that cut apart are written inside their combined pod', () => {
-  const written = writeTdf(juniorsCutApart());
+test('divisions that cut apart are written as pods of their own, and read back as those cuts', () => {
+  const t = juniorsCutApart();
+  const written = writeTdf(t);
+  assert.match(written, /<pod category="10" stage="0">/);
+  assert.match(written, /<pod category="0" stage="0">/);
+  assert.match(written, /<categorycut key="0">\s*<options>\s*<value>0<\/value>\s*<value>4<\/value>/);
   const read = parseTdf(written);
-  assert.equal(read.pods.length, 1);
-  assert.equal(read.pods[0]?.category, 'mixed');
-  assert.equal(read.pods[0]?.divisionCuts?.junior?.size, 4);
-  assert.equal(writeTdf(read), written);
+  assert.deepEqual(
+    read.pods.map(p => [p.category, p.cutOf ?? null]),
+    [
+      ['mixed', null],
+      ['junior', 'mixed']
+    ]
+  );
+  assert.equal(writeTdf(read), written, 'and round-trips');
 });
 
 test('refuses codes it does not know rather than rewriting them', () => {
   assert.throws(
-    () => parseTdf(CHALLENGE.replace('<match outcome="3">', '<match outcome="7">')),
-    /Unknown match outcome "7"/
+    () => parseTdf(CHALLENGE.replace('<match outcome="3">', '<match outcome="4">')),
+    /Unknown match outcome "4"/
   );
   assert.throws(
     () => parseTdf(CHALLENGE.replace('<pod category="10"', '<pod category="11"')),

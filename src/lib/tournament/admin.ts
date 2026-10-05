@@ -10,7 +10,11 @@ import type { AdminApplication, ApplicationStatus, FoundAccount, RoleHolder } fr
 import { call, json } from './api';
 
 /** A role as the admin page names it. */
-export const ROLE_WORDS: Record<AccountRole, string> = { organizer: 'Organizer', revoked: 'Revoked', admin: 'Admin' };
+export const ROLE_WORDS: Record<AccountRole, string> = {
+  community: 'Community organizer',
+  revoked: 'Revoked',
+  admin: 'Admin'
+};
 
 const path = (id: string) => `/api/admin/applications/${encodeURIComponent(id)}`;
 
@@ -28,8 +32,8 @@ export const proofUrl = (id: string) => `${path(id)}/proof`;
 /** Every account with a role, by name, with the events it owns. */
 export const fetchRoleHolders = () => call<{ accounts: RoleHolder[] }>('/api/admin/organizers');
 
-/** Removes an Organizer's access ('revoked') or gives it back ('organizer'). */
-export const setOrganizerAccess = (id: string, role: 'organizer' | 'revoked') =>
+/** Removes a Community organizer's access ('revoked') or gives it back ('community'). */
+export const setOrganizerAccess = (id: string, role: 'community' | 'revoked') =>
   call<{ account: RoleHolder }>(`/api/admin/organizers/${encodeURIComponent(id)}`, json('POST', { role }));
 
 /**

@@ -1,0 +1,149 @@
+/* Store settings: the sections down the left, the chosen one at right. */
+
+/* ---------- Store settings ---------- */
+/* The page is as wide as its sections need, so the hero's action and the
+   sections end on one edge. */
+.tm-store-settings-page {
+  max-width: 1040px;
+}
+.tm-store-settings {
+  display: grid;
+  grid-template-columns: 192px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+  padding-top: var(--space-2);
+}
+.tm-store-nav {
+  position: sticky;
+  top: calc(var(--topnav-h) + var(--space-4));
+  display: grid;
+  gap: 2px;
+}
+.tm-store-nav button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-base);
+  text-align: left;
+  transition:
+    background var(--ms-fast) var(--ease-base),
+    color var(--ms-fast) var(--ease-base);
+}
+.tm-store-nav button:hover {
+  color: var(--fg);
+  background: var(--surface-2);
+}
+.tm-store-nav button.is-on {
+  border-left-color: var(--accent);
+  background: var(--surface);
+  color: var(--fg);
+  font-weight: 600;
+}
+.tm-store-content {
+  min-width: 0;
+}
+.tm-store-section {
+  display: grid;
+  gap: var(--space-2);
+}
+.tm-store-section > .tm-box + .tm-subhead {
+  margin-top: var(--space-4);
+}
+.tm-store-pane {
+  padding: var(--space-4);
+}
+.tm-store-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+}
+.tm-store-save .tm-error {
+  margin: 0;
+}
+.tm-store-dot {
+  margin: 0 6px;
+}
+.tm-store-refused {
+  font-size: var(--text-body);
+}
+.tm-store-invite {
+  min-height: 52px;
+}
+.tm-store-invite .tm-store-invite-box {
+  order: 3;
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.tm-store-invite .tm-invite {
+  width: 100%;
+}
+.tm-store-invite-what {
+  flex: 1;
+}
+
+/* A date that differs: its day, which night, off or moved, and why. */
+.tm-night.tm-night-exception {
+  grid-template-columns: 150px minmax(0, 1.3fr) auto minmax(0, 1fr) auto;
+}
+.tm-night-change {
+  display: flex;
+  gap: var(--space-2);
+}
+.tm-night-change .tm-select {
+  width: auto;
+}
+.tm-night-change .tm-night-time {
+  width: 120px;
+}
+
+@media (max-width: 760px) {
+  .tm-store-settings {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+  /* On a phone the sections are a row of tabs over the one shown. */
+  .tm-store-nav {
+    position: static;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--rule);
+  }
+  .tm-store-nav button {
+    flex: none;
+    border-left: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    margin-bottom: -1px;
+  }
+  .tm-store-nav button.is-on {
+    border-bottom-color: var(--accent);
+    background: transparent;
+  }
+}
+@media (max-width: 640px) {
+  .tm-store-pane {
+    padding: var(--space-3);
+  }
+  /* Its day and its change on one line, then which night, then why. */
+  .tm-night.tm-night-exception {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+  }
+  .tm-night.tm-night-exception > .tm-select {
+    grid-column: 1 / -1;
+  }
+  .tm-night.tm-night-exception > .tm-input.tm-night-date {
+    grid-column: auto;
+  }
+  .tm-night-change {
+    flex-wrap: wrap;
+  }
+}

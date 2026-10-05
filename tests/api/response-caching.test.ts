@@ -89,7 +89,7 @@ test('a profile change invalidates a player view even when the event version is 
   const etag = validator(before);
   const oldView = await before.json();
   const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
-  db.raw.prepare("UPDATE users SET pop_id = '900' WHERE name = 'Player'").run();
+  db.raw.prepare("UPDATE users SET pop_id = '900' WHERE handle = 'player'").run();
   const after = await get(code, player, etag, `?since=${oldView.version}`);
   assert.equal(after.status, 200);
   const newView = await after.json();
@@ -111,7 +111,7 @@ test('history revalidates entries and refuses a revoked session before matching 
   await addPlayers(code, owner, 1);
   // Link the account to the player directly, without changing the tournament version.
   const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
-  db.raw.prepare("UPDATE users SET pop_id = '900' WHERE name = 'Organizer'").run();
+  db.raw.prepare("UPDATE users SET pop_id = '900' WHERE handle = 'organizer'").run();
   const changed = await get(null, owner, etag);
   assert.equal(changed.status, 200);
   assert.notEqual(validator(changed), etag);

@@ -6,7 +6,7 @@
  * the lot if any required part is missing or out of bounds.
  */
 
-import { normalizeCutPods } from './rounds.js';
+import { yearOnlyBirthDate } from './divisions.js';
 import {
   EVENT_TYPES,
   type Match,
@@ -32,17 +32,7 @@ export const LIMITS = {
   standings: 1_000_000
 } as const;
 
-const OUTCOMES: readonly Outcome[] = [
-  'pending',
-  'p1',
-  'p2',
-  'tie',
-  'double-loss',
-  'bye',
-  'assigned-bye',
-  'deleted',
-  'loss'
-];
+const OUTCOMES: readonly Outcome[] = ['pending', 'p1', 'p2', 'tie', 'double-loss', 'bye', 'loss'];
 const KINDS: readonly RoundKind[] = ['swiss', 'elimination'];
 const STATUSES: readonly RoundStatus[] = ['paired', 'started', 'finished'];
 
@@ -109,36 +99,17 @@ function info(value: unknown): TournamentInfo {
   };
 }
 
-function lateData(value: unknown): NonNullable<Player['lateData']> {
-  const o = obj(value);
-  return {
-    round: int(o.round, -1, LIMITS.rounds),
-    timestamp: str(o.timestamp, 40),
-    forcedLoss: o.forcedLoss === true,
-    usedForcedLoss: o.usedForcedLoss === true
-  };
-}
-
-function playerNumbers(o: Obj): Pick<Player, 'order' | 'seed' | 'byes'> {
-  return Object.fromEntries(
-    ['order', 'seed', 'byes'].filter(key => o[key] !== undefined).map(key => [key, int(o[key], 0, LIMITS.players)])
-  );
-}
-
 function player(value: unknown): Player {
   const o = obj(value);
   return {
     id: str(o.id, 20),
     firstName: str(o.firstName),
     lastName: str(o.lastName),
-    birthDate: str(o.birthDate, 20),
+    birthDate: yearOnlyBirthDate(str(o.birthDate, 20)),
     droppedAfter: o.droppedAfter === null ? null : int(o.droppedAfter, 0, LIMITS.rounds),
     // A disqualification is a drop: without one it would leave a player paired but out of the standings.
     ...(o.disqualified === true && o.droppedAfter !== null ? { disqualified: true as const } : {}),
     ...(o.late === true ? { late: true } : {}),
-    ...(o.starter === undefined ? {} : { starter: o.starter === true }),
-    ...(o.lateData === undefined ? {} : { lateData: lateData(o.lateData) }),
-    ...playerNumbers(o),
     ...(o.fixedTable === undefined ? {} : { fixedTable: int(o.fixedTable, 1, 9999) }),
     ...(o.fromList === true ? { fromList: true } : {}),
     created: str(o.created, 40),
@@ -166,26 +137,9 @@ function round(value: unknown): Round {
     timeLeft: int(o.timeLeft, -86_400, 86_400),
     pairTime: str(o.pairTime, 40),
     startTime: str(o.startTime, 40),
-    ...(o.startedAt === undefined ? {} : { startedAt: int(o.startedAt, 0, Number.MAX_SAFE_INTEGER) }),
     clockStartedAt: o.clockStartedAt == null ? null : int(o.clockStartedAt, 0, Number.MAX_SAFE_INTEGER),
     matches: arr(o.matches, LIMITS.matchesPerRound).map(match)
   };
-}
-
-function divisionCuts(value: unknown): NonNullable<Pod['divisionCuts']> {
-  return Object.fromEntries(
-    Object.entries(obj(value)).map(([key, value]) => {
-      const o = obj(value);
-      return [
-        oneOf(key, ['junior', 'senior', 'masters']),
-        {
-          size: int(o.size, 0, 512),
-          playoff3rd4th: o.playoff3rd4th === true,
-          ...(o.playerIds === undefined ? {} : { playerIds: arr(o.playerIds, LIMITS.players).map(id => str(id, 20)) })
-        }
-      ];
-    })
-  );
 }
 
 function pod(value: unknown): Pod {
@@ -197,21 +151,7 @@ function pod(value: unknown): Pod {
     cut: int(o.cut, 0, 512),
     playoff3rd4th: o.playoff3rd4th === true,
     startingTable: int(o.startingTable, 0, 100_000),
-    ...(o.cutOf === undefined ? {} : { cutOf: oneOf(o.cutOf, POD_CATEGORIES) }),
-    ...(o.divisionCounts === undefined
-      ? {}
-      : {
-          divisionCounts: Object.fromEntries(
-            Object.entries(obj(o.divisionCounts)).map(([d, count]) => [
-              oneOf(d, ['junior', 'senior', 'masters']),
-              int(count, 0, LIMITS.players)
-            ])
-          )
-        }),
-    ...(o.startingPlayerIds === undefined
-      ? {}
-      : { startingPlayerIds: arr(o.startingPlayerIds, LIMITS.players).map(id => str(id, 20)) }),
-    ...(o.divisionCuts === undefined ? {} : { divisionCuts: divisionCuts(o.divisionCuts) })
+    ...(o.cutOf === undefined ? {} : { cutOf: oneOf(o.cutOf, POD_CATEGORIES) })
   };
 }
 
@@ -247,17 +187,10 @@ function passthrough(value: unknown): TdfPassthrough {
     podExtras: podExtras(o.podExtras),
     roundCodes: record(o.roundCodes, entry => {
       const codes = obj(entry);
-      return {
-        type: str(codes.type, 10),
-        stage: str(codes.stage, 10),
-        ...(codes.timeLeft === undefined ? {} : { timeLeft: int(codes.timeLeft, 0, 24 * 60 * 60) }),
-        ...(codes.startTime === undefined ? {} : { startTime: str(codes.startTime, 100) })
-      };
+      return { type: str(codes.type, 10), stage: str(codes.stage, 10) };
     }),
     finalsOptions: str(o.finalsOptions, LIMITS.passthrough),
-    ...(o.standings === undefined ? {} : { standings: savedStandings(o.standings) }),
-    ...(o.original === undefined ? {} : { original: savedStandings(o.original) }),
-    ...(o.finalsState === undefined ? {} : { finalsState: str(o.finalsState, LIMITS.standings) })
+    ...(o.standings === undefined ? {} : { standings: savedStandings(o.standings) })
   };
 }
 
@@ -280,10 +213,9 @@ export function readTournament(body: unknown): Tournament | null {
       info: info(o.info),
       players: arr(o.players, LIMITS.players).map(player),
       pods: arr(o.pods, POD_CATEGORIES.length).map(pod),
-      ...(o.startedAt === undefined ? {} : { startedAt: int(o.startedAt, 0, Number.MAX_SAFE_INTEGER) }),
       ...(o.passthrough === undefined ? {} : { passthrough: passthrough(o.passthrough) })
     };
-    return consistent(tournament) ? normalizeCutPods(tournament) : null;
+    return consistent(tournament) ? tournament : null;
   } catch (error) {
     if (error instanceof Invalid) {
       return null;

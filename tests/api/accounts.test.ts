@@ -1,10 +1,11 @@
 /**
  * Player accounts end to end, against the real schema in SQLite. What must
- * hold: migration 0006 brings a live database in line with the schema, with
+ * hold: migrations 0006 to 0012 bring a live database in line with the schema, with
  * each POP ID left on one account and Reese the only admin; an account's
  * role and public profile come with who is signed in; one account holds a
- * POP ID, and lets go of the players it was as an old one; a public profile
- * gets an address of its own, and a new one each time it is turned on.
+ * POP ID, and lets go of the players it was as an old one; a username is
+ * one account's, kept to the rules, held a day once let go and changed at
+ * most three times a day; a public profile lives at the username.
  */
 
 import assert from 'node:assert/strict';
@@ -12,6 +13,7 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { beforeEach, mock, test } from 'node:test';
 
+import * as age from '../../functions/api/auth/age.ts';
 import * as callback from '../../functions/api/auth/callback/[provider].ts';
 import * as me from '../../functions/api/me.ts';
 import type { Profile } from '../../functions/lib/auth/oauth.ts';
@@ -71,7 +73,7 @@ function seedBefore0006(db: DatabaseSync) {
   event.run('TOMRUN', REESE, 'tom', players('333'), '{"sanctioned":false}', 'c');
 }
 
-test('migrations 0006 to 0009 bring a database made before accounts in line with the schema', () => {
+test('migrations 0006 to 0012 bring a database made before accounts in line with the schema', () => {
   const db = new DatabaseSync(':memory:');
   db.exec(sql('../fixtures/d1/tournaments-before-0006.sql'));
   seedBefore0006(db);
@@ -82,8 +84,36 @@ test('migrations 0006 to 0009 bring a database made before accounts in line with
 
   db.exec(sql('../../config/d1/migrations/tournaments-0008-verified-email-uniqueness.sql'));
   db.exec(sql('../../config/d1/migrations/tournaments-0009-identify-failures.sql'));
+  db.exec("UPDATE users SET public_slug = 'K7PQ2MXA' WHERE id = 'owner'");
+  db.exec(sql('../../config/d1/migrations/tournaments-0010-usernames.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments-0011-age-gate.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments-0012-stores.sql'));
+  db.exec(sql('../../config/d1/migrations/tournaments-0013-proof-deletions.sql'));
 
   assert.deepEqual(shape(db), shape(sqliteD1('tournaments.sql').raw));
+  const handles = db
+    .prepare('SELECT id, handle, public_profile AS public FROM users ORDER BY id')
+    .all()
+    .map(row => ({ ...row })) as {
+    id: string;
+    handle: string;
+    public: number;
+  }[];
+  assert.deepEqual(
+    handles.find(row => row.id === REESE),
+    { id: REESE, handle: 'rosematcha', public: 0 },
+    'Reese is rosematcha'
+  );
+  assert.ok(
+    handles.every(row => row.id === REESE || /^player-[0-9a-f]{8}$/.test(row.handle)),
+    'every other account gets a random username'
+  );
+  assert.equal(new Set(handles.map(row => row.handle)).size, handles.length);
+  assert.deepEqual(
+    handles.filter(row => row.public).map(row => row.id),
+    ['owner'],
+    'a profile that was public stays public'
+  );
   const users = db.prepare('SELECT id, pop_id AS popId, role, role_by AS roleBy FROM users ORDER BY id').all();
   assert.deepEqual(
     users.map(row => ({ ...row })),
@@ -112,13 +142,20 @@ test('migrations 0006 to 0009 bring a database made before accounts in line with
   );
 });
 
-test('who is signed in comes with their role and public profile address', async () => {
+test('who is signed in comes with their role, username and public profile', async () => {
   const cookie = await signIn('Player');
   const player = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie })).json.user;
-  assert.deepEqual([player.role, player.publicSlug], [null, null]);
-  raw().exec("UPDATE users SET role = 'organizer', public_slug = 'K7PQ2MXA'");
+  assert.deepEqual(
+    [player.role, player.handle, player.name, player.publicProfile, player.profileName],
+    [null, 'player', 'player', false, 'real'],
+    'a dev sign-in takes the name typed as its username, and is called by it without a real name'
+  );
+  raw().exec("UPDATE users SET role = 'community', public_profile = 1, profile_name = 'handle'");
   const organizer = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie })).json.user;
-  assert.deepEqual([organizer.role, organizer.publicSlug], ['organizer', 'K7PQ2MXA']);
+  assert.deepEqual([organizer.role, organizer.publicProfile, organizer.profileName], ['community', true, 'handle']);
+  raw().exec("UPDATE users SET role = 'organizer'");
+  const old = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie })).json.user;
+  assert.equal(old.role, null, 'the role before Community organizers grants nothing');
   raw().exec("UPDATE users SET role = 'superuser'");
   const unknown = (await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie })).json.user;
   assert.equal(unknown.role, null, 'a role the code does not know grants nothing');
@@ -218,80 +255,148 @@ test('a POP ID change lets go of the players the account is as the POP ID it hol
 const patchAccount = (cookie: string, body: unknown) =>
   hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body });
 
-test('the public profile turns on at an address of its own, and off again', async () => {
+test('the player profile names the account, and saving it answers the new name', async () => {
   const cookie = await signIn('Player');
-  const on = await patchAccount(cookie, { publicProfile: true });
-  const slug = on.json.user.publicSlug as string;
-  assert.match(slug, /^[A-HJKMNP-Z2-9]{8}$/, 'eight characters of the event-code alphabet');
-  assert.equal((await accountOf(cookie)).publicSlug, slug);
-  assert.equal(
-    (await patchAccount(cookie, { publicProfile: true })).json.user.publicSlug,
-    slug,
-    'on stays where it is'
-  );
-  const renamed = await patchAccount(cookie, { name: 'Pat' });
-  assert.deepEqual([renamed.json.user.name, renamed.json.user.publicSlug], ['Pat', slug]);
-
-  assert.equal((await patchAccount(cookie, { publicProfile: false })).json.user.publicSlug, null);
-  assert.equal((await accountOf(cookie)).publicSlug, null);
-  const again = (await patchAccount(cookie, { publicProfile: true })).json.user.publicSlug as string;
-  assert.notEqual(again, slug, 'turned on again, a link shared before stays dead');
-
-  const both = await patchAccount(cookie, { name: 'Pat', publicProfile: false });
-  assert.deepEqual([both.status, both.json.error], [400, 'Change one thing at a time']);
-  assert.equal((await patchAccount(cookie, { publicProfile: 'yes' })).status, 400);
-  assert.equal((await accountOf(cookie)).publicSlug, again, 'a refused change changes nothing');
+  const saved = await saveProfile(cookie, profileOf('1234567'));
+  assert.equal(saved.json.user.name, 'Pat Player');
+  assert.deepEqual([(await accountOf(cookie)).name, (await accountOf(cookie)).handle], ['Pat Player', 'player']);
 });
 
-test('two requests turning the profile on at once both answer the one address it keeps', async () => {
-  const cookie = await signIn('Player');
-  // The other request read the profile off too, and its address lands first.
-  beforeWrite('UPDATE OR IGNORE users SET public_slug', () => {
-    raw().exec("UPDATE users SET public_slug = 'K7PQ2MXA'");
-  });
-  const on = await patchAccount(cookie, { publicProfile: true });
-  assert.equal(on.json.user.publicSlug, 'K7PQ2MXA');
-  assert.equal((await accountOf(cookie)).publicSlug, 'K7PQ2MXA', 'the first address still works');
+test('a new account from a provider gets a random username, not the provider’s name', async () => {
+  const id = await upsertUser(env.TOURNAMENT_DB!, authProfile({ name: 'Real Name' }));
+  const row = raw().prepare('SELECT handle FROM users WHERE id = ?').get(id) as { handle: string };
+  assert.match(row.handle, /^player-[a-z0-9]{8}$/);
 });
 
-test('turning on a profile that another request turned off meanwhile gives it an address that works', async () => {
-  const cookie = await signIn('Player');
-  await patchAccount(cookie, { publicProfile: true });
-  // This request reads the profile on; the other turns it off before this one answers.
-  const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
-  let pending = true;
-  env.TOURNAMENT_DB = {
-    ...inner,
-    batch: async statements => {
-      const results = await inner.batch(statements);
-      if (pending) {
-        pending = false;
-        raw().exec('UPDATE users SET public_slug = NULL');
-      }
-      return results;
-    }
-  };
-  const again = (await patchAccount(cookie, { publicProfile: true })).json.user.publicSlug as string | null;
-  assert.notEqual(again, null);
-  assert.equal((await accountOf(cookie)).publicSlug, again);
-});
+const rename = (cookie: string, handle: unknown) => patchAccount(cookie, { handle });
 
-test('a profile address another account holds is drawn again', async () => {
-  const random = mock.method(Math, 'random', () => 0);
-  try {
-    const first = await patchAccount(await signIn('First'), { publicProfile: true });
-    assert.equal(first.json.user.publicSlug, 'AAAAAAAA');
-    // The second account's first draw is the first's address; its next is free.
-    let draws = 0;
-    random.mock.mockImplementation(() => {
-      draws += 1;
-      return draws <= 8 ? 0 : 0.5;
-    });
-    const second = await patchAccount(await signIn('Second'), { publicProfile: true });
-    assert.equal(second.json.user.publicSlug, 'SSSSSSSS');
-  } finally {
-    random.mock.restore();
+test('a username is saved lowercased, and one that breaks the rules is refused with why', async () => {
+  const cookie = await signIn('Player');
+  const saved = await rename(cookie, '  RoseMatcha ');
+  assert.deepEqual([saved.status, saved.json.user.handle, saved.json.user.name], [200, 'rosematcha', 'rosematcha']);
+  const refusals: [unknown, string][] = [
+    ['r', 'Use 2 to 32 characters'],
+    ['a'.repeat(33), 'Use 2 to 32 characters'],
+    ['rose matcha', 'Use letters, numbers, periods, dashes and underscores'],
+    ['rosé', 'Use letters, numbers, periods, dashes and underscores'],
+    ['.rose', 'Start and end with a letter or number'],
+    ['rose-', 'Start and end with a letter or number'],
+    ['rose..matcha', 'Put a letter or number between separators'],
+    ['ad.min', 'That username is reserved'],
+    [42, 'Use 2 to 32 characters']
+  ];
+  for (const [handle, error] of refusals) {
+    const refused = await rename(cookie, handle);
+    assert.deepEqual([refused.status, refused.json.error], [400, error], String(handle));
   }
+  assert.equal((await accountOf(cookie)).handle, 'rosematcha', 'a refused change changes nothing');
+  const both = await patchAccount(cookie, { handle: 'pat', publicProfile: true });
+  assert.deepEqual([both.status, both.json.error], [400, 'Change one thing at a time']);
+  assert.deepEqual([(await patchAccount(cookie, { name: 'Pat' })).status], [400], 'the account name is gone');
+});
+
+test('a username is one account’s, counting usernames that differ only in separators as the same', async () => {
+  const first = await signIn('First');
+  const second = await signIn('Second');
+  assert.equal((await rename(first, 'rose.matcha')).status, 200);
+  for (const handle of ['rose.matcha', 'rosematcha', 'rose_matcha', 'ro-se-matcha']) {
+    const taken = await rename(second, handle);
+    assert.deepEqual([taken.status, taken.json.error], [409, 'That username is taken'], handle);
+  }
+  assert.equal((await accountOf(second)).handle, 'second');
+  assert.equal((await rename(first, 'rose-matcha')).status, 200, 'an account may change its own separators');
+});
+
+/** Runs `body` with the clock at `at`, as Date.now() reads it. */
+async function at<T>(time: number, body: () => Promise<T>): Promise<T> {
+  const now = mock.method(Date, 'now', () => time);
+  try {
+    return await body();
+  } finally {
+    now.mock.restore();
+  }
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+const T0 = Date.UTC(2026, 9, 4);
+
+test('a username let go stays its account’s for a day', async () => {
+  const first = await signIn('First');
+  const second = await signIn('Second');
+  await at(T0, () => rename(first, 'rosematcha'));
+  await at(T0 + 1, () => rename(first, 'matcha'));
+  const held = await at(T0 + DAY - 1, () => rename(second, 'rose.matcha'));
+  assert.deepEqual([held.status, held.json.error], [409, 'That username is taken']);
+  assert.equal((await at(T0 + DAY - 1, () => rename(first, 'rosematcha'))).status, 200, 'its account may take it back');
+  await at(T0 + DAY, () => rename(first, 'pat'));
+  const stillHeld = await at(T0 + 2 * DAY - 1, () => rename(second, 'rosematcha'));
+  assert.equal(stillHeld.status, 409, 'held a day from the last letting go');
+  assert.equal((await at(T0 + 2 * DAY, () => rename(second, 'rosematcha'))).status, 200, 'then anyone’s');
+});
+
+test('an account changes its username at most three times a day', async () => {
+  const cookie = await signIn('Player');
+  for (const [step, handle] of ['one', 'two', 'three'].entries()) {
+    assert.equal((await at(T0 + step, () => rename(cookie, handle))).status, 200, handle);
+  }
+  assert.equal((await at(T0 + 10, () => rename(cookie, 'three'))).status, 200, 'its own username again is no change');
+  const fourth = await at(T0 + 10, () => rename(cookie, 'four'));
+  assert.deepEqual([fourth.status, fourth.json.error], [429, 'You can change your username three times a day']);
+  assert.equal((await at(T0 + DAY - 1, () => rename(cookie, 'four'))).status, 429);
+  assert.equal((await at(T0 + DAY, () => rename(cookie, 'four'))).status, 200, 'the first change is a day old');
+  assert.equal((await accountOf(cookie)).handle, 'four');
+  const kept = raw().prepare('SELECT COUNT(*) AS n FROM handle_changes').get() as { n: number };
+  assert.equal(kept.n, 3, 'a change a day old is swept with the next');
+});
+
+test('a late request cannot borrow a change another request recorded in the same millisecond', async () => {
+  const cookie = await signIn('Player');
+  for (const [step, handle] of ['bravo', 'charlie', 'delta'].entries()) {
+    await at(T0 + step, () => rename(cookie, handle));
+  }
+  // A request that read the clock with the first, and lands last.
+  const late = await at(T0, () => rename(cookie, 'bravo'));
+  assert.equal(late.status, 429);
+  assert.equal((await accountOf(cookie)).handle, 'delta', 'no fourth change, and delta keeps its record');
+});
+
+test('renames that race are judged one at a time: neither the limit nor a username is passed twice', async () => {
+  const first = await signIn('First');
+  const second = await signIn('Second');
+  env.TOURNAMENT_DB = serializedAccounts();
+  const both = await at(T0, () => Promise.all([rename(first, 'rosematcha'), rename(second, 'rose.matcha')]));
+  assert.deepEqual(both.map(answer => answer.status).sort(), [200, 409]);
+  const third = await signIn('Third');
+  // Each request reads its own moment, as requests a millisecond apart would.
+  let clock = T0;
+  const now = mock.method(Date, 'now', () => (clock += 1));
+  try {
+    const burst = await Promise.all(['a1', 'a2', 'a3', 'a4', 'a5'].map(handle => rename(third, handle)));
+    assert.deepEqual(burst.map(answer => answer.status).sort(), [200, 200, 200, 429, 429]);
+  } finally {
+    now.mock.restore();
+  }
+});
+
+test('a public profile keeps its address, the username, through off and on, and shows the name chosen', async () => {
+  const cookie = await signIn('Player');
+  await rename(cookie, 'rosematcha');
+  const on = await patchAccount(cookie, { publicProfile: true });
+  assert.deepEqual([on.json.user.publicProfile, on.json.user.handle], [true, 'rosematcha']);
+  assert.equal((await patchAccount(cookie, { publicProfile: false })).json.user.publicProfile, false);
+  assert.equal((await accountOf(cookie)).publicProfile, false);
+  assert.equal((await patchAccount(cookie, { publicProfile: true })).json.user.handle, 'rosematcha');
+
+  assert.equal((await patchAccount(cookie, { profileName: 'handle' })).json.user.profileName, 'handle');
+  assert.equal((await accountOf(cookie)).profileName, 'handle');
+  assert.equal((await patchAccount(cookie, { profileName: 'nickname' })).status, 400);
+  assert.equal((await patchAccount(cookie, { publicProfile: 'yes' })).status, 400);
+  assert.equal((await patchAccount(cookie, {})).status, 400);
+  assert.deepEqual(
+    [(await accountOf(cookie)).profileName, (await accountOf(cookie)).publicProfile],
+    ['handle', true],
+    'a refused change changes nothing'
+  );
 });
 
 const authProfile = (overrides: Partial<Profile> = {}): Profile => ({
@@ -328,7 +433,8 @@ const userCount = () => raw().prepare('SELECT count(*) AS n FROM users').get()?.
 test('simultaneous first logins return the identity winner and leave no orphan accounts or sessions', async () => {
   const db = serializedAccounts();
   const profile = authProfile({ email: null });
-  const ids = await Promise.all([upsertUser(db, profile), upsertUser(db, profile)]);
+  // Made as the age check makes an account, which is the only way one is made.
+  const ids = await Promise.all([upsertUser(db, profile, '02/27/1990'), upsertUser(db, profile, '02/27/1990')]);
   assert.equal(ids[0], ids[1]);
   assert.deepEqual(identityRows(), [ids[0]]);
   assert.equal(userCount(), 1);
@@ -429,8 +535,8 @@ test('email conflict resolution propagates a failed linking transaction', async 
   const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
   const db = racing(inner, 'INSERT INTO users', () => {
     raw()
-      .prepare('INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)')
-      .run('winner', 'Player', 'player@example.com', 1);
+      .prepare('INSERT INTO users (id, handle, email, created_at) VALUES (?, ?, ?, ?)')
+      .run('winner', 'winner', 'player@example.com', 1);
     raw().exec(
       "CREATE TRIGGER fail_identity BEFORE INSERT ON identities BEGIN SELECT RAISE(ABORT, 'identity unavailable'); END"
     );
@@ -443,11 +549,11 @@ test('email conflict resolution propagates a failed linking transaction', async 
 test('migration 0008 preserves accounts and identities while assigning duplicate emails to the oldest account', () => {
   const db = raw();
   db.exec('DROP INDEX users_by_verified_email; CREATE INDEX users_by_email ON users (email)');
-  const insert = db.prepare('INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)');
-  insert.run('a', 'A', ' Player@Example.COM ', 1);
-  insert.run('b', 'B', 'player@example.com', 1);
-  insert.run('c', 'C', 'PLAYER@example.com', 2);
-  insert.run('blank', 'Blank', ' ', 0);
+  const insert = db.prepare('INSERT INTO users (id, handle, email, created_at) VALUES (?, ?, ?, ?)');
+  insert.run('a', 'a1', ' Player@Example.COM ', 1);
+  insert.run('b', 'b1', 'player@example.com', 1);
+  insert.run('c', 'c1', 'PLAYER@example.com', 2);
+  insert.run('blank', 'blank', ' ', 0);
   db.exec("INSERT INTO identities VALUES ('google', 'b', 'b')");
   const migration = sql('../../config/d1/migrations/tournaments-0008-verified-email-uniqueness.sql');
   db.exec(migration);
@@ -482,7 +588,7 @@ test('migration 0008 preserves accounts and identities while assigning duplicate
   ['google', 'google'],
   ['google', 'discord']
 ].forEach(providers => {
-  test(`concurrent ${providers.join('/')} callbacks establish sessions for the winning account`, async () => {
+  test(`concurrent ${providers.join('/')} sign-ups establish sessions for the winning account`, async () => {
     env.TOURNAMENT_DB = serializedAccounts();
     env.GOOGLE_CLIENT_ID = 'id';
     env.GOOGLE_CLIENT_SECRET = 'secret';
@@ -509,9 +615,29 @@ test('migration 0008 preserves accounts and identities while assigning duplicate
           } as never)
         )
       );
-      const sessions = responses.map(response => {
-        assert.equal(response.headers.get('location'), '/host');
-        const cookie = response.headers.getSetCookie().find(value => value.startsWith('cm_session='));
+      const waits = responses.map(response => {
+        assert.equal(response.headers.get('location'), '/welcome');
+        const cookie = response.headers.getSetCookie().find(value => value.startsWith('cm_signup='));
+        assert.ok(cookie);
+        return cookie.split(';')[0]!;
+      });
+      const checks = await Promise.all(
+        waits.map(cookie =>
+          hit(
+            age.onRequestPost as Handler,
+            '/api/auth/age',
+            {},
+            {
+              method: 'POST',
+              cookie,
+              body: { birthDate: '1990-01-01' }
+            }
+          )
+        )
+      );
+      const sessions = checks.map(check => {
+        assert.deepEqual(check.json, { next: '/host' });
+        const cookie = check.headers.getSetCookie().find(value => value.startsWith('cm_session='));
         assert.ok(cookie);
         return cookie.split(';')[0]!;
       });
@@ -567,8 +693,8 @@ test('successful linking to an email race winner skips the final identity read',
   const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
   const raced = racing(inner, 'INSERT INTO users', () => {
     raw()
-      .prepare('INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)')
-      .run('winner', 'Player', 'player@example.com', 1);
+      .prepare('INSERT INTO users (id, handle, email, created_at) VALUES (?, ?, ?, ?)')
+      .run('winner', 'winner', 'player@example.com', 1);
   });
   let identityReads = 0;
   const db: D1Like = {
@@ -589,8 +715,8 @@ test('email conflict resolution still returns an identity that another account w
   const inner = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
   const raced = racing(inner, 'INSERT INTO users', () => {
     raw()
-      .prepare('INSERT INTO users (id, name, email, created_at) VALUES (?, ?, ?, ?)')
-      .run('email-winner', 'Player', 'player@example.com', 1);
+      .prepare('INSERT INTO users (id, handle, email, created_at) VALUES (?, ?, ?, ?)')
+      .run('email-winner', 'email-winner', 'player@example.com', 1);
   });
   let identityInserts = 0;
   const db: D1Like = {
@@ -600,8 +726,8 @@ test('email conflict resolution still returns an identity that another account w
         identityInserts += 1;
         if (identityInserts === 2) {
           raw()
-            .prepare('INSERT INTO users (id, name, created_at) VALUES (?, ?, ?)')
-            .run('identity-winner', 'Player', 2);
+            .prepare('INSERT INTO users (id, handle, created_at) VALUES (?, ?, ?)')
+            .run('identity-winner', 'identity-winner', 2);
           raw()
             .prepare('INSERT INTO identities (provider, subject, user_id) VALUES (?, ?, ?)')
             .run('google', 'google-player', 'identity-winner');

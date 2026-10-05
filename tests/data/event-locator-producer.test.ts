@@ -326,22 +326,34 @@ test('a pull above the advertised total logs success with no negative missing co
   });
 });
 
+/**
+ * A publisher in memory. League shards (shared/events/leagues.ts) are their
+ * own artifact: their writes are kept apart from the listing's and the
+ * locals', and a run reads back the league index an earlier run wrote.
+ */
 function memoryPublisher(existing: LocatorIndex | null = null, existingLocals: LocalsIndex | null = null) {
   const writes: string[] = [];
+  const leagueWrites: string[] = [];
   const removes: string[] = [];
   const store = new Map<string, unknown>();
   const publisher: Publisher = {
-    read: async <T>(key: string) =>
-      (key === 'events/v1/index.json' ? existing : key === 'events/locals/v1/index.json' ? existingLocals : null) as T,
+    read: async <T>(key: string) => {
+      if (key.startsWith('events/leagues/')) {
+        return (store.get(key) ?? null) as T;
+      }
+      return (
+        key === 'events/v1/index.json' ? existing : key === 'events/locals/v1/index.json' ? existingLocals : null
+      ) as T;
+    },
     write: async (key, value) => {
-      writes.push(key);
+      (key.startsWith('events/leagues/') ? leagueWrites : writes).push(key);
       store.set(key, value);
     },
     remove: async key => {
       removes.push(key);
     }
   };
-  return { publisher, writes, removes, store };
+  return { publisher, writes, leagueWrites, removes, store };
 }
 
 function previousIndex(

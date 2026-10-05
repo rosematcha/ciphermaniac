@@ -97,6 +97,55 @@ test('asks for device location on first open and lists what is near it, by day @
   await expect(page.locator('.lm-credit')).toHaveText('© OpenStreetMap contributors');
 });
 
+test('a store that runs its events on Ciphermaniac is marked after the event name, and its page is linked', async ({
+  page
+}) => {
+  // Dragon's Lair's league has a store here: its Cup carries the league, and the stores index lists it.
+  await page.route('**/events/v1/*/cells/30_-100.json*', async route => {
+    const cell = (await (await route.fetch()).json()) as { events: { id: string; leagueId?: string }[] };
+    const events = cell.events.map(event => (event.id === '26-09-000002' ? { ...event, leagueId: '6238620' } : event));
+    return route.fulfill({ json: { ...cell, events } });
+  });
+  await page.route('**/events/stores/v1/index.json*', route =>
+    route.fulfill({
+      json: {
+        version: 1,
+        updatedAt: '2026-09-15T00:00:00Z',
+        stores: [
+          {
+            id: 'store-1',
+            leagueId: '6238620',
+            name: "Dragon's Lair Austin",
+            address: '',
+            city: 'Austin',
+            region: 'TX',
+            cc: 'US',
+            lat: 30.3,
+            lon: -97.7,
+            timeZone: 'America/Chicago',
+            nights: [],
+            exceptions: []
+          }
+        ]
+      }
+    })
+  );
+  await openLocator(page);
+  const marked = page.locator('.el-item', { has: page.locator('.el-mark') });
+  await expect(marked).toHaveCount(1);
+  await expect(marked).toContainText("Dragon's Lair Austin League Cup");
+  const mark = marked.getByRole('img', { name: 'Runs on Ciphermaniac' });
+  await expect(mark).toHaveAttribute('title', 'Runs on Ciphermaniac');
+  // The mark sits right after the name, on its line.
+  const [name, badge] = await Promise.all([marked.locator('.el-name').boundingBox(), mark.boundingBox()]);
+  expect((badge?.x ?? 0) - ((name?.x ?? 0) + (name?.width ?? 0))).toBeLessThan(12);
+  expect(
+    Math.abs((badge?.y ?? 0) + (badge?.height ?? 0) / 2 - ((name?.y ?? 0) + (name?.height ?? 0) / 2))
+  ).toBeLessThan(4);
+  await marked.locator('.el-row').click();
+  await expect(marked.getByRole('link', { name: 'Store page' })).toHaveAttribute('href', '/stores/store-1');
+});
+
 test('the desktop workspace grows fluidly on a wide display', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'mobile', 'desktop workspace behavior');
   await page.setViewportSize({ width: 2000, height: 1000 });

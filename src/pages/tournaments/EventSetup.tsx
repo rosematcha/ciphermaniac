@@ -4,16 +4,23 @@
  * A Swiss event asks everything; an event followed from TOM asks only what
  * its .tdf does not say (the name, sanctioning, divisions and round length all
  * come from the file). The controls are the ones the console's Event tab
- * uses, so a setting looks the same in both places.
+ * uses, so a setting looks the same in both places. An account that may run
+ * events more than one way picks who runs this one first: one of its stores,
+ * or itself, whose events are never sanctioned and so ask nothing about it.
+ * A store's Swiss event can start from one of its pokemon.com listings (see
+ * ListingPicker), which fills in the name, start, kind and sanction ID.
  */
 
-import { createSignal, Show } from 'solid-js';
+import { createSignal, For, Show, untrack } from 'solid-js';
+import type { Listing } from '../../../shared/accounts/types';
 import { DEFAULT_ROUND_MINUTES } from '../../../shared/tournament/create';
 import { SANCTIONED } from '../../../shared/tournament/structure';
 import type { EventType } from '../../../shared/tournament/types';
 import type { DecklistMode, DeckVisibility, TournamentSettings } from '../../../shared/tournament/view';
+import { LISTING_KINDS, listingFill } from '../../lib/tournament/stores';
 import { ErrorLine } from './Field';
 import { FormatSelect } from './FormatSelect';
+import { ListingPicker } from './ListingPicker';
 import { DecklistsSwitch, EventTypeSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
 
@@ -22,7 +29,22 @@ export interface Setup {
   roundTime: number;
   eventType: EventType;
   settings: Partial<TournamentSettings>;
+  /** The store that runs it; null for the account's own. */
+  store: string | null;
+  /** The organizer's own date, YYYY-MM-DD, for an event set to no start time. */
+  today: string;
+  /** The pokemon.com listing it was started from, by its sanction ID; left out for none. */
+  sanctionId?: string;
 }
+
+/** Who may run the new event: a store by its id, or the account itself (null). */
+export interface RunAs {
+  id: string | null;
+  label: string;
+}
+
+/** The browser's own date, YYYY-MM-DD. */
+const localToday = () => new Date().toLocaleDateString('en-CA');
 
 export function EventSetup(props: {
   /** 'tom' when the event comes from a .tdf, whose own answers are not asked again. */
@@ -31,13 +53,16 @@ export function EventSetup(props: {
   tdfName?: string;
   /** Whether the imported event has a Play! Pokémon sanction ID. */
   tdfSanctioned?: boolean;
+  /** Who may run it, the first chosen to start with unless `initialRunAs` names another; one choice asks nothing. */
+  runAs: readonly RunAs[];
+  initialRunAs?: string | null;
   busy: boolean;
   error: string | null;
   onCreate: (setup: Setup) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = createSignal('');
-  const [sanctioned, setSanctioned] = createSignal(false);
+  const [sanctionedChoice, setSanctioned] = createSignal(false);
   const [playToolsConfirmed, setPlayToolsConfirmed] = createSignal(false);
   const [format, setFormat] = createSignal('Standard');
   const [startsAt, setStartsAt] = createSignal('');
@@ -47,7 +72,15 @@ export function EventSetup(props: {
   const [decklists, setDecklists] = createSignal<DecklistMode>('off');
   const [roundCap, setRoundCap] = createSignal(0);
   const [eventType, setEventType] = createSignal<EventType>('cup');
+  // The asked-for choice or the first to start with; the list is fixed for as long as the setup is open.
+  const [runAs, setRunAs] = createSignal<string | null>(
+    untrack(() => props.runAs.find(option => option.id === props.initialRunAs)?.id ?? props.runAs[0]?.id ?? null)
+  );
+  const [listing, setListing] = createSignal<Listing | null>(null);
   const swiss = () => props.mode === 'swiss';
+  /** Run under the account's own name: never sanctioned. */
+  const own = () => runAs() === null;
+  const sanctioned = () => !own() && sanctionedChoice();
   const needsName = () => swiss() && !name().trim();
   const needsPlayTools = () => (swiss() ? sanctioned() : props.tdfSanctioned);
   const shortRounds = () => swiss() && sanctioned() && roundTime() < SANCTIONED.minutes;
@@ -60,15 +93,38 @@ export function EventSetup(props: {
     }
   }
 
+  /** A listing fills what it says; Not listed here leaves what was typed and drops only the sanction ID. */
+  function pick(next: Listing | null) {
+    setListing(next);
+    if (!next) {
+      return;
+    }
+    const fill = listingFill(next);
+    setName(fill.name);
+    setStartsAt(fill.startsAt);
+    setEventType(fill.eventType);
+    setSanctionedTo(fill.sanctioned);
+    // Listed on pokemon.com is what being created in Play! Tools leads to.
+    setPlayToolsConfirmed(fill.sanctioned);
+  }
+  function chooseRunAs(id: string | null) {
+    setRunAs(id);
+    setListing(null);
+  }
+
   function submit(event: Event) {
     event.preventDefault();
     if (cannotCreate()) {
       return;
     }
+    const from = own() ? null : listing();
     props.onCreate({
       name: name().trim(),
       roundTime: roundTime(),
       eventType: eventType(),
+      store: runAs(),
+      today: localToday(),
+      ...(from ? { sanctionId: from.sanctionId } : {}),
       settings: {
         format: format(),
         startsAt: startsAt(),
@@ -84,6 +140,25 @@ export function EventSetup(props: {
     <form class='tm-setup' onSubmit={submit}>
       <div class='tm-setup-head'>
         <h2>New event</h2>
+      </div>
+      <Show when={props.runAs.length > 1}>
+        <div class='tm-box'>
+          <SettingRow label='Run as' for='setup-run-as'>
+            <select
+              id='setup-run-as'
+              class='tm-input'
+              value={runAs() ?? ''}
+              onChange={e => chooseRunAs(e.currentTarget.value || null)}
+            >
+              <For each={props.runAs}>{option => <option value={option.id ?? ''}>{option.label}</option>}</For>
+            </select>
+          </SettingRow>
+        </div>
+      </Show>
+      <Show when={swiss() && runAs()}>
+        {store => <ListingPicker storeId={store()} picked={listing()?.sanctionId ?? ''} onPick={pick} />}
+      </Show>
+      <div class='tm-setup-head'>
         <Show
           when={swiss()}
           fallback={
@@ -104,7 +179,17 @@ export function EventSetup(props: {
         </Show>
       </div>
       <div class='tm-box'>
-        <Show when={swiss()}>
+        <Show when={listing()}>
+          {picked => (
+            <SettingRow label='Sanction ID'>
+              <span class='tm-set-inline'>
+                <span class='tm-num'>{picked().sanctionId}</span>
+                <span class='muted'>{LISTING_KINDS[picked().kind]}</span>
+              </span>
+            </SettingRow>
+          )}
+        </Show>
+        <Show when={swiss() && !own()}>
           <SettingRow label='Sanctioned'>
             <Toggle label='Sanctioned' value={sanctioned()} on='Yes' off='No' onChange={setSanctionedTo} />
           </SettingRow>
@@ -145,9 +230,11 @@ export function EventSetup(props: {
           />
         </SettingRow>
         <Show when={swiss()}>
-          <SettingRow label='Event type'>
-            <EventTypeSwitch value={eventType()} onChange={setEventType} />
-          </SettingRow>
+          <Show when={!own()}>
+            <SettingRow label='Event type'>
+              <EventTypeSwitch value={eventType()} onChange={setEventType} />
+            </SettingRow>
+          </Show>
           <SettingRow label='Round minutes' for='setup-minutes'>
             <input
               id='setup-minutes'

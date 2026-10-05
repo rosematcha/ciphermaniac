@@ -76,9 +76,9 @@ test('pairs a first round with a bye for the odd player out', () => {
   assert.equal(matches.length, 3);
   assert.deepEqual(
     matches.map(m => m.table),
-    [0, 1, 2]
+    [1, 2, 0]
   );
-  assert.equal(matches[0]?.outcome, 'bye');
+  assert.equal(matches[2]?.outcome, 'bye');
 });
 
 test('will not pair the next round while results are missing', () => {
@@ -156,10 +156,10 @@ test('deletes an unreported round, not a reported one', () => {
   assert.match(attempt(reportAll(t), { type: 'deleteRound', pod: 'masters' }), /Clear this round/);
 });
 
-test('a player added mid-event is tagged late, and is known by the round they missed', () => {
+test('a player added mid-event is not tagged late, and is known by the round they missed', () => {
   let t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
   t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Comer', id: '999' } });
-  assert.equal(t.players.find(p => p.id === '999')?.late, true);
+  assert.equal(t.players.find(p => p.id === '999')?.late, undefined);
   assert.ok(joinedLate(pod(t), '999'));
   assert.ok(!joinedLate(pod(t), t.players[0]?.id ?? ''));
 });
@@ -214,7 +214,11 @@ test('a disqualified player leaves the standings but still counts for their oppo
   assert.equal(back.players.find(p => p.id === match.p1)?.disqualified, undefined);
   assert.equal(readCommand({ type: 'disqualifyPlayer', id: '1' })?.type, 'disqualifyPlayer');
   const written = writeTdf(out, { finalized: true });
-  assert.match(written, new RegExp(`<player id="${match.p1}" />`), 'the .tdf puts disqualified players in dnf');
+  assert.match(
+    written,
+    new RegExp(`<player id="${match.p1}" place="\\d+" />`),
+    'the .tdf ranks them as the drop it carries'
+  );
 });
 
 test('a sanctioned event needs four players, three Swiss rounds before a cut, and 30-minute rounds', () => {
@@ -326,7 +330,7 @@ test('a top cut seeds from standings and plays down to a winner', () => {
     round(t).matches.map(m => [m.p1, m.p2]),
     [
       [seeds[0], seeds[3]],
-      [seeds[2], seeds[1]]
+      [seeds[1], seeds[2]]
     ]
   );
   const semi = round(t).matches[0];
@@ -370,7 +374,7 @@ test('a fixed table does not move a top cut player to another side of the bracke
   t = run(t, { type: 'setFixedTable', id: seeds[0] ?? '', table: 4 }, { type: 'startTopCut', pod: 'masters', size: 8 });
   t = run(reportAll(t), { type: 'pairRound', pod: 'masters' });
   const semis = round(t).matches.map(m => new Set([m.p1, m.p2]));
-  assert.deepEqual(semis, [new Set([seeds[0], seeds[4]]), new Set([seeds[2], seeds[6]])]);
+  assert.deepEqual(semis, [new Set([seeds[0], seeds[3]]), new Set([seeds[1], seeds[2]])]);
 });
 
 test('before round 1 the pods follow the field: a division under six plays with the next', () => {
@@ -385,7 +389,7 @@ test('before round 1 the pods follow the field: a division under six plays with 
     shape(t),
     [
       ['junior', 6],
-      ['senior-masters', 6]
+      ['masters', 6]
     ],
     'six of each play apart'
   );
@@ -425,10 +429,10 @@ test('divisions paired apart play at once without sharing a table', () => {
     ({ type: 'addPlayer', player: { firstName: year, lastName: `${i}`, birthDate: `01/01/${year}` } }) as Command;
   const six = [1, 2, 3, 4, 5, 6];
   let t = run(emptyTournament({ name: 'Apart' }), ...six.map(add('2016')), ...six.map(add('1990')));
-  t = run(t, { type: 'pairRound', pod: 'junior' }, { type: 'pairRound', pod: 'senior-masters' });
+  t = run(t, { type: 'pairRound', pod: 'junior' }, { type: 'pairRound', pod: 'masters' });
   const tables = (category: string) => t.pods.find(p => p.category === category)?.rounds[0]?.matches.map(m => m.table);
   assert.deepEqual(
-    [tables('junior'), tables('senior-masters')],
+    [tables('junior'), tables('masters')],
     [
       [1, 2, 3],
       [4, 5, 6]
@@ -436,36 +440,76 @@ test('divisions paired apart play at once without sharing a table', () => {
   );
 });
 
-test('a combined pod shares its cut rounds and refuses late entrants once cuts start', () => {
+test('a pod of several divisions cuts each on its own, in a pod of its own', () => {
+  // Four Juniors and four Masters play Swiss together (§5.2.1), then each division cuts apart.
   let t = run(
     emptyTournament({ name: 'Mixed' }),
     ...['2016', '2016', '2016', '2016', '1990', '1990', '1990', '1990'].map(
       (year, i) =>
         ({
           type: 'addPlayer',
-          player: { firstName: 'P', lastName: String(i), id: String(300 + i), birthDate: `02/27/${year}` }
+          player: { firstName: 'P', lastName: `${i}`, id: `${300 + i}`, birthDate: `02/27/${year}` }
         }) as Command
     )
   );
+  assert.equal(pod(t).category, 'mixed');
   t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
   assert.match(attempt(t, { type: 'startTopCut', pod: 'mixed', size: 4 }), /Pick the division/);
-  t = run(
-    t,
-    { type: 'startTopCut', pod: 'mixed', size: 4, division: 'junior' },
-    { type: 'startTopCut', pod: 'mixed', size: 2, division: 'masters' }
+  t = run(t, { type: 'startTopCut', pod: 'mixed', size: 4, division: 'junior' });
+  const juniors = t.pods.find(p => p.category === 'junior');
+  assert.deepEqual([juniors?.cutOf, juniors?.cut, juniors?.rounds[0]?.number], ['mixed', 4, 2]);
+  assert.deepEqual(new Set(juniors?.playerIds), new Set(['300', '301', '302', '303']), 'seeded from Juniors only');
+  assert.deepEqual(
+    juniors?.rounds[0]?.matches.map(m => m.table),
+    [1, 2]
   );
-  assert.equal(t.pods.length, 1);
-  assert.equal(podOf(t, '300')?.category, 'mixed');
+  assert.match(attempt(t, { type: 'startTopCut', pod: 'mixed', size: 2, division: 'junior' }), /Juniors top cut/);
+  assert.match(attempt(t, { type: 'pairRound', pod: 'mixed' }), /playing their top cuts/);
+
+  t = run(t, { type: 'startTopCut', pod: 'mixed', size: 2, division: 'masters' });
+  const masters = t.pods.find(p => p.category === 'masters');
+  assert.deepEqual(
+    [masters?.cutOf, masters?.rounds[0]?.matches.map(m => m.table)],
+    ['mixed', [3]],
+    'its tables follow the Juniors’ bracket, so both can play at once'
+  );
+  assert.equal(podOf(t, '300')?.category, 'junior', 'a player in a cut plays there now');
   assert.deepEqual(
     playerPod(t, '300')?.rounds.map(r => r.kind),
-    ['swiss', 'elimination']
+    ['swiss', 'elimination'],
+    'and has played both'
   );
-  assert.equal(round(t).matches.length, 3);
-  t = run(reportAll(t), { type: 'pairRound', pod: 'mixed' });
-  assert.equal(round(t).matches.length, 1);
+
+  // The Juniors' semifinals lead to their final, in their own pod; the Masters' cut is taken back.
+  const semis = t.pods.find(p => p.category === 'junior')?.rounds[0];
+  t = run(
+    t,
+    ...(semis?.matches ?? []).map(
+      m =>
+        ({
+          type: 'reportResult',
+          pod: 'junior',
+          round: 2,
+          table: m.table,
+          p1: m.p1,
+          p2: m.p2,
+          outcome: 'p1'
+        }) as Command
+    ),
+    { type: 'pairRound', pod: 'junior' },
+    { type: 'deleteRound', pod: 'masters' }
+  );
+  assert.deepEqual(
+    t.pods.map(p => [p.category, p.rounds.length]),
+    [
+      ['mixed', 1],
+      ['junior', 2]
+    ]
+  );
   assert.match(
     attempt(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Kid', birthDate: '01/01/2016' } }),
-    /top cuts are under way/
+    /top cuts are under way/,
+    'no one joins a Swiss pod whose divisions have cut'
   );
 });
 

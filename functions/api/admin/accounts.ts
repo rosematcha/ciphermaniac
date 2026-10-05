@@ -6,6 +6,7 @@
 
 import { readAccountRole } from '../../../shared/accounts/roles.js';
 import type { FoundAccount } from '../../../shared/accounts/types.js';
+import { displayNameSql } from '../../lib/accounts/handles.js';
 import { jsonError } from '../../lib/api/responses.js';
 import { openForAdmin } from '../../lib/auth/admin.js';
 import type { Context } from '../../lib/auth/env.js';
@@ -54,7 +55,10 @@ export async function onRequestGet(context: Context): Promise<Response> {
   }
   // Verified emails are normalized and unique; retain the accounts response shape.
   const { results } = await access.db
-    .prepare(`SELECT id, name, email, pop_id, role, created_at FROM users WHERE ${lookup.column} = ? LIMIT 20`)
+    .prepare(
+      `SELECT id, ${displayNameSql('users')} AS name, email, pop_id, role, created_at FROM users ` +
+        `WHERE ${lookup.column} = ? LIMIT 20`
+    )
     .bind(lookup.value)
     .all<FoundRow>();
   return privateJson({ accounts: results.map(foundOf) });

@@ -7,7 +7,8 @@
  * the caller (see `mutate`).
  */
 
-import { type MatchKey, normalizeCutPods } from '../../../shared/tournament/rounds.js';
+import { ADULT_AGE } from '../../../shared/accounts/age.js';
+import { DAY_MS, eventDay } from '../../../shared/tournament/limits.js';
 import { POD_CATEGORIES, type Tournament } from '../../../shared/tournament/types.js';
 import {
   applyPending,
@@ -23,8 +24,9 @@ import {
 } from '../../../shared/tournament/view.js';
 import { type PlayerReport, pruneReports } from '../../../shared/tournament/reports.js';
 import { randomToken, sessionHash, sessionUserQuery, type User, userFromRow, type UserRow } from '../auth/session.js';
+import { displayNameSql } from '../accounts/handles.js';
 import { firstRow, rowsChanged } from '../d1.js';
-import type { D1Like } from '../types.js';
+import type { D1Like, D1Statement } from '../types.js';
 import { deleteWrites, firstIndexWrites, rosterWrites } from './rosterWrites.js';
 
 export interface TournamentRow {
@@ -42,6 +44,10 @@ export interface TournamentRow {
   staffToken: string;
   version: number;
   updatedAt: number;
+  /** The store that runs the event; null for one run under an account's own name. */
+  storeId: string | null;
+  /** The day a Community organizer's event holds (see shared/tournament/limits.ts); null otherwise. */
+  communityDay: string | null;
 }
 
 interface RawRow {
@@ -57,28 +63,26 @@ interface RawRow {
   staff_token: string;
   version: number;
   updated_at: number;
-}
-
-function legacyMatchKeys<T extends MatchKey>(tournament: Tournament, keys: T[]): T[] {
-  const parents = new Map(tournament.pods.filter(p => p.cutOf).map(p => [p.category, p.cutOf!]));
-  return keys.map(key => ({ ...key, pod: parents.get(key.pod) ?? key.pod }));
+  store_id: string | null;
+  community_day: string | null;
 }
 
 function fromRaw(raw: RawRow): TournamentRow {
-  const tournament = JSON.parse(raw.state) as Tournament;
   return {
     code: raw.code,
     ownerId: raw.owner_id,
     mode: raw.mode === 'tom' ? 'tom' : 'swiss',
-    tournament: normalizeCutPods(tournament),
-    pending: legacyMatchKeys(tournament, JSON.parse(raw.pending) as PendingResult[]),
-    reports: legacyMatchKeys(tournament, JSON.parse(raw.reports) as PlayerReport[]),
+    tournament: JSON.parse(raw.state) as Tournament,
+    pending: JSON.parse(raw.pending) as PendingResult[],
+    reports: JSON.parse(raw.reports) as PlayerReport[],
     settings: storedSettings(JSON.parse(raw.settings) as Record<string, unknown>),
     keys: JSON.parse(raw.player_keys) as Record<string, string>,
     decks: JSON.parse(raw.decks) as Record<string, string>,
     staffToken: raw.staff_token,
     version: raw.version,
-    updatedAt: raw.updated_at
+    updatedAt: raw.updated_at,
+    storeId: raw.store_id ?? null,
+    communityDay: raw.community_day ?? null
   };
 }
 
@@ -163,12 +167,7 @@ export async function openTournament(
   const [event, account, staff, claim] = await db.batch([
     tournamentQuery(db, code),
     sessionUserQuery(db, hash, now),
-    db
-      .prepare(
-        'SELECT 1 AS yes FROM staff JOIN sessions ON sessions.user_id = staff.user_id ' +
-          'WHERE staff.code = ? AND sessions.token_hash = ? AND sessions.expires_at > ?'
-      )
-      .bind(code, hash, now),
+    staffQuery(db, code, hash, now),
     ...(options.claim ? [claimQuery(db, code, hash, now)] : [])
   ]);
   const raw = firstRow<RawRow>(event);
@@ -179,8 +178,24 @@ export async function openTournament(
   const found = firstRow<UserRow>(account);
   const user = found && userFromRow(found);
   const claimed = firstRow<{ player_id: string }>(claim)?.player_id ?? null;
-  return { row, user, role: roleIn(row, user, firstRow(staff) !== null), claimed };
+  return { row, user, role: roleIn(row, user, firstRow<StaffRow>(staff)), claimed };
 }
+
+/** How the session's account is on the event's staff: through its invite link, or as one of its store's. */
+interface StaffRow {
+  joined: number;
+  store_role: string | null;
+}
+
+const staffQuery = (db: D1Like, code: string, hash: string, now: number) =>
+  db
+    .prepare(
+      'SELECT EXISTS (SELECT 1 FROM staff WHERE staff.code = ?1 AND staff.user_id = sessions.user_id) AS joined, ' +
+        '(SELECT m.role FROM tournaments t JOIN store_members m ON m.store_id = t.store_id ' +
+        'WHERE t.code = ?1 AND m.user_id = sessions.user_id) AS store_role ' +
+        'FROM sessions WHERE sessions.token_hash = ?2 AND sessions.expires_at > ?3'
+    )
+    .bind(code, hash, now);
 
 /** The player the session's account holds a reporter row for at the event. */
 const claimQuery = (db: D1Like, code: string, hash: string, now: number) =>
@@ -191,12 +206,21 @@ const claimQuery = (db: D1Like, code: string, hash: string, now: number) =>
     )
     .bind(code, hash, now);
 
-/** The organizer owns the event; anyone else signed in is staff once the invite link let them in. */
-function roleIn(row: TournamentRow, user: User | null, joined: boolean): Role | null {
-  if (user?.id === row.ownerId) {
+/**
+ * A store's event is the store's: its Managers are as its organizer and its
+ * Staff as its staff, whoever started it, and anyone who leaves the store
+ * leaves its events. Any other event is owned by the account that started
+ * it. Either way, anyone the invite link let in is staff.
+ */
+function roleIn(row: TournamentRow, user: User | null, staff: StaffRow | null): Role | null {
+  if (!user) {
+    return null;
+  }
+  const owner = row.storeId === null ? user.id === row.ownerId : staff?.store_role === 'manager';
+  if (owner) {
     return 'owner';
   }
-  return user && joined ? 'staff' : null;
+  return staff?.joined === 1 || staff?.store_role === 'staff' ? 'staff' : null;
 }
 
 /** Just the version, for a cheap "has anything changed" check. */
@@ -213,6 +237,48 @@ export interface NewTournament {
   mode: TournamentMode;
   tournament: Tournament;
   settings?: TournamentSettings;
+  /** The store that runs it, when one does. */
+  storeId?: string | null;
+  /** The day a Community organizer's event holds, one per owner (see shared/tournament/limits.ts). */
+  communityDay?: string | null;
+  /** Who the day's creations count against, and how many they may make; none for an Admin's own. */
+  admission?: { owner: string; limit: number } | null;
+  /** Authorization and retained-event quota, evaluated inside the creation transaction. */
+  guard?: { sql: string; values: unknown[] };
+}
+
+/** The day's creations are used up (shared/tournament/limits.ts). */
+export class LimitReached extends Error {}
+
+/** The owner already holds an event on that day (shared/tournament/limits.ts). */
+export class DayTaken extends Error {}
+
+/** The creation no longer meets its authorization or retained-event quota. */
+export class CreationRefused extends Error {}
+
+/** Whether a failed write broke the one-event-per-day index. */
+const breaksDay = (error: unknown) => error instanceof Error && error.message.includes('community_day');
+
+/**
+ * The writes that count a creation against `owner`, kept a day: the ones
+ * older go first, then this one goes in only while the day's count is under
+ * the limit. `id` names it, so a retry with the same id counts nothing more.
+ */
+function admissionWrites(
+  db: D1Like,
+  admission: { owner: string; limit: number },
+  creation: { id: string; now: number; guard: { sql: string; values: unknown[] } }
+) {
+  const { id, now, guard } = creation;
+  return [
+    db.prepare('DELETE FROM event_creations WHERE owner = ? AND at <= ?').bind(admission.owner, now - DAY_MS),
+    db
+      .prepare(
+        'INSERT OR IGNORE INTO event_creations (owner, at, id) SELECT ?1, ?2, ?3 ' +
+          `WHERE (SELECT COUNT(*) FROM event_creations WHERE owner = ?1 AND at > ?4) < ?5 AND (${guard.sql})`
+      )
+      .bind(admission.owner, now, id, now - DAY_MS, admission.limit, ...guard.values)
+  ];
 }
 
 /**
@@ -225,28 +291,76 @@ export interface NewTournament {
 export async function createTournament(db: D1Like, input: NewTournament): Promise<TournamentRow> {
   const { ownerId, mode, tournament } = input;
   const settings = input.settings ?? DEFAULT_SETTINGS;
+  const storeId = input.storeId ?? null;
+  const communityDay = input.communityDay ?? null;
   const state = stateJson(tournament);
   const keys = assignKeys(tournament, {});
   const staffToken = randomToken(16);
   const now = Date.now();
+  const admissionId = randomToken(8);
+  // With a limit, the event goes in only where its creation was counted in.
+  const admitted = input.admission
+    ? {
+        sql: ' AND EXISTS (SELECT 1 FROM event_creations WHERE owner = ? AND at = ? AND id = ?)',
+        values: [input.admission.owner, now, admissionId]
+      }
+    : { sql: '', values: [] };
+  const guard = input.guard ?? { sql: '1 = 1', values: [] };
+  const allowed = db.prepare(`SELECT (${guard.sql}) AS allowed`).bind(...guard.values);
+  const admission = input.admission ? admissionWrites(db, input.admission, { id: admissionId, now, guard }) : [];
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = newCode();
-    const [inserted] = await db.batch([
-      db
-        .prepare(
-          'INSERT OR IGNORE INTO tournaments ' +
-            '(code, owner_id, mode, state, settings, player_keys, staff_token, created_at, updated_at) ' +
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        )
-        .bind(code, ownerId, mode, state, JSON.stringify(settings), JSON.stringify(keys), staffToken, now, now),
-      ...firstIndexWrites(db, { code, staffToken, mode, settings, tournament })
-    ]);
-    if (rowsChanged(inserted) === 1) {
+    const insert = db
+      .prepare(
+        'INSERT INTO tournaments (code, owner_id, mode, state, settings, player_keys, staff_token, created_at, ' +
+          'updated_at, store_id, community_day) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ' +
+          `WHERE NOT EXISTS (SELECT 1 FROM tournaments WHERE code = ?)${admitted.sql} AND (${guard.sql})`
+      )
+      .bind(
+        code,
+        ownerId,
+        mode,
+        state,
+        JSON.stringify(settings),
+        JSON.stringify(keys),
+        staffToken,
+        now,
+        now,
+        storeId,
+        communityDay,
+        code,
+        ...admitted.values,
+        ...guard.values
+      );
+    const results = await db
+      .batch([allowed, ...admission, insert, ...firstIndexWrites(db, { code, staffToken, mode, settings, tournament })])
+      .catch((error: unknown) => {
+        throw breaksDay(error) ? new DayTaken('You already have an event that day') : error;
+      });
+    checkCreationAdmission(results, input, attempt);
+    if (rowsChanged(results[admission.length + 1]) === 1) {
       const empty = { pending: [], reports: [], decks: {} };
-      return { code, ownerId, mode, tournament, settings, keys, staffToken, version: 1, updatedAt: now, ...empty };
+      const made = { code, ownerId, mode, tournament, settings, keys, staffToken, version: 1, updatedAt: now };
+      return { ...made, ...empty, storeId, communityDay };
     }
   }
   throw new Error('Could not find a free tournament code');
+}
+
+/** Interpret the admission snapshot from the same transaction as the event insert. */
+function checkCreationAdmission(
+  results: Awaited<ReturnType<D1Like['batch']>>,
+  input: NewTournament,
+  attempt: number
+): void {
+  const permission = (results[0]?.results as { allowed: number }[] | undefined)?.[0]?.allowed;
+  if (!permission) {
+    throw new CreationRefused('You can no longer start this event, or have too many events');
+  }
+  // A retry can reuse its admission; the first try must have recorded one.
+  if (attempt === 0 && input.admission && rowsChanged(results[2]) === 0) {
+    throw new LimitReached('You’ve started as many events as you can today; try again tomorrow');
+  }
 }
 
 /**
@@ -274,6 +388,21 @@ export interface Changes {
   reports?: PlayerReport[];
   settings?: TournamentSettings;
   decks?: Record<string, string>;
+  /** A Community organizer's event moving to another day (see dayChange). */
+  communityDay?: string;
+}
+
+/**
+ * The day a settings change moves a Community organizer's event to, when it
+ * moves it: its start time names another date. Clearing the start time keeps
+ * the day it holds.
+ */
+export function dayChange(row: TournamentRow, settings: TournamentSettings): Pick<Changes, 'communityDay'> {
+  if (row.communityDay === null) {
+    return {};
+  }
+  const day = eventDay(settings.startsAt, row.communityDay);
+  return day === row.communityDay ? {} : { communityDay: day };
 }
 
 /**
@@ -304,8 +433,9 @@ function changedRow(row: TournamentRow, changes: Changes): TournamentRow {
 
 /** The columns a change writes, and their values: only what it changed. */
 function columnsFor(changes: Changes, next: TournamentRow): [string, string][] {
-  const { tournament, pending, settings, decks } = changes;
+  const { tournament, pending, settings, decks, communityDay } = changes;
   const columns: [string, string | false | undefined][] = [
+    ['community_day', communityDay],
     ['state', tournament && stateJson(tournament)],
     ['player_keys', tournament && JSON.stringify(next.keys)],
     ['pending', pending && JSON.stringify(pending)],
@@ -339,8 +469,32 @@ async function saveTournament(db: D1Like, row: TournamentRow, input: Changes): P
         'version = version + 1, updated_at = ? WHERE code = ? AND version = ?'
     )
     .bind(...columns.map(([, value]) => value), updatedAt, row.code, row.version);
-  const results = await db.batch([...roster, update]);
-  return rowsChanged(results.at(-1)) === 1 ? { ...next, version: row.version + 1, updatedAt } : null;
+  const ending = next.settings.finished && !row.settings.finished ? [minorCardsCut(db, row, updatedAt)] : [];
+  const results = await db.batch([...roster, update, ...ending]);
+  const saved = results.at(-1 - ending.length);
+  return rowsChanged(saved) === 1 ? { ...next, version: row.version + 1, updatedAt } : null;
+}
+
+/**
+ * Deletes the cards of every list whose player may be under 18, as the event
+ * ends: deck checks needed them while it ran, and nothing needs them after
+ * (Play! Pokémon sets no time to keep them). The archetype stays. Runs after
+ * the event's own write in the same batch, and only where that write landed:
+ * the row must stand at the version it wrote and be finished, so an end that
+ * lost a race to another write deletes nothing. An unsanctioned event's lists
+ * carry no birth year, so its lists are kept.
+ */
+function minorCardsCut(db: D1Like, row: TournamentRow, now: number): D1Statement {
+  // Born in this year or later, someone may still be 17 (shared/accounts/age.ts).
+  const youngest = new Date(now).getUTCFullYear() - ADULT_AGE;
+  return db
+    .prepare(
+      "UPDATE decklists SET deck = '' WHERE code = ?1 AND deck <> '' " +
+        'AND CAST(substr(birth_date, -4) AS INTEGER) >= ?2 ' +
+        'AND EXISTS (SELECT 1 FROM tournaments WHERE code = ?1 AND version = ?3 ' +
+        "AND coalesce(json_extract(settings, '$.finished'), 0) = 1)"
+    )
+    .bind(row.code, youngest, row.version + 1);
 }
 
 /** What a change comes to: the row as written, or why it was refused. */
@@ -393,10 +547,16 @@ async function tryChange(
     if (error instanceof TooLarge) {
       return error;
     }
+    if (breaksDay(error)) {
+      return new DayTaken('You already have an event that day');
+    }
     throw error;
   });
   if (saved instanceof TooLarge) {
     return { error: saved.message, status: 413 };
+  }
+  if (saved instanceof DayTaken) {
+    return { error: saved.message, status: 409 };
   }
   return saved && { row: saved };
 }
@@ -414,9 +574,10 @@ export async function loadHead(db: D1Like, code: string, request: Request): Prom
   const raw = await db
     .prepare(
       'SELECT version, reports, EXISTS (SELECT 1 FROM sessions WHERE sessions.token_hash = ? ' +
-        'AND sessions.expires_at > ? AND (sessions.user_id = tournaments.owner_id OR EXISTS ' +
-        '(SELECT 1 FROM staff WHERE staff.code = tournaments.code AND staff.user_id = sessions.user_id))) AS staff ' +
-        'FROM tournaments WHERE code = ?'
+        'AND sessions.expires_at > ? AND ((tournaments.store_id IS NULL AND sessions.user_id = tournaments.owner_id) OR EXISTS ' +
+        '(SELECT 1 FROM staff WHERE staff.code = tournaments.code AND staff.user_id = sessions.user_id) OR EXISTS ' +
+        '(SELECT 1 FROM store_members m WHERE m.store_id = tournaments.store_id AND m.user_id = sessions.user_id))) ' +
+        'AS staff FROM tournaments WHERE code = ?'
     )
     .bind((await sessionHash(request)) ?? '', Date.now(), code)
     .first<{ version: number; reports: string; staff: number }>();
@@ -452,7 +613,7 @@ export async function joinStaff(db: D1Like, code: string, userId: string, token:
 export async function listStaff(db: D1Like, code: string): Promise<StaffMember[]> {
   const { results } = await db
     .prepare(
-      'SELECT staff.user_id AS id, users.name AS name, staff.joined_at AS joined_at FROM staff ' +
+      `SELECT staff.user_id AS id, ${displayNameSql('users')} AS name, staff.joined_at AS joined_at FROM staff ` +
         'LEFT JOIN users ON users.id = staff.user_id WHERE staff.code = ? ORDER BY staff.joined_at'
     )
     .bind(code)
@@ -483,25 +644,29 @@ interface SummaryRow {
   rounds: number | null;
   owner_id: string;
   updated_at: number;
+  store_id: string | null;
+  store_role: string | null;
 }
 
-/** Every event this user owns or staffs, newest first. */
+/** Every event this user owns or staffs, their stores' among them, newest first. */
 export async function listTournaments(db: D1Like, userId: string): Promise<TournamentSummary[]> {
   const { results } = await db
     .prepare(
       "SELECT code, mode, json_extract(state, '$.info.name') AS name, " +
         "json_array_length(state, '$.players') AS players, json_extract(state, '$.info.startDate') AS start_date, " +
         "json_extract(settings, '$.finished') AS finished, " +
-        `${pairedRounds('state')} AS rounds, owner_id, updated_at FROM tournaments ` +
-        'WHERE owner_id = ? OR code IN (SELECT code FROM staff WHERE user_id = ?) ORDER BY updated_at DESC LIMIT 200'
+        `${pairedRounds('state')} AS rounds, owner_id, updated_at, store_id, ` +
+        '(SELECT m.role FROM store_members m WHERE m.store_id = tournaments.store_id AND m.user_id = ?1) AS store_role ' +
+        'FROM tournaments WHERE (owner_id = ?1 AND store_id IS NULL) OR code IN (SELECT code FROM staff WHERE user_id = ?1) ' +
+        'OR store_id IN (SELECT store_id FROM store_members WHERE user_id = ?1) ORDER BY updated_at DESC LIMIT 200'
     )
-    .bind(userId, userId)
+    .bind(userId)
     .all<SummaryRow>();
   return results.map(row => ({
     code: row.code,
     mode: row.mode === 'tom' ? 'tom' : 'swiss',
     name: row.name ?? '',
-    role: row.owner_id === userId ? 'owner' : 'staff',
+    role: (row.store_id === null ? row.owner_id === userId : row.store_role === 'manager') ? 'owner' : 'staff',
     players: row.players ?? 0,
     startDate: row.start_date ?? '',
     finished: row.finished === 1,
@@ -521,14 +686,6 @@ export async function rotateStaff(db: D1Like, code: string): Promise<void> {
       .bind(randomToken(16), Date.now(), code),
     db.prepare('DELETE FROM staff WHERE code = ?').bind(code)
   ]);
-}
-
-export async function ownedCount(db: D1Like, userId: string): Promise<number> {
-  const row = await db
-    .prepare('SELECT COUNT(*) AS n FROM tournaments WHERE owner_id = ?')
-    .bind(userId)
-    .first<{ n: number }>();
-  return row?.n ?? 0;
 }
 
 /**

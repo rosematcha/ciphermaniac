@@ -11,8 +11,7 @@
  */
 
 import { createMemo, For, Index, type JSX, Show } from 'solid-js';
-import { cutPodsOf } from '../../../shared/tournament/rounds';
-import { type Pod, POD_LABELS, type Tournament } from '../../../shared/tournament/types';
+import type { Pod, Tournament } from '../../../shared/tournament/types';
 import type { PendingResult } from '../../../shared/tournament/view';
 import {
   type Bracket,
@@ -151,32 +150,12 @@ export function CutBracket(
     fallback: JSX.Element;
   }
 ) {
-  const brackets = createMemo(() => {
-    const cuts = cutPodsOf(props.tournament, props.pod);
-    const pods = cuts.length ? cuts : [props.pod];
-    return pods.flatMap(pod => {
-      const bracket = buildBracket(pod, cutSeeds(props.tournament, pod), props.pending);
-      return bracket ? [{ pod, bracket }] : [];
-    });
-  });
+  const bracket = createMemo(() => buildBracket(props.pod, cutSeeds(props.tournament, props.pod), props.pending));
   return (
-    <Show when={brackets().length > 0} fallback={props.fallback}>
-      <For each={brackets()}>
-        {entry => (
-          <section>
-            <Show when={brackets().length > 1}>
-              <h3>{POD_LABELS[entry.pod.category]}</h3>
-            </Show>
-            <BracketView
-              bracket={entry.bracket}
-              names={props.names}
-              me={props.me}
-              onPlayer={props.onPlayer}
-              class={props.class}
-            />
-          </section>
-        )}
-      </For>
+    <Show when={bracket()} fallback={props.fallback}>
+      {b => (
+        <BracketView bracket={b()} names={props.names} me={props.me} onPlayer={props.onPlayer} class={props.class} />
+      )}
     </Show>
   );
 }

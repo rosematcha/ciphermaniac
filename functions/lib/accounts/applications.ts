@@ -1,8 +1,10 @@
 /**
- * Organizer Applications: an account asking to start events, and an admin's
- * decision on it. An account sends one at a time, with proof of organizer
- * certification, an explanation, or both; the row keeps its POP ID and name
- * as they stood when it applied.
+ * Store Applications: an account asking for a store to run sanctioned events
+ * (shared/accounts/stores.ts), and an admin's decision on it. An account
+ * sends one at a time, saying which league and what it is, confirming it is
+ * a certified organizer or works with one, and optionally with proof of the
+ * certification and a note; the row keeps its POP ID and name as they stood
+ * when it applied. Approving makes the store, with the applicant its Manager.
  *
  * The proof is a file in the private PROOFS bucket. Every upload is a file
  * of its own, under a key never used again (`proofs/<account id>/<random>`),
@@ -14,12 +16,14 @@
  */
 
 import { profileComplete } from '../../../shared/accounts/applications.js';
-import { canApply, readAccountRole } from '../../../shared/accounts/roles.js';
+import { readAccountRole } from '../../../shared/accounts/roles.js';
+import type { StoreApplication } from '../../../shared/accounts/stores.js';
 import type { AdminApplication, ApplicationStatus, MyApplication, ProofSlot } from '../../../shared/accounts/types.js';
 import { jsonError } from '../api/responses.js';
 import { type Context, sameOrigin } from '../auth/env.js';
 import { randomToken, sessionHash, sessionUserQuery, type User, userFromRow, type UserRow } from '../auth/session.js';
 import { firstRow } from '../d1.js';
+import { displayNameSql } from './handles.js';
 import { privateJson } from '../tournaments/access.js';
 import type { D1Like } from '../types.js';
 
@@ -41,12 +45,17 @@ export interface ApplicationRow {
   decided_at: number | null;
   decided_by: string | null;
   note: string | null;
+  store: string | null;
 }
 
 /** An application's columns, the table being `a`. */
 export const APPLICATION_COLUMNS =
   'a.id, a.user_id, a.status, a.pop_id, a.first_name, a.last_name, a.explanation, a.proof_key, ' +
-  'a.proof_type, a.proof_size, a.created_at, a.decided_at, a.decided_by, a.note';
+  'a.proof_type, a.proof_size, a.created_at, a.decided_at, a.decided_by, a.note, a.store';
+
+/** The store an Application asks for; null on one sent before Applications were for stores. */
+export const storeOf = (row: Pick<ApplicationRow, 'store'>): StoreApplication | null =>
+  row.store ? (JSON.parse(row.store) as StoreApplication) : null;
 
 export const myApplication = (row: ApplicationRow): MyApplication => ({
   id: row.id,
@@ -55,7 +64,8 @@ export const myApplication = (row: ApplicationRow): MyApplication => ({
   proofType: row.proof_type,
   createdAt: row.created_at,
   decidedAt: row.decided_at,
-  note: row.note
+  note: row.note,
+  store: storeOf(row)
 });
 
 /** An application with the account that sent it, as it is now, and the name of the admin who decided it. */
@@ -65,12 +75,19 @@ export interface AdminApplicationRow extends ApplicationRow {
   role: string | null;
   account_pop_id: string | null;
   decider_name: string | null;
+  taken_id: string | null;
+  taken_name: string | null;
 }
 
-/** The read of applications as admins see them; the caller adds the WHERE. */
+/**
+ * The read of applications as admins see them, with the store that already
+ * holds the league asked for, when one does; the caller adds the WHERE.
+ */
 export const ADMIN_APPLICATIONS =
-  `SELECT ${APPLICATION_COLUMNS}, u.name, u.email, u.role, u.pop_id AS account_pop_id, d.name AS decider_name ` +
-  'FROM applications a JOIN users u ON u.id = a.user_id LEFT JOIN users d ON d.id = a.decided_by';
+  `SELECT ${APPLICATION_COLUMNS}, ${displayNameSql('u')} AS name, u.email, u.role, u.pop_id AS account_pop_id, ` +
+  `${displayNameSql('d')} AS decider_name, t.id AS taken_id, t.name AS taken_name ` +
+  'FROM applications a JOIN users u ON u.id = a.user_id LEFT JOIN users d ON d.id = a.decided_by ' +
+  "LEFT JOIN stores t ON t.league_id = json_extract(a.store, '$.leagueId')";
 
 export const adminApplication = (row: AdminApplicationRow): AdminApplication => ({
   ...myApplication(row),
@@ -83,7 +100,8 @@ export const adminApplication = (row: AdminApplicationRow): AdminApplication => 
   },
   applied: { popId: row.pop_id, firstName: row.first_name, lastName: row.last_name },
   hasProof: row.proof_key !== null,
-  decidedBy: row.decided_by ? { id: row.decided_by, name: row.decider_name ?? '' } : null
+  decidedBy: row.decided_by ? { id: row.decided_by, name: row.decider_name ?? '' } : null,
+  leagueTaken: row.taken_id ? { id: row.taken_id, name: row.taken_name ?? '' } : null
 });
 
 /** The signed-in account, its latest Application, and the proof it has uploaded and not yet sent. */
@@ -141,9 +159,6 @@ export const pendingRefusal = () => jsonError('Your application is pending', 409
 /** Why the account may not apply, or upload a proof to apply with; null when it may. */
 export function applyRefusal(applicant: Applicant): Response | null {
   const { user } = applicant;
-  if (!canApply(user.role)) {
-    return jsonError('Already an organizer', 409);
-  }
   if (!profileComplete(user)) {
     // `profile` tells the page to send the account to its profile, not show the message alone.
     return privateJson({ error: 'Complete your profile first', profile: true }, 400);

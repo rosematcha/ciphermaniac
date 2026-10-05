@@ -13,7 +13,7 @@ import { beforeEach, mock, test } from 'node:test';
 
 import * as history from '../../functions/api/history.ts';
 import * as me from '../../functions/api/me.ts';
-import * as profiles from '../../functions/api/profiles/[slug].ts';
+import * as profiles from '../../functions/api/profiles/[handle].ts';
 import * as claim from '../../functions/api/tournaments/[code]/claim.ts';
 import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
@@ -390,12 +390,11 @@ test('an event is live in History once any of its pods has paired, not only its 
   await addPlayers(code, owner, 6);
   const player = await signIn('Player');
   await saveProfile(player, '901');
-  const paired = await send(code, owner, { type: 'pairRound', pod: 'senior-masters' });
-  assert.equal(paired.status, 200);
+  await send(code, owner, { type: 'pairRound', pod: 'masters' });
   const pods = (await loadTournament(db(), code))?.tournament.pods.map(pod => [pod.category, pod.rounds.length]);
   assert.deepEqual(pods, [
     ['junior', 0],
-    ['senior-masters', 1]
+    ['masters', 1]
   ]);
   assert.equal((await historyOf(player)).json.entries[0].status, 'live');
 });
@@ -493,11 +492,10 @@ test('History needs a signed-in account, and is one wait on the database', async
   assert.equal(trips(), 1);
 });
 
-const profileAt = (slug: string) => hit(profiles.onRequestGet as Handler, `/api/profiles/${slug}`, { slug });
+const profileAt = (handle: string) => hit(profiles.onRequestGet as Handler, `/api/profiles/${handle}`, { handle });
 
-const turnProfile = async (cookie: string, publicProfile: boolean) =>
-  (await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body: { publicProfile } })).json
-    .user.publicSlug as string | null;
+const patchMe = async (cookie: string, body: Record<string, unknown>) =>
+  (await hit(me.onRequestPatch as Handler, '/api/me', {}, { method: 'PATCH', cookie, body })).json;
 
 test('a public profile shows the account’s name and History to anyone with its address, and nothing private', async () => {
   const owner = await signIn('Organizer', 'organizer');
@@ -506,12 +504,18 @@ test('a public profile shows the account’s name and History to anyone with its
   const player = await signIn('Pat Player');
   await saveProfile(player, '901');
   db().raw.exec(
-    "UPDATE users SET email = 'pat@example.com', avatar = 'https://cdn.test/pat.png' WHERE name = 'Pat Player'"
+    "UPDATE users SET email = 'pat@example.com', avatar = 'https://cdn.test/pat.png' WHERE handle = 'pat-player'"
   );
-  const slug = (await turnProfile(player, true)) ?? '';
-  const shown = await profileAt(slug);
+  await patchMe(player, { handle: 'rosematcha' });
+  assert.equal((await profileAt('rosematcha')).status, 404, 'off until the account turns it on');
+  await patchMe(player, { publicProfile: true });
+  const shown = await profileAt('rosematcha');
   assert.equal(shown.status, 200);
-  assert.deepEqual([shown.json.name, shown.json.avatar], ['Pat Player', 'https://cdn.test/pat.png']);
+  assert.deepEqual(
+    [shown.json.name, shown.json.handle, shown.json.avatar],
+    ['Pat Player', 'rosematcha', 'https://cdn.test/pat.png'],
+    'the real name by default'
+  );
   assert.deepEqual(shown.json.entries, (await historyOf(player)).json.entries);
   const text = JSON.stringify({
     ...shown.json,
@@ -520,30 +524,35 @@ test('a public profile shows the account’s name and History to anyone with its
   assert.ok(!text.includes('901') && !text.includes('pat@example.com'), 'no POP ID, no email');
   assert.equal(shown.headers.get('Cache-Control'), 'public, max-age=60');
   assert.equal(shown.headers.get('X-Robots-Tag'), 'noindex');
-  assert.equal((await profileAt(slug.toLowerCase())).status, 200, 'an address typed in lower case');
+  assert.equal((await profileAt('RoseMatcha')).status, 200, 'a username typed in capitals');
 
-  await turnProfile(player, false);
-  const off = await profileAt(slug);
-  const unknown = await profileAt('ZZZZZZZZ');
+  await patchMe(player, { profileName: 'handle' });
+  assert.equal((await profileAt('rosematcha')).json.name, 'rosematcha', 'or the username, as the account chose');
+
+  await patchMe(player, { publicProfile: false });
+  const off = await profileAt('rosematcha');
+  const unknown = await profileAt('nobody');
   assert.deepEqual([off.status, off.json], [404, unknown.json], 'off reads as no profile at all');
   assert.equal(unknown.status, 404);
-  assert.equal((await profileAt('nope')).status, 404);
-  const again = (await turnProfile(player, true)) ?? '';
-  assert.equal((await profileAt(slug)).status, 404, 'the old address stays dead');
-  assert.equal((await profileAt(again)).status, 200);
+  assert.equal((await profileAt('..')).status, 404);
+  await patchMe(player, { publicProfile: true });
+  assert.equal((await profileAt('rosematcha')).status, 200, 'on again, a link shared before works again');
+  await patchMe(player, { handle: 'matcha' });
+  assert.equal((await profileAt('rosematcha')).status, 404, 'a username let go is no address');
+  assert.equal((await profileAt('matcha')).status, 200);
 });
 
 test('a profile is one wait on the database, and an address that asks too often is turned away', async () => {
   const player = await signIn('Player');
-  const slug = (await turnProfile(player, true)) ?? '';
+  await patchMe(player, { publicProfile: true });
   const { trips } = watch();
-  assert.equal((await profileAt(slug)).status, 200);
+  assert.equal((await profileAt('player')).status, 200);
   assert.equal(trips(), 1);
   profiles._resetRateLimitStore();
   for (let i = 0; i < 1200; i += 1) {
     await profileAt('nope');
   }
-  assert.equal((await profileAt(slug)).status, 429);
+  assert.equal((await profileAt('player')).status, 429);
   profiles._resetRateLimitStore();
 });
 

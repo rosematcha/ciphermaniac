@@ -508,6 +508,30 @@ body[data-mode='dark'] .lm-tile {
   color: var(--muted);
   font-size: var(--text-sm);
 }
+/* A store that runs its events on Ciphermaniac: the site's mark after the
+   name, in ink on the marigold fill, kept whole while the name gives way. */
+.el-name-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.el-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-fill);
+}
+.el-mark::before {
+  content: '';
+  width: 11px;
+  height: 12px;
+  background: var(--accent-fg);
+  mask: url('/logo.svg') center / contain no-repeat;
+}
 .el-dist,
 .el-fee {
   color: var(--muted);

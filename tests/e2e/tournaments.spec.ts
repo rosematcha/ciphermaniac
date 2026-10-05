@@ -301,7 +301,24 @@ async function mockOrganizer(page: Page) {
     const { pathname } = new URL(route.request().url());
     if (pathname === '/api/me') {
       return route.fulfill({
-        json: { user: { id: 'organizer', name: 'Organizer', role: 'organizer' }, providers: [] }
+        json: {
+          user: {
+            id: 'organizer',
+            name: 'Organizer',
+            role: null,
+            stores: [
+              {
+                id: 'store-1',
+                name: 'Test Games',
+                leagueId: '1000001',
+                status: 'active',
+                timeZone: 'America/Chicago',
+                role: 'manager'
+              }
+            ]
+          },
+          providers: []
+        }
       });
     }
     if (pathname === '/api/tournaments' && route.request().method() === 'POST') {
@@ -464,7 +481,8 @@ const tomManage = () => ({
   decks: {},
   settings: DEFAULT_SETTINGS,
   role: 'owner',
-  staffToken: 'invite'
+  staffToken: 'invite',
+  store: 'store-1'
 });
 
 type Answer = { status: number; json: unknown };
@@ -509,7 +527,16 @@ async function tomConsole(
     const url = new URL(route.request().url());
     if (url.pathname === '/api/me') {
       const user = { id: 'u1', name: 'Organizer', avatar: null, popId: null, firstName: null, lastName: null };
-      const account = { ...user, birthDate: null, role: 'organizer', publicSlug: null, providers: ['dev'] };
+      const account = {
+        ...user,
+        birthDate: null,
+        role: 'community',
+        stores: [],
+        handle: 'organizer',
+        publicProfile: false,
+        profileName: 'real',
+        providers: ['dev']
+      };
       return route.fulfill({ json: { user: account, providers: ['dev'] } });
     }
     if (url.pathname === `/api/tournaments/${CODE}/manage`) {
@@ -594,10 +621,10 @@ test('a TOM console says when the file TOM saved does not parse', async ({ page 
   await expect(page.getByRole('button', { name: 'Refresh .tdf' }).first()).toBeVisible();
   await page.evaluate(() => {
     const file = (window as unknown as { tdfFile: { text: string; modified: number } }).tdfFile;
-    file.text = file.text.replace('outcome="1"', 'outcome="7"');
+    file.text = file.text.replace('outcome="1"', 'outcome="4"');
     file.modified = 2;
   });
-  await expect(page.getByText('Could not parse the .tdf: Unknown match outcome "7"')).toBeVisible();
+  await expect(page.getByText('Could not parse the .tdf: Unknown match outcome "4"')).toBeVisible();
 });
 
 test('a TOM console pairs the next round into the file once every result is in', async ({ page }) => {

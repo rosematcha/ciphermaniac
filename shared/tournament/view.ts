@@ -246,17 +246,6 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
   const pods: Pod[] = tournament.pods.map(pod => ({
     ...pod,
     playerIds: pod.playerIds.map(key),
-    ...(pod.startingPlayerIds ? { startingPlayerIds: pod.startingPlayerIds.map(key) } : {}),
-    ...(pod.divisionCuts
-      ? {
-          divisionCuts: Object.fromEntries(
-            Object.entries(pod.divisionCuts).map(([division, cut]) => [
-              division,
-              { ...cut, ...(cut.playerIds ? { playerIds: cut.playerIds.map(key) } : {}) }
-            ])
-          )
-        }
-      : {}),
     rounds: pod.rounds.map(round => ({
       ...round,
       matches: round.matches.map(match => ({
@@ -267,8 +256,8 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
     }))
   }));
   return {
-    info: { ...tournament.info, organizerPopId: '' },
-    ...(tournament.startedAt === undefined ? {} : { startedAt: tournament.startedAt }),
+    // The organizer of record is a person: the .tdf staff export carries them, the public copy does not.
+    info: { ...tournament.info, organizerPopId: '', organizerName: '' },
     // Field by field, so a field added to Player stays private until it is named here:
     // a fixed table, for one, is an accommodation, not the room's business.
     players: tournament.players.map(player => ({
@@ -277,7 +266,6 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
       lastName: short?.get(player.id) ?? player.lastName,
       birthDate: '',
       droppedAfter: player.droppedAfter,
-      ...(player.seed ? { seed: player.seed } : {}),
       ...(player.disqualified ? { disqualified: true as const } : {}),
       ...(player.late ? { late: true } : {}),
       created: '',
@@ -380,6 +368,8 @@ export interface Manage {
   role: Role;
   /** The invite link's token, for the organizer alone. */
   staffToken: string | null;
+  /** The store that runs the event; null for one run under an account's own name, which is never sanctioned. */
+  store: string | null;
 }
 
 export interface StaffMember {

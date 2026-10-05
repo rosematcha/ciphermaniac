@@ -1,6 +1,6 @@
 /**
- * /u/:slug: an account's public profile, for anyone with the link: its name
- * and picture, then its History as the account sees it (see HistoryList),
+ * /u/:handle: an account's public profile, for anyone with the link: the
+ * name it chose to show, its username and picture, then its History as the account sees it (see HistoryList),
  * read-only. A profile turned off and an address that never was one look
  * the same: not found.
  */
@@ -18,8 +18,8 @@ const eventCount = (n: number) => `${n} event${n === 1 ? '' : 's'}`;
 
 const missing = (error: unknown) => error instanceof ApiError && error.status === 404;
 
-export function ProfilePage(props: { slug: string }) {
-  const [profile, { refetch }] = createResource(() => props.slug, fetchProfile);
+export function ProfilePage(props: { handle: string }) {
+  const [profile, { refetch }] = createResource(() => props.handle, fetchProfile);
   const shown = () => resolved(profile);
   createEffect(() => {
     const name = shown()?.name;
@@ -47,7 +47,15 @@ export function ProfilePage(props: { slug: string }) {
                 <Avatar name={p().name} src={p().avatar} />
                 <div class='tm-hero-text'>
                   <h1>{p().name}</h1>
-                  <p class='tm-status muted'>{eventCount(p().entries.length)}</p>
+                  <p class='tm-status muted'>
+                    <Show when={p().name !== p().handle}>
+                      {p().handle}
+                      <span class='dot' aria-hidden='true'>
+                        {' · '}
+                      </span>
+                    </Show>
+                    {eventCount(p().entries.length)}
+                  </p>
                 </div>
               </section>
               <Show when={p().entries.length > 0} fallback={<p class='muted tm-empty'>No events yet</p>}>

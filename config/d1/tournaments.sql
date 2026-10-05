@@ -7,11 +7,13 @@
 -- verified email land on the same user.
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
   email TEXT,
   avatar TEXT,
   -- What the player tells us about themselves, so decklists and pairings can
   -- be matched to the organizer's player list without typing it every time.
+  -- `birth_date` is the year alone, written 02/27/YYYY as TOM files do: an
+  -- account is made only for someone 18 or older (shared/accounts/age.ts),
+  -- checked against a full date that is not kept.
   pop_id TEXT,
   first_name TEXT,
   last_name TEXT,
@@ -24,8 +26,21 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT,
   role_at INTEGER,
   role_by TEXT,
-  -- NULL keeps the account's history private; set, it is public at /u/<slug>.
-  public_slug TEXT
+  -- The Username (shared/accounts/handle.ts): lowercase, one to an account
+  -- counting usernames that differ only in separators as the same, and the
+  -- public profile's address, /u/<handle>. Every account has one from its
+  -- first sign-in; the column is nullable only because a migration added it.
+  handle TEXT,
+  -- Whether the account's history is public at /u/<handle>, and the name the
+  -- profile shows: 'real' (the player profile's, or the username without
+  -- one) or 'handle'.
+  public_profile INTEGER NOT NULL DEFAULT 0,
+  profile_name TEXT NOT NULL DEFAULT 'real',
+  -- When the account passed the age check (functions/lib/auth/signup.ts).
+  -- NULL only on an account made before the check existed: it holds no
+  -- session (sessionUserQuery reads it as no one) and passes the check at its
+  -- next sign-in.
+  age_checked_at INTEGER
 );
 -- Provider writes normalize verified emails before storing or looking them up.
 CREATE UNIQUE INDEX IF NOT EXISTS users_by_verified_email ON users (email) WHERE email IS NOT NULL;
@@ -33,7 +48,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_by_verified_email ON users (email) WHERE
 -- rows hold NULL, and a NULL costs no index row on write.
 CREATE UNIQUE INDEX IF NOT EXISTS users_by_pop_id ON users (pop_id) WHERE pop_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS users_by_role ON users (role) WHERE role IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS users_by_public_slug ON users (public_slug) WHERE public_slug IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS users_by_handle ON users (handle);
+-- Queries name this expression as written here, or SQLite won't use the index.
+CREATE UNIQUE INDEX IF NOT EXISTS users_by_handle_key ON users (replace(replace(replace(handle, '.', ''), '-', ''), '_', ''));
+
+-- Each change of an account's username, kept a day: an account changes it at
+-- most three times in a day, and a username it let go (`old_key`, as
+-- handleKey gives it) stays its own for that day, so no one else can take it
+-- the moment it changes. `handle` is the username it changed to, and
+-- `token` the request's own, so only the request that wrote a record may
+-- make the change it records.
+CREATE TABLE IF NOT EXISTS handle_changes (
+  user_id TEXT NOT NULL,
+  at INTEGER NOT NULL,
+  old_key TEXT NOT NULL,
+  handle TEXT NOT NULL,
+  token TEXT NOT NULL,
+  PRIMARY KEY (user_id, at)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS handle_changes_by_key ON handle_changes (old_key, at);
 
 -- Migration 0008 preserves the original claims it clears from older accounts.
 CREATE TABLE IF NOT EXISTS duplicate_emails_backup (
@@ -59,6 +92,18 @@ CREATE TABLE IF NOT EXISTS sessions (
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS sessions_by_user ON sessions (user_id);
 
+-- A sign-up waiting on its age check (functions/lib/auth/signup.ts): the
+-- provider's answer, under the SHA-256 of the token in its cookie, for
+-- fifteen minutes. Taken out once, by the check; an adult's becomes the
+-- account and anyone else's is deleted.
+CREATE TABLE IF NOT EXISTS pending_signups (
+  token_hash TEXT PRIMARY KEY,
+  profile TEXT NOT NULL,
+  next TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS pending_signups_by_expiry ON pending_signups (expires_at);
+
 -- A tournament is one JSON document (shared/tournament/types.ts) with a
 -- version that every write bumps, so two staff saving at once cannot silently
 -- overwrite each other. `pending` holds results entered on the site that a
@@ -79,8 +124,19 @@ CREATE TABLE IF NOT EXISTS tournaments (
   staff_token TEXT NOT NULL,
   version INTEGER NOT NULL DEFAULT 1,
   created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
+  updated_at INTEGER NOT NULL,
+  -- The store that runs the event (see `stores`); NULL for an event a
+  -- Community organizer or an Admin runs under their own name, which is
+  -- never sanctioned.
+  store_id TEXT,
+  -- The day a Community organizer's event is on (YYYY-MM-DD), held one to an
+  -- owner by the index below: one event per date. NULL for a store's event
+  -- and an Admin's.
+  community_day TEXT
 );
+CREATE INDEX IF NOT EXISTS tournaments_of_store ON tournaments (store_id) WHERE store_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS tournaments_one_community_day ON tournaments (owner_id, community_day)
+  WHERE community_day IS NOT NULL;
 -- On the owner alone: an index that also held `updated_at` would be rewritten
 -- by every save, a second row written each time, and the organizer's list
 -- sorts its few rows itself.
@@ -114,6 +170,9 @@ CREATE TABLE IF NOT EXISTS decklists (
   pop_id TEXT NOT NULL,
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
+  -- The year alone (02/27/YYYY), '' at an unsanctioned event. `deck` is
+  -- emptied as the event ends when the player may be under 18; the archetype
+  -- stays (functions/lib/tournaments/store.ts).
   birth_date TEXT NOT NULL,
   deck TEXT NOT NULL,
   archetype TEXT,
@@ -192,7 +251,11 @@ CREATE TABLE IF NOT EXISTS applications (
   decided_at INTEGER,
   -- The deciding admin's account id, and their note to the applicant.
   decided_by TEXT,
-  note TEXT
+  note TEXT,
+  -- What the applicant said of the store they apply for, as JSON
+  -- (shared/accounts/stores.ts StoreApplication). Approving makes the store
+  -- from it, with the applicant its Manager.
+  store TEXT
 );
 CREATE INDEX IF NOT EXISTS applications_by_user ON applications (user_id, created_at);
 -- Not partial on 'pending': a lookup against a partial index on a value plans as a scan of it.
@@ -208,4 +271,76 @@ CREATE TABLE IF NOT EXISTS proof_uploads (
   key TEXT NOT NULL,
   type TEXT NOT NULL,
   size INTEGER NOT NULL
+) WITHOUT ROWID;
+
+-- A certified Play! Pokémon league location that runs sanctioned events on
+-- the site (shared/accounts/stores.ts), one per league ID. 'active' or
+-- 'revoked': a revoked store starts no events, and its events run on. Its
+-- league nights and their exceptions are JSON (LeagueNight[] and
+-- NightException[]), only ever replaced whole by a Manager.
+CREATE TABLE IF NOT EXISTS stores (
+  id TEXT PRIMARY KEY,
+  league_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  name TEXT NOT NULL,
+  address TEXT NOT NULL,
+  city TEXT NOT NULL DEFAULT '',
+  region TEXT NOT NULL DEFAULT '',
+  postal TEXT NOT NULL DEFAULT '',
+  country TEXT NOT NULL DEFAULT '',
+  lat REAL,
+  lon REAL,
+  time_zone TEXT NOT NULL,
+  website TEXT NOT NULL DEFAULT '',
+  discord TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  details TEXT NOT NULL DEFAULT '',
+  nights TEXT NOT NULL DEFAULT '[]',
+  exceptions TEXT NOT NULL DEFAULT '[]',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  status_at INTEGER,
+  status_by TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS stores_by_league ON stores (league_id);
+-- The active stores the locator's index lists, and the Admin's list by name.
+CREATE INDEX IF NOT EXISTS stores_by_status ON stores (status, name);
+
+-- Who belongs to a store: 'manager' (edits the store, its staff and league
+-- nights) or 'staff' (runs every event the store runs). A store always keeps
+-- one Manager: the writes that remove or demote one check for another.
+CREATE TABLE IF NOT EXISTS store_members (
+  store_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  added_at INTEGER NOT NULL,
+  PRIMARY KEY (store_id, user_id)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS store_members_by_user ON store_members (user_id);
+
+-- A link a Manager made to let one person into the store as `role`, under
+-- the SHA-256 of its token; used once, and good for a week.
+CREATE TABLE IF NOT EXISTS store_invites (
+  token_hash TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS store_invites_by_store ON store_invites (store_id);
+
+-- Each event made, kept a day, by who made it ('user:<id>' or
+-- 'store:<id>'), so the day's creations count deleted events too
+-- (shared/tournament/limits.ts).
+CREATE TABLE IF NOT EXISTS event_creations (
+  owner TEXT NOT NULL,
+  at INTEGER NOT NULL,
+  id TEXT NOT NULL,
+  PRIMARY KEY (owner, at, id)
+) WITHOUT ROWID;
+
+-- Private files awaiting deletion after an account fails its age check.
+CREATE TABLE IF NOT EXISTS proof_deletions (
+  key TEXT PRIMARY KEY
 ) WITHOUT ROWID;

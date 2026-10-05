@@ -48,6 +48,6 @@ export function juniorsCutApart(): Tournament {
     pod: 'mixed'
   });
   t = run(reportAll(t, 'mixed'), { type: 'startTopCut', pod: 'mixed', size: 4, division: 'junior' });
-  t = run(reportAll(t, 'mixed'), { type: 'pairRound', pod: 'mixed' });
-  return reportAll(t, 'mixed');
+  t = run(reportAll(t, 'junior'), { type: 'pairRound', pod: 'junior' });
+  return reportAll(t, 'junior');
 }

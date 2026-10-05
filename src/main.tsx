@@ -150,7 +150,20 @@ render(
       <Route path='/toys/in-loving-memory' component={() => <Navigate href='/tools/in-loving-memory' />} />
       {/* One route for every tournament page: see TournamentsPage for why. */}
       <Route
-        path={['/host', '/host/:code', '/t/:code', '/settings', '/account', '/history', '/u/:slug', '/apply', '/admin']}
+        path={[
+          '/host',
+          '/host/:code',
+          '/t/:code',
+          '/settings',
+          '/account',
+          '/history',
+          '/u/:handle',
+          '/apply',
+          '/welcome',
+          '/admin',
+          '/stores/:id',
+          '/stores/:id/settings'
+        ]}
         component={TournamentsPage}
       />
       <Route path='/about' component={AboutPage} />

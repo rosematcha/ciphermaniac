@@ -25,8 +25,9 @@
  * with: the ID alone is printed on pairings. Wrong tries count against the
  * Player ID as the report route's do (see lib/tournaments/attempts.ts).
  * The archetype stays on the list until staff apply it. A signed-in
- * submitter's name and birth date refresh their account's when the list is
- * under the account's own Player ID; a list never sets an account's Player ID.
+ * submitter's name refreshes their account's when the list is under the
+ * account's own Player ID; a list never sets an account's Player ID or birth
+ * year. A player under 13 is refused (see shared/accounts/age.ts).
  * DELETE — withdraws the list under the details and token in the query,
  * while submission is open.
  * PATCH — staff unlock the list under the details in the query, from its
@@ -35,7 +36,8 @@
 
 import { MAX_DECKLIST_CHARS, parseDecklist } from '../../../../shared/tournament/decklist.js';
 import { birthYearFits, decklistMatcher, decklistPlayer, fullNameKey } from '../../../../shared/tournament/identify.js';
-import { birthYear } from '../../../../shared/tournament/divisions.js';
+import { mayBeMinor, mayBeUnder13, UNDER_13 } from '../../../../shared/accounts/age.js';
+import { birthYear, yearOnlyBirthDate } from '../../../../shared/tournament/divisions.js';
 import { type PlayerProfile, readProfile } from '../../../../shared/tournament/profile.js';
 import {
   type Decklist,
@@ -101,7 +103,8 @@ function presenter(row: TournamentRow) {
     const player = players.get(match(list) ?? '');
     return {
       ...list,
-      problems: parseDecklist(list.deck).problems,
+      // A minor's cards are deleted once the event ends (see store.ts), leaving nothing to check.
+      problems: list.deck ? parseDecklist(list.deck).problems : [],
       registered: player !== undefined,
       fromList: player?.fromList === true
     };
@@ -218,6 +221,8 @@ interface Submission {
 }
 
 const LOCKED = 'This list was sent from another device. Send it from that device, or ask staff to reset it.';
+/** A list from a player who may be under 18, once the event is over: its cards were deleted as it ended (store.ts). */
+const OVER_FOR_MINORS = 'This event is over.';
 const WRONG_YEAR = 'That birth year doesn’t match this event’s record for that Player ID. Ask staff if yours is right.';
 
 /** What follows a submission the guard let in, once its store has run: whether it landed. */
@@ -242,6 +247,14 @@ async function guardSubmission(access: Access, profile: PlayerProfile): Promise<
     return NOTHING_COUNTED;
   }
   const now = Date.now();
+  // Asked before any try counts: a year under 13 is refused whatever the event's list says.
+  const year = birthYear(profile.birthDate);
+  if (mayBeUnder13(year, new Date(now))) {
+    return jsonError(UNDER_13, 403);
+  }
+  if (row.settings.finished && mayBeMinor(year, new Date(now))) {
+    return jsonError(OVER_FOR_MINORS, 403);
+  }
   const player = row.tournament.players.find(candidate => candidate.id === profile.popId);
   const right = player ? birthYearFits(player.birthDate, String(birthYear(profile.birthDate) ?? '')) : false;
   if (!(await admitTry({ db, code: row.code, popId: profile.popId, right, now }))) {
@@ -262,7 +275,8 @@ async function guardSubmission(access: Access, profile: PlayerProfile): Promise<
 /** The submission in a request body, or why it is not one. */
 async function readSubmission(request: Request, sanctioned: boolean): Promise<Submission | string> {
   const value = (await readJsonObject(request, MAX_DECKLIST_CHARS * 4 + 1024)) ?? {};
-  const profile = readProfile(value.profile, sanctioned);
+  const read = readProfile(value.profile, sanctioned);
+  const profile = read && { ...read, birthDate: yearOnlyBirthDate(read.birthDate) };
   const deck = typeof value.deck === 'string' ? value.deck.trim() : '';
   const archetype = archetypeLabel(value.archetype ?? null);
   if (!profile) {
@@ -289,8 +303,8 @@ function saveToAccount(access: Access, userId: string, profile: PlayerProfile) {
   const { db } = access;
   return isSanctioned(access.row)
     ? db
-        .prepare('UPDATE users SET first_name = ?, last_name = ?, birth_date = ? WHERE id = ? AND pop_id = ?')
-        .bind(profile.firstName, profile.lastName, profile.birthDate, userId, profile.popId)
+        .prepare('UPDATE users SET first_name = ?, last_name = ? WHERE id = ? AND pop_id = ?')
+        .bind(profile.firstName, profile.lastName, userId, profile.popId)
     : db
         .prepare(
           'UPDATE users SET first_name = ?, last_name = ? ' +
@@ -312,10 +326,13 @@ async function store(access: Access, submission: Submission, tokenHash: string, 
   const key = identityKey(profile, isSanctioned(access.row));
   const held = typeof submission.held === 'string' && submission.held ? await sha256(submission.held) : '';
   const account = matchingAccount(access, profile) ?? NO_ACCOUNT;
+  // A list from a player who may be under 18 lands only while the event is not over, as it stands when the write does.
+  const minor = mayBeMinor(birthYear(profile.birthDate), new Date(now)) ? 1 : 0;
   const insert = access.db
     .prepare(
       'INSERT INTO decklists (code, user_id, pop_id, first_name, last_name, birth_date, deck, archetype, submitted_at, ' +
-        `owner_token, account) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${account.sql}) ` +
+        `owner_token, account) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${account.sql} ` +
+        "WHERE ? = 0 OR NOT EXISTS (SELECT 1 FROM tournaments WHERE code = ? AND coalesce(json_extract(settings, '$.finished'), 0) = 1) " +
         'ON CONFLICT (code, user_id) DO UPDATE SET ' +
         'pop_id = excluded.pop_id, first_name = excluded.first_name, last_name = excluded.last_name, ' +
         'birth_date = excluded.birth_date, deck = excluded.deck, archetype = excluded.archetype, ' +
@@ -339,6 +356,8 @@ async function store(access: Access, submission: Submission, tokenHash: string, 
       now,
       tokenHash,
       ...account.values,
+      minor,
+      access.row.code,
       held,
       held
     );

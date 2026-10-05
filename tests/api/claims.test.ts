@@ -207,10 +207,10 @@ test('at a sanctioned event an account is the player whose POP ID it holds, and 
   assert.equal(elsewhere.status, 200, 'it reports from any device');
 
   // The POP ID taken off the account by hand, leaving its row: the row no longer makes it the player.
-  raw().exec("UPDATE users SET pop_id = '777' WHERE name = 'Player'");
+  raw().exec("UPDATE users SET pop_id = '777' WHERE handle = 'player'");
   const stale = await playerSays(code, { popId: '900', result: 'loss', device: 'laptop' }, { cookie: player });
   assert.equal(stale.status, 403);
-  raw().exec("UPDATE users SET pop_id = '900' WHERE name = 'Player'");
+  raw().exec("UPDATE users SET pop_id = '900' WHERE handle = 'player'");
   await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profileOf('778') });
   assert.equal(holders(code)['900'], undefined, 'saving another POP ID lets the row go');
 });
@@ -268,7 +268,7 @@ test('the event page knows which player a signed-in account is, and how', async 
   // A POP ID means nothing at an unsanctioned event, where IDs are the site's own.
   const ids = (await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: owner })).json.tournament
     .players as { id: string }[];
-  raw().prepare("UPDATE users SET pop_id = ? WHERE name = 'Ash'").run(ids[0]!.id);
+  raw().prepare("UPDATE users SET pop_id = ? WHERE handle = 'ash'").run(ids[0]!.id);
   assert.equal((await view(code, ash)).viewer.via, null);
 });
 
@@ -593,7 +593,7 @@ test('an account is not the player as a POP ID it gave up since the request read
   const player = await signIn('Player');
   await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profileOf('900') });
   // The account's profile moves to 901 between this request's read and its claim.
-  ahead(CLAIM_WRITE, () => raw().exec("UPDATE users SET pop_id = '901' WHERE name = 'Player'"));
+  ahead(CLAIM_WRITE, () => raw().exec("UPDATE users SET pop_id = '901' WHERE handle = 'player'"));
   const stale = await playerSays(code, { popId: '900', device: 'phone' }, { cookie: player });
   assert.deepEqual([stale.status, stale.json.linked], [200, false]);
   assert.deepEqual(holders(code), { '900': null }, 'the device follows 900, unlinked');
@@ -608,7 +608,7 @@ test('a device’s claim does not become the account’s as a POP ID it gave up 
   const before = await playerSays(code, { popId: '900', device: 'phone' });
   const player = await signIn('Player');
   await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: profileOf('900') });
-  ahead(UPGRADE_WRITE, () => raw().exec("UPDATE users SET pop_id = '901' WHERE name = 'Player'"));
+  ahead(UPGRADE_WRITE, () => raw().exec("UPDATE users SET pop_id = '901' WHERE handle = 'player'"));
   const stale = await playerSays(
     code,
     { popId: '900', device: 'phone', reportToken: before.json.reportToken },
@@ -650,7 +650,7 @@ test('a list is not the account’s to replace once it gave up the POP ID since 
   const lin = profileOf('6161');
   await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: player, body: lin });
   await listCall(code, 'PUT', '', { cookie: player, body: { deck: DECK, profile: lin } });
-  ahead('INSERT INTO decklists', () => raw().exec("UPDATE users SET pop_id = '7171' WHERE name = 'Player'"));
+  ahead('INSERT INTO decklists', () => raw().exec("UPDATE users SET pop_id = '7171' WHERE handle = 'player'"));
   const replaced = await listCall(code, 'PUT', '', {
     cookie: player,
     body: { deck: '60 Basic {G} Energy SVE 1', profile: lin }

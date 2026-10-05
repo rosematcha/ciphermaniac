@@ -61,7 +61,7 @@ const LIVE = copyOf('LIVE01', CHALLENGE, {
   settings: { deckVisibility: 'always', format: 'Standard' }
 });
 const DONE = copyOf('CUP001', CUP, { mode: 'swiss', settings: { finished: true } });
-const juniorChampion = CUP.pods[0]?.rounds.at(-1)?.matches[0]?.p1 ?? '';
+const juniorChampion = CUP.pods.find(p => p.category === 'junior')?.rounds.at(-1)?.matches[0]?.p1 ?? '';
 
 const ENTRIES: HistoryEntry[] = [
   {
@@ -98,15 +98,18 @@ const ENTRIES: HistoryEntry[] = [
 
 const ME = {
   id: 'acct-1',
-  name: 'Mary',
+  name: 'Mary Jackson',
+  handle: 'mary',
   avatar: null,
   popId: '7200001' as string | null,
   firstName: 'Mary',
   lastName: 'Jackson',
   birthDate: '02/27/1995',
   role: null as AccountRole | null,
-  publicSlug: null as string | null,
-  providers: ['google']
+  publicProfile: false,
+  profileName: 'real' as 'real' | 'handle',
+  providers: ['google'],
+  stores: []
 };
 
 const COPIES: Record<string, PublishedView> = {
@@ -208,18 +211,19 @@ test('a public profile shows the name and History read-only, and an unknown addr
   const errors = await mockAccount(page, null);
   await publishCopies(page);
   await page.route('**/api/profiles/**', route => {
-    const slug = new URL(route.request().url()).pathname.split('/').pop();
-    return slug === 'ABCD2345'
-      ? route.fulfill({ json: { name: 'Mary Jackson', avatar: null, entries: ENTRIES } })
+    const handle = new URL(route.request().url()).pathname.split('/').pop();
+    return handle === 'mary.j'
+      ? route.fulfill({ json: { name: 'Mary Jackson', handle: 'mary.j', avatar: null, entries: ENTRIES } })
       : route.fulfill({ status: 404, json: { error: 'No such profile' } });
   });
-  await page.goto('/u/abcd2345');
+  await page.goto('/u/Mary.J');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mary Jackson');
+  await expect(page.locator('.tm-profile-hero .tm-status')).toHaveText('mary.j · 3 events');
   const rows = page.locator('.tm-hist tbody tr.is-link');
   await expect(rows).toHaveCount(2);
   await expect(rows.first().locator('.tm-hist-place')).toHaveText('1st');
   await expect(page.locator('main').getByRole('button', { name: /Sign in|Save|Remove/ })).toHaveCount(0);
-  await page.goto('/u/NOPE2345');
+  await page.goto('/u/nobody');
   await expect(page.getByRole('heading', { name: /not found/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -234,8 +238,12 @@ async function mockSettings(page: Page, user: typeof ME) {
     const body = request.postDataJSON() as Record<string, unknown> | null;
     sent.push({ method: request.method(), path: pathname, body });
     if (pathname === '/api/me' && request.method() === 'PATCH') {
-      current = { ...current, publicSlug: body?.publicProfile ? 'ABCD2345' : null };
-      return route.fulfill({ json: { user: current } });
+      if (body?.handle === 'taken') {
+        return route.fulfill({ status: 409, json: { error: 'That username is taken' } });
+      }
+      current = { ...current, ...body };
+      // A username's answer is the account as its request read it: the one the page opened with.
+      return route.fulfill({ json: { user: body && 'handle' in body ? { ...user, ...body } : current } });
     }
     if (pathname === '/api/me' && request.method() === 'PUT') {
       return route.fulfill({
@@ -256,16 +264,47 @@ test('Settings: the public profile switch shows its link, and a POP ID clash poi
   await expect(page.getByRole('link', { name: 'View history' })).toHaveAttribute('href', '/history');
   await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0);
   const profile = page.getByRole('tablist', { name: 'Public profile' });
+  await expect(page.getByRole('tablist', { name: 'Name shown' })).toHaveCount(0);
   await profile.getByRole('tab', { name: 'On' }).click();
-  await expect(page.getByRole('link', { name: /\/u\/ABCD2345$/ })).toHaveAttribute('href', '/u/ABCD2345');
+  await expect(page.getByRole('link', { name: /\/u\/mary$/ })).toHaveAttribute('href', '/u/mary');
   await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible();
   expect(sent.find(s => s.method === 'PATCH')?.body).toEqual({ publicProfile: true });
+  const shown = page.getByRole('tablist', { name: 'Name shown' });
+  await expect(shown.getByRole('tab', { name: 'Real name' })).toHaveAttribute('aria-selected', 'true');
+  await shown.getByRole('tab', { name: 'Username' }).click();
+  await expect(shown.getByRole('tab', { name: 'Username' })).toHaveAttribute('aria-selected', 'true');
+  expect(sent.filter(s => s.method === 'PATCH').at(-1)?.body).toEqual({ profileName: 'handle' });
   await profile.getByRole('tab', { name: 'Off' }).click();
   await expect(page.getByRole('button', { name: 'Copy' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Save profile' }).click();
   const alert = page.getByRole('alert');
   await expect(alert).toContainText('This POP ID is on another account');
   await expect(alert.getByRole('link', { name: 'Feedback' })).toHaveAttribute('href', '/feedback?from=/settings');
+});
+
+test('Settings: the username is checked as it is typed, saved lowercased, and refused when taken @mobile', async ({
+  page
+}) => {
+  const sent = await mockSettings(page, ME);
+  await page.goto('/settings');
+  const input = page.getByRole('textbox', { name: 'Username' });
+  const save = page.getByRole('button', { name: 'Save username' });
+  await expect(input).toHaveValue('mary');
+  await expect(save).toBeDisabled();
+  await input.fill('mary..j');
+  await expect(page.getByRole('alert')).toHaveText('Put a letter or number between separators');
+  await expect(save).toBeDisabled();
+  await input.fill('taken');
+  await save.click();
+  await expect(page.getByRole('alert')).toHaveText('That username is taken');
+  await page.getByRole('tablist', { name: 'Public profile' }).getByRole('tab', { name: 'On' }).click();
+  await input.fill('Mary.J');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await save.click();
+  await expect(page.getByRole('status')).toHaveText('Saved');
+  expect(sent.filter(s => s.method === 'PATCH').at(-1)?.body).toEqual({ handle: 'mary.j' });
+  await expect(page.getByRole('link', { name: /\/u\/mary\.j$/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible();
 });
 
 test('Settings shows an admin the way to the admin page, and the strip offers History', async ({ page }) => {

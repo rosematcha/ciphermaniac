@@ -86,7 +86,12 @@ function EventRow(props: {
           {props.event.reportedTimes ? 'Unclear' : formatClock(props.event.time, props.event.cc) || '—'}
         </span>
         <span class='el-main'>
-          <span class='el-name'>{titleCase(props.event.name)}</span>
+          <span class='el-name-line'>
+            <span class='el-name'>{titleCase(props.event.name)}</span>
+            <Show when={props.event.storeId}>
+              <span class='el-mark' role='img' aria-label='Runs on Ciphermaniac' title='Runs on Ciphermaniac' />
+            </Show>
+          </span>
           <span class='el-venue'>
             {titleCase(props.event.shop)}
             <Show when={props.event.city}> · {titleCase(props.event.city)}</Show>

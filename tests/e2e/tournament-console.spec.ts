@@ -94,13 +94,23 @@ async function mockConsole(
     settings,
     decks: {},
     role: 'owner',
-    staffToken: 'invite'
+    staffToken: 'invite',
+    store: 'store-1'
   };
   await page.route('**/api/**', route => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/me') {
       const user = { id: 'u1', name: 'Organizer', avatar: null, popId: null, firstName: null, lastName: null };
-      const account = { ...user, birthDate: null, role: 'organizer', publicSlug: null, providers: ['dev'] };
+      const account = {
+        ...user,
+        birthDate: null,
+        role: 'community',
+        stores: [],
+        handle: 'organizer',
+        publicProfile: false,
+        profileName: 'real',
+        providers: ['dev']
+      };
       return route.fulfill({ json: { user: account, providers: ['dev'] } });
     }
     if (url.pathname === `/api/tournaments/${CODE}/manage`) {
@@ -154,7 +164,7 @@ test('a result shows in its row while it is on its way, and its answer is not re
     const tournament = run(t, { type: 'reportResult', pod: 'masters', round: 1, ...table, outcome: 'p1' });
     const manage = { code: CODE, mode: 'swiss', version: 4, updatedAt: 0, tournament, pending: [], reports: [] };
     return route.fulfill({
-      json: { ...manage, settings: settingsOf({}), decks: {}, role: 'owner', staffToken: 'invite' }
+      json: { ...manage, settings: settingsOf({}), decks: {}, role: 'owner', staffToken: 'invite', store: 'store-1' }
     });
   });
   await rows.evaluateAll(els => els.forEach(el => el.setAttribute('data-kept', '')));
@@ -350,24 +360,29 @@ test('on a phone a roster question takes its own line instead of squeezing the n
   expect(name?.width ?? 0).toBeGreaterThan(120);
 });
 
-test('a division cut stays in the shared pod and pairs the next bracket round', async ({ page }) => {
-  // TOM combines five Juniors and ten Seniors in category 10; Seniors then cut to their own top four.
+test('a division that cut from a shared pod plays its own bracket, and the shared pod pairs no more', async ({
+  page
+}) => {
+  // Five Juniors play Swiss with ten Seniors (§5.2.1); the Seniors then cut to a top 4 of their own.
   const adds: Command[] = [...Array(5).fill('2016'), ...Array(10).fill('2012')].map((year: string, i) => ({
     type: 'addPlayer',
     player: { firstName: `Player${i + 1}`, lastName: 'Test', birthDate: `02/27/${year}` }
   }));
-  let t = run(emptyTournament({ name: 'Friday League' }), ...adds, { type: 'pairRound', pod: 'mixed' });
-  t = run(reportAll(t), { type: 'startTopCut', pod: 'mixed', size: 4, division: 'senior' });
-  await mockConsole(page, t, settingsOf({}));
-  await expect(page.getByRole('tablist', { name: 'Division' })).toHaveCount(0);
-  await expect(page.locator('.tm-hero')).toContainText('Semifinals');
+  let t = run(emptyTournament({ name: 'Friday League' }), ...adds, { type: 'pairRound', pod: 'junior-senior' });
+  t = run(reportAll(t), { type: 'startTopCut', pod: 'junior-senior', size: 4, division: 'senior' });
+  const sent = await mockConsole(page, t, settingsOf({}));
+  const pods = page.getByRole('tablist', { name: 'Division' });
+  await expect(pods.getByRole('tab')).toHaveText(['Juniors and Seniors', 'Seniors top cut']);
+  // The console opens on what is still playing: the Seniors' semifinals.
+  await expect(pods.getByRole('tab', { name: 'Seniors top cut' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('button', { name: 'Pair the final' })).toBeDisabled();
+  await pods.getByRole('tab', { name: 'Juniors and Seniors' }).click();
+  await expect(page.locator('.tm-hero')).toContainText('top cuts under way');
   await expect(page.getByRole('button', { name: /^Pair round/ })).toHaveCount(0);
   await expect(page.getByRole('combobox', { name: 'Division to cut' })).toHaveCount(0);
-  const finished = reportAll(t);
-  const sent = await mockConsole(page, finished, settingsOf({}));
-  await page.getByRole('button', { name: 'Pair the final' }).click();
-  await expect.poll(() => sent.at(-1)).toMatchObject({ type: 'pairRound', pod: 'mixed' });
+  await expect(page.getByRole('button', { name: 'End event' })).toHaveClass(/btn-secondary/);
+  await page.getByRole('button', { name: 'Start top cut' }).click();
+  await expect.poll(() => sent.at(-1)).toMatchObject({ type: 'startTopCut', pod: 'junior-senior', division: 'junior' });
 });
 
 test('at an unsanctioned event where players do not report, staff can unlink a player from an account', async ({

@@ -28,6 +28,8 @@
  * linked is refused (409) with the linked player's public key.
  */
 
+import { mayBeUnder13, UNDER_13 } from '../../../../shared/accounts/age.js';
+import { birthYear } from '../../../../shared/tournament/divisions.js';
 import { findPlayer, type PlayerClaim } from '../../../../shared/tournament/identify.js';
 import {
   fileReport,
@@ -248,12 +250,24 @@ function listedPopId(row: TournamentRow, claim: PlayerClaim): string | null {
 async function checkedClaim(access: Access, claim: PlayerClaim): Promise<{ id: string } | Response> {
   const { db, row } = access;
   const found = findPlayer(row.tournament, isSanctioned(row), claim);
+  if (found.ok && under13(row, found.id)) {
+    return jsonError(UNDER_13, 403);
+  }
   // Judged first, then let in or refused by one statement, so tries landing at once are taken one at a time.
   const popId = listedPopId(row, claim);
   if (popId && !(await admitTry({ db, code: row.code, popId, right: found.ok, now: Date.now() }))) {
     return jsonError(LOCKED_OUT, 429);
   }
-  return found.ok ? found : privateJson({ error: found.error, ambiguous: found.ambiguous === true }, 404);
+  if (!found.ok) {
+    return privateJson({ error: found.error, ambiguous: found.ambiguous === true }, 404);
+  }
+  return found;
+}
+
+/** Whether the event's list says the player may be under 13, who hands the site nothing (shared/accounts/age.ts). */
+function under13(row: TournamentRow, id: string): boolean {
+  const player = row.tournament.players.find(candidate => candidate.id === id);
+  return isSanctioned(row) && mayBeUnder13(birthYear(player?.birthDate ?? ''), new Date());
 }
 
 export async function onRequestPost(context: Context<'code'>): Promise<Response> {

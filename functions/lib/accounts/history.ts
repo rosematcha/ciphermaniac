@@ -14,16 +14,17 @@ import type { HistoryEntry, PublicProfile } from '../../../shared/accounts/types
 import { parseTomDate } from '../../../shared/tournament/divisions.js';
 import { DEFAULT_SETTINGS } from '../../../shared/tournament/view.js';
 import { firstRow } from '../d1.js';
+import { displayNameSql } from './handles.js';
 import { pairedRounds } from '../tournaments/store.js';
 import type { D1Like, D1Statement } from '../types.js';
 
-/** Whose History: the account a session belongs to, or the one whose public profile is at a slug. */
-export type Whose = { session: string; now: number } | { slug: string };
+/** Whose History: the account a session belongs to, or the one whose public profile is at /u/<handle>. */
+export type Whose = { session: string; now: number } | { handle: string };
 
 /** How each statement finds the account: `u` is its users row. */
 function accountSql(whose: Whose): { from: string; where: string; values: unknown[] } {
-  return 'slug' in whose
-    ? { from: 'users u', where: 'u.public_slug = ?', values: [whose.slug] }
+  return 'handle' in whose
+    ? { from: 'users u', where: 'u.handle = ? AND u.public_profile = 1', values: [whose.handle] }
     : {
         from: 'sessions s JOIN users u ON u.id = s.user_id',
         where: 's.token_hash = ? AND s.expires_at > ?',
@@ -54,10 +55,15 @@ interface EntryRow {
   rounds: number | null;
 }
 
+/** The name the profile shows, as the account chose: its username, or the name the site calls it by. */
+const PROFILE_NAME = `CASE WHEN u.profile_name = 'handle' THEN u.handle ELSE ${displayNameSql('u')} END`;
+
 function statements(db: D1Like, whose: Whose): D1Statement[] {
   const { from, where, values } = accountSql(whose);
   return [
-    db.prepare(`SELECT u.name AS name, u.avatar AS avatar FROM ${from} WHERE ${where}`).bind(...values),
+    db
+      .prepare(`SELECT ${PROFILE_NAME} AS name, u.handle AS handle, u.avatar AS avatar FROM ${from} WHERE ${where}`)
+      .bind(...values),
     // By POP ID: the index holds sanctioned events only.
     db
       .prepare(
@@ -114,13 +120,13 @@ function merged(rows: EntryRow[]): HistoryEntry[] {
     .map(entryOf);
 }
 
-/** The account's name, picture and History; null when no account is there (signed out, or no such profile). */
+/** The account's name, username, picture and History; null when no account is there (signed out, or no such profile). */
 export async function historyOf(db: D1Like, whose: Whose): Promise<PublicProfile | null> {
   const [account, byPopId, byClaim] = await db.batch(statements(db, whose));
-  const found = firstRow<{ name: string; avatar: string | null }>(account);
+  const found = firstRow<{ name: string; handle: string; avatar: string | null }>(account);
   if (!found) {
     return null;
   }
   const rows = [...((byPopId?.results ?? []) as EntryRow[]), ...((byClaim?.results ?? []) as EntryRow[])];
-  return { name: found.name, avatar: found.avatar, entries: merged(rows) };
+  return { name: found.name, handle: found.handle, avatar: found.avatar, entries: merged(rows) };
 }

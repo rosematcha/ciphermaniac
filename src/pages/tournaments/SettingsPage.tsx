@@ -1,9 +1,10 @@
 /**
  * /settings (and the older /account). Signed in: who you are (a small
  * picture or initial, your name, your events, sign out, and which sign-ins
- * are linked), your account name, the player profile that decklists and
- * "find my table" fill themselves in from, History: the way to it, and
- * whether it is public at /u/<address>, and Organizer: where the account
+ * are linked), your username, the player profile that decklists and
+ * "find my table" fill themselves in from (its name is the one the site
+ * calls you by), History: the way to it, whether it is public at
+ * /u/<username> and which name it shows, and Organizer: where the account
  * stands on running events, with the way to apply, its events or the admin
  * page. A POP ID another account holds is refused, with the way to the
  * feedback form, where an admin settles who holds it. Signed out: one box to
@@ -12,7 +13,8 @@
 
 import { A, useNavigate, useSearchParams } from '@solidjs/router';
 import { createEffect, createResource, createSignal, For, onMount, Show } from 'solid-js';
-import { canApply, canCreateEvents } from '../../../shared/accounts/roles';
+import { displayName, HANDLE_MAX, handleProblem, normalizeHandle } from '../../../shared/accounts/handle';
+import { canCreateEvents } from '../../../shared/accounts/stores';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import {
   ApiError,
@@ -20,8 +22,9 @@ import {
   linkUrl,
   type Me,
   type Provider,
-  saveAccountName,
+  saveHandle,
   saveProfile,
+  setProfileName,
   setPublicProfile,
   signOut
 } from '../../lib/tournament/api';
@@ -35,6 +38,22 @@ import { emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
 import { refreshSession, session, setSession } from './session';
 import { SettingRow, Toggle } from './SettingControls';
 import { SignIn } from './SignIn';
+
+/**
+ * Takes in the fields one save changed, and only those: each answer carries
+ * the whole account as its request read it, so an answer landing after
+ * another save's would put back what that save changed. The name follows
+ * from the profile and username as they now stand.
+ */
+function mergeUser(user: Me, ...fields: (keyof Me)[]) {
+  setSession(prev => {
+    if (!prev?.user) {
+      return prev;
+    }
+    const next: Me = { ...prev.user, ...Object.fromEntries(fields.map(field => [field, user[field]])) };
+    return { ...prev, user: { ...next, name: displayName(next) } };
+  });
+}
 
 const PROVIDER_NAMES: Record<Exclude<Provider, 'dev'>, string> = { google: 'Google', discord: 'Discord' };
 
@@ -52,7 +71,7 @@ function Identity(props: { user: Me; providers: readonly Provider[] }) {
       <h1>{props.user.name}</h1>
       <div class='tm-identity-acts'>
         {/* An Organizer's or Admin's events are under Organizer, below. */}
-        <Show when={!canCreateEvents(props.user.role)}>
+        <Show when={!canCreateEvents(props.user.role, props.user.stores)}>
           <A class='btn btn-secondary' href='/host'>
             Your events
           </A>
@@ -81,16 +100,22 @@ function Identity(props: { user: Me; providers: readonly Provider[] }) {
   );
 }
 
-function AccountName(props: { user: Me }) {
-  // eslint-disable-next-line solid/reactivity -- the input edits a copy of the name it opened with
-  const [name, setName] = createSignal(props.user.name);
+/** The username, checked as it is typed; the server says whether someone else holds it. */
+function Username(props: { user: Me }) {
+  // eslint-disable-next-line solid/reactivity -- the input edits a copy of the username it opened with
+  const [handle, setHandle] = createSignal(props.user.handle);
   const [error, setError] = createSignal<string | null>(null);
   const [saved, setSaved] = createSignal(false);
+  const wanted = () => normalizeHandle(handle());
+  const problem = () => (wanted() === props.user.handle ? null : handleProblem(wanted()));
   async function save(event: Event) {
     event.preventDefault();
+    if (problem()) {
+      return;
+    }
     try {
-      const result = await saveAccountName(name());
-      setSession(prev => (prev ? { ...prev, user: result.user } : prev));
+      const result = await saveHandle(wanted());
+      mergeUser(result.user, 'handle');
       setError(null);
       setSaved(true);
     } catch (err) {
@@ -99,16 +124,21 @@ function AccountName(props: { user: Me }) {
   }
   return (
     <section>
-      <h2 class='tm-subhead tm-box-head'>Account name</h2>
+      <h2 class='tm-subhead tm-box-head'>Username</h2>
       <form class='tm-box' onSubmit={event => void save(event)}>
         <div class='tm-box-bar'>
           <input
             class='tm-input tm-grow'
-            maxlength='40'
-            aria-label='Account name'
-            value={name()}
+            maxlength={HANDLE_MAX}
+            aria-label='Username'
+            autocapitalize='none'
+            autocomplete='username'
+            spellcheck={false}
+            aria-invalid={problem() !== null}
+            value={handle()}
             onInput={event => {
-              setName(event.currentTarget.value);
+              setHandle(event.currentTarget.value);
+              setError(null);
               setSaved(false);
             }}
           />
@@ -117,12 +147,16 @@ function AccountName(props: { user: Me }) {
               Saved
             </span>
           </Show>
-          <button class='btn btn-secondary' type='submit' disabled={name().trim() === props.user.name}>
-            Save name
+          <button
+            class='btn btn-secondary'
+            type='submit'
+            disabled={wanted() === props.user.handle || problem() !== null}
+          >
+            Save username
           </button>
         </div>
       </form>
-      <ErrorLine message={error()} />
+      <ErrorLine message={problem() ?? error()} />
     </section>
   );
 }
@@ -153,7 +187,7 @@ function Profile(props: { user: Me }) {
     setClash(false);
     try {
       const { user } = await saveProfile(profile());
-      setSession(prev => (prev ? { ...prev, user } : prev));
+      mergeUser(user, 'popId', 'firstName', 'lastName', 'birthDate');
       setStatus('saved');
     } catch (err) {
       setError(errorText(err));
@@ -205,31 +239,35 @@ function Profile(props: { user: Me }) {
 }
 
 /** The public profile's address in full, as it is shared. */
-const profileUrl = (slug: string) => `${location.origin}/u/${slug}`;
+const profileUrl = (handle: string) => `${location.origin}/u/${handle}`;
 
 /**
  * History: the way to it, and the public profile, off unless the account
- * turns it on; on, its link and a way to copy it. Turned off and on again,
- * the profile gets a new address, so an old shared link stays dead.
+ * turns it on; on, which name it shows, its link and a way to copy it. The
+ * address is the username, so a link shared before works again once the
+ * profile is turned back on.
  */
 function HistorySection(props: { user: Me }) {
   const [busy, setBusy] = createSignal(false);
   const [copied, setCopied] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  async function turn(on: boolean) {
+  async function change(field: 'publicProfile' | 'profileName', ask: () => Promise<{ user: Me }>) {
+    if (busy()) {
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const { user } = await setPublicProfile(on);
-      setSession(prev => (prev ? { ...prev, user } : prev));
+      const { user } = await ask();
+      mergeUser(user, field);
     } catch (err) {
       setError(errorText(err));
     } finally {
       setBusy(false);
     }
   }
-  async function copy(slug: string) {
-    await navigator.clipboard.writeText(profileUrl(slug));
+  async function copy() {
+    await navigator.clipboard.writeText(profileUrl(props.user.handle));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
@@ -246,28 +284,33 @@ function HistorySection(props: { user: Me }) {
           <span class='tm-set-inline' aria-busy={busy()}>
             <Toggle
               label='Public profile'
-              value={props.user.publicSlug !== null}
-              onChange={on => {
-                if (!busy()) {
-                  void turn(on);
-                }
-              }}
+              value={props.user.publicProfile}
+              onChange={on => void change('publicProfile', () => setPublicProfile(on))}
             />
           </span>
         </SettingRow>
-        <Show when={props.user.publicSlug}>
-          {slug => (
-            <SettingRow label='Profile link'>
-              <span class='tm-set-inline tm-profile-link'>
-                <A class='tm-link-inline tm-num' href={`/u/${slug()}`}>
-                  {profileUrl(slug()).replace(/^https?:\/\//, '')}
-                </A>
-                <button type='button' class='btn btn-secondary' onClick={() => void copy(slug())}>
-                  {copied() ? 'Copied' : 'Copy'}
-                </button>
-              </span>
-            </SettingRow>
-          )}
+        <Show when={props.user.publicProfile}>
+          <SettingRow label='Name shown'>
+            <span class='tm-set-inline' aria-busy={busy()}>
+              <Toggle
+                label='Name shown'
+                value={props.user.profileName === 'real'}
+                on='Real name'
+                off='Username'
+                onChange={real => void change('profileName', () => setProfileName(real ? 'real' : 'handle'))}
+              />
+            </span>
+          </SettingRow>
+          <SettingRow label='Profile link'>
+            <span class='tm-set-inline tm-profile-link'>
+              <A class='tm-link-inline' href={`/u/${props.user.handle}`}>
+                {profileUrl(props.user.handle).replace(/^https?:\/\//, '')}
+              </A>
+              <button type='button' class='btn btn-secondary' onClick={() => void copy()}>
+                {copied() ? 'Copied' : 'Copy'}
+              </button>
+            </span>
+          </SettingRow>
         </Show>
       </div>
       <ErrorLine message={error()} />
@@ -282,10 +325,7 @@ function HistorySection(props: { user: Me }) {
  */
 function OrganizerSection(props: { user: Me }) {
   // Keyed by what the role leaves to ask; a false key would never resolve.
-  const [state, { refetch }] = createResource(
-    () => (canApply(props.user.role) ? 'application' : 'role'),
-    asked => (asked === 'application' ? fetchApplication() : null)
-  );
+  const [state, { refetch }] = createResource(fetchApplication);
   const current = () => latestValue(state);
   return (
     <section>
@@ -355,7 +395,7 @@ export function SettingsPage() {
             {user => (
               <>
                 <Identity user={user()} providers={s().providers} />
-                <AccountName user={user()} />
+                <Username user={user()} />
                 <Profile user={user()} />
                 <HistorySection user={user()} />
                 <OrganizerSection user={user()} />

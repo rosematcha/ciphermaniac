@@ -22,6 +22,14 @@ import {
 } from '../../../shared/events/build.ts';
 import { semanticHash } from '../../../shared/data/hash.ts';
 import { buildLocalsArtifacts, type LocalsArtifacts, type LocalsBuildStats } from '../../../shared/events/locals.ts';
+import {
+  buildLeagueShards,
+  type LeagueShard,
+  leagueShardPath,
+  type LeaguesIndex,
+  leaguesIndexPath,
+  type LeagueSource
+} from '../../../shared/events/leagues.ts';
 import type { ZoneLookup } from '../../../shared/events/normalize.ts';
 import {
   LOCALS_INDEX_KEY,
@@ -105,6 +113,31 @@ export async function publish(
   return retired.cells;
 }
 
+/**
+ * Writes one listing's league shards (shared/events/leagues.ts) whose content
+ * changed, then their index of hashes if anything did. Every shard is built
+ * each run, empty ones too, so a league that stopped listing leaves its
+ * shard. They go after the listing itself, which the shrink guard let through.
+ * @returns How many leagues the shards hold
+ */
+export async function publishLeagues(
+  source: LeagueSource,
+  shards: Map<string, LeagueShard>,
+  publisher: Publisher,
+  now: Date
+): Promise<number> {
+  const previous = await publisher.read<LeaguesIndex>(leaguesIndexPath(source));
+  const hashes = Object.fromEntries([...shards].map(([shard, value]) => [shard, semanticHash(value).slice(0, 16)]));
+  const changed = [...shards].filter(([shard]) => previous?.shards[shard] !== hashes[shard]);
+  await runLimited(changed, UPLOAD_CONCURRENCY, ([shard, value]) =>
+    publisher.write(leagueShardPath(source, shard), value)
+  );
+  if (changed.length > 0 || !previous) {
+    await publisher.write(leaguesIndexPath(source), { version: 1, updatedAt: now.toISOString(), shards: hashes });
+  }
+  return [...shards.values()].reduce((sum, shard) => sum + Object.keys(shard.leagues).length, 0);
+}
+
 function describeStats(stats: BuildStats): string {
   const skipped = Object.entries(stats.skipped)
     .map(([reason, count]) => `${reason} ${count}`)
@@ -131,6 +164,9 @@ export async function runEventLocator(options: RunOptions): Promise<RunResult> {
     log(`Publishing past the shrink guard: ${problem}`);
   }
   const removed = await publish(artifacts, publisher, previous);
+  const shards = buildLeagueShards(pull.events, { now: now(), zoneAt });
+  const leagues = await publishLeagues('sanctioned', shards, publisher, now());
+  log(`Leagues with Cups, Challenges or Prereleases: ${leagues}`);
   return { total: artifacts.index.total, cells: artifacts.cells.size, removed, stats: artifacts.stats };
 }
 
@@ -204,12 +240,13 @@ function describeLocalsStats(stats: LocalsBuildStats): string {
 export async function runLocalsLocator(options: LocalsRunOptions): Promise<LocalsRunResult> {
   const { publisher, now = () => new Date(), allowShrink = false, log = () => undefined } = options;
   const raw = await options.fetchLocals();
+  const zone = options.zoneAt ?? zoneAt;
   const artifacts = buildLocalsArtifacts(raw, {
     now: now(),
     source: POKEDATA_SITE,
     horizonDays: options.horizonDays ?? LOCALS_HORIZON_DAYS,
     hash: cellHash,
-    zoneAt: options.zoneAt ?? zoneAt
+    zoneAt: zone
   });
   log(describeLocalsStats(artifacts.stats));
   const previous = await publisher.read<LocalsIndex>(LOCALS_INDEX_KEY);
@@ -221,6 +258,8 @@ export async function runLocalsLocator(options: LocalsRunOptions): Promise<Local
     log(`Publishing locals past the shrink guard: ${problem}`);
   }
   const outcome = await publishLocals(artifacts, publisher, previous);
+  const shards = buildLeagueShards(raw, { now: now(), zoneAt: zone });
+  log(`Leagues with locals: ${await publishLeagues('locals', shards, publisher, now())}`);
   return { total: artifacts.index.total, venues: artifacts.index.venues, ...outcome, stats: artifacts.stats };
 }
 

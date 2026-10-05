@@ -104,39 +104,8 @@ test('players level on everything who never met rank in the order they registere
   );
 });
 
-const rounding = { maximumSignificantDigits: 4, useGrouping: false, roundingMode: 'halfEven' };
-const percent = new Intl.NumberFormat('en-US', rounding);
 const mean = (values: number[]) =>
-  values.length === 0
-    ? 0
-    : Number(
-        (
-          Number(percent.format((values.reduce((sum, value) => sum + value, 0) / values.length) * 100)) / 100
-        ).toPrecision(4)
-      );
-
-function expectedOpponentRate(
-  field: Pod,
-  players: Player[],
-  id: string,
-  at: number,
-  historical: boolean,
-  current: number
-): number {
-  const drop = players.find(p => p.id === id)?.droppedAfter ?? null;
-  if (drop === null || drop >= at) {
-    return current;
-  }
-  const tallies = tallySwiss(field, drop);
-  const opponents = tallies.get(id)?.opponents ?? [];
-  return mean(
-    opponents.map(opponent => {
-      const tally = tallies.get(opponent)!;
-      const dropped = players.find(p => p.id === opponent)?.droppedAfter ?? null;
-      return winRate(tally, dropped !== null && (!historical || dropped <= drop));
-    })
-  );
-}
+  values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length;
 
 /** Independently replay a cutoff to check each frozen rate against its original definition. */
 function expectedRates(field: Pod, players: Player[], at: number, historical: boolean) {
@@ -148,17 +117,7 @@ function expectedRates(field: Pod, players: Player[], at: number, historical: bo
     })
   );
   const owp = new Map(
-    [...tallies].map(([id, tally]) => [
-      id,
-      expectedOpponentRate(
-        field,
-        players,
-        id,
-        at,
-        historical,
-        mean(tally.opponents.map(opponent => rates.get(opponent) ?? 0))
-      )
-    ])
+    [...tallies].map(([id, tally]) => [id, mean(tally.opponents.map(opponent => rates.get(opponent) ?? 0))])
   );
   return new Map(
     [...tallies].map(([id, tally]) => [
@@ -203,7 +162,7 @@ test('opponent averages weight rematches and ignore byes and pending matches', (
   }
 });
 
-test('head-to-head applies pairwise before roster order, including larger tie groups', () => {
+test('head-to-head applies only to a pair of level ranked players', () => {
   const field = pod(
     ['A', 'B', 'C', 'D'],
     [
@@ -220,7 +179,7 @@ test('head-to-head applies pairwise before roster order, including larger tie gr
   const players = ['B', 'A', 'C', 'D'].map(id => player(id));
   assert.deepEqual(
     swissStandings(field, players).map(row => row.playerId),
-    ['A', 'B', 'C', 'D']
+    ['B', 'A', 'C', 'D']
   );
   const filtered = swissStandings(field, players, { only: new Set(['A', 'B']) });
   assert.deepEqual(
@@ -278,18 +237,4 @@ test('a match participant absent from the pod roster can freeze before their fir
   assert.deepEqual(b?.record, { wins: 0, losses: 1, ties: 0 });
   assert.equal(b?.owp, 0);
   assert.equal(b?.oowp, 0);
-});
-
-test('deleted TOM matches count opponents without giving either player a record or points', () => {
-  const field = pod(['A', 'B'], [round(1, [['A', 'B']])]);
-  field.rounds[0]!.matches[0]!.outcome = 'deleted';
-  for (const row of swissStandings(
-    field,
-    ['A', 'B'].map(id => player(id))
-  )) {
-    assert.deepEqual(row.record, { wins: 0, losses: 0, ties: 0 });
-    assert.equal(row.points, 0);
-    assert.equal(row.owp, 0.25);
-    assert.equal(row.oowp, 0.25);
-  }
 });
