@@ -9,6 +9,7 @@ import type {
   GivenRole,
   LeagueNight,
   NightException,
+  Relationship,
   StoreApplication,
   StoreDetails,
   StoreRole
@@ -93,6 +94,15 @@ export const fetchListings = (id: string) => call<{ listings: Listing[] }>(`${st
 /** The link a new store member opens: it signs them in if needed, then joins them. */
 export const inviteLink = (origin: string, token: string) =>
   `${origin}/stores/join?${new URLSearchParams({ invite: token }).toString()}`;
+
+export const STORE_ROLE_WORDS: Record<StoreRole, string> = { owner: 'Owner', manager: 'Manager', staff: 'Staff' };
+
+/** Why an applicant applies for a store, in their own words. */
+export const RELATIONSHIP_LABELS: Record<Relationship, string> = {
+  organizer: 'I’m the store’s organizer',
+  judge: 'I’m a judge at this store',
+  owner: 'I own this store'
+};
 
 export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 

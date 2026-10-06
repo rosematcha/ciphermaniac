@@ -295,8 +295,8 @@ test('a store application starts from the league, prefilled, and sends what the 
   await expect(page.getByLabel('City')).toHaveValue('San Antonio');
   await expect(page.getByLabel('Postal code')).toHaveValue('78201');
   await page.getByRole('button', { name: 'Send application' }).click();
-  await expect(page.getByRole('alert')).toHaveText('Say how you run the store');
-  await page.getByLabel('How you run it').selectOption('owner');
+  await expect(page.getByRole('alert')).toHaveText('Say why you are applying for the store');
+  await page.getByLabel('Why are you applying for this store?').selectOption('owner');
   await page.getByRole('checkbox', { name: /certified Play! Pokémon organizer/ }).check();
   await page.getByLabel('Website').fill('combatpower.example');
   await page.getByRole('button', { name: 'Send application' }).click();
@@ -372,7 +372,7 @@ test('a league the locator does not know leaves the details to type, with no pla
   await lookUp(page);
   await expect(page.locator('.tm-apply-found')).toHaveCount(0);
   await expect(page.getByLabel('Store name')).toHaveValue('');
-  await page.getByLabel('How you run it').selectOption('organizer');
+  await page.getByLabel('Why are you applying for this store?').selectOption('organizer');
   await page.getByRole('checkbox', { name: /certified/ }).check();
   await page.getByLabel('Store name').fill('Combat Power Gaming');
   await page.getByLabel('Address').fill('4522 Fredericksburg Rd');

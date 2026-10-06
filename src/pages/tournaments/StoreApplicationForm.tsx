@@ -3,7 +3,7 @@
  * comes first, as its ID or its pokemon.com page: looking it up fills in what
  * the event locator knows of the store (name, address, place, time zone), or,
  * when it knows nothing, leaves the fields to type. A league that already has
- * a store goes no further. Then how the applicant runs the store, their
+ * a store goes no further. Then why the applicant applies for the store, their
  * confirmation that they are certified, the store's details and weekly league
  * nights, and optionally a certificate and a note. A refusal over the profile
  * or a pending Application rereads the account (`onStale`).
@@ -29,18 +29,13 @@ import {
   detailsProblems,
   emptyDetails,
   fetchLeague,
+  RELATIONSHIP_LABELS,
   sendStoreApplication,
   zoneName
 } from '../../lib/tournament/stores';
 import { ErrorLine, Field } from './Field';
 import { WeeklyNights } from './LeagueNights';
 import { StoreFields } from './StoreFields';
-
-const RELATIONSHIP_LABELS: Record<Relationship, string> = {
-  owner: 'I own it',
-  employee: 'I work there',
-  organizer: 'I organize its league'
-};
 
 /** The proof uploaded: its type and size, and its name when it was picked on this page. */
 type Proof = ProofSlot & { name: string | null };
@@ -300,7 +295,7 @@ export function StoreApplicationForm(props: {
   }
   const missing = () => {
     if (!relationship()) {
-      return 'Say how you run the store';
+      return 'Say why you are applying for the store';
     }
     if (!certified()) {
       return 'Confirm you are a certified organizer, or work with one';
@@ -355,7 +350,7 @@ export function StoreApplicationForm(props: {
       <Show when={league()}>
         <>
           <Show when={known()}>{found => <Found league={found()} />}</Show>
-          <Field id='apply-relationship' label='How you run it'>
+          <Field id='apply-relationship' label='Why are you applying for this store?'>
             <select
               id='apply-relationship'
               class='tm-select tm-select-full'

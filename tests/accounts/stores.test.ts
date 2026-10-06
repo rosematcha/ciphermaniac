@@ -10,7 +10,8 @@ import {
   readLeagueId,
   readNights,
   readStoreApplication,
-  readStoreDetails
+  readStoreDetails,
+  roleForRelationship
 } from '../../shared/accounts/stores.ts';
 import { storeApplication } from '../__utils__/storeApplication.ts';
 
@@ -81,6 +82,17 @@ test('a store application holds together, or says the first thing wrong with it'
     'Confirm you are a certified organizer, or work with one'
   );
   assert.equal(readStoreApplication(null), 'Enter the store’s league ID');
+});
+
+test('why an applicant applies sets the role they start the store with', () => {
+  assert.equal(roleForRelationship('owner'), 'owner');
+  assert.equal(roleForRelationship('organizer'), 'manager');
+  assert.equal(roleForRelationship('judge'), 'staff');
+  assert.equal(roleForRelationship('employee'), 'staff', 'anything else is the least');
+  assert.equal(
+    readStoreApplication({ ...storeApplication(), relationship: 'employee' }),
+    'Say why you are applying for the store'
+  );
 });
 
 test('a time zone is one the runtime knows; a date is the store’s own', () => {

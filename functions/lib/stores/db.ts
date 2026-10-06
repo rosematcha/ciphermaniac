@@ -12,6 +12,7 @@ import {
   type NightException,
   type StoreDetails,
   type StorePlace,
+  type StoreRole,
   storeRoleOf
 } from '../../../shared/accounts/stores.js';
 import type { PublicStore, Store, StoreEvent, StoreInvite, StoreMember } from '../../../shared/accounts/types.js';
@@ -97,21 +98,21 @@ export interface Guard {
 
 const ALWAYS: Guard = { sql: '1 = 1', values: [] };
 
-/** A store to make: under `id`, with `managerId` its Owner, at `now`, each write only while `guard` holds. */
+/** A store to make: under `id`, with its first member in their role, at `now`, each write only while `guard` holds. */
 export interface StoreMaking {
   id: string;
   store: NewStore;
-  managerId: string;
+  member: { id: string; role: StoreRole };
   now: number;
   guard?: Guard;
 }
 
 /**
- * The writes that make a store and its Owner. The unique league
+ * The writes that make a store and its first member. The unique league
  * index refuses a second store for a league, failing the batch.
  */
 export function storeInserts(db: D1Like, making: StoreMaking): D1Statement[] {
-  const { id, store, managerId, now, guard = ALWAYS } = making;
+  const { id, store, member, now, guard = ALWAYS } = making;
   const { details } = store;
   return [
     db
@@ -143,10 +144,8 @@ export function storeInserts(db: D1Like, making: StoreMaking): D1Statement[] {
         ...guard.values
       ),
     db
-      .prepare(
-        `INSERT INTO store_members (store_id, user_id, role, added_at) SELECT ?, ?, 'owner', ? WHERE ${guard.sql}`
-      )
-      .bind(id, managerId, now, ...guard.values)
+      .prepare(`INSERT INTO store_members (store_id, user_id, role, added_at) SELECT ?, ?, ?, ? WHERE ${guard.sql}`)
+      .bind(id, member.id, member.role, now, ...guard.values)
   ];
 }
 

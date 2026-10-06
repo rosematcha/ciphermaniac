@@ -2,7 +2,8 @@
  * POST /api/admin/applications/:id — an Admin decides a pending Application:
  * { decision: 'approve' | 'reject', note? }, the note being the Admin's own
  * words to the applicant. Approving makes the store it asks for, with the
- * applicant its Manager; a league that already has a store is refused (409),
+ * applicant in it as the role their reason for applying gives them (an owner
+ * its Owner, an organizer a Manager, a judge Staff); a league that already has a store is refused (409),
  * since a store changes hands only by an Admin moving it. The proof file goes
  * once the decision lands; its type stays on the row as a record that one was
  * seen. Answers { application }; 409 when it was already decided.
@@ -19,7 +20,7 @@ import {
 import { randomToken } from '../../../lib/auth/session.js';
 import { breaksLeague, type Guard, storeInserts } from '../../../lib/stores/db.js';
 import { publishStores } from '../../../lib/stores/publish.js';
-import type { StoreApplication } from '../../../../shared/accounts/stores.js';
+import { roleForRelationship, type StoreApplication } from '../../../../shared/accounts/stores.js';
 import { readJsonObject } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import { openForAdmin } from '../../../lib/auth/admin.js';
@@ -77,7 +78,7 @@ function decisionWrites(
             timeZone: store.timeZone,
             nights: store.nights
           },
-          managerId: userId,
+          member: { id: userId, role: roleForRelationship(store.relationship) },
           now,
           guard: pending
         })

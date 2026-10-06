@@ -165,7 +165,7 @@ async function openStoreForm(page: Page) {
   await page.getByRole('radio', { name: /(?:Store|Organized play location)/ }).check();
   await page.getByLabel('League ID or pokemon.com league page').fill('6238620');
   await page.getByRole('button', { name: 'Look up' }).click();
-  await page.getByLabel('How you run it').selectOption('owner');
+  await page.getByLabel('Why are you applying for this store?').selectOption('owner');
   await page.getByRole('checkbox', { name: /certified/ }).check();
 }
 

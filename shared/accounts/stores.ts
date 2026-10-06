@@ -3,9 +3,10 @@
  * that run sanctioned events on the site. A store is its own record, not a
  * role: accounts join it as a Manager (edits the store, its staff and league
  * nights) or Staff (runs every event the store runs). One Manager is its
- * Owner, the approved applicant to start with: the Owner is never removed or
- * demoted, and stops being the Owner only by handing the store to someone
- * else in it. What a store says about itself is checked the same way on the
+ * Owner, the approved applicant when they own the store (an applicant who
+ * organizes or judges for it starts as a Manager or Staff, and an Admin gives
+ * the store its Owner): the Owner is never removed or demoted, and stops
+ * being the Owner only by handing the store to someone else in it. What a store says about itself is checked the same way on the
  * page and in the functions.
  */
 
@@ -25,9 +26,19 @@ export const managesStore = (role: StoreRole | null | undefined): boolean => rol
 
 export type StoreStatus = 'active' | 'revoked';
 
-/** How an applicant runs the store they apply for. */
-export type Relationship = 'owner' | 'employee' | 'organizer';
-export const RELATIONSHIPS: readonly Relationship[] = ['owner', 'employee', 'organizer'];
+/** Why an applicant applies for the store: what they are to it. */
+export type Relationship = 'organizer' | 'judge' | 'owner';
+export const RELATIONSHIPS: readonly Relationship[] = ['organizer', 'judge', 'owner'];
+
+const ROLE_OF: Record<Relationship, StoreRole> = { owner: 'owner', organizer: 'manager', judge: 'staff' };
+
+/**
+ * The role an approved applicant starts the store with: its owner is its
+ * Owner, its organizer a Manager, its judge Staff. Anything else reads as
+ * Staff, the least.
+ */
+export const roleForRelationship = (relationship: unknown): StoreRole =>
+  ROLE_OF[RELATIONSHIPS.find(item => item === relationship) ?? 'judge'];
 
 export const STORE_LIMITS = {
   name: 80,
@@ -269,7 +280,7 @@ export function readStoreApplication(value: unknown): StoreApplication | string 
     [!leagueId, 'Enter the store’s league ID'],
     [!details, 'Check the store’s details'],
     [located === undefined || !timeZone, 'Pick the store’s time zone'],
-    [!relationship, 'Say how you run the store'],
+    [!relationship, 'Say why you are applying for the store'],
     [body.certified !== true, 'Confirm you are a certified organizer, or work with one'],
     [!nights, 'Check the league nights']
   ];

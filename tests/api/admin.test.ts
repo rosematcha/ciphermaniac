@@ -29,6 +29,7 @@ import * as me from '../../functions/api/me.ts';
 import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import * as tournaments from '../../functions/api/tournaments/index.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
+import type { StoreApplication } from '../../shared/accounts/stores.ts';
 import { apiCalls, type Call, type Handler, ORIGIN } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
 import { memoryProofs, stalledDeletes } from '../__utils__/proofBucket.ts';
@@ -85,7 +86,12 @@ async function upload(cookie: string, body: Uint8Array<ArrayBuffer>) {
 }
 
 /** An account that has applied, with `file` as its proof when given; answers its cookie and the Application's id. */
-async function applied(name: string, popId: string, file?: Uint8Array<ArrayBuffer>) {
+async function applied(
+  name: string,
+  popId: string,
+  file?: Uint8Array<ArrayBuffer>,
+  overrides: Partial<StoreApplication> = {}
+) {
   const cookie = await player(name, popId);
   if (file) {
     await upload(cookie, file);
@@ -97,7 +103,11 @@ async function applied(name: string, popId: string, file?: Uint8Array<ArrayBuffe
     {
       method: 'POST',
       cookie,
-      body: { store: storeApplication(`77${popId}`), explanation: `${name} runs a league`, proof: Boolean(file) }
+      body: {
+        store: storeApplication(`77${popId}`, overrides),
+        explanation: `${name} runs a league`,
+        proof: Boolean(file)
+      }
     }
   );
   assert.equal(sent.status, 201);
@@ -453,6 +463,20 @@ test('approving makes the store with the applicant its Owner, records who decide
     (await list(admin, 'approved')).json.applications.map((shown: { id: string }) => shown.id),
     [id]
   );
+});
+
+test('approving an organizer makes them a Manager, and a judge Staff, of a store with no Owner yet', async () => {
+  const admin = await signIn('Admin', 'admin');
+  const organizer = await applied('Organizer', '110', undefined, { relationship: 'organizer' });
+  const judge = await applied('Judge', '111', undefined, { relationship: 'judge' });
+  assert.equal((await decision(admin, organizer.id, { decision: 'approve' })).status, 200);
+  assert.equal((await decision(admin, judge.id, { decision: 'approve' })).status, 200);
+  const [managed] = await storesOf(organizer.cookie);
+  const [judged] = await storesOf(judge.cookie);
+  assert.deepEqual([managed?.role, managed?.leagueId], ['manager', '77110']);
+  assert.deepEqual([judged?.role, judged?.leagueId], ['staff', '77111']);
+  assert.equal(raw().prepare("SELECT COUNT(*) AS n FROM store_members WHERE role = 'owner'").get()?.n, 0);
+  assert.equal((await createEvent(judge.cookie, { store: judged!.id })).status, 201, 'Staff run the store’s events');
 });
 
 test('rejecting makes no store, leaves the role as it was, and deletes the proof', async () => {

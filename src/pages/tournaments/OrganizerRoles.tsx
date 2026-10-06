@@ -9,19 +9,18 @@
 
 import { A } from '@solidjs/router';
 import { createSignal, For, Match, Show, Switch } from 'solid-js';
-import { managesStore, type StoreRole } from '../../../shared/accounts/stores';
+import { managesStore } from '../../../shared/accounts/stores';
 import type { MyStore } from '../../../shared/accounts/types';
 import { errorText, type Me } from '../../lib/tournament/api';
-import { removeMember, resignCommunity } from '../../lib/tournament/stores';
+import { removeMember, resignCommunity, STORE_ROLE_WORDS } from '../../lib/tournament/stores';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { refreshSession } from './session';
 import { SettingRow } from './SettingControls';
 
-const ROLE_WORDS: Record<StoreRole, string> = { owner: 'Owner', manager: 'Manager', staff: 'Staff' };
-
 /** What the account is at the store, and whether the store may still run events. */
-const storeNote = (store: MyStore) => `${ROLE_WORDS[store.role]}${store.status === 'revoked' ? ' · Revoked' : ''}`;
+const storeNote = (store: MyStore) =>
+  `${STORE_ROLE_WORDS[store.role]}${store.status === 'revoked' ? ' · Revoked' : ''}`;
 
 /** The account's own standing as a Community organizer, or as an Admin, who needs none. */
 function CommunityRow(props: { user: Me; busy: boolean; onResign: () => void }) {

@@ -20,6 +20,7 @@ import {
   inviteLink,
   removeMember,
   setMemberRole,
+  STORE_ROLE_WORDS,
   withdrawInvite
 } from '../../lib/tournament/stores';
 import { latestValue } from '../../lib/resource';
@@ -27,8 +28,6 @@ import { Skeleton } from '../../components/Skeleton';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { refreshSession, session } from './session';
-
-const ROLE_WORDS: Record<StoreRole, string> = { owner: 'Owner', manager: 'Manager', staff: 'Staff' };
 
 /**
  * One open link: as what it lets someone in and until when, and Withdraw. The
@@ -44,7 +43,7 @@ function InviteRow(props: { invite: StoreInvite; link: string | null; busy: bool
   return (
     <div class='tm-box-bar tm-store-invite'>
       <span class='tm-store-invite-what'>
-        {ROLE_WORDS[props.invite.role]} invite
+        {STORE_ROLE_WORDS[props.invite.role]} invite
         <span class='muted'> · expires {dayOf(props.invite.expiresAt)}</span>
       </span>
       <Show when={props.link}>
@@ -55,7 +54,7 @@ function InviteRow(props: { invite: StoreInvite; link: string | null; busy: bool
                 class='tm-input tm-link'
                 readOnly
                 value={link()}
-                aria-label={`${ROLE_WORDS[props.invite.role]} invite link`}
+                aria-label={`${STORE_ROLE_WORDS[props.invite.role]} invite link`}
                 onFocus={e => e.currentTarget.select()}
               />
               <button type='button' class='btn btn-secondary' onClick={() => void copy(link())}>
@@ -107,7 +106,7 @@ function MemberRow(props: {
           <span class='tm-flag is-you'>You</span>
         </Show>
       </td>
-      <td>{ROLE_WORDS[props.member.role]}</td>
+      <td>{STORE_ROLE_WORDS[props.member.role]}</td>
       <td class='muted-cell tm-wide-col'>{props.member.hasPopId ? 'On file' : 'None'}</td>
       <td class='tm-extra-col'>
         <Show when={props.member.role !== 'owner'}>

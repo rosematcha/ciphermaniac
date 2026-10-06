@@ -1,7 +1,8 @@
 /**
  * The admin page's Applications tab: the queue of pending ones, oldest
  * first, with a switch to the approved or rejected ones. Each shows the name
- * and POP ID it was sent with, the account as it is now, the explanation
+ * and POP ID it was sent with, the account as it is now, the store it asks
+ * for, why, and the role approving gives the applicant in it, the explanation
  * and the proof (an image opens in a sheet; a PDF downloads), and a pending
  * one takes Approve or Reject with an optional note to the applicant. A
  * decided one stays in place, showing the decision, until the list is read
@@ -10,6 +11,7 @@
 
 import { createResource, createSignal, For, Show } from 'solid-js';
 import { NOTE_MAX } from '../../../shared/accounts/applications';
+import { roleForRelationship } from '../../../shared/accounts/stores';
 import type { AdminApplication, ApplicationStatus } from '../../../shared/accounts/types';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Segmented } from '../../components/Segmented';
@@ -17,6 +19,7 @@ import { Skeleton } from '../../components/Skeleton';
 import { ApiError, errorText } from '../../lib/tournament/api';
 import { decideApplication, fetchApplications, proofUrl } from '../../lib/tournament/admin';
 import { dayOf } from '../../lib/tournament/applications';
+import { RELATIONSHIP_LABELS, STORE_ROLE_WORDS } from '../../lib/tournament/stores';
 import { resolved } from '../../lib/resource';
 import { ErrorLine } from './Field';
 
@@ -151,6 +154,15 @@ function ApplicationRow(props: {
           <Fact label='POP ID' value={a().applied.popId} />
           <Fact label='Account' value={a().account.name} />
           <Fact label='Email' value={a().account.email} />
+          <Show when={a().store}>
+            {store => (
+              <>
+                <Fact label='Store' value={`${store().details.name} · League ${store().leagueId}`} />
+                <Fact label='Reason' value={RELATIONSHIP_LABELS[store().relationship]} />
+                <Fact label='Joins as' value={STORE_ROLE_WORDS[roleForRelationship(store().relationship)]} />
+              </>
+            )}
+          </Show>
           <Fact label='Sent' value={dayOf(a().createdAt)} />
           <Fact label='Decided' value={decidedBy()} />
         </dl>

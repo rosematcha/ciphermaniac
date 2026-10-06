@@ -212,7 +212,7 @@ test('an Application says what store and that the applicant is certified; a proo
   await refused({ ...storeApplication(), leagueId: 'abc' }, 'Enter the store’s league ID');
   await refused({ ...storeApplication(), details: { name: '' } }, 'Check the store’s details');
   await refused({ ...storeApplication(), timeZone: 'Mars/Olympus' }, 'Pick the store’s time zone');
-  await refused({ ...storeApplication(), relationship: 'fan' }, 'Say how you run the store');
+  await refused({ ...storeApplication(), relationship: 'fan' }, 'Say why you are applying for the store');
   await refused({ ...storeApplication(), certified: false }, 'Confirm you are a certified organizer, or work with one');
   await refused({ ...storeApplication(), nights: [{ id: 'x', weekday: 9, time: '25:00' }] }, 'Check the league nights');
   const unparsed = await hit(
