@@ -57,7 +57,7 @@
     "test:lighthouse": "node .github/scripts/run-lighthouse.mjs"
   },
   "devDependencies": {
-    "@aws-sdk/client-s3": "^3.1145.0",
+    "@aws-sdk/client-s3": "^3.1146.0",
     "@eslint/js": "9.39.5",
     "@playwright/test": "^1.63.0",
     "@smithy/node-http-handler": "^4.12.1",
