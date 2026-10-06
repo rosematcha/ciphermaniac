@@ -5,15 +5,17 @@ import { EMBEDDED_RELEASE } from '../../shared/generated/release';
 import { r2Config } from './lib/env';
 import { createR2Client } from './lib/r2.mjs';
 import { createR2ObjectStore } from './lib/build/r2ObjectStore.mjs';
-import { persistCandidate, reconcileDeployment, recordAttempt, validatedManifest } from './lib/build/deployment';
+import { persistCandidate, recordAttempt, validatedManifest } from './lib/build/deployment';
 import { pagesReaderFromEnv } from './lib/build/pages';
+import { reconcileAndClear } from './update-channel';
 
 async function main(): Promise<void> {
   const config = r2Config();
   const store = createR2ObjectStore(createR2Client(config), config.bucket);
   const command = process.argv[2];
   if (command === 'reconcile') {
-    await reconcileDeployment(store, pagesReaderFromEnv());
+    const { cleared } = await reconcileAndClear(store, pagesReaderFromEnv());
+    console.log(`[deployment-state] cleared ${cleared} promoted pending event(s)`);
     return;
   }
   if (command === 'persist') {

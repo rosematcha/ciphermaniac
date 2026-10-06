@@ -17,6 +17,7 @@ import {
   recordAttempt
 } from '../../.github/scripts/lib/build/deployment';
 import { createPagesReader, legacyManifest } from '../../.github/scripts/lib/build/pages';
+import { reconcileAndClear } from '../../.github/scripts/update-channel';
 
 import { ATTEMPT_ABANDON_MS, CANDIDATE_GRACE_MS } from '../../.github/scripts/lib/build/deploymentLifecycle';
 const NOW = Date.parse('2026-09-12T00:00:02Z');
@@ -43,9 +44,12 @@ function fixture() {
   const objects = new Map<string, string>();
   let version = 0;
   let failPointer = false;
-  const store: DeploymentStore = {
+  const store: DeploymentStore & { delete(key: string): Promise<void> } = {
     async get(key) {
       return objects.get(key) ?? null;
+    },
+    async delete(key) {
+      objects.delete(key);
     },
     async putIfAbsent(key, body) {
       if (objects.has(key)) {
@@ -157,6 +161,31 @@ test('termination after Pages success recovers the identity and promotes the dep
   assert.equal(f.journal().attempts['attempt-1'].deploymentId, 'pages-attempt-1');
   assert.equal(f.journal().deployed?.releaseId, 'candidate');
   assert.deepEqual(f.journal().candidates, {});
+});
+
+test('recovery after Pages success clears pending events the deployed release already serves', async () => {
+  const f = await initialized();
+  const event = '2026-10-03, Event';
+  const candidate = { ...manifest('candidate'), events: { [event]: `/releases/v1/events/${event}/aaaaaaaaaaaa` } };
+  f.objects.set('pending-events.json', JSON.stringify({ events: candidate.events }));
+  await recordAttempt(f.store, candidate, 'attempt-1', '2026-09-12T00:00:00Z');
+  f.deploy(candidate, 'attempt-1');
+  const options = { now: NOW, wait: async () => {} };
+  assert.deepEqual(await reconcileAndClear(f.store, f.pages, undefined, options), {
+    releaseId: 'candidate',
+    cleared: 1
+  });
+  assert.equal(f.objects.has('pending-events.json'), false);
+});
+
+test('recovery keeps pending events the deployed release does not serve yet', async () => {
+  const f = await initialized();
+  const event = '2026-10-03, Event';
+  const pending = JSON.stringify({ events: { [event]: `/releases/v1/events/${event}/bbbbbbbbbbbb` } });
+  f.objects.set('pending-events.json', pending);
+  const options = { now: NOW, wait: async () => {} };
+  assert.deepEqual(await reconcileAndClear(f.store, f.pages, undefined, options), { releaseId: 'old', cleared: 0 });
+  assert.equal(f.objects.get('pending-events.json'), pending);
 });
 
 test('ambiguous success keeps the candidate pinned until Pages can be verified', async () => {
