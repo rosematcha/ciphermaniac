@@ -142,6 +142,14 @@ export function blankNight(nights: readonly LeagueNight[]): LeagueNight {
   return { id: newNightId(), weekday, time: '18:00', name: '', fee: '' };
 }
 
+/** A night's fee as its field shows it: without the currency symbol the field puts in front. */
+export const feeAmount = (fee: string, symbol: string | null) =>
+  symbol && fee.startsWith(symbol) ? fee.slice(symbol.length) : fee;
+
+/** A fee as typed into its field: an amount gets the currency symbol in front ("5" is "$5"), anything else stays as typed. */
+export const feeOf = (typed: string, symbol: string | null) =>
+  symbol && /^\d/.test(typed) ? `${symbol}${typed}` : typed;
+
 /** Nights in the order of the week, then the clock. */
 export const byWeek = (nights: readonly LeagueNight[]) =>
   [...nights].sort((a, b) => a.weekday - b.weekday || a.time.localeCompare(b.time));

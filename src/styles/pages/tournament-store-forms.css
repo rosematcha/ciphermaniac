@@ -40,6 +40,19 @@
   width: 100%;
   min-width: 0;
 }
+.tm-night-fee {
+  position: relative;
+  min-width: 0;
+}
+.tm-fee-symbol {
+  position: absolute;
+  inset-block: 0;
+  left: 11px;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  pointer-events: none;
+}
 
 @media (max-width: 640px) {
   .tm-store-fields {
@@ -53,5 +66,9 @@
   }
   .tm-night > .btn {
     justify-self: start;
+  }
+  /* As the field's own 16px there. */
+  .tm-fee-symbol {
+    font-size: 16px;
   }
 }

@@ -137,7 +137,12 @@ function NightsSection(props: { store: PublicStore; onSaved: (store: PublicStore
         Every week
       </h2>
       <div class='tm-box tm-store-pane'>
-        <WeeklyNights nights={nights()} onChange={changeNights} />
+        <WeeklyNights
+          nights={nights()}
+          country={props.store.country}
+          storeName={props.store.name}
+          onChange={changeNights}
+        />
       </div>
       <h2 class='tm-subhead tm-box-head'>Dates that differ</h2>
       <div class='tm-box tm-store-pane'>

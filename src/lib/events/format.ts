@@ -373,6 +373,20 @@ function parseAmount(raw: string): number | null {
   return Number.isFinite(amount) ? amount : null;
 }
 
+/** The symbol of the country's currency as fees are shown ("$", "€", "£"); null for a country with none known. */
+export function currencySymbol(cc: string): string | null {
+  const currency = CURRENCY[cc.trim().toUpperCase()];
+  if (!currency) {
+    return null;
+  }
+  const parts = new Intl.NumberFormat('en', {
+    style: 'currency',
+    currency,
+    currencyDisplay: 'narrowSymbol'
+  }).formatToParts(0);
+  return parts.find(part => part.type === 'currency')?.value ?? null;
+}
+
 /**
  * Admission in the event's currency: "$15", "€7", "£4.50". Text that is not a
  * plain amount ("5 or 2 packs") is shown as the store wrote it.

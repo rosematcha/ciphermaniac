@@ -1,21 +1,51 @@
 /**
  * Editing a store's league nights, on the store application and in store
- * settings: each weekly night as one row of its day, start, name and fee,
+ * settings: each weekly night as one row of its day, start, the event name
+ * it is listed under (the store's own when blank) and fee, in the currency of
+ * the store's country,
  * and (settings only) the dates a night does not run as usual, each off or
  * moved to another time. Rows change in place; the page saves the list.
  */
 
 import { For, Index, Show } from 'solid-js';
 import { type LeagueNight, type NightException, STORE_LIMITS } from '../../../shared/accounts/stores';
-import { blankNight, clock, WEEKDAYS } from '../../lib/tournament/stores';
+import { currencySymbol } from '../../lib/events/format';
+import { blankNight, clock, feeAmount, feeOf, WEEKDAYS } from '../../lib/tournament/stores';
 import '../../styles/pages/tournament-store-forms.css';
 
 const replaceAt = <T,>(list: readonly T[], index: number, item: T) => list.map((old, i) => (i === index ? item : old));
 const removeAt = <T,>(list: readonly T[], index: number) => list.filter((_, i) => i !== index);
 
+/** The fee, behind its currency's symbol when the store's country has one. */
+function FeeInput(props: { fee: string; symbol: string | null; label: string; onChange: (fee: string) => void }) {
+  return (
+    <span class='tm-night-fee'>
+      <Show when={props.symbol}>
+        {symbol => (
+          <span class='tm-fee-symbol' aria-hidden='true'>
+            {symbol()}
+          </span>
+        )}
+      </Show>
+      <input
+        class='tm-input'
+        style={props.symbol ? { 'padding-left': `calc(14px + ${props.symbol.length}ch)` } : undefined}
+        aria-label={props.label}
+        inputMode='decimal'
+        placeholder={props.symbol ? '0' : 'Fee'}
+        maxLength={STORE_LIMITS.fee - (props.symbol?.length ?? 0)}
+        value={feeAmount(props.fee, props.symbol)}
+        onInput={e => props.onChange(feeOf(e.currentTarget.value, props.symbol))}
+      />
+    </span>
+  );
+}
+
 function NightRow(props: {
   night: LeagueNight;
   n: number;
+  symbol: string | null;
+  storeName: string;
   onChange: (night: LeagueNight) => void;
   onRemove: () => void;
 }) {
@@ -41,20 +71,13 @@ function NightRow(props: {
       />
       <input
         class='tm-input'
-        aria-label={label('name')}
-        placeholder='Name'
+        aria-label={label('event name')}
+        placeholder={props.storeName.trim() ? `Listed as ${props.storeName.trim()}` : 'Event name'}
         maxLength={STORE_LIMITS.nightName}
         value={props.night.name}
         onInput={e => set({ name: e.currentTarget.value })}
       />
-      <input
-        class='tm-input tm-night-fee'
-        aria-label={label('fee')}
-        placeholder='Fee'
-        maxLength={STORE_LIMITS.fee}
-        value={props.night.fee}
-        onInput={e => set({ fee: e.currentTarget.value })}
-      />
+      <FeeInput fee={props.night.fee} symbol={props.symbol} label={label('fee')} onChange={fee => set({ fee })} />
       <button
         type='button'
         class='btn btn-ghost tm-small'
@@ -67,8 +90,18 @@ function NightRow(props: {
   );
 }
 
-/** The weekly nights, in the order they were added, with a way to add one. */
-export function WeeklyNights(props: { nights: readonly LeagueNight[]; onChange: (nights: LeagueNight[]) => void }) {
+/**
+ * The weekly nights, in the order they were added, with a way to add one;
+ * fees in the currency of the store's `country`, and nights with no event
+ * name listed under `storeName`.
+ */
+export function WeeklyNights(props: {
+  nights: readonly LeagueNight[];
+  country: string;
+  storeName: string;
+  onChange: (nights: LeagueNight[]) => void;
+}) {
+  const symbol = () => currencySymbol(props.country);
   return (
     <div class='tm-nights'>
       <Show when={props.nights.length > 0}>
@@ -79,6 +112,8 @@ export function WeeklyNights(props: { nights: readonly LeagueNight[]; onChange: 
               <NightRow
                 night={night()}
                 n={i + 1}
+                symbol={symbol()}
+                storeName={props.storeName}
                 onChange={next => props.onChange(replaceAt(props.nights, i, next))}
                 onRemove={() => props.onChange(removeAt(props.nights, i))}
               />

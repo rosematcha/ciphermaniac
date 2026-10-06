@@ -305,7 +305,12 @@ test('a store application starts from the league, prefilled, and sends what the 
   await page.getByRole('button', { name: 'Add a league night' }).click();
   await page.getByLabel('League night 1 day').selectOption('Wednesday');
   await page.getByLabel('League night 1 start').fill('19:30');
-  await page.getByLabel('League night 1 fee').fill('$5');
+  await expect(page.getByLabel('League night 1 event name')).toHaveAttribute(
+    'placeholder',
+    'Listed as Combat Power Gaming'
+  );
+  await expect(page.locator('.tm-fee-symbol')).toHaveText('$');
+  await page.getByLabel('League night 1 fee').fill('5');
   await page.getByLabel('Note').fill('I own the store.');
   await page.getByRole('button', { name: 'Send application' }).click();
   await expect(page.locator('.tm-applicant')).toContainText('Application pending');
@@ -388,6 +393,8 @@ test('store settings: league nights and the dates that differ save together', as
   await expect(nav.getByRole('button', { name: 'League nights' })).toHaveAttribute('aria-current', 'page');
   // In the order of the week: Sunday's night first.
   await expect(page.getByLabel('League night 1 day')).toHaveValue('0');
+  // A fee saved as "$5" shows its amount behind the store's currency symbol, and saves back unchanged.
+  await expect(page.getByLabel('League night 1 fee')).toHaveValue('5');
   await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
   await page.getByLabel('League night 2 start').fill('18:30');
   await page.getByRole('button', { name: 'Add a date' }).click();
@@ -399,7 +406,10 @@ test('store settings: league nights and the dates that differ save together', as
   await expect(page.getByRole('status')).toHaveText('Saved');
   await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
   const [sent] = sentTo(asks, 'PUT', '/api/stores/store-1/nights') as Pick<PublicStore, 'nights' | 'exceptions'>[];
-  expect(sent?.nights.map(n => `${n.id} ${n.weekday} ${n.time}`)).toEqual(['sun 0 15:00', 'wed 3 18:30']);
+  expect(sent?.nights.map(n => `${n.id} ${n.weekday} ${n.time} ${n.fee}`)).toEqual([
+    'sun 0 15:00 $5',
+    'wed 3 18:30 $5'
+  ]);
   expect(sent?.exceptions).toEqual([
     { date: '2099-10-11', nightId: 'sun', time: null, note: 'League Cup' },
     { date: '2099-11-25', nightId: null, time: '17:00', note: 'Holiday' }

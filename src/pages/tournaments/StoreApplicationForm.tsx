@@ -388,7 +388,7 @@ export function StoreApplicationForm(props: {
             onTimeZone={setTimeZone}
           />
           <h2 class='tm-subhead tm-apply-head'>League nights</h2>
-          <WeeklyNights nights={nights()} onChange={setNights} />
+          <WeeklyNights nights={nights()} country={details().country} storeName={details().name} onChange={setNights} />
           <h2 class='tm-subhead tm-apply-head'>For the admin</h2>
           <ProofField proof={proof()} locked={sending()} onChange={setProof} onUploading={setUploading} />
           <div class='tm-field'>

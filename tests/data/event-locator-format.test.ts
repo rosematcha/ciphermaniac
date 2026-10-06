@@ -9,6 +9,7 @@ import {
   addressLine,
   addressParts,
   countryName,
+  currencySymbol,
   dayHeading,
   daysBetween,
   formatClock,
@@ -115,6 +116,14 @@ test('a one-line address splits into street, city, region and postal code in the
 test('ordinals keep their suffix in lower case, and a trailing country code is dropped', () => {
   assert.equal(titleCase('216 W 1ST AVE'), '216 W 1st Ave');
   assert.equal(addressLine('10 AHLGADE, HOLBÆK 4300, DK', 'DK'), '10 Ahlgade, Holbæk 4300');
+});
+
+test('a currency symbol for the country fees are typed in', () => {
+  assert.equal(currencySymbol('US'), '$');
+  assert.equal(currencySymbol(' de '), '€');
+  assert.equal(currencySymbol('GB'), '£');
+  assert.equal(currencySymbol('ZZ'), null);
+  assert.equal(currencySymbol(''), null);
 });
 
 test('country names and US state codes', () => {

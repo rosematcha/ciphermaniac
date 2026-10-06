@@ -23,6 +23,8 @@ import {
   detailsProblems,
   emptyDetails,
   exceptionChange,
+  feeAmount,
+  feeOf,
   fetchLeague,
   fetchListings,
   fetchPeople,
@@ -157,6 +159,17 @@ test('a league the locator lists becomes store details, its one-line address spl
   });
   assert.equal(detailsFromLeague({ ...found, address: 'X', region: 'NEW SOUTH WALES' }).region, 'New South Wales');
   assert.equal(detailsFromLeague({ ...found, address: 'X', region: 'tx' }).region, 'TX');
+});
+
+test('a fee field puts the currency symbol in front of an amount, and shows the amount without it', () => {
+  assert.equal(feeOf('5', '$'), '$5');
+  assert.equal(feeOf('4.50', '€'), '€4.50');
+  assert.equal(feeOf('', '$'), '');
+  assert.equal(feeOf('Free', '$'), 'Free');
+  assert.equal(feeOf('5', null), '5');
+  assert.equal(feeAmount('$5', '$'), '5');
+  assert.equal(feeAmount('Free', '$'), 'Free');
+  assert.equal(feeAmount('$5', null), '$5');
 });
 
 test('store details say which fields the server would refuse, and are cleaned as it keeps them', () => {
