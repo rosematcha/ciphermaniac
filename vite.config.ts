@@ -26,6 +26,8 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash][extname]',
         // The embedded release manifest grows with every event, so it ships in a
         // chunk of its own and is budgeted apart from the code (see check-bundle-budget).
+        // It outranks every group: one that takes its dependencies recursively (form,
+        // through the data layer) would otherwise swallow it into the initial bundle.
         codeSplitting: {
           groups: [
             {
@@ -34,7 +36,7 @@ export default defineConfig({
               test: /src[\\/]lib[\\/](format|concurrency)\.ts$/,
               includeDependenciesRecursively: false
             },
-            { name: 'release', test: /shared[\\/]generated[\\/]release/ },
+            { name: 'release', priority: 3, test: /shared[\\/]generated[\\/]release/ },
             {
               // Share event models and helpers instead of repeating exports across route chunks. The TOM
               // file reader and writer stay out: only organizer pages load them, the download on demand.
