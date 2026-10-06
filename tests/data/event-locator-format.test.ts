@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import {
   addressLine,
+  addressParts,
   countryName,
   dayHeading,
   daysBetween,
@@ -68,6 +69,52 @@ test('addresses drop the country and keep region codes in capitals', () => {
     'Hildesheimer Str. 54A, 30880 Laatzen'
   );
   assert.equal(addressLine('Via Roma 1, Milano, Italy', 'IT'), 'Via Roma 1, Milano');
+});
+
+test('a one-line address splits into street, city, region and postal code in the shapes addresses take', () => {
+  assert.deepEqual(addressParts('4522 FREDERICKSBURG RD SUITE B64, SAN ANTONIO, TX 78201, US', 'US'), {
+    street: '4522 Fredericksburg Rd Suite B64',
+    city: 'San Antonio',
+    region: 'TX',
+    postal: '78201'
+  });
+  assert.deepEqual(addressParts('1632 14 AVE NW #1737, CALGARY, AB T2N 1M7, CANADA', 'CA'), {
+    street: '1632 14 Ave Nw #1737',
+    city: 'Calgary',
+    region: 'AB',
+    postal: 'T2N 1M7'
+  });
+  assert.deepEqual(addressParts('8 VIA ROMA, MILANO, LOMBARDIA 20126, IT', 'IT'), {
+    street: '8 Via Roma',
+    city: 'Milano',
+    region: 'Lombardia',
+    postal: '20126'
+  });
+  assert.deepEqual(addressParts('10 AHLGADE, HOLBÆK 4300, DK', 'DK'), {
+    street: '10 Ahlgade',
+    city: 'Holbæk',
+    region: '',
+    postal: '4300'
+  });
+  assert.deepEqual(addressParts('DRACHT 57, 8442 BL HEERENVEEN, NETHERLANDS', 'NL'), {
+    street: 'Dracht 57',
+    city: 'Heerenveen',
+    region: '',
+    postal: '8442 BL'
+  });
+  assert.deepEqual(addressParts('MANZANAS 599, DELICIAS, 31520 CUAUHTÉMOC, CHIH., MEXICO', 'MX'), {
+    street: 'Manzanas 599, Delicias',
+    city: 'Cuauhtémoc',
+    region: 'Chih.',
+    postal: '31520'
+  });
+  assert.equal(addressParts('BUENOS AIRES 142, SANTA CRUZ DE LA SIERRA, BOLIVIA', 'BO'), null);
+  assert.equal(addressParts('4522 Fredericksburg Rd', 'US'), null);
+});
+
+test('ordinals keep their suffix in lower case, and a trailing country code is dropped', () => {
+  assert.equal(titleCase('216 W 1ST AVE'), '216 W 1st Ave');
+  assert.equal(addressLine('10 AHLGADE, HOLBÆK 4300, DK', 'DK'), '10 Ahlgade, Holbæk 4300');
 });
 
 test('country names and US state codes', () => {

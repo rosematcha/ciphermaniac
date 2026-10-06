@@ -43,9 +43,10 @@ const NONE: ApplicationState = { application: null, proof: null, eligible: { pro
 const LEAGUE = {
   leagueId: '6238620',
   shop: 'COMBAT POWER GAMING',
-  address: '4522 FREDERICKSBURG RD #B64',
-  city: 'SAN ANTONIO',
-  region: 'TX',
+  // As pokemon.com lists it, on one line; the city and region are the locator's own reading of the place.
+  address: '4522 FREDERICKSBURG RD SUITE B64, SAN ANTONIO, TX 78201, US',
+  city: 'Balcones Heights',
+  region: 'Texas',
   cc: 'US',
   lat: 29.49,
   lon: -98.55,

@@ -52,9 +52,10 @@ const NONE: ApplicationState = { application: null, proof: null, eligible: { pro
 const FOUND: LeagueFound = {
   leagueId: '6238620',
   shop: 'COMBAT POWER GAMING',
-  address: '4522 FREDERICKSBURG RD #B64',
-  city: 'SAN ANTONIO',
-  region: 'TX',
+  // As pokemon.com lists it, on one line; the city and region are the locator's own reading of the place.
+  address: '4522 FREDERICKSBURG RD SUITE B64, SAN ANTONIO, TX 78201, US',
+  city: 'Balcones Heights',
+  region: 'Texas',
   cc: 'US',
   lat: 29.4928,
   lon: -98.552,
@@ -285,9 +286,14 @@ test('a store application starts from the league, prefilled, and sends what the 
   await page.goto('/apply');
   await lookUp(page);
   await expect(page.locator('.tm-apply-found')).toContainText('Combat Power Gaming');
+  await expect(page.locator('.tm-apply-found')).toContainText(
+    '4522 Fredericksburg Rd Suite B64, San Antonio, TX 78201'
+  );
   await expect(page.locator('.tm-apply-found')).toContainText('League 6238620 · Central Time');
   await expect(page.getByLabel('Store name')).toHaveValue('Combat Power Gaming');
+  await expect(page.getByLabel('Address')).toHaveValue('4522 Fredericksburg Rd Suite B64');
   await expect(page.getByLabel('City')).toHaveValue('San Antonio');
+  await expect(page.getByLabel('Postal code')).toHaveValue('78201');
   await page.getByRole('button', { name: 'Send application' }).click();
   await expect(page.getByRole('alert')).toHaveText('Say how you run the store');
   await page.getByLabel('How you run it').selectOption('owner');
@@ -318,9 +324,10 @@ test('a store application starts from the league, prefilled, and sends what the 
     certified: true,
     details: {
       name: 'Combat Power Gaming',
-      address: '4522 Fredericksburg Rd #B64',
+      address: '4522 Fredericksburg Rd Suite B64',
       city: 'San Antonio',
       region: 'TX',
+      postal: '78201',
       country: 'US',
       website: 'https://combatpower.example'
     },

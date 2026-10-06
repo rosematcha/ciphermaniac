@@ -126,26 +126,37 @@ test('a Cup or Challenge listing fills a sanctioned event of its kind; others ca
   assert.equal(listingFill(listing('cup', '')).startsAt, '');
 });
 
-test('a league the locator lists becomes store details, its upper-case listing in title case', () => {
+test('a league the locator lists becomes store details, its one-line address split and in title case', () => {
   const found: LeagueFound = {
     leagueId: '6238620',
-    shop: 'COMBAT POWER GAMING',
-    address: '4522 FREDERICKSBURG RD #B64',
-    city: 'SAN ANTONIO',
-    region: 'tx',
+    shop: 'COMBAT POWER GAMING AND COLLECTIBLES',
+    address: '4522 FREDERICKSBURG RD SUITE B64, SAN ANTONIO, TX 78201, US',
+    city: 'Balcones Heights',
+    region: 'Texas',
     cc: 'us',
     lat: 29.49,
     lon: -98.55,
     timeZone: 'America/Chicago'
   };
   assert.deepEqual(detailsFromLeague(found), {
-    name: 'Combat Power Gaming',
-    address: '4522 Fredericksburg Rd #B64',
+    name: 'Combat Power Gaming and Collectibles',
+    address: '4522 Fredericksburg Rd Suite B64',
     city: 'San Antonio',
     region: 'TX',
+    postal: '78201',
     country: 'US'
   });
-  assert.equal(detailsFromLeague({ ...found, region: 'NEW SOUTH WALES' }).region, 'New South Wales');
+  // An address in no known shape stands whole, beside the locator's own city and region.
+  assert.deepEqual(detailsFromLeague({ ...found, address: 'BUENOS AIRES 142, SANTA CRUZ, BOLIVIA', cc: 'BO' }), {
+    name: 'Combat Power Gaming and Collectibles',
+    address: 'Buenos Aires 142, Santa Cruz',
+    city: 'Balcones Heights',
+    region: 'Texas',
+    postal: '',
+    country: 'BO'
+  });
+  assert.equal(detailsFromLeague({ ...found, address: 'X', region: 'NEW SOUTH WALES' }).region, 'New South Wales');
+  assert.equal(detailsFromLeague({ ...found, address: 'X', region: 'tx' }).region, 'TX');
 });
 
 test('store details say which fields the server would refuse, and are cleaned as it keeps them', () => {

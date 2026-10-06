@@ -23,7 +23,7 @@ import type {
   StoreMember
 } from '../../../shared/accounts/types';
 import type { EventType } from '../../../shared/tournament/types';
-import { titleCase } from '../events/format';
+import { addressLine, addressParts, titleCase } from '../events/format';
 import { call, json, type Me } from './api';
 
 const storePath = (id: string) => `/api/stores/${encodeURIComponent(id)}`;
@@ -179,15 +179,22 @@ export function listingFill(listing: Listing): ListingFill {
   };
 }
 
-/** The store details a league lookup can say; the rest stay as the applicant typed them. */
+/**
+ * The store details a league lookup can say; the rest stay as the applicant
+ * typed them. The street, city, region and postal code come from the address
+ * pokemon.com lists when it reads as one; otherwise the address stands whole
+ * (less its country) beside the locator's own city and region.
+ */
 export function detailsFromLeague(
   found: LeagueFound
-): Pick<StoreDetails, 'name' | 'address' | 'city' | 'region' | 'country'> {
+): Pick<StoreDetails, 'name' | 'address' | 'city' | 'region' | 'postal' | 'country'> {
+  const parts = addressParts(found.address, found.cc);
   return {
     name: titleCase(found.shop),
-    address: titleCase(found.address),
-    city: titleCase(found.city),
-    region: found.region.length <= 3 ? found.region.toUpperCase() : titleCase(found.region),
+    address: parts?.street ?? addressLine(found.address, found.cc),
+    city: parts?.city ?? titleCase(found.city),
+    region: parts?.region ?? (found.region.length <= 3 ? found.region.toUpperCase() : titleCase(found.region)),
+    postal: parts?.postal ?? '',
     country: found.cc.toUpperCase()
   };
 }

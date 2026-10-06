@@ -180,7 +180,7 @@ function Found(props: { league: LeagueFound }) {
   return (
     <div class='tm-apply-found' role='status'>
       <strong>{details().name}</strong>
-      <span class='muted'>{addressOf({ ...details(), postal: '' })}</span>
+      <span class='muted'>{addressOf(details())}</span>
       <span class='muted tm-num'>
         League {props.league.leagueId} · {zoneName(props.league.timeZone)}
       </span>
