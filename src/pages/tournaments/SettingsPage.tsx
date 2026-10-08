@@ -394,7 +394,7 @@ export function SettingsPage() {
     document.title = 'Settings — Ciphermaniac';
   });
   return (
-    <div class='tm-page tm-narrow tm-settings'>
+    <div class='tm-page tm-settings'>
       <Show when={params.signin === 'failed'}>
         <p class='tm-error' role='alert'>
           Sign-in didn’t go through. Try again.

@@ -1859,13 +1859,9 @@ tr.is-in .tm-place {
   margin: 0;
   font-size: var(--text-base);
 }
-/* Wider than a phone, the page is a centered column and the identity one line:
-   avatar, then name over linked accounts, then the actions at the right. */
+/* Wider than a phone, the page takes the width every tournament page does, and
+   the identity is one line: avatar, then name over linked accounts, then the actions at the right. */
 @media (min-width: 641px) {
-  .tm-settings {
-    max-width: 720px;
-    margin-inline: auto;
-  }
   .tm-identity {
     grid-template-columns: auto 1fr auto;
     align-items: center;
