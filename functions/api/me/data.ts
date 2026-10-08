@@ -1,12 +1,13 @@
 /**
- * GET /api/me/data — everything the site keeps on the signed-in account, as
- * a Markdown file to download (functions/lib/accounts/dataExport.ts).
+ * GET /api/me/data — what the site keeps on the signed-in account, as a
+ * Markdown file to download (functions/lib/accounts/dataExport.ts): the
+ * parts named in ?parts= as a comma list, or all of them.
  * POST /api/me/data — wipes the parts asked for ({ parts }, see
  * shared/accounts/myData.ts) and answers the account as it then stands; 409
  * with the running events when organizer history must wait for them to end.
  */
 
-import { readWipeParts } from '../../../shared/accounts/myData.js';
+import { readExportParts, readWipeParts } from '../../../shared/accounts/myData.js';
 import { exportMarkdown } from '../../lib/accounts/dataExport.js';
 import { wipeParts } from '../../lib/accounts/wipe.js';
 import { readJsonObject } from '../../lib/api/body.js';
@@ -21,8 +22,13 @@ export async function onRequestGet({ request, env }: Context): Promise<Response>
   if (!db || !sameOrigin(request)) {
     return jsonError('Forbidden', 403);
   }
+  const url = new URL(request.url);
+  const parts = readExportParts(url.searchParams.get('parts'));
+  if (!parts) {
+    return jsonError('Choose what to export', 400);
+  }
   const user = await currentAccount(db, request);
-  const markdown = user && (await exportMarkdown(db, user.id, new URL(request.url).origin));
+  const markdown = user && (await exportMarkdown(db, user.id, { parts, origin: url.origin }));
   if (!user || !markdown) {
     return jsonError('Sign in first', 401);
   }

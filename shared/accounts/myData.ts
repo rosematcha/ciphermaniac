@@ -23,6 +23,25 @@ export function readWipeParts(value: unknown): WipePart[] | null {
   return WIPE_PARTS.filter(part => value.includes(part));
 }
 
+/**
+ * What an export may hold: the parts a wipe takes, and `account`, the rest
+ * of what is kept (the account itself, sign-ins, sessions, Applications and
+ * stores).
+ */
+export const EXPORT_PARTS = [...WIPE_PARTS, 'account'] as const;
+
+export type ExportPart = (typeof EXPORT_PARTS)[number];
+
+/** The parts an export asks for as a comma list, in EXPORT_PARTS order; every part when none is asked, null on any unknown one. */
+export function readExportParts(list: string | null): ExportPart[] | null {
+  if (list === null) {
+    return [...EXPORT_PARTS];
+  }
+  const asked = list.split(',');
+  const known = EXPORT_PARTS.filter(part => asked.includes(part));
+  return known.length > 0 && asked.every(part => known.includes(part as ExportPart)) ? known : null;
+}
+
 /** An event that holds up a wipe or a deletion until it ends. */
 export interface RunningEvent {
   code: string;

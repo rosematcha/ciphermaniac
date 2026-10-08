@@ -92,8 +92,9 @@ const eventsOf = async (cookie: string) =>
 const backdate = (code: string) =>
   raw().prepare('UPDATE tournaments SET created_at = created_at - 1000 WHERE code = ?').run(code);
 
-async function exported(cookie?: string) {
-  const response = await data.onRequestGet({ request: request('/api/me/data', { cookie }), env } as never);
+async function exported(cookie?: string, parts?: string) {
+  const path = parts === undefined ? '/api/me/data' : `/api/me/data?parts=${parts}`;
+  const response = await data.onRequestGet({ request: request(path, { cookie }), env } as never);
   return { status: response.status, headers: response.headers, text: await response.text() };
 }
 
@@ -147,6 +148,35 @@ test('the export is for a signed-in account from this site only', async () => {
     env
   } as never);
   assert.equal(elsewhere.status, 403);
+});
+
+test('an export of some parts holds only their sections', async () => {
+  const player = await signIn('Player');
+  const { code } = await playedEvent(player);
+  const file = await exported(player, 'profile,events');
+  assert.equal(file.status, 200);
+  assert.match(file.text, /## Player profile\n\n- POP ID: 901\n/u);
+  assert.match(
+    file.text,
+    new RegExp(`## Event history\n\n### Test Cup\n\n- Event: Test Cup\n- Event code: ${code}\n`, 'u')
+  );
+  assert.ok(file.text.indexOf('## Event history') < file.text.indexOf('## Decklists'), 'history before decklists');
+  for (const left of ['## Account', '## Username', '## Sign-ins', '## Stores', '## Events you organized']) {
+    assert.ok(!file.text.includes(left), left);
+  }
+  const account = await exported(player, 'account');
+  assert.match(account.text, /## Account\n\n- ID: /u);
+  assert.match(account.text, /## Badges granted to you\n/u);
+  assert.ok(!account.text.includes('POP ID'));
+  assert.ok(!account.text.includes('## Event history'));
+});
+
+test('an export names only parts, and at least one', async () => {
+  const player = await signIn('Player');
+  for (const parts of ['', 'everything', 'profile,everything', 'profile,,events']) {
+    assert.equal((await exported(player, parts)).status, 400, parts);
+  }
+  assert.equal((await exported(undefined, 'profile')).status, 401);
 });
 
 // ---------- Wipe ----------
