@@ -572,6 +572,20 @@ test('/host: on a phone, an event row keeps its links on screen without scrollin
   await expect(row.locator('.tm-host-players')).toHaveAttribute('data-unit', 'players');
 });
 
+test('/host: the events table keeps the box’s rounded corners @mobile', async ({ page }) => {
+  await mockHost(page, { ...ME, role: 'community' });
+  await page.goto('/host');
+  const box = page.locator('.tm-host-section .tm-box').first();
+  await box.locator('tbody tr').first().hover();
+  const radii = await box.evaluate(el => {
+    const wrap = el.querySelector('.table-wrap') as HTMLElement;
+    const outer = parseFloat(getComputedStyle(el).borderBottomLeftRadius);
+    return { outer, inner: parseFloat(getComputedStyle(wrap).borderBottomLeftRadius) };
+  });
+  expect(radii.outer).toBeGreaterThan(0);
+  expect(radii.inner).toBe(radii.outer - 1);
+});
+
 test('/host: a pending Application shows in place of the way to apply', async ({ page }) => {
   await mockHost(page, ME, { ...NONE, application: application('pending') });
   await page.goto('/host');

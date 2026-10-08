@@ -1145,6 +1145,16 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   border-radius: 0;
   margin: 0;
 }
+/* At the box's edge, the wrap's corners follow the box's inner edge, so a
+   row's background cannot square them off. */
+.tm-box > .table-wrap:first-child {
+  border-top-left-radius: calc(var(--radius-md) - 1px);
+  border-top-right-radius: calc(var(--radius-md) - 1px);
+}
+.tm-box > .table-wrap:last-child {
+  border-bottom-left-radius: calc(var(--radius-md) - 1px);
+  border-bottom-right-radius: calc(var(--radius-md) - 1px);
+}
 .tm-box .tm-empty {
   padding: var(--space-3) 14px;
 }
