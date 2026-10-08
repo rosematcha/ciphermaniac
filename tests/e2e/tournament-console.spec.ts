@@ -350,7 +350,8 @@ test('the big screen marks who won each finished table', async ({ page }) => {
 test('on a phone a roster question takes its own line instead of squeezing the name', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await mockConsole(page, event(4, 0, false), settingsOf({ playerReporting: true }));
-  await page.getByRole('tab', { name: 'Players' }).click();
+  // A phone's tabs sit in the bar along the bottom.
+  await page.getByRole('navigation', { name: 'Event sections' }).getByRole('button', { name: 'Players' }).click();
   await page.getByRole('button', { name: 'Reset reporting' }).first().click();
   const question = page.getByRole('group', { name: /Let another device report for/ });
   await expect(question).toBeVisible();
@@ -445,4 +446,47 @@ test('the round stepper walks the rounds either side of the picker, and the cloc
   await expect(page.locator('.tm-console-hero').getByRole('group', { name: 'Round clock' })).toBeVisible();
   await expect(page.locator('.tm-box').getByRole('group', { name: 'Round clock' })).toHaveCount(0);
   await expect(page.locator('.tm-meta-lead')).toContainText('Round 3 of 3 in progress');
+});
+
+test('900px and under a table opens a sheet of its results, and a press there records at once', async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1100 });
+  const t = partlyPlayed(8, 0, 0);
+  const sent = await mockConsole(page, t, settingsOf({}));
+  const table = t.pods[0]?.rounds[0]?.matches[0];
+  const rows = page.locator('.tm-matches tbody tr:not(.tm-group-row)');
+  await expect(rows.first().getByRole('button', { name: 'Tie' })).toBeHidden();
+  await expect(page.getByText('Press a player to report their win')).toHaveCount(0);
+  await rows.first().click();
+  const sheet = page.getByRole('dialog', { name: `Result, table ${table?.table}` });
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole('button')).toHaveText([/ wins$/, / wins$/, 'Tie', 'Double loss', 'Cancel']);
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  const chevron = rows.first().getByRole('button', { name: `Enter the result of table ${table?.table}` });
+  await chevron.click();
+  await expect(sheet).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(chevron).toBeFocused();
+  await chevron.click();
+  await sheet.getByRole('button', { name: 'Tie' }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect.poll(() => sent.length).toBe(1);
+  expect(sent[0]).toMatchObject({ type: 'reportResult', table: table?.table, outcome: 'tie' });
+});
+
+test('on a phone the tabs sit along the bottom, and the round and its clock stay pinned @mobileOnly', async ({
+  page
+}) => {
+  await mockConsole(page, partlyPlayed(8, 0, 2), settingsOf({}));
+  await expect(page.locator('.tm-console > .tabs')).toBeHidden();
+  const bar = page.getByRole('navigation', { name: 'Event sections' });
+  await expect(bar.getByRole('button', { name: 'Pairings' })).toHaveAttribute('aria-current', 'page');
+  const pin = page.locator('.tm-round-pin');
+  await expect(pin.getByRole('combobox', { name: 'Round' })).toBeVisible();
+  await expect(pin.getByRole('group', { name: 'Round clock' })).toBeVisible();
+  await expect(page.locator('.tm-console-hero').getByRole('group', { name: 'Round clock' })).toBeHidden();
+  await expect(page.locator('.tm-matches td.tm-table-col').first()).toHaveText(/\d/);
+  await bar.getByRole('button', { name: 'Standings' }).click();
+  await expect(page).toHaveURL(/tab=standings/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });

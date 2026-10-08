@@ -51,6 +51,8 @@ export interface MatchTableProps {
    * while the round has some of each.
    */
   inProgress?: (match: Match) => boolean;
+  /** Staff only, where rows are too narrow for their controls: the whole row opens the table's result sheet. */
+  onRow?: (match: Match) => void;
 }
 
 const winnerOutcome = (seat: 1 | 2): Outcome => (seat === 1 ? 'p1' : 'p2');
@@ -217,8 +219,19 @@ export function MatchTable(props: MatchTableProps) {
                 </Show>
                 <For each={group().matches}>
                   {match => (
-                    <tr classList={{ 'is-me': mine(match), 'is-confirming': isConfirming(props, match) }}>
-                      <td class='num muted-cell tm-table-col'>{match.table || '—'}</td>
+                    <tr
+                      classList={{
+                        'is-me': mine(match),
+                        'is-confirming': isConfirming(props, match),
+                        'is-openable': Boolean(props.onRow) && match.p2 !== null
+                      }}
+                      onClick={event =>
+                        match.p2 !== null && !(event.target as Element).closest('a') && props.onRow?.(match)
+                      }
+                    >
+                      <td class='num muted-cell tm-table-col' classList={{ 'is-bye': !match.table }}>
+                        <span class='tm-table-num'>{match.table || '—'}</span>
+                      </td>
                       <SeatCell {...props} match={match} seat={1} records={records()} />
                       <SeatCell {...props} match={match} seat={2} records={records()} />
                       <Show when={props.extra}>{extra => <td class='tm-extra-col'>{extra()(match)}</td>}</Show>

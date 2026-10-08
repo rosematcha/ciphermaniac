@@ -9,6 +9,8 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  For,
+  type JSX,
   lazy,
   Match,
   onCleanup,
@@ -126,6 +128,7 @@ function PairButton(props: {
     <button
       type='button'
       class={props.primary === false ? 'btn btn-secondary' : 'btn btn-primary'}
+      classList={{ 'is-waiting': !props.ready }}
       disabled={!props.ready || props.state.busy()}
       onClick={() => props.pod && void props.state.send({ type: 'pairRound', pod: props.pod.category })}
     >
@@ -186,7 +189,7 @@ function RoundEndStep(props: {
     <Show
       when={props.ready}
       fallback={
-        <button type='button' class='btn btn-primary' disabled>
+        <button type='button' class='btn btn-primary is-waiting' disabled>
           {WAITING_WORDS[props.step] ?? props.label}
         </button>
       }
@@ -321,7 +324,7 @@ function Hero(props: {
           <Show
             when={s().ready}
             fallback={
-              <button type='button' class='btn btn-primary' disabled>
+              <button type='button' class='btn btn-primary is-waiting' disabled>
                 End event
               </button>
             }
@@ -383,6 +386,58 @@ function Hero(props: {
   );
 }
 
+const TAB_ICONS: Record<Tab, JSX.Element> = {
+  round: (
+    <svg viewBox='0 0 24 24' aria-hidden='true'>
+      <rect x='3' y='4' width='18' height='16' rx='2' />
+      <path d='M3 10h18M12 10v10' />
+    </svg>
+  ),
+  players: (
+    <svg viewBox='0 0 24 24' aria-hidden='true'>
+      <circle cx='9' cy='8' r='3.5' />
+      <path d='M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.9.7 3 2.4 3.5 5.2' />
+    </svg>
+  ),
+  standings: (
+    <svg viewBox='0 0 24 24' aria-hidden='true'>
+      <path d='M4 20V11h5v9M9 20V5h6v15M15 20v-6h5v6' />
+    </svg>
+  ),
+  decklists: (
+    <svg viewBox='0 0 24 24' aria-hidden='true'>
+      <rect x='5' y='3' width='14' height='18' rx='2' />
+      <path d='M9 8h6M9 12h6M9 16h4' />
+    </svg>
+  ),
+  event: (
+    <svg viewBox='0 0 24 24' aria-hidden='true'>
+      <circle cx='12' cy='12' r='3' />
+      <path d='M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1' />
+    </svg>
+  )
+};
+
+/** A phone's tabs, in a bar along the bottom of the screen as the dashboard's are; the strip above serves wider screens. */
+function TabBar(props: { tabs: { value: Tab; label: string }[]; selected: Tab; onSelect: (tab: Tab) => void }) {
+  return (
+    <nav class='tm-console-bar' aria-label='Event sections'>
+      <For each={props.tabs}>
+        {t => (
+          <button
+            type='button'
+            aria-current={t.value === props.selected ? 'page' : undefined}
+            onClick={() => props.onSelect(t.value)}
+          >
+            {TAB_ICONS[t.value]}
+            <span>{t.label}</span>
+          </button>
+        )}
+      </For>
+    </nav>
+  );
+}
+
 /** The console's tabs: Decklists only while the event takes them. */
 const tabsFor = (manage: Manage) => TABS.filter(t => t.value !== 'decklists' || manage.settings.decklists !== 'off');
 
@@ -413,6 +468,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
     <div class='tm-page tm-console'>
       <Hero state={props.state} manage={props.manage} pod={pod()} tom={tom} user={latestValue(session)?.user} />
       <Tabs options={tabs()} selected={tab()} onSelect={setTab} ariaLabel='Event sections' />
+      <TabBar tabs={tabs()} selected={tab()} onSelect={setTab} />
       <Show when={tom}>{link => <TomStrip link={link()} />}</Show>
       <Show when={pods().length > 1 && (tab() === 'round' || tab() === 'standings')}>
         <Segmented
