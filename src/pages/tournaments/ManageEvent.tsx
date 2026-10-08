@@ -465,7 +465,7 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
         })
       : null;
   return (
-    <div class='tm-page tm-console'>
+    <div class='tm-page tm-console' classList={{ 'is-pairings': tab() === 'round' }}>
       <Hero state={props.state} manage={props.manage} pod={pod()} tom={tom} user={latestValue(session)?.user} />
       <Tabs options={tabs()} selected={tab()} onSelect={setTab} ariaLabel='Event sections' />
       <TabBar tabs={tabs()} selected={tab()} onSelect={setTab} />

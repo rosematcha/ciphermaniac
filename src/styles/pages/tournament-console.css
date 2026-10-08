@@ -317,8 +317,9 @@
     padding-bottom: calc(57px + env(safe-area-inset-bottom));
   }
 
-  /* The head: the clock rides with the round below; a step waiting on the round gives way to the line saying why. */
-  .tm-console-steps .tm-clock-group,
+  /* The head: on Pairings the clock rides with the round below, elsewhere it stays here;
+     a step waiting on the round gives way to the line saying why. */
+  .tm-console.is-pairings .tm-console-steps .tm-clock-group,
   .tm-console-steps .btn.is-waiting {
     display: none;
   }
