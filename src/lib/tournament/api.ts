@@ -71,6 +71,9 @@ export interface Session {
   clerkKey?: string | null;
 }
 
+/** What the sign-in box needs of the session: the ways in, and Clerk's key when username sign-in is one. */
+export type SignInOffer = Pick<Session, 'providers' | 'clerkKey'>;
+
 /** Who a list belongs to, as a query string: the Player ID, or the name at an unsanctioned event. */
 function listOwner(profile: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastName'>, token?: string): string {
   // All three go: the server reads the Player ID at a sanctioned event and the name at any other.

@@ -388,7 +388,7 @@ export function HostIndex() {
     <div class='tm-page'>
       <Show when={current()}>
         {s => (
-          <Show when={s().user} fallback={<HostHome providers={s().providers} />}>
+          <Show when={s().user} fallback={<HostHome offer={s()} />}>
             <Organizer onOpened={code => navigate(`/host/${code}`)} />
           </Show>
         )}

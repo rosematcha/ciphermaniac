@@ -6,7 +6,7 @@
 
 import { createResource, onMount, Show } from 'solid-js';
 import { Skeleton } from '../../components/Skeleton';
-import { errorText, fetchHistory, type Provider } from '../../lib/tournament/api';
+import { errorText, fetchHistory, type SignInOffer } from '../../lib/tournament/api';
 import { latestValue, resolved } from '../../lib/resource';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
@@ -16,7 +16,7 @@ import { SignIn } from './SignIn';
 
 const eventCount = (n: number) => `${n} event${n === 1 ? '' : 's'}`;
 
-function SignedOut(props: { providers: readonly Provider[] }) {
+function SignedOut(props: { offer: SignInOffer }) {
   return (
     <>
       <TournamentHero title='History' />
@@ -27,7 +27,7 @@ function SignedOut(props: { providers: readonly Provider[] }) {
           <span class='tm-flag'>Signed out</span>
         </div>
         <div class='tm-box-bar'>
-          <SignIn providers={props.providers} next='/history' />
+          <SignIn offer={props.offer} next='/history' />
         </div>
       </section>
     </>
@@ -73,7 +73,7 @@ export function HistoryPage() {
     <div class='tm-page'>
       <Show when={current()}>
         {s => (
-          <Show when={s().user} fallback={<SignedOut providers={s().providers} />}>
+          <Show when={s().user} fallback={<SignedOut offer={s()} />}>
             <MyHistory />
           </Show>
         )}

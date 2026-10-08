@@ -580,7 +580,7 @@ function EventBody(props: {
         onPlayer={setOpen}
         firstRound={firstRoundTime(props.view.settings.startsAt)}
         signedIn={Boolean(props.session?.user)}
-        providers={props.session?.providers ?? []}
+        offer={props.session ?? { providers: [] }}
         onUnlink={unlink}
         onStale={() => {
           recheck();

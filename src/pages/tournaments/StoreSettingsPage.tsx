@@ -19,7 +19,7 @@ import {
 } from '../../../shared/accounts/stores';
 import type { PublicStore } from '../../../shared/accounts/types';
 import { Skeleton } from '../../components/Skeleton';
-import { errorText, type Provider } from '../../lib/tournament/api';
+import { errorText, type SignInOffer } from '../../lib/tournament/api';
 import {
   byWeek,
   cleanDetails,
@@ -312,13 +312,13 @@ function Settings(props: { id: string }) {
   );
 }
 
-function SignedOut(props: { providers: readonly Provider[]; id: string }) {
+function SignedOut(props: { offer: SignInOffer; id: string }) {
   return (
     <>
       <TournamentHero title='Store settings' />
       <section class='tm-box'>
         <div class='tm-box-bar'>
-          <SignIn providers={props.providers} next={`/stores/${props.id}/settings`} />
+          <SignIn offer={props.offer} next={`/stores/${props.id}/settings`} />
         </div>
       </section>
     </>
@@ -330,7 +330,7 @@ export function StoreSettingsPage(props: { id: string }) {
     <div class='tm-page tm-store-settings-page'>
       <Show when={latestValue(session)}>
         {s => (
-          <Show when={s().user} fallback={<SignedOut providers={s().providers} id={props.id} />}>
+          <Show when={s().user} fallback={<SignedOut offer={s()} id={props.id} />}>
             <Settings id={props.id} />
           </Show>
         )}

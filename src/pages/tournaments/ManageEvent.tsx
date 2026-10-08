@@ -496,12 +496,7 @@ export function ManageEvent(props: { code: string }) {
       when={user()}
       fallback={
         <Show when={latestValue(session)}>
-          {s => (
-            <SignIn
-              providers={s().providers}
-              next={`/host/${props.code}${params.invite ? `?invite=${params.invite}` : ''}`}
-            />
-          )}
+          {s => <SignIn offer={s()} next={`/host/${props.code}${params.invite ? `?invite=${params.invite}` : ''}`} />}
         </Show>
       }
     >

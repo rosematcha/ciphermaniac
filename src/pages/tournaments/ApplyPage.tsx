@@ -15,7 +15,7 @@ import { createResource, createSignal, For, onMount, Show, untrack } from 'solid
 import { canJoinCommunity } from '../../../shared/accounts/roles';
 import type { MyApplication } from '../../../shared/accounts/types';
 import { Skeleton } from '../../components/Skeleton';
-import { errorText, type Me, type Provider } from '../../lib/tournament/api';
+import { errorText, type Me, type SignInOffer } from '../../lib/tournament/api';
 import { applicantStage, fetchApplication } from '../../lib/tournament/applications';
 import { joinCommunity } from '../../lib/tournament/stores';
 import { latestValue } from '../../lib/resource';
@@ -45,7 +45,7 @@ const PATHS: { value: Path; title: string; line: string }[] = [
   }
 ];
 
-function SignedOut(props: { providers: readonly Provider[] }) {
+function SignedOut(props: { offer: SignInOffer }) {
   return (
     <>
       <TournamentHero title={TITLE} meta={<span class='muted'>{SUBTITLE}</span>} />
@@ -56,7 +56,7 @@ function SignedOut(props: { providers: readonly Provider[] }) {
           <span class='tm-flag'>Signed out</span>
         </div>
         <div class='tm-box-bar'>
-          <SignIn providers={props.providers} next='/apply' />
+          <SignIn offer={props.offer} next='/apply' />
         </div>
       </section>
     </>
@@ -216,7 +216,7 @@ export function ApplyPage() {
     <div class='tm-page tm-narrow tm-apply-page'>
       <Show when={current()}>
         {s => (
-          <Show when={s().user} fallback={<SignedOut providers={s().providers} />}>
+          <Show when={s().user} fallback={<SignedOut offer={s()} />}>
             {user => <Applying user={user()} />}
           </Show>
         )}

@@ -21,7 +21,7 @@ import {
 import { ONLINE } from '../../lib/data/paths';
 import { fetchMajorsTrendReport } from '../../lib/data/trends';
 import { type MetaBracket, playOutBracket } from '../../lib/tournament/metaBracket';
-import type { Provider } from '../../lib/tournament/api';
+import type { SignInOffer } from '../../lib/tournament/api';
 import { DeckIcons } from './DeckIcons';
 import { SignIn } from './SignIn';
 import '../../styles/pages/tournament-home.css';
@@ -291,9 +291,9 @@ function Section(props: { title: string; picture: JSX.Element; children: JSX.Ele
   );
 }
 
-export function HostHome(props: { providers: readonly Provider[] }) {
+export function HostHome(props: { offer: SignInOffer }) {
   const [bracket] = createResource(() => loadBracket().catch(() => null));
-  const signIn = () => <SignIn providers={props.providers} next='/host' />;
+  const signIn = () => <SignIn offer={props.offer} next='/host' />;
   return (
     <div class='tm-home'>
       <section class='tm-home-hero' classList={{ 'has-picture': Boolean(bracket()) }}>

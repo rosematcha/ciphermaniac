@@ -39,9 +39,10 @@ export default defineConfig({
             { name: 'release', priority: 3, test: /shared[\\/]generated[\\/]release/ },
             {
               // Share event models and helpers instead of repeating exports across route chunks. The TOM
-              // file reader and writer stay out: only organizer pages load them, the download on demand.
+              // file reader and writer stay out: only organizer pages load them, the download on demand. So
+              // does the Clerk sign-in client, which only the sign-in box uses.
               name: 'tournament',
-              test: /(?:shared[\\/]tournament[\\/](?!tdf\.|xml\.)|src[\\/]lib[\\/]tournament[\\/](?!admin|applications|exportTdf))/,
+              test: /(?:shared[\\/]tournament[\\/](?!tdf\.|xml\.)|src[\\/]lib[\\/]tournament[\\/](?!admin|applications|clerk|exportTdf))/,
               includeDependenciesRecursively: true
             },
             // These controls share Solid helpers and are used together in event forms.

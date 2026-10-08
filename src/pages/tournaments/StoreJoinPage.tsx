@@ -54,7 +54,7 @@ export function StoreJoinPage() {
               <section class='tm-box'>
                 <div class='tm-box-bar'>
                   <SignIn
-                    providers={s().providers}
+                    offer={s()}
                     next={`/stores/join?${new URLSearchParams({ invite: params.invite ?? '' }).toString()}`}
                   />
                 </div>

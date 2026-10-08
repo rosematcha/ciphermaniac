@@ -22,7 +22,7 @@ import { recordLabel, sideResult } from '../../../shared/tournament/standings';
 import { hasStarted, podOf, withSwiss } from '../../../shared/tournament/rounds';
 import type { Pod, Round, Match as TableMatch } from '../../../shared/tournament/types';
 import { isSanctioned, type PublishedView, type TournamentView } from '../../../shared/tournament/view';
-import { ApiError, errorText, identifyPlayer, type Provider, reportAsPlayer } from '../../lib/tournament/api';
+import { ApiError, errorText, identifyPlayer, reportAsPlayer, type SignInOffer } from '../../lib/tournament/api';
 import {
   currentMatchOf,
   divisionHeading,
@@ -72,7 +72,7 @@ interface Props {
   /** Whether an account is signed in, which the page's copy of the event cannot say until the API answers. */
   signedIn: boolean;
   /** The sign-ins the server offers, for a player who is signed out. */
-  providers: readonly Provider[];
+  offer: SignInOffer;
   /** Ends the signed-in account's Claim on the player, then forgets it on this device. */
   onUnlink: () => Promise<void>;
   /** Asks the server again who the viewer is: a report was refused, so who the page thinks they are may be out of date. */
@@ -86,7 +86,7 @@ interface Found {
 }
 
 /** Sign-in, asked for in place: a link until pressed, then the providers, coming back to the event. */
-function SignInHere(props: { code: string; providers: readonly Provider[] }) {
+function SignInHere(props: { code: string; offer: SignInOffer }) {
   const [open, setOpen] = createSignal(false);
   return (
     <Show
@@ -98,7 +98,7 @@ function SignInHere(props: { code: string; providers: readonly Provider[] }) {
       }
     >
       <Suspense>
-        <SignIn providers={props.providers} next={`/t/${props.code}`} />
+        <SignIn offer={props.offer} next={`/t/${props.code}`} />
       </Suspense>
     </Show>
   );
@@ -116,7 +116,7 @@ function WhichPlayer(props: Props) {
         remember you.
       </p>
       <Show when={!props.signedIn}>
-        <SignInHere code={props.view.code} providers={props.providers} />
+        <SignInHere code={props.view.code} offer={props.offer} />
       </Show>
     </section>
   );

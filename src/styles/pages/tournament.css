@@ -418,6 +418,89 @@ body[data-mode='dark'] .tm-sso-google:hover {
   }
 }
 
+/* ---------- Username and password (Clerk) ----------
+   The provider buttons on one side and the form on the other, split by a
+   hairline; one over the other once the space they're given is narrow. In a
+   box row the split runs the row's full height, so the row gives up its
+   padding to the two sides. */
+.tm-signin-split {
+  container-type: inline-size;
+  width: 100%;
+}
+.tm-signin-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.tm-signin-cols > .tm-signin {
+  align-content: start;
+  padding-right: 14px;
+}
+.tm-signin-form {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  padding-left: 14px;
+  border-left: 1px solid var(--rule);
+}
+.tm-signin-cols.is-alone {
+  grid-template-columns: 1fr;
+}
+.tm-signin-form.is-alone {
+  padding-left: 0;
+  border-left: 0;
+}
+.tm-box-bar:has(> .tm-signin-split) {
+  padding: 0;
+}
+.tm-box-bar > .tm-signin-split .tm-signin-cols > * {
+  padding: 12px 14px;
+}
+.tm-signin-hint {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.tm-signin-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+.tm-signin-swap {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-base);
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.tm-signin-swap:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+@container (max-width: 480px) {
+  .tm-signin-cols {
+    grid-template-columns: 1fr;
+  }
+  .tm-signin-cols > .tm-signin {
+    padding-right: 0;
+    padding-bottom: 14px;
+  }
+  .tm-signin-form {
+    padding-top: 14px;
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .tm-signin-form.is-alone {
+    padding-top: 0;
+    border-top: 0;
+  }
+}
+
 /* ---------- Forms ---------- */
 .tm-grid-fields {
   display: grid;

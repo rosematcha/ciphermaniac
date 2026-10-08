@@ -1,5 +1,7 @@
-import { createSignal, For, type JSX, Show } from 'solid-js';
-import { type OAuthProvider, type Provider, signInUrl } from '../../lib/tournament/api';
+import { createSignal, createUniqueId, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
+import { PASSWORD_MIN } from '../../../shared/accounts/clerk';
+import { type OAuthProvider, type Provider, type SignInOffer, signInUrl } from '../../lib/tournament/api';
+import type { ClerkMode } from '../../lib/tournament/clerk';
 
 /*
  * The providers' own marks, unaltered: Google's standard-colour G (its
@@ -50,7 +52,7 @@ const ORDER: OAuthProvider[] = ['google', 'discord'];
  * one over the other at full width. A local server with DEV_LOGIN on also
  * offers a name-only sign-in for testing.
  */
-export function SignIn(props: { providers: readonly Provider[]; next: string; stacked?: boolean }) {
+function ProviderButtons(props: { providers: readonly Provider[]; next: string; stacked?: boolean }) {
   const [devName, setDevName] = createSignal('');
   const oauth = () => ORDER.filter(p => props.providers.includes(p));
   return (
@@ -87,5 +89,154 @@ export function SignIn(props: { providers: readonly Provider[]; next: string; st
         <p class='muted'>Sign-in is not set up on this server.</p>
       </Show>
     </div>
+  );
+}
+
+/** The Clerk client, loaded on first use so the pages that only show this form don't carry it. */
+const clerkClient = () => import('../../lib/tournament/clerk');
+
+/**
+ * A username and password, checked by Clerk (lib/tournament/clerk.ts). The
+ * same form signs in or makes an account. Clerk starts loading when the form
+ * first takes focus. Its bot check draws into #clerk-captcha, which only the
+ * form making an account at that moment holds, so a page with two forms has
+ * one.
+ */
+function UsernameForm(props: { publishableKey: string; next: string; alone: boolean }) {
+  const [mode, setMode] = createSignal<ClerkMode>('in');
+  const [username, setUsername] = createSignal('');
+  const [password, setPassword] = createSignal('');
+  const [problem, setProblem] = createSignal<string | null>(null);
+  const [busy, setBusy] = createSignal(false);
+  const hintId = createUniqueId();
+  const making = () => mode() === 'up';
+  let warmed = false;
+  function warm() {
+    if (!warmed) {
+      warmed = true;
+      const key = props.publishableKey;
+      clerkClient()
+        .then(clerk => clerk.prepareClerk(key))
+        .catch(() => (warmed = false));
+    }
+  }
+  async function submit(event: SubmitEvent) {
+    event.preventDefault();
+    const credentials = { mode: mode(), username: username().trim(), password: password() };
+    setBusy(true);
+    setProblem(null);
+    const clerk = await clerkClient().catch(() => null);
+    try {
+      if (!clerk) {
+        throw new Error('The sign-in client did not load');
+      }
+      // Busy until the browser leaves for the answer.
+      clerk.postClerkToken(await clerk.clerkToken(props.publishableKey, credentials), props.next);
+    } catch (error) {
+      setProblem(clerk?.clerkProblem(error) ?? 'Sign-in failed. Try again.');
+      setBusy(false);
+    }
+  }
+  // Back from the page sign-in led to, the browser may restore this one as it was left: busy.
+  const restored = (event: PageTransitionEvent) => {
+    if (event.persisted) {
+      setBusy(false);
+      setPassword('');
+    }
+  };
+  onMount(() => window.addEventListener('pageshow', restored));
+  onCleanup(() => window.removeEventListener('pageshow', restored));
+  function swap() {
+    setMode(making() ? 'in' : 'up');
+    setProblem(null);
+  }
+  return (
+    <form
+      class='tm-signin-form'
+      classList={{ 'is-alone': props.alone }}
+      onFocusIn={warm}
+      onSubmit={event => void submit(event)}
+    >
+      <label class='tm-field'>
+        <span class='tm-label'>Username</span>
+        <input
+          class='tm-input'
+          name='username'
+          autocomplete='username'
+          autocapitalize='none'
+          spellcheck={false}
+          required
+          aria-invalid={problem() ? 'true' : undefined}
+          value={username()}
+          onInput={event => setUsername(event.currentTarget.value)}
+        />
+      </label>
+      <label class='tm-field'>
+        <span class='tm-label'>Password</span>
+        <input
+          class='tm-input'
+          type='password'
+          name='password'
+          autocomplete={making() ? 'new-password' : 'current-password'}
+          minLength={making() ? PASSWORD_MIN : undefined}
+          required
+          aria-invalid={problem() ? 'true' : undefined}
+          aria-describedby={making() ? hintId : undefined}
+          value={password()}
+          onInput={event => setPassword(event.currentTarget.value)}
+        />
+        <Show when={making()}>
+          <span class='tm-signin-hint' id={hintId}>
+            At least {PASSWORD_MIN} characters
+          </span>
+        </Show>
+      </label>
+      <Show when={problem()}>
+        {text => (
+          <p class='tm-error' role='alert'>
+            {text()}
+          </p>
+        )}
+      </Show>
+      <Show when={making() && busy()}>
+        <div id='clerk-captcha' />
+      </Show>
+      <div class='tm-signin-acts'>
+        <button type='submit' class='btn btn-primary' disabled={busy()}>
+          {making() ? 'Create account' : 'Sign in'}
+        </button>
+        <button type='button' class='tm-signin-swap' disabled={busy()} onClick={swap}>
+          {making() ? 'I have an account' : 'Create an account'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Every way in the server offers. With username and password sign-in, the
+ * provider buttons sit on one side and the form on the other, stacking when
+ * the space they're given is narrow.
+ */
+export function SignIn(props: { offer: SignInOffer; next: string; stacked?: boolean }) {
+  const providers = () => props.offer.providers;
+  const clerkKey = () => (providers().includes('clerk') ? (props.offer.clerkKey ?? null) : null);
+  const buttons = () => providers().some(provider => provider !== 'clerk');
+  return (
+    <Show
+      when={clerkKey()}
+      fallback={<ProviderButtons providers={providers()} next={props.next} stacked={props.stacked} />}
+    >
+      {key => (
+        <div class='tm-signin-split'>
+          <div class='tm-signin-cols' classList={{ 'is-alone': !buttons() }}>
+            <Show when={buttons()}>
+              <ProviderButtons providers={providers()} next={props.next} stacked />
+            </Show>
+            <UsernameForm publishableKey={key()} next={props.next} alone={!buttons()} />
+          </div>
+        </div>
+      )}
+    </Show>
   );
 }

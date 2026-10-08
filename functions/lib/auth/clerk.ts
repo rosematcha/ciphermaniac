@@ -7,6 +7,7 @@
  * Google or Discord.
  */
 
+import { frontendApi } from '../../../shared/accounts/clerk.js';
 import type { AuthEnv, Profile } from './oauth.js';
 
 /** Seconds of clock difference allowed either side of a token's window. */
@@ -25,21 +26,6 @@ function decodeJson(part: string): Json | null {
   try {
     const value: unknown = JSON.parse(new TextDecoder().decode(base64Bytes(part)));
     return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Json) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * The Frontend API origin a publishable key names, which Clerk's tokens carry
- * as their issuer: the key is `pk_test_` or `pk_live_`, then the host and a
- * `$` in base64.
- */
-export function frontendApi(publishableKey: string): string | null {
-  const encoded = /^pk_(?:test|live)_(?<host>[A-Za-z0-9+/=]+)$/u.exec(publishableKey)?.groups?.host;
-  try {
-    const host = encoded ? atob(encoded) : '';
-    return /^[a-z0-9.-]+\$$/u.test(host) ? `https://${host.slice(0, -1)}` : null;
   } catch {
     return null;
   }
@@ -81,7 +67,7 @@ async function signatureHolds(pem: string, signed: string, signature: string): P
 
 export interface TokenCheck {
   publicKeyPem: string;
-  /** The Frontend API origin (frontendApi). */
+  /** The Frontend API origin (shared/accounts/clerk.ts). */
   issuer: string;
   /** This site's origin, which the token must have been made for. */
   origin: string;

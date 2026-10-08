@@ -26,6 +26,7 @@ import {
   saveProfile,
   setProfileName,
   setPublicProfile,
+  type SignInOffer,
   signOut
 } from '../../lib/tournament/api';
 import { applicantStage, fetchApplication } from '../../lib/tournament/applications';
@@ -368,7 +369,7 @@ function OrganizerSection(props: { user: Me }) {
 }
 
 /** Signed out: one box, a line on who signs in, and the providers. */
-function SignedOut(props: { providers: readonly Provider[] }) {
+function SignedOut(props: { offer: SignInOffer }) {
   return (
     <>
       <h1 class='tm-settings-title'>Settings</h1>
@@ -379,7 +380,7 @@ function SignedOut(props: { providers: readonly Provider[] }) {
           <span class='tm-flag'>Signed out</span>
         </div>
         <div class='tm-box-bar'>
-          <SignIn providers={props.providers} next='/settings' />
+          <SignIn offer={props.offer} next='/settings' />
         </div>
       </section>
     </>
@@ -406,7 +407,7 @@ export function SettingsPage() {
       </Show>
       <Show when={current()}>
         {s => (
-          <Show when={s().user} fallback={<SignedOut providers={s().providers} />}>
+          <Show when={s().user} fallback={<SignedOut offer={s()} />}>
             {user => (
               <>
                 <Identity user={user()} providers={s().providers} />
