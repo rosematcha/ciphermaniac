@@ -138,8 +138,6 @@
 }
 .tm-dash-live {
   margin: 0 0 var(--section-gap);
-  padding: 2px 0 2px var(--space-4);
-  border-left: 3px solid var(--positive);
 }
 .tm-dash-live p {
   margin: 0;
