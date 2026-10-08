@@ -207,10 +207,11 @@ function EntryRow(props: { entry: HistoryEntry; watch: Watch }) {
   );
 }
 
-export function HistoryList(props: { entries: readonly HistoryEntry[] }) {
+/** `iconsOnly`: the deck as its sprites alone, its name left to the tooltip and assistive tech. */
+export function HistoryList(props: { entries: readonly HistoryEntry[]; iconsOnly?: boolean }) {
   const watch = watchRows();
   return (
-    <section class='tm-box tm-hist'>
+    <section class='tm-box tm-hist' classList={{ 'tm-hist-icons': props.iconsOnly }}>
       <div class='table-wrap'>
         <table class='data'>
           <thead>

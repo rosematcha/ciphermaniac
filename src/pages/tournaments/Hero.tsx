@@ -7,7 +7,8 @@ import { children, type JSX, Show } from 'solid-js';
  * place, disabled, with the reason under it.
  */
 export function TournamentHero(props: {
-  title: string;
+  /** Left out where the page's heading is already drawn above it, as the dashboard's tabs are. */
+  title?: string;
   status?: JSX.Element;
   meta?: JSX.Element;
   action?: JSX.Element;
@@ -22,7 +23,9 @@ export function TournamentHero(props: {
   return (
     <section class='tm-hero'>
       <div class='tm-hero-text'>
-        <h1>{props.title}</h1>
+        <Show when={props.title}>
+          <h1>{props.title}</h1>
+        </Show>
         <Show when={status()}>
           <p class='tm-status'>{status()}</p>
         </Show>

@@ -47,6 +47,13 @@
 .tm-hist-phone-deck {
   display: none;
 }
+/* The dashboard's lists: the deck as its sprites alone. */
+.tm-hist-icons th.tm-hist-deck {
+  width: 72px;
+}
+.tm-hist-icons .tm-hist-deck-name {
+  display: none;
+}
 .tm-hist-name,
 .tm-hist-sub {
   display: block;

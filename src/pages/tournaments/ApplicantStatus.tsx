@@ -7,18 +7,12 @@
  */
 
 import { A } from '@solidjs/router';
-import { createEffect, createResource, createSignal, Match, Show, Switch } from 'solid-js';
+import { createEffect, createSignal, Match, type Resource, Show, Switch } from 'solid-js';
 import type { AccountRole } from '../../../shared/accounts/roles';
 import type { MyApplication } from '../../../shared/accounts/types';
 import { errorText } from '../../lib/tournament/api';
-import {
-  type ApplicantStage,
-  applicantStage,
-  dayOf,
-  fetchApplication,
-  withdrawApplication
-} from '../../lib/tournament/applications';
-import { resolved } from '../../lib/resource';
+import { type ApplicantStage, applicantStage, dayOf, withdrawApplication } from '../../lib/tournament/applications';
+import { latestValue } from '../../lib/resource';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { refreshSession } from './session';
@@ -193,19 +187,19 @@ export function createSessionCatchUp(role: () => AccountRole | null, latest: () 
 
 /**
  * /host's line for an account that may not start events: the way to apply,
- * or where its Application stands. `primary`: applying is the page's one
- * step, with no event of its own running.
+ * or where its Application stands, as the dashboard read it (which also reads
+ * the session again once it is approved). `primary`: applying is the page's
+ * one step, with no event of its own running.
  */
-export function ApplicantLine(props: { role: AccountRole | null; primary: boolean }) {
-  const [state] = createResource(fetchApplication);
-  createSessionCatchUp(
-    () => props.role,
-    () => resolved(state)?.application
-  );
+export function ApplicantLine(props: {
+  role: AccountRole | null;
+  application: Resource<MyApplication | null>;
+  primary: boolean;
+}) {
   // Unread for an error, the way to apply still shows: the apply page says where things stand.
   const stage = () => {
-    const current = resolved(state);
-    return current || state.error ? applicantStage(props.role, current?.application ?? null) : null;
+    const current = latestValue(props.application);
+    return current !== undefined || props.application.error ? applicantStage(props.role, current ?? null) : null;
   };
   return (
     <Show when={stage()}>

@@ -836,3 +836,152 @@ test('a list whose owner changes while the form is being edited shows the new ow
     { popId: '', firstName: 'Ash', lastName: 'Ketchum' }
   ]);
 });
+
+// ---------- The dashboard (/host signed in) ----------
+
+const SUMMARY = {
+  code: 'OWNED1',
+  name: 'Thursday Locals',
+  startDate: '09/24/2026',
+  mode: 'swiss',
+  players: 12,
+  rounds: 4,
+  finished: true,
+  role: 'owner',
+  updatedAt: 0
+};
+
+/** The account's History, as mockAccount gives it, and the events it runs. */
+async function mockDashboard(page: Page, user: typeof ME, events: (typeof SUMMARY)[] = []) {
+  const errors = await mockAccount(page, user);
+  await publishCopies(page);
+  await page.route('**/api/tournaments', route => route.fulfill({ json: { tournaments: events } }));
+  await page.route('**/api/applications/mine', route =>
+    route.fulfill({ json: { application: null, proof: null, eligible: { profile: true, email: true } } })
+  );
+  return errors;
+}
+
+test('the dashboard of a player who runs nothing is its Playing tab alone, the live match first @mobile', async ({
+  page
+}) => {
+  const errors = await mockDashboard(page, ME);
+  await page.goto('/host');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Playing');
+  await expect(page.getByRole('tablist')).toHaveCount(0);
+  await expect(page.locator('.tm-account-strip')).toHaveCount(0);
+  const live = page.locator('.tm-dash-live');
+  await expect(live).toContainText('Fixture Challenge & Friends · Round 2');
+  await expect(live).toContainText('vs ');
+  await expect(live.getByRole('link', { name: 'Your match' })).toHaveAttribute('href', '/t/LIVE01');
+  const cup = page.locator('.tm-hist tbody tr.is-link', { hasText: 'Fixture Cup' });
+  await expect(cup.locator('.tm-hist-place')).toHaveText('1st');
+  // Decks are sprites alone here; their names stay in the tooltip and for assistive tech.
+  await expect(page.locator('.tm-hist-icons .tm-hist-deck-name').first()).toBeHidden();
+  await expect(page).toHaveTitle('Playing — Ciphermaniac');
+  expect(errors).toEqual([]);
+});
+
+test('the dashboard’s account menu holds the account’s pages, and the way to apply only for a player', async ({
+  page
+}) => {
+  await mockDashboard(page, ME);
+  await page.goto('/host');
+  const button = page.getByRole('button', { name: 'Account' });
+  await button.click();
+  await expect(button).toHaveAttribute('aria-expanded', 'true');
+  for (const [name, href] of [
+    ['History', '/history'],
+    ['Settings', '/settings'],
+    ['Apply to organize', '/apply']
+  ]) {
+    await expect(page.locator('.tm-acct-menu').getByRole('link', { name })).toHaveAttribute('href', href);
+  }
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.tm-acct-menu')).toHaveCount(0);
+  await page.unrouteAll();
+  await mockDashboard(page, { ...ME, role: 'community' });
+  await page.goto('/host');
+  await page.getByRole('button', { name: 'Account' }).click();
+  await expect(page.locator('.tm-acct-menu').getByRole('link', { name: 'Apply to organize' })).toHaveCount(0);
+});
+
+test('an organizer who plays has both tabs, opens on the match being played, and keeps the tab in the address', async ({
+  page
+}) => {
+  await mockDashboard(page, { ...ME, role: 'community' }, [SUMMARY]);
+  await page.goto('/host');
+  const tabs = page.locator('.tm-dash-tabs');
+  await expect(tabs.getByRole('tab')).toHaveText(['Playing1', 'Organizing']);
+  await expect(tabs.getByRole('tab', { name: /Playing/ })).toHaveAttribute('aria-selected', 'true');
+  await tabs.getByRole('tab', { name: 'Organizing' }).click();
+  await expect(page).toHaveURL(/\/host\?tab=organizing$/);
+  await expect(page.getByRole('button', { name: 'Start an event' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Thursday Locals' })).toHaveAttribute('href', '/host/OWNED1');
+  await page.reload();
+  await expect(tabs.getByRole('tab', { name: 'Organizing' })).toHaveAttribute('aria-selected', 'true');
+});
+
+test('on a phone the dashboard’s tabs move to a bar along the bottom, and the heading names the open one @mobileOnly', async ({
+  page
+}) => {
+  await mockDashboard(page, { ...ME, role: 'community' }, [SUMMARY]);
+  await page.goto('/host?tab=organizing');
+  await expect(page.locator('.tm-dash-tabs')).toBeHidden();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Organizing');
+  const bar = page.locator('.tm-dash-bar');
+  await expect(bar).toBeVisible();
+  const box = await bar.boundingBox();
+  const viewport = page.viewportSize();
+  expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(viewport?.height);
+  // Scrolled to the end, the site's foot clears the bar.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const foot = await page.getByRole('button', { name: /mode$/ }).boundingBox();
+  expect((foot?.y ?? 0) + (foot?.height ?? 0)).toBeLessThanOrEqual(box?.y ?? 0);
+  await bar.getByRole('tab', { name: /Playing/ }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Playing');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+});
+
+test('a player whose Application is pending has the Organizing tab, which a reload keeps, with where it stands', async ({
+  page
+}) => {
+  await mockDashboard(page, ME);
+  await page.route('**/api/applications/mine', route =>
+    route.fulfill({
+      json: {
+        application: {
+          id: 'app-1',
+          status: 'pending',
+          explanation: '',
+          proofType: null,
+          createdAt: 0,
+          decidedAt: null,
+          note: null,
+          store: null
+        },
+        proof: null,
+        eligible: { profile: true, email: true }
+      }
+    })
+  );
+  await page.goto('/host?tab=organizing');
+  await expect(page.locator('.tm-dash-tabs').getByRole('tab', { name: 'Organizing' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  );
+  await expect(page.locator('.tm-applicant-line')).toHaveText('Application pending');
+});
+
+test('the dashboard’s tabs move with the arrow keys, and name the panel they open', async ({ page }) => {
+  await mockDashboard(page, { ...ME, role: 'community' }, [SUMMARY]);
+  await page.goto('/host');
+  const tabs = page.locator('.tm-dash-tabs');
+  await tabs.getByRole('tab', { selected: true }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(tabs.getByRole('tab', { name: 'Organizing' })).toBeFocused();
+  await expect(page).toHaveURL(/tab=organizing/);
+  await expect(page.getByRole('tabpanel', { name: 'Organizing' })).toBeVisible();
+  await page.keyboard.press('Home');
+  await expect(tabs.getByRole('tab', { name: /Playing/ })).toBeFocused();
+});

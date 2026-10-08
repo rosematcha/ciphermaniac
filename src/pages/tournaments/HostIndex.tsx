@@ -1,8 +1,9 @@
 /**
  * /host: for someone signed out, the home page (HostHome: what running an
- * event here is, and sign-in for organizers). Signed in, the events they run
- * or staff: a hero with the count of each and the ways to start one, the
- * events running now each in its own box with the console a press away, then the
+ * event here is, and sign-in for organizers). Signed in, the dashboard (see
+ * Dashboard), whose Organizing tab is drawn here: the events they run or
+ * staff, a hero with the count of each and the ways to start one, the events
+ * running now each in its own box with the console a press away, then the
  * rest in a table. Only an Organizer or an Admin starts events; any other
  * account sees where it stands on applying instead (see ApplicantLine), and
  * still runs the events it owns or staffs.
@@ -16,7 +17,18 @@
  */
 
 import { A, useNavigate, useSearchParams } from '@solidjs/router';
-import { createResource, createSignal, For, lazy, Match, onMount, Show, Switch, untrack } from 'solid-js';
+import {
+  createResource,
+  createSignal,
+  For,
+  lazy,
+  Match,
+  onMount,
+  type Resource,
+  Show,
+  Switch,
+  untrack
+} from 'solid-js';
 import { canRunCommunityEvents } from '../../../shared/accounts/roles';
 import { canCreateEvents, managesStore } from '../../../shared/accounts/stores';
 import { parseTomDate } from '../../../shared/tournament/divisions';
@@ -28,20 +40,20 @@ import {
   createSwiss,
   errorText,
   fetchView,
-  listTournaments,
   type Me,
   type TournamentSummary
 } from '../../lib/tournament/api';
 import { canLinkFiles, pickTdf, rememberHandle, type TdfHandle } from '../../lib/tournament/tomLink';
 import { latestValue } from '../../lib/resource';
 import { eventStatus, roundCapOf } from '../../lib/tournament/present';
-import type { MyStore } from '../../../shared/accounts/types';
+import type { MyApplication, MyStore } from '../../../shared/accounts/types';
 import { ApplicantLine } from './ApplicantStatus';
 import { EventSetup, type RunAs, type Setup } from './EventSetup';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
 import { refreshSession, session } from './session';
 
+const Dashboard = lazy(() => import('./Dashboard').then(m => ({ default: m.Dashboard })));
 const HostHome = lazy(() => import('./HostHome').then(m => ({ default: m.HostHome })));
 
 const shortDate = (startDate: string) =>
@@ -268,14 +280,18 @@ function HeroMeta(props: { user: Me | null | undefined }) {
   );
 }
 
-function Organizer(props: { onOpened: (code: string) => void }) {
+/** The dashboard's Organizing tab: the events the account runs or staffs, read by the dashboard, and the ways to start one. */
+function Organizer(props: {
+  events: readonly TournamentSummary[];
+  application: Resource<MyApplication | null>;
+  onOpened: (code: string) => void;
+}) {
   const [params, setParams] = useSearchParams<{ new?: string }>();
   const user = () => latestValue(session)?.user;
   const role = () => user()?.role ?? null;
-  const [events] = createResource(user, () => listTournaments().then(result => result.tournaments));
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const all = () => latestValue(events) ?? [];
+  const all = () => props.events;
   const byPhase = (phase: Phase) => all().filter(event => phaseOf(event) === phase);
   const live = () => byPhase('live');
   const rest = () => all().filter(event => phaseOf(event) !== 'live');
@@ -332,13 +348,12 @@ function Organizer(props: { onOpened: (code: string) => void }) {
     <Switch>
       <Match when={stage().kind === 'lists'}>
         <TournamentHero
-          title='Run an event'
           status={<span class='muted'>{counts()}</span>}
           meta={<HeroMeta user={user()} />}
           action={
             <Show
               when={canCreateEvents(role(), user()?.stores ?? [])}
-              fallback={<ApplicantLine role={role()} primary={live().length === 0} />}
+              fallback={<ApplicantLine role={role()} application={props.application} primary={live().length === 0} />}
             >
               <span class='tm-hero-acts'>
                 <button type='button' class={startClass()} onClick={() => setStage({ kind: 'swiss' })}>
@@ -384,12 +399,20 @@ export function HostIndex() {
   onMount(() => {
     document.title = 'Run an event — Ciphermaniac';
   });
+  const opened = (code: string) => navigate(`/host/${code}`);
   return (
     <div class='tm-page'>
       <Show when={current()}>
         {s => (
           <Show when={s().user} fallback={<HostHome offer={s()} />}>
-            <Organizer onOpened={code => navigate(`/host/${code}`)} />
+            {user => (
+              <Dashboard
+                user={user()}
+                organizing={(events, application) => (
+                  <Organizer events={events} application={application} onOpened={opened} />
+                )}
+              />
+            )}
           </Show>
         )}
       </Show>
