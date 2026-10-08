@@ -6,13 +6,13 @@
  * calls you by), History: the way to it, whether it is public at
  * /u/<username> and which name it shows, and Organizer: where the account
  * stands on running events, with the way to apply, its events or the admin
- * page. A POP ID another account holds is refused, with the way to the
+ * page, and My data: export, wipe or delete (MyData). A POP ID another account holds is refused, with the way to the
  * feedback form, where an admin settles who holds it. Signed out: one box to
  * sign in.
  */
 
 import { A, useNavigate, useSearchParams } from '@solidjs/router';
-import { createEffect, createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, For, on, onMount, Show } from 'solid-js';
 import { displayName, HANDLE_MAX, handleProblem, normalizeHandle } from '../../../shared/accounts/handle';
 import type { PlayerProfile } from '../../../shared/tournament/profile';
 import {
@@ -35,6 +35,7 @@ import { Skeleton } from '../../components/Skeleton';
 import { ApplicantStatus } from './ApplicantStatus';
 import { OrganizerRoles } from './OrganizerRoles';
 import { Avatar } from './Avatar';
+import { MyData } from './MyData';
 import { ErrorLine } from './Field';
 import { emptyProfile, ProfileFields, profileProblems } from './ProfileFields';
 import { refreshSession, session, setSession } from './session';
@@ -106,6 +107,9 @@ function Username(props: { user: Me }) {
   const [handle, setHandle] = createSignal(props.user.handle);
   const [error, setError] = createSignal<string | null>(null);
   const [saved, setSaved] = createSignal(false);
+  // A wipe hands the account a new username; the input follows it, and only when it changes.
+  const current = createMemo(() => props.user.handle);
+  createEffect(on(current, next => setHandle(next), { defer: true }));
   const wanted = () => normalizeHandle(handle());
   const problem = () => (wanted() === props.user.handle ? null : handleProblem(wanted()));
   async function save(event: Event) {
@@ -415,6 +419,10 @@ export function SettingsPage() {
                 <Profile user={user()} />
                 <HistorySection user={user()} />
                 <OrganizerSection user={user()} />
+                <MyData
+                  user={user()}
+                  onWiped={wiped => mergeUser(wiped, 'handle', 'popId', 'firstName', 'lastName', 'birthDate')}
+                />
               </>
             )}
           </Show>

@@ -354,6 +354,122 @@ test('Settings shows an admin the way to the admin page, and the account button 
   );
 });
 
+// ---------- My data ----------
+
+/** Settings' My data against a mocked account: the wipe answers a new username, and organizer history must wait. */
+async function mockMyData(page: Page) {
+  const sent: { method: string; url: string; body: unknown }[] = [];
+  let user: typeof ME | null = ME;
+  await page.route('**/api/**', route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const body = request.postDataJSON() as Record<string, unknown> | null;
+    sent.push({ method: request.method(), url: url.pathname + url.search, body });
+    if (url.pathname === '/api/me/data' && request.method() === 'GET') {
+      return route.fulfill({
+        body: '# Your data on Ciphermaniac\n',
+        headers: {
+          'content-type': 'text/markdown',
+          'content-disposition': 'attachment; filename="ciphermaniac-mary.md"'
+        }
+      });
+    }
+    if (url.pathname === '/api/me/data') {
+      const parts = (body?.parts ?? []) as string[];
+      if (parts.includes('organizer')) {
+        return route.fulfill({
+          status: 409,
+          json: {
+            error: 'End your running events first',
+            running: [{ code: 'LIVE01', name: 'Friday Cup' }],
+            ownedStores: []
+          }
+        });
+      }
+      user = {
+        ...ME,
+        handle: 'quiet-otter-41',
+        popId: null,
+        firstName: null,
+        lastName: null,
+        birthDate: null
+      } as never;
+      return route.fulfill({ json: { user } });
+    }
+    if (url.pathname === '/api/me' && request.method() === 'DELETE') {
+      user = null;
+      return route.fulfill({ status: 204 });
+    }
+    if (url.pathname === '/api/me') {
+      return route.fulfill({ json: { user, providers: ['google'] } });
+    }
+    if (url.pathname === '/api/applications/mine') {
+      return route.fulfill({ json: { application: null } });
+    }
+    return route.fulfill({ json: {} });
+  });
+  return sent;
+}
+
+test('Settings: My data exports the parts ticked as a Markdown download @mobile', async ({ page }) => {
+  const sent = await mockMyData(page);
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Export data' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Export data' });
+  await expect(dialog.getByRole('checkbox')).toHaveCount(5);
+  await expect(dialog.getByRole('button', { name: 'Download all' })).toBeEnabled();
+  await dialog.getByRole('checkbox', { name: /^Account/ }).uncheck();
+  const download = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Download', exact: true }).click();
+  expect((await download).suggestedFilename()).toBe('ciphermaniac-mary.md');
+  expect(sent.find(s => s.url.startsWith('/api/me/data'))?.url).toBe(
+    '/api/me/data?parts=profile,username,events,organizer'
+  );
+  await expect(dialog).toBeHidden();
+});
+
+test('Settings: a wipe is chosen, reviewed, then sent, and says what holds it up @mobile', async ({ page }) => {
+  const sent = await mockMyData(page);
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Wipe data' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Wipe data' });
+  const review = dialog.getByRole('button', { name: 'Review' });
+  await expect(review).toBeDisabled();
+  await dialog.getByRole('checkbox', { name: /^Organizer history/ }).check();
+  await review.click();
+  await dialog.getByRole('button', { name: 'Wipe 1' }).click();
+  await expect(dialog.getByRole('alert')).toHaveText('End your running events first');
+  await expect(dialog.getByRole('listitem').filter({ hasText: 'Friday Cup' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Back' }).click();
+  await dialog.getByRole('checkbox', { name: /^Organizer history/ }).uncheck();
+  await dialog.getByRole('checkbox', { name: /^Username/ }).check();
+  await dialog.getByRole('checkbox', { name: /^Profile/ }).check();
+  await review.click();
+  await dialog.getByRole('button', { name: 'Wipe 2' }).click();
+  await expect(dialog).toBeHidden();
+  expect(sent.filter(s => s.method === 'POST').at(-1)?.body).toEqual({ parts: ['profile', 'username'] });
+  await expect(page.getByRole('textbox', { name: 'Username' })).toHaveValue('quiet-otter-41');
+});
+
+test('Settings: deleting asks for the username typed out, then signs out @mobile', async ({ page }) => {
+  const sent = await mockMyData(page);
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Delete account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Delete your account?' });
+  const remove = dialog.getByRole('button', { name: 'Delete account' });
+  await expect(remove).toBeDisabled();
+  await dialog.getByRole('textbox').fill('mar');
+  await expect(remove).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: 'Delete account' }).click();
+  await expect(dialog.getByRole('textbox')).toHaveValue('');
+  await dialog.getByRole('textbox').fill('mary');
+  await remove.click();
+  await expect(page).toHaveURL(/\/$/);
+  expect(sent.find(s => s.method === 'DELETE')?.body).toEqual({ confirm: 'mary' });
+});
+
 // ---------- The event page: a signed-in player ----------
 
 function run(tournament: Tournament, ...commands: Command[]): Tournament {

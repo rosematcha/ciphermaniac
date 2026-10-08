@@ -1,0 +1,62 @@
+/* My data at the bottom of Settings, and its dialogs: export, wipe and
+   delete. Built on the tournament pages' boxes and the apply page's choice
+   rows (tournament-store-apply.css). */
+
+.tm-modal {
+  width: min(480px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--fg);
+}
+.tm-modal::backdrop {
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+}
+.tm-modal .tm-box-bar {
+  padding: 12px 16px;
+}
+.tm-modal h3 {
+  margin: 0;
+  font-size: var(--text-body);
+}
+.tm-modal-foot {
+  justify-content: flex-end;
+}
+.tm-modal-body {
+  display: grid;
+  gap: 8px;
+}
+.tm-modal-steps {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.tm-modal-steps b {
+  color: var(--fg);
+  font-weight: 600;
+}
+.tm-choice-text span {
+  color: var(--muted);
+}
+.tm-consequences {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--text-base);
+}
+.tm-consequences li::marker {
+  color: var(--muted);
+}
+
+/* Deleting reads slower: more room around what it costs. */
+.tm-modal-delete .tm-box-bar {
+  padding: 18px 22px;
+}
+.tm-modal-delete .tm-modal-body {
+  gap: 16px;
+  padding: 22px;
+}
+.tm-modal-delete .tm-consequences {
+  gap: 8px;
+}

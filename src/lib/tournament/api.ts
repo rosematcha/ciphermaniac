@@ -4,6 +4,7 @@
  * show as-is: the functions word their errors for people.
  */
 
+import type { ExportPart, WipePart } from '../../../shared/accounts/myData';
 import type { AccountRole } from '../../../shared/accounts/roles';
 import type { HistoryEntry, MyStore, PublicProfile } from '../../../shared/accounts/types';
 import type { Command } from '../../../shared/tournament/commands';
@@ -84,8 +85,8 @@ function listOwner(profile: Pick<PlayerProfile, 'popId' | 'firstName' | 'lastNam
   return query.toString();
 }
 
-/** One call to the functions: a JSON body (see `json`) is sent as JSON; a file goes as it is. */
-export async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** A call that answered ok, or the ApiError it failed with. */
+async function answer(path: string, init: RequestInit): Promise<Response> {
   const response = await fetch(path, {
     ...init,
     signal: init.signal ?? AbortSignal.timeout(15_000),
@@ -96,6 +97,12 @@ export async function call<T>(path: string, init: RequestInit = {}): Promise<T> 
     const body = (await response.json().catch(() => null)) as ({ error?: string } & Record<string, unknown>) | null;
     throw new ApiError(body?.error ?? `Request failed (${response.status})`, response.status, body);
   }
+  return response;
+}
+
+/** One call to the functions: a JSON body (see `json`) is sent as JSON; a file goes as it is. */
+export async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await answer(path, init);
   return (response.status === 204 ? null : await response.json()) as T;
 }
 
@@ -105,6 +112,19 @@ export const fetchSession = () => call<Session>('/api/me');
 
 export const saveProfile = (profile: PlayerProfile) => call<{ user: Me }>('/api/me', json('PUT', profile));
 export const saveHandle = (handle: string) => call<{ user: Me }>('/api/me', json('PATCH', { handle }));
+
+/** The parts asked for of what the site keeps on the account, as a Markdown file and the name it saves under. */
+export async function exportData(parts: readonly ExportPart[]): Promise<{ file: Blob; name: string }> {
+  const response = await answer(`/api/me/data?parts=${parts.join(',')}`, {});
+  const name = /filename="([^"]+)"/u.exec(response.headers.get('Content-Disposition') ?? '')?.[1];
+  return { file: await response.blob(), name: name ?? 'ciphermaniac.md' };
+}
+
+/** Wipes the parts asked for; a 409 carries a DataRefusal (shared/accounts/myData.ts) in its body. */
+export const wipeData = (parts: readonly WipePart[]) => call<{ user: Me }>('/api/me/data', json('POST', { parts }));
+
+/** Deletes the account, confirmed by its username typed out; a 409 carries a DataRefusal. */
+export const deleteAccount = (confirm: string) => call<null>('/api/me', json('DELETE', { confirm }));
 
 export const signOut = () => call<null>('/api/auth/logout', { method: 'POST' });
 
