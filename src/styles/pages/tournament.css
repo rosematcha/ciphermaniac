@@ -419,55 +419,68 @@ body[data-mode='dark'] .tm-sso-google:hover {
 }
 
 /* ---------- Username and password (Clerk) ----------
-   The provider buttons on one side and the form on the other, split by a
-   hairline; one over the other once the space they're given is narrow. In a
-   box row the split runs the row's full height, so the row gives up its
-   padding to the two sides. */
+   The provider buttons, an "or" on a hairline, and the form: three tracks
+   side by side, or one over another once the space they're given is narrow.
+   The buttons sit centred against the form, every control is the provider
+   buttons' height, and the submit spans the form as they span theirs. In a
+   box row the hairline runs the row's full height, so the row gives up its
+   padding to the sides. */
 .tm-signin-split {
+  --signin-control: 40px;
   container-type: inline-size;
   width: 100%;
+  max-width: 640px;
 }
 .tm-signin-cols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr auto 1fr;
+}
+.tm-signin-cols.is-alone {
+  grid-template-columns: 1fr;
 }
 .tm-signin-cols > .tm-signin {
-  align-content: start;
-  padding-right: 14px;
+  align-content: center;
+}
+.tm-signin-or {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 14px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.tm-signin-or::before,
+.tm-signin-or::after {
+  content: '';
+  flex: 1;
+  width: 1px;
+  background: var(--rule);
 }
 .tm-signin-form {
   display: grid;
   gap: var(--space-3);
   align-content: start;
-  padding-left: 14px;
-  border-left: 1px solid var(--rule);
 }
-.tm-signin-cols.is-alone {
-  grid-template-columns: 1fr;
-}
-.tm-signin-form.is-alone {
-  padding-left: 0;
-  border-left: 0;
-}
-.tm-box-bar:has(> .tm-signin-split) {
-  padding: 0;
-}
-.tm-box-bar > .tm-signin-split .tm-signin-cols > * {
-  padding: 12px 14px;
+.tm-signin-form .tm-input {
+  min-height: var(--signin-control);
 }
 .tm-signin-hint {
   font-size: var(--text-sm);
   color: var(--muted);
 }
 .tm-signin-acts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+.tm-signin-submit {
+  justify-content: center;
+  width: 100%;
+  min-height: var(--signin-control);
 }
 .tm-signin-swap {
-  padding: 0;
+  padding: 2px 0;
   border: 0;
   background: none;
   font: inherit;
@@ -477,27 +490,57 @@ body[data-mode='dark'] .tm-sso-google:hover {
   text-underline-offset: 2px;
   cursor: pointer;
 }
+.tm-signin-swap:disabled {
+  color: var(--muted);
+  cursor: default;
+}
 .tm-signin-swap:focus-visible {
   outline: var(--focus-width) solid var(--accent);
   outline-offset: var(--focus-offset);
+}
+.tm-signin-dev {
+  margin-top: var(--space-3);
+}
+.tm-signin-dev .tm-inline-form {
+  flex-wrap: nowrap;
+}
+.tm-signin-dev .tm-input {
+  flex: 1;
+}
+.tm-box-bar:has(> .tm-signin-split) {
+  padding: 0;
+}
+.tm-box-bar > .tm-signin-split {
+  max-width: none;
+}
+.tm-box-bar > .tm-signin-split .tm-signin-cols > :is(.tm-signin, .tm-signin-form) {
+  padding: 14px;
+}
+.tm-box-bar > .tm-signin-split .tm-signin-dev {
+  margin: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--rule);
+}
+@media (max-width: 640px) {
+  .tm-signin-split {
+    --signin-control: 44px;
+  }
 }
 @container (max-width: 480px) {
   .tm-signin-cols {
     grid-template-columns: 1fr;
   }
-  .tm-signin-cols > .tm-signin {
-    padding-right: 0;
-    padding-bottom: 14px;
+  .tm-signin-or {
+    flex-direction: row;
+    padding: 12px 0;
   }
-  .tm-signin-form {
-    padding-top: 14px;
-    padding-left: 0;
-    border-left: 0;
-    border-top: 1px solid var(--rule);
+  .tm-signin-or::before,
+  .tm-signin-or::after {
+    width: auto;
+    height: 1px;
   }
-  .tm-signin-form.is-alone {
-    padding-top: 0;
-    border-top: 0;
+  .tm-box-bar > .tm-signin-split .tm-signin-or {
+    padding: 0 14px;
   }
 }
 

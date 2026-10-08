@@ -46,18 +46,42 @@ const PROVIDERS: Record<OAuthProvider, { label: string; Mark: () => JSX.Element 
 /** Google first, so it is at least as prominent as any other provider (its branding rules). */
 const ORDER: OAuthProvider[] = ['google', 'discord'];
 
+/** A name-only sign-in, offered by a local server with DEV_LOGIN on, for testing. */
+function DevSignIn(props: { next: string }) {
+  const [devName, setDevName] = createSignal('');
+  return (
+    <form
+      class='tm-inline-form'
+      onSubmit={event => {
+        event.preventDefault();
+        window.location.href = signInUrl('dev', props.next, devName());
+      }}
+    >
+      <input
+        class='tm-input'
+        placeholder='Test user name'
+        aria-label='Test user name'
+        value={devName()}
+        onInput={event => setDevName(event.currentTarget.value)}
+      />
+      <button type='submit' class='btn btn-ghost'>
+        Dev sign-in
+      </button>
+    </form>
+  );
+}
+
+const oauthOf = (providers: readonly Provider[]) => ORDER.filter(p => providers.includes(p));
+
 /**
  * Sign-in buttons for whichever providers the server has configured, drawn to
  * each provider's branding guidelines and the same size. `stacked` puts them
- * one over the other at full width. A local server with DEV_LOGIN on also
- * offers a name-only sign-in for testing.
+ * one over the other at full width. `dev` adds the local test sign-in.
  */
-function ProviderButtons(props: { providers: readonly Provider[]; next: string; stacked?: boolean }) {
-  const [devName, setDevName] = createSignal('');
-  const oauth = () => ORDER.filter(p => props.providers.includes(p));
+function ProviderButtons(props: { providers: readonly Provider[]; next: string; stacked?: boolean; dev: boolean }) {
   return (
     <div class='tm-signin' classList={{ 'is-stacked': props.stacked }}>
-      <For each={oauth()}>
+      <For each={oauthOf(props.providers)}>
         {provider => (
           <a class={`tm-sso tm-sso-${provider}`} href={signInUrl(provider, props.next)} rel='external'>
             {PROVIDERS[provider].Mark()}
@@ -65,25 +89,8 @@ function ProviderButtons(props: { providers: readonly Provider[]; next: string; 
           </a>
         )}
       </For>
-      <Show when={props.providers.includes('dev')}>
-        <form
-          class='tm-inline-form'
-          onSubmit={event => {
-            event.preventDefault();
-            window.location.href = signInUrl('dev', props.next, devName());
-          }}
-        >
-          <input
-            class='tm-input'
-            placeholder='Test user name'
-            aria-label='Test user name'
-            value={devName()}
-            onInput={event => setDevName(event.currentTarget.value)}
-          />
-          <button type='submit' class='btn btn-ghost'>
-            Dev sign-in
-          </button>
-        </form>
+      <Show when={props.dev}>
+        <DevSignIn next={props.next} />
       </Show>
       <Show when={props.providers.length === 0}>
         <p class='muted'>Sign-in is not set up on this server.</p>
@@ -102,7 +109,7 @@ const clerkClient = () => import('../../lib/tournament/clerk');
  * form making an account at that moment holds, so a page with two forms has
  * one.
  */
-function UsernameForm(props: { publishableKey: string; next: string; alone: boolean }) {
+function UsernameForm(props: { publishableKey: string; next: string }) {
   const [mode, setMode] = createSignal<ClerkMode>('in');
   const [username, setUsername] = createSignal('');
   const [password, setPassword] = createSignal('');
@@ -151,12 +158,7 @@ function UsernameForm(props: { publishableKey: string; next: string; alone: bool
     setProblem(null);
   }
   return (
-    <form
-      class='tm-signin-form'
-      classList={{ 'is-alone': props.alone }}
-      onFocusIn={warm}
-      onSubmit={event => void submit(event)}
-    >
+    <form class='tm-signin-form' onFocusIn={warm} onSubmit={event => void submit(event)}>
       <label class='tm-field'>
         <span class='tm-label'>Username</span>
         <input
@@ -202,7 +204,7 @@ function UsernameForm(props: { publishableKey: string; next: string; alone: bool
         <div id='clerk-captcha' />
       </Show>
       <div class='tm-signin-acts'>
-        <button type='submit' class='btn btn-primary' disabled={busy()}>
+        <button type='submit' class='btn btn-primary tm-signin-submit' disabled={busy()}>
           {making() ? 'Create account' : 'Sign in'}
         </button>
         <button type='button' class='tm-signin-swap' disabled={busy()} onClick={swap}>
@@ -215,26 +217,36 @@ function UsernameForm(props: { publishableKey: string; next: string; alone: bool
 
 /**
  * Every way in the server offers. With username and password sign-in, the
- * provider buttons sit on one side and the form on the other, stacking when
- * the space they're given is narrow.
+ * provider buttons sit on one side and the form on the other, an "or" between
+ * them; they stack when the space they're given is narrow. The local test
+ * sign-in then gets a row of its own beneath.
  */
 export function SignIn(props: { offer: SignInOffer; next: string; stacked?: boolean }) {
   const providers = () => props.offer.providers;
   const clerkKey = () => (providers().includes('clerk') ? (props.offer.clerkKey ?? null) : null);
-  const buttons = () => providers().some(provider => provider !== 'clerk');
+  const dev = () => providers().includes('dev');
+  const buttons = () => oauthOf(providers()).length > 0;
   return (
     <Show
       when={clerkKey()}
-      fallback={<ProviderButtons providers={providers()} next={props.next} stacked={props.stacked} />}
+      fallback={<ProviderButtons providers={providers()} next={props.next} stacked={props.stacked} dev={dev()} />}
     >
       {key => (
         <div class='tm-signin-split'>
           <div class='tm-signin-cols' classList={{ 'is-alone': !buttons() }}>
             <Show when={buttons()}>
-              <ProviderButtons providers={providers()} next={props.next} stacked />
+              <ProviderButtons providers={providers()} next={props.next} stacked dev={false} />
+              <div class='tm-signin-or' aria-hidden='true'>
+                <span>or</span>
+              </div>
             </Show>
-            <UsernameForm publishableKey={key()} next={props.next} alone={!buttons()} />
+            <UsernameForm publishableKey={key()} next={props.next} />
           </div>
+          <Show when={dev()}>
+            <div class='tm-signin-dev'>
+              <DevSignIn next={props.next} />
+            </div>
+          </Show>
         </div>
       )}
     </Show>
