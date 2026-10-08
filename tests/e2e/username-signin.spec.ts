@@ -130,8 +130,8 @@ test('the same form makes an account: a new password, the length it needs, and o
   await form(page).getByRole('button', { name: 'Create an account' }).click();
   const password = form(page).getByLabel('Password');
   await expect(password).toHaveAttribute('autocomplete', 'new-password');
-  await expect(password).toHaveAttribute('minlength', '15');
-  await expect(password).toHaveAccessibleDescription('At least 15 characters');
+  await expect(password).toHaveAttribute('minlength', '8');
+  await expect(password).toHaveAccessibleDescription('At least 8 characters');
   await expect(page.locator('#clerk-captcha')).toHaveCount(0);
   await fill(page, 'new_player', 'a long enough passphrase');
   await form(page).getByRole('button', { name: 'Create account' }).click();

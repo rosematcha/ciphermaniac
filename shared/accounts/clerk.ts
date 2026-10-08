@@ -6,7 +6,7 @@
  */
 
 /** The shortest password the Clerk instance accepts, as it is set (`auth_password.min_length`). */
-export const PASSWORD_MIN = 15;
+export const PASSWORD_MIN = 8;
 
 /** The Frontend API origin a publishable key names, or null when it names none. */
 export function frontendApi(publishableKey: string): string | null {

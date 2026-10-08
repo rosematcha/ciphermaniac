@@ -218,7 +218,7 @@ test('the token goes to /api/auth/clerk as a posted form, with the link flag onl
 test('Clerk’s refusals read as words: known codes as ours, others as Clerk’s, anything else as a retry', () => {
   assert.equal(clerkProblem({ errors: [{ code: 'form_password_incorrect' }] }), 'Wrong username or password.');
   assert.equal(clerkProblem({ errors: [{ code: 'form_identifier_exists' }] }), 'That username is taken.');
-  assert.equal(clerkProblem({ errors: [{ code: 'form_password_length_too_short' }] }), 'Use at least 15 characters.');
+  assert.equal(clerkProblem({ errors: [{ code: 'form_password_length_too_short' }] }), 'Use at least 8 characters.');
   assert.equal(
     clerkProblem({ errors: [{ code: 'new_code', longMessage: 'Long words.', message: 'Short' }] }),
     'Long words.'
