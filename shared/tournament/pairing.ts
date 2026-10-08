@@ -39,7 +39,7 @@ export interface Pairing {
 }
 
 /** Seats every walk for one round may look at together: a few milliseconds at worst. */
-const STEP_BUDGET = 25_000;
+export const STEP_BUDGET = 25_000;
 
 /** Highest points first, shuffled inside each point group. */
 export function rankForPairing(entrants: readonly Entrant[], random: Random): string[] {
@@ -287,31 +287,44 @@ function walk(field: Field, rematches: number, budget: number): Walk {
 }
 
 /** Rematch-free if the field allows it; otherwise the fewest rematches the walks find within the budget. */
-function pairRanked(ranked: readonly string[], history: PairingHistory): Pairing[] {
+function pairRanked(ranked: readonly string[], history: PairingHistory): { pairings: Pairing[]; steps: number } {
   const field = fieldOf(ranked, history);
   const most = Math.floor(ranked.length / 2);
   let left = STEP_BUDGET;
+  let steps = 0;
   for (let rematches = 0; rematches < most && left > 0; rematches += 1) {
     const found = walk(field, rematches, left);
+    steps += found.steps;
     if (found.pairings) {
-      return found.pairings;
+      return { pairings: found.pairings, steps };
     }
     left -= found.steps;
   }
   // Every seat may rematch, so the first way down pairs everyone; each still takes a new opponent where one is left.
-  return walk(field, most, Number.POSITIVE_INFINITY).pairings ?? [];
+  const last = walk(field, most, Number.POSITIVE_INFINITY);
+  return { pairings: last.pairings ?? [], steps: steps + last.steps };
 }
 
 /**
- * One Swiss round. Pairings come back in table order: the top of the field at
- * table one, the bye last.
+ * One Swiss round, with the steps its walks took, so a pairing's work can be
+ * judged by steps rather than by a clock. Pairings come back in table order:
+ * the top of the field at table one, the bye last.
  */
-export function pairSwiss(entrants: readonly Entrant[], history: PairingHistory, random: Random): Pairing[] {
+export function pairSwissCounted(
+  entrants: readonly Entrant[],
+  history: PairingHistory,
+  random: Random
+): { pairings: Pairing[]; steps: number } {
   const ranked = rankForPairing(entrants, random);
   const bye = ranked.length % 2 === 1 ? pickBye(ranked, history.byes) : undefined;
   const field = bye === undefined ? ranked : ranked.filter(id => id !== bye);
-  const pairings = pairRanked(field, history);
-  return bye === undefined ? pairings : [...pairings, { p1: bye, p2: null }];
+  const { pairings, steps } = pairRanked(field, history);
+  return { pairings: bye === undefined ? pairings : [...pairings, { p1: bye, p2: null }], steps };
+}
+
+/** One Swiss round (see pairSwissCounted). */
+export function pairSwiss(entrants: readonly Entrant[], history: PairingHistory, random: Random): Pairing[] {
+  return pairSwissCounted(entrants, history, random).pairings;
 }
 
 /**

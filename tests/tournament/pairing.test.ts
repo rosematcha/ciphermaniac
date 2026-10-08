@@ -12,9 +12,11 @@ import {
   type PairingHistory,
   pairNextElimination,
   pairSwiss,
+  pairSwissCounted,
   pairTopCut,
   pickBye,
-  rankForPairing
+  rankForPairing,
+  STEP_BUDGET
 } from '../../shared/tournament/pairing.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
 
@@ -97,9 +99,8 @@ test('a player low in the standings with one new opponent left still pairs remat
   // p15 has met everyone but p0, so the top of the field has to give p0 up to them.
   const field = entrants(Array.from({ length: 16 }, (_, i) => 16 - i));
   const met = history(Array.from({ length: 14 }, (_, i) => ['p15', `p${i + 1}`] as [string, string]));
-  const started = performance.now();
-  const pairings = pairSwiss(field, met, seededRandom(3));
-  assert.ok(performance.now() - started < 50, 'found without walking the field');
+  const { pairings, steps } = pairSwissCounted(field, met, seededRandom(3));
+  assert.ok(steps < 100, 'found without walking the field');
   assert.ok(pairings.some(p => new Set([p.p1, p.p2]).has('p15') && new Set([p.p1, p.p2]).has('p0')));
   assert.ok(pairings.every(p => p.p2 === null || !met.opponents.get(p.p1)?.has(p.p2)));
 });
@@ -119,9 +120,9 @@ test('a field whose bottom has all met each other pairs within the step budget, 
   const bottom = ids.slice(505);
   bottom.forEach((a, i) => bottom.slice(i + 1).forEach(b => played.push([a, b])));
   const field = ids.map((id, i) => ({ id, points: 512 - i }));
-  const started = performance.now();
-  const pairings = pairSwiss(field, history(played), seededRandom(1));
-  assert.ok(performance.now() - started < 100, 'bounded by the budget');
+  const { pairings, steps } = pairSwissCounted(field, history(played), seededRandom(1));
+  // The budgeted walks, then one way down that seats each player once.
+  assert.ok(steps <= STEP_BUDGET + ids.length, 'bounded by the budget');
   assert.equal(new Set(pairings.flatMap(p => [p.p1, p.p2]).filter(id => id !== null)).size, 512);
 });
 
