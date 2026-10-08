@@ -220,7 +220,7 @@ test('a result coming in redraws its own table, and leaves the search and the ot
   await page.goto(`/t/${CODE}`);
   const rows = page.locator('.tm-matches tbody tr');
   await expect(rows).toHaveCount(4);
-  await expect(rows.filter({ hasText: 'Playing' })).toHaveCount(2);
+  await expect(rows.filter({ hasText: 'In progress' })).toHaveCount(2);
   const search = page.getByRole('searchbox', { name: 'Find a player' });
   await search.focus();
   // Marked, so a row or a search box drawn again from nothing shows as one that lost its mark.
@@ -229,7 +229,7 @@ test('a result coming in redraws its own table, and leaves the search and the ot
   });
   view = afterOneResult();
   await announce(page, view.version);
-  await expect(rows.filter({ hasText: 'Playing' })).toHaveCount(1);
+  await expect(rows.filter({ hasText: 'In progress' })).toHaveCount(1);
   await expect(search).toBeFocused();
   await expect(search).toHaveAttribute('data-kept', '');
   await expect(page.locator('.tm-matches tbody tr[data-kept]')).toHaveCount(3);

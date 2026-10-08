@@ -17,7 +17,7 @@ export function SpectateBar(props: {
 }) {
   const options = () => [
     { value: 'all' as const, label: 'All' },
-    { value: 'playing' as const, label: 'Playing' },
+    { value: 'playing' as const, label: 'In progress' },
     ...(props.following > 0 ? [{ value: 'following' as const, label: `Following ${props.following}` }] : [])
   ];
   return (

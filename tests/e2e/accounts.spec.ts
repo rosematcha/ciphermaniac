@@ -178,7 +178,7 @@ test('History lists the account’s events with place and record from each copy,
   await expect(rounds).toHaveCount(0);
   await live.click();
   await expect(rounds.first()).toContainText('Dorothy Vaughan');
-  await expect(rounds.nth(1)).toContainText('Playing');
+  await expect(rounds.nth(1)).toContainText('In progress');
   expect([...new Set(read)].sort()).toEqual(['CUP001', 'GONE01', 'LIVE01']);
   expect(errors).toEqual([]);
 });

@@ -157,7 +157,7 @@ function StatusCell(props: MatchTableProps & { match: Match }) {
     <td class='tm-status-col'>
       <Show when={props.match.p2 !== null}>
         <Show when={outcome() === 'pending'} fallback={<span class='muted-cell'>Done</span>}>
-          <strong>Playing</strong>
+          <strong>In progress</strong>
         </Show>
       </Show>
     </td>

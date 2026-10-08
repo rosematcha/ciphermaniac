@@ -80,7 +80,7 @@ function MatchBox(props: BracketProps & { match: BracketMatch }) {
       <div class='tm-bracket-meta'>
         <span>{where()}</span>
         <Show when={props.match.playing}>
-          <strong>Playing</strong>
+          <strong>In progress</strong>
         </Show>
         <Show when={props.match.unconfirmed}>
           <span>Not yet confirmed</span>

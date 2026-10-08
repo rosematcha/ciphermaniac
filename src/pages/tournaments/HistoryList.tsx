@@ -75,7 +75,7 @@ function RoundLine(props: { row: EntryResult['finish']['rounds'][number]; result
         )}
       </Show>
       <span class='tm-hist-mark'>
-        <Show when={props.row.mark} fallback={<span class='muted'>Playing</span>}>
+        <Show when={props.row.mark} fallback={<span class='muted'>In progress</span>}>
           <Squares marks={[props.row.mark]} />
         </Show>
       </span>

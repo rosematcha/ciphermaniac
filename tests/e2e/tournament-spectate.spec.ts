@@ -56,7 +56,7 @@ test('a spectator narrows the pairings to the tables playing, one deck, or the p
   await page.goto(`/t/${CODE}`);
   const rows = page.locator('.tm-matches tbody tr');
   await expect(rows).toHaveCount(matches.length);
-  await page.getByRole('tab', { name: 'Playing' }).click();
+  await page.getByRole('tab', { name: 'In progress' }).click();
   await expect(rows).toHaveCount(playing.length);
   await page.getByRole('tab', { name: 'All', exact: true }).click();
   await page.getByRole('combobox', { name: 'Deck' }).selectOption('Gardevoir ex');
