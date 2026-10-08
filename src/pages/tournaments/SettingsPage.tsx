@@ -378,7 +378,6 @@ function SignedOut(props: { providers: readonly Provider[] }) {
           <span class='tm-grow' />
           <span class='tm-flag'>Signed out</span>
         </div>
-        <p class='tm-box-bar muted'>Sign in to run or staff an event. Players don’t need an account.</p>
         <div class='tm-box-bar'>
           <SignIn providers={props.providers} next='/settings' />
         </div>
