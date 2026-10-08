@@ -1,7 +1,5 @@
 import { createSignal, For, type JSX, Show } from 'solid-js';
-import { type Provider, signInUrl } from '../../lib/tournament/api';
-
-type OAuthProvider = Exclude<Provider, 'dev'>;
+import { type OAuthProvider, type Provider, signInUrl } from '../../lib/tournament/api';
 
 /*
  * The providers' own marks, unaltered: Google's standard-colour G (its

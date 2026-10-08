@@ -20,7 +20,7 @@ import {
   SIGNUP_COOKIE
 } from '../../../lib/auth/cookies.js';
 import { type Context, param } from '../../../lib/auth/env.js';
-import { authorizeUrl, devLoginEnabled, devProfile, isProviderId } from '../../../lib/auth/oauth.js';
+import { authorizeUrl, devLoginEnabled, devProfile, isRedirectProvider } from '../../../lib/auth/oauth.js';
 import { createSession, currentUser, randomToken, SESSION_SECONDS, upsertUser } from '../../../lib/auth/session.js';
 import { holdSignup, SIGNUP_SECONDS } from '../../../lib/auth/signup.js';
 import { jsonError } from '../../../lib/api/responses.js';
@@ -55,7 +55,7 @@ async function devSignIn({ request, env }: Context<'provider'>, next: string): P
 export async function onRequestGet(context: Context<'provider'>): Promise<Response> {
   const provider = param(context.params.provider);
   const next = safeNext(new URL(context.request.url).searchParams.get('next'));
-  if (!isProviderId(provider)) {
+  if (!isRedirectProvider(provider)) {
     return jsonError('Unknown sign-in provider', 404);
   }
   if (provider === 'dev') {

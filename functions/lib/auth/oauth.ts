@@ -1,5 +1,7 @@
 /**
- * Google and Discord sign-in, as OAuth 2.0 authorization-code flows.
+ * Google and Discord sign-in, as OAuth 2.0 authorization-code flows. A
+ * username and password sign-in through Clerk (clerk.ts) ends in the same
+ * kind of profile but has no redirect of its own.
  *
  * Both are confidential clients: the code is exchanged server-side with the
  * client secret, and the random `state` round-trips through an HttpOnly cookie
@@ -11,13 +13,21 @@
  * it only answers when DEV_LOGIN is "true" and ENVIRONMENT is not production.
  */
 
-export type ProviderId = 'google' | 'discord' | 'dev';
+export type ProviderId = 'google' | 'discord' | 'dev' | 'clerk';
+/** The providers /api/auth/login and /api/auth/callback answer for. */
+type RedirectProvider = Exclude<ProviderId, 'clerk'>;
+type OAuthProvider = Exclude<RedirectProvider, 'dev'>;
 
 export interface AuthEnv {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   DISCORD_CLIENT_ID?: string;
   DISCORD_CLIENT_SECRET?: string;
+  /** Clerk's instance keys; username and password sign-in needs all three. */
+  CLERK_PUBLISHABLE_KEY?: string;
+  CLERK_SECRET_KEY?: string;
+  /** The PEM public key Clerk signs session tokens with. */
+  CLERK_JWT_KEY?: string;
   DEV_LOGIN?: string;
   ENVIRONMENT?: string;
 }
@@ -81,7 +91,7 @@ function pair(id: string | undefined, secret: string | undefined) {
   return id && secret ? { id, secret } : null;
 }
 
-const PROVIDERS: Record<Exclude<ProviderId, 'dev'>, Provider> = {
+const PROVIDERS: Record<OAuthProvider, Provider> = {
   google: {
     authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
@@ -100,7 +110,7 @@ const PROVIDERS: Record<Exclude<ProviderId, 'dev'>, Provider> = {
   }
 };
 
-export function isProviderId(value: string | undefined): value is ProviderId {
+export function isRedirectProvider(value: string | undefined): value is RedirectProvider {
   return value === 'google' || value === 'discord' || value === 'dev';
 }
 
@@ -108,23 +118,17 @@ export function devLoginEnabled(env: AuthEnv): boolean {
   return env.DEV_LOGIN === 'true' && env.ENVIRONMENT !== 'production';
 }
 
-/** Which sign-in buttons the site should show. */
-export function availableProviders(env: AuthEnv): ProviderId[] {
-  const configured = (['google', 'discord'] as const).filter(id => PROVIDERS[id].credentials(env) !== null);
-  return devLoginEnabled(env) ? [...configured, 'dev'] : configured;
+/** Google and Discord, as far as each has its credentials. */
+export function configuredOAuth(env: AuthEnv): OAuthProvider[] {
+  return (['google', 'discord'] as const).filter(id => PROVIDERS[id].credentials(env) !== null);
 }
 
-export function redirectUri(request: Request, provider: ProviderId): string {
+export function redirectUri(request: Request, provider: OAuthProvider): string {
   return `${new URL(request.url).origin}/api/auth/callback/${provider}`;
 }
 
 /** Where to send the browser to sign in, or null when the provider is not configured. */
-export function authorizeUrl(
-  env: AuthEnv,
-  request: Request,
-  provider: Exclude<ProviderId, 'dev'>,
-  state: string
-): string | null {
+export function authorizeUrl(env: AuthEnv, request: Request, provider: OAuthProvider, state: string): string | null {
   const config = PROVIDERS[provider];
   const credentials = config.credentials(env);
   if (!credentials) {
@@ -145,7 +149,7 @@ export function authorizeUrl(
 export interface CodeExchange {
   env: AuthEnv;
   request: Request;
-  provider: Exclude<ProviderId, 'dev'>;
+  provider: OAuthProvider;
   code: string;
 }
 

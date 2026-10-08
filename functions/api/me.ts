@@ -1,5 +1,6 @@
 /**
- * GET /api/me — who is signed in, and which sign-in buttons to show.
+ * GET /api/me — who is signed in, which sign-in buttons to show, and Clerk's
+ * publishable key when username and password sign-in is one of them.
  * PUT /api/me — saves the player profile (POP ID, name, birth year) that
  * decklist submission and "find my pairing" read. One account holds a POP ID,
  * the first to save it: another account saving it gets a 409 and none of its
@@ -19,7 +20,8 @@ import { renameAccount } from '../lib/accounts/handles.js';
 import { readJsonBody, readJsonObject } from '../lib/api/body.js';
 import { jsonError, jsonResponse } from '../lib/api/responses.js';
 import { type Context, sameOrigin } from '../lib/auth/env.js';
-import { availableProviders } from '../lib/auth/oauth.js';
+import { clerkKeys } from '../lib/auth/clerk.js';
+import { availableProviders } from '../lib/auth/providers.js';
 import { currentAccount, type ProfileName, type User } from '../lib/auth/session.js';
 import { rowsChanged } from '../lib/d1.js';
 import type { D1Like } from '../lib/types.js';
@@ -28,7 +30,8 @@ const PRIVATE = { cacheControl: 'no-store', cors: false } as const;
 
 export async function onRequestGet({ request, env }: Context): Promise<Response> {
   const user = env.TOURNAMENT_DB ? await currentAccount(env.TOURNAMENT_DB, request) : null;
-  return jsonResponse({ user, providers: availableProviders(env) }, PRIVATE);
+  const clerkKey = clerkKeys(env)?.publishableKey ?? null;
+  return jsonResponse({ user, providers: availableProviders(env), clerkKey }, PRIVATE);
 }
 
 /**

@@ -20,6 +20,7 @@ import {
   errorText,
   linkUrl,
   type Me,
+  type OAuthProvider,
   type Provider,
   saveHandle,
   saveProfile,
@@ -56,7 +57,7 @@ function mergeUser(user: Me, ...fields: (keyof Me)[]) {
   });
 }
 
-const PROVIDER_NAMES: Record<Exclude<Provider, 'dev'>, string> = { google: 'Google', discord: 'Discord' };
+const PROVIDER_NAMES: Record<OAuthProvider, string> = { google: 'Google', discord: 'Discord' };
 
 function Identity(props: { user: Me; providers: readonly Provider[] }) {
   const navigate = useNavigate();

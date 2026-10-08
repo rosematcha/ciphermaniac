@@ -61,11 +61,14 @@ export interface Me {
   stores: MyStore[];
 }
 
-export type Provider = 'google' | 'discord' | 'dev';
+export type Provider = 'google' | 'discord' | 'dev' | 'clerk';
+export type OAuthProvider = 'google' | 'discord';
 
 export interface Session {
   user: Me | null;
   providers: Provider[];
+  /** Clerk's publishable key, when username and password sign-in is offered. */
+  clerkKey?: string | null;
 }
 
 /** Who a list belongs to, as a query string: the Player ID, or the name at an unsanctioned event. */
@@ -120,7 +123,7 @@ export function signInUrl(provider: Provider, next: string, name?: string): stri
   return `/api/auth/login/${provider}?${query}`;
 }
 
-export function linkUrl(provider: Exclude<Provider, 'dev'>): string {
+export function linkUrl(provider: OAuthProvider): string {
   return `/api/auth/login/${provider}?${new URLSearchParams({ next: '/settings', link: '1' })}`;
 }
 
