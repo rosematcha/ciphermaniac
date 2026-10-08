@@ -1,7 +1,8 @@
 /**
  * Calling the functions as Pages would, for the API suites: a request from
  * this site's origin, the handler's answer read back as JSON, and a dev
- * sign-in that hands back the session cookie, as an organizer, a Community
+ * sign-in that hands back the session cookie (with an email, which a dev
+ * sign-in lacks), as an organizer, a Community
  * organizer or an Admin when the test needs one. An organizer here is what
  * runs sanctioned events: the Manager of a store of its own.
  */
@@ -68,6 +69,12 @@ export function apiCalls(envOf: () => TournamentEnv) {
     // Straight to SQLite: the setup is not something the functions asked of the database.
     const { raw } = envOf().TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
     const hash = await sha256(cookie.slice(cookie.indexOf('=') + 1));
+    // A dev sign-in has no email, and applying to organize needs one.
+    raw
+      .prepare(
+        "UPDATE users SET email = COALESCE(email, id || '@dev.test') WHERE id = (SELECT user_id FROM sessions WHERE token_hash = ?)"
+      )
+      .run(hash);
     if (role === 'organizer') {
       const { id } = raw.prepare('SELECT user_id AS id FROM sessions WHERE token_hash = ?').get(hash) as { id: string };
       raw

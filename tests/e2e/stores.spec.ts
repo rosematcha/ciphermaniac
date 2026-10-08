@@ -47,7 +47,7 @@ const MY_STORE: MyStore = {
 
 const MANAGER = { ...ME, stores: [MY_STORE] };
 
-const NONE: ApplicationState = { application: null, proof: null, eligible: { profile: true } };
+const NONE: ApplicationState = { application: null, proof: null, eligible: { profile: true, email: true } };
 
 const FOUND: LeagueFound = {
   leagueId: '6238620',

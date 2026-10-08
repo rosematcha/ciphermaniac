@@ -2,7 +2,8 @@
  * Username and password sign-in through Clerk (functions/lib/auth/clerk.ts,
  * functions/api/auth/clerk.ts): only a token Clerk signed, still current, from
  * this instance and made for this site stands for anyone; it ends as a
- * provider's callback does.
+ * provider's callback does; and an account with no email may not apply to
+ * organize.
  */
 
 import assert from 'node:assert/strict';
@@ -13,6 +14,8 @@ import * as ageCheck from '../../functions/api/auth/age.ts';
 import * as clerkSignIn from '../../functions/api/auth/clerk.ts';
 import * as callback from '../../functions/api/auth/callback/[provider].ts';
 import * as login from '../../functions/api/auth/login/[provider].ts';
+import * as applications from '../../functions/api/applications/index.ts';
+import * as mine from '../../functions/api/applications/mine.ts';
 import * as me from '../../functions/api/me.ts';
 import { frontendApi, primaryEmail, verifiedSubject } from '../../functions/lib/auth/clerk.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
@@ -57,6 +60,7 @@ beforeEach(() => {
     CLERK_SECRET_KEY: 'sk_test_secret',
     CLERK_JWT_KEY: PEM
   };
+  applications._resetRateLimitStore();
 });
 
 const raw = () => (env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>).raw as DatabaseSync;
@@ -393,4 +397,30 @@ test('linking adds the username sign-in to the signed-in account, once', async (
     post({ token: await sign(claimsFor('user_link')), link: true, cookie: other })
   );
   assert.equal(taken.headers.get('location'), '/settings?link=used');
+});
+
+test('an account with no email may not apply to organize', async () => {
+  const cookie = await signUp('user_apply');
+  const profile = await hit(
+    me.onRequestPut as Handler,
+    '/api/me',
+    {},
+    { method: 'PUT', cookie, body: { popId: '4242', firstName: 'Pat', lastName: 'Lee', birthDate: `02/27/${ADULT}` } }
+  );
+  assert.equal(profile.status, 200);
+  const state = await hit(mine.onRequestGet as Handler, '/api/applications/mine', {}, { cookie });
+  assert.deepEqual(state.json.eligible, { profile: true, email: false }, 'the page knows before the form');
+  const applied = await hit(
+    applications.onRequestPost as Handler,
+    '/api/applications',
+    {},
+    {
+      method: 'POST',
+      cookie,
+      body: {}
+    }
+  );
+  assert.equal(applied.status, 400);
+  assert.deepEqual(applied.json, { error: 'Add an email first', email: true });
+  assert.equal(count('applications'), 0);
 });

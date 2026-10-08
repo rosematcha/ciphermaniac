@@ -296,10 +296,11 @@ test('pending Applications come oldest first, with the account as it is now and 
     [first.id, second.id]
   );
   const [shown] = pending.json.applications;
+  const firstId = await idOf(first.cookie);
   assert.deepEqual(shown.account, {
-    id: await idOf(first.cookie),
+    id: firstId,
     name: 'Pat Renamed',
-    email: null,
+    email: `${firstId}@dev.test`,
     popId: '201',
     role: null
   });

@@ -176,14 +176,27 @@ function Applying(props: { user: Me }) {
                     </p>
                   }
                 >
-                  <StoreApplicationForm
-                    proof={s().proof}
-                    onSent={sent}
-                    onStale={() => {
-                      void refetch();
-                      void refreshSession();
-                    }}
-                  />
+                  <Show
+                    when={s().eligible.email}
+                    fallback={
+                      // Placeholder copy until the recovery-email section in Settings exists.
+                      <p class='tm-apply-profile'>
+                        Add an email first.{' '}
+                        <A class='tm-link-inline' href='/settings'>
+                          Settings
+                        </A>
+                      </p>
+                    }
+                  >
+                    <StoreApplicationForm
+                      proof={s().proof}
+                      onSent={sent}
+                      onStale={() => {
+                        void refetch();
+                        void refreshSession();
+                      }}
+                    />
+                  </Show>
                 </Show>
               </Show>
             </Show>

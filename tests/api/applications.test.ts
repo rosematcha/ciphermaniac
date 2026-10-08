@@ -102,7 +102,7 @@ async function idOf(cookie: string): Promise<string> {
 
 test('a signed-in account with a complete profile may apply; the state says so before it does', async () => {
   const cookie = await applicant();
-  assert.deepEqual(await state(cookie), { application: null, proof: null, eligible: { profile: true } });
+  assert.deepEqual(await state(cookie), { application: null, proof: null, eligible: { profile: true, email: true } });
   const sent = await apply(cookie, { explanation: '  I run the league at my store.  ', proof: false });
   assert.equal(sent.status, 201);
   assert.equal(sent.json.application.status, 'pending');
@@ -135,7 +135,7 @@ test('signed out, or from another site, nothing is read or sent', async () => {
 
 test('an account without a complete profile is sent to finish it, and uploads nothing', async () => {
   const cookie = await signIn('Newcomer');
-  assert.deepEqual((await state(cookie)).eligible, { profile: false });
+  assert.deepEqual((await state(cookie)).eligible, { profile: false, email: true });
   const sent = await apply(cookie, { explanation: 'Please', proof: false });
   assert.deepEqual([sent.status, sent.json], [400, { error: 'Complete your profile first', profile: true }]);
   const uploaded = await upload(cookie, PNG);
@@ -440,7 +440,7 @@ test('withdrawing takes the pending Application and its proof; with none pending
   assert.equal((await withdraw(cookie)).status, 204);
   assert.equal(raw().prepare('SELECT COUNT(*) AS n FROM applications').get()?.n, 0);
   assert.equal(proofs.objects.size, 0);
-  assert.deepEqual(await state(cookie), { application: null, proof: null, eligible: { profile: true } });
+  assert.deepEqual(await state(cookie), { application: null, proof: null, eligible: { profile: true, email: true } });
 });
 
 test('the delete after a withdrawal takes that Application’s proof alone, however late it lands', async () => {
@@ -486,7 +486,7 @@ test('any account with a complete profile applies, whatever its role or the stor
   for (const [i, role] of ['community', 'revoked', 'admin'].entries()) {
     const cookie = await applicant(`Has ${role}`, { popId: String(i + 1) });
     raw().prepare('UPDATE users SET role = ? WHERE handle = ?').run(role, `has-${role}`);
-    assert.deepEqual((await state(cookie)).eligible, { profile: true });
+    assert.deepEqual((await state(cookie)).eligible, { profile: true, email: true });
     assert.equal((await apply(cookie, { store: storeApplication(`77${i}0`), proof: false })).status, 201);
   }
   const manager = await signIn('Store Manager', 'organizer');

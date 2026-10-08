@@ -163,6 +163,10 @@ export function applyRefusal(applicant: Applicant): Response | null {
     // `profile` tells the page to send the account to its profile, not show the message alone.
     return privateJson({ error: 'Complete your profile first', profile: true }, 400);
   }
+  if (!user.email) {
+    // A username and password account may have no email; an organizer has to be reachable.
+    return privateJson({ error: 'Add an email first', email: true }, 400);
+  }
   return isPending(applicant) ? pendingRefusal() : null;
 }
 

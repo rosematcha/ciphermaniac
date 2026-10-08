@@ -37,7 +37,7 @@ const STORE: MyStore = {
   role: 'manager'
 };
 
-const NONE: ApplicationState = { application: null, proof: null, eligible: { profile: true } };
+const NONE: ApplicationState = { application: null, proof: null, eligible: { profile: true, email: true } };
 
 /** What the locator knows of the league applied for. */
 const LEAGUE = {
@@ -209,7 +209,7 @@ test('a store application sends with neither certificate nor note', async ({ pag
 });
 
 test('an incomplete profile is sent to Settings, with no form', async ({ page }) => {
-  await mockApplicant(page, { ...NONE, eligible: { profile: false } }, { ...ME, popId: null });
+  await mockApplicant(page, { ...NONE, eligible: { profile: false, email: true } }, { ...ME, popId: null });
   await page.goto('/apply');
   await page.getByRole('radio', { name: /(?:Store|Organized play location)/ }).check();
   await expect(page.getByRole('link', { name: 'Complete your profile' })).toHaveAttribute('href', '/settings');

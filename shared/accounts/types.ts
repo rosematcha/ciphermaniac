@@ -70,7 +70,8 @@ export interface ApplicationState {
   application: MyApplication | null;
   /** A proof uploaded and not yet sent; null while an Application is pending, since its proof is the one sent. */
   proof: ProofSlot | null;
-  eligible: { profile: boolean };
+  /** Whether the profile is complete, and whether the account has an email an organizer can be reached at. */
+  eligible: { profile: boolean; email: boolean };
 }
 
 /** An Application as an admin sees it: who sent it, as they are now and as they applied. */
