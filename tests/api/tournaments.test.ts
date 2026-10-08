@@ -2702,7 +2702,7 @@ const ACCOUNT_STATEMENTS = [
   'DELETE FROM report_devices WHERE user_id = ?2',
   'UPDATE users SET pop_id = ?1 WHERE id = ?2',
   'player_id = (SELECT pop_id FROM users WHERE id = ?1)',
-  'UPDATE users SET handle = ?3 WHERE id = ?1',
+  'UPDATE users SET handle = ?2 WHERE id = ?1',
   'FROM tournaments WHERE code = ?3 AND version = ?8',
   'DELETE FROM decklists WHERE code = ?1 AND EXISTS',
   'DELETE FROM tournaments WHERE code = ? AND version = ?',

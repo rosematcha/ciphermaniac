@@ -394,6 +394,16 @@ test('a late request cannot borrow a change another request recorded in the same
   assert.equal((await accountOf(cookie)).handle, 'delta', 'no fourth change, and delta keeps its record');
 });
 
+test('two renames in the same millisecond both land, rather than the second being called taken', async () => {
+  const cookie = await signIn('Player');
+  assert.equal((await at(T0, () => rename(cookie, 'quick.one'))).status, 200);
+  const second = await at(T0, () => rename(cookie, 'quick.two'));
+  assert.equal(second.status, 200, JSON.stringify(second.json));
+  assert.equal((await accountOf(cookie)).handle, 'quick.two');
+  const kept = raw().prepare('SELECT COUNT(*) AS n FROM handle_changes').get() as { n: number };
+  assert.equal(kept.n, 2, 'each change counts against the day');
+});
+
 test('renames that race are judged one at a time: neither the limit nor a username is passed twice', async () => {
   const first = await signIn('First');
   const second = await signIn('Second');

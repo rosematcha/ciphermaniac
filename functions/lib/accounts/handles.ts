@@ -27,10 +27,13 @@ function renameWrites(db: D1Like, userId: string, handle: string, now: number) {
   const token = randomToken(12);
   // The account's changes older than a day count for nothing now.
   const sweep = db.prepare('DELETE FROM handle_changes WHERE user_id = ? AND at <= ?').bind(userId, now - DAY_MS);
+  // A change in the same millisecond as the account's last takes the next one, so the
+  // (user_id, at) key never drops it and calls a free username taken.
   const record = db
     .prepare(
       `INSERT OR IGNORE INTO handle_changes (user_id, at, old_key, handle, token) ` +
-        `SELECT u.id, ?2, ${handleKeySql('u.handle')}, ?3, ?5 FROM users u WHERE u.id = ?1 AND u.handle IS NOT ?3 ` +
+        `SELECT u.id, max(?2, coalesce((SELECT max(at) + 1 FROM handle_changes WHERE user_id = ?1), ?2)), ` +
+        `${handleKeySql('u.handle')}, ?3, ?5 FROM users u WHERE u.id = ?1 AND u.handle IS NOT ?3 ` +
         `AND (SELECT COUNT(*) FROM handle_changes WHERE user_id = ?1 AND at > ?2 - ${DAY_MS}) < ${RENAMES_PER_DAY} ` +
         `AND NOT EXISTS (SELECT 1 FROM users WHERE ${handleKeySql('handle')} = ?4 AND id <> ?1) ` +
         `AND NOT EXISTS (SELECT 1 FROM handle_changes WHERE old_key = ?4 AND at > ?2 - ${DAY_MS} AND user_id <> ?1)`
@@ -38,10 +41,10 @@ function renameWrites(db: D1Like, userId: string, handle: string, now: number) {
     .bind(userId, now, handle, handleKey(handle), token);
   const update = db
     .prepare(
-      'UPDATE users SET handle = ?3 WHERE id = ?1 ' +
-        'AND EXISTS (SELECT 1 FROM handle_changes WHERE user_id = ?1 AND at = ?2 AND token = ?4)'
+      'UPDATE users SET handle = ?2 WHERE id = ?1 ' +
+        'AND EXISTS (SELECT 1 FROM handle_changes WHERE user_id = ?1 AND token = ?3)'
     )
-    .bind(userId, now, handle, token);
+    .bind(userId, handle, token);
   return [sweep, record, update];
 }
 
