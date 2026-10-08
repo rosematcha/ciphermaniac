@@ -217,8 +217,8 @@ function UsernameForm(props: { publishableKey: string; next: string }) {
 
 /**
  * Every way in the server offers. With username and password sign-in, the
- * provider buttons sit on one side and the form on the other, an "or" between
- * them; they stack when the space they're given is narrow. The local test
+ * provider buttons sit on one side and the form on the other, a hairline
+ * between them; they stack when the space they're given is narrow. The local test
  * sign-in then gets a row of its own beneath.
  */
 export function SignIn(props: { offer: SignInOffer; next: string; stacked?: boolean }) {
@@ -236,9 +236,7 @@ export function SignIn(props: { offer: SignInOffer; next: string; stacked?: bool
           <div class='tm-signin-cols' classList={{ 'is-alone': !buttons() }}>
             <Show when={buttons()}>
               <ProviderButtons providers={providers()} next={props.next} stacked dev={false} />
-              <div class='tm-signin-or' aria-hidden='true'>
-                <span>or</span>
-              </div>
+              <div class='tm-signin-rule' />
             </Show>
             <UsernameForm publishableKey={key()} next={props.next} />
           </div>

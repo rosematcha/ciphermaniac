@@ -419,7 +419,7 @@ body[data-mode='dark'] .tm-sso-google:hover {
 }
 
 /* ---------- Username and password (Clerk) ----------
-   The provider buttons, an "or" on a hairline, and the form: three tracks
+   The provider buttons, a hairline, and the form: three tracks
    side by side, or one over another once the space they're given is narrow.
    The buttons sit centred against the form, every control is the provider
    buttons' height, and the submit spans the form as they span theirs. In a
@@ -441,20 +441,9 @@ body[data-mode='dark'] .tm-sso-google:hover {
 .tm-signin-cols > .tm-signin {
   align-content: center;
 }
-.tm-signin-or {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding-inline: 14px;
-  font-size: var(--text-sm);
-  color: var(--muted);
-}
-.tm-signin-or::before,
-.tm-signin-or::after {
-  content: '';
-  flex: 1;
+.tm-signin-rule {
   width: 1px;
+  margin-inline: 14px;
   background: var(--rule);
 }
 .tm-signin-form {
@@ -516,6 +505,9 @@ body[data-mode='dark'] .tm-sso-google:hover {
 .tm-box-bar > .tm-signin-split .tm-signin-cols > :is(.tm-signin, .tm-signin-form) {
   padding: 14px;
 }
+.tm-box-bar > .tm-signin-split .tm-signin-rule {
+  margin-inline: 0;
+}
 .tm-box-bar > .tm-signin-split .tm-signin-dev {
   margin: 0;
   padding: 10px 14px;
@@ -530,17 +522,13 @@ body[data-mode='dark'] .tm-sso-google:hover {
   .tm-signin-cols {
     grid-template-columns: 1fr;
   }
-  .tm-signin-or {
-    flex-direction: row;
-    padding: 12px 0;
-  }
-  .tm-signin-or::before,
-  .tm-signin-or::after {
+  .tm-signin-rule {
     width: auto;
     height: 1px;
+    margin: 12px 0;
   }
-  .tm-box-bar > .tm-signin-split .tm-signin-or {
-    padding: 0 14px;
+  .tm-box-bar > .tm-signin-split .tm-signin-rule {
+    margin: 0;
   }
 }
 
