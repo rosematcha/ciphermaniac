@@ -29,18 +29,19 @@ const guardSql = (guard: Guard) => `SELECT 1 FROM tournaments WHERE code = ?1 AN
 const numbered = (ids: readonly string[]) => ids.map((_, i) => `?${i + 3}`);
 
 /**
- * Indexes `ids` under the event. One row per ID from a `UNION ALL` of
- * selects: a multi-row VALUES list plans as a scan.
+ * Indexes `ids` under the event, one row per element of a JSON array bound as
+ * ?3: D1 allows a compound SELECT only five terms, so a `UNION ALL` per ID
+ * fails from the sixth player, and one bound array fits any roster.
  */
 function addIndexed(db: D1Like, code: string, guard: Guard, ids: string[]): D1Statement[] {
-  return chunks(ids).map(run => {
-    const rows = numbered(run).map(id => `SELECT ${id}, ?1 FROM ok`);
-    return db
-      .prepare(
-        `WITH ok AS (${guardSql(guard)}) INSERT OR IGNORE INTO pop_history (pop_id, code) ${rows.join(' UNION ALL ')}`
-      )
-      .bind(code, guard.value, ...run);
-  });
+  if (ids.length === 0) {
+    return [];
+  }
+  const insert = db.prepare(
+    `WITH ok AS (${guardSql(guard)}) INSERT OR IGNORE INTO pop_history (pop_id, code) ` +
+      'SELECT ids.value, ?1 FROM ok, json_each(?3) AS ids'
+  );
+  return [insert.bind(code, guard.value, JSON.stringify(ids))];
 }
 
 /** Deletes the event's rows of `table` whose `column` is one of `ids`. */

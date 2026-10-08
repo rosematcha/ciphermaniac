@@ -2826,10 +2826,13 @@ test('nothing the functions ask of the database scans a table', async () => {
   }
   for (const sql of statements) {
     const plan = raw.prepare(`EXPLAIN QUERY PLAN ${sql}`).all() as { detail: string }[];
-    // A constant row is the values an INSERT ... SELECT writes, not a table.
+    // A constant row is the values an INSERT ... SELECT writes, and json_each walks a bound array: neither is a table.
     const scans = plan
       .map(step => step.detail)
-      .filter(detail => detail.startsWith('SCAN') && detail !== 'SCAN CONSTANT ROW');
+      .filter(
+        detail =>
+          detail.startsWith('SCAN') && detail !== 'SCAN CONSTANT ROW' && !/^SCAN ids VIRTUAL TABLE\b/.test(detail)
+      );
     assert.deepEqual(scans, [], sql);
   }
 });

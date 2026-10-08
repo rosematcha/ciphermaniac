@@ -9,14 +9,29 @@ import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 
 import type { D1Like, D1Statement } from '../../functions/lib/types.ts';
 
+/**
+ * D1 builds SQLite with SQLITE_MAX_COMPOUND_SELECT at 5, where Node's is 500,
+ * and Node cannot lower it. Counting every compound operator in the
+ * statement is stricter than SQLite's per-SELECT count, which only errs safe.
+ */
+const MAX_COMPOUND_TERMS = 5;
+const COMPOUND_RE = /\b(?:UNION|INTERSECT|EXCEPT)\b/gi;
+
+function prepare(db: DatabaseSync, sql: string) {
+  if ((sql.match(COMPOUND_RE)?.length ?? 0) + 1 > MAX_COMPOUND_TERMS) {
+    throw new Error('D1_ERROR: too many terms in compound SELECT: SQLITE_ERROR');
+  }
+  return db.prepare(sql);
+}
+
 function statement(db: DatabaseSync, sql: string, args: unknown[] = []): D1Statement {
   const values = () => args.map(value => (value === undefined ? null : value)) as SQLInputValue[];
   return {
     bind: (...next: unknown[]) => statement(db, sql, next),
-    first: <T>() => Promise.resolve((db.prepare(sql).get(...values()) ?? null) as T | null),
-    all: <T>() => Promise.resolve({ results: db.prepare(sql).all(...values()) as T[] }),
+    first: <T>() => Promise.resolve((prepare(db, sql).get(...values()) ?? null) as T | null),
+    all: <T>() => Promise.resolve({ results: prepare(db, sql).all(...values()) as T[] }),
     run: () => {
-      const result = db.prepare(sql).run(...values());
+      const result = prepare(db, sql).run(...values());
       return Promise.resolve({ success: true, meta: { changes: Number(result.changes) } });
     }
   };
