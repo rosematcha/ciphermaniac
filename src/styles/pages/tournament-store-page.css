@@ -163,3 +163,11 @@ body[data-mode='dark'] .tm-store-tile {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 }
+/* Event names are whatever their organizers type, so on a narrow screen the
+   upcoming events scroll sideways rather than cut off the name and its status. */
+.tm-storepage .tm-box > .table-wrap {
+  overflow-x: auto;
+}
+.tm-storepage .tm-box > .table-wrap td {
+  white-space: nowrap;
+}
