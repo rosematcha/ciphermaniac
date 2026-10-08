@@ -14,7 +14,7 @@ import { createEffect, createSignal, type JSX, onCleanup } from 'solid-js';
  * The `label` is exposed to assistive tech via `aria-label` so the note is
  * announced without needing to render the bubble visually.
  */
-export function InfoTip(props: { children: JSX.Element; label?: string; marker?: string }) {
+export function InfoTip(props: { children: JSX.Element; label?: string; marker?: JSX.Element; class?: string }) {
   const [open, setOpen] = createSignal(false);
   const [shift, setShift] = createSignal(0);
   let root: HTMLSpanElement | undefined;
@@ -60,7 +60,7 @@ export function InfoTip(props: { children: JSX.Element; label?: string; marker?:
   return (
     <span
       ref={root}
-      class='info-tip'
+      class={props.class ? `info-tip ${props.class}` : 'info-tip'}
       classList={{ open: open() }}
       tabindex='0'
       role='note'

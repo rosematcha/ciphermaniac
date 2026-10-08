@@ -228,6 +228,41 @@ test('a public profile shows the name and History read-only, and an unknown addr
   expect(errors).toEqual([]);
 });
 
+test('a profile’s badges sit under its name, the first six in the row and the rest behind +N @mobile', async ({
+  page
+}) => {
+  const errors = await mockAccount(page, null);
+  await publishCopies(page);
+  const badges = [
+    { key: 'creator' },
+    { key: 'beta' },
+    { key: 'played', count: 25, tier: 3 },
+    { key: 'won', count: 1, tier: 1 },
+    { key: 'organized', count: 12, tier: 2 },
+    { key: 'staffed', count: 2, tier: 1 },
+    { key: 'traveler', count: 4, tier: 1 },
+    { key: 'bug', count: 1, tier: 1 }
+  ];
+  await page.route('**/api/profiles/**', route =>
+    route.fulfill({ json: { name: 'Mary Jackson', handle: 'mary.j', avatar: null, entries: ENTRIES, badges } })
+  );
+  await page.goto('/u/mary.j');
+  const row = page.locator('.tm-profile-hero .tm-badges');
+  await expect(row.locator('.tm-badge')).toHaveCount(6);
+  await expect(row.locator('.tm-badge-rule')).toHaveCount(1);
+  const played = row.getByRole('note', { name: 'Played 25 events' });
+  await played.click();
+  await expect(played.getByRole('tooltip')).toBeVisible();
+  const more = row.getByRole('button', { name: '2 more badges' });
+  await expect(more).toHaveText('+2');
+  await more.click();
+  await expect(row.locator('.tm-badge-list li')).toHaveText(['Played in 4 cities', '1 accepted issue']);
+  await page.keyboard.press('Escape');
+  await expect(row.locator('.tm-badge-list')).toHaveCount(0);
+  await expect(more).toBeFocused();
+  expect(errors).toEqual([]);
+});
+
 /** Settings against a mocked account, recording what the page sends. */
 async function mockSettings(page: Page, user: typeof ME) {
   const sent: { method: string; path: string; body: unknown }[] = [];

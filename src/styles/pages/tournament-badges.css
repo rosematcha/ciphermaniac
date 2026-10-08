@@ -1,0 +1,110 @@
+/* A profile's badges (Badges.tsx): a row of 28px glyphs under its name,
+   each in its tier's color, held badges in ink. */
+
+.tm-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.tm-badge-tier-1 {
+  --badge: var(--badge-tier-1);
+}
+.tm-badge-tier-2 {
+  --badge: var(--badge-tier-2);
+}
+.tm-badge-tier-3 {
+  --badge: var(--badge-tier-3);
+}
+.tm-badge-tier-4 {
+  --badge: var(--badge-tier-4);
+}
+.tm-badge-special {
+  --badge: var(--fg);
+}
+
+.info-tip.tm-badge {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  border-radius: var(--radius-sm);
+  cursor: default;
+  transition: background var(--ms-fast) var(--ease-base);
+}
+.info-tip.tm-badge:hover,
+.info-tip.tm-badge.open {
+  background: var(--surface-2);
+}
+.info-tip.tm-badge:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: 1px;
+}
+.tm-badge .info-tip-marker {
+  display: grid;
+  color: var(--badge);
+}
+.tm-badge .info-tip-bubble {
+  white-space: nowrap;
+}
+
+.tm-badge-rule {
+  width: 1px;
+  height: 16px;
+  margin: 0 5px;
+  background: var(--rule);
+}
+
+.tm-badge-more {
+  position: relative;
+}
+.tm-badge-more > button {
+  height: 28px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.tm-badge-more > button:hover,
+.tm-badge-more > button[aria-expanded='true'] {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+.tm-badge-more > button:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tm-badge-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  /* Opens leftward over the row: "+N" ends it, and on a phone sits near the edge. */
+  right: 0;
+  z-index: 20;
+  min-width: 200px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.tm-badge-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  color: var(--fg);
+  font-size: var(--text-base);
+  white-space: nowrap;
+}
+.tm-badge-list .tm-badge-art {
+  flex: none;
+  color: var(--badge);
+}

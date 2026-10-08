@@ -36,6 +36,12 @@ body[data-mode="light"] {
   --accent-fill-hover: #fb3;
   --positive: #3a6a52;
   --negative: #c44e3a;
+  /* Badge tiers (Badges.tsx): bronze, silver, gold, then past gold. Each
+     holds 3:1 against --bg and --surface as a drawn graphic. */
+  --badge-tier-1: #9a5a2c;
+  --badge-tier-2: #67707a;
+  --badge-tier-3: #8a6a00;
+  --badge-tier-4: #6a4b9c;
 
   /* Chart palette — decoupled from system accent */
   --chart-1: #c2532e;
@@ -122,6 +128,10 @@ body[data-mode="dark"],
   --accent-ink-hover: var(--accent-hover);
   --positive: #84c479;
   --negative: #e07a5e;
+  --badge-tier-1: #d0915f;
+  --badge-tier-2: #b4bcc3;
+  --badge-tier-3: #e2bb3c;
+  --badge-tier-4: #b49be0;
 
   /* Dark-mode chart palette */
   --chart-1: #ff9c4a;
@@ -157,6 +167,10 @@ body[data-mode="dark"],
     --accent-ink-hover: var(--accent-hover);
     --positive: #84c479;
     --negative: #e07a5e;
+    --badge-tier-1: #d0915f;
+    --badge-tier-2: #b4bcc3;
+    --badge-tier-3: #e2bb3c;
+    --badge-tier-4: #b49be0;
     --chart-1: #ff9c4a;
     --chart-2: #6bb6ff;
     --chart-3: #7ed68a;

@@ -10,6 +10,7 @@ import { Skeleton } from '../../components/Skeleton';
 import { ApiError, errorText, fetchProfile } from '../../lib/tournament/api';
 import { resolved } from '../../lib/resource';
 import { Avatar } from './Avatar';
+import { Badges } from './Badges';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
 import { HistoryList } from './HistoryList';
@@ -56,6 +57,7 @@ export function ProfilePage(props: { handle: string }) {
                     </Show>
                     {eventCount(p().entries.length)}
                   </p>
+                  <Badges badges={p().badges ?? []} />
                 </div>
               </section>
               <Show when={p().entries.length > 0} fallback={<p class='muted tm-empty'>No events yet</p>}>
