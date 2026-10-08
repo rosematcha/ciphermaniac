@@ -1231,17 +1231,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 .tm-strip.tm-champion {
   padding: 10px 14px;
 }
-/* The public page's Playing is the console's Open: the same dot before it. */
-.tm-status-col strong::before {
-  content: '';
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 7px;
-  border-radius: 50%;
-  background: var(--muted);
-  vertical-align: 1px;
-}
 /* A picked deck's name starts in one place, whether its deck has one sprite
    or two: the sprites sit centred in a fixed slot (the second selector
    outranks the picker's own two-sprite padding). */
