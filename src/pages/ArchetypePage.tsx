@@ -527,7 +527,12 @@ function Stat(props: {
     <div class='stat-band-item' classList={{ 'is-lead': props.lead, 'is-muted': props.muted }}>
       <dt>{props.label}</dt>
       <dd>
-        <Show when={!props.loading} fallback={<Skeleton width='64px' height='1em' />}>
+        {/* Inline and inside the line box, so the row keeps its text baseline (a phone sets
+            the label beside the figure on it) and its height when the figure lands. */}
+        <Show
+          when={!props.loading}
+          fallback={<Skeleton inline width='64px' height='1em' style={{ 'vertical-align': 'top' }} />}
+        >
           {props.children}
         </Show>
       </dd>
