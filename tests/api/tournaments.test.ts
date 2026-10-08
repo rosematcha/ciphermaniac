@@ -68,6 +68,17 @@ import { memoryProofs } from '../__utils__/proofBucket.ts';
 import { storeApplication } from '../__utils__/storeApplication.ts';
 import { countingTrips, racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
+/** Every scalar in a JSON value, keys included, for asserting what a public copy never carries. */
+function jsonValues(value: unknown): unknown[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(jsonValues);
+  }
+  if (value && typeof value === 'object') {
+    return Object.entries(value).flatMap(([key, inner]) => [key, ...jsonValues(inner)]);
+  }
+  return [value];
+}
+
 let env: TournamentEnv;
 const { hit, signIn } = apiCalls(() => env);
 const { newEvent, newSwiss, send, addPlayers, settle, playerSays, view, storeOf } = eventCalls(hit);
@@ -407,10 +418,10 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
   );
 
   const publicView = await view(code);
-  // Without the timestamps, whose digits can happen to contain an ID.
-  const text = JSON.stringify({ ...publicView, updatedAt: 0, version: 0 });
-  assert.ok(!text.includes('999') && !text.includes('900'), 'no Player IDs');
-  assert.ok(!text.includes('02/27/1990'), 'no birth dates');
+  // Whole values, not digits in a string: a random key or a timestamp can contain an ID's digits by chance.
+  const ids = new Set(['999', '900']);
+  assert.ok(!jsonValues(publicView).some(v => ids.has(String(v))), 'no Player IDs');
+  assert.ok(!JSON.stringify(publicView).includes('02/27/1990'), 'no birth dates');
   assert.equal(publicView.tournament.players.length, 6);
   assert.deepEqual(publicView.viewer, { role: null, me: null, via: null, signedIn: false });
 
