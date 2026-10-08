@@ -384,9 +384,14 @@
   .tm-public-pairings .data td.tm-status-col {
     display: none;
   }
+  /* Each name keeps its 44px target and nothing more, so a table's two names sit as one pairing. */
+  .tm-public-pairings .data tr {
+    row-gap: 0;
+  }
   .tm-public-pairings .tm-seat-link {
     flex: 0 1 auto;
     min-height: 44px;
+    padding-block: 0;
   }
   .tm-public-pairings .tm-record {
     margin-left: 0;
