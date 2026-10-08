@@ -33,7 +33,7 @@ import {
   regularRounds,
   wasFinalized
 } from './rounds.js';
-import { bracketMatches, placeFinals, swissStandings } from './standings.js';
+import { bracketMatches, placeFinals, type Standing, swissStandings } from './standings.js';
 import { eventTypeOf, recommendedStructure } from './structure.js';
 import {
   type Division,
@@ -769,11 +769,12 @@ function rootValue(t: Tournament, key: string): string | undefined {
   return t.passthrough?.rootAttrs.find(([name]) => name === key)?.[1];
 }
 
-function writeStandings(t: Tournament, divisionOf: (id: string) => Division): string[] {
+/** Each division's final places, in the order the standings list them: Swiss, then the top cut on top. */
+function divisionPlaces(t: Tournament, divisionOf: (id: string) => Division): [Division | 'mixed', Standing[]][] {
   const byDivision = divisionPlayers(t, divisionOf);
   const categories: (Division | 'mixed')[] =
     rootValue(t, 'type') === '1' || rootValue(t, 'gametype') === 'GO' ? ['mixed'] : [...DIVISIONS].reverse();
-  const pods = categories.flatMap(division => {
+  return categories.map(division => {
     const fields = division === 'mixed' ? t.pods : (byDivision.get(division) ?? []);
     const places = fields.flatMap(pod => {
       const full = t.pods.find(p => p.category === pod.category) ?? pod;
@@ -781,6 +782,14 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
       const swiss = swissStandings(full, t.players, { only, regularRounds: regularRounds(t, full) });
       return placeFinals(division === 'mixed' ? full : (cutPodOf(t, full, division) ?? full), swiss);
     });
+    return [division, places];
+  });
+}
+
+function writeStandings(t: Tournament, divisionOf: (id: string) => Division): string[] {
+  const byDivision = divisionPlayers(t, divisionOf);
+  const pods = divisionPlaces(t, divisionOf).flatMap(([division, places]) => {
+    const fields = division === 'mixed' ? t.pods : (byDivision.get(division) ?? []);
     const only = new Set(fields.flatMap(p => p.playerIds));
     const dnf = t.players.filter(p => only.has(p.id) && p.disqualified).sort(compareNames);
     const code = CATEGORY_CODES[division];
@@ -803,6 +812,24 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
 function finalStandings(t: Tournament, divisionOf: (id: string) => Division): string[] {
   const saved = t.passthrough?.standings;
   return saved?.state === standingsState(t) ? saved.xml.split('\n') : writeStandings(t, divisionOf);
+}
+
+/** A player row TOM wrote in first place. */
+const FIRST_PLACE = /<player\b(?=[^>]*\bplace="1")[^>]*\bid="([^"]*)"/g;
+
+/**
+ * The winner of each division: the players in first place in the event's
+ * final standings, TOM's own where it wrote them for the event as it stands.
+ */
+export function firstPlaces(input: Tournament): string[] {
+  const t = normalizeCutPods(input);
+  const saved = t.passthrough?.standings;
+  if (saved?.state === standingsState(t)) {
+    return [...saved.xml.matchAll(FIRST_PLACE)].map(match => match[1]!);
+  }
+  return divisionPlaces(t, divisionLookup(t)).flatMap(([, places]) =>
+    places.filter(row => row.place === 1).map(row => row.playerId)
+  );
 }
 
 function finalsCount(t: Tournament, pod: Pod, division: Division, of: (id: string) => Division): number {

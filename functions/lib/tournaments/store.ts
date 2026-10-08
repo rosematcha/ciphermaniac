@@ -30,6 +30,7 @@ import { displayNameSql } from '../accounts/handles.js';
 import { firstRow, rowsChanged } from '../d1.js';
 import type { D1Like, D1Statement } from '../types.js';
 import { deleteWrites, firstIndexWrites, rosterWrites } from './rosterWrites.js';
+import { winWrites } from './winWrites.js';
 
 export interface TournamentRow {
   code: string;
@@ -483,8 +484,9 @@ async function saveTournament(db: D1Like, row: TournamentRow, input: Changes): P
     )
     .bind(...columns.map(([, value]) => value), updatedAt, row.code, row.version);
   const ending = next.settings.finished && !row.settings.finished ? [minorCardsCut(db, row, updatedAt)] : [];
-  const results = await db.batch([...roster, update, ...ending]);
-  const saved = results.at(-1 - ending.length);
+  const after = [...ending, ...winWrites(db, row, next)];
+  const results = await db.batch([...roster, update, ...after]);
+  const saved = results.at(-1 - after.length);
   return rowsChanged(saved) === 1 ? { ...next, version: row.version + 1, updatedAt } : null;
 }
 

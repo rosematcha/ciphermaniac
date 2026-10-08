@@ -3,6 +3,7 @@
  * nothing loads this module at run time.
  */
 
+import type { Badge } from './achievements.js';
 import type { TournamentMode } from '../tournament/view.js';
 import type { AccountRole } from './roles.js';
 import type {
@@ -40,6 +41,8 @@ export interface PublicProfile {
   handle: string;
   avatar: string | null;
   entries: HistoryEntry[];
+  /** Absent from a profile cached before there were badges. */
+  badges?: Badge[];
 }
 
 /** An uploaded proof: its type, and its size in bytes. */

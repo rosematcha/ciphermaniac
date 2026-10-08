@@ -106,7 +106,7 @@ export function deleteWrites(db: D1Like, event: IndexedEvent & { code: string; v
   const at = { code: event.code, guard: { column: 'version', value: event.version } as const };
   return [
     ...deleteGuarded(db, { table: 'pop_history', column: 'pop_id' }, at, [...indexedIds(event)]),
-    ...(['staff', 'decklists', 'report_devices'] as const).map(table =>
+    ...(['staff', 'decklists', 'report_devices', 'event_wins'] as const).map(table =>
       db
         .prepare(`DELETE FROM ${table} WHERE code = ?1 AND EXISTS (${guardSql(at.guard)})`)
         .bind(at.code, at.guard.value)

@@ -11,6 +11,7 @@
  * read in D1, not in the function.
  */
 
+import { type Badge, badgesOf, type CountedKey, isCountedGrant } from '../../../shared/accounts/achievements.js';
 import type { HistoryEntry, PublicProfile } from '../../../shared/accounts/types.js';
 import { parseTomDate } from '../../../shared/tournament/divisions.js';
 import { DEFAULT_SETTINGS } from '../../../shared/tournament/view.js';
@@ -40,6 +41,9 @@ function accountSql(whose: Whose): { from: string; where: string; values: unknow
   };
 }
 
+/** The event ran to its end. */
+const FINISHED = "coalesce(json_extract(t.settings, '$.finished'), 0) = 1";
+
 /** Leaves out the events the account wiped from its History. */
 const NOT_HIDDEN = 'NOT EXISTS (SELECT 1 FROM history_hidden x WHERE x.user_id = u.id AND x.code = t.code)';
 
@@ -51,7 +55,9 @@ const entryColumns = (player: string) =>
   `t.code, t.mode, t.updated_at, json_extract(t.player_keys, '$."' || ${player} || '"') AS key, ` +
   "json_extract(t.state, '$.info.name') AS name, json_extract(t.state, '$.info.startDate') AS start_date, " +
   "json_extract(t.settings, '$.startsAt') AS starts_at, json_extract(t.settings, '$.format') AS format, " +
-  `json_extract(t.settings, '$.finished') AS finished, ${pairedRounds('t.state')} AS rounds`;
+  `json_extract(t.settings, '$.finished') AS finished, ${pairedRounds('t.state')} AS rounds, ` +
+  `EXISTS (SELECT 1 FROM event_wins w WHERE w.code = t.code AND w.player_id = ${player}) AS won, ` +
+  "(SELECT s.country || '/' || s.region || '/' || s.city FROM stores s WHERE s.id = t.store_id AND s.city <> '') AS city";
 
 interface EntryRow {
   code: string;
@@ -64,6 +70,8 @@ interface EntryRow {
   format: string | null;
   finished: number | null;
   rounds: number | null;
+  won: number;
+  city: string | null;
 }
 
 /** The name the profile shows, as the account chose: its username, or the name the site calls it by. */
@@ -89,8 +97,43 @@ function statements(db: D1Like, whose: Whose): D1Statement[] {
           `JOIN tournaments t ON t.code = d.code WHERE ${where} AND ${NOT_HIDDEN} ` +
           `AND t.mode = 'swiss' AND json_extract(t.settings, '$.sanctioned') IS 0 LIMIT ${MAX_ENTRIES}`
       )
+      .bind(...values),
+    // The events it ran or staffed to the end; staffing an event of its own is running it.
+    db
+      .prepare(
+        `SELECT (SELECT count(*) FROM tournaments t WHERE t.owner_id = u.id AND ${FINISHED}) AS organized, ` +
+          `(SELECT count(*) FROM staff f JOIN tournaments t ON t.code = f.code WHERE f.user_id = u.id ` +
+          `AND t.owner_id <> u.id AND ${FINISHED}) AS staffed FROM ${from} WHERE ${where}`
+      )
+      .bind(...values),
+    db
+      .prepare(`SELECT a.badge, a.count FROM ${from} JOIN account_badges a ON a.user_id = u.id WHERE ${where}`)
       .bind(...values)
   ];
+}
+
+type Read = { results?: unknown[] } | undefined;
+
+/** The badges the account's events and grants come to (shared/accounts/achievements.ts), over the events History lists. */
+function badgesFrom(rows: EntryRow[], ran: Read, granted: Read): Badge[] {
+  const ended = [
+    ...new Map(rows.filter(row => row.finished === 1 && row.key !== null).map(row => [row.code, row])).values()
+  ];
+  const counts: Partial<Record<CountedKey, number>> = {
+    played: ended.length,
+    won: ended.filter(row => row.won === 1).length,
+    traveler: new Set(ended.flatMap(row => (row.city ? [row.city.toLowerCase()] : []))).size,
+    ...firstRow<{ organized: number; staffed: number }>(ran)
+  };
+  const specials = new Set<string>();
+  for (const { badge, count } of (granted?.results ?? []) as { badge: string; count: number }[]) {
+    if (isCountedGrant(badge)) {
+      counts[badge] = count;
+    } else {
+      specials.add(badge);
+    }
+  }
+  return badgesOf(counts, specials);
 }
 
 function statusOf(row: EntryRow): HistoryEntry['status'] {
@@ -133,11 +176,17 @@ function merged(rows: EntryRow[]): HistoryEntry[] {
 
 /** The account's name, username, picture and History; null when no account is there (signed out, or no such profile). */
 export async function historyOf(db: D1Like, whose: Whose): Promise<PublicProfile | null> {
-  const [account, byPopId, byClaim] = await db.batch(statements(db, whose));
+  const [account, byPopId, byClaim, ran, granted] = await db.batch(statements(db, whose));
   const found = firstRow<{ name: string; handle: string; avatar: string | null }>(account);
   if (!found) {
     return null;
   }
   const rows = [...((byPopId?.results ?? []) as EntryRow[]), ...((byClaim?.results ?? []) as EntryRow[])];
-  return { name: found.name, handle: found.handle, avatar: found.avatar, entries: merged(rows) };
+  return {
+    name: found.name,
+    handle: found.handle,
+    avatar: found.avatar,
+    entries: merged(rows),
+    badges: badgesFrom(rows, ran, granted)
+  };
 }

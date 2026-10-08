@@ -240,6 +240,27 @@ CREATE TABLE IF NOT EXISTS history_hidden (
   PRIMARY KEY (user_id, code)
 ) WITHOUT ROWID;
 
+-- The winners of each finished event, one player ID per division, as its
+-- final standings place them (firstPlaces in shared/tournament/tdf.ts).
+-- Written as the event ends and again as a finished event changes; History
+-- joins them to the account through the same player ID it finds it by.
+CREATE TABLE IF NOT EXISTS event_wins (
+  code TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  PRIMARY KEY (code, player_id)
+) WITHOUT ROWID;
+
+-- Badges granted by hand (shared/accounts/achievements.ts): the developer,
+-- contributors with how many of their issues or changes were accepted, and
+-- the first accounts. Gone with the account.
+CREATE TABLE IF NOT EXISTS account_badges (
+  user_id TEXT NOT NULL,
+  badge TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 1,
+  granted_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, badge)
+) WITHOUT ROWID;
+
 -- Accounts asking to become organizers, and what an admin decided. The POP
 -- ID and name are the profile as it stood when the account applied. The
 -- proof of certification is a file in a private bucket under `proof_key`,

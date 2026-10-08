@@ -139,6 +139,10 @@ const QUERIED: { title: string; sql: string; heading?: (row: Row) => string }[] 
     title: 'Events hidden from your history',
     heading: eventName,
     sql: `SELECT ${EVENT}, x.code FROM history_hidden x WHERE x.user_id = ?1 ORDER BY x.code`
+  },
+  {
+    title: 'Badges granted to you',
+    sql: 'SELECT badge, count, granted_at FROM account_badges WHERE user_id = ?1 ORDER BY badge'
   }
 ];
 

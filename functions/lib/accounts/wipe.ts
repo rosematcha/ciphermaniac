@@ -188,7 +188,8 @@ const ACCOUNT_TABLES = [
   'identities',
   'handle_changes',
   'duplicate_emails_backup',
-  'history_hidden'
+  'history_hidden',
+  'account_badges'
 ];
 
 /** Where an admin's id stays on what it decided; with the account gone it names no one, so it goes too. */
