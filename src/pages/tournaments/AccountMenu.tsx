@@ -10,6 +10,7 @@ import { createSignal, onCleanup, onMount, Show } from 'solid-js';
 import { isAdmin } from '../../../shared/accounts/roles';
 import { canCreateEvents } from '../../../shared/accounts/stores';
 import type { Me } from '../../lib/tournament/api';
+import '../../styles/pages/tournament-account-menu.css';
 
 export function AccountMenu(props: { user: Me; pending: number }) {
   const [open, setOpen] = createSignal(false);

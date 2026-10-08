@@ -184,7 +184,7 @@ test('after the planned rounds the console offers the top cut, another round and
 }) => {
   // Sixteen players play five rounds and a top 4, as Play! Pokémon recommends.
   await mockConsole(page, event(16, 5, false), settingsOf({}));
-  await expect(page.getByText('Round 5 of 5 · all 8 tables in')).toBeVisible();
+  await expect(page.getByText('Round 5 of 5 complete')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Start top cut' })).toBeEnabled();
   await expect(page.getByRole('combobox', { name: 'Top cut size' })).toHaveValue('4');
   await expect(page.getByRole('button', { name: 'Pair round 6' })).toBeVisible();
@@ -238,7 +238,7 @@ test("an open table shows its players' reports in its one row, and a lone report
 
 test('a capped league ends after its rounds instead of pairing on', async ({ page }) => {
   const sent = await mockConsole(page, event(6, 3, false), settingsOf({ roundCap: 3 }));
-  await expect(page.getByText('Round 3 of 3 · all 3 tables in')).toBeVisible();
+  await expect(page.getByText('Round 3 of 3 complete')).toBeVisible();
   await expect(page.getByRole('button', { name: 'End event' })).toHaveClass(/btn-primary/);
   await page.getByRole('button', { name: 'Pair round 4' }).click();
   await expect.poll(() => sent.map(c => c.type)).toEqual(['pairRound']);

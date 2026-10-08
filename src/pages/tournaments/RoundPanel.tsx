@@ -43,7 +43,7 @@ import {
 } from '../../lib/tournament/present';
 import type { ManageState } from './manageState';
 import { MatchTable } from './MatchTable';
-import { ChampionLine, ClockControls, DeleteRound, RepairControl } from './RoundControls';
+import { ChampionLine, DeleteRound, RepairControl } from './RoundControls';
 
 // Decks are named now and then, not every round, so their picker loads when first asked for.
 const CutBracket = lazy(() => import('./Bracket').then(m => ({ default: m.CutBracket })));
@@ -322,9 +322,6 @@ function RoundBar(props: RoundBarProps) {
       </Show>
       <Show when={props.live && props.nothingReported}>
         <DeleteRound state={props.state} pod={props.pod} round={props.round} />
-      </Show>
-      <Show when={props.timed && props.round.status !== 'finished'}>
-        <ClockControls state={props.state} pod={props.pod} round={props.round} />
       </Show>
     </div>
   );

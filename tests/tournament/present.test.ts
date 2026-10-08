@@ -44,6 +44,7 @@ import {
   RESULT_WORDS,
   roundCapOf,
   roundLabel,
+  roundStatus,
   seatMark,
   shownDecks,
   shownOutcome,
@@ -371,6 +372,22 @@ test('against a plan, the status counts the Swiss rounds, and names a round past
   assert.equal(statusParts(open, false, null, 1)[0], 'Round 2', 'a round past the plan');
   const quarter: Round = { ...round2, kind: 'elimination', matches: round2.matches.slice(0, 4) };
   assert.equal(statusParts(podProgress({ ...pod, rounds: [quarter] }, []), false, null, 3)[0], 'Quarterfinals');
+});
+
+test('the console leads with where the round stands: in progress, complete, or before and after the rounds', () => {
+  const open = podProgress(pod, []);
+  assert.equal(roundStatus(open, false), 'Round 2 in progress');
+  assert.equal(roundStatus({ ...open, open: 0 }, false), 'Round 2 complete');
+  assert.equal(roundStatus(NO_ROUND, false), 'Registration');
+  assert.equal(roundStatus(open, true), 'Finished');
+});
+
+test('against a plan, the lead counts the Swiss rounds, and names a round past the plan alone', () => {
+  const open = podProgress(pod, []);
+  assert.equal(roundStatus(open, false, 3), 'Round 2 of 3 in progress');
+  assert.equal(roundStatus(open, false, 1), 'Round 2 in progress', 'a round past the plan');
+  const quarter: Round = { ...round2, kind: 'elimination', matches: round2.matches.slice(0, 4) };
+  assert.equal(roundStatus(podProgress({ ...pod, rounds: [quarter] }, []), false, 3), 'Quarterfinals in progress');
 });
 
 /** A pod of `n` players, for the plan: only its size counts. */

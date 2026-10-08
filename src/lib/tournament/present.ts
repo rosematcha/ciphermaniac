@@ -251,11 +251,10 @@ export function nextStep(progress: PodProgress, finished: boolean, plan: SwissPl
     : { kind: 'pair', label, ...waiting };
 }
 
-/** The status sentence's parts: the round, what is happening in it, and the clock when it runs. */
+/** "Round 2 of 5" while a Swiss round is within the plan's `rounds`; the round's own name past it or without one. */
 /** A clock past zero reads as time over rather than a negative time left. */
 const timeWords = (clock: string) => (clock.startsWith('-') ? `${clock.slice(1)} over` : `${clock} left`);
 
-/** "Round 2 of 5" while a Swiss round is within the plan's `rounds`; the round's own name past it or without one. */
 function roundOf(progress: PodProgress & { round: Round }, rounds: number | null): string {
   const { round } = progress;
   return round.kind === 'swiss' && rounds !== null && round.number <= rounds
@@ -263,6 +262,7 @@ function roundOf(progress: PodProgress & { round: Round }, rounds: number | null
     : progress.label;
 }
 
+/** The status sentence's parts: the round, what is happening in it, and the clock when it runs. */
 export function statusParts(
   progress: PodProgress,
   finished: boolean,
@@ -284,6 +284,21 @@ export function statusParts(
       ? `all ${tables} ${tablesWord(tables, round.kind)} in`
       : `${open} ${tablesWord(open, round.kind)} playing`;
   return [roundOf({ ...progress, round }, rounds), doing, ...(open > 0 && clock ? [timeWords(clock)] : [])];
+}
+
+/** The console's lead: the round and whether it is still playing, or where the event stands before and after its rounds. */
+export function roundStatus(progress: PodProgress, finished: boolean, rounds: number | null = null): string {
+  const { round, open } = progress;
+  if (finished) {
+    return 'Finished';
+  }
+  if (!round) {
+    return 'Registration';
+  }
+  if (progress.champion && open === 0) {
+    return `${progress.label}, final played`;
+  }
+  return `${roundOf({ ...progress, round }, rounds)} ${open === 0 ? 'complete' : 'in progress'}`;
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;

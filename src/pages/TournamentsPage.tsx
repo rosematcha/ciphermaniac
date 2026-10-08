@@ -46,11 +46,11 @@ export function TournamentsPage() {
   const settings = () => location.pathname.startsWith('/account') || location.pathname.startsWith('/settings');
   // Nobody is signed in yet at the age check, and its only way on is the form.
   const welcome = () => location.pathname.startsWith('/welcome');
-  // The dashboard carries its own account menu.
-  const dashboard = () => /^\/host\/?$/.test(location.pathname);
+  // The dashboard and the event console carry their own account menu.
+  const dashboard = () => location.pathname.startsWith('/host');
   return (
     <>
-      {/* Settings and the dashboard show who is signed in themselves. */}
+      {/* Settings, the dashboard and the console show who is signed in themselves. */}
       <Show when={!screen() && !settings() && !welcome() && !dashboard()}>
         <AccountStrip />
       </Show>

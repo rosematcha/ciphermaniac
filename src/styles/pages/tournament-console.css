@@ -1,0 +1,51 @@
+/* ---------- Event console (/host/:code) ----------
+   The head: the event's name beside the account button, a meta line led by
+   where the round stands, then the round's clock opposite the steps that end
+   it. Widths below are drafted one by one: 1080 and under drops a result's
+   actions under its words, 900 and under hands result entry to a sheet, 640
+   and under is the phone. */
+
+.tm-console-hero {
+  display: block;
+}
+.tm-console-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.tm-console-hero .hero-meta {
+  margin-top: 6px;
+}
+.tm-meta-lead {
+  color: var(--fg);
+  font-weight: 500;
+}
+.tm-console-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-4);
+  margin-top: 14px;
+}
+.tm-console-steps:not(:has(.tm-clock-group, .btn)) {
+  display: none;
+}
+.tm-console-steps .tm-next {
+  margin-left: auto;
+}
+
+/* The head's clock, a size up from a bar's: the first thing looked for between tables. */
+.tm-clock-group.is-large {
+  min-height: 48px;
+}
+.tm-clock-group.is-large .tm-clock-face {
+  min-width: 110px;
+}
+.tm-clock-group.is-large .tm-clock {
+  font-size: 26px;
+}
+.tm-clock-group.is-large button {
+  min-width: 52px;
+  font-size: var(--text-body);
+}

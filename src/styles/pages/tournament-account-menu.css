@@ -1,0 +1,85 @@
+/* ---------- The account button and its menu (AccountMenu), on the dashboard and the event console ---------- */
+
+.tm-dash-count {
+  margin-left: 6px;
+  color: var(--accent-ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tm-acct {
+  position: relative;
+  flex: none;
+}
+.tm-acct-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--fg);
+  font-weight: 700;
+  cursor: pointer;
+}
+.tm-acct-button img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+.tm-acct-pip {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--bg);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+.tm-acct-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.25);
+}
+.tm-acct-id {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 4px;
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-base);
+}
+.tm-acct-menu a {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font-size: var(--text-body);
+}
+.tm-acct-menu a:hover {
+  background: var(--bg);
+}
+.tm-acct-menu .tm-acct-quiet {
+  margin-top: 4px;
+  border-top: 1px solid var(--rule);
+  border-radius: 0;
+  color: var(--muted);
+  font-size: var(--text-base);
+}
+

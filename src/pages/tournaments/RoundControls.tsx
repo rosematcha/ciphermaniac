@@ -106,12 +106,12 @@ export function TopCutControl(props: {
 }
 
 /** The clock as one control: time left, then start or pause, then a minute either way. */
-export function ClockControls(props: { state: ManageState; pod: Pod; round: Round }) {
+export function ClockControls(props: { state: ManageState; pod: Pod; round: Round; class?: string }) {
   const send = (type: 'startClock' | 'stopClock') => void props.state.send({ type, pod: props.pod.category });
   const adjust = (seconds: number) => void props.state.send({ type: 'adjustClock', pod: props.pod.category, seconds });
   const running = () => props.round.clockStartedAt != null;
   return (
-    <span class='tm-clock-group' role='group' aria-label='Round clock'>
+    <span class={`tm-clock-group ${props.class ?? ''}`} role='group' aria-label='Round clock'>
       <span class='tm-clock-face'>
         <Clock round={props.round} />
         <Show when={!running() && !props.round.startTime}>

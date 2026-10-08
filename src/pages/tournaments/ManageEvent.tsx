@@ -30,20 +30,19 @@ import { eventTypeOf } from '../../../shared/tournament/structure';
 import type { Pod, PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
 import { Tabs } from '../../components/Tabs';
-import { errorText, joinStaff, type Manage, saveSettings } from '../../lib/tournament/api';
+import { errorText, joinStaff, type Manage, type Me, saveSettings } from '../../lib/tournament/api';
 import {
-  clockLabel,
   type DivisionCut,
   divisionCuts,
   namesById,
-  nextStep,
   type NextStep,
+  nextStep,
   plannedRounds,
   podLabel,
-  type PodProgress,
   podProgress,
+  type PodProgress,
+  roundStatus,
   shownDecks,
-  statusParts,
   type SwissPlan,
   unseated
 } from '../../lib/tournament/present';
@@ -51,11 +50,11 @@ import { session } from './session';
 import { latestValue } from '../../lib/resource';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
-import { TournamentHero } from './Hero';
+import { AccountMenu } from './AccountMenu';
 import { lookOnReturn, schedulePolls } from '../../lib/tournament/viewPoll';
 import { createManage, type ManageState } from './manageState';
-import { createNow } from './now';
-import { TopCutControl } from './RoundControls';
+import '../../styles/pages/tournament-console.css';
+import { ClockControls, TopCutControl } from './RoundControls';
 import { RoundPanel } from './RoundPanel';
 import { SignIn } from './SignIn';
 import { createTomLink, type FileWrite, type TomLink, TomNextStep, TomStrip } from './TomSyncPanel';
@@ -217,14 +216,15 @@ function RoundEndStep(props: {
  * its file: reconnect it, write the results TOM does not have, or read it
  * again (see TomSyncPanel).
  */
-function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined; tom: TomLink | null }) {
-  const now = createNow();
+function Hero(props: {
+  state: ManageState;
+  manage: Manage;
+  pod: Pod | undefined;
+  tom: TomLink | null;
+  user: Me | null | undefined;
+}) {
   const finished = () => props.manage.settings.finished;
   const progress = () => (props.pod ? podProgress(props.pod, props.manage.pending) : NO_PROGRESS);
-  const clock = () => {
-    const { round } = progress();
-    return round && (round.clockStartedAt != null || round.startTime) ? clockLabel(round, now()) : null;
-  };
   const waiting = () =>
     props.manage.mode === 'swiss' && props.pod ? unseated(props.manage.tournament, props.pod).length : 0;
   const active = () => (props.pod ? activeIds(props.manage.tournament, props.pod).length : 0);
@@ -249,7 +249,8 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
               .at(-1)?.cut ?? 0
         }
       : null;
-  const status = () => {
+  /** The lead of the meta line: where the round stands, then what else needs saying about it. */
+  const lead = () => {
     const { tom } = props;
     const extra = tom
       ? [tomPart(tom)]
@@ -257,7 +258,12 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
     const rounds = tom ? null : (plan()?.rounds ?? null);
     // A console that cannot reach the site says so, rather than showing an old round as the current one.
     const stale = props.state.loadError() ? ['not updating'] : [];
-    return [...statusParts(progress(), finished(), clock(), rounds), ...extra, ...stale].join(' · ');
+    return [roundStatus(progress(), finished(), rounds), ...extra, ...stale].join(' · ');
+  };
+  /** The round whose clock the head runs: the pod's latest, until it is finished or crowns a champion. */
+  const clockRound = () => {
+    const { round } = progress();
+    return round && round.status !== 'finished' && !progress().champion && !finished() ? round : null;
   };
   const step = () => (props.tom ? ({ kind: 'none' } as NextStep) : nextStep(progress(), finished(), plan()));
   const pairStep = () => {
@@ -284,81 +290,96 @@ function Hero(props: { state: ManageState; manage: Manage; pod: Pod | undefined;
   };
   const firstBlocked = () => pairStep()?.label === 'Pair round 1' && active() < 2;
   const reason = () => (firstBlocked() ? 'Add players to pair' : (pairStep() ?? decideStep() ?? closeStep())?.reason);
+  const action = (
+    <Switch>
+      <Match when={props.tom}>
+        {tom => {
+          const next = () => tomPairing(props.manage, swissOver() ? undefined : props.pod, progress(), plan());
+          return <TomNextStep link={tom()} pair={next().pair} planned={next().planned} />;
+        }}
+      </Match>
+      <Match when={props.pod && roundEnd()}>
+        {s => (
+          <RoundEndStep
+            state={props.state}
+            manage={props.manage}
+            pod={props.pod as Pod}
+            label={s().label}
+            ready={s().ready}
+            step={s().end}
+            cuts={cuts()}
+            swissOver={swissOver()}
+            othersPlaying={othersPlaying()}
+          />
+        )}
+      </Match>
+      <Match when={pairStep()}>
+        {s => <PairButton state={props.state} pod={props.pod} label={s().label} ready={s().ready && !firstBlocked()} />}
+      </Match>
+      <Match when={closeStep()}>
+        {s => (
+          <Show
+            when={s().ready}
+            fallback={
+              <button type='button' class='btn btn-primary' disabled>
+                End event
+              </button>
+            }
+          >
+            <EndEvent state={props.state} manage={props.manage} primary={!othersPlaying()} />
+          </Show>
+        )}
+      </Match>
+    </Switch>
+  );
   return (
-    <TournamentHero
-      title={props.manage.tournament.info.name}
-      status={status()}
-      meta={
-        // Each part keeps the dot after it, so the line wraps between parts and never starts on a dot.
-        <>
-          <span class='tm-meta-part'>
-            <span class='num'>{props.manage.code}</span>
-            <span class='dot'>·</span>
-          </span>
-          <span class='tm-meta-part'>
-            {props.manage.mode === 'tom' ? 'Run in TOM' : 'Swiss on this site'}
-            <span class='dot'>·</span>
-          </span>
-          <span class='tm-meta-part'>
-            {props.manage.tournament.players.length} players
-            <span class='dot'>·</span>
-          </span>
-          <span class='tm-meta-part'>
-            <A href={`/t/${props.manage.code}`}>Public page</A>
-            <span class='dot'>·</span>
-          </span>
-          {/* Its own tab, since it goes on the projector while the console keeps running. */}
-          <a href={`/t/${props.manage.code}?screen=1`} target='_blank' rel='noopener'>
-            Big screen
-          </a>
-        </>
-      }
-      action={
-        <Switch>
-          <Match when={props.tom}>
-            {tom => {
-              const next = () => tomPairing(props.manage, swissOver() ? undefined : props.pod, progress(), plan());
-              return <TomNextStep link={tom()} pair={next().pair} planned={next().planned} />;
-            }}
-          </Match>
-          <Match when={props.pod && roundEnd()}>
-            {s => (
-              <RoundEndStep
-                state={props.state}
-                manage={props.manage}
-                pod={props.pod as Pod}
-                label={s().label}
-                ready={s().ready}
-                step={s().end}
-                cuts={cuts()}
-                swissOver={swissOver()}
-                othersPlaying={othersPlaying()}
-              />
-            )}
-          </Match>
-          <Match when={pairStep()}>
-            {s => (
-              <PairButton state={props.state} pod={props.pod} label={s().label} ready={s().ready && !firstBlocked()} />
-            )}
-          </Match>
-          <Match when={closeStep()}>
-            {s => (
-              <Show
-                when={s().ready}
-                fallback={
-                  <button type='button' class='btn btn-primary' disabled>
-                    End event
-                  </button>
-                }
-              >
-                <EndEvent state={props.state} manage={props.manage} primary={!othersPlaying()} />
-              </Show>
-            )}
-          </Match>
-        </Switch>
-      }
-      reason={reason()}
-    />
+    <section class='tm-hero tm-console-hero'>
+      <div class='tm-console-title'>
+        <div class='tm-hero-text'>
+          <h1>{props.manage.tournament.info.name}</h1>
+          {/* Each part keeps the dot after it, so the line wraps between parts and never starts on a dot. */}
+          <p class='hero-meta'>
+            <span class='tm-meta-part tm-meta-lead'>
+              {lead()}
+              <span class='dot'>·</span>
+            </span>
+            <span class='tm-meta-part'>
+              <span class='num'>{props.manage.code}</span>
+              <span class='dot'>·</span>
+            </span>
+            <span class='tm-meta-part'>
+              {props.manage.mode === 'tom' ? 'Run in TOM' : 'Swiss on this site'}
+              <span class='dot'>·</span>
+            </span>
+            <span class='tm-meta-part'>
+              {props.manage.tournament.players.length} players
+              <span class='dot'>·</span>
+            </span>
+            <span class='tm-meta-part'>
+              <A href={`/t/${props.manage.code}`}>Public page</A>
+              <span class='dot'>·</span>
+            </span>
+            {/* Its own tab, since it goes on the projector while the console keeps running. */}
+            <a href={`/t/${props.manage.code}?screen=1`} target='_blank' rel='noopener'>
+              Big screen
+            </a>
+          </p>
+        </div>
+        <Show when={props.user}>{user => <AccountMenu user={user()} pending={0} />}</Show>
+      </div>
+      <div class='tm-console-steps'>
+        <Show when={props.pod && clockRound()}>
+          {round => <ClockControls state={props.state} pod={props.pod as Pod} round={round()} class='is-large' />}
+        </Show>
+        <span class='tm-grow' />
+        <div class='tm-next'>
+          {action}
+          <Show when={reason()}>
+            <span class='tm-next-reason'>{reason()}</span>
+          </Show>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -389,8 +410,8 @@ function Console(props: { state: ReturnType<typeof createManage>; manage: Manage
         })
       : null;
   return (
-    <div class='tm-page'>
-      <Hero state={props.state} manage={props.manage} pod={pod()} tom={tom} />
+    <div class='tm-page tm-console'>
+      <Hero state={props.state} manage={props.manage} pod={pod()} tom={tom} user={latestValue(session)?.user} />
       <Tabs options={tabs()} selected={tab()} onSelect={setTab} ariaLabel='Event sections' />
       <Show when={tom}>{link => <TomStrip link={link()} />}</Show>
       <Show when={pods().length > 1 && (tab() === 'round' || tab() === 'standings')}>
