@@ -102,7 +102,7 @@ test('the public page shows the top cut as a table, or as a bracket kept in its 
 
   await page.reload();
   await expect(bracket).toBeVisible();
-  await page.getByRole('tab', { name: 'Table' }).click();
+  await page.getByRole('tab', { name: 'Table', exact: true }).click();
   await expect(page).not.toHaveURL(/view=/);
   await expect(page.locator('.tm-matches tbody tr')).toHaveCount(4);
 });
@@ -178,6 +178,6 @@ test('the console looks at the top cut as a bracket, and enters results in the t
   await page.getByRole('tab', { name: 'Bracket' }).click();
   await expect(page.getByRole('region', { name: 'Top cut bracket' }).locator('.tm-bracket-col')).toHaveCount(3);
   await expect(page.locator('.tm-matches')).toHaveCount(0);
-  await page.getByRole('tab', { name: 'Table' }).click();
+  await page.getByRole('tab', { name: 'Table', exact: true }).click();
   await expect(page.locator('.tm-matches tbody tr')).toHaveCount(4);
 });

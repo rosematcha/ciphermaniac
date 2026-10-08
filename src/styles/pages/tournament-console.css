@@ -49,3 +49,115 @@
   min-width: 52px;
   font-size: var(--text-body);
 }
+
+/* ---------- The round's box ---------- */
+/* Previous round, the picker, next round: one control, drawn as one. */
+.tm-stepper {
+  display: inline-flex;
+  flex: none;
+}
+.tm-stepper .btn {
+  justify-content: center;
+  width: var(--control-h);
+  min-height: var(--control-h);
+  padding: 0;
+  border-radius: 0;
+  font-size: var(--text-body);
+}
+.tm-stepper .btn:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+.tm-stepper .btn:last-child {
+  margin-left: -1px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+.tm-stepper .tm-select {
+  margin-left: -1px;
+  border-radius: 0;
+}
+.tm-count {
+  margin-left: 6px;
+  color: var(--accent-ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tm-console .tm-deck-mode {
+  min-height: var(--control-h);
+}
+.tm-console .tm-filter-bar .search {
+  flex: 1 1 auto;
+}
+
+/* The tables in progress lead under their heading, the finished under theirs. */
+.tm-group-row th {
+  height: 30px;
+  padding: 0 14px;
+  background: var(--surface-2);
+  box-shadow: inset 0 -1px 0 var(--rule);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
+  text-align: left;
+  text-transform: uppercase;
+}
+/* The table number is what the room calls out: the largest figure in the row. */
+.tm-console .tm-matches .data td.tm-table-col {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+/* A laptop's width keeps the columns (the shared rows restack below 1100px):
+   a result's actions go under its words instead, so the data columns keep theirs. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .tm-console .tm-matches .data {
+    display: table;
+    width: 100%;
+    table-layout: auto;
+  }
+  .tm-console .tm-matches .data thead {
+    display: table-header-group;
+  }
+  .tm-console .tm-matches .data tbody {
+    display: table-row-group;
+  }
+  .tm-console .tm-matches .data tr {
+    display: table-row;
+    padding: 0;
+  }
+  .tm-console .tm-matches .data :is(td, th) {
+    display: table-cell;
+    padding: 0 14px;
+  }
+  .tm-console .tm-matches .data td {
+    height: 44px;
+  }
+  .tm-console .tm-matches .data td.tm-table-col {
+    text-align: center;
+  }
+  .tm-console .tm-matches .tm-result {
+    grid-template-columns: minmax(0, 1fr);
+    padding-block: 6px;
+  }
+  .tm-console .tm-matches .tm-result-acts {
+    justify-content: flex-start;
+    margin-left: -8px;
+  }
+}
+/* Where the rows restack, a group's heading spans the row. */
+@media (max-width: 1100px) {
+  .tm-matches .data tr.tm-group-row th {
+    width: auto;
+  }
+}
+@media (max-width: 900px) {
+  .tm-matches .data tr.tm-group-row {
+    display: block;
+    padding: 0;
+  }
+  .tm-matches .data tr.tm-group-row th {
+    display: flex;
+    align-items: center;
+  }
+}

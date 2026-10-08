@@ -148,7 +148,7 @@ test('a result shows in its row while it is on its way, and its answer is not re
     throw new Error('no table');
   }
   await mockConsole(page, t, settingsOf({}));
-  const rows = page.locator('.tm-matches tbody tr');
+  const rows = page.locator('.tm-matches tbody tr:not(.tm-group-row)');
   await expect(rows).toHaveCount(4);
   let answer = () => undefined as void;
   const held = new Promise<void>(resolve => {
@@ -169,13 +169,14 @@ test('a result shows in its row while it is on its way, and its answer is not re
   });
   await rows.evaluateAll(els => els.forEach(el => el.setAttribute('data-kept', '')));
   await page.getByRole('button', { name: 'Report Player' }).first().dblclick();
-  const first = rows.first();
+  // Followed by its number: once its result is in, the table moves under Done.
+  const first = rows.filter({ has: page.locator('td.tm-table-col', { hasText: new RegExp(`^${table.table}$`) }) });
   await expect(first.locator('.tm-result-label')).toHaveText('1–0');
   await expect(first.locator('.tm-mark.is-unconfirmed')).toHaveText([/^W/, /^L/]);
   answer();
   await expect(first.locator('.tm-mark.is-win')).toHaveText('W');
   await expect(first.locator('.tm-mark.is-unconfirmed')).toHaveCount(0);
-  await expect(page.locator('.tm-matches tbody tr[data-kept]')).toHaveCount(3);
+  await expect(page.locator('.tm-matches tbody tr[data-kept]:not(.tm-group-row)')).toHaveCount(3);
   expect(reads).toEqual([]);
 });
 
@@ -399,4 +400,49 @@ test('at an unsanctioned event where players do not report, staff can unlink a p
     .getByRole('button', { name: 'Unlink' })
     .click();
   await expect.poll(() => released).toEqual([`?player=${t.players[0]?.id ?? ''}`]);
+});
+
+/** An event's latest round with its first `done` tables won by their first seat. */
+function partlyPlayed(players: number, rounds: number, done: number): Tournament {
+  const t = event(players, rounds, true);
+  const round = t.pods[0]?.rounds.at(-1);
+  if (round) {
+    round.matches = round.matches.map((m, i) => (i < done ? { ...m, outcome: 'p1' } : m));
+  }
+  return t;
+}
+
+test('while a round plays, its tables in progress lead under their heading and the finished follow', async ({
+  page
+}) => {
+  await mockConsole(page, partlyPlayed(8, 1, 1), settingsOf({}));
+  const box = page.locator('.tm-matches');
+  await expect(box.locator('.tm-group-row')).toHaveText(['In progress · 3', 'Done · 1']);
+  const rows = box.locator('tbody tr:not(.tm-group-row)');
+  await expect(rows.first().locator('.tm-result-label')).toHaveText('In progress');
+  await expect(rows.last().locator('.tm-result-label')).toHaveText('1–0');
+  const show = page.getByRole('tablist', { name: 'Show' });
+  await expect(show.getByRole('tab', { name: /In progress/ })).toHaveText('In progress3');
+  await show.getByRole('tab', { name: /In progress/ }).click();
+  await expect(rows).toHaveCount(3);
+  await expect(box.locator('.tm-group-row')).toHaveCount(0);
+});
+
+test('the round stepper walks the rounds either side of the picker, and the clock runs from the head', async ({
+  page
+}) => {
+  await mockConsole(page, partlyPlayed(8, 2, 0), settingsOf({}));
+  const round = page.getByRole('combobox', { name: 'Round' });
+  await expect(round).toHaveValue('3');
+  await expect(page.getByRole('button', { name: 'Next round' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Previous round' }).click();
+  await expect(round).toHaveValue('2');
+  await page.getByRole('button', { name: 'Previous round' }).click();
+  await expect(round).toHaveValue('1');
+  await expect(page.getByRole('button', { name: 'Previous round' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Next round' }).click();
+  await expect(round).toHaveValue('2');
+  await expect(page.locator('.tm-console-hero').getByRole('group', { name: 'Round clock' })).toBeVisible();
+  await expect(page.locator('.tm-box').getByRole('group', { name: 'Round clock' })).toHaveCount(0);
+  await expect(page.locator('.tm-meta-lead')).toContainText('Round 3 of 3 in progress');
 });

@@ -10,7 +10,7 @@
  * site's live pairings do, so the opponent is never behind a sideways scroll.
  */
 
-import { createMemo, For, type JSX, Show, Switch, Match as When } from 'solid-js';
+import { createMemo, For, Index, type JSX, Show, Switch, Match as When } from 'solid-js';
 import { sortMatches } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import type { PendingResult } from '../../../shared/tournament/view';
@@ -45,6 +45,12 @@ export interface MatchTableProps {
   confirming?: { table: number; p1: string; outcome: Outcome } | null;
   /** Staff only: the result sent for a match and not answered yet, previewed the same way until it is. */
   sent?: (match: Match) => Outcome | undefined;
+  /**
+   * Staff only: whether a table is still in progress. Given, the tables in
+   * progress lead under their own heading and the finished follow under theirs,
+   * while the round has some of each.
+   */
+  inProgress?: (match: Match) => boolean;
 }
 
 const winnerOutcome = (seat: 1 | 2): Outcome => (seat === 1 ? 'p1' : 'p2');
@@ -156,9 +162,29 @@ function StatusCell(props: MatchTableProps & { match: Match }) {
   );
 }
 
+/** The tables in their order, or split into those in progress and those done while the round has both. */
+function grouped(
+  matches: readonly Match[],
+  playing: ((match: Match) => boolean) | undefined
+): { label: string | null; matches: Match[] }[] {
+  const sorted = sortMatches(matches);
+  if (!playing) {
+    return [{ label: null, matches: sorted }];
+  }
+  const open = sorted.filter(m => playing(m));
+  const done = sorted.filter(m => !playing(m));
+  return open.length && done.length
+    ? [
+        { label: `In progress · ${open.length}`, matches: open },
+        { label: `Done · ${done.length}`, matches: done }
+      ]
+    : [{ label: null, matches: sorted }];
+}
+
 export function MatchTable(props: MatchTableProps) {
   const records = createMemo(() => recordsBefore(props.pod, props.round));
   const hasDecks = () => Object.keys(props.decks).length > 0;
+  const columns = () => 3 + (props.extra || props.status ? 1 : 0);
   const mine = (match: Match) => props.me != null && (match.p1 === props.me || match.p2 === props.me);
   return (
     <div class='table-wrap tm-matches' classList={{ 'has-extra': Boolean(props.extra), 'has-decks': hasDecks() }}>
@@ -177,19 +203,34 @@ export function MatchTable(props: MatchTableProps) {
           </tr>
         </thead>
         <tbody>
-          <For each={sortMatches(props.matches)}>
-            {match => (
-              <tr classList={{ 'is-me': mine(match), 'is-confirming': isConfirming(props, match) }}>
-                <td class='num muted-cell tm-table-col'>{match.table || '—'}</td>
-                <SeatCell {...props} match={match} seat={1} records={records()} />
-                <SeatCell {...props} match={match} seat={2} records={records()} />
-                <Show when={props.extra}>{extra => <td class='tm-extra-col'>{extra()(match)}</td>}</Show>
-                <Show when={props.status && !props.extra}>
-                  <StatusCell {...props} match={match} />
+          <Index each={grouped(props.matches, props.inProgress)}>
+            {group => (
+              <>
+                <Show when={group().label}>
+                  {label => (
+                    <tr class='tm-group-row'>
+                      <th scope='colgroup' colSpan={columns()}>
+                        {label()}
+                      </th>
+                    </tr>
+                  )}
                 </Show>
-              </tr>
+                <For each={group().matches}>
+                  {match => (
+                    <tr classList={{ 'is-me': mine(match), 'is-confirming': isConfirming(props, match) }}>
+                      <td class='num muted-cell tm-table-col'>{match.table || '—'}</td>
+                      <SeatCell {...props} match={match} seat={1} records={records()} />
+                      <SeatCell {...props} match={match} seat={2} records={records()} />
+                      <Show when={props.extra}>{extra => <td class='tm-extra-col'>{extra()(match)}</td>}</Show>
+                      <Show when={props.status && !props.extra}>
+                        <StatusCell {...props} match={match} />
+                      </Show>
+                    </tr>
+                  )}
+                </For>
+              </>
             )}
-          </For>
+          </Index>
         </tbody>
       </table>
     </div>

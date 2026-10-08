@@ -241,13 +241,13 @@ body[data-mode='dark']:has(.tm-page) {
 .tm-page .data thead th {
   box-shadow: inset 0 -1px 0 var(--border);
 }
-.tm-page .data tbody tr:where(:nth-child(even of :not(.tm-cut-line))) {
+.tm-page .data tbody tr:where(:nth-child(even of :not(.tm-cut-line, .tm-group-row))) {
   background: color-mix(in srgb, var(--surface-2) 55%, var(--surface));
 }
 .tm-page .data tbody td {
   border-bottom-color: transparent;
 }
-.tm-page .data tbody tr:hover {
+.tm-page .data tbody tr:not(.tm-group-row):hover {
   background: color-mix(in srgb, var(--fg) 12%, var(--surface));
 }
 /* A row is read for its names and results, so its text-only actions take the
@@ -1178,35 +1178,18 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
-/* A table still playing is what staff are there for: full ink and a dot;
-   marigold only once a report waits on them, the problem ink when reports
-   need settling. */
+/* A table still in progress is what staff are there for: full ink; marigold
+   only once a report waits on them, the problem ink when reports need settling. */
 .tm-result-label.is-open {
   font-weight: 600;
   white-space: nowrap;
   color: var(--fg);
-}
-.tm-result-label.is-open::before {
-  content: '';
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 7px;
-  border-radius: 50%;
-  background: var(--muted);
-  vertical-align: 1px;
-}
-.tm-result-label.is-reported::before {
-  background: var(--accent);
 }
 .tm-result-label.is-reported {
   color: var(--accent-ink);
 }
 .tm-result-label.is-problem {
   color: color-mix(in srgb, var(--negative) 82%, var(--fg));
-}
-.tm-result-label.is-problem::before {
-  background: var(--negative);
 }
 .tm-result-sub {
   font-weight: 400;

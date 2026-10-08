@@ -166,7 +166,7 @@ function Result(props: ResultProps) {
               classList={{ 'is-open': open(), 'is-reported': Boolean(report()), 'is-problem': report()?.problem }}
               title={report()?.detail}
             >
-              {open() ? (report()?.label ?? 'Open') : RESULT_WORDS[shown().outcome]}
+              {open() ? (report()?.label ?? 'In progress') : RESULT_WORDS[shown().outcome]}
               <Show when={report()}>{r => <span class='sr-only'>. {r().detail}</span>}</Show>
               <Show when={shown().unconfirmed}>
                 <span class='tm-result-sub'> not in TOM yet</span>
@@ -216,20 +216,14 @@ function matchesQuery(match: Match, query: string, names: Map<string, string>): 
     : filterMatches([match], names, query).length > 0;
 }
 
-/**
- * The bar that narrows the room: a table number or a name, and optionally
- * only the tables still playing; with archetypes on, the switch to naming decks.
- */
+/** The bar that finds a table: its number or a player's name, and what a press on a player does. */
 function RoomFilter(props: {
   query: string;
-  openOnly: boolean;
-  /** Null while the event has archetypes off. */
-  deckMode: boolean | null;
+  /** Naming decks: each seat is its player's deck picker. */
+  deckMode: boolean;
   /** Whether a press on a player does anything worth saying: not while swapping, nor with every table in. */
   hint: boolean;
   onQuery: (value: string) => void;
-  onOpenOnly: (value: boolean) => void;
-  onDeckMode: (value: boolean) => void;
   ref: (el: HTMLInputElement) => void;
 }) {
   return (
@@ -243,24 +237,6 @@ function RoomFilter(props: {
         value={props.query}
         onInput={e => props.onQuery(e.currentTarget.value)}
       />
-      <button
-        type='button'
-        class='chip'
-        aria-pressed={props.openOnly}
-        onClick={() => props.onOpenOnly(!props.openOnly)}
-      >
-        Open tables only
-      </button>
-      <Show when={props.deckMode !== null}>
-        <button
-          type='button'
-          class='chip'
-          aria-pressed={Boolean(props.deckMode)}
-          onClick={() => props.onDeckMode(!props.deckMode)}
-        >
-          Enter decks
-        </button>
-      </Show>
       <Show when={props.deckMode || props.hint}>
         <span class='tm-hint'>
           {props.deckMode
@@ -269,6 +245,69 @@ function RoomFilter(props: {
         </span>
       </Show>
     </div>
+  );
+}
+
+/** Every table, or only those still in progress, with how many those are. */
+function ShowTables(props: { openOnly: boolean; open: number; onOpenOnly: (value: boolean) => void }) {
+  return (
+    <div class='segmented tm-show-tables' role='tablist' aria-label='Show'>
+      <button
+        type='button'
+        role='tab'
+        class={props.openOnly ? '' : 'active'}
+        aria-selected={!props.openOnly}
+        onClick={() => props.onOpenOnly(false)}
+      >
+        All tables
+      </button>
+      <button
+        type='button'
+        role='tab'
+        class={props.openOnly ? 'active' : ''}
+        aria-selected={props.openOnly}
+        onClick={() => props.onOpenOnly(true)}
+      >
+        In progress
+        <Show when={props.open > 0}>
+          <span class='tm-count'>{props.open}</span>
+        </Show>
+      </button>
+    </div>
+  );
+}
+
+/** The round before and after the one shown, either side of the picker. */
+function RoundStepper(props: { pod: Pod; selected: number; onSelect: (n: number) => void }) {
+  const index = () => props.pod.rounds.findIndex(r => r.number === props.selected);
+  const step = (by: number) => {
+    const next = props.pod.rounds[index() + by];
+    if (next) {
+      props.onSelect(next.number);
+    }
+  };
+  return (
+    <span class='tm-stepper'>
+      <button
+        type='button'
+        class='btn btn-secondary'
+        aria-label='Previous round'
+        disabled={index() <= 0}
+        onClick={() => step(-1)}
+      >
+        ‹
+      </button>
+      <RoundPicker pod={props.pod} selected={props.selected} onSelect={props.onSelect} />
+      <button
+        type='button'
+        class='btn btn-secondary'
+        aria-label='Next round'
+        disabled={index() >= props.pod.rounds.length - 1}
+        onClick={() => step(1)}
+      >
+        ›
+      </button>
+    </span>
   );
 }
 
@@ -286,19 +325,27 @@ interface RoundBarProps {
   waiting: boolean;
   nothingReported: boolean;
   swapMode: boolean;
+  openOnly: boolean;
+  /** Null while the event has archetypes off. */
+  deckMode: boolean | null;
   /** The Table / Bracket switch, once the pod has a top cut to draw. */
   views?: JSX.Element;
   onPick: (round: number) => void;
   onSwap: () => void;
+  onOpenOnly: (value: boolean) => void;
+  onDeckMode: (value: boolean) => void;
 }
 
-/** The round's bar: the picker and progress, then what can be done to it (swap, re-pair, delete, the clock). */
+/**
+ * The round's bar: the picker and progress, then what can be done to it
+ * (swap, re-pair, delete), then which tables show and the switch to naming decks.
+ */
 function RoundBar(props: RoundBarProps) {
   const swiss = () => props.round.kind === 'swiss';
   const running = () => props.live && props.round.status !== 'finished';
   return (
     <div class='tm-box-bar'>
-      <RoundPicker pod={props.pod} selected={props.round.number} onSelect={props.onPick} />
+      <RoundStepper pod={props.pod} selected={props.round.number} onSelect={props.onPick} />
       <span class='muted tm-num'>
         {STATUS_LABELS[props.round.status]} · {props.played - props.open} of {props.played} in
       </span>
@@ -322,6 +369,17 @@ function RoundBar(props: RoundBarProps) {
       </Show>
       <Show when={props.live && props.nothingReported}>
         <DeleteRound state={props.state} pod={props.pod} round={props.round} />
+      </Show>
+      <ShowTables openOnly={props.openOnly} open={props.open} onOpenOnly={value => props.onOpenOnly(value)} />
+      <Show when={props.deckMode !== null}>
+        <button
+          type='button'
+          class='chip tm-deck-mode'
+          aria-pressed={Boolean(props.deckMode)}
+          onClick={() => props.onDeckMode(!props.deckMode)}
+        >
+          Enter decks
+        </button>
       </Show>
     </div>
   );
@@ -477,12 +535,9 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
               <RoomFilter
                 ref={el => (filterInput = el)}
                 query={query()}
-                openOnly={openOnly()}
-                deckMode={decksEnabled(props.manage.settings) ? deckMode() : null}
+                deckMode={naming()}
                 hint={!swapMode() && !props.locked && openCount() > 0}
                 onQuery={setQuery}
-                onOpenOnly={setOpenOnly}
-                onDeckMode={setDeckMode}
               />
               <MatchTable
                 pod={withSwiss(props.manage.tournament, props.pod)}
@@ -503,6 +558,11 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                         </Suspense>
                       )
                     : undefined
+                }
+                inProgress={
+                  openOnly()
+                    ? undefined
+                    : match => shownOutcome(match, props.pod, r(), props.manage.pending).outcome === 'pending'
                 }
                 confirming={asking()}
                 sent={match => sent().get(sentKey(r(), match))}
@@ -546,6 +606,10 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                 waiting={waiting().length > 0}
                 nothingReported={nothingReported()}
                 swapMode={swapMode()}
+                openOnly={openOnly()}
+                deckMode={decksEnabled(props.manage.settings) ? deckMode() : null}
+                onOpenOnly={setOpenOnly}
+                onDeckMode={setDeckMode}
                 views={
                   <Show when={cut()}>
                     <Segmented
