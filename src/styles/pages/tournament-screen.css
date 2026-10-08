@@ -1,6 +1,6 @@
 /* The big screen (/t/:code?screen=1), loaded with its chunk (BigScreen).
-   Read from across a room: sizes scale with the screen between two steps of
-   the type scale, and the clock is the largest thing on it. */
+   Read from across a room: sizes scale with the screen, and while a round
+   runs the clock is the largest thing on it. */
 body.tm-screen-mode .topnav,
 body.tm-screen-mode .site-footer,
 body.tm-screen-mode .live-banner {
@@ -13,15 +13,16 @@ body.tm-screen-mode main.page {
 .tm-screen {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  row-gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
   height: 100dvh;
-  padding: var(--space-5) var(--space-6);
+  padding: 2.3vw 3.3vw 2vw;
+  overflow: hidden;
 }
 .tm-screen-head {
   display: flex;
   align-items: center;
   gap: var(--space-6);
-  padding-bottom: var(--space-4);
+  padding-bottom: 1.1vw;
   border-bottom: 1px solid var(--border);
 }
 .tm-screen-text {
@@ -30,11 +31,12 @@ body.tm-screen-mode main.page {
 }
 .tm-screen-title {
   margin: 0;
-  font-size: clamp(var(--text-xl), 2.4vw, calc(var(--text-2xl) * 1.4));
+  font-size: clamp(var(--text-xl), 2.4vw, calc(var(--text-2xl) * 1.6));
+  letter-spacing: -0.02em;
 }
 .tm-screen-status {
   margin: 6px 0 0;
-  font-size: clamp(var(--text-lg), 1.6vw, var(--text-2xl));
+  font-size: clamp(var(--text-lg), 1.4vw, var(--text-2xl));
 }
 .tm-screen-join {
   display: flex;
@@ -42,7 +44,8 @@ body.tm-screen-mode main.page {
   gap: var(--space-3);
 }
 .tm-screen-join .tm-qr {
-  width: clamp(72px, 6.5vw, 120px);
+  width: clamp(72px, 5.8vw, 120px);
+  background: #fff;
 }
 .tm-qr {
   display: block;
@@ -52,115 +55,202 @@ body.tm-screen-mode main.page {
 }
 .tm-screen-code {
   margin: 0;
-  font-size: clamp(var(--text-xl), 2vw, calc(var(--text-2xl) * 1.2));
+  font-size: clamp(var(--text-xl), 1.9vw, calc(var(--text-2xl) * 1.3));
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 .tm-screen-url {
   margin: 2px 0 0;
-  font-size: var(--text-base);
+  font-size: clamp(var(--text-base), 0.8vw, var(--text-lg));
   color: var(--muted);
   word-break: break-all;
 }
-.tm-screen-clock {
-  font-size: clamp(calc(var(--text-2xl) * 1.6), 7vw, calc(var(--text-2xl) * 4.4));
-  font-weight: 800;
-  line-height: 0.9;
-  letter-spacing: -0.03em;
-}
-.tm-screen-start {
-  display: grid;
-  justify-items: end;
-  margin: 0;
-  color: var(--muted);
-}
-.tm-screen-start small {
-  font-size: var(--text-lg);
-  font-weight: 600;
-}
-.tm-screen-start span {
-  font-size: clamp(var(--text-2xl), 4.5vw, calc(var(--text-2xl) * 2.6));
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
+
+/* Each phase rises in as the last gives way. */
 .tm-screen-main {
+  min-height: 0;
+  padding-top: 1.1vw;
+  animation: tm-screen-rise 600ms var(--ease-spring) 100ms both;
+}
+@keyframes tm-screen-rise {
+  from {
+    opacity: 0;
+    transform: translateY(2vw);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tm-screen-main {
+    animation-name: tm-screen-fade;
+  }
+  @keyframes tm-screen-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
+.tm-screen-main > .tm-screen-scroll {
+  height: 100%;
+}
+.tm-screen-scroll {
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
 }
-.tm-screen-main::-webkit-scrollbar {
+.tm-screen-scroll::-webkit-scrollbar {
   display: none;
 }
 
-/* Tables in order: the number, then both players. One per row by default,
-   two per row where there are many. */
+/* Before round 1: everyone registered on the left, the way in on the right. */
+.tm-screen-before {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  height: 100%;
+}
+.tm-screen-before > .tm-screen-scroll {
+  padding-right: 3.6vw;
+}
+.tm-screen-join.is-large {
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.2vw;
+  border-left: 1px solid var(--border);
+  text-align: center;
+}
+.tm-screen-join.is-large .tm-qr {
+  width: min(26vw, 46vh);
+  padding: 0.9vw;
+  border: 0;
+  border-radius: var(--radius-lg);
+}
+.tm-screen-join.is-large .tm-screen-code {
+  font-size: clamp(var(--text-2xl), 4.2vw, 8rem);
+  line-height: 1;
+  letter-spacing: 0.1em;
+}
+.tm-screen-join.is-large .tm-screen-url {
+  margin-top: 0.5vw;
+  font-size: clamp(var(--text-lg), 1.25vw, var(--text-2xl));
+}
+.tm-screen-first {
+  margin: 1vw 0 0;
+  font-size: clamp(var(--text-lg), 1.5vw, var(--text-2xl));
+  font-weight: 600;
+}
+.tm-screen-registered {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: clamp(var(--text-xl), 2.4vw, calc(var(--text-2xl) * 1.8));
+}
+.tm-screen-registered li {
+  overflow: hidden;
+  padding: 0.36em 0;
+  border-bottom: 1px solid var(--rule);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tm-screen-registered strong {
+  font-weight: 700;
+}
+
+/* While the clock runs: the clock across the top, the tables under it. */
+.tm-screen-timing {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+.tm-screen-big-clock {
+  overflow: hidden;
+  padding: 0.6vw 0 1.6vw;
+  text-align: center;
+}
+.tm-screen-clock {
+  display: block;
+  font-size: min(20vw, 34vh);
+  font-weight: 800;
+  line-height: 0.82;
+  letter-spacing: -0.045em;
+}
+.tm-screen-big-clock p {
+  margin: 1.2vw 0 0;
+  font-size: clamp(var(--text-lg), 2vw, calc(var(--text-2xl) * 1.4));
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Tables in order: the players face each other across the table number,
+   which gives way to the result once there is one. */
 .tm-screen-pod + .tm-screen-pod {
   margin-top: var(--space-5);
 }
 .tm-screen-pod-head {
   margin: 0 0 8px;
-  font-size: var(--text-lg);
+  font-size: clamp(var(--text-lg), 1.4vw, var(--text-2xl));
   font-weight: 700;
 }
 .tm-screen-tables {
   list-style: none;
   margin: 0;
   padding: 0;
-  font-size: clamp(var(--text-xl), 2.2vw, calc(var(--text-2xl) * 1.5));
+  font-size: clamp(var(--text-xl), 2vw, calc(var(--text-2xl) * 1.5));
 }
 .tm-screen-tables li {
   display: grid;
-  grid-template-columns: 2.4em minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 4.2em minmax(0, 1fr);
   align-items: center;
-  column-gap: 1em;
-  padding: 0.35em 0;
+  padding: 0.32em 0;
   border-bottom: 1px solid var(--rule);
-  break-inside: avoid;
 }
-.tm-screen.is-two .tm-screen-tables {
-  columns: 2;
-  column-gap: var(--space-6);
-  font-size: clamp(var(--text-lg), 1.5vw, var(--text-2xl));
+.tm-screen-mid {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  line-height: 1;
 }
 .tm-screen-table {
-  font-size: 1.6em;
+  font-size: 1.2em;
   font-weight: 800;
-  line-height: 1;
-  text-align: center;
+}
+.tm-screen-mid small {
+  font-size: 0.42em;
+  font-weight: 600;
+  color: var(--muted);
+}
+.tm-screen-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.12em 0.35em;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-size: 0.8em;
+  font-weight: 800;
+}
+.tm-screen-score .tm-screen-mark + .tm-screen-mark::before {
+  content: '–';
+  margin-right: 0.3em;
+  color: var(--muted);
+  font-weight: 500;
+}
+.tm-screen-tables li.is-done .tm-screen-table {
+  color: var(--muted);
 }
 .tm-screen-seat {
   display: grid;
   min-width: 0;
+  text-align: right;
 }
-.tm-screen-seat + .tm-screen-seat {
-  padding-left: 1em;
-  border-left: 1px solid var(--rule);
+.tm-screen-seat .tm-screen-name {
+  justify-content: flex-end;
 }
-/* A result in: the winner marked in the accent, the loser faded (in a top cut,
-   out), a tie marked on both. A table with its result reads quieter than one
-   still playing. */
+.tm-screen-mid + .tm-screen-seat {
+  text-align: left;
+}
+.tm-screen-mid + .tm-screen-seat .tm-screen-name {
+  justify-content: flex-start;
+}
+/* A result in: the winner stays, the loser fades (in a top cut, out). */
 .tm-screen-seat.is-out {
-  color: var(--muted);
-}
-.tm-screen-mark {
-  display: inline-block;
-  min-width: 1.5em;
-  margin-left: 0.5em;
-  padding: 0.1em 0.3em;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 0.55em;
-  flex: none;
-  font-weight: 800;
-  line-height: 1.2;
-  text-align: center;
-}
-.tm-screen-seat.is-win .tm-screen-mark {
-  border-color: var(--accent);
-  background: var(--accent-fill);
-  color: var(--accent-fg);
-}
-.tm-screen-tables li.is-done .tm-screen-table {
   color: var(--muted);
 }
 .tm-screen-name {
@@ -182,27 +272,56 @@ body.tm-screen-mode main.page {
   color: var(--muted);
 }
 .tm-screen-record {
-  font-size: 0.6em;
+  font-size: 0.58em;
   font-weight: 500;
   color: var(--muted);
 }
 
-/* Before round 1: everyone registered, by last name, in columns. */
-.tm-screen-registered {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  columns: 18rem auto;
-  column-gap: var(--space-6);
-  font-size: clamp(var(--text-lg), 1.7vw, var(--text-2xl));
+/* After the event: the standings, headings pinned while the rows scroll. */
+.tm-screen-standings {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(var(--text-xl), 2.4vw, calc(var(--text-2xl) * 1.8));
 }
-.tm-screen-registered li {
-  padding: 0.4em 0;
+.tm-screen-standings th {
+  position: sticky;
+  top: 0;
+  padding: 0 0 0.4em 1.2em;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 0.52em;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: right;
+}
+.tm-screen-standings td {
+  padding: 0.32em 0 0.32em 1.2em;
   border-bottom: 1px solid var(--rule);
-  break-inside: avoid;
+  color: var(--muted);
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
 }
-.tm-screen-registered strong {
+.tm-screen-standings :is(th, td):is(:first-child, :nth-child(2)) {
+  text-align: left;
+}
+.tm-screen-standings :is(th, td):first-child {
+  width: 2.6em;
+  padding-left: 0;
+}
+.tm-screen-standings .tm-screen-player {
+  width: 100%;
+  overflow: hidden;
+  max-width: 0;
+  padding-left: 0;
+  text-overflow: ellipsis;
+}
+.tm-screen-standings :is(.tm-screen-place, .tm-screen-player, .tm-screen-points) {
+  color: var(--fg);
   font-weight: 700;
+}
+.tm-screen-standings th:nth-child(2) {
+  padding-left: 0;
 }
 
 /* For whoever is at the laptop: shown while the pointer moves, never to the room. */
@@ -233,13 +352,22 @@ body.tm-screen-mode main.page {
 @media (max-width: 900px) {
   .tm-screen {
     height: auto;
+    min-height: 100dvh;
     padding: var(--space-4);
   }
   .tm-screen-head {
     flex-wrap: wrap;
     gap: var(--space-3);
   }
-  .tm-screen.is-two .tm-screen-tables {
-    columns: 1;
+  .tm-screen-before {
+    grid-template-columns: 1fr;
+  }
+  .tm-screen-join.is-large {
+    order: -1;
+    padding-bottom: var(--space-4);
+    border-left: 0;
+  }
+  .tm-screen-join.is-large .tm-qr {
+    width: min(60vw, 280px);
   }
 }

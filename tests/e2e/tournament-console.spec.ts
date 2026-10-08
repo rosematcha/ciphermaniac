@@ -342,8 +342,10 @@ test('the big screen marks who won each finished table', async ({ page }) => {
   await expect(page.locator('.tm-screen-status')).toContainText('Round 1 of 3');
   const done = page.locator('.tm-screen-tables li.is-done');
   await expect(done).toHaveCount(1);
-  await expect(done.locator('.tm-screen-seat.is-win .tm-screen-mark')).toHaveText('W');
-  await expect(done.locator('.tm-screen-seat.is-out .tm-screen-mark')).toHaveText('L');
+  await expect(done.locator('.tm-screen-seat.is-win')).toHaveCount(1);
+  await expect(done.locator('.tm-screen-seat.is-out')).toHaveCount(1);
+  // The second seat won: its mark faces it, on the right.
+  await expect(done.locator('.tm-screen-score .tm-screen-mark')).toHaveText(['L', 'W']);
   await expect(page.locator('.tm-screen-mark')).toHaveCount(2);
 });
 

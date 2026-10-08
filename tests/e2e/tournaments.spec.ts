@@ -411,27 +411,37 @@ test('the big screen hides the site chrome and shows a QR code to the event', as
   await expect(page.getByRole('img', { name: 'Event page QR code' })).toBeVisible();
 });
 
-test('the big screen remembers two per row and cycles its scroll speed with S', async ({ page }) => {
+test('the big screen remembers its scroll speed, cycled with S', async ({ page }) => {
   await mockApi(page);
   await page.goto(`/t/${CODE}?screen=1`);
   await expect(page.getByRole('tab', { name: 'Slow' })).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('s');
   await expect(page.getByRole('tab', { name: 'Moderate' })).toHaveAttribute('aria-selected', 'true');
-  await page.getByRole('button', { name: 'Show two per row' }).click();
-  await expect(page.locator('.tm-screen')).toHaveClass(/is-two/);
   await page.reload();
-  await expect(page.locator('.tm-screen')).toHaveClass(/is-two/);
   await expect(page.getByRole('tab', { name: 'Moderate' })).toHaveAttribute('aria-selected', 'true');
 });
 
-test('before round 1 the big screen lists everyone registered, by last name', async ({ page }) => {
+test('before round 1 the big screen lists everyone registered by first name, beside the QR code', async ({ page }) => {
   const unpaired = { ...VIEW.tournament, pods: VIEW.tournament.pods.map(pod => ({ ...pod, rounds: [] })) };
   await mockApi(page, { ...VIEW, tournament: unpaired });
   await page.goto(`/t/${CODE}?screen=1`);
-  const players = VIEW.tournament.players.filter(p => p.droppedAfter === null);
+  const players = VIEW.tournament.players
+    .filter(p => p.droppedAfter === null)
+    .sort((a, b) => a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName));
   await expect(page.locator('.tm-screen-registered li')).toHaveCount(players.length);
-  await expect(page.locator('.tm-screen-registered li').first()).toHaveText('Frances Allen');
+  await expect(page.locator('.tm-screen-registered li').first()).toHaveText(
+    `${players[0]?.firstName} ${players[0]?.lastName}`
+  );
   await expect(page.locator('.tm-screen-status')).toHaveText(`Registration · ${players.length} players`);
+  await expect(page.locator('.tm-screen-join.is-large').getByRole('img', { name: 'Event page QR code' })).toBeVisible();
+});
+
+test('once the event ends the big screen shows the standings', async ({ page }) => {
+  await mockApi(page, { ...VIEW, settings: { ...VIEW.settings, finished: true } });
+  await page.goto(`/t/${CODE}?screen=1`);
+  await expect(page.locator('.tm-screen-tables')).toHaveCount(0);
+  const first = page.locator('.tm-screen-standings tbody tr').first();
+  await expect(first.locator('.tm-screen-place')).toHaveText('1');
 });
 
 test('before round 1 the public page lists everyone registered @mobile', async ({ page }) => {
