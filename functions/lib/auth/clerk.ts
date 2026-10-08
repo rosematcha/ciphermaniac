@@ -180,3 +180,22 @@ export async function clerkProfile(env: AuthEnv, origin: string, token: string):
     avatar: null
   };
 }
+
+/**
+ * Deletes the Clerk user an account signed in with, so its username and
+ * password are gone with the account. A user Clerk no longer has counts as
+ * deleted. Throws when Clerk can't be reached or refuses.
+ */
+export async function deleteClerkUser(env: AuthEnv, subject: string): Promise<void> {
+  const clerk = clerkKeys(env);
+  if (!clerk) {
+    throw new Error('Clerk is not configured');
+  }
+  const response = await fetch(`https://api.clerk.com/v1/users/${encodeURIComponent(subject)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${clerk.secretKey}` }
+  });
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Clerk user delete failed: ${response.status}`);
+  }
+}

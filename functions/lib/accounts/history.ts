@@ -6,7 +6,8 @@
  *
  * Nothing about an event is copied into the index: its name, date, format
  * and state come from the event's row at read time, and a deleted event
- * drops out of the join. Every step is an index lookup, and the JSON is
+ * drops out of the join, as does one the account wiped from its History
+ * (`history_hidden`). Every step is an index lookup, and the JSON is
  * read in D1, not in the function.
  */
 
@@ -18,19 +19,29 @@ import { displayNameSql } from './handles.js';
 import { pairedRounds } from '../tournaments/store.js';
 import type { D1Like, D1Statement } from '../types.js';
 
-/** Whose History: the account a session belongs to, or the one whose public profile is at /u/<handle>. */
-export type Whose = { session: string; now: number } | { handle: string };
+/**
+ * Whose History: the account a session belongs to, the one whose public
+ * profile is at /u/<handle>, or an account by its id (its data export).
+ */
+export type Whose = { session: string; now: number } | { handle: string } | { id: string };
 
 /** How each statement finds the account: `u` is its users row. */
 function accountSql(whose: Whose): { from: string; where: string; values: unknown[] } {
-  return 'handle' in whose
-    ? { from: 'users u', where: 'u.handle = ? AND u.public_profile = 1', values: [whose.handle] }
-    : {
-        from: 'sessions s JOIN users u ON u.id = s.user_id',
-        where: 's.token_hash = ? AND s.expires_at > ?',
-        values: [whose.session, whose.now]
-      };
+  if ('handle' in whose) {
+    return { from: 'users u', where: 'u.handle = ? AND u.public_profile = 1', values: [whose.handle] };
+  }
+  if ('id' in whose) {
+    return { from: 'users u', where: 'u.id = ?', values: [whose.id] };
+  }
+  return {
+    from: 'sessions s JOIN users u ON u.id = s.user_id',
+    where: 's.token_hash = ? AND s.expires_at > ?',
+    values: [whose.session, whose.now]
+  };
 }
+
+/** Leaves out the events the account wiped from its History. */
+const NOT_HIDDEN = 'NOT EXISTS (SELECT 1 FROM history_hidden x WHERE x.user_id = u.id AND x.code = t.code)';
 
 /** An account appears in a few hundred events at most; this bounds a read that goes wrong. */
 const MAX_ENTRIES = 500;
@@ -68,14 +79,14 @@ function statements(db: D1Like, whose: Whose): D1Statement[] {
     db
       .prepare(
         `SELECT ${entryColumns('h.pop_id')} FROM ${from} JOIN pop_history h ON h.pop_id = u.pop_id ` +
-          `JOIN tournaments t ON t.code = h.code WHERE ${where} LIMIT ${MAX_ENTRIES}`
+          `JOIN tournaments t ON t.code = h.code WHERE ${where} AND ${NOT_HIDDEN} LIMIT ${MAX_ENTRIES}`
       )
       .bind(...values),
     // By Claim: at a sanctioned event the account's row is its POP ID's, already listed above.
     db
       .prepare(
         `SELECT ${entryColumns('d.player_id')} FROM ${from} JOIN report_devices d ON d.user_id = u.id ` +
-          `JOIN tournaments t ON t.code = d.code WHERE ${where} ` +
+          `JOIN tournaments t ON t.code = d.code WHERE ${where} AND ${NOT_HIDDEN} ` +
           `AND t.mode = 'swiss' AND json_extract(t.settings, '$.sanctioned') IS 0 LIMIT ${MAX_ENTRIES}`
       )
       .bind(...values)

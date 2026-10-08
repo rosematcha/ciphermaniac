@@ -10,6 +10,9 @@
  * ({ handle }; 409 when someone else holds it or let it go within the day,
  * 429 past the day's changes), its public profile on or off
  * ({ publicProfile }), or the name that profile shows ({ profileName }).
+ * DELETE /api/me — deletes the account ({ confirm: <its username> }) and
+ * signs this browser out (functions/lib/accounts/wipe.ts); 409 with what
+ * holds it up while it runs an event or owns a store.
  */
 
 import { adultYear } from '../../shared/accounts/age.js';
@@ -17,10 +20,13 @@ import { displayName, handleProblem, normalizeHandle } from '../../shared/accoun
 import { birthYear, yearOnlyBirthDate } from '../../shared/tournament/divisions.js';
 import { type PlayerProfile, readProfile } from '../../shared/tournament/profile.js';
 import { renameAccount } from '../lib/accounts/handles.js';
+import { deleteAccount } from '../lib/accounts/wipe.js';
 import { readJsonBody, readJsonObject } from '../lib/api/body.js';
 import { jsonError, jsonResponse } from '../lib/api/responses.js';
 import { type Context, sameOrigin } from '../lib/auth/env.js';
-import { clerkKeys } from '../lib/auth/clerk.js';
+import { clerkKeys, deleteClerkUser } from '../lib/auth/clerk.js';
+import { clearCookie, SESSION_COOKIE } from '../lib/auth/cookies.js';
+import { purgeRejectedProofs } from '../lib/auth/rejection.js';
 import { availableProviders } from '../lib/auth/providers.js';
 import { currentAccount, type ProfileName, type User } from '../lib/auth/session.js';
 import { rowsChanged } from '../lib/d1.js';
@@ -144,4 +150,40 @@ export async function onRequestPatch({ request, env }: Context): Promise<Respons
   }
   const changed = await applyChange(db, user, change);
   return changed instanceof Response ? changed : jsonResponse({ user: { ...user, ...changed } }, PRIVATE);
+}
+
+/** Deletes the Clerk user too, when the account had one; the account is gone either way, so a failure is only logged. */
+async function forgetClerkUser(env: Context['env'], subject: string | null): Promise<void> {
+  if (!subject) {
+    return;
+  }
+  try {
+    await deleteClerkUser(env, subject);
+  } catch (err) {
+    console.error('Clerk user of a deleted account was not deleted', err);
+  }
+}
+
+export async function onRequestDelete({ request, env }: Context): Promise<Response> {
+  const db = env.TOURNAMENT_DB;
+  if (!db || !sameOrigin(request)) {
+    return jsonError('Forbidden', 403);
+  }
+  const user = await currentAccount(db, request);
+  if (!user) {
+    return jsonError('Sign in first', 401);
+  }
+  if ((await readJsonObject(request, 256))?.confirm !== user.handle) {
+    return jsonError('Type your username to confirm', 400);
+  }
+  const result = await deleteAccount(db, user);
+  if ('refusal' in result) {
+    return jsonResponse(result.refusal, { ...PRIVATE, status: 409 });
+  }
+  await forgetClerkUser(env, result.clerkSubject);
+  await purgeRejectedProofs(db, env.PROOFS);
+  return new Response(null, {
+    status: 204,
+    headers: { 'Set-Cookie': clearCookie(request, SESSION_COOKIE), 'Cache-Control': 'no-store' }
+  });
 }

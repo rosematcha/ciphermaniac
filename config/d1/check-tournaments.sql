@@ -10,3 +10,4 @@ SELECT token_hash, expires_at FROM store_invites WHERE 0;
 SELECT owner, at, id FROM event_creations WHERE 0;
 SELECT store FROM applications WHERE 0;
 SELECT key FROM proof_deletions WHERE 0;
+SELECT user_id, code FROM history_hidden WHERE 0;

@@ -230,6 +230,16 @@ CREATE TABLE IF NOT EXISTS pop_history (
   PRIMARY KEY (pop_id, code)
 ) WITHOUT ROWID;
 
+-- The ended events an account wiped from its History
+-- (functions/lib/accounts/wipe.ts): their codes alone, so History leaves
+-- them out however the account is found in them. Events it plays later,
+-- whenever they were made, still show.
+CREATE TABLE IF NOT EXISTS history_hidden (
+  user_id TEXT NOT NULL,
+  code TEXT NOT NULL,
+  PRIMARY KEY (user_id, code)
+) WITHOUT ROWID;
+
 -- Accounts asking to become organizers, and what an admin decided. The POP
 -- ID and name are the profile as it stood when the account applied. The
 -- proof of certification is a file in a private bucket under `proof_key`,
