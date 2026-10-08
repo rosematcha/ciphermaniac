@@ -2125,13 +2125,13 @@ tr.is-in .tm-place {
 /* Quiet and right-aligned above the page: present on every tournament page,
    never competing with the event's own heading. */
 .tm-account-strip {
+  position: relative;
+  z-index: 2;
   display: flex;
   justify-content: flex-end;
-  align-items: baseline;
-  gap: 6px;
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-base);
+  height: 0;
 }
-.tm-account-strip .dot {
-  opacity: 0.4;
+/* The title keeps clear of the account button beside it. */
+.tm-account-strip + .tm-page .tm-hero-text {
+  padding-right: 48px;
 }

@@ -307,12 +307,13 @@ test('Settings: the username is checked as it is typed, saved lowercased, and re
   await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible();
 });
 
-test('Settings shows an admin the way to the admin page, and the strip offers History', async ({ page }) => {
+test('Settings shows an admin the way to the admin page, and the account button offers History', async ({ page }) => {
   await mockSettings(page, { ...ME, role: 'admin' });
   await page.goto('/settings');
   await expect(page.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
   await page.getByRole('link', { name: 'View history' }).click();
-  await expect(page.locator('.tm-account-strip').getByRole('link', { name: 'History' })).toHaveAttribute(
+  await page.locator('.tm-account-strip').getByRole('button', { name: 'Account' }).click();
+  await expect(page.locator('.tm-acct-menu').getByRole('link', { name: 'History' })).toHaveAttribute(
     'href',
     '/history'
   );
