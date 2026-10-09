@@ -11,7 +11,7 @@
  */
 
 import { A, useNavigate, useSearchParams } from '@solidjs/router';
-import { createResource, createSignal, For, onMount, Show, untrack } from 'solid-js';
+import { createResource, createSignal, type JSX, onMount, Show, untrack } from 'solid-js';
 import { canJoinCommunity } from '../../../shared/accounts/roles';
 import type { MyApplication } from '../../../shared/accounts/types';
 import { Skeleton } from '../../components/Skeleton';
@@ -28,27 +28,28 @@ import { StoreApplicationForm } from './StoreApplicationForm';
 import '../../styles/pages/tournament-store-apply.css';
 
 const TITLE = 'Run events';
-const SUBTITLE = 'Select a permissions level for your account.';
 
 type Path = 'community' | 'store';
 
-const PATHS: { value: Path; title: string; line: string }[] = [
-  {
-    value: 'community',
-    title: 'Community organizer',
-    line: "Run unsanctioned tournaments using Ciphermaniac's in-built Swiss system"
+const PATHS: Record<Path, { title: string; joined: string; line: string; held: string }> = {
+  community: {
+    title: 'I want to run a tournament for fun',
+    joined: 'Community organizer',
+    line: "Run unofficial, unsanctioned events using Ciphermaniac's swiss system.",
+    held: 'You are currently approved for unsanctioned events.'
   },
-  {
-    value: 'store',
-    title: 'Organized play location',
-    line: "Run official Play! Pokémon events through TOM with Ciphermaniac's additional features"
+  store: {
+    title: 'I run an official Play! Pokémon store',
+    joined: 'I run an official Play! Pokémon store',
+    line: 'Sync TOM with Ciphermaniac to run sanctioned events with our tools. Requires admin approval.',
+    held: 'You are currently not approved for sanctioned events.'
   }
-];
+};
 
 function SignedOut(props: { offer: SignInOffer }) {
   return (
     <>
-      <TournamentHero title={TITLE} meta={<span class='muted'>{SUBTITLE}</span>} />
+      <TournamentHero title={TITLE} />
       <section class='tm-box'>
         <div class='tm-box-bar'>
           <strong>Sign in</strong>
@@ -63,29 +64,22 @@ function SignedOut(props: { offer: SignInOffer }) {
   );
 }
 
-/** The two ways in, as full-width radio rows; a path the account cannot take is left out. */
-function PathChoice(props: { paths: readonly Path[]; chosen: Path | null; onChoose: (path: Path) => void }) {
+/** One way in: what it is, and, for a Community organizer, what it may run and may not yet. */
+function PathRow(props: { path: Path; joined: boolean; children: JSX.Element }) {
+  const words = () => PATHS[props.path];
   return (
-    <fieldset class='tm-box tm-choices'>
-      <legend class='sr-only'>How you run events</legend>
-      <For each={PATHS.filter(path => props.paths.includes(path.value))}>
-        {path => (
-          <label class='tm-choice' classList={{ 'is-on': props.chosen === path.value }}>
-            <input
-              type='radio'
-              name='apply-path'
-              value={path.value}
-              checked={props.chosen === path.value}
-              onChange={() => props.onChoose(path.value)}
-            />
-            <span class='tm-choice-text'>
-              <strong>{path.title}</strong>
-              <span class='muted'>{path.line}</span>
-            </span>
-          </label>
-        )}
-      </For>
-    </fieldset>
+    <div class='tm-path'>
+      <div class='tm-path-text'>
+        <h2 class='tm-path-title'>{props.joined ? words().joined : words().title}</h2>
+        <span class='muted'>{words().line}</span>
+        <Show when={props.joined}>
+          <span class='tm-path-held' classList={{ 'is-held': props.path === 'community' }}>
+            {words().held}
+          </span>
+        </Show>
+      </div>
+      {props.children}
+    </div>
   );
 }
 
@@ -107,12 +101,39 @@ function CommunityStart() {
     }
   }
   return (
-    <div class='tm-apply-foot'>
+    <span class='tm-path-step'>
       <button type='button' class='btn btn-primary' disabled={busy()} onClick={() => void start()}>
-        Start running events
+        Community organizer
       </button>
       <ErrorLine message={error()} />
-    </div>
+    </span>
+  );
+}
+
+/**
+ * The two ways in, one row each: a player may become a Community organizer
+ * at once; a Community organizer is told it runs unsanctioned events alone,
+ * with the way to its events; any account may open the store application.
+ */
+function PathRows(props: { role: Me['role']; storeOpen: boolean; onStore: () => void }) {
+  const joined = () => props.role === 'community';
+  return (
+    <section class='tm-box tm-paths'>
+      <Show when={canJoinCommunity(props.role) || joined()}>
+        <PathRow path='community' joined={joined()}>
+          <Show when={joined()} fallback={<CommunityStart />}>
+            <A class='btn btn-secondary' href='/host'>
+              Your events
+            </A>
+          </Show>
+        </PathRow>
+      </Show>
+      <PathRow path='store' joined={joined()}>
+        <button type='button' class='btn btn-secondary' aria-expanded={props.storeOpen} onClick={() => props.onStore()}>
+          Apply as store
+        </button>
+      </PathRow>
+    </section>
   );
 }
 
@@ -122,7 +143,7 @@ function Applying(props: { user: Me }) {
   const [state, { refetch, mutate }] = createResource(fetchApplication);
   // Settings' Apply again opens the rows as the page opens, at the store, which is what was applied for.
   const [again, setAgain] = createSignal(params.again !== undefined);
-  const [chosen, setChosen] = createSignal<Path | null>(untrack(again) ? 'store' : null);
+  const [storeOpen, setStoreOpen] = createSignal(untrack(again));
   const current = () => latestValue(state);
   createSessionCatchUp(
     () => props.user.role,
@@ -130,11 +151,10 @@ function Applying(props: { user: Me }) {
   );
   const stage = () => applicantStage(props.user.role, current()?.application ?? null);
   const open = () => stage() !== 'pending' && ((stage() !== 'rejected' && stage() !== 'revoked') || again());
-  const paths = (): Path[] => (canJoinCommunity(props.user.role) ? ['community', 'store'] : ['store']);
   const sent = (application: MyApplication) => mutate(prev => prev && { ...prev, application, proof: null });
   return (
     <>
-      <TournamentHero title={TITLE} meta={<span class='muted'>{SUBTITLE}</span>} />
+      <TournamentHero title={TITLE} />
       <Show
         when={current()}
         fallback={
@@ -148,24 +168,21 @@ function Applying(props: { user: Me }) {
       >
         {s => (
           <div class='tm-apply'>
-            <Show when={stage() !== 'none'}>
+            <Show when={stage() !== 'none' && stage() !== 'community'}>
               <ApplicantStatus
                 stage={stage()}
                 application={s().application}
                 again={!open()}
                 onApplyAgain={() => {
                   setAgain(true);
-                  setChosen('store');
+                  setStoreOpen(true);
                 }}
                 onChanged={() => void refetch()}
               />
             </Show>
             <Show when={open()}>
-              <PathChoice paths={paths()} chosen={chosen()} onChoose={setChosen} />
-              <Show when={chosen() === 'community' && paths().includes('community')}>
-                <CommunityStart />
-              </Show>
-              <Show when={chosen() === 'store'}>
+              <PathRows role={props.user.role} storeOpen={storeOpen()} onStore={() => setStoreOpen(true)} />
+              <Show when={storeOpen()}>
                 <Show
                   when={s().eligible.profile}
                   fallback={

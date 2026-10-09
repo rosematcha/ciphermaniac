@@ -254,25 +254,31 @@ test('a player becomes a Community organizer from the first row, and goes on to 
   const asks = await mock(page);
   await page.goto('/apply');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Run events');
-  await expect(page.getByRole('button', { name: 'Start running events' })).toHaveCount(0);
-  await page.getByRole('radio', { name: /Community organizer/ }).check();
-  await page.getByRole('button', { name: 'Start running events' }).click();
+  await page.getByRole('button', { name: 'Community organizer' }).click();
   await expect(page).toHaveURL(/\/host$/);
   await expect(page.getByRole('button', { name: 'Start an event' })).toBeVisible();
   expect(sentTo(asks, 'POST', '/api/community')).toHaveLength(1);
 });
 
-test('an account that already runs community events is offered the store row alone', async ({ page }) => {
+test('a Community organizer is told it may run unsanctioned events and not sanctioned ones yet', async ({ page }) => {
   await mock(page, { user: { ...ME, role: 'community' } });
   await page.goto('/apply');
-  await expect(page.locator('.tm-applicant-stage strong')).toHaveText('Community organizer');
-  await expect(page.getByRole('radio')).toHaveCount(1);
-  await expect(page.getByRole('radio', { name: /Organized play location/ })).toBeVisible();
+  await expect(page.locator('.tm-path-title')).toHaveText([
+    'Community organizer',
+    'I run an official Play! Pokémon store'
+  ]);
+  await expect(page.locator('.tm-path-held')).toHaveText([
+    'You are currently approved for unsanctioned events.',
+    'You are currently not approved for sanctioned events.'
+  ]);
+  await expect(page.locator('.tm-paths').getByRole('link', { name: 'Your events' })).toHaveAttribute('href', '/host');
+  await expect(page.getByRole('button', { name: 'Community organizer' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Apply as store' })).toBeVisible();
 });
 
 /** Opens the store form and looks the league up by its pokemon.com page. */
 async function lookUp(page: Page) {
-  await page.getByRole('radio', { name: /Organized play location/ }).check();
+  await page.getByRole('button', { name: 'Apply as store' }).click();
   await page
     .getByLabel('League ID or pokemon.com league page')
     .fill('https://www.pokemon.com/us/play-pokemon/pokemon-events/leagues/6238620/');
@@ -355,7 +361,7 @@ test('a league that already has a store goes no further, and a bad ID is refused
 }) => {
   const asks = await mock(page, { league: { league: null, taken: true } });
   await page.goto('/apply');
-  await page.getByRole('radio', { name: /Organized play location/ }).check();
+  await page.getByRole('button', { name: 'Apply as store' }).click();
   await page.getByLabel('League ID or pokemon.com league page').fill('not a league');
   await page.getByRole('button', { name: 'Look up' }).click();
   await expect(page.locator('#apply-league-error')).toHaveText('Enter the league ID, or paste its pokemon.com page');

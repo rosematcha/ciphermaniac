@@ -162,7 +162,7 @@ const posted = (asks: Asked[]) =>
 
 /** Picks the Store row and looks its league up, then answers the questions the form needs answered. */
 async function openStoreForm(page: Page) {
-  await page.getByRole('radio', { name: /(?:Store|Organized play location)/ }).check();
+  await page.getByRole('button', { name: 'Apply as store' }).click();
   await page.getByLabel('League ID or pokemon.com league page').fill('6238620');
   await page.getByRole('button', { name: 'Look up' }).click();
   await page.getByLabel('Why are you applying for this store?').selectOption('owner');
@@ -211,7 +211,7 @@ test('a store application sends with neither certificate nor note', async ({ pag
 test('an incomplete profile is sent to Settings, with no form', async ({ page }) => {
   await mockApplicant(page, { ...NONE, eligible: { profile: false, email: true } }, { ...ME, popId: null });
   await page.goto('/apply');
-  await page.getByRole('radio', { name: /(?:Store|Organized play location)/ }).check();
+  await page.getByRole('button', { name: 'Apply as store' }).click();
   await expect(page.getByRole('link', { name: 'Complete your profile' })).toHaveAttribute('href', '/settings');
   await expect(page.getByRole('button', { name: 'Send application' })).toHaveCount(0);
 });
@@ -228,7 +228,7 @@ test('a pending Application shows where it stands instead of the form, and withd
     .getByRole('group', { name: 'Withdraw your application?' })
     .getByRole('button', { name: 'Withdraw' })
     .click();
-  await expect(page.getByRole('radio', { name: /(?:Store|Organized play location)/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Apply as store' })).toBeVisible();
   expect(asks.filter(a => a.method === 'DELETE').map(a => a.path)).toEqual(['/api/applications/mine']);
 });
 
@@ -245,7 +245,7 @@ test('after a rejection, the note shows and Apply again opens the form', async (
   await page.getByRole('button', { name: 'Apply again' }).click();
   await expect(page.getByRole('button', { name: 'Apply again' })).toHaveCount(0);
   // Applying again is applying for a store again: its row opens at once.
-  await expect(page.getByRole('radio', { name: /(?:Store|Organized play location)/ })).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Apply as store' })).toHaveAttribute('aria-expanded', 'true');
   await openStoreForm(page);
   await page.getByLabel('Note').fill('Certificate is on its way.');
   await page.getByRole('button', { name: 'Send application' }).click();
@@ -257,11 +257,11 @@ test('an organizer whose access was removed sees so, and applies again from ther
   await mockApplicant(page, NONE, { ...ME, role: 'revoked' });
   await page.goto('/apply');
   await expect(page.locator('.tm-applicant')).toContainText('Organizer access removed');
-  await expect(page.getByRole('radio')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Apply as store' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Apply again' }).click();
   // Community access was taken away, so only the store is offered.
-  await expect(page.getByRole('radio')).toHaveCount(1);
-  await expect(page.getByRole('radio', { name: /(?:Store|Organized play location)/ })).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Community organizer' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Apply as store' })).toHaveAttribute('aria-expanded', 'true');
 });
 
 test('an approved account sees its store was approved, with the way to its events', async ({ page }) => {
@@ -503,7 +503,7 @@ test('Apply again on Settings opens the apply page at its form', async ({ page }
   await page.locator('.tm-applicant').getByRole('link', { name: 'Apply again' }).click();
   await expect(page).toHaveURL(/\/apply\?again=1$/);
   await expect(page.locator('.tm-applicant')).toContainText('Not approved');
-  await expect(page.getByRole('radio', { name: /(?:Store|Organized play location)/ })).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Apply as store' })).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByLabel('League ID or pokemon.com league page')).toBeVisible();
 });
 

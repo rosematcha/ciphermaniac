@@ -9,11 +9,40 @@
 }
 
 /* ---------- The two ways in ---------- */
-.tm-choices {
-  margin: 0;
-  padding: 0;
-  min-inline-size: 0;
+.tm-paths {
   overflow: hidden;
+}
+.tm-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: 14px 16px;
+  border-top: 1px solid var(--rule);
+}
+.tm-path:first-child {
+  border-top: 0;
+}
+.tm-path-text {
+  display: grid;
+  flex: 1 1 280px;
+  gap: 2px;
+  font-size: var(--text-base);
+}
+.tm-path-title {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.tm-path-held {
+  font-weight: 600;
+}
+.tm-path-held.is-held {
+  color: var(--positive);
+}
+.tm-path-step {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-1);
 }
 .tm-choice {
   display: grid;
