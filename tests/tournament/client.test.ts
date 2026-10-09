@@ -13,6 +13,7 @@ import {
   createFromTdf,
   createSwiss,
   deleteTournament,
+  exportData,
   fetchDecklists,
   fetchHistory,
   fetchManage,
@@ -77,6 +78,24 @@ function answer(status: number, body: unknown) {
 afterEach(() => {
   globalThis.fetch = realFetch;
   sent = [];
+});
+
+test('an export asks for its parts and saves under the name the server gives, or a default', async () => {
+  globalThis.fetch = (async (url: string) => {
+    sent.push({ url, method: 'GET', body: undefined });
+    const named = url.endsWith('account');
+    return new Response('# Data', {
+      headers: named ? { 'Content-Disposition': 'attachment; filename="mine.md"' } : {}
+    });
+  }) as typeof fetch;
+  const named = await exportData(['profile', 'account']);
+  assert.equal(named.name, 'mine.md');
+  assert.equal(await named.file.text(), '# Data');
+  assert.equal((await exportData(['events'])).name, 'ciphermaniac.md');
+  assert.deepEqual(
+    sent.map(entry => entry.url),
+    ['/api/me/data?parts=profile,account', '/api/me/data?parts=events']
+  );
 });
 
 test('API and published polling time out, reject stalled reads, and can poll again', async context => {
