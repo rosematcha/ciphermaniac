@@ -6,7 +6,13 @@
  */
 
 import type { AccountRole } from '../../../shared/accounts/roles';
-import type { AdminApplication, ApplicationStatus, FoundAccount, RoleHolder } from '../../../shared/accounts/types';
+import type {
+  AdminApplication,
+  AdminEvent,
+  ApplicationStatus,
+  FoundAccount,
+  RoleHolder
+} from '../../../shared/accounts/types';
 import { call, json } from './api';
 
 /** A role as the admin page names it. */
@@ -35,6 +41,9 @@ export const fetchRoleHolders = () => call<{ accounts: RoleHolder[] }>('/api/adm
 /** Removes a Community organizer's access ('revoked') or gives it back ('community'). */
 export const setOrganizerAccess = (id: string, role: 'community' | 'revoked') =>
   call<{ account: RoleHolder }>(`/api/admin/organizers/${encodeURIComponent(id)}`, json('POST', { role }));
+
+/** Every event on the site, the last changed first. */
+export const fetchAllEvents = () => call<{ events: AdminEvent[] }>('/api/admin/events');
 
 /**
  * What a lookup's text is: a POP ID (up to ten digits), an email (it has an

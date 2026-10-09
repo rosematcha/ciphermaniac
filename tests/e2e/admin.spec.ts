@@ -75,6 +75,31 @@ interface Asked {
   body: unknown;
 }
 
+const EVENTS = [
+  {
+    code: 'abc123',
+    name: 'Friday League',
+    store: { id: 'store-1', name: 'Combat Power Gaming' },
+    owner: 'Mary Jackson',
+    players: 24,
+    startDate: '10/09/2026',
+    finished: false,
+    rounds: 3,
+    updatedAt: DAY
+  },
+  {
+    code: 'def456',
+    name: 'Park Meetup',
+    store: null,
+    owner: 'Sam Lee',
+    players: 8,
+    startDate: '',
+    finished: true,
+    rounds: 4,
+    updatedAt: DAY
+  }
+];
+
 /** The admin endpoints, answering as the functions would, and every ask they get. */
 async function mockAdmin(page: Page, user: typeof ADMIN | null = ADMIN, decidedElsewhere = new Set<string>()) {
   const asks: Asked[] = [];
@@ -119,6 +144,9 @@ async function mockAdmin(page: Page, user: typeof ADMIN | null = ADMIN, decidedE
       const id = url.pathname.split('/').pop();
       holders = holders.map(h => (h.id === id ? { ...h, role: body?.role as AccountRole } : h));
       return route.fulfill({ json: { account: holders.find(h => h.id === id) } });
+    }
+    if (url.pathname === '/api/admin/events') {
+      return route.fulfill({ json: { events: EVENTS } });
     }
     if (url.pathname === '/api/admin/accounts') {
       return route.fulfill({ json: { accounts: url.searchParams.get('popId') === '404' ? [] : [FOUND] } });
@@ -287,4 +315,16 @@ test('a cleared POP ID leaves its account in sight, looked up by its ID', async 
   await page.getByRole('group', { name: 'Clear 7200001?' }).getByRole('button', { name: 'Clear' }).click();
   await expect(page.getByLabel('POP ID, email or account ID')).toHaveValue(FOUND.id);
   await expect.poll(() => adminAsks(asks).at(-1)?.path).toBe(`/api/admin/accounts?id=${FOUND.id}`);
+});
+
+test('an Admin sees every event, a store’s and a community one, each opening its page', async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto('/admin?tab=events');
+  const rows = page.locator('.tm-admin-events tbody tr');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('Combat Power Gaming');
+  await expect(rows.nth(0)).toContainText('Round 3');
+  await expect(rows.nth(1)).toContainText('Sam Lee');
+  await expect(rows.nth(1)).toContainText('Finished');
+  await expect(rows.nth(1).getByRole('link', { name: 'Park Meetup' })).toHaveAttribute('href', '/t/def456');
 });

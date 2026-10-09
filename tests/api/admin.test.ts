@@ -15,6 +15,7 @@ import { beforeEach, test } from 'node:test';
 
 import * as accounts from '../../functions/api/admin/accounts.ts';
 import * as adminApplications from '../../functions/api/admin/applications/index.ts';
+import * as adminEvents from '../../functions/api/admin/events.ts';
 import * as decide from '../../functions/api/admin/applications/[id].ts';
 import * as proofFile from '../../functions/api/admin/applications/[id]/proof.ts';
 import * as organizers from '../../functions/api/admin/organizers/index.ts';
@@ -195,6 +196,7 @@ test('every admin route answers only an Admin', async () => {
         )
     ],
     ['proof', call => viewProof(call.cookie, id)],
+    ['events', call => hit(adminEvents.onRequestGet as Handler, '/api/admin/events', {}, call)],
     ['organizers', call => hit(organizers.onRequestGet as Handler, '/api/admin/organizers', {}, call)],
     [
       'revoke',
@@ -586,6 +588,30 @@ test('the Organizers list holds every account with a role and how many events it
   );
   const [first] = listed.json.accounts;
   assert.deepEqual(Object.keys(first).sort(), ['email', 'events', 'id', 'name', 'popId', 'role', 'roleAt']);
+});
+
+test('the Events list holds every event, a store’s and an account’s own alike, the last changed first', async () => {
+  const admin = await signIn('Admin', 'admin');
+  const community = await signIn('Busy', 'community');
+  assert.equal((await createEvent(community, { day: 1 })).status, 201);
+  const { cookie: owner, id } = await applied('Owner', '200', PNG);
+  assert.equal((await decision(admin, id, { decision: 'approve' })).status, 200);
+  const store = raw().prepare('SELECT id, name FROM stores').get() as { id: string; name: string };
+  assert.equal((await createEvent(owner, { store: store.id })).status, 201);
+  const listed = await hit(adminEvents.onRequestGet as Handler, '/api/admin/events', {}, { cookie: admin });
+  assert.equal(listed.status, 200);
+  assert.deepEqual(
+    listed.json.events.map((event: { store: unknown; owner: string; players: number; finished: boolean }) => [
+      event.store,
+      event.owner,
+      event.players,
+      event.finished
+    ]),
+    [
+      [{ id: store.id, name: store.name }, 'Pat Player', 0, false],
+      [null, 'busy', 0, false]
+    ]
+  );
 });
 
 test('a Community organizer’s access is removed and given back; an Admin’s and a player’s are not one', async () => {

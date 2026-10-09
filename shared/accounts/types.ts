@@ -102,6 +102,23 @@ export interface RoleHolder {
   events: number;
 }
 
+/** Any event on the site, as the admin's list of every event shows it. */
+export interface AdminEvent {
+  code: string;
+  name: string;
+  /** The store that runs it; null for one run under an account's own name. */
+  store: { id: string; name: string } | null;
+  /** The account that made it. */
+  owner: string;
+  players: number;
+  /** MM/DD/YYYY, as TOM writes it; '' when unset. */
+  startDate: string;
+  finished: boolean;
+  /** Rounds paired across its pods: 0 before round 1. */
+  rounds: number;
+  updatedAt: number;
+}
+
 /** An account an admin looked up. */
 export interface FoundAccount {
   id: string;

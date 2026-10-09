@@ -1,9 +1,10 @@
 /**
  * /admin: an Admin's page; for anyone else, signed in or not, it is not
- * found. Three tabs: Applications (the queue to decide, see
+ * found. Four tabs: Applications (the queue to decide, see
  * AdminApplications), Organizers (every account with a role, and its
- * access, see AdminOrganizers) and POP IDs (settling who holds one, see
- * AdminPopIds). The tab is kept in the address, so a reload stays on it.
+ * access, see AdminOrganizers), POP IDs (settling who holds one, see
+ * AdminPopIds) and Events (every event on the site, see AdminEvents). The
+ * tab is kept in the address, so a reload stays on it.
  */
 
 import { useSearchParams } from '@solidjs/router';
@@ -12,18 +13,20 @@ import { isAdmin } from '../../../shared/accounts/roles';
 import { Tabs } from '../../components/Tabs';
 import { latestValue } from '../../lib/resource';
 import { AdminApplications } from './AdminApplications';
+import { AdminEvents } from './AdminEvents';
 import { AdminOrganizers } from './AdminOrganizers';
 import { AdminPopIds } from './AdminPopIds';
 import { TournamentHero } from './Hero';
 import { session } from './session';
 import '../../styles/pages/tournament-admin.css';
 
-type Tab = 'applications' | 'organizers' | 'pop-ids';
+type Tab = 'applications' | 'organizers' | 'pop-ids' | 'events';
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'applications', label: 'Applications' },
   { value: 'organizers', label: 'Organizers' },
-  { value: 'pop-ids', label: 'POP IDs' }
+  { value: 'pop-ids', label: 'POP IDs' },
+  { value: 'events', label: 'Events' }
 ];
 
 function Admin() {
@@ -47,6 +50,9 @@ function Admin() {
         </Match>
         <Match when={tab() === 'pop-ids'}>
           <AdminPopIds />
+        </Match>
+        <Match when={tab() === 'events'}>
+          <AdminEvents />
         </Match>
       </Switch>
     </>
