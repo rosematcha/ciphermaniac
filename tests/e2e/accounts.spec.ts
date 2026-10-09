@@ -1067,6 +1067,25 @@ test('the dashboard of a player who runs nothing is its Playing tab alone, the l
   expect(errors).toEqual([]);
 });
 
+test('a player with no events yet is welcomed with the way to play, then the way to run events @mobile', async ({
+  page
+}) => {
+  const errors = await mockDashboard(page, ME);
+  await page.route('**/api/history', route => route.fulfill({ json: { entries: [] } }));
+  await page.goto('/host');
+  const welcome = page.locator('.tm-welcome');
+  await expect(welcome.getByRole('heading', { level: 2 })).toHaveText('Welcome to Ciphermaniac');
+  await expect(welcome.locator('.tm-welcome-steps li strong')).toHaveText([
+    'Find an event',
+    'Add your Player ID',
+    'Play'
+  ]);
+  await expect(welcome.getByRole('link', { name: 'Find events' })).toHaveAttribute('href', '/events/locator');
+  await expect(welcome.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+  await expect(welcome.getByRole('link', { name: 'Apply here' })).toHaveAttribute('href', '/apply');
+  expect(errors).toEqual([]);
+});
+
 test('the dashboard’s account menu holds the account’s pages, and the way to apply only for a player', async ({
   page
 }) => {

@@ -153,3 +153,39 @@
     text-align: center;
   }
 }
+
+/* ---------- Welcome: the Playing tab before a first event ---------- */
+.tm-welcome-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xl);
+}
+.tm-welcome-steps {
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tm-welcome-steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 2px 14px;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--rule);
+}
+.tm-welcome-steps li::before {
+  content: counter(step);
+  grid-row: span 3;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-ink);
+}
+.tm-welcome-steps li > * {
+  grid-column: 2;
+  justify-self: start;
+}
+.tm-welcome-run {
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--rule);
+}

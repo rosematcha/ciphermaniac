@@ -75,6 +75,36 @@ function Group(props: { title: string; entries: readonly HistoryEntry[]; more?: 
   );
 }
 
+/** A new account's tab, before its first event: the way to play, then the way to run events. */
+function Welcome() {
+  return (
+    <section class='tm-welcome'>
+      <h2 class='tm-welcome-title'>Welcome to Ciphermaniac</h2>
+      <ol class='tm-welcome-steps'>
+        <li>
+          <strong>Find an event</strong>
+          <span class='muted'>Search for tournaments near you.</span>
+          <A href='/events/locator'>Find events</A>
+        </li>
+        <li>
+          <strong>Add your Player ID</strong>
+          <span class='muted'>Your Play! Pokémon ID connects your results at participating events to you.</span>
+          <A href='/settings'>Settings</A>
+        </li>
+        <li>
+          <strong>Play</strong>
+          <span class='muted'>During a participating event, this page shows your table and opponent.</span>
+        </li>
+      </ol>
+      <p class='tm-welcome-run'>
+        <strong>Running events?</strong>{' '}
+        <span class='muted'>Organize sanctioned or unsanctioned events with our tournament manager.</span>{' '}
+        <A href='/apply'>Apply here</A>
+      </p>
+    </section>
+  );
+}
+
 export function PlayingTab(props: { history: Resource<HistoryEntry[]>; onRetry: () => void }) {
   const entries = () => resolved(props.history);
   const byStatus = (status: HistoryEntry['status']) => (entries() ?? []).filter(entry => entry.status === status);
@@ -92,14 +122,7 @@ export function PlayingTab(props: { history: Resource<HistoryEntry[]>; onRetry: 
       }
     >
       {list => (
-        <Show
-          when={list().length > 0}
-          fallback={
-            <p class='muted tm-empty'>
-              No events yet. <A href='/events/locator'>Find one</A>
-            </p>
-          }
-        >
+        <Show when={list().length > 0} fallback={<Welcome />}>
           <For each={byStatus('live')}>{entry => <LiveEntry entry={entry} />}</For>
           <Group title='Coming up' entries={byStatus('upcoming')} />
           <Group title='Results' entries={finished().slice(0, RECENT)} more={finished().length > RECENT} />
