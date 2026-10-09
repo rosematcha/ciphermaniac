@@ -22,6 +22,7 @@ import { dayOf } from '../../lib/tournament/applications';
 import { RELATIONSHIP_LABELS, STORE_ROLE_WORDS } from '../../lib/tournament/stores';
 import { resolved } from '../../lib/resource';
 import { ErrorLine } from './Field';
+import '../../styles/pages/tournament-admin.css';
 
 const STATUSES: { value: ApplicationStatus; label: string }[] = [
   { value: 'pending', label: 'Pending' },
