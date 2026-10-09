@@ -60,6 +60,7 @@ import { ClockControls, TopCutControl } from './RoundControls';
 import { RoundPanel } from './RoundPanel';
 import { SignIn } from './SignIn';
 import { createTomLink, type FileWrite, type TomLink, TomNextStep, TomStrip } from './TomSyncPanel';
+import { Trail } from './Trail';
 
 // Pairings is the tab a running event lives on, so only it loads with the page;
 // the others load when opened (decklists are read before the event, the
@@ -336,53 +337,56 @@ function Hero(props: {
     </Switch>
   );
   return (
-    <section class='tm-hero tm-console-hero'>
-      <div class='tm-console-title'>
-        <div class='tm-hero-text'>
-          <h1>{props.manage.tournament.info.name}</h1>
-          {/* Each part keeps the dot after it, so the line wraps between parts and never starts on a dot. */}
-          <p class='hero-meta'>
-            <span class='tm-meta-part tm-meta-lead'>
-              {lead()}
-              <span class='dot'>·</span>
-            </span>
-            <span class='tm-meta-part'>
-              <span class='num'>{props.manage.code}</span>
-              <span class='dot'>·</span>
-            </span>
-            <span class='tm-meta-part'>
-              {props.manage.mode === 'tom' ? 'Run in TOM' : 'Swiss on this site'}
-              <span class='dot'>·</span>
-            </span>
-            <span class='tm-meta-part'>
-              {props.manage.tournament.players.length} players
-              <span class='dot'>·</span>
-            </span>
-            <span class='tm-meta-part'>
-              <A href={`/t/${props.manage.code}`}>Public page</A>
-              <span class='dot'>·</span>
-            </span>
-            {/* Its own tab, since it goes on the projector while the console keeps running. */}
-            <a href={`/t/${props.manage.code}?screen=1`} target='_blank' rel='noopener'>
-              Big screen
-            </a>
-          </p>
+    <>
+      <Trail here={props.manage.tournament.info.name} tab='organizing' />
+      <section class='tm-hero tm-console-hero'>
+        <div class='tm-console-title'>
+          <div class='tm-hero-text'>
+            <h1>{props.manage.tournament.info.name}</h1>
+            {/* Each part keeps the dot after it, so the line wraps between parts and never starts on a dot. */}
+            <p class='hero-meta'>
+              <span class='tm-meta-part tm-meta-lead'>
+                {lead()}
+                <span class='dot'>·</span>
+              </span>
+              <span class='tm-meta-part'>
+                <span class='num'>{props.manage.code}</span>
+                <span class='dot'>·</span>
+              </span>
+              <span class='tm-meta-part'>
+                {props.manage.mode === 'tom' ? 'Run in TOM' : 'Swiss on this site'}
+                <span class='dot'>·</span>
+              </span>
+              <span class='tm-meta-part'>
+                {props.manage.tournament.players.length} players
+                <span class='dot'>·</span>
+              </span>
+              <span class='tm-meta-part'>
+                <A href={`/t/${props.manage.code}`}>Public page</A>
+                <span class='dot'>·</span>
+              </span>
+              {/* Its own tab, since it goes on the projector while the console keeps running. */}
+              <a href={`/t/${props.manage.code}?screen=1`} target='_blank' rel='noopener'>
+                Big screen
+              </a>
+            </p>
+          </div>
+          <Show when={props.user}>{user => <AccountMenu user={user()} pending={0} />}</Show>
         </div>
-        <Show when={props.user}>{user => <AccountMenu user={user()} pending={0} />}</Show>
-      </div>
-      <div class='tm-console-steps'>
-        <Show when={props.pod && clockRound()}>
-          {round => <ClockControls state={props.state} pod={props.pod as Pod} round={round()} class='is-large' />}
-        </Show>
-        <span class='tm-grow' />
-        <div class='tm-next'>
-          {action}
-          <Show when={reason()}>
-            <span class='tm-next-reason'>{reason()}</span>
+        <div class='tm-console-steps'>
+          <Show when={props.pod && clockRound()}>
+            {round => <ClockControls state={props.state} pod={props.pod as Pod} round={round()} class='is-large' />}
           </Show>
+          <span class='tm-grow' />
+          <div class='tm-next'>
+            {action}
+            <Show when={reason()}>
+              <span class='tm-next-reason'>{reason()}</span>
+            </Show>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
 

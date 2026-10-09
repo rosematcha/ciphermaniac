@@ -492,3 +492,12 @@ test('on a phone the tabs sit along the bottom, and the round and its clock stay
   await expect(page).toHaveURL(/tab=standings/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });
+
+test('the console leads back to the dashboard’s Organizing tab, above the event’s name @mobile', async ({ page }) => {
+  await mockConsole(page, event(8, 0, true), settingsOf({}));
+  const trail = page.getByRole('navigation', { name: 'Breadcrumb' });
+  await expect(trail.getByRole('link', { name: 'Your events' })).toHaveAttribute('href', '/host?tab=organizing');
+  await expect(trail.locator('[aria-current="page"]')).toHaveText(
+    await page.locator('.tm-console-hero h1').innerText()
+  );
+});

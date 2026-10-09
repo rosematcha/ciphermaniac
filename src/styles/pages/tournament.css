@@ -2131,3 +2131,39 @@ tr.is-in .tm-place {
 .tm-account-strip + .tm-page .tm-hero-text {
   padding-right: 48px;
 }
+/* With the trail above the title, the account button still sits level with the title. */
+.tm-account-strip:has(+ .tm-page > .tm-trail) {
+  top: calc(var(--tm-trail-h) + var(--space-2));
+}
+
+/* ---------- The way back to the dashboard (Trail), above a page's title ---------- */
+/* Shared with the account strip, which is the page's sibling. */
+.tm-account-strip,
+.tm-page {
+  --tm-trail-h: 20px;
+}
+.tm-trail {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-base);
+  line-height: var(--tm-trail-h);
+}
+.tm-trail a {
+  flex: none;
+  color: inherit;
+}
+.tm-trail a:hover {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.tm-trail-here {
+  overflow: hidden;
+  color: var(--fg);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -19,7 +19,7 @@ const eventCount = (n: number) => `${n} event${n === 1 ? '' : 's'}`;
 function SignedOut(props: { offer: SignInOffer }) {
   return (
     <>
-      <TournamentHero title='History' />
+      <TournamentHero title='History' tab='playing' />
       <section class='tm-box'>
         <div class='tm-box-bar'>
           <strong>Sign in</strong>
@@ -41,6 +41,7 @@ function MyHistory() {
     <>
       <TournamentHero
         title='History'
+        tab='playing'
         status={<Show when={entries()}>{list => <span class='muted'>{eventCount(list().length)}</span>}</Show>}
       />
       <Show

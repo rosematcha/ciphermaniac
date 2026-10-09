@@ -13,6 +13,7 @@ import { Avatar } from './Avatar';
 import { Badges } from './Badges';
 import { ErrorLine } from './Field';
 import { TournamentHero } from './Hero';
+import { Trail } from './Trail';
 import { HistoryList } from './HistoryList';
 
 const eventCount = (n: number) => `${n} event${n === 1 ? '' : 's'}`;
@@ -44,6 +45,7 @@ export function ProfilePage(props: { handle: string }) {
         >
           {p => (
             <>
+              <Trail here={p().name} />
               <section class='tm-hero tm-profile-hero'>
                 <Avatar name={p().name} src={p().avatar} />
                 <div class='tm-hero-text'>

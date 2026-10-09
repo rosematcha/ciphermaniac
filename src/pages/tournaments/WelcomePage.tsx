@@ -35,7 +35,7 @@ export function WelcomePage() {
 
   return (
     <div class='tm-page tm-narrow'>
-      <TournamentHero title='Birth date' />
+      <TournamentHero title='Birth date' trail={false} />
       <section class='tm-box'>
         <Switch>
           <Match when={stage() === 'refused' || stage() === 'expired'}>

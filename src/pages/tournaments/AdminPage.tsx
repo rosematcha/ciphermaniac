@@ -31,7 +31,7 @@ function Admin() {
   const tab = (): Tab => TABS.find(option => option.value === params.tab)?.value ?? 'applications';
   return (
     <>
-      <TournamentHero title='Admin' />
+      <TournamentHero title='Admin' tab='admin' />
       <Tabs
         options={TABS}
         selected={tab()}

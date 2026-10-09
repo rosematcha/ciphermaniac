@@ -41,7 +41,7 @@ import '../../styles/pages/tournament-dashboard.css';
 
 const AdminApplications = lazy(() => import('./AdminApplications').then(m => ({ default: m.AdminApplications })));
 
-type Tab = 'playing' | 'organizing' | 'admin';
+export type Tab = 'playing' | 'organizing' | 'admin';
 
 const LABELS: Record<Tab, string> = { playing: 'Playing', organizing: 'Organizing', admin: 'Admin' };
 

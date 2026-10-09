@@ -194,6 +194,25 @@ test('History signed out offers sign-in, and asks for no History', async ({ page
   expect(asked).toBe(false);
 });
 
+test('History and Settings lead back to the dashboard, History to its Playing tab; signed out there is no way back @mobile', async ({
+  page
+}) => {
+  await mockAccount(page);
+  await publishCopies(page);
+  const trail = page.getByRole('navigation', { name: 'Breadcrumb' });
+  await page.goto('/history');
+  await expect(trail.getByRole('link', { name: 'Your events' })).toHaveAttribute('href', '/host?tab=playing');
+  await expect(trail.locator('[aria-current="page"]')).toHaveText('History');
+  await page.goto('/settings');
+  await expect(trail.getByRole('link', { name: 'Your events' })).toHaveAttribute('href', '/host');
+  await expect(trail.locator('[aria-current="page"]')).toHaveText('Settings');
+  await page.unrouteAll();
+  await mockAccount(page, null);
+  await page.goto('/history');
+  await expect(page.getByRole('link', { name: 'Sign in with Google' })).toBeVisible();
+  await expect(trail).toHaveCount(0);
+});
+
 test('History with no events says so', async ({ page }) => {
   await page.route('**/api/**', route => {
     const { pathname } = new URL(route.request().url());
@@ -641,6 +660,20 @@ test('signed in at a sanctioned event as the player by POP ID, there is no quest
     .poll(() => asks.filter(a => a.path.endsWith('/report')).map(a => (a.body as { popId?: string }).popId))
     .toEqual(['1001']);
   await expect(page.getByRole('button', { name: 'Report result' })).toBeVisible();
+});
+
+test('an event’s player is led back to the dashboard’s Playing tab, a stranger to the dashboard’s own pick', async ({
+  page
+}) => {
+  const { code } = await mockEvent(page, roundOne(true), { sanctioned: true, user: { ...ME, popId: '1001' } });
+  await page.goto(`/t/${code}`);
+  const back = page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Your events' });
+  await expect(page.locator('.tm-you-who')).toContainText('Ash Ketchum');
+  await expect(back).toHaveAttribute('href', '/host?tab=playing');
+  await page.unrouteAll();
+  await mockEvent(page, roundOne(true), { sanctioned: true, user: { ...ME, popId: '9999' }, linked: false });
+  await page.goto(`/t/${code}`);
+  await expect(back).toHaveAttribute('href', '/host');
 });
 
 test('a Claim released or made elsewhere reaches the open page when it is shown again, at most every half minute', async ({

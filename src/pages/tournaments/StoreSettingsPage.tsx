@@ -271,6 +271,7 @@ function Settings(props: { id: string }) {
         >
           <TournamentHero
             title={answer().store.name}
+            tab='organizing'
             meta={
               <>
                 <span class='tm-num'>League {answer().store.leagueId}</span>

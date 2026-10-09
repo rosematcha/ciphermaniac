@@ -42,6 +42,7 @@ import { refreshSession, session, setSession } from './session';
 import { SettingRow, Toggle } from './SettingControls';
 import { SettingInfo } from './SettingInfo';
 import { SignIn } from './SignIn';
+import { Trail } from './Trail';
 
 /**
  * Takes in the fields one save changed, and only those: each answer carries
@@ -70,34 +71,34 @@ function Identity(props: { user: Me; providers: readonly Provider[] }) {
   }
   const offered = () => (['google', 'discord'] as const).filter(provider => props.providers.includes(provider));
   return (
-    <section class='tm-identity'>
-      <Avatar name={props.user.name} src={props.user.avatar} />
-      <h1>{props.user.name}</h1>
-      <div class='tm-identity-acts'>
-        <A class='btn btn-secondary' href='/host'>
-          Your events
-        </A>
-        <button type='button' class='btn btn-ghost' onClick={() => void leave()}>
-          Sign out
-        </button>
-      </div>
-      <p class='tm-identity-links'>
-        <For each={offered()}>
-          {provider => (
-            <Show
-              when={props.user.providers.includes(provider)}
-              fallback={
-                <a class='tm-link-inline' href={linkUrl(provider)} rel='external'>
-                  Link {PROVIDER_NAMES[provider]}
-                </a>
-              }
-            >
-              <span class='muted'>{PROVIDER_NAMES[provider]} linked</span>
-            </Show>
-          )}
-        </For>
-      </p>
-    </section>
+    <>
+      <Trail here='Settings' />
+      <section class='tm-identity'>
+        <Avatar name={props.user.name} src={props.user.avatar} />
+        <h1>{props.user.name}</h1>
+        <div class='tm-identity-acts'>
+          <button type='button' class='btn btn-ghost' onClick={() => void leave()}>
+            Sign out
+          </button>
+        </div>
+        <p class='tm-identity-links'>
+          <For each={offered()}>
+            {provider => (
+              <Show
+                when={props.user.providers.includes(provider)}
+                fallback={
+                  <a class='tm-link-inline' href={linkUrl(provider)} rel='external'>
+                    Link {PROVIDER_NAMES[provider]}
+                  </a>
+                }
+              >
+                <span class='muted'>{PROVIDER_NAMES[provider]} linked</span>
+              </Show>
+            )}
+          </For>
+        </p>
+      </section>
+    </>
   );
 }
 

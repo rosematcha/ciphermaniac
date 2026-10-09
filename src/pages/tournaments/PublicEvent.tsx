@@ -60,6 +60,7 @@ import {
   STATUS_LABELS
 } from '../../lib/tournament/present';
 import { ErrorLine } from './Field';
+import type { Tab as DashboardTab } from './Dashboard';
 import { TournamentHero } from './Hero';
 import { createNow } from './now';
 import { PlayerSheet } from './PlayerSheet';
@@ -671,6 +672,14 @@ function updatedLabel(at: number): string {
   return today ? date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : dayLabel(date);
 }
 
+/** The dashboard tab an event's page goes back to: Organizing for its staff, Playing for its players. */
+function dashboardTab(viewer: TournamentView['viewer']): DashboardTab | undefined {
+  if (viewer.role) {
+    return 'organizing';
+  }
+  return viewer.me ? 'playing' : undefined;
+}
+
 function Hero(props: { view: TournamentView }) {
   const now = createNow();
   const info = () => props.view.tournament.info;
@@ -699,6 +708,7 @@ function Hero(props: { view: TournamentView }) {
     <>
       <TournamentHero
         title={info().name}
+        tab={dashboardTab(props.view.viewer)}
         status={status()}
         meta={
           <For each={parts()}>
