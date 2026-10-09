@@ -10,13 +10,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px 16px;
-  padding: 12px 14px;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) 14px;
 }
 .tm-you-big {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--space-2);
   font-size: var(--text-2xl);
   font-weight: 800;
   line-height: 1;
@@ -40,7 +40,7 @@
 .tm-you-end {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   margin-left: auto;
 }
 .tm-you-end .tm-clock {
@@ -50,14 +50,14 @@
 .tm-you-panel {
   display: grid;
   gap: 10px;
-  padding: 12px 14px;
+  padding: var(--space-3) 14px;
   border-top: 1px solid var(--rule);
 }
 .tm-you-answers {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 16px;
+  gap: 10px var(--space-4);
 }
 .tm-you-answers .tm-report-choices {
   flex: 1 1 360px;
@@ -76,8 +76,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 4px 12px;
-  padding: 6px 8px 6px 14px;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) 14px;
   border-top: 1px solid var(--rule);
   font-size: var(--text-sm);
 }
@@ -116,7 +116,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .tm-identify > .tm-error {
   flex-basis: 100%;
@@ -213,9 +213,9 @@
 .tm-registered {
   list-style: none;
   margin: 0;
-  padding: 6px 14px 10px;
+  padding: var(--space-2) 14px 10px;
   columns: 14rem auto;
-  column-gap: 18px;
+  column-gap: var(--space-4);
 }
 .tm-registered li {
   break-inside: avoid;
@@ -257,14 +257,14 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
-  margin: 0 20px;
-  padding: 18px 0 12px;
+  margin: 0 var(--space-4);
+  padding: var(--space-4) 0 var(--space-3);
   border-bottom: 1px solid var(--rule);
 }
 .tm-sheet-head h2 {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
   font-size: var(--text-xl);
 }
@@ -278,7 +278,7 @@
   align-content: start;
   gap: var(--space-3);
   overflow-y: auto;
-  padding: 16px 20px;
+  padding: var(--space-4) var(--space-4);
 }
 .tm-sheet-stats {
   display: grid;
@@ -292,7 +292,7 @@
   display: flex;
   flex-direction: column-reverse;
   gap: 2px;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
 }
 .tm-sheet-stats > div + div {
   border-left: 1px solid var(--rule);
@@ -334,7 +334,7 @@
 .tm-sheet-foot {
   display: flex;
   justify-content: flex-end;
-  padding: 12px 20px;
+  padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--rule);
 }
 @media (max-width: 640px) {
@@ -372,12 +372,12 @@
     grid-template-areas:
       'table player'
       'table opponent';
-    column-gap: 8px;
-    padding: 4px 14px;
+    column-gap: var(--space-2);
+    padding: var(--space-1) 14px;
   }
   .tm-public-pairings .data td.tm-table-col {
     align-self: start;
-    padding-top: 12px;
+    padding-top: var(--space-3);
     font-weight: 600;
     color: var(--fg);
   }
@@ -406,7 +406,7 @@
     display: flex;
     align-items: center;
     min-height: 44px;
-    padding-left: 22px;
+    padding-left: var(--space-4);
   }
   .tm-public-pairings .has-decks td.tm-seat > .muted-cell {
     padding-left: 66px;

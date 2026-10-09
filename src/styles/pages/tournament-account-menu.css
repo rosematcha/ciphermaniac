@@ -1,7 +1,7 @@
 /* ---------- The account button and its menu (AccountMenu), on the dashboard and the event console ---------- */
 
 .tm-dash-count {
-  margin-left: 6px;
+  margin-left: var(--space-2);
   color: var(--accent-ink);
   font-size: var(--text-sm);
   font-weight: 600;
@@ -50,7 +50,7 @@
   display: flex;
   flex-direction: column;
   width: 240px;
-  padding: 6px;
+  padding: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
@@ -59,15 +59,15 @@
 .tm-acct-id {
   display: flex;
   flex-direction: column;
-  margin: 0 0 4px;
-  padding: 8px 10px 10px;
+  margin: 0 0 var(--space-1);
+  padding: var(--space-2) 10px 10px;
   border-bottom: 1px solid var(--rule);
   font-size: var(--text-base);
 }
 .tm-acct-menu a {
   display: flex;
   justify-content: space-between;
-  padding: 7px 10px;
+  padding: var(--space-2) 10px;
   border-radius: var(--radius-sm);
   color: var(--fg);
   font-size: var(--text-body);
@@ -76,7 +76,7 @@
   background: var(--bg);
 }
 .tm-acct-menu .tm-acct-quiet {
-  margin-top: 4px;
+  margin-top: var(--space-1);
   border-top: 1px solid var(--rule);
   border-radius: 0;
   color: var(--muted);

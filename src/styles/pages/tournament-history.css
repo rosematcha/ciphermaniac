@@ -29,7 +29,7 @@
 }
 .tm-hist .data td {
   height: 58px;
-  padding-block: 8px;
+  padding-block: var(--space-2);
 }
 .tm-hist th.tm-hist-deck {
   width: 280px;
@@ -73,7 +73,7 @@
 .tm-hist-deck-in {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
   font-size: var(--text-base);
 }
@@ -95,7 +95,7 @@
 }
 .tm-hist .data tr.row-expansion > td {
   height: auto;
-  padding: 4px 14px 12px 42px;
+  padding: var(--space-1) 14px var(--space-3) 42px;
 }
 .tm-hist-more {
   display: grid;
@@ -103,7 +103,7 @@
   gap: 10px;
 }
 .tm-hist-more > p {
-  margin: 8px 0 0;
+  margin: var(--space-2) 0 0;
 }
 .tm-hist-rounds {
   display: grid;
@@ -117,7 +117,7 @@
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 40px;
   border-bottom: 1px solid var(--rule);
   font-size: var(--text-base);
@@ -134,7 +134,7 @@
 .tm-hist-opp {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   min-width: 0;
 }
 .tm-hist-mark {
@@ -144,7 +144,7 @@
 @media (max-width: 640px) {
   .tm-hist .data th,
   .tm-hist .data td {
-    padding: 0 6px;
+    padding: 0 var(--space-2);
   }
   /* The deck's column folds to nothing rather than going, so an opened
      row's span still matches the columns. */
@@ -163,7 +163,7 @@
     width: 64px;
   }
   .tm-hist .data :is(th, td):last-child {
-    padding-right: 12px;
+    padding-right: var(--space-3);
   }
   .tm-hist .data td {
     height: 64px;
@@ -174,7 +174,7 @@
     display: inline;
   }
   .tm-hist-phone-deck .arche-icons {
-    margin-right: 6px;
+    margin-right: var(--space-2);
     vertical-align: -5px;
   }
   .tm-hist-name,
@@ -182,14 +182,14 @@
     white-space: normal;
   }
   .tm-hist-name .tm-flag {
-    margin-left: 4px;
+    margin-left: var(--space-1);
   }
   .tm-hist .data tr.row-expansion > td {
-    padding: 4px 12px 12px;
+    padding: var(--space-1) var(--space-3) var(--space-3);
   }
   .tm-hist-rounds li {
     grid-template-columns: 88px minmax(0, 1fr) auto;
-    gap: 8px;
+    gap: var(--space-2);
     min-height: 44px;
   }
   .tm-hist-more .btn {

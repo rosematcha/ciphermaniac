@@ -25,6 +25,8 @@ export function ConfirmAction(props: {
     setAsking(false);
     queueMicrotask(() => trigger?.focus());
   };
+  // The question's buttons keep the size of the button that asked it.
+  const size = () => ((props.class ?? 'tm-small').includes('tm-small') ? ' tm-small' : '');
   return (
     <Show
       when={asking()}
@@ -54,7 +56,7 @@ export function ConfirmAction(props: {
         {props.extra}
         <button
           type='button'
-          class={props.danger ? 'btn btn-secondary tm-small tm-danger' : 'btn btn-primary tm-small'}
+          class={`${props.danger ? 'btn btn-secondary tm-danger' : 'btn btn-primary'}${size()}`}
           ref={el => queueMicrotask(() => el.focus())}
           onClick={() => {
             setAsking(false);
@@ -63,7 +65,7 @@ export function ConfirmAction(props: {
         >
           {props.confirmLabel ?? props.label}
         </button>
-        <button type='button' class='btn btn-ghost tm-small' onClick={back}>
+        <button type='button' class={`btn btn-ghost${size()}`} onClick={back}>
           Keep
         </button>
       </span>

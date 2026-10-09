@@ -158,12 +158,9 @@ function Result(props: ResultProps) {
   const elimination = () => props.round.kind === 'elimination';
   const report = createMemo(() => staffReport(props.reports, props.match, props.names));
   const lone = () => (props.reports.length > 0 && !isDisputed(props.reports) ? props.reports[0] : undefined);
-  // A bye or a missed round is decided by the pairing itself: nothing to enter.
-  const decidedByPairing = (
-    <div class='tm-result'>
-      <span class='tm-result-label'>{RESULT_WORDS[props.match.outcome]}</span>
-    </div>
-  );
+  // A bye or a missed round is decided by the pairing itself: nothing to enter,
+  // and the opponent's seat already names it.
+  const decidedByPairing = <div class='tm-result' />;
   return (
     <Show when={props.match.p2 !== null} fallback={decidedByPairing}>
       <Show
@@ -376,22 +373,24 @@ function RoundBar(props: RoundBarProps) {
       <Show when={props.tom}>
         <span class='muted'>Paired in TOM</span>
       </Show>
-      <Show when={running() && swiss()}>
-        <button
-          type='button'
-          class='btn btn-ghost tm-small'
-          aria-pressed={props.swapMode}
-          onClick={() => props.onSwap()}
-        >
-          {props.swapMode ? 'Cancel swap' : 'Swap players'}
-        </button>
-      </Show>
-      <Show when={props.live && swiss() && props.open > 0 && !props.waiting}>
-        <RepairControl state={props.state} pod={props.pod} label='Re-pair round' />
-      </Show>
-      <Show when={props.live && props.nothingReported}>
-        <DeleteRound state={props.state} pod={props.pod} round={props.round} />
-      </Show>
+      <span class='tm-round-acts'>
+        <Show when={running() && swiss()}>
+          <button
+            type='button'
+            class='btn btn-ghost tm-small'
+            aria-pressed={props.swapMode}
+            onClick={() => props.onSwap()}
+          >
+            {props.swapMode ? 'Cancel swap' : 'Swap players'}
+          </button>
+        </Show>
+        <Show when={props.live && swiss() && props.open > 0 && !props.waiting}>
+          <RepairControl state={props.state} pod={props.pod} label='Re-pair round' />
+        </Show>
+        <Show when={props.live && props.nothingReported}>
+          <DeleteRound state={props.state} pod={props.pod} round={props.round} />
+        </Show>
+      </span>
       <ShowTables openOnly={props.openOnly} open={props.open} onOpenOnly={value => props.onOpenOnly(value)} />
       <Show when={props.deckMode !== null}>
         <button

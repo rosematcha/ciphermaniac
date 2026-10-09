@@ -9,7 +9,7 @@
   display: grid;
   grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
   gap: var(--space-2) var(--space-5);
-  padding: 16px 14px;
+  padding: var(--space-4) 14px;
   border-top: 1px solid var(--rule);
 }
 .tm-box > :is(.tm-app, .tm-found):first-of-type {
@@ -19,21 +19,21 @@
   border-top: 0;
 }
 :is(.tm-app, .tm-found) h3 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   font-size: var(--text-lg);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 .tm-app-facts {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   margin: 0;
   font-size: var(--text-base);
 }
 .tm-app-facts > div {
   display: grid;
   grid-template-columns: 84px minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--space-3);
 }
 .tm-app-facts dt {
   color: var(--muted);
@@ -46,7 +46,7 @@
   display: grid;
   align-content: start;
   justify-items: start;
-  gap: 12px;
+  gap: var(--space-3);
   min-width: 0;
 }
 .tm-app-what p {
@@ -68,10 +68,10 @@
 }
 .tm-app-decide {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
   justify-self: stretch;
   max-width: 640px;
-  padding-top: 12px;
+  padding-top: var(--space-3);
   border-top: 1px solid var(--rule);
 }
 :is(.tm-app-decide-row, .tm-lookup-row, .tm-move-row) {
@@ -123,7 +123,7 @@
 /* ---------- POP IDs ---------- */
 .tm-lookup {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
   padding: 14px;
 }
 .tm-lookup-row {
@@ -133,7 +133,7 @@
   display: grid;
   align-content: start;
   justify-items: end;
-  gap: 6px;
+  gap: var(--space-2);
 }
 /* A question asked in place wraps under its account rather than running off the box. */
 .tm-found-acts > .tm-row-actions {
@@ -145,7 +145,7 @@
 }
 .tm-move {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
   width: min(100%, 520px);
 }
 .tm-move-head {
@@ -219,7 +219,7 @@
   .tm-people tr:has(.tm-confirm) .tm-person-acts {
     flex-basis: 100%;
     order: 4;
-    padding-top: 6px;
+    padding-top: var(--space-2);
   }
   .tm-people .tm-person-acts .tm-row-actions {
     flex-wrap: wrap;
