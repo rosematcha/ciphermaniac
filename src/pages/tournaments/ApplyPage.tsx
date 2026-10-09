@@ -115,7 +115,7 @@ function CommunityStart() {
  * at once; a Community organizer is told it runs unsanctioned events alone,
  * with the way to its events; any account may open the store application.
  */
-function PathRows(props: { role: Me['role']; storeOpen: boolean; onStore: () => void }) {
+function PathRows(props: { role: Me['role']; store: boolean; storeOpen: boolean; onStore: () => void }) {
   const joined = () => props.role === 'community';
   return (
     <section class='tm-box tm-paths'>
@@ -128,11 +128,18 @@ function PathRows(props: { role: Me['role']; storeOpen: boolean; onStore: () => 
           </Show>
         </PathRow>
       </Show>
-      <PathRow path='store' joined={joined()}>
-        <button type='button' class='btn btn-secondary' aria-expanded={props.storeOpen} onClick={() => props.onStore()}>
-          Apply as store
-        </button>
-      </PathRow>
+      <Show when={!props.store}>
+        <PathRow path='store' joined={joined()}>
+          <button
+            type='button'
+            class='btn btn-secondary'
+            aria-expanded={props.storeOpen}
+            onClick={() => props.onStore()}
+          >
+            Apply as store
+          </button>
+        </PathRow>
+      </Show>
     </section>
   );
 }
@@ -181,7 +188,12 @@ function Applying(props: { user: Me }) {
               />
             </Show>
             <Show when={open()}>
-              <PathRows role={props.user.role} storeOpen={storeOpen()} onStore={() => setStoreOpen(true)} />
+              <PathRows
+                role={props.user.role}
+                store={stage() === 'store'}
+                storeOpen={storeOpen()}
+                onStore={() => setStoreOpen(true)}
+              />
               <Show when={storeOpen()}>
                 <Show
                   when={s().eligible.profile}

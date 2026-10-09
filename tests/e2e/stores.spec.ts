@@ -285,6 +285,24 @@ async function lookUp(page: Page) {
   await page.getByRole('button', { name: 'Look up' }).click();
 }
 
+test('an approved store that is also a Community organizer is not offered the store row', async ({ page }) => {
+  const application = {
+    id: 'app-1',
+    status: 'approved' as const,
+    explanation: '',
+    proofType: null,
+    createdAt: Date.UTC(2026, 9, 4),
+    decidedAt: Date.UTC(2026, 9, 5),
+    note: null,
+    store: null
+  };
+  await mock(page, { user: { ...MANAGER, role: 'community' }, state: { ...NONE, application } });
+  await page.goto('/apply');
+  await expect(page.locator('.tm-path-title')).toHaveText(['Community organizer']);
+  await expect(page.getByText('You are currently not approved for sanctioned events.')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Apply as store' })).toHaveCount(0);
+});
+
 test('a store application starts from the league, prefilled, and sends what the functions read @mobile', async ({
   page
 }) => {
