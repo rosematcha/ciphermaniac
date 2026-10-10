@@ -306,8 +306,10 @@ body.tm-screen-mode main.page {
   text-align: left;
 }
 .tm-screen-standings :is(th, td):first-child {
-  width: 2.6em;
+  width: 1%;
+  padding-right: 0.5em;
   padding-left: 0;
+  text-align: right;
 }
 .tm-screen-standings .tm-screen-player {
   width: 100%;
@@ -319,6 +321,19 @@ body.tm-screen-mode main.page {
 .tm-screen-standings :is(.tm-screen-place, .tm-screen-player, .tm-screen-points) {
   color: var(--fg);
   font-weight: 700;
+}
+.tm-screen-deck {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  margin-left: 0.6em;
+  color: var(--muted);
+  font-size: 0.6em;
+  font-weight: 500;
+  vertical-align: middle;
+}
+.tm-screen-deck .tm-deck .sr-only {
+  display: none;
 }
 .tm-screen-standings th:nth-child(2) {
   padding-left: 0;

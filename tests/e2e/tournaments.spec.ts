@@ -442,6 +442,10 @@ test('once the event ends the big screen shows the standings', async ({ page }) 
   await expect(page.locator('.tm-screen-tables')).toHaveCount(0);
   const first = page.locator('.tm-screen-standings tbody tr').first();
   await expect(first.locator('.tm-screen-place')).toHaveText('1');
+  await expect(page.locator('.tm-screen-deck-name')).toHaveText('Gardevoir ex');
+  const place = await first.locator('.tm-screen-place').boundingBox();
+  const name = await first.locator('.tm-screen-player').boundingBox();
+  expect((name?.x ?? 0) - ((place?.x ?? 0) + (place?.width ?? 0))).toBeGreaterThanOrEqual(0);
 });
 
 test('before round 1 the public page lists everyone registered @mobile', async ({ page }) => {

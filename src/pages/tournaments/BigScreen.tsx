@@ -10,7 +10,7 @@
  * clock starts, the clock is the largest thing on the screen and the tables
  * run under it. Once every table has a result, the tables again with each
  * result in the middle, for the room to check before the next round. Once
- * the event ends, the standings.
+ * the event ends, the standings, with each player's archetype once decks show.
  *
  * Every list scrolls itself when it does not fit, at the speed set on the
  * screen. The header carries the event's name and status, and after round 1
@@ -45,6 +45,7 @@ import {
 import { type ScreenPhase, screenPhase } from '../../lib/tournament/screen';
 import { latestRound, livePods, sortMatches, withSwiss } from '../../../shared/tournament/rounds';
 import { Clock } from './Clock';
+import { DeckIcons } from './DeckIcons';
 import { createNow } from './now';
 import { QrCode } from './QrCode';
 import '../../styles/pages/tournament-screen.css';
@@ -317,7 +318,17 @@ function Standings(props: { view: TournamentView; pods: Pod[] }) {
                 {row => (
                   <tr>
                     <td class='tm-screen-place'>{row.place}</td>
-                    <td class='tm-screen-player'>{names().get(row.playerId) ?? row.playerId}</td>
+                    <td class='tm-screen-player'>
+                      {names().get(row.playerId) ?? row.playerId}
+                      <Show when={props.view.decks[row.playerId]}>
+                        {deck => (
+                          <span class='tm-screen-deck'>
+                            <DeckIcons label={deck()} size={32} />
+                            <span class='tm-screen-deck-name'>{deck()}</span>
+                          </span>
+                        )}
+                      </Show>
+                    </td>
                     <td>{recordLabel(row.record)}</td>
                     <td class='tm-screen-points'>{row.points}</td>
                     <td>{percentLabel(row.owp)}</td>
