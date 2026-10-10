@@ -1754,6 +1754,18 @@ tr.row-expansion > td {
 .tabs button:hover {
   color: var(--fg);
 }
+/* A tab not open yet (Tabs.tsx LockedTab): dimmed, its bubble saying why. */
+.tab-locked {
+  padding: 0;
+  margin: 0;
+  cursor: default;
+}
+.tab-locked button,
+.tab-locked button:hover {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .tabs button.active {
   color: var(--fg);
   font-weight: 600;

@@ -31,7 +31,7 @@ import {
 import { eventTypeOf } from '../../../shared/tournament/structure';
 import type { Pod, PodCategory } from '../../../shared/tournament/types';
 import { Segmented } from '../../components/Segmented';
-import { Tabs } from '../../components/Tabs';
+import { LockedTab, Tabs } from '../../components/Tabs';
 import { errorText, joinStaff, type Manage, type Me, saveSettings } from '../../lib/tournament/api';
 import {
   type DivisionCut,
@@ -64,7 +64,7 @@ import { Trail } from './Trail';
 
 // Pairings is the tab a running event lives on, so only it loads with the page;
 // the others load when opened (decklists are read before the event, the
-// players and event tabs mostly before it too, standings between rounds).
+// players and settings tabs mostly before it too, standings between rounds).
 const DecklistsPanel = lazy(() => import('./DecklistsPanel').then(m => ({ default: m.DecklistsPanel })));
 const PlayersPanel = lazy(() => import('./PlayersPanel').then(m => ({ default: m.PlayersPanel })));
 const StandingsTable = lazy(() => import('./StandingsTable').then(m => ({ default: m.StandingsTable })));
@@ -72,12 +72,16 @@ const EventPanel = lazy(() => import('./EventPanel').then(m => ({ default: m.Eve
 
 type Tab = 'round' | 'players' | 'standings' | 'decklists' | 'event';
 
-const TABS: { value: Tab; label: string }[] = [
+type TabOption = { value: Tab; label: string; locked?: string };
+
+const PAIRINGS_LOCKED = 'Pairings open once round 1 starts.';
+
+const TABS: TabOption[] = [
   { value: 'round', label: 'Pairings' },
   { value: 'players', label: 'Players' },
   { value: 'standings', label: 'Standings' },
   { value: 'decklists', label: 'Decklists' },
-  { value: 'event', label: 'Event' }
+  { value: 'event', label: 'Settings' }
 ];
 
 /** Other staff change the event too; the console looks again this often while visible. */
@@ -423,34 +427,57 @@ const TAB_ICONS: Record<Tab, JSX.Element> = {
 };
 
 /** A phone's tabs, in a bar along the bottom of the screen as the dashboard's are; the strip above serves wider screens. */
-function TabBar(props: { tabs: { value: Tab; label: string }[]; selected: Tab; onSelect: (tab: Tab) => void }) {
+function TabBar(props: { tabs: TabOption[]; selected: Tab; onSelect: (tab: Tab) => void }) {
   return (
     <nav class='tm-console-bar' aria-label='Event sections'>
       <For each={props.tabs}>
         {t => (
-          <button
-            type='button'
-            aria-current={t.value === props.selected ? 'page' : undefined}
-            onClick={() => props.onSelect(t.value)}
+          <Show
+            when={t.locked}
+            fallback={
+              <button
+                type='button'
+                aria-current={t.value === props.selected ? 'page' : undefined}
+                onClick={() => props.onSelect(t.value)}
+              >
+                {TAB_ICONS[t.value]}
+                <span>{t.label}</span>
+              </button>
+            }
           >
-            {TAB_ICONS[t.value]}
-            <span>{t.label}</span>
-          </button>
+            {hint => (
+              <LockedTab hint={hint()}>
+                {TAB_ICONS[t.value]}
+                <span>{t.label}</span>
+              </LockedTab>
+            )}
+          </Show>
         )}
       </For>
     </nav>
   );
 }
 
-/** The console's tabs: Decklists only while the event takes them. */
-const tabsFor = (manage: Manage) => TABS.filter(t => t.value !== 'decklists' || manage.settings.decklists !== 'off');
+/** Whether any pod has a round paired: until then the Pairings tab has nothing to show. */
+const hasStarted = (manage: Manage) => manage.tournament.pods.some(p => latestRound(p) !== undefined);
+
+/** The console's tabs: Decklists only while the event takes them, Pairings locked until round 1. */
+const tabsFor = (manage: Manage): TabOption[] =>
+  TABS.filter(t => t.value !== 'decklists' || manage.settings.decklists !== 'off').map(t =>
+    t.value === 'round' && !hasStarted(manage) ? { ...t, locked: PAIRINGS_LOCKED } : t
+  );
+
+/** The tab the console opens on: Pairings once the event is running, Players before it. */
+const defaultTab = (manage: Manage): Tab => (hasStarted(manage) ? 'round' : 'players');
 
 function Console(props: { state: ReturnType<typeof createManage>; manage: Manage }) {
   // In the URL, so a reload mid-event comes back to the same tab.
   const [params, setParams] = useSearchParams<{ tab?: string }>();
   const tabs = () => tabsFor(props.manage);
-  const tab = (): Tab => (tabs().some(t => t.value === params.tab) ? (params.tab as Tab) : 'round');
-  const setTab = (value: Tab) => setParams({ tab: value === 'round' ? undefined : value }, { replace: true });
+  const tab = (): Tab =>
+    tabs().some(t => t.value === params.tab && !t.locked) ? (params.tab as Tab) : defaultTab(props.manage);
+  const setTab = (value: Tab) =>
+    setParams({ tab: value === defaultTab(props.manage) ? undefined : value }, { replace: true });
   const [podChoice, setPodChoice] = createSignal<PodCategory | null>(null);
   const pods = () => props.manage.tournament.pods;
   // Until one is picked, the first pod still in play: a pod whose divisions have cut has nothing left to pair.

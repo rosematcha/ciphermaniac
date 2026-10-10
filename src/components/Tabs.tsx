@@ -1,7 +1,8 @@
-import { createEffect, For, onCleanup, onMount } from 'solid-js';
+import { createEffect, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
 
 interface TabsProps<T extends string> {
-  options: { value: T; label: string }[];
+  /** `locked`: why the tab cannot be opened yet, shown when it is pressed or hovered. */
+  options: { value: T; label: string; locked?: string }[];
   selected: T;
   onSelect: (value: T) => void;
   ariaLabel?: string;
@@ -52,18 +53,57 @@ export function Tabs<T extends string>(props: TabsProps<T>) {
     <nav ref={nav} class='tabs' role='tablist' aria-label={props.ariaLabel ?? 'Section'}>
       <For each={props.options}>
         {opt => (
-          <button
-            type='button'
-            role='tab'
-            data-value={opt.value}
-            class={props.selected === opt.value ? 'active' : ''}
-            aria-selected={props.selected === opt.value ? 'true' : 'false'}
-            onClick={() => props.onSelect(opt.value)}
+          <Show
+            when={opt.locked}
+            fallback={
+              <button
+                type='button'
+                role='tab'
+                data-value={opt.value}
+                class={props.selected === opt.value ? 'active' : ''}
+                aria-selected={props.selected === opt.value ? 'true' : 'false'}
+                onClick={() => props.onSelect(opt.value)}
+              >
+                {opt.label}
+              </button>
+            }
           >
-            {opt.label}
-          </button>
+            {hint => (
+              <LockedTab hint={hint()} role='tab' value={opt.value}>
+                {opt.label}
+              </LockedTab>
+            )}
+          </Show>
         )}
       </For>
     </nav>
+  );
+}
+
+/**
+ * A tab that cannot be opened yet: dimmed, and pressing or hovering it says
+ * why in the site's info bubble (see InfoTip). Pressing it again, or moving
+ * focus away, closes the bubble.
+ */
+export function LockedTab(props: { hint: string; children: JSX.Element; role?: 'tab'; value?: string }) {
+  const [open, setOpen] = createSignal(false);
+  return (
+    <span class='info-tip tab-locked' classList={{ open: open() }}>
+      <button
+        type='button'
+        role={props.role}
+        data-value={props.value}
+        aria-disabled='true'
+        aria-selected={props.role ? 'false' : undefined}
+        aria-description={props.hint}
+        onClick={() => setOpen(!open())}
+        onBlur={() => setOpen(false)}
+      >
+        {props.children}
+      </button>
+      <span class='info-tip-bubble' role='tooltip'>
+        {props.hint}
+      </span>
+    </span>
   );
 }
