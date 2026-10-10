@@ -12,7 +12,7 @@
  */
 
 import { useSearchParams } from '@solidjs/router';
-import { createMemo, createSignal, For, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, type JSX, onCleanup, Show } from 'solid-js';
 import { divisionFor, eventSeason } from '../../../shared/tournament/divisions';
 import { canUndrop } from '../../../shared/tournament/commands';
 import { hasPlayed, hasStarted, joinedLate, playerPod, podOf } from '../../../shared/tournament/rounds';
@@ -129,7 +129,7 @@ function DeckOffCell() {
  * Static seating: a player who cannot move between tables keeps one. Saved
  * when the field loses focus or Enter is pressed; emptied, it frees the table.
  */
-function FixedTableCell(props: { state: ManageState; player: Player }) {
+function FixedTableField(props: { state: ManageState; player: Player }) {
   function save(value: string) {
     const table = value.trim() ? Number(value) : null;
     if (table === (props.player.fixedTable ?? null)) {
@@ -139,7 +139,8 @@ function FixedTableCell(props: { state: ManageState; player: Player }) {
     void props.state.send({ type: 'setFixedTable', id, table });
   }
   return (
-    <td class='num tm-fixed-cell'>
+    <label class='tm-menu-field' title='Static seating: this player sits at the same table every round'>
+      Fixed table
       <input
         class='tm-input tm-table-input'
         inputmode='numeric'
@@ -148,7 +149,7 @@ function FixedTableCell(props: { state: ManageState; player: Player }) {
         value={props.player.fixedTable ?? ''}
         onChange={e => save(e.currentTarget.value.replace(/\D/g, ''))}
       />
-    </td>
+    </label>
   );
 }
 
@@ -166,11 +167,75 @@ function ReleaseAction(props: { state: ManageState; manage: Manage; player: Play
     <Show when={reporting() || !isSanctioned(props.manage)}>
       <ConfirmAction
         label={reporting() ? 'Reset reporting' : 'Unlink account'}
+        class='tm-menu-item'
         question={reporting() ? `Let another device report for ${name()}?` : `Unlink ${name()} from their account?`}
         confirmLabel={reporting() ? 'Reset' : 'Unlink'}
         onConfirm={() => void props.state.act(releaseReporter(props.manage.code, props.player.id))}
       />
     </Show>
+  );
+}
+
+/**
+ * A player's rarer actions behind a "..." button, so the roster row stays
+ * narrow. Placed against the viewport, since the roster's scrolling table
+ * would clip it, and following its button as the page scrolls; closes on a
+ * press outside it or Escape.
+ */
+function RowMenu(props: { name: string; children: JSX.Element }) {
+  const [at, setAt] = createSignal<{ top: number; right: number } | null>(null);
+  const open = () => at() !== null;
+  const close = () => setAt(null);
+  let root: HTMLSpanElement | undefined;
+  let button: HTMLButtonElement | undefined;
+  const place = () => {
+    const r = button?.getBoundingClientRect();
+    if (r) {
+      setAt({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    }
+  };
+  createEffect(() => {
+    if (!open()) {
+      return;
+    }
+    const onPointer = (e: PointerEvent) => {
+      if (root && e.target instanceof Node && !root.contains(e.target)) {
+        close();
+      }
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', place, { capture: true, passive: true });
+    onCleanup(() => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', place, { capture: true });
+    });
+  });
+  return (
+    <span ref={root} class='tm-more'>
+      <button
+        ref={button}
+        type='button'
+        class='btn btn-ghost tm-small'
+        aria-label={`More for ${props.name}`}
+        aria-expanded={open()}
+        onClick={() => (open() ? close() : place())}
+      >
+        ...
+      </button>
+      <Show when={open()}>
+        <span
+          class='tm-menu tm-menu-fixed'
+          role='group'
+          aria-label={`More for ${props.name}`}
+          style={{ top: `${at()?.top ?? 0}px`, right: `${at()?.right ?? 0}px` }}
+        >
+          {props.children}
+        </span>
+      </Show>
+    </span>
   );
 }
 
@@ -189,26 +254,11 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
   return (
     <td class='tm-extra-col'>
       <span class='tm-row-actions'>
-        <Show when={dropped() === null}>
-          <ConfirmAction
-            label='Drop'
-            question={`Drop ${playerName(props.player)}?`}
-            danger
-            onConfirm={() => send('dropPlayer')}
-          />
-          <ConfirmAction
-            label='Disqualify'
-            question={`Disqualify ${playerName(props.player)}?`}
-            danger
-            onConfirm={() => send('disqualifyPlayer')}
-          />
-        </Show>
         <Show when={dropped() !== null && canUndrop(props.manage.tournament, props.player)}>
           <button type='button' class='btn btn-ghost tm-small' onClick={() => send('undropPlayer')}>
             Reinstate
           </button>
         </Show>
-        <ReleaseAction state={props.state} manage={props.manage} player={props.player} />
         {/* Once paired, a player is dropped rather than removed, so their opponents keep the match. */}
         <Show when={!hasPlayed(pod(), props.player.id)}>
           <ConfirmAction
@@ -218,6 +268,26 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             onConfirm={() => send('removePlayer')}
           />
         </Show>
+        <RowMenu name={playerName(props.player)}>
+          <FixedTableField state={props.state} player={props.player} />
+          <Show when={dropped() === null}>
+            <ConfirmAction
+              label='Drop'
+              question={`Drop ${playerName(props.player)}?`}
+              class='tm-menu-item'
+              danger
+              onConfirm={() => send('dropPlayer')}
+            />
+            <ConfirmAction
+              label='Disqualify'
+              question={`Disqualify ${playerName(props.player)}?`}
+              class='tm-menu-item'
+              danger
+              onConfirm={() => send('disqualifyPlayer')}
+            />
+          </Show>
+          <ReleaseAction state={props.state} manage={props.manage} player={props.player} />
+        </RowMenu>
       </span>
     </td>
   );
@@ -267,6 +337,7 @@ function PlayerRow(props: RowProps) {
           >
             <span class='tm-flag'>Late</span>
           </Show>
+          <Show when={props.player.fixedTable}>{table => <span class='tm-flag'>Table {table()}</span>}</Show>
           <Show when={props.player.droppedAfter !== null}>
             <span class='tm-flag'>{props.player.disqualified ? 'Disqualified' : 'Dropped'}</span>
           </Show>
@@ -284,7 +355,6 @@ function PlayerRow(props: RowProps) {
         <DeckCell {...props} />
       </Show>
       <Show when={swiss()} fallback={<td class='tm-extra-col' />}>
-        <FixedTableCell state={props.state} player={props.player} />
         <PlayerActions state={props.state} manage={props.manage} player={props.player} />
       </Show>
     </tr>
@@ -345,16 +415,11 @@ export function PlayersPanel(props: { state: ManageState; manage: Manage }) {
                       {' '}
                       · off{' '}
                       <button type='button' class='tm-th-link' onClick={() => setParams({ tab: 'event' })}>
-                        Turn on in Event settings
+                        Turn on in Settings
                       </button>
                     </span>
                   </Show>
                 </th>
-                <Show when={swiss()}>
-                  <th class='num' title='Static seating: this player sits at the same table every round'>
-                    Fixed table
-                  </th>
-                </Show>
                 <th>
                   <span class='sr-only'>Actions</span>
                 </th>

@@ -258,6 +258,32 @@ test('with decklists off the console has no Decklists tab', async ({ page }) => 
   await expect(page.getByRole('tab', { name: 'Decklists' })).toHaveCount(0);
 });
 
+test('before round 1 the console opens on Players, and Pairings says why it is locked', async ({ page }) => {
+  await mockConsole(page, event(4, 0, false), settingsOf({}));
+  await expect(page.getByRole('tab', { name: 'Players' })).toHaveAttribute('aria-selected', 'true');
+  const pairings = page.getByRole('tab', { name: 'Pairings' });
+  await expect(pairings).toHaveAttribute('aria-disabled', 'true');
+  await pairings.click({ force: true });
+  await expect(page.getByRole('tooltip', { name: 'Pairings open once round 1 starts.' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Players' })).toHaveAttribute('aria-selected', 'true');
+});
+
+test('a player row keeps its rarer actions and fixed table under its menu', async ({ page }) => {
+  const sent = await mockConsole(page, event(4, 0, false), settingsOf({}));
+  await expect(page.getByRole('button', { name: 'Drop' })).toHaveCount(0);
+  await page
+    .getByRole('button', { name: /^More for / })
+    .first()
+    .click();
+  const menu = page.getByRole('group', { name: /^More for / });
+  await expect(menu.getByRole('button', { name: 'Disqualify' })).toBeVisible();
+  await menu.getByRole('textbox', { name: /^Fixed table for / }).fill('7');
+  await menu.getByRole('textbox', { name: /^Fixed table for / }).press('Enter');
+  await expect.poll(() => sent.at(-1)).toMatchObject({ type: 'setFixedTable', table: 7 });
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+});
+
 test('decks are named from the pairings, and a name the list lacks is taken as typed', async ({ page }) => {
   const t = event(8, 0, true);
   const sent = await mockConsole(page, t, settingsOf({ deckVisibility: 'always' }));
@@ -349,19 +375,21 @@ test('the big screen marks who won each finished table', async ({ page }) => {
   await expect(page.locator('.tm-screen-mark')).toHaveCount(2);
 });
 
-test('on a phone a roster question takes its own line instead of squeezing the name', async ({ page }) => {
+test('on a phone a roster question asked from the row menu stays on screen', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await mockConsole(page, event(4, 0, false), settingsOf({ playerReporting: true }));
   // A phone's tabs sit in the bar along the bottom.
   await page.getByRole('navigation', { name: 'Event sections' }).getByRole('button', { name: 'Players' }).click();
+  await page
+    .getByRole('button', { name: /^More for / })
+    .first()
+    .click();
   await page.getByRole('button', { name: 'Reset reporting' }).first().click();
   const question = page.getByRole('group', { name: /Let another device report for/ });
   await expect(question).toBeVisible();
-  const row = page.locator('.tm-roster tbody tr').filter({ has: question });
   const asked = await question.boundingBox();
+  expect(asked?.x ?? -1).toBeGreaterThanOrEqual(0);
   expect((asked?.x ?? 0) + (asked?.width ?? Infinity)).toBeLessThanOrEqual(360);
-  const name = await row.locator('.tm-who').boundingBox();
-  expect(name?.width ?? 0).toBeGreaterThan(120);
 });
 
 test('a division cut stays in the shared pod and pairs the next bracket round', async ({ page }) => {
@@ -396,6 +424,10 @@ test('at an unsanctioned event where players do not report, staff can unlink a p
   const t = event(4, 0, false);
   await mockConsole(page, t, settingsOf({ playerReporting: false }));
   await page.getByRole('tab', { name: 'Players' }).click();
+  await page
+    .getByRole('button', { name: /^More for / })
+    .first()
+    .click();
   await expect(page.getByRole('button', { name: 'Reset reporting' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Unlink account' }).first().click();
   await page

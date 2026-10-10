@@ -880,9 +880,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   flex: 1 1 180px;
   min-width: 0;
 }
-.tm-fixed-cell {
-  width: 84px;
-}
 .tm-table-input {
   width: 64px;
   min-height: 32px;
@@ -2130,6 +2127,24 @@ tr.is-in .tm-place {
   font-size: var(--text-sm);
   text-align: left;
   cursor: pointer;
+}
+.tm-menu-fixed {
+  position: fixed;
+  z-index: 40;
+}
+.tm-menu-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) 10px;
+  font-size: var(--text-sm);
+}
+/* A confirm asked from the menu wraps inside it rather than widening the row. */
+.tm-menu .tm-confirm {
+  flex-wrap: wrap;
+  padding: var(--space-1);
+  white-space: normal;
 }
 .tm-menu-item:hover,
 .tm-menu-item:focus-visible {
