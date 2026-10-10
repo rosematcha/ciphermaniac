@@ -23,7 +23,7 @@ import { FormatSelect } from './FormatSelect';
 import { ListingPicker } from './ListingPicker';
 import { DecklistsSwitch, EventTypeSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
-import { SETTING_INFO, SettingInfo } from './SettingInfo';
+import { reportingInfo, SETTING_INFO, SettingInfo } from './SettingInfo';
 
 export interface Setup {
   name: string;
@@ -236,7 +236,7 @@ export function EventSetup(props: {
               <EventTypeSwitch value={eventType()} onChange={setEventType} />
             </SettingRow>
           </Show>
-          <SettingRow label='Round minutes' for='setup-minutes'>
+          <SettingRow label='Swiss round minutes' for='setup-minutes'>
             <input
               id='setup-minutes'
               class='tm-input tm-set-minutes'
@@ -256,8 +256,8 @@ export function EventSetup(props: {
             />
           </SettingRow>
         </Show>
-        <SettingRow label='Player reporting' info={<SettingInfo text={SETTING_INFO.playerReporting} />}>
-          <Toggle label='Player reporting' value={reporting()} onChange={setReporting} />
+        <SettingRow label='Mobile result reporting' info={<SettingInfo text={reportingInfo(sanctioned())} />}>
+          <Toggle label='Mobile result reporting' value={reporting()} onChange={setReporting} />
         </SettingRow>
         <SettingRow label='Archetypes' for='setup-archetypes' info={<SettingInfo text={SETTING_INFO.archetypes} />}>
           <ArchetypesSelect id='setup-archetypes' value={archetypes()} onChange={setArchetypes} />

@@ -14,8 +14,8 @@ const CAPS = Array.from({ length: SETTINGS_LIMITS.roundCap }, (_, i) => i + 1);
 
 const DECKLIST_OPTIONS: { value: DecklistMode; label: string }[] = [
   { value: 'off', label: 'Disabled' },
-  { value: 'open', label: 'Open' },
-  { value: 'closed', label: 'Closed' }
+  { value: 'closed', label: 'Closed' },
+  { value: 'open', label: 'Open' }
 ];
 
 const EVENT_TYPE_OPTIONS = EVENT_TYPES.map(value => ({ value, label: EVENT_TYPE_LABELS[value] }));

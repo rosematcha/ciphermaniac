@@ -13,7 +13,7 @@ import type { DeckVisibility } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 
 export const VISIBILITY_LABELS: Record<DeckVisibility, string> = {
-  always: 'Shown to everyone',
+  always: 'Shown during the event',
   after: 'Shown once the event ends',
   off: 'Disabled'
 };

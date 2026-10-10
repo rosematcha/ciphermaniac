@@ -32,7 +32,7 @@ import { session } from './session';
 import type { ManageState } from './manageState';
 import { DecklistsSwitch, EventTypeSwitch, RoundsSelect } from './SettingChoices';
 import { ArchetypesSelect, SettingRow, Toggle } from './SettingControls';
-import { SETTING_INFO, SettingInfo } from './SettingInfo';
+import { reportingInfo, SETTING_INFO, SettingInfo } from './SettingInfo';
 
 /** A box of settings with its heading, and a foot with Save and whether anything is unsaved. */
 function SettingsBox(props: {
@@ -112,7 +112,7 @@ function EventDetails(props: { state: ManageState; manage: Manage }) {
           <EventTypeSwitch value={eventType()} onChange={setEventType} />
         </SettingRow>
       </Show>
-      <SettingRow label='Round minutes' for='info-round'>
+      <SettingRow label='Swiss round minutes' for='info-round'>
         <input
           id='info-round'
           class='tm-input tm-set-minutes'
@@ -200,13 +200,17 @@ function ForPlayers(props: { state: ManageState; manage: Manage }) {
           />
         </SettingRow>
       </Show>
-      <SettingRow label='Player reporting' info={<SettingInfo text={SETTING_INFO.playerReporting} />}>
-        <Toggle label='Player reporting' value={draft().playerReporting} onChange={v => set('playerReporting', v)} />
+      <SettingRow label='Mobile result reporting' info={<SettingInfo text={reportingInfo(draft().sanctioned)} />}>
+        <Toggle
+          label='Mobile result reporting'
+          value={draft().playerReporting}
+          onChange={v => set('playerReporting', v)}
+        />
       </SettingRow>
       <SettingRow label='Decklists' info={<SettingInfo text={SETTING_INFO.decklists} />}>
         <DecklistsSwitch value={draft().decklists} onChange={v => set('decklists', v)} />
       </SettingRow>
-      <SettingRow label='Details for players' for='set-details'>
+      <SettingRow label='Event description' for='set-details'>
         <textarea
           id='set-details'
           class='tm-input tm-textarea'

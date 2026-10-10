@@ -657,7 +657,7 @@ test('the new event setup explains player reporting, archetypes and decklists, e
   await page.goto('/host');
   await page.getByRole('button', { name: 'Start an event' }).click();
   for (const [setting, words] of [
-    ['Player reporting', 'report the results of their match'],
+    ['Mobile result reporting', 'report the results of their match'],
     ['Archetypes', 'organizer entry of player deck archetypes'],
     ['Decklists', 'submit their decklists in TCGL format']
   ]) {
@@ -666,9 +666,9 @@ test('the new event setup explains player reporting, archetypes and decklists, e
     await expect(tip.getByRole('tooltip')).toBeVisible();
     await expect(tip.getByRole('tooltip')).toContainText(words);
   }
-  await expect(page.getByRole('tablist', { name: 'Player reporting' }).getByRole('tab', { selected: true })).toHaveText(
-    'Disabled'
-  );
+  await expect(
+    page.getByRole('tablist', { name: 'Mobile result reporting' }).getByRole('tab', { selected: true })
+  ).toHaveText('Disabled');
   await expect(page.getByRole('combobox', { name: 'Archetypes', exact: true })).toHaveValue('off');
   await expect(page.getByRole('combobox', { name: 'Archetypes', exact: true }).locator('option:checked')).toHaveText(
     'Disabled'
