@@ -7,6 +7,7 @@
  * single indexed lookup with no write.
  */
 
+import { EARLY_LIMIT, launchBadge } from '../../../shared/accounts/achievements.js';
 import { displayName, isHandle, randomHandle } from '../../../shared/accounts/handle.js';
 import { type AccountRole, readAccountRole } from '../../../shared/accounts/roles.js';
 import { storeRoleOf } from '../../../shared/accounts/stores.js';
@@ -246,6 +247,19 @@ function firstHandle(profile: Profile): string {
   return profile.provider === 'dev' && isHandle(typed, { reserved: false }) ? typed : randomHandle();
 }
 
+/**
+ * A new account's Beta tester or Early adopter badge. Early adopter stops
+ * being granted once EARLY_LIMIT accounts hold it.
+ */
+export function launchGrant(db: D1Like, userId: string, badge = launchBadge()): D1Statement {
+  return db
+    .prepare(
+      'INSERT OR IGNORE INTO account_badges (user_id, badge, granted_at) SELECT ?1, ?2, ?3 ' +
+        "WHERE ?2 = 'beta' OR (SELECT COUNT(*) FROM account_badges WHERE badge = 'early') < ?4"
+    )
+    .bind(userId, badge, Date.now(), EARLY_LIMIT);
+}
+
 async function insertAccount(
   db: D1Like,
   profile: Profile,
@@ -262,7 +276,8 @@ async function insertAccount(
               'VALUES (?1, ?2, ?3, ?4, ?5, CASE WHEN ?5 IS NULL THEN NULL ELSE ?6 END, ?6)'
           )
           .bind(userId, firstHandle(profile), verifiedEmail(profile), profile.avatar, birthDate, Date.now()),
-    identityInsert(db, profile, userId)
+    identityInsert(db, profile, userId),
+    ...(existing ? [] : [launchGrant(db, userId)])
   ]);
   return userId;
 }

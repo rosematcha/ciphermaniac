@@ -12,6 +12,7 @@ import * as profiles from '../../functions/api/profiles/[handle].ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
 import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
+import { launchGrant } from '../../functions/lib/auth/session.ts';
 import { loadTournament } from '../../functions/lib/tournaments/store.ts';
 import type { Badge } from '../../shared/accounts/achievements.ts';
 import { latestRound } from '../../shared/tournament/rounds.ts';
@@ -44,11 +45,12 @@ const saveProfile = (cookie: string, popId: string) =>
     { method: 'PUT', cookie, body: { popId, firstName: 'Pat', lastName: 'Player', birthDate: '02/27/2001' } }
   );
 
-/** The badges on the public profile at `handle`. */
-async function badgesAt(handle: string): Promise<Badge[]> {
+/** The badges on the public profile at `handle`, all of them or only the counted ones. */
+async function badgesAt(handle: string, all = false): Promise<Badge[]> {
   const shown = await hit(profiles.onRequestGet as Handler, `/api/profiles/${handle}`, { handle });
   assert.equal(shown.status, 200);
-  return shown.json.badges as Badge[];
+  const badges = shown.json.badges as Badge[];
+  return all ? badges : badges.filter(badge => 'count' in badge);
 }
 
 /** Signs in an account with its profile public under `handle`. */
@@ -163,10 +165,13 @@ test('granted badges show before counted ones, and go when the account is delete
   const player = await publicAccount('Pat Player', 'pat');
   const { id } = db().raw.prepare("SELECT id FROM users WHERE handle = 'pat'").get() as { id: string };
   const grant = db().raw.prepare('INSERT INTO account_badges (user_id, badge, count, granted_at) VALUES (?, ?, ?, 0)');
-  grant.run(id, 'early', 1);
-  grant.run(id, 'beta', 1);
+  grant.run(id, 'creator', 1);
   grant.run(id, 'bug', 6);
-  assert.deepEqual(await badgesAt('pat'), [{ key: 'beta' }, { key: 'early' }, { key: 'bug', count: 6, tier: 2 }]);
+  assert.deepEqual(await badgesAt('pat', true), [
+    { key: 'creator' },
+    { key: 'beta' },
+    { key: 'bug', count: 6, tier: 2 }
+  ]);
   const gone = await hit(
     me.onRequestDelete as Handler,
     '/api/me',
@@ -179,4 +184,26 @@ test('granted badges show before counted ones, and go when the account is delete
   );
   assert.equal(gone.status, 204);
   assert.deepEqual(db().raw.prepare('SELECT badge FROM account_badges WHERE user_id = ?').all(id), []);
+});
+
+test('a new account tests the beta before launch, and signing in again grants nothing more', async () => {
+  await publicAccount('Pat Player', 'pat');
+  await signIn('Pat Player');
+  assert.deepEqual(await badgesAt('pat', true), [{ key: 'beta' }]);
+  assert.equal(db().raw.prepare('SELECT COUNT(*) AS n FROM account_badges').get()?.n, 1);
+});
+
+test('after launch, only the first hundred new accounts adopted early', async () => {
+  const insert = db().raw.prepare("INSERT INTO account_badges (user_id, badge, granted_at) VALUES (?, 'early', 0)");
+  for (let i = 0; i < 99; i++) {
+    insert.run(`u${i}`);
+  }
+  await launchGrant(db(), 'hundredth', 'early').run();
+  await launchGrant(db(), 'late', 'early').run();
+  const held = (id: string) =>
+    (db().raw.prepare('SELECT badge FROM account_badges WHERE user_id = ?').all(id) as { badge: string }[]).map(
+      row => row.badge
+    );
+  assert.deepEqual(held('hundredth'), ['early']);
+  assert.deepEqual(held('late'), [], 'no Beta tester either: the beta is over');
 });

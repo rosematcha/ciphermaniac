@@ -251,8 +251,9 @@ CREATE TABLE IF NOT EXISTS event_wins (
 ) WITHOUT ROWID;
 
 -- Badges granted by hand (shared/accounts/achievements.ts): the developer,
--- contributors with how many of their issues or changes were accepted, and
--- the first accounts. Gone with the account.
+-- contributors with how many of their issues or changes were accepted; and
+-- Beta tester or Early adopter, granted as an account is made. Gone with the
+-- account.
 CREATE TABLE IF NOT EXISTS account_badges (
   user_id TEXT NOT NULL,
   badge TEXT NOT NULL,
@@ -260,6 +261,8 @@ CREATE TABLE IF NOT EXISTS account_badges (
   granted_at INTEGER NOT NULL,
   PRIMARY KEY (user_id, badge)
 ) WITHOUT ROWID;
+-- Counts Early adopters against their limit.
+CREATE INDEX IF NOT EXISTS account_badges_badge ON account_badges (badge);
 
 -- Accounts asking to become organizers, and what an admin decided. The POP
 -- ID and name are the profile as it stood when the account applied. The

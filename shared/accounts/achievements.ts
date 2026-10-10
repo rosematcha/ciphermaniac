@@ -2,8 +2,9 @@
  * Achievements: the badges a public profile shows. Counted ones come from
  * what the account did on the site and are read fresh with its History, so
  * an event deleted or wiped takes its count with it. Granted ones are rows in
- * `account_badges`, set by hand: the developer, contributors, and the first
- * accounts, frozen as they were granted.
+ * `account_badges`, frozen as they were granted: the developer and
+ * contributors by hand, and Beta tester or Early adopter as an account is
+ * made (see launchBadge).
  */
 
 /** Badges counted from the account's events, in the order a profile lists them. */
@@ -11,6 +12,19 @@ export const COUNTED = ['played', 'won', 'organized', 'staffed', 'traveler', 'bu
 
 /** Badges an account holds or not, with no count. */
 export const SPECIAL = ['creator', 'beta', 'early'] as const;
+
+/**
+ * Whether the site has publicly launched. Before it, every new account tests
+ * the beta; after it, the first EARLY_LIMIT new accounts adopted early. An
+ * account holds one of the two at most.
+ */
+export const LAUNCHED = false;
+
+/** How many accounts made after launch are Early adopters. */
+export const EARLY_LIMIT = 100;
+
+/** The badge a new account is granted as it is made. */
+export const launchBadge = (launched: boolean = LAUNCHED): 'beta' | 'early' => (launched ? 'early' : 'beta');
 
 export type CountedKey = (typeof COUNTED)[number];
 export type SpecialKey = (typeof SPECIAL)[number];
