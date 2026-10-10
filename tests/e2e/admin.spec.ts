@@ -328,3 +328,15 @@ test('an Admin sees every event, a store’s and a community one, each opening i
   await expect(rows.nth(1)).toContainText('Finished');
   await expect(rows.nth(1).getByRole('link', { name: 'Park Meetup' })).toHaveAttribute('href', '/t/def456');
 });
+
+test('the dashboard’s Admin tab has every section of the admin page, kept in the address', async ({ page }) => {
+  await mockAdmin(page);
+  await page.goto('/host?tab=admin&section=events');
+  const sections = page.getByRole('tablist', { name: 'Admin sections' });
+  await expect(sections.getByRole('tab')).toHaveText(['Applications', 'Organizers', 'POP IDs', 'Events']);
+  await expect(page.locator('.tm-admin-events tbody tr')).not.toHaveCount(0);
+  await sections.getByRole('tab', { name: 'Organizers' }).click();
+  await expect(page.getByRole('row', { name: /Ada Lovelace/ })).toBeVisible();
+  await expect(page).toHaveURL(/tab=admin/);
+  await expect(page).toHaveURL(/section=organizers/);
+});

@@ -76,10 +76,6 @@
 .tm-dash-live .btn {
   margin-top: var(--space-3);
 }
-.tm-dash-more {
-  margin-top: var(--space-4);
-}
-
 .tm-dash-bar {
   display: none;
 }

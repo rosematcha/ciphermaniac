@@ -2,8 +2,9 @@
  * /host signed in: the account's dashboard, one tab per part it plays.
  * Playing is every account's (its History, see PlayingTab); Organizing
  * belongs to an account that may start events or already runs or staffs one
- * (the organizer's lists, see HostIndex); Admin to an Admin (the
- * Applications queue). With one tab there is no switch, only its name.
+ * (the organizer's lists, see HostIndex); Admin to an Admin (every section
+ * of /admin, see AdminSections). With one tab there is no switch, only its
+ * name.
  *
  * The tabs are the page's heading on a wide screen, beside the account menu;
  * on a phone they move to a bar along the bottom of the screen, and the
@@ -12,7 +13,7 @@
  * events, then Playing.
  */
 
-import { A, useSearchParams } from '@solidjs/router';
+import { useSearchParams } from '@solidjs/router';
 import {
   createEffect,
   createResource,
@@ -39,7 +40,7 @@ import { createSessionCatchUp } from './ApplicantStatus';
 import { PlayingTab } from './PlayingTab';
 import '../../styles/pages/tournament-dashboard.css';
 
-const AdminApplications = lazy(() => import('./AdminApplications').then(m => ({ default: m.AdminApplications })));
+const AdminSections = lazy(() => import('./AdminSections').then(m => ({ default: m.AdminSections })));
 
 export type Tab = 'playing' | 'organizing' | 'admin';
 
@@ -218,10 +219,7 @@ export function Dashboard(props: {
               </Match>
               <Match when={open() === 'organizing'}>{props.organizing(latestValue(events) ?? [], application)}</Match>
               <Match when={open() === 'admin'}>
-                <AdminApplications />
-                <p class='tm-dash-more'>
-                  <A href='/admin'>Organizers and POP IDs</A>
-                </p>
+                <AdminSections param='section' />
               </Match>
             </Switch>
           </div>
