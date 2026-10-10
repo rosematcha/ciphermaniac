@@ -165,6 +165,12 @@ test('a deck named for a Pokémon neither list has is reportable', async () => {
   assert.equal((await shown(response)).archetype, 'Tyrantrum');
 });
 
+test('a deck named for two Pokémon is reportable in the order a pair is saved in', async () => {
+  const response = await post(report('Barbaracle Tyrantrum', 1));
+  assert.equal((await shown(response)).archetype, 'Barbaracle Tyrantrum');
+  assert.equal((await post(report('Tyrantrum Barbaracle', 1, 'bob|CA'))).status, 400);
+});
+
 test('an archetype outside the index, an event that is not on, and a malformed body are refused', async () => {
   assert.equal((await post(report('Made Up Deck', 1))).status, 400);
   assert.equal((await post({ ...report('Dragapult', 1), slug: 'elsewhere-2027' })).status, 404);

@@ -17,7 +17,7 @@ import { fetchArchetypeLabels, fetchOnlineArchetypes } from '../../lib/data';
 import { fetchFormatArchetypes, loadTierFormats, STANDARD_FORMAT_ID, tierFormats } from '../../lib/data/formats';
 import { loadSpecies } from '../../lib/deckIcons';
 import { latestValue } from '../../lib/resource';
-import type { ReportedDeck } from '../live/LiveDeck';
+import type { ReportedDeck } from '../live/reportedDeck';
 import { learnDeckIcons } from './DeckIcons';
 import { eventDecks } from './eventDecks';
 

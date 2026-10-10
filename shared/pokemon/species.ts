@@ -99,8 +99,53 @@ const BY_NAME = new Map(
   ])
 );
 
-/** The sprite of the Pokémon a deck label names outright, or none when it names anything else. */
+const LABELS = new Set(SPECIES_LABELS);
+/** Longest first, so a query opening "Iron Valiant " leads with Iron Valiant. */
+const LONGEST_FIRST = [...SPECIES_LABELS].sort((a, b) => b.length - a.length);
+
+/**
+ * The label a deck named for two Pokémon is saved under, whichever was typed
+ * first: "Tyrantrum Barbaracle" and "Barbaracle Tyrantrum" are one deck.
+ */
+export function pairLabel(first: string, second: string): string {
+  return [first, second].sort((a, b) => a.localeCompare(b)).join(' ');
+}
+
+/** The two Pokémon a label names side by side, in its own order, or null when it is not two of them. */
+export function speciesPair(label: string): [string, string] | null {
+  const words = label.split(' ');
+  for (let cut = 1; cut < words.length; cut++) {
+    const first = words.slice(0, cut).join(' ');
+    const second = words.slice(cut).join(' ');
+    if (LABELS.has(first) && LABELS.has(second)) {
+      return [first, second];
+    }
+  }
+  return null;
+}
+
+/** Whether a label is two Pokémon in the order they are saved in (see pairLabel). */
+export function isPairLabel(label: string): boolean {
+  const pair = speciesPair(label);
+  return pair !== null && pairLabel(...pair) === label;
+}
+
+/**
+ * A query that opens with one Pokémon's full name and a space: that Pokémon,
+ * and what has been typed of the second since. Null until the first is whole.
+ */
+export function pairLead(query: string): { lead: string; tail: string } | null {
+  const typed = query.toLowerCase();
+  const lead = LONGEST_FIRST.find(label => typed.startsWith(`${label.toLowerCase()} `));
+  return lead ? { lead, tail: query.slice(lead.length + 1).trim() } : null;
+}
+
+/** The sprite of the Pokémon a deck label names outright, both for a pair of them, or none otherwise. */
 export function speciesIcons(label: string | null | undefined): string[] {
   const slug = BY_NAME.get(normalizeForLookup(label));
-  return slug ? [slug] : [];
+  if (slug) {
+    return [slug];
+  }
+  const pair = label ? speciesPair(label) : null;
+  return pair ? pair.flatMap(name => speciesIcons(name)) : [];
 }

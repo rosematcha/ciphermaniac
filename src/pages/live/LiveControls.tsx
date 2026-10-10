@@ -5,7 +5,7 @@ import type { StatusFilter } from '../../../shared/live/view';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Chip, ChipGroup, SearchInput } from '../../components/Chip';
 import { Segmented } from '../../components/Segmented';
-import type { ReportedDeck } from './LiveDeck';
+import type { ReportedDeck } from './reportedDeck';
 
 export type LiveView = 'pairings' | 'standings';
 

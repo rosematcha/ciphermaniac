@@ -12,7 +12,7 @@
  * Failed publication stays dirty for the scheduled reconciliation sweep.
  *
  * The archetype has to be one the site already names, by label: the online
- * index or the archetype icon map.
+ * index or the archetype icon map, or two Pokémon as a pair is saved.
  *
  * A device has one report per seat: reporting again replaces it, and a null
  * archetype takes it back. Neither takes up a new seat, so the per-device cap
@@ -33,7 +33,7 @@ import {
   reportableArchetypes
 } from '../../../shared/live/reports.js';
 import { isEventLive, LIVE_SCHEDULE_KEY } from '../../../shared/live/schedule.js';
-import { SPECIES_LABELS } from '../../../shared/pokemon/species.js';
+import { isPairLabel, SPECIES_LABELS } from '../../../shared/pokemon/species.js';
 import type { LiveSchedule } from '../../../shared/live/types.js';
 import { ARCHETYPE_INDEX_KEY } from '../../lib/api/archetypeIndexKey.js';
 import { readJsonBody } from '../../lib/api/body.js';
@@ -127,7 +127,7 @@ async function refuse(bucket: LiveBucket, slug: string, reports: readonly DeckRe
   if (!live) {
     return jsonError('No such live event', 404);
   }
-  if (named.some(archetype => !known.includes(archetype))) {
+  if (named.some(archetype => !known.includes(archetype) && !isPairLabel(archetype))) {
     return jsonError('Unknown archetype', 400);
   }
   return null;

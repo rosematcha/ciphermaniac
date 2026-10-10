@@ -32,7 +32,7 @@ import { LiveControls, type LiveFilters, type LiveView } from './live/LiveContro
 import { seatHref } from './live/links';
 import { PairingsTable, type SeatPresenter } from './live/PairingsTable';
 import { StandingsTable } from './live/StandingsTable';
-import type { ReportedDeck } from './live/LiveDeck';
+import type { ReportedDeck } from './live/reportedDeck';
 import '../styles/pages/players-tables.css';
 import '../styles/pages/players.css';
 import '../styles/pages/live.css';

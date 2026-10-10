@@ -19,7 +19,7 @@ import { liveVoterId } from '../../lib/liveFollows';
 import { createPolled, liveDelay } from '../../lib/livePoll';
 import { reportKey, shownDeck, useMyReports } from '../../lib/liveReports';
 import { latestValue, resolved } from '../../lib/resource';
-import type { ReportedDeck } from './LiveDeck';
+import type { ReportedDeck } from './reportedDeck';
 
 export interface DeckReports {
   /** Every reportable archetype, the online meta's first and the ones in play flagged. */

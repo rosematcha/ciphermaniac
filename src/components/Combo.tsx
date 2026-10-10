@@ -67,6 +67,11 @@ interface ComboProps<T> {
   /** Row content beside the name, e.g. a thumbnail and a count. */
   children: (item: T, query: string) => JSX.Element;
   onPick: (item: T) => void;
+  /**
+   * Replaces the ranking for a query it has its own answer for, given the query
+   * as typed, trailing space and all; undefined leaves the query to the ranking.
+   */
+  search?: (query: string) => readonly T[] | undefined;
   /** Makes an entry from a query that names nothing in the list, offered after the matches. */
   create?: (query: string) => T;
   /** Width of the field; the list matches it. */
@@ -134,9 +139,10 @@ export function Combo<T>(props: ComboProps<T>): JSX.Element {
     if (!q) {
       return [...(props.browse ?? props.options.slice(0, SUGGESTION_LIMIT))];
     }
-    const ranked = rankByQuery(props.options, q, props.label, { weight: props.weight, tier: props.tier });
-    const named = props.options.some(item => props.label(item).toLowerCase() === q.toLowerCase());
-    return props.create && !named ? [...ranked, props.create(q)] : ranked;
+    const ranked =
+      props.search?.(query()) ?? rankByQuery(props.options, q, props.label, { weight: props.weight, tier: props.tier });
+    const named = [...props.options, ...ranked].some(item => props.label(item).toLowerCase() === q.toLowerCase());
+    return props.create && !named ? [...ranked, props.create(q)] : [...ranked];
   });
   const optionId = (i: number): string => `${listId}-${i}`;
   /** Whether a row opens a new tier, and so wants the rule above it. Never the first row. */

@@ -8,7 +8,8 @@ import { createSignal, Show } from 'solid-js';
 import { createDeckOptions } from './deckOptions';
 import { SETTINGS_LIMITS } from '../../../shared/tournament/view';
 import { type Manage, setDeck } from '../../lib/tournament/api';
-import { DeckCombo, type ReportedDeck } from '../live/LiveDeck';
+import { DeckCombo } from '../live/LiveDeck';
+import type { ReportedDeck } from '../live/reportedDeck';
 import { ErrorLine } from './Field';
 import type { ManageState } from './manageState';
 

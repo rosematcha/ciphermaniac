@@ -12,7 +12,7 @@ import {
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { useLiveFollows } from '../../lib/liveFollows';
 import { deckIcons } from '../../lib/deckIcons';
-import type { ReportedDeck } from './LiveDeck';
+import type { ReportedDeck } from './reportedDeck';
 import { seatHref, seatName } from './links';
 import { OutcomeMark } from './LiveRun';
 

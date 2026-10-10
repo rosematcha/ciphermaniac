@@ -23,6 +23,15 @@ export function loadSpecies(): Promise<Species> {
   return loading;
 }
 
+/** The Pokémon if they have loaded, asking for them if not; reactive, so a reader updates once they arrive. */
+export function loadedSpecies(): Species | undefined {
+  const known = species();
+  if (!known) {
+    loadSpecies().catch(() => undefined);
+  }
+  return known;
+}
+
 /**
  * The deck's own sprites, the icon map's, or, for a deck named for one Pokémon
  * alone, that Pokémon's, drawn once the Pokémon have loaded.
@@ -32,11 +41,6 @@ export function deckIcons(deck: { label: string; icons?: string[] }): string[] {
   if (icons.length > 0) {
     return icons;
   }
-  const known = species();
-  if (!known) {
-    // A chunk that fails to load leaves the deck without a sprite, as before there were any.
-    loadSpecies().catch(() => undefined);
-    return [];
-  }
-  return known.speciesIcons(deck.label);
+  // A chunk that fails to load leaves the deck without a sprite, as before there were any.
+  return loadedSpecies()?.speciesIcons(deck.label) ?? [];
 }

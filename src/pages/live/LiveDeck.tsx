@@ -1,24 +1,9 @@
 import { createSignal, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { Combo, splitMatch } from '../../components/Combo';
-import { deckIcons } from '../../lib/deckIcons';
-
-/** An archetype a report can name, by label, with the index's own icons when it has an entry there. */
-export interface ReportedDeck {
-  label: string;
-  icons?: string[];
-  /** Share of the online meta, 0 to 100, for the decks that have one. */
-  percent?: number | null;
-  /**
-   * Whether anyone is on this deck now: it is in the online meta, or someone
-   * at this event has been reported on it. The rest of the icon map is every
-   * archetype of the last two years, so without this the box offers a decade
-   * of dead decks on the same footing as the twelve in the room.
-   */
-  played?: boolean;
-  /** Typed in by hand: a name the list did not have. */
-  custom?: boolean;
-}
+import { deckIcons, loadedSpecies } from '../../lib/deckIcons';
+import { pairSearch } from './deckPairs';
+import type { ReportedDeck } from './reportedDeck';
 
 /** A reported archetype the way the rest of the site writes one: sprites, then the name. */
 export function LiveDeck(props: { deck: ReportedDeck; class?: string }) {
@@ -33,7 +18,8 @@ export function LiveDeck(props: { deck: ReportedDeck; class?: string }) {
 /**
  * The deck typeahead, wherever a deck is named: sprites in the field and in the
  * list, what the format is playing browsable and ranked first, the long tail of
- * the icon map under a rule.
+ * the icon map under a rule. Once one Pokémon's whole name and a space are
+ * typed, the rest of the query names a second (see pairSearch).
  */
 export function DeckCombo(props: {
   decks: readonly ReportedDeck[];
@@ -49,17 +35,24 @@ export function DeckCombo(props: {
     const max = props.custom;
     return max ? (query: string) => ({ label: query.trim().slice(0, max), custom: true }) : undefined;
   };
+  const weight = (deck: ReportedDeck) => deck.percent ?? 0;
+  const tier = (deck: ReportedDeck) => (deck.custom ? 2 : deck.played ? 0 : 1);
+  const search = (query: string) => {
+    const species = loadedSpecies();
+    return species ? pairSearch(props.decks, query, species, { weight, tier }) : undefined;
+  };
   return (
     <Combo<ReportedDeck>
       placeholder={props.placeholder}
       options={props.decks}
       browse={props.decks.filter(deck => deck.played)}
       label={deck => deck.label}
-      weight={deck => deck.percent ?? 0}
-      tier={deck => (deck.custom ? 2 : deck.played ? 0 : 1)}
+      weight={weight}
+      tier={tier}
+      search={search}
       selected={props.selected}
       adorn={deck => <ArchetypeIcons slugs={deckIcons(deck)} size={20} />}
-      onPick={props.onPick}
+      onPick={deck => props.onPick(deck.pair ? { label: deck.pair } : deck)}
       create={create()}
       width={props.width}
     >

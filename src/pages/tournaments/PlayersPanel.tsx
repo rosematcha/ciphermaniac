@@ -20,7 +20,7 @@ import { DIVISION_LABELS, type Player, playerName, type Tournament } from '../..
 import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
 import { type Manage, releaseReporter } from '../../lib/tournament/api';
 import { matchHistory } from '../../lib/tournament/present';
-import type { ReportedDeck } from '../live/LiveDeck';
+import type { ReportedDeck } from '../live/reportedDeck';
 import { ConfirmAction } from './ConfirmAction';
 import { createDeckOptions } from './deckOptions';
 import { DeckPicker } from './DeckPicker';

@@ -17,7 +17,8 @@ import { createSignal, For, Show } from 'solid-js';
 import type { LiveCut } from '../../../shared/live/types';
 import { roundShort } from '../../../shared/live/rounds';
 import { type RunSeatEntry, seatKey, type SeatRef, type SeatReport } from '../../../shared/live/view';
-import { DeckCombo, type ReportedDeck } from './LiveDeck';
+import { DeckCombo } from './LiveDeck';
+import type { ReportedDeck } from './reportedDeck';
 
 interface RunReportProps {
   seats: readonly RunSeatEntry[];

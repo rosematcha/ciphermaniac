@@ -171,6 +171,32 @@ test('a whole run of decks is picked in the panel and sent as one request', asyn
   await expect(page.locator('.run-report')).toHaveCount(0);
 });
 
+test('a deck named for two Pokémon is typed into one box and sent in the order a pair is saved in', async ({
+  page
+}) => {
+  const { posted } = await stubEvent(page);
+  await page.goto(`/live/${SLUG}?player=${encodeURIComponent(RUNNER)}&cc=US`, { waitUntil: 'load' });
+  test.skip(test.info().project.name === 'mobile', 'Run reporting remains available on desktop only.');
+  const panel = page.locator('.live-run-actions');
+  await expect(panel.getByRole('button', { name: 'Report run' })).toBeVisible({ timeout: 15_000 });
+  await panel.getByRole('button', { name: 'Report run' }).click();
+
+  const row = page.locator('.run-report .round').first();
+  const box = row.getByRole('combobox');
+  await box.click();
+  // No second Pokémon is offered until the first is whole.
+  await box.fill('Tyrantru');
+  await expect(row.getByRole('option', { name: /^Tyrantrum / })).toHaveCount(0);
+  await box.fill('Tyrantrum Barbar');
+  await row.getByRole('option', { name: 'Tyrantrum Barbaracle' }).click();
+  await expect(box).toHaveValue('Barbaracle Tyrantrum');
+
+  await page.getByRole('button', { name: /^Report 1 deck$/ }).click();
+  await expect.poll(() => posted.length).toBe(1);
+  const [batch] = posted as [{ reports: { archetype: string }[] }];
+  expect(batch.reports.map(report => report.archetype)).toEqual(['Barbaracle Tyrantrum']);
+});
+
 test('reporting a whole run is hidden on mobile @mobile', async ({ page }) => {
   test.skip(test.info().project.name !== 'mobile', 'This visibility check applies to mobile.');
   await stubEvent(page);
