@@ -45,6 +45,14 @@ export default defineConfig({
               test: /(?:shared[\\/]tournament[\\/](?!tdf\.|xml\.)|src[\\/]lib[\\/]tournament[\\/](?!admin|applications|clerk|exportTdf))/,
               includeDependenciesRecursively: true
             },
+            // The Swiss engine runs in the browser only for the /host home page's sample event. Its own
+            // chunk keeps it off every page that shares event helpers.
+            {
+              name: 'pairing',
+              priority: 1,
+              test: /shared[\\/]tournament[\\/](?:pairing|random)\.|src[\\/]lib[\\/]tournament[\\/]sampleEvent\./,
+              includeDependenciesRecursively: false
+            },
             // These controls share Solid helpers and are used together in event forms.
             { name: 'form', priority: 1, test: /tournaments[\\/](Field|FormatSelect|SettingControls)\.tsx$/ }
           ]

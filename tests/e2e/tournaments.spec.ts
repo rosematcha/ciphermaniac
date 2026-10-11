@@ -283,6 +283,17 @@ test('standings rank a combined pod per division', async ({ page }) => {
 test('a signed-out organizer is offered sign-in, not a console @mobile', async ({ page }) => {
   await mockApi(page);
   await page.goto('/host');
+  // The page stands as its own product: its head replaces the site's nav.
+  await expect(page.getByRole('link', { name: 'Ciphermaniac Events' })).toHaveAttribute('href', '/host');
+  await expect(page.locator('.topnav')).toBeHidden();
+  // The sample event plays on the real engine, its standings cut to the top eight.
+  const sample = page.getByRole('region', { name: 'Sample event' });
+  await expect(sample.locator('.tm-sim-stand .sr-only li')).toHaveCount(8);
+  await expect(sample.getByText('Round 1', { exact: true })).toBeVisible();
+  await expect(page.locator('.tm-home-point output')).toHaveText(/^\d+(\.\d)? ms$/);
+  // The head's Sign in jumps to the hero's sign-in, every time it is pressed.
+  await page.getByRole('link', { name: 'Sign in', exact: true }).click();
+  await expect(page).toHaveURL(/#sign-in$/);
   // The home page offers sign-in at the top and again at the end.
   const google = page.getByRole('link', { name: 'Sign in with Google' }).first();
   await expect(google).toHaveAttribute('href', '/api/auth/login/google?next=%2Fhost');
