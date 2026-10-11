@@ -23,42 +23,42 @@ interface Point {
 
 const BANDS: Point[] = [
   {
-    name: 'Seamless .tdf compatibility',
+    name: 'Opens any .tdf',
     art: TdfArt,
     text: 'Import your .tdf files from other software. Our system produces identical results to other .tdf-producing software.'
   },
   {
     name: 'Mobile reporting',
     art: PhoneArt,
-    text: 'Players see their table and the clock, and report from their phone. No account necessary.'
+    text: 'Players can find their table, watch the round clock, and report round results from their phones, all without an account.'
   },
   {
     name: 'Player profiles',
     art: ProfileArt,
-    text: 'Players with an account keep a public profile: every event they played here, with records and decks.'
+    text: 'Anyone with an account gets a public page of every event they’ve played, records and decks included.'
   },
   {
-    name: 'Big screen',
+    name: 'Big-screen interface',
     art: ScreenArt,
-    text: 'Live pairings and the round clock on any TV, with a QR code to follow along.'
+    text: 'A dynamic second screen interface for your space’s TVs shows pairings, a round timer, and standings.'
   },
   {
-    name: 'Stream overlay',
+    name: 'Stream setup ready',
     art: StreamArt,
-    text: 'One link in OBS puts a table’s players, decks and records on stream, and follows it round to round.'
+    text: 'Add an automatic overlay to your stream setup, showing players, records, and deck archetypes.'
   }
 ];
 
 const FEATURES: Point[] = [
   {
-    name: 'Report round results',
+    name: 'Responsive admin console',
     art: ResultsArt,
-    text: 'Ties, penalties, static seating, and latecomers, from a user-friendly interface.'
+    text: 'Manage ties, penalties, static seating, and latecomers from a user-friendly interface.'
   },
   {
-    name: 'Decklists before the event',
+    name: 'Decklists ahead of time',
     art: DecklistArt,
-    text: 'Accepts TCG Live formatting, and checks every list before it is accepted.'
+    text: 'Players can digitally submit compatible lists ahead of time with automatic legality checks.'
   },
   { name: 'Field breakdown', art: FieldArt, text: 'See your event’s meta share and archetype performance.' }
 ];
@@ -118,7 +118,7 @@ export function HostHome(props: { offer: SignInOffer }) {
       <Head />
       <section class='tm-home-hero'>
         <div>
-          <h1>Run your event here</h1>
+          <h1>Pokémon TCG events, run right</h1>
           <p class='tm-home-lede'>
             Organize and run your sanctioned or unsanctioned Pokémon TCG events with a slick, user-friendly interface.
           </p>
@@ -135,7 +135,7 @@ export function HostHome(props: { offer: SignInOffer }) {
         <For each={FEATURES}>{point => <PointView point={point} />}</For>
       </div>
       <div class='tm-home-end'>
-        <strong>Run your event here</strong>
+        <strong>Ready for your next event?</strong>
         {signIn()}
       </div>
     </div>
