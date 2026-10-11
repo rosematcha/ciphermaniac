@@ -185,13 +185,17 @@ body.tm-home-mode main.page {
   line-height: 1.55;
 }
 .tm-home-bands {
-  padding: var(--space-6) 0 var(--space-5);
+  /* Pixels per canvas unit: every band picture is drawn at this one scale. */
+  --tm-art-k: 1.45;
+  max-width: 840px;
+  margin: 0 auto;
+  padding: var(--space-5) 0;
   border-top: 1px solid var(--rule);
 }
 .tm-home-bands .tm-home-point {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 48px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 56px;
   align-items: center;
   padding: var(--space-5) 0;
   border-top: 1px solid var(--rule);
@@ -200,12 +204,20 @@ body.tm-home-mode main.page {
   padding-top: 0;
   border-top: 0;
 }
+.tm-home-bands .tm-home-point:nth-child(even) {
+  grid-template-columns: minmax(0, 1fr) 240px;
+}
 .tm-home-bands .tm-home-point:nth-child(even) .tm-art {
   order: 2;
 }
+/* One slot size, each picture centred in it, so every band has the same footprint. */
 .tm-home-bands .tm-art {
-  justify-self: center;
-  width: min(100%, 250px);
+  display: grid;
+  place-items: center;
+  height: 170px;
+}
+.tm-home-bands .tm-art svg {
+  width: calc(var(--w) * var(--tm-art-k) * 1px);
 }
 .tm-home-bands h2 {
   font-size: 26px;
@@ -536,23 +548,62 @@ body.tm-home-mode main.page {
   .tm-sim-stand {
     border-left: 0;
   }
-  .tm-home-bands .tm-home-point {
+  .tm-home-features {
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-5);
+  }
+}
+/* On a phone each band stacks, picture over centred words, as the three features do. */
+@media (max-width: 700px) {
+  .tm-home-wide {
+    display: none;
+  }
+  .tm-home-hero {
+    padding-bottom: var(--space-5);
+  }
+  .tm-home-bands {
+    --tm-art-k: 1.2;
+    padding-bottom: 0;
+  }
+  .tm-home-bands .tm-home-point,
+  .tm-home-bands .tm-home-point:nth-child(even) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    text-align: center;
   }
   .tm-home-bands .tm-home-point:nth-child(even) .tm-art {
     order: 0;
   }
   .tm-home-bands .tm-art {
-    justify-self: start;
-    width: 220px;
+    height: auto;
   }
+  .tm-home-bands h2 {
+    font-size: var(--text-xl);
+  }
+  .tm-home-bands p {
+    margin: 0 auto;
+  }
+  /* The features carry on the bands' rhythm: a rule between each, pictures at the bands' scale. */
   .tm-home-features {
-    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 0;
   }
-}
-@media (max-width: 700px) {
-  .tm-home-wide {
-    display: none;
+  .tm-home-features .tm-home-point {
+    padding: var(--space-5) 0;
+    border-top: 1px solid var(--rule);
+  }
+  .tm-home-features .tm-art {
+    width: calc(136px * 1.2);
+    margin-bottom: var(--space-4);
+  }
+  .tm-home-features h2 {
+    font-size: var(--text-xl);
+  }
+  .tm-home-features p {
+    font-size: var(--text-body);
+  }
+  .tm-home-end {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
   }
 }

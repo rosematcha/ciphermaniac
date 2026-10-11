@@ -11,13 +11,22 @@ import { R2_ORIGIN } from '../../lib/constants';
 const spriteUrl = (name: string) => `${R2_ORIGIN}/pokemon-sprites/gen9/${name}.png`;
 const cardUrl = (set: string, num: string) => `${R2_ORIGIN}/card-images/${set}/${set}_${num}_R_EN_SM.webp`;
 
-/** The feature pictures all fit this box, so cropping to it puts each drawing's edge where the canvas's was. */
-const FEATURE_BOX = '12 14 136 92';
+type Box = [x: number, y: number, w: number, h: number];
 
-function Canvas(props: { children: JSX.Element; box?: string }) {
+/** The feature pictures all fit this box, so cropping to it puts each drawing's edge where the canvas's was. */
+const FEATURE_BOX: Box = [12, 14, 136, 92];
+
+/**
+ * A picture's canvas, cropped to `box` when given: the drawing's own outline.
+ * `--w` carries the crop's width, so a layout can draw every picture at one
+ * scale (tournament-home.css).
+ */
+function Canvas(props: { children: JSX.Element; box?: Box }) {
+  const box = () => props.box ?? [0, 0, 160, 120];
   return (
     <svg
-      viewBox={props.box ?? '0 0 160 120'}
+      viewBox={box().join(' ')}
+      style={{ '--w': box()[2] }}
       fill='none'
       stroke='currentColor'
       stroke-width='2'
@@ -114,7 +123,7 @@ function Qr(props: { x: number; y: number }) {
 /** A tall phone: the table, the opponent, the three buttons, the first one pressed. */
 export function PhoneArt() {
   return (
-    <Canvas>
+    <Canvas box={[53, 3, 54, 114]}>
       <rect x='54' y='4' width='52' height='112' rx='9' />
       <Bar x={74} y={11} w={12} />
       <Text x={80} y={30} size={7.5} class='tm-art-muted' weight={600}>
@@ -143,7 +152,7 @@ export function ProfileArt() {
     ['gardevoir', 87, 42, '2-3']
   ];
   return (
-    <Canvas>
+    <Canvas box={[17, 3, 126, 114]}>
       <rect x='18' y='4' width='124' height='112' rx='6' />
       <clipPath id={clip}>
         <circle cx='40' cy='26' r='13' />
@@ -201,7 +210,7 @@ const SCREEN_TABLES: [string, string][] = [
 export function ScreenArt() {
   const clock = useClock();
   return (
-    <Canvas>
+    <Canvas box={[7, 7, 146, 102]}>
       <rect x='8' y='8' width='144' height='88' rx='4' />
       <path d='M68 108h24M80 96v12' />
       <Text x={20} y={26} size={9} anchor='start' weight={700}>
@@ -232,7 +241,7 @@ export function ScreenArt() {
 /** A feature match on stream: two cards on the mat, then the overlay fades up in place and marks the win. */
 export function StreamArt() {
   return (
-    <Canvas>
+    <Canvas box={[9, 5, 142, 100]}>
       <rect x='10' y='6' width='140' height='98' rx='4' />
       <Card set='TWM' num='130' x={45} y={16} w={33} rot={-6} />
       <Card set='OBF' num='125' x={82} y={15} w={33} rot={6} />
@@ -316,7 +325,7 @@ const RING = [ringArc(190, 340), ringArc(10, 160)];
 /** The sync circle between a .tdf and the site turns once, both sides' top rows light, then it rests. */
 export function TdfArt() {
   return (
-    <Canvas>
+    <Canvas box={[13, 33, 134, 54]}>
       {tdfFile(14, 34)}
       {site(106, 34)}
       <g class='tm-art-ring'>
