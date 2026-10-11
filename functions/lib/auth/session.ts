@@ -121,7 +121,7 @@ export async function currentUser(db: D1Like, request: Request): Promise<User | 
 interface MyStoreRow {
   id: string;
   name: string;
-  league_id: string;
+  league_id: string | null;
   status: string;
   time_zone: string;
   role: string;

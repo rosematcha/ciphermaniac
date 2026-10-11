@@ -5,7 +5,9 @@
  * account one of the store's Managers, joining it if need be: how a store
  * gets a Manager back when it lost touch with its own, or { owner: <account
  * id> }, which hands the store to that account, joining it if need be: how a
- * store changes hands when its Owner cannot hand it over.
+ * store changes hands when its Owner cannot hand it over; or { league: <league
+ * ID> }, which certifies an unsanctioned store: the same store, now with its
+ * league, sanctioned events and a place on the locator.
  * Answers { store } as the Admin's list shows it.
  */
 
@@ -14,7 +16,8 @@ import { jsonError } from '../../../lib/api/responses.js';
 import { openForAdmin } from '../../../lib/auth/admin.js';
 import { type Context, param } from '../../../lib/auth/env.js';
 import { adminStore, makeManager, makeOwner } from '../../../lib/stores/admin.js';
-import { setStatus } from '../../../lib/stores/db.js';
+import { readLeagueId } from '../../../../shared/accounts/stores.js';
+import { breaksLeague, certifyStore, setStatus } from '../../../lib/stores/db.js';
 import { publishStores } from '../../../lib/stores/publish.js';
 import { privateJson } from '../../../lib/tournaments/access.js';
 import type { D1Like } from '../../../lib/types.js';
@@ -29,9 +32,18 @@ export async function onRequestPost(context: Context<'id'>): Promise<Response> {
   const body = (await readJsonObject(context.request, 512)) ?? {};
   const acting = act(db, { id, adminId: admin.id, body });
   if (acting === null) {
-    return jsonError('Set a status, a manager or an owner', 400);
+    return jsonError('Set a status, a manager, an owner or a league', 400);
   }
-  if (!(await acting)) {
+  const landed = await acting.catch((error: unknown) => {
+    if (breaksLeague(error)) {
+      return 'taken' as const;
+    }
+    throw error;
+  });
+  if (landed === 'taken') {
+    return jsonError('Another store has that league', 409);
+  }
+  if (!landed) {
     return jsonError('No such store or account', 404);
   }
   await publishStores(context);
@@ -45,9 +57,13 @@ function act(
   asked: { id: string; adminId: string; body: Record<string, unknown> }
 ): Promise<boolean> | null {
   const { id, adminId, body } = asked;
-  const { status, manager, owner } = body;
+  const { status, manager, owner, league } = body;
   if (status === 'active' || status === 'revoked') {
     return setStatus(db, id, status, adminId);
+  }
+  const leagueId = typeof league === 'string' ? readLeagueId(league) : null;
+  if (leagueId) {
+    return certifyStore(db, id, leagueId, Date.now());
   }
   if (typeof manager === 'string' && manager) {
     return makeManager(db, id, manager);

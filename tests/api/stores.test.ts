@@ -28,6 +28,9 @@ import * as event from '../../functions/api/tournaments/[code]/index.ts';
 import * as manage from '../../functions/api/tournaments/[code]/manage.ts';
 import * as organizer from '../../functions/api/tournaments/[code]/organizer.ts';
 import * as tournaments from '../../functions/api/tournaments/index.ts';
+import * as eventSettings from '../../functions/api/tournaments/[code]/settings.ts';
+import * as adminStores from '../../functions/api/admin/stores/index.ts';
+import * as adminStore from '../../functions/api/admin/stores/[id].ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import type { PublishBucket } from '../../functions/lib/types.ts';
 import { leagueShardPath } from '../../shared/events/leagues.ts';
@@ -631,6 +634,148 @@ test('a store says what it is to anyone, its contact details to its people, and 
   const inside = await hit(storeRoute.onRequestGet as Handler, `/api/stores/${store}`, at, { cookie: helper });
   assert.deepEqual([inside.json.role, inside.json.contact.phone], ['staff', '210-555-0100']);
   assert.equal((await hit(storeRoute.onRequestGet as Handler, '/api/stores/nope', { id: 'nope' })).status, 404);
+});
+
+test('a store lists its ended events latest first, with players and winners named as their public pages name them', async () => {
+  const manager = await signIn('Manager', 'organizer');
+  const store = (await storeOf(manager))!;
+  const codes: string[] = [];
+  for (const body of [{ name: 'Cup' }, { name: 'Night', settings: { sanctioned: false } }, { name: 'Open' }]) {
+    codes.push((await create(manager, { store, ...body })).json.code as string);
+  }
+  const player = (id: string, firstName: string, lastName: string) => ({ id, firstName, lastName, birthDate: '' });
+  const finish = (code: string, startDate: string, players: object[], winner: string) => {
+    raw()
+      .prepare(
+        "UPDATE tournaments SET settings = json_set(settings, '$.finished', 1), " +
+          "state = json_set(state, '$.info.startDate', ?, '$.players', json(?)) WHERE code = ?"
+      )
+      .run(startDate, JSON.stringify(players), code);
+    raw().prepare('INSERT INTO event_wins (code, player_id) VALUES (?, ?)').run(code, winner);
+  };
+  finish(codes[0]!, '9/2/2026', [player('1', 'Ash', 'Ketchum'), player('2', 'Misty', 'Waterflower')], '1');
+  finish(
+    codes[1]!,
+    '10/13/2026',
+    [player('a', 'Ash', 'Ketchum'), player('b', 'Ash', 'Kelly'), player('c', 'Brock', 'Harrison')],
+    'a'
+  );
+  const read = await hit(storeRoute.onRequestGet as Handler, `/api/stores/${store}`, { id: store });
+  const past = read.json.store.past as {
+    code: string;
+    date: string;
+    players: number;
+    winners: string[];
+    sanctioned: boolean;
+  }[];
+  assert.deepEqual(
+    past.map(item => [item.code, item.date, item.players, item.winners, item.sanctioned]),
+    [
+      [codes[1], '2026-10-13', 3, ['Ash Ket.'], false],
+      [codes[0], '2026-09-02', 2, ['Ash Ketchum'], true]
+    ]
+  );
+  assert.deepEqual(
+    (read.json.store.events as { code: string }[]).map(item => item.code),
+    [codes[2]],
+    'an event that has not ended is upcoming, not past'
+  );
+});
+
+test('an Admin makes an unsanctioned store: it runs unsanctioned Swiss events at a Community limit, off the locator, until it gets its league', async () => {
+  const admin = await signIn('Admin', 'admin');
+  const owner = await signIn('Reese');
+  const app = storeApplication();
+  const makeStore = (body: Record<string, unknown>) =>
+    hit(adminStores.onRequestPost as Handler, '/api/admin/stores', {}, { method: 'POST', cookie: admin, body });
+  const body = { owner: await idOf(owner), details: app.details, timeZone: 'America/Chicago' };
+  assert.equal((await makeStore({ ...body, owner: 'nobody' })).status, 404);
+  const refused = async (asked: Record<string, unknown>) => {
+    const answer = await makeStore(asked);
+    return [answer.status, answer.json.error];
+  };
+  assert.deepEqual(await refused({ ...body, owner: ' ' }), [400, 'Name the account that owns it']);
+  assert.deepEqual(await refused({ ...body, details: {} }), [400, 'Check the store’s details']);
+  assert.deepEqual(await refused({ ...body, timeZone: 'Nowhere/Land' }), [400, 'Pick the store’s time zone']);
+  assert.equal(
+    (await hit(adminStores.onRequestPost as Handler, '/api/admin/stores', {}, { method: 'POST', cookie: owner, body }))
+      .status,
+    403,
+    'only an Admin makes one'
+  );
+  const made = await makeStore(body);
+  assert.equal(made.status, 201);
+  const store = made.json.store.id as string;
+  assert.equal(made.json.store.leagueId, null);
+  const page = await hit(storeRoute.onRequestGet as Handler, `/api/stores/${store}`, { id: store }, { cookie: owner });
+  assert.deepEqual([page.json.store.leagueId, page.json.role], [null, 'owner']);
+  const listed = await hit(listings.onRequestGet as Handler, '/', { id: store }, { cookie: owner });
+  assert.deepEqual(listed.json.listings, [], 'no league, no listings');
+
+  const sanctioned = await create(owner, { store, settings: { sanctioned: true } });
+  assert.deepEqual(
+    [sanctioned.status, sanctioned.json.error],
+    [403, 'An unsanctioned store runs unsanctioned events only']
+  );
+  assert.equal((await create(owner, { store, sanctionId: '26-11-000123' })).status, 403);
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  assert.equal((await create(owner, { store, mode: 'tom', tournament: tdf })).status, 403);
+  const codes: string[] = [];
+  for (let i = 0; i < 3; i += 1) {
+    const made = await create(owner, { store, eventType: 'challenge' });
+    assert.equal(made.status, 201);
+    codes.push(made.json.code as string);
+  }
+  const row = raw().prepare('SELECT state, settings, store_id FROM tournaments WHERE code = ?').get(codes[0]) as Record<
+    string,
+    string
+  >;
+  assert.deepEqual(
+    [row.store_id, JSON.parse(row.settings).sanctioned, JSON.parse(row.state).info.eventType],
+    [store, false, undefined],
+    'the store’s, unsanctioned, of no Play! Pokémon kind'
+  );
+  const fourth = await create(owner, { store });
+  assert.equal(fourth.status, 429, 'a Community organizer’s three a day');
+  const turnOn = (code: string) =>
+    hit(eventSettings.onRequestPut as Handler, '/', at(code), {
+      method: 'PUT',
+      cookie: owner,
+      body: { sanctioned: true }
+    });
+  assert.deepEqual(
+    [(await turnOn(codes[0]!)).json.error],
+    ['An unsanctioned store runs unsanctioned events only'],
+    'nor does an edit make one sanctioned'
+  );
+  await publishStores({ env, waitUntil: () => undefined } as never);
+  const index = JSON.parse(objects.get(STORES_INDEX_KEY) ?? '{"stores":[]}') as { stores: { id: string }[] };
+  assert.ok(!index.stores.some(item => item.id === store), 'off the locator');
+
+  const certify = (league: string) =>
+    hit(
+      adminStore.onRequestPost as Handler,
+      `/api/admin/stores/${store}`,
+      { id: store },
+      {
+        method: 'POST',
+        cookie: admin,
+        body: { league }
+      }
+    );
+  const manager = await signIn('Manager', 'organizer');
+  const other = (await storeOf(manager))!;
+  raw().prepare("UPDATE stores SET league_id = '6238620' WHERE id = ?").run(other);
+  assert.equal((await certify('6238620')).status, 409, 'a league another store has');
+  const certified = await certify('7000001');
+  assert.deepEqual([certified.status, certified.json.store.leagueId], [200, '7000001']);
+  assert.equal((await certify('7000002')).status, 404, 'a store with a league keeps it');
+  assert.equal((await turnOn(codes[0]!)).status, 200, 'its events may now be sanctioned');
+  const after = JSON.parse(objects.get(STORES_INDEX_KEY) ?? '{"stores":[]}') as { stores: { id: string }[] };
+  assert.ok(
+    after.stores.some(item => item.id === store),
+    'and it is on the locator'
+  );
 });
 
 test('league nights are a Manager’s to set; past exceptions drop and the locator’s index follows', async () => {

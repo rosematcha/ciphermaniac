@@ -34,7 +34,7 @@ export async function storesIndex(db: D1Like, now = Date.now()): Promise<StoresI
   const { results } = await db
     .prepare(
       'SELECT id, league_id, name, address, city, region, country, lat, lon, time_zone, nights, exceptions ' +
-        "FROM stores WHERE status = 'active' ORDER BY league_id LIMIT 5000"
+        "FROM stores WHERE status = 'active' AND league_id IS NOT NULL ORDER BY league_id LIMIT 5000"
     )
     .all<Row>();
   return {

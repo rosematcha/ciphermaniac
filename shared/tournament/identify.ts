@@ -118,14 +118,17 @@ function shortest(last: string, rivals: readonly string[]): string {
   return last;
 }
 
+/** What naming a player takes. */
+type Named = Pick<Player, 'id' | 'firstName' | 'lastName'>;
+
 /**
  * Each player's last name as an unsanctioned event shows it publicly: an
  * initial, or as many letters as it takes to tell two players with the same
  * first name apart (Ash Ket. and Ash Kel.). Players are grouped by first name
  * once, so a large field costs a pass over it, not a pass per player.
  */
-export function shortLastNames(players: readonly Player[]): Map<string, string> {
-  const sharing = new Map<string, Player[]>();
+export function shortLastNames(players: readonly Named[]): Map<string, string> {
+  const sharing = new Map<string, Named[]>();
   for (const player of players) {
     const first = nameKey(player.firstName);
     const group = sharing.get(first);

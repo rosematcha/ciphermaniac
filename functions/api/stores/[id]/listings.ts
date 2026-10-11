@@ -3,7 +3,8 @@
  * store's league from today on, for its staff to start one from
  * ({ listings }; shared/accounts/types.ts Listing). Read from the event
  * locator's files, which a daily run refreshes: an event sanctioned since may
- * not be there yet, and the page offers to enter one by hand.
+ * not be there yet, and the page offers to enter one by hand. An
+ * unsanctioned store has no league, so none.
  */
 
 import { dateIn } from '../../../../shared/accounts/stores.js';
@@ -18,6 +19,9 @@ export async function onRequestGet(context: Context<'id'>): Promise<Response> {
     return access;
   }
   const { store } = access;
+  if (!store.leagueId) {
+    return privateJson({ listings: [] });
+  }
   const today = dateIn(store.timeZone, Date.now());
   return privateJson({ listings: await leagueListings(context.env.REPORTS, store.leagueId, today) });
 }

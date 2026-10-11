@@ -267,6 +267,26 @@ export function readPlace(value: unknown): StorePlace | null | undefined {
   return valid ? { lat, lon, timeZone } : undefined;
 }
 
+/** An unsanctioned store an Admin makes, out of a request body: who owns it and what it says; or why it is not one. */
+export function readUnsanctionedStore(
+  value: unknown
+): { owner: string; details: StoreDetails; place: StorePlace | null; timeZone: string } | string {
+  const body = (typeof value === 'object' && value ? value : {}) as Body;
+  const details = readStoreDetails(body.details);
+  const located = readPlace(body.place);
+  const timeZone = typeof body.timeZone === 'string' && isTimeZone(body.timeZone) ? body.timeZone : null;
+  const owner = typeof body.owner === 'string' ? body.owner.trim() : '';
+  if (!owner) {
+    return 'Name the account that owns it';
+  }
+  if (!details) {
+    return 'Check the store’s details';
+  }
+  return located === undefined || !timeZone
+    ? 'Pick the store’s time zone'
+    : { owner, details, place: located, timeZone };
+}
+
 /** A store application out of a request body, or why it is not one. */
 export function readStoreApplication(value: unknown): StoreApplication | string {
   const body = (typeof value === 'object' && value ? value : {}) as Body;

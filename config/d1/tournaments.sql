@@ -307,14 +307,16 @@ CREATE TABLE IF NOT EXISTS proof_uploads (
   size INTEGER NOT NULL
 ) WITHOUT ROWID;
 
--- A certified Play! Pokémon league location that runs sanctioned events on
--- the site (shared/accounts/stores.ts), one per league ID. 'active' or
+-- A Play! Pokémon league location that runs events on the site
+-- (shared/accounts/stores.ts), one per league ID. A store with no league ID
+-- is unsanctioned: an Admin made it ahead of its certification, it runs
+-- unsanctioned events only and stays off the locator. 'active' or
 -- 'revoked': a revoked store starts no events, and its events run on. Its
 -- league nights and their exceptions are JSON (LeagueNight[] and
 -- NightException[]), only ever replaced whole by a Manager.
 CREATE TABLE IF NOT EXISTS stores (
   id TEXT PRIMARY KEY,
-  league_id TEXT NOT NULL,
+  league_id TEXT,
   status TEXT NOT NULL,
   name TEXT NOT NULL,
   address TEXT NOT NULL,
@@ -337,7 +339,7 @@ CREATE TABLE IF NOT EXISTS stores (
   status_at INTEGER,
   status_by TEXT
 );
-CREATE UNIQUE INDEX IF NOT EXISTS stores_by_league ON stores (league_id);
+CREATE UNIQUE INDEX IF NOT EXISTS stores_by_league ON stores (league_id) WHERE league_id IS NOT NULL;
 -- The active stores the locator's index lists, and the Admin's list by name.
 CREATE INDEX IF NOT EXISTS stores_by_status ON stores (status, name);
 

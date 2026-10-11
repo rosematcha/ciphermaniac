@@ -334,9 +334,9 @@ function Organizer(props: {
   /** Who may run a new event: the account's active stores, then the account itself when it may. A TOM event is a store's. */
   const runAs = (tom: boolean): RunAs[] => [
     ...(user()?.stores ?? [])
-      .filter(store => store.status === 'active')
-      .map(store => ({ id: store.id, label: store.name })),
-    ...(!tom && canRunCommunityEvents(role()) ? [{ id: null, label: user()?.name ?? '' }] : [])
+      .filter(store => store.status === 'active' && (!tom || store.leagueId))
+      .map(store => ({ id: store.id, label: store.name, sanctions: Boolean(store.leagueId) })),
+    ...(!tom && canRunCommunityEvents(role()) ? [{ id: null, label: user()?.name ?? '', sanctions: false }] : [])
   ];
   /** The store `?new=` asks to start an event as, when the account may. */
   const asked = untrack(() => runAs(false).find(option => option.id !== null && option.id === params.new)?.id ?? null);

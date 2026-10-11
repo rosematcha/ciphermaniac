@@ -171,7 +171,7 @@ function ownEvent(user: User, read: NewEvent): Running {
 
 interface StorePlace {
   status: string;
-  league_id: string;
+  league_id: string | null;
   city: string;
   region: string;
   country: string;
@@ -210,6 +210,26 @@ async function listedFor(bucket: PublishBucket | undefined, leagueId: string, sa
 }
 
 /**
+ * An unsanctioned store's event, as a Community organizer's: a Swiss event,
+ * never sanctioned and of no Play! Pokémon kind, at a Community organizer's
+ * daily limit, though still the store's and on no date of its own.
+ */
+function unsanctionedStoreEvent(user: User, read: NewEvent, place: StorePlace, storeId: string): Running {
+  if (read.mode === 'tom' || read.askedSanctioned || read.sanctionId) {
+    return jsonError('An unsanctioned store runs unsanctioned events only', 403);
+  }
+  const tournament = storeInfo(user, read, place);
+  const { eventType: _kind, ...info } = tournament.info;
+  return {
+    tournament: { ...tournament, info },
+    settings: { ...read.settings, sanctioned: false },
+    storeId,
+    communityDay: null,
+    admission: { owner: `store:${storeId}`, limit: CREATIONS_PER_DAY.community }
+  };
+}
+
+/**
  * A store's event: the asker must belong to the store, the store must be
  * active, and a sanction ID it names must be one its league lists.
  */
@@ -227,6 +247,9 @@ async function storeEvent(where: Where, user: User, read: NewEvent, storeId: str
   }
   if (place.status !== 'active') {
     return jsonError('That store can no longer start events', 403);
+  }
+  if (!place.league_id) {
+    return unsanctionedStoreEvent(user, read, place, storeId);
   }
   if (read.sanctionId && !(await listedFor(bucket, place.league_id, read.sanctionId))) {
     return jsonError('That sanction ID is not one pokemon.com lists for your league', 400);

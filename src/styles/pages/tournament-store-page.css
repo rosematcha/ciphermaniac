@@ -1,4 +1,4 @@
-/* A store's public page: map and address, league nights, upcoming events. */
+/* A store's public page: map and address, league nights, its events. */
 
 /* ---------- A store's page ---------- */
 .tm-storepage {
@@ -100,7 +100,8 @@ body[data-mode='dark'] .tm-store-tile {
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
-.tm-storepage-list {
+.tm-storepage-list,
+.tm-storepage-history {
   display: grid;
   margin: 0;
   padding: 0;
@@ -163,11 +164,39 @@ body[data-mode='dark'] .tm-store-tile {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 }
-/* Event names are whatever their organizers type, so on a narrow screen the
-   upcoming events scroll sideways rather than cut off the name and its status. */
-.tm-storepage .tm-box > .table-wrap {
-  overflow-x: auto;
+
+/* ---------- Events: upcoming, then past by month ---------- */
+.tm-storepage-history li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 110px;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-base);
 }
-.tm-storepage .tm-box > .table-wrap td {
-  white-space: nowrap;
+.tm-storepage-history.is-past li {
+  grid-template-columns: 110px minmax(0, 1fr) 90px 180px;
+}
+.tm-storepage-history span {
+  overflow-wrap: anywhere;
+}
+.tm-storepage-month {
+  margin: var(--space-4) 0 2px;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  /* Date and the rest on one line; the event's name on its own line under them. */
+  .tm-storepage-history li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 2px;
+  }
+  .tm-storepage-history .tm-storepage-event {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .tm-storepage-history.is-past li {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
 }

@@ -6,7 +6,9 @@
  * that makes someone else the Owner in the same transaction.
  */
 
+import { parseTomDate } from '../../../shared/tournament/divisions.js';
 import {
+  dateIn,
   type GivenRole,
   type LeagueNight,
   type NightException,
@@ -15,7 +17,15 @@ import {
   type StoreRole,
   storeRoleOf
 } from '../../../shared/accounts/stores.js';
-import type { PublicStore, Store, StoreEvent, StoreInvite, StoreMember } from '../../../shared/accounts/types.js';
+import type {
+  PastEvent,
+  PublicStore,
+  Store,
+  StoreEvent,
+  StoreInvite,
+  StoreMember
+} from '../../../shared/accounts/types.js';
+import { shortLastNames } from '../../../shared/tournament/identify.js';
 import { randomToken, sha256 } from '../auth/session.js';
 import { displayNameSql } from '../accounts/handles.js';
 import { rowsChanged } from '../d1.js';
@@ -27,7 +37,7 @@ const INVITE_MS = INVITE_DAYS * 24 * 60 * 60 * 1000;
 
 interface StoreRow {
   id: string;
-  league_id: string;
+  league_id: string | null;
   status: string;
   name: string;
   address: string;
@@ -82,7 +92,8 @@ export async function storeOfLeague(db: D1Like, leagueId: string): Promise<Store
 }
 
 export interface NewStore {
-  leagueId: string;
+  /** Null for an unsanctioned store, which an Admin makes ahead of its certification. */
+  leagueId: string | null;
   details: StoreDetails;
   lat: number | null;
   lon: number | null;
@@ -147,6 +158,20 @@ export function storeInserts(db: D1Like, making: StoreMaking): D1Statement[] {
       .prepare(`INSERT INTO store_members (store_id, user_id, role, added_at) SELECT ?, ?, ?, ? WHERE ${guard.sql}`)
       .bind(id, member.id, member.role, now, ...guard.values)
   ];
+}
+
+/**
+ * Gives an unsanctioned store its league once it is certified: the same
+ * store, its people and its events, now able to run sanctioned events and
+ * on the locator. False when there is no such unsanctioned store; the
+ * unique league index refuses a league another store has.
+ */
+export async function certifyStore(db: D1Like, id: string, leagueId: string, now: number): Promise<boolean> {
+  const done = await db
+    .prepare('UPDATE stores SET league_id = ?, updated_at = ? WHERE id = ? AND league_id IS NULL')
+    .bind(leagueId, now, id)
+    .run();
+  return rowsChanged(done) > 0;
 }
 
 /** Whether a failed write broke the one-store-per-league index. */
@@ -400,8 +425,73 @@ export async function storeEvents(db: D1Like, storeId: string, pairedRounds: str
   }));
 }
 
+interface PastEventRow {
+  code: string;
+  name: string | null;
+  start_date: string | null;
+  created_at: number;
+  sanctioned: number | null;
+  mode: string;
+  /** JSON: its players, in the event's order. */
+  field: string;
+  /** JSON: the IDs of who placed first. */
+  winners: string;
+}
+
+type Named = { id: string; firstName: string; lastName: string };
+
+/** A store's page lists this many ended events at most. */
+const PAST_LIMIT = 100;
+
+const PAST_SQL =
+  "SELECT t.code, t.mode, t.created_at, json_extract(t.state, '$.info.name') AS name, " +
+  "json_extract(t.state, '$.info.startDate') AS start_date, json_extract(t.settings, '$.sanctioned') AS sanctioned, " +
+  "coalesce(json_extract(t.state, '$.players'), '[]') AS field, " +
+  '(SELECT json_group_array(w.player_id) FROM event_wins w WHERE w.code = t.code) AS winners ' +
+  'FROM tournaments t INDEXED BY tournaments_of_store ' +
+  "WHERE t.store_id = ? AND coalesce(json_extract(t.settings, '$.finished'), 0) = 1 " +
+  `ORDER BY t.created_at DESC LIMIT ${PAST_LIMIT}`;
+
+/** MM/DD/YYYY, as TOM writes it, as YYYY-MM-DD; '' when it is not a date. */
+function isoDate(startDate: string | null): string {
+  return (
+    parseTomDate(startDate ?? '')
+      ?.toISOString()
+      .slice(0, 10) ?? ''
+  );
+}
+
+/** Winners named as the event's public page names them: in full when sanctioned, else with a short last name. */
+function winnerNames(field: readonly Named[], ids: readonly string[], sanctioned: boolean): string[] {
+  const won = field.filter(player => ids.includes(player.id));
+  if (sanctioned) {
+    return won.map(player => `${player.firstName} ${player.lastName}`.trim());
+  }
+  const short = shortLastNames(field);
+  return won.map(player => `${player.firstName} ${short.get(player.id) ?? ''}`.trim());
+}
+
+function pastEvent(row: PastEventRow, timeZone: string): PastEvent {
+  const field = JSON.parse(row.field) as Named[];
+  const sanctioned = row.mode === 'tom' || row.sanctioned !== 0;
+  return {
+    code: row.code,
+    name: row.name ?? row.code,
+    date: isoDate(row.start_date) || dateIn(timeZone, row.created_at),
+    sanctioned,
+    players: field.length,
+    winners: winnerNames(field, JSON.parse(row.winners) as string[], sanctioned)
+  };
+}
+
+/** A store's ended events on the site, latest first, as its page lists them. */
+export async function storePastEvents(db: D1Like, store: Pick<Store, 'id' | 'timeZone'>): Promise<PastEvent[]> {
+  const { results } = await db.prepare(PAST_SQL).bind(store.id).all<PastEventRow>();
+  return results.map(row => pastEvent(row, store.timeZone)).sort((a, b) => b.date.localeCompare(a.date));
+}
+
 /** What anyone may read about a store. */
-export function publicStore(store: Store, events: StoreEvent[]): PublicStore {
+export function publicStore(store: Store, events: StoreEvent[], past: PastEvent[]): PublicStore {
   const { id, leagueId, name, address, city, region, postal, country, lat, lon, timeZone } = store;
   const { website, discord, details, nights, exceptions } = store;
   return {
@@ -421,6 +511,7 @@ export function publicStore(store: Store, events: StoreEvent[]): PublicStore {
     details,
     nights,
     exceptions,
-    events
+    events,
+    past
   };
 }

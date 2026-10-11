@@ -2,23 +2,25 @@
  * /stores/:id: what anyone sees of a store. Its name and league over a map
  * of where it is, beside its address, its links and its own words; its
  * weekly league nights with the dates coming up that differ; then its events
- * on the site that have not ended. Its Managers also get the way to its
+ * on the site that have not ended, and those that have by month. Its Managers also get the way to its
  * settings.
  */
 
 import { A } from '@solidjs/router';
 import { createEffect, createResource, For, Show } from 'solid-js';
 import { dateIn, managesStore } from '../../../shared/accounts/stores';
-import type { PublicStore, StoreEvent } from '../../../shared/accounts/types';
+import type { PastEvent, PublicStore, StoreEvent } from '../../../shared/accounts/types';
 import { Skeleton } from '../../components/Skeleton';
 import { errorText } from '../../lib/tournament/api';
 import {
   addressOf,
   bareLink,
+  byMonth,
   byWeek,
   clock,
   exceptionChange,
   fetchStore,
+  playersWord,
   shortDay,
   storeEventWhen,
   WEEKDAYS,
@@ -115,41 +117,71 @@ function Events(props: { events: readonly StoreEvent[] }) {
       <h2 class='tm-subhead tm-box-head' id='storepage-events'>
         Upcoming events
       </h2>
-      <div class='tm-box'>
-        <Show
-          when={props.events.length > 0}
-          fallback={<p class='tm-box-bar muted tm-storepage-none'>No upcoming events on Ciphermaniac</p>}
-        >
-          <div class='table-wrap'>
-            <table class='data'>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Event</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <For each={props.events}>
+      <Show when={props.events.length > 0} fallback={<p class='muted tm-storepage-none'>None on Ciphermaniac</p>}>
+        <ul class='tm-storepage-history'>
+          <For each={props.events}>
+            {event => (
+              <li>
+                <span class='tm-num'>{storeEventWhen(event.startDate, event.startsAt)}</span>
+                <EventName code={event.code} name={event.name} sanctioned={event.sanctioned} />
+                <span class='muted'>{STATUS_WORDS[event.status]}</span>
+              </li>
+            )}
+          </For>
+        </ul>
+      </Show>
+    </section>
+  );
+}
+
+function EventName(props: { code: string; name: string; sanctioned: boolean }) {
+  return (
+    <span class='tm-storepage-event'>
+      <A href={`/t/${props.code}`}>{props.name || props.code}</A>
+      <Show when={props.sanctioned}>
+        <span class='tm-flag'>Sanctioned</span>
+      </Show>
+    </span>
+  );
+}
+
+function Past(props: { events: readonly PastEvent[] }) {
+  return (
+    <Show when={props.events.length > 0}>
+      <section class='tm-storepage-events' aria-labelledby='storepage-past'>
+        <h2 class='tm-subhead tm-box-head' id='storepage-past'>
+          Past events
+        </h2>
+        <For each={byMonth(props.events)}>
+          {month => (
+            <>
+              <h3 class='muted tm-storepage-month'>{month.label}</h3>
+              <ul class='tm-storepage-history is-past'>
+                <For each={month.events}>
                   {event => (
-                    <tr>
-                      <td class='tm-num tm-nowrap'>{storeEventWhen(event.startDate, event.startsAt)}</td>
-                      <td>
-                        <A href={`/t/${event.code}`}>{event.name || event.code}</A>
-                        <Show when={event.sanctioned}>
-                          <span class='tm-flag'>Sanctioned</span>
-                        </Show>
-                      </td>
-                      <td class='muted-cell'>{STATUS_WORDS[event.status]}</td>
-                    </tr>
+                    <li>
+                      <span class='tm-num'>{shortDay(event.date)}</span>
+                      <EventName code={event.code} name={event.name} sanctioned={event.sanctioned} />
+                      <span class='muted tm-num'>{playersWord(event.players)}</span>
+                      <span class='tm-storepage-winner'>{event.winners.join(', ')}</span>
+                    </li>
                   )}
                 </For>
-              </tbody>
-            </table>
-          </div>
-        </Show>
-      </div>
-    </section>
+              </ul>
+            </>
+          )}
+        </For>
+      </section>
+    </Show>
+  );
+}
+
+/** The store's league, or that it has none yet. */
+function LeagueLine(props: { leagueId: string | null }) {
+  return (
+    <Show when={props.leagueId} fallback={<span>Unsanctioned store</span>}>
+      {id => <span class='tm-num'>League {id()}</span>}
+    </Show>
   );
 }
 
@@ -173,7 +205,7 @@ export function StorePage(props: { id: string }) {
           <>
             <TournamentHero
               title={answer().store.name}
-              meta={<span class='tm-num'>League {answer().store.leagueId}</span>}
+              meta={<LeagueLine leagueId={answer().store.leagueId} />}
               action={
                 <Show when={managesStore(answer().role)}>
                   <A class='btn btn-secondary' href={`/stores/${answer().store.id}/settings`}>
@@ -192,6 +224,7 @@ export function StorePage(props: { id: string }) {
               </div>
             </div>
             <Events events={answer().store.events} />
+            <Past events={answer().store.past} />
           </>
         )}
       </Show>

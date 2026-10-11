@@ -132,7 +132,8 @@ export interface FoundAccount {
 /** A store as its members and admins see it (shared/accounts/stores.ts). */
 export interface Store extends StoreDetails {
   id: string;
-  leagueId: string;
+  /** Its Play! Pokémon league; null while it is unsanctioned. */
+  leagueId: string | null;
   status: StoreStatus;
   lat: number | null;
   lon: number | null;
@@ -145,7 +146,8 @@ export interface Store extends StoreDetails {
 export interface MyStore {
   id: string;
   name: string;
-  leagueId: string;
+  /** Its Play! Pokémon league; null while it is unsanctioned. */
+  leagueId: string | null;
   status: StoreStatus;
   timeZone: string;
   role: StoreRole;
@@ -172,7 +174,8 @@ export interface StoreInvite {
 /** What anyone may read about a store: no contact details beyond what it lists for players. */
 export interface PublicStore {
   id: string;
-  leagueId: string;
+  /** Its Play! Pokémon league; null while it is unsanctioned. */
+  leagueId: string | null;
   name: string;
   address: string;
   city: string;
@@ -189,6 +192,20 @@ export interface PublicStore {
   exceptions: NightException[];
   /** Its events on the site that have not ended, soonest first. */
   events: StoreEvent[];
+  /** Its events on the site that have ended, latest first. */
+  past: PastEvent[];
+}
+
+/** One of a store's ended events on the site. */
+export interface PastEvent {
+  code: string;
+  name: string;
+  /** YYYY-MM-DD: the date it was set for, else the day it was made in the store's time zone. */
+  date: string;
+  sanctioned: boolean;
+  players: number;
+  /** Who placed first in each division, named as the event's public page names them. */
+  winners: string[];
 }
 
 /** One of a store's events on the site. */

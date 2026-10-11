@@ -8,7 +8,7 @@ import type { D1Like } from '../types.js';
 
 export interface AdminStore {
   id: string;
-  leagueId: string;
+  leagueId: string | null;
   name: string;
   city: string;
   region: string;
@@ -20,7 +20,7 @@ export interface AdminStore {
 
 interface Row {
   id: string;
-  league_id: string;
+  league_id: string | null;
   name: string;
   city: string;
   region: string;

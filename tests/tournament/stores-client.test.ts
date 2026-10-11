@@ -15,6 +15,7 @@ import {
   addressOf,
   bareLink,
   blankNight,
+  byMonth,
   byWeek,
   cleanDetails,
   clock,
@@ -34,6 +35,7 @@ import {
   joinCommunity,
   joinStore,
   listingFill,
+  playersWord,
   removeMember,
   saveLeagueNights,
   saveStoreDetails,
@@ -234,4 +236,13 @@ test('an invite is a join link, listed under the start of its token’s SHA-256'
   assert.equal(inviteLink('https://ciphermaniac.com', 'a b'), 'https://ciphermaniac.com/stores/join?invite=a+b');
   const token = 'k3QwP9zXr2';
   assert.equal(await inviteId(token), createHash('sha256').update(token).digest('hex').slice(0, 16));
+});
+
+test('past events fall under their months in the order given, and a count names its players', () => {
+  const events = [{ date: '2026-10-13' }, { date: '2026-10-06' }, { date: '2026-09-29' }];
+  assert.deepEqual(byMonth(events), [
+    { label: 'October 2026', events: [events[0], events[1]] },
+    { label: 'September 2026', events: [events[2]] }
+  ]);
+  assert.deepEqual([playersWord(1), playersWord(22)], ['1 player', '22 players']);
 });

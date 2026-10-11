@@ -274,7 +274,9 @@ function Settings(props: { id: string }) {
             tab='organizing'
             meta={
               <>
-                <span class='tm-num'>League {answer().store.leagueId}</span>
+                <Show when={answer().store.leagueId} fallback={<span>Unsanctioned store</span>}>
+                  {id => <span class='tm-num'>League {id()}</span>}
+                </Show>
                 <span class='tm-store-dot' aria-hidden='true'>
                   ·
                 </span>

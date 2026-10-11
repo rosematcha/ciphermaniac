@@ -1,7 +1,7 @@
 /**
  * GET /api/stores/:id — what anyone may read about a store: where it is,
- * what it says about itself, its league nights, and its events on the site
- * that have not ended. Its Managers and Staff also get its phone and email,
+ * what it says about itself, its league nights, and its events on the site,
+ * those that have not ended and those that have. Its Managers and Staff also get its phone and email,
  * and what they are in it ({ store, role, contact? }).
  * PATCH /api/stores/:id — a Manager changes what the store says about itself
  * ({ details, timeZone, place? }; shared/accounts/stores.ts), `place` being
@@ -14,7 +14,7 @@ import { readJsonObject } from '../../../lib/api/body.js';
 import { jsonError } from '../../../lib/api/responses.js';
 import type { Context } from '../../../lib/auth/env.js';
 import { openStore } from '../../../lib/stores/access.js';
-import { loadStore, publicStore, saveDetails, storeEvents } from '../../../lib/stores/db.js';
+import { loadStore, publicStore, saveDetails, storeEvents, storePastEvents } from '../../../lib/stores/db.js';
 import { publishStores } from '../../../lib/stores/publish.js';
 import { privateJson } from '../../../lib/tournaments/access.js';
 import { pairedRounds } from '../../../lib/tournaments/store.js';
@@ -25,9 +25,12 @@ export async function onRequestGet(context: Context<'id'>): Promise<Response> {
     return access;
   }
   const { db, store, role } = access;
-  const events = await storeEvents(db, store.id, pairedRounds('state'));
+  const [events, past] = await Promise.all([
+    storeEvents(db, store.id, pairedRounds('state')),
+    storePastEvents(db, store)
+  ]);
   const contact = role ? { phone: store.phone, email: store.email } : undefined;
-  return privateJson({ store: publicStore(store, events), role, ...(contact ? { contact } : {}) });
+  return privateJson({ store: publicStore(store, events, past), role, ...(contact ? { contact } : {}) });
 }
 
 export async function onRequestPatch(context: Context<'id'>): Promise<Response> {

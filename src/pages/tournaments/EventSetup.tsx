@@ -42,6 +42,8 @@ export interface Setup {
 export interface RunAs {
   id: string | null;
   label: string;
+  /** Whether it runs sanctioned events: a store with its league does; the account itself and an unsanctioned store do not. */
+  sanctions: boolean;
 }
 
 /** The browser's own date, YYYY-MM-DD. */
@@ -79,8 +81,8 @@ export function EventSetup(props: {
   );
   const [listing, setListing] = createSignal<Listing | null>(null);
   const swiss = () => props.mode === 'swiss';
-  /** Run under the account's own name: never sanctioned. */
-  const own = () => runAs() === null;
+  /** Run under the account's own name or an unsanctioned store's: never sanctioned. */
+  const own = () => !props.runAs.find(option => option.id === runAs())?.sanctions;
   const sanctioned = () => !own() && sanctionedChoice();
   const needsName = () => swiss() && !name().trim();
   const needsPlayTools = () => (swiss() ? sanctioned() : props.tdfSanctioned);
@@ -179,7 +181,7 @@ export function EventSetup(props: {
           </SettingRow>
         </div>
       </Show>
-      <Show when={swiss() && runAs()}>
+      <Show when={swiss() && !own() && runAs()}>
         {store => <ListingPicker storeId={store()} picked={listing()?.sanctionId ?? ''} onPick={pick} />}
       </Show>
       <div class='tm-box'>

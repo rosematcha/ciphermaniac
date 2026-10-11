@@ -91,6 +91,16 @@ const STORE: PublicStore = {
       sanctioned: true,
       status: 'upcoming'
     }
+  ],
+  past: [
+    {
+      code: 'LOC222',
+      name: 'Combat Power Locals with a long name its organizer typed out in full',
+      date: '2026-09-30',
+      sanctioned: false,
+      players: 22,
+      winners: ['Ash Ket.']
+    }
   ]
 };
 
@@ -579,7 +589,9 @@ test('store settings on a phone: the sections are tabs, and nothing scrolls side
 
 // ---------- The store's page and joining it ----------
 
-test('a store page shows where it is, its league nights and its upcoming events @mobile', async ({ page }) => {
+test('a store page shows where it is, its league nights, its upcoming events and its past ones by month @mobile', async ({
+  page
+}) => {
   await mock(page, { user: null, role: null });
   await page.goto('/stores/store-1');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Combat Power Gaming');
@@ -595,8 +607,13 @@ test('a store page shows where it is, its league nights and its upcoming events 
   await expect(nights).toContainText('Sun, Oct 11');
   await expect(nights).toContainText('League Cup');
   await expect(page.getByRole('link', { name: 'Combat Power League Cup' })).toHaveAttribute('href', '/t/CUP111');
+  const past = page.getByRole('region', { name: 'Past events' });
+  await expect(past.getByRole('heading', { level: 3 })).toHaveText('September 2026');
+  await expect(past.locator('li')).toContainText(['Wed, Sep 30']);
+  await expect(past.locator('li')).toContainText(['22 players']);
+  await expect(past.locator('li')).toContainText(['Ash Ket.']);
   await expect(page.getByRole('link', { name: 'Store settings' })).toHaveCount(0);
-  // Nothing runs past the page's own width, the events table included (the page clips what does).
+  // Nothing runs past the page's own width, the event lists included (the page clips what does).
   const spill = await page.locator('.tm-storepage').evaluate(el => el.scrollWidth - el.clientWidth);
   expect(spill).toBeLessThanOrEqual(0);
   const sunday = await nights.locator('li').first().boundingBox();
@@ -679,6 +696,17 @@ test('an event run under the account’s own name offers no listings', async ({ 
   await page.getByLabel('Run as').selectOption({ label: 'Mary Jackson' });
   await expect(page.getByRole('group', { name: 'On pokemon.com' })).toHaveCount(0);
   expect(asks.filter(a => a.path.endsWith('/listings'))).toHaveLength(1);
+});
+
+test('an unsanctioned store’s event offers no listings, no sanctioned switch and no event type', async ({ page }) => {
+  const asks = await mock(page, { user: { ...ME, stores: [{ ...MY_STORE, leagueId: null }] } });
+  await page.goto('/host');
+  await page.getByRole('button', { name: 'Start an event' }).click();
+  await expect(page.getByRole('textbox', { name: 'Event name' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'On pokemon.com' })).toHaveCount(0);
+  await expect(page.locator('.tm-set-row', { hasText: 'Sanctioned' })).toHaveCount(0);
+  await expect(page.locator('.tm-set-row', { hasText: 'Event type' })).toHaveCount(0);
+  expect(asks.filter(a => a.path.endsWith('/listings'))).toHaveLength(0);
 });
 
 test('store settings’ Start an event opens the setup as the store, and /host links to settings', async ({ page }) => {

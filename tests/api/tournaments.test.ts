@@ -2882,6 +2882,49 @@ test('the index migration brings an older database in line with the schema', () 
   assert.deepEqual(indexes(older), indexes(fresh));
 });
 
+test('the unsanctioned stores migration keeps every store and brings the table in line with the schema', () => {
+  const shape = (db: ReturnType<typeof sqliteD1>['raw']) => ({
+    columns: db.prepare('PRAGMA table_info(stores)').all(),
+    indexes: db
+      .prepare(
+        "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'stores' AND sql IS NOT NULL ORDER BY name"
+      )
+      .all()
+  });
+  const fresh = sqliteD1('tournaments.sql').raw;
+  const older = sqliteD1('tournaments.sql').raw;
+  const before = readFileSync(
+    new URL('../../config/d1/migrations/tournaments/0012-stores.sql', import.meta.url),
+    'utf8'
+  );
+  older.exec('DROP TABLE stores');
+  older.exec(
+    before.slice(
+      before.indexOf('CREATE TABLE IF NOT EXISTS stores'),
+      before.indexOf('CREATE TABLE IF NOT EXISTS store_members')
+    )
+  );
+  older
+    .prepare(
+      "INSERT INTO stores (id, league_id, status, name, address, time_zone, created_at, updated_at) VALUES ('s1', '6238620', 'active', 'Combat Power Gaming', '1 Main St', 'America/Chicago', 1, 2)"
+    )
+    .run();
+  older.exec(
+    readFileSync(
+      new URL('../../config/d1/migrations/tournaments/0018-unsanctioned-stores.sql', import.meta.url),
+      'utf8'
+    )
+  );
+  assert.deepEqual(shape(older), shape(fresh));
+  assert.deepEqual(
+    older
+      .prepare('SELECT id, league_id AS league, name, updated_at AS updated FROM stores')
+      .all()
+      .map(row => ({ ...row })),
+    [{ id: 's1', league: '6238620', name: 'Combat Power Gaming', updated: 2 }]
+  );
+});
+
 /** Has another write land just ahead of each of the functions' next `times` writes to the event. */
 function raceWrites(times: number) {
   const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
