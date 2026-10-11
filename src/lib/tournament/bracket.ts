@@ -10,7 +10,7 @@
  * gone through to it.
  */
 
-import { bracketOrder } from '../../../shared/tournament/pairing';
+import { bracketOrder } from '../../../shared/tournament/seeding';
 import { regularRounds, withSwiss } from '../../../shared/tournament/rounds';
 import {
   bracketMatches,

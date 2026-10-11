@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { applyCommand, type Command } from '../../shared/tournament/commands.ts';
 import { emptyTournament } from '../../shared/tournament/create.ts';
-import { bracketOrder } from '../../shared/tournament/pairing.ts';
+import { bracketOrder } from '../../shared/tournament/seeding.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
 import { cutPodOf, latestRound, swissAttendance } from '../../shared/tournament/rounds.ts';
 import { swissStandings } from '../../shared/tournament/standings.ts';
