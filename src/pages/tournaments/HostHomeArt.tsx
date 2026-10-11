@@ -374,14 +374,20 @@ export function ResultsArt() {
   );
 }
 
-/** Crushing Hammer left, Unfair Stamp right, Dragapult ex in front. */
+/**
+ * Two lists take turns behind Dragapult ex: Crushing Hammer and Unfair Stamp,
+ * which pass, then Pidgeot ex and Lance, which don't. The second pair (`is-alt`)
+ * swaps in while the cards are stacked, hidden behind the front card.
+ */
 const LIST_CARDS: [string, string, string][] = [
   ['tm-art-left', 'POR', '071'],
   ['tm-art-right', 'TWM', '165'],
+  ['tm-art-left is-alt', 'OBF', '164'],
+  ['tm-art-right is-alt', 'SIT', '159'],
   ['', 'TWM', '130']
 ];
 
-/** Three cards from a list spread from a stack, then the check lands on the front card's lower edge. */
+/** Cards from a list spread from a stack, then a check lands on the front card's lower edge, or for the other list an X. */
 export function DecklistArt() {
   return (
     <Canvas box={FEATURE_BOX}>
@@ -396,6 +402,11 @@ export function DecklistArt() {
         <circle cx='80' cy='90' r='16' class='tm-art-halo' />
         <circle class='tm-art-fill' cx='80' cy='90' r='13' />
         <path d='M73.5 90l4.5 4.5 8.5-9.5' stroke-width='2.5' />
+      </g>
+      <g class='tm-art-check is-alt'>
+        <circle cx='80' cy='90' r='16' class='tm-art-halo' />
+        <circle class='tm-art-plain' cx='80' cy='90' r='13' />
+        <path d='M75 85l10 10M85 85l-10 10' stroke-width='2.5' />
       </g>
     </Canvas>
   );

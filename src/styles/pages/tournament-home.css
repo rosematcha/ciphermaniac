@@ -338,6 +338,14 @@ body.tm-home-mode main.page {
 .tm-art-right {
   transform: translateX(30px) rotate(9deg);
 }
+/* The second list waits stacked under the front card, its X unshown, until its turn. */
+.tm-art-card.is-alt {
+  transform: none;
+}
+.tm-art-plain {
+  fill: var(--surface);
+  stroke: var(--fg);
+}
 .tm-art-bar {
   fill: color-mix(in srgb, var(--fg) 22%, transparent);
   transform-box: fill-box;
@@ -351,8 +359,12 @@ body.tm-home-mode main.page {
   transform-box: fill-box;
   transform-origin: center;
 }
+.tm-art-check.is-alt {
+  transform: scale(0);
+}
 
-/* Motion: each picture does its one thing while its point is on screen. */
+/* Motion: each picture does its one thing while its point is on screen. The decklists take turns: one
+   list spreads and passes in the first half of the loop, the other a half loop later. */
 .is-in .tm-art-press {
   animation: tm-art-press 2.8s var(--ease-base) infinite;
 }
@@ -375,17 +387,21 @@ body.tm-home-mode main.page {
   animation: tm-art-settle 3s linear infinite;
 }
 .is-in .tm-art-left {
-  animation: tm-art-fan-left 4.5s var(--ease-spring) infinite;
+  animation: tm-art-fan-left 9s var(--ease-spring) infinite;
 }
 .is-in .tm-art-right {
-  animation: tm-art-fan-right 4.5s var(--ease-spring) infinite;
+  animation: tm-art-fan-right 9s var(--ease-spring) infinite;
 }
 .is-in .tm-art-bar {
   animation: tm-art-grow 4s var(--ease-spring) infinite both;
   animation-delay: calc(var(--i) * 120ms);
 }
 .is-in .tm-art-check {
-  animation: tm-art-pop 4.5s var(--ease-spring) infinite;
+  animation: tm-art-pop 9s var(--ease-spring) infinite;
+}
+.is-in .tm-art-card.is-alt,
+.is-in .tm-art-check.is-alt {
+  animation-delay: -4.5s;
 }
 @keyframes tm-art-press {
   0%,
@@ -474,23 +490,25 @@ body.tm-home-mode main.page {
 }
 @keyframes tm-art-fan-left {
   0%,
-  8%,
+  4%,
+  50%,
   100% {
     transform: none;
   }
-  30%,
-  88% {
+  15%,
+  44% {
     transform: translateX(-30px) rotate(-9deg);
   }
 }
 @keyframes tm-art-fan-right {
   0%,
-  8%,
+  4%,
+  50%,
   100% {
     transform: none;
   }
-  30%,
-  88% {
+  15%,
+  44% {
     transform: translateX(30px) rotate(9deg);
   }
 }
@@ -508,13 +526,13 @@ body.tm-home-mode main.page {
 }
 @keyframes tm-art-pop {
   0%,
-  34%,
-  92%,
+  17%,
+  46%,
   100% {
     transform: scale(0);
   }
-  46%,
-  84% {
+  23%,
+  42% {
     transform: scale(1);
   }
 }
