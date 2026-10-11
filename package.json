@@ -79,6 +79,7 @@
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.9",
     "sharp": "^0.35.5",
+    "terser": "5.51.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.2",
     "vite": "^8.3.2",

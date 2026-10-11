@@ -17,6 +17,7 @@ export default defineConfig({
     manifest: true,
     emptyOutDir: true,
     target: 'es2022',
+    minify: 'terser',
     sourcemap: false,
     rollupOptions: {
       output: {
