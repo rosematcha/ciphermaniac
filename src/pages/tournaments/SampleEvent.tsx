@@ -4,7 +4,7 @@
  * lib/tournament/sampleEvent.ts). Results land a table at a time and the
  * standings' top eight move as they do; at the end it rests, then plays a
  * new event in a new seat order. Under reduced motion it shows the finished
- * event and only plays when asked.
+ * event, at rest.
  */
 
 import { batch, createMemo, createSignal, For, Match, onCleanup, onMount, Switch } from 'solid-js';
@@ -182,13 +182,6 @@ export function SampleEvent() {
             <For each={top()}>{line => <li>{`${line.name}, ${line.wins}-${line.losses}-${line.ties}`}</li>}</For>
           </ol>
         </div>
-      </div>
-      <div class='tm-sim-foot'>
-        <span>Paired by the same Swiss engine your event runs on.</span>
-        <span class='tm-grow' />
-        <button class='btn btn-ghost' type='button' onClick={play}>
-          Replay
-        </button>
       </div>
     </section>
   );

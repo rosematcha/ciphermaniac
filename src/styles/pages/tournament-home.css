@@ -133,7 +133,8 @@ body.tm-home-mode main.page {
 }
 .tm-sim-list {
   position: relative;
-  height: calc(8 * var(--tm-home-row));
+  /* The eighth row's rule would double the box's own edge, so it falls just outside. */
+  height: calc(8 * var(--tm-home-row) - 1px);
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -170,14 +171,6 @@ body.tm-home-mode main.page {
   transition: transform 520ms var(--ease-spring);
 }
 .tm-sim-stand .tm-sim-n {
-  color: var(--muted);
-}
-.tm-sim-foot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  font-size: var(--text-base);
   color: var(--muted);
 }
 
