@@ -184,11 +184,6 @@ body.tm-home-mode main.page {
   max-width: 34em;
   line-height: 1.55;
 }
-.tm-home-point output {
-  font-weight: 700;
-  color: var(--fg);
-  font-variant-numeric: tabular-nums;
-}
 .tm-home-bands {
   padding: var(--space-6) 0 var(--space-5);
   border-top: 1px solid var(--rule);
@@ -224,26 +219,20 @@ body.tm-home-mode main.page {
   gap: 40px;
   padding: var(--space-5) 0 var(--space-6);
 }
+.tm-home-features .tm-home-point {
+  text-align: center;
+}
 .tm-home-features .tm-art {
-  width: 180px;
-  margin-bottom: var(--space-4);
+  width: 200px;
+  margin: 0 auto 20px;
 }
 .tm-home-features h2 {
   font-size: 17px;
 }
 .tm-home-features p {
+  margin: 0 auto;
   font-size: 14px;
   color: var(--muted);
-}
-.tm-home-linkbtn {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: var(--accent-ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
 }
 .tm-home-end {
   display: flex;
@@ -270,8 +259,8 @@ body.tm-home-mode main.page {
   height: auto;
   overflow: visible;
 }
-/* One stroke weight at any size, except where a dash is drawn along the path. */
-.tm-art svg :is(path, rect, circle):not(.tm-art-link) {
+/* One stroke weight at any size. */
+.tm-art svg :is(path, rect, circle) {
   vector-effect: non-scaling-stroke;
 }
 .tm-art text {
@@ -327,20 +316,23 @@ body.tm-home-mode main.page {
   transform-box: view-box;
   transform-origin: 80px 60px;
 }
-.tm-art-link {
-  stroke: var(--accent);
-  stroke-width: 1.6;
-  stroke-dasharray: 1;
-}
 .tm-art-card {
   transform-box: view-box;
   transform-origin: 80px 100px;
 }
 .tm-art-left {
-  transform: translateX(-34px) rotate(-11deg);
+  transform: translateX(-30px) rotate(-9deg);
 }
 .tm-art-right {
-  transform: translateX(34px) rotate(11deg);
+  transform: translateX(30px) rotate(9deg);
+}
+.tm-art-bar {
+  fill: color-mix(in srgb, var(--fg) 22%, transparent);
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+.tm-art-bar.is-top {
+  fill: var(--accent-fill);
 }
 .tm-art-check,
 .tm-art-press {
@@ -376,12 +368,12 @@ body.tm-home-mode main.page {
 .is-in .tm-art-right {
   animation: tm-art-fan-right 4.5s var(--ease-spring) infinite;
 }
+.is-in .tm-art-bar {
+  animation: tm-art-grow 4s var(--ease-spring) infinite both;
+  animation-delay: calc(var(--i) * 120ms);
+}
 .is-in .tm-art-check {
   animation: tm-art-pop 4.5s var(--ease-spring) infinite;
-}
-.is-in .tm-art-link {
-  animation: tm-art-link 3s var(--ease-base) infinite both;
-  animation-delay: calc(var(--i) * 60ms);
 }
 @keyframes tm-art-press {
   0%,
@@ -476,7 +468,7 @@ body.tm-home-mode main.page {
   }
   30%,
   88% {
-    transform: translateX(-34px) rotate(-11deg);
+    transform: translateX(-30px) rotate(-9deg);
   }
 }
 @keyframes tm-art-fan-right {
@@ -487,7 +479,19 @@ body.tm-home-mode main.page {
   }
   30%,
   88% {
-    transform: translateX(34px) rotate(11deg);
+    transform: translateX(30px) rotate(9deg);
+  }
+}
+@keyframes tm-art-grow {
+  0% {
+    transform: scaleX(0);
+  }
+  30%,
+  92% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
   }
 }
 @keyframes tm-art-pop {
@@ -500,23 +504,6 @@ body.tm-home-mode main.page {
   46%,
   84% {
     transform: scale(1);
-  }
-}
-@keyframes tm-art-link {
-  0% {
-    opacity: 1;
-    stroke-dashoffset: 1;
-  }
-  18% {
-    stroke-dashoffset: 0;
-  }
-  80% {
-    opacity: 1;
-    stroke-dashoffset: 0;
-  }
-  100% {
-    opacity: 0;
-    stroke-dashoffset: 0;
   }
 }
 

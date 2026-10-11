@@ -290,7 +290,6 @@ test('a signed-out organizer is offered sign-in, not a console @mobile', async (
   const sample = page.getByRole('region', { name: 'Sample event' });
   await expect(sample.locator('.tm-sim-stand .sr-only li')).toHaveCount(8);
   await expect(sample.getByText('Round 1', { exact: true })).toBeVisible();
-  await expect(page.locator('.tm-home-point output')).toHaveText(/^\d+(\.\d)? ms$/);
   // The head's Sign in jumps to the hero's sign-in, every time it is pressed.
   await page.getByRole('link', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/#sign-in$/);

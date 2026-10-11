@@ -8,12 +8,10 @@ import test from 'node:test';
 
 import { seededRandom } from '../../shared/tournament/random.ts';
 import {
-  formatMs,
   playSampleEvent,
   SAMPLE_PLAYERS,
   sampleStandings,
-  type SampleTable,
-  timePairing
+  type SampleTable
 } from '../../src/lib/tournament/sampleEvent.ts';
 
 test('the sample seats sixteen different players', () => {
@@ -89,18 +87,4 @@ test('players level on points keep their seats', () => {
     sampleStandings(players, [{ p1: 'A', p2: 'B', winner: 'A' }]).map(s => s.name),
     ['A', 'D', 'C', 'B']
   );
-});
-
-test('the benchmark times the play on the clock it is given', () => {
-  let tick = 0;
-  assert.equal(
-    timePairing(32, 3, () => (tick += 5)),
-    5
-  );
-});
-
-test('durations read in tenths under ten milliseconds and whole ones above', () => {
-  assert.equal(formatMs(3.14159), '3.1 ms');
-  assert.equal(formatMs(9.96), '10.0 ms');
-  assert.equal(formatMs(41.6), '42 ms');
 });

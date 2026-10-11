@@ -8,10 +8,9 @@
  */
 
 import { A } from '@solidjs/router';
-import { createSignal, For, type JSX, onCleanup, onMount } from 'solid-js';
+import { For, type JSX, onCleanup, onMount } from 'solid-js';
 import type { SignInOffer } from '../../lib/tournament/api';
-import { formatMs, timePairing } from '../../lib/tournament/sampleEvent';
-import { DecklistArt, PairingArt, PhoneArt, ProfileArt, ResultsArt, ScreenArt, StreamArt, TdfArt } from './HostHomeArt';
+import { DecklistArt, FieldArt, PhoneArt, ProfileArt, ResultsArt, ScreenArt, StreamArt, TdfArt } from './HostHomeArt';
 import { SampleEvent } from './SampleEvent';
 import { SignIn } from './SignIn';
 import '../../styles/pages/tournament-home.css';
@@ -19,8 +18,7 @@ import '../../styles/pages/tournament-home.css';
 interface Point {
   name: string;
   art: () => JSX.Element;
-  /** Plain copy, or a part with a life of its own. */
-  text: string | (() => JSX.Element);
+  text: string;
 }
 
 const BANDS: Point[] = [
@@ -51,28 +49,6 @@ const BANDS: Point[] = [
   }
 ];
 
-/** The benchmark's field: a big regional's worth of players over a day of Swiss. */
-const BENCH_PLAYERS = 256;
-const BENCH_ROUNDS = 8;
-
-/** Times the pairing engine on this device once the page is idle, and again on request. */
-function Benchmark() {
-  const [ms, setMs] = createSignal<string | null>(null);
-  const time = () => setMs(formatMs(timePairing(BENCH_PLAYERS, BENCH_ROUNDS)));
-  onMount(() => {
-    const timer = window.setTimeout(time, 400);
-    onCleanup(() => clearTimeout(timer));
-  });
-  return (
-    <>
-      {BENCH_ROUNDS} rounds of {BENCH_PLAYERS} players paired in <output>{ms() ?? '—'}</output> on this device.{' '}
-      <button class='tm-home-linkbtn' type='button' onClick={time}>
-        Run it again
-      </button>
-    </>
-  );
-}
-
 const FEATURES: Point[] = [
   {
     name: 'Report round results',
@@ -84,7 +60,7 @@ const FEATURES: Point[] = [
     art: DecklistArt,
     text: 'Accepts TCG Live formatting, and checks every list before it is accepted.'
   },
-  { name: 'Pairings in a blink', art: PairingArt, text: Benchmark }
+  { name: 'Field breakdown', art: FieldArt, text: 'See your event’s meta share and archetype performance.' }
 ];
 
 /** Marks an element `is-in` while most of it is on screen, so its picture plays only then. */
@@ -103,7 +79,7 @@ function PointView(props: { point: Point }) {
       <div class='tm-art'>{props.point.art()}</div>
       <div>
         <h2>{props.point.name}</h2>
-        <p>{typeof props.point.text === 'string' ? props.point.text : props.point.text()}</p>
+        <p>{props.point.text}</p>
       </div>
     </div>
   );

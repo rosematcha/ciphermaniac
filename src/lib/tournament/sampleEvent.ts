@@ -1,12 +1,11 @@
 /**
  * The sample event the /host home page plays: real Swiss pairings from the
  * engine events run on, with each table's result drawn at random. The page
- * steps through the rounds a result at a time; the same play, at 256 players,
- * is the page's pairing benchmark.
+ * steps through the rounds a result at a time.
  */
 
 import { pairSwiss } from '../../../shared/tournament/pairing';
-import { type Random, seededRandom } from '../../../shared/tournament/random';
+import type { Random } from '../../../shared/tournament/random';
 
 /** The sample's sixteen players, friends of the site who lent their names. */
 export const SAMPLE_PLAYERS: readonly string[] = [
@@ -139,17 +138,3 @@ export function sampleStandings(players: readonly string[], tables: readonly Sam
     .map(name => standingOf(name, tables))
     .sort((a, b) => b.points - a.points || (seat.get(a.name) ?? 0) - (seat.get(b.name) ?? 0));
 }
-
-/**
- * Milliseconds this device takes to play `rounds` rounds of `size` players,
- * pairing included. The seed is fixed, so every run times the same work.
- */
-export function timePairing(size: number, rounds: number, now: () => number = () => performance.now()): number {
-  const players = Array.from({ length: size }, (_, i) => `p${i}`);
-  const start = now();
-  playSampleEvent(players, rounds, seededRandom(7));
-  return now() - start;
-}
-
-/** A duration for the page: one decimal under ten milliseconds, whole ones above. */
-export const formatMs = (ms: number): string => `${ms < 10 ? ms.toFixed(1) : Math.round(ms)} ms`;

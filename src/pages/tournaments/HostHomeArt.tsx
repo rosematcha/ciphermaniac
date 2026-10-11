@@ -11,10 +11,13 @@ import { R2_ORIGIN } from '../../lib/constants';
 const spriteUrl = (name: string) => `${R2_ORIGIN}/pokemon-sprites/gen9/${name}.png`;
 const cardUrl = (set: string, num: string) => `${R2_ORIGIN}/card-images/${set}/${set}_${num}_R_EN_SM.webp`;
 
-function Canvas(props: { children: JSX.Element }) {
+/** The feature pictures all fit this box, so cropping to it puts each drawing's edge where the canvas's was. */
+const FEATURE_BOX = '12 14 136 92';
+
+function Canvas(props: { children: JSX.Element; box?: string }) {
   return (
     <svg
-      viewBox='0 0 160 120'
+      viewBox={props.box ?? '0 0 160 120'}
       fill='none'
       stroke='currentColor'
       stroke-width='2'
@@ -339,7 +342,7 @@ const RESULT_ROWS: [string, string][] = [
 /** Three tables of a round: a win, a tie, and one still playing. */
 export function ResultsArt() {
   return (
-    <Canvas>
+    <Canvas box={FEATURE_BOX}>
       <rect x='12' y='14' width='136' height='92' rx='4' />
       <Bar x={12} y={44} w={136} class='tm-art-soft' />
       <Bar x={12} y={74} w={136} class='tm-art-soft' />
@@ -372,7 +375,7 @@ const LIST_CARDS: [string, string, string][] = [
 /** Three cards from a list spread from a stack, then the check lands on the front card's lower edge. */
 export function DecklistArt() {
   return (
-    <Canvas>
+    <Canvas box={FEATURE_BOX}>
       <For each={LIST_CARDS}>
         {([side, set, num]) => (
           <g class={`tm-art-card ${side}`}>
@@ -389,45 +392,37 @@ export function DecklistArt() {
   );
 }
 
-const FIELD_NAMES = [
-  'dragapult',
-  'gardevoir',
-  'charizard',
-  'crustle',
-  'raging-bolt',
-  'gholdengo',
-  'pidgeot',
-  'dusknoir',
-  'ogerpon',
-  'gardevoir',
-  'dragapult',
-  'charizard',
-  'gholdengo',
-  'raging-bolt',
-  'crustle',
-  'dusknoir'
+/** Four decks of a field: share of the field as the bar's length, then match win rate. */
+const FIELD: { name: string; share: number; rate: string }[] = [
+  { name: 'dragapult', share: 76, rate: '58%' },
+  { name: 'gardevoir', share: 56, rate: '53%' },
+  { name: 'charizard', share: 42, rate: '49%' },
+  { name: 'raging-bolt', share: 28, rate: '44%' }
 ];
 
-/** Four rows of two tables, each player's seat on the canvas. */
-const FIELD = FIELD_NAMES.map((name, i) => ({
-  name,
-  x: 12 + (Math.floor(i / 2) % 2) * 72 + (i % 2) * 44,
-  y: 14 + Math.floor(i / 4) * 24
-}));
-
-/** A Swiss round: sixteen players fall into eight pairs at once. */
-export function PairingArt() {
+/** What the field played: four decks, each bar growing to its share in turn, the leader in marigold. */
+export function FieldArt() {
   return (
-    <Canvas>
-      <For each={FIELD}>{seat => <Sprite name={seat.name} x={seat.x} y={seat.y} size={20} />}</For>
-      <For each={Array.from({ length: 8 }, (_, p) => p)}>
-        {p => (
-          <path
-            class='tm-art-link'
-            pathLength='1'
-            style={{ '--i': p }}
-            d={`M${35 + (p % 2) * 72} ${24 + Math.floor(p / 2) * 24}h18`}
-          />
+    <Canvas box={FEATURE_BOX}>
+      <For each={FIELD}>
+        {(deck, i) => (
+          <>
+            <Sprite name={deck.name} x={12} y={14 + i() * 24} size={20} />
+            <rect
+              class='tm-art-bar'
+              classList={{ 'is-top': i() === 0 }}
+              style={{ '--i': i() }}
+              x='40'
+              y={20 + i() * 24}
+              width={deck.share}
+              height='8'
+              rx='2'
+              stroke='none'
+            />
+            <Text x={148} y={28 + i() * 24} size={11} class={i() === 0 ? 'tm-art-ink' : undefined} anchor='end'>
+              {deck.rate}
+            </Text>
+          </>
         )}
       </For>
     </Canvas>
