@@ -61,7 +61,8 @@ body.tm-home-mode main.page {
 }
 .tm-home-hero h1 {
   margin: var(--space-5) 0 0;
-  font-size: clamp(38px, 5vw, 64px);
+  /* Two set lines, sized to the column so neither wraps: the longer is about 8.6 ems wide. */
+  font-size: clamp(38px, 5.1vw - 6px, 54px);
   line-height: 0.98;
   letter-spacing: -0.035em;
 }
@@ -556,6 +557,7 @@ body.tm-home-mode main.page {
   }
   .tm-home-hero h1 {
     margin-top: 0;
+    font-size: min(54px, (100vw - 48px) / 9);
   }
   .tm-sim-cols {
     grid-template-columns: minmax(0, 1fr);

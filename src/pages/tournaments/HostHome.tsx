@@ -118,7 +118,11 @@ export function HostHome(props: { offer: SignInOffer }) {
       <Head />
       <section class='tm-home-hero'>
         <div>
-          <h1>Pokémon TCG events, run right</h1>
+          <h1>
+            Run your Pokémon
+            <br />
+            TCG events better
+          </h1>
           <p class='tm-home-lede'>
             Organize and run your sanctioned or unsanctioned Pokémon TCG events with a slick, user-friendly interface.
           </p>
