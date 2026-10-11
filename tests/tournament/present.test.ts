@@ -157,6 +157,14 @@ test('a table’s records count its result as soon as it shows', () => {
       .join('-');
   assert.equal(shown.get(open.p1), bump(before.get(open.p1), 1));
   assert.equal(shown.get(open.p2), bump(before.get(open.p2), 0));
+  const bye = { ...round2, matches: [{ ...open, p2: null, outcome: 'bye' as const }] };
+  assert.equal(
+    recordsSoFar(pod, bye, match => match.outcome).get(open.p1),
+    bump(before.get(open.p1), 0),
+    'a bye counts once paired'
+  );
+  const missed = { ...round2, matches: [{ ...open, p2: null, outcome: 'loss' as const }] };
+  assert.equal(recordsSoFar(pod, missed, match => match.outcome).get(open.p1), bump(before.get(open.p1), 1));
   const cut = { ...round2, kind: 'elimination' as const };
   assert.equal(recordsSoFar(pod, cut, () => 'p1').get(open.p1), before.get(open.p1), 'a top cut keeps Swiss records');
 });

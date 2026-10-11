@@ -7,10 +7,10 @@
  */
 
 import { createMemo, onCleanup, onMount, Show } from 'solid-js';
-import type { PodCategory, Round } from '../../../shared/tournament/types';
+import type { Match, PodCategory, Round } from '../../../shared/tournament/types';
 import type { TournamentView } from '../../../shared/tournament/view';
 import { cutSeeds } from '../../lib/tournament/bracket';
-import { namesById, recordsBefore, roundLabel, seatMark, shownOutcome } from '../../lib/tournament/present';
+import { namesById, recordsSoFar, roundLabel, seatMark, shownOutcome } from '../../lib/tournament/present';
 import { streamDecks, streamTable } from '../../lib/tournament/spectate';
 import { withSwiss } from '../../../shared/tournament/rounds';
 import { Clock } from './Clock';
@@ -71,10 +71,12 @@ export function StreamOverlay(props: { view: TournamentView; table: number; pod?
       >
         {table => {
           const played = () => withSwiss(props.view.tournament, table().pod);
-          const records = () => recordsBefore(played(), table().round);
+          const outcomeOf = (match: Match) =>
+            shownOutcome(match, table().pod, table().round, props.view.pending).outcome;
+          const records = () => recordsSoFar(played(), table().round, outcomeOf);
           const seeds = () =>
             table().round.kind === 'elimination' ? cutSeeds(props.view.tournament, table().pod) : new Map();
-          const outcome = () => shownOutcome(table().match, table().pod, table().round, props.view.pending).outcome;
+          const outcome = () => outcomeOf(table().match);
           const mark = (seat: 1 | 2) => (table().match.p2 === null ? '' : seatMark(outcome(), seat));
           const seat = (id: string | null, side: 'left' | 'right') => (
             <StreamSeat

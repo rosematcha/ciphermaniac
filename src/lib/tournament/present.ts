@@ -572,13 +572,13 @@ const SIDE_KEY = { win: 'wins', loss: 'losses', tie: 'ties' } as const;
 /**
  * Each player's record going into a Swiss `round`, with each table's result
  * counted as soon as `outcomeOf` has one, so the room sees a finished table's
- * records as they will stand. A bye or a missed round is not a table and waits
- * like the rest of the round. A top cut keeps the Swiss records it started from.
+ * records as they will stand. A bye or a missed round counts once paired. A top
+ * cut keeps the Swiss records it started from.
  */
 export function recordsSoFar(pod: Pod, round: Round, outcomeOf: (match: Match) => Outcome): Map<string, string> {
   const tallies = tallySwiss(pod, round.number - 1);
-  const tables = round.kind === 'swiss' ? round.matches.filter(match => match.p2 !== null) : [];
-  for (const match of tables) {
+  const matches = round.kind === 'swiss' ? round.matches : [];
+  for (const match of matches) {
     const outcome = outcomeOf(match);
     for (const [seat, id] of [
       [1, match.p1],

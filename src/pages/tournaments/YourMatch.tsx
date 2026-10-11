@@ -28,7 +28,7 @@ import {
   divisionHeading,
   namesById,
   podStandings,
-  recordsBefore,
+  recordsSoFar,
   reportState,
   shownOutcome
 } from '../../lib/tournament/present';
@@ -297,7 +297,11 @@ function MatchLine(props: Props & { me: string; found: Found; report: Report; op
               <span class='tm-name'>{names().get(id())}</span>
             </button>{' '}
             <span class='muted num'>
-              {recordsBefore(withSwiss(props.view.tournament, props.found.pod), props.found.round).get(id())}
+              {recordsSoFar(
+                withSwiss(props.view.tournament, props.found.pod),
+                props.found.round,
+                match => shownOutcome(match, props.found.pod, props.found.round, props.view.pending).outcome
+              ).get(id())}
             </span>
           </span>
           <span class='tm-you-end'>

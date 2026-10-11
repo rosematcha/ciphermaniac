@@ -14,7 +14,7 @@ import { createMemo, For, Index, type JSX, Show } from 'solid-js';
 import { sortMatches } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import type { PendingResult } from '../../../shared/tournament/view';
-import { recordsBefore, seatMark, type SeatTag, shownOutcome } from '../../lib/tournament/present';
+import { recordsSoFar, seatMark, type SeatTag, shownOutcome } from '../../lib/tournament/present';
 import { PendingSeatMark } from './PendingSeatMark';
 import { DeckIcons } from './DeckIcons';
 
@@ -166,7 +166,9 @@ function grouped(
 }
 
 export function MatchTable(props: MatchTableProps) {
-  const records = createMemo(() => recordsBefore(props.pod, props.round));
+  const records = createMemo(() =>
+    recordsSoFar(props.pod, props.round, match => shownOutcome(match, props.pod, props.round, props.pending).outcome)
+  );
   const hasDecks = () => Object.keys(props.decks).length > 0;
   const columns = () => 3 + (props.extra || props.status ? 1 : 0);
   const mine = (match: Match) => props.me != null && (match.p1 === props.me || match.p2 === props.me);
