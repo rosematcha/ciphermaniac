@@ -13,16 +13,14 @@
  * a result called out across the room is a few keystrokes and two presses,
  * and focus comes back to the filter for the next one. Where players report
  * their own, each open match says what they reported, and staff accept a
- * lone report or settle a dispute by entering the result as usual. With
- * archetypes on, Enter decks turns every seat into its player's deck picker,
- * for naming decks as the room is walked.
+ * lone report or settle a dispute by entering the result as usual. Archetypes
+ * are entered from Players.
  */
 
 import { createEffect, createMemo, createSignal, For, type JSX, lazy, on, onCleanup, Show, Suspense } from 'solid-js';
 import { isDisputed, type PlayerReport, reportsFor } from '../../../shared/tournament/reports';
 import { latestRound, withSwiss } from '../../../shared/tournament/rounds';
 import { DIVISION_LABELS, type Match, type Outcome, type Pod, type Round } from '../../../shared/tournament/types';
-import { decksEnabled } from '../../../shared/tournament/view';
 import { Segmented } from '../../components/Segmented';
 import type { Manage } from '../../lib/tournament/api';
 import {
@@ -43,6 +41,7 @@ import {
   unseated
 } from '../../lib/tournament/present';
 import type { ManageState } from './manageState';
+import { OptionsMenu } from './OptionsMenu';
 import { MatchTable } from './MatchTable';
 import { ChampionLine, ClockControls, DeleteRound, RepairControl } from './RoundControls';
 
@@ -50,7 +49,6 @@ import { ChampionLine, ClockControls, DeleteRound, RepairControl } from './Round
 const CutBracket = lazy(() => import('./Bracket').then(m => ({ default: m.CutBracket })));
 // The sheet results take where rows are narrow; a desktop console never opens it.
 const ResultSheet = lazy(() => import('./ResultSheet').then(m => ({ default: m.ResultSheet })));
-const EventDeckPicker = lazy(() => import('./DeckPicker').then(m => ({ default: m.EventDeckPicker })));
 
 function RoundPicker(props: { pod: Pod; selected: number; onSelect: (n: number) => void }) {
   return (
@@ -86,6 +84,7 @@ interface ResultProps {
   names: Map<string, string>;
   asking: Asking | null;
   onReport: (outcome: Outcome) => void;
+  onAccept: (outcome: Outcome) => void;
   onRecord: () => void;
   onKeep: () => void;
   /** Where rows are too narrow for their controls: the result opens the table's sheet instead. */
@@ -193,12 +192,14 @@ function Result(props: ResultProps) {
             </Show>
             <span class='tm-result-acts' classList={{ 'is-locked': props.locked || Boolean(props.onOpen) }}>
               <Show when={!elimination()}>
-                <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onReport('tie')}>
-                  Tie
-                </button>
-                <button type='button' class='btn btn-ghost tm-small' onClick={() => props.onReport('double-loss')}>
-                  Double loss
-                </button>
+                <OptionsMenu name={`table ${String(props.match.table)}`} busy={props.locked} closeOnSelect>
+                  <button type='button' class='tm-menu-item' onClick={() => props.onReport('tie')}>
+                    Tie
+                  </button>
+                  <button type='button' class='tm-menu-item' onClick={() => props.onReport('double-loss')}>
+                    Double loss
+                  </button>
+                </OptionsMenu>
               </Show>
               <span class='tm-result-slot'>
                 <Show
@@ -211,7 +212,7 @@ function Result(props: ResultProps) {
                 >
                   <Show when={lone()}>
                     {r => (
-                      <button type='button' class='btn tm-small tm-accept' onClick={() => props.onReport(r().outcome)}>
+                      <button type='button' class='btn tm-small tm-accept' onClick={() => props.onAccept(r().outcome)}>
                         Accept
                       </button>
                     )}
@@ -236,15 +237,7 @@ function matchesQuery(match: Match, query: string, names: Map<string, string>): 
 }
 
 /** The bar that finds a table: its number or a player's name, and what a press on a player does. */
-function RoomFilter(props: {
-  query: string;
-  /** Naming decks: each seat is its player's deck picker. */
-  deckMode: boolean;
-  /** Whether a press on a player does anything worth saying: not while swapping, nor with every table in. */
-  hint: boolean;
-  onQuery: (value: string) => void;
-  ref: (el: HTMLInputElement) => void;
-}) {
+function RoomFilter(props: { query: string; onQuery: (value: string) => void; ref: (el: HTMLInputElement) => void }) {
   return (
     <div class='tm-box-bar tm-filter-bar'>
       <input
@@ -256,13 +249,6 @@ function RoomFilter(props: {
         value={props.query}
         onInput={e => props.onQuery(e.currentTarget.value)}
       />
-      <Show when={props.deckMode || props.hint}>
-        <span class='tm-hint'>
-          {props.deckMode
-            ? 'Pick each player’s deck'
-            : 'Press a player to report their win, or double-click to record it'}
-        </span>
-      </Show>
     </div>
   );
 }
@@ -345,19 +331,16 @@ interface RoundBarProps {
   nothingReported: boolean;
   swapMode: boolean;
   openOnly: boolean;
-  /** Null while the event has archetypes off. */
-  deckMode: boolean | null;
   /** The Table / Bracket switch, once the pod has a top cut to draw. */
   views?: JSX.Element;
   onPick: (round: number) => void;
   onSwap: () => void;
   onOpenOnly: (value: boolean) => void;
-  onDeckMode: (value: boolean) => void;
 }
 
 /**
  * The round's bar: the picker and progress, then what can be done to it
- * (swap, re-pair, delete), then which tables show and the switch to naming decks.
+ * (swap, re-pair, delete), then which tables show.
  */
 function RoundBar(props: RoundBarProps) {
   const swiss = () => props.round.kind === 'swiss';
@@ -392,16 +375,6 @@ function RoundBar(props: RoundBarProps) {
         </Show>
       </span>
       <ShowTables openOnly={props.openOnly} open={props.open} onOpenOnly={value => props.onOpenOnly(value)} />
-      <Show when={props.deckMode !== null}>
-        <button
-          type='button'
-          class='chip tm-deck-mode'
-          aria-pressed={Boolean(props.deckMode)}
-          onClick={() => props.onDeckMode(!props.deckMode)}
-        >
-          Enter decks
-        </button>
-      </Show>
     </div>
   );
 }
@@ -473,14 +446,13 @@ function createMedia(query: string): () => boolean {
 /**
  * Where a result is entered: in its row on a wide screen, or, 900px and under
  * where a row is too narrow for its controls, in a sheet the row opens. Not
- * while seats are being swapped or the file is locked (`held`), nor while
- * decks are being named, when a press on a seat is for its picker.
+ * while seats are being swapped or the file is locked (`held`).
  */
-function createRowSheet(held: () => boolean, naming: () => boolean) {
+function createRowSheet(held: () => boolean) {
   const narrow = createMedia('(max-width: 900px)');
   const [open, setOpen] = createSignal<{ table: number; p1: string } | null>(null);
-  const opens = () => narrow() && !held() && !naming();
-  // A sheet hidden by a wider window, a swap or naming decks stays closed when they end.
+  const opens = () => narrow() && !held();
+  // A sheet hidden by a wider window or a swap stays closed when they end.
   createEffect(() => {
     if (!opens()) {
       setOpen(null);
@@ -561,8 +533,6 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const sentKey = (r: Round, match: Match) => `${props.pod.category}|${r.number}|${match.table}|${match.p1}`;
   const [query, setQuery] = createSignal('');
   const [openOnly, setOpenOnly] = createSignal(false);
-  const [deckMode, setDeckMode] = createSignal(false);
-  const naming = () => deckMode() && decksEnabled(props.manage.settings);
   let filterInput: HTMLInputElement | undefined;
   const round = createMemo(() => props.pod.rounds.find(r => r.number === picked()) ?? latest());
   const names = createMemo(() => namesById(props.manage.tournament));
@@ -587,10 +557,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
   const timed = () => isLatest() && winner() === null;
   /** The staff controls that act on the round, offered only where its clock is and never for TOM. */
   const live = () => !tom() && timed();
-  const { opens, inRow, openSheet, sheetMatch, closeSheet } = createRowSheet(
-    () => swapMode() || props.locked === true,
-    naming
-  );
+  const { opens, inRow, openSheet, sheetMatch, closeSheet } = createRowSheet(() => swapMode() || props.locked === true);
   const isAsking = (match: Match) => asking()?.table === match.table && asking()?.p1 === match.p1;
   const roundReports = createMemo(() => {
     const r = round();
@@ -674,13 +641,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
           // The room's tables with result entry; also what a cut shows when it cannot be drawn as a bracket.
           const roomTable = () => (
             <>
-              <RoomFilter
-                ref={el => (filterInput = el)}
-                query={query()}
-                deckMode={naming()}
-                hint={inRow() && openCount() > 0}
-                onQuery={setQuery}
-              />
+              <RoomFilter ref={el => (filterInput = el)} query={query()} onQuery={setQuery} />
               <MatchTable
                 pod={withSwiss(props.manage.tournament, props.pod)}
                 round={r()}
@@ -693,15 +654,6 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                 onRecord={inRow() ? send : undefined}
                 onRow={opens() ? openSheet : undefined}
                 onPlayer={swapMode() ? pickForSwap : undefined}
-                deckPicker={
-                  naming() && !swapMode()
-                    ? id => (
-                        <Suspense fallback={<span class='tm-deck-pick' />}>
-                          <EventDeckPicker state={props.state} manage={props.manage} playerId={id} />
-                        </Suspense>
-                      )
-                    : undefined
-                }
                 inProgress={
                   openOnly()
                     ? undefined
@@ -723,6 +675,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                     asking={isAsking(match) ? asking() : null}
                     onReport={o => report(match, o)}
                     onRecord={() => record(match)}
+                    onAccept={outcome => send(match, outcome)}
                     onOpen={opens() ? () => openSheet(match) : undefined}
                     onKeep={() => {
                       setAsking(null);
@@ -758,9 +711,7 @@ export function RoundPanel(props: { state: ManageState; manage: Manage; pod: Pod
                 nothingReported={nothingReported()}
                 swapMode={swapMode()}
                 openOnly={openOnly()}
-                deckMode={decksEnabled(props.manage.settings) ? deckMode() : null}
                 onOpenOnly={setOpenOnly}
-                onDeckMode={setDeckMode}
                 views={
                   <Show when={cut()}>
                     <Segmented

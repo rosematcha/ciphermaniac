@@ -79,9 +79,6 @@
   display: flex;
   gap: var(--space-2);
 }
-.tm-apply-league .tm-input {
-  flex: 1;
-}
 .tm-apply-found {
   display: grid;
   padding: var(--space-3) 14px;
@@ -145,4 +142,14 @@
     width: 100%;
     justify-content: center;
   }
+}
+.tm-apply-league .tm-input {
+  background: var(--surface);
+  flex: 0 1 28ch;
+  width: 28ch;
+  min-width: 0;
+  max-width: 100%;
+}
+.tm-apply-league {
+  flex-wrap: wrap;
 }

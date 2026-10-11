@@ -630,19 +630,7 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   align-items: center;
   gap: var(--space-2);
 }
-.tm-hint {
-  margin-left: auto;
-  font-size: var(--text-base);
-  color: var(--muted);
-}
 /* Once the bar wraps, the hint starts its own line rather than hanging at the right. */
-@media (max-width: 1100px) {
-  .tm-filter-bar .tm-hint {
-    flex-basis: 100%;
-    margin-left: 0;
-    font-size: var(--text-sm);
-  }
-}
 .tm-link {
   flex: 1 1 280px;
   width: auto;
@@ -800,20 +788,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 }
 /* What a player reported, beside their name: a marigold edge while it can be
    taken as it is, the problem ink when reports differ or share a device. */
-.tm-tag {
-  flex: none;
-  padding: 1px var(--space-2);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--accent-ink);
-}
-.tm-tag.is-problem {
-  border-color: var(--negative);
-  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
-}
 .tm-mark.is-unconfirmed {
   text-decoration: underline dotted;
   text-underline-offset: 3px;
@@ -855,10 +829,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 :is(.tm-matches, .tm-standings).has-decks .tm-seat-link:not(:has(.tm-deck))::before {
   content: '';
 }
-.tm-deck-cell {
-  min-width: 240px;
-  padding-block: var(--space-1);
-}
 /* The picker and a slot for Clear, so every row's picker is the same width. */
 .tm-deck-pick {
   display: grid;
@@ -867,19 +837,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   gap: var(--space-1);
 }
 /* Naming decks from the pairings: the name, then its picker, on the seat's line. */
-.tm-seat-deck {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-.tm-seat-deck .tm-name {
-  flex: 0 1 auto;
-}
-.tm-seat-deck .tm-deck-pick {
-  flex: 1 1 180px;
-  min-width: 0;
-}
 .tm-table-input {
   width: 64px;
   min-height: 32px;
@@ -900,9 +857,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   .tm-matches table.data,
   .tm-standings table.data {
     table-layout: fixed;
-  }
-  .tm-matches.has-extra th.tm-extra-col {
-    width: 270px;
   }
   .tm-standings th:nth-child(3),
   .tm-standings th:nth-child(4) {
@@ -977,22 +931,10 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   .tm-wide-col {
     display: none;
   }
-  .tm-hint {
-    display: none;
-  }
   /* A pairing restacks to two lines under its table number, the result
      controls on a third, as /live does: the opponent never scrolls away. */
   .tm-matches {
     overflow-x: hidden;
-  }
-  .tm-matches .data tr {
-    grid-template-columns: 34px minmax(0, 1fr);
-    grid-template-areas:
-      'table player'
-      'table opponent'
-      'extra extra';
-    column-gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
   }
   .tm-matches .data td.tm-extra-col {
     padding-left: 40px;
@@ -1000,26 +942,8 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   /* A result's word and its actions part with room between them, the actions
      wrapping under the word when a narrow phone cannot hold both. */
   /* Scoped to the table so these outrank the base result rules further down. */
-  .tm-matches .tm-result {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-1) var(--space-3);
-  }
-  .tm-matches .tm-result-acts {
-    margin-left: auto;
-    gap: var(--space-2);
-  }
   /* An empty last slot takes no room here, so an open row stays on one line. */
-  .tm-matches .tm-result-slot {
-    min-width: 0;
-  }
   /* The question Record answers is never cut short. */
-  .tm-matches .tm-result.is-asking .tm-result-label {
-    flex-basis: 100%;
-    white-space: normal;
-    overflow: visible;
-  }
   /* A name wraps rather than losing its end: it is what a player looks for.
      Each seat keeps a little air so two wrapped names never read as one. */
   .tm-matches .tm-name {
@@ -1029,6 +953,13 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
     padding-block: var(--space-2);
   }
   .tm-matches .data tr {
+    grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-areas:
+      'table player'
+      'table opponent'
+      'extra extra';
+    column-gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
     row-gap: var(--space-1);
   }
   /* Column heads a step up from the site's phone 9px: the smallest HIG allows. */
@@ -1163,49 +1094,10 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
   margin-left: 0;
 }
 /* A result cell, one line: what stands, then the controls in fixed slots. */
-.tm-result {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 2px var(--space-2);
-  white-space: normal;
-}
-.tm-result-label {
-  font-size: var(--text-body);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
 /* A table still in progress is what staff are there for: full ink; marigold
    only once a report waits on them, the problem ink when reports need settling. */
-.tm-result-label.is-open {
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--fg);
-}
-.tm-result-label.is-reported {
-  color: var(--accent-ink);
-}
-.tm-result-label.is-problem {
-  color: color-mix(in srgb, var(--negative) 82%, var(--fg));
-}
-.tm-result-sub {
-  font-weight: 400;
-  font-size: var(--text-xs);
-  white-space: nowrap;
-  color: var(--muted);
-}
-.tm-result-acts {
-  display: inline-flex;
-  justify-content: flex-end;
-  gap: 2px;
-}
 /* The last slot is held open, so Tie and Double loss sit in line down the
    column whether it holds Clear, Accept or nothing. */
-.tm-result-slot {
-  display: inline-flex;
-  min-width: 68px;
-}
 /* Accepting a lone report is the likely press on its row, so it is drawn
    with a marigold edge: one step up from the text actions, well under Record. */
 .tm-accept {
@@ -1217,14 +1109,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 .tm-accept:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
 }
-.tm-result.is-asking .tm-result-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--fg);
-}
 /* Both classes, so the strip keeps its side padding over .tm-champion's own. */
 .tm-strip.tm-champion {
   padding: 10px 14px;
@@ -1232,14 +1116,6 @@ body[data-mode='dark'] :is(.tm-input, .tm-select) {
 /* A picked deck's name starts in one place, whether its deck has one sprite
    or two: the sprites sit centred in a fixed slot (the second selector
    outranks the picker's own two-sprite padding). */
-:is(.tm-deck-cell, .tm-seat-deck) .tl-combo-lead {
-  width: 48px;
-  justify-content: center;
-}
-:is(.tm-deck-cell, .tm-seat-deck) .tl-picker .search,
-:is(.tm-deck-cell, .tm-seat-deck) .tl-picker:has(.tl-combo-lead .arche-icon + .arche-icon) .search {
-  padding-left: 62px;
-}
 /* A tap leaves no hover tint behind on a touch screen. */
 @media (hover: none) {
   .tm-page .tm-seat-link:hover {
@@ -1325,16 +1201,6 @@ body:has(.tm-sheet) {
 
 /* ---------- Players ---------- */
 /* The add form is one row of fields with the button at its end. */
-.tm-add-row {
-  align-items: end;
-  gap: var(--space-3);
-}
-.tm-add-row .tm-field {
-  flex: 1 1 160px;
-}
-.tm-add-row .tm-field:nth-child(n + 3) {
-  flex: 0 1 140px;
-}
 .tm-who {
   min-width: 180px;
 }
@@ -1357,9 +1223,6 @@ body:has(.tm-sheet) {
 .tm-rounds-cell {
   width: 1%;
   white-space: nowrap;
-}
-.tm-deck-cell.is-off {
-  min-width: 200px;
 }
 .tm-deck-off {
   display: flex;
@@ -1384,111 +1247,16 @@ body:has(.tm-sheet) {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.tm-roster td {
-  padding-block: var(--space-2);
-}
 /* A chosen deck reads as a value in the row, not as a heading. */
-:is(.tm-deck-cell, .tm-seat-deck) .tl-picker .search {
-  font-weight: 500;
-}
 /* A player's actions sit at the row's end, so Drop lines up down the column
    however many come before it. (Decklists keep theirs from the left: View,
    the one every row has, stays put.) */
-.tm-roster td.tm-extra-col {
-  text-align: right;
-}
-.tm-roster td.tm-extra-col > .tm-row-actions {
-  justify-content: flex-end;
-}
-@media (max-width: 640px) {
-  .tm-add-row .tm-field,
-  .tm-add-row .tm-field:nth-child(n + 3) {
-    flex: 1 1 100%;
-  }
-  .tm-add-row .btn {
-    width: 100%;
-    justify-content: center;
-  }
-}
 /* Up to a tablet, a player restacks to a card of lines: the name and their
    fixed table, then the rounds and the actions, then the deck; nothing hides
    off the side. Rows part on the zebra, not on a rule. */
 @media (max-width: 900px) {
-  .tm-roster,
-  .tm-roster tbody,
-  .tm-roster tr,
-  .tm-roster td {
-    display: block;
-  }
-  .tm-roster thead {
-    display: none;
-  }
-  .tm-roster tr {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
-    grid-template-areas:
-      'who fixed'
-      'rounds rounds'
-      'actions actions'
-      'deck deck';
-    align-items: center;
-    gap: var(--space-2) var(--space-3);
-    padding: var(--space-3) 14px;
-  }
-  .tm-roster td {
-    padding: 0;
-    border: 0;
-    height: auto;
-    min-width: 0;
-  }
-  .tm-roster .tm-who {
-    grid-area: who;
-    min-width: 0;
-  }
-  .tm-roster :is(.tm-who-sub, .tm-name) {
-    white-space: normal;
-  }
-  .tm-roster .tm-fixed-cell {
-    grid-area: fixed;
-    justify-self: end;
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: auto;
-  }
   /* The column head is hidden here, so the field says what it is. */
-  .tm-roster .tm-fixed-cell::before {
-    content: 'Table';
-    font-size: var(--text-sm);
-    color: var(--muted);
-  }
-  .tm-roster .tm-rounds-cell {
-    grid-area: rounds;
-  }
-  .tm-roster .tm-deck-cell {
-    grid-area: deck;
-  }
   /* The actions take a line of their own, so their width never squeezes the name. */
-  .tm-roster .tm-extra-col {
-    grid-area: actions;
-    width: auto;
-    text-align: left;
-  }
-  .tm-roster td.tm-extra-col > .tm-row-actions {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    margin-left: calc(-1 * var(--space-2));
-  }
-  .tm-roster td.tm-extra-col .btn {
-    min-width: 0;
-  }
-  .tm-roster .tm-rounds-cell:empty,
-  .tm-roster .tm-extra-col:empty {
-    display: none;
-  }
-  .tm-roster .tm-confirm-label {
-    white-space: normal;
-  }
 }
 
 /* ---------- Standings ---------- */
@@ -1616,78 +1384,6 @@ tr.is-in .tm-place {
   text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
   text-underline-offset: 3px;
 }
-.tm-list-sprite {
-  width: 52px;
-}
-.tm-lists td {
-  padding-block: var(--space-2);
-}
-.tm-list-when {
-  width: 1%;
-}
-.tm-list-check {
-  min-width: 120px;
-}
-.tm-list-columns {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-3) var(--space-5);
-  padding: var(--space-2) 0 var(--space-2) 52px;
-}
-.tm-list-head {
-  margin: 0 0 var(--space-1);
-  font-size: var(--text-base);
-  font-weight: 600;
-}
-.tm-list-cards {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: var(--text-sm);
-  line-height: 1.6;
-}
-@media (max-width: 640px) {
-  .tm-lists,
-  .tm-lists tbody,
-  .tm-lists tr,
-  .tm-lists td {
-    display: block;
-  }
-  .tm-lists thead {
-    display: none;
-  }
-  .tm-lists tr:not(.tm-expansion) {
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr);
-    gap: var(--space-1) var(--space-2);
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--rule);
-  }
-  .table-wrap .tm-lists td {
-    padding: 0;
-    border: 0;
-    height: auto;
-    min-width: 0;
-    white-space: normal;
-  }
-  .tm-lists .tm-list-sprite {
-    grid-row: span 3;
-  }
-  .tm-lists .tm-list-when {
-    width: auto;
-  }
-  .tm-lists .tm-extra-col {
-    grid-column: 2;
-    width: auto;
-  }
-  .tm-lists .tm-extra-col .tm-row-actions {
-    flex-wrap: wrap;
-    margin-left: calc(-1 * var(--space-2));
-  }
-  .tm-list-columns {
-    padding-left: 0;
-  }
-}
 
 /* ---------- Settings rows (setup and the Event tab) ---------- */
 .tm-set-row {
@@ -1749,20 +1445,6 @@ tr.is-in .tm-place {
   flex: 1 1 200px;
   min-width: 0;
   max-width: 420px;
-}
-.tm-staff-list {
-  display: grid;
-  gap: var(--space-1);
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.tm-staff-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
 }
 /* The chosen segment is drawn with the edge and the weight as well as the
    fill: the site's pill, a shade off its track, left On and Off hard to tell
@@ -1914,9 +1596,6 @@ tr.is-in .tm-place {
 }
 .tm-profile-bar .tm-grid-fields {
   grid-template-columns: repeat(auto-fit, minmax(max(150px, 40%), 1fr));
-}
-.tm-result-acts.is-locked {
-  display: none;
 }
 
 /* ---------- Your events ---------- */

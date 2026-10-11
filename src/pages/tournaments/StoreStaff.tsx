@@ -25,6 +25,7 @@ import {
 } from '../../lib/tournament/stores';
 import { latestValue } from '../../lib/resource';
 import { Skeleton } from '../../components/Skeleton';
+import { OptionsMenu } from './OptionsMenu';
 import { ConfirmAction } from './ConfirmAction';
 import { ErrorLine } from './Field';
 import { refreshSession, session } from './session';
@@ -110,7 +111,7 @@ function MemberRow(props: {
       <td class='muted-cell tm-wide-col'>{props.member.hasPopId ? 'On file' : 'None'}</td>
       <td class='tm-extra-col'>
         <Show when={props.member.role !== 'owner'}>
-          <span class='tm-row-actions'>
+          <OptionsMenu name={props.member.name} busy={props.busy} staff>
             <Show when={props.owner}>
               <HandOver member={props.member} busy={props.busy} onHandOver={() => props.onRole('owner')} />
             </Show>
@@ -131,7 +132,7 @@ function MemberRow(props: {
               disabled={props.busy}
               onConfirm={() => props.onRemove()}
             />
-          </span>
+          </OptionsMenu>
         </Show>
       </td>
     </tr>

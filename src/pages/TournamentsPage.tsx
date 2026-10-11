@@ -15,6 +15,7 @@
 import { useLocation, useParams } from '@solidjs/router';
 import { lazy, Match, Show, Switch } from 'solid-js';
 import '../styles/pages/tournament.css';
+import '../styles/pages/tournament-organizer.css';
 import { latestValue } from '../lib/resource';
 import { preloadPublished } from '../lib/tournament/api';
 import { AccountStrip } from './tournaments/AccountStrip';
@@ -48,8 +49,13 @@ export function TournamentsPage() {
   const welcome = () => location.pathname.startsWith('/welcome');
   // The dashboard and the event console carry their own account menu.
   const dashboard = () => location.pathname.startsWith('/host');
+  const organizer = () =>
+    dashboard() ||
+    settings() ||
+    location.pathname === '/apply' ||
+    /^\/stores\/[^/]+\/settings$/.test(location.pathname);
   return (
-    <>
+    <div classList={{ 'tm-organizer-surface': organizer() }}>
       {/* Settings, the dashboard and the console show who is signed in themselves. */}
       <Show when={!screen() && !settings() && !welcome() && !dashboard()}>
         <AccountStrip />
@@ -83,6 +89,6 @@ export function TournamentsPage() {
           <ManageEvent code={code()} />
         </Match>
       </Switch>
-    </>
+    </div>
   );
 }

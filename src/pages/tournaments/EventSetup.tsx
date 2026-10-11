@@ -142,6 +142,29 @@ export function EventSetup(props: {
       <div class='tm-setup-head'>
         <h2>New event</h2>
       </div>
+      <div class='tm-box'>
+        <SettingRow label='Event name' for='setup-name'>
+          <Show
+            when={swiss()}
+            fallback={
+              <p class='tm-setup-file'>
+                <strong>{props.tdfName}</strong>
+              </p>
+            }
+          >
+            <input
+              id='setup-name'
+              class='tm-input tm-setup-name'
+              maxLength={120}
+              placeholder='Event name'
+              aria-label='Event name'
+              value={name()}
+              ref={el => queueMicrotask(() => el.focus())}
+              onInput={e => setName(e.currentTarget.value)}
+            />
+          </Show>
+        </SettingRow>
+      </div>
       <Show when={props.runAs.length > 1}>
         <div class='tm-box'>
           <SettingRow label='Run as' for='setup-run-as'>
@@ -159,26 +182,6 @@ export function EventSetup(props: {
       <Show when={swiss() && runAs()}>
         {store => <ListingPicker storeId={store()} picked={listing()?.sanctionId ?? ''} onPick={pick} />}
       </Show>
-      <div class='tm-setup-head'>
-        <Show
-          when={swiss()}
-          fallback={
-            <p class='tm-setup-file'>
-              <strong>{props.tdfName}</strong>
-            </p>
-          }
-        >
-          <input
-            class='tm-input tm-setup-name'
-            maxLength={120}
-            placeholder='Event name'
-            aria-label='Event name'
-            value={name()}
-            ref={el => queueMicrotask(() => el.focus())}
-            onInput={e => setName(e.currentTarget.value)}
-          />
-        </Show>
-      </div>
       <div class='tm-box'>
         <Show when={listing()}>
           {picked => (

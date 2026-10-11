@@ -17,21 +17,6 @@
   justify-items: start;
   gap: var(--space-3);
 }
-.tm-night-list {
-  display: grid;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.tm-night {
-  display: grid;
-  grid-template-columns: 140px 120px minmax(0, 1fr) 88px auto;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) 0;
-  border-top: 1px solid var(--rule);
-}
 .tm-night:first-child {
   border-top: 0;
   padding-top: 0;
@@ -70,5 +55,33 @@
   /* As the field's own 16px there. */
   .tm-fee-symbol {
     font-size: 16px;
+  }
+}
+.tm-night {
+  display: grid;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--rule);
+  grid-template-columns: 124px 124px minmax(120px, 1fr) 72px auto;
+  min-width: 548px;
+  width: 100%;
+}
+.tm-night-list {
+  display: grid;
+  list-style: none;
+  overflow-x: auto;
+  padding: 4px;
+  margin: -4px;
+  width: calc(100% + 8px);
+}
+.tm-night-time {
+  min-width: 0;
+  width: 100%;
+}
+@media (max-width: 640px) {
+  .tm-night-time {
+    min-width: 0;
+    width: 100%;
   }
 }

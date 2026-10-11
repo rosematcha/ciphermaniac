@@ -213,7 +213,7 @@ function LeagueField(props: { lookup: Lookup; onLookup: (lookup: Lookup) => void
   }
   /** Another league typed after a lookup puts the form away until that one is looked up. */
   function typing(value: string) {
-    setTyped(value);
+    setTyped(readLeagueId(value) ?? value);
     const current = props.lookup;
     if ((current.kind === 'found' || current.kind === 'unknown') && readLeagueId(value) !== current.leagueId) {
       props.onLookup({ kind: 'idle' });
@@ -228,8 +228,9 @@ function LeagueField(props: { lookup: Lookup; onLookup: (lookup: Lookup) => void
       <span class='tm-apply-league'>
         <input
           id='apply-league'
+          placeholder='Enter your League ID here.'
           class='tm-input'
-          inputMode='url'
+          inputMode='numeric'
           autocomplete='off'
           value={typed()}
           aria-invalid={refusal() ? 'true' : undefined}

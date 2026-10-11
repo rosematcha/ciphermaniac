@@ -12,7 +12,7 @@
  */
 
 import { useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createSignal, For, type JSX, onCleanup, Show } from 'solid-js';
+import { createMemo, createSignal, For, Show } from 'solid-js';
 import { divisionFor, eventSeason } from '../../../shared/tournament/divisions';
 import { canUndrop } from '../../../shared/tournament/commands';
 import { hasPlayed, hasStarted, joinedLate, playerPod, podOf } from '../../../shared/tournament/rounds';
@@ -21,6 +21,7 @@ import { decksEnabled, isSanctioned } from '../../../shared/tournament/view';
 import { type Manage, releaseReporter } from '../../lib/tournament/api';
 import { matchHistory } from '../../lib/tournament/present';
 import type { ReportedDeck } from '../live/reportedDeck';
+import { OptionsMenu } from './OptionsMenu';
 import { ConfirmAction } from './ConfirmAction';
 import { createDeckOptions } from './deckOptions';
 import { DeckPicker } from './DeckPicker';
@@ -177,69 +178,6 @@ function ReleaseAction(props: { state: ManageState; manage: Manage; player: Play
 }
 
 /**
- * A player's rarer actions behind a "..." button, so the roster row stays
- * narrow. Placed against the viewport, since the roster's scrolling table
- * would clip it, and following its button as the page scrolls; closes on a
- * press outside it or Escape.
- */
-function RowMenu(props: { name: string; children: JSX.Element }) {
-  const [at, setAt] = createSignal<{ top: number; right: number } | null>(null);
-  const open = () => at() !== null;
-  const close = () => setAt(null);
-  let root: HTMLSpanElement | undefined;
-  let button: HTMLButtonElement | undefined;
-  const place = () => {
-    const r = button?.getBoundingClientRect();
-    if (r) {
-      setAt({ top: r.bottom + 4, right: window.innerWidth - r.right });
-    }
-  };
-  createEffect(() => {
-    if (!open()) {
-      return;
-    }
-    const onPointer = (e: PointerEvent) => {
-      if (root && e.target instanceof Node && !root.contains(e.target)) {
-        close();
-      }
-    };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
-    document.addEventListener('pointerdown', onPointer);
-    document.addEventListener('keydown', onKey);
-    window.addEventListener('scroll', place, { capture: true, passive: true });
-    onCleanup(() => {
-      document.removeEventListener('pointerdown', onPointer);
-      document.removeEventListener('keydown', onKey);
-      window.removeEventListener('scroll', place, { capture: true });
-    });
-  });
-  return (
-    <span ref={root} class='tm-more'>
-      <button
-        ref={button}
-        type='button'
-        class='btn btn-ghost tm-small'
-        aria-label={`More for ${props.name}`}
-        aria-expanded={open()}
-        onClick={() => (open() ? close() : place())}
-      >
-        ...
-      </button>
-      <Show when={open()}>
-        <span
-          class='tm-menu tm-menu-fixed'
-          role='group'
-          aria-label={`More for ${props.name}`}
-          style={{ top: `${at()?.top ?? 0}px`, right: `${at()?.right ?? 0}px` }}
-        >
-          {props.children}
-        </span>
-      </Show>
-    </span>
-  );
-}
-
-/**
  * Drop, disqualify, reinstate, remove (only before the player's first match:
  * after it they are dropped). A drop or disqualification can be taken back
  * only until the next round is paired (see undropPlayer in
@@ -268,7 +206,7 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             onConfirm={() => send('removePlayer')}
           />
         </Show>
-        <RowMenu name={playerName(props.player)}>
+        <OptionsMenu name={playerName(props.player)}>
           <FixedTableField state={props.state} player={props.player} />
           <Show when={dropped() === null}>
             <ConfirmAction
@@ -287,7 +225,7 @@ function PlayerActions(props: { state: ManageState; manage: Manage; player: Play
             />
           </Show>
           <ReleaseAction state={props.state} manage={props.manage} player={props.player} />
-        </RowMenu>
+        </OptionsMenu>
       </span>
     </td>
   );

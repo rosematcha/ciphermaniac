@@ -10,11 +10,12 @@
  * site's live pairings do, so the opponent is never behind a sideways scroll.
  */
 
-import { createMemo, For, Index, type JSX, Show, Switch, Match as When } from 'solid-js';
+import { createMemo, For, Index, type JSX, Show } from 'solid-js';
 import { sortMatches } from '../../../shared/tournament/rounds';
 import type { Match, Outcome, Pod, Round } from '../../../shared/tournament/types';
 import type { PendingResult } from '../../../shared/tournament/view';
 import { recordsBefore, seatMark, type SeatTag, shownOutcome } from '../../lib/tournament/present';
+import { PendingSeatMark } from './PendingSeatMark';
 import { DeckIcons } from './DeckIcons';
 
 export interface MatchTableProps {
@@ -31,11 +32,9 @@ export interface MatchTableProps {
   onReport?: (match: Match, outcome: Outcome) => void;
   /** Staff only: record `outcome` at once, from a double click on the winner. */
   onRecord?: (match: Match, outcome: Outcome) => void;
-  /** Staff only: the deck picker for a player, drawn in their seat in place of the result button. */
-  deckPicker?: (id: string) => JSX.Element;
   /** Staff only: the extra cell at the end of each row. */
   extra?: (match: Match) => JSX.Element;
-  /** Staff only: a short tag after a player's name, as what they reported. */
+  /** Staff only: a player’s report, used for the pending result mark. */
   tag?: (match: Match, id: string) => SeatTag | null;
   /** The public page: a Status column saying which tables are still playing, on desktop. */
   status?: boolean;
@@ -77,14 +76,6 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
       <Show when={props.status && playerId === props.me}>
         <span class='tm-flag is-you'>You</span>
       </Show>
-      <Show when={props.tag?.(props.match, playerId)}>
-        {tag => (
-          <span class='tm-tag' classList={{ 'is-problem': tag().problem }} title={tag().title}>
-            <span aria-hidden='true'>{tag().text}</span>
-            <span class='sr-only'>{tag().title}</span>
-          </span>
-        )}
-      </Show>
       <span class='muted-cell tm-record'>{props.records.get(playerId) ?? ''}</span>
     </>
   );
@@ -97,48 +88,39 @@ function SeatCell(props: MatchTableProps & { match: Match; seat: 1 | 2; records:
       >
         {playerId => (
           <span class='tm-seat-inner'>
-            <span
-              class='tm-mark'
-              classList={{ 'is-win': mark() === 'W', 'is-loss': mark() === 'L', 'is-unconfirmed': shown().unconfirmed }}
+            <PendingSeatMark
+              enabled={Boolean(props.tag)}
+              mark={mark()}
+              unconfirmed={shown().unconfirmed}
+              tag={props.tag?.(props.match, playerId()) ?? null}
+              opponentTag={props.tag?.(props.match, props.seat === 1 ? (props.match.p2 ?? '') : props.match.p1) ?? null}
             >
-              {mark()}
-              <Show when={mark() && shown().unconfirmed}>
-                <span class='sr-only'> (not yet confirmed)</span>
-              </Show>
-            </span>
-            <Switch
-              fallback={
-                <button
-                  type='button'
-                  class='tm-seat-link'
-                  classList={{ 'is-winner': mark() === 'W' }}
-                  onClick={() => props.onPlayer?.(playerId())}
-                >
-                  {content(playerId())}
-                </button>
+              <span
+                class='tm-mark'
+                classList={{
+                  'is-win': mark() === 'W',
+                  'is-loss': mark() === 'L',
+                  'is-unconfirmed': shown().unconfirmed
+                }}
+              >
+                {mark()}
+                <Show when={mark() && shown().unconfirmed}>
+                  <span class='sr-only'> (not yet confirmed)</span>
+                </Show>
+              </span>
+            </PendingSeatMark>
+            <button
+              type='button'
+              class='tm-seat-link'
+              classList={{ 'is-winner': mark() === 'W' }}
+              aria-label={reportable() ? `Report ${name(playerId())} as the winner` : undefined}
+              onClick={() =>
+                reportable() ? props.onReport?.(props.match, winnerOutcome(props.seat)) : props.onPlayer?.(playerId())
               }
+              onDblClick={() => reportable() && props.onRecord?.(props.match, winnerOutcome(props.seat))}
             >
-              <When when={props.deckPicker}>
-                {picker => (
-                  <span class='tm-seat-deck'>
-                    <span class='tm-name'>{name(playerId())}</span>
-                    {picker()(playerId())}
-                  </span>
-                )}
-              </When>
-              <When when={reportable()}>
-                <button
-                  type='button'
-                  class='tm-seat-link'
-                  classList={{ 'is-winner': mark() === 'W' }}
-                  aria-label={`Report ${name(playerId())} as the winner`}
-                  onClick={() => props.onReport?.(props.match, winnerOutcome(props.seat))}
-                  onDblClick={() => props.onRecord?.(props.match, winnerOutcome(props.seat))}
-                >
-                  {content(playerId())}
-                </button>
-              </When>
-            </Switch>
+              {content(playerId())}
+            </button>
           </span>
         )}
       </Show>

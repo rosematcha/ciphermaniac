@@ -282,6 +282,12 @@ async function lookUp(page: Page) {
   await page
     .getByLabel('League ID or pokemon.com league page')
     .fill('https://www.pokemon.com/us/play-pokemon/pokemon-events/leagues/6238620/');
+  const field = page.getByLabel('League ID or pokemon.com league page');
+  await expect(field).toHaveValue('6238620');
+  await expect(field).toHaveAttribute('placeholder', 'Enter your League ID here.');
+  await expect(field).toHaveAttribute('inputmode', 'numeric');
+  expect((await field.boundingBox())?.width).toBeLessThanOrEqual(260);
+  await expect(field).toHaveCSS('font-size', '14px');
   await page.getByRole('button', { name: 'Look up' }).click();
 }
 
@@ -457,7 +463,9 @@ test('store settings: a manager who makes themselves staff goes on to the store 
   await mock(page, { user: MANAGER });
   await page.goto('/stores/store-1/settings?section=staff');
   const table = page.locator('.tm-store-staff');
+  await page.getByRole('button', { name: 'More for Sam Ortiz' }).click();
   await table.locator('tr', { hasText: 'Sam Ortiz' }).getByRole('button', { name: 'Make manager' }).click();
+  await page.getByRole('button', { name: 'More for Mary Jackson' }).click();
   await table.locator('tr', { hasText: 'Mary Jackson' }).getByRole('button', { name: 'Make staff' }).click();
   await expect(page).toHaveURL(/\/stores\/store-1$/);
 });
@@ -469,8 +477,11 @@ test('store settings: staff change role, invite links show once and withdraw', a
   await expect(table.locator('tbody tr')).toHaveCount(3);
   const sam = table.locator('tr', { hasText: 'Sam Ortiz' });
   await expect(sam).toContainText('None');
+  await sam.getByRole('button', { name: 'More for Sam Ortiz' }).click();
   await sam.getByRole('button', { name: 'Make manager' }).click();
+  await sam.getByRole('button', { name: 'More for Sam Ortiz' }).click();
   await expect(sam.getByRole('button', { name: 'Make staff' })).toBeVisible();
+  await page.keyboard.press('Escape');
   expect(sentTo(asks, 'PATCH', '/api/stores/store-1/members')).toEqual([{ user: 'acct-2', role: 'manager' }]);
 
   await page.getByRole('button', { name: 'Invite staff' }).click();
@@ -481,6 +492,7 @@ test('store settings: staff change role, invite links show once and withdraw', a
   await expect(page.locator('.tm-store-invite')).toHaveCount(0);
   expect(asks.filter(a => a.method === 'DELETE').map(a => a.query)).toEqual(['?invite=2f237cea451ff8f2']);
 
+  await sam.getByRole('button', { name: 'More for Sam Ortiz' }).click();
   await sam.getByRole('button', { name: 'Remove' }).click();
   await page.getByRole('group', { name: 'Remove Sam Ortiz?' }).getByRole('button', { name: 'Remove' }).click();
   await expect(table.locator('tbody tr')).toHaveCount(2);
@@ -508,12 +520,14 @@ test('store settings: the Owner hands the store over, asked first, and stays on 
   const mary = table.locator('tr', { hasText: 'Mary Jackson' });
   const sam = table.locator('tr', { hasText: 'Sam Ortiz' });
   await expect(mary.getByRole('button', { name: 'Leave' })).toHaveCount(0);
+  await sam.getByRole('button', { name: 'More for Sam Ortiz' }).click();
   await sam.getByRole('button', { name: 'Make owner' }).click();
   await expect(sam).toContainText('Make Sam Ortiz the owner?');
   expect(sentTo(asks, 'PATCH', '/api/stores/store-1/members')).toEqual([]);
   await sam.getByRole('button', { name: 'Make owner' }).click();
   await expect(sam.locator('td').nth(1)).toHaveText('Owner');
   await expect(mary.locator('td').nth(1)).toHaveText('Manager');
+  await mary.getByRole('button', { name: 'More for Mary Jackson' }).click();
   await expect(mary.getByRole('button', { name: 'Leave' })).toBeVisible();
   await expect(sam.getByRole('button')).toHaveCount(0);
   expect(sentTo(asks, 'PATCH', '/api/stores/store-1/members')).toEqual([{ user: 'acct-2', role: 'owner' }]);
@@ -680,4 +694,43 @@ test('store settings’ Start an event opens the setup as the store, and /host l
     'href',
     '/stores/store-1/settings'
   );
+});
+
+test('staff options remain visible on a narrow screen and return focus on Escape @mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await mock(page, { user: MANAGER });
+  await page.goto('/stores/store-1/settings?section=staff');
+  const trigger = page.getByRole('button', { name: 'More for Sam Ortiz' });
+  await expect(page.getByRole('button', { name: 'Make manager' })).toHaveCount(0);
+  await trigger.click();
+  const menu = page.getByRole('group', { name: 'More for Sam Ortiz', exact: true });
+  await expect(menu.getByRole('button', { name: 'Make manager' })).toBeVisible();
+  const box = await menu.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box?.x).toBeGreaterThanOrEqual(8);
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(312);
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(640);
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+});
+
+test('each league night keeps its fields on one line without page overflow @mobile', async ({ page }) => {
+  await mock(page, { user: MANAGER });
+  await page.goto('/stores/store-1/settings');
+  for (const width of [1280, 820, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    const night = page.locator('.tm-night:not(.tm-night-exception)').first();
+    await expect(night).toBeVisible();
+    const layout = await night.evaluate(el => ({
+      centers: Array.from(el.children).map(child => {
+        const rect = child.getBoundingClientRect();
+        return rect.top + rect.height / 2;
+      }),
+      overflow: document.documentElement.scrollWidth > innerWidth
+    }));
+    expect(Math.max(...layout.centers) - Math.min(...layout.centers)).toBeLessThanOrEqual(1);
+    expect(layout.overflow).toBe(false);
+    await expect(night.locator('input').first()).toHaveCSS('font-size', '14px');
+  }
 });

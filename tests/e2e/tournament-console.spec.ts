@@ -2,7 +2,7 @@
  * A Swiss event's console and big screen against mocked functions: a double
  * click on a player records their win at once, the console's head offers the
  * top cut, another round and ending the event once the planned rounds are
- * played, decks are named from the pairings, the big screen marks each
+ * played, decks are named from Players, the big screen marks each
  * table's winner as results come in, and staff can unlink a player from an
  * account at an unsanctioned event.
  * The event is built with the same shared commands the functions apply.
@@ -172,10 +172,10 @@ test('a result shows in its row while it is on its way, and its answer is not re
   // Followed by its number: once its result is in, the table moves under Done.
   const first = rows.filter({ has: page.locator('td.tm-table-col', { hasText: new RegExp(`^${table.table}$`) }) });
   await expect(first.locator('.tm-result-label')).toHaveText('1–0');
-  await expect(first.locator('.tm-mark.is-unconfirmed')).toHaveText([/^W/, /^L/]);
+  await expect(first.locator('.tm-pending-mark.is-awaiting > [aria-hidden]')).toHaveText(['W?', 'L?']);
   answer();
-  await expect(first.locator('.tm-mark.is-win')).toHaveText('W');
-  await expect(first.locator('.tm-mark.is-unconfirmed')).toHaveCount(0);
+  await expect(first.locator('.tm-mark.is-win > [aria-hidden]')).toHaveText('W');
+  await expect(first.locator('.tm-pending-mark.is-awaiting')).toHaveCount(0);
   await expect(page.locator('.tm-matches tbody tr[data-kept]:not(.tm-group-row)')).toHaveCount(3);
   expect(reads).toEqual([]);
 });
@@ -219,7 +219,7 @@ test("an open table shows its players' reports in its one row, and a lone report
     outcome,
     at: 0
   });
-  await mockConsole(page, t, settingsOf({ playerReporting: true }), [
+  const sent = await mockConsole(page, t, settingsOf({ playerReporting: true }), [
     report(lone, lone.p2, 'p2'),
     report(disputed, disputed.p1, 'p1'),
     report(disputed, disputed.p2, 'p2')
@@ -227,14 +227,14 @@ test("an open table shows its players' reports in its one row, and a lone report
   const rows = page.locator('.tm-matches tbody tr');
   const first = rows.filter({ has: page.locator('.tm-result-label.is-reported:not(.is-problem)') });
   await expect(first.locator('.tm-result-label')).toHaveText(/^Reported\. Reported: .+ wins$/);
-  await expect(first.locator('.tm-tag')).toHaveAttribute('title', 'Reported: won');
+  await expect(first.locator('.tm-pending-mark > [aria-hidden]')).toHaveText(['L?', 'W?']);
   const second = rows.filter({ has: page.locator('.tm-result-label.is-problem') });
   await expect(second.locator('.tm-result-label')).toHaveText(/^Disputed\. Reports differ\./);
-  await expect(second.locator('.tm-tag.is-problem')).toHaveCount(2);
+  await expect(second.locator('.tm-pending-mark.is-problem > [aria-hidden]')).toHaveText(['W?', 'W?']);
   await expect(second.getByRole('button', { name: 'Accept' })).toHaveCount(0);
   await first.getByRole('button', { name: 'Accept' }).click();
-  await expect(page.getByRole('button', { name: 'Record' })).toBeVisible();
-  await expect(page.locator('.tm-result.is-asking .tm-result-label')).toHaveText(/ wins\?$/);
+  await expect.poll(() => sent.at(-1)).toMatchObject({ type: 'reportResult', table: lone.table, outcome: 'p2' });
+  await expect(page.locator('.tm-result.is-asking')).toHaveCount(0);
 });
 
 test('a capped league ends after its rounds instead of pairing on', async ({ page }) => {
@@ -248,7 +248,7 @@ test('a capped league ends after its rounds instead of pairing on', async ({ pag
 test('the last planned round waits on its open tables before the decision', async ({ page }) => {
   await mockConsole(page, event(6, 2, true), settingsOf({ roundCap: 3 }));
   await expect(page.getByRole('button', { name: 'End event' })).toBeDisabled();
-  await expect(page.getByText('3 tables open')).toBeVisible();
+  await expect(page.getByText('3 tables open')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Pair round 4' })).toHaveCount(0);
 });
 
@@ -284,24 +284,26 @@ test('a player row keeps its rarer actions and fixed table under its menu', asyn
   await expect(menu).toHaveCount(0);
 });
 
-test('decks are named from the pairings, and a name the list lacks is taken as typed', async ({ page }) => {
+test('decks are named from Players, and a name the list lacks is taken as typed', async ({ page }) => {
   const t = event(8, 0, true);
   const sent = await mockConsole(page, t, settingsOf({ deckVisibility: 'always' }));
-  await page.getByRole('button', { name: 'Enter decks' }).click();
+  await expect(page.getByRole('button', { name: 'Enter decks' })).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Players' }).click();
   const picker = page.getByRole('combobox', { name: 'Deck' }).first();
   await picker.fill('Homebrew Box');
   await expect(page.getByRole('option', { name: /Homebrew Box/ })).toBeVisible();
   await picker.press('Enter');
   await expect
     .poll(() => sent.decks)
-    .toEqual([{ playerId: t.pods[0]?.rounds[0]?.matches[0]?.p1, archetype: 'Homebrew Box' }]);
+    .toEqual([{ playerId: t.players.find(p => p.firstName === 'Player1')?.id, archetype: 'Homebrew Box' }]);
 });
 
 test('a deck list opened in the last row is drawn whole, not cut off at the table', async ({ page }) => {
   // The tables clip their overflow, and the list used to hang inside them: in
   // the bottom row it showed as a sliver under the field.
   await mockConsole(page, event(8, 0, true), settingsOf({ deckVisibility: 'always' }));
-  await page.getByRole('button', { name: 'Enter decks' }).click();
+  await expect(page.getByRole('button', { name: 'Enter decks' })).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Players' }).click();
   await page.getByRole('combobox', { name: 'Deck' }).last().focus();
   const list = page.getByRole('listbox');
   await expect(list).toBeVisible();
@@ -323,7 +325,8 @@ test('a deck list opened in the last row is drawn whole, not cut off at the tabl
 test('a Pokémon no archetype list names is offered with its sprite', async ({ page }) => {
   const t = event(8, 0, true);
   const sent = await mockConsole(page, t, settingsOf({ deckVisibility: 'always' }));
-  await page.getByRole('button', { name: 'Enter decks' }).click();
+  await expect(page.getByRole('button', { name: 'Enter decks' })).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Players' }).click();
   const picker = page.getByRole('combobox', { name: 'Deck' }).first();
   await picker.fill('Tyrantrum');
   const option = page.getByRole('option', { name: /Tyrantrum/ });
@@ -333,7 +336,7 @@ test('a Pokémon no archetype list names is offered with its sprite', async ({ p
   await picker.press('Enter');
   await expect
     .poll(() => sent.decks)
-    .toEqual([{ playerId: t.pods[0]?.rounds[0]?.matches[0]?.p1, archetype: 'Tyrantrum' }]);
+    .toEqual([{ playerId: t.players.find(p => p.firstName === 'Player1')?.id, archetype: 'Tyrantrum' }]);
 });
 
 test('the big screen marks who won each finished table', async ({ page }) => {
@@ -532,4 +535,57 @@ test('the console leads back to the dashboard’s Organizing tab, above the even
   await expect(trail.locator('[aria-current="page"]')).toHaveText(
     await page.locator('.tm-console-hero h1').innerText()
   );
+});
+
+test('result options stay behind the menu and preserve manual confirmation', async ({ page }) => {
+  const sent = await mockConsole(page, event(4, 0, true), settingsOf({}));
+  const more = page.getByRole('button', { name: 'More for table 1', exact: true });
+  const menu = page.getByRole('group', { name: 'More for table 1', exact: true });
+  await expect(page.getByRole('button', { name: 'Tie', exact: true })).toHaveCount(0);
+  await more.click();
+  await expect(menu.getByRole('button', { name: 'Tie', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(more).toBeFocused();
+  for (const [label, outcome] of [
+    ['Tie', 'tie'],
+    ['Double loss', 'double-loss']
+  ]) {
+    await more.click();
+    await menu.getByRole('button', { name: label, exact: true }).click();
+    await expect(menu).toHaveCount(0);
+    await expect(page.locator('.tm-result.is-asking')).toBeVisible();
+    await page.getByRole('button', { name: 'Record', exact: true }).click();
+    await expect.poll(() => sent.at(-1)).toMatchObject({ type: 'reportResult', table: 1, outcome });
+  }
+});
+
+test('organizer pairing rows stay compact and keep separate yellow player hover in both themes', async ({ page }) => {
+  await mockConsole(page, event(8, 1, true), settingsOf({}));
+  const winner = page.getByRole('button', { name: /^Report Player/ }).first();
+  const row = page.locator('.tm-matches tbody tr', { has: winner });
+  for (const mode of ['light', 'dark']) {
+    await page.locator('body').evaluate((el, value) => el.setAttribute('data-mode', value), mode);
+    await expect(winner).toHaveCSS('font-size', '14px');
+    const geometry = await winner.evaluate(el => {
+      const name = el.querySelector('.tm-name')?.getBoundingClientRect();
+      const record = el.querySelector('.tm-record')?.getBoundingClientRect();
+      return {
+        height: el.closest('tr')?.getBoundingClientRect().height ?? 0,
+        alignment: name && record ? Math.abs(name.top + name.height / 2 - record.top - record.height / 2) : Infinity
+      };
+    });
+    expect(geometry.height).toBeLessThanOrEqual(54);
+    expect(geometry.alignment).toBeLessThan(1);
+    await winner.click();
+    await winner.hover();
+    const playerFill = await winner.evaluate(el => getComputedStyle(el).backgroundColor);
+    const rowFill = await row
+      .locator('td')
+      .first()
+      .evaluate(el => getComputedStyle(el).backgroundColor);
+    expect(playerFill).not.toBe(rowFill);
+    await expect(row.locator('.tm-result.is-asking')).toHaveCSS('background-color', 'rgb(255, 219, 88)');
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  }
 });

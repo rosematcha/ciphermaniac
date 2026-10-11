@@ -384,7 +384,7 @@ function Hero(props: {
           <span class='tm-grow' />
           <div class='tm-next'>
             {action}
-            <Show when={reason()}>
+            <Show when={reason() && !/^\d+ tables? open$/.test(reason() ?? '')}>
               <span class='tm-next-reason'>{reason()}</span>
             </Show>
           </div>

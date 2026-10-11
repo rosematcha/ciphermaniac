@@ -1,0 +1,178 @@
+.tm-organizer-surface {
+  display: contents;
+  --bg: #ececea;
+  --surface: #ffffff;
+  --surface-2: #e3e4e1;
+  --fg: #20221f;
+  --muted: #50544f;
+  --border: #7b8079;
+  --rule: #bfc3bc;
+  --accent: #855500;
+  --positive: #286045;
+  --negative: #c21c2b;
+  --accent-ink: #855500;
+  --accent-hover: #855500;
+  --accent-ink-hover: #855500;
+  --accent-fill: #efb32c;
+  --accent-fill-hover: #efb32c;
+  --accent-fg: #211b0b;
+  --tm-confirm-fill: #ffdb58;
+  --tm-confirm-ink: #211b0b;
+  --segment-on: var(--surface);
+  --text-xs: 14px;
+  --text-sm: 14px;
+  --text-base: 14px;
+  --text-body: 14px;
+  --tm-row-height: 52px;
+  --control-h: 44px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+}
+body:has(.tm-organizer-surface) {
+  background: #ececea;
+}
+body[data-mode='dark'] .tm-organizer-surface {
+  --bg: #161615;
+  --surface: #252523;
+  --surface-2: #33332f;
+  --fg: #f5f3eb;
+  --muted: #b9b6aa;
+  --border: #8e8e88;
+  --rule: #59594f;
+  --accent: #f3c15d;
+  --positive: #a2d3ac;
+  --negative: #ff6b6b;
+  --accent-ink: #f3c15d;
+  --accent-hover: #f3c15d;
+  --accent-ink-hover: #f3c15d;
+}
+body[data-mode='dark']:has(.tm-organizer-surface) {
+  background: #161615;
+}
+@media (prefers-color-scheme: dark) {
+  body:not([data-mode]) .tm-organizer-surface {
+    --bg: #161615;
+    --surface: #252523;
+    --surface-2: #33332f;
+    --fg: #f5f3eb;
+    --muted: #b9b6aa;
+    --border: #8e8e88;
+    --rule: #59594f;
+    --accent: #f3c15d;
+    --positive: #a2d3ac;
+    --negative: #ff6b6b;
+    --accent-ink: #f3c15d;
+    --accent-hover: #f3c15d;
+    --accent-ink-hover: #f3c15d;
+  }
+  body:not([data-mode]):has(.tm-organizer-surface) {
+    background: #161615;
+  }
+}
+/* The event console retains its own layout within the organizer palette. */
+.tm-organizer-surface
+  .tm-console
+  .tm-matches
+  .data
+  tbody
+  tr:not(.tm-group-row, .is-confirming):has(.tm-seat-link:focus-visible) {
+  background: color-mix(in srgb, var(--fg) 12%, var(--surface));
+}
+/* The approved console is excluded: this pass covers its surrounding pages. */
+.tm-organizer-surface .tm-page:not(.tm-console) {
+  color: var(--fg);
+  line-height: 1.55;
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-box,
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-apply-found {
+  border-color: var(--rule);
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-input,
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-select,
+.tm-organizer-surface .tm-page:not(.tm-console) .search {
+  background: var(--bg);
+  border-color: var(--border);
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-setup-name {
+  min-height: 44px;
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-input[aria-invalid='true'],
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-select[aria-invalid='true'],
+.tm-organizer-surface .tm-page:not(.tm-console) .search[aria-invalid='true'] {
+  border-color: var(--negative);
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .btn,
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-select,
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-input:not(textarea),
+.tm-organizer-surface .tm-page:not(.tm-console) .search,
+.tm-organizer-surface .tm-page:not(.tm-console) .segmented button,
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-check,
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-store-nav button {
+  min-height: 44px;
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-error,
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-problem,
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-problems {
+  color: var(--negative);
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .data thead th {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .data td {
+  height: var(--tm-row-height);
+  padding-block: 4px;
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .data tbody tr:has(:focus-visible) {
+  background: color-mix(in srgb, var(--fg) 12%, var(--surface));
+}
+.tm-organizer-surface .tm-page:not(.tm-console) :focus-visible {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: 3px;
+}
+.tm-organizer-surface .tm-page:not(.tm-console):has(.tm-identity, .tm-apply) {
+  max-width: 880px;
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-box-bar > .tm-grow.tm-input {
+  min-width: 160px;
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-confirm {
+  white-space: normal;
+  flex-wrap: wrap;
+}
+.tm-organizer-surface .tm-page:not(.tm-console) .tm-path-held {
+  font-weight: 500;
+}
+@media (min-width: 641px) and (max-width: 1000px) {
+  .tm-organizer-surface .tm-page:not(.tm-console).tm-store-settings-page .tm-next {
+    margin-right: 48px;
+  }
+}
+@media (max-width: 640px) {
+  .tm-organizer-surface .tm-page:not(.tm-console) .tm-set-label {
+    position: relative;
+  }
+  .tm-organizer-surface .tm-page:not(.tm-console) .tm-set-label .info-tip {
+    position: static;
+  }
+  .tm-organizer-surface .tm-page:not(.tm-console) .tm-set-label .info-tip-bubble {
+    left: 0;
+    max-width: 100%;
+    transform: none !important;
+  }
+}
+
+.tm-organizer-surface .tm-result-options {
+  right: auto;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+}
+
+.tm-organizer-surface .tm-page input,
+.tm-organizer-surface .tm-page select,
+.tm-organizer-surface .tm-page textarea,
+.tm-organizer-surface .tm-page .btn {
+  font-size: var(--text-body) !important;
+}
