@@ -244,8 +244,11 @@ test('wiping event history hides the ended events and unlinks the account there,
 });
 
 test('wiping the username keeps the day’s renames counted', async () => {
+  let instant = Date.now();
+  mock.method(Date, 'now', () => instant);
   const player = await signIn('Player');
   for (const handle of ['one.name', 'two.name', 'three.name']) {
+    instant += 1;
     assert.equal((await rename(player, handle)).status, 200);
   }
   assert.equal((await wipe(player, ['username'])).status, 200);
