@@ -609,6 +609,55 @@ async function newTom(cookie: string, tournament: Tournament): Promise<string> {
   return created.json.code as string;
 }
 
+test('starting a TOM round’s clock before TOM has a result leaves the file’s next save in step', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
+  // Round 2 as TOM writes it just after pairing: nothing reported, no start time, so the file calls it paired.
+  const fresh: Tournament = {
+    ...tdf,
+    pods: tdf.pods.map(pod => ({
+      ...pod,
+      rounds: pod.rounds.map(round =>
+        round.number === 2
+          ? {
+              ...round,
+              status: 'paired' as const,
+              startTime: '',
+              matches: round.matches.map(m => (m.p2 === null ? m : { ...m, outcome: 'pending' as const }))
+            }
+          : round
+      )
+    }))
+  };
+  const code = await newTom(owner, fresh);
+  const base = await revisionNow(code, owner);
+  assert.equal((await send(code, owner, { type: 'startClock', pod: 'mixed' })).status, 200);
+  assert.equal(await revisionNow(code, owner), base, 'the clock is not a different copy of the event');
+
+  const saved = {
+    ...fresh,
+    pods: fresh.pods.map(pod => ({
+      ...pod,
+      rounds: pod.rounds.map(round =>
+        round.number === 2
+          ? {
+              ...round,
+              status: 'started' as const,
+              matches: round.matches.map((m, i) => (i === 0 ? { ...m, outcome: 'p1' as const } : m))
+            }
+          : round
+      )
+    }))
+  };
+  const synced = await hit(sync.onRequestPut as Handler, '/sync', at(code), {
+    method: 'PUT',
+    cookie: owner,
+    body: { tournament: saved, base }
+  });
+  assert.equal(synced.status, 200, 'TOM’s next save is taken, not refused as another copy');
+  assert.notEqual(synced.json.tournament.pods[0].rounds[1].clockStartedAt, null, 'the site’s clock still runs');
+});
+
 function pairNext(code: string, cookie: string, base: string) {
   return hit(pairing.onRequestPost as Handler, '/pairing', at(code), {
     method: 'POST',

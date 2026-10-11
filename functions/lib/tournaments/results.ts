@@ -11,6 +11,7 @@
 import { applyCommand, type Command } from '../../../shared/tournament/commands.js';
 import { dueResults, resultOf } from '../../../shared/tournament/reports.js';
 import { isOpenMatch } from '../../../shared/tournament/rounds.js';
+import { withSiteClocks } from '../../../shared/tournament/tomClock.js';
 import type { PodCategory, Tournament } from '../../../shared/tournament/types.js';
 import { applyPending, isSanctioned, prunePending, withPending } from '../../../shared/tournament/view.js';
 import type { D1Like } from '../types.js';
@@ -42,8 +43,11 @@ export function commandChanges(row: TournamentRow, command: Command, localTime: 
   if (!result.ok) {
     return result.error;
   }
-  if (row.mode === 'tom' && command.type === 'reportResult') {
-    return pendingChange(row, command);
+  if (row.mode === 'tom') {
+    // A clock may change only the clock: anything more is a copy the next file sync would be refused against.
+    return command.type === 'reportResult'
+      ? pendingChange(row, command)
+      : { tournament: withSiteClocks(row.tournament, result.tournament) };
   }
   return { tournament: result.tournament };
 }
