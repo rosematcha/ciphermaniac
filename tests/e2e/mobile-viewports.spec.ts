@@ -7,7 +7,6 @@ const ROUTES = [
   '/archetypes/Dragapult',
   '/trends',
   '/players',
-  '/events/majors',
   '/tools',
   '/tools/tier-list',
   '/about'

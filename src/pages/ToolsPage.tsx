@@ -54,6 +54,32 @@ export function ToolsPage() {
               listed. The route still works for anyone with the link, but it's
               an internal export tool, so it stays out of the index, the
               sitemap, and the crawlers (static/robots.txt). */}
+          <A class='arche' href='/tools/event-locator'>
+            <div class='arche-thumb' aria-hidden='true'>
+              <svg viewBox='0 0 100 80'>
+                <rect
+                  x='8'
+                  y='14'
+                  width='84'
+                  height='52'
+                  rx='2'
+                  fill='none'
+                  stroke='currentColor'
+                  stroke-width='2'
+                  opacity='0.45'
+                />
+                <path d='M8 46h84M40 14v52' fill='none' stroke='currentColor' stroke-width='2' opacity='0.18' />
+                <circle cx='26' cy='32' r='5' fill='currentColor' opacity='0.3' />
+                <circle cx='82' cy='56' r='5' fill='currentColor' opacity='0.3' />
+                <path d='M58 40c0-6 4-10 9-10s9 4 9 10c0 7-9 14-9 14s-9-7-9-14z' fill='currentColor' opacity='0.55' />
+              </svg>
+            </div>
+            <div class='arche-name'>Event Locator</div>
+            <div class='arche-stats'>
+              <span class='arche-wr'>Find League Cups, Challenges, prereleases and locals near you, on a map</span>
+            </div>
+          </A>
+
           <A class='arche' href='/tools/tier-list'>
             <div class='arche-thumb' aria-hidden='true'>
               <svg viewBox='0 0 100 80'>

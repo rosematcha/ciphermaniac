@@ -28,10 +28,17 @@ test('the initial scope is the URL, then storage, then online, dropping an unres
 });
 
 test('scope-aware routes include their detail pages but exclude independent tools', () => {
-  for (const path of ['/', '/cards', '/cards/MEG/114', '/archetypes', '/archetypes/Dragapult', '/events/majors']) {
+  for (const path of ['/', '/cards', '/cards/MEG/114', '/archetypes', '/archetypes/Dragapult']) {
     assert.equal(isScopeAwarePath(path), true, path);
   }
-  for (const path of ['/trends', '/players/1272', '/tools/meta-binder', '/events/locator', '/about', '/feedback']) {
+  for (const path of [
+    '/trends',
+    '/players/1272',
+    '/tools/meta-binder',
+    '/tools/event-locator',
+    '/about',
+    '/feedback'
+  ]) {
     assert.equal(isScopeAwarePath(path), false, path);
   }
 });

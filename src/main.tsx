@@ -35,11 +35,10 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   '/cards/:set/:number': () => import('./pages/CardPage'),
   '/archetypes': () => import('./pages/ArchetypesIndexPage'),
   '/archetypes/:slug': () => import('./pages/ArchetypePage'),
-  '/events/majors': () => import('./pages/TournamentsIndexPage'),
   '/trends': () => import('./pages/TrendsPage'),
   '/players': () => import('./pages/PlayersPage'),
   '/players/:id': () => import('./pages/PlayerProfilePage'),
-  '/events/locator': () => import('./pages/EventLocatorPage'),
+  '/tools/event-locator': () => import('./pages/EventLocatorPage'),
   '/about': () => import('./pages/AboutPage'),
   '/feedback': () => import('./pages/FeedbackPage')
 };
@@ -55,7 +54,6 @@ const CardsIndexPage = page(() => import('./pages/CardsIndexPage'), 'CardsIndexP
 const CardPage = page(() => import('./pages/CardPage'), 'CardPage');
 const ArchetypesIndexPage = page(() => import('./pages/ArchetypesIndexPage'), 'ArchetypesIndexPage');
 const ArchetypePage = page(() => import('./pages/ArchetypePage'), 'ArchetypePage');
-const TournamentsIndexPage = page(() => import('./pages/TournamentsIndexPage'), 'TournamentsIndexPage');
 const TrendsPage = page(() => import('./pages/TrendsPage'), 'TrendsPage');
 const PlayersPage = page(() => import('./pages/PlayersPage'), 'PlayersPage');
 const PlayerProfilePage = page(() => import('./pages/PlayerProfilePage'), 'PlayerProfilePage');
@@ -120,7 +118,8 @@ render(
       <Route path='/cards/:set/:number' component={CardPage} />
       <Route path='/archetypes' component={ArchetypesIndexPage} />
       <Route path='/archetypes/:slug' component={ArchetypePage} />
-      <Route path='/tournaments' component={redirectKeepingQuery('/events/majors')} />
+      {/* The majors list is gone; home lists the recent ones, under the same scope. */}
+      <Route path='/tournaments' component={redirectKeepingQuery('/')} />
       <Route path='/trends' component={TrendsPage} />
       <Route path='/players' component={PlayersPage} />
       <Route path='/players/compare' component={PlayerComparePage} />
@@ -129,11 +128,13 @@ render(
       <Route path='/standings/:id' component={StandingsPlayerRedirect} />
       <Route path='/live/:slug' component={LivePage} />
       <Route path='/live/:slug/player/:seat' component={LiveSeatPage} />
-      <Route path='/events' component={redirectKeepingQuery('/events/locator')} />
-      <Route path='/events/majors' component={TournamentsIndexPage} />
-      <Route path='/events/locator' component={EventLocatorPage} />
+      <Route path='/events/majors' component={redirectKeepingQuery('/')} />
+      {/* The locator moved under Tools; its old addresses carry their search along. */}
+      <Route path='/events' component={redirectKeepingQuery('/tools/event-locator')} />
+      <Route path='/events/locator' component={redirectKeepingQuery('/tools/event-locator')} />
       {/* /bot is the Tools route too: a route of its own adds to the app shell, which has no room for one. */}
       <Route path='/tools' component={ToolsPage} />
+      <Route path='/tools/event-locator' component={EventLocatorPage} />
       <Route path='/tools/social-graphics' component={SocialGraphicsPage} />
       <Route path='/tools/in-loving-memory' component={InLovingMemoryPage} />
       <Route path='/tools/deck-box-labels' component={LabelMakerPage} />

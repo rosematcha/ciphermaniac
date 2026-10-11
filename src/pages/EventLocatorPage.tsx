@@ -154,7 +154,7 @@ export function EventLocatorPage() {
     center() && usable() ? countText(placed().length, placed().filter(e => e.kind === 'cup').length) : '';
 
   onMount(() => {
-    document.title = 'Events — Ciphermaniac';
+    document.title = 'Event Locator — Ciphermaniac';
   });
 
   function pickPlace(place: PlaceSuggestion) {

@@ -1,9 +1,4 @@
-import { A } from '@solidjs/router';
-import { type JSX, lazy, Show } from 'solid-js';
-import type { LiveEvent } from '../../shared/live/types';
-import { roundName } from '../../shared/live/rounds';
-import { createLiveIndex } from '../lib/livePoll';
-import { latestValue } from '../lib/resource';
+import { lazy } from 'solid-js';
 import { WhileEventsOn } from './LiveBanner';
 
 /**
@@ -12,39 +7,6 @@ import { WhileEventsOn } from './LiveBanner';
  * that belongs in the profile's own bundle.
  */
 const PlayerRun = lazy(() => import('../pages/live/PlayerRun').then(m => ({ default: m.PlayerRun })));
-
-/** A tournament row that leads to the live page, in the list's own markup. */
-function LiveRow(props: { event: LiveEvent; detail: JSX.Element; aside?: JSX.Element }) {
-  return (
-    <A class='tournament-row tournament-row-link' href={`/live/${props.event.slug}`}>
-      <span class='date'>Live</span>
-      <span class='name'>
-        {props.event.name} <span class='muted-cell'>· {props.detail}</span>
-      </span>
-      <span class='players'>{props.aside}</span>
-    </A>
-  );
-}
-
-/** Events that are on, for the top of the tournaments list. */
-export function LiveEventRow() {
-  return <WhileEventsOn>{event => <EventRow event={event} />}</WhileEventsOn>;
-}
-
-function EventRow(props: { event: LiveEvent }) {
-  const index = createLiveIndex(() => props.event.slug);
-  return (
-    <Show when={latestValue(index)}>
-      {current => (
-        <LiveRow
-          event={props.event}
-          detail={current().finished ? 'Finished' : roundName(current().round, current().cut)}
-          aside={current().finished ? undefined : `${current().playing.toLocaleString()} tables playing`}
-        />
-      )}
-    </Show>
-  );
-}
 
 /**
  * A player's run at each event that is on, on their career page.

@@ -84,7 +84,7 @@ function Welcome() {
         <li>
           <strong>Find an event</strong>
           <span class='muted'>Search for tournaments near you.</span>
-          <A href='/events/locator'>Find events</A>
+          <A href='/tools/event-locator'>Find events</A>
         </li>
         <li>
           <strong>Add your Player ID</strong>

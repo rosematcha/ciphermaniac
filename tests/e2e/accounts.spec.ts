@@ -1080,7 +1080,7 @@ test('a player with no events yet is welcomed with the way to play, then the way
     'Add your Player ID',
     'Play'
   ]);
-  await expect(welcome.getByRole('link', { name: 'Find events' })).toHaveAttribute('href', '/events/locator');
+  await expect(welcome.getByRole('link', { name: 'Find events' })).toHaveAttribute('href', '/tools/event-locator');
   await expect(welcome.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
   await expect(welcome.getByRole('link', { name: 'Apply here' })).toHaveAttribute('href', '/apply');
   expect(errors).toEqual([]);

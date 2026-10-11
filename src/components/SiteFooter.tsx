@@ -2,8 +2,7 @@
  * The strip under every page: where the site goes, who runs it, and the mode
  * toggle.
  *
- * Only the links the nav doesn't carry: Tournaments, which it has no room for,
- * About, and Feedback.
+ * Only the links the nav doesn't carry: About and Feedback.
  * Feedback carries the page it was clicked from so the form can suggest it.
  * @module components/SiteFooter
  */
@@ -13,10 +12,7 @@ import { For, type JSX } from 'solid-js';
 import { prefetchRoute } from '../lib/prefetch';
 import { type Mode, mode, setMode } from '../lib/theme';
 
-const LINKS: { href: string; label: string }[] = [
-  { href: '/events/majors', label: 'Tournaments' },
-  { href: '/about', label: 'About' }
-];
+const LINKS: { href: string; label: string }[] = [{ href: '/about', label: 'About' }];
 
 export function SiteFooter(): JSX.Element {
   // The button names where it goes, not where you are — so it reads as the

@@ -2,13 +2,12 @@ import { A, useLocation } from '@solidjs/router';
 import { For, Show } from 'solid-js';
 import { GlobalSearch } from './GlobalSearch';
 import { TournamentSelector } from './TournamentSelector';
+import { EVENTS_SITE_URL, showEventsSite } from '../lib/flags';
 import { prefetchRoute } from '../lib/prefetch';
 
 type NavLink = {
   href: string;
   label: string;
-  // Path prefix that lights the tab, when it differs from `href`.
-  section?: string;
   menu?: { href: string; label: string }[];
 };
 
@@ -18,22 +17,12 @@ const links: NavLink[] = [
   { href: '/trends', label: 'Trends' },
   { href: '/players', label: 'Players' },
   {
-    // No events index: the tab itself opens the locator, which is also all
-    // phones reach from here (majors stay linked from the footer and home).
-    href: '/events/locator',
-    label: 'Events',
-    section: '/events',
-    menu: [
-      { href: '/events/majors', label: 'Major Events' },
-      { href: '/events/locator', label: 'Event Locator' }
-    ]
-  },
-  {
     href: '/tools',
     label: 'Tools',
     // Shortcut to the headline tools, the same ones /tools gives tiles.
     // Desktop hover only; on phones the menu is hidden and /tools does the work.
     menu: [
+      { href: '/tools/event-locator', label: 'Event Locator' },
       { href: '/tools/tier-list', label: 'Tier List Maker' },
       { href: '/tools/deck-box-labels', label: 'Deck Box Label Maker' },
       { href: '/tools/pack-ev', label: 'Pack EV' }
@@ -67,7 +56,7 @@ export function TopNav() {
               <A
                 href={l.href}
                 class='topnav-link'
-                classList={{ active: isActive(l.section ?? l.href) }}
+                classList={{ active: isActive(l.href) }}
                 onMouseEnter={() => prefetchRoute(l.href)}
                 onFocus={() => prefetchRoute(l.href)}
               >
@@ -94,6 +83,14 @@ export function TopNav() {
             </div>
           )}
         </For>
+        {/* Events is its own site; the link goes out to it once it launches (lib/flags.ts). */}
+        <Show when={showEventsSite}>
+          <div class='topnav-item'>
+            <a href={EVENTS_SITE_URL} class='topnav-link'>
+              Events
+            </a>
+          </div>
+        </Show>
       </nav>
       <div class='topnav-actions'>
         <GlobalSearch />

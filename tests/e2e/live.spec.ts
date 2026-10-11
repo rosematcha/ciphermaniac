@@ -84,24 +84,19 @@ async function stubRegionalSchedule(page: Page, tracked: ReadonlySet<string>): P
   });
 }
 
-test('both live regionals appear in the site banner and tournament list', async ({ page }) => {
+test('both live regionals appear in the site banner', async ({ page }) => {
   await stubRegionalSchedule(page, new Set(['brisbane-2027', 'frankfurt-2027']));
-  await page.goto('/events/majors', { waitUntil: 'load' });
+  await page.goto('/trends', { waitUntil: 'load' });
   await expect(page.locator('.live-banner')).toHaveCount(2);
   await expect(page.locator('.live-banner').first()).toHaveAttribute('href', '/live/brisbane-2027');
   await expect(page.locator('.live-banner').last()).toHaveAttribute('href', '/live/frankfurt-2027');
-  await expect(page.locator('.tournament-row-link')).toHaveCount(2);
-  await expect(page.locator('.tournament-row-link').first()).toContainText('Brisbane Regional Championships');
-  await expect(page.locator('.tournament-row-link').last()).toContainText('Frankfurt Regional Championships');
 });
 
 test('a scheduled regional stays hidden until its tracking data exists', async ({ page }) => {
   await stubRegionalSchedule(page, new Set(['brisbane-2027']));
-  await page.goto('/events/majors', { waitUntil: 'load' });
+  await page.goto('/trends', { waitUntil: 'load' });
   await expect(page.locator('.live-banner')).toHaveCount(1);
   await expect(page.locator('.live-banner')).toContainText('Brisbane Regional Championships');
-  await expect(page.locator('.tournament-row-link')).toHaveCount(1);
-  await expect(page.locator('.tournament-row-link')).toContainText('Brisbane Regional Championships');
 });
 
 test('the control bar is one row, whatever the round count @mobile', async ({ page }) => {

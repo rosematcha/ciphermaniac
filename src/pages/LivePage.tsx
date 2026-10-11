@@ -1,4 +1,4 @@
-import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
+import { useNavigate, useParams, useSearchParams } from '@solidjs/router';
 import { createEffect, createMemo, createResource, Show } from 'solid-js';
 import type { LiveMatch } from '../../shared/live/types';
 import { aliasedPlayerId } from '../../shared/live/seatAliases';
@@ -263,11 +263,6 @@ export function LivePage() {
           <EmptyState
             title='No rounds posted yet.'
             description='Pairings appear here once the first round is posted.'
-            actions={
-              <A href='/events/majors' class='btn btn-secondary'>
-                Tournaments
-              </A>
-            }
           />
         }
       >

@@ -566,27 +566,24 @@ test('compare asks for two players before it compares anything', async ({ page }
   await expect(page.getByRole('searchbox')).toHaveCount(2);
 });
 
-test('tournaments index renders the catalog @mobile', async ({ page }) => {
-  await gotoClean(page, '/events/majors');
-  await expect(page.locator('main')).toBeVisible();
-});
-
-test('old tournaments and events paths redirect, keeping their query', async ({ page }) => {
+test('old majors and locator paths redirect, keeping their query', async ({ page }) => {
   await gotoClean(page, '/tournaments?from=home');
-  await expect(page).toHaveURL(/\/events\/majors\?from=home$/);
+  await expect(page).toHaveURL(/\/\?from=home$/);
+  await gotoClean(page, '/events/majors?from=home');
+  await expect(page).toHaveURL(/\/\?from=home$/);
   await gotoClean(page, '/events?r=25');
-  await expect(page).toHaveURL(/\/events\/locator\?r=25$/);
+  await expect(page).toHaveURL(/\/tools\/event-locator\?r=25$/);
+  await gotoClean(page, '/events/locator?r=25');
+  await expect(page).toHaveURL(/\/tools\/event-locator\?r=25$/);
 });
 
-test('the events tab opens a menu of majors and the locator', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
-  await gotoClean(page, '/events/majors');
-  const tab = page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Events', exact: true });
-  await expect(tab).toHaveAttribute('href', '/events/locator');
-  await expect(tab).toHaveClass(/active/);
-  await tab.hover();
-  await expect(page.getByRole('link', { name: 'Major Events' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Event Locator' })).toHaveAttribute('href', '/events/locator');
+test('the locator lights the Tools tab, and Events waits for its launch', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile', 'the nav links are hidden below 900px');
+  await gotoClean(page, '/tools/event-locator');
+  const nav = page.getByRole('navigation', { name: 'Primary' });
+  await expect(nav.getByRole('link', { name: 'Tools', exact: true })).toHaveClass(/active/);
+  // A release build hides the link out to events.ciphermaniac.com until it launches (lib/flags.ts).
+  await expect(nav.getByRole('link', { name: 'Events', exact: true })).toHaveCount(0);
 });
 
 test('the tools index links to the card wall', async ({ page }) => {
@@ -594,13 +591,16 @@ test('the tools index links to the card wall', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Card Wall/i })).toHaveAttribute('href', '/tools/card-wall');
 });
 
-test('the tools index features the tier list, label maker and pack EV as tiles @mobile', async ({ page }) => {
+test('the tools index features the event locator, tier list, label maker and pack EV as tiles @mobile', async ({
+  page
+}) => {
   await gotoClean(page, '/tools');
   const featured = page.locator('.tools-featured .arche');
-  await expect(featured).toHaveCount(3);
-  await expect(featured.nth(0)).toHaveAttribute('href', '/tools/tier-list');
-  await expect(featured.nth(1)).toHaveAttribute('href', '/tools/deck-box-labels');
-  await expect(featured.nth(2)).toHaveAttribute('href', '/tools/pack-ev');
+  await expect(featured).toHaveCount(4);
+  await expect(featured.nth(0)).toHaveAttribute('href', '/tools/event-locator');
+  await expect(featured.nth(1)).toHaveAttribute('href', '/tools/tier-list');
+  await expect(featured.nth(2)).toHaveAttribute('href', '/tools/deck-box-labels');
+  await expect(featured.nth(3)).toHaveAttribute('href', '/tools/pack-ev');
   // Everything else is a plain row, not a tile.
   await expect(page.locator('.tools-more-item')).toHaveCount(6);
   await expect(page.locator('.tools-more-item', { hasText: 'Run an Event' })).toHaveAttribute('href', '/host');
@@ -721,7 +721,7 @@ test('a tier list tile carries a placeholder until its art paints @mobile', asyn
   expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 });
 
-test('hovering the Tools nav item reveals the headline tools, the tier list first', async ({ page }, testInfo) => {
+test('hovering the Tools nav item reveals the headline tools, the event locator first', async ({ page }, testInfo) => {
   // Desktop affordance only — compact headers get the /tools page instead.
   test.skip(testInfo.project.name === 'mobile', 'the nav menu is hidden below 900px');
   await gotoClean(page, '/');
@@ -729,7 +729,8 @@ test('hovering the Tools nav item reveals the headline tools, the tier list firs
   await expect(menu).toBeHidden();
   await page.locator('.topnav').getByRole('link', { name: 'Tools', exact: true }).hover();
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole('link').first()).toHaveText('Tier List Maker');
+  await expect(menu.getByRole('link').first()).toHaveText('Event Locator');
+  await expect(menu.getByRole('link', { name: 'Event Locator' })).toHaveAttribute('href', '/tools/event-locator');
   await expect(menu.getByRole('link', { name: 'Tier List Maker' })).toHaveAttribute('href', '/tools/tier-list');
   await expect(menu.getByRole('link', { name: 'Deck Box Label Maker' })).toHaveAttribute(
     'href',

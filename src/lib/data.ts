@@ -45,7 +45,6 @@ export { findCardBySetNumberCanonical, resolveCanonicalSetNumber } from './data/
 // Tournament-key parsing lives in shared: the daily majors-trends pipeline
 // classifies and dates events the same way the selector does.
 export {
-  classifyTournament,
   majorTournaments,
   prettyTournamentName,
   shortTournamentName,

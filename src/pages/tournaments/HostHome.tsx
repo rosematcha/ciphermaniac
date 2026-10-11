@@ -96,7 +96,7 @@ function Head() {
         </span>
       </A>
       <nav aria-label='Ciphermaniac Events'>
-        <A href='/events' class='tm-home-wide'>
+        <A href='/tools/event-locator' class='tm-home-wide'>
           Find an event
         </A>
         {/* The browser's own jump: the router ignores a second click on the same hash. */}
