@@ -567,6 +567,33 @@ export function recordsBefore(pod: Pod, round: Round): Map<string, string> {
   return new Map([...tallies].map(([id, tally]) => [id, recordLabel(tally.record)]));
 }
 
+const SIDE_KEY = { win: 'wins', loss: 'losses', tie: 'ties' } as const;
+
+/**
+ * Each player's record going into a Swiss `round`, with each table's result
+ * counted as soon as `outcomeOf` has one, so the room sees a finished table's
+ * records as they will stand. A bye or a missed round is not a table and waits
+ * like the rest of the round. A top cut keeps the Swiss records it started from.
+ */
+export function recordsSoFar(pod: Pod, round: Round, outcomeOf: (match: Match) => Outcome): Map<string, string> {
+  const tallies = tallySwiss(pod, round.number - 1);
+  const tables = round.kind === 'swiss' ? round.matches.filter(match => match.p2 !== null) : [];
+  for (const match of tables) {
+    const outcome = outcomeOf(match);
+    for (const [seat, id] of [
+      [1, match.p1],
+      [2, match.p2]
+    ] as const) {
+      const side = sideResult(outcome, seat);
+      const record = id === null ? undefined : tallies.get(id)?.record;
+      if (side && record) {
+        record[SIDE_KEY[side]] += 1;
+      }
+    }
+  }
+  return new Map([...tallies].map(([id, tally]) => [id, recordLabel(tally.record)]));
+}
+
 /**
  * Active players in the pod with no real seat in its current Swiss round: a
  * late arrival whose only entry is the missed-round loss, or someone added

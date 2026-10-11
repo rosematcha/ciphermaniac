@@ -40,6 +40,7 @@ import {
   podProgress,
   podStandings,
   recordsBefore,
+  recordsSoFar,
   reportState,
   RESULT_WORDS,
   roundCapOf,
@@ -140,6 +141,24 @@ test('a player’s history, current match and records going in', () => {
   assert.equal(current?.match.table, 1);
   assert.equal(currentMatchOf(CHALLENGE, 'nobody'), null);
   assert.equal(recordsBefore(pod, round2).get('7200001'), '1-0-0');
+});
+
+test('a table’s records count its result as soon as it shows', () => {
+  const open = round2.matches[1];
+  assert.ok(open?.p2);
+  const before = recordsBefore(pod, round2);
+  const waiting = recordsSoFar(pod, round2, () => 'pending');
+  assert.equal(waiting.get(open.p1), before.get(open.p1));
+  const shown = recordsSoFar(pod, round2, match => (match === open ? 'p2' : 'pending'));
+  const bump = (label: string | undefined, at: number) =>
+    (label ?? '')
+      .split('-')
+      .map((n, i) => Number(n) + (i === at ? 1 : 0))
+      .join('-');
+  assert.equal(shown.get(open.p1), bump(before.get(open.p1), 1));
+  assert.equal(shown.get(open.p2), bump(before.get(open.p2), 0));
+  const cut = { ...round2, kind: 'elimination' as const };
+  assert.equal(recordsSoFar(pod, cut, () => 'p1').get(open.p1), before.get(open.p1), 'a top cut keeps Swiss records');
 });
 
 test('the clock counts down and past zero', () => {

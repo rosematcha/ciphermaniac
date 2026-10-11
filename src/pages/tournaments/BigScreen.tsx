@@ -6,7 +6,8 @@
  * Before round 1, everyone registered by first name, for a player to check
  * they are in, beside a large QR code and the event code. Once a round is
  * paired, its tables in order: both players face each other across the
- * table number, each with the record they brought into the round. Once the
+ * table number, each with the record they brought into the round, counting the table's
+ * result as soon as it is in. Once the
  * clock starts, the clock is the largest thing on the screen and the tables
  * run under it. Once every table has a result, the tables again with each
  * result in the middle, for the room to check before the next round. Once
@@ -37,7 +38,7 @@ import {
   namesById,
   podLabel,
   podStandings,
-  recordsBefore,
+  recordsSoFar,
   roundCapOf,
   seatMark,
   shownOutcome
@@ -172,7 +173,8 @@ function TableRows(props: { view: TournamentView; pod: Pod; round: Round; headin
   const names = createMemo(() => namesById(props.view.tournament));
   // A division's top cut reads its records and seeds from the Swiss rounds that seeded it, among its own players.
   const played = createMemo(() => withSwiss(props.view.tournament, props.pod));
-  const records = createMemo(() => recordsBefore(played(), props.round));
+  const outcomeOf = (match: Match) => shownOutcome(match, props.pod, props.round, props.view.pending).outcome;
+  const records = createMemo(() => recordsSoFar(played(), props.round, outcomeOf));
   const seeds = createMemo(() =>
     props.round.kind === 'elimination' ? cutSeeds(props.view.tournament, props.pod) : new Map<string, number>()
   );
@@ -181,7 +183,7 @@ function TableRows(props: { view: TournamentView; pod: Pod; round: Round; headin
     if (match.p2 === null) {
       return ['', ''];
     }
-    const { outcome } = shownOutcome(match, props.pod, props.round, props.view.pending);
+    const outcome = outcomeOf(match);
     return [seatMark(outcome, 1), seatMark(outcome, 2)];
   };
   const seat = (id: string | null, mark: string, fallback: string) => (
