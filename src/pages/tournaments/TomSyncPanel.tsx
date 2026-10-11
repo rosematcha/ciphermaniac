@@ -41,10 +41,9 @@ import {
   type TdfHandle,
   writeFile
 } from '../../lib/tournament/tomLink';
+import { fileTicks } from '../../lib/tournament/fileTicks';
 import { downloadBlob } from '../../lib/download';
 import { ErrorLine } from './Field';
-
-const POLL_MS = 2000;
 
 /** 'none' before a file is linked (or on a browser that cannot hold one), 'reconnect' when permission lapsed. */
 export type LinkState = 'none' | 'reconnect' | 'watching';
@@ -185,8 +184,7 @@ export function createTomLink(props: { manage: () => Manage; onSynced: (answer?:
   }
 
   onMount(() => {
-    const timer = setInterval(() => void tick(), POLL_MS);
-    onCleanup(() => clearInterval(timer));
+    onCleanup(fileTicks(() => void tick()));
     void (async () => {
       const remembered = canLinkFiles() ? await recallHandle(code()) : null;
       if (remembered) {
