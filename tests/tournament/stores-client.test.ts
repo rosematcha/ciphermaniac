@@ -6,6 +6,7 @@
  * under) come out as the pages show them.
  */
 
+import { byMonth, playersWord } from '../../src/pages/tournaments/storeHistory';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { afterEach, test } from 'node:test';
@@ -15,7 +16,6 @@ import {
   addressOf,
   bareLink,
   blankNight,
-  byMonth,
   byWeek,
   cleanDetails,
   clock,
@@ -35,7 +35,6 @@ import {
   joinCommunity,
   joinStore,
   listingFill,
-  playersWord,
   removeMember,
   saveLeagueNights,
   saveStoreDetails,

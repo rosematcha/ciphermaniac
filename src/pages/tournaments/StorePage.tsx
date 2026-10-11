@@ -6,6 +6,7 @@
  * settings.
  */
 
+import { byMonth, playersWord } from './storeHistory';
 import { A } from '@solidjs/router';
 import { createEffect, createResource, For, Show } from 'solid-js';
 import { dateIn, managesStore } from '../../../shared/accounts/stores';
@@ -15,12 +16,10 @@ import { errorText } from '../../lib/tournament/api';
 import {
   addressOf,
   bareLink,
-  byMonth,
   byWeek,
   clock,
   exceptionChange,
   fetchStore,
-  playersWord,
   shortDay,
   storeEventWhen,
   WEEKDAYS,
