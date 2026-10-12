@@ -9,6 +9,7 @@
  */
 
 import type { EventField } from './eventField';
+import { getCanonicalCardFromData } from '../../../shared/data/cardIdentity';
 
 /** How many event weekends the baseline pools. */
 export const BASELINE_WEEKENDS = 3;
@@ -61,19 +62,23 @@ export interface BaselineRate {
 /**
  * Pool a card's play across the baseline, weighted by each event's decks.
  *
- * An event where not one card from the card's set was played predates the
- * set, so it is left out entirely rather than counted as a zero: a card that
- * just released is measured only against the events it was legal at.
+ * A matching older printing establishes legality even before this print's set
+ * appeared. Otherwise, set presence guards against counting unreleased cards
+ * as zero usage.
  * @param fields - The baseline events
  * @param uid - The card's canonical UID
  * @param set - The card's set code
  * @returns Pooled counts, or null when no baseline event had the card legal
  */
 export function baselineRate(fields: readonly EventField[], uid: string, set: string): BaselineRate | null {
-  const legal = fields.filter(f => !set || f.sets.has(set.toUpperCase()));
-  const total = legal.reduce((sum, f) => sum + f.deckTotal, 0);
+  const rows = fields.map(field => {
+    const key = field.synonymDatabase ? getCanonicalCardFromData(field.synonymDatabase, uid) : uid;
+    return { field, card: field.cards.get(key) };
+  });
+  const legal = rows.filter(({ field, card }) => (card?.found ?? 0) > 0 || !set || field.sets.has(set.toUpperCase()));
+  const total = legal.reduce((sum, { field }) => sum + field.deckTotal, 0);
   if (total <= 0) {
     return null;
   }
-  return { found: legal.reduce((sum, f) => sum + (f.cards.get(uid)?.found ?? 0), 0), total };
+  return { found: legal.reduce((sum, { card }) => sum + (card?.found ?? 0), 0), total };
 }

@@ -24,7 +24,8 @@ import {
   statsAreClose,
   thumbUrl
 } from '../../src/pages/socialGraphics/model.ts';
-import type { EventField } from '../../src/pages/socialGraphics/eventField.ts';
+import { buildEventField, type EventField } from '../../src/pages/socialGraphics/eventField.ts';
+import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import type { CardItem } from '../../src/types/index.ts';
 
 function item(name: string, pct: number, extra: Partial<CardItem> = {}): CardItem {
@@ -145,6 +146,60 @@ function baselineField(deckTotal: number, found: Record<string, number>, sets = 
   };
 }
 
+test('rising joins event-date prints and includes older prints before a reprint set appeared', () => {
+  const prints = [
+    ['Dudunsparce', 'TEF', '129', 'PRE', '080'],
+    ['Prime Catcher', 'TEF', '157', 'PRE', '119'],
+    ['Dunsparce', 'PRE', '079', 'TEF', '128']
+  ];
+  const synonyms = Object.fromEntries(
+    prints.map(([name, set, number, canonicalSet, canonicalNumber]) => [
+      `${name}::${set}::${number}`,
+      `${name}::${canonicalSet}::${canonicalNumber}`
+    ])
+  );
+  const db = { synonyms, canonicals: {} } as SynonymDatabase;
+  const items = prints.map(([name, set, number]) =>
+    item(name, 28, {
+      set,
+      number,
+      uid: `${name}::${set}::${number}`,
+      found: 28,
+      total: 100
+    })
+  );
+  const priorItems = prints.map(([name, , , set, number]) =>
+    item(name, 25, {
+      set,
+      number,
+      uid: `${name}::${set}::${number}`,
+      found: 25,
+      total: 100
+    })
+  );
+  const baseline = [buildEventField({ deckTotal: 100, items: priorItems }, null, db)];
+  const out = buildRenderModel({ mode: 'rising', size: 10, minDecks: 5, items, baseline });
+  assert.equal(out.length, 3);
+  for (const row of out) {
+    assert.equal(row.delta, 3, `${row.name} must compare against 25%, not zero`);
+    assert.equal(row.set, items.find(candidate => candidate.name === row.name)?.set);
+  }
+  const olderField = buildEventField({ deckTotal: 100, items: [items[0]] }, null, db);
+  const reprint = { ...priorItems[0], found: 30, pct: 30 };
+  const reprintOut = buildRenderModel({
+    mode: 'rising',
+    size: 10,
+    minDecks: 5,
+    items: [reprint],
+    baseline: [olderField]
+  });
+  assert.equal(olderField.sets.has('PRE'), false);
+  assert.ok(
+    Math.abs((reprintOut[0]?.delta ?? 0) - 2) < 1e-10,
+    'an older played print establishes legality before the reprint set'
+  );
+});
+
 test('rising mode lists only cards that gained over the pooled baseline, biggest gain first', () => {
   const out = buildRenderModel({
     mode: 'rising',
@@ -171,7 +226,7 @@ test('rising mode skips cards whose set was legal at no baseline event', () => {
     size: 10,
     minDecks: 5,
     items: MASTER,
-    baseline: [baselineField(100, { 'Alpha::SVI::001': 10 }, ['PAL'])]
+    baseline: [baselineField(100, { 'Other::PAL::001': 10 }, ['PAL'])]
   });
   assert.deepEqual(out, []);
 });

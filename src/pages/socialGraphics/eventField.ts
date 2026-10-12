@@ -33,6 +33,8 @@ export interface EventCardStat {
 
 /** One tournament's card counts, keyed so the online rows can join against them. */
 export interface EventField {
+  /** Identity map used to align event-date prints with this field's keys. */
+  synonymDatabase?: SynonymDatabase | null;
   /** Decks at the tournament. */
   deckTotal: number;
   /** Canonical card UID to what the tournament did with it. */
@@ -87,7 +89,13 @@ export function buildEventField(
     entry.day2 += counts.day2;
     cards.set(key, entry);
   }
-  return { deckTotal: master.deckTotal, cards, sets, fieldConversion: fieldConversionRate(conversion) };
+  return {
+    deckTotal: master.deckTotal,
+    cards,
+    sets,
+    synonymDatabase: db,
+    fieldConversion: fieldConversionRate(conversion)
+  };
 }
 
 /** The event's overall Day 2 rate, or null when it published no cut. */
