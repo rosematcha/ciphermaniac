@@ -16,7 +16,9 @@
  *
  * A player who dropped keeps the OWP and OOWP they had when they dropped, as
  * TOM ranks them: replayed over 51 divisions TOM finalized, this is the only
- * reading that places every dropped player where TOM did.
+ * reading that places every dropped player where TOM did. A disqualified
+ * player, or one outside the division being ranked, keeps them too, so their
+ * opponents' OOWP sees the same rates.
  *
  * Only Swiss rounds count here. A top cut is placed by its own bracket, and
  * `placeFinals` lays those places over the Swiss order.
@@ -114,7 +116,8 @@ function countSeat(tallies: Map<string, Tally>, match: Match, seat: 1 | 2): void
   if (opponent === null) {
     return;
   }
-  countOpponent(tally, opponent, side);
+  // A double loss gives neither player a head-to-head win (SPEC 3.7).
+  countOpponent(tally, opponent, match.outcome === 'double-loss' ? null : side);
 }
 
 function countOpponent(tally: Tally, opponent: string, side: Side): void {
@@ -203,86 +206,96 @@ interface Tiebreakers {
   oowp: number;
 }
 
-/** O(P + E): look up cached opponent rates rather than walking opponents' opponents. */
-function tiebreakersFor(
-  tallies: ReadonlyMap<string, Tally>,
-  capped: (id: string, tally: Tally) => boolean,
-  frozen: ReadonlyMap<string, Tiebreakers> = new Map()
-): Map<string, number> {
-  const rates = new Map<string, number>();
-  for (const [id, tally] of tallies) {
-    rates.set(id, winRate(tally, capped(id, tally)));
-  }
-  const owp = new Map<string, number>();
-  for (const [id, tally] of tallies) {
-    owp.set(id, frozen.get(id)?.owp ?? opponentAverage(tally.opponents, rates, tally.assignedByes));
-  }
-  return owp;
-}
-
-function playerTiebreakers(id: string, tally: Tally, owp: ReadonlyMap<string, number>): Tiebreakers {
-  return { owp: owp.get(id) ?? 0, oowp: opponentAverage(tally.opponents, owp) };
-}
-
 function ranked(id: string, byId: ReadonlyMap<string, Player>, options: StandingsOptions): boolean {
   return (!options.only || options.only.has(id)) && (options.withDisqualified === true || !byId.get(id)?.disqualified);
-}
-
-function dropRounds(pod: Pod, rounds: readonly Round[], byId: ReadonlyMap<string, Player>, options: StandingsOptions) {
-  const through = options.throughRound ?? Infinity;
-  // Include match participants absent from the pod roster, just as tallySwiss does.
-  const ids = new Set([
-    ...pod.playerIds,
-    ...rounds.flatMap(round => round.matches.flatMap(match => [match.p1, match.p2]))
-  ]);
-  const drops = new Map<number, string[]>();
-  for (const id of ids) {
-    if (id === null || !ranked(id, byId, options)) {
-      continue;
-    }
-    const at = byId.get(id)?.droppedAfter ?? null;
-    if (at !== null && at < through) {
-      const group = drops.get(at) ?? [];
-      group.push(id);
-      drops.set(at, group);
-    }
-  }
-  return drops;
 }
 
 const plannedRounds = (pod: Pod, options: StandingsOptions): number =>
   options.regularRounds ?? pod.rounds.filter(round => round.kind === 'swiss').length;
 
-/** Tally each match once; snapshots retain only the rows that freeze at that cutoff. */
-function standingsTallies(pod: Pod, byId: ReadonlyMap<string, Player>, options: StandingsOptions) {
-  const through = options.throughRound ?? Infinity;
-  const regular = plannedRounds(pod, options);
-  const rounds = pod.rounds.filter(round => round.kind === 'swiss' && round.number <= through);
-  const tallies = new Map<string, Tally>();
+function snapshotRound(current: Map<string, Tally>, round: Round): Map<string, Tally> {
+  if (round.kind !== 'swiss') {
+    return current;
+  }
+  const snapshot = new Map(current);
+  const seats = new Set(round.matches.flatMap(m => (m.p2 === null ? [m.p1] : [m.p1, m.p2])));
+  for (const id of seats) {
+    const old = tallyFor(snapshot, id);
+    snapshot.set(id, {
+      ...old,
+      record: { ...old.record },
+      opponents: [...old.opponents],
+      headToHead: new Map(old.headToHead)
+    });
+  }
+  countRound(snapshot, round);
+  return snapshot;
+}
+
+/** Snapshot only affected rows; each match is tallied once even with many evaluation rounds. */
+function tallySnapshots(pod: Pod, rounds: readonly Round[]): Map<number, Map<string, Tally>> {
+  let current = new Map<string, Tally>();
   for (const id of pod.playerIds) {
-    tallyFor(tallies, id);
+    tallyFor(current, id);
   }
-  const drops = dropRounds(pod, rounds, byId, options);
-  const frozen = new Map<string, Tiebreakers>();
-  const remaining = rounds.sort((a, b) => a.number - b.number)[Symbol.iterator]();
-  let next = remaining.next();
-  for (const [at, droppedIds] of [...drops].sort(([a], [b]) => a - b)) {
-    while (!next.done && next.value.number <= at) {
-      countRound(tallies, next.value);
-      next = remaining.next();
+  const records = new Map([[0, current]]);
+  for (const round of rounds) {
+    current = snapshotRound(current, round);
+    records.set(round.number, current);
+  }
+  return records;
+}
+
+function recordedRoundHistory(rounds: readonly Round[]): Map<string, number[]> {
+  const history = new Map<string, number[]>();
+  for (const round of rounds) {
+    const ids = round.matches.flatMap(m => (m.p2 === null ? [m.p1] : [m.p1, m.p2]));
+    for (const id of ids) {
+      history.set(id, [...(history.get(id) ?? []), round.number]);
     }
-    const gone = (id: string) => (byId.get(id)?.droppedAfter ?? Infinity) <= at;
-    const owp = tiebreakersFor(tallies, (id, tally) => gone(id) && tally.matches < regular, frozen);
-    for (const id of droppedIds) {
-      const tally = tallies.get(id);
-      frozen.set(id, tally ? playerTiebreakers(id, tally, owp) : { owp: 0, oowp: 0 });
+  }
+  return history;
+}
+
+/** A missing round falls back to the latest recorded match, including later elimination matches. */
+function percentageLookup(pod: Pod, byId: ReadonlyMap<string, Player>, options: StandingsOptions) {
+  const rounds = pod.rounds
+    .filter(r => r.number <= (options.throughRound ?? Infinity))
+    .sort((a, b) => a.number - b.number);
+  const records = tallySnapshots(pod, rounds);
+  const history = recordedRoundHistory(rounds);
+  const chosenRound = (id: string, at: number): number => {
+    const recorded = history.get(id) ?? [];
+    return recorded.includes(at) ? at : (recorded.at(-1) ?? 0);
+  };
+  const tallyAt = (id: string, at: number): Tally => {
+    return tallyFor(records.get(at) ?? records.get(0)!, id);
+  };
+  const own = (id: string, at: number): number => {
+    const player = byId.get(id);
+    const capped =
+      (player?.droppedAfter ?? null) !== null &&
+      (history.get(id)?.length ?? 0) < (player?.scheduledSwissRounds ?? plannedRounds(pod, options));
+    return winRate(tallyAt(id, chosenRound(id, at)), capped);
+  };
+  const rates = new Map<string, number>();
+  const owp = (id: string, at: number): number => {
+    const chosen = chosenRound(id, at);
+    const key = `${id}:${chosen}`;
+    if (!rates.has(key)) {
+      const tally = tallyAt(id, chosen);
+      const opponents = new Map(tally.opponents.map(opponent => [opponent, own(opponent, chosen)]));
+      rates.set(key, opponentAverage(tally.opponents, opponents, tally.assignedByes));
     }
-  }
-  while (!next.done) {
-    countRound(tallies, next.value);
-    next = remaining.next();
-  }
-  return { tallies, frozen };
+    return rates.get(key)!;
+  };
+  const percentages = (id: string, at: number): Tiebreakers => {
+    const chosen = chosenRound(id, at);
+    const tally = tallyAt(id, chosen);
+    const opponents = new Map(tally.opponents.map(opponent => [opponent, owp(opponent, chosen)]));
+    return { owp: owp(id, chosen), oowp: opponentAverage(tally.opponents, opponents) };
+  };
+  return { percentages, tallies: records.get(rounds.at(-1)?.number ?? 0)! };
 }
 
 export interface StandingsOptions {
@@ -295,20 +308,27 @@ export interface StandingsOptions {
   regularRounds?: number;
 }
 
+function evaluationRound(pod: Pod, options: StandingsOptions): number {
+  const through = options.throughRound ?? Infinity;
+  return Number.isFinite(through)
+    ? through
+    : Math.max(0, ...pod.rounds.filter(r => r.kind === 'swiss').map(r => r.number));
+}
+
 /** The pod's Swiss standings, best first. */
-export function swissStandings(pod: Pod, players: readonly Player[], options: StandingsOptions = {}): Standing[] {
+export function swissStandings(saved: Pod, players: readonly Player[], options: StandingsOptions = {}): Standing[] {
+  const pod = withUnsavedByes(saved);
   const byId = new Map(players.map(player => [player.id, player]));
   const dropped = (id: string) => (byId.get(id)?.droppedAfter ?? null) !== null;
-  const { tallies, frozen } = standingsTallies(pod, byId, options);
-  const regular = plannedRounds(pod, options);
-  const owp = tiebreakersFor(tallies, (id, tally) => dropped(id) && tally.matches < regular, frozen);
+  const { percentages, tallies } = percentageLookup(pod, byId, options);
+  const at = evaluationRound(pod, options);
   // A disqualified player leaves the standings; their matches still count for their opponents.
   const rows: Row[] = [];
   for (const [id, tally] of tallies) {
     if (!ranked(id, byId, options)) {
       continue;
     }
-    const rates = frozen.get(id) ?? playerTiebreakers(id, tally, owp);
+    const rates = percentages(id, at);
     rows.push({
       playerId: id,
       record: tally.record,
@@ -318,12 +338,40 @@ export function swissStandings(pod: Pod, players: readonly Player[], options: St
       late: byId.get(id)?.late === true
     });
   }
-  const order = new Map(players.map((player, i) => [player.id, i]));
-  const rosterOrder = (a: Row, b: Row) => (order.get(a.playerId) ?? 0) - (order.get(b.playerId) ?? 0);
+  const order = new Map(players.map((player, i) => [player.id, player.tiebreaker ?? i + 1]));
+  // Entrants share one preference; those still exactly tied keep their entry order, which is roster order.
+  const index = new Map(players.map((player, i) => [player.id, i]));
+  const rosterOrder = (a: Row, b: Row) =>
+    (order.get(a.playerId) ?? 0) - (order.get(b.playerId) ?? 0) ||
+    (index.get(a.playerId) ?? 0) - (index.get(b.playerId) ?? 0);
   return rows
     .sort(rosterOrder)
     .sort(compareStandings(order, tallies))
     .map((row, i) => ({ ...row, place: i + 1 }));
+}
+
+/**
+ * PAIRING V18-2: an assigned bye of a failed pairing attempt counts until the file is reopened, as a further
+ * assigned bye of the round that was being paired.
+ */
+function withUnsavedByes(pod: Pod): Pod {
+  if (!pod.unsavedByes?.length) {
+    return pod;
+  }
+  return {
+    ...pod,
+    rounds: pod.rounds.map(round => {
+      const byes = pod.unsavedByes!.filter(bye => bye.round === round.number && round.kind === 'swiss');
+      const matches = byes.map(bye => ({
+        p1: bye.playerId,
+        p2: null,
+        outcome: 'assigned-bye' as const,
+        table: 0,
+        timestamp: ''
+      }));
+      return byes.length ? { ...round, matches: [...round.matches, ...matches] } : round;
+    })
+  };
 }
 
 /** Winner and loser of a decided elimination match, or null while it is open. */
@@ -346,14 +394,25 @@ export function eliminationResult(match: Match): { winner: string; loser: string
  */
 export function thirdPlaceMatch(pod: Pod, round: Round): Match | undefined {
   const semis = pod.rounds.find(r => r.number === round.number - 1);
-  if (round.kind !== 'elimination' || round.matches.length !== 2 || semis?.kind !== 'elimination') {
+  const pairs = round.matches.filter(m => m.p2 !== null);
+  if (round.kind !== 'elimination' || pairs.length !== 2 || semis?.kind !== 'elimination') {
     return undefined;
   }
-  if (semis.matches.length !== 2) {
+  const previous = semis.matches.filter(m => m.p2 !== null);
+  if (previous.length !== 2) {
     return undefined;
   }
-  const out = new Set(semis.matches.map(match => eliminationResult(match)?.loser));
-  return round.matches.find(match => match.p2 !== null && out.has(match.p1) && out.has(match.p2));
+  const out = new Set(previous.map(match => eliminationResult(match)?.loser));
+  return (
+    pairs.find(match => out.has(match.p1) && out.has(match.p2)) ??
+    (pendingPlayoff(pod, round, previous) ? pairs.at(-1) : undefined)
+  );
+}
+
+function pendingPlayoff(pod: Pod, round: Round, previous: Match[]): boolean {
+  const played = pod.rounds.filter(r => r.kind === 'elimination' && r.number <= round.number).length;
+  const required = Math.ceil(Math.log2(pod.cut || pod.playerIds.length));
+  return Boolean(pod.playoff3rd4th && played >= required && previous.some(m => m.outcome === 'pending'));
 }
 
 /** A top-cut round's bracket: every match but a third-place one. */
@@ -362,46 +421,153 @@ export function bracketMatches(pod: Pod, round: Round): Match[] {
   return round.matches.filter(match => match !== playoff);
 }
 
-/**
- * How deep each top-cut player went: the round they lost in, or past the last
- * round for the winner. The third-place match's winner sits half a round
- * above its loser, both below the final's loser.
- */
-function eliminationDepth(pod: Pod): Map<string, number> {
-  const depth = new Map<string, number>();
-  for (const round of pod.rounds) {
-    if (round.kind !== 'elimination') {
-      continue;
-    }
-    const playoff = thirdPlaceMatch(pod, round);
-    for (const match of round.matches) {
-      const result = eliminationResult(match);
-      const [won, lost] = match === playoff ? [round.number - 0.5, round.number - 1] : [round.number + 1, round.number];
-      depth.set(match.p1, won);
-      if (match.p2 !== null) {
-        depth.set(match.p2, won);
-      }
-      if (result?.loser) {
-        depth.set(result.loser, lost);
+function registerEliminationMatch(tallies: Map<string, Tally>, match: Match): void {
+  const first = tallyFor(tallies, match.p1);
+  if (match.p2 === null) {
+    return;
+  }
+  const second = tallyFor(tallies, match.p2);
+  if (match.outcome === 'pending') {
+    first.opponents.push(match.p2);
+    second.opponents.push(match.p1);
+  }
+}
+
+/** Elimination records include every bye win and retain the most recent opponent. */
+function eliminationTallies(pod: Pod): Map<string, Tally> {
+  const tallies = new Map<string, Tally>();
+  // V19-3: a repaired opening round is no player's history until the file is reopened.
+  for (const round of pod.rounds.filter(r => r.kind === 'elimination' && r.number !== pod.historyOmittedRound)) {
+    round.matches.forEach(match => registerEliminationMatch(tallies, match));
+    countRound(tallies, round);
+  }
+  for (const [id, tally] of tallies) {
+    if (!tally.opponents.length) {
+      const last = pod.rounds
+        .filter(r => r.kind === 'swiss')
+        .flatMap(r => r.matches)
+        .filter(m => m.p2 !== null && (m.p1 === id || m.p2 === id))
+        .at(-1);
+      if (last) {
+        tally.opponents.push(last.p1 === id ? last.p2! : last.p1);
       }
     }
   }
-  return depth;
+  return tallies;
+}
+
+function thirdPlaceComparison(tallies: ReadonlyMap<string, Tally>, a: Tally, b: Tally, rounds: number): number {
+  const qualifies = (tally: Tally) => tally.record.losses === 1 && tally.record.wins >= rounds - 1;
+  if (!qualifies(a) && !qualifies(b)) {
+    return 0;
+  }
+  const unbeatenOpponent = (tally: Tally) => {
+    const opponent = tally.opponents.at(-1);
+    if (opponent === undefined) {
+      throw new Error('Standings cannot be saved: a third-place comparison has no previous opponent');
+    }
+    return (tallies.get(opponent)?.record.losses ?? 0) === 0;
+  };
+  return Number(unbeatenOpponent(b)) - Number(unbeatenOpponent(a));
+}
+
+interface FinalsContext {
+  players: readonly Player[];
+  swissPod: Pod;
+  regularRounds: number;
+}
+
+/** Recorded matches use personal match numbers, including one-seat matches. */
+function matchOpponents(pod: Pod): Map<string, (string | null)[]> {
+  const history = new Map<string, (string | null)[]>();
+  const append = (id: string, opponent: string | null) => {
+    const matches = history.get(id) ?? [];
+    matches.push(opponent);
+    history.set(id, matches);
+  };
+  for (const round of [...pod.rounds].sort((a, b) => a.number - b.number)) {
+    for (const match of round.matches) {
+      append(match.p1, match.p2);
+      if (match.p2 !== null) {
+        append(match.p2, match.p1);
+      }
+    }
+  }
+  return history;
+}
+
+function compareOpponents(
+  first: readonly (string | null)[],
+  second: readonly (string | null)[],
+  compare: (a: string, b: string) => number
+): number {
+  for (let i = Math.min(first.length, second.length) - 1; i >= 0; i--) {
+    const a = first[i]!;
+    const b = second[i]!;
+    const difference = a !== null && b !== null ? compare(a, b) : Number(b !== null) - Number(a !== null);
+    if (difference) {
+      return difference;
+    }
+  }
+  return 0;
+}
+
+function cutSwissComparison(pod: Pod, swiss: readonly Standing[], context?: FinalsContext) {
+  const full = context?.swissPod ?? pod;
+  const tallies = tallySwiss(full);
+  const beforePreference = compareStandings(new Map(), tallies);
+  const opponents = context
+    ? swissStandings(full, context.players, { regularRounds: context.regularRounds, withDisqualified: true })
+    : swiss;
+  const rows = new Map(opponents.map(row => [row.playerId, row]));
+  const order = context
+    ? new Map(context.players.map((player, i) => [player.id, player.tiebreaker ?? i + 1]))
+    : new Map(swiss.map(row => [row.playerId, row.place]));
+  const compare = compareStandings(order, tallies);
+  const history = matchOpponents(full);
+  const opponentOrder = (a: string, b: string) => compare(rows.get(a)!, rows.get(b)!);
+  return (a: Standing, b: Standing): number =>
+    beforePreference(a, b) ||
+    (opponentsApply(history, a.playerId, b.playerId)
+      ? compareOpponents(history.get(a.playerId) ?? [], history.get(b.playerId) ?? [], opponentOrder)
+      : 0) ||
+    compare(a, b);
 }
 
 /**
- * Final places: the top cut by how far each player went (champion, finalist,
- * then each round's losers by Swiss place), then everyone else in Swiss order.
+ * SPEC V24-8: the opponent comparison needs a two-player match for both players, pending ones counted, and does
+ * not apply to two players who are each other's latest two-player opponent.
  */
-export function placeFinals(pod: Pod, swiss: readonly Standing[]): Standing[] {
-  const depth = eliminationDepth(pod);
-  if (depth.size === 0) {
-    return [...swiss];
-  }
-  const ordered = [...swiss].sort(
-    (a, b) => (depth.get(b.playerId) ?? -1) - (depth.get(a.playerId) ?? -1) || a.place - b.place
-  );
-  return ordered.map((row, i) => ({ ...row, place: i + 1 }));
+function opponentsApply(history: ReadonlyMap<string, (string | null)[]>, a: string, b: string): boolean {
+  const latest = (id: string) => (history.get(id) ?? []).filter(opponent => opponent !== null).at(-1);
+  const [first, second] = [latest(a), latest(b)];
+  return first !== undefined && second !== undefined && !(first === b && second === a);
+}
+
+/** Equal cut wins compare Swiss records, then match opponents, then final tie preference. */
+export function placeFinals(pod: Pod, swiss: readonly Standing[], context?: FinalsContext): Standing[] {
+  const tallies = eliminationTallies(context?.swissPod ?? pod);
+  const afterSwiss = Boolean(pod.cutOf || pod.rounds.some(r => r.kind === 'swiss'));
+  const rounds = afterSwiss ? Math.log2(pod.cut) : 0;
+  const preferences = new Map(context?.players.map((p, i) => [p.id, p.tiebreaker ?? i + 1]));
+  const compareSwiss = afterSwiss
+    ? cutSwissComparison(pod, swiss, context)
+    : (a: Standing, b: Standing) =>
+        Number(a.late) - Number(b.late) ||
+        (preferences.get(a.playerId) ?? a.place) - (preferences.get(b.playerId) ?? b.place);
+  const compare = (a: Standing, b: Standing): number => {
+    const first = tallies.get(a.playerId);
+    const second = tallies.get(b.playerId);
+    if (!first || !second) {
+      return Number(Boolean(second)) - Number(Boolean(first)) || a.place - b.place;
+    }
+    if (second.record.wins !== first.record.wins) {
+      return second.record.wins - first.record.wins;
+    }
+    const third = pod.playoff3rd4th ? thirdPlaceComparison(tallies, first, second, rounds) : 0;
+    return second.record.wins - first.record.wins || third || compareSwiss(a, b);
+  };
+  return [...swiss].sort(compare).map((row, i) => ({ ...row, place: i + 1 }));
 }
 
 export function recordLabel(record: MatchRecord): string {
@@ -410,4 +576,66 @@ export function recordLabel(record: MatchRecord): string {
 
 export function percentLabel(rate: number): string {
   return `${(rate * 100).toFixed(2)}%`;
+}
+
+/** Only a whole equal-win group in a third-place event can take a recorded order. */
+export function orderEliminationGroups(pod: Pod, rows: Standing[], groups: readonly (readonly string[])[]): Standing[] {
+  const tallies = eliminationTallies(pod);
+  return groups.reduce((ordered, group) => {
+    const members = ordered.filter(row => group.includes(row.playerId));
+    if (
+      !pod.playoff3rd4th ||
+      group.length < 2 ||
+      new Set(group).size !== group.length ||
+      members.length !== group.length
+    ) {
+      throw new Error('A recorded elimination tie requires distinct finished players and the third-place setting');
+    }
+    const wins = tallies.get(group[0]!)?.record.wins;
+    const equal = ordered.filter(row => tallies.get(row.playerId)?.record.wins === wins);
+    if (wins === undefined || equal.length !== group.length || equal.some(row => !group.includes(row.playerId))) {
+      throw new Error('A recorded elimination tie must cover a whole equal-win group');
+    }
+    return placeRecordedGroup(ordered, group);
+  }, rows);
+}
+
+function placeRecordedGroup(rows: Standing[], group: readonly string[]): Standing[] {
+  const positions = rows.flatMap((row, index) => (group.includes(row.playerId) ? [index] : []));
+  const byId = new Map(rows.map(row => [row.playerId, row]));
+  const result = [...rows];
+  for (const [index, id] of group.entries()) {
+    const position = positions[index]!;
+    result[position] = { ...byId.get(id)!, place: rows[position]!.place };
+  }
+  return result;
+}
+
+/** A recorded cycle changes only its group's computed places, never other standings. */
+export function orderHeadToHeadGroups(rows: Standing[], groups: readonly (readonly string[])[]): Standing[] {
+  let ordered = rows;
+  for (const group of groups) {
+    ordered = orderHeadToHeadGroup(ordered, group);
+  }
+  return ordered;
+}
+
+function orderHeadToHeadGroup(rows: Standing[], group: readonly string[]): Standing[] {
+  const members = rows.filter(row => group.includes(row.playerId));
+  if (group.length < 3 || new Set(group).size !== group.length || members.length !== group.length) {
+    throw new Error('A recorded head-to-head cycle requires at least three distinct finished players');
+  }
+  const first = members[0]!;
+  if (
+    members.some(
+      row => row.points !== first.points || row.late !== first.late || row.owp !== first.owp || row.oowp !== first.oowp
+    )
+  ) {
+    throw new Error('A recorded head-to-head cycle cannot override earlier standings comparisons');
+  }
+  const positions = rows.flatMap((row, index) => (group.includes(row.playerId) ? [index] : []));
+  if (positions.at(-1)! - positions[0]! + 1 !== group.length) {
+    throw new Error('A recorded head-to-head cycle must occupy consecutive places');
+  }
+  return placeRecordedGroup(rows, group);
 }

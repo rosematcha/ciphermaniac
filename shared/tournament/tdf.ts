@@ -916,7 +916,12 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
         ),
       places
     );
-    const ordered = orderHeadToHeadGroups(tied, recorded(t.headToHeadOrder));
+    // A head-to-head order is recorded for a group equal on every comparison before head-to-head; later results
+    // that separate its members end it.
+    const ordered = orderHeadToHeadGroups(
+      tied,
+      recorded(t.headToHeadOrder).filter(ids => equalBeforeHeadToHead(places, ids))
+    );
     const rows = ordered.map(row => `<player id="${esc(row.playerId)}" place="${row.place}" />`);
     return [
       `<pod category="${code}" type="finished">`,
@@ -931,6 +936,15 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
     ];
   });
   return ['<standings>', ...block(1, pods), '</standings>'];
+}
+
+function equalBeforeHeadToHead(rows: readonly Standing[], ids: readonly string[]): boolean {
+  const members = rows.filter(row => ids.includes(row.playerId));
+  const [first] = members;
+  return members.every(
+    row =>
+      row.points === first!.points && row.late === first!.late && row.owp === first!.owp && row.oowp === first!.oowp
+  );
 }
 
 function finalStandings(t: Tournament, divisionOf: (id: string) => Division): string[] {

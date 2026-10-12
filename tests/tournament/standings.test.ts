@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { swissStandings, tallySwiss, winRate } from '../../shared/tournament/standings.ts';
+import { placeFinals, swissStandings, tallySwiss, winRate } from '../../shared/tournament/standings.ts';
 import type { Match, Player, Pod, Round } from '../../shared/tournament/types.ts';
 
 const player = (id: string, droppedAfter: number | null = null): Player => ({
@@ -118,70 +118,49 @@ const mean = (values: number[]) =>
 /** TOM caps a dropped player only when they played fewer rounds than the pod plans: here, the Swiss rounds paired. */
 const planned = (field: Pod) => field.rounds.filter(r => r.kind === 'swiss').length;
 
-function expectedOpponentRate(
-  field: Pod,
-  players: Player[],
-  id: string,
-  at: number,
-  historical: boolean,
-  current: number
-): number {
-  const drop = players.find(p => p.id === id)?.droppedAfter ?? null;
-  if (drop === null || drop >= at) {
-    return current;
-  }
-  const tallies = tallySwiss(field, drop);
-  const opponents = tallies.get(id)?.opponents ?? [];
-  return mean(
-    opponents.map(opponent => {
-      const tally = tallies.get(opponent)!;
-      const dropped = players.find(p => p.id === opponent)?.droppedAfter ?? null;
-      return winRate(tally, dropped !== null && (!historical || dropped <= drop) && tally.matches < planned(field));
-    })
-  );
-}
-
-/** Independently replay a cutoff to check each frozen rate against its original definition. */
-function expectedRates(field: Pod, players: Player[], at: number, historical: boolean) {
-  const tallies = tallySwiss(field, at);
-  const rates = new Map(
-    [...tallies].map(([id, tally]) => {
-      const drop = players.find(p => p.id === id)?.droppedAfter ?? null;
-      return [id, winRate(tally, drop !== null && (!historical || drop <= at) && tally.matches < planned(field))];
-    })
-  );
-  const owp = new Map(
-    [...tallies].map(([id, tally]) => [
-      id,
-      expectedOpponentRate(
-        field,
-        players,
-        id,
-        at,
-        historical,
-        mean(tally.opponents.map(opponent => rates.get(opponent) ?? 0))
-      )
-    ])
-  );
+/** Independent direct evaluation of SPEC 3.7; absent players use their latest recorded round. */
+function expectedRates(field: Pod, players: Player[], through: number) {
+  const available = { ...field, rounds: field.rounds.filter(r => r.number <= through) };
+  const at = Number.isFinite(through)
+    ? through
+    : Math.max(0, ...available.rounds.filter(r => r.kind === 'swiss').map(r => r.number));
+  const roundsFor = (id: string) =>
+    available.rounds.filter(r => r.matches.some(m => m.p1 === id || m.p2 === id)).map(r => r.number);
+  const selected = (id: string, evaluation: number) =>
+    roundsFor(id).includes(evaluation) ? evaluation : Math.max(0, ...roundsFor(id));
+  const tally = (id: string, evaluation: number) => tallySwiss(available, selected(id, evaluation)).get(id)!;
+  const own = (id: string, evaluation: number) =>
+    winRate(
+      tally(id, evaluation),
+      players.find(p => p.id === id)?.droppedAfter !== null && roundsFor(id).length < planned(field)
+    );
+  const opponentRate = (id: string, evaluation: number): number => {
+    const chosen = selected(id, evaluation);
+    return mean(tally(id, chosen).opponents.map(opponent => own(opponent, chosen)));
+  };
   return new Map(
-    [...tallies].map(([id, tally]) => [
-      id,
-      { owp: owp.get(id) ?? 0, oowp: mean(tally.opponents.map(opponent => owp.get(opponent) ?? 0)) }
-    ])
+    [...tallySwiss(available)].map(([id]) => {
+      const chosen = selected(id, at);
+      return [
+        id,
+        {
+          owp: opponentRate(id, chosen),
+          oowp: mean(tally(id, chosen).opponents.map(opponent => opponentRate(opponent, chosen)))
+        }
+      ];
+    })
   );
 }
 
-test('distinct drop snapshots preserve both rates, future drop caps, and round cutoffs', () => {
+test('latest recorded rounds preserve both rates, total match caps, and evaluation cutoffs', () => {
   const players = PLAYERS.map(p => ({ ...p, droppedAfter: p.id === 'B' ? 2 : p.droppedAfter }));
   const elimination = { ...round(4, [['F', 'B']]), kind: 'elimination' as const };
   // Input need not be chronological; snapshot replay must not mutate it.
   const field = pod(FIELD.playerIds, [FIELD.rounds[2], elimination, FIELD.rounds[0], FIELD.rounds[1]] as Round[]);
   const original = structuredClone(field);
   for (const through of [0, 1, 2, 3, Infinity]) {
-    const current = expectedRates(field, players, through, false);
+    const expected = expectedRates(field, players, through);
     for (const row of swissStandings(field, players, { throughRound: through })) {
-      const drop = players.find(p => p.id === row.playerId)?.droppedAfter ?? null;
-      const expected = drop !== null && drop < through ? expectedRates(field, players, drop, true) : current;
       const rates = expected.get(row.playerId)!;
       assert.ok(Math.abs(row.owp - rates.owp) < 1e-12);
       assert.ok(Math.abs(row.oowp - rates.oowp) < 1e-12);
@@ -200,7 +179,7 @@ test('opponent averages weight rematches and ignore byes and pending matches', (
   const players = field.playerIds.map(id => player(id));
   const a = swissStandings(field, players).find(row => row.playerId === 'A');
   assert.equal(a?.owp, (0.25 + 0.25 + 1) / 3);
-  const expected = expectedRates(field, players, Infinity, false);
+  const expected = expectedRates(field, players, Infinity);
   for (const row of swissStandings(field, players)) {
     assert.deepEqual({ owp: row.owp, oowp: row.oowp }, expected.get(row.playerId));
   }
@@ -258,13 +237,13 @@ test('matches are tallied once even with many distinct drop rounds', () => {
   assert.equal(counter.reads, onePass);
 });
 
-test('players sharing a drop round keep their own rates when divisions or disqualifications filter rows', () => {
+test('division and disqualification filters preserve each player’s latest recorded percentages', () => {
   const players = PLAYERS.map(p => ({
     ...p,
     droppedAfter: ['A', 'B', 'D'].includes(p.id) ? 1 : null,
     disqualified: p.id === 'D' ? (true as const) : undefined
   }));
-  const expected = expectedRates(FIELD, players, 1, true);
+  const expected = expectedRates(FIELD, players, Infinity);
   for (const withDisqualified of [false, true]) {
     const rows = swissStandings(FIELD, players, { only: new Set(['A', 'B', 'D']), withDisqualified });
     assert.equal(rows.length, withDisqualified ? 3 : 2);
@@ -274,13 +253,23 @@ test('players sharing a drop round keep their own rates when divisions or disqua
   }
 });
 
-test('a match participant absent from the pod roster can freeze before their first match', () => {
+test('a disqualified or unranked opponent keeps the tiebreakers they had when they left', () => {
+  // A's OOWP averages D's OWP from round one, when A was 1-0, not A's final 1-2.
+  const oowp = (rows: ReturnType<typeof swissStandings>) => rows.find(row => row.playerId === 'A')?.oowp;
+  const dropped = oowp(swissStandings(FIELD, PLAYERS));
+  const disqualified = PLAYERS.map(p => (p.id === 'D' ? { ...p, disqualified: true as const } : p));
+  assert.equal(oowp(swissStandings(FIELD, disqualified)), dropped);
+  assert.equal(oowp(swissStandings(FIELD, PLAYERS, { only: new Set(['A']) })), dropped);
+  assert.ok(!swissStandings(FIELD, disqualified).some(row => row.playerId === 'D'));
+});
+
+test('an opponent absent from the pod roster uses their latest recorded match', () => {
   const field = pod(['A'], [round(2, [['A', 'B']])]);
   const rows = swissStandings(field, [player('A'), player('B', 1)]);
   const b = rows.find(row => row.playerId === 'B');
   assert.deepEqual(b?.record, { wins: 0, losses: 1, ties: 0 });
-  assert.equal(b?.owp, 0);
-  assert.equal(b?.oowp, 0);
+  assert.equal(b?.owp, 1);
+  assert.equal(b?.oowp, 0.25);
 });
 
 test('deleted TOM matches count opponents without giving either player a record or points', () => {
@@ -323,4 +312,133 @@ test('a dropped player is capped at 75% only when they played fewer rounds than 
   assert.equal(owpOfB(3), 0.5278, 'A played every planned round: a full 100% opponent');
   assert.equal(owpOfB(), 0.5278, 'without a plan, the rounds paired are the plan');
   assert.equal(owpOfB(4), 0.4444, 'A left a round early: capped at 75%');
+});
+
+test('late entrants use tiebreaker zero until a document reload gives them roster order', () => {
+  const players = [
+    { ...player('starter'), tiebreaker: 1 },
+    { ...player('late'), tiebreaker: 0 }
+  ];
+  const field = pod(['starter', 'late'], []);
+  assert.deepEqual(
+    swissStandings(field, players).map(row => row.playerId),
+    ['late', 'starter']
+  );
+  assert.deepEqual(
+    swissStandings(
+      field,
+      players.map(({ tiebreaker: _tie, ...rest }) => rest)
+    ).map(row => row.playerId),
+    ['starter', 'late']
+  );
+});
+
+test('tied cut losers compare opponents before their own preference, independently of the champion', () => {
+  const ids = ['A', 'B', 'C', 'D'];
+  const players = ids.map(id => player(id));
+  const drawn = round(1, [
+    ['A', 'B'],
+    ['C', 'D']
+  ]);
+  drawn.matches = drawn.matches.map(match => ({ ...match, outcome: 'tie' }));
+  const semis = {
+    ...round(2, [
+      ['A', 'D'],
+      ['B', 'C']
+    ]),
+    kind: 'elimination' as const
+  };
+  for (const champion of ['A', 'B']) {
+    const final = { ...round(3, [[champion, champion === 'A' ? 'B' : 'A']]), kind: 'elimination' as const };
+    const field = { ...pod(ids, [drawn, semis, final]), cut: 4 };
+    const swiss = swissStandings(field, players);
+    assert.deepEqual(
+      placeFinals(field, swiss)
+        .slice(2)
+        .map(row => row.playerId),
+      ['D', 'C']
+    );
+  }
+});
+
+test('shared entrant preferences compare earlier opponents, then fall back to the players themselves', () => {
+  const ids = ['A', 'B', 'C', 'D'];
+  const players = ids.map((id, i) => ({ ...player(id), tiebreaker: i < 2 ? 0 : i + 1 }));
+  const drawn = round(1, [
+    ['A', 'B'],
+    ['C', 'D']
+  ]);
+  drawn.matches = drawn.matches.map(match => ({ ...match, outcome: 'tie' }));
+  const semis = {
+    ...round(2, [
+      ['A', 'D'],
+      ['B', 'C']
+    ]),
+    kind: 'elimination' as const
+  };
+  const field = { ...pod(ids, [drawn, semis]), cut: 4 };
+  const order = (swissPod: Pod) =>
+    placeFinals(swissPod, swissStandings(swissPod, players), {
+      players,
+      swissPod,
+      regularRounds: 1
+    })
+      .slice(2)
+      .map(row => row.playerId);
+  assert.deepEqual(order(field), ['D', 'C'], 'the Swiss opponents separate tied semifinal opponents');
+  assert.deepEqual(
+    order({ ...field, rounds: [{ ...drawn, matches: [] }, semis] }),
+    ['C', 'D'],
+    'no opponent separates them'
+  );
+});
+
+test('cut opponents align by personal match count and an opponent precedes a one-seat match', () => {
+  const ids = ['A', 'B', 'D', 'C'];
+  const players = ids.map(id => player(id));
+  const early = { ...round(1, [['A', 'C']]), kind: 'elimination' as const };
+  const later = { ...round(2, [['B', 'D']]), kind: 'elimination' as const };
+  const field = { ...pod(ids, [early, later]), cut: 4, cutOf: 'masters' as const };
+  const swiss = swissStandings(field, players);
+  assert.deepEqual(
+    placeFinals(field, swiss)
+      .slice(2)
+      .map(row => row.playerId),
+    ['C', 'D']
+  );
+  const oneSeat: Match = { p1: 'C', p2: null, table: 0, outcome: 'loss', timestamp: '' };
+  assert.deepEqual(
+    placeFinals({ ...field, rounds: [{ ...early, matches: [oneSeat] }, later] }, swiss)
+      .filter(row => ['C', 'D'].includes(row.playerId))
+      .map(row => row.playerId),
+    ['D', 'C']
+  );
+});
+
+test('the third-place setting promotes the champion’s latest opponents across whole tied groups without a playoff', () => {
+  const ids = ['A', 'E', 'D', 'G', 'C', 'B', 'F', 'H'];
+  const rounds = [
+    round(1, [
+      ['H', 'B'],
+      ['C', 'A'],
+      ['F', 'D'],
+      ['E', 'G']
+    ]),
+    round(2, [
+      ['H', 'C'],
+      ['F', 'E']
+    ]),
+    round(3, [['H', 'F']])
+  ].map(r => ({ ...r, kind: 'elimination' as const }));
+  const field = pod(ids, rounds);
+  const players = ids.map(id => player(id, id === 'C' ? 2 : null));
+  const swiss = swissStandings(field, players);
+  const order = (playoff3rd4th: boolean) => placeFinals({ ...field, playoff3rd4th }, swiss).map(row => row.playerId);
+  assert.deepEqual(order(false), ['H', 'F', 'E', 'C', 'A', 'D', 'G', 'B']);
+  assert.deepEqual(order(true), ['H', 'F', 'C', 'E', 'B', 'A', 'D', 'G']);
+  assert.deepEqual(
+    placeFinals({ ...field, cutOf: 'mixed', cut: 8, playoff3rd4th: true }, swiss).map(row => row.playerId),
+    ['H', 'F', 'E', 'C', 'G', 'A', 'D', 'B'],
+    'a cut after Swiss retains the setting threshold and orders the tied opening losers by their opponents'
+  );
 });
