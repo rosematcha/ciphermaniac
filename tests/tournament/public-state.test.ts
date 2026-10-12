@@ -25,3 +25,22 @@ test('public lifecycle state preserves ranking inputs and replaces every flight 
   assert.ok(visible.players.every(p => p.birthDate === '' && p.created === '' && p.modified === ''));
   assert.equal(visible.passthrough, undefined);
 });
+
+test('public lifecycle state replaces player IDs in recorded tie orders', () => {
+  const ctx = context(1);
+  const started = operated(generatedEvent(8, ctx), { type: 'start' }, ctx);
+  const [a, b] = started.players.map(p => p.id);
+  const group = { category: started.pods[0]!.category, playerIds: [a!, b!] };
+  const ordered = {
+    ...started,
+    eliminationTieOrder: [group],
+    thirdPlaceOrder: [group],
+    headToHeadOrder: [group]
+  };
+  const keys = Object.fromEntries(started.players.map((p, i) => [p.id, `public-${i}`]));
+  const visible = publicTournament(ordered, keys);
+  const hidden = [{ category: group.category, playerIds: [keys[a!]!, keys[b!]!] }];
+  assert.deepEqual(visible.eliminationTieOrder, hidden);
+  assert.deepEqual(visible.thirdPlaceOrder, hidden);
+  assert.deepEqual(visible.headToHeadOrder, hidden);
+});
