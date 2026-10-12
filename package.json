@@ -21,6 +21,7 @@
     "test:unit": "node scripts/run-node-tests.mjs unit",
     "test:api": "node scripts/run-node-tests.mjs api",
     "test:node": "node scripts/run-node-tests.mjs node",
+    "test:conformance-bulk": "tsx tests/tournament/conformance-bulk.ts",
     "test:python": "node scripts/quality/run-tool.mjs python -m unittest discover -s .github/scripts/tests -p test_*.py",
     "test:e2e:local": "playwright test --config playwright.local.config.ts",
     "test:coverage": "c8 --reporter=text --reporter=lcov --reporter=json npm run test:node",

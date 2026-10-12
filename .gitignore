@@ -68,6 +68,7 @@ sample.tdf
 # Dev stuff - keep organized in dev/ directory
 *.md
 !README.md
+!QUESTIONS.md
 config/*.md
 dev/*test*.html
 reports/that_day2d_candidates.json
