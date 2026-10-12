@@ -1,6 +1,6 @@
 /**
  * Player accounts end to end, against the real schema in SQLite. What must
- * hold: migrations 0006 to 0019 bring a live database in line with the schema, with
+ * hold: migrations 0006 to 0020 bring a live database in line with the schema, with
  * each POP ID left on one account, Reese the only admin and each store's
  * first Manager its Owner; an account's
  * role and public profile come with who is signed in; one account holds a
@@ -90,7 +90,7 @@ function seedStoresBefore0014(db: DatabaseSync) {
   member.run('one', 'tie-b', 'manager', 9);
 }
 
-test('migrations 0006 to 0019 bring a database made before accounts in line with the schema', () => {
+test('migrations 0006 to 0020 bring a database made before accounts in line with the schema', () => {
   const db = new DatabaseSync(':memory:');
   db.exec(sql('../fixtures/d1/tournaments-before-0006.sql'));
   seedBefore0006(db);
@@ -113,6 +113,24 @@ test('migrations 0006 to 0019 bring a database made before accounts in line with
   db.exec(sql('../../config/d1/migrations/tournaments/0017-launch-badges.sql'));
   db.exec(sql('../../config/d1/migrations/tournaments/0018-unsanctioned-stores.sql'));
   db.exec(sql('../../config/d1/migrations/tournaments/0019-clerk-deletions.sql'));
+  // Proof files from when Applications carried them: each is queued for deletion.
+  db.exec(
+    'INSERT INTO applications (id, user_id, status, pop_id, first_name, last_name, proof_key, created_at) ' +
+      "VALUES ('sent', 'owner', 'pending', '1', 'A', 'B', 'proofs/owner/sent', 1), " +
+      "('plain', 'owner', 'rejected', '1', 'A', 'B', NULL, 1);" +
+      "INSERT INTO proof_uploads VALUES ('owner', 'proofs/owner/held', 'image/png', 1);"
+  );
+  db.exec(sql('../../config/d1/migrations/tournaments/0020-queue-proofs.sql'));
+  assert.deepEqual(
+    db
+      .prepare('SELECT key FROM proof_deletions ORDER BY key')
+      .all()
+      .map(row => row.key),
+    ['proofs/owner/held', 'proofs/owner/sent']
+  );
+  assert.equal(db.prepare('SELECT count(*) AS n FROM proof_uploads').get()?.n, 0);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM applications WHERE proof_key IS NOT NULL').get()?.n, 0);
+  db.exec("DELETE FROM applications WHERE id IN ('sent', 'plain')");
 
   assert.deepEqual(shape(db), shape(sqliteD1('tournaments.sql').raw));
   const granted = (badge: string) =>

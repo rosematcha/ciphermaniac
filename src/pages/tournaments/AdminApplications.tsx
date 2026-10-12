@@ -2,9 +2,9 @@
  * The admin page's Applications tab: the queue of pending ones, oldest
  * first, with a switch to the approved or rejected ones. Each shows the name
  * and POP ID it was sent with, the account as it is now, the store it asks
- * for, why, and the role approving gives the applicant in it, the explanation
- * and the proof (an image opens in a sheet; a PDF downloads), and a pending
- * one takes Approve or Reject with an optional note to the applicant. A
+ * for, why, and the role approving gives the applicant in it, the
+ * explanation, and a pending one takes Approve or Reject with an optional
+ * note to the applicant. A
  * decided one stays in place, showing the decision, until the list is read
  * again.
  */
@@ -13,11 +13,10 @@ import { createResource, createSignal, For, Show } from 'solid-js';
 import { NOTE_MAX } from '../../../shared/accounts/applications';
 import { roleForRelationship } from '../../../shared/accounts/stores';
 import type { AdminApplication, ApplicationStatus } from '../../../shared/accounts/types';
-import { BottomSheet } from '../../components/BottomSheet';
 import { Segmented } from '../../components/Segmented';
 import { Skeleton } from '../../components/Skeleton';
 import { ApiError, errorText } from '../../lib/tournament/api';
-import { decideApplication, fetchApplications, proofUrl } from '../../lib/tournament/admin';
+import { decideApplication, fetchApplications } from '../../lib/tournament/admin';
 import { dayOf } from '../../lib/tournament/applications';
 import { RELATIONSHIP_LABELS, STORE_ROLE_WORDS } from '../../lib/tournament/stores';
 import { resolved } from '../../lib/resource';
@@ -42,24 +41,6 @@ function Fact(props: { label: string; value: string | null | undefined }) {
           <dd>{value()}</dd>
         </div>
       )}
-    </Show>
-  );
-}
-
-/** The proof: an image to open in the sheet, a PDF to download. */
-function ProofLink(props: { application: AdminApplication; onView: () => void }) {
-  return (
-    <Show
-      when={props.application.proofType?.startsWith('image/')}
-      fallback={
-        <a class='btn btn-secondary tm-small' href={proofUrl(props.application.id)} download=''>
-          Download proof
-        </a>
-      }
-    >
-      <button type='button' class='btn btn-secondary tm-small' onClick={() => props.onView()}>
-        View proof
-      </button>
     </Show>
   );
 }
@@ -135,7 +116,6 @@ function Decide(props: {
 
 function ApplicationRow(props: {
   application: AdminApplication;
-  onView: (application: AdminApplication) => void;
   onDecided: (decided: AdminApplication) => void;
   onStale: () => void;
 }) {
@@ -179,40 +159,11 @@ function ApplicationRow(props: {
             </p>
           )}
         </Show>
-        <Show when={a().hasProof}>
-          <ProofLink application={a()} onView={() => props.onView(a())} />
-        </Show>
         <Show when={a().status === 'pending'}>
           <Decide application={a()} onDecided={props.onDecided} onStale={props.onStale} />
         </Show>
       </div>
     </article>
-  );
-}
-
-/** The proof image, as large as the sheet holds it. The last one viewed stays in it while it closes. */
-function ProofSheet(props: { application: AdminApplication | null; open: boolean; onClose: () => void }) {
-  const name = () =>
-    props.application ? `${props.application.applied.firstName} ${props.application.applied.lastName}` : '';
-  return (
-    <BottomSheet
-      open={props.open}
-      onClose={() => props.onClose()}
-      title={`Proof from ${name()}`}
-      footer={
-        <Show when={props.application}>
-          {a => (
-            <a class='btn btn-ghost' href={proofUrl(a().id)} target='_blank' rel='noopener'>
-              Open in a new tab
-            </a>
-          )}
-        </Show>
-      }
-    >
-      <Show when={props.application}>
-        {a => <img class='tm-proof-image' src={proofUrl(a().id)} alt={`Proof from ${name()}`} />}
-      </Show>
-    </BottomSheet>
   );
 }
 
@@ -227,12 +178,6 @@ export function AdminApplications() {
   const [list, { refetch, mutate }] = createResource(status, wanted =>
     fetchApplications(wanted).then(answer => answer.applications)
   );
-  const [viewing, setViewing] = createSignal<AdminApplication | null>(null);
-  const [sheetOpen, setSheetOpen] = createSignal(false);
-  const view = (application: AdminApplication) => {
-    setViewing(application);
-    setSheetOpen(true);
-  };
   const decided = (application: AdminApplication) =>
     mutate(prev => prev?.map(row => (row.id === application.id ? application : row)));
   return (
@@ -266,18 +211,12 @@ export function AdminApplications() {
           <Show when={apps().length > 0} fallback={<p class='tm-empty muted'>{EMPTY[status()]}</p>}>
             <For each={apps()}>
               {application => (
-                <ApplicationRow
-                  application={application}
-                  onView={view}
-                  onDecided={decided}
-                  onStale={() => void refetch()}
-                />
+                <ApplicationRow application={application} onDecided={decided} onStale={() => void refetch()} />
               )}
             </For>
           </Show>
         )}
       </Show>
-      <ProofSheet application={viewing()} open={sheetOpen()} onClose={() => setSheetOpen(false)} />
     </section>
   );
 }

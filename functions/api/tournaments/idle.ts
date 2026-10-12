@@ -15,7 +15,7 @@ import { jsonError } from '../../lib/api/responses.js';
 import { purgeClerkDeletions } from '../../lib/auth/clerk.js';
 import type { Context } from '../../lib/auth/env.js';
 import { sha256 } from '../../lib/auth/session.js';
-import { purgeRejectedProofs } from '../../lib/auth/rejection.js';
+import { purgeProofs } from '../../lib/auth/rejection.js';
 import { sweepSignups } from '../../lib/auth/signup.js';
 import { privateJson } from '../../lib/tournaments/access.js';
 import { publishAfter } from '../../lib/tournaments/publish.js';
@@ -106,7 +106,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const now = Date.now();
   // Sign-ups that ran out waiting for their age check go here too, so none outlives its fifteen minutes by much.
   await sweepSignups(db, now).run();
-  await purgeRejectedProofs(db, context.env.PROOFS);
+  await purgeProofs(db, context.env.PROOFS);
   await purgeClerkDeletions(db, context.env);
   const before = now - IDLE_END_MS;
   const expiredBefore = now - MAX_IDLE_MS;

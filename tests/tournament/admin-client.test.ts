@@ -13,7 +13,6 @@ import {
   findAccounts,
   lookupQuery,
   movePopId,
-  proofUrl,
   setOrganizerAccess
 } from '../../src/lib/tournament/admin.ts';
 
@@ -58,7 +57,6 @@ test('each admin call goes to its endpoint with its body', async () => {
     { url: '/api/admin/pop-ids', method: 'POST', body: { popId: '7200001', accountId: 'u2' } },
     { url: '/api/admin/pop-ids', method: 'POST', body: { popId: '7200001', accountId: null } }
   ]);
-  assert.equal(proofUrl('a/1'), '/api/admin/applications/a%2F1/proof');
 });
 
 test('a lookup is a POP ID when it is up to ten digits, an email with an @, and an account ID otherwise', () => {

@@ -15,13 +15,11 @@ import { afterEach, beforeEach, mock, test } from 'node:test';
 import * as adminAccounts from '../../functions/api/admin/accounts.ts';
 import * as adminApplications from '../../functions/api/admin/applications/index.ts';
 import * as adminDecide from '../../functions/api/admin/applications/[id].ts';
-import * as adminProof from '../../functions/api/admin/applications/[id]/proof.ts';
 import * as adminOrganizers from '../../functions/api/admin/organizers/index.ts';
 import * as adminOrganizer from '../../functions/api/admin/organizers/[id].ts';
 import * as adminPopIds from '../../functions/api/admin/pop-ids.ts';
 import * as applications from '../../functions/api/applications/index.ts';
 import * as myApplication from '../../functions/api/applications/mine.ts';
-import * as proof from '../../functions/api/applications/proof.ts';
 import * as ageCheck from '../../functions/api/auth/age.ts';
 import * as callback from '../../functions/api/auth/callback/[provider].ts';
 import * as login from '../../functions/api/auth/login/[provider].ts';
@@ -64,7 +62,6 @@ import { loadIdle, loadTournament, rotateStaff } from '../../functions/lib/tourn
 import { juniorsCutApart } from '../__utils__/divisionCuts.ts';
 import { apiCalls, type Handler, ORIGIN, request } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
-import { memoryProofs } from '../__utils__/proofBucket.ts';
 import { storeApplication } from '../__utils__/storeApplication.ts';
 import { countingTrips, racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
@@ -2532,8 +2529,8 @@ async function accountsFlow(owner: string, player: string) {
 
 /**
  * What applications and the admin routes add, for the scan check below: an
- * account uploads a proof, applies, withdraws and applies again; an Admin
- * lists the queue, sees the proof and approves it, lists the Organizers,
+ * account applies, withdraws and applies again; an Admin lists the queue and
+ * approves it, lists the Organizers,
  * revokes and reinstates one, looks accounts up every way, and moves and
  * clears a POP ID. `owner` is an Organizer.
  */
@@ -2610,24 +2607,13 @@ async function storesFlow(admin: string, manager: string) {
 }
 
 async function applicationsFlow(owner: string) {
-  env.PROOFS = memoryProofs();
   const applicant = await signIn('Applicant');
   const profile = { popId: '980', firstName: 'Apply', lastName: 'Ing', birthDate: '02/27/1990' };
   await hit(me.onRequestPut as Handler, '/api/me', {}, { method: 'PUT', cookie: applicant, body: profile });
-  const uploaded = await proof.onRequestPut({
-    request: new Request(`${ORIGIN}/api/applications/proof`, {
-      method: 'PUT',
-      headers: { origin: ORIGIN, cookie: applicant },
-      body: new TextEncoder().encode('%PDF-1.7\n')
-    }),
-    env,
-    params: {}
-  } as never);
-  assert.equal(uploaded.status, 200);
   await hit(myApplication.onRequestGet as Handler, '/api/applications/mine', {}, { cookie: applicant });
   const apply = (body: unknown) =>
     hit(applications.onRequestPost as Handler, '/api/applications', {}, { method: 'POST', cookie: applicant, body });
-  await apply({ store: storeApplication(), explanation: 'First try', proof: true });
+  await apply({ store: storeApplication(), explanation: 'First try' });
   await hit(
     myApplication.onRequestDelete as Handler,
     '/api/applications/mine',
@@ -2637,15 +2623,9 @@ async function applicationsFlow(owner: string) {
       cookie: applicant
     }
   );
-  await hit(proof.onRequestDelete as Handler, '/api/applications/proof', {}, { method: 'DELETE', cookie: applicant });
-  const { id } = (await apply({ store: storeApplication(), explanation: 'Second try', proof: false })).json.application;
+  const { id } = (await apply({ store: storeApplication(), explanation: 'Second try' })).json.application;
   const admin = await signIn('Admin', 'admin');
   await hit(adminApplications.onRequestGet as Handler, '/api/admin/applications', {}, { cookie: admin });
-  await adminProof.onRequestGet({
-    request: new Request(`${ORIGIN}/api/admin/applications/${id}/proof`, { headers: { cookie: admin } }),
-    env,
-    params: { id }
-  } as never);
   await hit(
     adminDecide.onRequestPost as Handler,
     `/api/admin/applications/${id}`,
@@ -2720,15 +2700,6 @@ const ACCOUNT_STATEMENTS = [
   "DELETE FROM applications WHERE user_id = ? AND status = 'pending'",
   'WHERE a.status = ? ORDER BY a.created_at ASC',
   'WHERE a.status = ? ORDER BY a.created_at DESC',
-  'SELECT proof_key FROM applications WHERE id = ?',
-  "SELECT proof_key FROM applications WHERE id = ? AND status = 'pending'",
-  "SELECT proof_key FROM applications WHERE user_id = ? AND status = 'pending'",
-  'JOIN proof_uploads p ON p.user_id = s.user_id',
-  'SELECT key FROM proof_uploads WHERE user_id = ?',
-  'INSERT INTO proof_uploads',
-  'LEFT JOIN proof_uploads p ON p.user_id = u.id',
-  'DELETE FROM proof_uploads WHERE EXISTS',
-  'DELETE FROM proof_uploads WHERE user_id = ?',
   'INSERT INTO stores (id, league_id',
   'INSERT INTO store_members (store_id, user_id, role, added_at) SELECT',
   "UPDATE users SET role = 'community'",

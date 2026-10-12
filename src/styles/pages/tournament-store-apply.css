@@ -74,8 +74,7 @@
 }
 
 /* ---------- The store application ---------- */
-.tm-apply-league,
-.tm-apply-file {
+.tm-apply-league {
   display: flex;
   gap: var(--space-2);
 }
@@ -96,32 +95,8 @@
   font-weight: 400;
 }
 .tm-optional,
-.tm-apply-kinds,
 .tm-apply-count {
   font-size: var(--text-sm);
-}
-.tm-apply-proof {
-  display: grid;
-  justify-items: start;
-  gap: var(--space-2);
-}
-/* The file once it is up: its name, which gives way, its size, and Remove. */
-.tm-apply-file {
-  flex-wrap: wrap;
-  align-items: center;
-  min-height: var(--control-h);
-}
-.tm-apply-name {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.tm-apply-pick.is-disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.tm-apply-pick:focus-within {
-  outline: var(--focus-width) solid var(--accent);
-  outline-offset: var(--focus-offset);
 }
 .tm-apply-count {
   justify-self: end;

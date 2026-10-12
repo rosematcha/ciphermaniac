@@ -1,14 +1,10 @@
 /**
  * What an Application to run events may carry, checked the same way on the
  * page and in the functions. Only an account whose profile is complete, its
- * POP ID included, may apply; it sends proof of organizer certification, an
- * explanation of why there is none, or both.
+ * POP ID included, may apply, with an optional explanation.
  */
 
 import { readProfile } from '../tournament/profile.js';
-
-/** The largest proof file: a full-size phone photo or screenshot, or a short PDF. */
-export const PROOF_MAX_BYTES = 8 * 1024 * 1024;
 
 /** The longest explanation, in characters as a text field counts them. */
 export const EXPLANATION_MAX = 2000;

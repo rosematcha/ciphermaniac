@@ -6,14 +6,15 @@ import * as age from '../../functions/api/auth/age.ts';
 import * as idle from '../../functions/api/tournaments/idle.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import type { Profile } from '../../functions/lib/auth/oauth.ts';
+import type { ProofBucket } from '../../functions/lib/types.ts';
 import { upsertUser } from '../../functions/lib/auth/session.ts';
 import { holdSignup } from '../../functions/lib/auth/signup.ts';
 import { apiCalls, type Handler } from '../__utils__/apiCalls.ts';
-import { memoryProofs } from '../__utils__/proofBucket.ts';
 import { racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
-let proofs: ReturnType<typeof memoryProofs>;
+/** The private bucket, holding only what the old proof uploads left in it. */
+let proofs: ProofBucket & { objects: Set<string> };
 const { hit } = apiCalls(() => env);
 const db = () => env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
 const profile: Profile = {
@@ -29,11 +30,12 @@ const count = (table: string) => db().raw.prepare(`SELECT count(*) AS n FROM ${t
 const sql = (name: string) => readFileSync(new URL(`../../config/d1/${name}`, import.meta.url), 'utf8');
 
 beforeEach(() => {
-  proofs = memoryProofs();
+  const objects = new Set<string>();
+  proofs = { objects, delete: async key => objects.delete(key) };
   env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), PROOFS: proofs, IDLE_SWEEP_TOKEN: 'sweep' };
 });
 
-async function legacyAccount() {
+function legacyAccount() {
   db().raw.exec(
     'INSERT INTO users (id, handle, email, avatar, pop_id, first_name, last_name, birth_date, public_profile, role, created_at) ' +
       "VALUES ('legacy', 'child-handle', 'child@example.com', 'avatar', '123', 'Child', 'Name', '02/27/2016', 1, 'community', 1);" +
@@ -43,9 +45,8 @@ async function legacyAccount() {
       "INSERT INTO handle_changes VALUES ('legacy', 1, 'old-child-name', 'child-handle', 'rename');" +
       "INSERT INTO report_devices VALUES ('CODE', '123', 'token', 'device', 1, 'legacy');" +
       "INSERT INTO staff VALUES ('CODE', 'legacy', 1);" +
-      'INSERT INTO applications (id, user_id, status, pop_id, first_name, last_name, explanation, proof_key, created_at, store) ' +
-      "VALUES ('application', 'legacy', 'pending', '123', 'Child', 'Name', 'private note', 'proofs/legacy/application', 1, '{}');" +
-      "INSERT INTO proof_uploads VALUES ('legacy', 'proofs/legacy/upload', 'image/png', 1);" +
+      'INSERT INTO applications (id, user_id, status, pop_id, first_name, last_name, explanation, created_at, store) ' +
+      "VALUES ('application', 'legacy', 'pending', '123', 'Child', 'Name', 'private note', 1, '{}');" +
       'INSERT INTO decklists (code, user_id, pop_id, first_name, last_name, birth_date, deck, submitted_at, account) VALUES ' +
       "('CODE', 'pop:123', '123', 'Child', 'Name', '02/27/2016', 'cards', 1, 'legacy')," +
       "('CODE', 'pop:456', '456', 'Other', 'Player', '02/27/1990', 'cards', 1, 'other');" +
@@ -53,9 +54,6 @@ async function legacyAccount() {
       "VALUES ('store', 'league', 'active', 'Store', 'Place', 'UTC', 1, 1);" +
       "INSERT INTO store_members VALUES ('store', 'legacy', 'manager', 1);"
   );
-  for (const key of ['proofs/legacy/application', 'proofs/legacy/upload']) {
-    await proofs.put(key, new Uint8Array([1]), { httpMetadata: { contentType: 'image/png' } });
-  }
 }
 
 async function rejection(cookieProfile = profile) {
@@ -72,8 +70,8 @@ async function rejection(cookieProfile = profile) {
   );
 }
 
-test('legacy rejection forgets account PII, submissions and proofs while preserving the last Manager', async () => {
-  await legacyAccount();
+test('legacy rejection forgets account PII and submissions while preserving the last Manager', async () => {
+  legacyAccount();
   await holdSignup(db(), { ...profile, provider: 'discord', subject: 'other-provider' }, '/host');
   await holdSignup(db(), { ...profile, subject: 'second-pending-identity', email: ' CHILD@example.com ' }, '/host');
   const result = await rejection();
@@ -92,8 +90,6 @@ test('legacy rejection forgets account PII, submissions and proofs while preserv
     'duplicate_emails_backup',
     'handle_changes',
     'applications',
-    'proof_uploads',
-    'proof_deletions',
     'report_devices',
     'staff',
     'pending_signups'
@@ -101,12 +97,11 @@ test('legacy rejection forgets account PII, submissions and proofs while preserv
     assert.equal(count(table), 0, table);
   }
   assert.equal(count('decklists'), 1, 'another player’s submission survives');
-  assert.equal(proofs.objects.size, 0);
   assert.equal(db().raw.prepare("SELECT role FROM store_members WHERE user_id = 'legacy'").get()?.role, 'manager');
 });
 
 test('verified-email fallback cleans a legacy account but an unverified email cannot erase it', async () => {
-  await legacyAccount();
+  legacyAccount();
   assert.equal((await rejection({ ...profile, subject: 'unknown', emailVerified: false })).status, 403);
   assert.equal(count('applications'), 1);
   assert.equal((await rejection({ ...profile, subject: 'new-provider-identity' })).status, 403);
@@ -114,30 +109,31 @@ test('verified-email fallback cleans a legacy account but an unverified email ca
   assert.equal(db().raw.prepare("SELECT email FROM users WHERE id = 'legacy'").get()?.email, null);
 });
 
-test('a concurrent adult verification protects legacy personal data and proofs from rejection', async () => {
-  await legacyAccount();
+test('a concurrent adult verification protects legacy personal data from rejection', async () => {
+  legacyAccount();
   const inner = db();
-  env.TOURNAMENT_DB = racing(inner, 'INSERT OR IGNORE INTO proof_deletions', () => {
+  env.TOURNAMENT_DB = racing(inner, 'DELETE FROM applications', () => {
     inner.raw.prepare('UPDATE users SET age_checked_at = ? WHERE id = ?').run(Date.now(), 'legacy');
   });
   assert.equal((await rejection()).status, 403);
   assert.equal(count('applications'), 1);
   assert.equal(count('identities'), 2);
-  assert.equal(proofs.objects.size, 2);
-  assert.equal(count('proof_deletions'), 0);
   assert.equal(inner.raw.prepare("SELECT handle FROM users WHERE id = 'legacy'").get()?.handle, 'child-handle');
 });
 
-test('private-file deletion failures persist for the authenticated idle sweep to retry', async () => {
-  await legacyAccount();
+test('proof files left in the bucket stay queued through failures until the idle sweep deletes them', async () => {
+  for (const key of ['proofs/legacy/application', 'proofs/legacy/upload']) {
+    proofs.objects.add(key);
+    db().raw.prepare('INSERT INTO proof_deletions (key) VALUES (?)').run(key);
+  }
   env.PROOFS = {
-    ...proofs,
     delete: async () => {
       throw new Error('R2 unavailable');
     }
   };
   const log = mock.method(console, 'error', () => undefined);
   try {
+    legacyAccount();
     assert.equal((await rejection()).status, 403);
     assert.equal(count('applications'), 0);
     assert.equal(count('proof_deletions'), 2);
@@ -166,7 +162,7 @@ test('rejection clears other pending tokens for a new minor identity', async () 
 });
 
 test('account race resolution still records the adult age verification', async () => {
-  await legacyAccount();
+  legacyAccount();
   const inner = db();
   inner.raw.exec("DELETE FROM identities WHERE provider = 'google'");
   env.TOURNAMENT_DB = racing(inner, 'INSERT INTO identities', () => {

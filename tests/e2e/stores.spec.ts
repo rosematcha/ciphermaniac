@@ -47,7 +47,7 @@ const MY_STORE: MyStore = {
 
 const MANAGER = { ...ME, stores: [MY_STORE] };
 
-const NONE: ApplicationState = { application: null, proof: null, eligible: { profile: true, email: true } };
+const NONE: ApplicationState = { application: null, eligible: { profile: true, email: true } };
 
 const FOUND: LeagueFound = {
   leagueId: '6238620',
@@ -181,7 +181,6 @@ async function mock(page: Page, options: Options = {}) {
         id: 'app-1',
         status: 'pending' as const,
         explanation: String(body?.explanation ?? ''),
-        proofType: null,
         createdAt: Date.UTC(2026, 9, 4),
         decidedAt: null,
         note: null,
@@ -306,7 +305,6 @@ test('an approved store that is also a Community organizer is not offered the st
     id: 'app-1',
     status: 'approved' as const,
     explanation: '',
-    proofType: null,
     createdAt: Date.UTC(2026, 9, 4),
     decidedAt: Date.UTC(2026, 9, 5),
     note: null,
@@ -357,10 +355,8 @@ test('a store application starts from the league, prefilled, and sends what the 
   const [sent] = sentTo(asks, 'POST', '/api/applications') as {
     store: Record<string, unknown>;
     explanation: string;
-    proof: boolean;
   }[];
   expect(sent?.explanation).toBe('I own the store.');
-  expect(sent?.proof).toBe(false);
   expect(sent?.store).toMatchObject({
     leagueId: '6238620',
     place: { lat: FOUND.lat, lon: FOUND.lon, timeZone: 'America/Chicago' },

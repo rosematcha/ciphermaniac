@@ -146,8 +146,8 @@ const QUERIED: Queried[] = [
     title: 'Organizer applications',
     part: 'account',
     sql:
-      'SELECT status, pop_id, first_name, last_name, explanation, proof_type, proof_size, created_at, decided_at, ' +
-      'note, store FROM applications WHERE user_id = ?1 ORDER BY created_at'
+      'SELECT status, pop_id, first_name, last_name, explanation, created_at, decided_at, note, store ' +
+      'FROM applications WHERE user_id = ?1 ORDER BY created_at'
   },
   {
     title: 'Stores',

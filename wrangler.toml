@@ -16,8 +16,10 @@ id = "c43f84feaa1049488390313c619610d8"
 bucket_name = "ciphermaniac-reports"
 binding = "REPORTS"
 
-# Private R2 bucket for the proof an organizer application carries. It has no
-# custom domain and no r2.dev URL: only the admin function reads it back.
+# Private R2 bucket that held organizer applications' proof files. It has no
+# custom domain and no r2.dev URL; the functions only delete what is left in
+# it (proof_deletions, migration 0020). Empty it by hand before removing it:
+# a file whose upload failed partway has no row to queue it.
 [[r2_buckets]]
 bucket_name = "ciphermaniac-proofs"
 binding = "PROOFS"

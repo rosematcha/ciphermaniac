@@ -1,7 +1,6 @@
 /**
  * Applying to run events from the browser: the calls go to the applicant
- * endpoints, the proof as the raw file rather than JSON, and an account's
- * stage reads from its role and its latest Application the way the pages
+ * endpoints, and an account's stage reads from its role and its latest Application the way the pages
  * show it.
  */
 
@@ -9,16 +8,7 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 
 import type { MyApplication } from '../../shared/accounts/types.ts';
-import {
-  applicantStage,
-  dayOf,
-  fetchApplication,
-  fileSize,
-  proofKind,
-  removeProof,
-  uploadProof,
-  withdrawApplication
-} from '../../src/lib/tournament/applications.ts';
+import { applicantStage, dayOf, fetchApplication, withdrawApplication } from '../../src/lib/tournament/applications.ts';
 import { sendStoreApplication } from '../../src/lib/tournament/stores.ts';
 import { storeApplication } from '../__utils__/storeApplication.ts';
 
@@ -47,42 +37,24 @@ afterEach(() => {
 test('each applicant call goes to its endpoint, the Application as JSON', async () => {
   answer(200, { ok: true });
   await fetchApplication();
-  await sendStoreApplication(storeApplication(), 'I run a league', true);
+  await sendStoreApplication(storeApplication(), 'I run a league');
   answer(204, null);
-  assert.equal(await removeProof(), null);
   assert.equal(await withdrawApplication(), null);
   assert.deepEqual(
     sent.map(s => `${s.method} ${s.url}`),
-    [
-      'GET /api/applications/mine',
-      'POST /api/applications',
-      'DELETE /api/applications/proof',
-      'DELETE /api/applications/mine'
-    ]
+    ['GET /api/applications/mine', 'POST /api/applications', 'DELETE /api/applications/mine']
   );
   assert.deepEqual(JSON.parse(String(sent[1]?.body)), {
     store: storeApplication(),
-    explanation: 'I run a league',
-    proof: true
+    explanation: 'I run a league'
   });
   assert.deepEqual(sent[1]?.headers, { 'Content-Type': 'application/json' });
-});
-
-test('a proof goes up as the file itself, with no JSON type over it', async () => {
-  answer(200, { proof: { type: 'application/pdf', size: 4 } });
-  const file = new Blob(['%PDF'], { type: 'application/pdf' });
-  assert.deepEqual(await uploadProof(file), { proof: { type: 'application/pdf', size: 4 } });
-  assert.equal(sent[0]?.url, '/api/applications/proof');
-  assert.equal(sent[0]?.method, 'PUT');
-  assert.equal(sent[0]?.body, file);
-  assert.equal(sent[0]?.headers, undefined);
 });
 
 const application = (status: MyApplication['status']): MyApplication => ({
   id: 'a1',
   status,
   explanation: '',
-  proofType: null,
   createdAt: 0,
   decidedAt: null,
   note: null,
@@ -107,19 +79,6 @@ test('a pending or rejected Application is newer than the role it was sent under
 
 test('a store approved outranks a Community organizer role taken away', () => {
   assert.equal(applicantStage('revoked', application('approved')), 'store');
-});
-
-test('a proof reads as its type and size', () => {
-  assert.equal(proofKind('application/pdf'), 'PDF');
-  assert.equal(proofKind('image/png'), 'PNG');
-  assert.equal(proofKind('image/jpeg'), 'JPEG');
-  assert.equal(proofKind('image/webp'), 'WebP');
-  assert.equal(proofKind('text/plain'), 'File');
-  assert.equal(fileSize(10), '1 KB');
-  assert.equal(fileSize(200 * 1024), '200 KB');
-  assert.equal(fileSize(1024 * 1024), '1.0 MB');
-  assert.equal(fileSize(8 * 1024 * 1024 - 1), '8.0 MB');
-  assert.equal(fileSize(2.25 * 1024 * 1024), '2.3 MB');
 });
 
 test('a day reads with its year', () => {

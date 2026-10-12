@@ -26,7 +26,7 @@ import { jsonError, jsonResponse } from '../lib/api/responses.js';
 import { type Context, sameOrigin } from '../lib/auth/env.js';
 import { clerkKeys, purgeClerkDeletions } from '../lib/auth/clerk.js';
 import { clearCookie, SESSION_COOKIE } from '../lib/auth/cookies.js';
-import { purgeRejectedProofs } from '../lib/auth/rejection.js';
+import { purgeProofs } from '../lib/auth/rejection.js';
 import { availableProviders } from '../lib/auth/providers.js';
 import { currentAccount, type ProfileName, type User } from '../lib/auth/session.js';
 import { rowsChanged } from '../lib/d1.js';
@@ -169,7 +169,7 @@ export async function onRequestDelete({ request, env }: Context): Promise<Respon
     return jsonResponse(refusal, { ...PRIVATE, status: 409 });
   }
   await purgeClerkDeletions(db, env);
-  await purgeRejectedProofs(db, env.PROOFS);
+  await purgeProofs(db, env.PROOFS);
   return new Response(null, {
     status: 204,
     headers: { 'Set-Cookie': clearCookie(request, SESSION_COOKIE), 'Cache-Control': 'no-store' }

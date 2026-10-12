@@ -266,9 +266,8 @@ CREATE INDEX IF NOT EXISTS account_badges_badge ON account_badges (badge);
 
 -- Accounts asking to become organizers, and what an admin decided. The POP
 -- ID and name are the profile as it stood when the account applied. The
--- proof of certification is a file in a private bucket under `proof_key`,
--- deleted once the application is decided; its type stays as a record that a
--- proof was seen.
+-- proof_* columns are from when an Application carried a proof file; nothing
+-- reads or writes them, and a later migration drops them (see 0020).
 CREATE TABLE IF NOT EXISTS applications (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -296,10 +295,8 @@ CREATE INDEX IF NOT EXISTS applications_by_user ON applications (user_id, create
 CREATE INDEX IF NOT EXISTS applications_by_status ON applications (status, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS applications_one_pending ON applications (user_id) WHERE status = 'pending';
 
--- The proof an account has uploaded and not yet sent with an Application,
--- one at a time. Each upload is a file of its own in the private bucket,
--- under a key never used again; a new upload takes this row's place and its
--- file goes. Sending the Application moves the key onto it.
+-- Proof files uploaded and not yet sent, from when Applications carried them.
+-- Unused, and dropped with the proof_* columns above.
 CREATE TABLE IF NOT EXISTS proof_uploads (
   user_id TEXT PRIMARY KEY,
   key TEXT NOT NULL,
@@ -378,7 +375,8 @@ CREATE TABLE IF NOT EXISTS event_creations (
   PRIMARY KEY (owner, at, id)
 ) WITHOUT ROWID;
 
--- Private files awaiting deletion after an account fails its age check.
+-- Proof files from when Store Applications carried them, awaiting deletion
+-- from the private bucket.
 CREATE TABLE IF NOT EXISTS proof_deletions (
   key TEXT PRIMARY KEY
 ) WITHOUT ROWID;

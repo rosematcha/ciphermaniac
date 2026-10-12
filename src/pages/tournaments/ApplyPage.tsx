@@ -158,7 +158,7 @@ function Applying(props: { user: Me }) {
   );
   const stage = () => applicantStage(props.user.role, current()?.application ?? null);
   const open = () => stage() !== 'pending' && ((stage() !== 'rejected' && stage() !== 'revoked') || again());
-  const sent = (application: MyApplication) => mutate(prev => prev && { ...prev, application, proof: null });
+  const sent = (application: MyApplication) => mutate(prev => prev && { ...prev, application });
   return (
     <>
       <TournamentHero title={TITLE} />
@@ -218,7 +218,6 @@ function Applying(props: { user: Me }) {
                     }
                   >
                     <StoreApplicationForm
-                      proof={s().proof}
                       onSent={sent}
                       onStale={() => {
                         void refetch();

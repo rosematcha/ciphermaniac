@@ -1,8 +1,8 @@
 /**
  * The admin page against mocked admin endpoints: anyone but an Admin finds
- * nothing there; an Admin approves an Application with a note, sees its
- * proof, revokes and reinstates a Community organizer, and moves or clears a POP ID
- * after looking its holder up.
+ * nothing there; an Admin approves an Application with a note, revokes and
+ * reinstates a Community organizer, and moves or clears a POP ID after
+ * looking its holder up.
  */
 
 import { expect, type Page, test } from '@playwright/test';
@@ -33,13 +33,11 @@ function application(id: string, extra: Partial<AdminApplication> = {}): AdminAp
     id,
     status: 'pending',
     explanation: 'I run the Thursday league at the card shop.',
-    proofType: 'image/png',
     createdAt: DAY,
     decidedAt: null,
     note: null,
     account: { id: `acct-${id}`, name: 'Mary', email: 'mary@example.com', popId: '7200001', role: null },
     applied: { popId: '7200001', firstName: 'Mary', lastName: 'Jackson' },
-    hasProof: true,
     decidedBy: null,
     store: null,
     leagueTaken: null,
@@ -103,7 +101,7 @@ const EVENTS = [
 /** The admin endpoints, answering as the functions would, and every ask they get. */
 async function mockAdmin(page: Page, user: typeof ADMIN | null = ADMIN, decidedElsewhere = new Set<string>()) {
   const asks: Asked[] = [];
-  const pending = [application('app-1'), application('app-2', { proofType: 'application/pdf' })];
+  const pending = [application('app-1'), application('app-2', { explanation: 'I judge at the card shop.' })];
   let holders = HOLDERS;
   await page.route('**/api/**', route => {
     const request = route.request();
@@ -116,7 +114,7 @@ async function mockAdmin(page: Page, user: typeof ADMIN | null = ADMIN, decidedE
     }
     if (url.pathname === '/api/admin/applications') {
       const status = url.searchParams.get('status');
-      const rejected = [application('old', { status: 'rejected', decidedAt: DAY, note: 'No proof', hasProof: false })];
+      const rejected = [application('old', { status: 'rejected', decidedAt: DAY, note: 'Not certified' })];
       return route.fulfill({ json: { applications: status === 'pending' ? pending : rejected } });
     }
     if (url.pathname.startsWith('/api/admin/applications/') && method === 'POST') {
@@ -132,7 +130,6 @@ async function mockAdmin(page: Page, user: typeof ADMIN | null = ADMIN, decidedE
         status: body?.decision === 'approve' ? 'approved' : 'rejected',
         decidedAt: DAY,
         note: (body?.note as string) || null,
-        hasProof: false,
         decidedBy: { id: 'reese', name: 'Reese' }
       });
       return route.fulfill({ json: { application: decided } });
@@ -205,27 +202,13 @@ test('an Admin rejects one, and reads the decided ones by status', async ({ page
   await expect(second.locator('.tm-flag')).toHaveText('Rejected');
   await page.getByRole('tablist', { name: 'Status' }).getByRole('tab', { name: 'Rejected' }).click();
   await expect(page.locator('.tm-app')).toHaveCount(1);
-  await expect(page.locator('.tm-app')).toContainText('No proof');
+  await expect(page.locator('.tm-app')).toContainText('Not certified');
   expect(adminAsks(asks).map(a => `${a.method} ${a.path}`)).toEqual([
     'GET /api/admin/applications?status=pending',
     'POST /api/admin/applications/app-2',
     'GET /api/admin/applications?status=rejected'
   ]);
   expect(adminAsks(asks)[1]?.body).toEqual({ decision: 'reject', note: '' });
-});
-
-test('an image proof opens in a sheet; a PDF is a download', async ({ page }) => {
-  await mockAdmin(page);
-  await page.goto('/admin');
-  await page.locator('.tm-app').first().getByRole('button', { name: 'View proof' }).click();
-  const sheet = page.getByRole('dialog', { name: 'Proof from Mary Jackson' });
-  await expect(sheet.locator('img')).toHaveAttribute('src', '/api/admin/applications/app-1/proof');
-  await sheet.getByRole('button', { name: /Close/ }).click();
-  await expect(sheet).toHaveCount(0);
-  await expect(page.locator('.tm-app').nth(1).getByRole('link', { name: 'Download proof' })).toHaveAttribute(
-    'href',
-    '/api/admin/applications/app-2/proof'
-  );
 });
 
 test('an Admin revokes a Community organizer, asked first, and reinstates them; an Admin is not changed here', async ({
@@ -280,8 +263,8 @@ test('one another Admin decided first says so, and the queue is read again witho
   await page.goto('/admin');
   await page.locator('.tm-app').first().getByRole('button', { name: 'Approve' }).click();
   await expect(page.locator('.tm-app')).toHaveCount(1);
-  // The one left is the second, sent with a PDF.
-  await expect(page.locator('.tm-app').getByRole('link', { name: 'Download proof' })).toBeVisible();
+  // The one left is the second.
+  await expect(page.locator('.tm-app')).toContainText('I judge at the card shop.');
   expect(adminAsks(asks).filter(a => a.path === '/api/admin/applications?status=pending')).toHaveLength(2);
 });
 

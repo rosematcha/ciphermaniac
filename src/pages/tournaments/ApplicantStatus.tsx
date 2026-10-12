@@ -56,7 +56,7 @@ function ApplyAgain(props: { onApply: (() => void) | undefined }) {
   );
 }
 
-/** Withdrawing a pending Application, asked first: it takes the proof with it. */
+/** Withdrawing a pending Application, asked first. */
 function Withdraw(props: { onWithdrawn: () => void }) {
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);

@@ -15,7 +15,7 @@
  *
  * Deleting wipes organizer history the same way, unlinks the account from
  * every event, and removes the account and everything else kept under it:
- * sign-ins, sessions, Applications and their proof files, store places. An
+ * sign-ins, sessions, Applications, store places. An
  * account that owns a store hands it over first.
  *
  * The checks that make a wipe or deletion wait run twice: once to say why,
@@ -181,7 +181,6 @@ export async function wipeParts(
 /** Tables whose rows under the account go with it. */
 const ACCOUNT_TABLES = [
   'applications',
-  'proof_uploads',
   'store_members',
   'staff',
   'sessions',
@@ -200,19 +199,12 @@ const DECIDED_BY = [
 ] as const;
 
 function accountWrites(db: D1Like, user: User): D1Statement[] {
-  const proofs = db
-    .prepare(
-      'INSERT OR IGNORE INTO proof_deletions (key) SELECT proof_key FROM applications WHERE user_id = ?1 ' +
-        'AND proof_key IS NOT NULL UNION SELECT key FROM proof_uploads WHERE user_id = ?1'
-    )
-    .bind(user.id);
   const clerk = db
     .prepare(
       "INSERT OR IGNORE INTO clerk_deletions (subject) SELECT subject FROM identities WHERE user_id = ? AND provider = 'clerk'"
     )
     .bind(user.id);
   return [
-    proofs,
     clerk,
     db.prepare('UPDATE report_devices SET user_id = NULL WHERE user_id = ?').bind(user.id),
     db.prepare('UPDATE decklists SET account = NULL WHERE account = ?').bind(user.id),

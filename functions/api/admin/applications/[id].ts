@@ -4,9 +4,8 @@
  * words to the applicant. Approving makes the store it asks for, with the
  * applicant in it as the role their reason for applying gives them (an owner
  * its Owner, an organizer a Manager, a judge Staff); a league that already has a store is refused (409),
- * since a store changes hands only by an Admin moving it. The proof file goes
- * once the decision lands; its type stays on the row as a record that one was
- * seen. Answers { application }; 409 when it was already decided.
+ * since a store changes hands only by an Admin moving it. Answers {
+ * application }; 409 when it was already decided.
  */
 
 import { NOTE_MAX } from '../../../../shared/accounts/applications.js';
@@ -14,7 +13,6 @@ import {
   ADMIN_APPLICATIONS,
   adminApplication,
   type AdminApplicationRow,
-  dropProof,
   storeOf
 } from '../../../lib/accounts/applications.js';
 import { randomToken } from '../../../lib/auth/session.js';
@@ -48,8 +46,7 @@ function readDecision(body: Record<string, unknown> | null): Decision | string {
 }
 
 /**
- * The key of the proof the Application was sent with, the decision's writes,
- * then the Application read back. Each write holds only while the
+ * The decision's writes, then the Application read back. Each write holds only while the
  * Application is still pending, inside the one transaction a batch is, so
  * two Admins deciding at once cannot both land, and no store is made for an
  * Application someone else rejected meanwhile.
@@ -85,13 +82,12 @@ function decisionWrites(
       : [];
   const decide = db
     .prepare(
-      'UPDATE applications SET status = ?2, decided_at = ?3, decided_by = ?4, note = ?5, proof_key = NULL ' +
+      'UPDATE applications SET status = ?2, decided_at = ?3, decided_by = ?4, note = ?5 ' +
         "WHERE id = ?1 AND status = 'pending'"
     )
     .bind(id, decision.approve ? 'approved' : 'rejected', now, adminId, decision.note);
   const read = db.prepare(`${ADMIN_APPLICATIONS} WHERE a.id = ?`).bind(id);
-  const proof = db.prepare("SELECT proof_key FROM applications WHERE id = ? AND status = 'pending'").bind(id);
-  return [proof, ...made, decide, read];
+  return [...made, decide, read];
 }
 
 export async function onRequestPost(context: Context<'id'>): Promise<Response> {
@@ -132,7 +128,6 @@ export async function onRequestPost(context: Context<'id'>): Promise<Response> {
   if (rowsChanged(results.at(-2)) === 0) {
     return jsonError('Already decided', 409);
   }
-  await dropProof(context, firstRow<{ proof_key: string | null }>(results[0])?.proof_key);
   if (decision.approve) {
     await publishStores(context);
   }

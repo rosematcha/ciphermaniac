@@ -32,9 +32,6 @@ export const fetchApplications = (status: ApplicationStatus) =>
 export const decideApplication = (id: string, decision: 'approve' | 'reject', note: string) =>
   call<{ application: AdminApplication }>(path(id), json('POST', { decision, note }));
 
-/** Where an Application's proof is read: an image shows inline, a PDF downloads. */
-export const proofUrl = (id: string) => `${path(id)}/proof`;
-
 /** Every account with a role, by name, with the events it owns. */
 export const fetchRoleHolders = () => call<{ accounts: RoleHolder[] }>('/api/admin/organizers');
 

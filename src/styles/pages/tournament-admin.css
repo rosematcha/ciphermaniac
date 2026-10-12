@@ -87,14 +87,6 @@
 :is(.tm-app-decide, .tm-move) .tm-error {
   margin: 0;
 }
-/* The proof as large as the sheet holds it, whole. */
-.tm-proof-image {
-  display: block;
-  max-width: 100%;
-  max-height: calc(80vh - 140px);
-  margin: 0 auto;
-  object-fit: contain;
-}
 
 /* ---------- Organizers ---------- */
 .tm-people td {

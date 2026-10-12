@@ -318,7 +318,6 @@ function rowsUnder(id: string) {
     ['report_devices', 'user_id'],
     ['decklists', 'account'],
     ['applications', 'user_id'],
-    ['proof_uploads', 'user_id'],
     ['store_members', 'user_id'],
     ['tournaments', 'owner_id'],
     ['event_creations', 'owner']
@@ -343,16 +342,12 @@ test('deleting removes everything under the account, keeps its finished events f
   await claim(code, 'Oak', owner);
   await claim(code, 'Ketchum', player);
   await settle(code, owner, { finished: true });
-  raw()
-    .prepare("INSERT INTO proof_uploads (user_id, key, type, size) VALUES (?, 'proofs/one', 'image/png', 9)")
-    .run(id);
   assert.ok(Object.keys(rowsUnder(id)).length > 4);
 
   const deleted = await remove(owner, 'casual.host');
   assert.equal(deleted.status, 204);
   assert.match(deleted.headers.get('set-cookie') ?? '', /Max-Age=0/u);
   assert.deepEqual(rowsUnder(id), {});
-  assert.deepEqual({ ...raw().prepare('SELECT key FROM proof_deletions').get() }, { key: 'proofs/one' });
   assert.equal((await hit(me.onRequestGet as Handler, '/api/me', {}, { cookie: owner })).json.user, null);
   assert.deepEqual(await codesOf(player), [code], 'the player keeps the event');
   assert.equal((await rename(player, 'casual.host')).status, 200, 'the username is free');

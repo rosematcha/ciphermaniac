@@ -1042,7 +1042,7 @@ async function mockDashboard(page: Page, user: typeof ME, events: (typeof SUMMAR
   await publishCopies(page);
   await page.route('**/api/tournaments', route => route.fulfill({ json: { tournaments: events } }));
   await page.route('**/api/applications/mine', route =>
-    route.fulfill({ json: { application: null, proof: null, eligible: { profile: true, email: true } } })
+    route.fulfill({ json: { application: null, eligible: { profile: true, email: true } } })
   );
   return errors;
 }
@@ -1158,13 +1158,11 @@ test('a player whose Application is pending has the Organizing tab, which a relo
           id: 'app-1',
           status: 'pending',
           explanation: '',
-          proofType: null,
           createdAt: 0,
           decidedAt: null,
           note: null,
           store: null
         },
-        proof: null,
         eligible: { profile: true, email: true }
       }
     })

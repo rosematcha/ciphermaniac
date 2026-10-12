@@ -1,10 +1,8 @@
 /**
- * The admin routes end to end, against the real schema in SQLite and a
- * proofs bucket in memory. What must hold: only an Admin gets anything from
- * them; an Admin works the queue of Applications oldest first, sees each
- * proof only through its own request, with headers that keep it inert, and
- * decides each once, approving making the store asked for and the proof
- * going either way; Community organizers lose and regain the right to start
+ * The admin routes end to end, against the real schema in SQLite. What must
+ * hold: only an Admin gets anything from them; an Admin works the queue of
+ * Applications oldest first and decides each once, approving making the
+ * store asked for; Community organizers lose and regain the right to start
  * events, Admins never; stores are revoked, restored and handed to a new
  * Manager; accounts are found by POP ID, email or ID; and a POP ID moves
  * between accounts whole, its History with it and its players let go.
@@ -17,35 +15,29 @@ import * as accounts from '../../functions/api/admin/accounts.ts';
 import * as adminApplications from '../../functions/api/admin/applications/index.ts';
 import * as adminEvents from '../../functions/api/admin/events.ts';
 import * as decide from '../../functions/api/admin/applications/[id].ts';
-import * as proofFile from '../../functions/api/admin/applications/[id]/proof.ts';
 import * as organizers from '../../functions/api/admin/organizers/index.ts';
 import * as organizer from '../../functions/api/admin/organizers/[id].ts';
 import * as popIds from '../../functions/api/admin/pop-ids.ts';
 import * as adminStores from '../../functions/api/admin/stores/index.ts';
 import * as adminStore from '../../functions/api/admin/stores/[id].ts';
 import * as applications from '../../functions/api/applications/index.ts';
-import * as proof from '../../functions/api/applications/proof.ts';
 import * as history from '../../functions/api/history.ts';
 import * as me from '../../functions/api/me.ts';
 import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import * as tournaments from '../../functions/api/tournaments/index.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
 import type { StoreApplication } from '../../shared/accounts/stores.ts';
-import { apiCalls, type Call, type Handler, ORIGIN } from '../__utils__/apiCalls.ts';
+import { apiCalls, type Call, type Handler } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
-import { memoryProofs, stalledDeletes } from '../__utils__/proofBucket.ts';
 import { storeApplication } from '../__utils__/storeApplication.ts';
 import { sqliteD1 } from '../__utils__/sqliteD1.ts';
 
 let env: TournamentEnv;
-let proofs: ReturnType<typeof memoryProofs>;
 const { hit, signIn } = apiCalls(() => env);
 const { newSwiss, send, addPlayers, settle, playerSays } = eventCalls(hit);
 
 beforeEach(() => {
-  proofs = memoryProofs();
-  env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true', PROOFS: proofs };
-  proof._resetRateLimitStore();
+  env = { TOURNAMENT_DB: sqliteD1('tournaments.sql'), DEV_LOGIN: 'true' };
   applications._resetRateLimitStore();
   report._resetRateLimitStore();
 });
@@ -73,30 +65,9 @@ async function player(name: string, popId: string) {
   return cookie;
 }
 
-const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
-const PDF = new TextEncoder().encode('%PDF-1.7\n%');
-
-async function upload(cookie: string, body: Uint8Array<ArrayBuffer>) {
-  const request = new Request(`${ORIGIN}/api/applications/proof`, {
-    method: 'PUT',
-    headers: { origin: ORIGIN, cookie },
-    body
-  });
-  const response = await proof.onRequestPut({ request, env, params: {} } as never);
-  assert.equal(response.status, 200);
-}
-
-/** An account that has applied, with `file` as its proof when given; answers its cookie and the Application's id. */
-async function applied(
-  name: string,
-  popId: string,
-  file?: Uint8Array<ArrayBuffer>,
-  overrides: Partial<StoreApplication> = {}
-) {
+/** An account that has applied; answers its cookie and the Application's id. */
+async function applied(name: string, popId: string, overrides: Partial<StoreApplication> = {}) {
   const cookie = await player(name, popId);
-  if (file) {
-    await upload(cookie, file);
-  }
   const sent = await hit(
     applications.onRequestPost as Handler,
     '/api/applications',
@@ -106,8 +77,7 @@ async function applied(
       cookie,
       body: {
         store: storeApplication(`77${popId}`, overrides),
-        explanation: `${name} runs a league`,
-        proof: Boolean(file)
+        explanation: `${name} runs a league`
       }
     }
   );
@@ -127,15 +97,6 @@ const list = (cookie: string, status = '') =>
 
 const decision = (cookie: string, id: string, body: unknown) =>
   hit(decide.onRequestPost as Handler, `/api/admin/applications/${id}`, { id }, { method: 'POST', cookie, body });
-
-/** The proof as the admin page's request gets it: status, headers and bytes. */
-async function viewProof(cookie: string | undefined, id: string) {
-  const request = new Request(`${ORIGIN}/api/admin/applications/${id}/proof`, {
-    headers: cookie ? { cookie } : {}
-  });
-  const response = await proofFile.onRequestGet({ request, env, params: { id } } as never);
-  return { status: response.status, headers: response.headers, bytes: new Uint8Array(await response.arrayBuffer()) };
-}
 
 const setRole = (cookie: string, id: string, role: unknown) =>
   hit(
@@ -181,7 +142,7 @@ const storeAct = (cookie: string, id: string, body: unknown) =>
   hit(adminStore.onRequestPost as Handler, `/api/admin/stores/${id}`, { id }, { method: 'POST', cookie, body });
 
 test('every admin route answers only an Admin', async () => {
-  const { id } = await applied('Applicant', '100', PNG);
+  const { id } = await applied('Applicant', '100');
   const target = await idOf(await signIn('Target', 'community'));
   const calls: [string, (call: Call) => Promise<{ status: number }>][] = [
     ['list', call => hit(adminApplications.onRequestGet as Handler, '/api/admin/applications', {}, call)],
@@ -195,7 +156,6 @@ test('every admin route answers only an Admin', async () => {
           { ...call, method: 'POST', body: { decision: 'approve' } }
         )
     ],
-    ['proof', call => viewProof(call.cookie, id)],
     ['events', call => hit(adminEvents.onRequestGet as Handler, '/api/admin/events', {}, call)],
     ['organizers', call => hit(organizers.onRequestGet as Handler, '/api/admin/organizers', {}, call)],
     [
@@ -278,7 +238,7 @@ test('every admin route answers only an Admin', async () => {
 
 test('pending Applications come oldest first, with the account as it is now and as it applied', async () => {
   const admin = await signIn('Admin', 'admin');
-  const first = await applied('First', '101', PNG);
+  const first = await applied('First', '101');
   const second = await applied('Second', '102');
   raw().prepare('UPDATE applications SET created_at = 1 WHERE id = ?').run(first.id);
   await hit(
@@ -307,145 +267,21 @@ test('pending Applications come oldest first, with the account as it is now and 
     role: null
   });
   assert.deepEqual(shown.applied, { popId: '101', firstName: 'Pat', lastName: 'Player' });
-  assert.deepEqual(
-    [shown.status, shown.explanation, shown.proofType, shown.hasProof],
-    ['pending', 'First runs a league', 'image/png', true]
-  );
+  assert.deepEqual([shown.status, shown.explanation], ['pending', 'First runs a league']);
   assert.equal(shown.decidedBy, null);
-  assert.equal(pending.json.applications[1].hasProof, false);
   assert.deepEqual((await list(admin, 'approved')).json.applications, []);
   assert.equal((await list(admin, 'withdrawn')).status, 400);
 });
 
-test('a proof goes to an Admin inert: its own type, never cached, never sniffed, sandboxed', async () => {
-  const admin = await signIn('Admin', 'admin');
-  const image = await applied('Image', '103', PNG);
-  const shown = await viewProof(admin, image.id);
-  assert.equal(shown.status, 200);
-  assert.deepEqual(shown.bytes, PNG);
-  assert.equal(shown.headers.get('content-type'), 'image/png');
-  assert.equal(shown.headers.get('content-disposition'), 'inline; filename="proof.png"');
-  assert.equal(shown.headers.get('x-content-type-options'), 'nosniff');
-  assert.equal(shown.headers.get('cache-control'), 'private, no-store');
-  assert.equal(shown.headers.get('content-security-policy'), "default-src 'none'; sandbox");
-  const document = await applied('Document', '104', PDF);
-  const pdf = await viewProof(admin, document.id);
-  assert.equal(pdf.headers.get('content-type'), 'application/pdf');
-  assert.equal(
-    pdf.headers.get('content-disposition'),
-    'attachment; filename="proof.pdf"',
-    'a PDF is not drawn on the site'
-  );
-  // Whatever else a slot came to hold is only ever bytes to download.
-  const key = raw().prepare('SELECT proof_key FROM applications WHERE id = ?').get(document.id)?.proof_key as string;
-  proofs.objects.set(key, { ...proofs.objects.get(key)!, bytes: new Uint8Array([60, 104]), contentType: 'text/html' });
-  const odd = await viewProof(admin, document.id);
-  assert.equal(odd.headers.get('content-type'), 'application/octet-stream');
-  assert.equal(odd.headers.get('content-disposition'), 'attachment; filename="proof.bin"');
-});
-
-test('there is no proof to see without one, for an unknown Application, or without the bucket', async () => {
-  const admin = await signIn('Admin', 'admin');
-  const wordsOnly = await applied('Words', '105');
-  assert.equal((await viewProof(admin, wordsOnly.id)).status, 404);
-  assert.equal((await viewProof(admin, 'nope')).status, 404);
-  const withFile = await applied('File', '106', PNG);
-  proofs.objects.clear();
-  assert.equal((await viewProof(admin, withFile.id)).status, 404, 'a file gone from the bucket');
-  delete env.PROOFS;
-  assert.equal((await viewProof(admin, withFile.id)).status, 503);
-});
-
-test('a proof uploaded while its Application is being sent leaves the one sent as it was', async () => {
-  const admin = await signIn('Admin', 'admin');
-  const cookie = await player('Applicant', '114');
-  await upload(cookie, PNG);
-  let id = '';
-  // A second file is still arriving when another tab sends the Application with the first.
-  const arriving = new ReadableStream<Uint8Array>(
-    {
-      async pull(controller) {
-        const sent = await hit(
-          applications.onRequestPost as Handler,
-          '/api/applications',
-          {},
-          {
-            method: 'POST',
-            cookie,
-            body: { store: storeApplication('77114'), explanation: '', proof: true }
-          }
-        );
-        id = sent.json.application.id as string;
-        controller.enqueue(PDF);
-        controller.close();
-      }
-    },
-    { highWaterMark: 0 }
-  );
-  const request = new Request(`${ORIGIN}/api/applications/proof`, {
-    method: 'PUT',
-    headers: { origin: ORIGIN, cookie },
-    body: arriving,
-    duplex: 'half'
-  } as RequestInit);
-  const late = await proof.onRequestPut({ request, env, params: {} } as never);
-  // It passed its checks before the send landed, and is refused when it lands after.
-  assert.deepEqual(
-    [late.status, ((await late.json()) as { error: string }).error],
-    [409, 'Your application is pending']
-  );
-  const [listed] = (await list(admin)).json.applications;
-  assert.deepEqual([listed.id, listed.proofType, listed.hasProof], [id, 'image/png', true]);
-  const shown = await viewProof(admin, id);
-  assert.deepEqual([shown.status, shown.bytes], [200, PNG]);
-  assert.equal(proofs.objects.size, 1, 'the refused file is not kept');
-});
-
-test('the delete after a decision takes that Application’s proof alone, however late it lands', async () => {
-  const admin = await signIn('Admin', 'admin');
-  const { cookie, id } = await applied('Applicant', '115', PNG);
-  const stalled = stalledDeletes(proofs);
-  env.PROOFS = stalled.bucket;
-  const kept: Promise<unknown>[] = [];
-  const rejected = await decide.onRequestPost({
-    request: new Request(`${ORIGIN}/api/admin/applications/${id}`, {
-      method: 'POST',
-      headers: { origin: ORIGIN, cookie: admin, 'content-type': 'application/json' },
-      body: JSON.stringify({ decision: 'reject' })
-    }),
-    env,
-    params: { id },
-    waitUntil: (work: Promise<unknown>) => kept.push(work)
-  } as never);
-  assert.equal(rejected.status, 200);
-  // The account applies again with another file before R2 has deleted the first.
-  await upload(cookie, PDF);
-  const again = await hit(
-    applications.onRequestPost as Handler,
-    '/api/applications',
-    {},
-    { method: 'POST', cookie, body: { store: storeApplication('77115'), explanation: '', proof: true } }
-  );
-  assert.equal(again.status, 201);
-  stalled.release();
-  await Promise.all(kept);
-  const shown = await viewProof(admin, again.json.application.id as string);
-  assert.deepEqual([shown.status, shown.bytes], [200, PDF]);
-  assert.equal(proofs.objects.size, 1, 'the first proof is gone');
-});
-
-test('approving makes the store with the applicant its Owner, records who decided, and deletes the proof', async () => {
+test('approving makes the store with the applicant its Owner, and records who decided', async () => {
   const admin = await signIn('Admin', 'admin');
   const adminId = await idOf(admin);
-  const { cookie, id } = await applied('Applicant', '107', PNG);
+  const { cookie, id } = await applied('Applicant', '107');
   assert.equal((await createEvent(cookie)).status, 403);
   const approved = await decision(admin, id, { decision: 'approve', note: '  Welcome aboard  ' });
   assert.equal(approved.status, 200);
   const { application } = approved.json;
-  assert.deepEqual(
-    [application.status, application.note, application.hasProof, application.proofType],
-    ['approved', 'Welcome aboard', false, 'image/png']
-  );
+  assert.deepEqual([application.status, application.note], ['approved', 'Welcome aboard']);
   assert.deepEqual(application.decidedBy, { id: adminId, name: 'admin' });
   assert.equal(application.account.role, null, 'a store is not a role');
   assert.equal(application.leagueTaken?.name, 'Combat Power Gaming', 'the league is the new store’s now');
@@ -457,7 +293,6 @@ test('approving makes the store with the applicant its Owner, records who decide
     ['America/Chicago', 2, 29.4928],
     'as the application said'
   );
-  assert.equal(proofs.objects.size, 0);
   assert.equal((await createEvent(cookie, { store: store!.id })).status, 201);
   const again = await decision(admin, id, { decision: 'reject' });
   assert.deepEqual([again.status, again.json.error], [409, 'Already decided']);
@@ -470,8 +305,8 @@ test('approving makes the store with the applicant its Owner, records who decide
 
 test('approving an organizer makes them a Manager, and a judge Staff, of a store with no Owner yet', async () => {
   const admin = await signIn('Admin', 'admin');
-  const organizer = await applied('Organizer', '110', undefined, { relationship: 'organizer' });
-  const judge = await applied('Judge', '111', undefined, { relationship: 'judge' });
+  const organizer = await applied('Organizer', '110', { relationship: 'organizer' });
+  const judge = await applied('Judge', '111', { relationship: 'judge' });
   assert.equal((await decision(admin, organizer.id, { decision: 'approve' })).status, 200);
   assert.equal((await decision(admin, judge.id, { decision: 'approve' })).status, 200);
   const [managed] = await storesOf(organizer.cookie);
@@ -482,15 +317,14 @@ test('approving an organizer makes them a Manager, and a judge Staff, of a store
   assert.equal((await createEvent(judge.cookie, { store: judged!.id })).status, 201, 'Staff run the store’s events');
 });
 
-test('rejecting makes no store, leaves the role as it was, and deletes the proof', async () => {
+test('rejecting makes no store, and leaves the role as it was', async () => {
   const admin = await signIn('Admin', 'admin');
-  const { cookie, id } = await applied('Applicant', '108', PDF);
+  const { cookie, id } = await applied('Applicant', '108');
   raw().prepare("UPDATE users SET role = 'revoked' WHERE handle = 'applicant'").run();
   const rejected = await decision(admin, id, { decision: 'reject' });
   assert.equal(rejected.status, 200);
   assert.deepEqual([rejected.json.application.status, rejected.json.application.note], ['rejected', null]);
   assert.equal(raw().prepare("SELECT role FROM users WHERE handle = 'applicant'").get()?.role, 'revoked');
-  assert.equal(proofs.objects.size, 0);
   assert.deepEqual(await storesOf(cookie), []);
   const plain = await applied('Plain', '109');
   await decision(admin, plain.id, { decision: 'reject', note: 'Send your certificate' });
@@ -513,7 +347,7 @@ test('a league that already has a store is shown as taken and cannot be approved
     {
       method: 'POST',
       cookie: rival,
-      body: { store: storeApplication('77110'), proof: false }
+      body: { store: storeApplication('77110') }
     }
   );
   assert.equal(sent.status, 201, 'a dispute reaches an Admin');
@@ -549,7 +383,7 @@ test('a decision names approve or reject, a note is short, and the Application m
 
 test('a decision that loses the race to another Admin’s changes nothing', async () => {
   const admin = await signIn('Admin', 'admin');
-  const { id } = await applied('Applicant', '113', PNG);
+  const { id } = await applied('Applicant', '113');
   const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
   // Another Admin rejects it between this request's sign-in read and its writes.
   env.TOURNAMENT_DB = {
@@ -594,7 +428,7 @@ test('the Events list holds every event, a store’s and an account’s own alik
   const admin = await signIn('Admin', 'admin');
   const community = await signIn('Busy', 'community');
   assert.equal((await createEvent(community, { day: 1 })).status, 201);
-  const { cookie: owner, id } = await applied('Owner', '200', PNG);
+  const { cookie: owner, id } = await applied('Owner', '200');
   assert.equal((await decision(admin, id, { decision: 'approve' })).status, 200);
   const store = raw().prepare('SELECT id, name FROM stores').get() as { id: string; name: string };
   assert.equal((await createEvent(owner, { store: store.id })).status, 201);

@@ -16,8 +16,8 @@ function pendingRemoval(db: D1Like, profile: Profile) {
     .bind(profile.provider, profile.subject, verifiedEmail(profile));
 }
 
-/** Retry private-file deletions without losing their keys when R2 is unavailable. */
-export async function purgeRejectedProofs(db: D1Like, bucket: ProofBucket | undefined): Promise<void> {
+/** Delete the proof files left from when Applications carried them, keeping each key until R2 confirms. */
+export async function purgeProofs(db: D1Like, bucket: ProofBucket | undefined): Promise<void> {
   if (!bucket) {
     return;
   }
@@ -27,7 +27,7 @@ export async function purgeRejectedProofs(db: D1Like, bucket: ProofBucket | unde
       await bucket.delete(key);
       await db.prepare('DELETE FROM proof_deletions WHERE key = ?').bind(key).run();
     } catch {
-      console.error('Rejected account proof deletion will be retried');
+      console.error('Proof file deletion will be retried');
     }
   }
 }
@@ -49,7 +49,7 @@ export async function rejectSignup(db: D1Like, profile: Profile, bucket: ProofBu
     .first<{ id: string }>();
   const statements = user ? legacyRemoval(db, user.id) : [];
   await db.batch([pendingRemoval(db, profile), ...statements]);
-  await purgeRejectedProofs(db, bucket);
+  await purgeProofs(db, bucket);
 }
 
 function legacyRemoval(db: D1Like, userId: string) {
@@ -62,15 +62,7 @@ function legacyRemoval(db: D1Like, userId: string) {
         "AND i.subject = json_extract(profile, '$.subject'))"
     )
     .bind(userId);
-  const queue = db
-    .prepare(
-      `INSERT OR IGNORE INTO proof_deletions (key) SELECT proof_key FROM applications WHERE user_id IN ${target} ` +
-        `AND proof_key IS NOT NULL UNION SELECT key FROM proof_uploads WHERE user_id IN ${target}`
-    )
-    .bind(userId, userId);
-  const applications = ['applications', 'proof_uploads'].map(table =>
-    db.prepare(`DELETE FROM ${table} WHERE user_id IN ${target}`).bind(userId)
-  );
+  const applications = db.prepare(`DELETE FROM applications WHERE user_id IN ${target}`).bind(userId);
   const decks = db.prepare(`DELETE FROM decklists WHERE account IN ${target}`).bind(userId);
   const scrub = db
     .prepare(
@@ -81,8 +73,7 @@ function legacyRemoval(db: D1Like, userId: string) {
     .bind(randomHandle(), userId);
   return [
     waits,
-    queue,
-    ...applications,
+    applications,
     decks,
     ...deletes.map(table => db.prepare(`DELETE FROM ${table} WHERE user_id IN ${target}`).bind(userId)),
     scrub

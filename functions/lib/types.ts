@@ -44,18 +44,10 @@ export interface PublishBucket {
   get?: (key: string) => Promise<{ text: () => Promise<string> } | null>;
 }
 
-/** What R2 holds of a proof: its bytes, and the type it was stored as. */
-export interface ProofObject {
-  body: ReadableStream<Uint8Array>;
-  httpMetadata?: { contentType?: string };
-}
-
 /**
- * The slice of the private bucket an organizer Application's proof is kept in.
- * Nothing public reads it; only an admin's request streams a proof back.
+ * The private bucket Store Applications' proof files were kept in, when they
+ * carried one. Nothing reads it; the files left in it are being deleted.
  */
 export interface ProofBucket {
-  get: (key: string) => Promise<ProofObject | null>;
-  put: (key: string, value: Uint8Array, options: { httpMetadata: { contentType: string } }) => Promise<unknown>;
   delete: (key: string) => Promise<unknown>;
 }

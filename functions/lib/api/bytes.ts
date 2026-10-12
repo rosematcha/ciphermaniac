@@ -1,15 +1,11 @@
 /**
- * Reading a request body as bytes under a hard ceiling, and telling what kind
- * of file an upload is from its first bytes.
+ * Reading a request body as bytes under a hard ceiling.
  *
  * The body is read as a stream, counting bytes and bailing the moment the
  * count passes the cap, so a chunked body with no honest Content-Length costs
  * at most one chunk past it. The bytes come back as one buffer: R2 refuses a
  * stream of unknown length, and a buffer's size is exact.
  */
-
-/** The kinds of file a proof may be. */
-export type ProofType = 'image/png' | 'image/jpeg' | 'image/webp' | 'application/pdf';
 
 /** A body's bytes, or why there are none. */
 export type BytesBody = { ok: true; bytes: Uint8Array } | { ok: false; reason: 'too-large' | 'unreadable' };
@@ -63,34 +59,4 @@ export async function readBoundedBytes(request: Request, maxBytes: number): Prom
   } catch {
     return { ok: false, reason: 'unreadable' };
   }
-}
-
-/** Whether `bytes` holds `signature` from `offset` on. */
-const startsWith = (bytes: Uint8Array, signature: number[], offset = 0) =>
-  bytes.length >= offset + signature.length && signature.every((byte, index) => bytes[offset + index] === byte);
-
-const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-const JPEG = [0xff, 0xd8, 0xff];
-/** "RIFF" at the start and "WEBP" at byte 8: RIFF alone is also WAV and AVI. */
-const RIFF = [0x52, 0x49, 0x46, 0x46];
-const WEBP = [0x57, 0x45, 0x42, 0x50];
-/** "%PDF-" */
-const PDF = [0x25, 0x50, 0x44, 0x46, 0x2d];
-
-/**
- * What kind of proof a file is, told by its magic number and never by the
- * name or type the browser sent; null for anything but a PNG, JPEG, WebP or
- * PDF. SVG and HTML are out: either can carry script.
- */
-export function sniffProofType(bytes: Uint8Array): ProofType | null {
-  if (startsWith(bytes, PNG)) {
-    return 'image/png';
-  }
-  if (startsWith(bytes, JPEG)) {
-    return 'image/jpeg';
-  }
-  if (startsWith(bytes, RIFF) && startsWith(bytes, WEBP, 8)) {
-    return 'image/webp';
-  }
-  return startsWith(bytes, PDF) ? 'application/pdf' : null;
 }

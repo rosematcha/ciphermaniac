@@ -1,7 +1,6 @@
 /**
  * Becoming an organizer, against mocked functions: the apply page's store
- * Application uploads its certificate on pick and sends it with a note or
- * without either, sends an incomplete profile to Settings, and shows where a
+ * Application sends with a note or without one, sends an incomplete profile to Settings, and shows where a
  * sent one stands, with Apply again after a rejection. The store form's own
  * fields are covered in stores.spec.ts.
  */
@@ -37,7 +36,7 @@ const STORE: MyStore = {
   role: 'manager'
 };
 
-const NONE: ApplicationState = { application: null, proof: null, eligible: { profile: true, email: true } };
+const NONE: ApplicationState = { application: null, eligible: { profile: true, email: true } };
 
 /** What the locator knows of the league applied for. */
 const LEAGUE = {
@@ -59,19 +58,12 @@ const application = (status: MyApplication['status'], extra: Partial<MyApplicati
   id: 'app-1',
   status,
   explanation: '',
-  proofType: null,
   createdAt: DAY,
   decidedAt: status === 'pending' ? null : DAY + 86_400_000,
   note: null,
   store: null,
   ...extra
 });
-
-/** A one-pixel PNG, as a picked file. */
-const PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-  'base64'
-);
 
 interface Asked {
   method: string;
@@ -82,8 +74,6 @@ interface Asked {
 interface Options {
   /** The Application the account's latest is once a pending one is withdrawn: the one decided before it, or none. */
   afterWithdraw?: MyApplication | null;
-  /** Holds an upload's answer until it settles. */
-  upload?: Promise<void>;
   /** The account as /api/me reads it the second time, after a decision the page has not seen. */
   reread?: typeof ME;
 }
@@ -118,29 +108,13 @@ async function mockApplicant(page: Page, start: ApplicationState, user: typeof M
     if (key === 'GET /api/applications/mine') {
       return route.fulfill({ json: state });
     }
-    if (key === 'PUT /api/applications/proof') {
-      await options.upload;
-      if (request.postDataBuffer()?.subarray(0, 4).toString() === 'text') {
-        return route.fulfill({ status: 400, json: { error: 'Use a PNG, JPEG, WebP or PDF' } });
-      }
-      const proof = { type: 'image/png', size: request.postDataBuffer()?.byteLength ?? 0 };
-      state = { ...state, proof };
-      return route.fulfill({ json: { proof } });
-    }
-    if (key === 'DELETE /api/applications/proof') {
-      state = { ...state, proof: null };
-      return route.fulfill({ status: 204 });
-    }
     if (method === 'GET' && pathname.startsWith('/api/leagues/')) {
       return route.fulfill({ json: { leagueId: '6238620', league: LEAGUE, taken: false } });
     }
     if (key === 'POST /api/applications') {
-      const body = request.postDataJSON() as { explanation: string; proof: boolean };
-      const sent = application('pending', {
-        explanation: body.explanation,
-        proofType: body.proof ? 'image/png' : null
-      });
-      state = { ...state, application: sent, proof: null };
+      const body = request.postDataJSON() as { explanation: string };
+      const sent = application('pending', { explanation: body.explanation });
+      state = { ...state, application: sent };
       return route.fulfill({ status: 201, json: { application: sent } });
     }
     if (key === 'DELETE /api/applications/mine') {
@@ -156,8 +130,8 @@ const posted = (asks: Asked[]) =>
   asks
     .filter(a => a.method === 'POST')
     .map(a => {
-      const { explanation, proof, store } = a.body as { explanation: string; proof: boolean; store: unknown };
-      return { explanation, proof, store: Boolean(store) };
+      const { explanation, store } = a.body as { explanation: string; store: unknown };
+      return { explanation, store: Boolean(store) };
     });
 
 /** Picks the Store row and looks its league up, then answers the questions the form needs answered. */
@@ -169,43 +143,30 @@ async function openStoreForm(page: Page) {
   await page.getByRole('checkbox', { name: /certified/ }).check();
 }
 
-test('the store application uploads the certificate on pick, then sends it with the note @mobile', async ({ page }) => {
+test('the store application sends with the note, and asks for no file @mobile', async ({ page }) => {
   const asks = await mockApplicant(page, NONE);
   await page.goto('/apply');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Run events');
   await openStoreForm(page);
   const send = page.getByRole('button', { name: 'Send application' });
-  await page.getByLabel('Certificate').focus();
-  await page.getByLabel('Certificate').setInputFiles({ name: 'certificate.png', mimeType: 'image/png', buffer: PNG });
-  await expect(page.locator('.tm-apply-file')).toContainText('certificate.png');
-  await expect(page.locator('.tm-apply-file')).toContainText('1 KB');
-  await expect(send).toBeEnabled();
-  // The picker it replaced held the focus, so the focus goes on to Remove, then back to the picker.
-  await expect(page.getByRole('button', { name: 'Remove' })).toBeFocused();
-  await page.getByRole('button', { name: 'Remove' }).click();
-  await expect(page.locator('.tm-apply-file')).toHaveCount(0);
-  await expect(page.getByLabel('Certificate')).toBeFocused();
-  await page.getByLabel('Certificate').setInputFiles({ name: 'certificate.png', mimeType: 'image/png', buffer: PNG });
-  await expect(page.getByRole('button', { name: 'Remove' })).toBeVisible();
+  await expect(page.locator('input[type=file]')).toHaveCount(0);
   await page.getByLabel('Note').fill('I run the Thursday league.');
   await expect(page.locator('.tm-apply-count')).toHaveText('26 / 2000');
   await send.click();
   await expect(page.locator('.tm-applicant')).toContainText('Application pending');
   await expect(page.getByRole('button', { name: 'Withdraw' })).toBeVisible();
   await expect(send).toHaveCount(0);
-  expect(asks.filter(a => a.path === '/api/applications/proof').map(a => a.method)).toEqual(['PUT', 'DELETE', 'PUT']);
-  expect(posted(asks)).toEqual([{ explanation: 'I run the Thursday league.', proof: true, store: true }]);
+  expect(posted(asks)).toEqual([{ explanation: 'I run the Thursday league.', store: true }]);
 });
 
-test('a store application sends with neither certificate nor note', async ({ page }) => {
+test('a store application sends without a note', async ({ page }) => {
   const asks = await mockApplicant(page, NONE);
   await page.goto('/apply');
   await openStoreForm(page);
   await page.getByLabel('Note').fill('   ');
   await page.getByRole('button', { name: 'Send application' }).click();
   await expect(page.locator('.tm-applicant')).toContainText('Application pending');
-  expect(posted(asks)).toEqual([{ explanation: '', proof: false, store: true }]);
-  expect(asks.some(a => a.path === '/api/applications/proof')).toBe(false);
+  expect(posted(asks)).toEqual([{ explanation: '', store: true }]);
 });
 
 test('an incomplete profile is sent to Settings, with no form', async ({ page }) => {
@@ -250,7 +211,7 @@ test('after a rejection, the note shows and Apply again opens the form', async (
   await page.getByLabel('Note').fill('Certificate is on its way.');
   await page.getByRole('button', { name: 'Send application' }).click();
   await expect(status).toContainText('Application pending');
-  expect(posted(asks)).toEqual([{ explanation: 'Certificate is on its way.', proof: false, store: true }]);
+  expect(posted(asks)).toEqual([{ explanation: 'Certificate is on its way.', store: true }]);
 });
 
 test('an organizer whose access was removed sees so, and applies again from there', async ({ page }) => {
@@ -279,54 +240,6 @@ test('signed out, the apply page offers sign-in that comes back to it', async ({
   await mockApplicant(page, NONE, null);
   await page.goto('/apply');
   await expect(page.getByRole('link', { name: 'Sign in with Google' })).toHaveAttribute('href', /next=%2Fapply/);
-});
-
-test('a refused upload says why, and a file over 8 MB is refused before it is sent', async ({ page }) => {
-  const asks = await mockApplicant(page, NONE);
-  await page.goto('/apply');
-  await openStoreForm(page);
-  await page
-    .getByLabel('Certificate')
-    .setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('text') });
-  await expect(page.getByRole('alert')).toHaveText('Use a PNG, JPEG, WebP or PDF');
-  const big = Buffer.alloc(8 * 1024 * 1024 + 1);
-  await page.getByLabel('Certificate').setInputFiles({ name: 'scan.pdf', mimeType: 'application/pdf', buffer: big });
-  await expect(page.getByRole('alert')).toHaveText('Up to 8 MB');
-  expect(asks.filter(a => a.method === 'PUT')).toHaveLength(1);
-});
-
-test('a refused upload after a removed one gives the focus back to the picker', async ({ page }) => {
-  await mockApplicant(page, NONE);
-  await page.goto('/apply');
-  await openStoreForm(page);
-  const picker = page.getByLabel('Certificate');
-  await picker.setInputFiles({ name: 'certificate.png', mimeType: 'image/png', buffer: PNG });
-  await page.getByRole('button', { name: 'Remove' }).click();
-  await expect(picker).toBeFocused();
-  await picker.setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('text') });
-  await expect(page.getByRole('alert')).toHaveText('Use a PNG, JPEG, WebP or PDF');
-  await expect(picker).toBeFocused();
-});
-
-test('Send application waits for an upload in flight', async ({ page }) => {
-  let land = () => undefined as void;
-  const upload = new Promise<void>(resolve => {
-    land = resolve;
-  });
-  await mockApplicant(page, NONE, ME, { upload });
-  await page.goto('/apply');
-  await openStoreForm(page);
-  const send = page.getByRole('button', { name: 'Send application' });
-  await page.getByLabel('Note').fill('I run a league.');
-  await expect(send).toBeEnabled();
-  await page.getByLabel('Certificate').setInputFiles({ name: 'certificate.png', mimeType: 'image/png', buffer: PNG });
-  await expect(page.locator('.tm-apply-file[role=status]')).toHaveText('Uploading certificate.png');
-  await expect(send).toBeDisabled();
-  land();
-  await expect(page.getByRole('button', { name: 'Remove' })).toBeVisible();
-  await expect(send).toBeEnabled();
-  // The note being written keeps the focus when the upload lands.
-  await expect(page.getByLabel('Note')).toBeFocused();
 });
 
 test('an account approved since the page read it is read again, and starts events', async ({ page }) => {

@@ -9,7 +9,7 @@ export interface TournamentEnv extends AuthEnv {
   REPORTS?: PublishBucket;
   /** What the scheduled sweep that ends idle events sends as its bearer token (functions/api/tournaments/idle.ts). */
   IDLE_SWEEP_TOKEN?: string;
-  /** The private bucket organizer Applications' proofs are kept in; never served but to an admin. */
+  /** The private bucket Applications' proof files were kept in; only deleted from now (functions/lib/auth/rejection.ts). */
   PROOFS?: ProofBucket;
 }
 

@@ -1,11 +1,9 @@
 /**
  * POST /api/applications — sends the signed-in account's Application for a
- * store: { store, explanation?, proof? }, where `store` is what the
- * applicant says of it (shared/accounts/stores.ts StoreApplication: its
- * league, details, time zone, how they run it, their confirmation that they
- * are a certified organizer or work with one, and league nights), and
- * `proof` says to send the certificate the account has uploaded (PUT
- * /api/applications/proof uploads it); neither proof nor note is needed. The
+ * store: { store, explanation? }, where `store` is what the applicant says
+ * of it (shared/accounts/stores.ts StoreApplication: its league, details,
+ * time zone, how they run it, their confirmation that they are a certified
+ * organizer or work with one, and league nights); the note is optional. The
  * account's POP ID and name go with it as they stand now. Answers 201 {
  * application }. One Application is pending at a time; a rejected account
  * may send another at once.
@@ -19,8 +17,6 @@ import {
   APPLICATION_COLUMNS,
   type ApplicationRow,
   applyRefusal,
-  dropProof,
-  heldUpload,
   myApplication,
   openApplicant
 } from '../../lib/accounts/applications.js';
@@ -42,7 +38,6 @@ export function _resetRateLimitStore(): void {
 interface Asked {
   store: StoreApplication;
   explanation: string;
-  proof: boolean;
 }
 
 /** What the account asks to send, or why it cannot be sent. */
@@ -52,54 +47,41 @@ function readAsked(body: Record<string, unknown> | null): Asked | string {
     return `Up to ${EXPLANATION_MAX} characters`;
   }
   const store = readStoreApplication(body?.store);
-  return typeof store === 'string' ? store : { store, explanation, proof: body?.proof === true };
+  return typeof store === 'string' ? store : { store, explanation };
 }
 
 /**
- * Stores the Application, answering it as stored and the key of an upload
- * it left out; null when the account no longer stands as it was read (its
- * role or profile changed since, or the upload asked for is gone), or
+ * Stores the Application, answering it as stored; null when the account no
+ * longer stands as it was read (its role or profile changed since), or
  * another Application is pending, which the unique index on pending ones
  * decides. The POP ID and name are the account row's as the Application
- * lands, guarded on the values the eligibility check read, and its proof is
- * the upload the account holds then, which becomes the Application's.
+ * lands, guarded on the values the eligibility check read.
  */
-async function send(
-  { db, user }: Applicant,
-  asked: Asked
-): Promise<{ application: MyApplication; leftOut: string | null } | null> {
+async function send({ db, user }: Applicant, asked: Asked): Promise<MyApplication | null> {
   const id = randomToken(12);
-  const [held, , , stored] = await db.batch([
-    heldUpload(db, user.id),
+  const [, stored] = await db.batch([
     db
       .prepare(
         'INSERT OR IGNORE INTO applications (id, user_id, status, pop_id, first_name, last_name, explanation, ' +
-          "proof_key, proof_type, proof_size, created_at, store) SELECT ?1, u.id, 'pending', u.pop_id, u.first_name, " +
-          'u.last_name, ?3, p.key, p.type, p.size, ?4, ?10 FROM users u LEFT JOIN proof_uploads p ON p.user_id = u.id ' +
-          'AND ?5 WHERE u.id = ?2 AND u.pop_id IS ?6 ' +
-          'AND u.first_name IS ?7 AND u.last_name IS ?8 AND u.birth_date IS ?9 AND (?5 = 0 OR p.key IS NOT NULL)'
+          "created_at, store) SELECT ?1, u.id, 'pending', u.pop_id, u.first_name, u.last_name, ?3, ?4, ?9 " +
+          'FROM users u WHERE u.id = ?2 AND u.pop_id IS ?5 AND u.first_name IS ?6 AND u.last_name IS ?7 ' +
+          'AND u.birth_date IS ?8'
       )
       .bind(
         id,
         user.id,
         asked.explanation,
         Date.now(),
-        asked.proof ? 1 : 0,
         user.popId,
         user.firstName,
         user.lastName,
         user.birthDate,
         JSON.stringify(asked.store)
       ),
-    // Sent, the upload is the Application's, or left out of it.
-    db
-      .prepare('DELETE FROM proof_uploads WHERE EXISTS (SELECT 1 FROM applications WHERE id = ?1) AND user_id = ?2')
-      .bind(id, user.id),
     db.prepare(`SELECT ${APPLICATION_COLUMNS} FROM applications a WHERE a.id = ?`).bind(id)
   ]);
   const row = firstRow<ApplicationRow>(stored);
-  const heldKey = firstRow<{ key: string }>(held)?.key ?? null;
-  return row && { application: myApplication(row), leftOut: asked.proof ? null : heldKey };
+  return row && myApplication(row);
 }
 
 /**
@@ -110,18 +92,13 @@ async function send(
 const MAX_TRIES = 3;
 
 /** The answer to the send, or null when it was lost to a change since `applicant` was read. */
-async function attempt(context: Context, applicant: Applicant, asked: Asked): Promise<Response | null> {
+async function attempt(applicant: Applicant, asked: Asked): Promise<Response | null> {
   const refusal = applyRefusal(applicant);
   if (refusal) {
     return refusal;
   }
-  if (asked.proof && !applicant.upload) {
-    return jsonError('Upload the proof first', 400);
-  }
-  const sent = await send(applicant, asked);
-  // Sent without proof: a file uploaded and left out goes.
-  await dropProof(context, sent?.leftOut);
-  return sent && privateJson({ application: sent.application }, 201);
+  const application = await send(applicant, asked);
+  return application && privateJson({ application }, 201);
 }
 
 export async function onRequestPost(context: Context): Promise<Response> {
@@ -141,7 +118,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     return jsonError(asked, 400);
   }
   for (let tries = 1; ; tries += 1) {
-    const answer = await attempt(context, applicant, asked);
+    const answer = await attempt(applicant, asked);
     if (answer || tries === MAX_TRIES) {
       return answer ?? jsonError('Busy; try again', 409);
     }
