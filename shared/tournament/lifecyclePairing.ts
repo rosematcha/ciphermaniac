@@ -27,13 +27,27 @@ import {
 } from './types.js';
 
 export function stamp(t: Tournament, pod: Pod, ctx: LifecycleContext, taken: ReadonlySet<number>) {
+  return tableStamp(t, pod, ctx, { taken, repairing: false });
+}
+
+/** A repair numbers the round it repairs, so its own tables are not another round's (statement 21b). */
+export function repairStamp(t: Tournament, pod: Pod, ctx: LifecycleContext, taken: ReadonlySet<number>) {
+  return tableStamp(t, pod, ctx, { taken, repairing: true });
+}
+
+function tableStamp(
+  t: Tournament,
+  pod: Pod,
+  ctx: LifecycleContext,
+  { taken, repairing }: { taken: ReadonlySet<number>; repairing: boolean }
+) {
   return {
     firstTable: pod.rounds.length ? pairingTableStart(t, pod) : pod.startingTable,
     timestamp: ctx.localTime,
     fixed: new Map([...fixedTables(t)].filter(([id]) => pod.playerIds.includes(id))),
     taken: new Set([
       ...taken,
-      ...(pod.playerIds.some(id => fixedTables(t).has(id)) ? [] : overflowTables(t, pod, ctx)),
+      ...(pod.playerIds.some(id => fixedTables(t).has(id)) ? [] : overflowTables(t, pod, ctx, repairing)),
       ...(ctx.recorded?.heldRepairTables ?? [])
     ]),
     blocked: pod.blockedRanges,
@@ -42,13 +56,20 @@ export function stamp(t: Tournament, pod: Pod, ctx: LifecycleContext, taken: Rea
   };
 }
 
-function overflowTables(t: Tournament, pod: Pod, ctx: Pick<LifecycleContext, 'terminalPairing'>): number[] {
+function overflowTables(
+  t: Tournament,
+  pod: Pod,
+  ctx: Pick<LifecycleContext, 'terminalPairing'>,
+  repairing = false
+): number[] {
   if (t.pods.length < 2) {
     return [];
   }
   const overflow = t.settings?.overflowTableStart ?? 0;
+  // Statement 21b: a terminal attempt also skips its own previous round, which a repair is still numbering.
+  const own = ctx.terminalPairing && !repairing;
   return t.pods
-    .filter(p => p !== pod || ctx.terminalPairing)
+    .filter(p => p !== pod || own)
     .flatMap(
       p =>
         latestRound(p)
@@ -153,7 +174,7 @@ function flightMatches(t: Tournament, pod: Pod, batch: FlightBatch, ctx: Lifecyc
   );
   const pairings = recorded ? seats : sortSwissPairings(seats, entrants);
   const tables = new Set(kept.filter(m => m.p2 !== null).map(m => m.table));
-  const matches = seatPairings(pairings, stamp(t, pod, ctx, tables));
+  const matches = seatPairings(pairings, tableStamp(t, pod, ctx, { taken: tables, repairing: batch.repair }));
 
   return [...singles(assigned, 'assigned-bye', ctx.localTime), ...singles(forced, 'loss', ctx.localTime), ...matches];
 }
@@ -187,7 +208,7 @@ export function validateSwissRound(t: Tournament, pod: Pod, repair: boolean, ter
   }
 }
 
-const sameSeats = (a: Match, b: Match) => a.p1 === b.p1 && a.p2 === b.p2;
+const sameSeats = (a: Pick<Match, 'p1' | 'p2'>, b: Pick<Match, 'p1' | 'p2'>) => a.p1 === b.p1 && a.p2 === b.p2;
 
 /** V19-5: force the abandoned search's saved choices while computing stage and unsaved waiting seats. */
 function partialSwissRepair(t: Tournament, pod: Pod, ctx: LifecycleContext): Pod | undefined {
@@ -267,11 +288,19 @@ export function finishedAtRepair(
  * V18-3: creating a one-seat match returns a round at 6 to 8 to 4 while the round holds nothing or a pending
  * two-seat match. Only a terminal attempt reaches such a round.
  */
-export function createdStage(round: Round, moment: { list: readonly Match[]; fresh: readonly Match[] }): Round {
+export function createdStage(
+  round: Round,
+  moment: { list: readonly Match[]; fresh: readonly Match[]; apart?: readonly Match[] }
+): Round {
   const bye = moment.fresh.findIndex(m => m.p2 === null);
-  const list = [...moment.list, ...moment.fresh.slice(0, Math.max(bye, 0))];
+  const list = [...moment.list, ...(moment.apart ?? []), ...moment.fresh.slice(0, Math.max(bye, 0))];
   const open = !list.length || list.some(m => m.p2 !== null && m.outcome === 'pending');
   return (round.stage ?? 2) >= 5 && bye >= 0 && open ? { ...round, stage: 4 } : round;
+}
+
+/** V18-3: with no surviving match, the recorded stage shows that the pool's pairing took the matches apart. */
+function apartMatches(round: Round, kept: readonly Match[], ctx: LifecycleContext): Match[] {
+  return ctx.recorded?.takenApart && !kept.some(m => m.p2 !== null) ? round.matches.filter(m => m.p2 !== null) : [];
 }
 
 /** The ordinary repair saves 2 for a round below 5; a terminal attempt keeps the stage. */
@@ -328,7 +357,8 @@ function singlePassRound(t: Tournament, pod: Pod, ctx: LifecycleContext, repair:
     const round = newRound(t, pod, { matches: freshTables(t, pod, ordered, ctx), kind: 'swiss' }, ctx);
     return { ...pod, rounds: [...pod.rounds, round] };
   }
-  const moment = finishedAtRepair(t, pod, createdStage(last!, { list: kept, fresh: matches }), kept);
+  const apart = apartMatches(last!, kept, ctx);
+  const moment = finishedAtRepair(t, pod, createdStage(last!, { list: kept, fresh: matches, apart }), kept);
   const all =
     moment.finished && t.settings?.autoTables
       ? finishedTables(t, pod, ordered, { fresh: matches, ctx })
@@ -499,6 +529,51 @@ interface FlightRepair {
   stage: number;
 }
 
+/** V23-3: a sole waiting flight also pairs the recorded dissolved matches of other flights. */
+function repairTurnIds(
+  pod: Pod,
+  batch: FlightBatch,
+  survivors: readonly Match[],
+  pool: ReadonlySet<string>
+): readonly string[] {
+  const last = latestRound(pod)!;
+  const firstBye = last.matches.find(m => m.outcome === 'bye');
+  const seated = new Set(last.matches.filter(m => m !== firstBye).flatMap(m => [m.p1, m.p2]));
+  const waiting = pod.flights!.filter(f => f.playerIds.some(id => pool.has(id) && !seated.has(id)));
+  if (waiting.length !== 1 || !waiting[0]!.playerIds.some(id => batch.ids.includes(id))) {
+    return batch.ids;
+  }
+  const dissolved = batch.kept.filter(m => m.p2 !== null && !survivors.some(s => sameSeats(s, m)));
+  return [...new Set([...batch.ids, ...dissolved.flatMap(m => (m.p2 === null ? [m.p1] : [m.p1, m.p2]))])];
+}
+
+/** V23-3: an exhausted repair search releases existing matches from the round's end. */
+function repairDraw(t: Tournament, pod: Pod, batch: FlightBatch, ctx: LifecycleContext) {
+  let current = batch;
+  const held: number[] = [];
+  for (;;) {
+    const context = {
+      ...ctx,
+      recorded: { ...ctx.recorded, heldRepairTables: [...(ctx.recorded?.heldRepairTables ?? []), ...held] }
+    };
+    try {
+      return { ...current, ctx: context, fresh: flightMatches(t, pod, current, context) };
+    } catch (error) {
+      const match = [...current.kept].reverse().find(m => m.p2 !== null);
+      if (!(error instanceof FlightFailure) || ctx.recorded?.pairings || !match) {
+        throw error;
+      }
+      held.push(match.table);
+      const bye = current.kept.find(m => m.outcome === 'bye');
+      current = {
+        ...current,
+        ids: [...new Set([...current.ids, match.p1, match.p2!, ...(bye ? [bye.p1] : [])])],
+        kept: current.kept.filter(m => m !== match && m !== bye)
+      };
+    }
+  }
+}
+
 function repairFlight(
   t: Tournament,
   pod: Pod,
@@ -514,16 +589,21 @@ function repairFlight(
   if (!unpaired) {
     return { matches: batch.kept, stage: last.stage ?? 2 };
   }
-  const kept = batch.kept.filter(m => !batch.ids.includes(m.p1) || survivors.some(s => s.p1 === m.p1 && s.p2 === m.p2));
-  const context = flightContext(pod, ctx, flight);
-  const fresh = flightMatches(t, pod, { ...batch, kept }, context);
-  const own = kept.filter(m => batch.ids.includes(m.p1));
-  const other = kept.filter(m => !batch.ids.includes(m.p1));
-  const all = flightOrder(t, pod, [...own, ...fresh], { ctx: context, ids: batch.ids });
+  const turnIds = repairTurnIds(pod, batch, survivors, pool);
+  const retained = batch.kept.filter(m => !turnIds.includes(m.p1) || survivors.some(s => sameSeats(s, m)));
+  const {
+    ids,
+    kept,
+    fresh,
+    ctx: context
+  } = repairDraw(t, pod, { ...batch, ids: turnIds, kept: retained }, flightContext(pod, ctx, flight));
+  const own = kept.filter(m => ids.includes(m.p1));
+  const other = kept.filter(m => !ids.includes(m.p1));
+  const all = flightOrder(t, pod, [...own, ...fresh], { ctx: context, ids });
   const moment = finishedAtRepair(t, pod, createdStage(last, { list: kept, fresh }), kept);
   const stage = repairedStage(moment.stage, ctx);
   if (moment.finished && t.settings?.autoTables) {
-    const whole = orderedMatches(sortedRepair(t, pod, [...other, ...all], ctx), pod, ctx);
+    const whole = presentOrder(t, pod, [...other, ...all], ctx);
     return { matches: finishedTables(t, pod, whole, { fresh, ctx }), stage };
   }
   const at = { ...last, stage: moment.stage, matches: kept };
@@ -533,14 +613,26 @@ function repairFlight(
     m => m.p2 !== null && (m.table < range.firstTable || m.table > (range.ceiling ?? Infinity))
   );
   const inside = other.filter(m => !outside.includes(m));
-  const numbered = numberedMatches(t, pod, [...all, ...outside], {
+  // The pass numbers its matches in the round's final order, other flights' included (statement 20).
+  const passing = presentOrder(t, pod, [...all, ...outside], ctx);
+  const numbered = numberedMatches(t, pod, passing, {
     kept: [...own, ...outside],
     ctx: context,
     other: inside,
     moment: at
   });
-  const moved = (m: Match) => (outside.includes(m) ? numbered[all.length + outside.indexOf(m)]! : m);
-  return { matches: [...other.map(moved), ...numbered.slice(0, all.length)], stage };
+  const renumbered = (m: Match) => numbered[passing.indexOf(m)] ?? m;
+  return { matches: [...other.map(renumbered), ...all.map(renumbered)], stage };
+}
+
+/**
+ * The final order of the matches a flight's pass sees. A later flight's match that its own turn will dissolve is
+ * not in the recorded order, so it keeps its computed place and the recorded matches fill the others in order.
+ */
+function presentOrder(t: Tournament, pod: Pod, matches: Match[], ctx: LifecycleContext): Match[] {
+  const recorded = (ctx.recorded?.pairings?.[pod.category] ?? []).flatMap(p => matches.filter(m => sameSeats(m, p)));
+  let next = 0;
+  return sortedRepair(t, pod, matches, ctx).map(m => (recorded.includes(m) ? recorded[next++]! : m));
 }
 
 /** V17-5: retained matches outside the regular range are numbered with the new matches in final order. */
@@ -556,7 +648,7 @@ function numberedMatches(
   const fixed = kept.filter(m => unchanged || (m.table >= range.firstTable && m.table <= (range.ceiling ?? Infinity)));
   const fresh = ordered.filter(m => !fixed.includes(m));
   const taken = new Set([...fixed, ...(options.other ?? [])].filter(m => m.p2 !== null).map(m => m.table));
-  const numbered = seatPairings(fresh, { ...stamp(t, pod, ctx, taken), ...range });
+  const numbered = seatPairings(fresh, { ...repairStamp(t, pod, ctx, taken), ...range });
   return ordered.map(m => (fixed.includes(m) ? m : { ...m, table: numbered[fresh.indexOf(m)]!.table }));
 }
 

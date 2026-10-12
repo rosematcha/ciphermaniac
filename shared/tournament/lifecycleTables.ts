@@ -80,7 +80,7 @@ function neighbourTables(t: Tournament, pod: Pod, category: Pod['category'] | un
     .flatMap(
       other =>
         latestRound(other)
-          ?.matches.filter(m => m.p2 !== null && m.table >= (t.settings?.overflowTableStart ?? 0))
+          ?.matches.filter(m => m.p2 !== null && m.table > 0 && m.table >= (t.settings?.overflowTableStart ?? 0))
           .map(m => m.table) ?? []
     );
 }
@@ -106,7 +106,7 @@ export function packTables(t: Tournament, category?: Pod['category'], held?: Cat
     const ceiling = tableCeiling(t, pod) ?? Infinity;
     const own = last.matches.filter(m => m.p2 !== null && m.table >= startingTable && m.table <= ceiling);
     const held = new Set([...own.map(m => m.table), ...neighbourTables(t, pod, category)]);
-    const moved = last.matches.filter(m => m.p2 !== null && !own.includes(m));
+    const moved = last.matches.filter(m => m.p2 !== null && m.table > 0 && !own.includes(m));
     const seated = seatPairings(moved, {
       firstTable: startingTable,
       ceiling,
@@ -124,6 +124,15 @@ export function packTables(t: Tournament, category?: Pod['category'], held?: Cat
     return { ...pod, startingTable, rounds: pod.rounds.map(r => (r === last ? { ...r, matches } : r)) };
   });
   return { ...t, pods };
+}
+
+/** V23-4: an ordinary repair packs only rounds that have not started. */
+export function packRepairTables(t: Tournament, category?: Pod['category']): Tournament {
+  const packed = packTables(t, category);
+  return {
+    ...packed,
+    pods: packed.pods.map((pod, i) => ((latestRound(t.pods[i]!)?.stage ?? 2) >= 4 ? t.pods[i]! : pod))
+  };
 }
 
 /** Release finished pods' table ranges before allocating the next round. */

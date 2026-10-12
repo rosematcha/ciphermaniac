@@ -56,6 +56,8 @@ export interface RecordedChoices {
   freshRandomByes?: readonly string[];
   /** V17-8: bounded Swiss search can exhaust itself despite an available pairing. */
   noRound?: boolean;
+  /** V18-3: a repair's pool pairing, not its first step, took apart the matches of a round left without survivors. */
+  takenApart?: boolean;
   eliminationTieOrder?: Tournament['eliminationTieOrder'];
   headToHeadOrder?: Tournament['headToHeadOrder'];
   /** Tables held by the random pairing search after its initial repair dissolution. */

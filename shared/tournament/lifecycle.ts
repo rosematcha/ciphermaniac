@@ -6,7 +6,7 @@ import { repairElimination } from './lifecycleEliminationRepair.js';
 import { pairFreshSwiss, RetriedRound, UnpairedRound } from './lifecycleAttempts.js';
 import { pairSwissPods } from './lifecyclePairing.js';
 import { dropEntrant, lateEntrant, reenterEntrant } from './lifecyclePlayers.js';
-import { packTables, prepareTables } from './lifecycleTables.js';
+import { packRepairTables, packTables, prepareTables } from './lifecycleTables.js';
 import type { LifecycleContext, LifecycleOperation, LifecycleResult } from './lifecycleTypes.js';
 import { reopenResult } from './lifecycleReopen.js';
 import { finalPodRound, recordResults, selectedPods, workflow } from './lifecycleWorkflow.js';
@@ -25,7 +25,7 @@ function pair(t: Tournament, op: Extract<LifecycleOperation, { type: 'pair' }>, 
   if (op.terminal) {
     return terminalPair(t, op, context);
   }
-  const prepared = prepareTables(op.repair ? packTables(t, op.pod) : t, op.pod);
+  const prepared = prepareTables(op.repair ? packRepairTables(t, op.pod) : t, op.pod);
   const paired = terminalPair(prepared, op, context);
   return op.repair ? paired : packTables(paired, op.pod);
 }

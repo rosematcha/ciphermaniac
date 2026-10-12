@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { prepareTables } from '../../shared/tournament/lifecycleTables.ts';
+import { packRepairTables, packTables, prepareTables } from '../../shared/tournament/lifecycleTables.ts';
 import { latestRound, seatPairings } from '../../shared/tournament/rounds.ts';
 import type { Pod, Tournament } from '../../shared/tournament/types.ts';
 import { completed, context, generatedEvent, operated } from './conformance-generated.ts';
@@ -126,4 +126,39 @@ test('V16-11: a reopened decided playoff retains its table beside a restored pen
   );
   assert.equal(latestRound(juniorPod(packed))!.matches[0]!.outcome, 'pending');
   assert.equal(latestRound(juniorPod(packed))!.matches[1]!.outcome, 'p1');
+});
+
+test('V23-2: packing leaves table zero untouched while moving a positive table outside the range', () => {
+  const started = operated(generatedEvent(18, context(23), { mixed: true }), { type: 'start' }, context(23));
+  const pods = started.pods.map(pod => ({
+    ...pod,
+    rounds: pod.rounds.map(round => ({
+      ...round,
+      matches: round.matches.map((match, i) => ({
+        ...match,
+        table: pod.category === 'junior' ? [0, 1, 9][i]! : pod.category === 'senior' ? i + 2 : 0
+      }))
+    }))
+  }));
+  const t = { ...started, settings: { ...started.settings!, overflowTableStart: 7 }, pods };
+  const packed = packTables(t, 'junior');
+  assert.deepEqual(
+    latestRound(juniorPod(packed))!.matches.map(m => m.table),
+    [0, 1, 2]
+  );
+  assert.deepEqual(packed.pods.slice(1), pods.slice(1));
+});
+
+test('V23-4: packing before an ordinary repair leaves a started round’s tables intact', () => {
+  const started = operated(generatedEvent(6, context(24)), { type: 'start' }, context(24));
+  const pods = started.pods.map(pod => ({
+    ...pod,
+    rounds: pod.rounds.map(round => ({
+      ...round,
+      stage: 4,
+      matches: round.matches.map(match => ({ ...match, table: match.table + 10 }))
+    }))
+  }));
+  const t = { ...started, pods };
+  assert.deepEqual(packRepairTables(t), t);
 });
