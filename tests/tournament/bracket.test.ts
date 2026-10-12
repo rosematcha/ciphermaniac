@@ -49,14 +49,14 @@ function reportAll(t: Tournament): Tournament {
   );
 }
 
-/** Sixteen players through four Swiss rounds, then a top cut of `size`. */
+/** Sixteen players through five Swiss rounds, then a top cut of `size`. */
 function cutOf(size: number, playoff3rd4th = false): Tournament {
   const adds: Command[] = Array.from({ length: 16 }, (_, i) => ({
     type: 'addPlayer',
     player: { firstName: 'Player', lastName: String(i + 1), id: String(100 + i), birthDate: '01/01/1990' }
   }));
   let t = run(emptyTournament({ name: 'Bracket Cup' }), ...adds);
-  for (let i = 0; i < 4; i += 1) {
+  for (let i = 0; i < 5; i += 1) {
     t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   }
   return run(t, { type: 'startTopCut', pod: 'masters', size, playoff3rd4th });
@@ -144,7 +144,7 @@ test('the match for third sits apart from the bracket', () => {
     bracket?.rounds.map(r => r.matches.length),
     [2, 1]
   );
-  assert.deepEqual([bracket?.third?.top.seed, bracket?.third?.bottom.seed], [4, 2]);
+  assert.deepEqual([bracket?.third?.top.seed, bracket?.third?.bottom.seed], [2, 4]);
 });
 
 test('a pod with no top cut has no bracket', () => {

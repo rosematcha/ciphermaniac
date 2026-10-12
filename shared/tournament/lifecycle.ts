@@ -36,7 +36,8 @@ function terminalPair(
   ctx: LifecycleContext
 ): Tournament {
   const pods = selectedPods(t, op.pod);
-  if (t.settings?.type === 1 || pods.some(p => latestRound(p)?.kind === 'elimination')) {
+  // A pod in its cut stays there after a Swiss round V16-2 appends during it.
+  if (t.settings?.type === 1 || pods.some(p => p.rounds.some(r => r.kind === 'elimination'))) {
     return eliminationPair(t, op, ctx);
   }
   const atCut =
@@ -68,6 +69,10 @@ function startedCut(
   category: Extract<LifecycleOperation, { type: 'topCut' }>['pod'],
   ctx: LifecycleContext
 ): Tournament {
+  // V22-2: starting the top cut is a pairing request, so a pod already in its cut pairs its next cut round.
+  if (selectedPods(t, category).every(pod => pod.rounds.some(round => round.kind === 'elimination'))) {
+    return pair(t, { type: 'pair', pod: category }, ctx);
+  }
   const cut = initializeCuts(prepareTables(t, category), category, ctx);
   return cut.pods.some(p => p.rounds.length > t.pods.find(old => old.category === p.category)!.rounds.length)
     ? packTables(cut, category)
