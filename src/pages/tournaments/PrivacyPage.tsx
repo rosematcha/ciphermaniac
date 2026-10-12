@@ -17,7 +17,7 @@ export function PrivacyPage() {
   return (
     <div class='tm-page tm-narrow'>
       <TournamentHero title='Privacy Policy' meta='Last updated October 12, 2026' />
-      <div class='prose tm-privacy'>
+      <div class='prose tm-legal'>
         <p>
           Ciphermaniac Events is a service for running Pokémon Trading Card Game tournaments. This policy explains what
           information we keep, why we keep it, and what control you have over it.

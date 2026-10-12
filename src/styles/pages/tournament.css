@@ -43,11 +43,13 @@ body[data-mode='dark']:has(.tm-page) {
 .tm-narrow {
   max-width: 640px;
 }
-/* The privacy policy reads as one column; its headings get the room a paragraph doesn't. */
-.tm-privacy > .tm-subhead {
+/* The privacy policy and terms read as one column; their headings get the room a paragraph doesn't. */
+.tm-legal > .tm-subhead {
   margin-top: var(--space-3);
 }
-.tm-welcome-privacy {
+.tm-welcome-legal {
+  display: flex;
+  gap: var(--space-2);
   margin-top: var(--space-3);
   font-size: var(--text-sm);
 }

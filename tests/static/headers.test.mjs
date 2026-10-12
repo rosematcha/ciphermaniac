@@ -113,7 +113,7 @@ test('account and organizer pages stay out of search, public pages do not', () =
   ]) {
     assert.equal(headerValue(path, 'X-Robots-Tag'), 'noindex', path);
   }
-  for (const path of ['/', '/host', '/t/ABC123', '/u/reese', '/stores/s1', '/privacy', '/cards']) {
+  for (const path of ['/', '/host', '/t/ABC123', '/u/reese', '/stores/s1', '/privacy', '/terms', '/cards']) {
     assert.equal(headerValue(path, 'X-Robots-Tag'), '', path);
   }
 });

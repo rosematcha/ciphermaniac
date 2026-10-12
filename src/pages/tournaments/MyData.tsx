@@ -322,6 +322,11 @@ export function MyData(props: { user: Me; onWiped: (user: Me) => void }) {
     <section>
       <h2 class='tm-subhead tm-box-head'>My data</h2>
       <div class='tm-box'>
+        <SettingRow label='Terms of service'>
+          <A class='btn btn-secondary' href='/terms'>
+            View terms
+          </A>
+        </SettingRow>
         <SettingRow label='Privacy policy'>
           <A class='btn btn-secondary' href='/privacy'>
             View policy

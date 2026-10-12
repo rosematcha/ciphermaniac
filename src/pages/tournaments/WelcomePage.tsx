@@ -73,7 +73,8 @@ export function WelcomePage() {
           </Match>
         </Switch>
       </section>
-      <p class='muted tm-welcome-privacy'>
+      <p class='muted tm-welcome-legal'>
+        <A href='/terms'>Terms of service</A>
         <A href='/privacy'>Privacy policy</A>
       </p>
     </div>

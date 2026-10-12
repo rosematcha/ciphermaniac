@@ -162,6 +162,7 @@ render(
           '/apply',
           '/welcome',
           '/privacy',
+          '/terms',
           '/admin',
           '/stores/:id',
           '/stores/:id/settings'
