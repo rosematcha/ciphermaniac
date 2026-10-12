@@ -378,7 +378,7 @@ test('an account’s History lists the sanctioned events its POP ID plays in, as
   assert.deepEqual(await codesOf(player), [], 'a deleted event is gone');
 });
 
-test('an event is live in History once any of its pods has paired, not only its first', async () => {
+test('an event is live in History after its pods start together', async () => {
   const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   for (let i = 0; i < 6; i += 1) {
@@ -394,7 +394,7 @@ test('an event is live in History once any of its pods has paired, not only its 
   assert.equal(paired.status, 200);
   const pods = (await loadTournament(db(), code))?.tournament.pods.map(pod => [pod.category, pod.rounds.length]);
   assert.deepEqual(pods, [
-    ['junior', 0],
+    ['junior', 1],
     ['senior-masters', 1]
   ]);
   assert.equal((await historyOf(player)).json.entries[0].status, 'live');

@@ -64,6 +64,7 @@ import { apiCalls, type Handler, ORIGIN, request } from '../__utils__/apiCalls.t
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
 import { storeApplication } from '../__utils__/storeApplication.ts';
 import { countingTrips, racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { context, generatedEvent } from '../tournament/conformance-generated.ts';
 
 /** Every scalar in a JSON value, keys included, for asserting what a public copy never carries. */
 function jsonValues(value: unknown): unknown[] {
@@ -316,7 +317,7 @@ test('creating an event needs a signed-in, same-origin request', async () => {
   );
 });
 
-test('the event list counts an event as paired once any of its pods has paired, not only its first', async () => {
+test('starting an event pairs every pod and the event list counts its rounds', async () => {
   const owner = await signIn('Organizer', 'organizer');
   const code = await newSwiss(owner);
   for (let i = 0; i < 6; i += 1) {
@@ -330,11 +331,11 @@ test('the event list counts an event as paired once any of its pods has paired, 
   const db = env.TOURNAMENT_DB as NonNullable<TournamentEnv['TOURNAMENT_DB']>;
   const pods = (await loadTournament(db, code))?.tournament.pods.map(pod => [pod.category, pod.rounds.length]);
   assert.deepEqual(pods, [
-    ['junior', 0],
+    ['junior', 1],
     ['senior-masters', 1]
   ]);
   const list = await hit(tournaments.onRequestGet as Handler, '/api/tournaments', {}, { cookie: owner });
-  assert.equal(list.json.tournaments[0].rounds, 1);
+  assert.equal(list.json.tournaments[0].rounds, 2);
 });
 
 test('who starts an event of their own: a Community organizer or an Admin; a revoked one still runs its own', async () => {
@@ -382,7 +383,7 @@ test('only staff change an event, and bad commands are refused', async () => {
   assert.equal((await send(code, owner, { type: 'launchMissiles' })).status, 400);
   assert.equal(
     (await send(code, owner, { type: 'pairRound', pod: 'masters' })).json.error,
-    'Add at least two players first'
+    'A sanctioned event needs at least 4 players'
   );
   assert.equal((await hit(manage.onRequestGet as Handler, '/manage', at(code), { cookie: stranger })).status, 403);
 });
@@ -392,8 +393,14 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 5);
   const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
-  const table = paired.json.tournament.pods[0].rounds[0].matches.find((m: Match) => m.p2 !== null);
-  await send(code, owner, {
+  assert.equal(paired.status, 200);
+  await send(code, owner, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Arrival', id: '999' } });
+  const repaired = await send(code, owner, { type: 'repairRound', pod: 'masters', keepReported: true });
+  assert.equal(repaired.status, 200);
+  const { matches }: { matches: Match[] } = repaired.json.tournament.pods[0].rounds[0];
+  assert.ok(matches.flatMap(m => [m.p1, m.p2]).includes('999'));
+  const table = matches.find(m => m.p2 !== null)!;
+  const reported = await send(code, owner, {
     type: 'reportResult',
     pod: 'masters',
     round: 1,
@@ -402,17 +409,8 @@ test('a Swiss event pairs, reports, seats a late arrival and hides private field
     p2: table.p2,
     outcome: 'p1'
   });
-  await send(code, owner, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Arrival', id: '999' } });
-  const repaired = await send(code, owner, { type: 'repairRound', pod: 'masters', keepReported: true });
-  const seated = repaired.json.tournament.pods[0].rounds[0].matches.flatMap((m: { p1: string; p2: string | null }) => [
-    m.p1,
-    m.p2
-  ]);
-  assert.ok(seated.includes('999'));
-  assert.equal(
-    repaired.json.tournament.pods[0].rounds[0].matches.filter((m: { outcome: string }) => m.outcome === 'p1').length,
-    1
-  );
+  assert.equal(reported.status, 200);
+  assert.equal(reported.json.tournament.pods[0].rounds[0].matches.filter((m: Match) => m.outcome === 'p1').length, 1);
 
   const publicView = await view(code);
   // Whole values, not digits in a string: a random key or a timestamp can contain an ID's digits by chance.
@@ -668,7 +666,10 @@ test('a TOM event’s next round is paired over the site’s results and lands o
   const tdf = parseTdf(readFileSync(new URL('../fixtures/tdf/challenge-midevent.tdf', import.meta.url), 'utf8'));
   const code = await newTom(owner, tdf);
   const base = await revisionNow(code, owner);
-  assert.match((await pairNext(code, owner, base)).json.error, /Report every match/);
+  const pending = await pairNext(code, owner, base);
+  assert.equal(pending.status, 200, 'V16-2 permits pairing while the current round has pending matches');
+  assert.deepEqual(pending.json.tournament.pods[0].rounds[1].matches, tdf.pods[0]!.rounds[1]!.matches);
+  assert.equal(pending.json.tournament.pods[0].rounds[2].number, 3);
   const open = tdf.pods[0]!.rounds[1]!.matches.filter(m => m.p2 !== null && m.outcome === 'pending');
   for (const { table, p1, p2 } of open) {
     await send(code, owner, { type: 'reportResult', pod: 'mixed', round: 2, table, p1, p2, outcome: 'p1' });
@@ -1090,6 +1091,7 @@ test('players report their own results: agreement stands once locked, disagreeme
   const code = await newSwiss(owner);
   await addPlayers(code, owner, 4);
   const paired = await send(code, owner, { type: 'pairRound', pod: 'masters' });
+  assert.equal((await send(code, owner, { type: 'startClock', pod: 'masters' })).status, 200);
   const [first, second] = paired.json.tournament.pods[0].rounds[0].matches;
   assert.equal((await playerSays(code, { popId: first.p1, result: 'win' })).status, 403, 'off until staff turn it on');
   await settle(code, owner, { playerReporting: true });
@@ -3054,3 +3056,20 @@ function defaultPassthrough() {
     finalsOptions: ''
   };
 }
+
+test('a refused opening pairing persists the started event without a new round', async () => {
+  const owner = await signIn('Organizer', 'organizer');
+  const code = await newSwiss(owner);
+  await settle(code, owner, { sanctioned: false });
+  const event = generatedEvent(4, context(1));
+  event.players = event.players.map(p => ({ ...p, byes: 1 }));
+  const db = env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>;
+  db.raw.prepare('UPDATE tournaments SET state = ? WHERE code = ?').run(JSON.stringify(event), code);
+  const response = await send(code, owner, { type: 'pairRound', pod: event.pods[0]!.category });
+  assert.equal(response.status, 400);
+  assert.match(response.json.error, /empty ordinary flight/);
+  const persisted = (await loadTournament(db, code))!.tournament;
+  assert.equal(persisted.settings!.stage, 4);
+  assert.equal(persisted.pods[0]!.rounds.length, 0);
+  assert.ok(persisted.players.every(p => p.byes === 1 && p.starter));
+});

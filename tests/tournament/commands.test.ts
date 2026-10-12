@@ -18,7 +18,7 @@ import { DEFAULT_ROUND_MINUTES, emptyTournament } from '../../shared/tournament/
 import { readCommand } from '../../shared/tournament/readCommand.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
 import { writeTdf } from '../../shared/tournament/tdf.ts';
-import { joinedLate, playerPod, podOf } from '../../shared/tournament/rounds.ts';
+import { joinedLate, playerPod, podOf, regularRounds } from '../../shared/tournament/rounds.ts';
 import { bracketMatches, placeFinals, swissStandings, thirdPlaceMatch } from '../../shared/tournament/standings.ts';
 import type { Pod, Round, Tournament } from '../../shared/tournament/types.ts';
 
@@ -70,6 +70,14 @@ function reportAll(t: Tournament): Tournament {
   return run(t, ...reports);
 }
 
+function cutReady(t: Tournament): Tournament {
+  let next = reportAll(t);
+  while (pod(next).rounds.length < regularRounds(next, pod(next))) {
+    next = reportAll(run(next, { type: 'pairRound', pod: pod(next).category }));
+  }
+  return next;
+}
+
 test('pairs a first round with a bye for the odd player out', () => {
   const t = run(withPlayers(5), { type: 'pairRound', pod: 'masters' });
   const { matches } = round(t);
@@ -81,9 +89,14 @@ test('pairs a first round with a bye for the odd player out', () => {
   assert.equal(matches[0]?.outcome, 'bye');
 });
 
-test('will not pair the next round while results are missing', () => {
+test('pairs the next round while counting pending matches as previous meetings', () => {
   const t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
-  assert.match(attempt(t, { type: 'pairRound', pod: 'masters' }), /Report every match/);
+  const next = run(t, { type: 'pairRound', pod: 'masters' });
+  assert.deepEqual(pod(next).rounds[0], pod(t).rounds[0]);
+  assert.equal(pod(next).rounds.length, 2);
+  for (const match of round(next).matches) {
+    assert.ok(!round(t).matches.some(m => [m.p1, m.p2].includes(match.p1) && [m.p1, m.p2].includes(match.p2)));
+  }
 });
 
 test('a late player gets a loss for each round they missed', () => {
@@ -95,31 +108,13 @@ test('a late player gets a loss for each round they missed', () => {
   assert.deepEqual(late?.record, { wins: 0, losses: 1, ties: 0 });
 });
 
-test('re-pairing a round keeps reported matches and seats a late arrival', () => {
-  let t = run(withPlayers(6), { type: 'pairRound', pod: 'masters' });
-  const first = round(t).matches[0];
-  assert.ok(first);
-  t = run(t, {
-    type: 'reportResult',
-    pod: 'masters',
-    round: 1,
-    table: first.table,
-    p1: first.p1,
-    p2: first.p2,
-    outcome: 'p2'
-  });
-  t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Comer', id: '999' } });
-  t = run(t, { type: 'repairRound', pod: 'masters', keepReported: true });
-  const { matches } = round(t);
-  assert.deepEqual(
-    matches.find(m => m.table === first.table),
-    { ...first, outcome: 'p2', timestamp: '09/28/2026 10:00:00' }
-  );
-  const seated = matches.flatMap(m => [m.p1, m.p2]).filter(Boolean);
-  assert.equal(seated.length, 7);
-  assert.ok(seated.includes('999'));
-  assert.ok(!matches.some(m => m.outcome === 'loss'), 'the missed-round loss is replaced by a real seat');
-  assert.equal(matches.filter(m => m.outcome === 'bye').length, 1);
+test('repairing a running round is refused and preserves its reported matches', () => {
+  let t = run(withPlayers(6), { type: 'pairRound', pod: 'masters' }, { type: 'startClock', pod: 'masters' });
+  const first = round(t).matches[0]!;
+  t = run(t, { type: 'reportResult', pod: 'masters', round: 1, ...first, outcome: 'p2' });
+  const before = writeTdf(t, { now: 0 });
+  assert.match(attempt(t, { type: 'repairRound', pod: 'masters', keepReported: true }), /not-started/);
+  assert.equal(writeTdf(t, { now: 0 }), before);
 });
 
 test('later rounds avoid rematches and dropped players are not paired', () => {
@@ -160,17 +155,18 @@ test('a player added mid-event is tagged late, and is known by the round they mi
   let t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
   t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Comer', id: '999' } });
   assert.equal(t.players.find(p => p.id === '999')?.late, true);
-  assert.ok(joinedLate(pod(t), '999'));
+  assert.equal(t.players.find(p => p.id === '999')?.tiebreaker, 0);
+  assert.equal(joinedLate(pod(t), '999'), false, 'entry before start needs repair rather than a loss');
   assert.ok(!joinedLate(pod(t), t.players[0]?.id ?? ''));
 });
 
-test('a player who drops mid-round loses the match they are in', () => {
+test('dropping a paired Swiss player removes their ordinary match', () => {
   const t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' });
   const [match] = round(t).matches;
   assert.ok(match?.p2);
   const dropped = run(t, { type: 'dropPlayer', id: match.p2 });
   const after = round(dropped).matches.find(m => m.table === match.table);
-  assert.equal(after?.outcome, 'p1', 'their opponent wins');
+  assert.equal(after, undefined, 'the dropped player’s match is removed');
   assert.equal(round(dropped).matches.filter(m => m.outcome === 'pending').length, 1, 'other tables play on');
   const done = reportAll(t);
   const late = run(done, { type: 'dropPlayer', id: match.p1 });
@@ -180,16 +176,22 @@ test('a player who drops mid-round loses the match they are in', () => {
     'a drop after the match leaves its result alone'
   );
   const back = run(dropped, { type: 'undropPlayer', id: match.p2 });
-  assert.equal(round(back).matches.find(m => m.table === match.table)?.outcome, 'pending', 'reinstating reopens it');
-  const decided = run(
-    dropped,
-    { type: 'reportResult', pod: 'masters', round: 1, table: match.table, p1: match.p1, p2: match.p2, outcome: 'tie' },
-    { type: 'undropPlayer', id: match.p2 }
-  );
   assert.equal(
-    round(decided).matches.find(m => m.table === match.table)?.outcome,
-    'tie',
-    'a result entered since the drop stands'
+    round(back).matches.find(m => m.table === match.table),
+    undefined,
+    'reinstating needs a repair before start'
+  );
+  assert.match(
+    attempt(dropped, {
+      type: 'reportResult',
+      pod: 'masters',
+      round: 1,
+      table: match.table,
+      p1: match.p1,
+      p2: match.p2,
+      outcome: 'tie'
+    }),
+    /changed/
   );
 });
 
@@ -248,7 +250,7 @@ test('a top cut that plays for third pairs the semifinal losers beside the final
   let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
   t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
-  t = reportAll(run(t, { type: 'startTopCut', pod: 'masters', size: 4, playoff3rd4th: true }));
+  t = reportAll(run(cutReady(t), { type: 'startTopCut', pod: 'masters', size: 4, playoff3rd4th: true }));
   assert.equal(pod(t).playoff3rd4th, true);
   assert.match(writeTdf(t), /<playoff3rd4th>true<\/playoff3rd4th>/, 'TOM sees the match announced');
   const semis = round(t).matches;
@@ -257,34 +259,28 @@ test('a top cut that plays for third pairs the semifinal losers beside the final
   const last = round(t);
   assert.deepEqual(
     last.matches.map(m => [m.p1, m.p2]),
-    [winners, losers],
+    [winners, [...losers].reverse()],
     'the final first, then the match for third'
   );
   assert.equal(thirdPlaceMatch(pod(t), last), last.matches[1]);
   assert.deepEqual(bracketMatches(pod(t), last), [last.matches[0]]);
   t = reportAll(t);
-  assert.match(attempt(t, { type: 'pairRound', pod: 'masters' }), /top cut is finished/);
+  assert.match(attempt(t, { type: 'pairRound', pod: 'masters' }), /No more elimination rounds/);
   const places = placeFinals(pod(t), swissStandings(pod(t), t.players)).slice(0, 4);
   assert.deepEqual(
     places.map(row => row.playerId),
-    [winners[0], winners[1], losers[0], losers[1]]
+    [winners[0], winners[1], losers[1], losers[0]]
   );
 });
 
-test('a semifinal loser who has dropped forfeits the match for third', () => {
+test('a dropped semifinal loser prevents the third-place match', () => {
   let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
   t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
-  t = reportAll(run(t, { type: 'startTopCut', pod: 'masters', size: 4, playoff3rd4th: true }));
+  t = reportAll(run(cutReady(t), { type: 'startTopCut', pod: 'masters', size: 4, playoff3rd4th: true }));
   const losers = round(t).matches.map(m => m.p2 as string);
   const one = run(run(t, { type: 'dropPlayer', id: losers[0] as string }), { type: 'pairRound', pod: 'masters' });
-  assert.deepEqual(
-    round(one).matches.map(m => [m.p1, m.p2, m.outcome]),
-    [
-      [round(one).matches[0]?.p1, round(one).matches[0]?.p2, 'pending'],
-      [losers[0], losers[1], 'p2']
-    ]
-  );
+  assert.equal(round(one).matches.length, 1, 'only the championship match is paired');
   const both = run(
     t,
     { type: 'dropPlayer', id: losers[0] as string },
@@ -297,7 +293,7 @@ test('a semifinal loser who has dropped forfeits the match for third', () => {
 test('the event type stays as it is once the top cut has started', () => {
   let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
   t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
-  t = run(t, { type: 'startTopCut', pod: 'masters', size: 4 });
+  t = run(cutReady(t), { type: 'startTopCut', pod: 'masters', size: 4 });
   assert.match(attempt(t, { type: 'updateInfo', info: { eventType: 'challenge' } }), /top cut has started/);
   assert.equal(run(t, { type: 'updateInfo', info: { name: 'Renamed' } }).info.name, 'Renamed');
 });
@@ -307,10 +303,10 @@ test('a top cut of two cannot play for third, and one without the match plays th
   t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   assert.equal(
-    run(t, { type: 'startTopCut', pod: 'masters', size: 2, playoff3rd4th: true }).pods[0]?.playoff3rd4th,
+    run(cutReady(t), { type: 'startTopCut', pod: 'masters', size: 2, playoff3rd4th: false }).pods[0]?.playoff3rd4th,
     false
   );
-  t = reportAll(run(t, { type: 'startTopCut', pod: 'masters', size: 4 }));
+  t = reportAll(run(cutReady(t), { type: 'startTopCut', pod: 'masters', size: 4 }));
   assert.equal(round(run(t, { type: 'pairRound', pod: 'masters' })).matches.length, 1);
 });
 
@@ -318,7 +314,7 @@ test('a top cut seeds from standings and plays down to a winner', () => {
   let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
   t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   // Everyone is a Master, so the combined pod cuts as a whole with no division asked.
-  t = run(t, { type: 'startTopCut', pod: 'masters', size: 4 });
+  t = run(cutReady(t), { type: 'startTopCut', pod: 'masters', size: 4 });
   const seeds = swissStandings(pod(t), t.players)
     .slice(0, 4)
     .map(row => row.playerId);
@@ -341,7 +337,7 @@ test('a top cut seeds from standings and plays down to a winner', () => {
       p2: semi.p2,
       outcome: 'tie'
     }),
-    /needs a winner/
+    /cannot tie|changed/
   );
   t = reportAll(t);
   t = run(t, { type: 'pairRound', pod: 'masters' });
@@ -356,15 +352,16 @@ test('a top cut seeds from standings and plays down to a winner', () => {
       p2: semi.p2,
       outcome: 'p2'
     }),
-    /already paired/
+    /already paired|changed/
   );
   t = reportAll(t);
-  assert.match(attempt(t, { type: 'pairRound', pod: 'masters' }), /top cut is finished/);
+  assert.match(attempt(t, { type: 'pairRound', pod: 'masters' }), /No more elimination rounds/);
 });
 
 test('a fixed table does not move a top cut player to another side of the bracket', () => {
   let t = reportAll(run(withPlayers(8), { type: 'pairRound', pod: 'masters' }));
   t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
+  t = cutReady(t);
   const seeds = swissStandings(pod(t), t.players).map(row => row.playerId);
   // The first seed sits at the last quarterfinal table, after the others in table order.
   t = run(t, { type: 'setFixedTable', id: seeds[0] ?? '', table: 4 }, { type: 'startTopCut', pod: 'masters', size: 8 });
@@ -394,16 +391,24 @@ test('before round 1 the pods follow the field: a division under six plays with 
   assert.deepEqual(shape(t), [['mixed', 11]], 'and together again when one falls under six');
 });
 
-test('once play starts the pods stand, and a late player of a division nobody played joins the next pod', () => {
+test('late entry into an absent division requires an existing covering pod', () => {
   const adults = Array.from({ length: 6 }, (_, i) => ({
     type: 'addPlayer' as const,
     player: { firstName: 'Adult', lastName: `${i}`, birthDate: '01/01/1990' }
   }));
-  let t = run(emptyTournament({ name: 'Late' }), ...adults, { type: 'pairRound', pod: 'masters' });
-  t = run(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Senior', birthDate: '01/01/2012' } });
+  const t = run(emptyTournament({ name: 'Late' }), ...adults, { type: 'pairRound', pod: 'masters' });
+  const rejected = applyCommand(
+    t,
+    { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Senior', birthDate: '01/01/2012' } },
+    context()
+  );
+  assert.equal(rejected.ok, false);
+  assert.ok(!rejected.ok);
+  assert.equal(rejected.tournament, undefined);
+  assert.match(rejected.error, /No existing pod/);
   assert.deepEqual(
     t.pods.map(p => [p.category, p.playerIds.length]),
-    [['senior-masters', 7]]
+    [['masters', 6]]
   );
   assert.equal(t.pods[0]?.rounds.length, 1, 'the round played stays with the pod');
 });
@@ -425,7 +430,7 @@ test('divisions paired apart play at once without sharing a table', () => {
     ({ type: 'addPlayer', player: { firstName: year, lastName: `${i}`, birthDate: `01/01/${year}` } }) as Command;
   const six = [1, 2, 3, 4, 5, 6];
   let t = run(emptyTournament({ name: 'Apart' }), ...six.map(add('2016')), ...six.map(add('1990')));
-  t = run(t, { type: 'pairRound', pod: 'junior' }, { type: 'pairRound', pod: 'senior-masters' });
+  t = run(t, { type: 'pairRound', pod: 'junior' });
   const tables = (category: string) => t.pods.find(p => p.category === category)?.rounds[0]?.matches.map(m => m.table);
   assert.deepEqual(
     [tables('junior'), tables('senior-masters')],
@@ -450,22 +455,24 @@ test('a combined pod shares its cut rounds and refuses late entrants once cuts s
   t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
   assert.match(attempt(t, { type: 'startTopCut', pod: 'mixed', size: 4 }), /Pick the division/);
   t = run(
-    t,
+    cutReady(t),
     { type: 'startTopCut', pod: 'mixed', size: 4, division: 'junior' },
     { type: 'startTopCut', pod: 'mixed', size: 2, division: 'masters' }
   );
   assert.equal(t.pods.length, 1);
+  // PAIRING V18-8: the second division's qualifiers join the surviving cut players.
+  assert.equal(pod(t).survivors?.length, 6);
   assert.equal(podOf(t, '300')?.category, 'mixed');
   assert.deepEqual(
     playerPod(t, '300')?.rounds.map(r => r.kind),
-    ['swiss', 'elimination']
+    ['swiss', 'swiss', 'swiss', 'elimination']
   );
   assert.equal(round(t).matches.length, 3);
   t = run(reportAll(t), { type: 'pairRound', pod: 'mixed' });
   assert.equal(round(t).matches.length, 1);
   assert.match(
     attempt(t, { type: 'addPlayer', player: { firstName: 'Late', lastName: 'Kid', birthDate: '01/01/2016' } }),
-    /top cuts are under way/
+    /Registration closed/
   );
 });
 
@@ -487,6 +494,7 @@ test('a report for a match that has since changed is refused', () => {
   );
   const cleared = run(
     t,
+    { type: 'startClock', pod: 'masters' },
     { type: 'reportResult', pod: 'masters', round: 1, table: first.table, p1: first.p1, p2: first.p2, outcome: 'p1' },
     {
       type: 'reportResult',
@@ -498,14 +506,19 @@ test('a report for a match that has since changed is refused', () => {
       outcome: 'pending'
     }
   );
-  assert.equal(round(cleared).matches[0]?.timestamp, round(cleared).pairTime, 'an open match carries its pairing time');
+  assert.equal(
+    round(cleared).matches[0]?.timestamp,
+    round(cleared).pairTime,
+    'reopening uses the result-entry timestamp'
+  );
 });
 
-test('a drop can be taken back until the next round is paired, not after', () => {
+test('a dropped player can return before the next paired round starts', () => {
   let t = run(withPlayers(4), { type: 'pairRound', pod: 'masters' }, { type: 'dropPlayer', id: '100' });
   t = run(t, { type: 'undropPlayer', id: '100' }, { type: 'dropPlayer', id: '100' });
   t = run(reportAll(t), { type: 'pairRound', pod: 'masters' });
-  assert.match(attempt(t, { type: 'undropPlayer', id: '100' }), /before round 2 was paired/);
+  t = run(t, { type: 'undropPlayer', id: '100' });
+  assert.equal(t.players.find(p => p.id === '100')!.droppedAfter, null);
 });
 
 test('static seating keeps a player at their table every round, re-pairs included', () => {
@@ -514,7 +527,9 @@ test('static seating keeps a player at their table every round, re-pairs include
   const at = (id: string) => round(t).matches.find(m => m.p1 === id || m.p2 === id)?.table;
   assert.equal(at('105'), 3);
   assert.deepEqual(
-    round(t).matches.map(m => m.table),
+    round(t)
+      .matches.map(m => m.table)
+      .sort((a, b) => a - b),
     [1, 2, 3, 4],
     'the others fill the tables left, in order'
   );
@@ -539,7 +554,7 @@ test('a pod of one division starts its top cut once, and deleting the cut clears
   for (let i = 0; i < 4; i += 1) {
     t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   }
-  t = run(t, { type: 'startTopCut', pod: 'masters', size: 4 });
+  t = run(cutReady(t), { type: 'startTopCut', pod: 'masters', size: 4 });
   assert.equal(round(t).matches.length, 2);
   assert.equal(t.players.filter(p => p.seed).length, 4);
   assert.equal(attempt(t, { type: 'startTopCut', pod: 'masters', size: 4 }), 'The top cut has started');
@@ -559,7 +574,7 @@ test('a combined pod whose players are all one division also starts its top cut 
   for (let i = 0; i < 4; i += 1) {
     t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
   }
-  t = run(t, { type: 'startTopCut', pod: 'mixed', size: 4 });
+  t = run(cutReady(t), { type: 'startTopCut', pod: 'mixed', size: 4 });
   assert.equal(round(t).matches.length, 2);
   assert.equal(attempt(t, { type: 'startTopCut', pod: 'mixed', size: 4 }), 'The top cut has started');
 });

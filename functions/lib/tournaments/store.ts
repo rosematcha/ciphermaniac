@@ -395,6 +395,8 @@ function stateJson(tournament: Tournament): string {
 }
 
 export interface Changes {
+  /** A refused action can still persist TOM's phase transition without a round. */
+  refusal?: string;
   /** Preserve the last activity time when the idle sweep only changes bookkeeping. */
   updatedAt?: number;
   tournament?: Tournament;
@@ -513,7 +515,7 @@ function minorCardsCut(db: D1Like, row: TournamentRow, now: number): D1Statement
 }
 
 /** What a change comes to: the row as written, or why it was refused. */
-export type Mutation = { row: TournamentRow } | { error: string; status: number };
+export type Mutation = { row: TournamentRow; refusal?: string } | { error: string; status: number };
 
 /**
  * A round's end is many writes to one row at once, each player's report among
@@ -573,7 +575,7 @@ async function tryChange(
   if (saved instanceof DayTaken) {
     return { error: saved.message, status: 409 };
   }
-  return saved && { row: saved };
+  return saved && { row: saved, ...(changes.refusal ? { refusal: changes.refusal } : {}) };
 }
 
 /** What the console's polls check before anything else: whether the copy they hold still stands. */

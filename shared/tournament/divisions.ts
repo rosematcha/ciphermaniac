@@ -64,6 +64,18 @@ export function tomDateTime(date: Date): string {
   );
 }
 
+/** A TOM date and time moved by whole seconds, without involving any time zone. */
+export function shiftTomDateTime(value: string, seconds: number): string {
+  const [, month, day, year, hours, minutes, secs] = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})$/
+    .exec(value)!
+    .map(Number) as number[];
+  const date = new Date(Date.UTC(year!, month! - 1, day!, hours!, minutes!, secs! + seconds));
+  return (
+    `${pad(date.getUTCMonth() + 1)}/${pad(date.getUTCDate())}/${date.getUTCFullYear()} ` +
+    `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`
+  );
+}
+
 const TOM_DATE_TIME_RE = /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/;
 
 export function isTomDateTime(value: unknown): value is string {

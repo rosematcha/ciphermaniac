@@ -52,9 +52,11 @@ test('an event with no top cut is won by whoever leads the Swiss standings', () 
 });
 
 test('a top cut’s final decides it, one winner for each division', () => {
-  let t = complete(
-    run(field(['2016', '2016', '2016', '2016', '1990', '1990', '1990', '1990']), { type: 'pairRound', pod: 'mixed' })
-  );
+  let t = field(['2016', '2016', '2016', '2016', '1990', '1990', '1990', '1990']);
+  // Eight players play three Swiss rounds before the cut.
+  for (let round = 0; round < 3; round += 1) {
+    t = complete(run(t, { type: 'pairRound', pod: 'mixed' }));
+  }
   t = run(t, { type: 'startTopCut', pod: 'mixed', division: 'junior', size: 4 });
   t = run(t, { type: 'startTopCut', pod: 'mixed', division: 'masters', size: 4 });
   t = complete(t);

@@ -151,6 +151,14 @@ test('a top cut match takes no tie from a player', () => {
   for (const m of matchesOf(t)) {
     t = run(t, { type: 'reportResult', pod: 'masters', round: 1, table: m.table, p1: m.p1, p2: m.p2, outcome: 'p1' });
   }
+  for (let number = 2; number <= 3; number += 1) {
+    t = run(t, { type: 'pairRound', pod: 'masters' });
+    for (const m of matchesOf(t)) {
+      if (m.p2 !== null) {
+        t = run(t, { type: 'reportResult', pod: 'masters', round: number, ...m, outcome: 'p1' });
+      }
+    }
+  }
   t = run(t, { type: 'startTopCut', pod: 'masters', size: 2 });
   const [final] = matchesOf(t);
   assert.ok(final);
@@ -182,21 +190,24 @@ test('reports go once their match has a result or is re-paired, and go public un
   assert.deepEqual([shown[0]?.p1, shown[0]?.p2, shown[0]?.by], ['1', '2', '1']);
 });
 
-test('a report follows its players when a late player of a new division renames their pod', () => {
+test('refused late entry leaves reports and their pod unchanged', () => {
   const t = paired();
   const [first] = matchesOf(t);
   assert.ok(first?.p2);
   const filed = [report(t, first.p1, 'win')];
-  // A Senior when nobody else is one joins the Masters, whose pod then plays both.
-  const joined = run(t, {
-    type: 'addPlayer',
-    player: { firstName: 'Late', lastName: 'Senior', birthDate: '01/01/2012' }
-  });
-  assert.equal(joined.pods[0]?.category, 'senior-masters');
-  assert.deepEqual(
-    pruneReports(joined, filed).map(r => [r.pod, r.table]),
-    [['senior-masters', first.table]]
+  const result = applyCommand(
+    t,
+    {
+      type: 'addPlayer',
+      player: { firstName: 'Late', lastName: 'Senior', birthDate: '01/01/2012' }
+    },
+    { now: 0, localTime: '09/28/2026 10:00:00', season: 2027, random: seededRandom(3) }
   );
+  assert.equal(result.ok, false);
+  assert.ok(!result.ok);
+  assert.equal(result.tournament, undefined);
+  assert.match(result.error, /No existing pod/);
+  assert.deepEqual(pruneReports(t, filed), filed);
 });
 
 test('a page that names a division still matches its cut in the pod that plays that division', () => {

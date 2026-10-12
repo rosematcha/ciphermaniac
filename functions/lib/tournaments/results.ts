@@ -8,6 +8,7 @@
  * while the clock is the site's (see shared/tournament/tomClock.ts).
  */
 
+import { applyCommand as applySiteClock } from '../../../shared/tournament/legacyCommands.js';
 import { applyCommand, type Command } from '../../../shared/tournament/commands.js';
 import { dueResults, resultOf } from '../../../shared/tournament/reports.js';
 import { isOpenMatch } from '../../../shared/tournament/rounds.js';
@@ -39,9 +40,10 @@ export function commandChanges(row: TournamentRow, command: Command, localTime: 
   if (row.mode === 'tom' && !TOM_COMMANDS.has(command.type)) {
     return 'TOM runs this event; make that change in TOM';
   }
-  const result = applyCommand(row.tournament, command, commandContext(row.tournament, localTime, isSanctioned(row)));
+  const apply = row.mode === 'tom' && command.type !== 'reportResult' ? applySiteClock : applyCommand;
+  const result = apply(row.tournament, command, commandContext(row.tournament, localTime, isSanctioned(row)));
   if (!result.ok) {
-    return result.error;
+    return result.tournament ? { tournament: result.tournament, refusal: result.error } : result.error;
   }
   if (row.mode === 'tom') {
     // A clock may change only the clock: anything more is a copy the next file sync would be refused against.

@@ -21,7 +21,8 @@ import {
   type RoundStatus,
   type TdfPassthrough,
   type Tournament,
-  type TournamentInfo
+  type TournamentInfo,
+  type TournamentSettings
 } from './types.js';
 
 export const LIMITS = {
@@ -120,9 +121,13 @@ function lateData(value: unknown): NonNullable<Player['lateData']> {
   };
 }
 
-function playerNumbers(o: Obj): Pick<Player, 'order' | 'seed' | 'byes'> {
+function playerNumbers(
+  o: Obj
+): Pick<Player, 'order' | 'seed' | 'byes' | 'forfeitedByes' | 'scheduledSwissRounds' | 'tiebreaker'> {
   return Object.fromEntries(
-    ['order', 'seed', 'byes'].filter(key => o[key] !== undefined).map(key => [key, int(o[key], 0, LIMITS.players)])
+    ['order', 'seed', 'byes', 'forfeitedByes', 'scheduledSwissRounds', 'tiebreaker']
+      .filter(key => o[key] !== undefined)
+      .map(key => [key, int(o[key], 0, LIMITS.players)])
   );
 }
 
@@ -140,6 +145,7 @@ function player(value: unknown): Player {
     ...(o.starter === undefined ? {} : { starter: o.starter === true }),
     ...(o.lateData === undefined ? {} : { lateData: lateData(o.lateData) }),
     ...playerNumbers(o),
+    ...(o.droppedAt === undefined ? {} : { droppedAt: str(o.droppedAt, 40) }),
     ...(o.fixedTable === undefined ? {} : { fixedTable: int(o.fixedTable, 1, 9999) }),
     ...(o.fromList === true ? { fromList: true } : {}),
     created: str(o.created, 40),
@@ -163,6 +169,7 @@ function round(value: unknown): Round {
   return {
     number: int(o.number, 1, LIMITS.rounds),
     kind: oneOf(o.kind, KINDS),
+    ...(o.stage === undefined ? {} : { stage: int(o.stage, 1, 8) }),
     status: oneOf(o.status, STATUSES),
     timeLeft: int(o.timeLeft, -86_400, 86_400),
     pairTime: str(o.pairTime, 40),
@@ -189,11 +196,58 @@ function divisionCuts(value: unknown): NonNullable<Pod['divisionCuts']> {
   );
 }
 
+function readFlights(value: unknown): NonNullable<Pod['flights']> {
+  return arr(value, 16).map(value => {
+    const flight = obj(value);
+    return {
+      number: int(flight.number, 1, 16),
+      playerIds: arr(flight.playerIds, LIMITS.players).map(id => str(id, 20))
+    };
+  });
+}
+
+function podSettings(o: Obj): Partial<Pod> {
+  return {
+    ...(o.stage === undefined ? {} : { stage: int(o.stage, 0, 2) as 0 | 1 | 2 }),
+    ...(o.subgroupCount === undefined ? {} : { subgroupCount: int(o.subgroupCount, 1, 16) }),
+    ...(o.additionalRounds === undefined ? {} : { additionalRounds: int(o.additionalRounds, 0, 1) }),
+    ...(o.blockedRanges === undefined
+      ? {}
+      : {
+          blockedRanges: arr(o.blockedRanges, 200).map(value => {
+            const range = obj(value);
+            const start = int(range.start, 1, 100_000);
+            return { start, end: int(range.end, start, 100_000) };
+          })
+        })
+  };
+}
+
+function settings(value: unknown): TournamentSettings {
+  const o = obj(value);
+  const type = int(o.type, 1, 3) as 1 | 2 | 3;
+  const stage = int(o.stage, 1, 5);
+  if (stage === 2) {
+    throw new Invalid('stage');
+  }
+  return {
+    type,
+    stage: stage as TournamentSettings['stage'],
+    mode: oneOf(o.mode, ['CUSTOM', 'PRERELEASE', 'LEAGUECHALLENGE', 'TCG1DAY']),
+    lessSwiss: o.lessSwiss === true,
+    autoTables: o.autoTables === true,
+    overflowTableStart: int(o.overflowTableStart, 0, 100_000),
+    elapsedSeconds: int(o.elapsedSeconds, 0, Number.MAX_SAFE_INTEGER)
+  };
+}
+
 function pod(value: unknown): Pod {
   const o = obj(value);
   return {
     category: oneOf(o.category, POD_CATEGORIES),
+    ...podSettings(o),
     playerIds: arr(o.playerIds, LIMITS.players).map(id => str(id, 20)),
+    ...(o.flights === undefined ? {} : { flights: readFlights(o.flights) }),
     rounds: arr(o.rounds, LIMITS.rounds).map(round),
     cut: int(o.cut, 0, 512),
     playoff3rd4th: o.playoff3rd4th === true,
@@ -209,10 +263,38 @@ function pod(value: unknown): Pod {
             ])
           )
         }),
+    ...(o.survivors === undefined ? {} : { survivors: arr(o.survivors, LIMITS.players).map(id => str(id, 20)) }),
+    ...(o.historyOmittedRound === undefined
+      ? {}
+      : { historyOmittedRound: int(o.historyOmittedRound, 1, LIMITS.rounds) }),
+    ...(o.repairOmittedPlayers === undefined
+      ? {}
+      : { repairOmittedPlayers: arr(o.repairOmittedPlayers, LIMITS.players).map(id => str(id, 20)) }),
+    ...unsavedAttempts(o),
+    ...(o.playoffsPaired === undefined
+      ? {}
+      : { playoffsPaired: arr(o.playoffsPaired, 3).map(d => oneOf(d, ['junior', 'senior', 'masters'])) }),
     ...(o.startingPlayerIds === undefined
       ? {}
       : { startingPlayerIds: arr(o.startingPlayerIds, LIMITS.players).map(id => str(id, 20)) }),
     ...(o.divisionCuts === undefined ? {} : { divisionCuts: divisionCuts(o.divisionCuts) })
+  };
+}
+
+/** PAIRING V18-2: what failed pairing attempts left in memory. */
+function unsavedAttempts(o: Record<string, unknown>): Pick<Pod, 'unsavedByes' | 'unsavedPlayers'> {
+  return {
+    ...(o.unsavedByes === undefined
+      ? {}
+      : {
+          unsavedByes: arr(o.unsavedByes, LIMITS.players).map(entry => {
+            const bye = obj(entry);
+            return { round: int(bye.round, 1, LIMITS.rounds), playerId: str(bye.playerId, 20) };
+          })
+        }),
+    ...(o.unsavedPlayers === undefined
+      ? {}
+      : { unsavedPlayers: arr(o.unsavedPlayers, LIMITS.players).map(id => str(id, 20)) })
   };
 }
 
@@ -249,6 +331,7 @@ function passthrough(value: unknown): TdfPassthrough {
     roundCodes: record(o.roundCodes, entry => {
       const codes = obj(entry);
       return {
+        ...(codes.state === undefined ? {} : { state: str(codes.state, LIMITS.standings) }),
         type: str(codes.type, 10),
         stage: str(codes.stage, 10),
         ...(codes.timeLeft === undefined ? {} : { timeLeft: int(codes.timeLeft, 0, 24 * 60 * 60) }),
@@ -272,12 +355,25 @@ function consistent(tournament: Tournament): boolean {
   );
 }
 
+function recordedOrders(value: unknown): NonNullable<Tournament['eliminationTieOrder']> {
+  return arr(value, LIMITS.players).map(value => {
+    const group = obj(value);
+    return {
+      category: oneOf(group.category, POD_CATEGORIES),
+      playerIds: arr(group.playerIds, LIMITS.players).map(id => str(id, 20))
+    };
+  });
+}
+
 /** A clean copy of the tournament in `body`, or null if it is not one. */
 export function readTournament(body: unknown): Tournament | null {
   try {
     const o = obj(body);
     const tournament: Tournament = {
       info: info(o.info),
+      ...(o.eliminationTieOrder === undefined ? {} : { eliminationTieOrder: recordedOrders(o.eliminationTieOrder) }),
+      ...(o.headToHeadOrder === undefined ? {} : { headToHeadOrder: recordedOrders(o.headToHeadOrder) }),
+      ...(o.settings === undefined ? {} : { settings: settings(o.settings) }),
       players: arr(o.players, LIMITS.players).map(player),
       pods: arr(o.pods, POD_CATEGORIES.length).map(pod),
       ...(o.startedAt === undefined ? {} : { startedAt: int(o.startedAt, 0, Number.MAX_SAFE_INTEGER) }),

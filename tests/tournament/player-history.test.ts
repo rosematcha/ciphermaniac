@@ -186,13 +186,15 @@ describe('one player’s event, read from the public copy as History reads it', 
       champion?.rounds.map(row => [row.label, row.kind, row.mark]),
       [
         ['Round 1', 'swiss', 'W'],
+        ['Round 2', 'swiss', 'W'],
+        ['Round 3', 'swiss', 'L'],
         ['Semifinals', 'elimination', 'W'],
         ['Final', 'elimination', 'W']
       ]
     );
     assert.deepEqual(
       champion?.record,
-      { wins: 1, losses: 0, ties: 0 },
+      { wins: 2, losses: 1, ties: 0 },
       'the record is the Swiss one, as standings show'
     );
     const masters = t.players.find(p => p.birthDate.endsWith('1990'));
@@ -200,7 +202,7 @@ describe('one player’s event, read from the public copy as History reads it', 
     assert.equal(master?.division, 'masters');
     assert.deepEqual(
       master?.rounds.map(row => row.kind),
-      ['swiss'],
+      ['swiss', 'swiss', 'swiss'],
       'a division with no cut played only Swiss'
     );
   });

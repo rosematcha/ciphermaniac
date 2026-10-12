@@ -79,7 +79,12 @@ export interface Player {
   lateData?: { round: number; timestamp: string; forcedLoss: boolean; usedForcedLoss: boolean };
   order?: number;
   seed?: number;
+  /** TOM's original award of assigned byes; it never counts down. */
   byes?: number;
+  /** Awarded assigned byes whose match was removed before its round started; TOM does not refund them. */
+  forfeitedByes?: number;
+  /** Schedule assigned at tournament start or file reopening; zero for uninterrupted late entrants. */
+  scheduledSwissRounds?: number;
   /**
    * The table this player sits at every round, for a player who cannot move
    * between tables. Their match takes that table; everyone else fills the rest.
@@ -90,6 +95,14 @@ export interface Player {
   /** TOM's timestamps, kept so a round trip leaves them as they were. */
   created: string;
   modified: string;
+  /** TOM assigns zero to late additions until the document is reopened. */
+  tiebreaker?: number;
+  /**
+   * Recorded relative order among disqualified players whose names compare equal, during
+   * uninterrupted play only; reopening the file drops it and saved roster order decides.
+   */
+  disqualifiedOrder?: number;
+  droppedAt?: string;
 }
 
 export interface Match {
@@ -109,6 +122,8 @@ export type RoundStatus = 'paired' | 'started' | 'finished';
 
 export interface Round {
   number: number;
+  /** Explicit workflow stage for engine-created TOM rounds. */
+  stage?: number;
   kind: RoundKind;
   status: RoundStatus;
   /** Seconds on the clock when it was last stopped or saved. */
@@ -130,12 +145,18 @@ export interface Pod {
   category: PodCategory;
   /** Player IDs in the pod, in TOM's order: every division it plays (see podding.ts). */
   playerIds: string[];
+  /** Ordered, persistent Swiss flight membership. */
+  flights?: { number: number; playerIds: string[] }[];
   rounds: Round[];
   /** Top cut size once one is set; 0 for none. */
   cut: number;
   /** Whether the cut plays for third place. */
   playoff3rd4th: boolean;
   startingTable: number;
+  stage?: 0 | 1 | 2;
+  subgroupCount?: number;
+  additionalRounds?: number;
+  blockedRanges?: { start: number; end: number }[];
   /**
    * Legacy storage and read-only division views: the original combined pod.
    * Stored cuts now live in divisionCuts and share this pod's round list.
@@ -143,6 +164,18 @@ export interface Pod {
   cutOf?: PodCategory;
   /** Per-division brackets in this pod's shared elimination rounds. */
   divisionCuts?: Partial<Record<Division, { size: number; playoff3rd4th: boolean; playerIds?: string[] }>>;
+  /** PAIRING V18-8: TOM's surviving players of a top cut or an elimination-only pod; absent before either begins. */
+  survivors?: string[];
+  /** V19-3: a repaired opening round whose matches are not its players' history until reload. */
+  historyOmittedRound?: number;
+  /** V19-5: an abandoned repair's unsaved seats hide waiting players until reload. */
+  repairOmittedPlayers?: string[];
+  /** The divisions whose top-cut playoff TOM records as paired (`paired3rd4th`); it stays set through repairs. */
+  playoffsPaired?: Division[];
+  /** PAIRING V18-2: assigned byes of failed pairing attempts, unsaved yet counted until the file is reopened. */
+  unsavedByes?: { round: number; playerId: string }[];
+  /** PAIRING V18-2: players whose only record of a failed attempt's match is in memory; it is match history. */
+  unsavedPlayers?: string[];
   /** Roster frozen at start, including entrants with assigned byes. */
   startingPlayerIds?: string[];
   divisionCounts?: Partial<Record<Division, number>>;
@@ -181,7 +214,22 @@ export interface TournamentInfo {
   eventType?: EventType;
 }
 
+export interface TournamentSettings {
+  type: 1 | 2 | 3;
+  mode: 'CUSTOM' | 'PRERELEASE' | 'LEAGUECHALLENGE' | 'TCG1DAY';
+  stage: 1 | 3 | 4 | 5;
+  lessSwiss: boolean;
+  autoTables: boolean;
+  overflowTableStart: number;
+  elapsedSeconds: number;
+}
+
 export interface Tournament {
+  /** Recorded equal-win elimination groups with indeterminate third-place comparisons. */
+  eliminationTieOrder?: { category: PodCategory; playerIds: string[] }[];
+  /** Recorded relative order for cyclic head-to-head groups in final standings. */
+  headToHeadOrder?: { category: PodCategory; playerIds: string[] }[];
+  settings?: TournamentSettings;
   info: TournamentInfo;
   players: Player[];
   pods: Pod[];
@@ -205,7 +253,7 @@ export interface TdfPassthrough {
   /** Per pod category: the pod's `stage` and poddata beyond the known fields. */
   podExtras: Partial<Record<PodCategory, { stage: string; extra: [string, string][] }>>;
   /** Per round, keyed `category:number`: TOM's own type and stage codes. */
-  roundCodes: Record<string, { type: string; stage: string; timeLeft?: number; startTime?: string }>;
+  roundCodes: Record<string, { type: string; stage: string; timeLeft?: number; startTime?: string; state?: string }>;
   finalsOptions: string;
   finalsState?: string;
   /** TOM's finalized places and the inputs they describe; retained until results or entrants change. */

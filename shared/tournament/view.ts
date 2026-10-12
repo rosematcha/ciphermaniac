@@ -246,7 +246,14 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
   const pods: Pod[] = tournament.pods.map(pod => ({
     ...pod,
     playerIds: pod.playerIds.map(key),
+    ...(pod.flights
+      ? { flights: pod.flights.map(flight => ({ ...flight, playerIds: flight.playerIds.map(key) })) }
+      : {}),
     ...(pod.startingPlayerIds ? { startingPlayerIds: pod.startingPlayerIds.map(key) } : {}),
+    ...(pod.survivors ? { survivors: pod.survivors.map(key) } : {}),
+    ...(pod.repairOmittedPlayers ? { repairOmittedPlayers: pod.repairOmittedPlayers.map(key) } : {}),
+    ...(pod.unsavedByes ? { unsavedByes: pod.unsavedByes.map(bye => ({ ...bye, playerId: key(bye.playerId) })) } : {}),
+    ...(pod.unsavedPlayers ? { unsavedPlayers: pod.unsavedPlayers.map(key) } : {}),
     ...(pod.divisionCuts
       ? {
           divisionCuts: Object.fromEntries(
@@ -267,8 +274,22 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
     }))
   }));
   return {
+    ...(tournament.eliminationTieOrder
+      ? {
+          eliminationTieOrder: tournament.eliminationTieOrder.map(group => ({
+            ...group,
+            playerIds: group.playerIds.map(key)
+          }))
+        }
+      : {}),
+    ...(tournament.headToHeadOrder
+      ? {
+          headToHeadOrder: tournament.headToHeadOrder.map(group => ({ ...group, playerIds: group.playerIds.map(key) }))
+        }
+      : {}),
     // The organizer of record is a person: the .tdf staff export carries them, the public copy does not.
     info: { ...tournament.info, organizerPopId: '', organizerName: '' },
+    ...(tournament.settings ? { settings: { ...tournament.settings } } : {}),
     ...(tournament.startedAt === undefined ? {} : { startedAt: tournament.startedAt }),
     // Field by field, so a field added to Player stays private until it is named here:
     // a fixed table, for one, is an accommodation, not the room's business.
@@ -278,6 +299,9 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
       lastName: short?.get(player.id) ?? player.lastName,
       birthDate: '',
       droppedAfter: player.droppedAfter,
+      ...(player.order === undefined ? {} : { order: player.order }),
+      ...(player.tiebreaker === undefined ? {} : { tiebreaker: player.tiebreaker }),
+      ...(player.scheduledSwissRounds === undefined ? {} : { scheduledSwissRounds: player.scheduledSwissRounds }),
       ...(player.seed ? { seed: player.seed } : {}),
       ...(player.disqualified ? { disqualified: true as const } : {}),
       ...(player.late ? { late: true } : {}),

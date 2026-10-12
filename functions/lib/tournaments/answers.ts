@@ -16,6 +16,9 @@ export async function answerStaff(context: Context<'code'>, access: StaffAccess,
     return jsonError(outcome.error, outcome.status);
   }
   await publishAfter(context, outcome.row);
+  if (outcome.refusal) {
+    return jsonError(outcome.refusal, 400);
+  }
   return privateJson(manageView({ ...access, row: outcome.row }));
 }
 
