@@ -4,6 +4,35 @@
 # Matching rules join duplicate header values with commas. Use
 # ! Cache-Control before a specific policy to detach the broader value.
 
+# Every page: HTTPS only from the first visit on, and never framed by another
+# site, so a hidden frame can't click Delete account in Settings. Subdomains
+# are left out of HSTS until each is known to serve HTTPS alone.
+/*
+  Strict-Transport-Security: max-age=31536000
+  Content-Security-Policy: frame-ancestors 'self'
+  X-Frame-Options: SAMEORIGIN
+
+# Account and organizer pages stay out of search. /host itself is the
+# public landing page; /host/* is each event's console.
+/settings
+  X-Robots-Tag: noindex
+/account
+  X-Robots-Tag: noindex
+/welcome
+  X-Robots-Tag: noindex
+/history
+  X-Robots-Tag: noindex
+/apply
+  X-Robots-Tag: noindex
+/admin
+  X-Robots-Tag: noindex
+/host/*
+  X-Robots-Tag: noindex
+/stores/join
+  X-Robots-Tag: noindex
+/stores/:id/settings
+  X-Robots-Tag: noindex
+
 # The service worker script must bypass browser and edge storage.
 /sw.js
   Cache-Control: no-store, no-cache, must-revalidate

@@ -9,35 +9,46 @@ function parseRules(source) {
   for (const line of source.split('\n')) {
     if (line.startsWith('/')) {
       rules.push({ path: line.trim(), directives: [] });
-    } else if (line.trim() === '! Cache-Control' || line.trim().startsWith('Cache-Control:')) {
+    } else if (/^\s+!? ?[\w-]+:?/.test(line)) {
       rules.at(-1).directives.push(line.trim());
     }
   }
   return rules;
 }
 
-function cacheControl(path, source = headers) {
+/** A Pages path rule as a RegExp: `*` matches anything, `:name` one segment. */
+function patternOf(path) {
+  const parts = path.split(/(\*|:\w+)/);
+  const source = parts
+    .map(part => {
+      if (part === '*') {
+        return '.*';
+      }
+      return part.startsWith(':') ? '[^/]+' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    })
+    .join('');
+  return new RegExp(`^${source}$`);
+}
+
+/** Every value Pages would send for `name` on `path`, joined as it joins them. */
+function headerValue(path, name, source = headers) {
   const values = [];
   for (const rule of parseRules(source)) {
-    const pattern = new RegExp(
-      `^${rule.path
-        .split('*')
-        .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-        .join('.*')}$`
-    );
-    if (!pattern.test(path)) {
+    if (!patternOf(rule.path).test(path)) {
       continue;
     }
     for (const directive of rule.directives) {
-      if (directive === '! Cache-Control') {
+      if (directive === `! ${name}`) {
         values.length = 0;
-      } else {
-        values.push(directive.slice('Cache-Control:'.length).trim());
+      } else if (directive.startsWith(`${name}:`)) {
+        values.push(directive.slice(name.length + 1).trim());
       }
     }
   }
   return values.join(', ');
 }
+
+const cacheControl = (path, source = headers) => headerValue(path, 'Cache-Control', source);
 
 test('service worker script prevents HTTP storage and requires revalidation', () => {
   assert.equal(cacheControl('/sw.js'), 'no-store, no-cache, must-revalidate');
@@ -78,4 +89,31 @@ test('matching Pages rules merge values unless explicitly detached', () => {
     ),
     'public, max-age=31536000, immutable'
   );
+});
+
+test('every page is HTTPS-only and refuses to be framed by another site', () => {
+  for (const path of ['/', '/settings', '/host/ABC123', '/t/ABC123', '/assets/app-hash.js']) {
+    assert.equal(headerValue(path, 'Strict-Transport-Security'), 'max-age=31536000', path);
+    assert.equal(headerValue(path, 'Content-Security-Policy'), "frame-ancestors 'self'", path);
+    assert.equal(headerValue(path, 'X-Frame-Options'), 'SAMEORIGIN', path);
+  }
+});
+
+test('account and organizer pages stay out of search, public pages do not', () => {
+  for (const path of [
+    '/settings',
+    '/account',
+    '/welcome',
+    '/history',
+    '/apply',
+    '/admin',
+    '/host/ABC123',
+    '/stores/join',
+    '/stores/s1/settings'
+  ]) {
+    assert.equal(headerValue(path, 'X-Robots-Tag'), 'noindex', path);
+  }
+  for (const path of ['/', '/host', '/t/ABC123', '/u/reese', '/stores/s1', '/privacy', '/cards']) {
+    assert.equal(headerValue(path, 'X-Robots-Tag'), '', path);
+  }
 });
