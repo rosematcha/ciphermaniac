@@ -107,6 +107,8 @@ trends.json
 # upstream has a scan of a card that does not exist — see src/lib/jokeMode.ts.
 !/static/joke-arts/
 !/static/sw.js
+# security.txt, served from the root as RFC 9116 asks.
+!/static/.well-known/
 .lighthouseci/
 .scratch/
 .venv/
