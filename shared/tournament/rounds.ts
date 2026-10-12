@@ -56,7 +56,12 @@ export function cutPodOf(tournament: Tournament, pod: Pod, division: Division): 
     return undefined;
   }
   const of = divisionLookup(tournament);
-  const ids = cut.playerIds ?? pod.playerIds.filter(id => of(id) === division);
+  const played = pod.rounds
+    .filter(r => r.kind === 'elimination')
+    .flatMap(r => r.matches.flatMap(m => (m.p2 === null ? [m.p1] : [m.p1, m.p2])));
+  const ids = [
+    ...new Set([...(cut.playerIds ?? []), ...pod.playerIds.filter(id => played.includes(id) && of(id) === division)])
+  ];
   return divisionBracket(pod, division, cut, ids);
 }
 
@@ -154,7 +159,7 @@ export function playerPod(tournament: Tournament, playerId: string): Pod | undef
   const theirs = tournament.pods.filter(pod => pod.playerIds.includes(playerId));
   const swiss = theirs.find(pod => !pod.cutOf);
   const cut = theirs.find(pod => pod.cutOf);
-  if (swiss?.divisionCuts) {
+  if (swiss?.divisionCuts && !isDivision(swiss.category)) {
     const view = cutPodsOf(tournament, swiss).find(p => p.playerIds.includes(playerId));
     return view ? withSwiss(tournament, view) : { ...swiss, rounds: swiss.rounds.filter(r => r.kind === 'swiss') };
   }
@@ -163,12 +168,20 @@ export function playerPod(tournament: Tournament, playerId: string): Pod | undef
 
 /** Whether TOM had finalized the file this came from: its root stage is 5. */
 export function wasFinalized(tournament: Tournament): boolean {
-  return tournament.passthrough?.rootAttrs.some(([key, value]) => key === 'stage' && value === '5') ?? false;
+  return (
+    tournament.settings?.stage === 5 ||
+    (tournament.passthrough?.rootAttrs.some(([key, value]) => key === 'stage' && value === '5') ?? false)
+  );
 }
 
 /** Whether any round has been paired: before that the event is still taking players. */
 export function hasStarted(tournament: Tournament): boolean {
-  return tournament.startedAt !== undefined || tournament.pods.some(pod => pod.rounds.length > 0);
+  return (
+    tournament.startedAt !== undefined ||
+    (tournament.settings?.stage ?? 0) >= 4 ||
+    tournament.pods.some(pod => pod.rounds.length > 0) ||
+    (tournament.passthrough?.rootAttrs.some(([key, value]) => key === 'stage' && Number(value) >= 4) ?? false)
+  );
 }
 
 export function isReported(match: Match): boolean {
@@ -206,11 +219,44 @@ export function isOpenMatch(tournament: Tournament, key: MatchKey): boolean {
 
 /** A full round's clock, in seconds: Swiss rounds and top cut rounds each run their own length. */
 export function fullRoundSeconds(tournament: Tournament, kind: Round['kind']): number {
-  return (kind === 'swiss' ? tournament.info.roundTime : tournament.info.finalsRoundTime) * 60;
+  const onlyElimination =
+    tournament.settings?.type === 1 || tournament.passthrough?.rootAttrs.some(([k, v]) => k === 'type' && v === '1');
+  return (kind === 'swiss' || onlyElimination ? tournament.info.roundTime : tournament.info.finalsRoundTime) * 60;
 }
 
 export function roundComplete(round: Round): boolean {
-  return round.matches.every(isReported);
+  return round.matches.length > 0 && round.matches.every(isReported);
+}
+
+/** V18-12: a round at stage 5 or later counts as complete for pairing, finishing and tables, pending or not. */
+export function countsComplete(round: Round | undefined): boolean {
+  return Boolean(round && ((round.stage ?? 0) >= 5 || roundComplete(round)));
+}
+
+/** V18-6: setting an outcome returns a round at 5 or later with a pending match, or no match, to 4. */
+export function checkedStage(round: Round): Round {
+  if ((round.stage ?? 0) < 5 || roundComplete(round)) {
+    return round;
+  }
+  return { ...round, stage: 4, status: 'started' };
+}
+
+/** V18-6: every save writes each pod's latest round at 5 once it has a match and nothing pending. */
+export function savedStages(t: Tournament): Tournament {
+  if (!t.settings) {
+    return t;
+  }
+  return {
+    ...t,
+    pods: t.pods.map(pod => {
+      const last = latestRound(pod);
+      if (!last || (last.stage ?? 0) >= 5 || !roundComplete(last)) {
+        return pod;
+      }
+      const promoted: Round = { ...last, stage: 5, status: 'finished' };
+      return { ...pod, rounds: pod.rounds.map(r => (r === last ? promoted : r)) };
+    })
+  };
 }
 
 /** Opponents and byes from every Swiss round except `skipRound`. */
@@ -219,7 +265,7 @@ export function pairingHistory(pod: Pod, skipRound?: number): PairingHistory {
   const byes = new Set<string>();
   const meet = (a: string, b: string) => opponents.set(a, (opponents.get(a) ?? new Set()).add(b));
   for (const round of pod.rounds) {
-    if (round.kind !== 'swiss' || round.number === skipRound) {
+    if (round.number === skipRound) {
       continue;
     }
     for (const match of round.matches) {
@@ -232,7 +278,10 @@ export function pairingHistory(pod: Pod, skipRound?: number): PairingHistory {
       }
     }
   }
-  return { opponents, byes };
+  const previous = pod.rounds.filter(r => r.number < (skipRound ?? Infinity)).at(-1);
+  const seated = new Set(previous?.matches.flatMap(m => (m.p2 === null ? [m.p1] : [m.p1, m.p2])) ?? []);
+  const missingPrevious = new Set(previous ? pod.playerIds.filter(id => !seated.has(id)) : []);
+  return { opponents, byes, missingPrevious };
 }
 
 /** Match points per player over Swiss rounds before `beforeRound`. */
@@ -288,7 +337,38 @@ export function swissAttendance(pod: Pod): number {
  * with TOM's.
  */
 export function regularRounds(tournament: Tournament, pod: Pod): number {
-  return recommendedStructure(swissAttendance(pod), eventTypeOf(tournament)).rounds;
+  const { settings } = tournament;
+  const count = scheduledAttendance(tournament, pod);
+  const type = settings?.type === 2 ? 'challenge' : eventTypeOf(tournament);
+  const { rounds } = recommendedStructure(count, type);
+  // One less Swiss round is a type 3 setting; a type 2 event saves it but plays every round.
+  const fewer = settings?.lessSwiss && settings.type === 3 && rounds >= 4 ? 1 : 0;
+  // V22-2: the two Prerelease rounds belong to the type 2 column only.
+  const prerelease = settings?.mode === 'PRERELEASE' && settings.type !== 3 ? 2 : 0;
+  return rounds - fewer + prerelease + (pod.additionalRounds ?? 0);
+}
+
+/** Combined pods select by current membership, then use that division's frozen count. */
+function scheduledAttendance(t: Tournament, pod: Pod): number {
+  if (isDivision(pod.category)) {
+    const count = pod.divisionCounts?.[pod.category] ?? attendees(pod).length;
+    return Math.ceil(count / (pod.subgroupCount ?? 1));
+  }
+  const of = divisionLookup(t);
+  const counts = new Map(DIVISIONS.map(d => [d, pod.playerIds.filter(id => of(id) === d).length]));
+  const division = [...DIVISIONS].sort((a, b) => counts.get(b)! - counts.get(a)!)[0]!;
+  return Math.max(4, pod.divisionCounts?.[division] ?? counts.get(division)!);
+}
+
+/** Each player keeps the schedule assigned at start, or receives the current one on reopening. */
+export function schedulePlayers(t: Tournament): Tournament {
+  const schedules = new Map(
+    t.pods.flatMap(p => {
+      const rounds = regularRounds(t, p);
+      return p.playerIds.map(id => [id, rounds] as const);
+    })
+  );
+  return { ...t, players: t.players.map(p => ({ ...p, scheduledSwissRounds: schedules.get(p.id) ?? 0 })) };
 }
 
 /** Players in the pod who have not dropped. */
@@ -305,6 +385,10 @@ export interface MatchStamp {
   fixed?: ReadonlyMap<string, number>;
   /** Tables already in use this round, by matches a re-pair keeps. */
   taken?: ReadonlySet<number>;
+  blocked?: readonly { start: number; end: number }[];
+  ignoreFixed?: boolean;
+  ceiling?: number;
+  overflow?: number;
 }
 
 /** Each player's fixed table, for the players who have one. */
@@ -312,10 +396,9 @@ export function fixedTables(tournament: Tournament): Map<string, number> {
   return new Map(tournament.players.flatMap(p => (p.fixedTable ? [[p.id, p.fixedTable] as const] : [])));
 }
 
-/** The fixed table a pairing claims: player one's, else player two's, if still free. */
-function claimed(pairing: Pairing, stamp: MatchStamp, used: ReadonlySet<number>): number | undefined {
-  const tables = [stamp.fixed?.get(pairing.p1), pairing.p2 === null ? undefined : stamp.fixed?.get(pairing.p2)];
-  return tables.find((table): table is number => table !== undefined && !used.has(table));
+/** The fixed table a pairing claims: player one's, else player two's, even when another match shares it. */
+function claimed(pairing: Pairing, stamp: MatchStamp): number | undefined {
+  return stamp.fixed?.get(pairing.p1) ?? (pairing.p2 === null ? undefined : stamp.fixed?.get(pairing.p2));
 }
 
 /**
@@ -325,10 +408,33 @@ function claimed(pairing: Pairing, stamp: MatchStamp, used: ReadonlySet<number>)
  * table and is already decided. A top cut keeps this order, as its next
  * round pairs neighbouring matches' winners; pages sort by table.
  */
+function availableTable(
+  stamp: MatchStamp,
+  reserved: ReadonlySet<number>,
+  from: number,
+  inOverflow: boolean
+): { table: number; inOverflow: boolean } {
+  const blocked = (number: number) => (stamp.blocked ?? []).some(range => number >= range.start && number <= range.end);
+  let table = from;
+  let overflow = inOverflow;
+  const advance = () => {
+    if (!overflow && stamp.ceiling !== undefined && table > stamp.ceiling && stamp.overflow !== undefined) {
+      table = stamp.overflow;
+      overflow = true;
+    }
+  };
+  advance();
+  while (reserved.has(table) || blocked(table)) {
+    table += 1;
+    advance();
+  }
+  return { table, inOverflow: overflow };
+}
+
 export function seatPairings(pairings: readonly Pairing[], stamp: MatchStamp): Match[] {
   const used = new Set(stamp.taken ?? []);
   const tables = pairings.map(pairing => {
-    const table = pairing.p2 === null ? 0 : claimed(pairing, stamp, used);
+    const table = pairing.p2 === null ? 0 : stamp.ignoreFixed ? undefined : claimed(pairing, stamp);
     if (table) {
       used.add(table);
     }
@@ -336,12 +442,14 @@ export function seatPairings(pairings: readonly Pairing[], stamp: MatchStamp): M
   });
   const reserved = new Set([...used, ...(stamp.fixed?.values() ?? [])]);
   let next = stamp.firstTable;
+  let inOverflow = false;
   const nextFree = () => {
-    while (reserved.has(next)) {
-      next += 1;
-    }
-    next += 1;
-    return next - 1;
+    const available = availableTable(stamp, reserved, next, inOverflow);
+    const { table } = available;
+    ({ inOverflow } = available);
+    reserved.add(table);
+    next = table + 1;
+    return table;
   };
   return pairings.map(({ p1, p2 }, i) =>
     p2 === null
