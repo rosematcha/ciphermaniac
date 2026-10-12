@@ -96,13 +96,17 @@ function reopenedRound(t: Tournament, pod: Pod, round: Round, origins: ReadonlyM
 
 /** V18-8: reopening rebuilds the surviving players from the restored rounds. */
 function reopenedPod(t: Tournament, pod: Pod, origins: ReadonlyMap<string, number | undefined>): Pod {
-  const { survivors: _kept, ...rest } = pod;
+  const { survivors: _kept, survivorsUnconfirmed: _held, ...rest } = pod;
   const reopened: Pod = {
     ...rest,
     ...(pod.divisionCounts ? { divisionCounts: reopenedCounts(t, pod, pod.divisionCounts) } : {}),
     rounds: pod.rounds.map(round => reopenedRound(t, pod, round, origins))
   };
-  return keepsSurvivors(t, reopened) ? { ...reopened, survivors: rebuiltSurvivors(t, reopened) } : reopened;
+  if (!keepsSurvivors(t, reopened)) {
+    return reopened;
+  }
+  const survivors = rebuiltSurvivors(t, reopened);
+  return t.settings?.type === 1 ? { ...reopened, survivors } : { ...reopened, survivors, survivorsUnconfirmed: true };
 }
 
 /** A division saved with no players at the start is counted again from its registered roster. */

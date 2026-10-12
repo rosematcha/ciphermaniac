@@ -60,6 +60,11 @@ export interface RecordedChoices {
   takenApart?: boolean;
   eliminationTieOrder?: Tournament['eliminationTieOrder'];
   headToHeadOrder?: Tournament['headToHeadOrder'];
+  thirdPlaceOrder?: Tournament['thirdPlaceOrder'];
+  /** PAIRING V24-7: a return's saved round: its match count and its last match. */
+  returnMatch?: { matches: number; match: Match };
+  /** SPEC V24-9: the cut start's seeded players in seed order, the choice for a head-to-head cycle. */
+  cutSeeds?: readonly string[];
   /** Tables held by the random pairing search after its initial repair dissolution. */
   heldRepairTables?: readonly number[];
   /** V17-5: search-held tables are released after that flight is numbered. */

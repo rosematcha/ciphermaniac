@@ -36,12 +36,15 @@ import {
 import { finalPodRound } from './lifecycleWorkflow.js';
 import {
   bracketMatches,
+  equalBeforeHeadToHead,
   orderEliminationGroups,
   orderHeadToHeadGroups,
   placeFinals,
+  repairedEliminationGroups,
   type Standing,
   swissStandings,
-  thirdPlaceMatch
+  thirdPlaceMatch,
+  undecidedThirdPlaceGroups
 } from './standings.js';
 import { eventTypeOf, recommendedStructure } from './structure.js';
 import {
@@ -873,30 +876,52 @@ function rootValue(t: Tournament, key: string): string | undefined {
   return t.passthrough?.rootAttrs.find(([name]) => name === key)?.[1];
 }
 
-/** Each division's final places, in the order the standings list them: Swiss, then the top cut on top. */
-function divisionPlaces(t: Tournament, divisionOf: (id: string) => Division): [Division | 'mixed', Standing[]][] {
+/** SPEC V24-5: a group the third-place setting comparison cannot order takes the saved standings' relative order. */
+function recordedThirdPlace(t: Tournament, division: Division | 'mixed', groups: readonly string[][]): string[][] {
+  const saved = t.thirdPlaceOrder?.find(order => order.category === division)?.playerIds ?? [];
+  return groups.flatMap(group =>
+    group.every(id => saved.includes(id)) ? [saved.filter(id => group.includes(id))] : []
+  );
+}
+
+/**
+ * Each division's final places, in the order the standings list them: Swiss, then the top cut on top, with the
+ * groups whose third place the saved standings decided.
+ */
+function divisionPlaces(
+  t: Tournament,
+  divisionOf: (id: string) => Division
+): [Division | 'mixed', Standing[], string[][]][] {
   const byDivision = divisionPlayers(t, divisionOf);
   const categories: (Division | 'mixed')[] =
     rootValue(t, 'type') === '1' || rootValue(t, 'gametype') === 'GO' ? ['mixed'] : [...DIVISIONS].reverse();
   return categories.map(division => {
     const fields = division === 'mixed' ? t.pods : (byDivision.get(division) ?? []);
+    const thirdPlace: string[][] = [];
     const places = fields.flatMap(pod => {
       const full = t.pods.find(p => p.category === pod.category) ?? pod;
       const only = new Set(pod.playerIds);
       const swiss = swissStandings(full, t.players, { only, regularRounds: regularRounds(t, full) });
-      return placeFinals(division === 'mixed' ? full : (cutPodOf(t, full, division) ?? full), swiss, {
+      const finals = division === 'mixed' ? full : (cutPodOf(t, full, division) ?? full);
+      const recordedGroups = recordedThirdPlace(t, division, [
+        ...undecidedThirdPlaceGroups(finals, swiss, full),
+        ...repairedEliminationGroups(finals, swiss, full, { players: t.players, regularRounds: regularRounds(t, full) })
+      ]);
+      thirdPlace.push(...recordedGroups);
+      return placeFinals(finals, swiss, {
         players: t.players,
         swissPod: full,
-        regularRounds: regularRounds(t, full)
+        regularRounds: regularRounds(t, full),
+        recordedGroups
       });
     });
-    return [division, places];
+    return [division, places, thirdPlace];
   });
 }
 
 function writeStandings(t: Tournament, divisionOf: (id: string) => Division): string[] {
   const byDivision = divisionPlayers(t, divisionOf);
-  const pods = divisionPlaces(t, divisionOf).flatMap(([division, places]) => {
+  const pods = divisionPlaces(t, divisionOf).flatMap(([division, places, thirdPlace]) => {
     const fields = division === 'mixed' ? t.pods : (byDivision.get(division) ?? []);
     const only = new Set(fields.flatMap(p => p.playerIds));
     const dnf = t.players.filter(p => only.has(p.id) && p.disqualified).sort(compareNames);
@@ -909,11 +934,10 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
         .map(group => group.playerIds);
     const tied = fields.reduce(
       (rows, pod) =>
-        orderEliminationGroups(
-          t.pods.find(p => p.category === pod.category) ?? pod,
-          rows,
-          recorded(t.eliminationTieOrder)
-        ),
+        orderEliminationGroups(t.pods.find(p => p.category === pod.category) ?? pod, rows, [
+          ...recorded(t.eliminationTieOrder),
+          ...thirdPlace
+        ]),
       places
     );
     // A head-to-head order is recorded for a group equal on every comparison before head-to-head; later results
@@ -936,15 +960,6 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
     ];
   });
   return ['<standings>', ...block(1, pods), '</standings>'];
-}
-
-function equalBeforeHeadToHead(rows: readonly Standing[], ids: readonly string[]): boolean {
-  const members = rows.filter(row => ids.includes(row.playerId));
-  const [first] = members;
-  return members.every(
-    row =>
-      row.points === first!.points && row.late === first!.late && row.owp === first!.owp && row.oowp === first!.oowp
-  );
 }
 
 function finalStandings(t: Tournament, divisionOf: (id: string) => Division): string[] {

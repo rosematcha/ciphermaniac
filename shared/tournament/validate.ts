@@ -264,9 +264,22 @@ function pod(value: unknown): Pod {
           )
         }),
     ...(o.survivors === undefined ? {} : { survivors: arr(o.survivors, LIMITS.players).map(id => str(id, 20)) }),
+    ...(o.survivorsUnconfirmed === true ? { survivorsUnconfirmed: true as const } : {}),
     ...(o.historyOmittedRound === undefined
       ? {}
       : { historyOmittedRound: int(o.historyOmittedRound, 1, LIMITS.rounds) }),
+    ...(o.dissolvedOpponents === undefined
+      ? {}
+      : {
+          dissolvedOpponents: arr(o.dissolvedOpponents, LIMITS.players).map(value => {
+            const entry = obj(value);
+            return {
+              playerId: str(entry.playerId, 20),
+              opponentId: str(entry.opponentId, 20),
+              round: int(entry.round, 1, LIMITS.rounds)
+            };
+          })
+        }),
     ...(o.repairOmittedPlayers === undefined
       ? {}
       : { repairOmittedPlayers: arr(o.repairOmittedPlayers, LIMITS.players).map(id => str(id, 20)) }),
@@ -383,6 +396,7 @@ export function readTournament(body: unknown): Tournament | null {
       info: info(o.info),
       ...(o.eliminationTieOrder === undefined ? {} : { eliminationTieOrder: recordedOrders(o.eliminationTieOrder) }),
       ...(o.headToHeadOrder === undefined ? {} : { headToHeadOrder: recordedOrders(o.headToHeadOrder) }),
+      ...(o.thirdPlaceOrder === undefined ? {} : { thirdPlaceOrder: recordedOrders(o.thirdPlaceOrder) }),
       ...(o.settings === undefined ? {} : { settings: settings(o.settings) }),
       players: arr(o.players, LIMITS.players).map(player),
       pods: arr(o.pods, POD_CATEGORIES.length).map(pod),

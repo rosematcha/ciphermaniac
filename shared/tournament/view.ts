@@ -251,6 +251,15 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
       : {}),
     ...(pod.startingPlayerIds ? { startingPlayerIds: pod.startingPlayerIds.map(key) } : {}),
     ...(pod.survivors ? { survivors: pod.survivors.map(key) } : {}),
+    ...(pod.dissolvedOpponents
+      ? {
+          dissolvedOpponents: pod.dissolvedOpponents.map(entry => ({
+            ...entry,
+            playerId: key(entry.playerId),
+            opponentId: key(entry.opponentId)
+          }))
+        }
+      : {}),
     ...(pod.repairOmittedPlayers ? { repairOmittedPlayers: pod.repairOmittedPlayers.map(key) } : {}),
     ...(pod.unsavedByes ? { unsavedByes: pod.unsavedByes.map(bye => ({ ...bye, playerId: key(bye.playerId) })) } : {}),
     ...(pod.unsavedPlayers ? { unsavedPlayers: pod.unsavedPlayers.map(key) } : {}),
@@ -282,6 +291,11 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
             ...group,
             playerIds: group.playerIds.map(key)
           }))
+        }
+      : {}),
+    ...(tournament.thirdPlaceOrder
+      ? {
+          thirdPlaceOrder: tournament.thirdPlaceOrder.map(group => ({ ...group, playerIds: group.playerIds.map(key) }))
         }
       : {}),
     ...(tournament.headToHeadOrder

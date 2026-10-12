@@ -110,6 +110,12 @@ export function dropEntrant(
   };
 }
 
+/** V24-2: a repeated departure awards a cut match its opponent already holds again, under V18-8 rule 3. */
+function reawarded(t: Tournament, pod: Pod, match: Match, id: string): Tournament {
+  const opponent = match.p1 === id ? match.p2 : match.p1;
+  return opponent ? replacePods(t, [awardedDeparture(t, pod, id, opponent)]) : t;
+}
+
 /**
  * A repeated departure keeps the first one's status, round and time (PAIRING 53), but still concedes an
  * elimination match the player has not lost, such as one that reopening restored to pending (PAIRING 28),
@@ -121,14 +127,19 @@ function repeatedDeparture(
   match: Match | undefined,
   departure: { id: string; timestamp: string }
 ): Tournament {
-  const last = latestRound(pod);
-  const kept = unstartedSwiss(last) && match !== undefined;
-  const conceded = match?.outcome === (match?.p1 === departure.id ? 'p2' : 'p1');
-  const concedes = last?.kind === 'elimination' && Boolean(match?.p2) && !conceded;
-  if (!match || (!kept && !concedes)) {
+  if (!match) {
     return t;
   }
-  return replacePods(t, [changedDropPod(t, pod, match, { ...departure, players: t.players })]);
+  const last = latestRound(pod);
+  const conceded = match.outcome === (match.p1 === departure.id ? 'p2' : 'p1');
+  if (last?.kind === 'elimination' && match.p2) {
+    return conceded
+      ? reawarded(t, pod, match, departure.id)
+      : replacePods(t, [changedDropPod(t, pod, match, { ...departure, players: t.players })]);
+  }
+  return unstartedSwiss(last)
+    ? replacePods(t, [changedDropPod(t, pod, match, { ...departure, players: t.players })])
+    : t;
 }
 
 function changedDropPod(
@@ -225,8 +236,27 @@ export function reenterEntrant(
     const { disqualified: _dq, droppedAt: _drop, ...rest } = p;
     return { ...rest, droppedAfter: null };
   });
-  const returned = rejoined(t, { ...pod, rounds }, op.id);
+  const returned = rejoined(t, { ...pod, rounds: withAbandonedMatch(rounds, op.id, ctx) }, op.id);
   return { ...replacePods(t, [returned]), players, passthrough: withoutSavedDeparture(t, op.id) };
+}
+
+/**
+ * PAIRING V24-7: a return can append an abandoned Swiss search's unsaved match, at table 0 after every other match
+ * of the round. The return's checkpoint is the choice: it holds exactly one more match than statements 18 and 19.
+ */
+function withAbandonedMatch(rounds: Round[], id: string, ctx: LifecycleContext): Round[] {
+  const recorded = ctx.recorded?.returnMatch;
+  const last = rounds.at(-1);
+  if (
+    !recorded ||
+    last?.kind !== 'swiss' ||
+    recorded.matches !== last.matches.length + 1 ||
+    recorded.match.table !== 0 ||
+    (recorded.match.p1 !== id && recorded.match.p2 !== id)
+  ) {
+    return rounds;
+  }
+  return [...rounds.slice(0, -1), { ...last, matches: [...last.matches, { ...recorded.match }] }];
 }
 
 /** V18-7: a return clears the saved departure, so a later departure is written afresh. */

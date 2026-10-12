@@ -168,6 +168,10 @@ export interface Pod {
   survivors?: string[];
   /** V19-3: a repaired opening round whose matches are not its players' history until reload. */
   historyOmittedRound?: number;
+  /** V25-2: latest two-player opponents dissolved by repairs since the last reading. */
+  dissolvedOpponents?: { playerId: string; opponentId: string; round: number }[];
+  /** V24-2: a reading's rebuilt cut list, held until TOM first checks whether the cut is finished. */
+  survivorsUnconfirmed?: true;
   /** V19-5: an abandoned repair's unsaved seats hide waiting players until reload. */
   repairOmittedPlayers?: string[];
   /** The divisions whose top-cut playoff TOM records as paired (`paired3rd4th`); it stays set through repairs. */
@@ -231,6 +235,8 @@ export interface TournamentSettings {
 export interface Tournament {
   /** Recorded equal-win elimination groups with indeterminate third-place comparisons. */
   eliminationTieOrder?: { category: PodCategory; playerIds: string[] }[];
+  /** V24-5 / V25-2: a save's recorded order for indeterminate third-place or repaired-opponent groups. */
+  thirdPlaceOrder?: { category: PodCategory; playerIds: string[] }[];
   /** Recorded relative order for cyclic head-to-head groups in final standings. */
   headToHeadOrder?: { category: PodCategory; playerIds: string[] }[];
   settings?: TournamentSettings;

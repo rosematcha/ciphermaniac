@@ -9,7 +9,8 @@ import { dropEntrant, lateEntrant, reenterEntrant } from './lifecyclePlayers.js'
 import { packRepairTables, packTables, prepareTables } from './lifecycleTables.js';
 import type { LifecycleContext, LifecycleOperation, LifecycleResult } from './lifecycleTypes.js';
 import { reopenResult } from './lifecycleReopen.js';
-import { finalPodRound, recordResults, selectedPods, workflow } from './lifecycleWorkflow.js';
+import { checkedSurvivors, confirmedSurvivors } from './lifecycleSurvivors.js';
+import { finalPodRound, recordResults, replacePods, selectedPods, workflow } from './lifecycleWorkflow.js';
 import { writeTdf } from './tdf.js';
 import { countsComplete, latestRound, regularRounds, savedStages, wasFinalized } from './rounds.js';
 import type { Match, Round, Tournament } from './types.js';
@@ -59,8 +60,20 @@ function eliminationPair(
   if (op.repair) {
     return repairElimination(t, op.pod, ctx);
   }
-  return t.settings?.type === 1 || selectedPods(t, op.pod).every(completedSwiss)
-    ? nextElimination(t, op.pod, ctx)
+  if (t.settings?.type === 1) {
+    return nextElimination(t, op.pod, ctx);
+  }
+  // V24-2: a cut pairing request checks the pod's list first; one that appends a Swiss round does not.
+  const pods = selectedPods(t, op.pod);
+  return pods.every(completedSwiss)
+    ? nextElimination(
+        replacePods(
+          t,
+          pods.map(pod => confirmedSurvivors(t, pod))
+        ),
+        op.pod,
+        ctx
+      )
     : pairFreshSwiss(t, op.pod, ctx);
 }
 
@@ -159,9 +172,14 @@ const handlers: Handlers = {
 
 /** An elimination tie order is a checkpoint choice: each save applies only the one recorded with it. */
 function withRecordedOrders(t: Tournament, ctx: LifecycleContext): Tournament {
-  const { eliminationTieOrder: _stale, ...rest } = t;
+  const { eliminationTieOrder: _stale, thirdPlaceOrder: _saved, ...rest } = t;
   const ties = ctx.recorded?.eliminationTieOrder;
-  return ties ? { ...rest, eliminationTieOrder: ties } : rest;
+  const finished = ctx.recorded?.thirdPlaceOrder;
+  return {
+    ...rest,
+    ...(ties ? { eliminationTieOrder: ties } : {}),
+    ...(finished ? { thirdPlaceOrder: finished } : {})
+  };
 }
 
 function completedOperation(t: Tournament, ctx: LifecycleContext): LifecycleResult {
@@ -231,6 +249,15 @@ function finishedEvent(t: Tournament): boolean {
   return wasFinalized(t) && t.pods.every(pod => completedPod(t, pod));
 }
 
+/** V24-2: pairings, repairs and finish requests check every pod's cut list before acting; every save checks again. */
+function handledOperation(t: Tournament, op: LifecycleOperation, ctx: LifecycleContext): Tournament {
+  const handler = handlers[op.type] as (t: Tournament, op: LifecycleOperation, ctx: LifecycleContext) => Tournament;
+  const checking = ['pair', 'topCut', 'finish'].includes(op.type);
+  const handled = handler(checking ? checkedSurvivors(t) : t, op, ctx);
+  // A reading's checkpoint is TOM's next save of the reopened event, so it checks too.
+  return checkedSurvivors(handled);
+}
+
 /** Applies one organizer operation atomically; refusals carry the persisted state. */
 export function applyLifecycleOperation(t: Tournament, op: LifecycleOperation, ctx: LifecycleContext): LifecycleResult {
   try {
@@ -246,8 +273,7 @@ export function applyLifecycleOperation(t: Tournament, op: LifecycleOperation, c
     if (((op.type === 'pair' && !op.repair) || op.type === 'topCut') && finishedEvent(t)) {
       throw new Error('The tournament is complete');
     }
-    const handler = handlers[op.type] as (t: Tournament, op: LifecycleOperation, ctx: LifecycleContext) => Tournament;
-    const tournament = handler(t, op, ctx);
+    const tournament = handledOperation(t, op, ctx);
     if (
       (op.type === 'topCut' || (op.type === 'pair' && !op.repair)) &&
       tournament.pods.every(p => p.rounds.length === t.pods.find(old => old.category === p.category)?.rounds.length)

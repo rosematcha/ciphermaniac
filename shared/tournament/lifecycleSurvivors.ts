@@ -5,7 +5,7 @@
  */
 
 import { divisionLookup } from './divisions.js';
-import { latestRound } from './rounds.js';
+import { countsComplete, latestRound } from './rounds.js';
 import { thirdPlaceMatch } from './standings.js';
 import type { Division, Match, Pod, Tournament } from './types.js';
 
@@ -62,6 +62,20 @@ function withSurvivors(t: Tournament, pod: Pod, change: (ids: string[]) => strin
 
 const added = (ids: string[], id: string) => (ids.includes(id) ? ids : [...ids, id]);
 
+/** A removal takes one entry of a list that can repeat a player (V24-2). */
+function removedOnce(ids: readonly string[], id: string): string[] {
+  const index = ids.indexOf(id);
+  return index < 0 ? [...ids] : [...ids.slice(0, index), ...ids.slice(index + 1)];
+}
+
+/** V24-2: a top cut adds the winner only to a list still holding someone, then removes the loser once more. */
+function storedWin(t: Tournament, list: string[], winner: string, loser: string): string[] {
+  if (t.settings?.type === 1) {
+    return added(list, winner);
+  }
+  return list.length && !list.includes(winner) ? removedOnce([...list, winner], loser) : list;
+}
+
 /**
  * Every attempted result in an elimination round removes the loser it names; a stored win also restores the
  * winner. TOM refuses to store a win for a departed player.
@@ -76,8 +90,8 @@ export function enteredResults(t: Tournament, pod: Pod, attempts: readonly Match
         return list;
       }
       const [winner, loser] = match.outcome === 'p1' ? [match.p1, match.p2] : [match.p2, match.p1];
-      const without = list.filter(id => id !== loser);
-      return departed(t, winner) ? without : added(without, winner);
+      const without = removedOnce(list, loser);
+      return departed(t, winner) ? without : storedWin(t, without, winner, loser);
     }, ids)
   );
 }
@@ -87,7 +101,33 @@ export function awardedDeparture(t: Tournament, pod: Pod, id: string, opponent: 
   if (t.settings?.type === 1 || !opponent || departed(t, opponent)) {
     return pod;
   }
-  return withSurvivors(t, pod, ids => (ids.includes(opponent) ? ids : [...ids.filter(s => s !== id), opponent]));
+  return withSurvivors(t, pod, ids =>
+    ids.includes(opponent) || !ids.length ? ids : [...removedOnce(ids, id), opponent]
+  );
+}
+
+/**
+ * V24-2: the first check after a reading confirms the rebuilt list; an empty one is refilled with every seat of
+ * the pod's latest round, departed players and losers included.
+ */
+export function confirmedSurvivors(t: Tournament, pod: Pod): Pod {
+  if (!pod.survivorsUnconfirmed) {
+    return pod;
+  }
+  const { survivorsUnconfirmed: _held, ...rest } = pod;
+  const seats = (latestRound(pod)?.matches ?? []).flatMap(m => (m.p2 === null ? [m.p1] : [m.p1, m.p2]));
+  return survivorList(t, rest).length ? rest : { ...rest, survivors: seats };
+}
+
+/** V24-2: saves, repairs and numberings check every pod at its scheduled round count whose latest round is complete. */
+export function checkedSurvivors(t: Tournament): Tournament {
+  const pods = t.pods.map(pod => {
+    const last = latestRound(pod);
+    const swiss = pod.rounds.filter(r => r.kind === 'swiss').length;
+    const scheduled = swiss + Math.ceil(Math.log2(Math.max(pod.cut, 1)));
+    return last && last.number >= scheduled && countsComplete(last) ? confirmedSurvivors(t, pod) : pod;
+  });
+  return pods.some((pod, i) => pod !== t.pods[i]) ? { ...t, pods } : t;
 }
 
 /**
@@ -105,11 +145,16 @@ export function rejoined(t: Tournament, pod: Pod, id: string): Pod {
 }
 
 /** A paired third-place playoff adds its two players (V16-11); a top cut records the playoff as paired. */
-export function playoffPlayers(t: Tournament, pod: Pod, playoff: Pick<Match, 'p1' | 'p2'> | undefined): Pod {
+export function playoffPlayers(
+  t: Tournament,
+  pod: Pod,
+  playoff: Pick<Match, 'p1' | 'p2'> | undefined,
+  finalistsDivision?: Division
+): Pod {
   if (!playoff || playoff.p2 === null) {
     return pod;
   }
-  const division = divisionLookup(t)(playoff.p1);
+  const division = finalistsDivision ?? divisionLookup(t)(playoff.p1);
   const recorded =
     t.settings?.type === 1 ? pod : { ...pod, playoffsPaired: [...new Set([...(pod.playoffsPaired ?? []), division])] };
   return withSurvivors(t, recorded, ids => [...ids, playoff.p1, playoff.p2!]);

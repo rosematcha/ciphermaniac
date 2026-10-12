@@ -478,6 +478,112 @@ interface FinalsContext {
   players: readonly Player[];
   swissPod: Pod;
   regularRounds: number;
+  /** SPEC V24-5: groups with a recorded order, placed afterwards without the third-place setting comparison. */
+  recordedGroups?: readonly (readonly string[])[];
+}
+
+const thirdPlaceRounds = (pod: Pod) => (pod.cutOf || pod.rounds.some(r => r.kind === 'swiss') ? Math.log2(pod.cut) : 0);
+
+/**
+ * SPEC V24-5: equal-win groups the third-place setting comparison cannot order: a member without any two-player
+ * match beside a member meeting its requirement, or two members whose latest two-player opponents have no
+ * elimination loss, one of them meeting the requirement.
+ */
+export function undecidedThirdPlaceGroups(pod: Pod, swiss: readonly Standing[], swissPod: Pod = pod): string[][] {
+  if (!pod.playoff3rd4th) {
+    return [];
+  }
+  const tallies = eliminationTallies(swissPod);
+  const rounds = thirdPlaceRounds(pod);
+  const groups = new Map<number, Tally[]>();
+  for (const row of swiss) {
+    const tally = tallies.get(row.playerId);
+    if (tally) {
+      groups.set(tally.record.wins, [...(groups.get(tally.record.wins) ?? []), tally]);
+    }
+  }
+  const qualifies = (tally: Tally) => tally.record.losses === 1 && tally.record.wins >= rounds - 1;
+  const unbeaten = (tally: Tally) =>
+    tally.opponents.length > 0 && (tallies.get(tally.opponents.at(-1)!)?.record.losses ?? 0) === 0;
+  return [...groups.values()]
+    .filter(group => {
+      const unmatched = group.some(tally => !tally.opponents.length) && group.some(qualifies);
+      const twoUnbeaten = group.filter(unbeaten);
+      return unmatched || (twoUnbeaten.length >= 2 && twoUnbeaten.some(qualifies));
+    })
+    .map(group => swiss.map(row => row.playerId).filter(id => group.includes(tallies.get(id)!)));
+}
+
+/** The standing at the last Swiss round before the first cut; match history still includes every round. */
+function cutStandingPod(pod: Pod): Pod {
+  const firstCut = pod.rounds.find(r => r.kind === 'elimination')?.number ?? Infinity;
+  return { ...pod, rounds: pod.rounds.filter(r => r.kind !== 'swiss' || r.number < firstCut) };
+}
+
+/** An opponent comparison is reached only after all earlier Swiss comparisons tie. */
+function repairedOpponentComparison(
+  pod: Pod,
+  players: readonly Player[],
+  rows: readonly Standing[],
+  regularRounds?: number
+) {
+  if (!pod.cutOf && !pod.rounds.some(r => r.kind === 'swiss')) {
+    return () => false;
+  }
+  const standing = cutStandingPod(pod);
+  const swiss = players.length ? swissStandings(standing, players, { withDisqualified: true, regularRounds }) : rows;
+  const byId = new Map(swiss.map(row => [row.playerId, row]));
+  const compare = compareStandings(new Map(), tallySwiss(standing));
+  return (a: string, b: string) => compare(byId.get(a)!, byId.get(b)!) === 0;
+}
+
+/** V25-2: the checkpoint orders only whole equal-win groups involving a dissolved latest opponent. */
+export function repairedEliminationGroups(
+  pod: Pod,
+  swiss: readonly Standing[],
+  full: Pod = pod,
+  context: { players?: readonly Player[]; regularRounds?: number } = {}
+): string[][] {
+  if (!full.dissolvedOpponents?.length) {
+    return [];
+  }
+  const history = matchOpponents(full);
+  const latest = new Map([...history].map(([id, matches]) => [id, matches.filter(m => m !== null).at(-1)]));
+  const affected = new Set<string>();
+  for (const entry of full.dissolvedOpponents ?? []) {
+    const replaced = full.rounds.some(
+      r =>
+        r.number >= entry.round &&
+        r.matches.some(m => m.p2 !== null && (m.p1 === entry.playerId || m.p2 === entry.playerId))
+    );
+    if (!replaced) {
+      affected.add(entry.playerId);
+      latest.set(entry.playerId, entry.opponentId);
+    }
+  }
+  const tallies = eliminationTallies(full);
+  const groups = new Map<number, string[]>();
+  for (const row of swiss) {
+    const tally = tallies.get(row.playerId);
+    if (tally) {
+      groups.set(tally.record.wins, [...(groups.get(tally.record.wins) ?? []), row.playerId]);
+    }
+  }
+  const qualifies = (id: string) => {
+    const { record } = tallies.get(id)!;
+    return pod.playoff3rd4th && record.losses === 1 && record.wins >= thirdPlaceRounds(pod) - 1;
+  };
+  const reached = repairedOpponentComparison(full, context.players ?? [], swiss, context.regularRounds);
+  const involves = (a: string, b: string) =>
+    qualifies(a) ||
+    qualifies(b) ||
+    (reached(a, b) &&
+      latest.get(a) !== undefined &&
+      latest.get(b) !== undefined &&
+      !(latest.get(a) === b && latest.get(b) === a));
+  return [...groups.values()].filter(group =>
+    group.some(a => affected.has(a) && group.some(b => a !== b && involves(a, b)))
+  );
 }
 
 /** Recorded matches use personal match numbers, including one-seat matches. */
@@ -516,7 +622,8 @@ function compareOpponents(
 }
 
 function cutSwissComparison(pod: Pod, swiss: readonly Standing[], context?: FinalsContext) {
-  const full = context?.swissPod ?? pod;
+  const saved = context?.swissPod ?? pod;
+  const full = cutStandingPod(saved);
   const tallies = tallySwiss(full);
   const beforePreference = compareStandings(new Map(), tallies);
   const opponents = context
@@ -527,14 +634,14 @@ function cutSwissComparison(pod: Pod, swiss: readonly Standing[], context?: Fina
     ? new Map(context.players.map((player, i) => [player.id, player.tiebreaker ?? i + 1]))
     : new Map(swiss.map(row => [row.playerId, row.place]));
   const compare = compareStandings(order, tallies);
-  const history = matchOpponents(full);
+  const history = matchOpponents(saved);
   const opponentOrder = (a: string, b: string) => compare(rows.get(a)!, rows.get(b)!);
   return (a: Standing, b: Standing): number =>
-    beforePreference(a, b) ||
+    beforePreference(rows.get(a.playerId) ?? a, rows.get(b.playerId) ?? b) ||
     (opponentsApply(history, a.playerId, b.playerId)
       ? compareOpponents(history.get(a.playerId) ?? [], history.get(b.playerId) ?? [], opponentOrder)
       : 0) ||
-    compare(a, b);
+    compare(rows.get(a.playerId) ?? a, rows.get(b.playerId) ?? b);
 }
 
 /**
@@ -551,7 +658,9 @@ function opponentsApply(history: ReadonlyMap<string, (string | null)[]>, a: stri
 export function placeFinals(pod: Pod, swiss: readonly Standing[], context?: FinalsContext): Standing[] {
   const tallies = eliminationTallies(context?.swissPod ?? pod);
   const afterSwiss = Boolean(pod.cutOf || pod.rounds.some(r => r.kind === 'swiss'));
-  const rounds = afterSwiss ? Math.log2(pod.cut) : 0;
+  const rounds = thirdPlaceRounds(pod);
+  const recorded = (a: string, b: string) =>
+    Boolean(context?.recordedGroups?.some(g => g.includes(a) && g.includes(b)));
   const preferences = new Map(context?.players.map((p, i) => [p.id, p.tiebreaker ?? i + 1]));
   const compareSwiss = afterSwiss
     ? cutSwissComparison(pod, swiss, context)
@@ -567,7 +676,8 @@ export function placeFinals(pod: Pod, swiss: readonly Standing[], context?: Fina
     if (second.record.wins !== first.record.wins) {
       return second.record.wins - first.record.wins;
     }
-    const third = pod.playoff3rd4th ? thirdPlaceComparison(tallies, first, second, rounds) : 0;
+    const third =
+      pod.playoff3rd4th && !recorded(a.playerId, b.playerId) ? thirdPlaceComparison(tallies, first, second, rounds) : 0;
     return second.record.wins - first.record.wins || third || compareSwiss(a, b);
   };
   return [...swiss].sort(compare).map((row, i) => ({ ...row, place: i + 1 }));
@@ -581,18 +691,52 @@ export function percentLabel(rate: number): string {
   return `${(rate * 100).toFixed(2)}%`;
 }
 
-/** Only a whole equal-win group in a third-place event can take a recorded order. */
+/**
+ * SPEC V24-9: Swiss rows equal on every comparison before head-to-head whose head-to-head and final tie
+ * preference do not give a consistent order: some pair of the sorted group is out of that order.
+ */
+export function headToHeadCycles(pod: Pod, players: readonly Player[], rows: readonly Standing[]): string[][] {
+  const tallies = tallySwiss(pod);
+  const preference = new Map(players.map((player, i) => [player.id, player.tiebreaker ?? i + 1]));
+  const ahead = (a: Standing, b: Standing) =>
+    (tallies.get(a.playerId)?.headToHead.get(b.playerId) ?? 0) > 0 ||
+    ((tallies.get(a.playerId)?.headToHead.get(b.playerId) ?? 0) === 0 &&
+      (preference.get(a.playerId) ?? 0) <= (preference.get(b.playerId) ?? 0));
+  const groups: Standing[][] = [];
+  for (const row of rows) {
+    const group = groups.at(-1);
+    const first = group?.[0];
+    const equal =
+      first &&
+      row.points === first.points &&
+      row.late === first.late &&
+      row.owp === first.owp &&
+      row.oowp === first.oowp;
+    if (equal) {
+      group.push(row);
+    } else {
+      groups.push([row]);
+    }
+  }
+  return groups
+    .filter(group => group.some((a, i) => group.slice(i + 1).some(b => !ahead(a, b))))
+    .map(group => group.map(row => row.playerId));
+}
+
+/** Only a whole equal-win group with an eligible third-place or repair choice can take a recorded order. */
 export function orderEliminationGroups(pod: Pod, rows: Standing[], groups: readonly (readonly string[])[]): Standing[] {
   const tallies = eliminationTallies(pod);
   return groups.reduce((ordered, group) => {
     const members = ordered.filter(row => group.includes(row.playerId));
     if (
-      !pod.playoff3rd4th ||
+      (!pod.playoff3rd4th && !pod.dissolvedOpponents?.length) ||
       group.length < 2 ||
       new Set(group).size !== group.length ||
       members.length !== group.length
     ) {
-      throw new Error('A recorded elimination tie requires distinct finished players and the third-place setting');
+      throw new Error(
+        'A recorded elimination tie requires distinct finished players and the third-place setting or a repair comparison'
+      );
     }
     const wins = tallies.get(group[0]!)?.record.wins;
     const equal = ordered.filter(row => tallies.get(row.playerId)?.record.wins === wins);
@@ -612,6 +756,16 @@ function placeRecordedGroup(rows: Standing[], group: readonly string[]): Standin
     result[position] = { ...byId.get(id)!, place: rows[position]!.place };
   }
   return result;
+}
+
+/** Whether the players are level on every comparison before head-to-head. */
+export function equalBeforeHeadToHead(rows: readonly Standing[], ids: readonly string[]): boolean {
+  const members = rows.filter(row => ids.includes(row.playerId));
+  const [first] = members;
+  return members.every(
+    row =>
+      row.points === first!.points && row.late === first!.late && row.owp === first!.owp && row.oowp === first!.oowp
+  );
 }
 
 /** A recorded cycle changes only its group's computed places, never other standings. */

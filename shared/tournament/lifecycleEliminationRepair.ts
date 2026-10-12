@@ -97,7 +97,8 @@ function repairedOpening(t: Tournament, pod: Pod, round: Round, ctx: LifecycleCo
   const groups = t.settings?.type === 1 ? [ordered] : draws;
   const players = groups.reduce((current, group) => bracketPlayers(current, seatsOf(group), group, false), t.players);
   const paired = brackets.reduce((current, bracket) => {
-    const added = playoffPlayers(t, current, bracket.playoff);
+    // V19-3: Swiss opponents can belong to another division; the drawn finalists own the playoff flag.
+    const added = playoffPlayers(t, current, bracket.playoff, divisionLookup(t)(bracket.pairings[0]!.p1));
     return bracket.playoff
       ? { ...added, survivors: [...survivorList(t, added), ...seatsOf([bracket.playoff])] }
       : added;
@@ -132,23 +133,35 @@ function laterField(t: Tournament, pod: Pod, round: Round): string[] {
   return [...field].sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
 }
 
-/** V18-10: a later repair attempts a playoff only for a field of exactly two, before any bye is drawn. */
-function repairPlayoff(pod: Pod, field: readonly string[]): Pod {
-  return field.length === 2 ? pod : { ...pod, playoff3rd4th: false };
+/**
+ * V18-10: a later repair attempts a playoff only for a field of exactly two; a top cut counts it once an odd
+ * field's bye holder has left (V24-3). Its finalists' histories keep the dissolved matches but not the random bye
+ * the repair removes first.
+ */
+function repairPlayoff(t: Tournament, pod: Pod, field: readonly string[]): Pod {
+  const counted = t.settings?.type === 1 ? field.length : field.length - (field.length % 2);
+  return counted === 2 ? pod : { ...pod, playoff3rd4th: false };
 }
 
-function repairedLater(t: Tournament, pod: Pod, round: Round, ctx: LifecycleContext): Repaired {
-  const field = laterField(t, pod, round);
+function dissolvedHistory(pod: Pod, round: Round): Pod {
+  const firstBye = round.matches.find(m => m.outcome === 'bye');
+  const kept = { ...round, matches: round.matches.filter(m => m !== firstBye) };
+  return { ...pod, rounds: pod.rounds.map(r => (r === round ? kept : r)) };
+}
+
+function repairedLater(t: Tournament, original: Pod, round: Round, ctx: LifecycleContext): Repaired {
+  const field = laterField(t, original, round);
+  const pod = dissolvedHistory(original, round);
   const swiss = pod.rounds.filter(r => r.kind === 'swiss').length;
   const brackets: Bracket[] =
     t.settings?.type === 1
-      ? [nextBracket(t, repairPlayoff(pod, field), field, false)].filter(b => b !== undefined)
+      ? [nextBracket(t, repairPlayoff(t, pod, field), field, false)].filter(b => b !== undefined)
       : divisionLists(t, field).flatMap(list => {
           const size = pod.divisionCuts?.[divisionLookup(t)(list[0] ?? '')]?.size ?? pod.cut;
           const bracket = list.length
             ? nextBracket(
                 t,
-                repairPlayoff(pod, list),
+                repairPlayoff(t, pod, list),
                 list,
                 round.number > swiss + Math.ceil(Math.log2(Math.max(size, 1)))
               )
@@ -158,9 +171,25 @@ function repairedLater(t: Tournament, pod: Pod, round: Round, ctx: LifecycleCont
   const computed = brackets.flatMap(bracketPairings);
   const pairings = t.settings?.type === 1 ? recordedOrder(pod, computed, ctx, []) : computed;
   // A playoff the repair pairs counts its players before tables are numbered (V16-11).
-  const paired = brackets.reduce((current, bracket) => playoffPlayers(t, current, bracket.playoff), pod);
+  const paired = brackets.reduce((current, bracket) => playoffPlayers(t, current, bracket.playoff), original);
   const counted = replacePods(t, [paired]);
-  return { pod: repairedRound(counted, paired, { round, kept: [], pairings }, ctx), players: t.players };
+  const repaired = repairedRound(counted, paired, { round, kept: [], pairings }, ctx);
+  const dissolved = new Map(
+    round.matches
+      .filter(m => m.p2 !== null)
+      .flatMap(
+        m =>
+          [
+            [m.p1, m.p2!],
+            [m.p2!, m.p1]
+          ] as [string, string][]
+      )
+  );
+  const affected = [
+    ...(original.dissolvedOpponents ?? []).filter(entry => !dissolved.has(entry.playerId)),
+    ...[...dissolved].map(([playerId, opponentId]) => ({ playerId, opponentId, round: round.number }))
+  ];
+  return { pod: { ...repaired, dissolvedOpponents: affected }, players: t.players };
 }
 
 /**
