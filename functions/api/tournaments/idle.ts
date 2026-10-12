@@ -12,6 +12,7 @@ import { bracketMatches, eliminationResult } from '../../../shared/tournament/st
 import { eventTypeOf, recommendedStructure } from '../../../shared/tournament/structure.js';
 import { DIVISIONS, isDivision, type Pod, type Round } from '../../../shared/tournament/types.js';
 import { jsonError } from '../../lib/api/responses.js';
+import { purgeClerkDeletions } from '../../lib/auth/clerk.js';
 import type { Context } from '../../lib/auth/env.js';
 import { sha256 } from '../../lib/auth/session.js';
 import { purgeRejectedProofs } from '../../lib/auth/rejection.js';
@@ -106,6 +107,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   // Sign-ups that ran out waiting for their age check go here too, so none outlives its fifteen minutes by much.
   await sweepSignups(db, now).run();
   await purgeRejectedProofs(db, context.env.PROOFS);
+  await purgeClerkDeletions(db, context.env);
   const before = now - IDLE_END_MS;
   const expiredBefore = now - MAX_IDLE_MS;
   const ended: string[] = [];

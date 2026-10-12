@@ -206,8 +206,14 @@ function accountWrites(db: D1Like, user: User): D1Statement[] {
         'AND proof_key IS NOT NULL UNION SELECT key FROM proof_uploads WHERE user_id = ?1'
     )
     .bind(user.id);
+  const clerk = db
+    .prepare(
+      "INSERT OR IGNORE INTO clerk_deletions (subject) SELECT subject FROM identities WHERE user_id = ? AND provider = 'clerk'"
+    )
+    .bind(user.id);
   return [
     proofs,
+    clerk,
     db.prepare('UPDATE report_devices SET user_id = NULL WHERE user_id = ?').bind(user.id),
     db.prepare('UPDATE decklists SET account = NULL WHERE account = ?').bind(user.id),
     ...DECIDED_BY.map(([table, column]) =>
@@ -220,22 +226,12 @@ function accountWrites(db: D1Like, user: User): D1Statement[] {
 }
 
 /**
- * Deletes the account, or answers why it must wait. Answers the Clerk user
- * the account signed in with, if any, for the caller to delete there too.
+ * Deletes the account, or answers why it must wait. The Clerk user it signed
+ * in with, if any, is queued for deletion there (purgeClerkDeletions).
  */
-export async function deleteAccount(
-  db: D1Like,
-  user: User,
-  now = Date.now()
-): Promise<{ refusal: DataRefusal } | { clerkSubject: string | null }> {
-  const early = await refusalOf(db, user, true);
-  if (early) {
-    return { refusal: early };
-  }
-  const clerk = await db
-    .prepare("SELECT subject FROM identities WHERE user_id = ? AND provider = 'clerk'")
-    .bind(user.id)
-    .first<{ subject: string }>();
-  const refusal = await guarded(db, user, true, [...organizerWrites(db, user, now), ...accountWrites(db, user)]);
-  return refusal ? { refusal } : { clerkSubject: clerk?.subject ?? null };
+export async function deleteAccount(db: D1Like, user: User, now = Date.now()): Promise<DataRefusal | null> {
+  return (
+    (await refusalOf(db, user, true)) ??
+    guarded(db, user, true, [...organizerWrites(db, user, now), ...accountWrites(db, user)])
+  );
 }

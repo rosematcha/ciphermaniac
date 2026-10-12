@@ -382,3 +382,8 @@ CREATE TABLE IF NOT EXISTS event_creations (
 CREATE TABLE IF NOT EXISTS proof_deletions (
   key TEXT PRIMARY KEY
 ) WITHOUT ROWID;
+
+-- Clerk users of deleted accounts, held until Clerk confirms each is gone.
+CREATE TABLE IF NOT EXISTS clerk_deletions (
+  subject TEXT PRIMARY KEY
+) WITHOUT ROWID;

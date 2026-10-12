@@ -8,6 +8,7 @@
  */
 
 import { frontendApi } from '../../../shared/accounts/clerk.js';
+import type { D1Like } from '../types.js';
 import type { AuthEnv, Profile } from './oauth.js';
 
 /** Seconds of clock difference allowed either side of a token's window. */
@@ -182,11 +183,39 @@ export async function clerkProfile(env: AuthEnv, origin: string, token: string):
 }
 
 /**
+ * Deletes the Clerk users of deleted accounts, each queued in the batch that
+ * deleted its account so none is forgotten when Clerk can't be reached; one
+ * that fails stays for the next sweep. A Clerk user signed in with again
+ * since, and so a new account's, leaves the queue untouched. A few a sweep,
+ * under the Workers limit on subrequests.
+ */
+export async function purgeClerkDeletions(db: D1Like, env: AuthEnv): Promise<void> {
+  if (!clerkKeys(env)) {
+    return;
+  }
+  const [, queued] = await db.batch([
+    db.prepare(
+      "DELETE FROM clerk_deletions WHERE subject IN (SELECT subject FROM identities WHERE provider = 'clerk')"
+    ),
+    db.prepare('SELECT subject FROM clerk_deletions ORDER BY subject LIMIT 20')
+  ]);
+  const results = (queued?.results ?? []) as { subject: string }[];
+  for (const { subject } of results) {
+    try {
+      await deleteClerkUser(env, subject);
+      await db.prepare('DELETE FROM clerk_deletions WHERE subject = ?').bind(subject).run();
+    } catch (err) {
+      console.error('Clerk user of a deleted account will be retried', err);
+    }
+  }
+}
+
+/**
  * Deletes the Clerk user an account signed in with, so its username and
  * password are gone with the account. A user Clerk no longer has counts as
  * deleted. Throws when Clerk can't be reached or refuses.
  */
-export async function deleteClerkUser(env: AuthEnv, subject: string): Promise<void> {
+async function deleteClerkUser(env: AuthEnv, subject: string): Promise<void> {
   const clerk = clerkKeys(env);
   if (!clerk) {
     throw new Error('Clerk is not configured');

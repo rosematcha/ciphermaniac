@@ -14,6 +14,7 @@ import * as history from '../../functions/api/history.ts';
 import * as me from '../../functions/api/me.ts';
 import * as data from '../../functions/api/me/data.ts';
 import * as tournaments from '../../functions/api/tournaments/index.ts';
+import * as idle from '../../functions/api/tournaments/idle.ts';
 import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import * as event from '../../functions/api/tournaments/[code]/index.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
@@ -51,6 +52,8 @@ afterEach(() => {
 });
 
 const raw = () => (env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>).raw;
+const clerkQueue = () =>
+  (raw().prepare('SELECT subject FROM clerk_deletions').all() as { subject: string }[]).map(row => row.subject);
 
 const idOf = async (cookie: string) => {
   const hash = await sha256(cookie.slice(cookie.indexOf('=') + 1));
@@ -374,6 +377,7 @@ test('deleting an account that signs in with a password deletes its Clerk user t
   assert.deepEqual(calls, [
     { url: 'https://api.clerk.com/v1/users/user_abc', method: 'DELETE', auth: 'Bearer sk_test' }
   ]);
+  assert.deepEqual(clerkQueue(), [], 'nothing is left to retry');
 });
 
 test('an account is deleted even when Clerk cannot be reached', async () => {
@@ -390,6 +394,63 @@ test('an account is deleted even when Clerk cannot be reached', async () => {
   mock.method(console, 'error', () => undefined);
   assert.equal((await remove(player, account(id).handle)).status, 204);
   assert.deepEqual(rowsUnder(id), {});
+  assert.deepEqual(clerkQueue(), ['user_abc'], 'the Clerk user waits for a retry');
+
+  // Clerk is back by the next idle sweep, which finishes the deletion.
+  const calls: string[] = [];
+  mock.method(globalThis, 'fetch', async (url: string) => {
+    calls.push(url);
+    return new Response(null, { status: 200 });
+  });
+  env = { ...env, IDLE_SWEEP_TOKEN: 'sweep-token' };
+  const swept = await idle.onRequestPost({
+    request: new Request('https://cm.test/api/tournaments/idle', {
+      method: 'POST',
+      headers: { authorization: 'Bearer sweep-token' }
+    }),
+    env,
+    params: {}
+  } as never);
+  assert.equal(swept.status, 200);
+  assert.deepEqual(calls, ['https://api.clerk.com/v1/users/user_abc']);
+  assert.deepEqual(clerkQueue(), []);
+});
+
+test('a queued Clerk user signed in with again before the retry is left to its new account', async () => {
+  env = {
+    ...env,
+    CLERK_PUBLISHABLE_KEY: `pk_test_${btoa('clerk.example.test$')}`,
+    CLERK_JWT_KEY: 'pem',
+    CLERK_SECRET_KEY: 'sk_test'
+  };
+  const player = await signIn('Player');
+  const id = await idOf(player);
+  raw().prepare("INSERT INTO identities (provider, subject, user_id) VALUES ('clerk', 'user_abc', ?)").run(id);
+  mock.method(globalThis, 'fetch', async () => new Response(null, { status: 503 }));
+  mock.method(console, 'error', () => undefined);
+  assert.equal((await remove(player, account(id).handle)).status, 204);
+  assert.deepEqual(clerkQueue(), ['user_abc']);
+
+  // The same username and password make a new account before Clerk is back.
+  const again = await idOf(await signIn('Again'));
+  raw().prepare("INSERT INTO identities (provider, subject, user_id) VALUES ('clerk', 'user_abc', ?)").run(again);
+  const calls: string[] = [];
+  mock.method(globalThis, 'fetch', async (url: string) => {
+    calls.push(url);
+    return new Response(null, { status: 200 });
+  });
+  env = { ...env, IDLE_SWEEP_TOKEN: 'sweep-token' };
+  const swept = await idle.onRequestPost({
+    request: new Request('https://cm.test/api/tournaments/idle', {
+      method: 'POST',
+      headers: { authorization: 'Bearer sweep-token' }
+    }),
+    env,
+    params: {}
+  } as never);
+  assert.equal(swept.status, 200);
+  assert.deepEqual(calls, [], 'Clerk is never asked to delete it');
+  assert.deepEqual(clerkQueue(), []);
 });
 
 test('deleting waits when a store is handed to the account after it was checked', async () => {
@@ -397,7 +458,14 @@ test('deleting waits when a store is handed to the account after it was checked'
   const player = await signIn('Player');
   const id = await idOf(player);
   const handOver = () => raw().prepare('UPDATE store_members SET user_id = ? WHERE user_id = ?').run(id, from);
-  env = { ...env, TOURNAMENT_DB: racing(env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>, 'SELECT subject', handOver) };
+  env = {
+    ...env,
+    TOURNAMENT_DB: racing(
+      env.TOURNAMENT_DB as ReturnType<typeof sqliteD1>,
+      'INSERT OR IGNORE INTO clerk_deletions',
+      handOver
+    )
+  };
   const refused = await remove(player, account(id).handle);
   assert.equal(refused.status, 409);
   assert.deepEqual(refused.json.ownedStores, ['Organizer Games']);

@@ -24,7 +24,7 @@ import { deleteAccount } from '../lib/accounts/wipe.js';
 import { readJsonBody, readJsonObject } from '../lib/api/body.js';
 import { jsonError, jsonResponse } from '../lib/api/responses.js';
 import { type Context, sameOrigin } from '../lib/auth/env.js';
-import { clerkKeys, deleteClerkUser } from '../lib/auth/clerk.js';
+import { clerkKeys, purgeClerkDeletions } from '../lib/auth/clerk.js';
 import { clearCookie, SESSION_COOKIE } from '../lib/auth/cookies.js';
 import { purgeRejectedProofs } from '../lib/auth/rejection.js';
 import { availableProviders } from '../lib/auth/providers.js';
@@ -152,18 +152,6 @@ export async function onRequestPatch({ request, env }: Context): Promise<Respons
   return changed instanceof Response ? changed : jsonResponse({ user: { ...user, ...changed } }, PRIVATE);
 }
 
-/** Deletes the Clerk user too, when the account had one; the account is gone either way, so a failure is only logged. */
-async function forgetClerkUser(env: Context['env'], subject: string | null): Promise<void> {
-  if (!subject) {
-    return;
-  }
-  try {
-    await deleteClerkUser(env, subject);
-  } catch (err) {
-    console.error('Clerk user of a deleted account was not deleted', err);
-  }
-}
-
 export async function onRequestDelete({ request, env }: Context): Promise<Response> {
   const db = env.TOURNAMENT_DB;
   if (!db || !sameOrigin(request)) {
@@ -176,11 +164,11 @@ export async function onRequestDelete({ request, env }: Context): Promise<Respon
   if ((await readJsonObject(request, 256))?.confirm !== user.handle) {
     return jsonError('Type your username to confirm', 400);
   }
-  const result = await deleteAccount(db, user);
-  if ('refusal' in result) {
-    return jsonResponse(result.refusal, { ...PRIVATE, status: 409 });
+  const refusal = await deleteAccount(db, user);
+  if (refusal) {
+    return jsonResponse(refusal, { ...PRIVATE, status: 409 });
   }
-  await forgetClerkUser(env, result.clerkSubject);
+  await purgeClerkDeletions(db, env);
   await purgeRejectedProofs(db, env.PROOFS);
   return new Response(null, {
     status: 204,
