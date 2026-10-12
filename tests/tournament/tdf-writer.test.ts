@@ -76,7 +76,7 @@ test('gap 1: prestart players have no starter; late entrants use TOM block', () 
     [
       ['round', '1'],
       ['timestamp', ctx.localTime],
-      ['forcedloss', 'true'],
+      ['forcedloss', 'false'],
       ['usedforcedloss', 'true']
     ]
   );
@@ -143,7 +143,7 @@ test('gaps 5, 6, 9: configured root stage, cut pod stage and last Swiss stage', 
   const rounds = children(child(pod, 'rounds'), 'round');
   assert.deepEqual(
     rounds.map(r => attr(r, 'stage')),
-    ['6', '6', '6', '8', '2']
+    ['5', '5', '5', '5', '2']
   );
 });
 
@@ -290,6 +290,7 @@ for (const [type, game, mode] of [
     t.players[1]!.disqualified = true;
     t.players[1]!.droppedAfter = 1;
     const values: Record<string, string> = { type: type!, gametype: game!, mode: mode! };
+    delete t.settings;
     t.passthrough = {
       rootAttrs: defaultRootAttrs('cup').map(([key, value]) => [key, values[key] ?? value]),
       extraData: [],

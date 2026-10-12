@@ -33,7 +33,16 @@ import {
   regularRounds,
   wasFinalized
 } from './rounds.js';
-import { bracketMatches, placeFinals, type Standing, swissStandings } from './standings.js';
+import { finalPodRound } from './lifecycleWorkflow.js';
+import {
+  bracketMatches,
+  orderEliminationGroups,
+  orderHeadToHeadGroups,
+  placeFinals,
+  type Standing,
+  swissStandings,
+  thirdPlaceMatch
+} from './standings.js';
 import { eventTypeOf, recommendedStructure } from './structure.js';
 import {
   type Division,
@@ -134,6 +143,9 @@ const PODDATA_TAGS = new Set(['startingtable', 'playoff3rd4th']);
 export function serializeElement(element: XmlElement): string {
   const { name, children, text } = element;
   const attrs = element.attrs.map(([key, value]) => ` ${key}="${encodeEntities(value)}"`).join('');
+  if (name === 'range' && children.length === 0 && !text) {
+    return `<range${attrs}/>`;
+  }
   if (name === 'player' && children.length === 0 && !text) {
     return `<player${attrs} />`;
   }
@@ -160,11 +172,12 @@ const int = (value: string, fallback = 0) => {
 /**
  * TOM's mode names the kind of event; its type (2 or 3) only says whether
  * Swiss rounds lead to a cut, and Custom and Prerelease events write 2 too.
+ * A League Challenge saved with a cut follows the type 3 rules.
  */
-function readInfo(data: XmlElement | undefined, mode: string): TournamentInfo {
+function readInfo(data: XmlElement | undefined, mode: string, type: string | undefined): TournamentInfo {
   const organizer = child(data, 'organizer');
   return {
-    ...(mode === EVENT_CODES.challenge.mode ? { eventType: 'challenge' as const } : {}),
+    ...(mode === EVENT_CODES.challenge.mode && type !== '3' ? { eventType: 'challenge' as const } : {}),
     name: childText(data, 'name'),
     sanctionId: childText(data, 'id'),
     city: childText(data, 'city'),
@@ -273,7 +286,8 @@ function roundCodesOf(pods: readonly XmlElement[]): TdfPassthrough['roundCodes']
           type: attr(round, 'type'),
           stage: attr(round, 'stage'),
           timeLeft: int(childText(round, 'timeleft')),
-          startTime: childText(round, 'starttime')
+          startTime: childText(round, 'starttime'),
+          state: roundState(readRound(round))
         }
       ])
     )
@@ -289,6 +303,14 @@ function readPod(element: XmlElement): Pod {
     playerIds: children(child(element, 'subgroups'), 'subgroup').flatMap(subgroup =>
       children(child(subgroup, 'players'), 'player').map(player => attr(player, 'userid'))
     ),
+    ...(children(child(element, 'subgroups'), 'subgroup').length
+      ? {
+          flights: children(child(element, 'subgroups'), 'subgroup').map(subgroup => ({
+            number: int(attr(subgroup, 'number')),
+            playerIds: children(child(subgroup, 'players'), 'player').map(player => attr(player, 'userid'))
+          }))
+        }
+      : {}),
     rounds: rounds.map(readRound),
     cut: 0,
     playoff3rd4th: childText(poddata, 'playoff3rd4th') === 'true',
@@ -299,9 +321,15 @@ function readPod(element: XmlElement): Pod {
 /** Top-cut sizes live in `<finalsoptions>`, keyed by division; a pod takes its division's. */
 function applyCuts(pods: Pod[], finals: XmlElement | undefined): Pod[] {
   const cuts = new Map(children(finals, 'categorycut').map(cut => [attr(cut, 'key'), int(childText(cut, 'cut'))]));
+  const paired = new Set(
+    children(finals, 'categorycut')
+      .filter(cut => childText(cut, 'paired3rd4th') === 'true')
+      .map(cut => attr(cut, 'key'))
+  );
   return linkCuts(
     pods.map(pod => ({
       ...pod,
+      ...(finals ? { playoffsPaired: divisionsOf(pod.category).filter(d => paired.has(CATEGORY_CODES[d])) } : {}),
       cut: cuts.get(CATEGORY_CODES[pod.category]) ?? 0,
       ...(!isDivision(pod.category)
         ? {
@@ -352,7 +380,7 @@ export function parseTdf(source: string): Tournament {
   const podElements = children(child(root, 'pods'), 'pod');
   const finals = child(root, 'finalsoptions');
   let tournament: Tournament = {
-    info: readInfo(data, attr(root, 'mode')),
+    info: readInfo(data, attr(root, 'mode'), attr(root, 'type')),
     players: playerElements.map(readPlayer),
     pods: applyCuts(podElements.map(readPod), finals),
     passthrough: {
@@ -426,6 +454,7 @@ function finalsState(t: Tournament): string {
       p.cut,
       p.divisionCuts,
       p.playoff3rd4th,
+      p.divisionCounts,
       p.rounds.filter(r => r.kind === 'elimination').map(r => [r.number, r.matches.map(m => [m.p1, m.p2])])
     ])
   ]);
@@ -475,9 +504,27 @@ const NEW_FILE_DATA = [
   '<overflowtablestart>0</overflowtablestart>'
 ];
 
+function mergedExtras(saved: readonly [string, string][] | undefined, owned: string[]): string[] {
+  const replacements = new Map(
+    parseXml(`<extra>${owned.join('\n')}</extra>`).children.map(element => [element.name, serializeElement(element)])
+  );
+  const kept = (saved ?? []).map(([key, xml]) => {
+    const replacement = replacements.get(key);
+    replacements.delete(key);
+    return replacement ?? xml;
+  });
+  return [...kept, ...replacements.values()];
+}
+
 function writeData(t: Tournament): string[] {
   const { info } = t;
-  const extra = t.passthrough?.extraData.map(([, xml]) => xml) ?? NEW_FILE_DATA;
+  const extra = t.settings
+    ? mergedExtras(t.passthrough?.extraData, [
+        tag('lessswiss', String(t.settings.lessSwiss)),
+        tag('autotablenumber', String(t.settings.autoTables)),
+        tag('overflowtablestart', t.settings.overflowTableStart)
+      ])
+    : (t.passthrough?.extraData.map(([, xml]) => xml) ?? NEW_FILE_DATA);
   return [
     '<data>',
     ...block(1, [
@@ -514,7 +561,7 @@ function writeDrop(player: Player, extra: [string, string][]): string[] {
     ...block(1, [
       tag('status', player.disqualified ? 2 : 1),
       tag('round', player.droppedAfter),
-      tag('timestamp', player.modified)
+      tag('timestamp', player.droppedAt ?? player.modified)
     ]),
     '</dropped>'
   ];
@@ -622,17 +669,42 @@ function playingStage(round: Round, kept: string | undefined): string {
         : STAGE_PLAYING;
 }
 
+function roundState(round: Round): string {
+  return JSON.stringify([round.status, round.startTime, round.matches]);
+}
+
+function explicitRoundStage(round: Round, current: boolean): string {
+  return String(
+    current && round.stage! < 5 && round.matches.length > 0 && round.matches.every(m => m.outcome !== 'pending')
+      ? 5
+      : round.stage
+  );
+}
+
 function roundStage(round: Round, context: RoundContext): string {
+  if (round.stage !== undefined) {
+    return explicitRoundStage(round, context.last);
+  }
   const kept = context.codes?.stage;
+  if (
+    kept &&
+    context.codes?.state === roundState(round) &&
+    (context.preserveClock || !(context.finalized && context.last))
+  ) {
+    return kept;
+  }
   const complete =
     round.status === 'finished' || (round.matches.length > 0 && round.matches.every(m => m.outcome !== 'pending'));
   if (!complete) {
     return playingStage(round, kept);
   }
+  return completedStage(context, kept);
+}
+
+function completedStage(context: RoundContext, kept: string | undefined): string {
   if ((context.finalized && context.last) || context.lastSwiss || context.finalCut) {
     return STAGE_FINAL;
   }
-  // A finished round keeps TOM's own finished code; one the site finished gets the usual one.
   return kept && FINISHED_STAGES.has(kept) ? kept : STAGE_FINISHED;
 }
 
@@ -712,28 +784,53 @@ function writePodRounds(t: Tournament, pod: Pod, save: PodSave): string[] {
   );
 }
 
+function podSettings(pod: Pod): string[] {
+  return [
+    tag('subgroupcount', pod.subgroupCount ?? 1),
+    tag('additionalrounds', pod.additionalRounds ?? 0),
+    '<blockedranges>',
+    ...block(
+      1,
+      (pod.blockedRanges ?? []).map(range => `<range starttable="${range.start}" endtable="${range.end}"/>`)
+    ),
+    '</blockedranges>'
+  ];
+}
+
+function writtenPodSettings(t: Tournament, pod: Pod): string[] {
+  const saved = t.passthrough?.podExtras[pod.category]?.extra;
+  return t.settings ? mergedExtras(saved, podSettings(pod)) : (saved?.map(([, xml]) => xml) ?? NEW_POD_EXTRAS);
+}
+
 function writePod(t: Tournament, pod: Pod, save: PodSave): string[] {
   const extra = t.passthrough?.podExtras[pod.category];
-  const hasCut = pod.rounds.some(r => r.kind === 'elimination');
+  const hasCut = rootValue(t, 'type') !== '1' && pod.rounds.some(r => r.kind === 'elimination');
   const rounds = writePodRounds(t, pod, save);
-  const roster = pod.playerIds.map(id => `<player userid="${esc(id)}" />`);
+  const flights = pod.flights ?? [{ number: 1, playerIds: pod.playerIds }];
+  const groups = flights.flatMap(flight => [
+    `<subgroup number="${flight.number}">`,
+    ...block(1, [
+      '<players>',
+      ...block(
+        1,
+        flight.playerIds.map(id => `<player userid="${esc(id)}" />`)
+      ),
+      '</players>'
+    ]),
+    '</subgroup>'
+  ]);
   return [
-    `<pod category="${CATEGORY_CODES[pod.category]}" stage="${hasCut ? '1' : (extra?.stage ?? '0')}">`,
+    `<pod category="${CATEGORY_CODES[pod.category]}" stage="${pod.stage ?? (hasCut ? '1' : (extra?.stage ?? '0'))}">`,
     ...block(1, [
       '<poddata>',
       ...block(1, [
         tag('startingtable', pod.startingTable),
         tag('playoff3rd4th', String(pod.playoff3rd4th)),
-        ...(extra?.extra.map(([, xml]) => xml) ?? NEW_POD_EXTRAS)
+        ...writtenPodSettings(t, pod)
       ]),
       '</poddata>',
       '<subgroups>',
-      ...block(
-        1,
-        hasStarted(t)
-          ? ['<subgroup number="1">', ...block(1, ['<players>', ...block(1, roster), '</players>']), '</subgroup>']
-          : []
-      ),
+      ...block(1, hasStarted(t) ? groups : []),
       '</subgroups>',
       '<rounds>',
       ...block(1, rounds),
@@ -762,10 +859,17 @@ function divisionPlayers(t: Tournament, divisionOf: (id: string) => Division): M
 
 function compareNames(a: Player, b: Player): number {
   const [first, second] = [a, b].map(p => `${p.firstName}\0${p.lastName}`.toLowerCase());
-  return first! < second! ? -1 : Number(first! > second!);
+  if (first !== second) {
+    return first! < second! ? -1 : 1;
+  }
+  return (a.disqualifiedOrder ?? 0) - (b.disqualifiedOrder ?? 0);
 }
 
 function rootValue(t: Tournament, key: string): string | undefined {
+  const { settings } = t;
+  if (settings && ['type', 'stage', 'mode'].includes(key)) {
+    return String(settings[key as 'type' | 'stage' | 'mode']);
+  }
   return t.passthrough?.rootAttrs.find(([name]) => name === key)?.[1];
 }
 
@@ -780,7 +884,11 @@ function divisionPlaces(t: Tournament, divisionOf: (id: string) => Division): [D
       const full = t.pods.find(p => p.category === pod.category) ?? pod;
       const only = new Set(pod.playerIds);
       const swiss = swissStandings(full, t.players, { only, regularRounds: regularRounds(t, full) });
-      return placeFinals(division === 'mixed' ? full : (cutPodOf(t, full, division) ?? full), swiss);
+      return placeFinals(division === 'mixed' ? full : (cutPodOf(t, full, division) ?? full), swiss, {
+        players: t.players,
+        swissPod: full,
+        regularRounds: regularRounds(t, full)
+      });
     });
     return [division, places];
   });
@@ -793,7 +901,23 @@ function writeStandings(t: Tournament, divisionOf: (id: string) => Division): st
     const only = new Set(fields.flatMap(p => p.playerIds));
     const dnf = t.players.filter(p => only.has(p.id) && p.disqualified).sort(compareNames);
     const code = CATEGORY_CODES[division];
-    const rows = places.map(row => `<player id="${esc(row.playerId)}" place="${row.place}" />`);
+    // A recorded order applies only while every member is still among the finished players.
+    const finished = new Set(places.map(row => row.playerId));
+    const recorded = (groups: Tournament['headToHeadOrder']) =>
+      (groups ?? [])
+        .filter(group => group.category === division && group.playerIds.every(id => finished.has(id)))
+        .map(group => group.playerIds);
+    const tied = fields.reduce(
+      (rows, pod) =>
+        orderEliminationGroups(
+          t.pods.find(p => p.category === pod.category) ?? pod,
+          rows,
+          recorded(t.eliminationTieOrder)
+        ),
+      places
+    );
+    const ordered = orderHeadToHeadGroups(tied, recorded(t.headToHeadOrder));
+    const rows = ordered.map(row => `<player id="${esc(row.playerId)}" place="${row.place}" />`);
     return [
       `<pod category="${code}" type="finished">`,
       ...block(1, rows),
@@ -844,21 +968,23 @@ function finalsCount(t: Tournament, pod: Pod, division: Division, of: (id: strin
 function plannedSwiss(t: Tournament, pod: Pod): number {
   const of = divisionLookup(t);
   const count = Math.max(...divisionsOf(pod.category).map(d => finalsCount(t, pod, d, of)));
-  return recommendedStructure(count, eventTypeOf(t)).rounds;
+  return t.settings ? regularRounds(t, pod) : recommendedStructure(count, eventTypeOf(t)).rounds;
 }
 
 function pairedThirdPlace(cut: Pod | undefined): boolean {
   if (!cut?.playoff3rd4th) {
     return false;
   }
-  return (
-    cut.rounds.at(-1)?.matches.length === 2 &&
-    cut.rounds.filter(r => r.kind === 'elimination').length >= Math.log2(cut.cut)
-  );
+  const last = cut.rounds.at(-1);
+  return last !== undefined && thirdPlaceMatch(cut, last) !== undefined;
 }
 
 function chosenCut(t: Tournament, pod: Pod | undefined, cut: Pod | undefined, division: Division): number {
-  return eventTypeOf(t) === 'challenge' ? 0 : (pod?.divisionCuts?.[division]?.size ?? cut?.cut ?? 0);
+  return t.settings?.type === 2 || eventTypeOf(t) === 'challenge'
+    ? 0
+    : pod?.divisionCuts
+      ? (pod.divisionCuts[division]?.size ?? 0)
+      : (cut?.cut ?? 0);
 }
 
 function categoryCut(t: Tournament, division: Division, pods: Pod[], of: (id: string) => Division): string[] {
@@ -870,6 +996,10 @@ function categoryCut(t: Tournament, division: Division, pods: Pod[], of: (id: st
   const cut = pod && (cutPodOf(t, pod, division) ?? pod);
   const count = pod ? finalsCount(t, pod, division, of) : 0;
   const values = [0, ...(count >= 9 ? [4] : []), ...(count > 20 ? [8] : [])];
+  const size = chosenCut(t, pod, cut, division);
+  // Only a division with a cut of its own pairs its playoff.
+  const recorded = pod?.playoffsPaired ? pod.playoffsPaired.includes(division) : pairedThirdPlace(cut);
+  const paired = rootValue(t, 'type') !== '1' && size > 0 && recorded;
   return [
     `<categorycut key="${CATEGORY_CODES[division]}">`,
     ...block(1, [
@@ -879,9 +1009,9 @@ function categoryCut(t: Tournament, division: Division, pods: Pod[], of: (id: st
         values.map(value => tag('value', value))
       ),
       '</options>',
-      tag('cut', chosenCut(t, pod, cut, division)),
+      tag('cut', size),
       tag('playercount', count),
-      tag('paired3rd4th', String(pairedThirdPlace(cut)))
+      tag('paired3rd4th', String(paired))
     ]),
     '</categorycut>'
   ];
@@ -910,9 +1040,11 @@ function rootStage(t: Tournament, finalized: boolean): string {
 
 function rootAttrs(t: Tournament, finalized: boolean): string {
   const stage = rootStage(t, finalized);
-  return (t.passthrough?.rootAttrs ?? defaultRootAttrs(eventTypeOf(t), t.pods.length > 0))
-    .map(([key, value]) => ` ${key}="${esc(key === 'stage' ? stage : value)}"`)
-    .join('');
+  const defaults = defaultRootAttrs(eventTypeOf(t), t.pods.length > 0);
+  const attrs = t.settings
+    ? (t.passthrough?.rootAttrs ?? defaults).map(([key, value]): [string, string] => [key, rootValue(t, key) ?? value])
+    : (t.passthrough?.rootAttrs ?? defaults);
+  return attrs.map(([key, value]) => ` ${key}="${esc(key === 'stage' ? stage : value)}"`).join('');
 }
 
 export interface WriteOptions {
@@ -924,11 +1056,35 @@ export interface WriteOptions {
   divisionOf?: (id: string) => Division;
 }
 
+function hasPendingMatches(t: Tournament): boolean {
+  return t.pods.some(p => p.rounds.some(r => r.matches.some(m => m.outcome === 'pending')));
+}
+
+function savedStandingsLines(
+  t: Tournament,
+  options: WriteOptions,
+  computed: boolean,
+  of: (id: string) => Division
+): string[] {
+  if (t.passthrough && !t.settings && options.finalized === undefined) {
+    return t.passthrough.standings ? finalStandings(t, of) : [];
+  }
+  return computed ? finalStandings(t, of) : [];
+}
+
 /** Writes the tournament as a .tdf, in TOM's own layout. */
 export function writeTdf(input: Tournament, options: WriteOptions = {}): string {
   const t = normalizeCutPods(input);
   const finalized = options.finalized ?? wasFinalized(t);
-  if (finalized && t.pods.some(pod => pod.rounds.some(round => round.matches.some(m => m.outcome === 'pending')))) {
+  const pending = options.finalized
+    ? hasPendingMatches(t)
+    : t.settings
+      ? t.pods.some(pod => {
+          const last = pod.rounds.at(-1);
+          return !last || (last.stage ?? 0) < 5 || !finalPodRound(t, pod, last);
+        })
+      : t.pods.some(pod => pod.rounds.some(round => round.matches.some(m => m.outcome === 'pending')));
+  if (options.finalized && hasPendingMatches(t)) {
     throw new Error('Enter all match results to finalize');
   }
   const divisionOf = options.divisionOf ?? divisionLookup(t);
@@ -952,7 +1108,7 @@ export function writeTdf(input: Tournament, options: WriteOptions = {}): string 
       '<pods>',
       ...block(1, pods),
       '</pods>',
-      ...(finalized ? finalStandings(t, divisionOf) : []),
+      ...savedStandingsLines(t, options, finalized && !pending, divisionOf),
       ...writeFinalsOptions(t, divisionOf)
     ]),
     '</tournament>'

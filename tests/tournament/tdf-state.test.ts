@@ -5,7 +5,7 @@ import { applyCommand, type Command } from '../../shared/tournament/commands.ts'
 import { emptyTournament } from '../../shared/tournament/create.ts';
 import { bracketOrder } from '../../shared/tournament/seeding.ts';
 import { seededRandom } from '../../shared/tournament/random.ts';
-import { cutPodOf, latestRound, swissAttendance } from '../../shared/tournament/rounds.ts';
+import { cutPodOf, latestRound, regularRounds, swissAttendance } from '../../shared/tournament/rounds.ts';
 import { swissStandings } from '../../shared/tournament/standings.ts';
 import { parseTdf, writeTdf } from '../../shared/tournament/tdf.ts';
 import type { Pod, Tournament } from '../../shared/tournament/types.ts';
@@ -38,6 +38,14 @@ function complete(t: Tournament): Tournament {
     }
   }
   return result;
+}
+
+function cutReady(t: Tournament): Tournament {
+  let next = complete(t);
+  while (next.pods[0]!.rounds.length < regularRounds(next, next.pods[0]!)) {
+    next = complete(run(next, { type: 'pairRound', pod: next.pods[0]!.category }));
+  }
+  return next;
 }
 
 test('gap 10: roster shuffled once at start, ties and written order use that permutation', () => {
@@ -80,7 +88,7 @@ test('gaps 12, 13: earned bye first, random bye next, division then points order
 test('gap 13: TOM bracket seat order and player seed/order fields', () => {
   assert.deepEqual(bracketOrder(8), [1, 8, 5, 4, 3, 6, 7, 2]);
   let t = complete(run(field(Array<string>(9).fill('1990')), { type: 'pairRound', pod: 'masters' }));
-  t = run(t, { type: 'startTopCut', pod: 'masters', size: 8 });
+  t = run(cutReady(t), { type: 'startTopCut', pod: 'masters', size: 8 });
   const round = latestRound(t.pods[0])!;
   const seated = round.matches.flatMap(m => [m.p1, m.p2!]);
   assert.deepEqual(
@@ -118,7 +126,7 @@ test('gap 12: multiple earned byes follow the frozen subgroup roster', () => {
     latestRound(pod)!
       .matches.filter(m => m.outcome === 'assigned-bye')
       .map(m => m.p1),
-    pod.playerIds.filter(id => earned.has(id))
+    t.players.filter(p => earned.has(p.id)).map(p => p.id)
   );
 });
 
@@ -126,13 +134,13 @@ test('gap 14: combined cuts share rounds, Masters first, and every division adva
   let t = complete(
     run(field(['2016', '2016', '2016', '2016', '1990', '1990', '1990', '1990']), { type: 'pairRound', pod: 'mixed' })
   );
-  t = run(t, { type: 'startTopCut', pod: 'mixed', division: 'junior', size: 4 });
+  t = run(cutReady(t), { type: 'startTopCut', pod: 'mixed', division: 'junior', size: 4 });
   t = run(t, { type: 'startTopCut', pod: 'mixed', division: 'masters', size: 4 });
   assert.equal(t.pods.length, 1);
   const pod = t.pods[0]!;
-  assert.equal(pod.rounds.length, 2);
+  assert.equal(pod.rounds.length, 4);
   assert.deepEqual(
-    pod.rounds[1]!.matches.map(m => Number(m.p1) >= 104),
+    pod.rounds[3]!.matches.map(m => Number(m.p1) >= 104),
     [true, true, false, false]
   );
   assert.equal(cutPodOf(t, pod, 'junior')!.rounds.length, 1);
@@ -216,7 +224,7 @@ test('public combined cuts retain division membership with only public IDs', () 
   let t = complete(
     run(field(['2016', '2016', '2016', '2016', '1990', '1990', '1990', '1990']), { type: 'pairRound', pod: 'mixed' })
   );
-  t = run(t, { type: 'startTopCut', pod: 'mixed', division: 'junior', size: 4 });
+  t = run(cutReady(t), { type: 'startTopCut', pod: 'mixed', division: 'junior', size: 4 });
   const keys = assignKeys(t, {});
   const publicCopy = publicTournament(t, keys);
   assert.deepEqual(

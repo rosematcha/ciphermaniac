@@ -86,7 +86,7 @@ test('writes an untouched mid-event file back byte for byte', () => {
   assert.equal(writeTdf(parseTdf(CHALLENGE)), CHALLENGE);
 });
 
-test('a result reported on the site changes only its match in the file', () => {
+test('a result reported on the site updates its match and running stage', () => {
   const t = parseTdf(CHALLENGE);
   const result = applyCommand(
     t,
@@ -98,7 +98,11 @@ test('a result reported on the site changes only its match in the file', () => {
   const after = writeTdf(result.tournament).split('\n');
   assert.equal(after.length, before.length);
   const changed = after.flatMap((line, i) => (line === before[i] ? [] : [line.trim()]));
-  assert.deepEqual(changed, ['<match outcome="2">', '<timestamp>10/03/2026 13:00:00</timestamp>']);
+  assert.deepEqual(changed, [
+    '<round number="2" type="2" stage="4" >',
+    '<match outcome="2">',
+    '<timestamp>10/03/2026 13:00:00</timestamp>'
+  ]);
 });
 
 test('the parsed document survives the wire check', () => {
