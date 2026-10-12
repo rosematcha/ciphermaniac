@@ -52,8 +52,8 @@ export function PrivacyPage() {
         <p>
           We use your information only to run this service. We do not sell it. We do not show advertisements, and we do
           not use tracking cookies, analytics tools, or any other way of following you across the site or the web. We
-          use a single cookie to keep you signed in. We use your IP address briefly to protect the site from abuse, and
-          we do not store it with your account.
+          use only the cookies needed to sign you in and keep you signed in. We use your IP address briefly to protect
+          the site from abuse, and we do not store it with your account.
         </p>
         <p>
           Pairings, standings, results and public profiles can be seen by anyone, as is usual for tournaments. Your
