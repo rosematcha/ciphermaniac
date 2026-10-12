@@ -4,7 +4,7 @@
  * players follow), /settings (sign-in, sign-out and the player profile;
  * /account is its older name), /history (the events an account played),
  * /u/:handle (an account's public profile), /apply (applying to run events),
- * /welcome (a new sign-up's age check), /admin (an Admin's page), and a
+ * /welcome (a new sign-up's age check), /privacy (the privacy policy), /admin (an Admin's page), and a
  * store's /stores/:id (its public page), /stores/:id/settings and
  * /stores/join (its invite links).
  * One route rather than one each, because each route added to main.tsx is
@@ -29,6 +29,7 @@ const HistoryPage = lazy(() => import('./tournaments/HistoryPage').then(m => ({ 
 const ProfilePage = lazy(() => import('./tournaments/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const ApplyPage = lazy(() => import('./tournaments/ApplyPage').then(m => ({ default: m.ApplyPage })));
 const WelcomePage = lazy(() => import('./tournaments/WelcomePage').then(m => ({ default: m.WelcomePage })));
+const PrivacyPage = lazy(() => import('./tournaments/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
 const AdminPage = lazy(() => import('./tournaments/AdminPage').then(m => ({ default: m.AdminPage })));
 const StoreRoutes = lazy(() => import('./tournaments/StoreRoutes').then(m => ({ default: m.StoreRoutes })));
 
@@ -72,6 +73,9 @@ export function TournamentsPage() {
         </Match>
         <Match when={welcome()}>
           <WelcomePage />
+        </Match>
+        <Match when={location.pathname === '/privacy'}>
+          <PrivacyPage />
         </Match>
         <Match when={location.pathname.startsWith('/admin')}>
           <AdminPage />

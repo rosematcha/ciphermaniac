@@ -161,6 +161,7 @@ render(
           '/u/:handle',
           '/apply',
           '/welcome',
+          '/privacy',
           '/admin',
           '/stores/:id',
           '/stores/:id/settings'

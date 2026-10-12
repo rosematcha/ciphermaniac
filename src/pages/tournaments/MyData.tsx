@@ -8,7 +8,7 @@
  * events still running and the stores still owned.
  */
 
-import { useNavigate } from '@solidjs/router';
+import { A, useNavigate } from '@solidjs/router';
 import { createSignal, For, Show } from 'solid-js';
 import {
   type DataRefusal,
@@ -322,6 +322,11 @@ export function MyData(props: { user: Me; onWiped: (user: Me) => void }) {
     <section>
       <h2 class='tm-subhead tm-box-head'>My data</h2>
       <div class='tm-box'>
+        <SettingRow label='Privacy policy'>
+          <A class='btn btn-secondary' href='/privacy'>
+            View policy
+          </A>
+        </SettingRow>
         <SettingRow label='Export'>
           <button type='button' class='btn btn-secondary' onClick={() => setOpen('export')}>
             Export data

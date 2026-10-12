@@ -43,6 +43,14 @@ body[data-mode='dark']:has(.tm-page) {
 .tm-narrow {
   max-width: 640px;
 }
+/* The privacy policy reads as one column; its headings get the room a paragraph doesn't. */
+.tm-privacy > .tm-subhead {
+  margin-top: var(--space-3);
+}
+.tm-welcome-privacy {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
 /* The pages mark secondary text .muted in some forty places; without this it
    all drew at full ink, and the pages had one level of text where they meant two. */
 .tm-page .muted {

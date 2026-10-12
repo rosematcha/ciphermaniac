@@ -73,6 +73,9 @@ export function WelcomePage() {
           </Match>
         </Switch>
       </section>
+      <p class='muted tm-welcome-privacy'>
+        <A href='/privacy'>Privacy policy</A>
+      </p>
     </div>
   );
 }
