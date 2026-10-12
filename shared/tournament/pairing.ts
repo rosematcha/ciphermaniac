@@ -1,20 +1,4 @@
-/**
- * Swiss and single-elimination pairings, the way Play! Pokémon runs them.
- *
- * Swiss: players are paired inside their match-point group, in random order,
- * top group first. An odd player out of a group pairs down into the next one.
- * Nobody meets the same opponent twice while any other pairing exists, and the
- * bye goes to the lowest-placed player who has not had one.
- *
- * The search is a depth-first walk down the ranked list: each player takes the
- * first opponent below them they have not played, and backs up when the rest
- * of the field can no longer be paired. On real fields it pairs at the first
- * try. A field that cannot pair rematch-free is walked again allowing one
- * rematch, then two, so a round takes the fewest the walk can find. The walks
- * share a step budget, which bounds the work on a pathological field; past
- * it, one last walk still prefers a new opponent at every seat and always
- * finishes.
- */
+/** Swiss opponent search and complementary-seed elimination brackets. */
 
 import { bracketOrder } from './seeding.js';
 import { type Random, shuffled } from './random.js';
@@ -31,6 +15,8 @@ export interface PairingHistory {
   opponents: ReadonlyMap<string, ReadonlySet<string>>;
   /** Players who have already had a bye. */
   byes: ReadonlySet<string>;
+  /** Players missing the immediately preceding round may lose their record during backtracking. */
+  missingPrevious?: ReadonlySet<string>;
 }
 
 export interface Pairing {
@@ -61,7 +47,7 @@ export function rankForPairing(entrants: readonly Entrant[], random: Random): st
     );
 }
 
-/** The lowest-ranked player without a bye yet, or the lowest-ranked of all if everyone has had one. */
+/** The lowest-ranked player without a previous random bye; exhausted eligibility has no fallback. */
 export function pickBye(ranked: readonly string[], byes: ReadonlySet<string>): string | undefined {
   for (let i = ranked.length - 1; i >= 0; i -= 1) {
     const id = ranked[i];
@@ -69,7 +55,7 @@ export function pickBye(ranked: readonly string[], byes: ReadonlySet<string>): s
       return id;
     }
   }
-  return ranked.at(-1);
+  return undefined;
 }
 
 /** A round's field as every walk reads it: who sits where, and whom each has met. */
@@ -79,9 +65,14 @@ interface Field {
   met: number[][];
   /** The most opponents any player has met. */
   mostMet: number;
+  entrants: ReadonlyMap<string, Entrant>;
+  highestPoints: number;
+  minimumDifference: number;
+  pointDifference: number;
+  divisionDifference: number;
 }
 
-function fieldOf(ranked: readonly string[], history: PairingHistory): Field {
+function fieldOf(ranked: readonly string[], history: PairingHistory, entrants: readonly Entrant[]): Field {
   const seatOf = new Map(ranked.map((id, seat) => [id, seat]));
   const met = ranked.map(id => {
     const seats: number[] = [];
@@ -93,7 +84,33 @@ function fieldOf(ranked: readonly string[], history: PairingHistory): Field {
     }
     return seats;
   });
-  return { ranked, met, mostMet: met.reduce((most, seats) => Math.max(most, seats.length), 0) };
+  return {
+    ranked,
+    met,
+    mostMet: met.reduce((most, seats) => Math.max(most, seats.length), 0),
+    entrants: new Map(entrants.map(e => [e.id, e])),
+    highestPoints: Math.max(...entrants.map(e => e.points)),
+    minimumDifference: minimumDifference(entrants, history),
+    pointDifference: 0,
+    divisionDifference: 0
+  };
+}
+
+/** An isolated entrant proves that narrower point bands cannot pair the field. */
+function minimumDifference(entrants: readonly Entrant[], history: PairingHistory): number {
+  const sorted = [...entrants].sort((a, b) => a.points - b.points);
+  return sorted.reduce((bound, entrant, index) => {
+    const met = history.opponents.get(entrant.id);
+    const nearest = (direction: number) => {
+      for (let other = index + direction; other >= 0 && other < sorted.length; other += direction) {
+        if (!met?.has(sorted[other]!.id)) {
+          return Math.abs(entrant.points - sorted[other]!.points);
+        }
+      }
+      return Infinity;
+    };
+    return Math.max(bound, Math.min(nearest(-1), nearest(1)));
+  }, 0);
 }
 
 /**
@@ -117,6 +134,7 @@ interface Search {
   rematches: number;
   steps: number;
   budget: number;
+  protectedTop: boolean;
 }
 
 /** A seat's opponent as the walk chose them. */
@@ -136,7 +154,7 @@ function newSearch(field: Field, rematches: number, budget: number): Search {
   }
   prev[size] = size - 1;
   const metLeft = Int32Array.from(field.met, seats => seats.length);
-  return { field, next, prev, open: size, metLeft, pairings: [], rematches, steps: 0, budget };
+  return { field, next, prev, open: size, metLeft, pairings: [], rematches, steps: 0, budget, protectedTop: false };
 }
 
 function take(state: Search, seat: number): void {
@@ -196,7 +214,7 @@ function nextOpponent(state: Search, seat: number, from: number, rematch: boolea
   let other = from === seat ? firstOpen(state) : (state.next[from] as number);
   while (other !== end && state.steps < state.budget) {
     state.steps += 1;
-    if (met.includes(other) === rematch) {
+    if (met.includes(other) === rematch && permitted(state.field, seat, other)) {
       return other;
     }
     other = state.next[other] as number;
@@ -240,9 +258,38 @@ const deadEnd = (state: Search) => state.rematches === 0 && stranded(state);
 
 /**
  * Pairs the unseated seats top first: each takes the first new opponent below
- * them, and a rematch only where no new one leads through. False if it cannot
- * within its rematches and budget.
+ * them. Returns false when no permitted matching exists within the search budget.
  */
+function lowerBracketRepair(state: Search): boolean {
+  if (state.open !== 2) {
+    return false;
+  }
+  const first = firstOpen(state);
+  const second = state.next[first]!;
+  const points = (seat: number) => state.field.entrants.get(state.field.ranked[seat]!)?.points;
+  return points(first) === points(second) && (state.field.met[first] ?? []).includes(second);
+}
+
+function protectsHighest(state: Search, choice: Choice): boolean {
+  if (!state.protectedTop) {
+    return false;
+  }
+  const highest = state.field.highestPoints;
+  return (
+    state.field.entrants.get(state.field.ranked[choice.seat]!)?.points === highest &&
+    state.field.entrants.get(state.field.ranked[choice.other]!)?.points === highest
+  );
+}
+
+function undoForRepair(state: Search, choice: Choice): boolean {
+  state.protectedTop ||= lowerBracketRepair(state);
+  if (protectsHighest(state, choice)) {
+    return false;
+  }
+  unpair(state, choice);
+  return true;
+}
+
 function search(state: Search): boolean {
   const end = state.field.ranked.length;
   const choices: Choice[] = [];
@@ -255,8 +302,11 @@ function search(state: Search): boolean {
     const choice = nextChoice(state, seat, last);
     if (choice) {
       pair(state, choice);
-      if (deadEnd(state)) {
-        unpair(state, choice);
+      const blocked = deadEnd(state);
+      if (blocked && !undoForRepair(state, choice)) {
+        return false;
+      }
+      if (blocked) {
         last = choice;
         continue;
       }
@@ -271,61 +321,251 @@ function search(state: Search): boolean {
     if (!last || state.steps >= state.budget) {
       return false;
     }
+    if (protectsHighest(state, last)) {
+      return false;
+    }
     unpair(state, last);
     ({ seat } = last);
   }
   return true;
 }
 
-interface Walk {
-  pairings: Pairing[] | null;
-  steps: number;
+export class PairingError extends Error {}
+
+/** The bounded search found no rematch-free pairing (statement 12, V17-8): one pairing attempt fails. */
+export class SearchExhausted extends PairingError {}
+
+function permitted(field: Field, seat: number, other: number): boolean {
+  const a = field.entrants.get(field.ranked[seat]!);
+  const b = field.entrants.get(field.ranked[other]!);
+  return (
+    a !== undefined &&
+    b !== undefined &&
+    Math.abs(a.points - b.points) <= field.pointDifference &&
+    Math.abs((a.category ?? 2) - (b.category ?? 2)) <= field.divisionDifference
+  );
 }
 
-function walk(field: Field, rematches: number, budget: number): Walk {
-  const state = newSearch(field, rematches, budget);
-  return { pairings: search(state) ? state.pairings : null, steps: state.steps };
+interface Constraints {
+  points: number;
+  division: number;
 }
 
-/** Rematch-free if the field allows it; otherwise the fewest rematches the walks find within the budget. */
-function pairRanked(ranked: readonly string[], history: PairingHistory): { pairings: Pairing[]; steps: number } {
-  const field = fieldOf(ranked, history);
-  const most = Math.floor(ranked.length / 2);
-  let left = STEP_BUDGET;
-  let steps = 0;
-  for (let rematches = 0; rematches < most && left > 0; rematches += 1) {
-    const found = walk(field, rematches, left);
-    steps += found.steps;
-    if (found.pairings) {
-      return { pairings: found.pairings, steps };
-    }
-    left -= found.steps;
+function pairAt(field: Field, constraints: Constraints, walks: number[]): Pairing[] | null {
+  if (constraints.points < field.minimumDifference) {
+    return null;
   }
-  // Every seat may rematch, so the first way down pairs everyone; each still takes a new opponent where one is left.
-  const last = walk(field, most, Number.POSITIVE_INFINITY);
-  return { pairings: last.pairings ?? [], steps: steps + last.steps };
+  const constrained = { ...field, pointDifference: constraints.points, divisionDifference: constraints.division };
+  const state = newSearch(constrained, 0, STEP_BUDGET);
+  const found = search(state);
+  walks.push(state.steps);
+  return found ? state.pairings : null;
+}
+
+function preparedField(prepared: PreparedCandidate, priority: readonly string[], history: PairingHistory): Field {
+  const saved = prepared.fields.get(priority);
+  if (saved) {
+    return saved;
+  }
+  const field = fieldOf(priority, history, prepared.entrants);
+  prepared.fields.set(priority, field);
+  return field;
+}
+
+function firstRoundByeField(entrants: readonly Entrant[]): readonly Entrant[] {
+  const groups = [2, 1, 0].map(category => entrants.filter(e => (e.category ?? 2) === category));
+  const odd = groups.filter(group => group.length % 2 === 1);
+  const preferred = odd[0];
+  return odd.length === 3 || !preferred || preferred.length < 3 ? entrants : preferred;
+}
+
+function byeCandidates(entrants: readonly Entrant[], history: PairingHistory, round: number): Entrant[] {
+  const field = round === 1 ? firstRoundByeField(entrants) : entrants;
+  const eligible = field.filter(e => !history.byes.has(e.id));
+  if (!eligible.length) {
+    throw new PairingError('No eligible player remains for a random bye');
+  }
+  const lowest = Math.min(...eligible.map(e => e.points));
+  return eligible.filter(e => e.points === lowest);
+}
+
+export interface SwissOptions {
+  round?: number;
+  /** Recorded random seats only; validate coverage and opponent eligibility. */
+  recorded?: readonly Pairing[];
+  /** V22-5: holders whose earlier random bye a restarted search may have left out of their record. */
+  freshByes?: readonly string[];
+}
+
+/**
+ * Backtracking can move the bye above the lowest bracket (statement 13); it still needs no earlier random bye in the
+ * holder's record, which a taken-apart match (V16-9) or a restarted search (V22-5) can lack.
+ */
+function heldBye(holder: string | undefined, history: PairingHistory, options: SwissOptions): boolean {
+  return (
+    holder !== undefined &&
+    history.byes.has(holder) &&
+    !options.freshByes?.includes(holder) &&
+    !history.missingPrevious?.has(holder)
+  );
+}
+
+function recordedPairings(entrants: readonly Entrant[], history: PairingHistory, options: SwissOptions): Pairing[] {
+  const pairings = options.recorded!;
+  const seats = pairings.flatMap(p => (p.p2 === null ? [p.p1] : [p.p1, p.p2]));
+  const ids = new Set(entrants.map(e => e.id));
+  if (seats.length !== ids.size || new Set(seats).size !== ids.size || seats.some(id => !ids.has(id))) {
+    throw new PairingError('Recorded pairings do not cover the eligible field exactly once');
+  }
+  if (
+    pairings.some(
+      p =>
+        p.p2 !== null &&
+        history.opponents.get(p.p1)?.has(p.p2) &&
+        !history.missingPrevious?.has(p.p1) &&
+        !history.missingPrevious?.has(p.p2)
+    )
+  ) {
+    throw new PairingError('Recorded pairings repeat a Swiss opponent');
+  }
+  const byes = pairings.filter(p => p.p2 === null);
+  if (byes.length !== entrants.length % 2) {
+    throw new PairingError('Recorded pairings have an invalid random bye count');
+  }
+  if (heldBye(byes[0]?.p1, history, options)) {
+    throw new PairingError('Recorded random bye is ineligible');
+  }
+  return pairings.map(p => ({ ...p }));
 }
 
 /**
  * One Swiss round, with the steps its walks took, so a pairing's work can be
- * judged by steps rather than by a clock. Pairings come back in table order:
- * the top of the field at table one, the bye last.
+ * judged by steps rather than by a clock.
  */
 export function pairSwissCounted(
   entrants: readonly Entrant[],
   history: PairingHistory,
-  random: Random
+  random: Random,
+  options: SwissOptions = {}
 ): { pairings: Pairing[]; steps: number } {
+  if (!entrants.length) {
+    throw new PairingError('An empty flight cannot pair a round');
+  }
+  const round = options.round ?? (history.opponents.size || history.byes.size ? 2 : 1);
+  if (options.recorded) {
+    return { pairings: recordedPairings(entrants, history, { ...options, round }), steps: 0 };
+  }
   const ranked = rankForPairing(entrants, random);
-  const bye = ranked.length % 2 === 1 ? pickBye(ranked, history.byes) : undefined;
-  const field = bye === undefined ? ranked : ranked.filter(id => id !== bye);
-  const { pairings, steps } = pairRanked(field, history);
-  return { pairings: bye === undefined ? pairings : [...pairings, { p1: bye, p2: null }], steps };
+  const byes = entrants.length % 2 ? shuffled(byeCandidates(entrants, history, round), random) : [undefined];
+  const candidates = byes.map(bye => ({ bye }));
+  const inputs = { ranked, entrants, random, cache: new Map<Candidate, PreparedCandidate>(), walks: [] };
+  const points = entrants.map(e => e.points);
+  const maximum = Math.max(2, Math.max(...points) - Math.min(...points));
+  const found = searchCandidates(candidates, history, maximum, inputs);
+  if (found) {
+    return { pairings: found, steps: inputs.walks.reduce((sum, steps) => sum + steps, 0) };
+  }
+  throw new SearchExhausted('No more rounds can be paired without repeating an opponent');
 }
 
-/** One Swiss round (see pairSwissCounted). */
-export function pairSwiss(entrants: readonly Entrant[], history: PairingHistory, random: Random): Pairing[] {
-  return pairSwissCounted(entrants, history, random).pairings;
+/** A complete, rematch-free Swiss field, or an explicit refusal without partial matches. */
+export function pairSwiss(
+  entrants: readonly Entrant[],
+  history: PairingHistory,
+  random: Random,
+  options: SwissOptions = {}
+): Pairing[] {
+  return pairSwissCounted(entrants, history, random, options).pairings;
+}
+
+function retryPriorities(ranked: string[], entrants: readonly Entrant[], random: Random): string[][] {
+  const of = new Map(entrants.map(e => [e.id, e]));
+  return [
+    ranked,
+    [...ranked].reverse(),
+    [...ranked].sort((a, b) => (of.get(b)?.category ?? 2) - (of.get(a)?.category ?? 2)),
+    shuffled(ranked, random)
+  ];
+}
+
+interface Candidate {
+  bye: Entrant | undefined;
+}
+interface PreparedCandidate {
+  priorities: string[][];
+  entrants: Entrant[];
+  fields: Map<readonly string[], Field>;
+}
+interface Inputs {
+  ranked: string[];
+  entrants: readonly Entrant[];
+  random: Random;
+  cache: Map<Candidate, PreparedCandidate>;
+  /** Steps each walk took. */
+  walks: number[];
+}
+
+function prepareCandidate(candidate: Candidate, inputs: Inputs): PreparedCandidate {
+  const saved = inputs.cache.get(candidate);
+  if (saved) {
+    return saved;
+  }
+  const ranked = inputs.ranked.filter(id => id !== candidate.bye?.id);
+  const entrants = inputs.entrants.filter(e => e.id !== candidate.bye?.id);
+  const prepared = {
+    priorities: retryPriorities(ranked, entrants, inputs.random),
+    entrants,
+    fields: new Map<readonly string[], Field>()
+  };
+  inputs.cache.set(candidate, prepared);
+  return prepared;
+}
+
+function searchCandidates(
+  candidates: Candidate[],
+  history: PairingHistory,
+  maximum: number,
+  inputs: Inputs
+): Pairing[] | null {
+  for (let points = 0; points <= maximum; points += 1) {
+    const found = searchDifference(candidates, history, points, inputs);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
+function searchDifference(
+  candidates: Candidate[],
+  history: PairingHistory,
+  points: number,
+  inputs: Inputs
+): Pairing[] | null {
+  for (let division = 0; division <= Math.min(points, 2); division += 1) {
+    const found = searchByes(candidates, history, { constraints: { points, division }, inputs });
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
+function searchByes(
+  candidates: Candidate[],
+  history: PairingHistory,
+  attempt: { constraints: Constraints; inputs: Inputs }
+): Pairing[] | null {
+  for (const candidate of candidates) {
+    const prepared = prepareCandidate(candidate, attempt.inputs);
+    for (const priority of prepared.priorities) {
+      const found = pairAt(preparedField(prepared, priority, history), attempt.constraints, attempt.inputs.walks);
+      if (found) {
+        return candidate.bye ? [...found, { p1: candidate.bye.id, p2: null }] : found;
+      }
+    }
+  }
+  return null;
 }
 
 /** The first round of a top cut: seeds in standings order, paired by bracket position. */
@@ -335,8 +575,8 @@ export function pairTopCut(seeds: readonly string[]): Pairing[] {
   for (let i = 0; i < order.length; i += 2) {
     const high = seeds[(order[i] ?? 1) - 1];
     const low = seeds[(order[i + 1] ?? 1) - 1];
-    if (high !== undefined) {
-      pairings.push({ p1: high, p2: low ?? null });
+    if (high !== undefined || low !== undefined) {
+      pairings.push({ p1: high ?? low!, p2: high === undefined ? null : (low ?? null) });
     }
   }
   return pairings;
@@ -348,8 +588,8 @@ export function pairTopCut(seeds: readonly string[]): Pairing[] {
  * losers, after the final.
  */
 export function pairNextElimination(winners: readonly string[], thirdPlace: readonly string[] = []): Pairing[] {
-  const pairings: Pairing[] = [];
-  for (let i = 0; i < winners.length; i += 2) {
+  const pairings: Pairing[] = winners.length % 2 === 1 ? [{ p1: winners[0]!, p2: null }] : [];
+  for (let i = winners.length % 2; i < winners.length; i += 2) {
     const p1 = winners[i];
     if (p1 !== undefined) {
       pairings.push({ p1, p2: winners[i + 1] ?? null });
@@ -359,7 +599,7 @@ export function pairNextElimination(winners: readonly string[], thirdPlace: read
   return winners.length === 2 && third && fourth ? [...pairings, { p1: third, p2: fourth }] : pairings;
 }
 
-/** TOM's stable MatchComp order, before tables are assigned. */
+/** Stable match order before tables are assigned. */
 export function sortSwissPairings(pairings: readonly Pairing[], entrants: readonly Entrant[]): Pairing[] {
   const byId = new Map(entrants.map(e => [e.id, e]));
   const category = (id: string | null) => (id === null ? 10 : (byId.get(id)?.category ?? 2));
@@ -370,6 +610,7 @@ export function sortSwissPairings(pairings: readonly Pairing[], entrants: readon
       Number(b.p2 === null) - Number(a.p2 === null) ||
       subgroup(a) - subgroup(b) ||
       category(b.p1) + category(b.p2) - (category(a.p1) + category(a.p2)) ||
+      category(b.p1) - category(a.p1) ||
       points(b.p1) + points(b.p2) - (points(a.p1) + points(a.p2))
   );
 }

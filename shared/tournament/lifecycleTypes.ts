@@ -52,6 +52,8 @@ export interface RecordedChoices {
   abortedRepair?: Partial<Record<PodCategory, readonly Match[]>>;
   /** V20-1: a departure before start can keep the player's match after an unreopened search restart. */
   keptDepartureMatch?: boolean;
+  /** V22-5: a restarted search can leave these holders' random byes, paired since the last reading, unrecorded. */
+  freshRandomByes?: readonly string[];
   /** V17-8: bounded Swiss search can exhaust itself despite an available pairing. */
   noRound?: boolean;
   eliminationTieOrder?: Tournament['eliminationTieOrder'];

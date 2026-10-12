@@ -9,6 +9,7 @@ import test from 'node:test';
 
 import {
   type Entrant,
+  PairingError,
   type PairingHistory,
   pairNextElimination,
   pairSwiss,
@@ -60,8 +61,8 @@ test('gives the bye to the lowest player who has not had one', () => {
   assert.equal(pairings.at(-1), bye);
 });
 
-test('pickBye falls back to the last player when everyone has had one', () => {
-  assert.equal(pickBye(['a', 'b'], new Set(['a', 'b'])), 'b');
+test('pickBye has no recipient when everyone has had one', () => {
+  assert.equal(pickBye(['a', 'b'], new Set(['a', 'b'])), undefined);
 });
 
 test('pairs within the point group before pairing down', () => {
@@ -80,18 +81,14 @@ test('avoids a rematch when another pairing exists', () => {
   }
 });
 
-test('allows a rematch rather than leaving a round unpaired', () => {
-  const pairings = pairSwiss(entrants([3, 0]), history([['p0', 'p1']]), seededRandom(5));
-  assert.deepEqual(pairings, [{ p1: 'p0', p2: 'p1' }]);
+test('refuses exhausted opponents instead of silently permitting a rematch', () => {
+  assert.throws(() => pairSwiss(entrants([3, 0]), history([['p0', 'p1']]), seededRandom(5)), PairingError);
 });
 
-test('where a rematch cannot be avoided, the round takes no more than it must', () => {
-  // p0 has met everyone; the rest have met once each. One rematch pairs the round.
+test('refuses a field with a player who has met every possible opponent', () => {
   const met = history([...[1, 2, 3, 4, 5].map(i => ['p0', `p${i}`] as [string, string]), ['p1', 'p2'], ['p3', 'p4']]);
   for (let seed = 0; seed < 50; seed += 1) {
-    const pairings = pairSwiss(entrants([0, 0, 0, 0, 0, 0]), met, seededRandom(seed));
-    const rematches = pairings.filter(p => p.p2 !== null && met.opponents.get(p.p1)?.has(p.p2));
-    assert.equal(rematches.length, 1, `seed ${seed}`);
+    assert.throws(() => pairSwiss(entrants([0, 0, 0, 0, 0, 0]), met, seededRandom(seed)), PairingError);
   }
 });
 
@@ -166,4 +163,26 @@ test('seeds a top cut and advances winners in bracket order', () => {
     { p1: 's1', p2: 's5' },
     { p1: 's2', p2: 's3' }
   ]);
+});
+
+test('tries another eligible bye before expanding point differences or undoing the top bracket', () => {
+  const field: Entrant[] = [
+    { id: 'h1', points: 3 },
+    { id: 'h2', points: 3 },
+    { id: 'l1', points: 0 },
+    { id: 'l2', points: 0 },
+    { id: 'l3', points: 0 }
+  ];
+  const pairs = pairSwiss(field, history([['l2', 'l3']]), () => 0.999, { round: 2 });
+  const points = new Map(field.map(e => [e.id, e.points]));
+  assert.ok(pairs.every(p => p.p2 === null || points.get(p.p1) === points.get(p.p2)));
+  assert.ok(pairs.some(p => p.p1 === 'h1' && p.p2 === 'h2'));
+});
+
+test('an incomplete elimination bracket retains a player in either seat', () => {
+  for (const count of [3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15]) {
+    const seeds = Array.from({ length: count }, (_, i) => `seed${i + 1}`);
+    const seats = pairTopCut(seeds).flatMap(p => (p.p2 === null ? [p.p1] : [p.p1, p.p2]));
+    assert.deepEqual([...seats].sort(), [...seeds].sort());
+  }
 });
