@@ -1,9 +1,9 @@
 /**
  * The age check between a provider's sign-in and an account. Ciphermaniac
- * holds no accounts for minors (shared/accounts/age.ts), so a sign-in that
+ * holds no accounts for anyone under 16 (shared/accounts/age.ts), so a sign-in that
  * would make an account, or reach one made before the check existed, makes
  * nothing yet: the provider's answer waits here, under a token in a cookie,
- * for a birth date. An adult's becomes the account with the year alone kept;
+ * for a birth date. One old enough becomes the account with the year alone kept;
  * anyone else's is deleted. Each wait is used once and lasts fifteen minutes;
  * one that ran out goes at the next sign-up, age check or idle sweep, which
  * runs every fifteen minutes.

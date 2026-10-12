@@ -35,7 +35,7 @@ export async function purgeProofs(db: D1Like, bucket: ProofBucket | undefined): 
 /**
  * Forget an unchecked legacy account's online submissions while preserving
  * its opaque ownership ID, including any store's last Manager. Every write
- * rechecks age_checked_at: a concurrent adult verification is never erased.
+ * rechecks age_checked_at: a concurrent passing age check is never erased.
  */
 export async function rejectSignup(db: D1Like, profile: Profile, bucket: ProofBucket | undefined): Promise<void> {
   const email = verifiedEmail(profile);

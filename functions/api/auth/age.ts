@@ -1,14 +1,14 @@
 /**
  * POST /api/auth/age — the age check a new sign-up waits on (see
  * lib/auth/signup.ts): { birthDate: 'YYYY-MM-DD' } with the cookie the
- * callback set. 18 or older makes the account, keeping the birth year and
+ * callback set. 16 or older makes the account, keeping the birth year and
  * nothing finer, starts a session and answers where to go ({ next }).
  * Younger makes nothing and deletes what the provider sent (403, { minor:
  * true }). A date that is no date is refused without using the wait up; a
  * wait that is gone or ran out asks for sign-in again (410).
  */
 
-import { birthYearOfDate, isAdult } from '../../../shared/accounts/age.js';
+import { birthYearOfDate, oldEnoughForAccount } from '../../../shared/accounts/age.js';
 import { birthDateOfYear } from '../../../shared/tournament/divisions.js';
 import { readJsonObject } from '../../lib/api/body.js';
 import { jsonError } from '../../lib/api/responses.js';
@@ -18,8 +18,8 @@ import { createSession, SESSION_SECONDS, upsertUser } from '../../lib/auth/sessi
 import { rejectSignup } from '../../lib/auth/rejection.js';
 import { takeSignup } from '../../lib/auth/signup.js';
 
-/** What a minor is told; nothing about them was kept. */
-export const ADULTS_ONLY = 'Ciphermaniac accounts are for people 18 and older.';
+/** What someone too young is told; nothing about them was kept. */
+export const TOO_YOUNG = 'Ciphermaniac accounts are for people 16 and older.';
 
 function answer(status: number, body: unknown, cookies: readonly string[]): Response {
   const headers = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -47,9 +47,9 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
   if (!held) {
     return answer(410, { error: 'Sign in again to continue' }, [cleared]);
   }
-  if (!isAdult(birthDate, now)) {
+  if (!oldEnoughForAccount(birthDate, now)) {
     await rejectSignup(db, held.profile, env.PROOFS);
-    return answer(403, { error: ADULTS_ONLY, minor: true }, [cleared]);
+    return answer(403, { error: TOO_YOUNG, minor: true }, [cleared]);
   }
   const userId = await upsertUser(db, held.profile, birthDateOfYear(year));
   const session = await createSession(db, userId);

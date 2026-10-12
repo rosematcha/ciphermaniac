@@ -1,7 +1,8 @@
 /**
  * The age rules through the functions (shared/accounts/age.ts): a sign-up
- * waits for its age check and only an adult's makes an account, keeping the
- * birth year alone; a profile names no minor's year; a player under 13 hands
+ * waits for its age check and only someone 16 or older makes an account,
+ * keeping the birth year alone; a profile names no year too young for one;
+ * an account that may be under 18 runs no events; a player under 13 hands
  * a sanctioned event nothing; a minor's cards go as the event ends; and
  * migration 0011 cuts what was already kept.
  */
@@ -11,18 +12,21 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { beforeEach, mock, test } from 'node:test';
 
+import * as applications from '../../functions/api/applications/index.ts';
 import * as ageCheck from '../../functions/api/auth/age.ts';
 import * as callback from '../../functions/api/auth/callback/[provider].ts';
 import * as login from '../../functions/api/auth/login/[provider].ts';
+import * as community from '../../functions/api/community.ts';
 import * as me from '../../functions/api/me.ts';
 import * as decklists from '../../functions/api/tournaments/[code]/decklists.ts';
 import * as report from '../../functions/api/tournaments/[code]/report.ts';
 import * as idle from '../../functions/api/tournaments/idle.ts';
 import type { TournamentEnv } from '../../functions/lib/auth/env.ts';
-import { UNDER_13 } from '../../shared/accounts/age.ts';
+import { HOSTS_ONLY, UNDER_13 } from '../../shared/accounts/age.ts';
 import { apiCalls, type Handler, request } from '../__utils__/apiCalls.ts';
 import { at, eventCalls } from '../__utils__/eventCalls.ts';
 import { racing, sqliteD1 } from '../__utils__/sqliteD1.ts';
+import { storeApplication } from '../__utils__/storeApplication.ts';
 
 let env: TournamentEnv;
 const { hit, signIn } = apiCalls(() => env);
@@ -35,6 +39,7 @@ beforeEach(() => {
     GOOGLE_CLIENT_ID: 'id',
     GOOGLE_CLIENT_SECRET: 'secret'
   };
+  applications._resetRateLimitStore();
   decklists._resetRateLimitStore();
   report._resetRateLimitStore();
 });
@@ -45,6 +50,7 @@ const YEAR = new Date().getUTCFullYear();
 /** Birth years: a child under 13, a teenager old enough to hand in a list, and an adult. */
 const CHILD = YEAR - 10;
 const TEEN = YEAR - 15;
+const SIXTEEN = YEAR - 16;
 const ADULT = YEAR - 30;
 const cookieOf = (response: { headers: Headers }, name: string) =>
   (response.headers.getSetCookie().find(value => value.startsWith(`${name}=`)) ?? '').split(';')[0] ?? '';
@@ -79,17 +85,49 @@ function checkAge(cookie: string, birthDate: string) {
   return hit(ageCheck.onRequestPost as Handler, '/api/auth/age', {}, { method: 'POST', cookie, body: { birthDate } });
 }
 
-test('a minor’s sign-up makes no account and keeps nothing the provider sent', async () => {
+test('a sign-up under 16 makes no account and keeps nothing the provider sent', async () => {
   const waiting = await asGoogle('kid', 'kid@example.com', googleCallback);
   assert.equal(waiting.headers.get('location'), '/welcome');
   assert.equal(count('pending_signups'), 1);
   const refused = await checkAge(cookieOf(waiting, 'cm_signup'), `${CHILD + 5}-03-01`);
   assert.equal(refused.status, 403);
-  assert.deepEqual(refused.json, { error: ageCheck.ADULTS_ONLY, minor: true });
+  assert.deepEqual(refused.json, { error: ageCheck.TOO_YOUNG, minor: true });
   assert.equal(cookieOf(refused, 'cm_session'), '', 'no session');
   assert.deepEqual([count('users'), count('identities'), count('pending_signups')], [0, 0, 0]);
   const retry = await checkAge(cookieOf(waiting, 'cm_signup'), `${ADULT}-03-01`);
   assert.equal(retry.status, 410, 'another date needs another sign-in');
+});
+
+test('a 16-year-old’s sign-up makes an account', async () => {
+  const waiting = await asGoogle('teen', 'teen@example.com', googleCallback);
+  const passed = await checkAge(cookieOf(waiting, 'cm_signup'), `${SIXTEEN}-01-01`);
+  assert.equal(passed.status, 200);
+  assert.ok(cookieOf(passed, 'cm_session'));
+  assert.equal(count('users'), 1);
+});
+
+test('an account that may be under 18 neither organizes for the community nor applies for a store', async () => {
+  const cookie = await signIn('Teen');
+  const saved = await hit(
+    me.onRequestPut as Handler,
+    '/api/me',
+    {},
+    { method: 'PUT', cookie, body: { popId: '4243', firstName: 'Tea', lastName: 'Lee', birthDate: `06/15/${SIXTEEN}` } }
+  );
+  assert.equal(saved.status, 200);
+  const joined = await hit(community.onRequestPost as Handler, '/api/community', {}, { method: 'POST', cookie });
+  assert.deepEqual([joined.status, joined.json.error], [403, HOSTS_ONLY]);
+  const applied = await hit(
+    applications.onRequestPost as Handler,
+    '/api/applications',
+    {},
+    {
+      method: 'POST',
+      cookie,
+      body: { store: storeApplication(), explanation: 'I run our league.' }
+    }
+  );
+  assert.deepEqual([applied.status, applied.json.error], [403, HOSTS_ONLY]);
 });
 
 test('a date that is no date is asked again; a wait used up or run out asks for sign-in again', async () => {
@@ -167,7 +205,7 @@ test('a dev sign-in is an adult’s unless it says otherwise, and a minor’s is
   assert.deepEqual(passed.json, { next: '/apply' });
 });
 
-test('a profile keeps its birth year alone, and no year only a minor could be born in', async () => {
+test('a profile keeps its birth year alone, and no year only someone under 16 could be born in', async () => {
   const cookie = await signIn('Pat');
   const save = (birthDate: string) =>
     hit(
@@ -180,8 +218,9 @@ test('a profile keeps its birth year alone, and no year only a minor could be bo
         body: { popId: '4242', firstName: 'Pat', lastName: 'Lee', birthDate }
       }
     );
-  assert.equal((await save(`02/27/${YEAR - 17}`)).status, 400);
+  assert.equal((await save(`02/27/${YEAR - 15}`)).status, 400);
   assert.equal((await save(`02/27/${CHILD}`)).status, 400);
+  assert.equal((await save(`02/27/${SIXTEEN}`)).status, 200);
   const saved = await save(`06/15/${ADULT}`);
   assert.equal(saved.status, 200);
   assert.equal(saved.json.user.birthDate, `02/27/${ADULT}`);

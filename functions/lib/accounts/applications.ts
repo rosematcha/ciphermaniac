@@ -7,10 +7,12 @@
  * makes the store, with the applicant its Manager.
  */
 
+import { HOSTS_ONLY, mayBeMinor } from '../../../shared/accounts/age.js';
 import { profileComplete } from '../../../shared/accounts/applications.js';
 import { readAccountRole } from '../../../shared/accounts/roles.js';
 import type { StoreApplication } from '../../../shared/accounts/stores.js';
 import type { AdminApplication, ApplicationStatus, MyApplication } from '../../../shared/accounts/types.js';
+import { birthYear } from '../../../shared/tournament/divisions.js';
 import { jsonError } from '../api/responses.js';
 import { type Context, sameOrigin } from '../auth/env.js';
 import { sessionHash, sessionUserQuery, type User, userFromRow, type UserRow } from '../auth/session.js';
@@ -137,6 +139,9 @@ export function applyRefusal(applicant: Applicant): Response | null {
   if (!profileComplete(user)) {
     // `profile` tells the page to send the account to its profile, not show the message alone.
     return privateJson({ error: 'Complete your profile first', profile: true }, 400);
+  }
+  if (mayBeMinor(birthYear(user.birthDate ?? ''), new Date())) {
+    return privateJson({ error: HOSTS_ONLY }, 403);
   }
   if (!user.email) {
     // A username and password account may have no email; an organizer has to be reachable.

@@ -16,7 +16,7 @@ export function PrivacyPage() {
   });
   return (
     <div class='tm-page tm-narrow'>
-      <TournamentHero title='Privacy Policy' meta='Last updated October 11, 2026' />
+      <TournamentHero title='Privacy Policy' meta='Last updated October 12, 2026' />
       <div class='prose tm-privacy'>
         <p>
           Ciphermaniac Events is a service for running Pokémon Trading Card Game tournaments. This policy explains what
@@ -41,7 +41,7 @@ export function PrivacyPage() {
           an event on our site even if you have never created an account.
         </p>
         <p>
-          Accounts are available only to people 18 and older. We ask for your full birth date once, when you sign up, to
+          Accounts are available only to people 16 and older. We ask for your full birth date once, when you sign up, to
           confirm your age, and then keep only the year. Younger players may still take part in events run on our site,
           and we keep as little about them as possible. Once an event ends, the decklists of players under 18 are
           reduced to the name of the deck’s archetype. Players under 13 do not submit anything to us directly; event

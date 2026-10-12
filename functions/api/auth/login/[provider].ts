@@ -4,12 +4,12 @@
  * Google and Discord redirect to the provider with a fresh `state`, which is
  * also set in a ten-minute cookie alongside where to return afterwards. The
  * dev provider (local only, see lib/auth/oauth.ts) signs in straight away as
- * `?name=`, born on `?birth=` (YYYY-MM-DD; an adult's date when absent, and
- * refused when it is a minor's), or with `?gate=1` waits at the age check as
+ * `?name=`, born on `?birth=` (YYYY-MM-DD; a grown-up's date when absent, and
+ * refused when it is too young for an account), or with `?gate=1` waits at the age check as
  * a provider's new sign-up does.
  */
 
-import { birthYearOfDate, isAdult } from '../../../../shared/accounts/age.js';
+import { birthYearOfDate, oldEnoughForAccount } from '../../../../shared/accounts/age.js';
 import { birthDateOfYear } from '../../../../shared/tournament/divisions.js';
 import {
   cookie,
@@ -27,7 +27,7 @@ import { jsonError } from '../../../lib/api/responses.js';
 
 const STATE_SECONDS = 10 * 60;
 
-/** A dev account's birth date when the sign-in names none: an adult's. */
+/** A dev account's birth date when the sign-in names none: a grown-up's. */
 const DEV_BIRTH = '1990-01-01';
 
 async function devSignIn({ request, env }: Context<'provider'>, next: string): Promise<Response> {
@@ -44,8 +44,8 @@ async function devSignIn({ request, env }: Context<'provider'>, next: string): P
   const birth = query.get('birth') ?? DEV_BIRTH;
   const now = new Date();
   const year = birthYearOfDate(birth, now);
-  if (year === null || !isAdult(birth, now)) {
-    return jsonError('Accounts are for adults', 403);
+  if (year === null || !oldEnoughForAccount(birth, now)) {
+    return jsonError('Accounts are for people 16 and older', 403);
   }
   const userId = await upsertUser(db, profile, birthDateOfYear(year));
   const token = await createSession(db, userId);

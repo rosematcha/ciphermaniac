@@ -36,11 +36,11 @@ test('an adult’s birth date goes on to where sign-in started', async ({ page }
 });
 
 test('a minor is told accounts are for adults, with nothing left to try again', async ({ page }) => {
-  await mockAgeCheck(page, 403, { error: 'Ciphermaniac accounts are for people 18 and older.', minor: true });
+  await mockAgeCheck(page, 403, { error: 'Ciphermaniac accounts are for people 16 and older.', minor: true });
   await page.goto('/welcome');
   await page.getByLabel('Birth date').fill('2015-01-01');
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByText('Ciphermaniac accounts are for people 18 and older.')).toBeVisible();
+  await expect(page.getByText('Ciphermaniac accounts are for people 16 and older.')).toBeVisible();
   await expect(page.getByLabel('Birth date')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Sign in' })).toHaveCount(0);
 });

@@ -1,7 +1,7 @@
 /**
  * /welcome: the age check a new sign-up waits on before it has an account
  * (functions/api/auth/age.ts). The birth date goes to the server, which keeps
- * the year alone and only for someone 18 or older; a minor is told so and
+ * the year alone and only for someone 16 or older; anyone younger is told so and
  * nothing about them is kept. Once in, the page goes where sign-in started.
  */
 

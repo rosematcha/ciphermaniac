@@ -15,7 +15,7 @@
  * holds it up while it runs an event or owns a store.
  */
 
-import { adultYear } from '../../shared/accounts/age.js';
+import { accountYear } from '../../shared/accounts/age.js';
 import { displayName, handleProblem, normalizeHandle } from '../../shared/accounts/handle.js';
 import { birthYear, yearOnlyBirthDate } from '../../shared/tournament/divisions.js';
 import { type PlayerProfile, readProfile } from '../../shared/tournament/profile.js';
@@ -76,9 +76,9 @@ export async function onRequestPut({ request, env }: Context): Promise<Response>
   if (!read) {
     return jsonError('Not a valid profile', 400);
   }
-  // Accounts are for adults (shared/accounts/age.ts): a year only a minor could be born in is not one to keep.
-  if (!adultYear(birthYear(read.birthDate), new Date())) {
-    return jsonError('Accounts are for people 18 and older; check your birth year', 400);
+  // A year only someone too young for an account could be born in is not one to keep (shared/accounts/age.ts).
+  if (!accountYear(birthYear(read.birthDate), new Date())) {
+    return jsonError('Accounts are for people 16 and older; check your birth year', 400);
   }
   const profile = { ...read, birthDate: yearOnlyBirthDate(read.birthDate) };
   const [, saved] = await db.batch(profileWrites(db, user, profile));

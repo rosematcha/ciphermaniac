@@ -1,7 +1,7 @@
 /**
  * What an account may do beyond playing. A player has no role. A Community
  * organizer runs unsanctioned events under its own name, within limits
- * (shared/tournament/limits.ts); any adult account becomes one by asking. A
+ * (shared/tournament/limits.ts); any account 18 or older becomes one by asking. A
  * revoked one was a Community organizer, keeps the events it owns, and may
  * start no more. An Admin may do everything a Community organizer may, with
  * no limits, and decides store applications. Sanctioned events belong to a

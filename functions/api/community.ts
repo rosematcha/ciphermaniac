@@ -3,7 +3,7 @@
  * (shared/accounts/roles.ts): it may start unsanctioned events under its own
  * name, within the limits shared/tournament/limits.ts sets. Nobody approves
  * it; an Admin can take it away, and an account whose access was taken away
- * cannot ask again. Answers { user }; 409 when the account has a role.
+ * cannot ask again, and neither can one that may be under 18. Answers { user }; 409 when the account has a role.
  * DELETE /api/community — a Community organizer resigns: it starts no more
  * events under its own name, and keeps and runs the ones it owns, as one
  * whose access was removed does; unlike that one, it may ask again. Its
@@ -11,11 +11,13 @@
  * the account is not a Community organizer.
  */
 
+import { HOSTS_ONLY, mayBeMinor } from '../../shared/accounts/age.js';
 import { type AccountRole, canJoinCommunity, readAccountRole } from '../../shared/accounts/roles.js';
 import { jsonError, jsonResponse } from '../lib/api/responses.js';
 import { type Context, sameOrigin } from '../lib/auth/env.js';
 import { currentAccount, type User } from '../lib/auth/session.js';
 import { rowsChanged } from '../lib/d1.js';
+import { birthYear } from '../../shared/tournament/divisions.js';
 
 /** The signed-in account, or the answer that turns the request away. */
 async function asker({ request, env }: Context) {
@@ -36,6 +38,9 @@ export async function onRequestPost(context: Context): Promise<Response> {
     return found;
   }
   const { db, user } = found;
+  if (mayBeMinor(birthYear(user.birthDate ?? ''), new Date())) {
+    return jsonError(HOSTS_ONLY, 403);
+  }
   const refusal = user.role === 'revoked' ? 'An admin removed your access' : 'You already run events';
   if (!canJoinCommunity(user.role)) {
     return jsonError(refusal, 409);

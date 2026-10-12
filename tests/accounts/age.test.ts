@@ -3,19 +3,25 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { adultYear, birthYearOfDate, isAdult, mayBeMinor, mayBeUnder13 } from '../../shared/accounts/age.ts';
+import {
+  accountYear,
+  birthYearOfDate,
+  mayBeMinor,
+  mayBeUnder13,
+  oldEnoughForAccount
+} from '../../shared/accounts/age.ts';
 import { birthDateOfYear, yearOnlyBirthDate } from '../../shared/tournament/divisions.ts';
 
 const NOW = new Date(Date.UTC(2026, 9, 4, 20));
 
-test('an account is for someone 18 or older on the day, by their full birth date', () => {
-  assert.equal(isAdult('2008-10-04', NOW), true, 'eighteen today');
-  assert.equal(isAdult('2008-10-05', NOW), false, 'eighteen tomorrow');
-  assert.equal(isAdult('1990-06-15', NOW), true);
-  assert.equal(isAdult('2015-01-01', NOW), false);
-  assert.equal(isAdult('2008-02-30', NOW), false, 'no such day');
-  assert.equal(isAdult('10/04/2000', NOW), false, 'only YYYY-MM-DD');
-  assert.equal(isAdult('', NOW), false);
+test('an account is for someone 16 or older on the day, by their full birth date', () => {
+  assert.equal(oldEnoughForAccount('2010-10-04', NOW), true, 'sixteen today');
+  assert.equal(oldEnoughForAccount('2010-10-05', NOW), false, 'sixteen tomorrow');
+  assert.equal(oldEnoughForAccount('1990-06-15', NOW), true);
+  assert.equal(oldEnoughForAccount('2015-01-01', NOW), false);
+  assert.equal(oldEnoughForAccount('2008-02-30', NOW), false, 'no such day');
+  assert.equal(oldEnoughForAccount('10/04/2000', NOW), false, 'only YYYY-MM-DD');
+  assert.equal(oldEnoughForAccount('', NOW), false);
 });
 
 test('a birth date gives its year only when it is a real day in the past', () => {
@@ -35,11 +41,11 @@ test('a birth year is judged by the youngest its holder could be', () => {
   assert.equal(mayBeUnder13(null, NOW), false);
 });
 
-test('an account may name a year an adult can have been born in', () => {
-  assert.equal(adultYear(2008, NOW), true, 'the age check already saw the full date');
-  assert.equal(adultYear(2009, NOW), false);
-  assert.equal(adultYear(1899, NOW), false);
-  assert.equal(adultYear(null, NOW), false);
+test('an account may name a year someone 16 or older can have been born in', () => {
+  assert.equal(accountYear(2010, NOW), true, 'the age check already saw the full date');
+  assert.equal(accountYear(2011, NOW), false);
+  assert.equal(accountYear(1899, NOW), false);
+  assert.equal(accountYear(null, NOW), false);
 });
 
 test('a birth date is kept as its year alone, on the day TOM files use', () => {
