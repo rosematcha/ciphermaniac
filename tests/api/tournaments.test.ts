@@ -3067,7 +3067,7 @@ test('a refused opening pairing persists the started event without a new round',
   db.raw.prepare('UPDATE tournaments SET state = ? WHERE code = ?').run(JSON.stringify(event), code);
   const response = await send(code, owner, { type: 'pairRound', pod: event.pods[0]!.category });
   assert.equal(response.status, 400);
-  assert.match(response.json.error, /empty ordinary flight/);
+  assert.match(response.json.error, /No more rounds can be paired/);
   const persisted = (await loadTournament(db, code))!.tournament;
   assert.equal(persisted.settings!.stage, 4);
   assert.equal(persisted.pods[0]!.rounds.length, 0);

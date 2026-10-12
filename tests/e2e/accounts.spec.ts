@@ -170,9 +170,9 @@ test('History lists the account’s events with place and record from each copy,
   await expect(cup.locator('.tm-hist-sub')).toContainText('Juniors');
   await cup.getByRole('button', { name: 'Show rounds' }).click();
   const rounds = page.locator('.tm-hist-rounds li');
-  await expect(rounds).toHaveCount(3);
-  await expect(rounds.nth(1)).toContainText('Semifinals');
-  await expect(rounds.nth(2)).toContainText('Final');
+  await expect(rounds).toHaveCount(5);
+  await expect(rounds.nth(3)).toContainText('Semifinals');
+  await expect(rounds.nth(4)).toContainText('Final');
   await expect(page.getByRole('link', { name: 'Event page' })).toHaveAttribute('href', '/t/CUP001');
   await cup.getByRole('button', { name: 'Hide rounds' }).click();
   await expect(rounds).toHaveCount(0);

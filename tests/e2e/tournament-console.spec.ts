@@ -14,6 +14,7 @@ import { applyCommand, type Command } from '../../shared/tournament/commands';
 import type { PlayerReport } from '../../shared/tournament/reports';
 import { emptyTournament } from '../../shared/tournament/create';
 import { seededRandom } from '../../shared/tournament/random';
+import { regularRounds } from '../../shared/tournament/rounds';
 import type { Match, Tournament } from '../../shared/tournament/types';
 import {
   assignKeys,
@@ -401,8 +402,11 @@ test('a division cut stays in the shared pod and pairs the next bracket round', 
     type: 'addPlayer',
     player: { firstName: `Player${i + 1}`, lastName: 'Test', birthDate: `02/27/${year}` }
   }));
-  let t = run(emptyTournament({ name: 'Friday League' }), ...adds, { type: 'pairRound', pod: 'mixed' });
-  t = run(reportAll(t), { type: 'startTopCut', pod: 'mixed', size: 4, division: 'senior' });
+  let t = run(emptyTournament({ name: 'Friday League' }), ...adds);
+  for (let pod = t.pods[0]; pod && pod.rounds.length < regularRounds(t, pod); pod = t.pods[0]) {
+    t = reportAll(run(t, { type: 'pairRound', pod: 'mixed' }));
+  }
+  t = run(t, { type: 'startTopCut', pod: 'mixed', size: 4, division: 'senior' });
   await mockConsole(page, t, settingsOf({}));
   await expect(page.getByRole('tablist', { name: 'Division' })).toHaveCount(0);
   await expect(page.locator('.tm-hero')).toContainText('Semifinals');

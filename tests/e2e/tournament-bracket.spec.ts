@@ -11,6 +11,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { applyCommand, type Command } from '../../shared/tournament/commands';
 import { emptyTournament } from '../../shared/tournament/create';
 import { seededRandom } from '../../shared/tournament/random';
+import { regularRounds } from '../../shared/tournament/rounds';
 import type { Tournament } from '../../shared/tournament/types';
 import {
   assignKeys,
@@ -44,14 +45,14 @@ function reportAll(t: Tournament): Tournament {
   return run(t, ...reports);
 }
 
-/** Sixteen players through four Swiss rounds and the quarterfinals of a top 8, the semifinals not paired yet. */
+/** Sixteen players through their scheduled Swiss rounds and the quarterfinals of a top 8, the semifinals not paired yet. */
 function quarterfinalsPlayed(): Tournament {
   const adds: Command[] = Array.from({ length: 16 }, (_, i) => ({
     type: 'addPlayer',
     player: { firstName: `Player${i + 1}`, lastName: 'Test' }
   }));
   let t = run(emptyTournament({ name: 'Bracket Cup' }), ...adds);
-  for (let r = 0; r < 4; r += 1) {
+  for (let pod = t.pods[0]; pod && pod.rounds.length < regularRounds(t, pod); pod = t.pods[0]) {
     t = reportAll(run(t, { type: 'pairRound', pod: 'masters' }));
   }
   return reportAll(run(t, { type: 'startTopCut', pod: 'masters', size: 8 }));
