@@ -227,6 +227,10 @@ function restoredRecords(before: Tournament, after: Tournament): Tournament {
   };
 }
 
+function finishedEvent(t: Tournament): boolean {
+  return wasFinalized(t) && t.pods.every(pod => completedPod(t, pod));
+}
+
 /** Applies one organizer operation atomically; refusals carry the persisted state. */
 export function applyLifecycleOperation(t: Tournament, op: LifecycleOperation, ctx: LifecycleContext): LifecycleResult {
   try {
@@ -237,8 +241,9 @@ export function applyLifecycleOperation(t: Tournament, op: LifecycleOperation, c
     if (aborted) {
       return aborted;
     }
-    // A repair still returns an acknowledged complete round unchanged after the finish (PAIRING V14b).
-    if (((op.type === 'pair' && !op.repair) || op.type === 'topCut') && wasFinalized(t)) {
+    // A repair still returns an acknowledged complete round unchanged after the finish (PAIRING V14b); a pod that
+    // reopening left with a pending match is not finished and still pairs (V16-2, statement 49).
+    if (((op.type === 'pair' && !op.repair) || op.type === 'topCut') && finishedEvent(t)) {
       throw new Error('The tournament is complete');
     }
     const handler = handlers[op.type] as (t: Tournament, op: LifecycleOperation, ctx: LifecycleContext) => Tournament;
