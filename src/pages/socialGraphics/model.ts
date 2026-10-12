@@ -12,6 +12,7 @@ import { cardSupercategory } from '../../lib/cardStats';
 import { itemUid } from '../../../shared/data/cardIdentity';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../../lib/constants';
 import type { Day2CardStat } from '../../lib/data/events';
+import { baselineRate } from './baseline';
 import type { EventCardStat, EventField } from './eventField';
 import { type OnlineField, onlineFieldRate } from './onlineField';
 import type { CardItem } from '../../types';
@@ -30,7 +31,7 @@ export interface RenderItem {
   pct: number;
   cat: CatKind;
   /**
-   * Rising mode: percentage-point gain over the comparison event.
+   * Rising mode: percentage-point gain over the recent-weekends baseline.
    * Fraudulent mode: the card's rate at the tournament minus its online one,
    * so a fraud is always negative.
    */
@@ -215,8 +216,8 @@ export interface RenderModelInput {
   minDecks: number;
   /** The selected tournament's master report items. */
   items: CardItem[] | null;
-  /** Rising mode: the comparison tournament's master items. */
-  comparisonItems?: CardItem[] | null;
+  /** Rising mode: the events of the recent weekends the gain is measured from. */
+  baseline?: EventField[] | null;
   /** Converting mode: the event's day-2 stats. */
   day2Stats?: Day2CardStat[] | null;
   /** Fraudulent mode: the online window's rows, the reputation being tested. */
@@ -422,21 +423,16 @@ function fraudulentCandidates(input: RenderModelInput, pool: number): RenderItem
     .slice(0, pool);
 }
 
-/** Biggest gain in play rate against the comparison event. */
+/** Biggest gain in play rate against the recent weekends, pooled by deck count. */
 function risingCandidates(input: RenderModelInput, master: CardItem[], pool: number): RenderItem[] {
-  const cmp = input.comparisonItems;
-  if (!cmp) {
+  const fields = input.baseline;
+  if (!fields?.length) {
     return [];
   }
-  const cmpPct = new Map<string, number>();
-  for (const it of cmp) {
-    if (it.uid) {
-      cmpPct.set(it.uid, it.pct);
-    }
-  }
   return master
-    .filter(it => it.uid && cmpPct.has(it.uid))
-    .map(it => ({ item: it, delta: it.pct - (cmpPct.get(it.uid as string) ?? 0) }))
+    .map(it => ({ item: it, rate: baselineRate(fields, itemUid(it), it.set ?? '') }))
+    .filter((x): x is { item: CardItem; rate: NonNullable<typeof x.rate> } => x.rate !== null)
+    .map(x => ({ item: x.item, delta: x.item.pct - (x.rate.found / x.rate.total) * 100 }))
     .filter(x => x.delta > 0)
     .sort((a, b) => b.delta - a.delta)
     .slice(0, pool)

@@ -7,7 +7,8 @@ import {
   shortTournament,
   thumbUrl
 } from './socialGraphics/model';
-import { fetchEventField } from './socialGraphics/eventField';
+import { baselineTournaments } from './socialGraphics/baseline';
+import { type EventField, fetchEventField } from './socialGraphics/eventField';
 import { fetchOnlineField } from './socialGraphics/onlineField';
 import { type FitBounds, fitText } from './socialGraphics/fitText';
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
@@ -98,7 +99,6 @@ export function SocialGraphicsPage() {
   // the previous canvas while a new selection refetches.
   const tournamentsData = () => latestValue(tournaments);
   const [tournament, setTournament] = createSignal<string>(ONLINE_META_NAME);
-  const [comparison, setComparison] = createSignal<string>('');
   const [mode, setMode] = createSignal<Mode>('standard');
   const [size, setSize] = createSignal<Size>(20);
   const [theme, setTheme] = createSignal<Theme>('light');
@@ -139,28 +139,19 @@ export function SocialGraphicsPage() {
     document.title = 'Social Graphics — Tools — Ciphermaniac';
   });
 
-  // Auto-default the comparison tournament to the next-most-recent regional/IC
-  // once tournaments are loaded — only relevant in rising mode.
-  const defaultComparison = createMemo(() => {
-    const list = tournamentsData();
-    if (!list || list.length < 2) {
-      return '';
-    }
-    const cur = tournament();
-    const idx = list.indexOf(cur);
-    // List is recency-sorted, so the next one is the prior tournament.
-    if (idx >= 0 && idx < list.length - 1) {
-      return list[idx + 1];
-    }
-    return list.find(t => t !== cur) ?? '';
-  });
-
-  const effectiveComparison = createMemo(() => comparison() || defaultComparison());
+  // Rising measures against the last few event weekends before the selected
+  // tournament, pooled; the keys are joined so the resource refetches only
+  // when the set of events actually changes.
+  const baselineKeys = createMemo(() => baselineTournaments(tournamentsData() ?? [], tournament()));
+  const fetchBaseline = async (joined: string): Promise<EventField[]> => {
+    const fields = await Promise.all(joined.split('\n').map(fetchEventField));
+    return fields.filter((f): f is EventField => f !== null);
+  };
 
   const [master] = createResource(tournament, fetchMaster);
-  const [comparisonMaster] = createResource(
-    () => (mode() === 'rising' ? effectiveComparison() : null),
-    key => (key ? fetchMaster(key) : Promise.resolve(null))
+  const [baseline] = createResource(
+    () => (mode() === 'rising' && baselineKeys().length ? baselineKeys().join('\n') : null),
+    fetchBaseline
   );
   const [day2Stats] = createResource(
     () => (needsDay2Stats(mode()) && tournament() !== ONLINE_META_NAME ? tournament() : null),
@@ -195,7 +186,7 @@ export function SocialGraphicsPage() {
     return payload && payload.day1Total > 0 ? (payload.day2Total / payload.day1Total) * 100 : null;
   };
   const masterData = () => latestValue(master);
-  const comparisonMasterData = () => latestValue(comparisonMaster);
+  const baselineData = () => latestValue(baseline);
   const day2StatsData = () => latestValue(day2Stats);
   const eventFieldData = () => latestValue(eventField);
   const onlineMasterData = () => latestValue(onlineMaster);
@@ -212,7 +203,7 @@ export function SocialGraphicsPage() {
       eventField: eventFieldData(),
       onlineField: onlineFieldData(),
       playFloor: playFloor(),
-      comparisonItems: comparisonMasterData()?.items ?? null,
+      baseline: baselineData() ?? null,
       day2Stats: day2StatsData(),
       evolutionMap: evolutionMapData()
     })
@@ -220,7 +211,7 @@ export function SocialGraphicsPage() {
 
   // Export rasterizes the live preview canvas, so it must stay disabled until
   // every resource the ACTIVE mode reads has resolved — rising needs the
-  // comparison master, converting needs the Day-2 stats — and until there's a
+  // baseline events, converting needs the Day-2 stats — and until there's a
   // rendered canvas to snapshot (items present). Gating only on `master.loading`
   // let a click during a mode's secondary load hit "Canvas not ready."
   const exportBlocked = createMemo(
@@ -228,7 +219,7 @@ export function SocialGraphicsPage() {
       busy() !== null ||
       master.loading ||
       items().length === 0 ||
-      (mode() === 'rising' && comparisonMaster.loading) ||
+      (mode() === 'rising' && baseline.loading) ||
       (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading || onlineField.loading)) ||
       (needsDay2Stats(mode()) && day2Stats.loading)
   );
@@ -329,15 +320,9 @@ export function SocialGraphicsPage() {
             </label>
 
             <Show when={mode() === 'rising'}>
-              <label>
-                Compare against
-                <select value={comparison()} onChange={e => setComparison(e.currentTarget.value)}>
-                  <option value=''>Previous ({prettyTournamentName(defaultComparison())})</option>
-                  <For each={(tournamentsData() ?? []).filter(t => t !== tournament())}>
-                    {t => <option value={t}>{prettyTournamentName(t)}</option>}
-                  </For>
-                </select>
-              </label>
+              <span class='sg-status'>
+                Compared against {baselineKeys().map(shortTournament).join(', ') || 'no recent events'}
+              </span>
             </Show>
           </div>
 
@@ -420,7 +405,7 @@ export function SocialGraphicsPage() {
               <Show
                 when={
                   master.loading ||
-                  (mode() === 'rising' && comparisonMaster.loading) ||
+                  (mode() === 'rising' && baseline.loading) ||
                   (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading || onlineField.loading)) ||
                   (needsDay2Stats(mode()) && day2Stats.loading)
                 }

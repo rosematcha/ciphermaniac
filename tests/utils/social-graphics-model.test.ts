@@ -24,6 +24,7 @@ import {
   statsAreClose,
   thumbUrl
 } from '../../src/pages/socialGraphics/model.ts';
+import type { EventField } from '../../src/pages/socialGraphics/eventField.ts';
 import type { CardItem } from '../../src/types/index.ts';
 
 function item(name: string, pct: number, extra: Partial<CardItem> = {}): CardItem {
@@ -135,14 +136,26 @@ test('standard mode ranks the master report from one, minus basic energy', () =>
   );
 });
 
-test('rising mode lists only cards that gained, biggest gain first', () => {
-  const comparison = [item('Alpha', 95), item('Beta', 40, { uid: 'Beta::SVI::002' })];
+function baselineField(deckTotal: number, found: Record<string, number>, sets = ['SVI']): EventField {
+  return {
+    deckTotal,
+    cards: new Map(Object.entries(found).map(([uid, n]) => [uid, { found: n, day1: 0, day2: 0 }])),
+    sets: new Set(sets),
+    fieldConversion: null
+  };
+}
+
+test('rising mode lists only cards that gained over the pooled baseline, biggest gain first', () => {
   const out = buildRenderModel({
     mode: 'rising',
     size: 10,
     minDecks: 5,
     items: MASTER,
-    comparisonItems: comparison
+    // Alpha: 95 of 100 pooled decks; Beta: 40 of 100.
+    baseline: [
+      baselineField(75, { 'Alpha::SVI::001': 70, 'Beta::SVI::002': 30 }),
+      baselineField(25, { 'Alpha::SVI::001': 25, 'Beta::SVI::002': 10 })
+    ]
   });
   assert.deepEqual(
     out.map(r => r.name),
@@ -152,18 +165,15 @@ test('rising mode lists only cards that gained, biggest gain first', () => {
   assert.equal(out[0].delta, 40);
 });
 
-test('rising mode ignores cards absent from the comparison', () => {
+test('rising mode skips cards whose set was legal at no baseline event', () => {
   const out = buildRenderModel({
     mode: 'rising',
     size: 10,
     minDecks: 5,
     items: MASTER,
-    comparisonItems: [item('Alpha', 10)]
+    baseline: [baselineField(100, { 'Alpha::SVI::001': 10 }, ['PAL'])]
   });
-  assert.deepEqual(
-    out.map(r => r.name),
-    ['Alpha']
-  );
+  assert.deepEqual(out, []);
 });
 
 test('converting mode ranks by conversion, breaking ties on sample size', () => {
@@ -417,9 +427,9 @@ test('a mode renders nothing until its own data arrives', () => {
   // rasterize a half-built graphic.
   assert.deepEqual(buildRenderModel({ mode: 'standard', size: 10, minDecks: 5, items: null }), []);
   assert.deepEqual(
-    buildRenderModel({ mode: 'rising', size: 10, minDecks: 5, items: MASTER, comparisonItems: null }),
+    buildRenderModel({ mode: 'rising', size: 10, minDecks: 5, items: MASTER, baseline: null }),
     [],
-    'rising needs the comparison master'
+    'rising needs the baseline events'
   );
   assert.deepEqual(
     buildRenderModel({ mode: 'converting', size: 10, minDecks: 5, items: MASTER, day2Stats: null }),
