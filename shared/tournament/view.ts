@@ -254,6 +254,8 @@ export function publicTournament(tournament: Tournament, keys: Record<string, st
     ...(pod.repairOmittedPlayers ? { repairOmittedPlayers: pod.repairOmittedPlayers.map(key) } : {}),
     ...(pod.unsavedByes ? { unsavedByes: pod.unsavedByes.map(bye => ({ ...bye, playerId: key(bye.playerId) })) } : {}),
     ...(pod.unsavedPlayers ? { unsavedPlayers: pod.unsavedPlayers.map(key) } : {}),
+    ...(pod.unsavedRandomByes ? { unsavedRandomByes: pod.unsavedRandomByes.map(key) } : {}),
+    ...(pod.lostRecords ? { lostRecords: pod.lostRecords.map(key) } : {}),
     ...(pod.divisionCuts
       ? {
           divisionCuts: Object.fromEntries(

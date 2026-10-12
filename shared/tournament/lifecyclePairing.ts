@@ -112,7 +112,12 @@ export function flightField(
   const of = divisionLookup(t);
   const entrants = players
     .filter(p => !excluded.has(p.id))
-    .map(p => ({ id: p.id, points: points.get(p.id) ?? 0, category: DIVISIONS.indexOf(of(p.id)) }));
+    .map(p => ({
+      id: p.id,
+      // V22-1: a player without a record pairs with no match points.
+      points: pod.lostRecords?.includes(p.id) ? 0 : (points.get(p.id) ?? 0),
+      category: DIVISIONS.indexOf(of(p.id))
+    }));
   return { assigned, forced, entrants };
 }
 

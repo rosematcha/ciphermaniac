@@ -176,6 +176,10 @@ export interface Pod {
   unsavedByes?: { round: number; playerId: string }[];
   /** PAIRING V18-2: players whose only record of a failed attempt's match is in memory; it is match history. */
   unsavedPlayers?: string[];
+  /** PAIRING V22-4: random byes failed attempts left in their holders' records until the file is reopened. */
+  unsavedRandomByes?: string[];
+  /** PAIRING V22-1: players a departure before the start left without a record until reopening or a new match. */
+  lostRecords?: string[];
   /** Roster frozen at start, including entrants with assigned byes. */
   startingPlayerIds?: string[];
   divisionCounts?: Partial<Record<Division, number>>;

@@ -271,6 +271,7 @@ function pod(value: unknown): Pod {
       ? {}
       : { repairOmittedPlayers: arr(o.repairOmittedPlayers, LIMITS.players).map(id => str(id, 20)) }),
     ...unsavedAttempts(o),
+    ...recordLists(o),
     ...(o.playoffsPaired === undefined
       ? {}
       : { playoffsPaired: arr(o.playoffsPaired, 3).map(d => oneOf(d, ['junior', 'senior', 'masters'])) }),
@@ -278,6 +279,15 @@ function pod(value: unknown): Pod {
       ? {}
       : { startingPlayerIds: arr(o.startingPlayerIds, LIMITS.players).map(id => str(id, 20)) }),
     ...(o.divisionCuts === undefined ? {} : { divisionCuts: divisionCuts(o.divisionCuts) })
+  };
+}
+
+/** PAIRING V22-1 and V22-4: players whose in-memory record differs from their saved matches. */
+function recordLists(o: Record<string, unknown>): Pick<Pod, 'unsavedRandomByes' | 'lostRecords'> {
+  const ids = (value: unknown) => arr(value, LIMITS.players).map(id => str(id, 20));
+  return {
+    ...(o.unsavedRandomByes === undefined ? {} : { unsavedRandomByes: ids(o.unsavedRandomByes) }),
+    ...(o.lostRecords === undefined ? {} : { lostRecords: ids(o.lostRecords) })
   };
 }
 

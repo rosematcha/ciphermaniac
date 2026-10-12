@@ -63,7 +63,8 @@ function cutSeeds(t: Tournament, pod: Pod, division: Division, size: number): st
   const rows = flights.map(f =>
     swissStandings(pod, t.players, {
       only: new Set(f.playerIds.filter(id => of(id) === division)),
-      regularRounds: regularRounds(t, pod)
+      regularRounds: regularRounds(t, pod),
+      noRecord: new Set(pod.lostRecords)
     })
       .filter(row => !row.dropped)
       .slice(0, size / flights.length)

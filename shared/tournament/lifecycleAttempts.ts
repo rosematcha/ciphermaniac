@@ -7,7 +7,7 @@ import { FlightFailure, flightField, swissRound, validateSwissRound } from './li
 import type { LifecycleContext } from './lifecycleTypes.js';
 import { replacePods, selectedPods } from './lifecycleWorkflow.js';
 import { PairingError } from './pairing.js';
-import { latestRound } from './rounds.js';
+import { latestRound, pairingHistory } from './rounds.js';
 import type { Pod, PodCategory, Round, Tournament } from './types.js';
 
 /** Every attempt failed: nothing is appended, but the awards the attempts used stay used. */
@@ -55,8 +55,10 @@ function failedAttempt(t: Tournament, pod: Pod, failed: number, ctx: LifecycleCo
   const fields = reached.map(f => flightField(t, pod, { number, ids: f.playerIds, kept: [], repair: false }, ctx));
   const holders = new Set(fields.flatMap(field => field.assigned));
   const paired = fields.slice(0, failed).flatMap(field => field.entrants.map(e => e.id));
+  const randomBye = failedRandomBye(pod, fields[failed]?.entrants ?? [], number);
   const changed: Pod = {
     ...pod,
+    ...(randomBye ? { unsavedRandomByes: [...(pod.unsavedRandomByes ?? []), randomBye] } : {}),
     unsavedByes: [...(pod.unsavedByes ?? []), ...[...holders].map(playerId => ({ round: number, playerId }))],
     unsavedPlayers: [...new Set([...(pod.unsavedPlayers ?? []), ...holders, ...paired])]
   };
@@ -64,6 +66,19 @@ function failedAttempt(t: Tournament, pod: Pod, failed: number, ctx: LifecycleCo
     ...replacePods(t, [changed]),
     players: t.players.map(p => (holders.has(p.id) ? { ...p, forfeitedByes: (p.forfeitedByes ?? 0) + 1 } : p))
   };
+}
+
+/**
+ * V22-4: a failed attempt over an odd field leaves its random bye in its holder's record. Only a field with one
+ * player still without a random bye names that holder; any other holder is a recorded choice.
+ */
+function failedRandomBye(pod: Pod, entrants: readonly { id: string }[], number: number): string | undefined {
+  if (entrants.length % 2 === 0) {
+    return undefined;
+  }
+  const { byes } = pairingHistory(pod, number);
+  const eligible = entrants.filter(e => !byes.has(e.id));
+  return eligible.length === 1 ? eligible[0]!.id : undefined;
 }
 
 function failedFlight(pod: Pod, error: unknown): number {

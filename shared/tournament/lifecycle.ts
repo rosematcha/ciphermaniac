@@ -12,7 +12,7 @@ import { reopenResult } from './lifecycleReopen.js';
 import { finalPodRound, recordResults, selectedPods, workflow } from './lifecycleWorkflow.js';
 import { writeTdf } from './tdf.js';
 import { countsComplete, latestRound, regularRounds, savedStages, wasFinalized } from './rounds.js';
-import type { Tournament } from './types.js';
+import type { Match, Round, Tournament } from './types.js';
 
 /** V18-12: the cut follows the last Swiss round once that round counts as complete. */
 const completedSwiss = (pod: Tournament['pods'][number]) => countsComplete(latestRound(pod));
@@ -193,8 +193,36 @@ function withUnsavedAttempts(t: Tournament, attempted: Tournament): Tournament {
     ...t,
     players: attempted.players,
     pods: t.pods.map(pod => {
-      const { unsavedByes, unsavedPlayers } = attempted.pods.find(p => p.category === pod.category) ?? pod;
-      return { ...pod, ...(unsavedByes ? { unsavedByes } : {}), ...(unsavedPlayers ? { unsavedPlayers } : {}) };
+      const { unsavedByes, unsavedPlayers, unsavedRandomByes } =
+        attempted.pods.find(p => p.category === pod.category) ?? pod;
+      return {
+        ...pod,
+        ...(unsavedByes ? { unsavedByes } : {}),
+        ...(unsavedPlayers ? { unsavedPlayers } : {}),
+        ...(unsavedRandomByes ? { unsavedRandomByes } : {})
+      };
+    })
+  };
+}
+
+const matchKey = (round: Round, match: Match) => `${round.number}:${match.p1}:${match.p2 ?? ''}`;
+
+/** V22-1: a new match first restores its players' records from their completed matches. */
+function restoredRecords(before: Tournament, after: Tournament): Tournament {
+  return {
+    ...after,
+    pods: after.pods.map(pod => {
+      if (!pod.lostRecords?.length) {
+        return pod;
+      }
+      const old = before.pods.find(p => p.category === pod.category);
+      const known = new Set(old?.rounds.flatMap(r => r.matches.map(m => matchKey(r, m))) ?? []);
+      const seated = new Set(
+        pod.rounds.flatMap(r => r.matches.filter(m => !known.has(matchKey(r, m))).flatMap(m => [m.p1, m.p2]))
+      );
+      const { lostRecords, ...rest } = pod;
+      const lost = lostRecords.filter(id => !seated.has(id));
+      return lost.length ? { ...rest, lostRecords: lost } : rest;
     })
   };
 }
@@ -221,7 +249,7 @@ export function applyLifecycleOperation(t: Tournament, op: LifecycleOperation, c
     ) {
       return { ok: false, tournament, error: 'No eligible qualifiers can form another round' };
     }
-    const ordered = recordedDisqualifiedOrder(withRecordedOrders(tournament, ctx), op, ctx);
+    const ordered = recordedDisqualifiedOrder(withRecordedOrders(restoredRecords(t, tournament), ctx), op, ctx);
     return completedOperation(ordered, ctx);
   } catch (error) {
     return failedOperation(t, error, ctx);

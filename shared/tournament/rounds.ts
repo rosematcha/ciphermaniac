@@ -278,9 +278,15 @@ export function pairingHistory(pod: Pod, skipRound?: number): PairingHistory {
       }
     }
   }
+  // V22-4: a failed attempt's random bye stays in its holder's record until the file is reopened.
+  pod.unsavedRandomByes?.forEach(id => byes.add(id));
   const previous = pod.rounds.filter(r => r.number < (skipRound ?? Infinity)).at(-1);
   const seated = new Set(previous?.matches.flatMap(m => (m.p2 === null ? [m.p1] : [m.p1, m.p2])) ?? []);
-  const missingPrevious = new Set(previous ? pod.playerIds.filter(id => !seated.has(id)) : []);
+  // V22-1: a player a departure left without a record counts as having no history, as statement 12's loss does.
+  const missingPrevious = new Set([
+    ...(previous ? pod.playerIds.filter(id => !seated.has(id)) : []),
+    ...(pod.lostRecords ?? [])
+  ]);
   return { opponents, byes, missingPrevious };
 }
 

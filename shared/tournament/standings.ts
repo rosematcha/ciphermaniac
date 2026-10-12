@@ -306,6 +306,8 @@ export interface StandingsOptions {
   withDisqualified?: boolean;
   /** The Swiss rounds the pod plans (see regularRounds in rounds.ts); defaults to the rounds paired. */
   regularRounds?: number;
+  /** PAIRING V22-1: players ranked with no match points and 0% averages, whose matches still count for others. */
+  noRecord?: ReadonlySet<string>;
 }
 
 function evaluationRound(pod: Pod, options: StandingsOptions): number {
@@ -328,11 +330,12 @@ export function swissStandings(saved: Pod, players: readonly Player[], options: 
     if (!ranked(id, byId, options)) {
       continue;
     }
-    const rates = percentages(id, at);
+    const lost = options.noRecord?.has(id) === true;
+    const rates = lost ? { owp: 0, oowp: 0 } : percentages(id, at);
     rows.push({
       playerId: id,
       record: tally.record,
-      points: matchPoints(tally.record),
+      points: lost ? 0 : matchPoints(tally.record),
       ...rates,
       dropped: dropped(id),
       late: byId.get(id)?.late === true
