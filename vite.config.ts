@@ -27,8 +27,7 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash][extname]',
         // The embedded release manifest grows with every event, so it ships in a
         // chunk of its own and is budgeted apart from the code (see check-bundle-budget).
-        // It outranks every group: one that takes its dependencies recursively (form,
-        // through the data layer) would otherwise swallow it into the initial bundle.
+        // Keep it separate from groups that share common code.
         codeSplitting: {
           groups: [
             {
@@ -37,25 +36,7 @@ export default defineConfig({
               test: /src[\\/]lib[\\/](format|concurrency)\.ts$/,
               includeDependenciesRecursively: false
             },
-            { name: 'release', priority: 3, test: /shared[\\/]generated[\\/]release/ },
-            {
-              // Share event models and helpers instead of repeating exports across route chunks. The TOM
-              // file reader and writer stay out: only organizer pages load them, the download on demand. So
-              // does the Clerk sign-in client, which only the sign-in box uses.
-              name: 'tournament',
-              test: /(?:shared[\\/]tournament[\\/](?!tdf\.|xml\.)|src[\\/]lib[\\/]tournament[\\/](?!admin|applications|clerk|exportTdf))/,
-              includeDependenciesRecursively: true
-            },
-            // The Swiss engine runs in the browser only for the /host home page's sample event. Its own
-            // chunk keeps it off every page that shares event helpers.
-            {
-              name: 'pairing',
-              priority: 1,
-              test: /shared[\\/]tournament[\\/](?:pairing|random)\.|src[\\/]lib[\\/]tournament[\\/]sampleEvent\./,
-              includeDependenciesRecursively: false
-            },
-            // These controls share Solid helpers and are used together in event forms.
-            { name: 'form', priority: 1, test: /tournaments[\\/](Field|FormatSelect|SettingControls)\.tsx$/ }
+            { name: 'release', priority: 3, test: /shared[\\/]generated[\\/]release/ }
           ]
         }
       }

@@ -603,7 +603,10 @@ test('the tools index features the event locator, tier list, label maker and pac
   await expect(featured.nth(3)).toHaveAttribute('href', '/tools/pack-ev');
   // Everything else is a plain row, not a tile.
   await expect(page.locator('.tools-more-item')).toHaveCount(6);
-  await expect(page.locator('.tools-more-item', { hasText: 'Run an Event' })).toHaveAttribute('href', '/host');
+  await expect(page.locator('.tools-more-item', { hasText: 'Run an Event' })).toHaveAttribute(
+    'href',
+    'https://events.ciphermaniac.com'
+  );
   await expect(page.locator('.tools-more-item', { hasText: 'Set Impact' })).toHaveAttribute(
     'href',
     '/tools/set-impact'
@@ -1425,4 +1428,41 @@ test('archetype list renders and sorts 39 embedded rates without matchup downloa
   await page.getByRole('tab', { name: 'List', exact: true }).click();
   await expect(rows.first()).toContainText('88.0%');
   expect(matchupRequests).toEqual([]);
+});
+
+for (const path of [
+  '/host',
+  '/host?tab=organizing#events',
+  '/host/ABC123?tab=players',
+  '/t/ABC123?screen=1',
+  '/settings',
+  '/account',
+  '/history',
+  '/u/reese',
+  '/apply',
+  '/welcome',
+  '/privacy',
+  '/terms',
+  '/admin',
+  '/stores/store-1',
+  '/stores/store-1/settings',
+  '/stores/join?invite=example'
+]) {
+  test(`legacy event route redirects to the events site: ${path}`, async ({ page }) => {
+    await page.route('https://events.ciphermaniac.com/**', route =>
+      route.fulfill({ contentType: 'text/html', body: '<title>Events</title>' })
+    );
+    await page.goto(path);
+    const destination = path.replace(/^\/host(?=[?#]|$)/, '/');
+    await expect(page).toHaveURL(`https://events.ciphermaniac.com${destination}`);
+  });
+}
+
+test('Run an Event opens the extracted events site @mobile', async ({ page }) => {
+  await page.route('https://events.ciphermaniac.com/**', route =>
+    route.fulfill({ contentType: 'text/html', body: '<title>Events</title>' })
+  );
+  await gotoClean(page, '/tools');
+  await page.getByRole('link', { name: 'Run an Event', exact: false }).click();
+  await expect(page).toHaveURL('https://events.ciphermaniac.com/');
 });

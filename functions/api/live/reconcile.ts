@@ -1,5 +1,5 @@
 import { jsonError, jsonSuccess } from '../../lib/api/responses.js';
-import { sha256 } from '../../lib/auth/session.js';
+import { sha256 } from '../../lib/api/sha256.js';
 import { type LiveBucket, publishSeats } from '../../lib/live/publish.js';
 import { createVoteStore } from '../../lib/live/votes.js';
 import type { D1Like } from '../../lib/types.js';

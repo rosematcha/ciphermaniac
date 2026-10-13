@@ -1,14 +1,15 @@
 import { For, onMount } from 'solid-js';
 import { A } from '@solidjs/router';
 import '../styles/pages/tools.css';
+import { EVENTS_SITE_URL } from '../lib/flags';
 
 // The tools that get a plain row rather than a tile — fun to poke at, but not
 // what anyone comes here to do.
 const secondary: { href: string; name: string; desc: string }[] = [
   {
-    href: '/host',
+    href: EVENTS_SITE_URL,
     name: 'Run an Event',
-    desc: 'Pair a Swiss event here, or follow one run in TOM'
+    desc: 'Pair a Swiss event, or follow one run in TOM'
   },
   {
     href: '/tools/meta-binder',

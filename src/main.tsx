@@ -1,7 +1,7 @@
 /* @refresh reload */
-import { type Component, lazy } from 'solid-js';
+import { type Component, lazy, onMount } from 'solid-js';
 import { render } from 'solid-js/web';
-import { Navigate, Route, Router, useParams } from '@solidjs/router';
+import { Navigate, Route, Router, useLocation, useParams } from '@solidjs/router';
 
 import './styles/fonts.css';
 import './styles/tokens.css';
@@ -18,6 +18,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { installPreloadRecovery } from './lib/preloadRecovery';
 import { probeR2Ready } from './components/CardImage';
 import { initTheme } from './lib/theme';
+import { EVENTS_SITE_URL } from './lib/flags';
 import { configurePrefetch } from './lib/prefetch';
 import { loadArchetypeIconMap } from './lib/data/archetypes';
 
@@ -77,7 +78,15 @@ const FeedbackPage = page(() => import('./pages/FeedbackPage'), 'FeedbackPage');
 // stylesheets, so it can't drift from them. Kept out of the nav and the
 // sitemap (static/robots.txt) — it's for building, not reading.
 const StyleGuidePage = page(() => import('./pages/StyleGuidePage'), 'StyleGuidePage');
-const TournamentsPage = page(() => import('./pages/TournamentsPage'), 'TournamentsPage');
+
+function EventsRedirect() {
+  const location = useLocation();
+  onMount(() => {
+    const path = location.pathname === '/host' ? '/' : location.pathname;
+    window.location.replace(`${EVENTS_SITE_URL}${path}${location.search}${location.hash}`);
+  });
+  return null;
+}
 
 // Moved routes keep their query: /events?near=… and /tournaments?scope=… links
 // are out in the wild.
@@ -149,7 +158,7 @@ render(
       <Route path='/toys' component={() => <Navigate href='/tools' />} />
       <Route path='/toys/social-graphics' component={() => <Navigate href='/tools/social-graphics' />} />
       <Route path='/toys/in-loving-memory' component={() => <Navigate href='/tools/in-loving-memory' />} />
-      {/* One route for every tournament page: see TournamentsPage for why. */}
+      {/* Keep links to the extracted event site working. */}
       <Route
         path={[
           '/host',
@@ -167,7 +176,7 @@ render(
           '/stores/:id',
           '/stores/:id/settings'
         ]}
-        component={TournamentsPage}
+        component={EventsRedirect}
       />
       <Route path='/about' component={AboutPage} />
       <Route path='/feedback' component={FeedbackPage} />

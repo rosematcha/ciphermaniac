@@ -16,14 +16,6 @@ runs:
     - name: Build and enforce bundle budget
       shell: bash
       run: npm run verify:build
-    - name: Apply tournament migrations and check the schema
-      shell: bash
-      env:
-        CLOUDFLARE_API_TOKEN: ${{ inputs.cloudflare_api_token || env.CLOUDFLARE_API_TOKEN }}
-        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id || env.CLOUDFLARE_ACCOUNT_ID }}
-      run: |
-        npx wrangler d1 migrations apply ciphermaniac-tournaments --remote
-        npx wrangler d1 execute ciphermaniac-tournaments --remote --file=config/d1/check-tournaments.sql
     - name: Record deployment attempt and release marker
       id: attempt
       shell: bash

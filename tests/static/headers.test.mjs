@@ -98,22 +98,3 @@ test('every page is HTTPS-only and refuses to be framed by another site', () => 
     assert.equal(headerValue(path, 'X-Frame-Options'), 'SAMEORIGIN', path);
   }
 });
-
-test('account and organizer pages stay out of search, public pages do not', () => {
-  for (const path of [
-    '/settings',
-    '/account',
-    '/welcome',
-    '/history',
-    '/apply',
-    '/admin',
-    '/host/ABC123',
-    '/stores/join',
-    '/stores/s1/settings'
-  ]) {
-    assert.equal(headerValue(path, 'X-Robots-Tag'), 'noindex', path);
-  }
-  for (const path of ['/', '/host', '/t/ABC123', '/u/reese', '/stores/s1', '/privacy', '/terms', '/cards']) {
-    assert.equal(headerValue(path, 'X-Robots-Tag'), '', path);
-  }
-});

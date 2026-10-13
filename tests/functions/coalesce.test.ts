@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { coalescedRead } from '../../shared/coalesce.ts';
-import { jsonRepresentation, revalidatedJson } from '../../functions/lib/api/revalidation.ts';
 import { deferred, never } from '../__utils__/deferred.ts';
 
 const sleep = (ms: number) =>
@@ -79,25 +78,4 @@ test('pending reads are bounded, and capacity is released when they settle', asy
   const next = read(binding, 'overflow', () => Promise.resolve(3));
   assert.equal(await read(binding, 'overflow', () => Promise.resolve(4)), 3);
   assert.equal(await next, 3);
-});
-
-test('JSON validators compare whole quoted tags and serialize the exact bytes returned', async () => {
-  const representation = await jsonRepresentation({ entries: [] });
-  for (const header of [`W/${representation.etag}`, `"a,b", ${representation.etag}`, '*']) {
-    const response = revalidatedJson(
-      new Request('https://cm.test', { headers: { 'If-None-Match': header } }),
-      representation
-    );
-    assert.equal(response.status, 304);
-    assert.equal(await response.text(), '');
-  }
-  for (const header of [undefined, '', '"other"', `"prefix${representation.etag.slice(1)}`]) {
-    const headers = new Headers();
-    if (header !== undefined) {
-      headers.set('If-None-Match', header);
-    }
-    const response = revalidatedJson(new Request('https://cm.test', { headers }), representation);
-    assert.equal(response.status, 200);
-    assert.equal(await response.text(), representation.body);
-  }
 });

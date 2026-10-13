@@ -18,7 +18,6 @@ export const LEAGUES_ROOT = 'events/leagues/v1';
 
 /** Which listing a shard comes from. */
 export type LeagueSource = 'sanctioned' | 'locals';
-export const LEAGUE_SOURCES: readonly LeagueSource[] = ['sanctioned', 'locals'];
 
 /** One event pokemon.com lists for a league, as a store would run it. */
 export interface LeagueListing {

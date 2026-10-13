@@ -1,12 +1,31 @@
 /**
  * Stores that run their events on Ciphermaniac, as the event locator reads
- * them (functions/lib/stores/publish.ts writes the file): where each is, and
+ * them (published by events.ciphermaniac.com): where each is, and
  * its own league nights, which stand in for what Pokedata lists for the same
  * league. Types and the key only.
  * @module shared/events/stores
  */
 
-import type { LeagueNight, NightException } from '../accounts/stores';
+export interface LeagueNight {
+  id: string;
+  /** 0 is Sunday. */
+  weekday: number;
+  /** Store-local start, HH:MM. */
+  time: string;
+  name: string;
+  fee: string;
+}
+
+/** A date a league night does not run as usual: closed, or moved to another time. */
+export interface NightException {
+  /** Store-local date, YYYY-MM-DD. */
+  date: string;
+  /** The night it changes; null for every night that day. */
+  nightId: string | null;
+  /** HH:MM it moves to; null when the night is off. */
+  time: string | null;
+  note: string;
+}
 
 export const STORES_INDEX_KEY = 'events/stores/v1/index.json';
 

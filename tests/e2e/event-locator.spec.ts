@@ -143,7 +143,10 @@ test('a store that runs its events on Ciphermaniac is marked after the event nam
     Math.abs((badge?.y ?? 0) + (badge?.height ?? 0) / 2 - ((name?.y ?? 0) + (name?.height ?? 0) / 2))
   ).toBeLessThan(4);
   await marked.locator('.el-row').click();
-  await expect(marked.getByRole('link', { name: 'Store page' })).toHaveAttribute('href', '/stores/store-1');
+  await expect(marked.getByRole('link', { name: 'Store page' })).toHaveAttribute(
+    'href',
+    'https://events.ciphermaniac.com/stores/store-1'
+  );
 });
 
 test('the desktop workspace grows fluidly on a wide display', async ({ page }, testInfo) => {

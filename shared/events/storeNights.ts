@@ -10,9 +10,8 @@
  * @module shared/events/storeNights
  */
 
-import type { LeagueNight, NightException } from '../accounts/stores';
 import { addDays, weekdayOf } from './locals';
-import type { LocatorStore, StoresIndex } from './stores';
+import type { LeagueNight, LocatorStore, NightException, StoresIndex } from './stores';
 import type { LocatorEvent } from './types';
 
 /** The kinds a league night yields its date to. */
