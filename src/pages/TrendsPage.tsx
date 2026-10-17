@@ -364,6 +364,8 @@ function ChartSection(props: {
                     classList={{ 'is-hidden': hidden().has(row.name) }}
                     onMouseEnter={() => setHighlight(row.name)}
                     onMouseLeave={() => setHighlight(null)}
+                    onFocusIn={() => setHighlight(row.name)}
+                    onFocusOut={() => setHighlight(null)}
                   >
                     <button
                       type='button'

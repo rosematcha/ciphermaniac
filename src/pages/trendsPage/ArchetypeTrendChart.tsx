@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createMemo, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
 import type { ArchetypeSeries, DayBin } from '../../lib/majorsTrends';
@@ -10,11 +10,11 @@ const LINE_COLORS = [
   'var(--chart-1)',
   'var(--chart-2)',
   'var(--chart-3)',
-  '#9c5fd0',
-  '#d4a043',
-  '#3eb9c5',
-  '#c2567e',
-  '#8b6b4a'
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'var(--chart-6)',
+  'var(--chart-7)',
+  'var(--chart-8)'
 ];
 
 /** Line colour for the rail position `index` (cycles past eight). */
@@ -268,66 +268,26 @@ export function ArchetypeTrendChart(props: ArchetypeTrendChartProps) {
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
         >
-          <g class='grid'>
-            <For each={yTicks()}>
-              {v => (
-                <>
-                  <line x1={PADDING.left} x2={width() - PADDING.right} y1={y(v)} y2={y(v)} />
-                  <text x={PADDING.left - 6} y={y(v)} class='axis-label' text-anchor='end' dominant-baseline='middle'>
-                    {v}%
-                  </text>
-                </>
-              )}
-            </For>
-          </g>
-          <text
-            class='axis-title'
-            x={12}
-            y={PADDING.top + innerH() / 2}
-            transform={`rotate(-90 12 ${PADDING.top + innerH() / 2})`}
-            text-anchor='middle'
-          >
-            {props.yLabel}
-          </text>
-          <g>
-            <For each={xTicks()}>
-              {tick => (
-                <text x={tick.xPx} y={height() - PADDING.bottom + 18} class='axis-label' text-anchor={tick.anchor}>
-                  {tick.label}
-                </text>
-              )}
-            </For>
-          </g>
+          <Axes
+            yTicks={yTicks()}
+            xTicks={xTicks()}
+            y={y}
+            width={width()}
+            height={height()}
+            innerH={innerH()}
+            yLabel={props.yLabel}
+          />
           <For each={visibleSeries()}>
-            {series => {
-              const color = () => colorOf(series.name);
-              const seg = createMemo(() => segmentsFor(series.points));
-              const dim = () => props.highlight !== null && props.highlight !== series.name;
-              return (
-                <g style={{ opacity: dim() ? 0.22 : 1 }}>
-                  <path
-                    d={seg().d}
-                    fill='none'
-                    stroke={color()}
-                    stroke-width='2'
-                    stroke-linecap='round'
-                    stroke-linejoin='round'
-                  />
-                  <Show
-                    when={showDots()}
-                    fallback={
-                      <For each={seg().isolated}>{pt => <circle cx={pt.x} cy={pt.y} r='3' fill={color()} />}</For>
-                    }
-                  >
-                    <For each={series.points}>
-                      {(v, j) =>
-                        v === null ? null : <circle cx={x(props.days[j()].date)} cy={y(v)} r='3' fill={color()} />
-                      }
-                    </For>
-                  </Show>
-                </g>
-              );
-            }}
+            {series => (
+              <SeriesLine
+                points={series.points}
+                segments={segmentsFor(series.points)}
+                color={colorOf(series.name)}
+                dim={props.highlight !== null && props.highlight !== series.name}
+                dots={showDots()}
+                at={(j, v) => ({ x: x(props.days[j].date), y: y(v) })}
+              />
+            )}
           </For>
           <Show when={hoverData()}>
             {h => (
@@ -342,26 +302,132 @@ export function ArchetypeTrendChart(props: ArchetypeTrendChartProps) {
         </svg>
         <Show when={hoverData()}>
           {h => (
-            <div class='chart-tooltip' ref={tooltip.observeTooltip} style={tooltip.style()}>
-              <div class='chart-tooltip-date'>
-                {h().day.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-              </div>
-              <ul class='chart-tooltip-list'>
-                <For each={h().entries}>
-                  {e => (
-                    <li>
-                      <span class='dot' style={{ background: e.color }} />
-                      <ArchetypeIcons slugs={e.slugs} size={16} reserveSlot />
-                      <span class='label'>{e.label}</span>
-                      <span class='value'>{e.value.toFixed(1)}%</span>
-                    </li>
-                  )}
-                </For>
-              </ul>
-            </div>
+            <ChartTooltip
+              date={h().day.date}
+              entries={h().entries}
+              ref={tooltip.observeTooltip}
+              style={tooltip.style()}
+            />
           )}
         </Show>
       </div>
     </div>
+  );
+}
+
+interface Segments {
+  d: string;
+  isolated: { x: number; y: number }[];
+}
+
+/**
+ * One archetype's line. Lines are 2.5px: the vivid light-mode greens and
+ * oranges fall under 3:1 on white, and the rail's hover or focus fades the
+ * rest so a series can be singled out without its colour.
+ */
+function SeriesLine(props: {
+  points: (number | null)[];
+  segments: Segments;
+  color: string;
+  dim: boolean;
+  dots: boolean;
+  at: (index: number, value: number) => { x: number; y: number };
+}) {
+  const segments = createMemo(() => props.segments);
+  return (
+    <g style={{ opacity: props.dim ? 0.22 : 1 }}>
+      <path
+        d={segments().d}
+        fill='none'
+        stroke={props.color}
+        stroke-width='2.5'
+        stroke-linecap='round'
+        stroke-linejoin='round'
+      />
+      <Show
+        when={props.dots}
+        fallback={<For each={segments().isolated}>{pt => <circle cx={pt.x} cy={pt.y} r='3' fill={props.color} />}</For>}
+      >
+        <For each={props.points}>
+          {(v, j) =>
+            v === null ? null : <circle cx={props.at(j(), v).x} cy={props.at(j(), v).y} r='3' fill={props.color} />
+          }
+        </For>
+      </Show>
+    </g>
+  );
+}
+
+/** The hovered day's values, highest first. */
+function ChartTooltip(props: {
+  date: Date;
+  entries: { label: string; slugs: string[]; color: string; value: number }[];
+  ref: (el: HTMLElement) => void;
+  style: JSX.CSSProperties;
+}) {
+  return (
+    <div class='chart-tooltip' ref={props.ref} style={props.style}>
+      <div class='chart-tooltip-date'>
+        {props.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+      </div>
+      <ul class='chart-tooltip-list'>
+        <For each={props.entries}>
+          {e => (
+            <li>
+              <span class='dot' style={{ background: e.color }} />
+              <ArchetypeIcons slugs={e.slugs} size={16} reserveSlot />
+              <span class='label'>{e.label}</span>
+              <span class='value'>{e.value.toFixed(1)}%</span>
+            </li>
+          )}
+        </For>
+      </ul>
+    </div>
+  );
+}
+
+/** The value grid and its labels, the axis title, and the date ticks along the foot. */
+function Axes(props: {
+  yTicks: number[];
+  xTicks: { xPx: number; label: string; anchor: 'start' | 'middle' | 'end' }[];
+  y: (value: number) => number;
+  width: number;
+  height: number;
+  innerH: number;
+  yLabel: string;
+}) {
+  return (
+    <>
+      <g class='grid'>
+        <For each={props.yTicks}>
+          {v => (
+            <>
+              <line x1={PADDING.left} x2={props.width - PADDING.right} y1={props.y(v)} y2={props.y(v)} />
+              <text x={PADDING.left - 6} y={props.y(v)} class='axis-label' text-anchor='end' dominant-baseline='middle'>
+                {v}%
+              </text>
+            </>
+          )}
+        </For>
+      </g>
+      <text
+        class='axis-title'
+        x={12}
+        y={PADDING.top + props.innerH / 2}
+        transform={`rotate(-90 12 ${PADDING.top + props.innerH / 2})`}
+        text-anchor='middle'
+      >
+        {props.yLabel}
+      </text>
+      <g>
+        <For each={props.xTicks}>
+          {tick => (
+            <text x={tick.xPx} y={props.height - PADDING.bottom + 18} class='axis-label' text-anchor={tick.anchor}>
+              {tick.label}
+            </text>
+          )}
+        </For>
+      </g>
+    </>
   );
 }
