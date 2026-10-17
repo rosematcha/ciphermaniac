@@ -13,7 +13,7 @@ import {
 } from '../lib/data';
 import type { FieldRow, Story } from '../lib/storylines';
 import type { ArchetypeIndexEntry, TournamentParticipant } from '../types';
-import { Skeleton } from '../components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { Section } from '../components/Section';
 import { ArchetypeCard, ArchetypeCardSkeleton } from '../components/ArchetypeCard';
 import { CardStack } from '../components/CardImage';

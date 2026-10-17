@@ -30,7 +30,7 @@ import {
   type WindowDays
 } from '../lib/events/viewState';
 import { EmptyState } from '../components/EmptyState';
-import { Skeleton } from '../components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { EventList, eventPanelId } from './eventLocator/EventList';
 import { FilterBar, FilterSeam, FilterSheet } from './eventLocator/FilterSheet';
 import type { LocatorFiltersProps } from './eventLocator/LocatorFilters';

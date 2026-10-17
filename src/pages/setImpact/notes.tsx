@@ -1,4 +1,4 @@
-import { InfoTip } from '../../components/InfoTip';
+import { InfoTip } from '@ciphermaniac/design/components/InfoTip';
 
 /** What each figure means, shown in the tooltips beside the labels. */
 export const NOTES = {

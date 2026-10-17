@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { CardImage } from '../../components/CardImage';
-import { Segmented } from '../../components/Segmented';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { createCostCalculator } from '../../../shared/packEv/cost';
 import { openPack, possibleHits, preparePack, type Pull } from '../../../shared/packEv/simulate';
 import type { PackEvSetPayload, RipSize } from '../../../shared/packEv/types';

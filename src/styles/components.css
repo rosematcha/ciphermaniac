@@ -30,8 +30,6 @@
   color: var(--accent-ink);
   font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
 }
 .live-banner-name {
   font-weight: 500;
@@ -171,7 +169,8 @@
   align-items: center;
   /* The dark band runs edge to edge; the padding holds its contents to the
      1400px measure the header used to be capped at. */
-  padding: 8px max(32px, calc((100% - 1400px) / 2 + 32px));
+  height: var(--topnav-h);
+  padding: 0 max(32px, calc((100% - 1400px) / 2 + 32px));
   border-bottom: 1px solid var(--border);
   background: var(--bg);
   color-scheme: dark;
@@ -182,17 +181,17 @@
 .topnav-word {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--fg);
   transition: color var(--ms-fast) var(--ease-base);
 }
 .topnav-logo {
   display: block;
-  width: 22px;
-  height: 26px;
+  width: 20px;
+  height: 24px;
 }
 .topnav-word:hover {
   color: var(--accent-ink);
@@ -241,7 +240,8 @@
   padding: 4px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
   opacity: 0;
   visibility: hidden;
   transition:
@@ -322,6 +322,7 @@
   max-height: 70vh;
   max-height: 70dvh;
   overflow-y: auto;
+  box-shadow: var(--shadow-float);
 }
 .gsearch-results-sheet {
   margin-top: var(--space-2);
@@ -432,6 +433,7 @@
       'links links';
     column-gap: var(--space-3);
     row-gap: var(--space-2);
+    height: auto;
     padding: 10px max(var(--space-3), env(safe-area-inset-left)) 10px max(var(--space-3), env(safe-area-inset-left));
     padding-right: max(var(--space-3), env(safe-area-inset-right));
   }
@@ -612,6 +614,7 @@
   gap: 8px;
   max-height: 70vh;
   max-height: 70dvh;
+  box-shadow: var(--shadow-float);
 }
 .t-selector-pop .search {
   width: 100%;
@@ -688,8 +691,9 @@
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   margin: 18px 0 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
   font-variant-numeric: tabular-nums;
 }
 .stat-band-item {
@@ -702,7 +706,6 @@
   border-left: 1px solid var(--rule);
 }
 .stat-band-item:first-child {
-  padding-left: 0;
   border-left: 0;
 }
 .stat-band-item dd,
@@ -719,9 +722,7 @@
 }
 .stat-band-item dt {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
+  font-weight: 500;
   color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -742,10 +743,7 @@
   .stat-band {
     grid-auto-flow: row;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 24px;
     margin-top: 14px;
-    border-top: 0;
-    border-bottom: 0;
   }
   .stat-band-item,
   .stat-band-item:first-child {
@@ -753,15 +751,15 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 10px;
-    padding: 9px 0;
+    padding: 9px 14px;
     border-left: 0;
     border-bottom: 1px solid var(--rule);
   }
+  .stat-band-item:nth-child(even) {
+    border-left: 1px solid var(--rule);
+  }
   .stat-band-item dd {
     font-size: 14px;
-  }
-  .stat-band-item dt {
-    letter-spacing: 0.04em;
   }
 }
 /* Two columns stop fitting the longer labels somewhere under 380px, and a
@@ -769,6 +767,9 @@
 @media (max-width: 380px) {
   .stat-band {
     grid-template-columns: 1fr;
+  }
+  .stat-band-item:nth-child(even) {
+    border-left: 0;
   }
 }
 
@@ -863,63 +864,6 @@
 }
 .trend.flat {
   color: var(--muted);
-}
-
-/* ---------- Buttons ---------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 14px;
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  border: 1px solid transparent;
-  transition:
-    background var(--ms-fast) var(--ease-base),
-    color var(--ms-fast) var(--ease-base),
-    transform var(--ms-fast) var(--ease-spring),
-    border-color var(--ms-fast) var(--ease-base);
-  text-decoration: none;
-}
-.btn:hover {
-  text-decoration: none;
-}
-.btn:active:not(:disabled) {
-  transform: scale(var(--press-scale));
-}
-.btn-primary {
-  background: var(--accent-fill);
-  color: var(--accent-fg);
-  border-color: var(--accent);
-}
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-fill-hover);
-}
-.btn-secondary {
-  background: var(--surface);
-  color: var(--fg);
-  border-color: var(--border);
-}
-.btn-secondary:hover:not(:disabled) {
-  background: var(--surface-2);
-}
-.btn-ghost {
-  background: transparent;
-  color: var(--fg);
-}
-.btn-ghost:hover:not(:disabled) {
-  background: var(--surface-2);
-}
-/* One disabled state for every button. Four page sheets used to each re-derive
-   this at 0.4/0.45/0.45/0.5 opacity, and each scoped it to a parent container —
-   so a disabled .btn outside those four containers rendered at full strength
-   and still looked clickable. Matches .pagination button:disabled, which had
-   the only correct version. */
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 /* ---------- Empty state (locked: B — mark + heading + actions) ---------- */
@@ -1256,281 +1200,10 @@
     flex-shrink: 0;
   }
 }
-.search {
-  flex: 1 1 240px;
-  min-width: 240px;
-  height: var(--control-h);
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--fg);
-  font: inherit;
-  font-size: 13px;
-  transition:
-    border-color var(--ms-fast),
-    box-shadow var(--ms-fast);
-}
-.search::-webkit-search-cancel-button {
-  appearance: none;
-  -webkit-appearance: none;
-}
-.search::placeholder {
-  color: var(--muted);
-}
-.search:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
-}
 .chips {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-}
-.chip {
-  padding: 5px 11px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--fg);
-  font-size: 12px;
-  font-weight: 500;
-  transition:
-    background var(--ms-fast),
-    color var(--ms-fast),
-    transform var(--ms-fast);
-}
-.chip:hover {
-  background: var(--surface-2);
-}
-.chip:active {
-  transform: scale(0.94);
-}
-.chip[aria-pressed='true'] {
-  background: var(--accent-fill);
-  color: var(--accent-fg);
-  border-color: var(--accent);
-}
-
-/* ---------- Data table ---------- */
-.table-wrap {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  /* `clip` (not `hidden`) still trims the rounded corners but does NOT create a
-     scroll container, so sticky `thead` cells can park against the viewport /
-     topnav instead of this box. */
-  overflow: clip;
-}
-@media (max-width: 640px) {
-  /* On phone widths, dense data tables stay scannable via horizontal scroll
-     rather than being clipped. Hide the scrollbar so the wrapper still reads as
-     a STAMP surface — the natural swipe affordance does the discovery.
-     Names in the first column stay on one line so columns can size to their
-     content (otherwise text wrapping fights the horizontal-scroll model). */
-  .table-wrap {
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .table-wrap::-webkit-scrollbar {
-    display: none;
-  }
-  .table-wrap .data th,
-  .table-wrap .data td {
-    white-space: nowrap;
-  }
-  /* The wrapper is a scroll container here, so a sticky header would pin
-     `--topnav-h` down inside it and sit on top of the first rows. */
-  .table-wrap .data thead th {
-    position: static;
-  }
-  /* A sortable header's padding lives on its button, so the phone's tighter
-     gutter has to be set there too. It was still spending 28px a column on
-     desktop padding, and a header label is what sizes a numeric column: three
-     sortable columns took 84px of a 390px screen before a single figure was
-     drawn, and the players table paid for it out of the name. */
-  .table-wrap .data th.sortable button.th-sort {
-    padding: 0 8px;
-  }
-  /* A figure column is only ever as wide as its header, so on a phone the
-     header is what every other column is competing with: "EVENTS" is four
-     times the width of the 43 underneath it. One step down the scale, with the
-     caret tucked in, buys back most of a name. */
-  .table-wrap .data thead th {
-    font-size: 9px;
-    letter-spacing: 0.04em;
-  }
-  .table-wrap .data th.sortable button.th-sort {
-    gap: 2px;
-  }
-}
-table.data {
-  width: 100%;
-  border-collapse: collapse;
-}
-.data th,
-.data td {
-  padding: 0 14px;
-  height: var(--row-height);
-  text-align: left;
-  border-bottom: 1px solid var(--rule);
-  font-size: 13px;
-  vertical-align: middle;
-}
-.data th {
-  font-size: 10.5px;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 600;
-  background: var(--surface-2);
-  height: 34px;
-  white-space: nowrap;
-}
-/* Sticky in-table headers: rows scroll under the header, which parks directly
-   beneath the sticky topnav. z-index sits above rows but below the topnav (50).
-   The bottom hairline is a box-shadow — a border on a sticky cell can drop out
-   mid-scroll under border-collapse. */
-.data thead th {
-  position: sticky;
-  top: var(--topnav-h);
-  z-index: 1;
-  box-shadow: inset 0 -1px 0 var(--rule);
-}
-.data th.sortable {
-  cursor: pointer;
-  user-select: none;
-  /* The button fills the cell, so the cell's own padding would double up. */
-  padding: 0;
-}
-.data th.sortable:hover {
-  color: var(--fg);
-}
-.data th .sort-mark {
-  display: inline-block;
-  margin-left: 4px;
-  font-size: 10.5px;
-  color: var(--accent-ink);
-}
-/* The inactive column's mark still occupies its slot; only the glyph goes. */
-.data th .sort-mark.is-idle {
-  visibility: hidden;
-}
-/* Shared base for the button-driven sortable headers other pages render as
-   `<th class="sortable"><button class="th-sort">…</button></th>`. Strips native
-   button chrome and inherits the th's typography so per-page styles stay thin;
-   the ▲/▼ indicator is driven off the header's aria-sort state. */
-.data th.sortable button.th-sort {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0 14px;
-  border: 0;
-  background: none;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  color: inherit;
-  cursor: pointer;
-  transition: color var(--ms-fast) var(--ease-base);
-}
-/* A figure column's label belongs over its figures. The button fills the cell,
-   so the cell's own `text-align: right` does not reach the label inside it, and
-   every numeric header sat at the far side of its own column. */
-.data th.num.sortable button.th-sort {
-  justify-content: flex-end;
-}
-/* The mark is reserved in every sortable header and only its glyph is hidden:
-   `table-layout` is auto, so a mark that appears on click re-solves the column
-   widths and the table jumps sideways under the pointer.
-
-   Pages that reserve the mark in markup instead — a `.sort-mark` span, as the
-   card and archetype indexes render — opt out here, or the active column draws
-   both and reads "Inclusion ▼ ▼". */
-.data th.sortable button.th-sort:not(:has(.sort-mark))::after {
-  content: '▼';
-  font-size: 9px;
-  color: var(--accent-ink);
-  visibility: hidden;
-}
-.data th.sortable[aria-sort='ascending'] button.th-sort:not(:has(.sort-mark))::after {
-  content: '▲';
-  visibility: visible;
-}
-.data th.sortable[aria-sort='descending'] button.th-sort:not(:has(.sort-mark))::after {
-  visibility: visible;
-}
-.data tbody tr:last-child td {
-  border-bottom: 0;
-}
-.data tbody tr {
-  transition: background var(--ms-fast);
-}
-/* Only rows that actually go somewhere get the pointer. Every clickable row on
-   the site carries `.is-link`; the profile's archetype rows and its
-   decklist-less tournament rows do not, and were promising a click they
-   couldn't honour. */
-.data tbody tr.is-link {
-  cursor: pointer;
-}
-.data tbody tr:hover {
-  background: var(--surface-2);
-}
-.data tbody tr.is-link .cardname:hover {
-  color: var(--accent-ink);
-}
-.data td.num,
-.data th.num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.cardname {
-  font-weight: 500;
-  transition: color var(--ms-fast);
-}
-.data .muted-cell {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-/* ---------- Expandable row (inline decklist on player profile) ---------- */
-.data th.expand-col,
-.data td.expand-col {
-  width: 28px;
-  padding-right: 4px;
-  padding-left: 14px;
-}
-/* Rendered as a <button> (it toggles the row's decklist for keyboard/AT
-   users), but drawn as the same bare caret glyph as before. */
-.row-caret {
-  display: inline-block;
-  color: var(--muted);
-  font-size: 11px;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  transition: transform var(--ms-fast);
-}
-.row-caret.open {
-  transform: rotate(90deg);
-  color: var(--fg);
-}
-tr.row-expansion {
-  background: var(--surface-2);
-  cursor: default;
-}
-tr.row-expansion:hover {
-  background: var(--surface-2);
-}
-tr.row-expansion > td {
-  padding: 14px 18px;
 }
 .row-expansion-empty {
   color: var(--muted);
@@ -1543,10 +1216,8 @@ tr.row-expansion > td {
   gap: 16px 24px;
 }
 .deck-inline-group-head {
-  font-size: 11px;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--fg);
   font-weight: 600;
   display: flex;
   justify-content: space-between;
@@ -1589,6 +1260,7 @@ tr.row-expansion > td {
   overflow: hidden;
   line-height: 0;
   animation: card-hover-in var(--ms-fast) ease-out;
+  box-shadow: var(--shadow-float);
 }
 .card-hover-preview img,
 .card-hover-preview .card-image-fallback {
@@ -1679,41 +1351,6 @@ tr.row-expansion > td {
   font-weight: 500;
 }
 
-/* ---------- Segmented control ---------- */
-.segmented {
-  display: inline-flex;
-  align-items: stretch;
-  /* Not a fixed height: the phone breakpoint raises the buttons to a 40px tap
-     target, and a fixed 38px group let the active pill draw outside its own
-     border. The group grows to whatever its buttons need. */
-  min-height: var(--control-h);
-  padding: 3px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  gap: 2px;
-}
-.segmented button {
-  display: inline-flex;
-  align-items: center;
-  font-size: 13px;
-  color: var(--muted);
-  font-weight: 500;
-  padding: 0 12px;
-  border-radius: var(--radius-sm);
-  transition:
-    background var(--ms-fast),
-    color var(--ms-fast);
-}
-.segmented button:hover {
-  color: var(--fg);
-}
-.segmented button.active {
-  background: var(--surface);
-  color: var(--fg);
-  box-shadow: 0 0 0 1px var(--border);
-}
-
 /* Archetype detail toolbar — tabs on left, view toggle on right of the same row. */
 .arche-toolbar {
   display: flex;
@@ -1735,91 +1372,7 @@ tr.row-expansion > td {
   gap: 8px;
   flex-wrap: wrap;
 }
-
-/* ---------- Tabs (underline) ---------- */
-.tabs {
-  display: flex;
-  gap: 22px;
-  border-bottom: 1px solid var(--rule);
-  margin-bottom: 20px;
-}
-.tabs button {
-  font-size: 13px;
-  color: var(--muted);
-  font-weight: 500;
-  padding: 10px 0 11px;
-  position: relative;
-  transition: color var(--ms-fast);
-}
-.tabs button:hover {
-  color: var(--fg);
-}
-/* A tab not open yet (Tabs.tsx LockedTab): dimmed, its bubble saying why. */
-.tab-locked {
-  padding: 0;
-  margin: 0;
-  cursor: default;
-}
-.tab-locked button,
-.tab-locked button:hover {
-  color: var(--muted);
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.tabs button.active {
-  color: var(--fg);
-  font-weight: 600;
-}
-.tabs button.active::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--border);
-}
 @media (max-width: 640px) {
-  .tabs {
-    gap: var(--space-4);
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    scrollbar-width: none;
-    scroll-snap-type: x proximity;
-    margin-left: calc(var(--space-3) * -1);
-    margin-right: calc(var(--space-3) * -1);
-    padding-left: var(--space-3);
-    padding-right: var(--space-3);
-    /* Offset the snapport by the edge padding, otherwise the first tab snaps
-       to scrollLeft=12 and the strip can never rest at 0 — which pinned the
-       left scroll-fade on permanently. */
-    scroll-padding-inline: var(--space-3);
-  }
-  .tabs::-webkit-scrollbar {
-    display: none;
-  }
-  .tabs button {
-    flex-shrink: 0;
-    scroll-snap-align: start;
-    padding: 12px 0 13px;
-  }
-
-  /* Scroll-hint fades (classes managed by Tabs.tsx). Without these, tabs
-     clipped by the viewport edge — e.g. "Matchups" at 384px — gave no signal
-     that more existed. The mask tracks scroll position so the fade only sits
-     on edges that actually hide content. */
-  .tabs.fade-r {
-    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 36px), transparent);
-    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 36px), transparent);
-  }
-  .tabs.fade-l {
-    mask-image: linear-gradient(to right, transparent, #000 36px, #000 100%);
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 100%);
-  }
-  .tabs.fade-l.fade-r {
-    mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent);
-  }
 
   /* Stack the archetype toolbar: the tab strip needs the full row — sharing
      it with the Grid/List toggle hid 120px+ of tabs behind the toggle. */
@@ -1832,50 +1385,10 @@ tr.row-expansion > td {
     align-self: flex-start;
   }
 }
-
-/* ---------- Badge ---------- */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: var(--tracking-micro);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  color: var(--fg);
-  text-transform: uppercase;
-  border: 1px solid var(--border);
-}
 .badge.regulation {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   color: var(--fg);
-}
-
-/* ---------- Skeleton ---------- */
-.skeleton {
-  display: inline-block;
-  background: linear-gradient(
-    90deg,
-    var(--surface-2),
-    color-mix(in srgb, var(--surface-2) 60%, var(--bg)),
-    var(--surface-2)
-  );
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.6s ease-in-out infinite;
-  border-radius: var(--radius-sm);
-}
-.skeleton-block {
-  display: block;
-}
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
 }
 
 /* ---------- Hero meta line ---------- */
@@ -1901,10 +1414,9 @@ tr.row-expansion > td {
 }
 .tournament-row .date {
   font-size: 11px;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 .tournament-row .name {
   color: var(--fg);
@@ -1930,8 +1442,6 @@ tr.row-expansion > td {
 .tournament-row .active-marker {
   color: var(--accent-ink);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-micro);
   font-size: 10.5px;
 }
 .tournament-row-link {
@@ -1990,10 +1500,9 @@ tr.row-expansion > td {
 .home-callout-wrap {
   margin-bottom: var(--section-gap, 42px);
 }
+/* Open, not boxed: the cards inside carry the drawn edge, and an edged box
+   never sits inside another. */
 .callout {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
   padding: 0;
   display: grid;
   gap: 0;
@@ -2047,11 +1556,9 @@ tr.row-expansion > td {
   border-top: 1px solid var(--rule);
 }
 .callout-cut-strip-label {
-  font-size: 11px;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--fg);
   margin: 0 0 8px;
   font-variant-numeric: tabular-nums;
 }
@@ -2519,74 +2026,6 @@ tr.row-expansion > td {
 .stats-list .stat-value .price-link:hover {
   text-decoration: underline;
 }
-
-/* Inline hoverable note: an asterisk (or other marker) that reveals a styled
-   bubble on hover/focus. See InfoTip.tsx. */
-.info-tip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: help;
-  /* Pad out the hit area so the small marker is easy to hover/tap, then pull
-     the surrounding layout back with a matching negative margin. */
-  padding: 4px 7px;
-  margin: -4px -4px;
-}
-.info-tip-marker {
-  color: var(--accent-ink);
-  font-weight: 700;
-  line-height: 1;
-  font-size: 1.05em;
-}
-.info-tip-bubble {
-  position: absolute;
-  bottom: calc(100% + 7px);
-  left: 50%;
-  transform: translateX(-50%) translateY(2px);
-  width: max-content;
-  max-width: 240px;
-  background: var(--surface);
-  color: var(--fg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.45;
-  text-align: left;
-  white-space: normal;
-  letter-spacing: normal;
-  text-transform: none;
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    opacity 0.12s ease,
-    transform 0.12s ease;
-  z-index: 30;
-  /* Hidden by default, but hoverable once shown so the cursor can move onto it. */
-  pointer-events: none;
-}
-/* Transparent bridge spanning the gap below the bubble, so moving the cursor
-   from the marker up to the bubble never drops the hover. */
-.info-tip-bubble::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  height: 11px;
-}
-.info-tip:hover .info-tip-bubble,
-.info-tip:focus-visible .info-tip-bubble,
-.info-tip.open .info-tip-bubble {
-  opacity: 1;
-  visibility: visible;
-  /* --tip-shift is set by InfoTip.tsx when the bubble would clip the viewport
-     edge (tap-to-open on touch devices); zero everywhere else. */
-  transform: translateX(calc(-50% + var(--tip-shift, 0px))) translateY(0);
-  pointer-events: auto;
-}
 /* Keep the bubble on-screen near the right edge of the rail. */
 .stats-list .stat-value .info-tip-bubble {
   left: auto;
@@ -2598,22 +2037,14 @@ tr.row-expansion > td {
 .stats-list .stat-value .info-tip.open .info-tip-bubble {
   transform: translateY(0);
 }
-.info-tip-bubble p {
-  margin: 0;
-}
-.info-tip-bubble p + p {
-  margin-top: 6px;
-}
 
 .card-page-right {
   display: grid;
   gap: 32px;
 }
 .card-section h3 {
-  font-size: 11px;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--fg);
   font-weight: 600;
   margin-bottom: 10px;
 }
@@ -2738,7 +2169,7 @@ tr.row-expansion > td {
   position: relative;
   width: 100%;
   padding-top: 140%; /* 7 / 5 = 1.4 → 140% */
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--surface-2);
 }
@@ -2761,7 +2192,7 @@ tr.row-expansion > td {
   width: 100%;
   height: 100%;
   aspect-ratio: auto;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px dashed var(--border);
   background: var(--surface);
 }
@@ -2998,11 +2429,9 @@ tr.row-expansion > td {
   min-width: 0;
 }
 .fb-field-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-micro);
+  font-size: 13px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--fg);
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -3033,7 +2462,7 @@ tr.row-expansion > td {
 }
 .fb-select:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--focus-color);
   box-shadow: var(--focus-ring);
 }
 .fb-range {
@@ -3094,7 +2523,7 @@ tr.row-expansion > td {
 }
 .fb-b-search input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--focus-color);
   box-shadow: var(--focus-ring);
 }
 .fb-b-search-icon {
@@ -3120,6 +2549,7 @@ tr.row-expansion > td {
   max-height: 50vh;
   max-height: 50dvh;
   overflow-y: auto;
+  box-shadow: var(--shadow-float);
 }
 .fb-b-popover .item {
   display: flex;
@@ -3145,11 +2575,9 @@ tr.row-expansion > td {
 }
 
 .fb-b-rules-head {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-micro);
-  font-weight: 700;
-  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
   padding-bottom: 6px;
   border-bottom: 1px solid var(--rule);
   margin-bottom: 2px;
@@ -3279,7 +2707,7 @@ tr.row-expansion > td {
    (which clips with overflow: hidden), so the accent focus ring lives on the
    wrapper via :focus-within instead of the input. */
 .fb-b-row .count-input:focus-within {
-  border-color: var(--accent);
+  border-color: var(--focus-color);
   box-shadow: var(--focus-ring);
 }
 .fb-b-row .count-input input:focus {
@@ -3694,11 +3122,9 @@ tr.row-expansion > td {
   border-bottom: 1px solid var(--border);
 }
 .r2-sechead-title {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-micro);
+  font-size: 13px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--fg);
 }
 .r2-sechead-count {
   font-size: 11px;
@@ -3902,7 +3328,7 @@ tr.row-expansion > td {
 }
 .r2-krow.is-link:focus-visible,
 .r2-rrow.is-link:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-color);
   outline-offset: -2px;
   background: var(--surface-2);
 }
@@ -4227,12 +3653,6 @@ tr.row-expansion > td {
    viewports and on any device whose primary pointer is a finger.
    ===================================================================== */
 @media (max-width: 640px), (pointer: coarse) {
-  /* body[data-mode] matches the specificity of the tokens.css theme blocks
-     (which re-declare --row-height on body); this file loads later, so it wins. */
-  :root,
-  body[data-mode] {
-    --row-height: 44px;
-  }
 
   .t-selector-trigger {
     min-height: 44px;
@@ -4246,25 +3666,9 @@ tr.row-expansion > td {
     font-size: 16px;
   }
 
-  .chip {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    padding-left: 14px;
-    padding-right: 14px;
-  }
-
   .pagination button {
     min-height: 44px;
     min-width: 44px;
-  }
-
-  .segmented button {
-    min-height: 40px; /* inside a bordered group; the group itself clears 44px */
-  }
-
-  .tabs button {
-    min-height: 44px;
   }
 
   /* Icon-only buttons (row remove and lens clear) render
@@ -4288,16 +3692,6 @@ tr.row-expansion > td {
   .t-selector-item {
     min-height: 44px;
     align-items: center;
-  }
-
-  /* Expand caret column on player tables: the whole row is the tap target
-     (44px via --row-height); widen the column so the caret reads as tappable. */
-  .data th.expand-col,
-  .data td.expand-col {
-    width: 36px;
-  }
-  .row-caret {
-    font-size: 13px;
   }
 }
 
@@ -4334,6 +3728,7 @@ tr.row-expansion > td {
   transform: translateY(100%);
   transition: transform var(--ms-base) var(--ease-base);
   will-change: transform;
+  box-shadow: var(--shadow-float);
 }
 .sheet.open {
   transform: translateY(0);
@@ -4451,7 +3846,7 @@ tr.row-expansion > td {
 }
 .filters-btn:focus-visible {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--focus-color);
   box-shadow: var(--focus-ring);
 }
 /* Active state: fill with the accent and widen to seat the count numeral inline
@@ -4512,150 +3907,7 @@ tr.row-expansion > td {
   cursor: pointer;
   flex-shrink: 0;
 }
-
-/* ---------- Combo typeahead (components/Combo.tsx) ----------
-   First written for the tier list, hence the prefix; the live page's deck
-   report uses it too. */
-.tl-combo {
-  position: relative;
-}
-.tl-combo .search {
-  width: 100%;
-  min-width: 0;
-  padding: 6px 10px;
-  font-size: 13px;
-}
-/* The picker stands for the card the board is showing — thumbnail in the
-   field, name as the value — so it sits where the format select sits on the
-   other tab and matches its height and caret. It used to be that name beside
-   a separate search box: two controls for one decision, and a phone stacked
-   them into rows of their own. */
-.tl-picker .search {
-  height: 34px;
-  padding: 0 28px 0 30px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  border-radius: var(--radius-sm);
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
-    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position:
-    right 13px center,
-    right 8px center;
-  background-size:
-    5px 5px,
-    5px 5px;
-  background-repeat: no-repeat;
-}
-/* Typing reads as typing, not as the chosen name. */
-.tl-picker .search[aria-expanded='true'] {
-  font-weight: 500;
-}
-.tl-combo-lead {
-  position: absolute;
-  left: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  pointer-events: none;
-}
-/* A two-sprite archetype is wider than the one thumbnail the picker's padding
-   was set for, and ran over the name's first letter. */
-.tl-picker:has(.tl-combo-lead .arche-icon + .arche-icon) .search {
-  padding-left: 50px;
-}
-.tl-combo-lead img {
-  width: 17px;
-  height: 24px;
-  object-fit: cover;
-  border-radius: 2px;
-  border: 1px solid var(--rule);
-  background: var(--surface-2);
-  opacity: 1;
-}
-/* No dark-mode overrides for these: `--border` already carries the mode's
-   edge. Restating it by hand is how the popover and the typeahead ended up
-   outlined in `--muted` — #a4998a against a #25221f fill, which reads as a
-   white halo, not an edge. */
-
-/* A popover in the top layer, placed by Combo against its field: in a table
-   row it would otherwise be cut off by the `.table-wrap` that clips it. Its
-   place, width and height come from there; this undoes the browser's own
-   popover centring and colours. */
-.tl-list {
-  inset: auto;
-  margin: 0;
-  padding: 4px;
-  list-style: none;
-  overflow-y: auto;
-  color: inherit;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-}
-/* Turned upward, Combo sets its top at the field, and it rises from there
-   whatever its height. */
-.tl-list[data-side='above'] {
-  translate: 0 -100%;
-}
-.tl-list[hidden] {
-  display: none;
-}
-.tl-list li {
-  display: grid;
-  grid-template-columns: 26px 1fr auto;
-  gap: 9px;
-  align-items: center;
-  padding: 5px 7px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 13px;
-}
-.tl-list li[aria-selected='true'] {
-  background: var(--surface-2);
-}
 /* The row the box already stands for. */
 .tl-list li.cur {
   box-shadow: inset 2px 0 0 var(--accent);
-}
-.tl-list li.cur b {
-  font-weight: 700;
-}
-.tl-list li img {
-  width: 26px;
-  aspect-ratio: 5 / 7;
-  object-fit: cover;
-  border-radius: 2px;
-  border: 1px solid var(--rule);
-  background: var(--surface-2);
-  opacity: 1;
-}
-.tl-list li b {
-  font-weight: 500;
-}
-.tl-list li b mark {
-  background: none;
-  color: var(--accent-ink);
-  font-weight: 700;
-}
-.tl-list li span {
-  font-size: 12px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-/* Between the entries a list ranks first — the archetypes anyone is actually
-   playing — and the tail below them. Drawn only where the two meet, so a list
-   of one kind carries no rule. */
-.tl-list li.sep {
-  display: block;
-  padding: 0;
-  margin: 5px 7px;
-  border-top: 1px solid var(--rule);
-  cursor: default;
-}
-.tl-list .none {
-  display: block;
-  padding: 8px;
-  color: var(--muted);
-  font-size: 13px;
 }

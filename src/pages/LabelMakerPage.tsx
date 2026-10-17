@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { Segmented } from '../components/Segmented';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { PokemonPicker, prettySlugName } from '../components/PokemonPicker';
 import { defaultConfig, type LabelConfig } from '../lib/labelmaker/types';
 import { renderLabel } from '../lib/labelmaker/renderLabel';

@@ -98,6 +98,7 @@
   "author": "Ciphermaniac",
   "license": "MIT",
   "dependencies": {
+    "@ciphermaniac/design": "github:ciphermaniac-tcg/design#v0.1.1",
     "@solidjs/router": "^0.15.0",
     "modern-screenshot": "^4.7.0",
     "solid-js": "^1.9.3"

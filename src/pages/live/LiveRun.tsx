@@ -14,7 +14,7 @@ import {
   type SeatProfile,
   type SeatRef
 } from '../../../shared/live/view';
-import { Skeleton } from '../../components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { useLiveFollows } from '../../lib/liveFollows';
 import { fetchPostedRounds } from '../../lib/liveRounds';
 import { latestValue } from '../../lib/resource';

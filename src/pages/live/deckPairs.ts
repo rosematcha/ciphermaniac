@@ -6,7 +6,7 @@
  * is offered as that archetype rather than a second copy of it.
  */
 
-import { rankByQuery, SUGGESTION_LIMIT } from '../../lib/rankByQuery';
+import { rankByQuery, SUGGESTION_LIMIT } from '@ciphermaniac/design/lib/rankByQuery';
 import type { ReportedDeck } from './reportedDeck';
 
 type Species = typeof import('../../../shared/pokemon/species');

@@ -51,8 +51,6 @@
   display: grid;
   gap: 4px;
   font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--muted);
   font-weight: 600;
 }
@@ -70,8 +68,8 @@
 }
 .sg-row select:focus-visible {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--focus-color);
+  box-shadow: var(--focus-ring);
 }
 
 .sg-actions {
@@ -214,8 +212,6 @@
 .sg-tournament {
   text-align: center;
   font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
   color: var(--sg-muted);
   font-weight: 600;
   line-height: 1.5;
@@ -232,8 +228,6 @@
 .sg-meta {
   text-align: right;
   font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--sg-muted);
   font-weight: 600;
   line-height: 1.5;
@@ -336,9 +330,7 @@
 .sg-hero-delta {
   font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.02em;
   color: var(--sg-accent);
-  text-transform: uppercase;
   margin-top: 4px;
   font-variant-numeric: tabular-nums;
 }
@@ -359,7 +351,6 @@
   letter-spacing: -0.04em;
   line-height: 0.9;
   color: var(--sg-fg);
-  text-transform: uppercase;
   white-space: nowrap;
 }
 .sg-title .accent {
@@ -547,8 +538,6 @@
   padding-top: 14px;
   border-top: 2px dashed var(--sg-rule);
   font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--sg-muted);
   font-weight: 600;
 }
@@ -576,7 +565,5 @@
   background: var(--sg-surface-2);
   color: var(--sg-muted);
   font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   font-weight: 600;
 }

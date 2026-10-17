@@ -70,11 +70,10 @@
 }
 .ilm-arche-count {
   font-size: 11px;
-  letter-spacing: 0.08em;
   margin-top: 2px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-  text-transform: uppercase;
+  font-weight: 500;
 }
 .ilm-arche[aria-checked='true'] .ilm-arche-count {
   color: color-mix(in srgb, var(--accent-fg) 70%, transparent);
@@ -143,10 +142,8 @@
   align-items: center;
   gap: 8px;
   font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 500;
 }
 .ilm-sort select {
   font: inherit;
@@ -205,7 +202,7 @@
   position: relative;
   aspect-ratio: 2.5 / 3.5;
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -228,10 +225,9 @@
   aspect-ratio: auto;
 }
 .ilm-card-img .ph {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--muted);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 500;
 }
 .ilm-card-meta {
   display: grid;

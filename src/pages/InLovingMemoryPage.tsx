@@ -1,8 +1,8 @@
 import { createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
 import { CardImage } from '../components/CardImage';
-import { Tabs } from '../components/Tabs';
-import { Skeleton } from '../components/Skeleton';
+import { TabPanel, Tabs } from '@ciphermaniac/design/components/Tabs';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { resolved } from '../lib/resource';
 import { cardSupercategory } from '../lib/cardStats';
@@ -303,6 +303,7 @@ export function InLovingMemoryPage() {
       >
         <div class='ilm-toolbar'>
           <Tabs<CategoryFilter>
+            id='ilm-category'
             options={CATEGORY_TABS}
             selected={category()}
             onSelect={setCategory}
@@ -316,14 +317,16 @@ export function InLovingMemoryPage() {
           </label>
         </div>
 
-        <Show
-          when={filteredItems().length > 0}
-          fallback={<EmptyState title='No cards in this category.' description='Try another tab.' />}
-        >
-          <div class='ilm-grid'>
-            <For each={filteredItems()}>{item => <Card item={item} />}</For>
-          </div>
-        </Show>
+        <TabPanel tabs='ilm-category' selected={category()}>
+          <Show
+            when={filteredItems().length > 0}
+            fallback={<EmptyState title='No cards in this category.' description='Try another tab.' />}
+          >
+            <div class='ilm-grid'>
+              <For each={filteredItems()}>{item => <Card item={item} />}</For>
+            </div>
+          </Show>
+        </TabPanel>
       </Show>
     </div>
   );

@@ -38,7 +38,7 @@
 }
 .lists-frame.is-picked,
 .lists-frame:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-color);
   outline-offset: 1px;
 }
 .lists-frame .card-img,

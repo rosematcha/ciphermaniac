@@ -406,12 +406,12 @@ test('players index ranks the fixture players with a rank switch', async ({ page
   await gotoClean(page, '/players');
   await expect(page.locator('body')).toContainText(/Gabriel|player/i);
   const bar = page.locator('.players-bar');
-  await expect(bar.getByRole('tab', { name: 'Day 2s' })).toHaveAttribute('aria-selected', 'true');
+  await expect(bar.getByRole('radio', { name: 'Day 2s' })).toHaveAttribute('aria-checked', 'true');
   // Rank, player, events, Day 2s, top cuts, titles, win rate. The last two are
   // hidden by CSS below 900px, so the mobile project counts the same seven.
   await expect(page.locator('.players-table thead th')).toHaveCount(7);
 
-  await bar.getByRole('tab', { name: 'Win %' }).click();
+  await bar.getByRole('radio', { name: 'Win %' }).click();
   await expect(page).toHaveURL(/sort=winPct/);
   await expect(page.locator('.players-table th[aria-sort="descending"]')).toHaveText(/Win %/);
 });
@@ -430,10 +430,10 @@ test('an opened event switches between its decklist and its rounds', async ({ pa
 
   await row.locator('.history-name').click();
   const detail = page.locator('.row-expansion .event-detail');
-  await expect(detail.getByRole('tab', { name: 'Decklist' })).toHaveAttribute('aria-selected', 'true');
+  await expect(detail.getByRole('radio', { name: 'Decklist' })).toHaveAttribute('aria-checked', 'true');
   await expect(detail.locator('.deck-inline-list li').first()).toBeVisible();
 
-  await detail.getByRole('tab', { name: 'Rounds' }).click();
+  await detail.getByRole('radio', { name: 'Rounds' }).click();
   await expect(detail.locator('.round').first()).toContainText('R1');
   await expect(detail.locator('.rounds-drop')).toContainText('Dropped after round 7');
 
@@ -452,7 +452,7 @@ test('an event without a decklist opens on its rounds', async ({ page }) => {
   await gotoClean(page, '/players/1272');
   await page.locator('.history-table tbody > tr').first().locator('.history-name').click();
   const detail = page.locator('.row-expansion .event-detail');
-  await expect(detail.getByRole('tab', { name: 'Rounds' })).toHaveAttribute('aria-selected', 'true');
+  await expect(detail.getByRole('radio', { name: 'Rounds' })).toHaveAttribute('aria-checked', 'true');
   await expect(detail.locator('.round').first()).toBeVisible();
 });
 
@@ -495,7 +495,7 @@ test('a profile cached before rounds existed still renders', async ({ page }) =>
   await page.getByRole('tab', { name: 'History' }).click();
   await page.locator('.history-table tbody > tr').first().getByRole('button', { name: 'Show details' }).click();
   const detail = page.locator('.row-expansion .event-detail');
-  await detail.getByRole('tab', { name: 'Rounds' }).click();
+  await detail.getByRole('radio', { name: 'Rounds' }).click();
   await expect(detail.getByText('No round data published for this event.')).toBeVisible();
 });
 
@@ -539,7 +539,7 @@ test('missing rounds do not wait for the lazy decklist request', async ({ page }
     await page.locator('.history-table tbody > tr').first().locator('.history-name').click();
     const detail = page.locator('.row-expansion .event-detail');
     await expect(detail.locator('.skeleton')).toBeVisible();
-    await detail.getByRole('tab', { name: 'Rounds' }).click();
+    await detail.getByRole('radio', { name: 'Rounds' }).click();
     await expect(detail.getByText('No round data published for this event.')).toBeVisible();
     await expect(detail.locator('.skeleton')).toHaveCount(0);
   } finally {
@@ -624,7 +624,7 @@ test('set impact ranks sets by lifetime and keeps its toggles in the URL', async
   await expect(page.locator('tr.is-unranked').first()).toBeVisible();
   const last = page.locator('.set-impact-table tbody tr.is-link').last();
   await expect(last).toHaveClass(/is-unranked/);
-  await page.getByRole('tab', { name: 'Keeps it legal' }).click();
+  await page.getByRole('radio', { name: 'Keeps it legal' }).click();
   await expect(page).toHaveURL(/[?&]attr=legal/);
   await page.getByRole('button', { name: /^Set/ }).click();
   const names = await page.locator('td.set-impact-name').allTextContents();
@@ -716,12 +716,13 @@ test('a tier list tile carries a placeholder until its art paints @mobile', asyn
   const art = page.locator('.tl-prev img').first();
   await expect(art).toBeAttached();
   await expect(art).not.toHaveAttribute('data-loaded', '');
-  expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('skeleton-shimmer');
-  // The shimmer is painted on the image, so pending art here must stay visible.
+  // A still fill, painted on the image itself, so pending art here must stay visible.
+  expect(await art.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)');
+  expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
   await expect(art).toHaveCSS('opacity', '1');
   // And the placeholder gets out of the way the moment the bitmap lands.
   await expect(art).toHaveAttribute('data-loaded', '', { timeout: 10_000 });
-  expect(await art.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  expect(await art.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
 });
 
 test('hovering the Tools nav item reveals the headline tools, the event locator first', async ({ page }, testInfo) => {
@@ -895,7 +896,7 @@ test('the earnings table re-ranks under each lens', async ({ page }) => {
   await expect(page.locator('table.data tbody tr').first()).toBeVisible();
   await expect(page.locator('thead th').last()).toHaveText('Career');
 
-  await page.getByRole('tab', { name: 'Top seasons' }).click();
+  await page.getByRole('radio', { name: 'Top seasons' }).click();
   await expect(page).toHaveURL(/lens=top-seasons/);
   await expect(page.locator('thead th').last()).toHaveText('Top seasons');
   // The top-seasons lens annotates each amount with the season it came from.
@@ -1423,9 +1424,9 @@ test('archetype list renders and sorts 39 embedded rates without matchup downloa
   await expect(rows.first()).toContainText('88.0%');
   await page.getByPlaceholder('Search archetypes by name...').fill('Deck 38');
   await expect(rows).toHaveCount(1);
-  await page.getByRole('tab', { name: 'Grid', exact: true }).click();
+  await page.getByRole('radio', { name: 'Grid', exact: true }).click();
   await expect(page.locator('.gallery-grid')).toBeVisible();
-  await page.getByRole('tab', { name: 'List', exact: true }).click();
+  await page.getByRole('radio', { name: 'List', exact: true }).click();
   await expect(rows.first()).toContainText('88.0%');
   expect(matchupRequests).toEqual([]);
 });

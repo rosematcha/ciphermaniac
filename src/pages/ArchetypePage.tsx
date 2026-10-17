@@ -27,10 +27,10 @@ import {
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_NAME } from '../lib/constants';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
-import { Tabs } from '../components/Tabs';
-import { Segmented } from '../components/Segmented';
+import { TabPanel, Tabs } from '@ciphermaniac/design/components/Tabs';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { EmptyState } from '../components/EmptyState';
-import { Skeleton } from '../components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { CardList, type ViewMode } from '../components/CardList';
 import { AdvancedPanel } from '../components/AdvancedPanel';
@@ -403,7 +403,7 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
 
       <section>
         <div class='arche-toolbar'>
-          <Tabs options={TAB_OPTIONS} selected={props.tab} onSelect={props.onTabChange} />
+          <Tabs id='archetype' options={TAB_OPTIONS} selected={props.tab} onSelect={props.onTabChange} />
           {/* Grid/List only affects the card views; the Matchups tab has its own layout. */}
           <Show when={props.tab === 'lists'}>
             <div class='arche-toolbar-controls'>
@@ -430,71 +430,73 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
           </Show>
         </div>
 
-        <Show when={props.tab === 'cards'}>
-          <Show when={orderedCards().length > 0} fallback={<EmptyState title='No cards in this report.' />}>
-            <Show when={coreCards().length > 0}>
-              <div class='arche-tier'>
-                <CardList
-                  title='Cards in ≥ 90% of lists'
-                  items={coreCards()}
-                  viewMode={props.viewMode}
-                  emptyMessage='No core cards above 90% inclusion in this archetype yet.'
-                />
-              </div>
-            </Show>
-            <Show when={techCards().length > 0}>
-              <div class='arche-tier'>
-                <CardList
-                  title='Cards in 30–90% of lists'
-                  items={techCards()}
-                  viewMode={props.viewMode}
-                  emptyMessage='No tech-tier cards in this archetype yet.'
-                />
-              </div>
-            </Show>
-            <Show when={fringeCards().length > 0}>
-              <div class='arche-tier'>
-                <CardList
-                  title='All other cards'
-                  items={fringeCards()}
-                  viewMode={props.viewMode}
-                  emptyMessage='No other cards in this report.'
-                  initialLimit={60}
-                />
-              </div>
+        <TabPanel tabs='archetype' selected={props.tab}>
+          <Show when={props.tab === 'cards'}>
+            <Show when={orderedCards().length > 0} fallback={<EmptyState title='No cards in this report.' />}>
+              <Show when={coreCards().length > 0}>
+                <div class='arche-tier'>
+                  <CardList
+                    title='Cards in ≥ 90% of lists'
+                    items={coreCards()}
+                    viewMode={props.viewMode}
+                    emptyMessage='No core cards above 90% inclusion in this archetype yet.'
+                  />
+                </div>
+              </Show>
+              <Show when={techCards().length > 0}>
+                <div class='arche-tier'>
+                  <CardList
+                    title='Cards in 30–90% of lists'
+                    items={techCards()}
+                    viewMode={props.viewMode}
+                    emptyMessage='No tech-tier cards in this archetype yet.'
+                  />
+                </div>
+              </Show>
+              <Show when={fringeCards().length > 0}>
+                <div class='arche-tier'>
+                  <CardList
+                    title='All other cards'
+                    items={fringeCards()}
+                    viewMode={props.viewMode}
+                    emptyMessage='No other cards in this report.'
+                    initialLimit={60}
+                  />
+                </div>
+              </Show>
             </Show>
           </Show>
-        </Show>
 
-        <Show when={props.tab === 'lists'}>
-          {/* Its own boundaries: loading the chunk shows the tab's skeleton, not
+          <Show when={props.tab === 'lists'}>
+            {/* Its own boundaries: loading the chunk shows the tab's skeleton, not
               the app's, and a failed chunk costs the tab, not the page. */}
-          <ErrorBoundary fallback={<p class='muted'>Couldn't load the lists.</p>}>
-            <Suspense fallback={<Skeleton height='320px' />}>
-              <ListsTab label={props.label} lists={listsData()} state={listsState} />
-            </Suspense>
-          </ErrorBoundary>
-        </Show>
+            <ErrorBoundary fallback={<p class='muted'>Couldn't load the lists.</p>}>
+              <Suspense fallback={<Skeleton height='320px' />}>
+                <ListsTab label={props.label} lists={listsData()} state={listsState} />
+              </Suspense>
+            </ErrorBoundary>
+          </Show>
 
-        <Show when={props.tab === 'matchups'}>
-          <MatchupsPanel
-            slug={props.slug}
-            label={props.label}
-            tournament={props.tournament}
-            indexEntries={props.indexEntries}
-            report={props.report}
-          />
-        </Show>
+          <Show when={props.tab === 'matchups'}>
+            <MatchupsPanel
+              slug={props.slug}
+              label={props.label}
+              tournament={props.tournament}
+              indexEntries={props.indexEntries}
+              report={props.report}
+            />
+          </Show>
 
-        <Show when={props.tab === 'advanced'}>
-          <AdvancedPanel
-            slug={props.slug}
-            label={props.label}
-            tournament={props.tournament}
-            report={props.report}
-            viewMode={props.viewMode}
-          />
-        </Show>
+          <Show when={props.tab === 'advanced'}>
+            <AdvancedPanel
+              slug={props.slug}
+              label={props.label}
+              tournament={props.tournament}
+              report={props.report}
+              viewMode={props.viewMode}
+            />
+          </Show>
+        </TabPanel>
       </section>
     </>
   );
@@ -543,13 +545,13 @@ function Stat(props: {
 /** Meta share, with its denominator in the label; the deck count when the scope has no share. */
 function ShareStat(props: { share: string | null; total: number | null; decks: number }) {
   return (
-    <Show when={props.share} fallback={<Stat label='decks'>{props.decks.toLocaleString()}</Stat>}>
+    <Show when={props.share} fallback={<Stat label='Decks'>{props.decks.toLocaleString()}</Stat>}>
       {share => (
         <Stat
           lead
           label={
             <>
-              meta share <Show when={props.total}>{total => <small>· of {total().toLocaleString()}</small>}</Show>
+              Meta share <Show when={props.total}>{total => <small>· of {total().toLocaleString()}</small>}</Show>
             </>
           }
         >
@@ -580,7 +582,7 @@ function WinRateStat(props: { loading: boolean; agg: WinRateAggregate | undefine
       muted={games() > 0 && sampleTier(games()) !== 'solid'}
       label={
         <>
-          win rate{' '}
+          Win rate{' '}
           <Show when={games() > 0}>
             <small>· {games().toLocaleString()} games</small>
           </Show>
@@ -622,7 +624,7 @@ function formatDelta(d: number): string {
 /** Market price of a typical list; a dash when price coverage is too thin to say. */
 function CostStat(props: { loading: boolean; cost: number | null }) {
   return (
-    <Stat loading={props.loading} label='typical list'>
+    <Stat loading={props.loading} label='Typical list'>
       {props.cost === null ? '—' : `$${Math.round(props.cost).toLocaleString()}`}
     </Stat>
   );

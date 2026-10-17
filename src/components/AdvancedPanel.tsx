@@ -39,7 +39,7 @@ import {
 import { latestValue, resolved } from '../lib/resource';
 import { CardList, type CardListItem, type ViewMode } from './CardList';
 import { EmptyState } from './EmptyState';
-import { Skeleton } from './Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 
 const SUCCESS_OPTIONS: { value: string; label: string }[] = [
   { value: 'all', label: 'All decks' },

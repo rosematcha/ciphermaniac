@@ -208,16 +208,13 @@ body.tl-rowdrag {
 }
 /* Switching view rebuilds every tile, so its art starts from nothing: on a
    cold cache the tray reads as forty cards that lost their pictures. A pending
-   image wears the site's skeleton shimmer until it paints. Keyed on the
-   attribute rather than a wrapper class so the animation stops the moment the
-   bitmap lands, instead of running behind sixty loaded tiles forever. */
+   image wears a still skeleton fill until it paints. Keyed on the attribute
+   rather than a wrapper class so the fill goes the moment the bitmap lands. */
 :is(.tl-prev, .tl-art) img:not([data-loaded]) {
   /* --rule rather than the generic skeleton's --surface-2: the tile sits in a
      --surface-2 well, and a placeholder the colour of the well behind it does
      not read as a card that is still arriving. */
-  background: linear-gradient(90deg, var(--rule), color-mix(in srgb, var(--rule) 45%, var(--surface)), var(--rule));
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  background: var(--rule);
   opacity: 1;
 }
 .tl-item:active {
@@ -366,10 +363,8 @@ body:not(.tl-labels) .tl-ico {
 .tl-tray h4 {
   margin: 0;
   padding: 7px 12px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-micro);
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--fg);
   font-weight: 600;
   border-bottom: 1px solid var(--rule);
   display: flex;
@@ -507,10 +502,8 @@ body:not(.tl-labels) .tl-ico {
   gap: 4px;
 }
 .tl-legend {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-micro);
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--fg);
   font-weight: 600;
 }
 .tl-btn.danger {
@@ -577,10 +570,9 @@ body:not(.tl-labels) .tl-ico {
   justify-content: space-between;
 }
 .tl-pop header b {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-micro);
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--fg);
+  font-weight: 600;
 }
 .tl-pop .x {
   background: none;
@@ -693,7 +685,7 @@ body:not(.tl-labels) .tl-ico {
 }
 .tl-title b:focus {
   background: var(--surface-2);
-  box-shadow: 0 0 0 1px var(--accent);
+  box-shadow: var(--focus-ring);
 }
 .tl-title b:empty::before {
   content: attr(data-placeholder);

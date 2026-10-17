@@ -27,7 +27,7 @@ import {
   withRenamedPlacement,
   withTierOrder
 } from '../../src/pages/tierList/model';
-import { rankByQuery } from '../../src/lib/rankByQuery.ts';
+import { rankByQuery } from '@ciphermaniac/design/lib/rankByQuery';
 
 // ---------------------------------------------------------------------------
 // Palette

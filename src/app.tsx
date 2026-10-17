@@ -2,7 +2,7 @@ import { ErrorBoundary, type ParentComponent, Suspense } from 'solid-js';
 import { useIsRouting } from '@solidjs/router';
 import { LiveBanner } from './components/LiveBanner';
 import { SiteFooter } from './components/SiteFooter';
-import { Skeleton } from './components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { TopNav } from './components/TopNav';
 import { TournamentProvider } from './lib/tournamentContext';
 import { useScrollRestoration } from './lib/scrollRestore';

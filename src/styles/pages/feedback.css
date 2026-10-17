@@ -77,7 +77,7 @@
 }
 .feedback-input:focus-visible {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--focus-color);
   box-shadow: var(--focus-ring);
 }
 .feedback-input[aria-invalid='true'] {

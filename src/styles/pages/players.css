@@ -66,9 +66,6 @@
   padding: 0 10px;
   font-size: 13px;
 }
-.players-table .data th {
-  font-size: 10.5px;
-}
 /* A share of the row rather than a fixed width: the figures then keep the same
    proportion of the table whether it is showing five columns or the phone's
    three, instead of huddling at the right edge with the names a screen away.
@@ -154,7 +151,6 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .player-stats .stat-band-item:nth-child(3n + 1) {
-    padding-left: 0;
     border-left: 0;
   }
   .player-stats .stat-band-item:nth-child(-n + 3) {
@@ -330,10 +326,8 @@
   max-width: 560px;
 }
 .rounds-phase {
-  font-size: 10.5px;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--fg);
   font-weight: 600;
   padding: 8px 0 3px;
   margin-bottom: 3px;
@@ -396,9 +390,7 @@
 }
 .rounds-drop {
   color: var(--negative);
-  font-size: 10.5px;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
+  font-size: 13px;
   font-weight: 600;
   padding-top: 8px;
 }
@@ -525,10 +517,8 @@
 
 /* ---------- Profile: matchups tab ---------- */
 .profile-h3 {
-  font-size: 11px;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--fg);
   font-weight: 600;
   margin: 0 0 10px;
   display: flex;
@@ -572,9 +562,7 @@
 }
 .phase-figure dt {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
+  font-weight: 500;
   color: var(--muted);
 }
 .phase-figure dd {

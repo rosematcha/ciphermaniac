@@ -21,8 +21,8 @@ import {
   prettyTournamentName
 } from '../lib/data';
 import { ONLINE_META_NAME } from '../lib/constants';
-import { Segmented } from '../components/Segmented';
-import { Skeleton } from '../components/Skeleton';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { interEmbedCss } from '../utils/fontEmbed';
 import { latestValue } from '../lib/resource';

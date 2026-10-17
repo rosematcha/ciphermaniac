@@ -3,7 +3,7 @@ import { createMemo, createSignal, For, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { CopyDeckButton } from '../../components/CopyDeckButton';
 import { DeckBody } from '../../components/DeckBody';
-import { Segmented } from '../../components/Segmented';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
 import { ONLINE } from '../../lib/data/paths';
 import type { ListRecord } from '../../lib/data/lists';
