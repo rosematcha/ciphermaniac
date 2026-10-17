@@ -2,7 +2,7 @@ import { createMemo, createResource, For, Match, onMount, type Resource, Show, S
 import { useSearchParams } from '@solidjs/router';
 import { EmptyState } from '../components/EmptyState';
 import { Section } from '../components/Section';
-import { Skeleton } from '../components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { fetchPackEvIndex, fetchPackEvSet } from '../lib/data/packEv';
 import { resolved } from '../lib/resource';
 import { SetDetail } from './packEv/SetDetail';

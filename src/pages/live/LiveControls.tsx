@@ -4,7 +4,7 @@ import { roundName, roundShort } from '../../../shared/live/rounds';
 import type { StatusFilter } from '../../../shared/live/view';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Chip, ChipGroup, SearchInput } from '../../components/Chip';
-import { Segmented } from '../../components/Segmented';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import type { ReportedDeck } from './reportedDeck';
 
 export type LiveView = 'pairings' | 'standings';

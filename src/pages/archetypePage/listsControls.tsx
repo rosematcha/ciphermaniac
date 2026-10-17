@@ -1,5 +1,5 @@
 import { createMemo, createSignal, Show } from 'solid-js';
-import { Segmented } from '../../components/Segmented';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { FINISH_OPTIONS } from '../cardPage/playedInModel';
 import type { ListCard } from '../../lib/data/lists';
 import type { ListFilters } from './listsModel';

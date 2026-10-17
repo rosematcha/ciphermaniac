@@ -3,8 +3,8 @@ import { createEffect, createMemo, createResource, createSignal, Show } from 'so
 import { fetchPlayerDecks, fetchPlayerProfile } from '../lib/data';
 import { EmptyState } from '../components/EmptyState';
 import { LivePlayerRun } from '../components/LiveRow';
-import { Skeleton } from '../components/Skeleton';
-import { Tabs } from '../components/Tabs';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { TabPanel, Tabs } from '@ciphermaniac/design/components/Tabs';
 import { resolved } from '../lib/resource';
 import type { PlayerProfile } from '../types';
 import type { EventDetailSource } from './playerProfile/EventDetail';
@@ -119,11 +119,11 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
             reads first and the label sits under it. */}
         <dl class='stat-band player-stats'>
           <div class='stat-band-item'>
-            <dt>record</dt>
+            <dt>Record</dt>
             <dd>{summary().record}</dd>
           </div>
           <div class='stat-band-item is-lead'>
-            <dt>win rate</dt>
+            <dt>Win rate</dt>
             <dd>{summary().winRate == null ? '—' : `${summary().winRate}%`}</dd>
           </div>
           <div class='stat-band-item'>
@@ -133,15 +133,15 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
             <dd>{s().day2s}</dd>
           </div>
           <div class='stat-band-item'>
-            <dt>top cuts</dt>
+            <dt>Top cuts</dt>
             <dd>{s().topCuts}</dd>
           </div>
           <div class='stat-band-item'>
-            <dt>{s().tournamentWins === 1 ? 'title' : 'titles'}</dt>
+            <dt>{s().tournamentWins === 1 ? 'Title' : 'Titles'}</dt>
             <dd>{s().tournamentWins}</dd>
           </div>
           <div class='stat-band-item'>
-            <dt>median finish</dt>
+            <dt>Median finish</dt>
             <dd>{summary().medianFinish}</dd>
           </div>
         </dl>
@@ -150,21 +150,29 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
       <LivePlayerRun playerId={props.playerId} name={props.profile.name} countries={props.profile.countries} />
 
       <section class='player-tabs'>
-        <Tabs<ProfileTab> options={TAB_OPTIONS} selected={tab()} onSelect={setTab} ariaLabel='Profile section' />
-        <Show when={tab() === 'history'}>
-          <HistoryTable
-            entries={props.profile.tournaments}
-            archetypeName={archetypeName}
-            playerId={props.playerId}
-            source={source}
-          />
-        </Show>
-        <Show when={tab() === 'decks'}>
-          <DecksTab profile={props.profile} archetypeName={archetypeName} playerId={props.playerId} source={source} />
-        </Show>
-        <Show when={tab() === 'matchups'}>
-          <MatchupsTab aggregates={aggregates()} />
-        </Show>
+        <Tabs<ProfileTab>
+          id='profile'
+          options={TAB_OPTIONS}
+          selected={tab()}
+          onSelect={setTab}
+          ariaLabel='Profile section'
+        />
+        <TabPanel tabs='profile' selected={tab()}>
+          <Show when={tab() === 'history'}>
+            <HistoryTable
+              entries={props.profile.tournaments}
+              archetypeName={archetypeName}
+              playerId={props.playerId}
+              source={source}
+            />
+          </Show>
+          <Show when={tab() === 'decks'}>
+            <DecksTab profile={props.profile} archetypeName={archetypeName} playerId={props.playerId} source={source} />
+          </Show>
+          <Show when={tab() === 'matchups'}>
+            <MatchupsTab aggregates={aggregates()} />
+          </Show>
+        </TabPanel>
       </section>
     </>
   );

@@ -5,7 +5,7 @@ import type { LiveRound, LiveSeat } from '../../../shared/live/types';
 import { createProfileLookup, recordLabel, seatMatchesSlug } from '../../../shared/live/view';
 import { EmptyState } from '../../components/EmptyState';
 import { Section } from '../../components/Section';
-import { Skeleton } from '../../components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { fetchPlayerIndexSlim } from '../../lib/data';
 import { createLiveIndex, createPolled, liveDelay } from '../../lib/livePoll';
 import { fetchPostedRounds } from '../../lib/liveRounds';

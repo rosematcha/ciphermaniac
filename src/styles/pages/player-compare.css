@@ -64,7 +64,7 @@
   padding: 6px 8px;
   background: none;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
   color: inherit;

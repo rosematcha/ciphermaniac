@@ -1,6 +1,6 @@
 import { For } from 'solid-js';
 import type { EventKind } from '../../../shared/events/types';
-import { Segmented } from '../../components/Segmented';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import type { DistanceUnit } from '../../lib/events/geo';
 import type { WindowDays } from '../../lib/events/viewState';
 import { KIND_LABEL } from './EventList';

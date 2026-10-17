@@ -2,7 +2,7 @@ import { createMemo, createSignal, For, type JSX, Show } from 'solid-js';
 import { CardImage } from '../../components/CardImage';
 import { CopyDeckButton } from '../../components/CopyDeckButton';
 import { DeckBody, type DeckBodyCard } from '../../components/DeckBody';
-import { Skeleton } from '../../components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { ordinal, shortDate } from '../../lib/format';
 import type { ListRecord } from '../../lib/data/lists';
 import type { ListsState } from './listsControls';

@@ -264,7 +264,7 @@
 .lm-field input[type='number']:focus-visible,
 .lm-field select:focus-visible {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--focus-color);
   box-shadow: var(--focus-ring);
 }
 

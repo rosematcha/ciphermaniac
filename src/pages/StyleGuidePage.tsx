@@ -2,12 +2,12 @@ import { createSignal, For, type JSX, Match, onCleanup, onMount, type ParentComp
 import { Badge } from '../components/Badge';
 import { ChipGroup, SearchInput } from '../components/Chip';
 import { EmptyState } from '../components/EmptyState';
-import { InfoTip } from '../components/InfoTip';
+import { InfoTip } from '@ciphermaniac/design/components/InfoTip';
 import { Pagination } from '../components/Pagination';
 import { Section } from '../components/Section';
-import { Segmented } from '../components/Segmented';
-import { Skeleton } from '../components/Skeleton';
-import { Tabs } from '../components/Tabs';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { TabPanel, Tabs } from '@ciphermaniac/design/components/Tabs';
 import { Trend } from '../components/Trend';
 import { EXCEPTIONS, RULINGS, TOKEN_GROUPS, type TokenGroup, type TokenKind } from './styleGuide/catalogue';
 import '../styles/pages/style-guide.css';
@@ -154,7 +154,7 @@ function TypeSpecimens() {
       <Spec selector='body' rule='15px base, 1.5. Data rows drop to 13px.' wide>
         <p>Inter, self-hosted at 400 through 800. System sans is the only fallback.</p>
       </Spec>
-      <Spec selector='.label-micro' rule='11px / 600 / 0.08em. The one uppercase caption.' wide>
+      <Spec selector='.label-micro' rule='11px / 600, sentence case.' wide>
         <span class='label-micro'>Inclusion rate</span>
       </Spec>
       <Spec selector='.num' rule='Tabular figures on every number that sits in a column.' wide>
@@ -290,7 +290,7 @@ function DataSpecimens() {
           </div>
         </Spec>
       </div>
-      <Spec selector='.table-wrap > table.data' rule='38px rows, hairline rules, sticky uppercase header.' wide>
+      <Spec selector='.table-wrap > table.data' rule='34px rows, zebra stripes, sticky header.' wide>
         <div class='table-wrap'>
           <table class='data'>
             <thead>
@@ -386,6 +386,7 @@ function AnatomySpecimens(props: {
       </Spec>
       <Spec selector='.tabs' rule='Top-level navigation within a page. Scrolls on phones.' wide>
         <Tabs
+          id='style-example'
           options={[
             { value: 'overview', label: 'Overview' },
             { value: 'cards', label: 'Cards' },
@@ -395,6 +396,9 @@ function AnatomySpecimens(props: {
           onSelect={props.onTab}
           ariaLabel='Example'
         />
+        <TabPanel tabs='style-example' selected={props.tab}>
+          {null}
+        </TabPanel>
       </Spec>
       <Spec selector='.pagination' rule='Numbered. Sits below the list it pages.' wide>
         <Pagination page={props.page} totalPages={9} onChange={props.onPage} />

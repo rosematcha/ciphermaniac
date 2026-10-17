@@ -71,7 +71,7 @@ test('paused card wall sleeps, redraws controls and resize, and restarts once @m
   expect(await step(page, 60_000)).toBe(0);
   expect(await pixels(page)).toBe(paused);
 
-  await page.getByRole('tab', { name: 'Black', exact: true }).click();
+  await page.getByRole('radio', { name: 'Black', exact: true }).click();
   expect(await pending(page)).toBe(1);
   expect(await step(page)).toBe(0);
   expect(await pixels(page)).not.toBe(paused);
@@ -116,7 +116,7 @@ test('hidden paused card wall defers changes until one visible redraw @mobile', 
   expect(await step(page)).toBe(0);
   const visible = await pixels(page);
   await setHidden(page, true);
-  await page.getByRole('tab', { name: 'Black', exact: true }).click();
+  await page.getByRole('radio', { name: 'Black', exact: true }).click();
   expect(await pending(page)).toBe(0);
   expect(await pixels(page)).toBe(visible);
   await setHidden(page, false);

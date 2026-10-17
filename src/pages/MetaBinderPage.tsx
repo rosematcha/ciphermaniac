@@ -3,7 +3,7 @@ import { useSearchParams } from '@solidjs/router';
 import { BottomSheet } from '../components/BottomSheet';
 import { CardImage } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
-import { Skeleton } from '../components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { fetchArchetype, fetchArchetypes, fetchPrices, fetchTournamentsList, prettyTournamentName } from '../lib/data';
 import { ONLINE_META_NAME } from '../lib/constants';
 import { latestValue, resolved } from '../lib/resource';

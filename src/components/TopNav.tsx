@@ -44,9 +44,9 @@ export function TopNav() {
   };
 
   return (
-    <header class='topnav'>
+    <header class='topnav head-bar'>
       <A href='/' class='topnav-word'>
-        <img class='topnav-logo' src='/logo.svg' alt='' width='22' height='26' />
+        <img class='topnav-logo' src='/logo.svg' alt='' width='20' height='24' />
         <span>Ciphermaniac</span>
       </A>
       <nav class='topnav-links' aria-label='Primary'>

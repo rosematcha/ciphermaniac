@@ -28,7 +28,7 @@ import {
 import { useSearchParams } from '@solidjs/router';
 import { parseCardUid } from '../../shared/data/cardIdentity';
 import { EmptyState } from '../components/EmptyState';
-import { Skeleton } from '../components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { CardImage } from '../components/CardImage';
 import SPRITE_SLUGS from '../../shared/pokemon/sprites.json';
 import {
@@ -49,7 +49,7 @@ import { installRowSortable } from '../lib/tierList/rowSortable';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { interEmbedCss } from '../utils/fontEmbed';
 import { Actions, DockStrip } from './tierList/Actions';
-import { Combo, splitMatch } from '../components/Combo';
+import { Combo, splitMatch } from '@ciphermaniac/design/components/Combo';
 import { type CanonicalOption, Editor, type EditorTarget, type SpriteOption } from './tierList/Editor';
 import { QuickRank } from './tierList/QuickRank';
 import { animateRows, collapseRow } from './tierList/rowMotion';

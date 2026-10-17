@@ -130,11 +130,9 @@
 }
 .trends-dir {
   margin: 0 0 8px;
-  font-size: 10.5px;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
 }
 .trends-two {
   display: grid;

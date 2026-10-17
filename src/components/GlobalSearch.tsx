@@ -3,7 +3,7 @@ import { createEffect, createMemo, createResource, createSignal, For, on, onClea
 import { ArchetypeIcons } from './ArchetypeIcon';
 import { BottomSheet } from './BottomSheet';
 import { CardImage } from './CardImage';
-import { Skeleton } from './Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import {
   fetchArchetypes,
   fetchMaster,

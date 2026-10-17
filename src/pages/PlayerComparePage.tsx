@@ -10,9 +10,9 @@ import {
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { Section } from '../components/Section';
 import { SearchInput } from '../components/Chip';
-import { Skeleton } from '../components/Skeleton';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
-import { InfoTip } from '../components/InfoTip';
+import { InfoTip } from '@ciphermaniac/design/components/InfoTip';
 import { resolved } from '../lib/resource';
 import type { PlayerIndexSlimEntry, PlayerProfile } from '../types';
 import { finishCmp, headToHead, type SharedEvent, sharedEvents } from './playerCompare/model';

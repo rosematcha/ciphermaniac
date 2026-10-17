@@ -23,8 +23,8 @@ import {
 } from '../lib/majorsTrends';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { Section } from '../components/Section';
-import { Segmented } from '../components/Segmented';
-import { Skeleton } from '../components/Skeleton';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPersistentSignal } from '../lib/persistentSignal';
 import { latestValue } from '../lib/resource';

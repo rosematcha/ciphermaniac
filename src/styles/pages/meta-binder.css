@@ -39,7 +39,7 @@
 }
 .mb-tournament select:focus-visible {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--focus-color);
   box-shadow: var(--focus-ring);
 }
 
@@ -188,7 +188,7 @@
   position: relative;
   aspect-ratio: 2.5 / 3.5;
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   display: grid;
   place-items: center;

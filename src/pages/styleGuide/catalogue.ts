@@ -29,11 +29,13 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   {
     title: 'Surfaces',
     kind: 'color',
-    note: 'Three tiers of warm paper. Nothing is ever pure white or pure black, in either mode.',
+    note: 'One cool grey: a grey page, white surfaces above it, and a recessed tier.',
     tokens: [
       { name: '--bg', note: 'Page' },
       { name: '--surface', note: 'Panels, rows, controls' },
-      { name: '--surface-2', note: 'Recessed: table headers, tracks, hover' }
+      { name: '--surface-2', note: 'Recessed: table headers, tracks' },
+      { name: '--zebra', note: 'Every other table row' },
+      { name: '--row-hover', note: 'The row under the pointer' }
     ]
   },
   {
@@ -43,7 +45,7 @@ export const TOKEN_GROUPS: TokenGroup[] = [
       { name: '--fg', note: 'Body text' },
       { name: '--muted', note: 'Secondary text, labels' },
       { name: '--border', note: 'Structural 1px border' },
-      { name: '--rule', note: 'Hairline between data rows' }
+      { name: '--rule', note: 'Hairline rule' }
     ]
   },
   {
@@ -62,13 +64,22 @@ export const TOKEN_GROUPS: TokenGroup[] = [
     title: 'Sentiment',
     kind: 'color',
     note: 'Never the only carrier of meaning — pair with a glyph or a number.',
-    tokens: [{ name: '--positive' }, { name: '--negative' }]
+    tokens: [{ name: '--positive' }, { name: '--negative' }, { name: '--warning' }]
   },
   {
     title: 'Chart series',
     kind: 'color',
     note: 'Deliberately decoupled from the accent so a series colour never reads as an active state.',
-    tokens: [{ name: '--chart-1' }, { name: '--chart-2' }, { name: '--chart-3' }]
+    tokens: [
+      { name: '--chart-1' },
+      { name: '--chart-2' },
+      { name: '--chart-3' },
+      { name: '--chart-4' },
+      { name: '--chart-5' },
+      { name: '--chart-6' },
+      { name: '--chart-7' },
+      { name: '--chart-8' }
+    ]
   },
   {
     title: 'Radius',
@@ -86,15 +97,14 @@ export const TOKEN_GROUPS: TokenGroup[] = [
     note: 'Nine steps. 14/16/17px are still in circulation and not yet on the scale — see the Type scale ruling below.',
     tokens: [
       { name: '--text-3xs', note: 'Sort marks, chart ticks' },
-      { name: '--text-2xs', note: 'Table headers' },
-      { name: '--text-xs', note: 'Micro-label' },
+      { name: '--text-2xs', note: 'Fine print' },
+      { name: '--text-xs', note: 'Captions, column heads' },
       { name: '--text-sm', note: 'Secondary, meta' },
       { name: '--text-base', note: 'Data rows, dense body' },
       { name: '--text-body', note: 'Page body, h3' },
       { name: '--text-lg', note: 'h2' },
       { name: '--text-xl', note: 'Wordmark' },
-      { name: '--text-2xl', note: 'KPI value' },
-      { name: '--tracking-micro', note: 'Uppercase micro-label tracking' }
+      { name: '--text-2xl', note: 'KPI value' }
     ]
   },
   {

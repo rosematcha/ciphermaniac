@@ -47,10 +47,10 @@ import {
 import { getSynonymDatabase } from '../utils/cardSynonyms';
 import { buildCanonicalCardId, buildCardId } from '../../shared/deckCardId';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
-import { Segmented } from './Segmented';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { EmptyState } from './EmptyState';
-import { Skeleton } from './Skeleton';
-import { InfoTip } from './InfoTip';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { InfoTip } from '@ciphermaniac/design/components/InfoTip';
 import { buildArchetypeIndexByKey, OpponentCell, resolveOpponentMeta } from './OpponentCell';
 import '../styles/pages/archetype.css';
 import { differenceInterval, matchPointWilson } from '../lib/confidence';

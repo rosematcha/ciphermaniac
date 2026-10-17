@@ -190,7 +190,7 @@
    empty box to anyone reading rather than tabbing. Same tokens as the real rule
    in global.css. */
 .stg-focus-demo {
-  outline: var(--focus-width) solid var(--accent);
+  outline: var(--focus-width) solid var(--focus-color);
   outline-offset: var(--focus-offset);
 }
 
@@ -248,11 +248,9 @@
 /* Status is a word, not a colour block — an undecided entry needs to be
    findable in a long list without inventing a new badge treatment. */
 .stg-ruling-status {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: var(--tracking-micro);
-  text-transform: uppercase;
-  color: var(--muted);
+  color: var(--fg);
   white-space: nowrap;
 }
 .stg-ruling-open .stg-ruling-status {

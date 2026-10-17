@@ -13,7 +13,7 @@ import { describeVideoOutput, estimateGifBytes, exportGif, exportVideo, gifFrame
 import { WALL_ROSTER } from '../lib/cardWall/roster';
 import { downloadBlob } from '../lib/download';
 import { createPersistentSignal } from '../lib/persistentSignal';
-import { Segmented } from '../components/Segmented';
+import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import '../styles/pages/card-wall.css';
 
 type AspectKey = '16:9' | '1:1' | '9:16';
