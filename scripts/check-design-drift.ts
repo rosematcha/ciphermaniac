@@ -46,8 +46,8 @@ const DISPLAY_SIZES = new Set([19, 20, 26, 28, 32, 40]);
 
 /** Literal px values that have a radius token and should use it. */
 const RADIUS_TOKENS: Record<string, string> = {
-  '3px': '--radius-sm',
-  '5px': '--radius-md',
+  '6px': '--radius-sm',
+  '10px': '--radius-md',
   '14px': '--radius-lg',
   '999px': '--radius-pill'
 };
@@ -126,12 +126,13 @@ const CHECKS: Check[] = [
     ];
   },
 
-  // Ruling: "No shadow". Depth is drawn with an edge and a fill, never cast.
-  // The focus ring, hairlines and state rings are box-shadows by mechanism, not
-  // elevation, and keep their own checks.
+  // Ruling: "Floating layers". Depth in the page is drawn with an edge and a
+  // fill, never cast; a menu, popover, sheet or dialog casts the one
+  // --shadow-float. The focus ring, hairlines and state rings are box-shadows
+  // by mechanism, not elevation, and keep their own checks.
   rule => {
     const value = decl(rule.body, 'box-shadow');
-    if (!value || value === 'none' || value.includes('var(--focus-ring')) {
+    if (!value || value === 'none' || value.includes('var(--focus-ring') || value === 'var(--shadow-float)') {
       return [];
     }
     if (/^\s*inset\b/.test(value) || value.includes('0 0 0')) {
@@ -141,7 +142,7 @@ const CHECKS: Check[] = [
       return [
         {
           rule: 'offset-shadow',
-          message: `flat offset shadow "${value}" — the system casts no shadows; use the border and a surface tier`
+          message: `flat offset shadow "${value}" — only a floating layer casts a shadow, and it is var(--shadow-float)`
         }
       ];
     }
@@ -149,7 +150,12 @@ const CHECKS: Check[] = [
     const lengths = value.split(/\s+/).filter(part => /^-?\d*\.?\d+(px|rem|em)?$/.test(part));
     const blur = lengths[2];
     if (blur !== undefined && Number.parseFloat(blur) !== 0) {
-      return [{ rule: 'no-blur-shadow', message: `blurred shadow "${value}" — the system draws no shadows` }];
+      return [
+        {
+          rule: 'no-blur-shadow',
+          message: `blurred shadow "${value}" — only a floating layer casts a shadow, and it is var(--shadow-float)`
+        }
+      ];
     }
     return [];
   },
@@ -180,22 +186,15 @@ const CHECKS: Check[] = [
     return found;
   },
 
-  // Ruling: "Micro-label". One uppercase recipe, tracked by --tracking-micro.
-  // The literal is still accepted in the two canvas-export sheets, whose type
-  // is drawn into downloadable images rather than rendered as site chrome.
+  // Ruling: "No caps". Labels, captions and column heads are set in sentence
+  // case and take their rank from weight and size. The canvas-export sheets
+  // are exempt, as for every ruling.
   rule => {
     if (decl(rule.body, 'text-transform') !== 'uppercase') {
       return [];
     }
-    const tracking = decl(rule.body, 'letter-spacing');
-    if (!tracking || tracking === 'var(--tracking-micro)' || tracking === '0.08em') {
-      return [];
-    }
     return [
-      {
-        rule: 'micro-label',
-        message: `uppercase label at ${tracking} — the house recipe is .label-micro at var(--tracking-micro)`
-      }
+      { rule: 'no-caps', message: 'text-transform: uppercase — set the label in sentence case; weight carries rank' }
     ];
   },
 
