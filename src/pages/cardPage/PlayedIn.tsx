@@ -66,9 +66,9 @@ export function PlayedIn(props: PlayedInProps) {
   return (
     <div class='card-section'>
       <div class='pi-head'>
-        <h3>
+        <h2>
           Played in <span class='count'>{groups().length}</span>
-        </h3>
+        </h2>
         <Show when={props.lists}>
           <Segmented options={FINISH_OPTIONS} selected={finish()} onSelect={setFinish} ariaLabel='Finish' />
         </Show>

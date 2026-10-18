@@ -186,6 +186,7 @@ function TierFields(props: {
           ref={field}
           type='text'
           class='search'
+          aria-label='Name'
           maxLength={24}
           spellcheck={false}
           onInput={e => props.onChange({ name: e.currentTarget.value })}
@@ -264,6 +265,7 @@ function ArchetypeFields(props: {
         <input
           type='text'
           class='search'
+          aria-label='Name'
           placeholder='Archetype name'
           spellcheck={false}
           value={name()}

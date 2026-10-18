@@ -187,6 +187,10 @@
 .set-impact-table .data tr.is-selected td {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
+/* The marigold tint takes the muted grey under 4.5:1 in dark mode. */
+.set-impact-table .data tr.is-selected .set-impact-code {
+  color: var(--fg);
+}
 
 /* The name is the row's button; it reads as plain text. */
 .set-impact-pick {

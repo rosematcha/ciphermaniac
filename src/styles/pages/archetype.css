@@ -16,7 +16,7 @@
 }
 /* A thin-sample win rate is shown, but not with the weight of a solid one. */
 .arche-band .stat-band-item.is-muted dd {
-  opacity: 0.55;
+  color: var(--muted);
 }
 .arche-delta.is-up {
   color: var(--positive);
@@ -109,7 +109,7 @@
 
 /* Muted win-rate cell (20–50 games) / game count in the list view. */
 .wr-cell.is-muted {
-  opacity: 0.55;
+  color: var(--muted);
 }
 .wr-cell {
   min-width: 118px;

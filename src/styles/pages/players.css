@@ -58,7 +58,6 @@
    muted-cell weight keeps the columns reading as sparse marks. */
 .players-nil {
   color: var(--muted);
-  opacity: 0.5;
 }
 .players-table .data th,
 .players-table .data td {

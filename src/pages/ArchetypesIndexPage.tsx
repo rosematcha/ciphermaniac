@@ -89,6 +89,7 @@ export function ArchetypesIndexPage() {
 
   return (
     <>
+      <h1 class='sr-only'>Archetypes</h1>
       <Section>
         <div class='filter-bar'>
           <div class='filter-row'>

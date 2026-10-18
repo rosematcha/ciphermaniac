@@ -33,11 +33,11 @@ export function EventList(props: EventListProps) {
       <For each={props.days}>
         {day => (
           <section class='el-day' classList={{ weekend: isWeekend(day.date) }} aria-labelledby={`el-day-${day.date}`}>
-            <h3 class='el-day-head' id={`el-day-${day.date}`}>
+            <h2 class='el-day-head' id={`el-day-${day.date}`}>
               <span>{dayHeading(day.date)}</span>
               <span class='el-when'>{relativeDay(props.today, day.date)}</span>
               <span class='el-n'>{day.events.length}</span>
-            </h3>
+            </h2>
             <ul class='el-list'>
               <For each={day.events}>
                 {event => (

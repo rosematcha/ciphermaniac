@@ -360,7 +360,7 @@ body:not(.tl-labels) .tl-ico {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
-.tl-tray h4 {
+.tl-tray h2 {
   margin: 0;
   padding: 7px 12px;
   font-size: 13px;
@@ -846,7 +846,7 @@ body:not(.tl-labels) .tl-ico {
   }
   /* Clear of the handle: the heading runs full width, so a grip sitting in the
      middle of it lands on "+ Add archetype". */
-  .tl-tray h4 {
+  .tl-tray h2 {
     padding-top: 20px;
   }
   /* The board is scrolled into view when a tile is picked up, and the topnav is
@@ -932,7 +932,7 @@ body:not(.tl-labels) .tl-ico {
   /* A 19px line of text is a target a thumb misses. The padding is cancelled
      by matching negative margins, so the hit area grows to 39px without the
      heading growing with it. */
-  .tl-tray h4 .tl-mini {
+  .tl-tray h2 .tl-mini {
     padding: 10px 4px;
     margin-block: -10px;
   }

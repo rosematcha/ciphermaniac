@@ -204,7 +204,9 @@ export function EarningsPage() {
                 <thead>
                   <tr>
                     <th class='earnings-rank'>#</th>
-                    <th class='num expand-col' aria-label='Expand' />
+                    <th class='num expand-col'>
+                      <span class='sr-only'>Expand</span>
+                    </th>
                     <th class='earnings-name'>Player</th>
                     <th class='earnings-country'>Country</th>
                     <th class='num earnings-amount'>{amountHeader()}</th>
@@ -407,7 +409,9 @@ function TableSkeleton() {
         <thead>
           <tr>
             <th class='earnings-rank'>#</th>
-            <th class='num expand-col' aria-label='Expand' />
+            <th class='num expand-col'>
+              <span class='sr-only'>Expand</span>
+            </th>
             <th class='earnings-name'>Player</th>
             <th class='earnings-country'>Country</th>
             <th class='num earnings-amount'>Career</th>

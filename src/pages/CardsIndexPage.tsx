@@ -795,3 +795,13 @@ function ViewSkeleton(props: { mode: ViewMode }) {
     </Show>
   );
 }
+
+/** The /cards route: the index under the page's level-one heading. */
+export function CardsIndexRoute() {
+  return (
+    <>
+      <h1 class='sr-only'>Cards</h1>
+      <CardsIndexPage />
+    </>
+  );
+}

@@ -533,7 +533,7 @@ function CardPageBody(props: {
         <div class='card-page-right'>
           <Show when={props.card.dist && props.card.dist.length > 0}>
             <div class='card-section'>
-              <h3>Copies per deck</h3>
+              <h2>Copies per deck</h2>
               <div class='dist-block'>
                 <For each={props.card.dist}>
                   {d => (
@@ -557,7 +557,7 @@ function CardPageBody(props: {
               when={props.archetypeUsage && props.archetypeUsage.length > 0}
               fallback={
                 <div class='card-section'>
-                  <h3>Played in</h3>
+                  <h2>Played in</h2>
                   <EmptyState
                     title='Not seen in any tracked archetype.'
                     description="This card appears in the master report but isn't currently associated with an archetype's deck list."
@@ -660,9 +660,9 @@ function PrintingsStrip(props: {
 
   return (
     <div class='card-section printings-strip'>
-      <h3>
+      <h2>
         Printings <span class='count'>{props.prints.length}</span>
-      </h3>
+      </h2>
       <div class='ps-frames' onMouseLeave={() => setHovered(null)}>
         <For each={props.prints}>
           {p => (

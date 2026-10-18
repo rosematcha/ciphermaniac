@@ -53,7 +53,7 @@ function page<K extends string>(load: () => Promise<Record<K, Component>>, name:
   return lazy(() => load().then(m => ({ default: m[name] })));
 }
 
-const CardsIndexPage = page(() => import('./pages/CardsIndexPage'), 'CardsIndexPage');
+const CardsIndexPage = page(() => import('./pages/CardsIndexPage'), 'CardsIndexRoute');
 const CardPage = page(() => import('./pages/CardPage'), 'CardPage');
 const ArchetypesIndexPage = page(() => import('./pages/ArchetypesIndexPage'), 'ArchetypesIndexPage');
 const ArchetypePage = page(() => import('./pages/ArchetypePage'), 'ArchetypePage');
