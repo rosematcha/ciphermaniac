@@ -118,6 +118,7 @@ export function TrendsPage() {
 
   return (
     <>
+      <h1 class='sr-only'>Trends</h1>
       <Show when={source() === 'online'} fallback={<MajorsView state={state} />}>
         <OnlineView state={state} />
       </Show>

@@ -6,5 +6,5 @@
 
 /* ---------- Low-confidence / small-sample stat muting ---------- */
 .stat-dim {
-  opacity: 0.45;
+  color: var(--muted);
 }

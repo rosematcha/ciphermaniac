@@ -1252,7 +1252,7 @@ test('on a phone a tap picks a tile up and a tap on a tier places it @mobile', a
   const tile = page.locator('.tl-tray .tl-item').first();
   await expect(tile).toBeVisible();
   const name = await tile.locator('.cap').textContent();
-  const unranked = page.locator('.tl-tray h4 span').first();
+  const unranked = page.locator('.tl-tray h2 span').first();
   const before = Number(await unranked.textContent());
 
   await tile.tap();
@@ -1279,7 +1279,7 @@ test('on a phone quick rank empties the pile one archetype at a time @mobile', a
   test.skip(testInfo.project.name !== 'mobile', 'the phone layout, on the phone project');
   await gotoClean(page, '/tools/tier-list');
   await expect(page.locator('.tl-tray .tl-item').first()).toBeVisible();
-  const unranked = page.locator('.tl-tray h4 span').first();
+  const unranked = page.locator('.tl-tray h2 span').first();
   const before = Number(await unranked.textContent());
 
   await page.locator('.tl-rank').tap();

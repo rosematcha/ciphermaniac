@@ -34,11 +34,13 @@ function Banner(props: { event: LiveEvent }) {
   return (
     <Show when={!location.pathname.startsWith('/live/') && latestValue(index)}>
       {current => (
-        <A class='live-banner' href={`/live/${props.event.slug}`}>
-          <span class='live-banner-mark'>Live</span>
-          <span class='live-banner-name'>{props.event.name}</span>
-          <span class='live-banner-meta'>{liveStatus(current())}</span>
-        </A>
+        <aside aria-label={props.event.name}>
+          <A class='live-banner' href={`/live/${props.event.slug}`}>
+            <span class='live-banner-mark'>Live</span>
+            <span class='live-banner-name'>{props.event.name}</span>
+            <span class='live-banner-meta'>{liveStatus(current())}</span>
+          </A>
+        </aside>
       )}
     </Show>
   );

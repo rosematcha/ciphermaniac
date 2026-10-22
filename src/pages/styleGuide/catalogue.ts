@@ -43,7 +43,7 @@ export const TOKEN_GROUPS: TokenGroup[] = [
     kind: 'color',
     tokens: [
       { name: '--fg', note: 'Body text' },
-      { name: '--muted', note: 'Secondary text, labels' },
+      { name: '--muted', note: 'Secondary text, captions' },
       { name: '--border', note: 'Structural 1px border' },
       { name: '--rule', note: 'Hairline rule' }
     ]
@@ -51,25 +51,26 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   {
     title: 'Accent',
     kind: 'color',
-    note: 'Marigold, held to roughly 10% of any screen. Two values: --accent fills, draws borders and marks state; --accent-ink is the same hue for anything set as words, dark enough to clear 4.5:1 on every light surface. In dark mode they are the same colour.',
+    note: 'Marigold, held to roughly a tenth of any screen. --accent fills, edges and marks state; --accent-ink is the same hue walked down to 4.5:1 for anything set as words; --accent-fill is the bright marigold under text. In dark mode accent and ink are the same colour.',
     tokens: [
-      { name: '--accent', note: 'Fills, borders, bars, active state' },
+      { name: '--accent', note: 'Fills, edges, bars, active state' },
       { name: '--accent-hover' },
-      { name: '--accent-ink', note: 'Any accent used as text' },
+      { name: '--accent-ink', note: 'Any accent set as words' },
       { name: '--accent-ink-hover' },
+      { name: '--accent-fill', note: 'Under text: the primary button, a pressed chip' },
       { name: '--accent-fg', note: 'Text on an accent fill' }
     ]
   },
   {
     title: 'Sentiment',
     kind: 'color',
-    note: 'Never the only carrier of meaning — pair with a glyph or a number.',
+    note: 'Apple hues held to 4.5:1 on every ground in both modes. Never the only carrier of meaning — pair with a glyph or a number. A warning is dark amber text, never yellow words.',
     tokens: [{ name: '--positive' }, { name: '--negative' }, { name: '--warning' }]
   },
   {
     title: 'Chart series',
     kind: 'color',
-    note: 'Deliberately decoupled from the accent so a series colour never reads as an active state.',
+    note: 'Apple system colours at full strength, decoupled from the accent so a series never reads as an active state. Lines draw at 2.5px and the legend singles a series out, because the light-mode green, orange and teal sit under 3:1 on white.',
     tokens: [
       { name: '--chart-1' },
       { name: '--chart-2' },
@@ -86,7 +87,7 @@ export const TOKEN_GROUPS: TokenGroup[] = [
     kind: 'shape',
     tokens: [
       { name: '--radius-sm', note: 'Controls: buttons, fields, chips, badges' },
-      { name: '--radius-md', note: 'Panels, tables, sheets' },
+      { name: '--radius-md', note: 'Panels, tables, menus, sheets' },
       { name: '--radius-lg', note: 'Printed card art only' },
       { name: '--radius-pill', note: 'Removable tokens only' }
     ]
@@ -94,14 +95,14 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   {
     title: 'Type scale',
     kind: 'value',
-    note: 'Nine steps. 14/16/17px are still in circulation and not yet on the scale — see the Type scale ruling below.',
+    note: 'Dense: data at 13px, captions and column heads at 11px, prose at 15px. Inputs rise to 16px on phones.',
     tokens: [
       { name: '--text-3xs', note: 'Sort marks, chart ticks' },
       { name: '--text-2xs', note: 'Fine print' },
       { name: '--text-xs', note: 'Captions, column heads' },
       { name: '--text-sm', note: 'Secondary, meta' },
       { name: '--text-base', note: 'Data rows, dense body' },
-      { name: '--text-body', note: 'Page body, h3' },
+      { name: '--text-body', note: 'Prose, h3' },
       { name: '--text-lg', note: 'h2' },
       { name: '--text-xl', note: 'Wordmark' },
       { name: '--text-2xl', note: 'KPI value' }
@@ -123,21 +124,27 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   {
     title: 'Motion',
     kind: 'motion',
-    note: 'Three durations, two curves, no bounce. Never animate a layout property.',
+    note: 'Quick fades: three durations, two curves, no bounce, nothing moves position. Reduced motion turns it all off.',
     tokens: [
-      { name: '--ms-fast', note: 'Colour, opacity' },
-      { name: '--ms-base', note: 'Elevation, transform' },
-      { name: '--ms-slow', note: 'Entering panels, sheets' },
+      { name: '--ms-fast', note: 'Colour, opacity, menus' },
+      { name: '--ms-base', note: 'Theme change, transform' },
+      { name: '--ms-slow', note: 'Entering sheets' },
       { name: '--ease-base' },
       { name: '--ease-spring', note: 'Settle without overshoot' },
       { name: '--press-scale' }
     ]
   },
   {
+    title: 'Elevation',
+    kind: 'value',
+    note: 'One shadow, for floating layers only: menus, popovers, sheets, dialogs, the card preview. Nothing in the page flow casts one.',
+    tokens: [{ name: '--shadow-float' }]
+  },
+  {
     title: 'Focus',
     kind: 'value',
-    note: 'Outline is the default. The inset ring is only for bordered fields, which turn the outline off so the accent border and the halo read as one control.',
-    tokens: [{ name: '--focus-width' }, { name: '--focus-offset' }, { name: '--focus-ring' }]
+    note: 'A 2px outline in the text colour with a 2px gap, so it shows on every surface and around a marigold button. Bordered fields draw an ink border and a 1px ring instead.',
+    tokens: [{ name: '--focus-color' }, { name: '--focus-width' }, { name: '--focus-offset' }, { name: '--focus-ring' }]
   },
   {
     title: 'Density',
@@ -150,109 +157,69 @@ export const TOKEN_GROUPS: TokenGroup[] = [
   }
 ];
 
-export type RulingStatus = 'settled' | 'open';
-
 export interface Ruling {
-  /** Short name of the thing that drifted. */
+  /** The element or concern the ruling covers. */
   element: string;
-  /** What the codebase does today. */
-  found: string;
-  /** The one correct form going forward. */
+  /** The one correct form. */
   ruling: string;
-  /** `open` means the call is still Reese's to make. */
-  status: RulingStatus;
-  /** Representative places to change, as file:line. Not exhaustive. */
-  sites: string[];
 }
 
+/** The design language as agreed on 2026-10-17, shared with events.ciphermaniac.com. */
 export const RULINGS: Ruling[] = [
   {
-    element: 'Eyebrow line',
-    found:
-      'The home page latest-event callout opens with .callout-eyebrow — a 10.5px all-caps label sitting above its heading, tracked at 0.14em. The house rules forbid eyebrow lines, and it is now the only uppercase label off the --tracking-micro recipe.',
+    element: 'One system, two sites',
     ruling:
-      'Unresolved. The rule says remove it; the callout may need something in that slot to say what it is. Decide before the callout is touched again.',
-    status: 'open',
-    sites: ['components.css:1456', 'HomePage.tsx:516']
+      'Tokens, base styles, primitives and the shared components come from @ciphermaniac/design, pinned by tag. Anything both sites draw belongs there; a site keeps only its own structure and pages.'
   },
   {
-    element: 'Blurred shadow',
-    found:
-      'The fanned archetype thumbnail draws a soft blurred shadow under each card. It is now the only box-shadow left in the codebase outside the focus ring.',
+    element: 'Capitals',
     ruling:
-      'Unresolved. It reads as physical depth on a fan of real cards, which is arguably the point — but the system otherwise draws no shadows at all.',
-    status: 'open',
-    sites: ['components.css:683 (.card-stack-slot)']
+      'None. Labels, captions and column heads are set in sentence case and take their rank from weight and size. The drift check fails any uppercase transform.'
   },
   {
-    element: 'Type scale',
-    found:
-      'Fifteen sizes were in circulation, including 10/10.5, 11/11.5 and 12/12.5/13.5 half-steps that were eyeballed rather than chosen. Thirty-six declarations have been collapsed onto a nine-step scale; 14px (8 uses), 16px (4) and 17px (2) are still off it.',
+    element: 'Grouping',
     ruling:
-      'Nine steps, named in tokens.css. Whether 14/16/17 collapse into 13/15/18 is still open — unlike the half-steps, moving a full pixel on real body copy is visible, so it is a call to make rather than a cleanup to run.',
-    status: 'open',
-    sites: ['components.css (14px, 16px, 17px)', 'pages/survey.css:32', 'pages/in-loving-memory.css']
+      'A drawn 1px edge for data and controls, the stat strip included; prose and summaries sit open between rules. An edged box never sits inside another.'
   },
   {
-    element: 'Chip shape',
-    found:
-      'Two shape languages running side by side: square chips at --radius-sm (.chip, .au-chip, .badge, .callout-format-pill) and full pills (.mini-chip, .rf-chip, .fb-suggest-chip, .mu-lens-chip). Every literal is now a token, so the split is visible rather than buried in px.',
-    ruling:
-      'Square, at --radius-sm. STAMP is a hard-edged print system and a pill fights it. --radius-pill is reserved for a removable token — one that carries its own dismiss control, like .mu-lens-chip.',
-    status: 'settled',
-    sites: ['cards.css (.mini-chip)', 'components.css (.rf-chip, .fb-suggest-chip)']
+    element: 'Shape',
+    ruling: '6px for controls, 10px for panels, 14px for printed card art and nothing else.'
   },
   {
-    element: 'Button',
-    found:
-      'One canonical .btn with three variants and a shared disabled state, plus four parallel bordered controls that still re-derive the same chrome. .sg-btn is a line-for-line reimplementation of .btn-secondary and .btn-primary.',
-    ruling:
-      '.btn plus a variant is the only button. A page class may position or size a button; it may not restate its chrome.',
-    status: 'settled',
-    sites: [
-      'social-graphics.css (.sg-btn)',
-      'components.css (.fb-bar-btn)',
-      'cards.css (.filters-btn)',
-      'trends.css (.trend-add)',
-      'in-loving-memory.css (.ilm-back)'
-    ]
+    element: 'Shadow',
+    ruling: 'One, --shadow-float, on floating layers only.'
   },
   {
-    element: 'Progress bar',
-    found:
-      'Six implementations, at 4 / 8 / 8 / 9 / 12 / 12px tall with four different radii. Only one carries a border.',
+    element: 'Buttons',
     ruling:
-      '8px tall, --surface-2 track, --accent fill, --radius-sm, no border. The matchup deviation gauge is a different component and keeps its rule border and centre baseline.',
-    status: 'settled',
-    sites: [
-      'components.css (.fb-bar-track, 4px)',
-      'cards.css (.au-dist-bar, 9px)',
-      'survey.css (.results .bar-track, 12px, pill, bordered)'
-    ]
+      'Three tiers: filled marigold for the one action that matters, bordered as the default, plain for low-stakes and row actions. Row actions stay quieter than the data they act on.'
   },
   {
-    element: 'Field chrome',
-    found: 'Radius is now uniform, but .search still sits on --radius-md where every other field uses --radius-sm.',
-    ruling:
-      'A field on the page background uses --surface; a field inset inside a panel uses --bg, so it reads as a well rather than a second panel. --radius-sm either way.',
-    status: 'settled',
-    sites: ['components.css (.search)', 'in-loving-memory.css (.ilm-sort select — --bg, but not inside a panel)']
+    element: 'Tables',
+    ruling: 'Zebra rows with a hover tint and a header band, no hairlines between rows, sticky heads under the bar.'
   },
   {
-    element: 'Page heading',
-    found:
-      'Fourteen pages open with .hero and an h1. Six of the busiest routes — cards, archetypes, players, trends, home, survey results — have no h1 at all and open straight into a section.',
+    element: 'Tabs and switches',
+    ruling: 'Tabs for sections, underlined in ink; the segmented control, a radio group, for view modes.'
+  },
+  {
+    element: 'Forms',
     ruling:
-      'Every route opens with .hero: an h1 naming the page, then one .hero-meta line. This is the page title for assistive tech, not decoration. Needs copy for six titles before it can be applied.',
-    status: 'settled',
-    sites: [
-      'CardsIndexPage.tsx',
-      'ArchetypesIndexPage.tsx',
-      'PlayersPage.tsx',
-      'TrendsPage.tsx',
-      'HomePage.tsx',
-      'SurveyResultsPage.tsx'
-    ]
+      'Labels beside fields on desktop and above them on phones, each field as wide as its answer, the error under the field.'
+  },
+  {
+    element: 'Errors and loading',
+    ruling:
+      'Not-found and failure pages use the error state: a large pale code, a heading, one line, the ways on, no box. Loading reserves the real size with a still skeleton.'
+  },
+  {
+    element: 'Icons',
+    ruling: 'The package Icon set only: a 24px grid, 1.5px stroke, round caps, drawn at 16 or 20px.'
+  },
+  {
+    element: 'Access',
+    ruling:
+      'Every text colour clears 4.5:1 in both modes, links in running text are underlined, phone inputs are 16px and taps 44px, and every page opens with one level-one heading.'
   }
 ];
 
@@ -271,11 +238,11 @@ export const EXCEPTIONS: { what: string; why: string }[] = [
     why: 'It buys legibility for the histogram and usage figure printed over card art. A flat fill would hide the art.'
   },
   {
-    what: 'The skeleton shimmer is a gradient',
-    why: 'It is the animation, not a fill.'
+    what: 'The fanned archetype thumbnail casts a shadow in the page',
+    why: 'It reads as physical depth on a fan of real cards, which is the point of the fan.'
   },
   {
-    what: 'Table headers are 10.5px, not the 11px micro-label',
-    why: 'Data tables run denser than the rest of the system and the half pixel buys a column.'
+    what: 'The error page code is pale',
+    why: 'It is decoration, drawn by CSS and hidden from assistive tech; the heading under it carries the message.'
   }
 ];

@@ -17,7 +17,7 @@ export const EmptyState: ParentComponent<EmptyStateProps> = props => {
       <div class='empty-state-mark' aria-hidden='true'>
         {props.mark ?? <DefaultMark />}
       </div>
-      <h4>{props.title}</h4>
+      <h2>{props.title}</h2>
       {props.description ? <p>{props.description}</p> : null}
       {props.actions ? <div class='empty-state-actions'>{props.actions}</div> : null}
     </div>

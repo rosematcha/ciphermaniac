@@ -2,6 +2,7 @@ import { createSignal, For, type JSX, Match, onCleanup, onMount, type ParentComp
 import { Badge } from '../components/Badge';
 import { ChipGroup, SearchInput } from '../components/Chip';
 import { EmptyState } from '../components/EmptyState';
+import { Icon, ICON_NAMES } from '@ciphermaniac/design/components/Icon';
 import { InfoTip } from '@ciphermaniac/design/components/InfoTip';
 import { Pagination } from '../components/Pagination';
 import { Section } from '../components/Section';
@@ -13,7 +14,8 @@ import { EXCEPTIONS, RULINGS, TOKEN_GROUPS, type TokenGroup, type TokenKind } fr
 import '../styles/pages/style-guide.css';
 
 /**
- * /style — the living style guide.
+ * /style — the living style guide for the design language ciphermaniac.com
+ * shares with events.ciphermaniac.com through @ciphermaniac/design.
  *
  * Deliberately unlinked from the top nav and the tools index: it is a reference
  * for whoever is building, not a destination. It ships anyway (rather than
@@ -106,8 +108,8 @@ function TokenTable(props: { group: TokenGroup; values: Record<string, string> }
 
 /**
  * One specimen: the live thing, then its selector and a one-line rule beneath.
- * The caption sits under the sample rather than over it — a small all-caps line
- * above a heading is an eyebrow, and the house rules forbid those.
+ * The caption sits under the sample rather than over it — a small label above
+ * a heading is an eyebrow, and the house rules forbid those.
  */
 const Spec: ParentComponent<{ selector: string; rule?: string; wide?: boolean }> = props => {
   return (
@@ -142,7 +144,7 @@ function ShapeSpecimens(props: { values: Record<string, string> }) {
 function TypeSpecimens() {
   return (
     <div class='stg-grid'>
-      <Spec selector='h1' rule='Page title. One per route, inside .hero.' wide>
+      <Spec selector='h1' rule='Page title. One per route, visible or not.' wide>
         <h1>Charizard ex</h1>
       </Spec>
       <Spec selector='h2' rule='Section title. Always via <Section title>.' wide>
@@ -151,8 +153,8 @@ function TypeSpecimens() {
       <Spec selector='h3' rule='Sub-head inside a panel.' wide>
         <h3>Copies played</h3>
       </Spec>
-      <Spec selector='body' rule='15px base, 1.5. Data rows drop to 13px.' wide>
-        <p>Inter, self-hosted at 400 through 800. System sans is the only fallback.</p>
+      <Spec selector='body' rule='Prose at 15px, 1.5. Data at 13px, captions and column heads at 11px.' wide>
+        <p>Inter, self-hosted. Sentence case everywhere: weight and size carry rank, never capitals.</p>
       </Spec>
       <Spec selector='.label-micro' rule='11px / 600, sentence case.' wide>
         <span class='label-micro'>Inclusion rate</span>
@@ -181,7 +183,7 @@ function ButtonSpecimens() {
           Copy
         </button>
       </Spec>
-      <Spec selector='.btn.btn-ghost' rule='Borderless, for a tertiary action beside another button.'>
+      <Spec selector='.btn.btn-ghost' rule='Plain: borderless, for low-stakes and row actions.'>
         <button type='button' class='btn btn-ghost'>
           Reset
         </button>
@@ -193,7 +195,7 @@ function ButtonSpecimens() {
       </Spec>
       <Spec
         selector=':focus-visible'
-        rule='2px accent outline at 2px offset, on every control. Drawn statically here; tab through this page to see the real thing.'
+        rule='2px outline in the text colour at 2px offset, on every control. Drawn statically here; tab through this page to see the real thing.'
       >
         <button type='button' class='btn btn-secondary stg-focus-demo'>
           Copy
@@ -241,11 +243,7 @@ function ChipSpecimens(props: {
           ariaLabel='View'
         />
       </Spec>
-      <Spec
-        selector='.search'
-        rule='A field on the page background: --surface. Shown at its current --radius-md; the ruling puts every field on --radius-sm.'
-        wide
-      >
+      <Spec selector='.search' rule='--field fill, --radius-sm, an ink border and ring on focus, 16px on phones.' wide>
         <SearchInput value={props.search} onInput={props.onSearch} placeholder='Search cards' />
       </Spec>
     </div>
@@ -283,7 +281,7 @@ function DataSpecimens() {
             <span class='num'>64%</span>
           </div>
         </Spec>
-        <Spec selector='.skeleton' rule='Reserve the real size. Never a spinner.'>
+        <Spec selector='.skeleton' rule='Still. Reserve the real size; never a spinner.'>
           <div class='stg-stack'>
             <Skeleton width='180px' height='16px' />
             <Skeleton width='120px' height='12px' />
@@ -324,10 +322,31 @@ function DataSpecimens() {
   );
 }
 
+function IconSpecimens() {
+  return (
+    <Spec
+      selector='<Icon>'
+      rule='24px grid, 1.5px stroke, round caps, at 16 or 20px in the text colour. Add a glyph to the set; never draw one inline.'
+      wide
+    >
+      <ul class='stg-icons'>
+        <For each={ICON_NAMES}>
+          {name => (
+            <li>
+              <Icon name={name} size={20} />
+              <code>{name}</code>
+            </li>
+          )}
+        </For>
+      </ul>
+    </Spec>
+  );
+}
+
 function SurfaceSpecimens() {
   return (
     <div class='stg-grid'>
-      <Spec selector='.stats-list' rule='Hairline-ruled rows, label left, value right.' wide>
+      <Spec selector='.stats-list' rule='Rows between rules, label left, value right.' wide>
         <div class='stats-list'>
           <div class='stat-row'>
             <span class='stat-label'>Decks</span>
@@ -345,7 +364,7 @@ function SurfaceSpecimens() {
           <InfoTip label='Sample note'>Mirror matches are excluded from this figure.</InfoTip>
         </span>
       </Spec>
-      <Spec selector='.empty-state' rule='Mark, heading, one line, actions. Heading ends in a full stop.' wide>
+      <Spec selector='.empty-state' rule='An empty list: mark, heading, one line, actions.' wide>
         <EmptyState
           title='No cards match.'
           description='Widen the filters, or clear them and start again.'
@@ -407,27 +426,14 @@ function AnatomySpecimens(props: {
   );
 }
 
-function Ledger() {
+function Rulings() {
   return (
-    <ul class='stg-ledger'>
+    <ul class='stg-exceptions'>
       <For each={RULINGS}>
         {item => (
-          <li class='stg-ruling' classList={{ 'stg-ruling-open': item.status === 'open' }}>
-            <div class='stg-ruling-head'>
-              <h3>{item.element}</h3>
-              <span class='stg-ruling-status'>{item.status === 'open' ? 'Undecided' : 'Settled'}</span>
-            </div>
-            <p class='stg-ruling-found'>{item.found}</p>
-            <p class='stg-ruling-verdict'>{item.ruling}</p>
-            <ul class='stg-ruling-sites'>
-              <For each={item.sites}>
-                {site => (
-                  <li>
-                    <code>{site}</code>
-                  </li>
-                )}
-              </For>
-            </ul>
+          <li>
+            <span class='stg-exception-what'>{item.element}</span>
+            <span class='stg-exception-why'>{item.ruling}</span>
           </li>
         )}
       </For>
@@ -452,9 +458,9 @@ export function StyleGuidePage(): JSX.Element {
       <section class='hero'>
         <h1>Style guide</h1>
         <div class='hero-meta'>
-          <span>STAMP, as the code actually implements it</span>
+          <span>The design language both sites share, from @ciphermaniac/design</span>
           <span class='dot'>·</span>
-          <span>Values read live — flip the mode in the nav and they follow</span>
+          <span>Values read live — flip the mode in the footer and they follow</span>
         </div>
       </section>
 
@@ -489,6 +495,10 @@ export function StyleGuidePage(): JSX.Element {
         <DataSpecimens />
       </Section>
 
+      <Section title='Icons'>
+        <IconSpecimens />
+      </Section>
+
       <Section title='Surfaces and states'>
         <SurfaceSpecimens />
       </Section>
@@ -497,13 +507,12 @@ export function StyleGuidePage(): JSX.Element {
         <AnatomySpecimens tab={tab()} onTab={setTab} page={page()} onPage={setPage} />
       </Section>
 
-      <Section title='Drift ledger' right={`${RULINGS.filter(r => r.status === 'open').length} undecided`}>
+      <Section title='Rulings'>
         <p class='stg-note stg-note-lead'>
-          Every place the codebase still does one thing two ways, and which way wins. The rulings that could be applied
-          mechanically already have been, and <code>npm run check:design</code> now fails the build on anything new that
-          breaks one. What is left needs a decision or a copy change.
+          The design language as agreed. <code>npm run check:design</code> fails the build on new capitals, page-flow
+          shadows and radius literals that have a token.
         </p>
-        <Ledger />
+        <Rulings />
       </Section>
 
       <Section title='Sanctioned exceptions'>

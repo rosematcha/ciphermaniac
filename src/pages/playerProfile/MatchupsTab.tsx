@@ -65,10 +65,10 @@ function MatchupsBody(props: { aggregates: CareerRoundAggregates }) {
         </dl>
       </Show>
 
-      <h3 class='profile-h3'>
+      <h2 class='profile-h3'>
         Decks faced
         <span class='muted-note'>{MATCHUP_MIN_GAMES}+ games</span>
-      </h3>
+      </h2>
       <Show
         when={shown().length > 0}
         fallback={<p class='profile-note'>No deck faced {MATCHUP_MIN_GAMES} times yet.</p>}
@@ -117,7 +117,7 @@ function MatchupsBody(props: { aggregates: CareerRoundAggregates }) {
         </p>
       </Show>
 
-      <h3 class='profile-h3'>Players faced more than once</h3>
+      <h2 class='profile-h3'>Players faced more than once</h2>
       <Show
         when={repeats().length > 0}
         fallback={<p class='profile-note'>No opponent has come up {REPEAT_MIN_MEETINGS} times yet.</p>}

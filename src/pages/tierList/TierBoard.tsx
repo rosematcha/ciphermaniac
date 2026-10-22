@@ -226,7 +226,7 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
           aria-label={expanded() ? 'Collapse unranked' : 'Expand unranked'}
           onClick={() => setExpanded(tall => !tall)}
         />
-        <h4>
+        <h2>
           Unranked <span>{props.tray.length}</span>
           <Show when={props.onAddArchetype}>
             {add => (
@@ -242,7 +242,7 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
               </button>
             )}
           </Show>
-        </h4>
+        </h2>
         {props.actions}
         <Zone items={props.tray} tier='tray' held={props.held} onEditItem={props.onEditItem} />
       </div>
@@ -257,7 +257,15 @@ function Zone(props: {
   onEditItem: (customId: number) => void;
 }): JSX.Element {
   return (
-    <div class='tl-zone' classList={{ empty: props.items.length === 0 }} data-tier={props.tier}>
+    <div
+      class='tl-zone'
+      classList={{ empty: props.items.length === 0 }}
+      data-tier={props.tier}
+      // The tray scrolls on its own, so a keyboard has to be able to reach it.
+      tabIndex={props.tier === 'tray' ? 0 : undefined}
+      role={props.tier === 'tray' ? 'group' : undefined}
+      aria-label={props.tier === 'tray' ? 'Unranked' : undefined}
+    >
       <For each={props.items}>
         {item => <Tile item={item} held={props.held === item.id} onEdit={props.onEditItem} />}
       </For>

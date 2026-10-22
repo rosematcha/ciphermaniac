@@ -29,7 +29,9 @@ export function HistoryTable(props: HistoryTableProps) {
       <table class='data'>
         <thead>
           <tr>
-            <th class='num expand-col' aria-label='Expand' />
+            <th class='num expand-col'>
+              <span class='sr-only'>Expand</span>
+            </th>
             <th>Event</th>
             <Show when={showDeck()}>
               <th class='history-deck'>Deck</th>
