@@ -4,13 +4,14 @@
  *
  * The port is fixed rather than ephemeral because `VITE_DATA_ORIGIN` is baked
  * into the bundle at build time — the app has to know the origin before the
- * server exists.
+ * server exists. `FIXTURE_CARD_IMAGES` names a directory of tier samples to
+ * serve as R2's card art; the e2e suite leaves it unset and routes art itself.
  */
 
 import { startFixtureServer } from './fixture-server.ts';
 
 const port = Number(process.env.FIXTURE_PORT ?? 4320);
-const server = await startFixtureServer(port);
+const server = await startFixtureServer(port, undefined, process.env.FIXTURE_CARD_IMAGES);
 console.log(`fixture server listening on ${server.origin}`);
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

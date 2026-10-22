@@ -30,7 +30,9 @@ async function waitForFixtures() {
 
 const fixtures = spawn(process.execPath, ['--import', 'tsx', 'tests/e2e/serve-fixtures.ts'], {
   stdio: 'inherit',
-  env: { ...process.env, FIXTURE_PORT: '4320' }
+  // Card art comes from fixture WebPs, as production serves it from R2, so the
+  // run never reaches production through vite's /thumbnails proxy.
+  env: { ...process.env, FIXTURE_PORT: '4320', FIXTURE_CARD_IMAGES: 'tests/fixtures/lighthouse/card-images' }
 });
 try {
   await waitForFixtures();

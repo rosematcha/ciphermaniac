@@ -9,13 +9,43 @@
  * @module tests/e2e/fixture-server
  */
 
-import { createServer, type Server } from 'node:http';
+import { createServer, type Server, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fixtureLegacyPath } from './release-fixture';
 
 const FIXTURE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/e2e');
+
+const CARD_IMAGE_PATH = /^\/card-images\/[^/]+\/[^/]+_(XS|SM|LG)\.webp$/;
+
+/**
+ * Answer R2's card-image prefix from one sample per tier, so a run takes the
+ * production WebP path instead of falling back to the /thumbnails proxy.
+ * @returns True when the request was a card-image request
+ */
+function serveCardImage(path: string, dir: string, res: ServerResponse, headers: Record<string, string>): boolean {
+  if (path === '/card-images/_ready') {
+    res.writeHead(200, headers);
+    res.end('ok');
+    return true;
+  }
+  const tier = CARD_IMAGE_PATH.exec(path)?.[1];
+  if (!tier) {
+    return false;
+  }
+  readFile(join(dir, `${tier}.webp`)).then(
+    body => {
+      res.writeHead(200, { ...headers, 'Content-Type': 'image/webp' });
+      res.end(body);
+    },
+    () => {
+      res.writeHead(404, headers);
+      res.end('not found');
+    }
+  );
+  return true;
+}
 
 export interface FixtureServer {
   origin: string;
@@ -28,9 +58,14 @@ export interface FixtureServer {
  * Start the fixture server.
  * @param port - Port to bind; 0 picks an ephemeral one
  * @param root - Fixture directory; defaults to tests/fixtures/e2e
+ * @param cardImages - Directory of XS/SM/LG.webp samples; omitted, card images 404 like an unready bucket
  * @returns The running server, its origin, and the request log
  */
-export async function startFixtureServer(port = 0, root: string = FIXTURE_ROOT): Promise<FixtureServer> {
+export async function startFixtureServer(
+  port = 0,
+  root: string = FIXTURE_ROOT,
+  cardImages?: string
+): Promise<FixtureServer> {
   const requests: string[] = [];
 
   const server: Server = createServer((req, res) => {
@@ -47,6 +82,10 @@ export async function startFixtureServer(port = 0, root: string = FIXTURE_ROOT):
     if (req.method === 'OPTIONS') {
       res.writeHead(204, headers);
       res.end();
+      return;
+    }
+
+    if (cardImages && serveCardImage(decoded, cardImages, res, headers)) {
       return;
     }
 
