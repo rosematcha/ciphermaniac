@@ -17,10 +17,11 @@ import {
   recordAttempt
 } from '../../.github/scripts/lib/build/deployment';
 import { createPagesReader, legacyManifest } from '../../.github/scripts/lib/build/pages';
-import { reconcileAndClear } from '../../.github/scripts/update-channel';
+import { LEGACY_CATALOG_KEY, reconcileAndClear } from '../../.github/scripts/update-channel';
 
 import { ATTEMPT_ABANDON_MS, CANDIDATE_GRACE_MS } from '../../.github/scripts/lib/build/deploymentLifecycle';
 const NOW = Date.parse('2026-09-12T00:00:02Z');
+const CATALOG_KEY = 'releases/v1/catalogs/aaaaaaaaaaaa/tournaments.json';
 
 const reconcileDeployment = (
   store: DeploymentStore,
@@ -44,12 +45,18 @@ function fixture() {
   const objects = new Map<string, string>();
   let version = 0;
   let failPointer = false;
-  const store: DeploymentStore & { delete(key: string): Promise<void> } = {
+  const store: DeploymentStore & {
+    delete(key: string): Promise<void>;
+    put(key: string, body: string): Promise<void>;
+  } = {
     async get(key) {
       return objects.get(key) ?? null;
     },
     async delete(key) {
       objects.delete(key);
+    },
+    async put(key, body) {
+      objects.set(key, body);
     },
     async putIfAbsent(key, body) {
       if (objects.has(key)) {
@@ -120,6 +127,7 @@ function fixture() {
 
 async function initialized() {
   const f = fixture();
+  f.objects.set(CATALOG_KEY, JSON.stringify(['2026-09-01, Event']));
   await persistCandidate(f.store, manifest('old'));
   await reconcileDeployment(f.store, f.pages);
   return f;
@@ -176,6 +184,28 @@ test('recovery after Pages success clears pending events the deployed release al
     cleared: 1
   });
   assert.equal(f.objects.has('pending-events.json'), false);
+});
+
+test('promotion mirrors the release catalog to the legacy tournaments.json path', async () => {
+  const f = await initialized();
+  f.objects.set(LEGACY_CATALOG_KEY, JSON.stringify(['stale']));
+  await reconcileAndClear(f.store, f.pages, undefined, { now: NOW, wait: async () => {} });
+  assert.equal(f.objects.get(LEGACY_CATALOG_KEY), f.objects.get(CATALOG_KEY));
+});
+
+test('a release without a catalog fails the mirror after promotion and event cleanup', async () => {
+  const f = await initialized();
+  const event = '2026-10-03, Event';
+  const pending = JSON.stringify({ events: { [event]: `/releases/v1/events/${event}/bbbbbbbbbbbb` } });
+  f.objects.set('pending-events.json', pending);
+  const candidate = { ...manifest('candidate'), events: { [event]: `/releases/v1/events/${event}/bbbbbbbbbbbb` } };
+  await recordAttempt(f.store, candidate, 'attempt-1', '2026-09-12T00:00:00Z');
+  f.deploy(candidate, 'attempt-1');
+  f.objects.delete(CATALOG_KEY);
+  await assert.rejects(reconcileAndClear(f.store, f.pages, undefined, { now: NOW, wait: async () => {} }), /catalog/);
+  assert.equal((JSON.parse(f.objects.get('current.json')!) as { releaseId: string }).releaseId, 'candidate');
+  assert.equal(f.objects.has('pending-events.json'), false);
+  assert.equal(f.objects.has(LEGACY_CATALOG_KEY), false);
 });
 
 test('recovery keeps pending events the deployed release does not serve yet', async () => {

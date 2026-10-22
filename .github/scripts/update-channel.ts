@@ -10,6 +10,27 @@ interface PendingEventStore {
   delete(key: string): Promise<void>;
 }
 
+interface LegacyCatalogStore {
+  get(key: string): Promise<string | null>;
+  put(key: string, body: string): Promise<void>;
+}
+
+/** Outside readers still fetch this mutable path; the site reads the release catalog. */
+export const LEGACY_CATALOG_KEY = 'reports/tournaments.json';
+
+/** Mirror the promoted release's tournament catalog to its pre-release path. */
+export async function mirrorLegacyCatalog(
+  store: LegacyCatalogStore,
+  manifest: { roots: { catalogs: string } }
+): Promise<void> {
+  const key = `${manifest.roots.catalogs.replace(/^\/+/, '')}/tournaments.json`;
+  const body = await store.get(key);
+  if (body === null) {
+    throw new Error(`Promoted release has no tournament catalog: ${key}`);
+  }
+  await store.put(LEGACY_CATALOG_KEY, body);
+}
+
 export async function clearPromotedEvents(
   store: PendingEventStore,
   manifest: { events?: Record<string, string> },
@@ -38,16 +59,19 @@ export async function clearPromotedEvents(
 /**
  * Promote whatever Pages serves, then drop pending events it already carries.
  * A run that deployed but died before cleanup leaves them behind, and a stale
- * pending root would override production's after a rollback.
+ * pending root would override production's after a rollback. The legacy
+ * catalog mirror runs last so a failed copy never blocks promotion.
  */
 export async function reconcileAndClear(
-  store: DeploymentStore & PendingEventStore,
+  store: DeploymentStore & PendingEventStore & LegacyCatalogStore,
   pages: PagesReader,
   expectedAttempt?: string,
   options?: Parameters<typeof reconcileDeployment>[3]
 ): Promise<{ releaseId: string; cleared: number }> {
   const manifest = await reconcileDeployment(store, pages, expectedAttempt, options);
-  return { releaseId: manifest.releaseId, cleared: await clearPromotedEvents(store, manifest, false) };
+  const cleared = await clearPromotedEvents(store, manifest, false);
+  await mirrorLegacyCatalog(store, manifest);
+  return { releaseId: manifest.releaseId, cleared };
 }
 
 async function main(): Promise<void> {

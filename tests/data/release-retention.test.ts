@@ -153,7 +153,7 @@ test('dry run reports garbage without touching any objects', async () => {
   const f = fixture();
   const plan = await pruneReleases(f.store, NOW);
   assert.equal(plan.totalBytes, 500);
-  assert.equal(plan.reclaimBytes, 1030);
+  assert.equal(plan.reclaimBytes, 980);
   assert.deepEqual(
     plan.generations.map(group => group.prefix),
     [EXPIRED, PENDING]
@@ -169,10 +169,15 @@ test('cleanup deletes old unreferenced generations and tournament databases whil
     `${PENDING}master.json`,
     'reports/event/tournament.db',
     'reports/2026-01-01, Event/master.json',
-    'reports/tournaments.json',
     'build/v1/releases/expired.json',
     'live/v1/old-event/r1.json'
   ]);
+});
+
+test('cleanup keeps the legacy tournaments.json mirror', async () => {
+  const f = fixture();
+  await pruneReleases(f.store, NOW, true);
+  assert.equal(f.removed.includes('reports/tournaments.json'), false);
 });
 
 test('shadow channels are obsolete and do not protect release roots', async () => {
@@ -180,14 +185,13 @@ test('shadow channels are obsolete and do not protect release roots', async () =
   f.bodies.set('channels/shadow.json', { releaseId: 'expired', manifest: '/build/v1/releases/expired.json' });
   f.objects.push({ key: 'channels/shadow.json', size: 10, modified: OLD });
   const plan = await pruneReleases(f.store, NOW, true);
-  assert.equal(plan.reclaimBytes, 1040);
+  assert.equal(plan.reclaimBytes, 990);
   assert.deepEqual(f.removed, [
     `${EXPIRED}master.json`,
     `${PENDING}master.json`,
     'channels/shadow.json',
     'reports/event/tournament.db',
     'reports/2026-01-01, Event/master.json',
-    'reports/tournaments.json',
     'build/v1/releases/expired.json',
     'live/v1/old-event/r1.json'
   ]);
@@ -199,12 +203,11 @@ test('pending production events remain protected until promotion', async () => {
     events: { '2026-01-01, Event': `/${PENDING.slice(0, -1)}` }
   });
   const plan = await pruneReleases(f.store, NOW, true);
-  assert.equal(plan.reclaimBytes, 930);
+  assert.equal(plan.reclaimBytes, 880);
   assert.deepEqual(f.removed, [
     `${EXPIRED}master.json`,
     'reports/event/tournament.db',
     'reports/2026-01-01, Event/master.json',
-    'reports/tournaments.json',
     'build/v1/releases/expired.json',
     'live/v1/old-event/r1.json'
   ]);

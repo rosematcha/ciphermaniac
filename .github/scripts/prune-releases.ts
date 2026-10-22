@@ -166,12 +166,7 @@ export async function protectPlayerReferences(store: Pick<Store, 'readOptional'>
 }
 
 function isLegacyMutableObject(key: string): boolean {
-  return (
-    /^reports\/\d{4}-\d{2}-\d{2},[^/]+\//.test(key) ||
-    key === 'reports/tournaments.json' ||
-    key.endsWith('/tournament.db') ||
-    staleCapturedReport(key)
-  );
+  return /^reports\/\d{4}-\d{2}-\d{2},[^/]+\//.test(key) || key.endsWith('/tournament.db') || staleCapturedReport(key);
 }
 
 function releaseIdForKey(key: string, prefix: string): string {
