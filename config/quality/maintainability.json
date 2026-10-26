@@ -254,8 +254,7 @@
   ],
   "src/pages/HomePage.tsx": [
     "complexity:b104f095892157eed023b5fa9d73312a5a4d87cc1877ecde786b576a2eb6c3ea:Arrow function has a complexity of 13. Maximum allowed is 12.",
-    "complexity:d60426ddfd918a06254bdbd7da0a3c60643ea1a4666cf06e9a197400da361cd8:Arrow function has a complexity of 23. Maximum allowed is 12.",
-    "max-lines-per-function:c9526bcbd8ea14c02aeb92370ae7a30582c317c729a21af69b5b44cdeb61366c:Function 'LatestEventCallout' has too many lines (313). Maximum allowed is 250."
+    "complexity:d60426ddfd918a06254bdbd7da0a3c60643ea1a4666cf06e9a197400da361cd8:Arrow function has a complexity of 23. Maximum allowed is 12."
   ],
   "src/pages/LabelMakerPage.tsx": [
     "max-lines-per-function:35e49a3f84436d04ac765971d9bf884be1f943fad7f1029708ec3dafd960dbdf:Function 'LabelMakerPage' has too many lines (553). Maximum allowed is 250."

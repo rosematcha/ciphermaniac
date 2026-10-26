@@ -7,8 +7,10 @@ import {
   fetchParticipants,
   fetchTournamentsList,
   fetchUpcomingTournaments,
+  getArchetypeIconMap,
   majorTournaments,
   prettyTournamentName,
+  resolveArchetypeIcons,
   tournamentDate
 } from '../lib/data';
 import type { FieldRow, Story } from '../lib/storylines';
@@ -16,6 +18,7 @@ import type { ArchetypeIndexEntry, TournamentParticipant } from '../types';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { Section } from '../components/Section';
 import { ArchetypeCard, ArchetypeCardSkeleton } from '../components/ArchetypeCard';
+import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { CardStack } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
 import { formatPercent, nameFromTournamentKey, parseISODate, shortDateParts } from '../lib/format';
@@ -56,7 +59,6 @@ const LATEST_EVENT_WINDOW_DAYS = 14;
 const LATEST_EVENT_CLUSTER_DAYS = 3;
 const RECENT_MAJORS_COUNT = 6;
 const TOP_ARCHETYPES_COUNT = 10;
-const CUT_STRIP_ROWS = 8;
 const UPCOMING_COUNT = 6;
 
 /**
@@ -297,7 +299,7 @@ function CalloutSkeleton() {
     <article class='callout' aria-hidden='true'>
       <header class='callout-head'>
         <Skeleton width='min(420px, 70%)' height='29px' />
-        <Skeleton width='min(320px, 90%)' height='17px' />
+        <Skeleton width='180px' height='17px' />
       </header>
       <div class='callout-loading'>
         <Skeleton height='240px' />
@@ -400,17 +402,7 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
   const winnerArchetype = createMemo<ArchetypeIndexEntry | undefined>(() => lookupArchetype(winner()?.deckName));
 
   const eventMeta = createMemo(() => {
-    return metaData() as unknown as
-      | {
-          name?: string;
-          date?: string;
-          city?: string;
-          country?: string;
-          players?: number;
-          deckTotal?: number;
-          format?: string;
-        }
-      | undefined;
+    return metaData() as unknown as { name?: string; players?: number } | undefined;
   });
 
   /**
@@ -546,74 +538,21 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
     return max || null;
   });
 
-  // Roster is capped so a 32-player cut doesn't push the archetype grid off
-  // screen; the disclosure resets when the callout re-keys to another event.
-  const [showFullCut, setShowFullCut] = createSignal(false);
-  const sortedCut = createMemo(() =>
-    topCutParticipants()
-      .slice()
-      .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99))
-  );
-  const visibleCut = () => (showFullCut() ? sortedCut() : sortedCut().slice(0, CUT_STRIP_ROWS));
-  const hiddenCutCount = () => sortedCut().length - visibleCut().length;
-
-  /** Field summary for the header line: players, decklists, drops, diversity. */
-  const fieldSummary = createMemo(() => {
-    const players = eventMeta()?.players ?? participantsData()?.length ?? 0;
-    const decklists = eventMeta()?.deckTotal ?? fieldRows().reduce((acc, r) => acc + r.fieldDecks, 0);
-    const drops = (participantsData() ?? []).filter(p => p.dropped).length;
-    const cutDiversity = new Set(topCutParticipants().map(p => normalize(p.deckName ?? '—'))).size;
-    return {
-      players,
-      decklists,
-      drops,
-      cutDiversity,
-      cutSize: totalTopCut(),
-      day2: totalDay2()
-    };
-  });
+  const playerCount = () => eventMeta()?.players ?? participantsData()?.length ?? 0;
 
   return (
     <article class='callout'>
       <header class='callout-head'>
         <h1 class='callout-title'>{eventMeta()?.name ?? prettyTournamentName(props.tournamentKey)}</h1>
-        <div class='callout-meta'>
-          <Show when={eventMeta()?.date}>
-            <span>{eventMeta()!.date}</span>
+        <p class='callout-meta'>
+          <Show when={playerCount() > 0}>
+            <span>{playerCount().toLocaleString()} players</span>
           </Show>
-          <Show when={eventMeta()?.city || eventMeta()?.country}>
-            <span class='dot callout-meta-extra'>·</span>
-            <span class='callout-meta-extra'>
-              {[eventMeta()!.city, eventMeta()!.country].filter(Boolean).join(', ')}
-            </span>
-          </Show>
-          <Show when={fieldSummary().players > 0}>
+          <Show when={totalDay2() > 0}>
             <span class='dot'>·</span>
-            <span>{fieldSummary().players.toLocaleString()} players</span>
+            <span>{totalDay2().toLocaleString()} to Day 2</span>
           </Show>
-          <Show when={fieldSummary().decklists > 0 && fieldSummary().decklists !== fieldSummary().players}>
-            <span class='dot callout-meta-extra'>·</span>
-            <span class='callout-meta-extra'>{fieldSummary().decklists.toLocaleString()} decklists</span>
-          </Show>
-          <Show when={fieldSummary().drops > 0}>
-            <span class='dot callout-meta-extra'>·</span>
-            <span class='callout-meta-extra'>{fieldSummary().drops} dropped</span>
-          </Show>
-          <Show when={fieldSummary().day2 > 0}>
-            <span class='dot callout-meta-extra'>·</span>
-            <span class='callout-meta-extra'>{fieldSummary().day2} to Day 2</span>
-          </Show>
-          <Show when={fieldSummary().cutSize > 0}>
-            <span class='dot callout-meta-extra'>·</span>
-            <span class='callout-meta-extra'>
-              {fieldSummary().cutDiversity} of {fieldSummary().cutSize} archetypes in cut
-            </span>
-          </Show>
-          <Show when={eventMeta()?.format}>
-            <span class='dot'>·</span>
-            <span class='callout-format-pill'>{eventMeta()!.format}</span>
-          </Show>
-        </div>
+        </p>
       </header>
 
       {/* Gate on loading, not on winner() — players.json can be absent or
@@ -639,104 +578,60 @@ function LatestEventCallout(props: { tournamentKey: string; onlineArchetypes: Ar
         />
       </Show>
 
-      <Show when={topCutParticipants().length > 0}>
-        <div class='callout-cut-strip'>
-          <h2 class='callout-cut-strip-label' id='callout-cut-heading'>
-            Top cut · {topCutParticipants().length}
-          </h2>
-          <ul class='callout-cut-strip-list' aria-labelledby='callout-cut-heading'>
-            <For each={visibleCut()}>
-              {p => {
-                const entry = lookupArchetype(p.deckName);
-                return (
-                  <li class='callout-cut-strip-row'>
-                    <span class='cut-place'>#{p.placement ?? '—'}</span>
-                    <Show
-                      when={storylines()?.countryLabel(p.country)}
-                      fallback={<span class='cut-country cut-country-empty' />}
-                    >
-                      <span class='cut-country'>{storylines()?.countryLabel(p.country)}</span>
-                    </Show>
-                    <span class='cut-name'>{p.name}</span>
-                    <Show when={entry} fallback={<span class='cut-deck'>{p.deckName ?? '—'}</span>}>
-                      <A class='cut-deck' href={`/archetypes/${encodeURIComponent(entry!.name)}`}>
-                        {p.deckName}
-                      </A>
-                    </Show>
-                  </li>
-                );
-              }}
-            </For>
-          </ul>
-          <Show when={hiddenCutCount() > 0}>
-            <button type='button' class='callout-cut-more' onClick={() => setShowFullCut(true)}>
-              Show all {topCutParticipants().length}
-            </button>
-          </Show>
-        </div>
-      </Show>
-
-      <Show when={fieldRows().length > 0 && (totalDay2() > 0 || totalTopCut() > 0)}>
-        <ConversionTable rows={fieldRows()} />
-      </Show>
+      <TopCutStrip participants={topCutParticipants()} lookupArchetype={lookupArchetype} />
     </article>
   );
 }
 
-/* ---------- Conversion table (Field → Day 2 → top cut) ---------- */
+/* ---------- Top cut roster ---------- */
 
-/**
- * Compact funnel table for major-event scopes, collapsed behind a disclosure to
- * keep the callout calm. Each share column carries a title naming its
- * denominator, matching how the rows are computed in `fieldRows`:
- *   Field  = deck count / total decklists
- *   Day 2  = this deck's Day 2 count / all Day 2 decks
- *   Top cut = this deck's cut count / all top-cut slots
- */
-function ConversionTable(props: { rows: FieldRow[] }) {
-  const rows = () => props.rows.filter(r => r.fieldDecks > 0);
+type LookupArchetype = (name: string | null | undefined) => ArchetypeIndexEntry | undefined;
+
+function TopCutStrip(props: { participants: TournamentParticipant[]; lookupArchetype: LookupArchetype }) {
+  const sorted = createMemo(() => props.participants.slice().sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99)));
   return (
-    <Show when={rows().length > 0}>
-      <details class='conversion-disclosure'>
-        <summary class='conversion-summary'>Show conversion table</summary>
-        <div class='table-wrap conversion-table-wrap'>
-          <table class='data conversion-table'>
-            <thead>
-              <tr>
-                <th>Archetype</th>
-                <th class='num' title='Share of all decklists in the field.'>
-                  Field
-                </th>
-                <th class='num' title='Share of all decks that reached Day 2.'>
-                  Day 2
-                </th>
-                <th class='num' title='Share of all top-cut slots.'>
-                  Top cut
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={rows()}>
-                {r => (
-                  <tr>
-                    <td>{r.label}</td>
-                    <td class='num'>
-                      {formatPercent(r.fieldPct)} <span class='conv-count'>{r.fieldDecks}</span>
-                    </td>
-                    <td class='num'>
-                      {formatPercent(r.day2Pct)} <span class='conv-count'>{r.day2Count}</span>
-                    </td>
-                    <td class='num'>
-                      {formatPercent(r.cutPct)} <span class='conv-count'>{r.topCutCount}</span>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </tbody>
-          </table>
-        </div>
-      </details>
+    <Show when={sorted().length > 0}>
+      <div class='callout-cut-strip'>
+        <h2 class='callout-cut-strip-label' id='callout-cut-heading'>
+          Top cut · {sorted().length}
+        </h2>
+        <ul class='callout-cut-strip-list' aria-labelledby='callout-cut-heading'>
+          <For each={sorted()}>{p => <TopCutRow participant={p} lookupArchetype={props.lookupArchetype} />}</For>
+        </ul>
+      </div>
     </Show>
+  );
+}
+
+function TopCutRow(props: { participant: TournamentParticipant; lookupArchetype: LookupArchetype }) {
+  const storylines = useStorylines();
+  const p = () => props.participant;
+  const entry = () => props.lookupArchetype(p().deckName);
+  const icons = () => resolveArchetypeIcons(entry() ?? { label: p().deckName }, getArchetypeIconMap());
+  return (
+    <li class='callout-cut-strip-row'>
+      <span class='cut-place'>#{p().placement ?? '—'}</span>
+      <Show when={storylines()?.countryLabel(p().country)} fallback={<span class='cut-country cut-country-empty' />}>
+        {label => <span class='cut-country'>{label()}</span>}
+      </Show>
+      <span class='cut-name'>{p().name}</span>
+      <Show
+        when={entry()}
+        fallback={
+          <span class='cut-deck'>
+            <ArchetypeIcons slugs={icons()} size={18} />
+            <span class='cut-deck-name'>{p().deckName ?? '—'}</span>
+          </span>
+        }
+      >
+        {e => (
+          <A class='cut-deck' href={`/archetypes/${encodeURIComponent(e().name)}`}>
+            <ArchetypeIcons slugs={icons()} size={18} />
+            <span class='cut-deck-name'>{p().deckName}</span>
+          </A>
+        )}
+      </Show>
+    </li>
   );
 }
 

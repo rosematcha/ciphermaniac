@@ -196,7 +196,7 @@ export const RULINGS: Ruling[] = [
   {
     element: 'Chip shape',
     found:
-      'Two shape languages running side by side: square chips at --radius-sm (.chip, .au-chip, .badge, .callout-format-pill) and full pills (.mini-chip, .rf-chip, .fb-suggest-chip, .mu-lens-chip). Every literal is now a token, so the split is visible rather than buried in px.',
+      'Two shape languages running side by side: square chips at --radius-sm (.chip, .au-chip, .badge) and full pills (.mini-chip, .rf-chip, .fb-suggest-chip, .mu-lens-chip). Every literal is now a token, so the split is visible rather than buried in px.',
     ruling:
       'Square, at --radius-sm. STAMP is a hard-edged print system and a pill fights it. --radius-pill is reserved for a removable token — one that carries its own dismiss control, like .mu-lens-chip.',
     status: 'settled',
