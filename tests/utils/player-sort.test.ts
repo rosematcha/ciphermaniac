@@ -25,14 +25,15 @@ test('winPct is wins over decided games, 0 when unplayed', () => {
   assert.equal(winPct(player({ wins: 0, losses: 0 })), 0);
 });
 
-test('top cuts and titles sort by value and tiebreak on events, then name', () => {
-  const many = player({ name: 'Amy', topCuts: 9, tournamentWins: 1, eventCount: 20 });
-  const few = player({ name: 'Bo', topCuts: 2, tournamentWins: 1, eventCount: 30 });
+test('top cuts sort by value and tiebreak on events, then name', () => {
+  const many = player({ name: 'Amy', topCuts: 9, eventCount: 20 });
+  const few = player({ name: 'Bo', topCuts: 2, eventCount: 30 });
   assert.deepEqual([few, many].sort(comparePlayers('topCuts', 'desc')), [many, few]);
   assert.deepEqual([many, few].sort(comparePlayers('topCuts', 'asc')), [few, many]);
-  // Equal titles: the busier career comes first in both directions.
-  assert.deepEqual([many, few].sort(comparePlayers('titles', 'desc')), [few, many]);
-  assert.deepEqual([many, few].sort(comparePlayers('titles', 'asc')), [few, many]);
+  // Equal top cuts: the busier career comes first in both directions.
+  const tied = player({ name: 'Cy', topCuts: 9, eventCount: 30 });
+  assert.deepEqual([many, tied].sort(comparePlayers('topCuts', 'desc')), [tied, many]);
+  assert.deepEqual([many, tied].sort(comparePlayers('topCuts', 'asc')), [tied, many]);
 });
 
 test('count sorts order by their own column in both directions', () => {

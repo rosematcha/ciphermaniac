@@ -407,9 +407,9 @@ test('players index ranks the fixture players with a rank switch', async ({ page
   await expect(page.locator('body')).toContainText(/Gabriel|player/i);
   const bar = page.locator('.players-bar');
   await expect(bar.getByRole('radio', { name: 'Day 2s' })).toHaveAttribute('aria-checked', 'true');
-  // Rank, player, events, Day 2s, top cuts, titles, win rate. The last two are
-  // hidden by CSS below 900px, so the mobile project counts the same seven.
-  await expect(page.locator('.players-table thead th')).toHaveCount(7);
+  // Rank, player, events, Day 2s, top cuts, win rate. Top cuts is hidden by CSS
+  // below 900px, so the mobile project counts the same six.
+  await expect(page.locator('.players-table thead th')).toHaveCount(6);
 
   await bar.getByRole('radio', { name: 'Win %' }).click();
   await expect(page).toHaveURL(/sort=winPct/);

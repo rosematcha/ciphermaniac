@@ -19,7 +19,7 @@ import '../styles/pages/players-tables.css';
 import '../styles/pages/players.css';
 
 const PAGE_SIZE = 50;
-const SORT_KEYS: readonly PlayerSortKey[] = ['events', 'day2s', 'topCuts', 'titles', 'winPct'];
+const SORT_KEYS: readonly PlayerSortKey[] = ['events', 'day2s', 'topCuts', 'winPct'];
 const DEFAULT_SORT: PlayerSortKey = 'day2s';
 /** The two rankings the bar offers; Events sorts from its header only. */
 const RANK_OPTIONS: { value: PlayerSortKey; label: string }[] = [
@@ -30,8 +30,8 @@ const RANK_OPTIONS: { value: PlayerSortKey; label: string }[] = [
 /**
  * /players — every player with two or more events, ranked. Search and the
  * rank switch share one bar that stays put while the table scrolls; the table
- * is rank, player, events, Day 2s, top cuts, titles and win rate. A phone drops
- * top cuts and titles and keeps the other four.
+ * is rank, player, events, Day 2s, top cuts and win rate. A phone drops top
+ * cuts and keeps the other five.
  */
 export function PlayersPage() {
   const [index] = createResource(fetchPlayerIndexSlim);
@@ -98,11 +98,10 @@ export function PlayersPage() {
 
   const profileHref = (p: PlayerIndexSlimEntry) => `/players/${encodeURIComponent(p.playerId)}`;
   const rankOf = (i: number) => (page() - 1) * PAGE_SIZE + i + 1;
-  const winLabel = (p: PlayerIndexSlimEntry) =>
-    p.wins + p.losses > 0 ? `${Math.round(winPct(p) * 100)}% · n=${p.wins + p.losses}` : '—';
-  /* Most of 1,500 careers have no title and many have no top cut. Printing the
-     zeros gave two columns of "0"; blank leaves them reading as marks against a
-     quiet field, the same way the profile's Day 2 column does. */
+  const winLabel = (p: PlayerIndexSlimEntry) => (p.wins + p.losses > 0 ? `${Math.round(winPct(p) * 100)}%` : '—');
+  /* Many of 1,500 careers have no top cut. Printing the zeros gave a column of
+     "0"; blank leaves them reading as marks against a quiet field, the same way
+     the profile's Day 2 column does. */
   const markLabel = (n: number) => (n > 0 ? n.toLocaleString() : <span class='players-nil'>—</span>);
 
   return (
@@ -179,13 +178,6 @@ export function PlayersPage() {
                     >
                       Top cuts
                     </SortableTh>
-                    <SortableTh
-                      class='players-wide-col'
-                      ariaSort={ariaSort('titles')}
-                      onSort={() => toggleSort('titles')}
-                    >
-                      Titles
-                    </SortableTh>
                     <SortableTh ariaSort={ariaSort('winPct')} onSort={() => toggleSort('winPct')}>
                       Win %
                     </SortableTh>
@@ -219,7 +211,6 @@ export function PlayersPage() {
                         <td class='num'>{p.eventCount.toLocaleString()}</td>
                         <td class='num'>{p.day2s.toLocaleString()}</td>
                         <td class='num players-wide-col'>{markLabel(p.topCuts)}</td>
-                        <td class='num players-wide-col'>{markLabel(p.tournamentWins)}</td>
                         <td class='num' classList={{ 'stat-dim': p.eventCount < RATE_MIN_EVENTS }}>
                           {winLabel(p)}
                         </td>
@@ -265,7 +256,6 @@ function TableSkeleton() {
             <th class='num'>Events</th>
             <th class='num'>Day 2s</th>
             <th class='num players-wide-col'>Top cuts</th>
-            <th class='num players-wide-col'>Titles</th>
             <th class='num'>Win %</th>
           </tr>
         </thead>
@@ -284,9 +274,6 @@ function TableSkeleton() {
                 </td>
                 <td class='num'>
                   <Skeleton width='32px' />
-                </td>
-                <td class='num players-wide-col'>
-                  <Skeleton width='24px' />
                 </td>
                 <td class='num players-wide-col'>
                   <Skeleton width='24px' />

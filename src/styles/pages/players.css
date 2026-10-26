@@ -54,7 +54,7 @@
   font-size: 11px;
   color: var(--muted);
 }
-/* Top cuts and titles are zero for most of the field. An em dash at the
+/* Top cuts are zero for most of the field. An em dash at the
    muted-cell weight keeps the columns reading as sparse marks. */
 .players-nil {
   color: var(--muted);
@@ -67,7 +67,7 @@
   font-size: 13px;
 }
 /* A share of the row rather than a fixed width: the figures then keep the same
-   proportion of the table whether it is showing five columns or the phone's
+   proportion of the table whether it is showing four columns or the phone's
    three, instead of huddling at the right edge with the names a screen away.
    Auto layout treats this as a preference, so a long name still wins the space
    it needs. */
@@ -76,8 +76,8 @@
   width: 13.5%;
 }
 @media (max-width: 900px) {
-  /* Top cuts and titles are the two columns a career already implies; they go
-     first when the row runs out of room. */
+  /* Top cuts are the column a career already implies; it goes first when the
+     row runs out of room. */
   .players-wide-col {
     display: none;
   }
