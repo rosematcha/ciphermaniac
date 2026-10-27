@@ -15,7 +15,7 @@ const config: KnipConfig = {
 
     // Cloudflare Pages Functions (file-based routing; everything outside lib/ is a route)
     'functions/**/*.{ts,js}!',
-    '!functions/lib/**!',
+    '!functions/lib/**',
 
     // Node scripts
     'scripts/*.{ts,mjs}!',
