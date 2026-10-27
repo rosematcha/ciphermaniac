@@ -99,11 +99,6 @@
     "max-params:e3f7450d737bbd30d98097900699417303c6ea454e18cc51b2cb6b9af027f5bc:Function 'resolveArchetypeIcons' has too many parameters (5). Maximum allowed is 4.",
     "complexity:e3f7450d737bbd30d98097900699417303c6ea454e18cc51b2cb6b9af027f5bc:Function 'resolveArchetypeIcons' has a complexity of 14. Maximum allowed is 12."
   ],
-  "shared/data/artifacts.ts": [
-    "complexity:ce503cb03a05ee3f41cdf37c6a3f706f3c73713f81d8a10812541d10117be7df:Function 'validateCardReport' has a complexity of 13. Maximum allowed is 12.",
-    "max-params:4e0ecdb0df8ccff4c7ca5a2c7fa39952f12204ab5ba30ef328bcdd4c117f8419:Function 'checkConversionCard' has too many parameters (5). Maximum allowed is 4.",
-    "complexity:369556d3340cb8e432c97d0f363947925ccb505a8f2536821d775fdf0c677725:Function 'validateArchetypeIndex' has a complexity of 13. Maximum allowed is 12."
-  ],
   "shared/data/build/channel.ts": [
     "complexity:46bd7d799e1e44239bac9efb2a1bfa79c03b2c336b934c4d740290e5d5e47acb:Async function 'updatePointer' has a complexity of 13. Maximum allowed is 12."
   ],

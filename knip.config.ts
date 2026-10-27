@@ -4,11 +4,6 @@ const config: KnipConfig = {
   // Exports referenced only inside their own module (internal constants that
   // are exported for documentation/typing) are not dead code.
   ignoreExportsUsedInFile: true,
-  // These are retained test oracles/prototypes, not shipped entry points.
-  // Production mode still rejects any additional test-only module.
-  ignoreIssues: {
-    'shared/data/artifacts.ts': ['files']
-  },
 
   entry: [
     // SPA entry point (src/main.tsx) is picked up by knip's Vite plugin.
