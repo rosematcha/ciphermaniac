@@ -198,7 +198,11 @@ function buildReportBundle(
     out.set('decks.json', decks);
   }
 
-  const archetypeInputs = decks.map(deck => ({ cards: deck.cards, archetype: deck.archetype }));
+  const archetypeInputs = decks.map(deck => ({
+    cards: deck.cards,
+    archetype: deck.archetype,
+    successTags: deck.successTags
+  }));
   const built = buildArchetypeReports(archetypeInputs, synonymDb, {
     ...ARCHETYPE_BUILD_PROFILE,
     masterReport: master,

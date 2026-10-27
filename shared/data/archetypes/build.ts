@@ -9,6 +9,7 @@ import { isGenericArchetypeName } from '../../analysis/archetypeClassifier';
 import { canonicalizeArchetypeLabel } from './identity';
 import { type DeckEntry, generateReportFromDecks, type LegacyCardReport, listedDeckCount } from '../reports/cardReport';
 import type { SynonymDatabase } from '../cardIdentity';
+import { countUsageTiers } from '../reports/cardUsage';
 import {
   buildCardMetaLookup,
   buildMetaUsage,
@@ -28,6 +29,8 @@ import {
 /** A deck accepted by the archetype builder: a card list plus its label. */
 export interface ArchetypeDeckInput extends DeckEntry {
   archetype?: string | null;
+  /** Finish tags; feed the per-tier counts in `cardUsage.json`. */
+  successTags?: readonly string[] | null;
 }
 
 /** How group keys and slug bases are derived. */
@@ -101,6 +104,8 @@ export interface ArchetypeFile {
   displayName: string;
   deckCount: number;
   data: LegacyCardReport;
+  /** Usage key -> deck counts per finish tier, for `cardUsage.json`; only when the decks carry finish tags. */
+  tiers?: Map<string, number[]>;
 }
 
 /** One archetype index entry; optional fields appear per producer options. */
@@ -179,6 +184,25 @@ export function deriveArchetypeGrouping(
 // ============================================================================
 
 /**
+ * Per-archetype finish-tier counts, keyed like the archetype's report. Rebuilds
+ * from stored rows may drop finish tags; a build without any claims no counts.
+ */
+function tierCounter(
+  decks: readonly ArchetypeDeckInput[],
+  synonymDb: SynonymDatabase | null,
+  resolveUid: ((uid: string) => string) | undefined
+): (archetypeDecks: ArchetypeDeckInput[]) => Map<string, number[]> | undefined {
+  if (!decks.some(deck => Array.isArray(deck?.successTags))) {
+    return () => undefined;
+  }
+  return archetypeDecks =>
+    countUsageTiers(
+      archetypeDecks,
+      subset => generateReportFromDecks(subset, subset.length, synonymDb, { resolveUid }).items
+    );
+}
+
+/**
  * Group decks by archetype identity, build per-archetype card reports, and
  * construct the archetype index with thumbnails / signature cards / icons.
  * @param decks - Decks with archetype labels
@@ -228,6 +252,7 @@ export function buildArchetypeReports(
     }
   }
 
+  const tiersOf = tierCounter(deckList, synonymDb, resolveUid);
   const files: ArchetypeFile[] = [];
   const decksByBase = new Map<string, ArchetypeDeckInput[]>();
   for (const { base, displayName, decks: archetypeDecks } of groups.values()) {
@@ -245,7 +270,8 @@ export function buildArchetypeReports(
       // the narrower listed-deck count — a deck with no list can't contain a
       // card, so counting it would cap every card below 100%.
       deckCount: archetypeDecks.length,
-      data: generateReportFromDecks(archetypeDecks, listedDeckCount(archetypeDecks), synonymDb, { resolveUid })
+      data: generateReportFromDecks(archetypeDecks, listedDeckCount(archetypeDecks), synonymDb, { resolveUid }),
+      tiers: tiersOf(archetypeDecks)
     });
     decksByBase.set(base, archetypeDecks);
   }

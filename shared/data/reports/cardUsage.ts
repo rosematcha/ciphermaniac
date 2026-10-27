@@ -45,6 +45,12 @@ export interface UsageReportItem {
   dist?: readonly UsageDistEntry[] | null;
 }
 
+/**
+ * The finish tiers the card page ranks lists by, besides "all" (which is
+ * `found`). `cardUsage.json` names them in `tiers` when its rows carry counts.
+ */
+export const USAGE_TIERS = ['top50', 'top25', 'winner'] as const;
+
 /** One archetype's usage of a card in a {@link LegacyCardUsageIndex}. */
 export interface CardUsageEntry {
   /** Archetype slug (the archetype folder base name). */
@@ -55,11 +61,15 @@ export interface CardUsageEntry {
   pct: number;
   /** Copy-count distribution within this archetype. */
   dist: UsageDistEntry[];
+  /** Of {@link found}, decks in each {@link USAGE_TIERS} tier; trailing zeros dropped, absent when all zero. */
+  t?: number[];
 }
 
 /** The legacy `cardUsage.json` payload: canonical UID -> archetype usage rows. */
 export interface LegacyCardUsageIndex {
   usage: Record<string, CardUsageEntry[]>;
+  /** Present when rows carry tier counts (`t`), in this order. */
+  tiers?: string[];
 }
 
 /**
@@ -71,6 +81,59 @@ export interface ArchetypeUsageSource {
   base: string;
   /** The archetype's card report; only `items` is consumed. */
   data?: { items?: readonly UsageReportItem[] | null } | null;
+  /** Usage key -> deck counts per {@link USAGE_TIERS} tier (see {@link countUsageTiers}). */
+  tiers?: ReadonlyMap<string, number[]>;
+}
+
+const usageKey = (item: UsageReportItem): string | undefined => item.uid || item.name;
+
+/**
+ * Per usage key, how many of an archetype's decks in each {@link USAGE_TIERS}
+ * tier ran the card. `report` must key cards the way the archetype's own
+ * report does, so the tier counts line up with its `found`.
+ * @param decks - The archetype's decks
+ * @param report - Builds report items for a subset of those decks
+ */
+export function countUsageTiers<T extends { successTags?: readonly string[] | null }>(
+  decks: readonly T[],
+  report: (subset: T[]) => readonly UsageReportItem[]
+): Map<string, number[]> {
+  const counts = new Map<string, number[]>();
+  USAGE_TIERS.forEach((tier, index) => {
+    const subset = decks.filter(deck => deck.successTags?.some(tag => String(tag).toLowerCase() === tier));
+    for (const item of report(subset)) {
+      const key = usageKey(item);
+      if (key && item.found) {
+        const row = counts.get(key) ?? [0, 0, 0];
+        row[index] = item.found;
+        counts.set(key, row);
+      }
+    }
+  });
+  return counts;
+}
+
+/** Drop trailing zeros, so most rows carry one or two numbers and many none. */
+function trimCounts(counts: readonly number[] = []): number[] | undefined {
+  let end = counts.length;
+  while (end > 0 && !counts[end - 1]) {
+    end--;
+  }
+  return end ? counts.slice(0, end) : undefined;
+}
+
+function usageEntry(file: ArchetypeUsageSource, item: UsageReportItem, uid: string): CardUsageEntry {
+  const entry: CardUsageEntry = {
+    slug: file.base,
+    found: item.found || 0,
+    pct: item.pct || 0,
+    dist: (item.dist ?? []).map(d => ({ copies: d.copies, players: d.players, percent: d.percent }))
+  };
+  const t = trimCounts(file.tiers?.get(uid));
+  if (t) {
+    entry.t = t;
+  }
+  return entry;
 }
 
 /**
@@ -88,17 +151,12 @@ export function buildCardUsageIndex(archetypeFiles: readonly ArchetypeUsageSourc
   const usage: Record<string, CardUsageEntry[]> = {};
   for (const file of archetypeFiles) {
     for (const item of file.data?.items ?? []) {
-      const uid = item.uid || item.name;
+      const uid = usageKey(item);
       if (!uid) {
         continue;
       }
-      (usage[uid] ??= []).push({
-        slug: file.base,
-        found: item.found || 0,
-        pct: item.pct || 0,
-        dist: (item.dist ?? []).map(d => ({ copies: d.copies, players: d.players, percent: d.percent }))
-      });
+      (usage[uid] ??= []).push(usageEntry(file, item, uid));
     }
   }
-  return { usage };
+  return archetypeFiles.some(file => file.tiers) ? { usage, tiers: [...USAGE_TIERS] } : { usage };
 }

@@ -78,7 +78,7 @@
     "max-depth:20aa1000ca0af63ce12b6ffe4d85f4b68ab45a8c4e60ae29428e62de686dc8d0:Blocks are nested too deeply (4). Maximum allowed is 3."
   ],
   "shared/data/archetypes/build.ts": [
-    "complexity:2fe591ef167f67456aa8f4ec5d5cdafa621bda1ca06080cfce66520df20fea8e:Function 'buildArchetypeReports' has a complexity of 23. Maximum allowed is 12."
+    "complexity:62a365e85da1a980abd2aad56e44fea86b435dbbf153ef3fc346559dfb3a9697:Function 'buildArchetypeReports' has a complexity of 23. Maximum allowed is 12."
   ],
   "shared/data/archetypes/presentation.ts": [
     "complexity:7f6545dd8cd8fdc13e6e0da133a5e6197eeaad2d0e731926f701676fc5f4df72:Arrow function has a complexity of 14. Maximum allowed is 12.",
