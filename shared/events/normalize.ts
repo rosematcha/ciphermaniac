@@ -61,7 +61,7 @@ export function eventKindOf(type: unknown): EventKind | null {
   if (value.includes('league challenge')) {
     return 'challenge';
   }
-  if (value.includes('prerelease') || value.includes('pre-release')) {
+  if (/pre[\s-]?release/.test(value)) {
     return 'prerelease';
   }
   if (value === 'nonpremier tcg') {

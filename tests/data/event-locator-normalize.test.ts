@@ -72,6 +72,8 @@ test('event kinds come from the Pokedata type', () => {
   assert.equal(eventKindOf('League Challenge'), 'challenge');
   assert.equal(eventKindOf('Prerelease'), 'prerelease');
   assert.equal(eventKindOf('TCG Pre-Release'), 'prerelease');
+  // The spelling Pokedata's apiv2 uses (verified 2026-10-27).
+  assert.equal(eventKindOf('Pre Release'), 'prerelease');
   assert.equal(eventKindOf('nonpremier TCG'), 'local');
   assert.equal(eventKindOf('nonpremier VG'), null);
   assert.equal(eventKindOf(undefined), null);
