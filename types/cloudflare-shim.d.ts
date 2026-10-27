@@ -6,26 +6,6 @@
  * functions/ is declared here.
  */
 
-interface KVNamespacePutOptions {
-  expiration?: number;
-  expirationTtl?: number;
-  metadata?: unknown;
-}
-
-interface KVNamespace {
-  get(key: string): Promise<string | null>;
-  get(key: string, type: 'text'): Promise<string | null>;
-  get<T = unknown>(key: string, type: 'json'): Promise<T | null>;
-  get(key: string, type: 'arrayBuffer'): Promise<ArrayBuffer | null>;
-  get(key: string, type: 'stream'): Promise<ReadableStream | null>;
-  put(
-    key: string,
-    value: string | ArrayBuffer | ArrayBufferView | ReadableStream,
-    options?: KVNamespacePutOptions
-  ): Promise<void>;
-  delete(key: string): Promise<void>;
-}
-
 interface R2HTTPMetadata {
   contentType?: string;
   cacheControl?: string;

@@ -44,12 +44,6 @@ test('Card type enrichment from database and cache behavior', async () => {
         }
         return null;
       }
-    },
-    CARD_TYPES_KV: {
-      put: async (_key: string, _value: string, _options: any) => {
-        // noop - simulate kv put
-      },
-      get: async (_key: string, _type?: string) => null
     }
   };
 

@@ -98,7 +98,6 @@
     "complexity:43532683e044611d067bf223835c5d25fe219de10c60e68b78ea5c6da836e761:Function 'resolveCanonicalUidAt' has a complexity of 13. Maximum allowed is 12."
   ],
   "shared/data/cardTypesDatabase.ts": [
-    "max-depth:5eafd58058e91a6d399555eff9184f004ad2fe850f55ce5949174624c1440965:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:84e9afb22fa27038b5503e62e0f65884c2e2e6841b8b4a0adab0632f14751c7a:Function 'enrichCardWithType' has a complexity of 23. Maximum allowed is 12."
   ],
   "shared/data/reports/cardSuccess.ts": [

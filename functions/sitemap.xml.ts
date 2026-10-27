@@ -5,7 +5,6 @@ import { ARCHETYPE_INDEX_KEY } from './lib/api/archetypeIndexKey.js';
 
 interface Env {
   REPORTS?: { get: (key: string) => Promise<{ text(): Promise<string> } | null> };
-  CARD_TYPES_KV?: unknown;
 }
 
 interface RequestContext {

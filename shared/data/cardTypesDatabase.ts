@@ -4,7 +4,6 @@
  */
 
 interface WorkerEnv {
-  CARD_TYPES_KV?: KVNamespace;
   /** Only `get` is needed here; accepts an R2 bucket or any structural equivalent (e.g. the CI S3 shim). */
   REPORTS?: { get(key: string): Promise<{ text(): Promise<string> } | null> };
 }
@@ -54,7 +53,7 @@ interface CardRecord {
 
 // Module-level cache: persists across requests within the same isolate,
 // avoiding re-fetch and re-parse of the card types JSON on every request.
-// Bounded by the same 24h TTL the KV layer uses so a long-lived warm isolate
+// Bounded by a 24h TTL so a long-lived warm isolate
 // doesn't serve stale card types indefinitely after an R2 update.
 const CARD_TYPES_CACHE_TTL_MS = 86400 * 1000;
 let cachedCardTypesData: CardTypesDatabase | null = null;
@@ -65,27 +64,11 @@ export async function loadCardTypesDatabase(env: WorkerEnv): Promise<CardTypesDa
     return cachedCardTypesData;
   }
   try {
-    if (env.CARD_TYPES_KV) {
-      const cached = await env.CARD_TYPES_KV.get('card-types-database', 'json');
-      if (cached) {
-        cachedCardTypesData = cached as CardTypesDatabase;
-        cachedAt = Date.now();
-        return cachedCardTypesData;
-      }
-    }
-
     if (env.REPORTS) {
       const object = await env.REPORTS.get('assets/data/card-types.json');
       if (object) {
         const text = await object.text();
         const data = JSON.parse(text) as CardTypesDatabase;
-
-        if (env.CARD_TYPES_KV) {
-          await env.CARD_TYPES_KV.put('card-types-database', JSON.stringify(data), {
-            expirationTtl: 86400
-          });
-        }
-
         cachedCardTypesData = data;
         cachedAt = Date.now();
         return data;
