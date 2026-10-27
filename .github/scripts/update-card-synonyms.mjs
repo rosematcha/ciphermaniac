@@ -16,7 +16,8 @@ import { assertCanonicalRoutesSound } from '../../shared/data/canonicalCardRoute
 import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult, readJson } from './lib/r2.mjs';
 import { loadEventSources, productionScopeRoot } from './lib/build/productionRelease.ts';
-import { loadOnlineDecks } from './lib/build/onlineDecks.ts';
+import { loadFormatDecks, loadOnlineDecks } from './lib/build/onlineDecks.ts';
+import { releaseFormatRoots } from './lib/build/formatReports.ts';
 import { newSetCodes, parseSetCardList } from './lib/setSeeds.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -96,6 +97,15 @@ async function loadTournamentDecks(release, sources, folder) {
   return [];
 }
 
+/**
+ * Decks from every published format (RS-PK, Expanded, ...). A release without
+ * a formats scope has none, so this is empty until the first format ships.
+ */
+async function loadReleaseFormatDecks(release) {
+  const reader = { read: key => readJson(s3Client, R2_BUCKET_NAME, key) };
+  return loadFormatDecks(reader, await releaseFormatRoots(reader, release));
+}
+
 function normalizeCardNumber(number) {
   const raw = String(number ?? '').trim();
   if (!raw) {
@@ -168,6 +178,12 @@ async function collectAllCards(release, sources, tournaments) {
     } else {
       log(`  Warning: No decks found for ${ONLINE_META_FOLDER}; online meta cards will be missing`);
     }
+  }
+
+  const formatDecks = await loadReleaseFormatDecks(release);
+  if (formatDecks.length) {
+    addDecksToCardMap(cardsByName, formatDecks);
+    log(`  Included decks from other formats (${formatDecks.length} entries)`);
   }
 
   const onlineNote = onlineIncluded ? ' (online meta included)' : '';

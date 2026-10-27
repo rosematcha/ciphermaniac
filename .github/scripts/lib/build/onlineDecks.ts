@@ -24,3 +24,9 @@ export async function loadOnlineDecks<T>(reader: JsonReader, root = ONLINE_ROOT)
   }
   return shards.flatMap(shard => shard ?? []);
 }
+
+/** Every format's deck corpus, read the same way as the online one. */
+export async function loadFormatDecks<T>(reader: JsonReader, roots: readonly string[]): Promise<T[]> {
+  const corpora = await Promise.all(roots.map(root => loadOnlineDecks<T>(reader, root)));
+  return corpora.flat();
+}
