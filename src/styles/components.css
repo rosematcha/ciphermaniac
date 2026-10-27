@@ -414,18 +414,6 @@
   .gsearch-trigger {
     display: inline-flex;
   }
-  /* The search and scope controls are separate buttons, but visually read as
-     one compact control group in the phone header. */
-  .topnav-actions {
-    gap: 0;
-  }
-  .gsearch-trigger {
-    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-    border-right: 0;
-  }
-  .t-selector-trigger {
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  }
 }
 @media (max-width: 900px) {
   .topnav {
@@ -486,6 +474,26 @@
     max-width: 100%;
     padding: 8px 10px;
     min-height: 44px;
+  }
+}
+/* The search and scope controls are separate buttons, but visually read as
+   one compact control group in the phone header. This sits after the 900px
+   block's gap and is scoped to the nav so it outranks the base trigger rules
+   further down. */
+@media (max-width: 640px) {
+  .topnav-actions {
+    gap: 0;
+  }
+  .topnav-actions .gsearch-trigger {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    border-right: 0;
+    transition: background var(--ms-fast);
+  }
+  .topnav-actions .gsearch-trigger:hover {
+    background: var(--surface-2);
+  }
+  .topnav-actions .t-selector-trigger {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   }
 }
 
