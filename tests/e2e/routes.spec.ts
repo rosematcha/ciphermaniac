@@ -1431,6 +1431,25 @@ test('archetype list renders and sorts 39 embedded rates without matchup downloa
   expect(matchupRequests).toEqual([]);
 });
 
+test('archetype hero reads an embedded win rate without matchup downloads', async ({ page }) => {
+  await page.route('**/archetypes/index.json', async route => {
+    const index = (await (await route.fetch()).json()) as { name: string }[];
+    const winRateAggregate = { wins: 600, losses: 380, ties: 20, games: 1000, winRate: 60.67 };
+    await route.fulfill({ json: index.map(e => (e.name === 'Dragapult' ? { ...e, winRateAggregate } : e)) });
+  });
+  const matchupRequests: string[] = [];
+  page.on('request', request => {
+    if (/\/archetypes\/[^/]+\/trends\.json|\/matchupProfiles\.json/.test(request.url())) {
+      matchupRequests.push(request.url());
+    }
+  });
+  await gotoClean(page, '/archetypes/Dragapult');
+  const stat = page.locator('.stat-band-item', { hasText: 'Win rate' });
+  await expect(stat).toContainText('60.7%');
+  await expect(stat).toContainText('1,000 games');
+  expect(matchupRequests).toEqual([]);
+});
+
 for (const path of [
   '/host',
   '/host?tab=organizing#events',

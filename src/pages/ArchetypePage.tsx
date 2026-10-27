@@ -238,6 +238,7 @@ export function ArchetypePage() {
           report={effectiveReport()!}
           indexEntry={indexEntry()}
           indexEntries={effectiveIndex()}
+          indexPending={liveReport() ? index.loading : snapshotIndex.loading}
           snapshotDate={snapshotDate()}
           tab={tab()}
           onTabChange={setTab}
@@ -258,6 +259,8 @@ interface ArchetypeBodyProps {
   report: ArchetypeReport;
   indexEntry: ArchetypeIndexEntry | undefined;
   indexEntries: ArchetypeIndexEntry[] | undefined;
+  /** The scope's archetype index is still loading. */
+  indexPending: boolean;
   /** When set (YYYY-MM-DD), the report is a frozen pre-rotation snapshot. */
   snapshotDate: string | null;
   tab: ArchTab;
@@ -312,12 +315,16 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
     return Math.round((count * 100) / pct);
   });
 
-  // Aggregate event win rate — same source the Matchups tab uses.
+  // Aggregate event win rate. The online index ships it precomputed from the
+  // same matchup rows the Matchups tab reads; other scopes compute it from
+  // those rows, once the index has settled without it.
+  const indexedWinRate = () => props.indexEntry?.winRateAggregate;
   const [winRate] = createResource(
-    () => ({ t: props.tournament, slug: props.slug, label: props.label }),
+    () =>
+      props.indexPending || indexedWinRate() ? null : { t: props.tournament, slug: props.slug, label: props.label },
     ({ t, slug, label }) => fetchArchetypeWinRate(t, slug, label)
   );
-  const wr = () => resolved(winRate);
+  const wr = () => indexedWinRate() ?? resolved(winRate);
 
   const iconSlugs = () =>
     resolveArchetypeIcons(
@@ -393,7 +400,7 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
             lands, so a late win rate or price never reflows the band. */}
         <dl class='stat-band arche-band'>
           <ShareStat share={sharePct()} total={metaTotal()} decks={props.report.deckTotal} />
-          <WinRateStat loading={winRate.loading} agg={wr()} />
+          <WinRateStat loading={!wr() && (props.indexPending || winRate.loading)} agg={wr()} />
           <Show when={trendEligible()}>
             <TrendStat loading={trendReport.loading} points={trendTimeline()} />
           </Show>
