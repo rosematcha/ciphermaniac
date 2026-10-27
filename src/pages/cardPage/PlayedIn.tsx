@@ -4,6 +4,7 @@ import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { CopyDeckButton } from '../../components/CopyDeckButton';
 import { DeckBody } from '../../components/DeckBody';
 import { Segmented } from '@ciphermaniac/design/components/Segmented';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
 import { ONLINE } from '../../lib/data/paths';
 import type { ListRecord } from '../../lib/data/lists';
@@ -24,8 +25,11 @@ import {
 
 interface PlayedInProps {
   rows: ArchetypeUsageRow[];
-  /** Every list running the card, or null when the report has no list index. */
+  /** Every list running the card, or null when the report has no list index or it has not loaded. */
   lists: CardList[] | null;
+  listsLoading: boolean;
+  /** Asks for the list index; rows that carry list counts only need it once one opens. */
+  onWantLists: () => void;
   /** Whether the report is a single event (the rows then drop the event column). */
   oneEvent: boolean;
   card: CardItem;
@@ -62,6 +66,8 @@ export function PlayedIn(props: PlayedInProps) {
   const shown = createMemo(() => (unfolded() ? groups() : groups().slice(0, foldedCount(groups().length))));
   const hidden = createMemo(() => groups().length - foldedCount(groups().length));
   const open = useToggleSet<string>();
+  // Ranked by list counts: the usage index's when it has them, else the list index's.
+  const counted = () => props.lists !== null || props.rows.some(row => row.listCounts);
 
   return (
     <div class='card-section'>
@@ -69,7 +75,7 @@ export function PlayedIn(props: PlayedInProps) {
         <h3>
           Played in <span class='count'>{groups().length}</span>
         </h3>
-        <Show when={props.lists}>
+        <Show when={counted()}>
           <Segmented options={FINISH_OPTIONS} selected={finish()} onSelect={setFinish} ariaLabel='Finish' />
         </Show>
       </div>
@@ -79,8 +85,13 @@ export function PlayedIn(props: PlayedInProps) {
             <PlayedInRow
               group={group}
               open={open.has(group.usage.entry.name)}
-              onToggle={() => open.toggle(group.usage.entry.name)}
-              hasLists={props.lists !== null}
+              onToggle={() => {
+                open.toggle(group.usage.entry.name);
+                props.onWantLists();
+              }}
+              hasLists={counted()}
+              lists={props.lists && group.lists}
+              listsLoading={props.listsLoading}
               oneEvent={props.oneEvent}
               card={props.card}
               cardUid={props.cardUid}
@@ -106,6 +117,9 @@ interface RowProps {
   open: boolean;
   onToggle: () => void;
   hasLists: boolean;
+  /** The group's lists, or null until the list index loads. */
+  lists: CardList[] | null;
+  listsLoading: boolean;
   oneEvent: boolean;
   card: CardItem;
   cardUid: string | null;
@@ -152,7 +166,7 @@ function PlayedInRow(props: RowProps) {
           </Show>
         </span>
         <Show when={props.hasLists}>
-          <span class='pi-count'>{props.group.lists.length.toLocaleString()} lists</span>
+          <span class='pi-count'>{props.group.count.toLocaleString()} lists</span>
         </Show>
       </div>
       <Show when={props.open}>
@@ -160,13 +174,17 @@ function PlayedInRow(props: RowProps) {
           <CopySplit group={props.group} card={props.card} db={props.db} withLinks={!props.hasLists} />
         </div>
         <Show when={props.hasLists}>
-          <GroupLists
-            lists={props.group.lists}
-            oneEvent={props.oneEvent}
-            cardUid={props.cardUid}
-            archetype={entry()}
-            tournament={props.tournament}
-          />
+          <Show when={props.lists} fallback={props.listsLoading && <Skeleton height='108px' />}>
+            {lists => (
+              <GroupLists
+                lists={lists()}
+                oneEvent={props.oneEvent}
+                cardUid={props.cardUid}
+                archetype={entry()}
+                tournament={props.tournament}
+              />
+            )}
+          </Show>
         </Show>
       </Show>
     </div>

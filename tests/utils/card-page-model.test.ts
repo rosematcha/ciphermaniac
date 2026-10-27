@@ -187,6 +187,16 @@ test('usage rows join the index for deck totals', () => {
   assert.equal(rows[0].entry.name, 'Dragapult');
   assert.equal(rows[0].report.deckTotal, 100);
   assert.equal(rows[0].item.found, 90);
+  assert.equal(rows[0].listCounts, undefined, 'a payload without tiers counts no lists');
+});
+
+test('usage rows carry list counts per finish tier when the payload has them', () => {
+  const payload = {
+    tiers: ['top50', 'top25', 'winner'],
+    usage: { 'Dragapult ex::PRE::073': [{ slug: 'Dragapult', found: 90, pct: 90, dist: [], t: [40, 12] }] }
+  } as never;
+  const [row] = buildUsageRowsFromIndex(payload, ARCHETYPES, CARD, DB);
+  assert.deepEqual(row.listCounts, { all: 90, top50: 40, top25: 12, winner: 0 });
 });
 
 test('a card with no usage entry, or only for archetypes missing from the index, yields no rows', () => {

@@ -17,7 +17,7 @@
 
 import { cardNumberIndexKey, cardUidOrName, itemUid, type SynonymDatabase } from '../../../shared/data/cardIdentity';
 import { findByClusterUid } from '../../lib/data';
-import { cardUsageForCard, type CardUsagePayload } from '../../lib/data/cards';
+import { type CardUsageEntry, cardUsageForCard, type CardUsagePayload } from '../../lib/data/cards';
 import type { Day2CardStat } from '../../lib/data/events';
 import type { PricePoint, PricingEntry } from '../../lib/data/prices';
 import { snapshotSourceKey } from '../../lib/data/paths';
@@ -32,6 +32,20 @@ export interface ArchetypeUsageRow {
   item: CardItem;
   /** Only `deckTotal` is read; the fan-out path passes a full ArchetypeReport (structurally compatible). */
   report: { deckTotal: number };
+  /** Lists running the card per finish tier ('all' included), when the usage index carries them. */
+  listCounts?: Record<string, number>;
+}
+
+/** A usage entry's list count per finish tier, or undefined when the payload has none. */
+function listCountsOf(payload: CardUsagePayload, usage: CardUsageEntry): Record<string, number> | undefined {
+  if (!payload.tiers) {
+    return undefined;
+  }
+  const counts: Record<string, number> = { all: usage.found };
+  payload.tiers.forEach((tier, index) => {
+    counts[tier] = usage.t?.[index] ?? 0;
+  });
+  return counts;
 }
 
 /** A printing selected in the printings strip, by hover or pin. */
@@ -256,7 +270,8 @@ export function buildUsageRowsFromIndex(
         pct: usage.pct,
         dist: usage.dist
       },
-      report: { deckTotal }
+      report: { deckTotal },
+      listCounts: listCountsOf(payload, usage)
     });
   }
   return rows;

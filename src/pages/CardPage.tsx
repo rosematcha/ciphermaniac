@@ -290,8 +290,15 @@ export function CardPage() {
   // The lists behind those rows. `lists.json` is one object per report, so it
   // is fetched once per tournament and decoded once per synonym DB; snapshots
   // and events built before it existed have none (null), and the block falls
-  // back to the copy split's deep links.
-  const [listIndex] = createResource(effectiveTournament, t => fetchListIndex(t).catch(() => null));
+  // back to the copy split's deep links. It is the page's largest download, so
+  // when the usage index already counts the lists per finish tier, it waits
+  // until a row is opened.
+  const [listsWanted, setListsWanted] = createSignal(false);
+  const usageCountsLists = () => Boolean(resolved(cardUsage)?.tiers);
+  const [listIndex] = createResource(
+    () => (cardUsage.loading || (usageCountsLists() && !listsWanted()) ? null : effectiveTournament()),
+    t => fetchListIndex(t).catch(() => null)
+  );
   const listRecords = createMemo(() => {
     const payload = resolved(listIndex);
     return payload ? decodeListIndex(payload, db()) : null;
@@ -364,8 +371,12 @@ export function CardPage() {
           priceSeries={priceSeries()}
           conversion={conversionStat()}
           archetypeUsage={archetypeUsageData()}
-          archetypeUsageLoading={archetypeUsage.loading || archetypeIndex.loading || listIndex.loading}
+          archetypeUsageLoading={
+            archetypeUsage.loading || archetypeIndex.loading || (!usageCountsLists() && listIndex.loading)
+          }
           lists={cardLists()}
+          listsLoading={listIndex.loading}
+          onWantLists={() => setListsWanted(true)}
           oneEvent={oneEvent()}
           cardUid={globalCardUid()}
           tournament={effectiveTournament()}
@@ -391,6 +402,8 @@ function CardPageBody(props: {
   archetypeUsage: ArchetypeUsageRow[] | null | undefined;
   archetypeUsageLoading: boolean;
   lists: CardList[] | null;
+  listsLoading: boolean;
+  onWantLists: () => void;
   oneEvent: boolean;
   cardUid: string | null;
   tournament: string;
@@ -568,6 +581,8 @@ function CardPageBody(props: {
               <PlayedIn
                 rows={props.archetypeUsage!}
                 lists={props.lists}
+                listsLoading={props.listsLoading}
+                onWantLists={props.onWantLists}
                 oneEvent={props.oneEvent}
                 card={props.card}
                 cardUid={props.cardUid}

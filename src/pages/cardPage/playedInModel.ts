@@ -37,8 +37,10 @@ export interface PlayedInGroup {
   /** Copy-count buckets with at least one deck, as the usage index reports them. */
   dist: CardDistributionEntry[];
   modal: CardDistributionEntry | null;
-  /** Lists in the current finish tier, best finish first. Empty without an index. */
+  /** Lists in the current finish tier, best finish first. Empty without an index or before it loads. */
   lists: CardList[];
+  /** How many lists in the current finish tier run the card: the usage index's count, else `lists.length`. */
+  count: number;
 }
 
 /** Every list running the card, with its copy count. */
@@ -85,22 +87,10 @@ function distOf(row: ArchetypeUsageRow): { dist: CardDistributionEntry[]; modal:
   return { dist, modal };
 }
 
-/**
- * Join usage rows to their lists and rank them. With an index, archetypes rank
- * by how many of their lists sit in the finish tier; without one (a snapshot,
- * an event built before `lists.json`), by how many decks run the card, so a
- * large deck's high count outweighs a tiny deck's high rate.
- * @param rows - Usage rows for the card (from cardUsage.json)
- * @param lists - Every list running the card, or null when there is no index
- * @param finish - A {@link FINISH_OPTIONS} value
- */
-export function buildPlayedInGroups(
-  rows: readonly ArchetypeUsageRow[],
-  lists: readonly CardList[] | null,
-  finish: string
-): PlayedInGroup[] {
+/** The finish tier's lists, by normalized archetype name. */
+function listsByArchetype(lists: readonly CardList[], finish: string): Map<string, CardList[]> {
   const byArchetype = new Map<string, CardList[]>();
-  for (const list of lists ?? []) {
+  for (const list of lists) {
     if (!inFinish(list.record, finish)) {
       continue;
     }
@@ -112,19 +102,40 @@ export function buildPlayedInGroups(
       byArchetype.set(key, [list]);
     }
   }
+  return byArchetype;
+}
+
+/**
+ * Join usage rows to their lists and rank them. With list counts (from the
+ * usage index, or else from the list index), archetypes rank by how many of
+ * their lists sit in the finish tier; without either (a snapshot, an event
+ * built before `lists.json`), by how many decks run the card, so a large deck's
+ * high count outweighs a tiny deck's high rate.
+ * @param rows - Usage rows for the card (from cardUsage.json)
+ * @param lists - Every list running the card, or null when there is no index (or it has not loaded)
+ * @param finish - A {@link FINISH_OPTIONS} value
+ */
+export function buildPlayedInGroups(
+  rows: readonly ArchetypeUsageRow[],
+  lists: readonly CardList[] | null,
+  finish: string
+): PlayedInGroup[] {
+  const byArchetype = listsByArchetype(lists ?? [], finish);
+  const counted = lists !== null || rows.some(row => row.listCounts);
   const groups: PlayedInGroup[] = [];
   for (const usage of rows) {
     const mine = byArchetype.get(normalizeArchetypeName(usage.entry.name)) ?? [];
-    if (lists && mine.length === 0) {
+    const count = usage.listCounts?.[finish] ?? mine.length;
+    if (counted && count === 0) {
       continue;
     }
     mine.sort((a, b) => compareFinish(a.record, b.record));
-    groups.push({ usage, ...distOf(usage), lists: mine });
+    groups.push({ usage, ...distOf(usage), lists: mine, count });
   }
   const found = (g: PlayedInGroup) => g.usage.item.found ?? 0;
   const pct = (g: PlayedInGroup) => g.usage.item.pct ?? 0;
-  if (lists) {
-    return groups.sort((a, b) => b.lists.length - a.lists.length || found(b) - found(a));
+  if (counted) {
+    return groups.sort((a, b) => b.count - a.count || found(b) - found(a));
   }
   return groups.sort((a, b) => found(b) - found(a) || pct(b) - pct(a));
 }

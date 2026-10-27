@@ -84,6 +84,42 @@ test('a card page renders usage for its card', async ({ page }) => {
   await expect(page.locator('body')).toContainText("Boss's Orders");
 });
 
+test('played-in ranks from the usage counts and loads lists only once a row opens', async ({ page }) => {
+  await page.route('**/cardUsage.json', async route => {
+    const payload = (await (await route.fetch()).json()) as { usage: Record<string, { slug: string; t?: number[] }[]> };
+    for (const row of payload.usage["Boss's Orders::MEG::114"]) {
+      if (row.slug === 'Dragapult') {
+        row.t = [2, 1, 1];
+      }
+    }
+    await route.fulfill({ json: { ...payload, tiers: ['top50', 'top25', 'winner'] } });
+  });
+  const listRequests: string[] = [];
+  await page.route('**/lists.json', route => {
+    listRequests.push(route.request().url());
+    return route.fulfill({
+      json: {
+        schemaVersion: 1,
+        tags: ['winner', 'top2', 'top4', 'top8', 'top16', 'top10', 'top25', 'top50'],
+        archetypes: ['Dragapult'],
+        events: [['t1', 'Weekly', '2026-10-20', 64]],
+        cards: [["Boss's Orders", 'MEG', '114', 'trainer']],
+        decks: [['Mew', 'US', 1, 0, 0, 0b11111111, [0, 2]]]
+      }
+    });
+  });
+  await gotoClean(page, '/cards/MEG/114');
+  await expect(page.locator('.pi-row .pi-count').first()).toHaveText('1,129 lists');
+  await page.getByRole('radio', { name: 'Winners' }).click();
+  await expect(page.locator('.pi-row')).toHaveCount(1);
+  await expect(page.locator('.pi-row .pi-count')).toHaveText('1 lists');
+  expect(listRequests).toEqual([]);
+
+  await page.locator('.pi-row .au-chevron').first().click();
+  await expect(page.locator('.pi-list .pi-player')).toContainText('Mew');
+  expect(listRequests).toHaveLength(1);
+});
+
 test('card prices deep-link to the selected product through our TCGplayer affiliate account', async ({ page }) => {
   await gotoClean(page, '/cards/MEG/114');
   const price = page.locator('.price-link');

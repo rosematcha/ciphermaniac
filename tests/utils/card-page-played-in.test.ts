@@ -138,6 +138,39 @@ test('without an index, groups rank by decks running the card and keep every arc
   assert.deepEqual(groups[0].lists, []);
 });
 
+test('with list counts from the usage index, groups rank and filter before the list index loads', () => {
+  const counted = (name: string, found: number, listCounts: Record<string, number>) => ({
+    ...row(name, found, 100),
+    listCounts
+  });
+  const rows = [
+    counted('Crustle', 1, { all: 1, top50: 1, top25: 0, winner: 0 }),
+    counted('Dragapult', 2, { all: 2, top50: 2, top25: 2, winner: 1 })
+  ];
+  const before = buildPlayedInGroups(rows, null, 'all');
+  assert.deepEqual(
+    before.map(g => [g.usage.entry.name, g.count, g.lists.length]),
+    [
+      ['Dragapult', 2, 0],
+      ['Crustle', 1, 0]
+    ]
+  );
+  const winners = buildPlayedInGroups(rows, null, 'winner');
+  assert.deepEqual(
+    winners.map(g => [g.usage.entry.name, g.count]),
+    [['Dragapult', 1]]
+  );
+  // Loading the lists fills the groups without reordering them.
+  const after = buildPlayedInGroups(rows, listsForCard(records(), BOSS), 'all');
+  assert.deepEqual(
+    after.map(g => [g.usage.entry.name, g.count, g.lists.map(l => l.record.player)]),
+    [
+      ['Dragapult', 2, ['Mew', 'Takumi']],
+      ['Crustle', 1, ['Ronald']]
+    ]
+  );
+});
+
 test('distribution skips incomplete and empty buckets and keeps the first modal count on ties', () => {
   const usage = row('Dragapult', 10, 50);
   usage.item.dist = [

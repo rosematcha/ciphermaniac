@@ -28,6 +28,8 @@ export interface CardUsageEntry {
   found: number;
   pct: number;
   dist: CardDistributionEntry[];
+  /** Of `found`, lists in each of the payload's `tiers`; trailing zeros dropped. */
+  t?: number[];
 }
 
 /**
@@ -41,6 +43,8 @@ export interface CardUsagePayload {
   usage: Record<string, CardUsageEntry[]>;
   /** Set on rebaked events; usage keys are then rolling-canonical UIDs. */
   canonicalizedAt?: string;
+  /** Finish tiers the rows' `t` counts cover; absent on reports built before them. */
+  tiers?: string[];
 }
 
 export function fetchCardUsage(tournament: string): Promise<CardUsagePayload | null> {
