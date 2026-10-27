@@ -3,12 +3,15 @@
  *
  * Converts card art from the limitless CDN's PNGs (~17/52/118KB per
  * XS/SM/LG tier) into WebP (~4/12/25KB) hosted in our own R2 bucket, cutting
- * the dominant mobile payload by ~75%. Idempotent and incremental: cards
- * already in R2 are skipped, so run it alongside the daily data update to
- * pick up newly-seen cards.
+ * the dominant mobile payload by ~75%. Vintage sets the CDN lacks (see
+ * src/utils/ptcgio.ts) come from pokemontcg.io's single hi-res scan instead,
+ * resized to the same three tier widths, so every set lands under one key
+ * scheme. Idempotent and incremental: cards already in R2 are skipped, so run
+ * it alongside the daily data update to pick up newly-seen cards.
  *
  * Discovery: every (set, number) pair mentioned in tournament master reports
- * (live tournaments from R2 + local Snapshots) and archetype thumbnails.
+ * (live tournaments from R2, the online meta, every published format, local
+ * Snapshots) and archetype thumbnails.
  *
  * Upload target: card-images/{SET}/{SET}_{NUM}_R_EN_{TIER}.webp
  * plus a `card-images/_ready` marker written after the first successful run —
@@ -29,6 +32,8 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { isMissingObject } from './cdnObject';
 import { loadEventSources, productionScopeRoot } from '../.github/scripts/lib/build/productionRelease';
+import { releaseFormatRoots } from '../.github/scripts/lib/build/formatReports';
+import { type Tier, tierSource } from './cardImageSource';
 import { createR2Client, putJsonIfChanged, readJson, runR2Batch, withR2Retry } from '../.github/scripts/lib/r2.mjs';
 import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
 import { withinPruneCeiling } from '../.github/scripts/lib/build/pruneCeiling';
@@ -36,9 +41,8 @@ import { withinPruneCeiling } from '../.github/scripts/lib/build/pruneCeiling';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STATIC_BASE = join(ROOT, 'static');
 const R2_BASE = 'https://r2.ciphermaniac.com';
-const LIMITLESS_CDN = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
 
-const TIERS = ['XS', 'SM', 'LG'] as const;
+const TIERS: readonly Tier[] = ['XS', 'SM', 'LG'];
 // q=80 is visually transparent for card art at these display sizes.
 const WEBP_QUALITY = 80;
 const CONCURRENCY = 8;
@@ -162,7 +166,8 @@ async function discoverViaS3(cards: Map<string, CardRef>): Promise<void> {
   const { release, sources } = await loadEventSources({ read });
   const prefixes = [
     ...Object.values(sources).map(root => `${root.replace(/^\/+/, '')}/`),
-    `${productionScopeRoot(release, 'online')}/`
+    `${productionScopeRoot(release, 'online')}/`,
+    ...(await releaseFormatRoots({ read }, release)).map(root => `${root}/`)
   ];
   await runR2Batch(prefixes, prefix => collectReportCards(cards, prefix, getJsonFromR2));
 }
@@ -172,7 +177,11 @@ async function discoverViaHttp(cards: Map<string, CardRef>): Promise<void> {
   const read = async <T>(key: string): Promise<T | null> =>
     (await fetchJson(`${R2_BASE}/${encodeURI(key)}`)) as T | null;
   const { release, sources } = await loadEventSources({ read });
-  const roots = [...Object.values(sources), `/${productionScopeRoot(release, 'online')}`];
+  const roots = [
+    ...Object.values(sources),
+    `/${productionScopeRoot(release, 'online')}`,
+    ...(await releaseFormatRoots({ read }, release)).map(root => `/${root}`)
+  ];
   for (const root of roots) {
     await collectReportCards(cards, `${R2_BASE}/${encodeURI(root.replace(/^\/+/, ''))}/`, fetchJson);
   }
@@ -245,7 +254,24 @@ async function fetchSourcePng(url: string): Promise<SourceFetch> {
   return { kind: 'failed', reason: lastReason };
 }
 
-async function convertCard(ref: CardRef, tier: (typeof TIERS)[number], existing: Set<string>): Promise<void> {
+/** The first source that is not a genuine absence; a transient failure stops the walk. */
+async function fetchFirstSource(urls: readonly string[]): Promise<SourceFetch> {
+  for (const url of urls) {
+    const source = await fetchSourcePng(url);
+    if (source.kind !== 'missing') {
+      return source;
+    }
+  }
+  return { kind: 'missing' };
+}
+
+function encodeWebp(png: ArrayBuffer, width: number | null): Promise<Buffer> {
+  const image = sharp(Buffer.from(png));
+  const sized = width === null ? image : image.resize({ width, withoutEnlargement: true });
+  return sized.webp({ quality: WEBP_QUALITY }).toBuffer();
+}
+
+async function convertCard(ref: CardRef, tier: Tier, existing: Set<string>): Promise<void> {
   const setU = ref.set.toUpperCase();
   const num = paddedNumber(ref.number);
   const key = `card-images/${setU}/${setU}_${num}_R_EN_${tier}.webp`;
@@ -253,8 +279,8 @@ async function convertCard(ref: CardRef, tier: (typeof TIERS)[number], existing:
     stats.skipped++;
     return;
   }
-  const sourceUrl = `${LIMITLESS_CDN}/${setU}/${setU}_${num}_R_EN_${tier}.png`;
-  const source = await fetchSourcePng(sourceUrl);
+  const { urls, width } = tierSource(setU, num, tier);
+  const source = await fetchFirstSource(urls);
   if (source.kind === 'missing') {
     stats.missingSource++;
     return;
@@ -266,7 +292,7 @@ async function convertCard(ref: CardRef, tier: (typeof TIERS)[number], existing:
   }
   const png: ArrayBuffer = source.buffer;
   try {
-    const webp = await sharp(Buffer.from(png)).webp({ quality: WEBP_QUALITY }).toBuffer();
+    const webp = await encodeWebp(png, width);
     stats.pngBytes += png.byteLength;
     stats.webpBytes += webp.byteLength;
     if (!DRY_RUN && s3Client && r2Bucket) {

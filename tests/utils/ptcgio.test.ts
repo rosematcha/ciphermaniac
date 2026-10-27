@@ -7,7 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { hasPtcgioImages, ptcgioImageUrls, ptcgioSrcset } from '../../src/utils/ptcgio.ts';
+import { hasPtcgioImages, ptcgioImageUrls, ptcgioScanUrls, ptcgioSrcset } from '../../src/utils/ptcgio.ts';
 
 /**
  * The same-origin proxy leads because pokemontcg.io sends no
@@ -54,6 +54,52 @@ test('the EX and Platinum eras are mapped end to end', () => {
   }
   assert.strictEqual(ptcgioImageUrls('TRR', '019', 'sm')[0], '/thumbnails/ptcgio/ex7/19');
   assert.strictEqual(ptcgioImageUrls('RR', '109', 'sm')[0], '/thumbnails/ptcgio/pl2/109');
+});
+
+/**
+ * Every pre-BLW set in the set catalog that Limitless's CDN lacks. The HGSS
+ * sets (HS through CL, HSP) are on that CDN and stay off this list; Rumble is
+ * not. Each id was read off the Limitless card page and, where the API
+ * answered, matched there too (2026-10-27): P4 10 is Scramble Energy on both.
+ */
+test('the POP series, promos and the older WotC sets are mapped', () => {
+  const expected: Record<string, string> = {
+    P1: 'pop1',
+    P2: 'pop2',
+    P3: 'pop3',
+    P4: 'pop4',
+    P6: 'pop6',
+    P7: 'pop7',
+    P9: 'pop9',
+    NP: 'np',
+    WP: 'basep',
+    BG: 'bp',
+    RM: 'ru1',
+    E3: 'ecard3',
+    N2: 'neo2',
+    N3: 'neo3',
+    N4: 'neo4',
+    SI: 'si1',
+    TR: 'base5'
+  };
+  for (const [set, id] of Object.entries(expected)) {
+    assert.strictEqual(ptcgioImageUrls(set, '010', 'sm')[0], `/thumbnails/ptcgio/${id}/10`, set);
+  }
+  for (const set of ['HS', 'UL', 'UD', 'TM', 'CL', 'HSP', 'BLW', 'BWP']) {
+    assert.strictEqual(hasPtcgioImages(set), false, `${set} is on the Limitless CDN`);
+  }
+});
+
+test('scan URLs for the R2 mirror are direct, hi-res first', () => {
+  assert.deepStrictEqual(ptcgioScanUrls('p4', '010'), [
+    'https://images.pokemontcg.io/pop4/10_hires.png',
+    'https://images.pokemontcg.io/pop4/10.png'
+  ]);
+  assert.deepStrictEqual(ptcgioScanUrls('DPP', '046'), [
+    'https://images.pokemontcg.io/dpp/DP46_hires.png',
+    'https://images.pokemontcg.io/dpp/DP46.png'
+  ]);
+  assert.deepStrictEqual(ptcgioScanUrls('MEG', '114'), []);
 });
 
 test('modern sets are not claimed', () => {

@@ -7,7 +7,16 @@
  * was verified by fetching a sample card from api.pokemontcg.io and matching
  * its name against our synonym DB (2026-07-21); the EX-era and Platinum-era
  * additions were read off Limitless's own card pages, which fall back to the
- * same host and so name the set id in the image URL (2026-09-04).
+ * same host and so name the set id in the image URL (2026-09-04). The rest of
+ * the pre-BW sets missing from that CDN (POP 1-4, 6, 7, 9, Nintendo, WotC and
+ * Best of Game promos, Rumble, Skyridge, Neo 2-4, Team Rocket, Southern
+ * Islands) were read off the Limitless card pages the same way, and the API
+ * returned the same card name for the same number for all but NP, N2 and SI,
+ * where it answered only 5xx that day (2026-10-27).
+ *
+ * The R2 mirror (scripts/convert-card-images.ts) re-encodes these scans into
+ * the Limitless tiers, so once R2 is live the card image prefers that copy
+ * and everything below is its fallback.
  *
  * Unlike the Limitless CDN, images.pokemontcg.io hotlinks cleanly — no
  * bot-management cookie — so a direct URL loads in the browser. It sends no
@@ -28,13 +37,21 @@ const PTCGIO_SET_IDS: Record<string, string> = {
   JU: 'base2',
   FO: 'base3',
   BS2: 'base4',
+  TR: 'base5',
   LC: 'base6',
+  WP: 'basep',
+  SI: 'si1',
   G1: 'gym1',
   G2: 'gym2',
   N1: 'neo1',
+  N2: 'neo2',
+  N3: 'neo3',
+  N4: 'neo4',
+  BG: 'bp',
   // e-Card era
   E1: 'ecard1',
   E2: 'ecard2',
+  E3: 'ecard3',
   // EX era
   RS: 'ex1',
   SS: 'ex2',
@@ -65,9 +82,18 @@ const PTCGIO_SET_IDS: Record<string, string> = {
   SV: 'pl3',
   AR: 'pl4',
   DPP: 'dpp',
-  // POP series + XY promos
+  RM: 'ru1',
+  // POP series + promos
+  NP: 'np',
+  P1: 'pop1',
+  P2: 'pop2',
+  P3: 'pop3',
+  P4: 'pop4',
   P5: 'pop5',
+  P6: 'pop6',
+  P7: 'pop7',
   P8: 'pop8',
+  P9: 'pop9',
   XYP: 'xyp'
 };
 
@@ -118,6 +144,22 @@ export function ptcgioImageUrls(setCode: string, number: string | number, size: 
     ...files.map(file => `${PTCGIO_PROXY}/${id}/${file}`),
     ...files.map(file => `${PTCGIO_BASE}/${id}/${file}.png`)
   ];
+}
+
+/**
+ * The scans themselves, hi-res first, for the R2 mirror that re-encodes them
+ * (scripts/convert-card-images.ts). Browsers never load these directly.
+ * @param setCode - Limitless set code
+ * @param number - Card number, padded or not
+ * @returns Direct pokemontcg.io URLs, or [] for sets pokemontcg.io doesn't back
+ */
+export function ptcgioScanUrls(setCode: string, number: string | number): string[] {
+  const id = PTCGIO_SET_IDS[setCode.toUpperCase()];
+  if (!id) {
+    return [];
+  }
+  const name = ptcgioNumber(setCode, number);
+  return [`${PTCGIO_BASE}/${id}/${name}_hires.png`, `${PTCGIO_BASE}/${id}/${name}.png`];
 }
 
 /**
