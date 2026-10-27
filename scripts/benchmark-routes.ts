@@ -16,8 +16,16 @@
  * at runtime from the live R2 indexes and freeze them into the results file
  * so a rerun benchmarks the exact same objects.
  *
+ * It builds the app itself into .cache/bench-dist with the release production
+ * serves embedded, as the Pages build does: without one, the app falls back to
+ * legacy report paths production no longer serves.
+ *
+ * The service worker is blocked. Once it claims the page it fetches the data
+ * itself, outside the page's network throttling and byte counting, so runs
+ * with it under-report data transfer and time. Repeat runs measure the HTTP
+ * cache.
+ *
  * Usage:
- *   npm run build                      # produce dist/ first
  *   npx playwright install chromium    # once, if Chromium isn't installed
  *   npm run bench:routes               # writes .github/baselines/route-benchmark-<date>.json
  *
@@ -32,9 +40,14 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type BrowserContext, type CDPSession, chromium, type Page } from '@playwright/test';
+import { build, mergeConfig } from 'vite';
 import { decodeSlimIndex } from '../shared/playerTypes.js';
+import { resolveCurrentManifest } from '../.github/scripts/embed-current-release.ts';
+import { renderModule } from '../.github/scripts/generate-release-module.ts';
+import viteConfig from '../vite.config.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const DIST = join(ROOT, '.cache', 'bench-dist');
 const R2_BASE = 'https://r2.ciphermaniac.com';
 const ONLINE_REPORT = 'Online - Last 14 Days';
 
@@ -192,11 +205,25 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
   throw new Error(`vite preview did not become ready at ${url} within ${timeoutMs}ms`);
 }
 
+/** Build into {@link DIST} with production's current release embedded, leaving the committed module alone. */
+async function buildWithCurrentRelease(): Promise<void> {
+  const manifest = await resolveCurrentManifest(R2_BASE, 'production');
+  if (!manifest) {
+    throw new Error(`No valid production release at ${R2_BASE} to embed`);
+  }
+  const source = renderModule(manifest);
+  const embed = {
+    name: 'bench-embedded-release',
+    enforce: 'pre' as const,
+    load: (id: string) => (id.endsWith('/shared/generated/release.ts') ? source : null)
+  };
+  await build(mergeConfig(viteConfig, { logLevel: 'warn', build: { outDir: DIST }, plugins: [embed] }));
+}
+
 function startPreview(): ChildProcess {
-  const proc = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
-    cwd: ROOT,
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
+  // Its own process group, so cleanup takes vite down with npx.
+  const args = ['vite', 'preview', '--outDir', DIST, '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'];
+  const proc = spawn('npx', args, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   proc.stdout?.on('data', () => {});
   proc.stderr?.on('data', (d: Buffer) => {
     const s = d.toString();
@@ -460,7 +487,7 @@ async function newThrottledContext(): Promise<{ context: BrowserContext; page: P
     deviceScaleFactor: 3,
     isMobile: true,
     hasTouch: true,
-    serviceWorkers: 'allow',
+    serviceWorkers: 'block',
     bypassCSP: true
   });
   await context.addInitScript(INIT_SCRIPT);
@@ -491,16 +518,13 @@ async function benchmarkRoute(route: { route: string; url: string }): Promise<Ro
     const { context, page, session } = await newThrottledContext();
     try {
       const collector = await attachNetworkCollector(session);
-      // Cold: fresh context, no SW/cache priming.
+      // Cold: fresh context, nothing primed.
       const cold = await measureNavigation(page, collector, async () => {
         await page.goto(route.url, { waitUntil: 'commit', timeout: NETWORK_IDLE_TIMEOUT });
       });
       coldRuns.push(cold);
 
-      // Let the service worker install/activate before the repeat load.
-      await page.waitForTimeout(500);
-
-      // Repeat: reload the same page in the same context (HTTP cache + SW apply).
+      // Repeat: reload the same page in the same context (HTTP cache).
       const repeat = await measureNavigation(page, collector, async () => {
         await page.reload({ waitUntil: 'commit', timeout: NETWORK_IDLE_TIMEOUT });
       });
@@ -629,11 +653,15 @@ async function main(): Promise<void> {
   );
   const routes = buildRoutes(params);
 
+  console.info('[bench] Building with the current production release embedded...');
+  await buildWithCurrentRelease();
   console.info(`[bench] Starting vite preview on ${PREVIEW_ORIGIN}...`);
   const preview = startPreview();
   const cleanup = () => {
-    if (!preview.killed) {
-      preview.kill('SIGTERM');
+    try {
+      process.kill(-preview.pid!, 'SIGTERM');
+    } catch {
+      // Already gone.
     }
   };
   process.on('exit', cleanup);
