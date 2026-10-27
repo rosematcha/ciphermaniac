@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertVerifiedCode, getVerificationState } from '../../.github/scripts/require-verified-code';
+import {
+  assertVerifiedCode,
+  getVerificationState,
+  requiredCheckRunsPaths
+} from '../../.github/scripts/require-verified-code';
 
 const sha = 'a'.repeat(40);
 const successfulChecks = ['quality-gates', 'lighthouse'].map(name => ({
@@ -41,5 +45,13 @@ test('verification distinguishes checks that are pending from checks that failed
       successfulChecks.map(check => ({ ...check, conclusion: check.name === 'lighthouse' ? 'failure' : 'success' }))
     ),
     'failure'
+  );
+});
+
+test('required checks are queried by name so other workflow runs cannot page them out', () => {
+  const paths = requiredCheckRunsPaths('owner/repo', sha);
+  assert.deepEqual(
+    paths.map(path => new URL(path, 'https://api.github.com/').searchParams.get('check_name')),
+    ['quality-gates', 'lighthouse']
   );
 });

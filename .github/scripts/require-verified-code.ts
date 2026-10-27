@@ -42,6 +42,14 @@ export function assertVerifiedCode(sha: string, mainSha: string, checks: CheckRu
   }
 }
 
+// Scheduled workflows add check runs to main's head commit, so an unfiltered
+// first page soon stops containing the required checks. Ask for each by name.
+export function requiredCheckRunsPaths(repository: string, sha: string): string[] {
+  return REQUIRED_CHECKS.map(
+    name => `repos/${repository}/commits/${sha}/check-runs?check_name=${name}&filter=latest&per_page=100`
+  );
+}
+
 function api<T>(path: string): T {
   return JSON.parse(execFileSync('gh', ['api', path], { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 })) as T;
 }
@@ -51,16 +59,16 @@ async function main(): Promise<void> {
   const sha = requireEnv('GITHUB_SHA');
   for (let attempt = 0; attempt < 100; attempt++) {
     const head = api<{ sha: string }>(`repos/${repository}/commits/main`);
-    const checks = api<{ check_runs: CheckRun[] }>(
-      `repos/${repository}/commits/${sha}/check-runs?filter=latest&per_page=100`
+    const checks = requiredCheckRunsPaths(repository, sha).flatMap(
+      path => api<{ check_runs: CheckRun[] }>(path).check_runs
     );
-    const state = getVerificationState(sha, head.sha, checks.check_runs);
+    const state = getVerificationState(sha, head.sha, checks);
     if (state === 'success') {
       console.log(`Verified quality and performance checks for ${sha}`);
       return;
     }
     if (state === 'failure') {
-      assertVerifiedCode(sha, head.sha, checks.check_runs);
+      assertVerifiedCode(sha, head.sha, checks);
     }
     if (attempt === 99) {
       throw new Error(`Timed out waiting for checks on ${sha}`);
