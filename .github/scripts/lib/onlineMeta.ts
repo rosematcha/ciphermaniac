@@ -74,6 +74,8 @@ export interface ReportScope {
    * index shape; its icons come from the site-wide icon map instead.
    */
   icons?: Record<string, string[]>;
+  /** Name a deck by hand-maintained rules; null keeps the archetype Limitless gave it. */
+  classify?: (deck: GatheredDeck) => string | null;
 }
 
 /** The Standard online meta. */
@@ -233,6 +235,19 @@ async function loadCardSynonyms(run: Run): Promise<SynonymDatabase> {
   return data;
 }
 
+/** The deck under the scope's own archetype rules, when one of them names it. */
+function reclassify(deck: GatheredDeck, scope: ReportScope): GatheredDeck {
+  const name = scope.classify?.(deck);
+  if (!name) {
+    return deck;
+  }
+  const archetypeId = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return { ...deck, archetype: name, archetypeId, archetypeSource: 'format-rules' };
+}
+
 interface GatheredWindow {
   tournaments: OnlineTournamentSummary[];
   decks: GatheredDeck[];
@@ -300,7 +315,7 @@ async function gatherWindow(
   const tournamentIds = new Set(tournaments.map(tournament => tournament.id));
   const decks = gathered
     .filter(deck => tournamentIds.has(deck.tournamentId))
-    .map(deck => ({ ...deck, id: deck.id.slice(0, DECK_ID_LENGTH) }));
+    .map(deck => reclassify({ ...deck, id: deck.id.slice(0, DECK_ID_LENGTH) }, scope));
   if (!decks.length) {
     throw new Error('No decklists remained after report-window filtering');
   }

@@ -222,3 +222,43 @@ test('a failed format keeps its previous index entry and is named as failed', as
   assert.equal(index.failed?.[0].id, 'rspk');
   assert.match(index.failed?.[0].message ?? '', /Limitless is down/);
 });
+
+test('Eternal names a deck by its hand-kept rules, with their sprites and card art', async () => {
+  const bucket = memoryStore();
+  const blastoise = {
+    placing: 1,
+    name: 'Player 1',
+    player: 'p1',
+    deck: { id: 'other', name: 'Other', icons: ['substitute'] },
+    decklist: {
+      pokemon: [
+        { name: 'Blastoise', count: 2, set: 'PLB', number: '16' },
+        { name: 'Chien-Pao ex', count: 3, set: 'PAL', number: '61' }
+      ]
+    }
+  };
+  const fetchJson: OnlineMetaOptions['fetchJson'] = async (path, options) => {
+    if (path === '/tournaments') {
+      const { page } = options?.searchParams as Record<string, unknown>;
+      return page === 1
+        ? [{ id: 't1', name: 'Eternal Tournament #41', date: '2026-10-20T17:00:00.000Z', players: 1 }]
+        : [];
+    }
+    if (path.endsWith('/details')) {
+      return { decklists: true, isOnline: true, format: 'CUSTOM' };
+    }
+    return path.endsWith('/standings') ? [blastoise] : [];
+  };
+  await runFormatMetas(runOptions(bucket.store, fetchJson, [ETERNAL]));
+
+  const archetypes = bucket.objects.get('reports/Formats/eternal/archetypes/index.json') as Array<{
+    name: string;
+    label: string;
+    icons?: string[];
+    thumbnails: string[];
+  }>;
+  assert.equal(archetypes.length, 1);
+  assert.equal(archetypes[0].label, 'Blastoise Chien-Pao');
+  assert.deepEqual(archetypes[0].icons, ['blastoise', 'chien-pao']);
+  assert.deepEqual(archetypes[0].thumbnails, ['PLB/16', 'PAL/61']);
+});

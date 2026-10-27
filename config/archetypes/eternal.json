@@ -1,0 +1,924 @@
+{
+  "archetypes": [
+    {
+      "name": "Regigigas LV.X",
+      "requires": [
+        {
+          "card": "Regigigas LV.X",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "DPP/30"
+      ],
+      "icons": [
+        "regigigas"
+      ]
+    },
+    {
+      "name": "ADP Garbodor",
+      "requires": [
+        {
+          "card": "Ultra Necrozma",
+          "copies": 2
+        },
+        {
+          "card": "Garbodor",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "CEC/164",
+        "BKP/57"
+      ],
+      "icons": [
+        "arceus",
+        "garbodor"
+      ]
+    },
+    {
+      "name": "Medicham ADP",
+      "requires": [
+        {
+          "card": "Medicham",
+          "copies": 3
+        },
+        {
+          "card": "Arceus & Dialga & Palkia-GX",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "PRC/81"
+      ],
+      "icons": [
+        "medicham",
+        "arceus"
+      ]
+    },
+    {
+      "name": "Medicham",
+      "requires": [
+        {
+          "card": "Medicham",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "PRC/81"
+      ],
+      "icons": [
+        "medicham"
+      ]
+    },
+    {
+      "name": "Lightning ADP",
+      "requires": [
+        {
+          "card": "Arceus & Dialga & Palkia-GX",
+          "copies": 2
+        },
+        {
+          "card": "Miraidon ex",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "CEC/156",
+        "SVI/81"
+      ],
+      "icons": [
+        "arceus",
+        "miraidon"
+      ]
+    },
+    {
+      "name": "Munkidori Gardevoir",
+      "requires": [
+        {
+          "card": "Kirlia",
+          "copies": 2
+        },
+        {
+          "card": "Gardevoir ex",
+          "copies": 1
+        },
+        {
+          "card": "Munkidori",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "SVI/86",
+        "PRE/44"
+      ],
+      "icons": [
+        "munkidori",
+        "gardevoir"
+      ]
+    },
+    {
+      "name": "Gardevoir",
+      "requires": [
+        {
+          "card": "Kirlia",
+          "copies": 2
+        },
+        {
+          "card": "Gardevoir",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "CRE/61"
+      ],
+      "icons": [
+        "gardevoir"
+      ]
+    },
+    {
+      "name": "Banette Vileplume",
+      "requires": [
+        {
+          "card": "Banette ex",
+          "copies": 2
+        },
+        {
+          "card": "Vileplume",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "SVI/88",
+        "UD/24"
+      ],
+      "icons": [
+        "banette",
+        "vileplume"
+      ]
+    },
+    {
+      "name": "Arceus Vileplume",
+      "requires": [
+        {
+          "card": "Arceus VSTAR",
+          "copies": 2
+        },
+        {
+          "card": "Vileplume",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "BRS/123",
+        "AOR/3"
+      ],
+      "icons": [
+        "arceus",
+        "vileplume"
+      ]
+    },
+    {
+      "name": "Dragapult VMAX Vileplume",
+      "requires": [
+        {
+          "card": "Dragapult VMAX",
+          "copies": 2
+        },
+        {
+          "card": "Vileplume",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "RCL/93",
+        "AOR/3"
+      ],
+      "icons": [
+        "dragapult",
+        "vileplume"
+      ]
+    },
+    {
+      "name": "Orbeetle",
+      "requires": [
+        {
+          "card": "Orbeetle",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "BST/65"
+      ],
+      "icons": [
+        "orbeetle"
+      ]
+    },
+    {
+      "name": "Ralts Lock",
+      "requires": [
+        {
+          "card": "Ralts",
+          "copies": 1
+        },
+        {
+          "card": "Garbodor",
+          "copies": 1
+        },
+        {
+          "card": "Sylveon V",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "PL/89"
+      ],
+      "icons": [
+        "ralts"
+      ]
+    },
+    {
+      "name": "Mega Lopunny Garbodor",
+      "requires": [
+        {
+          "card": "Mega Lopunny ex",
+          "copies": 2
+        },
+        {
+          "card": "Garbodor",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "PFL/84",
+        "BKP/57"
+      ],
+      "icons": [
+        "lopunny-mega",
+        "garbodor"
+      ]
+    },
+    {
+      "name": "Jolteon VMAX",
+      "requires": [
+        {
+          "card": "Jolteon VMAX",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "EVS/51"
+      ],
+      "icons": [
+        "jolteon"
+      ]
+    },
+    {
+      "name": "Inteleon Charizard",
+      "requires": [
+        {
+          "card": "Drizzile",
+          "copies": 2
+        },
+        {
+          "card": "Charizard ex",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "SSH/56",
+        "PAF/54"
+      ],
+      "icons": [
+        "inteleon",
+        "charizard"
+      ]
+    },
+    {
+      "name": "Charizard Pidgeot",
+      "requires": [
+        {
+          "card": "Charizard ex",
+          "copies": 2
+        },
+        {
+          "card": "Pidgeot ex",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "PAF/54",
+        "OBF/164"
+      ],
+      "icons": [
+        "charizard",
+        "pidgeot"
+      ]
+    },
+    {
+      "name": "Greninja Budew",
+      "requires": [
+        {
+          "card": "Frogadier",
+          "copies": 2
+        },
+        {
+          "card": "Budew",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "FLI/24",
+        "PRE/4"
+      ],
+      "icons": [
+        "greninja",
+        "budew"
+      ]
+    },
+    {
+      "name": "Jirachi Mill",
+      "requires": [
+        {
+          "card": "Jirachi",
+          "print": "RR 7",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "RR/7"
+      ],
+      "icons": [
+        "jirachi"
+      ]
+    },
+    {
+      "name": "Welder Box",
+      "requires": [
+        {
+          "card": "Holon's Magneton",
+          "copies": 3
+        },
+        {
+          "card": "Jirachi",
+          "print": "DX 9",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "DX/9",
+        "DS/22"
+      ],
+      "icons": [
+        "jirachi",
+        "magneton"
+      ]
+    },
+    {
+      "name": "Bronzong Genesect",
+      "requires": [
+        {
+          "card": "Bronzong",
+          "copies": 2
+        },
+        {
+          "card": "Holon's Magneton",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "XYP/21",
+        "BLK/67"
+      ],
+      "icons": [
+        "bronzong",
+        "genesect"
+      ]
+    },
+    {
+      "name": "Blastoise Chien-Pao",
+      "requires": [
+        {
+          "card": "Blastoise",
+          "copies": 1
+        },
+        {
+          "card": "Chien-Pao ex",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "PLB/16",
+        "PAL/61"
+      ],
+      "icons": [
+        "blastoise",
+        "chien-pao"
+      ]
+    },
+    {
+      "name": "Chien-Pao Baxcalibur",
+      "requires": [
+        {
+          "card": "Baxcalibur",
+          "copies": 2
+        },
+        {
+          "card": "Chien-Pao ex",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "PAL/61",
+        "SVP/19"
+      ],
+      "icons": [
+        "chien-pao",
+        "baxcalibur"
+      ]
+    },
+    {
+      "name": "Mega Absol",
+      "requires": [
+        {
+          "card": "Mega Absol ex",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "MEG/86"
+      ],
+      "icons": [
+        "absol-mega"
+      ]
+    },
+    {
+      "name": "Unown Munkidori",
+      "requires": [
+        {
+          "card": "Munkidori",
+          "copies": 3
+        },
+        {
+          "card": "Unown",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "TWM/95"
+      ],
+      "icons": [
+        "unown",
+        "munkidori"
+      ]
+    },
+    {
+      "name": "Pikachu V-UNION",
+      "requires": [
+        {
+          "card": "Pikachu V-UNION",
+          "copies": 4
+        }
+      ],
+      "thumbnails": [
+        "SP/140"
+      ],
+      "icons": [
+        "pikachu"
+      ]
+    },
+    {
+      "name": "Mewtwo V-UNION",
+      "requires": [
+        {
+          "card": "Mewtwo V-UNION",
+          "copies": 4
+        }
+      ],
+      "thumbnails": [
+        "SP/160"
+      ],
+      "icons": [
+        "mewtwo"
+      ]
+    },
+    {
+      "name": "Palkia VSTAR",
+      "requires": [
+        {
+          "card": "Origin Forme Palkia VSTAR",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "ASR/40"
+      ],
+      "icons": [
+        "palkia-origin"
+      ]
+    },
+    {
+      "name": "Hisuian Zoroark VSTAR",
+      "requires": [
+        {
+          "card": "Hisuian Zoroark VSTAR",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "LOR/147"
+      ],
+      "icons": [
+        "zoroark-hisui"
+      ]
+    },
+    {
+      "name": "Zoroark",
+      "requires": [
+        {
+          "card": "Zoroark",
+          "print": "EVS 103",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "EVS/103"
+      ],
+      "icons": [
+        "zoroark"
+      ]
+    },
+    {
+      "name": "Mewtwo & Mew-GX",
+      "requires": [
+        {
+          "card": "Mewtwo & Mew-GX",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "SMP/191"
+      ],
+      "icons": [
+        "mewtwo"
+      ]
+    },
+    {
+      "name": "Shadow Rider Calyrex VMAX",
+      "requires": [
+        {
+          "card": "Shadow Rider Calyrex VMAX",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "CRE/75"
+      ],
+      "icons": [
+        "calyrex-shadow"
+      ]
+    },
+    {
+      "name": "Eternatus VMAX",
+      "requires": [
+        {
+          "card": "Eternatus VMAX",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "DAA/117"
+      ],
+      "icons": [
+        "eternatus"
+      ]
+    },
+    {
+      "name": "Alcremie",
+      "requires": [
+        {
+          "card": "Alcremie",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "BRS/71"
+      ],
+      "icons": [
+        "alcremie"
+      ]
+    },
+    {
+      "name": "Festival Lead",
+      "requires": [
+        {
+          "card": "Dipplin",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "PRE/10",
+        "SMP/25"
+      ],
+      "icons": [
+        "dipplin",
+        "lurantis"
+      ]
+    },
+    {
+      "name": "Regis",
+      "requires": [
+        {
+          "card": "Regidrago",
+          "copies": 1
+        },
+        {
+          "card": "Regigigas",
+          "copies": 1
+        },
+        {
+          "card": "Regice",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "ASR/118"
+      ],
+      "icons": [
+        "regidrago",
+        "regigigas"
+      ]
+    },
+    {
+      "name": "Slowking",
+      "requires": [
+        {
+          "card": "Slowking",
+          "copies": 2
+        },
+        {
+          "card": "Slowpoke",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "SCR/58"
+      ],
+      "icons": [
+        "slowking"
+      ]
+    },
+    {
+      "name": "Noctowl Terapagos",
+      "requires": [
+        {
+          "card": "Noctowl",
+          "copies": 3
+        },
+        {
+          "card": "Terapagos ex",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "SCR/115",
+        "PRE/92"
+      ],
+      "icons": [
+        "noctowl",
+        "terapagos"
+      ]
+    },
+    {
+      "name": "Toxtricity",
+      "requires": [
+        {
+          "card": "Toxtricity",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "OBF/72"
+      ],
+      "icons": [
+        "toxtricity"
+      ]
+    },
+    {
+      "name": "Delphox",
+      "requires": [
+        {
+          "card": "Braixen",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "CRI/13"
+      ],
+      "icons": [
+        "delphox"
+      ]
+    },
+    {
+      "name": "Terapagos Skuntank",
+      "requires": [
+        {
+          "card": "Terapagos ex",
+          "copies": 1
+        },
+        {
+          "card": "Skuntank G",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "SCR/128"
+      ],
+      "icons": [
+        "terapagos",
+        "skuntank"
+      ]
+    },
+    {
+      "name": "Honchkrow Bloodmoon Ursaluna",
+      "requires": [
+        {
+          "card": "Honchkrow",
+          "copies": 1
+        },
+        {
+          "card": "Bloodmoon Ursaluna ex",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "SV/29"
+      ],
+      "icons": [
+        "honchkrow",
+        "ursaluna-bloodmoon"
+      ]
+    },
+    {
+      "name": "Porygon-Z",
+      "requires": [
+        {
+          "card": "Porygon-Z",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "UNB/157"
+      ],
+      "icons": [
+        "porygon-z"
+      ]
+    },
+    {
+      "name": "Ursaluna Pidgeot",
+      "requires": [
+        {
+          "card": "Ursaluna",
+          "copies": 3
+        },
+        {
+          "card": "Pidgey",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "ASR/124"
+      ],
+      "icons": [
+        "ursaluna",
+        "pidgeot"
+      ]
+    },
+    {
+      "name": "Giratina Hydreigon",
+      "requires": [
+        {
+          "card": "Giratina",
+          "copies": 3
+        },
+        {
+          "card": "Hydreigon",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "CIN/62"
+      ],
+      "icons": [
+        "giratina",
+        "hydreigon"
+      ]
+    },
+    {
+      "name": "United Wings",
+      "requires": [
+        {
+          "card": "Flamigo",
+          "copies": 3
+        },
+        {
+          "card": "Wattrel",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "PAL/170"
+      ],
+      "icons": [
+        "flamigo",
+        "wattrel"
+      ]
+    },
+    {
+      "name": "Wugtrio Floatzel",
+      "requires": [
+        {
+          "card": "Wugtrio",
+          "copies": 2
+        },
+        {
+          "card": "Floatzel GL",
+          "copies": 1
+        }
+      ],
+      "thumbnails": [
+        "SVI/57",
+        "RR/4"
+      ],
+      "icons": [
+        "wugtrio",
+        "floatzel"
+      ]
+    },
+    {
+      "name": "Iron Valiant",
+      "requires": [
+        {
+          "card": "Iron Valiant ex",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "PAR/89"
+      ],
+      "icons": [
+        "iron-valiant"
+      ]
+    },
+    {
+      "name": "Lost March",
+      "requires": [
+        {
+          "card": "Jumpluff",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "LOT/14"
+      ],
+      "icons": [
+        "jumpluff"
+      ]
+    },
+    {
+      "name": "Marshadow-GX Box",
+      "requires": [
+        {
+          "card": "Marshadow-GX",
+          "copies": 3
+        }
+      ],
+      "thumbnails": [
+        "BUS/80"
+      ],
+      "icons": [
+        "marshadow"
+      ]
+    },
+    {
+      "name": "Cofagrigus Torchic",
+      "requires": [
+        {
+          "card": "Cofagrigus",
+          "copies": 2
+        },
+        {
+          "card": "Torchic",
+          "copies": 2
+        }
+      ],
+      "thumbnails": [
+        "PLF/56"
+      ],
+      "icons": [
+        "cofagrigus",
+        "torchic"
+      ]
+    }
+  ]
+}

@@ -16,6 +16,13 @@ import {
   type FormatsIndexEntry
 } from '../../../shared/formats/registry';
 import { windowDays } from '../../../shared/formats/window';
+import {
+  type ArchetypeRule,
+  matchArchetypeRule,
+  ruleIcons,
+  ruleThumbnails
+} from '../../../shared/formats/archetypeRules';
+import eternalRules from '../../../config/archetypes/eternal.json' with { type: 'json' };
 import { type OnlineMetaOptions, type ReportScope, runOnlineMeta } from './onlineMeta';
 
 export interface FormatMetaOptions extends Omit<OnlineMetaOptions, 'scope' | 'exclusions' | 'thumbnails'> {
@@ -26,9 +33,15 @@ export interface FormatMetaOptions extends Omit<OnlineMetaOptions, 'scope' | 'ex
   icons?: Record<string, Record<string, string[]>>;
 }
 
+/** Hand-maintained archetype rules, for formats Limitless leaves unclassified. */
+const FORMAT_RULES: Record<string, readonly ArchetypeRule[]> = {
+  eternal: eternalRules.archetypes
+};
+
 /** The producer scope for one format. */
 export function formatReportScope(format: FormatScope, now: Date, icons: Record<string, string[]> = {}): ReportScope {
   const { source } = format;
+  const rules = FORMAT_RULES[format.id] ?? [];
   return {
     folder: formatFolder(format.id).replace(/^reports\//, ''),
     name: format.label,
@@ -40,7 +53,8 @@ export function formatReportScope(format: FormatScope, now: Date, icons: Record<
     },
     minFieldPlayers: format.minFieldPlayers,
     minMatchupFieldPlayers: format.minMatchupFieldPlayers,
-    icons
+    icons: { ...ruleIcons(rules), ...icons },
+    ...(rules.length ? { classify: deck => matchArchetypeRule(deck.cards, rules)?.name ?? null } : {})
   };
 }
 
@@ -65,7 +79,7 @@ async function runFormat(format: FormatScope, options: FormatMetaOptions): Promi
     const meta = await runOnlineMeta({
       ...shared,
       exclusions: {},
-      thumbnails: thumbnails[format.id] ?? {},
+      thumbnails: { ...ruleThumbnails(FORMAT_RULES[format.id] ?? []), ...thumbnails[format.id] },
       scope: formatReportScope(format, shared.now, icons[format.id])
     });
     return { entry: indexEntry(format, meta) };
