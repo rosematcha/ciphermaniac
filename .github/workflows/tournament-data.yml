@@ -32,6 +32,12 @@ on:
         description: Rebuild all player profiles
         type: boolean
         default: false
+      # Botan dispatches this every 15 minutes because GitHub drops most of
+      # the watchdog's scheduled starts. Pair it with dry_run=false to ingest.
+      watch:
+        description: Only check labs for finished majors, as the watchdog does
+        type: boolean
+        default: false
 permissions:
   contents: read
   actions: read
@@ -39,7 +45,7 @@ permissions:
   deployments: write
 jobs:
   upcoming:
-    if: github.ref == 'refs/heads/main' && github.event.schedule != '8,38 * * * *'
+    if: github.ref == 'refs/heads/main' && github.event.schedule != '8,38 * * * *' && !inputs.watch
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -57,7 +63,7 @@ jobs:
       - name: Sync upcoming tournaments
         run: npx tsx .github/scripts/sync-upcoming.ts
   watch:
-    if: github.event.schedule == '8,38 * * * *'
+    if: github.event.schedule == '8,38 * * * *' || inputs.watch
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
