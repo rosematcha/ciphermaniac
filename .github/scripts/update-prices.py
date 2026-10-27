@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Daily price check script for GitHub Actions
-Fetches prices for all cards in "Online - Last 14 Days" report
+Fetches prices for all cards in "Online - Last 14 Days" report, every
+archived event and every published non-Standard format
 """
 
 import os
@@ -416,6 +417,51 @@ def load_all_event_cards(r2_client, bucket_name, release):
                 uids.add(uid)
     print(f"  {len(uids)} distinct prints across {len(tournaments) - skipped} events"
           + (f" ({skipped} unreadable)" if skipped else ""))
+    return uids
+
+
+# One or more slash-separated folder segments, never ``..`` or an absolute path.
+FORMAT_ID = re.compile(r'[\w-]+(?:/[\w-]+)*')
+
+
+def _format_id(entry):
+    format_id = entry.get('id') if isinstance(entry, dict) else None
+    if not isinstance(format_id, str) or not FORMAT_ID.fullmatch(format_id):
+        raise RuntimeError(f"Invalid formats index entry: {entry!r}")
+    return format_id
+
+
+def release_format_roots(r2_client, bucket_name, release):
+    """Report folders of every published non-Standard format (RS-PK, Expanded...).
+
+    A release without a ``formats`` scope, or a scope whose index is missing,
+    has no formats. A present but unreadable index aborts, like the online
+    report does: silently skipping it would drop every format print's price.
+    """
+    if not (release.get('roots') or {}).get('formats'):
+        return []
+    index_key = r2.production_scope_key(release, 'formats', 'index.json')
+    index = r2.read_json(r2_client, bucket_name, index_key)
+    if index.status == 'missing':
+        return []
+    formats = (index.value or {}).get('formats') if index.status == 'found' else None
+    if not isinstance(formats, list):
+        raise RuntimeError(f"Formats index unavailable or invalid: {index_key} ({index.status})")
+    root = index_key[: -len('index.json')]
+    return [f"{root}{_format_id(entry)}" for entry in formats]
+
+
+def load_format_cards(r2_client, bucket_name, release):
+    """Every card UID in a published format's ``master.json``."""
+    uids = set()
+    for root in release_format_roots(r2_client, bucket_name, release):
+        report = r2.read_json(r2_client, bucket_name, f"{root}/master.json")
+        if report.status != 'found':
+            raise RuntimeError(f"Format report unavailable: {root}/master.json ({report.status})")
+        for item in (report.value or {}).get('items', []):
+            uid = item.get('uid') or build_uid_from_parts(item.get('name'), item.get('set'), item.get('number'))
+            if uid:
+                uids.add(uid)
     return uids
 
 
@@ -1303,9 +1349,13 @@ def main():
     archive_prints = expand_to_clusters(
         load_all_event_cards(r2_client, bucket_name, release), synonyms_data
     )
-    card_list = canonical_list | build_print_universe(synonyms_data) | archive_prints
+    # Other formats price like archived events, but stay out of the Standard
+    # movers scope (current_canonicals).
+    format_prints = expand_to_clusters(load_format_cards(r2_client, bucket_name, release), synonyms_data)
+    card_list = canonical_list | build_print_universe(synonyms_data) | archive_prints | format_prints
     print(f"Pricing {len(card_list)} prints ({len(canonical_list)} canonical, "
-          f"{len(current_canonicals)} in the current meta, {len(archive_prints)} from archived events)")
+          f"{len(current_canonicals)} in the current meta, {len(archive_prints)} from archived events, "
+          f"{len(format_prints)} from other formats)")
 
     # Group by set
     card_sets_map = group_cards_by_set(card_list)

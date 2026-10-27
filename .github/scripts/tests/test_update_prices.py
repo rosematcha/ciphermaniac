@@ -714,6 +714,66 @@ class StandardScopeTest(unittest.TestCase):
         self.assertEqual(rising("standard"), ["Iono::PAF::237"])
 
 
+class _DictR2Client:
+    """get_object over a key -> JSON value map; absent keys are a NoSuchKey."""
+
+    def __init__(self, objects):
+        self.objects = objects
+        self.keys = []
+
+    def get_object(self, Bucket, Key):
+        self.keys.append(Key)
+        if Key not in self.objects:
+            raise _FakeS3Error("NoSuchKey")
+        return {"Body": _FakeBody(json.dumps(self.objects[Key]).encode("utf-8"))}
+
+
+class FormatCardsTest(unittest.TestCase):
+    ROOT = "releases/v1/formats/dddddddddddd"
+    RELEASE = {"roots": {"online": "/releases/v1/online/aaaaaaaaaaaa", "formats": f"/{ROOT}"}, "events": {}}
+    INDEX = {"generatedAt": "2026-10-27T00:00:00Z", "formats": [{"id": "rs-pk"}, {"id": "expanded"}]}
+
+    def test_release_without_formats_scope_reads_nothing(self):
+        client = _DictR2Client({})
+        release = {"roots": {"online": "/releases/v1/online/aaaaaaaaaaaa"}, "events": {}}
+        self.assertEqual(update_prices.load_format_cards(client, "bucket", release), set())
+        self.assertEqual(client.keys, [])
+
+    def test_missing_index_means_no_formats_yet(self):
+        self.assertEqual(update_prices.load_format_cards(_DictR2Client({}), "bucket", self.RELEASE), set())
+
+    def test_collects_every_format_master(self):
+        client = _DictR2Client({
+            f"{self.ROOT}/index.json": self.INDEX,
+            f"{self.ROOT}/rs-pk/master.json": {"items": [
+                {"name": "Scramble Energy", "set": "P4", "number": "10"},
+                {"uid": "Swampert ex::CG::099", "name": "Swampert ex", "set": "CG", "number": "99"},
+            ]},
+            f"{self.ROOT}/expanded/master.json": {"items": [
+                {"name": "Archie's Ace in the Hole", "set": "PRC", "number": "124"},
+            ]},
+        })
+        self.assertEqual(
+            update_prices.load_format_cards(client, "bucket", self.RELEASE),
+            {"Scramble Energy::P4::010", "Swampert ex::CG::099", "Archie's Ace in the Hole::PRC::124"},
+        )
+
+    def test_unreadable_index_or_master_aborts_rather_than_dropping_prices(self):
+        cases = [
+            ("invalid index", {f"{self.ROOT}/index.json": {}}),
+            ("unsafe id", {f"{self.ROOT}/index.json": {"formats": [{"id": "../online"}]}}),
+            ("missing master", {f"{self.ROOT}/index.json": self.INDEX}),
+        ]
+        for label, objects in cases:
+            with self.subTest(label), self.assertRaises(RuntimeError):
+                update_prices.load_format_cards(_DictR2Client(objects), "bucket", self.RELEASE)
+
+    def test_mutable_formats_root_is_refused(self):
+        release = {"roots": {"formats": "/reports/Formats"}, "events": {}}
+        with self.assertRaises(RuntimeError):
+            update_prices.load_format_cards(_DictR2Client({}), "bucket", release)
+
+
 class VintageGroupIdsTest(unittest.TestCase):
     """Pre-BW sets as TCGCSV indexes them (tcgcsv.com/tcgplayer/3/groups, 2026-10-27)."""
 
