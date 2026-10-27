@@ -2,7 +2,7 @@ const DAY_MS = 86_400_000;
 /** Let a just-published generation settle before it can be collected. */
 export const GENERATION_GRACE_MS = DAY_MS;
 const GENERATION =
-  /^(releases\/v1\/(?:events\/[^/]+|catalogs|online|trends|players|prices|snapshots|assets)\/[a-f0-9]{12,64})\//;
+  /^(releases\/v1\/(?:events\/[^/]+|catalogs|online|trends|players|prices|snapshots|assets|formats)\/[a-f0-9]{12,64})\//;
 
 export interface StoredObject {
   key: string;

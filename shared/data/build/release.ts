@@ -15,9 +15,19 @@
 export const RELEASE_CONTRACT_VERSION = 2;
 
 /** Scopes that carry a single root path for the whole scope. */
-export type ReleaseScope = 'online' | 'trends' | 'players' | 'prices' | 'catalogs' | 'snapshots' | 'assets';
+export type ReleaseScope = 'online' | 'trends' | 'players' | 'prices' | 'catalogs' | 'snapshots' | 'assets' | 'formats';
 
-export const RELEASE_SCOPES: readonly ReleaseScope[] = [
+/** Scopes a release may lack: releases built before their producer existed. */
+type OptionalReleaseScope = 'formats';
+
+export const OPTIONAL_RELEASE_SCOPES: readonly OptionalReleaseScope[] = ['formats'];
+
+/** Every required scope's root, plus the optional scopes this release carries. */
+export type ReleaseRoots = Record<Exclude<ReleaseScope, OptionalReleaseScope>, string> &
+  Partial<Record<OptionalReleaseScope, string>>;
+
+/** Scopes every release carries. */
+export const RELEASE_SCOPES: readonly Exclude<ReleaseScope, OptionalReleaseScope>[] = [
   'online',
   'trends',
   'players',
@@ -35,7 +45,7 @@ export interface ReleaseManifest {
   /** ISO publish time (informational). */
   publishedAt: string;
   /** Scope -> immutable root path (e.g. "/releases/v1/online/abc123"). */
-  roots: Record<ReleaseScope, string>;
+  roots: ReleaseRoots;
   /** Direct-link event id -> immutable event root path. */
   events: Record<string, string>;
   /** Cross-scope dependency generations, for provenance and GC. */
@@ -51,7 +61,8 @@ function validateRoots(value: unknown): string[] {
     return ['roots: expected object'];
   }
   const roots = value as Record<string, unknown>;
-  return RELEASE_SCOPES.flatMap(scope => {
+  const present = OPTIONAL_RELEASE_SCOPES.filter(scope => scope in roots);
+  return [...RELEASE_SCOPES, ...present].flatMap(scope => {
     if (!(scope in roots)) {
       return [`roots.${scope}: missing`];
     }
@@ -133,7 +144,7 @@ export function validateReleaseManifest(value: unknown): string[] {
 export interface ReleaseComposition {
   releaseId: string;
   publishedAt: string;
-  roots: Record<ReleaseScope, string>;
+  roots: ReleaseRoots;
   events?: Record<string, string>;
   dependencies?: Record<string, string>;
 }

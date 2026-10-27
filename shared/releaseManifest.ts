@@ -27,7 +27,8 @@ const LEGACY_SCOPE_ROOTS: Record<ReleaseScope, string> = {
   prices: 'reports',
   catalogs: 'reports',
   snapshots: 'reports/Snapshots',
-  assets: 'assets'
+  assets: 'assets',
+  formats: 'reports/Formats'
 };
 
 export interface ReleaseResolver {

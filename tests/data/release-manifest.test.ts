@@ -68,3 +68,17 @@ test('validateReleaseManifest flags missing scopes and bad paths', () => {
   assert.ok(errors.some(e => e.includes('roots.online')));
   assert.ok(errors.some(e => e.includes('roots.trends: missing')));
 });
+
+test('formats is optional: a release without it validates, and one with it must point at an immutable root', () => {
+  assert.deepEqual(validateReleaseManifest(composeRelease(composition())), []);
+  const withFormats = composeRelease({
+    ...composition(),
+    roots: { ...composition().roots, formats: '/releases/v1/formats/hhh888' }
+  });
+  assert.strictEqual(
+    resolveScopePath(withFormats, 'formats', 'rspk/master.json'),
+    '/releases/v1/formats/hhh888/rspk/master.json'
+  );
+  const mutable = { ...withFormats, roots: { ...withFormats.roots, formats: 'reports/Formats' } };
+  assert.deepEqual(validateReleaseManifest(mutable), ['roots.formats: expected an immutable /releases/v1/... path']);
+});

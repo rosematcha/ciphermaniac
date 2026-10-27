@@ -18,7 +18,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
+import { composeRelease, type ReleaseRoots } from '../../shared/data/build/release.ts';
 import { renderModule } from './generate-release-module.ts';
 
 interface Args {
@@ -62,7 +62,7 @@ async function loadJson<T>(path: string | undefined): Promise<T | undefined> {
 
 /** Compose + validate the manifest and render the embed module (pure of I/O). */
 export function buildReleaseArtifacts(input: {
-  roots: Record<ReleaseScope, string>;
+  roots: ReleaseRoots;
   releaseId: string;
   publishedAt: string;
   events?: Record<string, string>;
@@ -74,7 +74,7 @@ export function buildReleaseArtifacts(input: {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
-  const roots = (await loadJson<Record<ReleaseScope, string>>(args.roots))!;
+  const roots = (await loadJson<ReleaseRoots>(args.roots))!;
   const events = await loadJson<Record<string, string>>(args.events);
   const dependencies = await loadJson<Record<string, string>>(args.dependencies);
 

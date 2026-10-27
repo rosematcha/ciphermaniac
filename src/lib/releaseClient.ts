@@ -16,42 +16,36 @@ const resolver = createReleaseResolver(EMBEDDED_RELEASE);
 /** True when an immutable release drives resolution. */
 export const { isReleaseAware } = resolver;
 
-const ONLINE_PREFIX = 'reports/Online - Last 14 Days/';
-const TRENDS_PREFIX = 'reports/Trends - Last 30 Days/';
-const SNAPSHOTS_PREFIX = 'reports/Snapshots/';
-const PLAYERS_PREFIX = 'players/';
+/** Folder prefixes whose whole subtree is one scope, relative paths kept. */
+const SCOPE_PREFIXES: ReadonlyArray<[prefix: string, scope: ReleaseScope]> = [
+  ['assets/', 'assets'],
+  ['reports/Online - Last 14 Days/', 'online'],
+  ['reports/Trends - Last 30 Days/', 'trends'],
+  ['reports/Snapshots/', 'snapshots'],
+  ['reports/Formats/', 'formats'],
+  ['players/', 'players']
+];
+
+/** Single report files, by path, with the scope they live in. */
+const SCOPE_FILES: Readonly<Record<string, { scope: ReleaseScope; rel: string }>> = {
+  'reports/tournaments.json': { scope: 'catalogs', rel: 'tournaments.json' },
+  'reports/prices.json': { scope: 'prices', rel: 'prices.json' },
+  'reports/prices-history.json': { scope: 'prices', rel: 'prices-history.json' },
+  'reports/price-movers.json': { scope: 'prices', rel: 'price-movers.json' },
+  'reports/majors-trends.json': { scope: 'trends', rel: 'majors-trends.json' }
+};
 
 /** Classify a legacy report path to a scope + scope-relative path, or null. */
 function classify(path: string): { scope: ReleaseScope; rel: string } | null {
   const p = path.replace(/^\/+/, '');
-  if (p.startsWith('assets/')) {
-    return { scope: 'assets', rel: p.slice('assets/'.length) };
-  }
-  if (p.startsWith(ONLINE_PREFIX)) {
-    return { scope: 'online', rel: p.slice(ONLINE_PREFIX.length) };
-  }
-  if (p.startsWith(TRENDS_PREFIX)) {
-    return { scope: 'trends', rel: p.slice(TRENDS_PREFIX.length) };
-  }
-  if (p.startsWith(SNAPSHOTS_PREFIX)) {
-    return { scope: 'snapshots', rel: p.slice(SNAPSHOTS_PREFIX.length) };
-  }
-  if (p.startsWith(PLAYERS_PREFIX)) {
-    return { scope: 'players', rel: p.slice(PLAYERS_PREFIX.length) };
-  }
-  if (p === 'reports/tournaments.json') {
-    return { scope: 'catalogs', rel: 'tournaments.json' };
+  const prefixed = SCOPE_PREFIXES.find(([prefix]) => p.startsWith(prefix));
+  if (prefixed) {
+    return { scope: prefixed[1], rel: p.slice(prefixed[0].length) };
   }
   if (p.startsWith('reports/price-history/')) {
     return { scope: 'prices', rel: p.slice('reports/'.length) };
   }
-  if (p === 'reports/prices.json' || p === 'reports/prices-history.json' || p === 'reports/price-movers.json') {
-    return { scope: 'prices', rel: p.slice('reports/'.length) };
-  }
-  if (p === 'reports/majors-trends.json') {
-    return { scope: 'trends', rel: 'majors-trends.json' };
-  }
-  return null;
+  return SCOPE_FILES[p] ?? null;
 }
 
 /**

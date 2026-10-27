@@ -120,3 +120,36 @@ test('missing-release-body recovery: reload once for a release path, never for l
   assert.strictEqual(isReleasePath('/releases/v1/x/y.json'), true);
   assert.strictEqual(isReleasePath('/reports/x/y.json'), false);
 });
+
+test('format reports resolve under the formats root, and a release without one refuses them', async () => {
+  const { createReleaseResolver } = await import('../../shared/releaseManifest.ts');
+  const { resolvePathWith } = await import('../../src/lib/releaseClient.ts');
+  const roots = {
+    online: '/releases/v1/online/aaa',
+    trends: '/releases/v1/trends/bbb',
+    players: '/releases/v1/players/ccc',
+    prices: '/releases/v1/prices/ddd',
+    catalogs: '/releases/v1/catalogs/eee',
+    snapshots: '/releases/v1/snapshots/fff',
+    assets: '/releases/v1/assets/ggg'
+  };
+  const release = (extra: Record<string, string>) =>
+    createReleaseResolver({
+      contractVersion: 2,
+      releaseId: 'release-formats',
+      publishedAt: '2026-10-27T00:00:00Z',
+      roots: { ...roots, ...extra },
+      events: {},
+      dependencies: {}
+    });
+  const withFormats = release({ formats: '/releases/v1/formats/hhh' });
+  assert.strictEqual(
+    resolvePathWith(withFormats, '/reports/Formats/index.json'),
+    '/releases/v1/formats/hhh/index.json'
+  );
+  assert.strictEqual(
+    resolvePathWith(withFormats, '/reports/Formats/rspk/archetypes/index.json'),
+    '/releases/v1/formats/hhh/rspk/archetypes/index.json'
+  );
+  assert.throws(() => resolvePathWith(release({}), '/reports/Formats/index.json'), /no root for scope "formats"/);
+});

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DeleteObjectsCommand, GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 import { createRetentionStore, pruneReleases } from '../../.github/scripts/prune-releases';
-import { staleCapturedReport } from '../../.github/scripts/lib/build/capturedScope';
+import { isFormatsReportObject, staleCapturedReport } from '../../.github/scripts/lib/build/capturedScope';
 import {
   expiredGenerations,
   type Generation,
@@ -363,4 +363,21 @@ test('conflicting historical content under an active release ID blocks cleanup',
   f.objects.push({ key: 'build/v1/releases/active.json', size: 10, modified: OLD });
   await assert.rejects(pruneReleases(f.store, NOW, true), /Conflicting retained manifest/);
   assert.deepEqual(f.removed, []);
+});
+
+test('format report generations are recognized for pruning', () => {
+  assert.equal(
+    generationPrefix('releases/v1/formats/aaaaaaaaaaaa/rspk/master.json'),
+    'releases/v1/formats/aaaaaaaaaaaa/'
+  );
+});
+
+test('format folders capture the index and online-shaped reports, and nothing else', () => {
+  assert.equal(isFormatsReportObject('reports/Formats/index.json'), true);
+  assert.equal(isFormatsReportObject('reports/Formats/eternal/master.json'), true);
+  assert.equal(isFormatsReportObject('reports/Formats/eternal/archetypes/Slowking/cards.json'), true);
+  assert.equal(isFormatsReportObject('reports/Formats/eternal/legacy.sqlite'), false);
+  assert.equal(isFormatsReportObject('reports/Formats/master.json'), false);
+  assert.equal(staleCapturedReport('reports/Formats/eternal/notes.json'), true);
+  assert.equal(staleCapturedReport('reports/Formats/eternal/meta.json'), false);
 });

@@ -19,7 +19,7 @@ import { requireEnv } from './lib/env.ts';
 import { appendFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { CopyObjectCommand, HeadObjectCommand, type S3Client } from '@aws-sdk/client-s3';
-import { composeRelease, type ReleaseScope } from '../../shared/data/build/release.ts';
+import { composeRelease, type ReleaseRoots, type ReleaseScope } from '../../shared/data/build/release.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
 import { buildTournamentCatalog } from './event-cli.ts';
@@ -29,7 +29,7 @@ import { loadEventSources } from './lib/build/productionRelease.ts';
 import { capturePlayers, currentPlayerObjects, type PlayerInventory } from './lib/build/playerCapture';
 import type { PlayerAggregateManifest } from '../../shared/playerTypes';
 import { assertProducerComplete, inputFingerprint, type ProducerState } from './lib/build/provenance';
-import { isOnlineReportObject, staleCapturedReport } from './lib/build/capturedScope';
+import { isFormatsReportObject, isOnlineReportObject, staleCapturedReport } from './lib/build/capturedScope';
 
 const CACHE = 'public, max-age=31536000, immutable';
 
@@ -221,7 +221,7 @@ async function discoverCapturedScopes(
   console.log('[build-loop] listing captured scopes from R2');
   const list = (prefix: string, relativeTo: string, include?: (key: string) => boolean) =>
     listJsonObjects({ client, bucket, prefix, relativeTo, include });
-  const [online, trends, players, snapshots, assets, priceShards, priceGlobals, majors] = await Promise.all([
+  const [online, trends, players, snapshots, assets, priceShards, priceGlobals, majors, formats] = await Promise.all([
     list('reports/Online - Last 14 Days/', 'reports/Online - Last 14 Days/', isOnlineReportObject),
     Promise.all(
       ['meta.json', 'trends.json', 'history.json'].map(relativeKey =>
@@ -237,7 +237,8 @@ async function discoverCapturedScopes(
         describeObject(client, bucket, `reports/${relativeKey}`, relativeKey)
       )
     ),
-    describeObject(client, bucket, 'reports/majors-trends.json', 'majors-trends.json')
+    describeObject(client, bucket, 'reports/majors-trends.json', 'majors-trends.json'),
+    list('reports/Formats/', 'reports/Formats/', isFormatsReportObject)
   ]);
   if (majors) {
     trends.push(majors);
@@ -251,7 +252,9 @@ async function discoverCapturedScopes(
       objects: [...priceGlobals.filter((item): item is ScopeObject => item !== null), ...priceShards]
     },
     { scope: 'snapshots', objects: snapshots },
-    { scope: 'assets', objects: assets }
+    { scope: 'assets', objects: assets },
+    // Optional: absent until the format producer first publishes.
+    ...(formats.length ? [{ scope: 'formats' as const, objects: formats }] : [])
   ];
   console.log(
     `[build-loop] listed scopes in ${Date.now() - started}ms: ${captures.map(({ scope, objects }) => `${scope}=${objects.length}`).join(', ')}`
@@ -364,7 +367,7 @@ export async function assertNoIncompleteProducers(load: <T>(key: string) => Prom
 
 async function emitPlan(input: {
   argv: string[];
-  roots: Record<ReleaseScope, string>;
+  roots: ReleaseRoots;
   events: Record<string, string>;
   manifest: ReturnType<typeof composeRelease>;
   release: ReturnType<typeof composeRelease>;
@@ -494,15 +497,15 @@ async function main(): Promise<void> {
   const manifest = composeRelease({
     releaseId,
     publishedAt: '1970-01-01T00:00:00Z',
-    roots: roots as Record<ReleaseScope, string>,
+    roots: roots as ReleaseRoots,
     events,
     dependencies: { playerLayout: 'routes-v1' }
   });
 
-  await emitPlan({ argv, roots: roots as Record<ReleaseScope, string>, events, manifest, release, written });
+  await emitPlan({ argv, roots: roots as ReleaseRoots, events, manifest, release, written });
   console.log('[build-loop] ===== SUMMARY =====');
   console.log(`  events built    : ${Object.keys(events).length}`);
-  console.log(`  scope roots     : ${Object.keys(roots).length}/7 ${Object.keys(roots).sort().join(', ')}`);
+  console.log(`  scope roots     : ${Object.keys(roots).length} ${Object.keys(roots).sort().join(', ')}`);
   console.log('  capture mode    : complete');
   console.log(`  manifest        : ${manifest.releaseId} (valid)`);
   console.log(write ? `  objects written : ${written.length}` : '  DRY RUN — nothing written (pass --write)');

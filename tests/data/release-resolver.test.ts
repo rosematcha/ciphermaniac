@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { coerceManifest, createReleaseResolver } from '../../shared/releaseManifest.ts';
 import { renderModule } from '../../.github/scripts/generate-release-module.ts';
 import { buildReleaseArtifacts } from '../../.github/scripts/publish-release.ts';
-import type { ReleaseScope } from '../../shared/data/build/release.ts';
+import type { ReleaseRoots } from '../../shared/data/build/release.ts';
 
 function manifest(): unknown {
   return {
@@ -71,7 +71,7 @@ test('the resolver is frozen (roots cannot be mutated mid-session)', () => {
 
 test('renderModule emits null by default, and the composer embeds the manifest it composed', () => {
   assert.match(renderModule(null), /EMBEDDED_RELEASE: ReleaseManifest \| null = null;/);
-  const { roots, events } = manifest() as { roots: Record<ReleaseScope, string>; events: Record<string, string> };
+  const { roots, events } = manifest() as { roots: ReleaseRoots; events: Record<string, string> };
   const composed = buildReleaseArtifacts({
     roots,
     events,
