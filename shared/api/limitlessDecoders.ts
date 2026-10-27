@@ -21,6 +21,8 @@
  * @module shared/api/limitlessDecoders
  */
 
+import { isRecord } from '../data/validate';
+
 /** A decoded batch plus what it had to discard. */
 export interface DecodeResult<T> {
   rows: T[];
@@ -46,10 +48,6 @@ function describe(value: unknown): string {
     return `an array of ${value.length}`;
   }
   return typeof value;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function str(value: unknown): string | null {

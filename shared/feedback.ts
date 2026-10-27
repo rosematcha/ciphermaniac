@@ -5,6 +5,8 @@
  * @module shared/feedback
  */
 
+import { isRecord } from './data/validate';
+
 export const FEEDBACK_TYPES = {
   wrong: 'Something’s wrong',
   say: 'Something to say'
@@ -67,10 +69,6 @@ type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type ParseResult = Result<FeedbackSubmission>;
 
 export const ENVIRONMENT_KEYS = Object.keys(ENVIRONMENT_FIELDS) as EnvironmentField[];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 /** Own keys only: `toString` or `__proto__` must never pass as a type. */
 function isKeyOf<T extends object>(table: T, key: unknown): key is keyof T {

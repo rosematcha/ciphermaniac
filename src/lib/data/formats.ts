@@ -6,6 +6,7 @@ import { createSignal } from 'solid-js';
 import { dataClient } from './client';
 import type { ArchetypeIndexEntry } from '../../types';
 import frozenRetroSnapshot from '../../data/frozen-retro-formats.json';
+import { isRecord } from '../../../shared/data/validate';
 
 /** Whether a format is still being played, which decides how it is grouped. */
 export type FormatGroup = 'current' | 'past';
@@ -59,10 +60,6 @@ const STANDARD: TierFormat = {
 };
 
 const [scraped, setScraped] = createSignal<SnapshotFormat[]>(FROZEN_RETRO_FORMATS);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function validStrings(value: unknown, pattern: RegExp): value is string[] {
   return (

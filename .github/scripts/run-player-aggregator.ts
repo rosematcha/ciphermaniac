@@ -14,7 +14,7 @@
  *         players/_manifest.json
  */
 
-import { requireEnv } from './lib/env.ts';
+import { boolEnv, requireEnv } from './lib/env.ts';
 import process from 'node:process';
 import { createR2Client, createReportsBinding } from './lib/r2.mjs';
 import { buildPlayerAggregates } from '../../shared/onlineMeta/playerAggregator.ts';
@@ -22,25 +22,11 @@ import { loadEventSources } from './lib/build/productionRelease.ts';
 import { builderRevision, PLAYER_BUILD_FILES } from './lib/build/revision';
 import { buildTournamentCatalog } from './event-cli.ts';
 
-function parseBoolean(value: string | undefined, fallback = false): boolean {
-  if (!value) {
-    return fallback;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) {
-    return true;
-  }
-  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) {
-    return false;
-  }
-  return fallback;
-}
-
 const R2_ACCOUNT_ID = requireEnv('R2_ACCOUNT_ID');
 const R2_ACCESS_KEY_ID = requireEnv('R2_ACCESS_KEY_ID');
 const R2_SECRET_ACCESS_KEY = requireEnv('R2_SECRET_ACCESS_KEY');
 const R2_BUCKET_NAME = requireEnv('R2_BUCKET_NAME');
-const FORCE_FULL_REBUILD = parseBoolean(process.env.FORCE_FULL_REBUILD, false);
+const FORCE_FULL_REBUILD = boolEnv('FORCE_FULL_REBUILD');
 
 const s3Client = createR2Client({
   accountId: R2_ACCOUNT_ID,

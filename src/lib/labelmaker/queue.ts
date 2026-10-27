@@ -5,6 +5,7 @@
  */
 import { defaultConfig, type LabelConfig } from './types';
 import { dimsForLabel, type LabelDims, mmToDots, PRINTERS } from './printers';
+import { isRecord } from '../../../shared/data/validate';
 
 export const QUEUE_STORAGE_KEY = 'cm:labelmaker:queue:v1';
 
@@ -56,10 +57,6 @@ export function queueLabelName(item: QueuedLabel): string {
 }
 
 // ---------- persistence ----------
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
 
 function pickString(raw: Record<string, unknown>, key: keyof LabelConfig, fallback: string): string {
   const v = raw[key];

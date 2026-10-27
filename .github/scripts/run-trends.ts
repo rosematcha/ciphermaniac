@@ -14,7 +14,7 @@
  * digested here.
  */
 
-import { requireEnv } from './lib/env.ts';
+import { boolEnv, requireEnv } from './lib/env.ts';
 import process from 'node:process';
 import { createR2Client, createReportsBinding } from './lib/r2.mjs';
 import { deleteR2Keys, listR2Keys } from './lib/r2Inventory.mjs';
@@ -140,22 +140,8 @@ async function loadHistory(reportsBinding: R2Binding): Promise<TrendHistory | nu
   return Array.isArray(data.days) ? (data as TrendHistory) : null;
 }
 
-function parseBoolean(value: string | undefined, fallback = false): boolean {
-  if (value === undefined || value === null || value === '') {
-    return fallback;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) {
-    return true;
-  }
-  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) {
-    return false;
-  }
-  return fallback;
-}
-
 async function main() {
-  const cleanMonthCache = parseBoolean(process.env.CLEAN_MONTH_CACHE, false);
+  const cleanMonthCache = boolEnv('CLEAN_MONTH_CACHE');
   const now = new Date();
   // Whole UTC days ending yesterday, so the chart never ends on a half day.
   let window = utcDayWindow(now, LOOKBACK_DAYS);

@@ -14,6 +14,7 @@ export type {
   PagesReader
 } from './deploymentTypes';
 import type { DeploymentState, DeploymentStore, PagesReader } from './deploymentTypes';
+import { isRecord } from '../../../../shared/data/validate';
 
 export function deploymentState(value: unknown): DeploymentState {
   if (value === null) {
@@ -51,10 +52,6 @@ function validateJournalTiming(state: DeploymentState): void {
       throw new Error('Invalid deployment lifecycle timestamp');
     }
   }
-}
-
-function isRecord(value: unknown): boolean {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function validId(id: string): void {
