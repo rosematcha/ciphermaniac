@@ -38,15 +38,6 @@
     "max-depth:d3ef7f11384000939358064a4646ae72d87b327268a77b88d0297f9cd91c6aa2:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:a405938a3ffed0672d8b93cf1254d712c2a26e1c7ff725cb409ed9080afc4b19:Async function 'main' has a complexity of 18. Maximum allowed is 12."
   ],
-  "scripts/check-card-types.mjs": [
-    "max-depth:951e2f5f01704c76bc128f7058889cf74385751033f43b8ed4f3e6148ded8cb9:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "max-depth:951e2f5f01704c76bc128f7058889cf74385751033f43b8ed4f3e6148ded8cb9:Blocks are nested too deeply (5). Maximum allowed is 3.",
-    "max-depth:951e2f5f01704c76bc128f7058889cf74385751033f43b8ed4f3e6148ded8cb9:Blocks are nested too deeply (5). Maximum allowed is 3.",
-    "max-depth:951e2f5f01704c76bc128f7058889cf74385751033f43b8ed4f3e6148ded8cb9:Blocks are nested too deeply (5). Maximum allowed is 3.",
-    "complexity:951e2f5f01704c76bc128f7058889cf74385751033f43b8ed4f3e6148ded8cb9:Async function 'extractCardsFromReport' has a complexity of 13. Maximum allowed is 12.",
-    "complexity:a4fc6f99ec12ae6d43473a3ddf4d6e33a5e81ecc9c0fabddbcec43b2bc5dad7e:Function 'evaluateClassification' has a complexity of 18. Maximum allowed is 12.",
-    "complexity:cf8ff4f72f11850409db504a13e03411dd3c059f703189c6062c4d498ea63afa:Async function 'main' has a complexity of 18. Maximum allowed is 12."
-  ],
   "scripts/check-design-drift.ts": [
     "max-depth:8e1d69e979e3e0bcf27a4106446e898cafa98a67544c9bf854f454cb86ab752f:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "max-depth:7f75f128cd06cf5456cb5fddb1e465b3cca755f31077a59d4c29f8f90935a89f:Blocks are nested too deeply (4). Maximum allowed is 3."

@@ -28,7 +28,6 @@
     "coverage:check:domain": "c8 check-coverage --statements 92 --branches 76 --functions 98 --lines 92 --include 'shared/data/**/*.ts'",
     "images:convert": "tsx scripts/convert-card-images.ts",
     "build:card-types": "node scripts/build-card-types.mjs",
-    "check:card-types": "node scripts/check-card-types.mjs",
     "bench:routes": "tsx scripts/benchmark-routes.ts",
     "bench:archetype-winrates": "tsx scripts/benchmark-archetype-winrates.ts",
     "bench:search": "tsx scripts/benchmark-search.ts",
