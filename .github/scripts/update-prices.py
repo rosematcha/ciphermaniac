@@ -85,14 +85,25 @@ MANUAL_GROUP_ID_MAP = {
     # SSH: abbreviation "SWSH01", name "SWSH01: Sword & Shield Base Set".
     'SSH': 2585,
     # BWP: abbreviation "PR", name "Black and White Promos".
-    'BWP': 1407
+    'BWP': 1407,
+    # Pre-BW groups for the vintage formats. TRR shares the abbreviation "RR"
+    # with Rising Rivals and is named "EX Team Rocket Returns"; the promo and
+    # Rumble groups are abbreviated "PR"/"RUM" and named unlike the catalog.
+    'TRR': 1428,
+    'DPP': 1421,
+    'HSP': 1453,
+    'RM': 1433,
+    'BG': 1455,
+    'WP': 1418
 }
 
 # Promo groups whose card numbers carry a prefix that is not our set code:
 # SWSH promos ("SP" to us) number their cards "SWSH001".."SWSH307".
 NUMBER_PREFIX_ALIASES = {
     'SP': ('SWSH',),
-    'BWP': ('BW',)
+    'BWP': ('BW',),
+    'DPP': ('DP',),
+    'HSP': ('HGSS',)
 }
 
 # TCGCSV splits the SWSH Trainer/Galarian Galleries and the BW/XY Radiant

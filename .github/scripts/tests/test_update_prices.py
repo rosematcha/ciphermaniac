@@ -714,5 +714,49 @@ class StandardScopeTest(unittest.TestCase):
         self.assertEqual(rising("standard"), ["Iono::PAF::237"])
 
 
+class VintageGroupIdsTest(unittest.TestCase):
+    """Pre-BW sets as TCGCSV indexes them (tcgcsv.com/tcgplayer/3/groups, 2026-10-27)."""
+
+    GROUPS = [
+        {"groupId": 1367, "abbreviation": "RR", "name": "Rising Rivals"},
+        {"groupId": 1428, "abbreviation": "RR", "name": "EX Team Rocket Returns"},
+        {"groupId": 1383, "abbreviation": "PK", "name": "EX Power Keepers"},
+        {"groupId": 1452, "abbreviation": "POP", "name": "POP Series 4"},
+        {"groupId": 1446, "abbreviation": "POP", "name": "POP Series 9"},
+        {"groupId": 1423, "abbreviation": "PR", "name": "Nintendo Promos"},
+        {"groupId": 1421, "abbreviation": "PR", "name": "Diamond and Pearl Promos"},
+        {"groupId": 1453, "abbreviation": "PR", "name": "HGSS Promos"},
+        {"groupId": 1418, "abbreviation": "PR", "name": "WoTC Promo"},
+        {"groupId": 1455, "abbreviation": "PR", "name": "Best of Promos"},
+        {"groupId": 1433, "abbreviation": "RUM", "name": "Rumble"},
+    ]
+
+    def test_every_vintage_code_resolves_to_its_own_group(self):
+        catalog = json.loads(update_prices.SET_CATALOG_PATH.read_text())
+        mappings, unmapped = update_prices.resolve_group_ids(
+            ["RR", "TRR", "PK", "P4", "P9", "NP", "DPP", "HSP", "WP", "BG", "RM"],
+            self.GROUPS,
+            update_prices.build_catalog_name_index(catalog),
+            update_prices.MANUAL_GROUP_ID_MAP,
+        )
+        self.assertEqual(unmapped, [])
+        self.assertEqual(mappings, {
+            "RR": 1367, "TRR": 1428, "PK": 1383, "P4": 1452, "P9": 1446, "NP": 1423,
+            "DPP": 1421, "HSP": 1453, "WP": 1418, "BG": 1455, "RM": 1433,
+        })
+
+    def test_promo_numbers_drop_their_group_prefix(self):
+        cases = [
+            (_product(1, "Arceus - DP50", "DP50"), "DPP", "Arceus::DPP::050"),
+            (_product(2, "Feraligatr (Prime) - HGSS07", "HGSS07"), "HSP", "Feraligatr::HSP::007"),
+            (_product(3, "Arcanine", "06/53"), "WP", "Arcanine::WP::006"),
+        ]
+        for product, set_code, uid in cases:
+            with self.subTest(set_code):
+                self.assertEqual(
+                    update_prices.build_product_uid_map([product], set_code, [uid]), {product["productId"]: uid}
+                )
+
+
 if __name__ == "__main__":
     unittest.main()
