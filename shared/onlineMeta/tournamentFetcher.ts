@@ -30,6 +30,7 @@ import { matchExclusion } from './exclusions';
 import type {
   CardEntry,
   DiagnosticsCollector,
+  ExcludedTournament,
   FetchTournamentsOptions,
   GatherDecksOptions,
   GatheredDeck,
@@ -39,7 +40,7 @@ import type {
 
 const PAGE_SIZE = 100;
 const MAX_TOURNAMENT_PAGES = 10;
-const SUPPORTED_FORMATS = new Set(['STANDARD']);
+const DEFAULT_FORMATS: readonly string[] = ['STANDARD'];
 const DEFAULT_DETAILS_CONCURRENCY = 5;
 const DEFAULT_STANDINGS_CONCURRENCY = 4;
 /** Smallest field (players with a placing) that contributes decks. */
@@ -97,54 +98,138 @@ function enforceFailureBudget(
   }
 }
 
+type SummaryRow = ReturnType<typeof decodeTournamentList>['rows'][number];
+
+interface SummaryFilter {
+  sinceMs: number;
+  windowEndMs: number | null;
+  /** Lower-cased name fragment, when the scope filters by name. */
+  nameIncludes?: string;
+}
+
+function summaryMatches(entry: SummaryRow, dateMs: number, filter: SummaryFilter): boolean {
+  const inWindow = dateMs >= filter.sinceMs && (!filter.windowEndMs || dateMs <= filter.windowEndMs);
+  return inWindow && (!filter.nameIncludes || entry.name.toLowerCase().includes(filter.nameIncludes));
+}
+
+/**
+ * Keep a page's rows that fall in the window and match the name filter.
+ * @returns True once the page reaches past the window's start, which ends paging
+ */
+function collectSummaryPage(rows: SummaryRow[], filter: SummaryFilter, unique: Map<string, SummaryRow>): boolean {
+  let sawOlder = false;
+  for (const entry of rows) {
+    const dateMs = Date.parse(entry.date);
+    sawOlder ||= dateMs < filter.sinceMs;
+    if (summaryMatches(entry, dateMs, filter)) {
+      unique.set(entry.id, entry);
+    }
+  }
+  return sawOlder;
+}
+
+async function fetchSummaryPage(
+  env: LimitlessEnv | undefined,
+  options: FetchTournamentsOptions,
+  page: number
+): Promise<SummaryRow[]> {
+  const fetchJson = options.fetchJson || fetchLimitlessJson;
+  const raw = await fetchJson('/tournaments', {
+    env,
+    searchParams: { ...options.query, game: 'PTCG', limit: options.pageSize || PAGE_SIZE, page }
+  });
+  const decoded = decodeTournamentList(raw);
+  const breakage = detectDecodeBreakage(decoded, `tournament list page ${page}`);
+  if (breakage) {
+    console.warn(`[online-meta] ${breakage}`);
+  }
+  return decoded.rows;
+}
+
 async function fetchTournamentSummaries(
   env: LimitlessEnv | undefined,
   since: Date,
   options: FetchTournamentsOptions
-): Promise<Map<string, ReturnType<typeof decodeTournamentList>['rows'][number]>> {
-  const sinceMs = since.getTime();
-  const windowEndMs = options.windowEnd ? new Date(options.windowEnd).getTime() : null;
-  const pageSize = options.pageSize || PAGE_SIZE;
+): Promise<Map<string, SummaryRow>> {
+  const filter: SummaryFilter = {
+    sinceMs: since.getTime(),
+    windowEndMs: options.windowEnd ? new Date(options.windowEnd).getTime() : null,
+    nameIncludes: options.nameIncludes?.toLowerCase()
+  };
   const maxPages = options.maxPages || MAX_TOURNAMENT_PAGES;
-  const fetchJson = options.fetchJson || fetchLimitlessJson;
-  const unique = new Map<string, ReturnType<typeof decodeTournamentList>['rows'][number]>();
+  const unique = new Map<string, SummaryRow>();
 
   for (let page = 1; page <= maxPages; page += 1) {
-    const raw = await fetchJson('/tournaments', {
-      env,
-      searchParams: { game: 'PTCG', limit: pageSize, page }
-    });
-    const decoded = decodeTournamentList(raw);
-    const breakage = detectDecodeBreakage(decoded, `tournament list page ${page}`);
-    if (breakage) {
-      console.warn(`[online-meta] ${breakage}`);
-    }
-    if (decoded.rows.length === 0) {
-      break;
-    }
-
-    let sawOlder = false;
-    for (const entry of decoded.rows) {
-      const dateMs = Date.parse(entry.date);
-      if (!Number.isFinite(dateMs)) {
-        continue;
-      }
-      if (dateMs < sinceMs) {
-        sawOlder = true;
-        continue;
-      }
-      if (windowEndMs && dateMs > windowEndMs) {
-        continue;
-      }
-      unique.set(entry.id, entry);
-    }
-
-    if (sawOlder) {
+    const rows = await fetchSummaryPage(env, options, page);
+    if (rows.length === 0 || collectSummaryPage(rows, filter, unique)) {
       break;
     }
   }
 
   return unique;
+}
+
+/** What screening a tournament's details needs, and where rejections are recorded. */
+interface DetailsScreen {
+  formats: ReadonlySet<string>;
+  exclusions: FetchTournamentsOptions['exclusions'];
+  diagnostics: DiagnosticsCollector | undefined;
+  excluded: ExcludedTournament[];
+}
+
+type TournamentDetails = ReturnType<typeof decodeTournamentDetails>;
+
+function detailsFormat(summary: SummaryRow, details: TournamentDetails): string {
+  return (details.format || summary.format || '').toUpperCase();
+}
+
+/** True, with the reason recorded, when the details rule the tournament out before exclusions. */
+function rejectedByDetails(summary: SummaryRow, details: TournamentDetails, screen: DetailsScreen): boolean {
+  const ref = { tournamentId: summary.id, name: summary.name };
+  const { diagnostics } = screen;
+  if (details.decklists === false) {
+    diagnostics?.detailsWithoutDecklists?.push(ref);
+    return true;
+  }
+  if (details.isOnline === false) {
+    diagnostics?.detailsOffline?.push(ref);
+    return true;
+  }
+  const format = detailsFormat(summary, details);
+  if (format && !screen.formats.has(format)) {
+    diagnostics?.detailsUnsupportedFormat?.push({ ...ref, format });
+    return true;
+  }
+  return false;
+}
+
+/** The tournament as the window uses it, or null when its details or the exclusion list rule it out. */
+function screenTournament(
+  summary: SummaryRow,
+  details: TournamentDetails,
+  screen: DetailsScreen
+): OnlineTournamentSummary | null {
+  if (rejectedByDetails(summary, details, screen)) {
+    return null;
+  }
+  const organizer = details.organizer?.name || null;
+  const organizerId = details.organizer?.id || null;
+  const exclusion = matchExclusion({ name: summary.name, organizer, organizerId }, screen.exclusions);
+  if (exclusion) {
+    screen.excluded.push({ tournamentId: summary.id, name: summary.name, organizer, ...exclusion });
+    return null;
+  }
+  return {
+    id: summary.id,
+    name: summary.name,
+    date: summary.date,
+    format: detailsFormat(summary, details) || null,
+    platform: details.platform || null,
+    game: summary.game ?? 'PTCG',
+    players: details.players || summary.players || null,
+    organizer,
+    organizerId
+  };
 }
 
 export async function fetchRecentOnlineTournaments(
@@ -158,49 +243,20 @@ export async function fetchRecentOnlineTournaments(
   const summaries = Array.from((await fetchTournamentSummaries(env, since, options)).values());
 
   const detailsFetchFailures: Array<{ tournamentId: string; name: string; message: string }> = [];
-  const excluded: NonNullable<DiagnosticsCollector['excludedTournaments']> = [];
+  const screen: DetailsScreen = {
+    formats: new Set(options.formats ?? DEFAULT_FORMATS),
+    exclusions: options.exclusions,
+    diagnostics,
+    excluded: []
+  };
+  const { excluded } = screen;
   const detailed = await runWithConcurrency(
     summaries,
     detailsConcurrency,
     async (summary): Promise<OnlineTournamentSummary | null> => {
       try {
         const details = decodeTournamentDetails(await fetchJson(`/tournaments/${summary.id}/details`, { env }));
-        if (details.decklists === false) {
-          diagnostics?.detailsWithoutDecklists?.push({ tournamentId: summary.id, name: summary.name });
-          return null;
-        }
-        if (details.isOnline === false) {
-          diagnostics?.detailsOffline?.push({ tournamentId: summary.id, name: summary.name });
-          return null;
-        }
-
-        const formatId = (details.format || summary.format || '').toUpperCase();
-        if (formatId && !SUPPORTED_FORMATS.has(formatId)) {
-          diagnostics?.detailsUnsupportedFormat?.push({
-            tournamentId: summary.id,
-            name: summary.name,
-            format: formatId
-          });
-          return null;
-        }
-        const organizer = details.organizer?.name || null;
-        const organizerId = details.organizer?.id || null;
-        const exclusion = matchExclusion({ name: summary.name, organizer, organizerId }, options.exclusions);
-        if (exclusion) {
-          excluded.push({ tournamentId: summary.id, name: summary.name, organizer, ...exclusion });
-          return null;
-        }
-        return {
-          id: summary.id,
-          name: summary.name,
-          date: summary.date,
-          format: formatId || null,
-          platform: details.platform || null,
-          game: summary.game ?? 'PTCG',
-          players: details.players || summary.players || null,
-          organizer,
-          organizerId
-        };
+        return screenTournament(summary, details, screen);
       } catch (error) {
         const message = (error as { message?: string })?.message || String(error);
         console.warn('Failed to fetch tournament details', summary?.id, message);
@@ -333,20 +389,29 @@ export function countField(rows: StandingsRow[], registered: number | null | und
   };
 }
 
+/** Diagnostics fields that collect one row per occurrence. */
+const DIAGNOSTIC_LISTS = [
+  'detailsWithoutDecklists',
+  'detailsOffline',
+  'detailsUnsupportedFormat',
+  'detailsFetchFailures',
+  'excludedTournaments',
+  'standingsFetchFailures',
+  'invalidStandingsPayload',
+  'entriesWithoutDecklists',
+  'entriesWithoutPlacing',
+  'tournamentsBelowMinimum'
+] as const;
+
 function initDiagnostics(diagnostics: DiagnosticsCollector | null | undefined): Required<DiagnosticsCollector> {
   const diag = (diagnostics || {}) as Required<DiagnosticsCollector>;
-  diag.detailsWithoutDecklists = diag.detailsWithoutDecklists || [];
-  diag.detailsOffline = diag.detailsOffline || [];
-  diag.detailsUnsupportedFormat = diag.detailsUnsupportedFormat || [];
-  diag.detailsFetchFailures = diag.detailsFetchFailures || [];
-  diag.excludedTournaments = diag.excludedTournaments || [];
-  diag.standingsFetchFailures = diag.standingsFetchFailures || [];
-  diag.invalidStandingsPayload = diag.invalidStandingsPayload || [];
-  diag.entriesWithoutDecklists = diag.entriesWithoutDecklists || [];
-  diag.entriesWithoutPlacing = diag.entriesWithoutPlacing || [];
-  diag.tournamentsBelowMinimum = diag.tournamentsBelowMinimum || [];
-  diag.tournamentFields = diag.tournamentFields || {};
-  diag.archetypeClassification = diag.archetypeClassification || {
+  const lists = diag as unknown as Record<(typeof DIAGNOSTIC_LISTS)[number], unknown[]>;
+  for (const field of DIAGNOSTIC_LISTS) {
+    lists[field] ??= [];
+  }
+  diag.tournamentFields ??= {};
+  diag.archetypeIcons ??= {};
+  diag.archetypeClassification ??= {
     deckRulesLoaded: 0,
     apiName: 0,
     deckId: 0,
@@ -405,59 +470,110 @@ async function fetchStandingsRows(
   return decoded.rows;
 }
 
+/**
+ * Keep the first sprite set Limitless gave an archetype label. Formats without
+ * a hand-maintained icon map draw their archetype icons from these.
+ */
+function rememberArchetypeIcons(
+  diag: Required<DiagnosticsCollector>,
+  label: string | null | undefined,
+  icons: string[] | undefined
+): void {
+  const known = diag.archetypeIcons;
+  const sprites = (icons ?? []).filter(icon => icon !== 'substitute');
+  if (label && sprites.length && !known[label]) {
+    known[label] = sprites;
+  }
+}
+
 interface PendingDeck {
   fallbackKey: string;
   deck: Omit<GatheredDeck, 'id'>;
 }
 
-function buildPendingDeck(
+/** One event's standings, and what turning its rows into decks needs. */
+interface StandingsContext {
+  tournament: OnlineTournamentSummary;
+  fieldSize: number;
+  cardTypesDb: CardTypesDatabase | null;
+  deckIndex: DeckIndex | null;
+  diag: Required<DiagnosticsCollector>;
+}
+
+function playerName(entry: StandingsRow): string {
+  return entry.name || entry.player || 'Unknown Player';
+}
+
+/** The deck fields that come from the event rather than the player. */
+function eventFields(context: StandingsContext) {
+  const { tournament, fieldSize } = context;
+  return {
+    tournamentId: tournament.id,
+    tournamentName: tournament.name,
+    tournamentDate: tournament.date,
+    tournamentPlayers: fieldSize,
+    tournamentFormat: tournament.format,
+    tournamentPlatform: tournament.platform,
+    tournamentOrganizer: tournament.organizer,
+    deckSource: 'limitless-online'
+  };
+}
+
+/** The archetype fields a deck carries, from the classifier's answer and the row's own label. */
+function rowArchetype(
   entry: StandingsRow,
-  tournament: OnlineTournamentSummary,
-  fieldSize: number,
-  cardTypesDb: CardTypesDatabase | null,
-  deckIndex: DeckIndex | null,
-  diag: Required<DiagnosticsCollector>
-): PendingDeck | null {
-  const cards = toCardEntries(entry.decklist, cardTypesDb);
+  classification: ReturnType<typeof resolveArchetypeClassification> | null
+): { name: string; id: string | null; label: string } {
+  const name = classification?.name;
+  return {
+    name: name || 'Unknown',
+    id: classification?.id || entry.deck?.id || null,
+    label: name || entry.deck?.name || ''
+  };
+}
+
+/** The row's archetype, counted on the diagnostics and with its sprites remembered. */
+function classifyRow(entry: StandingsRow, context: StandingsContext) {
+  const { deck } = entry;
+  const classification = resolveArchetypeClassification(
+    { deckName: deck?.name, deckId: deck?.id, decklist: entry.decklist },
+    context.deckIndex
+  );
+  const source = classification?.source || 'unknown';
+  countClassificationSource(context.diag, source);
+  rememberArchetypeIcons(context.diag, classification?.name, deck?.icons);
+  return { ...rowArchetype(entry, classification), source };
+}
+
+/** A stable stand-in identity for a deck whose card list can't be hashed on its own. */
+function fallbackDeckKey(entry: StandingsRow, tournamentId: string, archetype: { id: string | null; label: string }) {
+  return `${tournamentId}::${entry.player || entry.name || ''}::${entry.placing ?? ''}::${archetype.id || archetype.label}`;
+}
+
+function buildPendingDeck(entry: StandingsRow, context: StandingsContext): PendingDeck | null {
+  const { tournament, fieldSize, diag } = context;
+  const cards = toCardEntries(entry.decklist, context.cardTypesDb);
   if (!cards.length) {
-    diag.entriesWithoutDecklists.push({
-      tournamentId: tournament.id,
-      player: entry.name || entry.player || 'Unknown Player'
-    });
+    diag.entriesWithoutDecklists.push({ tournamentId: tournament.id, player: playerName(entry) });
     if (!entry.deck?.name && !entry.deck?.id) {
       return null;
     }
   }
 
-  const classification = resolveArchetypeClassification(
-    { deckName: entry.deck?.name, deckId: entry.deck?.id, decklist: entry.decklist },
-    deckIndex
-  );
-  const classificationSource = classification?.source || 'unknown';
-  countClassificationSource(diag, classificationSource);
-
-  const archetypeId = classification?.id || entry.deck?.id || null;
-  const fallbackKey = `${tournament.id}::${entry.player || entry.name || ''}::${entry.placing ?? ''}::${archetypeId || classification?.name || entry.deck?.name || ''}`;
+  const archetype = classifyRow(entry, context);
   return {
-    fallbackKey,
+    fallbackKey: fallbackDeckKey(entry, tournament.id, archetype),
     deck: {
-      player: entry.name || entry.player || 'Unknown Player',
+      player: playerName(entry),
       playerId: entry.player || null,
       country: entry.country || null,
       placement: entry.placing ?? null,
-      archetype: classification?.name || 'Unknown',
-      archetypeId,
-      archetypeSource: classificationSource,
+      archetype: archetype.name,
+      archetypeId: archetype.id,
+      archetypeSource: archetype.source,
       cards,
       hasDecklist: cards.length > 0,
-      tournamentId: tournament.id,
-      tournamentName: tournament.name,
-      tournamentDate: tournament.date,
-      tournamentPlayers: fieldSize,
-      tournamentFormat: tournament.format,
-      tournamentPlatform: tournament.platform,
-      tournamentOrganizer: tournament.organizer,
-      deckSource: 'limitless-online',
+      ...eventFields(context),
       // Online windows never carry Day-2 phases, so phase tags are not
       // appended (`appendPhaseTags` defaults to false).
       successTags: computeSuccessTags(entry.placing, fieldSize)
@@ -465,11 +581,26 @@ function buildPendingDeck(
   };
 }
 
+/** Limitless's archetype rules, or null (classification then falls back to names) when they can't be fetched. */
+async function loadDeckIndex(
+  fetchJson: typeof fetchLimitlessJson,
+  env: LimitlessEnv | undefined
+): Promise<DeckIndex | null> {
+  try {
+    return buildArchetypeDeckIndex(await fetchJson('/games/PTCG/decks', { env }));
+  } catch (error) {
+    console.warn(
+      'Failed to fetch deck rules for archetype classification',
+      (error as { message?: string })?.message || error
+    );
+    return null;
+  }
+}
+
 export async function gatherDecks(
   env: LimitlessEnv | undefined,
   tournaments: OnlineTournamentSummary[],
   diagnostics: DiagnosticsCollector | null | undefined,
-  cardTypesDb: CardTypesDatabase | null = null,
   options: GatherDecksOptions = {}
 ): Promise<GatheredDeck[]> {
   if (!Array.isArray(tournaments) || tournaments.length === 0) {
@@ -481,18 +612,9 @@ export async function gatherDecks(
   const fetchJson = options.fetchJson || fetchLimitlessJson;
   const standingsConcurrency = options.standingsConcurrency || DEFAULT_STANDINGS_CONCURRENCY;
   const minFieldPlayers = options.minFieldPlayers ?? DEFAULT_MIN_FIELD_PLAYERS;
-  let deckIndex: DeckIndex | null = null;
-
-  try {
-    deckIndex = buildArchetypeDeckIndex(await fetchJson('/games/PTCG/decks', { env }));
-    diag.archetypeClassification.deckRulesLoaded = Number(deckIndex?.ruleCount) || 0;
-  } catch (error) {
-    console.warn(
-      'Failed to fetch deck rules for archetype classification',
-      (error as { message?: string })?.message || error
-    );
-    deckIndex = null;
-  }
+  const cardTypesDb = options.cardTypesDb ?? null;
+  const deckIndex = await loadDeckIndex(fetchJson, env);
+  diag.archetypeClassification.deckRulesLoaded = Number(deckIndex?.ruleCount) || 0;
 
   let attempted = 0;
   const perTournamentDecks = await runWithConcurrency(tournaments, standingsConcurrency, async tournament => {
@@ -537,7 +659,7 @@ export async function gatherDecks(
         });
         continue;
       }
-      const item = buildPendingDeck(entry, tournament, field.fieldSize, cardTypesDb, deckIndex, diag);
+      const item = buildPendingDeck(entry, { tournament, fieldSize: field.fieldSize, cardTypesDb, deckIndex, diag });
       if (item) {
         pending.push(item);
       }

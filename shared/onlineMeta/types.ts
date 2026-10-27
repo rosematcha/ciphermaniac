@@ -107,12 +107,20 @@ export interface DiagnosticsCollector {
   tournamentsBelowMinimum?: Array<{ tournamentId: string; name: string; players?: number | null; fieldSize?: number }>;
   /** Per-tournament field counts, keyed by tournament id. */
   tournamentFields?: Record<string, TournamentFieldCounts>;
+  /** Sprite slugs Limitless assigned to each archetype label, as seen in standings. */
+  archetypeIcons?: Record<string, string[]>;
   archetypeClassification?: ArchetypeClassificationDiagnostics;
 }
 
 /** Options for fetchRecentOnlineTournaments */
 export interface FetchTournamentsOptions extends BaseOptions {
   windowEnd?: string | Date;
+  /** Limitless format ids to keep, upper case. Default `['STANDARD']`. */
+  formats?: readonly string[];
+  /** Extra `/tournaments` query parameters, e.g. `{ format: 'EX' }` or `{ organizerId: 90 }`. */
+  query?: Record<string, string | number>;
+  /** Keep only tournaments whose name contains this text, case-insensitively. */
+  nameIncludes?: string;
   /** Compiled hand-maintained exclusions (see shared/onlineMeta/exclusions). */
   exclusions?: import('./exclusions').CompiledExclusions | null;
   pageSize?: number;
@@ -133,6 +141,8 @@ export interface FetchTournamentsOptions extends BaseOptions {
 
 /** Options for gatherDecks */
 export interface GatherDecksOptions extends BaseOptions {
+  /** Card type data used to tag trainers and energy; heuristics fill in without it. */
+  cardTypesDb?: import('../data/cardTypesDatabase').CardTypesDatabase | null;
   standingsConcurrency?: number;
   /**
    * Smallest field (players with a placing) an event needs to contribute

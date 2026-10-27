@@ -22,6 +22,9 @@ async function daily(): Promise<void> {
     '.github/scripts/run-trends.ts',
     '.github/scripts/update-prices.py',
     '.github/scripts/run-pack-ev.ts',
+    '.github/scripts/run-format-meta.ts',
+    '.github/scripts/lib/formatMeta.ts',
+    'shared/formats/registry.ts',
     'shared/onlineMeta/tournamentFetcher.ts'
   ]);
   await completedStage(store, 'daily', {
@@ -36,6 +39,7 @@ async function daily(): Promise<void> {
       node('run-trends.ts');
       python('update-prices.py');
       node('run-pack-ev.ts');
+      node('run-format-meta.ts');
     }
   });
 }

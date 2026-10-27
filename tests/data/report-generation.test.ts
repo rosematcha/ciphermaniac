@@ -134,7 +134,7 @@ test('gatherDecks derives success tags and handles small tournaments / ties', as
 
   const diagnostics: any = {};
   const mockEnv = { LIMITLESS_API_KEY: 'test-key' };
-  const decks = await gatherDecks(mockEnv as any, tournaments as any, diagnostics, null, {});
+  const decks = await gatherDecks(mockEnv as any, tournaments as any, diagnostics, {});
 
   assert.ok(Array.isArray(diagnostics.tournamentsBelowMinimum));
   const below = diagnostics.tournamentsBelowMinimum.find((entry: any) => entry.tournamentId === 't2');
@@ -195,7 +195,7 @@ test('gatherDecks reclassifies generic archetypes using Limitless deck ids', asy
 
   const diagnostics: any = {};
   const mockEnv = { LIMITLESS_API_KEY: 'test-key' };
-  const decks = await gatherDecks(mockEnv as any, tournaments as any, diagnostics, null, { minFieldPlayers: 1 });
+  const decks = await gatherDecks(mockEnv as any, tournaments as any, diagnostics, { minFieldPlayers: 1 });
 
   assert.equal(decks.length, 1);
   assert.equal(decks[0].archetype, 'Gholdengo Lunatone');

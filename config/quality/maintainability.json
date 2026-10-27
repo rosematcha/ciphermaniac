@@ -8,10 +8,6 @@
     "max-depth:33135001386db50649b4fee8c4065ebecdeecd7edbd47e9ac0de68c9fb438872:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:33135001386db50649b4fee8c4065ebecdeecd7edbd47e9ac0de68c9fb438872:Async function 'main' has a complexity of 35. Maximum allowed is 12."
   ],
-  ".github/scripts/run-trends.ts": [
-    "max-lines-per-function:d22a772d5db092d2069ee4bfdc8790c1ff4a60dd5bbd472a4d9237a09b105809:Async function 'main' has too many lines (158). Maximum allowed is 100.",
-    "complexity:d22a772d5db092d2069ee4bfdc8790c1ff4a60dd5bbd472a4d9237a09b105809:Async function 'main' has a complexity of 31. Maximum allowed is 12."
-  ],
   ".github/scripts/update-card-synonyms.mjs": [
     "max-depth:41054f0d6f75f666123ec34a0a1166ae9b0977deec1904f9a2834f2459d90b50:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:f73f3dfd0c8ead3891e04164a4c513498ade91f926093be8432f6043c41b156d:Arrow function has a complexity of 16. Maximum allowed is 12.",
@@ -141,14 +137,7 @@
     "max-depth:966f0f53004d538ddeaa09b19865c2d4f3bec7b3d80bd70e83ea6eef866ff399:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "max-depth:966f0f53004d538ddeaa09b19865c2d4f3bec7b3d80bd70e83ea6eef866ff399:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:966f0f53004d538ddeaa09b19865c2d4f3bec7b3d80bd70e83ea6eef866ff399:Function 'toCardEntries' has a complexity of 30. Maximum allowed is 12.",
-    "max-params:f3d3de225688c72b5023533bbe2710f36237bcbc29fd661c377c8ef979995090:Function 'enforceFailureBudget' has too many parameters (5). Maximum allowed is 4.",
-    "complexity:d9da65522bc311969211a7d45e31c7f0c6b90e1341de111928ba4a6d7a563c4e:Async function 'fetchTournamentSummaries' has a complexity of 14. Maximum allowed is 12.",
-    "complexity:2e2890b6f6eec8103ed0a6fb8b4cc9471e0c017b109e46f9f29bd93ed9ef0063:Async arrow function has a complexity of 29. Maximum allowed is 12.",
-    "complexity:0ba068467f9a66f69818bfa7e20b138072fbf1d37f2e26652bf6d63248432f76:Function 'initDiagnostics' has a complexity of 14. Maximum allowed is 12.",
-    "max-params:2aa7d7072b0e0776a3653ae9989cf14f6d76960ea802717f738cf90e47e21ea6:Function 'buildPendingDeck' has too many parameters (6). Maximum allowed is 4.",
-    "complexity:2aa7d7072b0e0776a3653ae9989cf14f6d76960ea802717f738cf90e47e21ea6:Function 'buildPendingDeck' has a complexity of 31. Maximum allowed is 12.",
-    "max-params:092cbafb24788e3f0bf6e533da4536e9b29bb25e8e6da906913eeb3506ece9fe:Async function 'gatherDecks' has too many parameters (5). Maximum allowed is 4.",
-    "complexity:092cbafb24788e3f0bf6e533da4536e9b29bb25e8e6da906913eeb3506ece9fe:Async function 'gatherDecks' has a complexity of 13. Maximum allowed is 12."
+    "max-params:f3d3de225688c72b5023533bbe2710f36237bcbc29fd661c377c8ef979995090:Function 'enforceFailureBudget' has too many parameters (5). Maximum allowed is 4."
   ],
   "shared/playerTypes.ts": [
     "complexity:824e0ef62e68000172f189b5c3611040da3530a1bc1a0289c80bd9bce2525f65:Function 'decodeSlimIndex' has a complexity of 23. Maximum allowed is 12."

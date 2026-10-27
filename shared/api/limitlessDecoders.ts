@@ -167,8 +167,14 @@ export interface StandingsRow {
   player?: string;
   country?: string | null;
   placing?: number;
-  deck?: { id?: string | null; name?: string | null };
+  deck?: { id?: string | null; name?: string | null; icons?: string[] };
   decklist?: Record<string, Array<{ name?: string; [key: string]: unknown }>>;
+}
+
+/** A standings row's archetype label: id, display name, and sprite slugs. */
+function decodeDeckLabel(deck: Record<string, unknown>): NonNullable<StandingsRow['deck']> {
+  const icons = Array.isArray(deck.icons) ? deck.icons.filter((icon): icon is string => typeof icon === 'string') : [];
+  return { id: str(deck.id), name: str(deck.name), ...(icons.length ? { icons } : {}) };
 }
 
 /**
@@ -205,7 +211,7 @@ export function decodeStandings(raw: unknown): DecodeResult<StandingsRow> {
       player: player ?? undefined,
       country: str(entry.country),
       placing: num(entry.placing) ?? undefined,
-      deck: isRecord(entry.deck) ? { id: str(entry.deck.id), name: str(entry.deck.name) } : undefined,
+      deck: isRecord(entry.deck) ? decodeDeckLabel(entry.deck) : undefined,
       decklist: isRecord(entry.decklist) ? (entry.decklist as Record<string, Array<{ name?: string }>>) : undefined
     });
   }

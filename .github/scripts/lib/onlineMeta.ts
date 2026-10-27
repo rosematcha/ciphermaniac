@@ -34,7 +34,12 @@ import {
   gatherDecks,
   utcDayWindow
 } from '../../../shared/onlineMeta/index.js';
-import type { DiagnosticsCollector, GatheredDeck, OnlineTournamentSummary } from '../../../shared/onlineMeta/types.js';
+import type {
+  DiagnosticsCollector,
+  FetchTournamentsOptions,
+  GatheredDeck,
+  OnlineTournamentSummary
+} from '../../../shared/onlineMeta/types.js';
 import { partitionDecks } from './build/deckShards';
 import { isOnlineReportRelativeKey } from './build/capturedScope';
 
@@ -49,6 +54,37 @@ const MAX_PAGES = 15;
  */
 const MIN_MATCHUP_FIELD_PLAYERS = 16;
 const DECK_ID_LENGTH = 12;
+
+/**
+ * What one report covers: where it is published, its window, which Limitless
+ * events feed it, and the field floors its numbers are computed against.
+ */
+export interface ReportScope {
+  /** Folder under the reports prefix, e.g. `Online - Last 14 Days` or `Formats/rspk`. */
+  folder: string;
+  /** `meta.json`'s `name`. */
+  name: string;
+  windowDays: number;
+  fetch: Pick<FetchTournamentsOptions, 'formats' | 'query' | 'nameIncludes'>;
+  minFieldPlayers: number;
+  minMatchupFieldPlayers: number;
+  /**
+   * Emit sprite icons on archetype index entries: the ones Limitless sent in
+   * standings, overridden by these. Standard leaves this unset and keeps its
+   * index shape; its icons come from the site-wide icon map instead.
+   */
+  icons?: Record<string, string[]>;
+}
+
+/** The Standard online meta. */
+export const STANDARD_SCOPE: ReportScope = {
+  folder: ONLINE_META_FOLDER,
+  name: ONLINE_META_FOLDER,
+  windowDays: WINDOW_DAYS,
+  fetch: {},
+  minFieldPlayers: DEFAULT_MIN_FIELD_PLAYERS,
+  minMatchupFieldPlayers: MIN_MATCHUP_FIELD_PLAYERS
+};
 
 /** Where the run reads its inputs and publishes the report. */
 export interface OnlineMetaStore {
@@ -69,6 +105,8 @@ export interface OnlineMetaOptions {
   reportsPrefix: string;
   exclusions: Parameters<typeof compileExclusions>[0];
   thumbnails: Record<string, string[]>;
+  /** The report to build. Default {@link STANDARD_SCOPE}. */
+  scope?: ReportScope;
   generateMaster?: boolean;
   generateArchetypes?: boolean;
   /**
@@ -81,22 +119,25 @@ export interface OnlineMetaOptions {
 }
 
 /** The options with defaults applied, plus what this run has published so far. */
-interface Run extends Required<OnlineMetaOptions> {
+interface Run extends Required<Omit<OnlineMetaOptions, 'scope'>> {
+  scope: ReportScope;
   limitlessEnv: { LIMITLESS_API_KEY: string };
   basePath: string;
   published: Set<string>;
 }
 
 function startRun(options: OnlineMetaOptions): Run {
+  const scope = options.scope ?? STANDARD_SCOPE;
   return {
     ...options,
+    scope,
     generateMaster: options.generateMaster ?? true,
     generateArchetypes: options.generateArchetypes ?? true,
     cleanRefresh: options.cleanRefresh ?? false,
     log: options.log ?? (message => console.log(message)),
     warn: options.warn ?? (message => console.warn(message)),
     limitlessEnv: { LIMITLESS_API_KEY: options.limitlessApiKey },
-    basePath: `${options.reportsPrefix}/${ONLINE_META_FOLDER}`,
+    basePath: `${options.reportsPrefix}/${scope.folder}`,
     published: new Set()
   };
 }
@@ -210,9 +251,9 @@ async function gatherWindow(
   run: Run,
   cardTypesDb: CardTypesDatabase | null
 ): Promise<GatheredWindow & { fetchWindowDays: number }> {
-  const { now, fetchJson, limitlessEnv } = run;
-  const reportWindow = utcDayWindow(now, WINDOW_DAYS);
-  const fetchWindowDays = run.cleanRefresh ? Math.max(WINDOW_DAYS, CACHE_REFRESH_LOOKBACK_DAYS) : WINDOW_DAYS;
+  const { now, fetchJson, limitlessEnv, scope } = run;
+  const reportWindow = utcDayWindow(now, scope.windowDays);
+  const fetchWindowDays = run.cleanRefresh ? Math.max(scope.windowDays, CACHE_REFRESH_LOOKBACK_DAYS) : scope.windowDays;
   const fetchWindow = utcDayWindow(now, fetchWindowDays);
   const diagnostics: DiagnosticsCollector = {};
 
@@ -222,13 +263,18 @@ async function gatherWindow(
     maxPages: MAX_PAGES,
     diagnostics,
     exclusions: compileExclusions(run.exclusions),
-    fetchJson
+    fetchJson,
+    ...scope.fetch
   });
   run.log(
     `[online-meta] Found ${fetched.length} eligible tournaments (${diagnostics.excludedTournaments?.length || 0} excluded by config)`
   );
 
-  const gathered = await gatherDecks(limitlessEnv, fetched, diagnostics, cardTypesDb, { fetchJson });
+  const gathered = await gatherDecks(limitlessEnv, fetched, diagnostics, {
+    cardTypesDb,
+    fetchJson,
+    minFieldPlayers: scope.minFieldPlayers
+  });
   if (!gathered.length) {
     throw new Error('No decklists gathered from online tournaments');
   }
@@ -240,7 +286,7 @@ async function gatherWindow(
   });
   if (!inWindow.length) {
     throw new Error(
-      `No tournaments fall within the ${WINDOW_DAYS}-day report window ` +
+      `No tournaments fall within the ${scope.windowDays}-day report window ` +
         `(fetched ${fetched.length} over ${fetchWindowDays} days); ` +
         'refusing to publish a mislabelled report'
     );
@@ -267,12 +313,12 @@ function buildMeta(
   window: GatheredWindow & { fetchWindowDays: number },
   archetypes: { minDecks: number; pairingsFailures: PairingsFailure[] }
 ): Record<string, unknown> {
-  const { now } = run;
-  const reportWindow = utcDayWindow(now, WINDOW_DAYS);
+  const { now, scope } = run;
+  const reportWindow = utcDayWindow(now, scope.windowDays);
   const { diagnostics } = window;
   const fields = diagnostics.tournamentFields || {};
   return {
-    name: ONLINE_META_FOLDER,
+    name: scope.name,
     source: 'limitless-online',
     generatedAt: now.toISOString(),
     windowStart: reportWindow.start.toISOString(),
@@ -286,8 +332,8 @@ function buildMeta(
     // What the numbers were computed against, so a reader never has to guess.
     fieldPolicy: {
       population: 'players with a placing',
-      minFieldPlayers: DEFAULT_MIN_FIELD_PLAYERS,
-      minMatchupFieldPlayers: MIN_MATCHUP_FIELD_PLAYERS,
+      minFieldPlayers: scope.minFieldPlayers,
+      minMatchupFieldPlayers: scope.minMatchupFieldPlayers,
       minMatchupGames: MIN_MATCHUP_GAMES
     },
     unplacedEntries: diagnostics.entriesWithoutPlacing?.length || 0,
@@ -436,6 +482,14 @@ async function publishReport(run: Run, input: PublishInput): Promise<void> {
   run.log(`[online-meta] Uploaded ${components.filter(Boolean).join(' + ')} to ${run.basePath}`);
 }
 
+/** The icon map a scope emits on its archetype index, or nothing for Standard. */
+function scopeIconConfig(
+  scope: ReportScope,
+  diagnostics: DiagnosticsCollector
+): { iconConfig?: Record<string, string[]> } {
+  return scope.icons ? { iconConfig: { ...diagnostics.archetypeIcons, ...scope.icons } } : {};
+}
+
 /** Build the report and publish it; resolves with the meta pointer it wrote. */
 export async function runOnlineMeta(options: OnlineMetaOptions): Promise<Record<string, unknown>> {
   const run = startRun(options);
@@ -454,7 +508,7 @@ export async function runOnlineMeta(options: OnlineMetaOptions): Promise<Record<
   // carry a matchup record.
   const fields = diagnostics.tournamentFields || {};
   const matchupTournaments = reportTournaments.filter(
-    tournament => (fields[tournament.id]?.fieldSize || 0) >= MIN_MATCHUP_FIELD_PLAYERS
+    tournament => (fields[tournament.id]?.fieldSize || 0) >= run.scope.minMatchupFieldPlayers
   );
   const { pairingsData, failures: pairingsFailures } = await gatherPairingsData(run, matchupTournaments);
 
@@ -474,7 +528,10 @@ export async function runOnlineMeta(options: OnlineMetaOptions): Promise<Record<
   const archetypes = buildArchetypeReports(
     reportDecks as unknown as Parameters<typeof buildArchetypeReports>[0],
     synonymDb,
-    onlineArchetypeOptions(run.thumbnails, cardTypesDb, masterReport)
+    {
+      ...onlineArchetypeOptions(run.thumbnails, cardTypesDb, masterReport),
+      ...scopeIconConfig(run.scope, diagnostics)
+    }
   );
 
   const meta = buildMeta(run, window, { minDecks: archetypes.minDecks, pairingsFailures });

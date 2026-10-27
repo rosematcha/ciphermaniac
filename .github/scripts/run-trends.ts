@@ -140,26 +140,14 @@ async function loadHistory(reportsBinding: R2Binding): Promise<TrendHistory | nu
   return Array.isArray(data.days) ? (data as TrendHistory) : null;
 }
 
-async function main() {
-  const cleanMonthCache = boolEnv('CLEAN_MONTH_CACHE');
-  const now = new Date();
-  // Whole UTC days ending yesterday, so the chart never ends on a half day.
-  let window = utcDayWindow(now, LOOKBACK_DAYS);
-  let lookbackDays = LOOKBACK_DAYS;
-  const exclusions = compileExclusions(onlineExclusions);
+type TrendsEnv = { REPORTS: R2Binding; LIMITLESS_API_KEY: string };
+type TrendsFetch = (pathname: string, options?: Parameters<typeof fetchLimitlessJson>[1]) => Promise<unknown>;
+type Tournaments = Awaited<ReturnType<typeof fetchRecentOnlineTournaments>>;
+type Decks = Awaited<ReturnType<typeof gatherDecks>>;
 
-  const env = {
-    REPORTS: new R2Binding(R2_REPORTS_PREFIX),
-    LIMITLESS_API_KEY: requireEnv('LIMITLESS_API_KEY')
-  };
-
-  if (cleanMonthCache) {
-    console.log(`[trends] CLEAN_MONTH_CACHE=true: deleting existing ${TRENDS_FOLDER} artifacts before rebuild...`);
-    const deleted = await env.REPORTS.deletePrefix(`${TRENDS_FOLDER}/`);
-    console.log(`[trends] Deleted ${deleted.deleted}/${deleted.keys} objects from ${TRENDS_FOLDER}/`);
-  }
-
-  const fetchJson = async (pathname: string, options: Parameters<typeof fetchLimitlessJson>[1] = {}) => {
+/** The Limitless client for this run; a clean rebuild forces origin revalidation. */
+function trendsFetch(env: TrendsEnv, cleanMonthCache: boolean): TrendsFetch {
+  return async (pathname, options = {}) => {
     const baseFetchOptions = options?.fetchOptions || {};
     const headers = new Headers(baseFetchOptions.headers || undefined);
     if (cleanMonthCache) {
@@ -177,9 +165,28 @@ async function main() {
       }
     });
   };
+}
 
-  const diagnostics: DiagnosticsCollector = {};
-  const fetchWindow = () =>
+interface TrendWindow {
+  window: ReturnType<typeof utcDayWindow>;
+  lookbackDays: number;
+  tournaments: Tournaments;
+}
+
+/**
+ * The lookback window and its tournaments. Auto-widens when there are too few
+ * tournaments to compute meaningful chunked-average deltas: without this,
+ * sparse windows produce identical Rising / Cooling lists with delta=0 across
+ * the board.
+ */
+async function fetchTrendWindow(
+  env: TrendsEnv,
+  now: Date,
+  fetchJson: TrendsFetch,
+  diagnostics: DiagnosticsCollector
+): Promise<TrendWindow> {
+  const exclusions = compileExclusions(onlineExclusions);
+  const fetchWindow = (window: ReturnType<typeof utcDayWindow>) =>
     fetchRecentOnlineTournaments(env, window.start, {
       maxPages: 20,
       windowEnd: window.lastInstant,
@@ -187,16 +194,15 @@ async function main() {
       diagnostics,
       exclusions
     });
-
+  // Whole UTC days ending yesterday, so the chart never ends on a half day.
+  let lookbackDays = LOOKBACK_DAYS;
+  let window = utcDayWindow(now, lookbackDays);
   console.log(`[trends] Fetching tournaments ${window.start.toISOString()} .. ${window.end.toISOString()}`);
-  let tournaments = await fetchWindow();
+  let tournaments = await fetchWindow(window);
   console.log(
     `[trends] Tournaments: ${tournaments.length} (${diagnostics.excludedTournaments?.length || 0} excluded by config)`
   );
 
-  // Auto-widen the lookback window if we have too few tournaments to compute
-  // meaningful chunked-average deltas. Without this, sparse windows produce
-  // identical Rising / Cooling lists with delta=0 across the board.
   for (const widerLookback of LOOKBACK_FALLBACK_STEPS) {
     if (tournaments.length >= MIN_TREND_TOURNAMENTS) {
       break;
@@ -206,18 +212,44 @@ async function main() {
     );
     lookbackDays = widerLookback;
     window = utcDayWindow(now, lookbackDays);
-
-    tournaments = await fetchWindow();
+    tournaments = await fetchWindow(window);
     console.log(`[trends] Tournaments after widening: ${tournaments.length}`);
   }
 
   if (!tournaments.length) {
     throw new Error('No tournaments found for trends window');
   }
+  return { window, lookbackDays, tournaments };
+}
 
+/** Drop tournaments that produced no decks, to avoid zero-denominator timelines. */
+function tournamentsWithDecks(tournaments: Tournaments, decks: Decks): Tournaments {
+  const deckCountByTournament = new Map<string, number>();
+  for (const deck of decks) {
+    const tid = deck?.tournamentId;
+    if (tid) {
+      deckCountByTournament.set(tid, (deckCountByTournament.get(tid) || 0) + 1);
+    }
+  }
+  const kept = tournaments.filter(t => (deckCountByTournament.get(t.id) || 0) > 0);
+  if (!kept.length) {
+    throw new Error('All tournaments were empty after deck filtering');
+  }
+  if (kept.length !== tournaments.length) {
+    console.log(`[trends] Dropped ${tournaments.length - kept.length} tournaments with no deck data`);
+  }
+  return kept;
+}
+
+async function gatherTrendDecks(
+  env: TrendsEnv,
+  tournaments: Tournaments,
+  fetchJson: TrendsFetch,
+  diagnostics: DiagnosticsCollector
+): Promise<Decks> {
   console.log('[trends] Gathering decks...');
   // No card-types enrichment: nothing trends publishes reads card categories.
-  const decks = await gatherDecks(env, tournaments, diagnostics, null, { fetchJson });
+  const decks = await gatherDecks(env, tournaments, diagnostics, { fetchJson });
   console.log(`[trends] Decks: ${decks.length}`);
   if (diagnostics?.archetypeClassification) {
     console.log('[trends] Archetype classification summary:', diagnostics.archetypeClassification);
@@ -225,25 +257,12 @@ async function main() {
   if (!decks.length) {
     throw new Error('No decks gathered for trends');
   }
+  return decks;
+}
 
-  // Drop tournaments that produced no decks to avoid zero-denominator timelines.
-  const deckCountByTournament = new Map();
-  for (const deck of decks) {
-    const tid = deck?.tournamentId;
-    if (!tid) {
-      continue;
-    }
-    deckCountByTournament.set(tid, (deckCountByTournament.get(tid) || 0) + 1);
-  }
-  const tournamentsWithDecks = tournaments.filter(t => (deckCountByTournament.get(t.id) || 0) > 0);
-  if (!tournamentsWithDecks.length) {
-    throw new Error('All tournaments were empty after deck filtering');
-  }
-  if (tournamentsWithDecks.length !== tournaments.length) {
-    console.log(`[trends] Dropped ${tournaments.length - tournamentsWithDecks.length} tournaments with no deck data`);
-  }
-
-  const rawTrendReport = buildTrendReport(decks, tournamentsWithDecks, {
+async function buildTrendArtifacts(decks: Decks, tournaments: Tournaments, span: TrendWindow, now: Date) {
+  const { window, lookbackDays } = span;
+  const rawTrendReport = buildTrendReport(decks, tournaments, {
     windowStart: window.start,
     windowEnd: window.end,
     now,
@@ -251,7 +270,7 @@ async function main() {
     minDayDecks: MIN_DAY_DECKS
   });
   const {
-    tournaments: trendTournaments = tournamentsWithDecks,
+    tournaments: trendTournaments = tournaments,
     series: rawSeries = [],
     ...trendReportMeta
   } = rawTrendReport || {};
@@ -281,15 +300,23 @@ async function main() {
       `${weekly.archetypes.length} archetypes, ${weekly.decks.length} deck blocks, ` +
       `${weekly.movers.rising.length} rising / ${weekly.movers.falling.length} falling`
   );
+  return { trendReport, cardTrends, weekly };
+}
 
-  const meta = {
+function buildTrendMeta(
+  span: TrendWindow,
+  counts: { decks: number; tournaments: number },
+  diagnostics: DiagnosticsCollector,
+  now: Date
+) {
+  return {
     name: TRENDS_FOLDER,
     generatedAt: now.toISOString(),
-    windowStart: window.start.toISOString(),
-    windowEnd: window.end.toISOString(),
-    lookbackDays,
-    deckTotal: decks.length,
-    tournamentCount: tournamentsWithDecks.length,
+    windowStart: span.window.start.toISOString(),
+    windowEnd: span.window.end.toISOString(),
+    lookbackDays: span.lookbackDays,
+    deckTotal: counts.decks,
+    tournamentCount: counts.tournaments,
     fieldPolicy: {
       population: 'players with a placing',
       minFieldPlayers: DEFAULT_MIN_FIELD_PLAYERS,
@@ -303,11 +330,33 @@ async function main() {
       detailsFailures: diagnostics.detailsFetchFailures || []
     }
   };
+}
 
-  const baseKey = `${TRENDS_FOLDER}`;
+async function main() {
+  const cleanMonthCache = boolEnv('CLEAN_MONTH_CACHE');
+  const now = new Date();
+  const env: TrendsEnv = {
+    REPORTS: new R2Binding(R2_REPORTS_PREFIX),
+    LIMITLESS_API_KEY: requireEnv('LIMITLESS_API_KEY')
+  };
+
+  if (cleanMonthCache) {
+    console.log(`[trends] CLEAN_MONTH_CACHE=true: deleting existing ${TRENDS_FOLDER} artifacts before rebuild...`);
+    const deleted = await env.REPORTS.deletePrefix(`${TRENDS_FOLDER}/`);
+    console.log(`[trends] Deleted ${deleted.deleted}/${deleted.keys} objects from ${TRENDS_FOLDER}/`);
+  }
+
+  const fetchJson = trendsFetch(env, cleanMonthCache);
+  const diagnostics: DiagnosticsCollector = {};
+  const span = await fetchTrendWindow(env, now, fetchJson, diagnostics);
+  const decks = await gatherTrendDecks(env, span.tournaments, fetchJson, diagnostics);
+  const tournaments = tournamentsWithDecks(span.tournaments, decks);
+  const { trendReport, cardTrends, weekly } = await buildTrendArtifacts(decks, tournaments, span, now);
+  const meta = buildTrendMeta(span, { decks: decks.length, tournaments: tournaments.length }, diagnostics, now);
+
   console.log('[trends] Uploading meta, trends, and history...');
-  await env.REPORTS.put(`${baseKey}/meta.json`, meta);
-  await env.REPORTS.put(`${baseKey}/trends.json`, { trendReport, cardTrends, weekly });
+  await env.REPORTS.put(`${TRENDS_FOLDER}/meta.json`, meta);
+  await env.REPORTS.put(`${TRENDS_FOLDER}/trends.json`, { trendReport, cardTrends, weekly });
 
   // One row per day, forever: the only memory of the online meta older than
   // the window. A rerun on the same day replaces that day's row.
@@ -315,7 +364,7 @@ async function main() {
   await env.REPORTS.put(HISTORY_KEY, history);
 
   console.log('[trends] Done', {
-    tournaments: tournamentsWithDecks.length,
+    tournaments: tournaments.length,
     decks: decks.length,
     archetypeSeries: trendReport.series?.length || 0,
     cardRising: cardTrends.rising?.length || 0,

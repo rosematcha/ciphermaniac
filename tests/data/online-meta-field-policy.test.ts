@@ -64,7 +64,7 @@ test('gatherDecks drops registrations without a placing and tags against the rea
     ...Array.from({ length: 12 }, (_, i) => row(null, 100 + i))
   ];
   const diagnostics: Record<string, any> = {};
-  const decks = await gatherDecks(env, [tournament('t1', 24)], diagnostics, null, {
+  const decks = await gatherDecks(env, [tournament('t1', 24)], diagnostics, {
     fetchJson: standingsFetcher({ t1: rows })
   });
 
@@ -86,7 +86,7 @@ test('gatherDecks skips events whose real field is below the floor', async () =>
     ...Array.from({ length: 30 }, (_, i) => row(null, 50 + i))
   ];
   const diagnostics: Record<string, any> = {};
-  const decks = await gatherDecks(env, [tournament('t1', 36), tournament('t2', 4)], diagnostics, null, {
+  const decks = await gatherDecks(env, [tournament('t1', 36), tournament('t2', 4)], diagnostics, {
     fetchJson: standingsFetcher({ t1: rows })
   });
 
@@ -107,7 +107,7 @@ test('gatherDecks refuses to publish when too many standings fetches fail', asyn
     byTournament[event.id] = new Error('503');
   }
   await assert.rejects(
-    () => gatherDecks(env, events, {}, null, { fetchJson: standingsFetcher(byTournament) }),
+    () => gatherDecks(env, events, {}, { fetchJson: standingsFetcher(byTournament) }),
     /Standings fetch failed for 8\/8/
   );
 });
@@ -129,7 +129,7 @@ test('gatherDecks includes entries without decklists when archetype metadata is 
       ? [{ identifier: 'dragapult-dusknoir', name: 'Dragapult Dusknoir', cards: [{ name: 'Dragapult ex' }] }]
       : standingsFetcher({ t1: rows })(path);
   const diagnostics: Record<string, any> = {};
-  const decks = await gatherDecks(env, [tournament('t1', 32)], diagnostics, null, { fetchJson });
+  const decks = await gatherDecks(env, [tournament('t1', 32)], diagnostics, { fetchJson });
 
   assert.equal(decks.length, 7);
   assert.deepEqual(
@@ -144,9 +144,14 @@ test('gatherDecks includes entries without decklists when archetype metadata is 
 
 test('gatherDecks uses full standings instead of top-cut caps', async () => {
   const rows = Array.from({ length: 150 }, (_, i) => row(i + 1, i + 1));
-  const decks = await gatherDecks(env, [tournament('t2', 200)], {}, null, {
-    fetchJson: standingsFetcher({ t2: rows })
-  });
+  const decks = await gatherDecks(
+    env,
+    [tournament('t2', 200)],
+    {},
+    {
+      fetchJson: standingsFetcher({ t2: rows })
+    }
+  );
   assert.equal(decks.length, 150);
 });
 
