@@ -1,3 +1,5 @@
+import { BANLIST_FILE } from '../../../../shared/formats/banlist';
+
 const ONLINE_PREFIX = 'reports/Online - Last 14 Days/';
 const TRENDS_PREFIX = 'reports/Trends - Last 30 Days/';
 const FORMATS_PREFIX = 'reports/Formats/';
@@ -27,7 +29,8 @@ export function isFormatsReportObject(key: string): boolean {
   }
   const relative = key.slice(FORMATS_PREFIX.length);
   const slash = relative.indexOf('/');
-  return relative === 'index.json' || (slash > 0 && isOnlineReportRelativeKey(relative.slice(slash + 1)));
+  const inFolder = relative.slice(slash + 1);
+  return relative === 'index.json' || (slash > 0 && (isOnlineReportRelativeKey(inFolder) || inFolder === BANLIST_FILE));
 }
 
 export function isTrendsReportObject(key: string): boolean {

@@ -8,6 +8,16 @@ import { releaseGroups, windowDays } from '../../shared/formats/window';
 import { decodeStandings } from '../../shared/api/limitlessDecoders';
 import { fetchRecentOnlineTournaments } from '../../shared/onlineMeta/tournamentFetcher';
 
+/** A card as Cube Koga's API sends it. */
+function cubeCard(id: string, name: string, set: string): Record<string, string> {
+  // Cube Koga's field names, which are not camel case.
+  return Object.fromEntries([
+    ['card_ID', id],
+    ['card_Name', name],
+    ['set', set]
+  ]);
+}
+
 const NOW = new Date('2026-10-27T12:00:00Z');
 const SYNONYMS = { synonyms: { 'Slowking::SCR::58': 'Slowking::SCR::58' }, canonicals: {} };
 const ETERNAL = FORMAT_SCOPES.find(format => format.id === 'eternal') as FormatScope;
@@ -90,7 +100,8 @@ function runOptions(store: OnlineMetaStore, fetchJson: OnlineMetaOptions['fetchJ
     reportsPrefix: 'reports',
     formats,
     log: () => undefined,
-    warn: () => undefined
+    warn: () => undefined,
+    fetchBanlistJson: async () => [cubeCard('dp6-28', 'Forretress', 'Legends Awakened')]
   };
 }
 
@@ -261,4 +272,37 @@ test('Eternal names a deck by its hand-kept rules, with their sprites and card a
   assert.equal(archetypes[0].label, 'Blastoise Chien-Pao');
   assert.deepEqual(archetypes[0].icons, ['blastoise', 'chien-pao']);
   assert.deepEqual(archetypes[0].thumbnails, ['PLB/16', 'PAL/61']);
+});
+
+test('Eternal publishes its ban list beside the report, and the next run keeps it', async () => {
+  const bucket = memoryStore();
+  const { fetchJson } = limitless();
+  await runFormatMetas(runOptions(bucket.store, fetchJson, [ETERNAL]));
+  const banlist = bucket.objects.get('reports/Formats/eternal/banlist.json') as { prints: unknown[]; source: string };
+  assert.deepEqual(banlist.prints, [{ name: 'Forretress', set: 'LA', number: '28' }]);
+  assert.match(banlist.source, /cubekoga\.net/);
+
+  // A failed read keeps yesterday's list, and the report sweep spares it.
+  await runFormatMetas({
+    ...runOptions(bucket.store, fetchJson, [ETERNAL]),
+    fetchBanlistJson: async () => {
+      throw new Error('Cube Koga is down');
+    }
+  });
+  assert.deepEqual(bucket.objects.get('reports/Formats/eternal/banlist.json'), banlist);
+});
+
+test('a format without a ban list never asks for one', async () => {
+  const bucket = memoryStore();
+  const { fetchJson } = limitless({ size: 4 });
+  let asked = false;
+  await runFormatMetas({
+    ...runOptions(bucket.store, fetchJson, [RSPK]),
+    fetchBanlistJson: async () => {
+      asked = true;
+      return [];
+    }
+  });
+  assert.equal(asked, false);
+  assert.ok(!bucket.objects.has('reports/Formats/rspk/banlist.json'));
 });

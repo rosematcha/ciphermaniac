@@ -21,6 +21,7 @@ import {
   findCardInArchetypeReport,
   findConversionStat,
   formatWholePct,
+  isBannedCard,
   resolvePriceEntry,
   resolvePriceSeries,
   snapshotDateLabel,
@@ -265,4 +266,20 @@ test('sub-one-percent usage reads as "<1%" rather than rounding to zero', () => 
   assert.equal(formatWholePct(0), '0%');
   assert.equal(formatWholePct(49.6), '50%');
   assert.equal(formatWholePct(100), '100%');
+});
+
+test('a card is banned when any print in its reprint cluster is on the list', () => {
+  const db = {
+    synonyms: { 'Forretress::LA::028': 'Forretress::LA::028', 'Forretress::RM::005': 'Forretress::LA::028' },
+    canonicals: {}
+  } as unknown as SynonymDatabase;
+  const banned = [{ name: 'Forretress', set: 'LA', number: '28' }];
+  assert.equal(isBannedCard({ name: 'Forretress', set: 'LA', number: '28' }, banned, db), true);
+  assert.equal(isBannedCard({ name: 'Forretress', set: 'RM', number: '5' }, banned, db), true);
+  assert.equal(isBannedCard({ name: 'Forretress', set: 'UL', number: '12' }, banned, db), false);
+  assert.equal(isBannedCard({ name: 'Forretress', set: 'LA', number: '28' }, [], db), false);
+});
+
+test('formats have no Day 2 cut to convert against', () => {
+  assert.equal(supportsConversion('format:eternal'), false);
 });

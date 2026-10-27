@@ -11,11 +11,13 @@ import { getSynonymDatabase } from '../../utils/cardSynonyms';
 import type { CardSuccessIndex } from '../../../shared/data/reports/cardSuccess';
 import type { CardItem, MetaReport } from '../../types';
 import {
+  formatIdFromKey,
   FORMATS_INDEX_PATH,
   formatScopeKey,
   type FormatsIndex,
   type FormatsIndexEntry
 } from '../../../shared/formats/registry';
+import { BANLIST_FILE, type BannedPrint, type FormatBanlist } from '../../../shared/formats/banlist';
 
 const { fetchJson, fetchJsonOptional } = dataClient;
 
@@ -54,6 +56,22 @@ export async function fetchFormatsList(): Promise<FormatsIndexEntry[]> {
   try {
     const index = await fetchJsonOptional<FormatsIndex>(`/${FORMATS_INDEX_PATH}`);
     return index?.formats ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * A format's banned prints, or none: a scope that isn't a format, a format with
+ * no ban list, and a list that can't be read all show no ban.
+ */
+export async function fetchFormatBanlist(key: string): Promise<BannedPrint[]> {
+  if (!formatIdFromKey(key)) {
+    return [];
+  }
+  try {
+    const banlist = await fetchJsonOptional<FormatBanlist>(`${tournamentPath(key)}/${BANLIST_FILE}`);
+    return banlist?.prints ?? [];
   } catch {
     return [];
   }

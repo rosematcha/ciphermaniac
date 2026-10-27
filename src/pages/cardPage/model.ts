@@ -16,7 +16,14 @@
  */
 
 import { formatIdFromKey } from '../../../shared/formats/registry';
-import { cardNumberIndexKey, cardUidOrName, itemUid, type SynonymDatabase } from '../../../shared/data/cardIdentity';
+import {
+  cardNumberIndexKey,
+  cardUidOrName,
+  getCanonicalCardFromData,
+  itemUid,
+  type SynonymDatabase
+} from '../../../shared/data/cardIdentity';
+import type { BannedPrint } from '../../../shared/formats/banlist';
 import { findByClusterUid } from '../../lib/data';
 import { type CardUsageEntry, cardUsageForCard, type CardUsagePayload } from '../../lib/data/cards';
 import type { Day2CardStat } from '../../lib/data/events';
@@ -360,4 +367,23 @@ export function conversionCaveats(
 /** Whole-number percent for the usage rows; sub-1% shows as "<1%" instead of rounding to 0. */
 export function formatWholePct(p: number): string {
   return p > 0 && p < 1 ? '<1%' : `${Math.round(p)}%`;
+}
+
+/**
+ * Whether the card is banned: any print in its reprint cluster on the list
+ * bans them all, since the list names one print of each banned card.
+ * @param card - The card shown
+ * @param banned - The scope's banned prints
+ * @param db - Synonym database, or null while it loads
+ */
+export function isBannedCard(
+  card: { name: string; set?: string | null; number?: string | number | null },
+  banned: readonly BannedPrint[],
+  db: SynonymDatabase | null
+): boolean {
+  if (!banned.length) {
+    return false;
+  }
+  const canonical = getCanonicalCardFromData(db, itemUid(card));
+  return banned.some(print => getCanonicalCardFromData(db, itemUid(print)) === canonical);
 }

@@ -1559,3 +1559,10 @@ test('a format deep link loads that format', async ({ page }) => {
   await expect(page.locator('.t-selector-label')).toHaveText('RS-PK');
   await expect(page.locator('body')).toContainText('Bombtar');
 });
+
+test('a card on a format ban list says so on its page in that format', async ({ page }) => {
+  await gotoClean(page, '/cards/MEG/114?scope=rspk');
+  await expect(page.locator('.card-meta-row')).toContainText('Banned in RS-PK');
+  await gotoClean(page, '/cards/MEG/114?scope=online');
+  await expect(page.locator('.card-meta-row')).not.toContainText('Banned');
+});

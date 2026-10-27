@@ -378,6 +378,7 @@ test('format folders capture the index and online-shaped reports, and nothing el
   assert.equal(isFormatsReportObject('reports/Formats/eternal/archetypes/Slowking/cards.json'), true);
   assert.equal(isFormatsReportObject('reports/Formats/eternal/legacy.sqlite'), false);
   assert.equal(isFormatsReportObject('reports/Formats/master.json'), false);
+  assert.equal(isFormatsReportObject('reports/Formats/eternal/banlist.json'), true);
   assert.equal(staleCapturedReport('reports/Formats/eternal/notes.json'), true);
   assert.equal(staleCapturedReport('reports/Formats/eternal/meta.json'), false);
 });

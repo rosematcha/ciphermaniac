@@ -8,6 +8,7 @@ import {
   findConversionStat,
   formatWholePct as fmtWholePct,
   snapshotDateLabel as formatSnapshotDate,
+  isBannedCard,
   resolvePriceEntry,
   resolvePriceSeries,
   effectiveTournament as scopeTournament,
@@ -21,6 +22,7 @@ import {
   fetchArchetypes,
   fetchCardUsage,
   fetchDay2CardStats,
+  fetchFormatBanlist,
   fetchMaster,
   fetchPriceHistoryForSet,
   fetchPrices,
@@ -41,6 +43,7 @@ import { latestValue, resolved } from '../lib/resource';
 import { computeSparkBounds } from '../lib/sparkline';
 import type { CardItem } from '../types';
 import { Badge } from '../components/Badge';
+import { nameFromTournamentKey } from '../lib/format';
 import { buildPrintingRows, formatPrintPrice, type PrintingRow } from '../utils/printings';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
@@ -415,6 +418,8 @@ function CardPageBody(props: {
   // nearly the whole field just tracks the field's overall Day 2 rate, and a
   // card seen in a handful of decks is too small a sample to read into.
   const conversionCaveats = createMemo<string[]>(() => buildCaveats(props.card, props.conversion));
+  const [banlist] = createResource(() => props.tournament, fetchFormatBanlist);
+  const banned = () => isBannedCard(props.card, resolved(banlist) ?? [], props.db);
   const avgCopies = createMemo(() => averageCopies(props.card));
 
   // Printings strip: every printing in this card's reprint cluster, with the
@@ -448,6 +453,9 @@ function CardPageBody(props: {
             </Show>
             <Show when={props.card.regulationMark}>
               <Badge variant='regulation'>Reg {props.card.regulationMark}</Badge>
+            </Show>
+            <Show when={banned()}>
+              <Badge>Banned in {nameFromTournamentKey(props.tournament)}</Badge>
             </Show>
             <span class='sep'>·</span>
             <span>

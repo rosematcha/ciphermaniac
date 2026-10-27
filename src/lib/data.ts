@@ -24,7 +24,14 @@ export { fetchPlayerDecks, fetchPlayerIndexSlim, fetchPlayerProfile } from './da
 export { fetchEarnings, fetchEarningsEvents } from './data/earnings';
 export { fetchMajorsTrendReport, fetchOnlineTrendReport } from './data/trends';
 export type { TrendTimelinePoint, WeeklyDeck, WeeklyDeckCard, WeeklyMover, WeeklyReport } from './data/trends';
-export { fetchCardSuccessIndex, fetchFormatsList, fetchMaster, fetchMeta, fetchTournamentsList } from './data/reports';
+export {
+  fetchCardSuccessIndex,
+  fetchFormatBanlist,
+  fetchFormatsList,
+  fetchMaster,
+  fetchMeta,
+  fetchTournamentsList
+} from './data/reports';
 export type { MasterPayload } from './data/reports';
 export {
   fetchArchetype,

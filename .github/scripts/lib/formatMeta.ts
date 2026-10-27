@@ -23,6 +23,8 @@ import {
   ruleThumbnails
 } from '../../../shared/formats/archetypeRules';
 import eternalRules from '../../../config/archetypes/eternal.json' with { type: 'json' };
+import { BANLIST_FILE, type FormatBanlist } from '../../../shared/formats/banlist';
+import { fetchEternalBanlist } from './eternalBanlist';
 import { type OnlineMetaOptions, type ReportScope, runOnlineMeta } from './onlineMeta';
 
 export interface FormatMetaOptions extends Omit<OnlineMetaOptions, 'scope' | 'exclusions' | 'thumbnails'> {
@@ -31,6 +33,23 @@ export interface FormatMetaOptions extends Omit<OnlineMetaOptions, 'scope' | 'ex
   thumbnails?: Record<string, Record<string, string[]>>;
   /** Hand-picked sprite icons per format, keyed by archetype label. */
   icons?: Record<string, Record<string, string[]>>;
+  /** Reads a ban list source as JSON. Default: `fetch`. */
+  fetchBanlistJson?: (url: string) => Promise<unknown>;
+}
+
+type BanlistLoader = (fetchJson: (url: string) => Promise<unknown>, now: Date) => Promise<FormatBanlist>;
+
+/** Formats with a ban list worth showing, and where each one's list comes from. */
+const FORMAT_BANLISTS: Record<string, BanlistLoader> = {
+  eternal: fetchEternalBanlist
+};
+
+async function fetchJsonFromWeb(url: string): Promise<unknown> {
+  const response = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!response.ok) {
+    throw new Error(`${url} answered ${response.status}`);
+  }
+  return response.json();
 }
 
 /** Hand-maintained archetype rules, for formats Limitless leaves unclassified. */
@@ -53,6 +72,7 @@ export function formatReportScope(format: FormatScope, now: Date, icons: Record<
     },
     minFieldPlayers: format.minFieldPlayers,
     minMatchupFieldPlayers: format.minMatchupFieldPlayers,
+    ...(FORMAT_BANLISTS[format.id] ? { keep: [BANLIST_FILE] } : {}),
     icons: { ...ruleIcons(rules), ...icons },
     ...(rules.length ? { classify: deck => matchArchetypeRule(deck.cards, rules)?.name ?? null } : {})
   };
@@ -89,6 +109,24 @@ async function runFormat(format: FormatScope, options: FormatMetaOptions): Promi
 }
 
 /**
+ * Refresh a format's ban list beside its report. A failed read keeps the
+ * previous list rather than publishing none.
+ */
+async function publishBanlist(format: FormatScope, options: FormatMetaOptions): Promise<void> {
+  const load = FORMAT_BANLISTS[format.id];
+  if (!load) {
+    return;
+  }
+  const folder = formatFolder(format.id).replace(/^reports\//, '');
+  try {
+    const banlist = await load(options.fetchBanlistJson ?? fetchJsonFromWeb, options.now);
+    await options.store.write(`${options.reportsPrefix}/${folder}/${BANLIST_FILE}`, banlist);
+  } catch (error) {
+    (options.warn ?? console.warn)(`[format-meta] ${format.id} ban list not refreshed: ${(error as Error)?.message}`);
+  }
+}
+
+/**
  * Build every format, then write the index. Resolves with the index written.
  * @param options - Store, Limitless client, clock, and per-format overrides
  */
@@ -103,6 +141,7 @@ export async function runFormatMetas(options: FormatMetaOptions): Promise<Format
 
   for (const format of formats) {
     const outcome = await runFormat(format, options);
+    await publishBanlist(format, options);
     if ('entry' in outcome) {
       entries.push(outcome.entry);
       continue;

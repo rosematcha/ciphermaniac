@@ -74,6 +74,8 @@ export interface ReportScope {
    * index shape; its icons come from the site-wide icon map instead.
    */
   icons?: Record<string, string[]>;
+  /** Files another producer writes into this report's folder, which the sweep must spare. */
+  keep?: readonly string[];
   /** Name a deck by hand-maintained rules; null keeps the archetype Limitless gave it. */
   classify?: (deck: GatheredDeck) => string | null;
 }
@@ -201,8 +203,12 @@ async function removeSupersededOnlineObjects(run: Run): Promise<number> {
   const existing = await run.store.list(`${basePath}/`);
   const archetypePrefix = `${basePath}/archetypes/`;
   const listIndexPrefix = `${basePath}/decks/`;
+  const kept = new Set(run.scope.keep ?? []);
   const stale = existing.filter(key => {
     const relative = key.slice(`${basePath}/`.length);
+    if (kept.has(relative)) {
+      return false;
+    }
     if (!isOnlineReportRelativeKey(relative)) {
       return true;
     }
