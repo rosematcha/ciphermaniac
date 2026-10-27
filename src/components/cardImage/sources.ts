@@ -99,9 +99,9 @@ export function buildSrcset(
     return `${joke} ${TIER_WIDTH.lg}w`;
   }
   const num = paddedNumber(number);
-  // Vintage sets live on pokemontcg.io (see utils/ptcgio.ts) — neither R2 nor
-  // the Limitless proxy has their scans.
-  if (hasPtcgioImages(setU)) {
+  // Vintage sets come from pokemontcg.io (see utils/ptcgio.ts) unless the R2
+  // mirror, which re-encodes them into the Limitless tiers, is in play.
+  if (hasPtcgioImages(setU) && source !== 'r2') {
     return ptcgioSrcset(setU, num) ?? '';
   }
   const tiers = [...SIZE_CHAINS[preferredSize]].reverse();
@@ -125,10 +125,12 @@ export function buildAttempts(
   }
   const padded = paddedNumber(number);
   // 0. Vintage sets (DP era and older, POP, XY promos): Limitless's CDN has no
-  //    scans, so R2 and the proxy would only 404 — go straight to
-  //    pokemontcg.io. Hotlinking is safe there: no bot-management cookie.
+  //    scans, so its proxy tiers would only 404. The R2 mirror re-encodes them
+  //    from pokemontcg.io, so its WebP leads when R2 is in play; pokemontcg.io
+  //    itself backs it for prints the mirror has not seen.
   if (hasPtcgioImages(setU)) {
-    return ptcgioImageUrls(setU, padded, preferredSize);
+    const ptcgio = ptcgioImageUrls(setU, padded, preferredSize);
+    return source === 'r2' ? [r2TierUrl(setU, padded, preferredSize), ...ptcgio] : ptcgio;
   }
 
   const urls = SIZE_CHAINS[preferredSize].map(size => thumbTierUrl(setU, padded, size));

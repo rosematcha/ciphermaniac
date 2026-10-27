@@ -51,14 +51,14 @@ test('the number is zero-padded for both sources, since the CDN is strict about 
   assert.ok(buildAttempts('SVI', '1', 'xs', 'proxy')[0].endsWith('/SVI/001'));
 });
 
-test('a vintage set goes to pokemontcg.io regardless of skipR2', () => {
-  // Limitless has no scans for those sets, so R2 and its proxy tiers would only 404.
-  for (const source of ['r2', 'proxy'] as const) {
+test('a vintage set without R2 goes straight to pokemontcg.io', () => {
+  // Limitless has no scans for those sets, so its proxy tiers would only 404.
+  for (const source of ['proxy', 'hotlink'] as const) {
     const attempts: string[] = buildAttempts('BS', '4', 'lg', source);
     assert.equal(
       attempts.some(u => u.includes(R2)),
       false,
-      `vintage must not hit R2 (source=${source})`
+      `skipping R2 must not hit it (source=${source})`
     );
     assert.equal(
       attempts.some(u => u.startsWith(`${PROXY}/lg/`) || u.startsWith(`${PROXY}/sm/`)),
@@ -69,7 +69,25 @@ test('a vintage set goes to pokemontcg.io regardless of skipR2', () => {
     // CORS header, so it cannot be inlined into an export.
     assert.ok(attempts[0].startsWith(`${PROXY}/ptcgio/base1/4_hires`), attempts[0]);
     assert.ok(attempts.at(-1)?.startsWith('https://images.pokemontcg.io/'), String(attempts.at(-1)));
+    assert.ok(buildSrcset('BS', '4', 'lg', source).startsWith(`${PROXY}/ptcgio/base1/4 `));
   }
+});
+
+test('a vintage set prefers its R2 mirror and keeps pokemontcg.io behind it', () => {
+  // The mirror re-encodes pokemontcg.io scans into the Limitless tiers, so R2
+  // serves vintage art under the same key scheme as every other set.
+  const attempts = buildAttempts('P4', '10', 'lg', 'r2');
+  assert.equal(attempts[0], `https://${R2}/P4/P4_010_R_EN_LG.webp`);
+  assert.deepEqual(attempts.slice(1), buildAttempts('P4', '10', 'lg', 'proxy'));
+  assert.equal(
+    attempts.some(u => u.startsWith(`${PROXY}/lg/`)),
+    false,
+    'still no Limitless tier for a set Limitless lacks'
+  );
+  assert.equal(
+    buildSrcset('P4', '10', 'sm', 'r2'),
+    `https://${R2}/P4/P4_010_R_EN_XS.webp 136w, https://${R2}/P4/P4_010_R_EN_SM.webp 274w`
+  );
 });
 
 test('the UVU set resolves to a bundled art rather than any CDN', () => {
