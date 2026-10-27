@@ -31,7 +31,7 @@ from bs4 import BeautifulSoup
 # including when this module is loaded via importlib by sibling scripts.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
 import r2  # noqa: E402
-from labs_source import build_labs_source_event  # noqa: E402
+from labs_source import build_labs_source_event, merge_supplemental_decks, supplemental_decks  # noqa: E402
 
 
 LIMITLESS_BASE_URL = "https://limitlesstcg.com"
@@ -3073,6 +3073,9 @@ def main():
         folder_name = f"Tournament {labs_code}"
 
     source_decklists = {int(deck["playerId"]): deck["cards"] for deck in all_decks}
+    supplemented = merge_supplemental_decks(participants, source_decklists, supplemental_decks(folder_name))
+    if supplemented:
+        print(f"  Added {supplemented} decklist(s) Labs does not carry, from a committed backfill")
     source_match_rows = [
         {
             "round": record.get("round"),

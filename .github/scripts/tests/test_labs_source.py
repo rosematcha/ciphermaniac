@@ -94,6 +94,38 @@ class BuildLabsSourceTest(unittest.TestCase):
         self.assertEqual(len(event["matches"]), 1)
 
 
+class SupplementalDecksTest(unittest.TestCase):
+    def _deck(self, player_id, archetype="Lopunny Dusknoir"):
+        cards = [{"name": "Lopunny", "set": "MEG", "number": "085", "count": 3, "category": "pokemon",
+                  "fullType": "Pokémon - Basic"}]
+        return {"playerId": player_id, "archetype": archetype, "deckId": "lopunny-dusknoir", "cards": cards}
+
+    def test_fills_only_players_labs_has_no_list_for(self):
+        participants = _participants()
+        participants.append({**participants[1], "tpId": 3, "name": "Cleo", "decklistPublished": False,
+                             "deckId": None, "deckName": None})
+        decklists = _decklists()
+        added = labs_source.merge_supplemental_decks(
+            participants, decklists, [self._deck("3"), self._deck("1", "Other"), self._deck("99")]
+        )
+        self.assertEqual(added, 1)
+        self.assertEqual(decklists[1][0]["name"], "Gardevoir ex", "Labs' own list wins")
+        self.assertEqual(decklists[3], [{"name": "Lopunny", "set": "MEG", "number": "085", "count": 3,
+                                         "category": "pokemon"}])
+        cleo = participants[2]
+        self.assertTrue(cleo["decklistPublished"])
+        self.assertEqual(cleo["deckName"], "Lopunny Dusknoir")
+        event = labs_source.build_labs_source_event("0555", _metadata(), participants, decklists, [])
+        self.assertIn("3", event["decklists"])
+        self.assertTrue(event["standings"][2]["decklistPublished"])
+
+    def test_worlds_2026_backfill_is_found_by_its_event_folder(self):
+        decks = labs_source.supplemental_decks("2026-08-28, World Championship San Francisco")
+        self.assertEqual(len(decks), 23)
+        self.assertTrue(all(sum(card["count"] for card in deck["cards"]) == 60 for deck in decks))
+        self.assertEqual(labs_source.supplemental_decks("2026-10-17, Regional Championship Nice"), [])
+
+
 class SourceValidatesThroughTsAdapterTest(unittest.TestCase):
     """The emitted source must validate through the real TS adapter + contract."""
 

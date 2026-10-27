@@ -12,7 +12,16 @@ structures ``download-tournament.py`` already assembles — the participant tabl
 per-player card entries, and raw match rows — into the ``LabsSourceEvent`` shape.
 """
 
+import json
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+# Committed decklists Labs never scraped, one payload per event (see the
+# provenance each payload records). Re-downloading an event merges its payload.
+SUPPLEMENTAL_DECKS_DIR = Path(__file__).resolve().parents[1] / "data"
+SUPPLEMENTAL_DECKS_GLOB = "*-backfill.json"
+SOURCE_CARD_FIELDS = ("name", "set", "number", "count", "category", "trainerType", "energyType", "aceSpec",
+                      "regulationMark")
 
 
 def _match_row(raw: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -113,3 +122,37 @@ def build_labs_source_event(
         "decklists": decklists,
         "matches": matches,
     }
+
+
+def supplemental_decks(folder: str, directory: Path = SUPPLEMENTAL_DECKS_DIR) -> List[Dict[str, Any]]:
+    """The committed decks for the event in ``folder`` ("<date>, <name>"), or none."""
+    for path in sorted(directory.glob(SUPPLEMENTAL_DECKS_GLOB)):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if payload.get("event") == folder:
+            return payload["decks"]
+    return []
+
+
+def merge_supplemental_decks(
+    participants: List[Dict[str, Any]],
+    decklists_by_tp: Dict[Any, List[Dict[str, Any]]],
+    decks: List[Dict[str, Any]],
+) -> int:
+    """Give players Labs has no list for the list a supplemental deck carries.
+
+    Each deck's ``playerId`` is the player's tp id. Labs' own list always wins,
+    and a deck for a player not in the standings is ignored. Returns how many
+    lists were added.
+    """
+    by_tp = {str(p.get("tpId")): p for p in participants}
+    added = 0
+    for deck in decks:
+        participant = by_tp.get(str(deck.get("playerId")))
+        if participant is None or decklists_by_tp.get(participant["tpId"]):
+            continue
+        decklists_by_tp[participant["tpId"]] = [
+            {field: card[field] for field in SOURCE_CARD_FIELDS if field in card} for card in deck["cards"]
+        ]
+        participant.update(decklistPublished=True, deckName=deck.get("archetype"), deckId=deck.get("deckId"))
+        added += 1
+    return added
