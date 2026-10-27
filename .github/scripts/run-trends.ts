@@ -29,7 +29,6 @@ import {
   gatherDecks,
   utcDayWindow
 } from '../../shared/onlineMeta/index.ts';
-import { loadCardTypesDatabase } from '../../shared/data/cardTypesDatabase.js';
 import { fetchLimitlessJson } from './lib/onlineFetch';
 import type { DiagnosticsCollector, TrendHistory, TrendSeriesEntry } from '../../shared/onlineMeta/types.ts';
 import { requireSynonymDatabase, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
@@ -193,10 +192,6 @@ async function main() {
     });
   };
 
-  console.log(`[trends] Loading card types database...`);
-  const cardTypesDb = await loadCardTypesDatabase(env);
-  console.log(`[trends] Card DB entries: ${Object.keys(cardTypesDb || {}).length}`);
-
   const diagnostics: DiagnosticsCollector = {};
   const fetchWindow = () =>
     fetchRecentOnlineTournaments(env, window.start, {
@@ -235,7 +230,8 @@ async function main() {
   }
 
   console.log('[trends] Gathering decks...');
-  const decks = await gatherDecks(env, tournaments, diagnostics, cardTypesDb, { fetchJson });
+  // No card-types enrichment: nothing trends publishes reads card categories.
+  const decks = await gatherDecks(env, tournaments, diagnostics, null, { fetchJson });
   console.log(`[trends] Decks: ${decks.length}`);
   if (diagnostics?.archetypeClassification) {
     console.log('[trends] Archetype classification summary:', diagnostics.archetypeClassification);

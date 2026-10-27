@@ -9,8 +9,8 @@
     "complexity:33135001386db50649b4fee8c4065ebecdeecd7edbd47e9ac0de68c9fb438872:Async function 'main' has a complexity of 35. Maximum allowed is 12."
   ],
   ".github/scripts/run-trends.ts": [
-    "max-lines-per-function:e9ea0ca234fd170f819db4a1c99fa57176530a6abd1d5d6af6ebc3fa20e7d81a:Async function 'main' has too many lines (161). Maximum allowed is 100.",
-    "complexity:e9ea0ca234fd170f819db4a1c99fa57176530a6abd1d5d6af6ebc3fa20e7d81a:Async function 'main' has a complexity of 32. Maximum allowed is 12."
+    "max-lines-per-function:882153b834e27c024151f6a372eaabdc4bf7b94f1d3834e4c5a32b18592e6d98:Async function 'main' has too many lines (158). Maximum allowed is 100.",
+    "complexity:882153b834e27c024151f6a372eaabdc4bf7b94f1d3834e4c5a32b18592e6d98:Async function 'main' has a complexity of 31. Maximum allowed is 12."
   ],
   ".github/scripts/update-card-synonyms.mjs": [
     "max-depth:41054f0d6f75f666123ec34a0a1166ae9b0977deec1904f9a2834f2459d90b50:Blocks are nested too deeply (4). Maximum allowed is 3.",
