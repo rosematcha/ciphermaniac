@@ -1427,23 +1427,6 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-.tournament-row-clickable {
-  width: 100%;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color var(--ms-base) var(--ease-base);
-}
-.tournament-row-clickable:hover {
-  border-color: var(--fg);
-}
-.tournament-row-clickable.active {
-  border-color: var(--accent);
-}
-.tournament-row .active-marker {
-  color: var(--accent-ink);
-  font-weight: 700;
-  font-size: 10.5px;
-}
 .tournament-row-link {
   text-decoration: none;
   color: var(--fg);

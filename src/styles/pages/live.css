@@ -408,10 +408,6 @@ tr:hover .live-follow,
   .live-table tr.has-deck .live-seat-icons {
     min-width: 26px;
   }
-  .live-table tr.has-result .round-outcome {
-    min-width: 12px;
-    display: inline-block;
-  }
   .live-table .live-seat-record {
     font-size: 11px;
   }
