@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { cheapestCost, cheapestPerPack, createCostCalculator } from '../../shared/packEv/cost.ts';
+import { cheapestPerPack, createCostCalculator } from '../../shared/packEv/cost.ts';
 import type { SealedProduct } from '../../shared/packEv/types.ts';
 
 function sealed(kind: SealedProduct['kind'], packs: number, price: number | null): SealedProduct {
@@ -31,27 +31,27 @@ function cents(value: number | null): string | undefined {
 }
 
 test('a 151 bundle is priced as six singles, which undercut it', () => {
-  assert.equal(cents(cheapestCost(MEW, 6)), '160.26');
-  assert.equal(cents(cheapestCost(MEW, 36)), '961.56');
+  assert.equal(cents(createCostCalculator(MEW)(6)), '160.26');
+  assert.equal(cents(createCostCalculator(MEW)(36)), '961.56');
 });
 
 test('a Pitch Black box is priced as the box, and a case as the case', () => {
-  assert.equal(cents(cheapestCost(PBL, 1)), '5.93');
-  assert.equal(cents(cheapestCost(PBL, 6)), '35.58');
-  assert.equal(cents(cheapestCost(PBL, 36)), '192.11');
-  assert.equal(cents(cheapestCost(PBL, 216)), '1051.84');
+  assert.equal(cents(createCostCalculator(PBL)(1)), '5.93');
+  assert.equal(cents(createCostCalculator(PBL)(6)), '35.58');
+  assert.equal(cents(createCostCalculator(PBL)(36)), '192.11');
+  assert.equal(cents(createCostCalculator(PBL)(216)), '1051.84');
 });
 
 test('products mix when no single product gets there cheapest', () => {
   // A box of 36 can't be split, so 42 packs is the box plus a bundle's six singles.
-  assert.equal(cents(cheapestCost(PBL, 42)), cents(192.11 + 6 * 5.93));
+  assert.equal(cents(createCostCalculator(PBL)(42)), cents(192.11 + 6 * 5.93));
 });
 
 test('an unpriced product is skipped, and packs nothing can buy have no price', () => {
   const noSingles = [sealed('box', 36, 192.11), sealed('pack', 1, null)];
-  assert.equal(cheapestCost(noSingles, 6), null);
-  assert.equal(cents(cheapestCost(noSingles, 72)), '384.22');
-  assert.equal(cheapestCost([], 1), null);
+  assert.equal(createCostCalculator(noSingles)(6), null);
+  assert.equal(cents(createCostCalculator(noSingles)(72)), '384.22');
+  assert.equal(createCostCalculator([])(1), null);
 });
 
 test('the headline cost per pack is the cheapest product per pack', () => {
@@ -81,7 +81,7 @@ test('a shared cost calculator extends its table once and reuses smaller and rep
   assert.equal(reads - afterSix, 4);
   assert.equal(cost(0), 0);
   for (const packs of [1, 6, 36, 42, 216]) {
-    assert.equal(cents(createCostCalculator(PBL)(packs)), cents(cheapestCost(PBL, packs)));
+    assert.equal(cents(createCostCalculator(PBL)(packs)), cents(createCostCalculator(PBL)(packs)));
   }
   assert.equal(createCostCalculator([])(1), null);
 });

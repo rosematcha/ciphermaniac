@@ -20,10 +20,8 @@ import {
   isMemberOf,
   isNonEmptyString,
   isRecord,
-  isStringArray,
   orNull,
-  required,
-  whenPresent
+  required
 } from '../../shared/data/validate.ts';
 
 // ============================================================================
@@ -37,7 +35,6 @@ test('each predicate accepts exactly its values and fails rather than throws on 
     ['isRecord', isRecord, [{}, { a: 1 }], [null, [], 'x', undefined]],
     ['isInteger', isInteger, [0, -4], [1.5, NaN, Infinity, '3']],
     ['isNonEmptyString', isNonEmptyString, ['a'], ['', null]],
-    ['isStringArray', isStringArray, [[], ['a', 'b']], [['a', 1], 'a']],
     // Inclusive of its bound.
     ['isIntegerAtLeast(1)', atLeastOne, [1, 9], [0, 1.5]],
     // Inclusive at both ends.
@@ -63,21 +60,6 @@ test('required checks absent values rather than skipping them', () => {
   const errors: string[] = [];
   checkFields({}, 'root', { name: required(isNonEmptyString, 'expected non-empty string') }, errors);
   assert.deepEqual(errors, ['root.name: expected non-empty string']);
-});
-
-test('whenPresent skips undefined but still rejects an explicit null', () => {
-  const absent: string[] = [];
-  checkFields({}, 'root', { hp: whenPresent(isIntegerAtLeast(1), 'expected positive integer') }, absent);
-  assert.deepEqual(absent, []);
-
-  const explicitNull: string[] = [];
-  checkFields(
-    { hp: null },
-    'root',
-    { hp: whenPresent(isIntegerAtLeast(1), 'expected positive integer') },
-    explicitNull
-  );
-  assert.deepEqual(explicitNull, ['root.hp: expected positive integer']);
 });
 
 test('orNull skips both undefined and null', () => {

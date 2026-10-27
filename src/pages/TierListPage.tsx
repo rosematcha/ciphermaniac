@@ -285,7 +285,7 @@ function useTierListPage() {
 
   /** State is the authority; the sortable only proposes. */
   const applyDrop = (drop: ItemDrop): void => {
-    // The tray's stored order is sparse — see `withPinnedTray`. Write the order
+    // The tray's stored order is sparse: it renders unplaced items after it. Write the order
     // the user was looking at down first, or the drop index, which was counted
     // off the screen, gets clamped to a much shorter list.
     const trayOrder = drop.zone === TRAY ? split().tray.map(item => item.id) : null;

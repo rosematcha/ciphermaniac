@@ -17,10 +17,6 @@ export function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
 
-export function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every(entry => typeof entry === 'string');
-}
-
 export function isIntegerAtLeast(min: number): (value: unknown) => boolean {
   return value => isInteger(value) && value >= min;
 }
@@ -37,10 +33,9 @@ export function isMemberOf(allowed: ReadonlySet<string> | readonly string[]): (v
 /**
  * How a rule treats an absent value.
  * - `'required'`: every value is checked, including `undefined` and `null`.
- * - `'absent'`: `undefined` passes; an explicit `null` is still checked.
  * - `'nullish'`: both `undefined` and `null` pass.
  */
-export type Presence = 'required' | 'absent' | 'nullish';
+export type Presence = 'required' | 'nullish';
 
 /** A predicate paired with its stable error-message tail. */
 export interface FieldRule {
@@ -55,14 +50,6 @@ export function required(ok: (value: unknown) => boolean, expected: FieldRule['e
   return { ok, expected, presence: 'required' };
 }
 
-/**
- * A rule checked only when the field is present. An explicit `null` is still
- * checked — use {@link orNull} for fields where `null` is a legal value.
- */
-export function whenPresent(ok: (value: unknown) => boolean, expected: FieldRule['expected']): FieldRule {
-  return { ok, expected, presence: 'absent' };
-}
-
 /** A rule checked only when the field is neither `undefined` nor `null`. */
 export function orNull(ok: (value: unknown) => boolean, expected: FieldRule['expected']): FieldRule {
   return { ok, expected, presence: 'nullish' };
@@ -73,13 +60,7 @@ function messageFor(rule: FieldRule, value: unknown): string {
 }
 
 function skips(value: unknown, presence: Presence): boolean {
-  if (presence === 'required') {
-    return false;
-  }
-  if (value === undefined) {
-    return true;
-  }
-  return presence === 'nullish' && value === null;
+  return presence === 'nullish' && (value === undefined || value === null);
 }
 
 /**

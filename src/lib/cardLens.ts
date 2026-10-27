@@ -126,11 +126,6 @@ export function partitionByCopies(copies: Map<number, number>, minCopies: number
   return { withIds, withoutIds, withCount, withoutCount };
 }
 
-/** Split decks into runs-≥minCopies vs not, as sets of tournament-player ids. */
-export function partitionByCard(decks: DeckLite[], cardId: string, minCopies: number): Partition {
-  return partitionByCopies(copiesByPlayer(decks, cardId), minCopies);
-}
-
 export interface LensTallies {
   withBy: Map<string, Tally>;
   withoutBy: Map<string, Tally>;

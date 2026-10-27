@@ -12,22 +12,6 @@ export type TrainerType = 'supporter' | 'item' | 'stadium' | 'tool';
 
 export type EnergyType = 'basic' | 'special';
 
-export type CardStage = 'basic' | 'stage1' | 'stage2' | 'vstar' | 'vmax' | 'levelUp';
-
-export const CARD_STAGES: readonly CardStage[] = ['basic', 'stage1', 'stage2', 'vstar', 'vmax', 'levelUp'];
-
-export type CardMechanicSubtype = 'Mega' | 'Tera' | 'Radiant' | 'ex' | 'VMAX' | 'VSTAR' | 'V';
-
-export const CARD_MECHANIC_SUBTYPES: readonly CardMechanicSubtype[] = [
-  'Mega',
-  'Tera',
-  'Radiant',
-  'ex',
-  'VMAX',
-  'VSTAR',
-  'V'
-];
-
 export type MatchOutcome = 'decided' | 'tie' | 'double_loss' | 'bye' | 'unpaired' | 'unknown';
 
 export const MATCH_OUTCOMES: readonly MatchOutcome[] = ['decided', 'tie', 'double_loss', 'bye', 'unpaired', 'unknown'];
@@ -55,49 +39,6 @@ export interface DeckCard {
   energyType?: EnergyType | null;
   aceSpec?: boolean;
   regulationMark?: string | null;
-}
-
-export interface WeaknessResistance {
-  type: string;
-  modifier: string | null;
-}
-
-export interface CardAbilityDetail {
-  name: string;
-  effect: string | null;
-}
-
-export interface CardAttackDetail {
-  cost: string | null;
-  name: string;
-  damage: string | null;
-  effect: string | null;
-}
-
-export interface CardRecord {
-  metadataVersion: number;
-  cardType: CardCategory;
-  subType?: string | null;
-  evolutionInfo?: string | null;
-  fullType: string;
-  stage?: CardStage;
-  mechanicSubtypes?: CardMechanicSubtype[];
-  aceSpec?: true;
-  regulationMark?: string;
-  abilities?: string[];
-  attacks?: string[];
-  hp?: number;
-  pokemonType?: string;
-  weakness?: WeaknessResistance;
-  resistance?: WeaknessResistance;
-  retreatCost?: number;
-  rarity?: string;
-  artist?: string;
-  text?: string;
-  abilityDetails?: CardAbilityDetail[];
-  attackDetails?: CardAttackDetail[];
-  legality?: Record<string, string>;
-  lastUpdated?: string;
 }
 
 export type { ArchetypeIdentity };

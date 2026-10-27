@@ -38,11 +38,6 @@ export function createCostCalculator(sealed: SealedProduct[]): (packs: number) =
   };
 }
 
-/** Price a single opening; repeated openings can share a calculator. */
-export function cheapestCost(sealed: SealedProduct[], packs: number): number | null {
-  return createCostCalculator(sealed)(packs);
-}
-
 export interface CheapestPack {
   product: SealedProduct;
   costPerPack: number;

@@ -2,10 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   loadProductionRelease,
-  productionEventKey,
   productionScopeKey,
-  productionScopeRoot,
-  resolveLegacyEventKey
+  productionScopeRoot
 } from '../../.github/scripts/lib/build/productionRelease.ts';
 import type { ReleaseManifest } from '../../shared/data/build/release.ts';
 
@@ -45,16 +43,11 @@ function reader(pointer: unknown = { releaseId: manifest.releaseId, manifest: '/
 
 test('loads and validates the production pointer and manifest', async () => {
   assert.deepEqual(await loadProductionRelease(reader()), manifest);
-  assert.equal(productionEventKey(manifest, 'Event', 'decks.json'), 'releases/v1/events/Event/bbbbbbbbbbbb/decks.json');
   assert.equal(
     productionScopeKey(manifest, 'catalogs', 'tournaments.json'),
     'releases/v1/catalogs/aaaaaaaaaaaa/tournaments.json'
   );
   assert.equal(productionScopeRoot(manifest, 'catalogs'), 'releases/v1/catalogs/aaaaaaaaaaaa');
-  assert.equal(
-    resolveLegacyEventKey(manifest, 'reports/2026-01-01, Event/decks.json'),
-    'releases/v1/events/2026-01-01, Event/cccccccccccc/decks.json'
-  );
 });
 
 test('fails closed for missing, malformed, mismatched, or unsafe production references', async () => {
@@ -75,5 +68,4 @@ test('fails closed for missing, malformed, mismatched, or unsafe production refe
     }
   };
   await assert.rejects(loadProductionRelease(mismatchReader), /disagree/);
-  assert.throws(() => productionEventKey(manifest, 'Missing', 'decks.json'), /absent/);
 });

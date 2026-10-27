@@ -25,11 +25,6 @@ export function labsParticipantId(scopedEventId: string, tpId: string | number):
   return `${scope}:${requireIdSegment(tpId, 'labsParticipantId tpId')}`;
 }
 
-export function onlineParticipantId(scopedEventId: string, handle: string): string {
-  const scope = requireIdSegment(scopedEventId, 'onlineParticipantId scopedEventId');
-  return `${scope}:${requireIdSegment(handle, 'onlineParticipantId handle')}`;
-}
-
 export interface ParsedCardUid {
   name: string;
   set: string | null;

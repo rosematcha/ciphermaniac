@@ -6,7 +6,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildLensRows, type DeckLite, partitionByCard, tallyLens, wrOf } from '../../src/lib/cardLens.ts';
+import {
+  buildLensRows,
+  copiesByPlayer,
+  type DeckLite,
+  partitionByCopies,
+  tallyLens,
+  wrOf
+} from '../../src/lib/cardLens.ts';
 import { buildCardId } from '../../shared/deckCardId.ts';
 import type { DeckCard, PlayerMatchRecord } from '../../src/types/index.ts';
 
@@ -41,21 +48,21 @@ const MATCHES: PlayerMatchRecord[] = [
   m(99, 'Dragapult', 'win') // skipped: pilot in neither subset
 ];
 
-test('partitionByCard splits decks into runs-≥N vs not, normalizing the collector number', () => {
+test('partitionByCopies splits decks into runs-≥N vs not, normalizing the collector number', () => {
   // Deck 1 lists the card as raw "76"; it must still count toward ASC~076.
-  const p1 = partitionByCard(DECKS, CARD, 1);
+  const p1 = partitionByCopies(copiesByPlayer(DECKS, CARD), 1);
   assert.deepEqual([...p1.withIds].sort(), [1, 2]);
   assert.deepEqual([...p1.withoutIds], [3]);
   assert.equal(p1.withCount, 2);
   assert.equal(p1.withoutCount, 1);
 
-  const p2 = partitionByCard(DECKS, CARD, 2);
+  const p2 = partitionByCopies(copiesByPlayer(DECKS, CARD), 2);
   assert.deepEqual([...p2.withIds], [2]);
   assert.deepEqual([...p2.withoutIds].sort(), [1, 3]);
 });
 
 test('tallyLens routes completed games by pilot + opponent, skipping byes/incomplete/unknown', () => {
-  const part = partitionByCard(DECKS, CARD, 1);
+  const part = partitionByCopies(copiesByPlayer(DECKS, CARD), 1);
   const t = tallyLens(MATCHES, part);
   assert.deepEqual(t.withBy.get('Dragapult'), { w: 2, l: 1, t: 0, n: 3 });
   assert.deepEqual(t.withoutBy.get('Dragapult'), { w: 0, l: 1, t: 1, n: 2 });
@@ -64,7 +71,7 @@ test('tallyLens routes completed games by pilot + opponent, skipping byes/incomp
 });
 
 test('buildLensRows computes win rates (tie = 1/3 of a win) and the delta', () => {
-  const part = partitionByCard(DECKS, CARD, 1);
+  const part = partitionByCopies(copiesByPlayer(DECKS, CARD), 1);
   const rows = buildLensRows(tallyLens(MATCHES, part));
   assert.equal(rows.length, 1);
   const r = rows[0];

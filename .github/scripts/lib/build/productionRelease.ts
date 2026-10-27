@@ -1,7 +1,6 @@
 import {
   type ReleaseManifest,
   type ReleaseScope,
-  resolveEventPath,
   resolveScopePath,
   validateReleaseManifest
 } from '../../../../shared/data/build/release.ts';
@@ -50,14 +49,6 @@ export async function loadProductionRelease(reader: JsonReader): Promise<Release
   return release;
 }
 
-export function productionEventKey(manifest: ReleaseManifest, event: string, relativePath: string): string {
-  const path = resolveEventPath(manifest, event, relativePath);
-  if (!path) {
-    throw new Error(`Event is absent from production release ${manifest.releaseId}: ${event}`);
-  }
-  return path.replace(/^\/+/, '');
-}
-
 export function productionScopeKey(manifest: ReleaseManifest, scope: ReleaseScope, relativePath: string): string {
   return resolveScopePath(manifest, scope, relativePath).replace(/^\/+/, '');
 }
@@ -65,15 +56,6 @@ export function productionScopeKey(manifest: ReleaseManifest, scope: ReleaseScop
 /** A scope's generation root as a bucket key, without a trailing slash. */
 export function productionScopeRoot(manifest: ReleaseManifest, scope: ReleaseScope): string {
   return productionScopeKey(manifest, scope, '').replace(/\/+$/, '');
-}
-
-export function resolveLegacyEventKey(manifest: ReleaseManifest, key: string): string {
-  const normalized = key.replace(/^\/+/, '');
-  if (normalized === 'reports/tournaments.json') {
-    return productionScopeKey(manifest, 'catalogs', 'tournaments.json');
-  }
-  const match = /^reports\/(\d{4}-\d{2}-\d{2},[^/]+)\/(.+)$/.exec(normalized);
-  return match ? productionEventKey(manifest, match[1], match[2]) : normalized;
 }
 
 export async function loadEventSources(

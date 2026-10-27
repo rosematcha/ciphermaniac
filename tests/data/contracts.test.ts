@@ -13,8 +13,6 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  archetypeKey,
-  archetypeSlug,
   computeSuccessTags,
   deckId,
   eventId,
@@ -22,11 +20,10 @@ import {
   makeArchetypeIdentity,
   matchId,
   type NormalizedEvent,
-  onlineParticipantId,
   parseCardIdentity,
-  validateCardRecord,
   validateNormalizedEvent
 } from '../../shared/data/contracts.ts';
+import { archetypeKey, archetypeSlug } from '../../shared/data/archetypes/identity.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256Hex } from '../../shared/data/hash.ts';
 
@@ -695,7 +692,6 @@ test('ID constructors reject degenerate and delimiter-bearing inputs', () => {
   assert.throws(() => eventId('labs-event', ''), TypeError);
   assert.throws(() => eventId('labs-event', '   '), TypeError);
   assert.throws(() => labsParticipantId('labs:0001', Number.NaN), TypeError);
-  assert.throws(() => onlineParticipantId('online:w1', 'a|b'), TypeError);
   assert.throws(() => matchId(Number.NaN, 1, ['labs:0001:101']), TypeError);
   assert.throws(() => matchId(1, 1, ['a|b', 'c']), TypeError);
 });
@@ -705,70 +701,4 @@ test('canonicalStringify honors toJSON like JSON.stringify (Dates do not collide
   const b = canonicalStringify({ at: new Date('2026-07-13T00:00:00Z') });
   assert.notStrictEqual(a, b);
   assert.strictEqual(a, '{"at":"2026-07-12T00:00:00.000Z"}');
-});
-
-// --- validateCardRecord (card catalog "cards table") ---
-
-test('validateCardRecord accepts identity-only and fully-populated structured records', () => {
-  const records: Array<[string, unknown]> = [
-    ['minimal', { metadataVersion: 2, cardType: 'trainer', fullType: 'Trainer - Item' }],
-    [
-      'full Pokémon',
-      {
-        metadataVersion: 2,
-        cardType: 'pokemon',
-        subType: null,
-        evolutionInfo: 'Stage 2 - Evolves from Kirlia',
-        fullType: 'Pokémon - Stage 2 - Evolves from Kirlia',
-        stage: 'stage2',
-        mechanicSubtypes: ['ex'],
-        regulationMark: 'H',
-        hp: 320,
-        pokemonType: 'Psychic',
-        weakness: { type: 'Metal', modifier: '×2' },
-        resistance: { type: 'Fighting', modifier: '-30' },
-        retreatCost: 2,
-        abilityDetails: [{ name: 'Psychic Embrace', effect: 'Attach energy.' }],
-        attackDetails: [{ cost: 'PP', name: 'Miracle Force', damage: '190', effect: null }],
-        legality: { standard: 'legal' },
-        lastUpdated: '2026-07-14T00:00:00.000Z'
-      }
-    ]
-  ];
-  for (const [label, record] of records) {
-    const result = validateCardRecord(record);
-    assert.deepStrictEqual(result.ok ? [] : result.errors, [], label);
-  }
-});
-
-test('validateCardRecord rejects a non-object and records missing identity fields', () => {
-  const cases: Array<[unknown, string]> = [
-    [{ cardType: 'pokemon', fullType: 'x' }, 'metadataVersion'],
-    [{ metadataVersion: 2, cardType: 'creature', fullType: 'x' }, 'cardType'],
-    [null, 'root: expected object']
-  ];
-  for (const [record, prefix] of cases) {
-    const result = validateCardRecord(record);
-    assert.ok(!result.ok && result.errors.some(error => error.startsWith(prefix)), prefix);
-  }
-});
-
-test('validateCardRecord rejects out-of-vocabulary stage/mechanic and malformed weakness', () => {
-  const bad = validateCardRecord({
-    metadataVersion: 2,
-    cardType: 'pokemon',
-    fullType: 'Pokémon - Basic',
-    stage: 'stage3',
-    mechanicSubtypes: ['GX'],
-    weakness: { type: '', modifier: 5 },
-    regulationMark: 'HH',
-    hp: -10
-  });
-  assert.equal(bad.ok, false);
-  assert.ok(!bad.ok);
-  assert.ok(bad.errors.some(e => e.startsWith('stage')));
-  assert.ok(bad.errors.some(e => e.startsWith('mechanicSubtypes')));
-  assert.ok(bad.errors.some(e => e.startsWith('weakness')));
-  assert.ok(bad.errors.some(e => e.startsWith('regulationMark')));
-  assert.ok(bad.errors.some(e => e.startsWith('hp')));
 });
