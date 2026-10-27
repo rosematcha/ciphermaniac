@@ -302,6 +302,26 @@ test('the tournament selector writes scope history and omits the default', async
   await expect.poll(() => new URL(page.url()).searchParams.has('scope')).toBe(false);
 });
 
+test('the tournament selector shows five Standard events until More', async ({ page }) => {
+  await gotoClean(page, '/archetypes');
+  await page.locator('.t-selector-trigger').click();
+  const standard = page.getByRole('group', { name: 'Standard' });
+  await expect(standard.locator('.t-selector-item')).toHaveCount(5);
+  await expect(standard).not.toContainText('Melbourne');
+
+  await page.getByRole('button', { name: 'More...' }).click();
+  await expect(standard.locator('.t-selector-item')).toHaveCount(6);
+  await page.getByRole('button', { name: /Melbourne Regionals/ }).click();
+  await expect(page).toHaveURL(/scope=2026-04-25-regional-championship-melbourne/);
+
+  await page.locator('.t-selector-trigger').click();
+  await expect(standard.locator('.t-selector-item')).toHaveCount(5);
+  await page.getByRole('searchbox', { name: 'Search tournaments' }).fill('milwaukee');
+  await expect(standard.locator('.t-selector-item')).toHaveCount(1);
+  await page.getByRole('searchbox', { name: 'Search tournaments' }).fill('zzz');
+  await expect(page.locator('.t-selector-empty')).toHaveText('No tournaments match.');
+});
+
 test('a legacy archetype tournament link is adopted and rewritten', async ({ page }) => {
   const event = '2026-06-12, International Championship New Orleans';
   await gotoClean(page, `/archetypes/Dragapult?tour=${encodeURIComponent(event)}`);

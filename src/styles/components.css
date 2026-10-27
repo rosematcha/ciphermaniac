@@ -636,8 +636,33 @@
   max-height: calc(70vh - 80px);
   max-height: calc(70dvh - 80px);
   display: grid;
-  gap: 12px;
+  gap: 4px;
   scrollbar-width: thin;
+}
+.t-selector-group {
+  display: grid;
+  gap: 1px;
+}
+.t-selector-group-label {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 8px 10px 4px;
+}
+.t-selector-more {
+  justify-self: start;
+  font-size: 12px;
+  color: var(--accent-ink);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: background var(--ms-fast);
+}
+.t-selector-more:hover {
+  background: var(--surface-2);
+}
+.t-selector-empty {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 8px 10px;
 }
 .t-selector-item {
   display: flex;
@@ -1384,7 +1409,6 @@
   flex-wrap: wrap;
 }
 @media (max-width: 640px) {
-
   /* Stack the archetype toolbar: the tab strip needs the full row — sharing
      it with the Grid/List toggle hid 120px+ of tabs behind the toggle. */
   .arche-toolbar {
@@ -3616,7 +3640,6 @@
    viewports and on any device whose primary pointer is a finger.
    ===================================================================== */
 @media (max-width: 640px), (pointer: coarse) {
-
   .t-selector-trigger {
     min-height: 44px;
     display: inline-flex;
