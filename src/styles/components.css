@@ -173,6 +173,9 @@
   padding: 0 max(32px, calc((100% - 1400px) / 2 + 32px));
   border-bottom: 1px solid var(--border);
   background: var(--bg);
+  /* Text inherits from the body, which is dark ink in light mode; take the
+     bar's own --fg so unstyled text (search results) stays legible. */
+  color: var(--fg);
   color-scheme: dark;
   position: sticky;
   top: 0;
