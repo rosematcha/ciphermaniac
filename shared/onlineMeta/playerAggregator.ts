@@ -531,7 +531,7 @@ function emptyAggregateResult(): BuildPlayerAggregatesResult {
 /**
  * Reuse the last run's output when nothing has changed, or null to rebuild.
  *
- * Key-membership equality alone is not enough to skip: refresh-recent-tournaments
+ * Key-membership equality alone is not enough to skip: a re-ingest
  * corrects placements and decklists under the same folder name, which changes a
  * tournament's content fingerprint but not the key set (P-04). Manifests written
  * before fingerprints existed have no `fingerprints` map and so always rebuild.
