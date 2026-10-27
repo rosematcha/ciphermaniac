@@ -14,8 +14,6 @@
 
 import { isReleasePath, recoverFromMissingReleaseBody, resolveDataPath } from '../releaseClient';
 
-export { R2_ORIGIN as R2_BASE } from '../constants';
-
 import { R2_ORIGIN as R2_BASE } from '../constants';
 
 /**

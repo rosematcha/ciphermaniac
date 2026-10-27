@@ -11,7 +11,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createDataClient, type DataClientOptions, FETCH_TTL_MS, R2_BASE } from '../../src/lib/data/client.ts';
+import { createDataClient, type DataClientOptions, FETCH_TTL_MS } from '../../src/lib/data/client.ts';
+import { R2_ORIGIN as R2_BASE } from '../../src/lib/constants.ts';
 
 /** A controllable clock, so TTL behavior is asserted rather than slept through. */
 function makeClock(start = 1_000_000) {

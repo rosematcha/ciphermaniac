@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import test, { afterEach } from 'node:test';
 
 import { fetchPlayerIndexSlim } from '../../src/lib/data/players.ts';
-import { R2_BASE } from '../../src/lib/data/client.ts';
+import { R2_ORIGIN as R2_BASE } from '../../src/lib/constants.ts';
 
 const originalFetch = globalThis.fetch;
 

@@ -3,14 +3,8 @@ import assert from 'node:assert/strict';
 
 import { mockFetch, restoreFetch } from '../__utils__/test-helpers';
 
-import {
-  cardUsageForCard,
-  type CardUsagePayload,
-  fetchArchetypeDecks,
-  fetchCardUsage,
-  fetchConversionIndex,
-  fetchDay2CardStats
-} from '../../src/lib/data.ts';
+import { cardUsageForCard, type CardUsagePayload } from '../../src/lib/data/cards.ts';
+import { fetchArchetypeDecks, fetchCardUsage, fetchConversionIndex, fetchDay2CardStats } from '../../src/lib/data.ts';
 import type { CardItem } from '../../src/types';
 
 const CARD: CardItem = {

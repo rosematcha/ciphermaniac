@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { mirrorRecord, rowsFromMajorsProfile, rowsFromOnlineMatchups } from '../../src/lib/matchups.ts';
-import type { MatchupPair, MatchupProfile, OnlineMatchupRecord } from '../../src/lib/data.ts';
+import type { MatchupPair, MatchupProfile, OnlineMatchupRecord } from '../../src/lib/data/matchups.ts';
 
 const approx = (actual: number, expected: number, eps = 0.01) =>
   assert.ok(Math.abs(actual - expected) < eps, `expected ~${expected}, got ${actual}`);

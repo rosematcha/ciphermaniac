@@ -37,8 +37,7 @@ export {
 } from './data/archetypes';
 export { fetchFormatArchetypes, loadTierFormats, tierFormats, tierFormat } from './data/formats';
 export type { TierFormat } from './data/formats';
-export { cardUsageForCard, fetchCardUsage, findByClusterUid } from './data/cards';
-export type { CardUsageEntry, CardUsagePayload } from './data/cards';
+export { fetchCardUsage, findByClusterUid } from './data/cards';
 export { fetchArchetypeDecks, fetchConversionIndex, fetchDay2CardStats, fetchParticipants } from './data/events';
 export type { Day2CardStat, DeckRecord } from './data/events';
 export { findCardBySetNumberCanonical, resolveCanonicalSetNumber } from './data/routes';
@@ -56,7 +55,7 @@ export {
   fetchMatchupProfiles,
   fetchPlayerMatches
 } from './data/matchups';
-export type { MatchupPair, MatchupProfile, OnlineMatchupRecord } from './data/matchups';
+export type { MatchupProfile, OnlineMatchupRecord } from './data/matchups';
 
 export {
   fetchPriceHistoryForSet,

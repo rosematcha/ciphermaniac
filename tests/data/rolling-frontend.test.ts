@@ -15,13 +15,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  type CardUsageEntry,
-  cardUsageForCard,
-  type CardUsagePayload,
-  findByClusterUid,
-  findCardBySetNumberCanonical
-} from '../../src/lib/data.ts';
+import { findByClusterUid, findCardBySetNumberCanonical } from '../../src/lib/data.ts';
+import { type CardUsageEntry, cardUsageForCard, type CardUsagePayload } from '../../src/lib/data/cards.ts';
 import { canonicalizeReport } from '../../src/lib/data/compat.ts';
 import { computeMajorsMovers, type EventSnapshot } from '../../src/lib/majorsTrends.ts';
 import { getCanonicalCardFromData, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';

@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 
 import {
   compileExclusions,
-  countField,
   fetchRecentOnlineTournaments,
   gatherDecks,
-  matchExclusion,
   utcDayWindow
 } from '../../shared/onlineMeta/index';
+import { countField } from '../../shared/onlineMeta/tournamentFetcher';
+import { matchExclusion } from '../../shared/onlineMeta/exclusions';
 import exclusionConfig from '../../config/online-exclusions.json';
 
 const env = { LIMITLESS_API_KEY: 'test-key' };
