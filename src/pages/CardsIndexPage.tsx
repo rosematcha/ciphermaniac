@@ -1,4 +1,4 @@
-import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
+import { createMemo, createResource, createSignal, For, type JSX, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { fetchMaster, fetchPrices, type PricingEntry } from '../lib/data';
 import { cardUid } from '../../shared/data/cardIdentity';
@@ -33,7 +33,9 @@ type ViewMode = 'grid' | 'list';
 type Subtype = string; // 'all' or a trainer/energy subtype value
 type RegMark = 'all' | 'G' | 'H' | 'I' | 'J';
 
-const PAGE_SIZE = 60;
+// Divisible by every column count .cards-index-grid allows (1-4, 6, 7), so a
+// full page always ends on a full row.
+const PAGE_SIZE = 84;
 
 // Contextual subtype options, keyed by the parent type. Only trainers and
 // energy carry a meaningful subdivision; Pokémon show no subtype group.
@@ -579,11 +581,11 @@ export function CardsIndexPage() {
                 />
               }
             >
-              <div class='cards-grid'>
+              <CardsIndexGrid>
                 <For each={pageItems()}>
                   {(item, i) => <CardTile card={item} hideEmptyBuckets eagerImage={i() < 8} />}
                 </For>
-              </div>
+              </CardsIndexGrid>
             </Show>
 
             <Show when={totalPages() > 1}>
@@ -721,12 +723,22 @@ function ListView(props: {
   );
 }
 
+// The wrapper is the size container the 5-column skip in components.css
+// queries; the skeleton shares it so loading and loaded tiles match.
+function CardsIndexGrid(props: { children: JSX.Element }) {
+  return (
+    <div class='cards-index-grid'>
+      <div class='cards-grid'>{props.children}</div>
+    </div>
+  );
+}
+
 function ViewSkeleton(props: { mode: ViewMode }) {
   return (
     <Show
       when={props.mode === 'list'}
       fallback={
-        <div class='cards-grid'>
+        <CardsIndexGrid>
           {/* Built from the tile's own classes rather than fixed pixel heights:
               the card box is 140% of its column width, so a flat 180px block
               was short by a different amount at every breakpoint. */}
@@ -745,7 +757,7 @@ function ViewSkeleton(props: { mode: ViewMode }) {
               </div>
             )}
           </For>
-        </div>
+        </CardsIndexGrid>
       }
     >
       <div class='table-wrap cards-list'>

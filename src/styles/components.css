@@ -2075,6 +2075,18 @@
     gap: 10px;
   }
 }
+/* /cards pages hold 84 cards, which every column count divides except 5.
+   auto-fill lands on 5 columns at 748-899px (n columns need 152n - 12px with
+   the 12px gap), so that band holds 4. The wrapper is the size container
+   because a grid can't query its own width. */
+.cards-index-grid {
+  container: cards-index-grid / inline-size;
+}
+@container cards-index-grid (748px <= width < 900px) {
+  .cards-index-grid .cards-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
 /* "Show all N cards" reveal under a capped CardList. */
 .cards-grid-more {
   display: flex;
