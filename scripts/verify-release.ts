@@ -137,8 +137,31 @@ const requiredArtifacts: Record<string, string[]> = {
   assets: ['card-synonyms.json', 'data/card-types.json']
 };
 
+interface Probe {
+  path: string;
+  label: string;
+}
+
+/** Probe references concurrently; problems keep the order the probes were listed in. */
+async function probeAll(probes: Probe[], concurrency = 16): Promise<void> {
+  const statuses: number[] = new Array<number>(probes.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < probes.length) {
+      const index = next++;
+      statuses[index] = await resolves(probes[index].path);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, probes.length) }, worker));
+  probes.forEach(({ path, label }, index) => {
+    if (statuses[index] !== 200) {
+      problems.push(`${label}: ${statuses[index]} for ${path}`);
+    }
+  });
+}
+
 console.log(`\nscopes: ${Object.keys(manifest.roots).join(', ')}`);
-let checked = 0;
+const scopeProbes: Probe[] = [];
 for (const [scope, entries] of Object.entries(requiredArtifacts)) {
   const root = manifest.roots[scope];
   if (!root) {
@@ -146,34 +169,27 @@ for (const [scope, entries] of Object.entries(requiredArtifacts)) {
     continue;
   }
   console.log(`  ${scope.padEnd(10)} complete marker + ${entries.length} sentinel(s)`);
-  for (const rel of ['_complete.json', ...entries]) {
-    const status = await resolves(`${root}/${rel}`);
-    checked += 1;
-    if (status !== 200) {
-      problems.push(`${scope}: ${status} for ${root}/${rel}`);
-    }
-  }
+  scopeProbes.push(...['_complete.json', ...entries].map(rel => ({ path: `${root}/${rel}`, label: scope })));
 }
+await probeAll(scopeProbes);
 
 const events = Object.entries(manifest.events);
 const sampled = eventSample > 0 ? events.slice(0, eventSample) : events;
 console.log(`\nevents: ${events.length} in manifest, probing ${sampled.length}`);
+const eventProbes: Probe[] = [];
 for (const [folder, value] of sampled) {
   const root = eventRoot(value);
   if (!root) {
     problems.push(`event ${folder} has no root`);
     continue;
   }
-  for (const rel of ['_complete.json', 'master.json']) {
-    const status = await resolves(`${root}/${rel}`);
-    checked += 1;
-    if (status !== 200) {
-      problems.push(`event ${folder}: ${status} for ${root}/${rel}`);
-    }
-  }
+  eventProbes.push(
+    ...['_complete.json', 'master.json'].map(rel => ({ path: `${root}/${rel}`, label: `event ${folder}` }))
+  );
 }
+await probeAll(eventProbes);
 
-console.log(`\n${checked} references probed`);
+console.log(`\n${scopeProbes.length + eventProbes.length} references probed`);
 if (problems.length) {
   console.error(`\n${problems.length} problem(s):`);
   for (const p of problems) {
