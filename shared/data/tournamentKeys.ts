@@ -13,6 +13,8 @@
  * @module shared/data/tournamentKeys
  */
 
+import { formatIdFromKey, formatLabel } from '../formats/registry';
+
 /**
  * Folder key for the rolling online-meta aggregate. Matches the upstream
  * `reports/{name}/` path on R2 exactly, so it doubles as a tournament-list
@@ -39,6 +41,10 @@ function asciiFold(value: string): string {
 export function scopeSlug(key: string): string {
   if (key === ONLINE) {
     return 'online';
+  }
+  const format = formatIdFromKey(key);
+  if (format) {
+    return format;
   }
   return asciiFold(key)
     .toLowerCase()
@@ -84,6 +90,10 @@ function toLocalDate(year: number, month: number, day: number): Date | null {
 export function prettyTournamentName(key: string): string {
   if (key === ONLINE) {
     return ONLINE_META_LABEL;
+  }
+  const format = formatIdFromKey(key);
+  if (format) {
+    return formatLabel(format);
   }
   const m = key.match(/^(\d{4})-(\d{2})-(\d{2}),\s*(.+)$/);
   if (!m) {

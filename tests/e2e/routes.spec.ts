@@ -1542,3 +1542,20 @@ test('Run an Event opens the extracted events site @mobile', async ({ page }) =>
   await page.getByRole('link', { name: 'Run an Event', exact: false }).click();
   await expect(page).toHaveURL('https://events.ciphermaniac.com/');
 });
+
+test('picking a format from Other scopes the archetypes to that format', async ({ page }) => {
+  await gotoClean(page, '/archetypes');
+  await page.locator('.t-selector-trigger').click();
+  const other = page.getByRole('group', { name: 'Other' });
+  await expect(other).toContainText('last 60 days');
+  await other.getByRole('button', { name: /RS-PK/ }).click();
+  await expect(page).toHaveURL(/scope=rspk/);
+  await expect(page.locator('.t-selector-label')).toHaveText('RS-PK');
+  await expect(page.locator('body')).toContainText('Bombtar');
+});
+
+test('a format deep link loads that format', async ({ page }) => {
+  await gotoClean(page, '/archetypes?scope=rspk');
+  await expect(page.locator('.t-selector-label')).toHaveText('RS-PK');
+  await expect(page.locator('body')).toContainText('Bombtar');
+});

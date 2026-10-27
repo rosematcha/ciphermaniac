@@ -14,6 +14,7 @@
 
 import { cardNumberIndexKey } from '../../../shared/data/cardIdentity.js';
 import { ONLINE_META_NAME } from '../constants';
+import { formatFolder, formatIdFromKey } from '../../../shared/formats/registry';
 
 /** The rolling online meta report's tournament key. */
 export const ONLINE = ONLINE_META_NAME;
@@ -37,6 +38,10 @@ export function snapshotSourceKey(rotationDate: string): string {
 
 /** Root path for a tournament's reports, snapshot sentinels included. */
 export function tournamentPath(name: string): string {
+  const format = formatIdFromKey(name);
+  if (format) {
+    return `/${formatFolder(format)}`;
+  }
   if (isSnapshotSource(name)) {
     const date = name.slice(SNAPSHOT_SOURCE_PREFIX.length);
     return `/reports/Snapshots/${encodeURIComponent(date)}`;

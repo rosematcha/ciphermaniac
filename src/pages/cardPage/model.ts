@@ -15,6 +15,7 @@
  * @module src/pages/cardPage/model
  */
 
+import { formatIdFromKey } from '../../../shared/formats/registry';
 import { cardNumberIndexKey, cardUidOrName, itemUid, type SynonymDatabase } from '../../../shared/data/cardIdentity';
 import { findByClusterUid } from '../../lib/data';
 import { type CardUsageEntry, cardUsageForCard, type CardUsagePayload } from '../../lib/data/cards';
@@ -87,15 +88,20 @@ export function effectiveTournament(hasLiveCard: boolean, tournament: string, sn
 /**
  * Whether day-2 conversion can be computed for a scope.
  *
- * Skipped where there is no single day-2 cut: the online meta is a rolling
- * 14-day window, and pre-rotation snapshots are frozen reports with no decks
- * carrying a `madePhase2` flag. For those the request has nothing to read, so
- * the page does not fire it at all.
+ * Skipped where there is no single day-2 cut: the online meta and the other
+ * formats are rolling windows of online events, and pre-rotation snapshots are
+ * frozen reports with no decks carrying a `madePhase2` flag. For those the
+ * request has nothing to read, so the page does not fire it at all.
  * @param tournament - The effective tournament key
  * @returns Whether to fetch conversion stats
  */
 export function supportsConversion(tournament: string): boolean {
-  return Boolean(tournament) && tournament !== ONLINE_META_NAME && !tournament.startsWith('snapshot:');
+  return (
+    Boolean(tournament) &&
+    tournament !== ONLINE_META_NAME &&
+    !tournament.startsWith('snapshot:') &&
+    !formatIdFromKey(tournament)
+  );
 }
 
 /**

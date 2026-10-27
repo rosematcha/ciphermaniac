@@ -8,7 +8,8 @@ const scopes = {
   players: 'players',
   prices: 'reports',
   snapshots: 'reports/Snapshots',
-  assets: 'assets'
+  assets: 'assets',
+  formats: 'reports/Formats'
 };
 
 export const fixtureRelease = composeRelease({
@@ -22,10 +23,10 @@ export const fixtureRelease = composeRelease({
 });
 
 const paths = [
-  ...Object.entries(scopes).map(([scope, legacy]) => [
-    fixtureRelease.roots[scope as keyof typeof scopes],
-    `/${legacy}`
-  ]),
+  ...Object.entries(scopes).flatMap(([scope, legacy]) => {
+    const root = fixtureRelease.roots[scope as keyof typeof scopes];
+    return root ? [[root, `/${legacy}`]] : [];
+  }),
   ...Object.entries(fixtureRelease.events).map(([folder, root]) => [root, `/reports/${folder}`])
 ];
 

@@ -9,10 +9,11 @@ import {
   onMount,
   Show
 } from 'solid-js';
-import { fetchTournamentsList, prettyTournamentName, shortTournamentName } from '../lib/data';
+import { fetchFormatsList, fetchTournamentsList, prettyTournamentName, shortTournamentName } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_DATE_LABEL, ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import { selectorGroups } from './tournamentSelector/model';
+import { formatIdFromKey, formatLabel, formatScopeKey } from '../../shared/formats/registry';
 
 /**
  * Sticky dropdown in the topnav that switches the global tournament scope.
@@ -20,12 +21,21 @@ import { selectorGroups } from './tournamentSelector/model';
 export function TournamentSelector() {
   const { tournament, setTournament } = useTournament();
   const [tournaments] = createResource(fetchTournamentsList);
+  const [formats] = createResource(fetchFormatsList);
   const [open, setOpen] = createSignal(false);
   const [query, setQuery] = createSignal('');
   const [expanded, setExpanded] = createSignal(false);
   let containerRef: HTMLDivElement | undefined;
 
-  const groups = createMemo(() => selectorGroups(tournaments() ?? [ONLINE_META_NAME], query(), expanded(), shortLabel));
+  const groups = createMemo(() =>
+    selectorGroups({
+      keys: tournaments() ?? [ONLINE_META_NAME],
+      formats: formats() ?? [],
+      query: query(),
+      expanded: expanded(),
+      label: shortLabel
+    })
+  );
 
   // Reconcile a stale localStorage selection: if the persisted tournament is no
   // longer in the published list (renamed / removed), every report fetch would
@@ -37,11 +47,13 @@ export function TournamentSelector() {
   const hydratedSelection = tournament();
   createEffect(() => {
     const list = tournaments();
-    if (!list || list.length === 0) {
+    const published = formats();
+    if (!list || list.length === 0 || !published) {
       return;
     }
+    const keys = [...list, ...published.map(format => formatScopeKey(format.id))];
     const current = tournament();
-    if (current !== ONLINE_META_NAME && current === hydratedSelection && !list.includes(current)) {
+    if (current !== ONLINE_META_NAME && current === hydratedSelection && !keys.includes(current)) {
       setTournament(ONLINE_META_NAME);
     }
   });
@@ -136,7 +148,25 @@ export function TournamentSelector() {
                 </Show>
               </div>
             </Show>
-            <Show when={!groups().online && groups().standard.length === 0}>
+            <Show when={groups().other.length > 0}>
+              <div class='t-selector-group' role='group' aria-labelledby='t-selector-other'>
+                <div class='t-selector-group-label' id='t-selector-other'>
+                  Other
+                </div>
+                <For each={groups().other}>
+                  {format => (
+                    <SelectorItem
+                      active={formatScopeKey(format.id) === tournament()}
+                      onPick={() => pick(formatScopeKey(format.id))}
+                    >
+                      <span class='primary'>{format.label}</span>
+                      <span class='secondary'>{format.window}</span>
+                    </SelectorItem>
+                  )}
+                </For>
+              </div>
+            </Show>
+            <Show when={!groups().online && groups().standard.length === 0 && groups().other.length === 0}>
               <div class='t-selector-empty'>No tournaments match.</div>
             </Show>
           </div>
@@ -157,6 +187,10 @@ function SelectorItem(props: { active: boolean; onPick: () => void; children: JS
 function shortLabel(key: string): string {
   if (key === ONLINE_META_NAME) {
     return ONLINE_META_LABEL;
+  }
+  const format = formatIdFromKey(key);
+  if (format) {
+    return formatLabel(format);
   }
   const m = key.match(/^\d{4}-\d{2}-\d{2},\s*(.+)$/);
   return shortTournamentName(m ? m[1] : key);

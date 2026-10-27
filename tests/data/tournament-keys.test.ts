@@ -135,3 +135,12 @@ test('scope slugs round trip through a published list, and an unknown or unpubli
   assert.equal(resolveScopeSlug('2026-01-01-unknown', [ONLINE_META_NAME, LA]), null);
   assert.equal(resolveScopeSlug(scopeSlug(LA), [ONLINE_META_NAME]), null);
 });
+
+test('a format scope key slugs to its id, resolves back, and reads as its label', () => {
+  const keys = [ONLINE_META_NAME, LA, 'format:rspk', 'format:eternal'];
+  assert.equal(scopeSlug('format:rspk'), 'rspk');
+  assert.equal(resolveScopeSlug('rspk', keys), 'format:rspk');
+  assert.equal(resolveScopeSlug('eternal', [ONLINE_META_NAME]), null);
+  assert.equal(prettyTournamentName('format:rspk'), 'RS-PK');
+  assert.equal(prettyTournamentName('format:eternal'), 'Eternal');
+});

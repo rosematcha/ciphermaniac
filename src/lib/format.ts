@@ -1,6 +1,7 @@
 import type { TournamentParticipant } from '../types';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from './constants';
 import { shortTournamentName } from '../../shared/data/tournamentKeys';
+import { formatIdFromKey, formatLabel } from '../../shared/formats/registry';
 
 export function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -45,6 +46,10 @@ const TOURNAMENT_KEY_RE = /^\d{4}-\d{2}-\d{2},\s*(.+)$/;
 export function nameFromTournamentKey(key: string): string {
   if (key === ONLINE_META_NAME) {
     return ONLINE_META_LABEL;
+  }
+  const format = formatIdFromKey(key);
+  if (format) {
+    return formatLabel(format);
   }
   const m = key.match(TOURNAMENT_KEY_RE);
   return shortTournamentName(m ? m[1] : key);

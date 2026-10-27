@@ -10,6 +10,12 @@ import { ONLINE, tournamentPath } from './paths';
 import { getSynonymDatabase } from '../../utils/cardSynonyms';
 import type { CardSuccessIndex } from '../../../shared/data/reports/cardSuccess';
 import type { CardItem, MetaReport } from '../../types';
+import {
+  FORMATS_INDEX_PATH,
+  formatScopeKey,
+  type FormatsIndex,
+  type FormatsIndexEntry
+} from '../../../shared/formats/registry';
 
 const { fetchJson, fetchJsonOptional } = dataClient;
 
@@ -38,6 +44,25 @@ export async function fetchTournamentsList(): Promise<string[]> {
     return [ONLINE, ...list];
   }
   return list;
+}
+
+/**
+ * The published non-Standard formats, or an empty list when none are published
+ * yet (a release built before the format producer has no root for them).
+ */
+export async function fetchFormatsList(): Promise<FormatsIndexEntry[]> {
+  try {
+    const index = await fetchJsonOptional<FormatsIndex>(`/${FORMATS_INDEX_PATH}`);
+    return index?.formats ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Every scope key the site can show: the online meta, majors, and the published formats. */
+export async function fetchScopeKeys(): Promise<string[]> {
+  const [tournaments, formats] = await Promise.all([fetchTournamentsList(), fetchFormatsList()]);
+  return [...tournaments, ...formats.map(format => formatScopeKey(format.id))];
 }
 
 export function fetchMeta(tournament: string = ONLINE): Promise<MetaReport> {

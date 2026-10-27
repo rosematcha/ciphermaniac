@@ -1,3 +1,4 @@
+import { isLimitlessPlayScope } from '../../../shared/formats/registry';
 import { A } from '@solidjs/router';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
@@ -342,7 +343,7 @@ function ListFooter(props: { record: ListRecord; archetype: { name: string; labe
     <div class='pi-list-foot'>
       <CopyDeckButton cards={props.record.cards} />
       <A href={`/archetypes/${encodeURIComponent(props.archetype.name)}`}>{props.archetype.label} →</A>
-      <Show when={props.tournament === ONLINE && props.record.event}>
+      <Show when={isLimitlessPlayScope(props.tournament, ONLINE) && props.record.event}>
         <a
           href={`https://play.limitlesstcg.com/tournament/${props.record.event!.id}/standings`}
           target='_blank'

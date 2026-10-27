@@ -96,6 +96,10 @@ test('deck reads resolve through the release, or the legacy reports tree without
     events: { Event: '/releases/v1/events/Event/aaaaaaaaaaaa' },
     roots: { online: '/releases/v1/online/cccccccccccc', snapshots: '/releases/v1/snapshots/bbbbbbbbbbbb' }
   } as unknown as ReleaseManifest;
+  const withFormats = {
+    ...release,
+    roots: { ...release.roots, formats: '/releases/v1/formats/dddddddddddd' }
+  } as ReleaseManifest;
   const cases: Array<[ReleaseManifest | null, string, boolean, string | null]> = [
     [release, 'Event', true, '/releases/v1/events/Event/aaaaaaaaaaaa/decks.json'],
     [release, 'Missing', false, null],
@@ -104,7 +108,12 @@ test('deck reads resolve through the release, or the legacy reports tree without
     [null, 'Online - Last 14 Days', true, '/reports/Online%20-%20Last%2014%20Days/archetypes/Deck%20Name/decks.json'],
     // Only the online report is sharded by archetype; a regular event reads its one decks file.
     [null, 'Some Tournament', true, '/reports/Some%20Tournament/decks.json'],
-    [null, 'snapshot:2026-04-10', false, '/reports/Snapshots/2026-04-10/decks.json']
+    [null, 'snapshot:2026-04-10', false, '/reports/Snapshots/2026-04-10/decks.json'],
+    // Formats are online-shaped: sharded by archetype, under their own root.
+    [null, 'format:rspk', true, '/reports/Formats/rspk/archetypes/Deck%20Name/decks.json'],
+    [withFormats, 'format:rspk', true, '/releases/v1/formats/dddddddddddd/rspk/archetypes/Deck%20Name/decks.json'],
+    // A release built before the format producer has no formats root to read.
+    [release, 'format:rspk', true, null]
   ];
   for (const [manifest, tournament, archetypeDecks, expected] of cases) {
     const payload = {

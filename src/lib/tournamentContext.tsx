@@ -10,7 +10,7 @@ import {
   useContext
 } from 'solid-js';
 import { ONLINE_META_NAME } from './constants';
-import { fetchTournamentsList } from './data/reports';
+import { fetchScopeKeys } from './data/reports';
 import { isScopeAwarePath, resolveInitialScope, scopeParam, writeScopeParam } from './scopeUrl';
 
 interface TournamentContextValue {
@@ -53,7 +53,7 @@ export const TournamentProvider: ParentComponent = props => {
   const [ready, setReady] = createSignal(false);
   const [tournaments] = createResource(async () => {
     try {
-      return await fetchTournamentsList();
+      return await fetchScopeKeys();
     } catch {
       return [ONLINE_META_NAME];
     }

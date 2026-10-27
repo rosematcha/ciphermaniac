@@ -27,6 +27,7 @@ import { loadCardSynonyms } from '../../../shared/data/cardSynonyms.js';
 import { type ReleaseManifest, resolveEventPath, resolveScopePath } from '../../../shared/data/build/release.js';
 import type { ArchetypeFilterRequest, Deck, Filter, Operator } from '../../../shared/deckTypes.js';
 import { EMBEDDED_RELEASE } from '../../../shared/generated/release.js';
+import { formatFolder, formatIdFromKey } from '../../../shared/formats/registry.js';
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -273,11 +274,27 @@ function normalizePayload(raw: unknown): ArchetypeFilterRequest | null {
   };
 }
 
+/** A format's deck path: online-shaped and sharded, under the formats root. */
+function formatReportsPath(format: string, relativePath: string, release: ReleaseManifest | null): string | null {
+  if (!release) {
+    return `/${formatFolder(format)}/${relativePath}`;
+  }
+  // Releases built before the format producer carry no formats root.
+  return release.roots.formats ? resolveScopePath(release, 'formats', `${format}/${relativePath}`) : null;
+}
+
 export function buildReportsPath(
   payload: ArchetypeFilterRequest,
   archetypeDecks = false,
   release: ReleaseManifest | null = EMBEDDED_RELEASE
 ): string | null {
+  const format = formatIdFromKey(payload.tournament);
+  if (format) {
+    const relativePath = archetypeDecks
+      ? `archetypes/${encodeURIComponent(payload.archetype)}/decks.json`
+      : 'decks.json';
+    return formatReportsPath(format, relativePath, release);
+  }
   const sharded = payload.tournament === ONLINE_REPORT;
   const relativePath =
     sharded && archetypeDecks ? `archetypes/${encodeURIComponent(payload.archetype)}/decks.json` : 'decks.json';
@@ -343,7 +360,7 @@ async function fetchDecksFromPath(request: Request, path: string): Promise<DeckF
 }
 
 async function loadDecks(request: Request, payload: ArchetypeFilterRequest): Promise<DeckFetch> {
-  const sharded = payload.tournament === ONLINE_REPORT;
+  const sharded = payload.tournament === ONLINE_REPORT || formatIdFromKey(payload.tournament) !== null;
   const path = buildReportsPath(payload, sharded);
   if (!path) {
     return { status: 'missing' };

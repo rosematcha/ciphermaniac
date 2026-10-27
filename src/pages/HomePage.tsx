@@ -1,3 +1,4 @@
+import { formatIdFromKey } from '../../shared/formats/registry';
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import {
@@ -153,8 +154,16 @@ export function HomePage() {
   });
 
   const latestMajorData = () => resolved(latestMajor);
-  /** Event the callout shows: the selected tournament, else the auto-picked latest major. */
-  const calloutKey = () => (isOnlineScope() ? latestMajorData() : tournament());
+  /**
+   * Event the callout shows: the selected tournament, else the auto-picked
+   * latest major. A format is not an event, so it has no callout.
+   */
+  const calloutKey = () => {
+    if (isOnlineScope()) {
+      return latestMajorData();
+    }
+    return formatIdFromKey(tournament()) ? null : tournament();
+  };
   /**
    * True once we know a callout is coming but not yet which event it is.
    *

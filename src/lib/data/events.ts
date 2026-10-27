@@ -8,6 +8,7 @@
  * @module src/lib/data/events
  */
 
+import { formatIdFromKey } from '../../../shared/formats/registry';
 import { dataClient } from './client';
 import { ONLINE, tournamentPath } from './paths';
 import { cardUidOrName, getCanonicalCardFromData, itemUid, parseCardUid } from '../../../shared/data/cardIdentity.js';
@@ -233,7 +234,8 @@ async function day2CardStatsFromDecks(tournament: string): Promise<Day2CardStat[
 
 /** Load a deck subset without storing a second copy of event deck bodies. */
 export async function fetchArchetypeDecks(tournament: string, archetypeBase: string): Promise<DeckRecord[] | null> {
-  if (tournament === ONLINE) {
+  // The online meta and the formats publish one deck shard per archetype.
+  if (tournament === ONLINE || formatIdFromKey(tournament)) {
     return fetchJsonOptional<DeckRecord[]>(
       `${tournamentPath(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}/decks.json`
     );

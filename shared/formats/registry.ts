@@ -84,6 +84,34 @@ export const FORMATS_ROOT = 'reports/Formats';
 /** Path of the index listing the published formats. */
 export const FORMATS_INDEX_PATH = `${FORMATS_ROOT}/index.json`;
 
+const KEY_PREFIX = 'format:';
+
+/** The scope key the site passes around for a format, e.g. `format:rspk`. */
+export function formatScopeKey(id: string): string {
+  return `${KEY_PREFIX}${id}`;
+}
+
+/** The format id inside a scope key, or null when the key is not a format. */
+export function formatIdFromKey(key: string): string | null {
+  return key.startsWith(KEY_PREFIX) ? key.slice(KEY_PREFIX.length) : null;
+}
+
+/** A format's display label, or its id when the registry doesn't know it. */
+export function formatLabel(id: string): string {
+  return FORMAT_SCOPES.find(format => format.id === id)?.label ?? id;
+}
+
+/**
+ * Whether a scope's decks come from Limitless Play, so its events link to Play
+ * standings: the Standard online meta, or a format sourced there.
+ */
+export function isLimitlessPlayScope(key: string, onlineKey: string): boolean {
+  const id = formatIdFromKey(key);
+  return (
+    key === onlineKey || FORMAT_SCOPES.some(format => format.id === id && format.source.kind === 'limitless-online')
+  );
+}
+
 /** R2 folder of a format's report. */
 export function formatFolder(id: string): string {
   return `${FORMATS_ROOT}/${id}`;

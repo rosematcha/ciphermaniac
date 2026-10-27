@@ -5,6 +5,7 @@
  * event alone. Sources without a list index (snapshots, events built before
  * `lists.json`) contribute nothing rather than failing the tab.
  */
+import { formatIdFromKey, isLimitlessPlayScope } from '../../../shared/formats/registry';
 import { fetchTournamentsList } from '../../lib/data/reports';
 import { decodeListIndex, fetchListIndex } from '../../lib/data/lists';
 import { ONLINE } from '../../lib/data/paths';
@@ -37,6 +38,10 @@ interface Source {
 }
 
 async function sourcesFor(tournament: string): Promise<Source[]> {
+  if (formatIdFromKey(tournament)) {
+    // Play-sourced formats are online events; City Leagues are played in person.
+    return [{ tournament, venue: isLimitlessPlayScope(tournament, ONLINE) ? 'online' : 'live' }];
+  }
   if (tournament !== ONLINE) {
     return [{ tournament, venue: 'live' }];
   }

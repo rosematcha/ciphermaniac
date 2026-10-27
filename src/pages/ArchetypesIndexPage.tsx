@@ -1,3 +1,4 @@
+import { formatIdFromKey } from '../../shared/formats/registry';
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { fetchArchetypes, getArchetypeIconMap, prettyTournamentName, resolveArchetypeIcons } from '../lib/data';
@@ -31,9 +32,10 @@ export function ArchetypesIndexPage() {
   const { tournament } = useTournament();
   const [archetypes] = createResource(tournament, fetchArchetypes);
   // For event views, fetch the online-meta archetypes as an image fallback when
-  // the event index ships without thumbnails/signature cards.
+  // the event index ships without thumbnails/signature cards. A format's
+  // archetypes are a different game, so Standard art would mislabel them.
   const [onlineArchetypes] = createResource(
-    () => tournament() !== ONLINE_META_NAME,
+    () => tournament() !== ONLINE_META_NAME && !formatIdFromKey(tournament()),
     needFallback => (needFallback ? fetchArchetypes(ONLINE_META_NAME) : [])
   );
   // Non-suspending reads: tournament-scoped, so keep the old grid in place
