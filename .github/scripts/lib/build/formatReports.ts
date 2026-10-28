@@ -1,7 +1,5 @@
 import type { ReleaseManifest } from '../../../../shared/data/build/release.ts';
-
-/** Mutable root of the non-Standard format reports, one folder per format. */
-export const FORMATS_ROOT = 'reports/Formats';
+import { FORMATS_ROOT } from '../../../../shared/formats/registry.ts';
 
 interface JsonReader {
   read<T>(key: string): Promise<T | null>;
@@ -38,8 +36,7 @@ export async function formatRoots(reader: JsonReader, root = FORMATS_ROOT): Prom
  * carries no formats scope (every release before the scope existed).
  */
 export function releaseFormatsRoot(manifest: ReleaseManifest): string | null {
-  const { formats }: Partial<Record<string, string>> = manifest.roots;
-  const root = formats?.replace(/^\/+/, '').replace(/\/+$/, '');
+  const root = manifest.roots.formats?.replace(/^\/+/, '').replace(/\/+$/, '');
   return root || null;
 }
 
