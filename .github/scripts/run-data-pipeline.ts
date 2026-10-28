@@ -25,6 +25,9 @@ async function daily(): Promise<void> {
     '.github/scripts/run-format-meta.ts',
     '.github/scripts/lib/formatMeta.ts',
     '.github/scripts/lib/cityLeagues/index.ts',
+    '.github/scripts/lib/cityLeagues/archetypes.ts',
+    'config/archetypes/city-leagues.json',
+    'shared/formats/deckRules.ts',
     'shared/formats/registry.ts',
     'shared/onlineMeta/tournamentFetcher.ts'
   ]);
