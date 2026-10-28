@@ -327,35 +327,56 @@ export function buildMetaUsage(masterReport: PresentationReport | null | undefin
 // Thumbnails — authority: run-online-meta.mjs (online pipeline)
 // ============================================================================
 
+// A VSTAR, VMAX or V-UNION faces its deck over the V every list plays beside
+// it (Lugia VSTAR, not Lugia V). Mirrored in download-tournament.py.
+const EVOLVED_V = /\bV(?:STAR|MAX|-UNION)$/i;
+
+function evolvedVRank(name: unknown): number {
+  return EVOLVED_V.test(String(name ?? '').trim()) ? 1 : 0;
+}
+
+interface NameCandidate {
+  id: string;
+  matchCount: number;
+  stage: number;
+  pct: number;
+  index: number;
+  tokens: string[];
+}
+
+// A Pokemon played widely enough to face its deck: its thumbnail id and usage.
+function namePokemon(item: PresentationItem): { id: string; pct: number } | null {
+  const pct = Number(item?.pct);
+  const category = String(item?.category || '').toLowerCase();
+  if (!Number.isFinite(pct) || pct < AUTO_THUMB_REQUIRED_PCT || (category && !category.includes('pokemon'))) {
+    return null;
+  }
+  const id = buildThumbnailId(item?.set, item?.number);
+  return id ? { id, pct } : null;
+}
+
+// A Pokemon whose name shares a keyword with the archetype title, or null.
+function nameCandidate(item: PresentationItem, index: number, keywordSet: Set<string>): NameCandidate | null {
+  const pokemon = namePokemon(item);
+  if (!pokemon) {
+    return null;
+  }
+  const tokens = extractArchetypeKeywords(item?.name || '');
+  const matchCount = tokens.filter(token => keywordSet.has(token)).length;
+  return matchCount ? { ...pokemon, matchCount, stage: evolvedVRank(item?.name), index, tokens } : null;
+}
+
 /** Stage 1: name-based coverage match (the common case). Source: run-online-meta.mjs. */
 function inferNameThumbnails(items: PresentationItem[], keywordSet: Set<string>): string[] {
-  const candidates: Array<{ id: string; matchCount: number; pct: number; index: number; tokens: string[] }> = [];
-  items.forEach((item, index) => {
-    const pct = Number(item?.pct);
-    if (!Number.isFinite(pct) || pct < AUTO_THUMB_REQUIRED_PCT) {
-      return;
-    }
-    const category = String(item?.category || '').toLowerCase();
-    if (category && !category.includes('pokemon')) {
-      return;
-    }
-    const thumbnailId = buildThumbnailId(item?.set, item?.number);
-    if (!thumbnailId) {
-      return;
-    }
-    const cardTokens = extractArchetypeKeywords(item?.name || '');
-    const matchCount = cardTokens.filter(token => keywordSet.has(token)).length;
-    if (matchCount === 0) {
-      return;
-    }
-    candidates.push({ id: thumbnailId, matchCount, pct, index, tokens: cardTokens });
-  });
+  const candidates = items
+    .map((item, index) => nameCandidate(item, index, keywordSet))
+    .filter((candidate): candidate is NameCandidate => candidate !== null);
 
   if (!candidates.length) {
     return [];
   }
 
-  candidates.sort((a, b) => b.matchCount - a.matchCount || b.pct - a.pct || a.index - b.index);
+  candidates.sort((a, b) => b.matchCount - a.matchCount || b.stage - a.stage || b.pct - a.pct || a.index - b.index);
 
   const selected: string[] = [];
   const covered = new Set<string>();

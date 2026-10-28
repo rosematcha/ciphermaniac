@@ -73,7 +73,6 @@
     "complexity:62a365e85da1a980abd2aad56e44fea86b435dbbf153ef3fc346559dfb3a9697:Function 'buildArchetypeReports' has a complexity of 23. Maximum allowed is 12."
   ],
   "shared/data/archetypes/presentation.ts": [
-    "complexity:7f6545dd8cd8fdc13e6e0da133a5e6197eeaad2d0e731926f701676fc5f4df72:Arrow function has a complexity of 14. Maximum allowed is 12.",
     "complexity:7b5bc0fcbd38cb8289f5b1dd07de386a69ff6b7de1ef7e0d82f601b1edc9bdbf:Arrow function has a complexity of 16. Maximum allowed is 12.",
     "complexity:5e2668f9f730e8ce308fb4d3b88bd3a668c301dd30598442b69546eaba19ea82:Arrow function has a complexity of 13. Maximum allowed is 12.",
     "complexity:1a8ce84c3003bda3afb1009fa9b37b0b37ae909b9f54f9b75cc1bb0bae822d6e:Function 'resolveArchetypeThumbnails' has a complexity of 17. Maximum allowed is 12.",

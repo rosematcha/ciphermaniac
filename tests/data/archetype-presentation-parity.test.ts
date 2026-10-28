@@ -504,3 +504,14 @@ test('deriveArchetypeGrouping reproduces each producer casing profile', () => {
   assert.strictEqual(deriveArchetypeGrouping('Lost.. Box', 'preserve').base, 'Lost.._Box');
   assert.strictEqual(deriveArchetypeGrouping('Lost.. Box', 'lower').base, 'lost_box');
 });
+
+test('an evolved V faces its deck over the V every list plays beside it', () => {
+  const report = {
+    items: [
+      { name: 'Lugia V', set: 'SIT', number: '138', pct: 100, category: 'pokemon' },
+      { name: 'Lugia VSTAR', set: 'SIT', number: '139', pct: 100, category: 'pokemon' },
+      { name: 'Archeops', set: 'SIT', number: '147', pct: 100, category: 'pokemon' }
+    ]
+  };
+  assert.deepEqual(resolveArchetypeThumbnails('Lugia_Archeops', 'Lugia Archeops', report), ['SIT/139', 'SIT/147']);
+});

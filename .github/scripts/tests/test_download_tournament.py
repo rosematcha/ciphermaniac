@@ -71,6 +71,15 @@ class DownloadTournamentTests(unittest.TestCase):
             [("MEE", "004"), ("BRS", "L")],
         )
 
+    def test_an_evolved_v_faces_its_deck_over_its_v(self):
+        items = [
+            {"name": "Lugia V", "set": "SIT", "number": "138", "pct": 100, "category": "pokemon"},
+            {"name": "Lugia VSTAR", "set": "SIT", "number": "139", "pct": 100, "category": "pokemon"},
+            {"name": "Archeops", "set": "SIT", "number": "147", "pct": 100, "category": "pokemon"},
+        ]
+        keywords = set(download_tournament.extract_archetype_keywords("Lugia Archeops"))
+        self.assertEqual(download_tournament._infer_name_thumbnails(items, keywords), ["SIT/139", "SIT/147"])
+
 
 if __name__ == "__main__":
     unittest.main()

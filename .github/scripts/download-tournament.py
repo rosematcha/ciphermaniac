@@ -1727,6 +1727,17 @@ def _normalize_phrase(text: Any) -> str:
     return " ".join(tokenize_for_matching(text))
 
 
+_EVOLVED_V_RE = re.compile(r"\bV(?:STAR|MAX|-UNION)$", re.IGNORECASE)
+
+
+def _evolved_v_rank(name: Any) -> int:
+    """A VSTAR, VMAX or V-UNION faces its deck over the V every list plays beside it.
+
+    Mirror of evolvedVRank in shared/data/archetypes/presentation.ts.
+    """
+    return 1 if _EVOLVED_V_RE.search(str(name or "").strip()) else 0
+
+
 def _infer_name_thumbnails(items: List[Dict[str, Any]], keyword_set: set) -> List[str]:
     candidates = []
     for index, item in enumerate(items):
@@ -1747,13 +1758,20 @@ def _infer_name_thumbnails(items: List[Dict[str, Any]], keyword_set: set) -> Lis
         if match_count == 0:
             continue
         candidates.append(
-            {"id": thumbnail_id, "matchCount": match_count, "pct": pct, "index": index, "tokens": card_tokens}
+            {
+                "id": thumbnail_id,
+                "matchCount": match_count,
+                "stage": _evolved_v_rank(item.get("name")),
+                "pct": pct,
+                "index": index,
+                "tokens": card_tokens,
+            }
         )
 
     if not candidates:
         return []
 
-    candidates.sort(key=lambda c: (-c["matchCount"], -c["pct"], c["index"]))
+    candidates.sort(key=lambda c: (-c["matchCount"], -c["stage"], -c["pct"], c["index"]))
 
     selected: List[str] = []
     covered: set = set()
