@@ -17,14 +17,21 @@ export type FormatWindow =
   | { kind: 'all'; since: string };
 
 /** Where a format's decks come from. */
-export type FormatSource = {
-  kind: 'limitless-online';
-  /** Limitless format id, upper case (`EXPANDED`, `EX`, `RMEP`, `CUSTOM`). */
-  format: string;
-  organizerId?: number;
-  /** Keep only events whose name contains this text. */
-  nameIncludes?: string;
-};
+export type FormatSource =
+  | {
+      kind: 'limitless-online';
+      /** Limitless format id, upper case (`EXPANDED`, `EX`, `RMEP`, `CUSTOM`). */
+      format: string;
+      organizerId?: number;
+      /** Keep only events whose name contains this text. */
+      nameIncludes?: string;
+    }
+  | {
+      /** Japanese City League pages on limitlesstcg.com. */
+      kind: 'limitless-jp';
+      /** Newest days left out while Limitless catches up on results. */
+      settleDays: number;
+    };
 
 export interface FormatScope {
   id: string;
@@ -73,6 +80,15 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
     windowLabel: 'last 12 months',
     window: { kind: 'days', days: 365 },
     source: { kind: 'limitless-online', format: 'CUSTOM', organizerId: 90, nameIncludes: 'Eternal' },
+    minFieldPlayers: 0,
+    minMatchupFieldPlayers: 0
+  },
+  {
+    id: 'city-leagues',
+    label: 'City Leagues',
+    windowLabel: '14 days to a week ago',
+    window: { kind: 'days', days: 14 },
+    source: { kind: 'limitless-jp', settleDays: 7 },
     minFieldPlayers: 0,
     minMatchupFieldPlayers: 0
   }

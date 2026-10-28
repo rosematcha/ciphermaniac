@@ -25,6 +25,7 @@ import {
 import eternalRules from '../../../config/archetypes/eternal.json' with { type: 'json' };
 import { BANLIST_FILE, type FormatBanlist } from '../../../shared/formats/banlist';
 import { fetchEternalBanlist } from './eternalBanlist';
+import { cityLeagueWindow, createPoliteFetcher, gatherCityLeagues } from './cityLeagues/index';
 import { type OnlineMetaOptions, type ReportScope, runOnlineMeta } from './onlineMeta';
 
 export interface FormatMetaOptions extends Omit<OnlineMetaOptions, 'scope' | 'exclusions' | 'thumbnails'> {
@@ -35,6 +36,8 @@ export interface FormatMetaOptions extends Omit<OnlineMetaOptions, 'scope' | 'ex
   icons?: Record<string, Record<string, string[]>>;
   /** Reads a ban list source as JSON. Default: `fetch`. */
   fetchBanlistJson?: (url: string) => Promise<unknown>;
+  /** Reads a limitlesstcg.com page for City Leagues. Default: the polite fetcher. */
+  fetchPageText?: (url: string) => Promise<string>;
 }
 
 type BanlistLoader = (fetchJson: (url: string) => Promise<unknown>, now: Date) => Promise<FormatBanlist>;
@@ -57,19 +60,66 @@ const FORMAT_RULES: Record<string, readonly ArchetypeRule[]> = {
   eternal: eternalRules.archetypes
 };
 
+/**
+ * Pages fetched per run from limitlesstcg.com for City Leagues. At the polite
+ * fetcher's spacing this is about fifteen minutes; an empty cache fills over a
+ * few daily runs.
+ */
+const CITY_LEAGUE_FETCH_BUDGET = 600;
+
+/** The Limitless Play query for a Play-sourced format; empty for any other source. */
+function playFetch(source: FormatScope['source']): ReportScope['fetch'] {
+  if (source.kind !== 'limitless-online') {
+    return {};
+  }
+  return {
+    formats: [source.format],
+    query: { format: source.format, ...(source.organizerId ? { organizerId: source.organizerId } : {}) },
+    ...(source.nameIncludes ? { nameIncludes: source.nameIncludes } : {})
+  };
+}
+
+/** The City League source for a run, reading through the run's store. */
+function cityLeagueGather(
+  format: FormatScope,
+  settleDays: number,
+  options: FormatMetaOptions
+): NonNullable<ReportScope['gather']> {
+  const days = windowDays(format.window, options.now);
+  return async cardTypesDb => {
+    const gathered = await gatherCityLeagues({
+      store: options.store,
+      fetchText: options.fetchPageText ?? createPoliteFetcher().fetchText,
+      now: options.now,
+      windowDays: days,
+      settleDays,
+      cardTypesDb,
+      fetchBudget: CITY_LEAGUE_FETCH_BUDGET
+    });
+    const window = cityLeagueWindow(options.now, days, settleDays);
+    return {
+      tournaments: gathered.tournaments,
+      decks: gathered.decks,
+      windowStart: `${window.start}T00:00:00.000Z`,
+      windowEnd: `${window.end}T00:00:00.000Z`
+    };
+  };
+}
+
 /** The producer scope for one format. */
-export function formatReportScope(format: FormatScope, now: Date, icons: Record<string, string[]> = {}): ReportScope {
-  const { source } = format;
+export function formatReportScope(
+  format: FormatScope,
+  now: Date,
+  icons: Record<string, string[]> = {},
+  gather?: ReportScope['gather']
+): ReportScope {
   const rules = FORMAT_RULES[format.id] ?? [];
   return {
     folder: formatFolder(format.id).replace(/^reports\//, ''),
     name: format.label,
     windowDays: windowDays(format.window, now),
-    fetch: {
-      formats: [source.format],
-      query: { format: source.format, ...(source.organizerId ? { organizerId: source.organizerId } : {}) },
-      ...(source.nameIncludes ? { nameIncludes: source.nameIncludes } : {})
-    },
+    fetch: playFetch(format.source),
+    ...(gather ? { gather } : {}),
     minFieldPlayers: format.minFieldPlayers,
     minMatchupFieldPlayers: format.minMatchupFieldPlayers,
     ...(FORMAT_BANLISTS[format.id] ? { keep: [BANLIST_FILE] } : {}),
@@ -100,7 +150,12 @@ async function runFormat(format: FormatScope, options: FormatMetaOptions): Promi
       ...shared,
       exclusions: {},
       thumbnails: { ...ruleThumbnails(FORMAT_RULES[format.id] ?? []), ...thumbnails[format.id] },
-      scope: formatReportScope(format, shared.now, icons[format.id])
+      scope: formatReportScope(
+        format,
+        shared.now,
+        icons[format.id],
+        format.source.kind === 'limitless-jp' ? cityLeagueGather(format, format.source.settleDays, options) : undefined
+      )
     });
     return { entry: indexEntry(format, meta) };
   } catch (error) {

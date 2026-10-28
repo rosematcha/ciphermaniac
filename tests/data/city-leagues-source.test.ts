@@ -390,7 +390,7 @@ test('gather: leaves out events outside the window', async () => {
   const store = memoryStore();
   const site = fixtureSite(listingWith(1));
   const result = await gatherCityLeagues({ store, fetchText: site.fetchText, now: new Date('2026-10-30T00:00:00Z') });
-  assert.deepEqual(result, { tournaments: [], decks: [] });
+  assert.deepEqual(result, { tournaments: [], decks: [], pending: 0 });
   assert.deepEqual(site.requests, [`${LIMITLESS}/tournaments/jp?show=100&page=1`]);
 });
 
@@ -402,6 +402,26 @@ test('gather: refuses to publish when too many events fail', async () => {
     gatherCityLeagues({ store, fetchText: site.fetchText, now: NOW, windowDays: 14, settleDays: 7 }),
     /failed for 3\/4 events/
   );
+});
+
+test('gather: a spent fetch budget leaves the rest pending, not failed, for the next run to finish', async () => {
+  const store = memoryStore();
+  // The event page plus five of its fifteen lists.
+  const first = await gatherCityLeagues({
+    store,
+    fetchText: fixtureSite(listingWith(1)).fetchText,
+    now: NOW,
+    fetchBudget: 6
+  });
+  assert.deepEqual(first.tournaments, []);
+  assert.equal(first.pending, 1);
+  assert.equal([...store.data.keys()].filter(key => key.startsWith('sources/city-leagues/lists/')).length, 5);
+
+  const site = fixtureSite(listingWith(1));
+  const second = await gatherCityLeagues({ store, fetchText: site.fetchText, now: NOW, fetchBudget: 100 });
+  assert.equal(second.pending, 0);
+  assert.equal(second.decks.length, 16);
+  assert.equal(site.requests.filter(url => url.includes('/decks/list/jp/')).length, 10);
 });
 
 // --- polite fetcher ---------------------------------------------------------

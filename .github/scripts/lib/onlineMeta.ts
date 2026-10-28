@@ -76,8 +76,21 @@ export interface ReportScope {
   icons?: Record<string, string[]>;
   /** Files another producer writes into this report's folder, which the sweep must spare. */
   keep?: readonly string[];
+  /**
+   * Decks from somewhere other than Limitless Play's API. The source owns its
+   * window, and its events carry no pairings, so the report has no matchups.
+   */
+  gather?: (cardTypesDb: CardTypesDatabase | null) => Promise<GatheredSource>;
   /** Name a deck by hand-maintained rules; null keeps the archetype Limitless gave it. */
   classify?: (deck: GatheredDeck) => string | null;
+}
+
+/** What a non-Play source gathered, and the days it covered (ISO, end exclusive). */
+export interface GatheredSource {
+  tournaments: OnlineTournamentSummary[];
+  decks: GatheredDeck[];
+  windowStart: string;
+  windowEnd: string;
 }
 
 /** The Standard online meta. */
@@ -258,6 +271,27 @@ interface GatheredWindow {
   tournaments: OnlineTournamentSummary[];
   decks: GatheredDeck[];
   diagnostics: DiagnosticsCollector;
+  /** The days a non-Play source covered, when it set its own window. */
+  span?: { start: string; end: string };
+}
+
+/** Gather from the scope's own source instead of Limitless Play. */
+async function gatherFromSource(
+  run: Run,
+  gather: NonNullable<ReportScope['gather']>,
+  cardTypesDb: CardTypesDatabase | null
+): Promise<GatheredWindow & { fetchWindowDays: number }> {
+  const source = await gather(cardTypesDb);
+  if (!source.decks.length) {
+    throw new Error('No decklists gathered from the source');
+  }
+  return {
+    tournaments: source.tournaments,
+    decks: source.decks.map(deck => reclassify({ ...deck, id: deck.id.slice(0, DECK_ID_LENGTH) }, run.scope)),
+    diagnostics: {},
+    span: { start: source.windowStart, end: source.windowEnd },
+    fetchWindowDays: run.scope.windowDays
+  };
 }
 
 /**
@@ -273,6 +307,9 @@ async function gatherWindow(
   cardTypesDb: CardTypesDatabase | null
 ): Promise<GatheredWindow & { fetchWindowDays: number }> {
   const { now, fetchJson, limitlessEnv, scope } = run;
+  if (scope.gather) {
+    return gatherFromSource(run, scope.gather, cardTypesDb);
+  }
   const reportWindow = utcDayWindow(now, scope.windowDays);
   const fetchWindowDays = run.cleanRefresh ? Math.max(scope.windowDays, CACHE_REFRESH_LOOKBACK_DAYS) : scope.windowDays;
   const fetchWindow = utcDayWindow(now, fetchWindowDays);
@@ -338,12 +375,13 @@ function buildMeta(
   const reportWindow = utcDayWindow(now, scope.windowDays);
   const { diagnostics } = window;
   const fields = diagnostics.tournamentFields || {};
+  const span = window.span ?? { start: reportWindow.start.toISOString(), end: reportWindow.end.toISOString() };
   return {
     name: scope.name,
-    source: 'limitless-online',
+    source: scope.gather ? 'limitless-jp' : 'limitless-online',
     generatedAt: now.toISOString(),
-    windowStart: reportWindow.start.toISOString(),
-    windowEnd: reportWindow.end.toISOString(),
+    windowStart: span.start,
+    windowEnd: span.end,
     deckTotal: window.decks.length,
     tournamentCount: window.tournaments.length,
     archetypeMinPercent: 0.5,
@@ -528,9 +566,12 @@ export async function runOnlineMeta(options: OnlineMetaOptions): Promise<Record<
   // Gather pairings data for matchup analysis, from fields large enough to
   // carry a matchup record.
   const fields = diagnostics.tournamentFields || {};
-  const matchupTournaments = reportTournaments.filter(
-    tournament => (fields[tournament.id]?.fieldSize || 0) >= run.scope.minMatchupFieldPlayers
-  );
+  // A non-Play source has no pairings to read.
+  const matchupTournaments = run.scope.gather
+    ? []
+    : reportTournaments.filter(
+        tournament => (fields[tournament.id]?.fieldSize || 0) >= run.scope.minMatchupFieldPlayers
+      );
   const { pairingsData, failures: pairingsFailures } = await gatherPairingsData(run, matchupTournaments);
 
   run.log(`[online-meta] Aggregating ${reportDecks.length} decks`);

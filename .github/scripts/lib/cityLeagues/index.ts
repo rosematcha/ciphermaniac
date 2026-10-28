@@ -44,6 +44,19 @@ export interface GatherCityLeaguesOptions {
   cardTypesDb?: CardTypesDatabase | null;
   /** Days before an unreleased Japanese print's card page is read again. Default 7. */
   printRecheckDays?: number;
+  /**
+   * Most event and list pages to fetch this run. Pages past it wait for the next
+   * run, and their events are left out as pending rather than failed, so the
+   * first fill of an empty cache spreads over several daily runs. Default: no limit.
+   */
+  fetchBudget?: number;
+}
+
+/** What a run gathered, and how many events in the window wait on a later run's fetches. */
+export interface CityLeagueGathering {
+  tournaments: OnlineTournamentSummary[];
+  decks: GatheredDeck[];
+  pending: number;
 }
 
 export interface CityLeagueWindow {
@@ -105,6 +118,13 @@ interface LoadStats {
   cached: number;
   fetched: number;
   failed: string[];
+  /** Misses left for a later run once the fetch budget ran out. */
+  deferred: string[];
+}
+
+/** Page fetches left this run, shared by every load. */
+interface FetchBudget {
+  remaining: number;
 }
 
 /**
@@ -119,11 +139,12 @@ async function loadCached<I, T>(
     idOf: (item: I) => string;
     fetch: (item: I) => Promise<T>;
     keep: (value: T) => boolean;
+    budget: FetchBudget;
   }
 ): Promise<{ values: Map<string, T>; stats: LoadStats }> {
-  const { store, prefix, idOf } = options;
+  const { store, prefix, idOf, budget } = options;
   const values = new Map<string, T>();
-  const stats: LoadStats = { cached: 0, fetched: 0, failed: [] };
+  const stats: LoadStats = { cached: 0, fetched: 0, failed: [], deferred: [] };
   const cached = await runWithConcurrency(items, READ_CONCURRENCY, item =>
     store.read<T>(`${prefix}${idOf(item)}.json`)
   );
@@ -137,6 +158,11 @@ async function loadCached<I, T>(
   stats.cached = values.size;
   for (const item of misses) {
     const id = idOf(item);
+    if (budget.remaining <= 0) {
+      stats.deferred.push(id);
+      continue;
+    }
+    budget.remaining -= 1;
     try {
       const value = await options.fetch(item);
       values.set(id, value);
@@ -164,6 +190,11 @@ function jpPrintsOf(lists: Iterable<CityLeagueList>): PrintRef[] {
 /** An event is published whole or not at all: one missing list would skew its share of the window. */
 function isComplete(event: CityLeagueEvent, lists: Map<string, CityLeagueList>): boolean {
   return event.placings.length > 0 && event.placings.every(placing => !placing.listId || lists.has(placing.listId));
+}
+
+/** Events that wait on a list deferred to a later run. */
+function waitingOnLists(events: CityLeagueEvent[], deferred: ReadonlySet<string>): number {
+  return events.filter(event => event.placings.some(placing => placing.listId && deferred.has(placing.listId))).length;
 }
 
 /** Abort rather than publish a window built from an arbitrary subset of its events. */
@@ -204,10 +235,9 @@ async function loadPrintMap(store: CityLeagueStore): Promise<JpPrintMap> {
  * @param options - Store, fetcher, clock and window
  * @returns Tournaments newest first, and their decks in finishing order
  */
-export async function gatherCityLeagues(
-  options: GatherCityLeaguesOptions
-): Promise<{ tournaments: OnlineTournamentSummary[]; decks: GatheredDeck[] }> {
+export async function gatherCityLeagues(options: GatherCityLeaguesOptions): Promise<CityLeagueGathering> {
   const { store, fetchText } = options;
+  const budget: FetchBudget = { remaining: options.fetchBudget ?? Number.POSITIVE_INFINITY };
   const window = cityLeagueWindow(options.now, options.windowDays ?? 14, options.settleDays ?? 7);
   const rows = await listEventsInWindow(fetchText, window);
 
@@ -216,7 +246,8 @@ export async function gatherCityLeagues(
     prefix: EVENT_PREFIX,
     idOf: row => row.id,
     fetch: row => fetchEvent(row, fetchText),
-    keep: event => event.placings.length > 0
+    keep: event => event.placings.length > 0,
+    budget
   });
   const events = [...loadedEvents.values.values()];
   const loadedLists = await loadCached(listIdsOf(events), {
@@ -224,7 +255,8 @@ export async function gatherCityLeagues(
     prefix: LIST_PREFIX,
     idOf: id => id,
     fetch: id => fetchList(id, fetchText),
-    keep: list => list.cards.length > 0
+    keep: list => list.cards.length > 0,
+    budget
   });
 
   const printMap = await loadPrintMap(store);
@@ -242,15 +274,17 @@ export async function gatherCityLeagues(
   const complete = events
     .filter(event => isComplete(event, loadedLists.values))
     .sort((first, second) => second.date.localeCompare(first.date) || Number(second.id) - Number(first.id));
-  enforceFailureBudget(rows.length - complete.length, rows.length);
+  const pending = loadedEvents.stats.deferred.length + waitingOnLists(events, new Set(loadedLists.stats.deferred));
+  enforceFailureBudget(rows.length - complete.length - pending, rows.length - pending);
 
   console.log(
     `[city-leagues] ${window.start}..${window.end}: ${complete.length}/${rows.length} events ` +
       `(${loadedEvents.stats.fetched} fetched), ${loadedLists.stats.fetched} lists fetched, ` +
-      `${prints.checked} prints checked, ${prints.flipped} with an English print`
+      `${prints.checked} prints checked, ${prints.flipped} with an English print, ${pending} pending`
   );
   return {
     tournaments: complete.map(toTournamentSummary),
-    decks: await decksOf(complete, loadedLists.values, printMap, options.cardTypesDb ?? null)
+    decks: await decksOf(complete, loadedLists.values, printMap, options.cardTypesDb ?? null),
+    pending
   };
 }

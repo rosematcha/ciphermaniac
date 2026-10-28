@@ -12,6 +12,9 @@ import { r2Config, requireEnv } from './lib/env';
 import { fetchLimitlessJson } from './lib/onlineFetch';
 import { ONLINE_META_CACHE_CONTROL } from './lib/onlineMeta';
 import { runFormatMetas } from './lib/formatMeta';
+import { createPoliteFetcher } from './lib/cityLeagues/index';
+import { mirrorProxyImages } from './lib/cityLeagues/proxies';
+import { cityLeagueR2Store } from './lib/cityLeagues/r2Store';
 import { createR2Client, putJsonIfChanged, readJson } from './lib/r2.mjs';
 import { deleteR2Keys, listR2Keys } from './lib/r2Inventory.mjs';
 
@@ -32,9 +35,23 @@ async function main(): Promise<void> {
     now: new Date(),
     reportsPrefix: process.env.R2_REPORTS_PREFIX || 'reports'
   });
+  await mirrorJapaneseCardImages();
   for (const failure of index.failed ?? []) {
     // A GitHub annotation, so a failed format is visible without failing the day's Standard data.
     console.log(`::error title=Format report failed::${failure.id}: ${failure.message}`);
+  }
+}
+
+/**
+ * Mirror pokemonproxies.com's images of Japan-only cards for City League lists.
+ * A failure leaves the previous images in place and is annotated, not fatal.
+ */
+async function mirrorJapaneseCardImages(): Promise<void> {
+  try {
+    const stats = await mirrorProxyImages({ store: cityLeagueR2Store(), ...createPoliteFetcher(), now: new Date() });
+    console.log(`[format-meta] Japanese card images: ${stats.mirrored} mirrored, ${stats.current} current`);
+  } catch (error) {
+    console.log(`::error title=Japanese card images failed::${(error as Error)?.message || error}`);
   }
 }
 

@@ -16,10 +16,7 @@
 import process from 'node:process';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { r2Config } from './lib/env.ts';
-import { createR2Client, putJson, readJson, withR2Retry } from './lib/r2.mjs';
-import { listR2Keys } from './lib/r2Inventory.mjs';
+import { cityLeagueR2Store } from './lib/cityLeagues/r2Store.ts';
 import { createPoliteFetcher, gatherCityLeagues } from './lib/cityLeagues/index.ts';
 import { mirrorProxyImages, type ProxyImageStore } from './lib/cityLeagues/proxies.ts';
 import type { CityLeagueStore } from './lib/cityLeagues/types.ts';
@@ -46,29 +43,6 @@ function localStore(root: string): Store {
   };
 }
 
-function r2Store(): Store {
-  const config = r2Config();
-  const client = createR2Client(config);
-  return {
-    read: key => readJson(client, config.bucket, key),
-    write: (key, value) => putJson(client, config.bucket, key, value),
-    list: prefix => listR2Keys(client, config.bucket, prefix),
-    async putObject(key, body, contentType) {
-      await withR2Retry(() =>
-        client.send(
-          new PutObjectCommand({
-            Bucket: config.bucket,
-            Key: key,
-            Body: body,
-            ContentType: contentType,
-            CacheControl: 'public, max-age=31536000, immutable'
-          })
-        )
-      );
-    }
-  };
-}
-
 function flagValue(name: string): string | null {
   const flag = process.argv.indexOf(name);
   return flag === -1 ? null : (process.argv[flag + 1] ?? null);
@@ -76,7 +50,7 @@ function flagValue(name: string): string | null {
 
 async function main(): Promise<void> {
   const storeDir = flagValue('--store');
-  const store = storeDir ? localStore(storeDir) : r2Store();
+  const store = storeDir ? localStore(storeDir) : cityLeagueR2Store();
   const fetcher = createPoliteFetcher();
   const now = new Date();
 

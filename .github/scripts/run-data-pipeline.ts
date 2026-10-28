@@ -24,6 +24,7 @@ async function daily(): Promise<void> {
     '.github/scripts/run-pack-ev.ts',
     '.github/scripts/run-format-meta.ts',
     '.github/scripts/lib/formatMeta.ts',
+    '.github/scripts/lib/cityLeagues/index.ts',
     'shared/formats/registry.ts',
     'shared/onlineMeta/tournamentFetcher.ts'
   ]);
