@@ -17,6 +17,7 @@ import { normalizeSynonymDatabase, unpadLetterNumbers } from '../../shared/data/
 import { createR2Client, getJsonResult, readJson } from './lib/r2.mjs';
 import { loadEventSources, productionScopeRoot } from './lib/build/productionRelease.ts';
 import { loadFormatDecks, loadOnlineDecks } from './lib/build/onlineDecks.ts';
+import { mergeSynonymMaps } from './lib/synonymMerge.ts';
 import { releaseFormatRoots } from './lib/build/formatReports.ts';
 import { newSetCodes, parseSetCardList } from './lib/setSeeds.ts';
 
@@ -666,12 +667,7 @@ function mergePreviousSynonyms(synonymsData, previous) {
   }
   const beforeSynonyms = Object.keys(synonymsData.synonyms).length;
   const beforeCanonicals = Object.keys(synonymsData.canonicals).length;
-  const merged = {
-    ...synonymsData,
-    synonyms: { ...previous.synonyms, ...synonymsData.synonyms },
-    canonicals: { ...previous.canonicals, ...synonymsData.canonicals },
-    prints: { ...previous.prints, ...synonymsData.prints }
-  };
+  const merged = { ...synonymsData, ...mergeSynonymMaps(synonymsData, previous) };
   const mergedSynonyms = Object.keys(merged.synonyms).length;
   const mergedCanonicals = Object.keys(merged.canonicals).length;
   log(
