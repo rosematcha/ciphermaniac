@@ -1,0 +1,12 @@
+{
+  "_comment": "pokemonproxies.com file prefix -> Limitless Japanese set code. The site names each image {prefix}-{number}-{Name}.png, and the number is the Japanese collector number. Verified 2026-10-27 against Limitless's /cards/jp/{set}?display=list pages: all 112 images under the mapped prefixes line up by number, and the 12 whose names differ are translation choices (Yummy Onigiri / Delicious Onigiri, Legendary Lava Lake / Legendary Lava Cave). null means Limitless has no Japanese set for the prefix yet (7a, Flowing Fists, runs ahead of Limitless); those images are not mirrored until it is mapped. Add a row when the site starts a new prefix, after checking it the same way.",
+  "verifiedAt": "2026-10-27",
+  "prefixes": {
+    "6a": "M6",
+    "6e": "MEE",
+    "6m": "MEM",
+    "6z": "MEZ",
+    "1p": "MP",
+    "7a": null
+  }
+}

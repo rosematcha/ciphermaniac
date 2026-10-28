@@ -9,3 +9,5 @@ export const EVENT_PREFIX = `${CITY_LEAGUES_PREFIX}events/`;
 export const LIST_PREFIX = `${CITY_LEAGUES_PREFIX}lists/`;
 /** Japanese print → English print, refreshed each run. */
 export const PRINT_MAP_KEY = `${CITY_LEAGUES_PREFIX}print-map.json`;
+/** Which pokemonproxies.com images are mirrored, and from which asset hash. */
+export const PROXY_MANIFEST_KEY = `${CITY_LEAGUES_PREFIX}proxy-images.json`;
