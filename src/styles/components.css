@@ -1022,6 +1022,17 @@
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+/* Credit for fan-translated Japanese cards: the last line of a page that shows
+   one, or under a deck list holding one. */
+.fan-credit {
+  margin: var(--space-4) 0 0;
+  max-width: 68ch;
+  font-size: 12px;
+  color: var(--muted);
+}
+.deck-inline .fan-credit {
+  margin-top: var(--space-2);
+}
 .arche {
   background: var(--surface);
   border: 1px solid var(--border);

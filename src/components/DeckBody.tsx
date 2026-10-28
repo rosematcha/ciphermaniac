@@ -1,6 +1,7 @@
 import { A } from '@solidjs/router';
 import { createMemo, For, Show } from 'solid-js';
 import { CardHoverPreview } from './CardHoverPreview';
+import { DeckFanTranslationCredit } from './FanTranslationCredit';
 import { groupDeckByCategory } from '../lib/deckGrouping';
 import { capitalize } from '../lib/format';
 
@@ -59,6 +60,7 @@ export function DeckBody(props: { cards: DeckBodyCard[]; highlight?: (card: Deck
           )}
         </For>
       </div>
+      <DeckFanTranslationCredit cards={props.cards} />
     </div>
   );
 }

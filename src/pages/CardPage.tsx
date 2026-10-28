@@ -48,6 +48,8 @@ import { buildPrintingRows, formatPrintPrice, type PrintingRow } from '../utils/
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
+import { FanTranslationCredited } from '../components/FanTranslationCredit';
+import { isJapanOnlySet } from '../../shared/data/japanOnlyCards';
 import { InfoTip } from '@ciphermaniac/design/components/InfoTip';
 import { mapWithConcurrency } from '../lib/concurrency';
 import { isJokeMode, JOKE_PARAM } from '../lib/jokeMode';
@@ -440,7 +442,7 @@ function CardPageBody(props: {
     onCleanup(pinReachable(rail, () => navHeight() + 16));
   });
   return (
-    <>
+    <FanTranslationCredited when={isJapanOnlySet(props.card.set)}>
       <div class='card-page-hero'>
         <div class='title-block'>
           <h1>{props.card.name}</h1>
@@ -601,7 +603,7 @@ function CardPageBody(props: {
           </Show>
         </div>
       </div>
-    </>
+    </FanTranslationCredited>
   );
 }
 

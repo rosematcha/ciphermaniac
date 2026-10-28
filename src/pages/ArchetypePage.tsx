@@ -30,6 +30,8 @@ import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
 import { TabPanel, Tabs } from '@ciphermaniac/design/components/Tabs';
 import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { EmptyState } from '../components/EmptyState';
+import { FanTranslationCredited } from '../components/FanTranslationCredit';
+import { hasJapanOnlyCard } from '../../shared/data/japanOnlyCards';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { CardList, type ViewMode } from '../components/CardList';
@@ -381,7 +383,7 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
   });
 
   return (
-    <>
+    <FanTranslationCredited when={hasJapanOnlyCard(props.report.items as CardItem[])}>
       <Show when={props.snapshotDate}>
         <div class='snapshot-banner' role='status'>
           <span class='snapshot-banner-label'>Historical</span>
@@ -505,7 +507,7 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
           </Show>
         </TabPanel>
       </section>
-    </>
+    </FanTranslationCredited>
   );
 }
 
