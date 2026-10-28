@@ -20,6 +20,7 @@
 import { hasPtcgioImages, ptcgioImageUrls, ptcgioSrcset } from '../../utils/ptcgio';
 import { R2_ORIGIN } from '../../lib/constants';
 import { isJokeArt } from '../../lib/jokeMode';
+import { isJapanOnlySet, japaneseSetOf, jpCardImageKey, type JpImageTier } from '../../../shared/data/japanOnlyCards';
 
 export type CardImageSize = 'xs' | 'sm' | 'lg';
 
@@ -83,6 +84,32 @@ function paddedNumber(number: string | number): string {
 const TIER_URLS = { r2: r2TierUrl, hotlink: cdnTierUrl, proxy: thumbTierUrl };
 
 /**
+ * Cards with no English print yet (`JP-M6`) show our R2 copy of their
+ * fan-translated image from pokemonproxies.com, which the City League source
+ * mirrors. It is the only English art these cards have, so it is tried first
+ * whatever the caller's source; it isn't gated on the `_ready` probe, which
+ * speaks for a different pipeline. A print the fan site never covered (a
+ * secret rare, a set it skipped) falls through to Limitless's Japanese scan
+ * through the proxy.
+ */
+function jpR2TierUrl(setU: string, number: string | number, size: CardImageSize): string {
+  return `${R2_ORIGIN}/${jpCardImageKey(japaneseSetOf(setU), String(number), size.toUpperCase() as JpImageTier)}`;
+}
+
+function jpAttempts(setU: string, number: string | number, preferredSize: CardImageSize): string[] {
+  const num = paddedNumber(number);
+  return [
+    jpR2TierUrl(setU, num, preferredSize),
+    ...SIZE_CHAINS[preferredSize].map(size => thumbTierUrl(setU, num, size))
+  ];
+}
+
+function jpSrcset(setU: string, number: string | number, preferredSize: CardImageSize): string {
+  const tiers = [...SIZE_CHAINS[preferredSize]].reverse();
+  return tiers.map(t => `${jpR2TierUrl(setU, number, t)} ${TIER_WIDTH[t]}w`).join(', ');
+}
+
+/**
  * srcset over every tier up to (and including) the preferred size, using the
  * padded number form. Only used for the first attempt — if anything 404s we
  * fall back to the plain single-src retry chain, which stays authoritative.
@@ -97,6 +124,9 @@ export function buildSrcset(
   const joke = jokeArtUrl(setU, number);
   if (joke) {
     return `${joke} ${TIER_WIDTH.lg}w`;
+  }
+  if (isJapanOnlySet(setU)) {
+    return jpSrcset(setU, number, preferredSize);
   }
   const num = paddedNumber(number);
   // Vintage sets come from pokemontcg.io (see utils/ptcgio.ts) unless the R2
@@ -122,6 +152,9 @@ export function buildAttempts(
   const joke = jokeArtUrl(setU, number);
   if (joke) {
     return [joke];
+  }
+  if (isJapanOnlySet(setU)) {
+    return jpAttempts(setU, number, preferredSize);
   }
   const padded = paddedNumber(number);
   // 0. Vintage sets (DP era and older, POP, XY promos): Limitless's CDN has no

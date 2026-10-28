@@ -21,9 +21,6 @@
   "functions/sitemap.xml.ts": [
     "complexity:add42e34bcaf31cc2b4332aeb04d5f515eadef337642ab98a84319c6fc35ed73:Async function 'onRequest' has a complexity of 13. Maximum allowed is 12."
   ],
-  "functions/thumbnails/[[path]].ts": [
-    "complexity:654be2267ea2325fb35a3765aef22e4aab7ce96261a947c1811b4c207b2fb92a:Async function 'onRequest' has a complexity of 13. Maximum allowed is 12."
-  ],
   "scripts/benchmark-routes.ts": [
     "complexity:90832438b80e88ff4571bf56654655aeda86aaf226cee6590a0bd401236412f9:Arrow function has a complexity of 17. Maximum allowed is 12."
   ],

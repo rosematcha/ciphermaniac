@@ -13,11 +13,17 @@
  * a hotlinked scan cannot be inlined into a canvas or a DOM rasterise, and the
  * tier list exported every vintage print as an empty frame. Same origin, same
  * edge cache, and the art comes back with the rest of the page.
+ *
+ * Japanese-only prints (set codes `JP-…`, see shared/data/japanOnlyCards) are
+ * Limitless's Japanese scans:
+ * Example: /thumbnails/sm/JP-M6/062 -> https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpc/M6/M6_62_R_JP_SM.png
  */
 
 import { corsPreflight, IMAGE_FETCH_INIT, imageProxyResponse, textError } from '../lib/api/responses.js';
+import { isJapanOnlySet, japaneseSetOf, limitlessJpSetCandidates } from '../../shared/data/japanOnlyCards';
 
 const LIMITLESS_CDN_BASE = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci';
+const LIMITLESS_JP_CDN_BASE = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpc';
 const PTCGIO_BASE = 'https://images.pokemontcg.io';
 // Validation patterns
 const SET_CODE_PATTERN = /^[A-Z0-9]{2,8}$/;
@@ -112,15 +118,61 @@ function ptcgio(setId: string, file: string): Promise<Response> {
   return deliver([`${PTCGIO_BASE}/${id}/${stem}.png`]);
 }
 
+/** `/thumbnails/:size/:SET/:number` — an English print on the Limitless CDN. */
+function limitless(setCode: string, number: string, sizeUpper: string): Promise<Response> {
+  // Validate set code format (2-8 uppercase alphanumeric characters)
+  if (!SET_CODE_PATTERN.test(setCode)) {
+    return Promise.resolve(textError('Invalid set code format. Must be 2-8 alphanumeric characters.', 400));
+  }
+
+  // Validate card number format before normalization
+  const rawNumber = String(number ?? '').trim();
+  if (!rawNumber || !CARD_NUMBER_PATTERN.test(rawNumber.replace(/^0+/, '') || '0')) {
+    return Promise.resolve(textError('Invalid card number format.', 400));
+  }
+
+  const { trimmed, padded } = normalizeCardNumber(number);
+
+  if (!trimmed) {
+    return Promise.resolve(textError('Invalid set or number', 400));
+  }
+
+  // Limitless uses zero-padded 3-digit numbers (e.g. TEF_007), so probe the
+  // padded form first — the trimmed/unpadded form 404s for any number < 100.
+  const candidateNumbers = Array.from(new Set([padded, trimmed].filter(Boolean) as string[]));
+  return deliver(
+    candidateNumbers.map(
+      cardNumber => `${LIMITLESS_CDN_BASE}/${setCode}/${setCode}_${cardNumber}_R_EN_${sizeUpper}.png`
+    )
+  );
+}
+
+/**
+ * `/thumbnails/:size/JP-:SET/:number` — Limitless's Japanese scan of a card
+ * with no English print yet. CardImage asks for it only when our copy of the
+ * fan-translated image is missing. Japanese scans are filed unpadded
+ * (`M6_62`), and a few set codes carry a lowercase suffix (`M6a`).
+ */
+function japanese(setCode: string, number: string, sizeUpper: string): Promise<Response> {
+  const jpSet = japaneseSetOf(setCode);
+  const digits = String(number ?? '')
+    .trim()
+    .replace(/^0+(?=\d)/, '');
+  if (!SET_CODE_PATTERN.test(jpSet) || !/^\d{1,4}$/.test(digits)) {
+    return Promise.resolve(textError('Invalid Japanese set or card number.', 400));
+  }
+  return deliver(
+    limitlessJpSetCandidates(jpSet).map(
+      code => `${LIMITLESS_JP_CDN_BASE}/${code}/${code}_${digits}_R_JP_${sizeUpper}.png`
+    )
+  );
+}
+
 export async function onRequest(context: Context): Promise<Response> {
-  const { request } = context;
-  const url = new URL(request.url);
+  const url = new URL(context.request.url);
 
-  // Parse URL path: /thumbnails/sm/TEF/123
-  const pathParts = url.pathname.split('/').filter(Boolean);
-
-  // Remove 'thumbnails' prefix, expect [size, set, number]
-  const relevantParts = pathParts.slice(1);
+  // Parse URL path: /thumbnails/sm/TEF/123, dropping the 'thumbnails' prefix
+  const relevantParts = url.pathname.split('/').filter(Boolean).slice(1);
 
   if (relevantParts.length !== 3) {
     return textError(`Invalid path format. Expected: /thumbnails/{size}/{set}/{number}, got: ${url.pathname}`, 400);
@@ -142,32 +194,7 @@ export async function onRequest(context: Context): Promise<Response> {
   }
 
   const setCode = set.toUpperCase().trim();
-
-  // Validate set code format (2-8 uppercase alphanumeric characters)
-  if (!SET_CODE_PATTERN.test(setCode)) {
-    return textError('Invalid set code format. Must be 2-8 alphanumeric characters.', 400);
-  }
-
-  // Validate card number format before normalization
-  const rawNumber = String(number ?? '').trim();
-  if (!rawNumber || !CARD_NUMBER_PATTERN.test(rawNumber.replace(/^0+/, '') || '0')) {
-    return textError('Invalid card number format.', 400);
-  }
-
-  const { trimmed, padded } = normalizeCardNumber(number);
-
-  if (!setCode || !trimmed) {
-    return textError('Invalid set or number', 400);
-  }
-
-  // Limitless uses zero-padded 3-digit numbers (e.g. TEF_007), so probe the
-  // padded form first — the trimmed/unpadded form 404s for any number < 100.
-  const candidateNumbers = Array.from(new Set([padded, trimmed].filter(Boolean) as string[]));
-  return deliver(
-    candidateNumbers.map(
-      cardNumber => `${LIMITLESS_CDN_BASE}/${setCode}/${setCode}_${cardNumber}_R_EN_${sizeUpper}.png`
-    )
-  );
+  return isJapanOnlySet(setCode) ? japanese(setCode, number, sizeUpper) : limitless(setCode, number, sizeUpper);
 }
 
 // Handle OPTIONS for CORS preflight

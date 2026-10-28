@@ -160,3 +160,27 @@ test('every fallback URL is unique, preserves tier order, and ends at xs', () =>
     }
   }
 });
+
+test('a Japanese-only print starts at our copy of its fan image, then the Japanese scan', () => {
+  for (const source of ['r2', 'proxy', 'hotlink'] as const) {
+    assert.deepEqual(buildAttempts('JP-M6', '62', 'lg', source), [
+      'https://r2.ciphermaniac.com/jp-card-images/M6/M6_062_LG.webp',
+      `${PROXY}/lg/JP-M6/062`,
+      `${PROXY}/sm/JP-M6/062`,
+      `${PROXY}/xs/JP-M6/062`
+    ]);
+  }
+  // Our codes are uppercase, whatever the case the card arrived in.
+  assert.equal(
+    buildAttempts('jp-m6a', '15', 'xs', 'r2')[0],
+    'https://r2.ciphermaniac.com/jp-card-images/M6A/M6A_015_XS.webp'
+  );
+});
+
+test('a Japanese-only print offers its fan image tiers as the srcset', () => {
+  assert.equal(
+    buildSrcset('JP-M6', '62', 'sm', 'proxy'),
+    'https://r2.ciphermaniac.com/jp-card-images/M6/M6_062_XS.webp 136w, ' +
+      'https://r2.ciphermaniac.com/jp-card-images/M6/M6_062_SM.webp 274w'
+  );
+});

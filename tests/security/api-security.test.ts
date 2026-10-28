@@ -100,6 +100,32 @@ test('Thumbnail API: a valid path becomes the upstream file name, served CORS-op
   }
 });
 
+test('Thumbnail API: a Japanese-only print becomes the unpadded Japanese scan', async () => {
+  const JP = 'https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpc';
+  const requested = recordImageFetches();
+  const response = await ThumbnailModule.onRequest({ request: makeRequest('/thumbnails/sm/JP-M6/062') });
+  assert.strictEqual(response.status, 200);
+  assert.deepStrictEqual(requested, [`${JP}/M6/M6_62_R_JP_SM.png`]);
+
+  // Limitless spells some Japanese codes with a lowercase suffix; a missing
+  // object answers 403 on that CDN, so the next spelling is tried.
+  const tried: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    tried.push(String(input));
+    return tried.length === 1
+      ? new Response('<Code>AccessDenied</Code>', { status: 403 })
+      : new Response('fake-image-data', { status: 200, headers: { 'Content-Type': 'image/png' } });
+  }) as typeof fetch;
+  const lowered = await ThumbnailModule.onRequest({ request: makeRequest('/thumbnails/xs/JP-M6A/15') });
+  assert.strictEqual(lowered.status, 200);
+  assert.deepStrictEqual(tried, [`${JP}/M6A/M6A_15_R_JP_XS.png`, `${JP}/M6a/M6a_15_R_JP_XS.png`]);
+
+  for (const path of ['/thumbnails/sm/JP-/62', '/thumbnails/sm/JP-M6/62a', '/thumbnails/sm/JP-TOOLONGSET/1']) {
+    const refused = await ThumbnailModule.onRequest({ request: makeRequest(path) });
+    assert.strictEqual(refused.status, 400, path);
+  }
+});
+
 test('Thumbnail API: OPTIONS preflight returns CORS headers', async () => {
   const response = await ThumbnailModule.onRequestOptions();
   assert.strictEqual(response.status, 204);

@@ -90,6 +90,10 @@ function artSource(r2Probed: boolean, options: SourceOptions): ArtSource {
  *
  * Falls through the size tiers (lg → sm → xs) before finally rendering a
  * styled placeholder.
+ *
+ * Cards with no English print yet (set codes `JP-…`) start at our R2 copy of
+ * their fan-translated image and fall back to Limitless's Japanese scan; see
+ * `jpAttempts` in cardImage/sources.
  */
 /**
  * Warms the browser cache for one card's art at a given tier, using the same
