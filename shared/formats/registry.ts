@@ -20,7 +20,7 @@ export type FormatWindow =
 export type FormatSource =
   | {
       kind: 'limitless-online';
-      /** Limitless format id, upper case (`EXPANDED`, `EX`, `RMEP`, `CUSTOM`). */
+      /** Limitless format id, upper case (`EXPANDED`, `EX`, `RMEP`, `GLC`, `2010`, `CUSTOM`). */
       format: string;
       organizerId?: number;
       /** Keep only events whose name contains this text. */
@@ -80,6 +80,18 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
     canon: { sets: { oldest: 'BLW', also: ['BWP'] }, prefer: 'newest' }
   },
   {
+    // Gym Leader Challenge: singleton, one type per deck, Expanded's card pool.
+    // Limitless names each deck by its type.
+    id: 'glc',
+    label: 'GLC',
+    windowLabel: 'last 60 days',
+    window: { kind: 'days', days: 60 },
+    source: { kind: 'limitless-online', format: 'GLC' },
+    minFieldPlayers: 4,
+    minMatchupFieldPlayers: 8,
+    canon: { sets: { oldest: 'BLW', also: ['BWP'] }, prefer: 'newest' }
+  },
+  {
     id: 'rspk',
     label: 'RS-PK',
     windowLabel: 'last 60 days',
@@ -93,6 +105,23 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
       sets: { oldest: 'RS', newest: 'P5', also: ['NP'] },
       prefer: 'oldest',
       basicEnergy: { set: 'E1', types: EX_ERA_BASIC_TYPES }
+    }
+  },
+  {
+    // Diamond & Pearl through Unleashed and the DP promos. Basic energies show
+    // the HeartGold SoulSilver prints the lists play. Its pool never changes,
+    // so a year of events is no staler than a month.
+    id: 'worlds-2010',
+    label: 'Worlds 2010',
+    windowLabel: 'last 12 months',
+    window: { kind: 'days', days: 365 },
+    source: { kind: 'limitless-online', format: '2010' },
+    minFieldPlayers: 4,
+    minMatchupFieldPlayers: 8,
+    canon: {
+      sets: { oldest: 'DP', newest: 'UL', also: ['DPP'] },
+      prefer: 'oldest',
+      basicEnergy: { set: 'HS', types: BASIC_TYPES }
     }
   },
   {

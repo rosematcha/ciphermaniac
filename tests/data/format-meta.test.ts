@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { existsSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
 import { formatReportScope, runFormatMetas } from '../../.github/scripts/lib/formatMeta';
@@ -148,6 +149,27 @@ test('a format scope asks Limitless for its format and organizer and filters by 
     nameIncludes: 'Eternal'
   });
   assert.equal(scope.minFieldPlayers, 0);
+  assert.equal(scope.windowDays, 365);
+});
+
+test('GLC archetypes are types, drawn with the type icons the site serves', () => {
+  const glc = FORMAT_SCOPES.find(format => format.id === 'glc') as FormatScope;
+  const scope = formatReportScope(glc, NOW);
+  assert.deepEqual(scope.fetch, { formats: ['GLC'], query: { format: 'GLC' } });
+  assert.equal(scope.windowDays, 60);
+  const icons = scope.icons ?? {};
+  assert.deepEqual(icons.Fire, ['type-fire']);
+  assert.equal(Object.keys(icons).length, 11);
+  for (const [type, [slug]] of Object.entries(icons)) {
+    const file = new URL(`../../static/img/type-icons/${slug.replace(/^type-/, '')}.svg`, import.meta.url);
+    assert.ok(existsSync(file), `${type} has no icon at ${file.pathname}`);
+  }
+});
+
+test('Worlds 2010 reads a year of the 2010 format', () => {
+  const worlds = FORMAT_SCOPES.find(format => format.id === 'worlds-2010') as FormatScope;
+  const scope = formatReportScope(worlds, NOW);
+  assert.deepEqual(scope.fetch, { formats: ['2010'], query: { format: '2010' } });
   assert.equal(scope.windowDays, 365);
 });
 

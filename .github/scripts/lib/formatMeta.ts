@@ -65,6 +65,29 @@ const FORMAT_RULES: Record<string, readonly ArchetypeRule[]> = {
   eternal: eternalRules.archetypes
 };
 
+/** The Pokémon types, as Limitless names Gym Leader Challenge decks. */
+const POKEMON_TYPES = [
+  'Grass',
+  'Fire',
+  'Water',
+  'Lightning',
+  'Fighting',
+  'Psychic',
+  'Darkness',
+  'Metal',
+  'Dragon',
+  'Colorless',
+  'Fairy'
+] as const;
+
+/**
+ * Icons for formats whose archetypes are not Pokémon. A `type-` slug draws
+ * the type's icon instead of a sprite (src/components/ArchetypeIcon).
+ */
+const FORMAT_ICONS: Record<string, Record<string, string[]>> = {
+  glc: Object.fromEntries(POKEMON_TYPES.map(type => [type, [`type-${type.toLowerCase()}`]]))
+};
+
 /**
  * Pages fetched per run from limitlesstcg.com for City Leagues. At the polite
  * fetcher's spacing this is about fifteen minutes; an empty cache fills over a
@@ -129,7 +152,7 @@ export function formatReportScope(
     minFieldPlayers: format.minFieldPlayers,
     minMatchupFieldPlayers: format.minMatchupFieldPlayers,
     ...(FORMAT_BANLISTS[format.id] ? { keep: [BANLIST_FILE] } : {}),
-    icons: { ...ruleIcons(rules), ...icons },
+    icons: { ...ruleIcons(rules), ...FORMAT_ICONS[format.id], ...icons },
     ...(format.canon ? { canon: format.canon } : {}),
     ...(rules.length ? { classify: deck => matchArchetypeRule(deck.cards, rules)?.name ?? null } : {})
   };
