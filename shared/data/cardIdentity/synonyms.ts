@@ -27,7 +27,10 @@ export function getCanonicalCardFromData(database: SynonymDatabase | null, ident
     return identifier;
   }
   if (identifier.includes('::')) {
-    return database.synonyms[identifier] ?? identifier;
+    // Reports built before the database dropped zero-padded letter numbers
+    // still key rows by them (`SSH::000L`).
+    const uid = unpad(identifier);
+    return database.synonyms[uid] ?? uid;
   }
   return database.canonicals[identifier] ?? database.synonyms[identifier] ?? identifier;
 }
@@ -133,5 +136,28 @@ export function normalizeSynonymDatabase(database: SynonymDatabase): SynonymData
     ...database,
     synonyms: flattenSynonyms(canonicals),
     canonicals: repointNames(database.canonicals ?? {}, canonicals)
+  };
+}
+
+// Limitless numbers a few prints by letter alone (BRS L, SSH P). An older
+// scrape zero-padded those to `000L`, a form no decklist uses, but reports
+// built then still carry it.
+const PADDED_LETTER_NUMBER = /::0+([A-Za-z]+)$/;
+
+function unpad(uid: string): string {
+  return uid.replace(PADDED_LETTER_NUMBER, '::$1');
+}
+
+function unpadKeys<T>(record: Record<string, T>, value: (entry: T) => T): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).map(([key, entry]) => [unpad(key), value(entry)]));
+}
+
+/** Rewrite zero-padded letter numbers (`BRS::000L`) to the form decklists use (`BRS::L`). */
+export function unpadLetterNumbers(database: SynonymDatabase): SynonymDatabase {
+  return {
+    ...database,
+    synonyms: unpadKeys(database.synonyms ?? {}, unpad),
+    canonicals: Object.fromEntries(Object.entries(database.canonicals ?? {}).map(([name, uid]) => [name, unpad(uid)])),
+    ...(database.prints ? { prints: unpadKeys(database.prints, price => price) } : {})
   };
 }

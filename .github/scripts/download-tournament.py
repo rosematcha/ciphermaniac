@@ -1058,7 +1058,9 @@ def scrape_card_print_variations(session, set_code, number):
         if not set_acronym:
             continue
 
-        normalized_num = card_num.zfill(3)
+        normalized_num = normalize_card_number(card_num)
+        if not normalized_num:
+            continue
 
         price_usd = None
         price_link = cells[1].find("a", class_="card-price") if len(cells) >= 2 else None

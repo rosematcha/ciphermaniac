@@ -16,6 +16,7 @@ export {
   getCanonicalCardFromData,
   getClusterMembers,
   normalizeSynonymDatabase,
+  unpadLetterNumbers,
   requireSynonymDatabase,
   type SynonymDatabase
 } from './cardIdentity/synonyms';

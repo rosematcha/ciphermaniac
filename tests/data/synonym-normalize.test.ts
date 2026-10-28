@@ -8,7 +8,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { getCanonicalCardFromData, normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
+import {
+  getCanonicalCardFromData,
+  normalizeSynonymDatabase,
+  unpadLetterNumbers
+} from '../../shared/data/cardIdentity.ts';
 
 test('breaks a 2-cycle by keeping the most-referenced node as canonical', () => {
   // Dragapult-shaped: four variants point at PRE::073, plus a stale PRE::073 -> TWM::130 back-edge.
@@ -64,4 +68,39 @@ test('leaves an already-flat map unchanged and preserves prints', () => {
   const flat = normalizeSynonymDatabase(db);
   assert.deepStrictEqual(flat.synonyms, { A: 'C', B: 'C' });
   assert.deepStrictEqual(flat.prints, { C: 1.5 });
+});
+
+test('letter-only numbers lose the zero padding an older scrape gave them', () => {
+  const repaired = unpadLetterNumbers({
+    synonyms: {
+      'Lightning Energy::BRS::000L': 'Lightning Energy::MEE::004',
+      'Mew::30C::000B': 'Mew::30C::00R',
+      'Rare Candy::SVI::191': 'Rare Candy::MEG::125'
+    },
+    canonicals: { Mew: 'Mew::30C::00R', 'Rare Candy': 'Rare Candy::MEG::125' },
+    prints: { 'Lightning Energy::BRS::000L': null, 'Rare Candy::MEG::125': 0.21 }
+  });
+  assert.deepEqual(repaired, {
+    synonyms: {
+      'Lightning Energy::BRS::L': 'Lightning Energy::MEE::004',
+      'Mew::30C::B': 'Mew::30C::R',
+      'Rare Candy::SVI::191': 'Rare Candy::MEG::125'
+    },
+    canonicals: { Mew: 'Mew::30C::R', 'Rare Candy': 'Rare Candy::MEG::125' },
+    prints: { 'Lightning Energy::BRS::L': null, 'Rare Candy::MEG::125': 0.21 }
+  });
+  assert.equal(unpadLetterNumbers({ synonyms: {}, canonicals: {} }).prints, undefined);
+});
+
+test('a padded letter number from an older report still resolves after the repair', () => {
+  const repaired = unpadLetterNumbers({
+    synonyms: {
+      'Lightning Energy::SSH::000L': 'Lightning Energy::MEE::004',
+      'Mew::30C::000B': 'Mew::30C::00R'
+    },
+    canonicals: {}
+  });
+  assert.equal(getCanonicalCardFromData(repaired, 'Lightning Energy::SSH::000L'), 'Lightning Energy::MEE::004');
+  assert.equal(getCanonicalCardFromData(repaired, 'Mew::30C::00R'), 'Mew::30C::R');
+  assert.equal(getCanonicalCardFromData(repaired, 'Rare Candy::MEG::125'), 'Rare Candy::MEG::125');
 });

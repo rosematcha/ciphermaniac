@@ -39,6 +39,38 @@ class DownloadTournamentTests(unittest.TestCase):
                 chosen = download_tournament.choose_canonical_print(variations, name)
                 self.assertEqual((chosen["set"], chosen["number"]), expected)
 
+    def test_print_table_keeps_letter_only_numbers_unpadded(self):
+        page = """
+            <table class="card-prints-versions">
+              <tr><th>Int. Prints</th></tr>
+              <tr>
+                <td><a href="/cards/MEE/4">Mega Evolution Energy</a>
+                  <span class="prints-table-card-number">#4</span></td>
+                <td><a class="card-price">$0.19</a></td>
+              </tr>
+              <tr>
+                <td><a>Brilliant Stars</a><span class="prints-table-card-number">#L</span></td>
+                <td></td>
+              </tr>
+            </table>
+        """
+
+        class Response:
+            text = page
+
+            def raise_for_status(self):
+                return None
+
+        class Session:
+            def request(self, method, url, **kwargs):
+                return Response()
+
+        variations = download_tournament.scrape_card_print_variations(Session(), "BRS", "L")
+        self.assertEqual(
+            [(v["set"], v["number"]) for v in variations],
+            [("MEE", "004"), ("BRS", "L")],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

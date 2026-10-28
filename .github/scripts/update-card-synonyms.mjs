@@ -13,7 +13,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
 import { chooseCanonicalPrint } from '../../shared/data/canonicalPrint.ts';
 import { assertCanonicalRoutesSound } from '../../shared/data/canonicalCardRoute.ts';
-import { normalizeSynonymDatabase } from '../../shared/data/cardIdentity.ts';
+import { normalizeSynonymDatabase, unpadLetterNumbers } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult, readJson } from './lib/r2.mjs';
 import { loadEventSources, productionScopeRoot } from './lib/build/productionRelease.ts';
 import { loadFormatDecks, loadOnlineDecks } from './lib/build/onlineDecks.ts';
@@ -292,6 +292,49 @@ async function scrapeCardPrintVariations(setCode, number) {
   return result;
 }
 
+/**
+ * The set a print row belongs to, or undefined when the row names none.
+ * @param {import('cheerio').Cheerio<any>} firstCell
+ * @param {string} setCode - The set whose page is being scraped
+ * @returns {string | undefined}
+ */
+function rowSetAcronym(firstCell, setCode) {
+  const setNameElem = firstCell.find('a');
+  // Match the set segment regardless of the card-number format so promo
+  // numbers like TG24/GG05 parse to their real set instead of falling
+  // through to the self-row branch below.
+  const href = setNameElem.length ? setNameElem.attr('href') || '' : '';
+  const match = href.match(/\/cards\/([A-Z0-9]+)\//);
+  if (match) {
+    return match[1];
+  }
+  // The card's own row on its Limitless page carries an anchor with no href
+  // (you are already on it), so it has no set acronym. Attribute it to the
+  // set being scraped — otherwise a page listing only two prints yields a
+  // single usable row and the card never reaches the 2-row cluster threshold
+  // (e.g. two-print cards like Pecharunt).
+  return !href && setCode ? setCode.toUpperCase() : undefined;
+}
+
+/**
+ * A print row's USD price, or null when the row shows none.
+ * @param {import('cheerio').Cheerio<any>} priceCell
+ * @returns {number | null}
+ */
+function parsePrintPrice(priceCell) {
+  const priceLink = priceCell.find('a.card-price');
+  // Thousands separators matter: "$1,141.18" against a comma-less pattern
+  // yields 1, which then reads as the cheapest print in its cluster and wins
+  // the canonical slot.
+  const priceMatch = priceLink.length
+    ? priceLink
+        .text()
+        .trim()
+        .match(/\$?\s*([\d,]*\d(?:\.\d+)?)/)
+    : null;
+  return priceMatch ? parseFloat(priceMatch[1].replace(/,/g, '')) : null;
+}
+
 async function _scrapeCardPrintVariations(setCode, number) {
   const numberVariants = buildNumberVariants(number);
   if (!numberVariants.length) {
@@ -353,51 +396,20 @@ async function _scrapeCardPrintVariations(setCode, number) {
     }
 
     const cardNum = numberElem.text().trim().replace(/^#/, '');
-    const setNameElem = firstCell.find('a');
-    let setAcronym;
-
-    // Match the set segment regardless of the card-number format so promo
-    // numbers like TG24/GG05 parse to their real set instead of falling
-    // through to the self-row branch below.
-    const href = setNameElem.length ? setNameElem.attr('href') || '' : '';
-    const match = href.match(/\/cards\/([A-Z0-9]+)\//);
-    if (match) {
-      setAcronym = match[1];
-    } else if (!href && setCode) {
-      // The card's own row on its Limitless page carries an anchor with
-      // no href (you are already on it), so it has no set acronym.
-      // Attribute it to the set being scraped — otherwise a page listing
-      // only two prints yields a single usable row and the card never
-      // reaches the 2-row cluster threshold (e.g. two-print cards like
-      // Pecharunt).
-      setAcronym = setCode.toUpperCase();
-    }
-
+    const setAcronym = rowSetAcronym(firstCell, setCode);
     if (!setAcronym) {
       return;
     }
 
-    const normalizedNum = cardNum.padStart(3, '0');
-
-    let priceUsd = null;
-    if (cells.length >= 2) {
-      const priceLink = $(cells[1]).find('a.card-price');
-      if (priceLink.length) {
-        const priceText = priceLink.text().trim();
-        // Thousands separators matter: "$1,141.18" against a comma-less
-        // pattern yields 1, which then reads as the cheapest print in
-        // its cluster and wins the canonical slot.
-        const priceMatch = priceText.match(/\$?\s*([\d,]*\d(?:\.\d+)?)/);
-        if (priceMatch) {
-          priceUsd = parseFloat(priceMatch[1].replace(/,/g, ''));
-        }
-      }
+    const normalizedNum = normalizeCardNumber(cardNum);
+    if (!normalizedNum) {
+      return;
     }
 
     variations.push({
       set: setAcronym,
       number: normalizedNum,
-      price_usd: priceUsd
+      price_usd: parsePrintPrice($(cells[1]))
     });
   });
 
@@ -710,7 +722,8 @@ async function main() {
   // Merge previous mappings UNDER the fresh ones: any card re-clustered this
   // run overrides its old entry, while mappings whose source was missing this
   // run are retained rather than dropped (P-06).
-  synonymsData = mergePreviousSynonyms(synonymsData, previous);
+  // Older runs stored letter-only numbers zero-padded; repair what they left.
+  synonymsData = unpadLetterNumbers(mergePreviousSynonyms(synonymsData, previous));
 
   // Flatten the merged graph to ONE terminal canonical per reprint component.
   // The incremental merge above retains a stale reverse edge whenever a

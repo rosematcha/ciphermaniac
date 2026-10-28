@@ -10,7 +10,6 @@
   ],
   ".github/scripts/update-card-synonyms.mjs": [
     "max-depth:41054f0d6f75f666123ec34a0a1166ae9b0977deec1904f9a2834f2459d90b50:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "complexity:f73f3dfd0c8ead3891e04164a4c513498ade91f926093be8432f6043c41b156d:Arrow function has a complexity of 16. Maximum allowed is 12.",
     "max-depth:4b32b5440162677f0c1bddff7fa44a8022eba593d52d1ab2859421808c504265:Blocks are nested too deeply (4). Maximum allowed is 3.",
     "complexity:4b32b5440162677f0c1bddff7fa44a8022eba593d52d1ab2859421808c504265:Async function 'generateSynonyms' has a complexity of 13. Maximum allowed is 12."
   ],
