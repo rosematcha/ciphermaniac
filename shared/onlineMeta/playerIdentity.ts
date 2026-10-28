@@ -42,7 +42,9 @@ export const PLAYER_IDENTITY_OVERRIDES: readonly PlayerIdentityOverride[] = [
   { canonicalId: '25523', aliasIds: ['169'], displayName: 'Olivia Battaglia' },
   // Christopher's current account (29589) owns the combined career; the
   // earlier German account (3068) is the same player.
-  { canonicalId: '29589', aliasIds: ['3068'] }
+  { canonicalId: '29589', aliasIds: ['3068'] },
+  // Sawyer goes by Maia.
+  { canonicalId: '3587', displayName: 'Maia Melban' }
 ];
 
 const CANONICAL_BY_ALIAS = new Map<string, string>();
