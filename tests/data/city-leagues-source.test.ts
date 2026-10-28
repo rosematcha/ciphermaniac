@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import * as cheerio from 'cheerio';
 
-import { cityLeagueWindow, gatherCityLeagues } from '../../.github/scripts/lib/cityLeagues/index';
+import { cityLeagueWindow, gatherCityLeagues, isSettledEvent } from '../../.github/scripts/lib/cityLeagues/index';
 import {
   archetypeFromIcons,
   buildDeck,
@@ -48,12 +48,19 @@ function listingWith(rows: number): string {
   return $.html();
 }
 
+/** The 5150 event page with the last placing's list links removed, as Limitless shows a list not yet posted. */
+function eventWithUnlinkedLast(): string {
+  const $ = cheerio.load(fixture('event-5150.html'));
+  $('main table.data-table tr').last().find('a[href*="/decks/list/jp/"]').remove();
+  return $.html();
+}
+
 /** Serves the fixtures: every list id gets the 76771 list, only M6/62 has a card page. */
-function fixtureSite(listing: string) {
+function fixtureSite(listing: string, eventPage = fixture('event-5150.html')) {
   const requests: string[] = [];
   const pages: Record<string, string> = {
     [`${LIMITLESS}/tournaments/jp?show=100&page=1`]: listing,
-    [`${LIMITLESS}/tournaments/jp/5150`]: fixture('event-5150.html'),
+    [`${LIMITLESS}/tournaments/jp/5150`]: eventPage,
     [`${LIMITLESS}/cards/jp/M6/62?translate=en`]: fixture('card-jp-M6-62.html')
   };
   const fetchText = async (url: string) => {
@@ -79,15 +86,27 @@ const event5150 = (): CityLeagueEvent => ({
 
 // --- window -----------------------------------------------------------------
 
-test('window ends settleDays before today and reaches windowDays back', () => {
-  assert.deepEqual(cityLeagueWindow(new Date('2026-10-27T15:00:00Z'), 14, 7), {
-    start: '2026-10-06',
-    end: '2026-10-20'
+test('window is the last windowDays days, today included', () => {
+  assert.deepEqual(cityLeagueWindow(new Date('2026-10-27T15:00:00Z'), 14), {
+    start: '2026-10-14',
+    end: '2026-10-28'
   });
-  assert.deepEqual(cityLeagueWindow(new Date('2026-10-27T00:00:00Z'), 1, 0), {
-    start: '2026-10-26',
-    end: '2026-10-27'
+  assert.deepEqual(cityLeagueWindow(new Date('2026-10-27T00:00:00Z'), 1), {
+    start: '2026-10-27',
+    end: '2026-10-28'
   });
+});
+
+test('an event page is settled once it shows a linked top 16, or after a week', () => {
+  const event = event5150();
+  assert.ok(isSettledEvent(event, new Date('2026-10-27T12:00:00Z')));
+  const topEight = { ...event, placings: event.placings.slice(0, 8) };
+  assert.ok(!isSettledEvent(topEight, new Date('2026-10-27T12:00:00Z')));
+  assert.ok(isSettledEvent(topEight, new Date('2026-11-03T00:00:00Z')));
+  const unlinked = { ...event, placings: event.placings.map((p, i) => (i === 15 ? { ...p, listId: null } : p)) };
+  assert.ok(!isSettledEvent(unlinked, new Date('2026-11-02T23:00:00Z')));
+  assert.ok(isSettledEvent(unlinked, new Date('2026-11-03T00:00:00Z')));
+  assert.ok(!isSettledEvent({ ...event, placings: [] }, new Date('2026-12-01T00:00:00Z')));
 });
 
 // --- archetypes and ids -----------------------------------------------------
@@ -338,7 +357,7 @@ const NOW = new Date('2026-11-04T03:00:00Z');
 test('gather: reads the window, caches events, lists and prints, and builds decks', async () => {
   const store = memoryStore();
   const site = fixtureSite(listingWith(1));
-  const result = await gatherCityLeagues({ store, fetchText: site.fetchText, now: NOW, windowDays: 14, settleDays: 7 });
+  const result = await gatherCityLeagues({ store, fetchText: site.fetchText, now: NOW, windowDays: 14 });
 
   assert.deepEqual(result.tournaments, [
     {
@@ -386,10 +405,29 @@ test('gather: a second run fetches only the listing', async () => {
   assert.ok(!second.requests.includes(`${LIMITLESS}/cards/jp/M6/62?translate=en`));
 });
 
+test('gather: a recent event with an unlinked placing is read again next run', async () => {
+  const store = memoryStore();
+  const recent = new Date('2026-10-28T03:00:00Z');
+  const first = await gatherCityLeagues({
+    store,
+    fetchText: fixtureSite(listingWith(1), eventWithUnlinkedLast()).fetchText,
+    now: recent
+  });
+  assert.equal(first.decks.length, 16);
+  assert.equal(first.decks.filter(deck => deck.hasDecklist).length, 15);
+  assert.ok(!store.data.has('sources/city-leagues/events/5150.json'));
+
+  const site = fixtureSite(listingWith(1));
+  const second = await gatherCityLeagues({ store, fetchText: site.fetchText, now: recent });
+  assert.ok(site.requests.includes(`${LIMITLESS}/tournaments/jp/5150`));
+  assert.equal(second.decks.filter(deck => deck.hasDecklist).length, 16);
+  assert.ok(store.data.has('sources/city-leagues/events/5150.json'));
+});
+
 test('gather: leaves out events outside the window', async () => {
   const store = memoryStore();
   const site = fixtureSite(listingWith(1));
-  const result = await gatherCityLeagues({ store, fetchText: site.fetchText, now: new Date('2026-10-30T00:00:00Z') });
+  const result = await gatherCityLeagues({ store, fetchText: site.fetchText, now: new Date('2026-11-10T00:00:00Z') });
   assert.deepEqual(result, { tournaments: [], decks: [], pending: 0 });
   assert.deepEqual(site.requests, [`${LIMITLESS}/tournaments/jp?show=100&page=1`]);
 });
@@ -399,7 +437,7 @@ test('gather: refuses to publish when too many events fail', async () => {
   const site = fixtureSite(listingWith(4));
   // Only 5150's page exists; the other three of 10-27 and 10-26 fail.
   await assert.rejects(
-    gatherCityLeagues({ store, fetchText: site.fetchText, now: NOW, windowDays: 14, settleDays: 7 }),
+    gatherCityLeagues({ store, fetchText: site.fetchText, now: NOW, windowDays: 14 }),
     /failed for 3\/4 events/
   );
 });

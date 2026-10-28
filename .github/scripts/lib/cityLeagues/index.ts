@@ -3,13 +3,14 @@
  *
  * Limitless has no API for City Leagues, so this reads `/tournaments/jp` for
  * the window's events, each event's page for its top 16, and each placing's
- * decklist. Event pages and decklists never change once posted, so both are
- * cached in R2 under `sources/city-leagues/` and never fetched twice; a daily
+ * decklist. Decklists never change once posted, so they are cached in R2
+ * under `sources/city-leagues/` and never fetched twice. An event page is
+ * cached once it shows a full top 16 with every list linked, or once it is a
+ * week old, so an event Limitless is still filling in is read again; a daily
  * run fetches the listing and whatever is new.
  *
- * Window: Limitless posts results as the official ones appear, days late, so
- * the newest days are always under-filled. The window ends `settleDays` before
- * `now` and reaches `windowDays` back from there.
+ * Window: the last `windowDays` days, today included. Limitless posts results
+ * as the official ones appear, so the newest days fill in over later runs.
  * @module .github/scripts/lib/cityLeagues
  */
 import type { CardTypesDatabase } from '../../../../shared/data/cardTypesDatabase.js';
@@ -30,6 +31,10 @@ const MAX_LISTING_PAGES = 20;
 const READ_CONCURRENCY = 8;
 const FAILURE_RATIO = 0.25;
 const FAILURE_ALLOWANCE = 2;
+/** Placings an event page lists when its field reached the top cut. */
+const TOP_CUT = 16;
+/** Days after which an event page is cached as it stands. */
+const EVENT_SETTLE_DAYS = 7;
 
 export interface GatherCityLeaguesOptions {
   store: CityLeagueStore;
@@ -38,8 +43,6 @@ export interface GatherCityLeaguesOptions {
   now: Date;
   /** Days in the window. Default 14. */
   windowDays?: number;
-  /** Newest days left out while Limitless catches up. Default 7. */
-  settleDays?: number;
   /** Optional card types, as the online producer uses them. */
   cardTypesDb?: CardTypesDatabase | null;
   /** Days before an unreleased Japanese print's card page is read again. Default 7. */
@@ -73,13 +76,11 @@ function isoDay(ms: number): string {
 /**
  * The days a run covers.
  * @param now - Run time
- * @param windowDays - Days in the window
- * @param settleDays - Newest days skipped
+ * @param windowDays - Days in the window, today the last of them
  * @returns Start (inclusive) and end (exclusive) days
  */
-export function cityLeagueWindow(now: Date, windowDays: number, settleDays: number): CityLeagueWindow {
-  const today = Date.parse(isoDay(now.getTime()));
-  const end = today - settleDays * DAY_MS;
+export function cityLeagueWindow(now: Date, windowDays: number): CityLeagueWindow {
+  const end = Date.parse(isoDay(now.getTime())) + DAY_MS;
   return { start: isoDay(end - windowDays * DAY_MS), end: isoDay(end) };
 }
 
@@ -178,6 +179,19 @@ async function loadCached<I, T>(
   return { values, stats };
 }
 
+/**
+ * Whether an event page is final enough to cache: a full top 16 with every
+ * list linked, or old enough that whatever is missing will stay missing. A
+ * smaller event lists its whole field, so it is read daily until then.
+ */
+export function isSettledEvent(event: CityLeagueEvent, now: Date): boolean {
+  if (!event.placings.length) {
+    return false;
+  }
+  const full = event.placings.length >= TOP_CUT && event.placings.every(placing => placing.listId);
+  return full || now.getTime() >= Date.parse(event.date) + EVENT_SETTLE_DAYS * DAY_MS;
+}
+
 function listIdsOf(events: CityLeagueEvent[]): string[] {
   const ids = events.flatMap(event => event.placings.map(placing => placing.listId));
   return [...new Set(ids.filter((id): id is string => Boolean(id)))];
@@ -238,7 +252,7 @@ async function loadPrintMap(store: CityLeagueStore): Promise<JpPrintMap> {
 export async function gatherCityLeagues(options: GatherCityLeaguesOptions): Promise<CityLeagueGathering> {
   const { store, fetchText } = options;
   const budget: FetchBudget = { remaining: options.fetchBudget ?? Number.POSITIVE_INFINITY };
-  const window = cityLeagueWindow(options.now, options.windowDays ?? 14, options.settleDays ?? 7);
+  const window = cityLeagueWindow(options.now, options.windowDays ?? 14);
   const rows = await listEventsInWindow(fetchText, window);
 
   const loadedEvents = await loadCached(rows, {
@@ -246,7 +260,7 @@ export async function gatherCityLeagues(options: GatherCityLeaguesOptions): Prom
     prefix: EVENT_PREFIX,
     idOf: row => row.id,
     fetch: row => fetchEvent(row, fetchText),
-    keep: event => event.placings.length > 0,
+    keep: event => isSettledEvent(event, options.now),
     budget
   });
   const events = [...loadedEvents.values.values()];

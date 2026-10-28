@@ -80,11 +80,7 @@ function playFetch(source: FormatScope['source']): ReportScope['fetch'] {
 }
 
 /** The City League source for a run, reading through the run's store. */
-function cityLeagueGather(
-  format: FormatScope,
-  settleDays: number,
-  options: FormatMetaOptions
-): NonNullable<ReportScope['gather']> {
+function cityLeagueGather(format: FormatScope, options: FormatMetaOptions): NonNullable<ReportScope['gather']> {
   const days = windowDays(format.window, options.now);
   return async cardTypesDb => {
     const gathered = await gatherCityLeagues({
@@ -92,11 +88,10 @@ function cityLeagueGather(
       fetchText: options.fetchPageText ?? createPoliteFetcher().fetchText,
       now: options.now,
       windowDays: days,
-      settleDays,
       cardTypesDb,
       fetchBudget: CITY_LEAGUE_FETCH_BUDGET
     });
-    const window = cityLeagueWindow(options.now, days, settleDays);
+    const window = cityLeagueWindow(options.now, days);
     return {
       tournaments: gathered.tournaments,
       decks: gathered.decks,
@@ -154,7 +149,7 @@ async function runFormat(format: FormatScope, options: FormatMetaOptions): Promi
         format,
         shared.now,
         icons[format.id],
-        format.source.kind === 'limitless-jp' ? cityLeagueGather(format, format.source.settleDays, options) : undefined
+        format.source.kind === 'limitless-jp' ? cityLeagueGather(format, options) : undefined
       )
     });
     return { entry: indexEntry(format, meta) };

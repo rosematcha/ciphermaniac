@@ -24,7 +24,7 @@ function oneEventListing(): string {
   return $.html();
 }
 
-test('City Leagues publishes a settled two-week report with no matchups', async () => {
+test('City Leagues publishes a two-week report through today with no matchups', async () => {
   const objects = new Map<string, unknown>([['assets/card-synonyms.json', { synonyms: { x: 'x' }, canonicals: {} }]]);
   const store: OnlineMetaStore = {
     read: async <T>(key: string) => (objects.get(key) as T | undefined) ?? null,
@@ -73,8 +73,8 @@ test('City Leagues publishes a settled two-week report with no matchups', async 
   );
   const meta = objects.get('reports/Formats/city-leagues/meta.json') as Record<string, unknown>;
   assert.equal(meta.source, 'limitless-jp');
-  assert.equal(meta.windowStart, '2026-10-14T00:00:00.000Z');
-  assert.equal(meta.windowEnd, '2026-10-28T00:00:00.000Z');
+  assert.equal(meta.windowStart, '2026-10-22T00:00:00.000Z');
+  assert.equal(meta.windowEnd, '2026-11-05T00:00:00.000Z');
   // No City League event is looked up on Limitless Play.
   assert.ok(playCalls.every(path => !path.startsWith('/tournaments')));
 });

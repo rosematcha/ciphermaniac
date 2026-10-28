@@ -29,8 +29,6 @@ export type FormatSource =
   | {
       /** Japanese City League pages on limitlesstcg.com. */
       kind: 'limitless-jp';
-      /** Newest days left out while Limitless catches up on results. */
-      settleDays: number;
     };
 
 export interface FormatScope {
@@ -86,9 +84,9 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
   {
     id: 'city-leagues',
     label: 'City Leagues',
-    windowLabel: '14 days to a week ago',
+    windowLabel: 'last 14 days',
     window: { kind: 'days', days: 14 },
-    source: { kind: 'limitless-jp', settleDays: 7 },
+    source: { kind: 'limitless-jp' },
     minFieldPlayers: 0,
     minMatchupFieldPlayers: 0
   }
