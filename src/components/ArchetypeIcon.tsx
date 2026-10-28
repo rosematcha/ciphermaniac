@@ -3,7 +3,9 @@ import { R2_ORIGIN } from '../lib/constants';
 
 /**
  * Pokémon sprite icons. Slugs are lowercase and hyphenated with form
- * suffixes, e.g. `dragapult`, `greninja-mega`, `raging-bolt`.
+ * suffixes, e.g. `dragapult`, `greninja-mega`, `raging-bolt`. A `type-` slug
+ * (`type-fire`) is a Pokémon type's icon instead, for formats such as Gym
+ * Leader Challenge whose archetypes are types.
  *
  * Primary source is our own R2 mirror (scripts/mirror-archetype-sprites.ts)
  * so archetype icons follow the same same-origin-ish posture as card art —
@@ -24,6 +26,10 @@ const ICON_FALLBACK_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
  * bitmap taints the canvas the rasteriser reads back.
  */
 const SUBSTITUTE = '/img/substitute.png';
+
+/** Type icons, committed and served same-origin like the Substitute doll. */
+const TYPE_ICON_PREFIX = 'type-';
+const TYPE_ICON_BASE = '/img/type-icons';
 
 /** Paired icons overlap by this many px (kept in sync with `.arche-icons` CSS). */
 const ICON_OVERLAP = 6;
@@ -93,9 +99,13 @@ function ArchetypeIcon(props: { slug: string; size: number; placeholder?: boolea
   // 0 = mirror, 1 = Limitless fallback, 2 = out of sources.
   const [sourceStage, setSourceStage] = createSignal(0);
   const spent = () => sourceStage() >= 2;
+  const isType = () => props.slug.startsWith(TYPE_ICON_PREFIX);
   const src = () => {
     if (spent()) {
       return SUBSTITUTE;
+    }
+    if (isType()) {
+      return `${TYPE_ICON_BASE}/${props.slug.slice(TYPE_ICON_PREFIX.length)}.svg`;
     }
     return `${sourceStage() === 0 ? ICON_BASE : ICON_FALLBACK_BASE}/${props.slug}.png`;
   };
@@ -112,7 +122,8 @@ function ArchetypeIcon(props: { slug: string; size: number; placeholder?: boolea
         referrerpolicy='no-referrer'
         // Capped at 2: past that the source is our own committed file, and
         // retrying a 404 on it would only spin.
-        onError={() => setSourceStage(s => Math.min(2, s + 1))}
+        // A type icon has no mirror to fall back to.
+        onError={() => setSourceStage(s => (isType() ? 2 : Math.min(2, s + 1)))}
       />
     </Show>
   );
