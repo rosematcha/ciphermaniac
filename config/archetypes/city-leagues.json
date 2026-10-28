@@ -1,0 +1,22 @@
+{
+  "rules": [
+    {
+      "identifier": "jp-mega-rayquaza-ex",
+      "name": "Mega Rayquaza",
+      "icons": ["rayquaza-mega"],
+      "priority": 10,
+      "cards": [{ "name": "Mega Rayquaza ex", "count": "2" }]
+    },
+    {
+      "identifier": "jp-basic-box-raging-bolt",
+      "name": "Basic Box",
+      "icons": ["ogerpon", "clefairy"],
+      "priority": 13,
+      "cards": [
+        { "name": "Mega Kangaskhan ex", "count": "2" },
+        { "name": "Teal Mask Ogerpon ex", "count": "2" },
+        { "name": "Raging Bolt ex", "count": "2" }
+      ]
+    }
+  ]
+}

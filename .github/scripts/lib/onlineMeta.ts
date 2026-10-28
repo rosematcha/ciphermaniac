@@ -91,6 +91,8 @@ export interface GatheredSource {
   decks: GatheredDeck[];
   windowStart: string;
   windowEnd: string;
+  /** Sprite icons by archetype name, for names the source gave its decks. */
+  archetypeIcons?: Record<string, string[]>;
 }
 
 /** The Standard online meta. */
@@ -288,7 +290,7 @@ async function gatherFromSource(
   return {
     tournaments: source.tournaments,
     decks: source.decks.map(deck => reclassify({ ...deck, id: deck.id.slice(0, DECK_ID_LENGTH) }, run.scope)),
-    diagnostics: {},
+    diagnostics: { archetypeIcons: source.archetypeIcons ?? {} },
     span: { start: source.windowStart, end: source.windowEnd },
     fetchWindowDays: run.scope.windowDays
   };

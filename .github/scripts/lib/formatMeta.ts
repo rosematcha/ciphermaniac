@@ -26,6 +26,7 @@ import eternalRules from '../../../config/archetypes/eternal.json' with { type: 
 import { BANLIST_FILE, type FormatBanlist } from '../../../shared/formats/banlist';
 import { fetchEternalBanlist } from './eternalBanlist';
 import { cityLeagueWindow, createPoliteFetcher, gatherCityLeagues } from './cityLeagues/index';
+import { loadCityLeagueRules, nameCityLeagueDecks } from './cityLeagues/archetypes';
 import { type OnlineMetaOptions, type ReportScope, runOnlineMeta } from './onlineMeta';
 
 export interface FormatMetaOptions extends Omit<OnlineMetaOptions, 'scope' | 'exclusions' | 'thumbnails'> {
@@ -92,9 +93,15 @@ function cityLeagueGather(format: FormatScope, options: FormatMetaOptions): NonN
       fetchBudget: CITY_LEAGUE_FETCH_BUDGET
     });
     const window = cityLeagueWindow(options.now, days);
+    const rules = await loadCityLeagueRules(
+      () => options.fetchJson('/games/PTCG/decks', { env: { LIMITLESS_API_KEY: options.limitlessApiKey } }),
+      options.warn ?? console.warn
+    );
+    const named = nameCityLeagueDecks(gathered.decks, rules);
     return {
       tournaments: gathered.tournaments,
-      decks: gathered.decks,
+      decks: named.decks,
+      archetypeIcons: named.icons,
       windowStart: `${window.start}T00:00:00.000Z`,
       windowEnd: `${window.end}T00:00:00.000Z`
     };
