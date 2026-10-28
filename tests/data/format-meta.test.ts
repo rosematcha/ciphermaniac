@@ -41,16 +41,26 @@ function memoryStore(seed: Record<string, unknown> = {}) {
   return { store, objects };
 }
 
-const player = (placing: number, deck: { id: string; name: string; icons: string[] }) => ({
+const SLOWKING_LIST = { pokemon: [{ name: 'Slowking', count: 3, set: 'SCR', number: '58' }] };
+
+const player = (
+  placing: number,
+  deck: { id: string; name: string; icons: string[] },
+  decklist: Record<string, unknown> = SLOWKING_LIST
+) => ({
   placing,
   name: `Player ${placing}`,
   player: `p${placing}`,
   deck,
-  decklist: { pokemon: [{ name: 'Slowking', count: 3, set: 'SCR', number: '58' }] }
+  decklist
 });
 
 /** A Limitless stand-in serving one event of `size` players, recording every query it gets. */
-function limitless({ failFormat, size = 3 }: { failFormat?: string; size?: number } = {}) {
+function limitless({
+  failFormat,
+  size = 3,
+  decklist
+}: { failFormat?: string; size?: number; decklist?: Record<string, unknown> } = {}) {
   const queries: Array<Record<string, unknown>> = [];
   const fetchJson: OnlineMetaOptions['fetchJson'] = async (path, options) => {
     if (path === '/tournaments') {
@@ -86,7 +96,7 @@ function limitless({ failFormat, size = 3 }: { failFormat?: string; size?: numbe
     }
     const slowking = { id: 'slowking-scr', name: 'Slowking', icons: ['slowking'] };
     const other = { id: 'other', name: 'Other', icons: ['substitute'] };
-    return Array.from({ length: size }, (_, index) => player(index + 1, index < 2 ? slowking : other));
+    return Array.from({ length: size }, (_, index) => player(index + 1, index < 2 ? slowking : other, decklist));
   };
   return { fetchJson, queries };
 }
@@ -305,4 +315,38 @@ test('a format without a ban list never asks for one', async () => {
   });
   assert.equal(asked, false);
   assert.ok(!bucket.objects.has('reports/Formats/rspk/banlist.json'));
+});
+
+test('a format names cards by its own prints and marks the payloads that carry them', async () => {
+  const rareCandy = {
+    synonyms: { 'Rare Candy::SS::088': 'Rare Candy::MEG::125', 'Rare Candy::EM::083': 'Rare Candy::MEG::125' },
+    canonicals: { 'Rare Candy': 'Rare Candy::MEG::125' },
+    prints: { 'Rare Candy::MEG::125': 0.21, 'Rare Candy::SS::088': 8.16, 'Rare Candy::EM::083': 7.3 }
+  };
+  // RS-PK players often list the modern print; the report still shows ex Sandstorm's.
+  const decklist = {
+    pokemon: SLOWKING_LIST.pokemon,
+    trainer: [{ name: 'Rare Candy', count: 4, set: 'MEG', number: '125' }]
+  };
+  const standardRspk: FormatScope = { ...RSPK, id: 'rspk-standard', canon: undefined };
+  const bucket = memoryStore({ 'assets/card-synonyms.json': rareCandy });
+  const { fetchJson } = limitless({ size: 4, decklist });
+  await runFormatMetas(runOptions(bucket.store, fetchJson, [RSPK, standardRspk]));
+
+  const read = (key: string) => bucket.objects.get(key) as { canonicalizedAt?: string; items?: Array<{ uid: string }> };
+  const master = read('reports/Formats/rspk/master.json');
+  assert.equal(master.canonicalizedAt, '2026-10-27');
+  assert.ok(master.items?.some(item => item.uid === 'Rare Candy::SS::088'));
+  assert.equal(read('reports/Formats/rspk/archetypes/Slowking/cards.json').canonicalizedAt, '2026-10-27');
+  const usage = bucket.objects.get('reports/Formats/rspk/cardUsage.json') as {
+    canonicalizedAt?: string;
+    usage: Record<string, unknown>;
+  };
+  assert.equal(usage.canonicalizedAt, '2026-10-27');
+  assert.ok('Rare Candy::SS::088' in usage.usage);
+
+  // Without a policy the format keeps the Standard canonical and no marker.
+  const standard = read('reports/Formats/rspk-standard/master.json');
+  assert.equal(standard.canonicalizedAt, undefined);
+  assert.ok(standard.items?.some(item => item.uid === 'Rare Candy::MEG::125'));
 });

@@ -31,6 +31,25 @@ export type FormatSource =
       kind: 'limitless-jp';
     };
 
+/**
+ * How a format names each card's print. Set codes are catalog codes
+ * (`.github/scripts/data/set-catalog.json`), which orders them by release.
+ */
+export interface FormatCanon {
+  /**
+   * The legal sets: everything, or a release range plus any sets outside it.
+   * `newest` omitted means through the newest set.
+   */
+  sets: 'all' | { oldest: string; newest?: string; also?: readonly string[] };
+  /**
+   * Which end of the legal range names a card. Period formats show the print
+   * of their era (oldest); open-ended ones show the newest base-rarity print.
+   */
+  prefer: 'oldest' | 'newest';
+  /** A set whose basic energies the format shows, for the listed types. */
+  basicEnergy?: { set: string; types: readonly string[] };
+}
+
 export interface FormatScope {
   id: string;
   label: string;
@@ -42,7 +61,12 @@ export interface FormatScope {
   minFieldPlayers: number;
   /** Smallest field whose pairings feed the matchup matrix. */
   minMatchupFieldPlayers: number;
+  /** The format's own print choice; absent means the Standard canonical. */
+  canon?: FormatCanon;
 }
+
+const EX_ERA_BASIC_TYPES = ['Grass', 'Fire', 'Water', 'Lightning', 'Psychic', 'Fighting'] as const;
+const BASIC_TYPES = [...EX_ERA_BASIC_TYPES, 'Darkness', 'Metal'] as const;
 
 export const FORMAT_SCOPES: readonly FormatScope[] = [
   {
@@ -52,7 +76,8 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
     window: { kind: 'sets', count: 4 },
     source: { kind: 'limitless-online', format: 'EXPANDED' },
     minFieldPlayers: 4,
-    minMatchupFieldPlayers: 8
+    minMatchupFieldPlayers: 8,
+    canon: { sets: { oldest: 'BLW', also: ['BWP'] }, prefer: 'newest' }
   },
   {
     id: 'rspk',
@@ -61,7 +86,14 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
     window: { kind: 'days', days: 60 },
     source: { kind: 'limitless-online', format: 'EX' },
     minFieldPlayers: 4,
-    minMatchupFieldPlayers: 8
+    minMatchupFieldPlayers: 8,
+    // ex Ruby & Sapphire through ex Power Keepers, POP 1-5 and the Nintendo
+    // black star promos. Basic energies show their Expedition prints.
+    canon: {
+      sets: { oldest: 'RS', newest: 'P5', also: ['NP'] },
+      prefer: 'oldest',
+      basicEnergy: { set: 'E1', types: EX_ERA_BASIC_TYPES }
+    }
   },
   {
     id: 'efg',
@@ -70,7 +102,12 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
     window: { kind: 'all', since: '2022-01-01' },
     source: { kind: 'limitless-online', format: 'RMEP' },
     minFieldPlayers: 4,
-    minMatchupFieldPlayers: 8
+    minMatchupFieldPlayers: 8,
+    canon: {
+      sets: { oldest: 'BST', newest: 'PAF', also: ['SP'] },
+      prefer: 'oldest',
+      basicEnergy: { set: 'BRS', types: BASIC_TYPES }
+    }
   },
   {
     id: 'eternal',
@@ -79,7 +116,8 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
     window: { kind: 'days', days: 365 },
     source: { kind: 'limitless-online', format: 'CUSTOM', organizerId: 90, nameIncludes: 'Eternal' },
     minFieldPlayers: 0,
-    minMatchupFieldPlayers: 0
+    minMatchupFieldPlayers: 0,
+    canon: { sets: 'all', prefer: 'newest' }
   },
   {
     id: 'city-leagues',

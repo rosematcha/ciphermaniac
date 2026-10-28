@@ -25,6 +25,8 @@ import { buildCardUsageIndex } from '../../../shared/data/reports/cardUsage.js';
 import { buildListIndex } from '../../../shared/data/reports/listIndex.js';
 import { buildCardSuccessIndex } from '../../../shared/data/reports/cardSuccess.js';
 import { requireSynonymDatabase, type SynonymDatabase } from '../../../shared/data/cardIdentity.js';
+import { makeFormatResolver } from '../../../shared/data/canonicalPrint';
+import type { FormatCanon } from '../../../shared/formats/registry';
 import { runR2Batch } from './r2.mjs';
 import type { fetchLimitlessJson } from './onlineFetch';
 import {
@@ -83,6 +85,8 @@ export interface ReportScope {
   gather?: (cardTypesDb: CardTypesDatabase | null) => Promise<GatheredSource>;
   /** Name a deck by hand-maintained rules; null keeps the archetype Limitless gave it. */
   classify?: (deck: GatheredDeck) => string | null;
+  /** The format's own print choice; Standard leaves this unset and keeps the global canonical. */
+  canon?: FormatCanon;
 }
 
 /** What a non-Play source gathered, and the days it covered (ISO, end exclusive). */
@@ -462,6 +466,31 @@ function buildArchetypeTrends(
   return trendsByBase;
 }
 
+/**
+ * A scope's own print choice: the resolver the builders key cards by, and the
+ * `canonicalizedAt` marker that tells the browser to leave those prints alone
+ * rather than remap them to the global canonical.
+ */
+interface ScopeCanonicalization {
+  resolveUid: (uid: string) => string;
+  canonicalizedAt: string;
+}
+
+function scopeCanonicalization(run: Run, synonymDb: SynonymDatabase): ScopeCanonicalization | null {
+  if (!run.scope.canon) {
+    return null;
+  }
+  return {
+    resolveUid: makeFormatResolver(synonymDb, run.scope.canon),
+    canonicalizedAt: run.now.toISOString().slice(0, 10)
+  };
+}
+
+/** The marker a payload built with a scope's own prints carries; empty for Standard. */
+function canonicalMarker(canonicalization: ScopeCanonicalization | null): { canonicalizedAt?: string } {
+  return canonicalization ? { canonicalizedAt: canonicalization.canonicalizedAt } : {};
+}
+
 interface PublishInput {
   reportDecks: GatheredDeck[];
   masterReport: unknown;
@@ -469,6 +498,8 @@ interface PublishInput {
   archetypes: ArchetypeBuildResult;
   trendsByBase: Map<string, ReturnType<typeof generateArchetypeTrends>>;
   meta: unknown;
+  /** Set when the scope keys cards by its own prints. */
+  canonicalizedAt?: string;
 }
 
 async function publishMaster(run: Run, input: PublishInput): Promise<void> {
@@ -503,7 +534,12 @@ async function publishArchetypes(run: Run, input: PublishInput): Promise<void> {
       winRateAggregate: aggregateOnlineWinRate(input.trendsByBase.get(entry.name)?.matchups ?? {}, entry.label)
     }))
   );
-  await publish(run, 'cardUsage.json', buildCardUsageIndex(files));
+  const usage = buildCardUsageIndex(files);
+  await publish(
+    run,
+    'cardUsage.json',
+    input.canonicalizedAt ? { ...usage, canonicalizedAt: input.canonicalizedAt } : usage
+  );
   const listIndex = buildListIndex(input.reportDecks);
   if (listIndex) {
     await publish(run, 'lists.json', listIndex);
@@ -580,11 +616,18 @@ export async function runOnlineMeta(options: OnlineMetaOptions): Promise<Record<
   // Decklist-less standings entries stay in the deck list — they're real decks
   // in the meta and carry an archetype — but they can't contribute a card, so
   // card inclusion divides by the listed decks only (D13).
-  const masterReport = generateReportFromDecks(
-    reportDecks as unknown as Parameters<typeof generateReportFromDecks>[0],
-    listedDeckCount(reportDecks as unknown as Parameters<typeof listedDeckCount>[0]),
-    synonymDb
-  );
+  const canonicalization = scopeCanonicalization(run, synonymDb);
+  const resolveUid = canonicalization?.resolveUid;
+  const marker = canonicalMarker(canonicalization);
+  const masterReport = {
+    ...generateReportFromDecks(
+      reportDecks as unknown as Parameters<typeof generateReportFromDecks>[0],
+      listedDeckCount(reportDecks as unknown as Parameters<typeof listedDeckCount>[0]),
+      synonymDb,
+      { resolveUid }
+    ),
+    ...marker
+  };
   // The frozen 'preserve' online profile: case-preserving group keys (D3
   // quirk), 0.5% deck floor, fraction percent, deckCount-desc ordering,
   // thumbnails + signature cards on index entries. The "Other" bucket stays in
@@ -594,9 +637,13 @@ export async function runOnlineMeta(options: OnlineMetaOptions): Promise<Record<
     synonymDb,
     {
       ...onlineArchetypeOptions(run.thumbnails, cardTypesDb, masterReport),
-      ...scopeIconConfig(run.scope, diagnostics)
+      ...scopeIconConfig(run.scope, diagnostics),
+      resolveUid
     }
   );
+  for (const file of archetypes.files) {
+    Object.assign(file.data, marker);
+  }
 
   const meta = buildMeta(run, window, { minDecks: archetypes.minDecks, pairingsFailures });
 
@@ -616,9 +663,18 @@ export async function runOnlineMeta(options: OnlineMetaOptions): Promise<Record<
   // the previous report is still whole rather than between two uploads.
   const cardSuccess = buildCardSuccessIndex(
     reportDecks as unknown as Parameters<typeof buildCardSuccessIndex>[0],
-    synonymDb
+    synonymDb,
+    { resolveUid }
   );
 
-  await publishReport(run, { reportDecks, masterReport, cardSuccess, archetypes, trendsByBase, meta });
+  await publishReport(run, {
+    reportDecks,
+    masterReport,
+    cardSuccess,
+    archetypes,
+    trendsByBase,
+    meta,
+    ...marker
+  });
   return meta;
 }

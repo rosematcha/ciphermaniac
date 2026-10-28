@@ -22,6 +22,7 @@
 // out of the card-identity graph keeps the catalog out of the browser bundle.
 import CATALOG from '../../.github/scripts/data/set-catalog.json';
 import { accessiblePriceCap, parseCardUid, type SynonymDatabase } from './cardIdentity';
+import type { FormatCanon } from '../formats/registry';
 
 export type { SynonymDatabase };
 
@@ -46,6 +47,9 @@ export const PROMO_SETS = new Set<string>(CATALOG.promoSets);
 export const ENERGY_SETS = new Set<string>(CATALOG.energySets);
 export const BASIC_ENERGY_NAMES = new Set<string>(CATALOG.basicEnergyNames);
 const CLASSIC_COLLECTION_SETS = new Set<string>(CATALOG.classicCollectionSets);
+// Formats skip every era's promos, not only the Standard-legal ones.
+const FORMAT_PROMO_SETS = new Set<string>([...CATALOG.promoSets, ...CATALOG.olderPromoSets]);
+const REPRINT_SETS = new Set<string>([...CATALOG.specialSets, ...CATALOG.popSeriesSets]);
 
 // sets is ordered newest-first, so a larger index means an older set.
 const SET_RELEASE_INDEX = new Map<string, number>(SET_CATALOG.map((entry, index) => [entry.code, index]));
@@ -221,6 +225,87 @@ export function chooseCanonicalPrint(
 }
 
 /**
+ * Per-format canonical selection.
+ *
+ * A format names each card by its own legal sets instead of Standard's:
+ * period formats (RS-PK, EFG) show the oldest print of their era, open-ended
+ * ones (Expanded, Eternal) the newest base-rarity print. Either way the print
+ * must be cheap, and a promo, a subset print (TG30) or a special-set reprint
+ * names a card only when nothing else does; a special set's first printing
+ * (Budew PRE 004) still counts.
+ */
+
+// Every legal set code, or null when the format allows them all.
+function formatSetCodes(sets: FormatCanon['sets']): Set<string> | null {
+  if (sets === 'all') {
+    return null;
+  }
+  const newestIndex = sets.newest ? getReleaseIndex(sets.newest) : 0;
+  const oldestIndex = getReleaseIndex(sets.oldest);
+  if (newestIndex < 0 || oldestIndex < newestIndex) {
+    throw new Error(`Invalid format set range ${sets.oldest}-${sets.newest ?? 'newest'}`);
+  }
+  const range = SET_CATALOG.slice(newestIndex, oldestIndex + 1).map(entry => entry.code);
+  return new Set([...range, ...(sets.also ?? [])]);
+}
+
+// The format's own basic energy print, when it names one for this card.
+function basicEnergyPrint(
+  prints: PrintVariation[],
+  cardName: string,
+  energy: FormatCanon['basicEnergy']
+): PrintVariation | null {
+  if (!energy?.types.some(type => `${type} Energy` === cardName)) {
+    return null;
+  }
+  const inSet = prints.filter(v => setOf(v) === energy.set);
+  return inSet.length ? pickByAge(inSet, false) : null;
+}
+
+// Subset numbers (Trainer Gallery TG30, Shiny Vault SV109, Galarian Gallery
+// GG05) mark collector prints, never base rarity.
+const SUBSET_NUMBER = /^[A-Z]+\d/i;
+
+// A promo, a subset print, a special-set print that reprints an older one, or
+// a print from a set the catalog doesn't know (it would otherwise read as the
+// newest print of all).
+function isSidePrint(variation: PrintVariation, firstPrintingIndex: number): boolean {
+  const set = setOf(variation);
+  return (
+    getReleaseIndex(set) === UNKNOWN_SET_INDEX ||
+    FORMAT_PROMO_SETS.has(set) ||
+    SUBSET_NUMBER.test(String(variation.number ?? '')) ||
+    (REPRINT_SETS.has(set) && getReleaseIndex(set) < firstPrintingIndex)
+  );
+}
+
+/**
+ * Build the print chooser for one format's canonical policy.
+ * @param canon - The format's policy from shared/formats/registry
+ */
+export function makeFormatChooser(canon: FormatCanon): PrintChooser {
+  const legalSets = formatSetCodes(canon.sets);
+  const newest = canon.prefer === 'newest';
+  return (variations, cardName) => {
+    if (!variations.length) {
+      return null;
+    }
+    const prints = narrow(variations, v => !isClassicCollection(v));
+    const energy = basicEnergyPrint(prints, cardName, canon.basicEnergy);
+    if (energy) {
+      return energy;
+    }
+    const firstPrintingIndex = Math.max(...prints.map(v => getReleaseIndex(v.set)));
+    let pool = legalSets ? narrow(prints, v => legalSets.has(setOf(v))) : prints;
+    pool = affordable(narrow(pool, v => !isSidePrint(v, firstPrintingIndex)));
+    if (BASIC_ENERGY_NAMES.has(cardName)) {
+      pool = narrow(pool, v => ENERGY_SETS.has(setOf(v)));
+    }
+    return pickByAge(pool, newest);
+  };
+}
+
+/**
  * Rolling (per-event) canonical resolution over the synonym DB.
  *
  * The synonym DB's flat `synonyms` map defines cluster membership: every
@@ -332,4 +417,16 @@ export function makeRollingResolver(
   const effectiveDb: SynonymDatabase = priceOverrides ? { ...db, prints: { ...db.prints, ...priceOverrides } } : db;
   const clusterIndex = buildClusterIndex(effectiveDb);
   return memoize(uid => resolveCanonicalUidAt(uid, effectiveDb, clusterIndex, asOfDate));
+}
+
+/**
+ * Build a memoized UID resolver that names cards by one format's policy, for
+ * the format report builders.
+ * @param db - The synonym database
+ * @param canon - The format's policy from shared/formats/registry
+ */
+export function makeFormatResolver(db: SynonymDatabase, canon: FormatCanon): (uid: string) => string {
+  const clusterIndex = buildClusterIndex(db);
+  const choose = makeFormatChooser(canon);
+  return memoize(uid => resolveInCluster(uid, db, clusterIndex, choose));
 }

@@ -126,6 +126,7 @@ export function formatReportScope(
     minMatchupFieldPlayers: format.minMatchupFieldPlayers,
     ...(FORMAT_BANLISTS[format.id] ? { keep: [BANLIST_FILE] } : {}),
     icons: { ...ruleIcons(rules), ...icons },
+    ...(format.canon ? { canon: format.canon } : {}),
     ...(rules.length ? { classify: deck => matchArchetypeRule(deck.cards, rules)?.name ?? null } : {})
   };
 }
