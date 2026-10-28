@@ -27,6 +27,18 @@ class DownloadTournamentTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(download_tournament.parse_start_date(text), (expected, text))
 
+    def test_classic_collection_reprints_never_name_a_card_with_another_print(self):
+        cases = [
+            ("Rocket's Admin.", [("CEL", "CC12", 0.5), ("TRR", "086", 21.96)], ("TRR", "086")),
+            ("Dark Tyranitar", [("30C", "CC9", 12.42), ("TRR", "019", 79.67)], ("TRR", "019")),
+            ("Some Classic", [("30C", "CC30", 1.5)], ("30C", "CC30")),
+        ]
+        for name, prints, expected in cases:
+            with self.subTest(name=name):
+                variations = [{"set": s, "number": n, "price_usd": p} for s, n, p in prints]
+                chosen = download_tournament.choose_canonical_print(variations, name)
+                self.assertEqual((chosen["set"], chosen["number"]), expected)
+
 
 if __name__ == "__main__":
     unittest.main()

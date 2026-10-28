@@ -263,6 +263,31 @@ const CORPUS: Scenario[] = [
     variations: [print('RCL', '020', 0.3), print('SHF', '011', 0.25), print('MEG', '001', 0.1)],
     asOfDate: '2023-07-15',
     expected: ['RCL', '020']
+  },
+  {
+    label: 'a Classic Collection reprint never names a card that has another print',
+    // CEL CC12 is cheaper and neither print is legal, but CC prints are out.
+    cardName: "Rocket's Admin.",
+    variations: [print('CEL', 'CC12', 0.5), print('TRR', '086', 21.96)],
+    expected: ['TRR', '086']
+  },
+  {
+    label: 'a Classic Collection reprint loses even to a far pricier original',
+    cardName: 'Dark Tyranitar',
+    variations: [print('30C', 'CC9', 12.42), print('TRR', '019', 79.67)],
+    expected: ['TRR', '019']
+  },
+  {
+    label: 'a card printed only in the Classic Collection keeps it',
+    cardName: 'Some Classic',
+    variations: [print('30C', 'CC30', 1.5)],
+    expected: ['30C', 'CC30']
+  },
+  {
+    label: 'promo-only cards take the lower number below the price cap',
+    cardName: 'Pecharunt',
+    variations: [print('SVP', '129', 1.64), print('SVP', '149', 0.83)],
+    expected: ['SVP', '129']
   }
 ];
 

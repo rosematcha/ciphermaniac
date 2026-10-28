@@ -1095,6 +1095,7 @@ _STANDARD_LEGAL_SETS = set(_SET_CATALOG_DATA["standardLegalSets"])
 _PROMO_SETS = set(_SET_CATALOG_DATA["promoSets"])
 _CANONICAL_BASIC_ENERGY_NAMES = set(_SET_CATALOG_DATA["basicEnergyNames"])
 _ENERGY_SETS = set(_SET_CATALOG_DATA["energySets"])
+_CLASSIC_COLLECTION_SETS = set(_SET_CATALOG_DATA["classicCollectionSets"])
 
 _SET_BY_CODE = {entry["code"]: entry for entry in _SET_CATALOG_DATA["sets"]}
 
@@ -1142,6 +1143,12 @@ def _number_sort_key(number):
     return (int(match.group(1)), match.group(2).upper())
 
 
+def _is_classic_collection(variation):
+    return str(variation.get("set", "")).upper() in _CLASSIC_COLLECTION_SETS and str(
+        variation.get("number", "")
+    ).upper().startswith("CC")
+
+
 def choose_canonical_print(variations, card_name, as_of_date=None):
     """Pick the print a player would actually buy for a standard deck.
 
@@ -1164,6 +1171,10 @@ def choose_canonical_print(variations, card_name, as_of_date=None):
 
     if as_of_date is not None and not _ISO_DATE_RE.match(str(as_of_date)):
         raise ValueError(f'choose_canonical_print: invalid as_of_date "{as_of_date}" (expected YYYY-MM-DD)')
+
+    # 0. Classic Collection reprints (CEL CC12, 30C CC9) never name a card
+    #    while it has any other print.
+    variations = [v for v in variations if not _is_classic_collection(v)] or list(variations)
 
     # 1. Standard legality, on the event date when one is given. If nothing is
     #    legal (a fully rotated card in historical data), fall back to every

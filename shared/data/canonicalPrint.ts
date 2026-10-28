@@ -45,6 +45,7 @@ export const STANDARD_LEGAL_SETS = new Set<string>(CATALOG.standardLegalSets);
 export const PROMO_SETS = new Set<string>(CATALOG.promoSets);
 export const ENERGY_SETS = new Set<string>(CATALOG.energySets);
 export const BASIC_ENERGY_NAMES = new Set<string>(CATALOG.basicEnergyNames);
+const CLASSIC_COLLECTION_SETS = new Set<string>(CATALOG.classicCollectionSets);
 
 // sets is ordered newest-first, so a larger index means an older set.
 const SET_RELEASE_INDEX = new Map<string, number>(SET_CATALOG.map((entry, index) => [entry.code, index]));
@@ -119,6 +120,61 @@ export interface ChooseCanonicalPrintOptions {
   asOfDate?: string | null;
 }
 
+// Shrink a pool to the prints that pass, keeping it whole when none do.
+function narrow(pool: PrintVariation[], keep: (variation: PrintVariation) => boolean): PrintVariation[] {
+  const kept = pool.filter(keep);
+  return kept.length ? kept : pool;
+}
+
+function setOf(variation: PrintVariation): string {
+  return (variation.set || '').toUpperCase();
+}
+
+// Classic Collection reprints (CEL CC12, 30C CC9) never name a card while it
+// has any other print.
+function isClassicCollection(variation: PrintVariation): boolean {
+  return CLASSIC_COLLECTION_SETS.has(setOf(variation)) && /^CC/i.test(String(variation.number ?? ''));
+}
+
+// Accessibility: strike collector-priced prints, and prints with no price at
+// all when priced alternatives exist.
+function affordable(pool: PrintVariation[]): PrintVariation[] {
+  const prices = pool.map(v => normalizePrice(v.price_usd)).filter((p): p is number => p !== null);
+  if (!prices.length) {
+    return pool;
+  }
+  const cap = accessiblePriceCap(Math.min(...prices));
+  return narrow(pool, v => {
+    const price = normalizePrice(v.price_usd);
+    return price !== null && price <= cap;
+  });
+}
+
+// The oldest (or newest) print left. Ties break by lower collector number,
+// then lower price: within a set the regular print carries the lower number,
+// and a meta-spiked regular print must still beat a transiently cheaper
+// collector version (the accessibility cap is the price gate; below it,
+// number decides).
+function pickByAge(pool: PrintVariation[], newest: boolean): PrintVariation {
+  const sortKey = (v: PrintVariation): SortKey => {
+    const index = getReleaseIndex(v.set);
+    const price = normalizePrice(v.price_usd);
+    return [newest ? index : -index, ...numberSortKey(v.number), price === null ? Number.POSITIVE_INFINITY : price];
+  };
+  return pool.reduce((best, v) => (compareKeys(sortKey(v), sortKey(best)) < 0 ? v : best));
+}
+
+// 1. Standard legality, on the event date when one is given. If nothing is
+//    legal (a fully rotated card in historical data), fall back to every
+//    print that existed on the date.
+function standardPool(variations: PrintVariation[], asOfDate: string | null): PrintVariation[] {
+  if (asOfDate === null) {
+    return narrow(variations, v => STANDARD_LEGAL_SETS.has(setOf(v)));
+  }
+  const legal = variations.filter(v => isSetLegalAt(v.set, asOfDate));
+  return legal.length ? legal : narrow(variations, v => printExistedAt(v.set, asOfDate));
+}
+
 /**
  * Pick the canonical print from a cluster of print variations.
  */
@@ -136,42 +192,17 @@ export function chooseCanonicalPrint(
     throw new Error(`chooseCanonicalPrint: invalid asOfDate "${asOfDate}" (expected YYYY-MM-DD)`);
   }
 
-  // 1. Standard legality, on the event date when one is given. If nothing is
-  //    legal (a fully rotated card in historical data), fall back to every
-  //    print that existed on the date.
-  let pool: PrintVariation[];
-  if (asOfDate !== null) {
-    const legal = variations.filter(v => isSetLegalAt(v.set, asOfDate));
-    if (legal.length) {
-      pool = legal;
-    } else {
-      const existing = variations.filter(v => printExistedAt(v.set, asOfDate));
-      pool = existing.length ? existing : [...variations];
-    }
-  } else {
-    const legal = variations.filter(v => STANDARD_LEGAL_SETS.has((v.set || '').toUpperCase()));
-    pool = legal.length ? legal : [...variations];
-  }
-
-  // 2. Accessibility. Strike collector-priced prints, and prints with no
-  //    price at all when priced alternatives exist.
-  const prices = pool.map(v => normalizePrice(v.price_usd)).filter((p): p is number => p !== null);
-  if (prices.length) {
-    const cap = accessiblePriceCap(Math.min(...prices));
-    const affordable = pool.filter(v => {
-      const price = normalizePrice(v.price_usd);
-      return price !== null && price <= cap;
-    });
-    if (affordable.length) {
-      pool = affordable;
-    }
-  }
+  // 1. Standard legality (see standardPool), after striking Classic Collection
+  //    reprints. 2. Accessibility.
+  let pool = affordable(
+    standardPool(
+      narrow(variations, v => !isClassicCollection(v)),
+      asOfDate
+    )
+  );
 
   // 3. Prefer non-promo prints; promos stay only for promo-only cards.
-  const nonPromo = pool.filter(v => !PROMO_SETS.has((v.set || '').toUpperCase()));
-  if (nonPromo.length) {
-    pool = nonPromo;
-  }
+  pool = narrow(pool, v => !PROMO_SETS.has(setOf(v)));
 
   const wantNewest = BASIC_ENERGY_NAMES.has(cardName);
 
@@ -181,24 +212,12 @@ export function chooseCanonicalPrint(
   //      and the newest-print rule would otherwise hand energies to whatever
   //      bling reprint shipped last.
   if (wantNewest) {
-    const energyPrints = pool.filter(v => ENERGY_SETS.has((v.set || '').toUpperCase()));
-    if (energyPrints.length) {
-      pool = energyPrints;
-    }
+    pool = narrow(pool, v => ENERGY_SETS.has(setOf(v)));
   }
 
   // 4. Basic energies take the newest remaining print, everything else the
-  //    oldest. Ties break by lower collector number, then lower price: within
-  //    a set the regular print carries the lower number, and a meta-spiked
-  //    regular print must still beat a transiently cheaper collector version
-  //    (the accessibility cap is the price gate; below it, number decides).
-  const sortKey = (v: PrintVariation): SortKey => {
-    const index = getReleaseIndex(v.set);
-    const price = normalizePrice(v.price_usd);
-    return [wantNewest ? index : -index, ...numberSortKey(v.number), price === null ? Number.POSITIVE_INFINITY : price];
-  };
-
-  return pool.reduce((best, v) => (compareKeys(sortKey(v), sortKey(best)) < 0 ? v : best));
+  //    oldest.
+  return pickByAge(pool, wantNewest);
 }
 
 /**
@@ -232,13 +251,57 @@ export function buildClusterIndex(db: SynonymDatabase): ClusterIndex {
 // UID parsing lives with the rest of the identity policy in cardIdentity.ts.
 const parseUid = parseCardUid;
 
+// The cluster's global canonical UID, by the same lookup rules as
+// `resolve_canonical_uid` / `getCanonicalCardFromData`.
+function globalCanonical(uid: string, db: SynonymDatabase): string {
+  return uid.includes('::') ? (db.synonyms[uid] ?? uid) : (db.canonicals[uid] ?? db.synonyms[uid] ?? uid);
+}
+
+function clusterVariations(members: string[], db: SynonymDatabase): PrintVariation[] {
+  const variations: PrintVariation[] = [];
+  for (const member of members) {
+    const parsed = parseUid(member);
+    if (parsed) {
+      variations.push({ set: parsed.set, number: parsed.number, price_usd: db.prints?.[member] ?? null });
+    }
+  }
+  return variations;
+}
+
+/** Picks one print of a card from its cluster. */
+type PrintChooser = (variations: PrintVariation[], cardName: string) => PrintVariation | null;
+
+// Re-choose a UID's print from its whole cluster. Falls back to the global
+// canonical when the cluster cannot be re-evaluated (unparseable UIDs, empty
+// cluster).
+function resolveInCluster(uid: string, db: SynonymDatabase, clusterIndex: ClusterIndex, choose: PrintChooser): string {
+  if (!uid) {
+    return uid;
+  }
+  const global = globalCanonical(uid, db);
+  const parsed = parseUid(global);
+  if (!parsed) {
+    return global;
+  }
+  const chosen = choose(clusterVariations(clusterIndex.get(global) ?? [global], db), parsed.name);
+  return chosen ? `${parsed.name}::${chosen.set}::${chosen.number}` : global;
+}
+
+function memoize(resolve: (uid: string) => string): (uid: string) => string {
+  const cache = new Map<string, string>();
+  return (uid: string): string => {
+    const hit = cache.get(uid);
+    if (hit !== undefined) {
+      return hit;
+    }
+    const resolved = resolve(uid);
+    cache.set(uid, resolved);
+    return resolved;
+  };
+}
+
 /**
  * Resolve a card UID to its canonical print as of an event date.
- *
- * Follows the same lookup rules as `resolve_canonical_uid` /
- * `getCanonicalCardFromData` to find the cluster, then re-chooses the
- * canonical member for the date. Falls back to the global canonical when the
- * cluster cannot be re-evaluated (unparseable UIDs, empty cluster).
  */
 export function resolveCanonicalUidAt(
   uid: string,
@@ -246,28 +309,9 @@ export function resolveCanonicalUidAt(
   clusterIndex: ClusterIndex,
   asOfDate: string
 ): string {
-  if (!uid) {
-    return uid;
-  }
-  const global = uid.includes('::') ? (db.synonyms[uid] ?? uid) : (db.canonicals[uid] ?? db.synonyms[uid] ?? uid);
-
-  const members = clusterIndex.get(global) ?? [global];
-  const parsed = parseUid(global);
-  if (!parsed) {
-    return global;
-  }
-
-  const variations: PrintVariation[] = [];
-  for (const member of members) {
-    const memberParsed = parseUid(member);
-    if (!memberParsed) {
-      continue;
-    }
-
-    variations.push({ set: memberParsed.set, number: memberParsed.number, price_usd: db.prints?.[member] ?? null });
-  }
-  const chosen = chooseCanonicalPrint(variations, parsed.name, { asOfDate });
-  return chosen ? `${parsed.name}::${chosen.set}::${chosen.number}` : global;
+  return resolveInCluster(uid, db, clusterIndex, (variations, name) =>
+    chooseCanonicalPrint(variations, name, { asOfDate })
+  );
 }
 
 /**
@@ -287,14 +331,5 @@ export function makeRollingResolver(
   }
   const effectiveDb: SynonymDatabase = priceOverrides ? { ...db, prints: { ...db.prints, ...priceOverrides } } : db;
   const clusterIndex = buildClusterIndex(effectiveDb);
-  const cache = new Map<string, string>();
-  return (uid: string): string => {
-    const hit = cache.get(uid);
-    if (hit !== undefined) {
-      return hit;
-    }
-    const resolved = resolveCanonicalUidAt(uid, effectiveDb, clusterIndex, asOfDate);
-    cache.set(uid, resolved);
-    return resolved;
-  };
+  return memoize(uid => resolveCanonicalUidAt(uid, effectiveDb, clusterIndex, asOfDate));
 }

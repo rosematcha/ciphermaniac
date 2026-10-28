@@ -86,10 +86,6 @@
   "shared/data/build/channel.ts": [
     "complexity:46bd7d799e1e44239bac9efb2a1bfa79c03b2c336b934c4d740290e5d5e47acb:Async function 'updatePointer' has a complexity of 13. Maximum allowed is 12."
   ],
-  "shared/data/canonicalPrint.ts": [
-    "complexity:2e08257337c40dfbca704e24bb57b988166c5d640b6effc3b0fefc41e82ec724:Function 'chooseCanonicalPrint' has a complexity of 16. Maximum allowed is 12.",
-    "complexity:43532683e044611d067bf223835c5d25fe219de10c60e68b78ea5c6da836e761:Function 'resolveCanonicalUidAt' has a complexity of 13. Maximum allowed is 12."
-  ],
   "shared/data/cardTypesDatabase.ts": [
     "complexity:84e9afb22fa27038b5503e62e0f65884c2e2e6841b8b4a0adab0632f14751c7a:Function 'enrichCardWithType' has a complexity of 23. Maximum allowed is 12."
   ],
