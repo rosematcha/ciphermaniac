@@ -23,6 +23,7 @@ import {
   ruleThumbnails
 } from '../../../shared/formats/archetypeRules';
 import eternalRules from '../../../config/archetypes/eternal.json' with { type: 'json' };
+import formatThumbnails from '../../../config/archetypes/format-thumbnails.json' with { type: 'json' };
 import { BANLIST_FILE, type FormatBanlist } from '../../../shared/formats/banlist';
 import { fetchEternalBanlist } from './eternalBanlist';
 import { cityLeagueWindow, createPoliteFetcher, gatherCityLeagues } from './cityLeagues/index';
@@ -55,6 +56,9 @@ async function fetchJsonFromWeb(url: string): Promise<unknown> {
   }
   return response.json();
 }
+
+/** Hand-picked card thumbnails, for archetypes whose names don't say which cards they play. */
+const FORMAT_THUMBNAILS: Record<string, Record<string, string[]>> = formatThumbnails;
 
 /** Hand-maintained archetype rules, for formats Limitless leaves unclassified. */
 const FORMAT_RULES: Record<string, readonly ArchetypeRule[]> = {
@@ -147,7 +151,7 @@ type FormatOutcome = { entry: FormatsIndexEntry } | { failure: { id: string; mes
 
 /** Build one format's report; a failure is caught and reported rather than thrown. */
 async function runFormat(format: FormatScope, options: FormatMetaOptions): Promise<FormatOutcome> {
-  const { formats: _formats, thumbnails = {}, icons = {}, ...shared } = options;
+  const { formats: _formats, thumbnails = FORMAT_THUMBNAILS, icons = {}, ...shared } = options;
   try {
     const meta = await runOnlineMeta({
       ...shared,

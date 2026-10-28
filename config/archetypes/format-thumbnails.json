@@ -1,0 +1,38 @@
+{
+  "rspk": {
+    "Bombtar": [
+      "TRR/019",
+      "RG/107"
+    ],
+    "Rayler": [
+      "DF/097",
+      "UF/032"
+    ],
+    "Dragtrode Sneasel": [
+      "TRR/015",
+      "TRR/103"
+    ],
+    "Camler": [
+      "DX/004",
+      "UF/032"
+    ],
+    "Rai-Eggs": [
+      "HP/015",
+      "HP/041"
+    ]
+  },
+  "efg": {
+    "Lost Zone Box": [
+      "LOR/079",
+      "LOR/070"
+    ],
+    "Giratina LZ Box": [
+      "LOR/079",
+      "LOR/131"
+    ],
+    "Lost Box Charizard": [
+      "LOR/079",
+      "PGO/011"
+    ]
+  }
+}
