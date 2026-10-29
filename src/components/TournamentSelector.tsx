@@ -160,7 +160,9 @@ export function TournamentSelector() {
                       onPick={() => pick(formatScopeKey(format.id))}
                     >
                       <span class='primary'>{format.label}</span>
-                      <span class='secondary'>{format.window}</span>
+                      <Show when={format.window}>
+                        <span class='secondary'>{format.window}</span>
+                      </Show>
                     </SelectorItem>
                   )}
                 </For>

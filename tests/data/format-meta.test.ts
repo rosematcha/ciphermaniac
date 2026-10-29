@@ -152,6 +152,17 @@ test('a format scope asks Limitless for its format and organizer and filters by 
   assert.equal(scope.windowDays, 365);
 });
 
+test('formats are listed City Leagues first, and only City Leagues names its window', () => {
+  assert.deepEqual(
+    FORMAT_SCOPES.map(format => format.id),
+    ['city-leagues', 'expanded', 'eternal', 'glc', 'rspk', 'worlds-2010', 'efg']
+  );
+  assert.deepEqual(
+    FORMAT_SCOPES.filter(format => format.windowLabel).map(format => [format.id, format.windowLabel]),
+    [['city-leagues', 'last 14 days']]
+  );
+});
+
 test('GLC archetypes are types, drawn with the type icons the site serves', () => {
   const glc = FORMAT_SCOPES.find(format => format.id === 'glc') as FormatScope;
   const scope = formatReportScope(glc, NOW);
@@ -213,8 +224,8 @@ test('every format publishes its own folder and the index lists it', async () =>
   assert.deepEqual(
     index.formats.map(entry => [entry.id, entry.label, entry.window, entry.events]),
     [
-      ['eternal', 'Eternal', 'last 12 months', 1],
-      ['rspk', 'RS-PK', 'last 60 days', 1]
+      ['eternal', 'Eternal', undefined, 1],
+      ['rspk', 'RS-PK', undefined, 1]
     ]
   );
   assert.deepEqual(bucket.objects.get('reports/Formats/index.json'), index);

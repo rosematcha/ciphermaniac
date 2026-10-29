@@ -162,7 +162,7 @@ function indexEntry(format: FormatScope, meta: Record<string, unknown>): Formats
   return {
     id: format.id,
     label: format.label,
-    window: format.windowLabel,
+    ...(format.windowLabel ? { window: format.windowLabel } : {}),
     events: Number(meta.tournamentCount) || 0,
     decks: Number(meta.deckTotal) || 0,
     windowStart: String(meta.windowStart ?? ''),

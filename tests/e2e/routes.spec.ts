@@ -1547,7 +1547,8 @@ test('picking a format from Other scopes the archetypes to that format', async (
   await gotoClean(page, '/archetypes');
   await page.locator('.t-selector-trigger').click();
   const other = page.getByRole('group', { name: 'Other' });
-  await expect(other).toContainText('last 60 days');
+  // Only City Leagues shows its window; RS-PK is its name alone.
+  await expect(other.getByRole('button', { name: /RS-PK/ })).toHaveText('RS-PK');
   await other.getByRole('button', { name: /RS-PK/ }).click();
   await expect(page).toHaveURL(/scope=rspk/);
   await expect(page.locator('.t-selector-label')).toHaveText('RS-PK');

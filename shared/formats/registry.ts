@@ -53,8 +53,11 @@ export interface FormatCanon {
 export interface FormatScope {
   id: string;
   label: string;
-  /** Short description of the window, shown beside the label. */
-  windowLabel: string;
+  /**
+   * Short description of the window, shown beside the label. Only City
+   * Leagues carries one: its two weeks are what readers need to know.
+   */
+  windowLabel?: string;
   window: FormatWindow;
   source: FormatSource;
   /** Smallest field (players with a placing) that contributes decks. */
@@ -68,11 +71,20 @@ export interface FormatScope {
 const EX_ERA_BASIC_TYPES = ['Grass', 'Fire', 'Water', 'Lightning', 'Psychic', 'Fighting'] as const;
 const BASIC_TYPES = [...EX_ERA_BASIC_TYPES, 'Darkness', 'Metal'] as const;
 
+/** In the order the site lists them. */
 export const FORMAT_SCOPES: readonly FormatScope[] = [
+  {
+    id: 'city-leagues',
+    label: 'City Leagues',
+    windowLabel: 'last 14 days',
+    window: { kind: 'days', days: 14 },
+    source: { kind: 'limitless-jp' },
+    minFieldPlayers: 0,
+    minMatchupFieldPlayers: 0
+  },
   {
     id: 'expanded',
     label: 'Expanded',
-    windowLabel: 'last 4 sets',
     window: { kind: 'sets', count: 4 },
     source: { kind: 'limitless-online', format: 'EXPANDED' },
     minFieldPlayers: 4,
@@ -80,11 +92,19 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
     canon: { sets: { oldest: 'BLW', also: ['BWP'] }, prefer: 'newest' }
   },
   {
+    id: 'eternal',
+    label: 'Eternal',
+    window: { kind: 'days', days: 365 },
+    source: { kind: 'limitless-online', format: 'CUSTOM', organizerId: 90, nameIncludes: 'Eternal' },
+    minFieldPlayers: 0,
+    minMatchupFieldPlayers: 0,
+    canon: { sets: 'all', prefer: 'newest' }
+  },
+  {
     // Gym Leader Challenge: singleton, one type per deck, Expanded's card pool.
     // Limitless names each deck by its type.
     id: 'glc',
     label: 'GLC',
-    windowLabel: 'last 60 days',
     window: { kind: 'days', days: 60 },
     source: { kind: 'limitless-online', format: 'GLC' },
     minFieldPlayers: 4,
@@ -94,7 +114,6 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
   {
     id: 'rspk',
     label: 'RS-PK',
-    windowLabel: 'last 60 days',
     window: { kind: 'days', days: 60 },
     source: { kind: 'limitless-online', format: 'EX' },
     minFieldPlayers: 4,
@@ -113,7 +132,6 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
     // so a year of events is no staler than a month.
     id: 'worlds-2010',
     label: 'Worlds 2010',
-    windowLabel: 'last 12 months',
     window: { kind: 'days', days: 365 },
     source: { kind: 'limitless-online', format: '2010' },
     minFieldPlayers: 4,
@@ -127,7 +145,6 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
   {
     id: 'efg',
     label: 'EFG',
-    windowLabel: 'all time',
     window: { kind: 'all', since: '2022-01-01' },
     source: { kind: 'limitless-online', format: 'RMEP' },
     minFieldPlayers: 4,
@@ -137,25 +154,6 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
       prefer: 'oldest',
       basicEnergy: { set: 'BRS', types: BASIC_TYPES }
     }
-  },
-  {
-    id: 'eternal',
-    label: 'Eternal',
-    windowLabel: 'last 12 months',
-    window: { kind: 'days', days: 365 },
-    source: { kind: 'limitless-online', format: 'CUSTOM', organizerId: 90, nameIncludes: 'Eternal' },
-    minFieldPlayers: 0,
-    minMatchupFieldPlayers: 0,
-    canon: { sets: 'all', prefer: 'newest' }
-  },
-  {
-    id: 'city-leagues',
-    label: 'City Leagues',
-    windowLabel: 'last 14 days',
-    window: { kind: 'days', days: 14 },
-    source: { kind: 'limitless-jp' },
-    minFieldPlayers: 0,
-    minMatchupFieldPlayers: 0
   }
 ];
 
@@ -202,7 +200,7 @@ export function formatFolder(id: string): string {
 export interface FormatsIndexEntry {
   id: string;
   label: string;
-  window: string;
+  window?: string;
   events: number;
   decks: number;
   windowStart: string;
