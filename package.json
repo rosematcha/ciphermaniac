@@ -81,7 +81,7 @@
     "terser": "5.51.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.2",
-    "vite": "^8.3.2",
+    "vite": "^8.3.5",
     "vite-plugin-solid": "^2.11.0"
   },
   "engines": {
