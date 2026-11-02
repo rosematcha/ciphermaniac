@@ -20,6 +20,8 @@ async function daily(): Promise<void> {
     '.github/scripts/run-online-meta.ts',
     '.github/scripts/lib/onlineMeta.ts',
     '.github/scripts/run-trends.ts',
+    '.github/scripts/publish-deck-rules.ts',
+    '.github/scripts/lib/limitlessDeckRules.ts',
     '.github/scripts/update-prices.py',
     '.github/scripts/run-pack-ev.ts',
     '.github/scripts/run-format-meta.ts',
@@ -40,6 +42,8 @@ async function daily(): Promise<void> {
       process.env.ONLINE_FETCH_CACHE = '.cache/online-api';
       await rm(process.env.ONLINE_FETCH_CACHE, { recursive: true, force: true });
       node('run-online-meta.ts');
+      // After online meta, whose fetch of the same rules the run's cache already holds.
+      node('publish-deck-rules.ts');
       node('run-trends.ts');
       python('update-prices.py');
       node('run-pack-ev.ts');
