@@ -104,7 +104,7 @@
   },
   "overrides": {
     "fast-xml-parser": "^5.4.1",
-    "seroval": "^1.6.8",
+    "seroval": "^1.7.7",
     "seroval-plugins": "^1.6.8"
   },
   "lint-staged": {
