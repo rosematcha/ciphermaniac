@@ -72,6 +72,7 @@ const CardWallPage = page(() => import('./pages/CardWallPage'), 'CardWallPage');
 const EarningsPage = page(() => import('./pages/EarningsPage'), 'EarningsPage');
 const PackEvPage = page(() => import('./pages/PackEvPage'), 'PackEvPage');
 const SetImpactPage = page(() => import('./pages/SetImpactPage'), 'SetImpactPage');
+const RegistrationPage = page(() => import('./pages/RegistrationPage'), 'RegistrationPage');
 const LivePage = page(() => import('./pages/LivePage'), 'LivePage');
 const LiveSeatPage = page(() => import('./pages/live/LiveSeatPage'), 'LiveSeatPage');
 const AboutPage = page(() => import('./pages/AboutPage'), 'AboutPage');
@@ -155,6 +156,7 @@ render(
       <Route path='/tools/earnings' component={EarningsPage} />
       <Route path='/tools/pack-ev' component={PackEvPage} />
       <Route path='/tools/set-impact' component={SetImpactPage} />
+      <Route path='/tools/registration' component={RegistrationPage} />
       {/* The section shipped as /toys before it was made public — keep the old
           paths working for anyone who bookmarked or shared one. */}
       <Route path='/toys' component={() => <Navigate href='/tools' />} />

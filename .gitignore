@@ -108,6 +108,8 @@ trends.json
 # upstream has a scan of a card that does not exist — see src/lib/jokeMode.ts.
 !/static/joke-arts/
 !/static/sw.js
+# Hand-researched city and venue list for /tools/registration, not pipeline output.
+!/static/reg-sim-cities.json
 # security.txt, served from the root as RFC 9116 asks.
 !/static/.well-known/
 .lighthouseci/

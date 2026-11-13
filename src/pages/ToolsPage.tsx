@@ -32,6 +32,11 @@ const secondary: { href: string; name: string; desc: string }[] = [
     desc: 'How much of every major each set supplied over its time in Standard'
   },
   {
+    href: '/tools/registration',
+    name: 'Registration Simulator',
+    desc: 'Practice registering for a Regional the moment it opens'
+  },
+  {
     href: '/tools/in-loving-memory',
     name: 'In Loving Memory',
     desc: 'Every Day-2 decklist from rotated archetypes, frozen at the end of their run'

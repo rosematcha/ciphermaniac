@@ -1,0 +1,95 @@
+/* Registration Simulator (/tools/registration): one plain column, the way a
+   tournament registration page reads. */
+.regsim {
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: var(--text-body);
+}
+.regsim h1 {
+  margin: 0;
+}
+.regsim h2 {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: 17px;
+}
+.regsim section > p {
+  margin: var(--space-2) 0;
+  line-height: 1.5;
+}
+.regsim-title {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--rule);
+}
+.regsim-dates {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+}
+.regsim-rows {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px var(--space-4);
+  margin: 0;
+}
+.regsim-rows dt {
+  font-weight: 600;
+}
+.regsim-rows dd {
+  margin: 0;
+}
+.regsim-rows .regsim-sub {
+  padding-left: var(--space-3);
+  font-weight: 500;
+}
+.regsim-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+.regsim address {
+  font-style: normal;
+  line-height: 1.5;
+}
+.regsim-muted {
+  color: var(--muted);
+}
+.regsim-go {
+  margin-top: var(--space-5);
+}
+.regsim-code {
+  margin-top: var(--space-5);
+  color: var(--muted);
+  font-size: 11px;
+}
+.regsim-form fieldset {
+  margin: var(--space-4) 0;
+  padding: 0;
+  border: 0;
+}
+.regsim-form legend {
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+.regsim-choice {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 44px;
+}
+.regsim-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.regsim-done p {
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .regsim-rows,
+  .regsim-pair {
+    grid-template-columns: 1fr;
+  }
+  .regsim-rows dt {
+    margin-top: var(--space-2);
+  }
+}

@@ -658,7 +658,7 @@ test('the tools index features the event locator, tier list, label maker and pac
   await expect(featured.nth(2)).toHaveAttribute('href', '/tools/deck-box-labels');
   await expect(featured.nth(3)).toHaveAttribute('href', '/tools/pack-ev');
   // Everything else is a plain row, not a tile.
-  await expect(page.locator('.tools-more-item')).toHaveCount(6);
+  await expect(page.locator('.tools-more-item')).toHaveCount(7);
   await expect(page.locator('.tools-more-item', { hasText: 'Run an Event' })).toHaveAttribute(
     'href',
     'https://events.ciphermaniac.com'
