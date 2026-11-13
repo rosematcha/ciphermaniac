@@ -1,95 +1,363 @@
-/* Registration Simulator (/tools/registration): one plain column, the way a
-   tournament registration page reads. */
+/* Registration Simulator (/tools/registration).
+   A parody of a tournament registration site, so this sheet draws that site's
+   look on a white sheet in both modes rather than the house tokens: its system
+   font stack, an orange-and-blue palette, bordered cards, and Bootstrap-sized
+   buttons. Nothing here should leak into the rest of the site. */
 .regsim {
-  max-width: 760px;
+  --rs-ink: #222222;
+  --rs-link: #2680c2;
+  --rs-blue: #4098d7;
+  --rs-blue-050: #dceefb;
+  --rs-orange: #e67635;
+  --rs-orange-deep: #d4631c;
+  --rs-green: #57ae5b;
+  --rs-yellow: #f7d070;
+  --rs-warn-ink: #806c3a;
+  --rs-warn-bg: #fdf6e2;
+  --rs-warn-edge: #f6e7bd;
+  --rs-ok-bg: #e1efe0;
+  --rs-ok-edge: #cbe3c9;
+  --rs-line: rgba(0, 0, 0, 0.125);
+
+  max-width: 1140px;
   margin: 0 auto;
-  font-size: var(--text-body);
-}
-.regsim h1 {
-  margin: 0;
-}
-.regsim h2 {
-  margin: var(--space-5) 0 var(--space-2);
-  font-size: 17px;
-}
-.regsim section > p {
-  margin: var(--space-2) 0;
+  padding: 8px 16px 24px;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--rs-ink);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans',
+    sans-serif;
+  font-size: 16px;
   line-height: 1.5;
 }
+.regsim h1,
+.regsim h2,
+.regsim h3,
+.regsim button {
+  font-family: inherit;
+  font-feature-settings: normal;
+  letter-spacing: normal;
+}
+.regsim a {
+  color: var(--rs-link);
+  text-decoration: none;
+}
+.regsim a:hover {
+  text-decoration: underline;
+}
+.regsim p {
+  margin: 0 0 16px;
+}
+.regsim hr {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Title row: mark, name and dates, mark. */
 .regsim-title {
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--rule);
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
-.regsim-dates {
-  margin: var(--space-1) 0 0;
-  color: var(--muted);
-}
-.regsim-rows {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 6px var(--space-4);
+.regsim-title h1 {
+  flex: 1;
   margin: 0;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.2;
 }
-.regsim-rows dt {
-  font-weight: 600;
+.regsim-title-dates {
+  display: block;
+  font-size: 22px;
 }
-.regsim-rows dd {
+.regsim-mark {
+  flex: none;
+  width: 110px;
+  height: 100px;
+}
+.regsim-mark-ribbon {
+  width: 100px;
+}
+.regsim-mark-small {
+  width: 36px;
+  height: 30px;
+}
+
+/* Cards. */
+.regsim-card {
+  margin-bottom: 16px;
+  border: 1px solid var(--rs-line);
+  border-radius: 4px;
+  background: #fff;
+}
+.regsim-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--rs-line);
+  background: rgba(0, 0, 0, 0.03);
+}
+.regsim-card-head h2 {
   margin: 0;
-}
-.regsim-rows .regsim-sub {
-  padding-left: var(--space-3);
+  font-size: 20px;
   font-weight: 500;
 }
-.regsim-pair {
+.regsim-card-body {
+  padding: 20px;
+}
+.regsim-details {
+  border-color: var(--rs-blue);
+}
+.regsim-details .regsim-card-head {
+  background: var(--rs-blue-050);
+}
+
+/* Details: two label-and-value pairs to a line on a wide screen. */
+.regsim-rows {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
+  gap: 0 30px;
+  margin: 0;
 }
-.regsim address {
-  font-style: normal;
-  line-height: 1.5;
+.regsim-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 30px;
+  margin-bottom: 16px;
 }
-.regsim-muted {
-  color: var(--muted);
+.regsim-row dt {
+  font-weight: 700;
 }
+.regsim-row dd {
+  margin: 0;
+}
+.regsim .regsim-division-start {
+  margin: 4px 0;
+  padding: 0 5px;
+  font-style: italic;
+}
+
+/* Competitor agreement: the warning-yellow card, accepted. */
+.regsim-agreement {
+  border-color: var(--rs-warn-edge);
+  background: var(--rs-warn-bg);
+  color: var(--rs-warn-ink);
+}
+.regsim-agreement .regsim-card-head {
+  margin: 12px 20px 0;
+  padding: 12px 20px;
+}
+.regsim-agreement .regsim-card-head h2 {
+  font-size: 26px;
+}
+.regsim-agreement .regsim-card-body {
+  padding: 20px 40px;
+}
+.regsim-accepted {
+  padding: 12px 20px;
+  border: 1px solid var(--rs-ok-edge);
+  border-radius: 4px;
+  background: var(--rs-ok-bg);
+  color: var(--rs-link);
+  font-weight: 700;
+  text-align: center;
+}
+.regsim .regsim-accepted {
+  margin: 16px -20px 0;
+}
+.regsim-alert {
+  margin: 0 0 16px;
+  padding: 12px 20px;
+  border: 1px solid var(--rs-warn-edge);
+  border-radius: 4px;
+  background: var(--rs-warn-bg);
+  color: var(--rs-warn-ink);
+}
+
+/* Buttons. */
 .regsim-go {
-  margin-top: var(--space-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
 }
-.regsim-code {
-  margin-top: var(--space-5);
-  color: var(--muted);
-  font-size: 11px;
+.regsim-btn {
+  display: inline-block;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1.5;
+  text-align: center;
+  cursor: pointer;
 }
-.regsim-form fieldset {
-  margin: var(--space-4) 0;
+.regsim-btn-go {
+  border-color: var(--rs-green);
+  background: var(--rs-green);
+  color: #fff;
+}
+.regsim-btn-go:hover {
+  border-color: #3f9142;
+  background: #3f9142;
+}
+.regsim-btn-waiting {
+  border-color: #f9dd97;
+  background: #f9dd97;
+  color: #7b6a45;
+  cursor: default;
+}
+.regsim-btn-warning {
+  border-color: var(--rs-yellow);
+  background: var(--rs-yellow);
+  color: var(--rs-ink);
+  font-size: 16px;
+}
+.regsim-btn-link {
+  border-color: transparent;
+  background: transparent;
+  color: var(--rs-link);
+  font-size: 16px;
+}
+.regsim-badge {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.regsim-badge-light {
+  display: inline-block;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #f1f1f1;
+  color: var(--rs-ink);
+}
+
+/* Registration step. */
+.regsim-fieldset {
+  margin: 0 0 16px;
   padding: 0;
   border: 0;
 }
-.regsim-form legend {
-  margin-bottom: var(--space-2);
-  font-weight: 600;
+.regsim-fieldset legend {
+  margin-bottom: 8px;
+  font-weight: 700;
 }
 .regsim-choice {
   display: flex;
-  gap: var(--space-2);
+  gap: 8px;
   align-items: center;
   min-height: 44px;
 }
-.regsim-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
+
+/* Confirmation. */
+.regsim-confirmed {
+  border: 0;
 }
-.regsim-done p {
-  line-height: 1.5;
+.regsim-banner {
+  padding: 16px 12px;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(135deg, var(--rs-orange) 0%, var(--rs-orange-deep) 100%);
+  color: #fff;
+  text-align: center;
+}
+.regsim-banner h2 {
+  margin: 0 0 8px;
+  font-size: 32px;
+  font-weight: 500;
+}
+.regsim-banner p {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.regsim-banner .regsim-banner-time {
+  margin: 0;
+  font-size: 16px;
+}
+.regsim-todo-head {
+  margin: 0 0 20px;
+  color: var(--rs-orange);
+  font-size: 32px;
+  font-weight: 700;
+}
+.regsim-todo li {
+  margin-bottom: 16px;
+}
+.regsim-todo p {
+  margin: 8px 0;
+}
+.regsim-datebox {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0;
+  padding: 12px;
+  border-radius: 5px;
+  background: #f8f9fa;
+  color: #333;
+}
+.regsim-player .regsim-card-head-grey {
+  background: hsl(0deg 0% 97%);
+}
+.regsim-detail {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  gap: 30px;
 }
 
-@media (max-width: 640px) {
-  .regsim-rows,
-  .regsim-pair {
+/* The fake site's footer. */
+.regsim-footer {
+  margin-top: 30px;
+  text-align: center;
+}
+.regsim-footer p {
+  margin: 0 0 16px;
+}
+.regsim-footer span {
+  color: var(--rs-link);
+}
+
+@media (max-width: 991px) {
+  .regsim-rows {
     grid-template-columns: 1fr;
   }
-  .regsim-rows dt {
-    margin-top: var(--space-2);
+}
+
+@media (max-width: 575px) {
+  .regsim {
+    padding: 8px 12px 24px;
+  }
+  .regsim-mark:not(.regsim-mark-small) {
+    display: none;
+  }
+  .regsim-title {
+    padding: 16px 0;
+  }
+  .regsim-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .regsim-row dt {
+    margin-bottom: 0;
+  }
+  .regsim-agreement .regsim-card-head {
+    margin: 12px 12px 0;
+  }
+  .regsim-agreement .regsim-card-body {
+    padding: 20px 24px;
+  }
+  .regsim-detail {
+    grid-template-columns: 5fr 7fr;
+    gap: 12px;
   }
 }

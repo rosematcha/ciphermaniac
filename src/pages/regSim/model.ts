@@ -72,7 +72,8 @@ export function zonedInstant(date: CalendarDate, hour: number, minute: number, t
   return guess;
 }
 
-function offsetMs(instant: number, timeZone: string): number {
+/** How far a zone's wall clock runs ahead of UTC at an instant, in ms. */
+export function offsetMs(instant: number, timeZone: string): number {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
     hourCycle: 'h23',
@@ -107,6 +108,8 @@ export interface Draw {
   code: string;
   registeredAt?: number;
   division?: Division;
+  /** A made-up seven-digit player ID, drawn when registering. */
+  playerId?: string;
 }
 
 const CODE_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -120,6 +123,11 @@ function eventCode(cityName: string, random: () => number): string {
     .padEnd(2, 'X');
   const suffix = Array.from({ length: 14 }, () => CODE_CHARS[Math.floor(random() * CODE_CHARS.length)]).join('');
   return `${prefix}001-${suffix}`;
+}
+
+/** A seven-digit player ID that never starts with a zero. */
+export function playerId(random: () => number): string {
+  return String(1_000_000 + Math.floor(random() * 9_000_000));
 }
 
 export function newDraw(now: Date, cities: readonly { id: string; city: string }[], random: () => number): Draw {

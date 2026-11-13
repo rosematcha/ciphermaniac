@@ -14,6 +14,7 @@ import {
   nextOpening,
   zonedInstant
 } from '../../src/pages/regSim/model.ts';
+import { clockFor, isoDate, utcStamp, zoneAbbreviation, zonedTime } from '../../src/pages/regSim/format.ts';
 
 test('registration opens at the next top of the hour, skipping one less than a minute away', () => {
   const at = (h: number, m: number, s = 0) => new Date(2026, 10, 12, h, m, s);
@@ -63,4 +64,14 @@ test('a draw lasts two hours and survives a reload', () => {
   );
   assert.equal(liveDraw('{"version":1}', now.getTime(), known), null);
   assert.equal(liveDraw('not json', now.getTime(), known), null);
+});
+
+test('times read like the registration site: 12-hour with zone names in the US, 24-hour offsets elsewhere', () => {
+  const closes = Date.UTC(2027, 0, 7, 5, 59);
+  assert.equal(zonedTime(closes, 'America/Chicago', clockFor('United States')), '11:59 PM CST (America/Chicago)');
+  const recife = Date.UTC(2027, 0, 9, 11, 30);
+  assert.equal(zonedTime(recife, 'America/Recife', clockFor('Brazil')), '08:30 -03 (America/Recife)');
+  assert.equal(zoneAbbreviation(recife, 'Asia/Kolkata', '24h'), '+0530');
+  assert.equal(isoDate(Date.UTC(2026, 10, 13, 2, 0), 'America/Chicago'), '2026-11-12');
+  assert.equal(utcStamp(Date.UTC(2026, 10, 13, 2, 12, 20)), '2026-11-13 02:12:20');
 });

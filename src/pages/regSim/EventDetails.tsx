@@ -1,7 +1,18 @@
-import { For, Show } from 'solid-js';
+import { For, type JSX, Show } from 'solid-js';
 import type { SimCity } from './data';
 import { addDays, type Division, type Draw, localPrice, USD_PRICE, zonedInstant } from './model';
-import { money, weekendRange, zonedDateTime } from './format';
+import {
+  clockFor,
+  clockTime,
+  isoDate,
+  money,
+  utcStamp,
+  weekendRange,
+  zoneAbbreviation,
+  zonedDate,
+  zonedTime
+} from './format';
+import { CardStackMark, RibbonMark } from './marks';
 
 const DIVISIONS: { key: Division; label: string }[] = [
   { key: 'junior', label: 'Junior division' },
@@ -13,117 +24,170 @@ export function divisionPrice(city: SimCity, division: Division): string {
   return money(localPrice(USD_PRICE[division], city.rate), city.currency);
 }
 
-/**
- * The tournament page: dates, prices, venue, organizer, and, once
- * registration has opened, the way in.
- */
-export function EventDetails(props: { city: SimCity; draw: Draw; open: boolean; onRegister: () => void }) {
+/** A date on one line and its time, with the zone, on the next. */
+function When(props: { instant: number; city: SimCity }) {
+  return (
+    <>
+      {zonedDate(props.instant, props.city.timezone)}
+      <br />
+      {zonedTime(props.instant, props.city.timezone, clockFor(props.city.country))}
+    </>
+  );
+}
+
+/** One label and its value: two of these sit side by side on a wide screen. */
+function Row(props: { label: string; children: JSX.Element }) {
+  return (
+    <div class='regsim-row'>
+      <dt>{props.label}</dt>
+      <dd>{props.children}</dd>
+    </div>
+  );
+}
+
+/** The event's title row: a mark, the name and dates, and a second mark. */
+export function EventTitle(props: { city: SimCity; draw: Draw; withZone?: boolean }) {
   const zone = () => props.city.timezone;
+  return (
+    <header class='regsim-title'>
+      <CardStackMark />
+      <h1>
+        {props.draw.saturday.year} {props.city.city} Regional Championships
+        <span class='regsim-title-dates'>{weekendRange(props.draw.saturday)}</span>
+        <Show when={props.withZone}>
+          <span class='regsim-badge regsim-badge-light'>
+            Time zone: {zone()} {zoneAbbreviation(props.draw.opensAt, zone(), clockFor(props.city.country))}
+          </span>
+        </Show>
+      </h1>
+      <RibbonMark />
+    </header>
+  );
+}
+
+function Venue(props: { city: SimCity }) {
+  return (
+    <>
+      {props.city.venue}
+      <Show when={props.city.street}>
+        {street => (
+          <>
+            <br />
+            {street()}
+          </>
+        )}
+      </Show>
+      <br />
+      {props.city.locality}
+      <br />
+      {props.city.country}
+      <Show when={props.city.website}>
+        {website => (
+          <>
+            <br />
+            <a href={website()} target='_blank' rel='noopener noreferrer'>
+              Venue website
+            </a>
+          </>
+        )}
+      </Show>
+    </>
+  );
+}
+
+/** The bordered card of dates, prices, venue and organizer. */
+function DetailsCard(props: { city: SimCity; draw: Draw }) {
   const saturday = () => props.draw.saturday;
-  const at = (hour: number, minute: number) => zonedDateTime(zonedInstant(saturday(), hour, minute, zone()), zone());
+  const at = (hour: number, minute: number) => zonedInstant(saturday(), hour, minute, props.city.timezone);
   // Registration closes at the end of the Wednesday before the event.
-  const closes = () => zonedDateTime(zonedInstant(addDays(saturday(), -3), 23, 59, zone()), zone());
+  const closes = () => zonedInstant(addDays(saturday(), -3), 23, 59, props.city.timezone);
 
   return (
-    <article class='regsim-event'>
-      <header class='regsim-title'>
-        <h1>
-          {saturday().year} {props.city.city} Regional Championships
-        </h1>
-        <p class='regsim-dates'>{weekendRange(saturday())}</p>
-      </header>
-
-      <section>
+    <section class='regsim-card regsim-details'>
+      <div class='regsim-card-head'>
         <h2>Tournament details</h2>
-        <dl class='regsim-rows'>
-          <dt>Event dates</dt>
-          <dd>{weekendRange(saturday())}</dd>
-          <Show
-            when={props.open}
-            fallback={
-              <>
-                <dt>Registration opens</dt>
-                <dd>{zonedDateTime(props.draw.opensAt, zone())}</dd>
-              </>
-            }
-          >
-            <dt>Registration closes</dt>
-            <dd>{closes()}</dd>
-          </Show>
-          <dt>List submission closes</dt>
-          <dd>{at(7, 30)}</dd>
-          <dt>Tournament start</dt>
-          <dd>{at(8, 30)}</dd>
-          <dt class='regsim-sub'>Junior division</dt>
-          <dd>{at(9, 0)}</dd>
-          <dt class='regsim-sub'>Senior division</dt>
-          <dd>{at(9, 0)}</dd>
-        </dl>
-      </section>
-
-      <section>
-        <h2>Price</h2>
-        <dl class='regsim-rows'>
+        <CardStackMark small />
+      </div>
+      <dl class='regsim-card-body regsim-rows'>
+        <Row label='Event dates'>{weekendRange(saturday())}</Row>
+        <Row label='Registration closes'>
+          <When instant={closes()} city={props.city} />
+        </Row>
+        <Row label='List submission closes'>
+          <When instant={at(7, 30)} city={props.city} />
+        </Row>
+        <Row label='Tournament start'>
+          <When instant={at(8, 30)} city={props.city} />
+          <For each={['Junior division', 'Senior division']}>
+            {label => (
+              <p class='regsim-division-start'>
+                <b>{label}:</b> <When instant={at(9, 0)} city={props.city} />
+              </p>
+            )}
+          </For>
+        </Row>
+        <Row label='Price'>
           <For each={DIVISIONS}>
             {division => (
               <>
-                <dt>{division.label}</dt>
-                <dd>{divisionPrice(props.city, division.key)}</dd>
+                {division.label}: {divisionPrice(props.city, division.key)}
+                <br />
               </>
             )}
           </For>
-        </dl>
-        <p>[COPY: refund policy]</p>
-        <p>[COPY: registrations are not transferable]</p>
-      </section>
+        </Row>
+        <Row label='Refund policy'>[COPY: refund policy]</Row>
+        <Row label='Non-transferable'>[COPY: registrations are not transferable]</Row>
+        <Row label='Venue'>
+          <Venue city={props.city} />
+        </Row>
+        <Row label='Host organizer'>Gaming Generations</Row>
+      </dl>
+    </section>
+  );
+}
 
-      <section class='regsim-pair'>
-        <div>
-          <h2>Venue</h2>
-          <address>
-            {props.city.venue}
-            <Show when={props.city.street}>
-              {street => (
-                <>
-                  <br />
-                  {street()}
-                </>
-              )}
-            </Show>
-            <br />
-            {props.city.locality}
-            <br />
-            {props.city.country}
-          </address>
-          <Show when={props.city.website}>
-            {website => (
-              <a href={website()} target='_blank' rel='noopener noreferrer'>
-                Venue website
-              </a>
-            )}
-          </Show>
+/** The yellow, disabled stand-in for the button until registration opens. */
+function OpensButton(props: { city: SimCity; draw: Draw }) {
+  const zone = () => props.city.timezone;
+  const clock = () => clockFor(props.city.country);
+  return (
+    <button type='button' class='regsim-btn regsim-btn-waiting' disabled>
+      Registration opens {isoDate(props.draw.opensAt, zone())} at {clockTime(props.draw.opensAt, zone(), clock())}
+      <span class='regsim-badge'>
+        Time zone: {zone()} {zoneAbbreviation(props.draw.opensAt, zone(), clock())}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * The tournament page: the details, the agreement (already accepted), and the
+ * button at the bottom that only turns green once registration has opened.
+ */
+export function EventDetails(props: { city: SimCity; draw: Draw; open: boolean; onRegister: () => void }) {
+  return (
+    <article>
+      <EventTitle city={props.city} draw={props.draw} />
+      <p>[COPY: event website line]</p>
+      <DetailsCard city={props.city} draw={props.draw} />
+      <section class='regsim-card regsim-agreement'>
+        <div class='regsim-card-head'>
+          <h2>Competitor agreement</h2>
         </div>
-        <div>
-          <h2>Host organizer</h2>
-          <p>Gaming Generations</p>
+        <div class='regsim-card-body'>
+          <p>[COPY: competitor agreement summary]</p>
+          <p class='regsim-accepted'>Accepted {utcStamp(props.draw.createdAt)} UTC</p>
         </div>
       </section>
-
-      <section>
-        <h2>Competitor agreement</h2>
-        <p>[COPY: competitor agreement]</p>
-      </section>
-
-      <Show
-        when={props.open}
-        fallback={<p class='regsim-muted'>Registration opens {zonedDateTime(props.draw.opensAt, zone())}.</p>}
-      >
-        <button type='button' class='btn btn-primary regsim-go' onClick={() => props.onRegister()}>
-          Go to registration
-        </button>
-      </Show>
-
-      <p class='regsim-code'>{props.draw.code}</p>
+      <p class='regsim-alert'>[COPY: one registration per event]</p>
+      <div class='regsim-go'>
+        <Show when={props.open} fallback={<OpensButton city={props.city} draw={props.draw} />}>
+          <button type='button' class='regsim-btn regsim-btn-go' onClick={() => props.onRegister()}>
+            Go to registration
+          </button>
+        </Show>
+      </div>
     </article>
   );
 }
