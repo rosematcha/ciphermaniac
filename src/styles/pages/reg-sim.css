@@ -78,14 +78,10 @@
 }
 .regsim-mark {
   flex: none;
-  width: 110px;
+  width: auto;
   height: 100px;
 }
-.regsim-mark-ribbon {
-  width: 100px;
-}
 .regsim-mark-small {
-  width: 36px;
   height: 30px;
 }
 
@@ -313,6 +309,10 @@
   display: grid;
   grid-template-columns: 1fr 3fr;
   gap: 30px;
+}
+.regsim-detail span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* The fake site's footer. */

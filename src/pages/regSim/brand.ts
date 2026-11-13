@@ -1,2 +1,2 @@
-/** The fake registration site's name. Placeholder until the joke name is picked. */
-export const BRAND = '[BRAND]';
+/** The fake registration site's name: Mimikyu, the Pikachu knockoff, said as letters. */
+export const BRAND = 'MimiQ';

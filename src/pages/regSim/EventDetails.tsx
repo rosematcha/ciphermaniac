@@ -136,8 +136,13 @@ function DetailsCard(props: { city: SimCity; draw: Draw }) {
             )}
           </For>
         </Row>
-        <Row label='Refund policy'>[COPY: refund policy]</Row>
-        <Row label='Non-transferable'>[COPY: registrations are not transferable]</Row>
+        <Row label='Refund policy'>
+          Refunds are available until 11:59 PM the night before you want one, less a processing fee. The fee is 20% this
+          week, 40% next week, and the whole entry after that.
+        </Row>
+        <Row label='Non-transferable'>
+          Registrations are valid for the named player only. The named player may not change their name.
+        </Row>
         <Row label='Venue'>
           <Venue city={props.city} />
         </Row>
@@ -169,18 +174,24 @@ export function EventDetails(props: { city: SimCity; draw: Draw; open: boolean; 
   return (
     <article>
       <EventTitle city={props.city} draw={props.draw} />
-      <p>[COPY: event website line]</p>
+      <p>For complete and up-to-date information, keep refreshing this page.</p>
       <DetailsCard city={props.city} draw={props.draw} />
       <section class='regsim-card regsim-agreement'>
         <div class='regsim-card-head'>
           <h2>Competitor agreement</h2>
         </div>
         <div class='regsim-card-body'>
-          <p>[COPY: competitor agreement summary]</p>
+          <p>
+            The MimiQ Competitor Agreement governs your participation in MimiQ tournaments, tournaments near MimiQ
+            tournaments, and any tournament MimiQ hears about. You accepted it when this page loaded.
+          </p>
           <p class='regsim-accepted'>Accepted {utcStamp(props.draw.createdAt)} UTC</p>
         </div>
       </section>
-      <p class='regsim-alert'>[COPY: one registration per event]</p>
+      <p class='regsim-alert'>
+        Competitors may register for one tournament per event. MimiQ removes extra registrations, starting with the one
+        you wanted.
+      </p>
       <div class='regsim-go'>
         <Show when={props.open} fallback={<OpensButton city={props.city} draw={props.draw} />}>
           <button type='button' class='regsim-btn regsim-btn-go' onClick={() => props.onRegister()}>

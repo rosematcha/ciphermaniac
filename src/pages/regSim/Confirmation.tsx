@@ -5,6 +5,8 @@ import { clockFor, elapsed, weekendRange, zonedTime } from './format';
 import { EventTitle } from './EventDetails';
 
 const DIVISION_NAMES = { junior: 'Junior', senior: 'Senior', masters: 'Masters' } as const;
+// A birthdate old enough for each division, all on the day the first games came out.
+const BIRTHDATES = { junior: '2016-02-27', senior: '2012-02-27', masters: '1996-02-27' } as const;
 
 /** "Saturday, January 9, 2027" in the event's zone. */
 function longDate(instant: number, timeZone: string): string {
@@ -43,7 +45,7 @@ function Detail(props: { label: string; children: JSX.Element }) {
  */
 export function Confirmation(props: { city: SimCity; draw: Draw; registeredAt: number; onCancel: () => void }) {
   const at = (hour: number, minute: number) => zonedInstant(props.draw.saturday, hour, minute, props.city.timezone);
-  const division = () => DIVISION_NAMES[props.draw.division ?? 'masters'];
+  const division = () => props.draw.division ?? 'masters';
 
   return (
     <article>
@@ -65,18 +67,27 @@ export function Confirmation(props: { city: SimCity; draw: Draw; registeredAt: n
             <p>
               <b>Important</b>
             </p>
-            <p>[COPY: important notice]</p>
+            <p>
+              This registration holds your seat until the venue fills, the server falls over, or MimiQ finds a
+              duplicate. Finish every step below, or round 1 starts without you.
+            </p>
           </div>
           <h3 class='regsim-todo-head'>What You Need to Do</h3>
           <ol class='regsim-todo'>
             <li>
               <b>Deck list submission</b>
-              <p>[COPY: deck list instructions]</p>
+              <p>
+                Submit your deck list in the MimiQ Deck List Creator before list submission closes. You can resubmit as
+                often as you like. The last list counts, even if it has 61 cards.
+              </p>
               <DateBox instant={at(7, 30)} city={props.city} />
             </li>
             <li>
               <b>Venue Entry</b>
-              <p>[COPY: venue entry]</p>
+              <p>
+                Bring government-issued photo ID that matches the name on your registration. Badge pickup closes when
+                the line reaches the parking garage.
+              </p>
             </li>
             <li>
               <b>First Day of Play</b>
@@ -97,10 +108,10 @@ export function Confirmation(props: { city: SimCity; draw: Draw; registeredAt: n
         </div>
         <div class='regsim-card-body'>
           <Detail label='Player ID'>{props.draw.playerId ?? ''}</Detail>
-          <Detail label='Name'>[COPY: player name]</Detail>
-          <Detail label='Birthdate'>[COPY: birthdate]</Detail>
-          <Detail label='Division'>{division()}</Detail>
-          <Detail label='Email'>[COPY: email]</Detail>
+          <Detail label='Name'>Pikachu (real)</Detail>
+          <Detail label='Birthdate'>{BIRTHDATES[division()]}</Detail>
+          <Detail label='Division'>{DIVISION_NAMES[division()]}</Detail>
+          <Detail label='Email'>totally.pikachu@example.com</Detail>
           <hr />
           <div class='regsim-go'>
             <button type='button' class='regsim-btn regsim-btn-warning' onClick={() => props.onCancel()}>
@@ -108,7 +119,10 @@ export function Confirmation(props: { city: SimCity; draw: Draw; registeredAt: n
             </button>
           </div>
           <hr />
-          <p>[COPY: support footnote]</p>
+          <p>
+            If your registration contains an error, file a support ticket. Tickets are answered in the order they
+            arrive, then reversed.
+          </p>
         </div>
       </section>
     </article>
