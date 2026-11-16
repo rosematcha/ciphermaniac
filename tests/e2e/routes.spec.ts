@@ -11,6 +11,7 @@
  * unit tests, where it is cheaper and more precise.
  */
 
+import AxeBuilder from '@axe-core/playwright';
 import { expect, type Route, test } from '@playwright/test';
 
 /** Fail loudly if a page reaches production R2 — the fixture wiring is broken. */
@@ -1567,3 +1568,50 @@ test('a card on a format ban list says so on its page in that format', async ({ 
   await gotoClean(page, '/cards/MEG/114?scope=online');
   await expect(page.locator('.card-meta-row')).not.toContainText('Banned');
 });
+
+/**
+ * Accessibility and fit, on the main page of each section. axe runs with the
+ * WCAG 2.2 tags (target size is off unless asked for), and the page must not
+ * scroll sideways. Runs in both the desktop and the phone project.
+ */
+const A11Y_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+const A11Y_PATHS = [
+  '/',
+  '/cards',
+  '/cards/MEG/114',
+  '/archetypes',
+  '/archetypes/Dragapult',
+  '/trends',
+  '/players',
+  '/players/1272',
+  '/events?r=25',
+  '/tools',
+  '/about'
+];
+
+/**
+ * Known failures waiting on a design call, as `path|rule|target`. Like the
+ * drift baseline, this list may only shrink: anything not on it fails.
+ * - The muted small text in the archetype stat band, the matchup interval and
+ *   the player profile sits under 4.5:1; its colour comes from the design
+ *   package.
+ * - The map credit link is under the 24px target minimum.
+ */
+const A11Y_KNOWN = new Set([
+  '/archetypes/Dragapult|color-contrast|.is-lead > dt > small',
+  '/archetypes/Dragapult|color-contrast|.is-muted > dt > small',
+  '/archetypes/Dragapult|color-contrast|span[title="95% interval 44–77%"]',
+  '/players/1272|color-contrast|small',
+  '/events?r=25|target-size|.lm-credit'
+]);
+
+for (const path of A11Y_PATHS) {
+  test(`${path} meets WCAG 2.2 AA and fits the screen @mobile`, async ({ page }) => {
+    await gotoClean(page, path);
+    const { violations } = await new AxeBuilder({ page }).withTags(A11Y_TAGS).analyze();
+    const found = violations.flatMap(v => v.nodes.map(n => `${path}|${v.id}|${n.target.join(' ')}`));
+    expect(found.filter(key => !A11Y_KNOWN.has(key))).toEqual([]);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, 'horizontal overflow in px').toBeLessThanOrEqual(0);
+  });
+}
