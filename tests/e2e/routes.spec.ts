@@ -1592,16 +1592,8 @@ const A11Y_PATHS = [
 /**
  * Known failures waiting on a design call, as `path|rule|target`. Like the
  * drift baseline, this list may only shrink: anything not on it fails.
- * - The muted small text in the archetype stat band, the matchup interval and
- *   the player profile sits under 4.5:1; its colour comes from the design
- *   package.
  */
-const A11Y_KNOWN = new Set([
-  '/archetypes/Dragapult|color-contrast|.is-lead > dt > small',
-  '/archetypes/Dragapult|color-contrast|.is-muted > dt > small',
-  '/archetypes/Dragapult|color-contrast|span[title="95% interval 44–77%"]',
-  '/players/1272|color-contrast|small'
-]);
+const A11Y_KNOWN = new Set<string>([]);
 
 for (const path of A11Y_PATHS) {
   test(`${path} meets WCAG 2.2 AA and fits the screen @mobile`, async ({ page }) => {
