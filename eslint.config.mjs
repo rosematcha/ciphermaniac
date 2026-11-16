@@ -41,6 +41,15 @@ export default [
           selector: "PropertyDefinition[kind='field'][key.type='PrivateIdentifier']",
           message:
             'Private class fields are disallowed for compatibility with older mobile browsers. Use underscored properties or closures instead.'
+        },
+        {
+          selector: "JSXOpeningElement[name.name='A'] > JSXAttribute[name.name='href'] Literal[value=/^\\/api\\//]",
+          message: 'The router intercepts <A> links, so /api routes 404. Use a plain <a> to reach the Function.'
+        },
+        {
+          selector:
+            "JSXOpeningElement[name.name='A'] > JSXAttribute[name.name='href'] TemplateElement[value.raw=/^\\/api\\//]",
+          message: 'The router intercepts <A> links, so /api routes 404. Use a plain <a> to reach the Function.'
         }
       ],
       'no-unused-vars': 'off',
@@ -548,6 +557,17 @@ export default [
     }
   },
   {
+    files: ['src/**/*.{ts,tsx}', 'shared/**/*.ts', 'functions/**/*.ts', 'scripts/**/*.ts', '.github/scripts/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      '@typescript-eslint/use-unknown-in-catch-callback-variable': 'error',
+      '@typescript-eslint/consistent-type-assertions': [
+        'error',
+        { assertionStyle: 'as', objectLiteralTypeAssertions: 'never' }
+      ]
+    }
+  },
+  {
     files: ['shared/data/**/*.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
@@ -556,6 +576,20 @@ export default [
       '@typescript-eslint/no-unsafe-call': 'error',
       '@typescript-eslint/no-unsafe-member-access': 'error',
       '@typescript-eslint/no-unsafe-return': 'error'
+    }
+  },
+  {
+    files: ['shared/**/*.ts', 'functions/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Math',
+          property: 'random',
+          message: 'Use crypto.getRandomValues for anything a person could guess, such as codes and tokens.'
+        }
+      ]
     }
   }
 ];

@@ -374,7 +374,7 @@ async function main() {
   });
 }
 
-main().catch(error => {
+main().catch((error: unknown) => {
   console.error('[trends] Failed', error);
   process.exit(1);
 });

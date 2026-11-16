@@ -563,11 +563,7 @@ export function buildMatchupMatrix(
 
 /** A zeroed per-tier deck counter. */
 function emptyTierTotals(): TierTotals {
-  const totals = {} as TierTotals;
-  for (const tag of SUCCESS_TAGS) {
-    totals[tag] = 0;
-  }
-  return totals;
+  return Object.fromEntries(SUCCESS_TAGS.map(tag => [tag, 0])) as TierTotals;
 }
 
 /**
@@ -717,10 +713,9 @@ function tierCountsFor(
   }
   const cardDays = cardDayData.get(uid)!;
   if (!cardDays.has(dateStr)) {
-    const freshEntry = {} as Record<SuccessTag, TierCounts>;
-    for (const tag of SUCCESS_TAGS) {
-      freshEntry[tag] = { counts: [], decksWithCard: 0 };
-    }
+    const freshEntry = Object.fromEntries(
+      SUCCESS_TAGS.map((tag): [SuccessTag, TierCounts] => [tag, { counts: [], decksWithCard: 0 }])
+    ) as Record<SuccessTag, TierCounts>;
     cardDays.set(dateStr, freshEntry);
   }
   return cardDays.get(dateStr)!;

@@ -206,7 +206,7 @@ async function main() {
   console.info('[snapshots] Done', results.map(r => `${r.rotationDate}=${r.success ? 'ok' : 'skip'}`).join(' '));
 }
 
-main().catch(err => {
+main().catch((err: unknown) => {
   console.error('[snapshots] Fatal', err);
   process.exit(1);
 });

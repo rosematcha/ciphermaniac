@@ -58,7 +58,8 @@ export async function publishSeats(bucket: LiveBucket, votes: VoteStore, slug: s
     if (retry > 0) {
       await new Promise(resolve => {
         const backoff = 10 * 2 ** (retry - 1);
-        setTimeout(resolve, backoff * (0.5 + Math.random()));
+        const jitter = crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
+        setTimeout(resolve, backoff * (0.5 + jitter));
       });
     }
     try {

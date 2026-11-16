@@ -68,7 +68,7 @@ async function main() {
   console.log(`Synced ${expected.size} toy files: ${written} written, ${stale.length} removed.`);
 }
 
-main().catch(error => {
+main().catch((error: unknown) => {
   console.error(error);
   process.exit(1);
 });

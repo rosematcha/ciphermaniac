@@ -169,7 +169,7 @@ async function main() {
   console.log(`[majors-trends] Uploaded ${key} (${body.length} bytes)`);
 }
 
-main().catch(error => {
+main().catch((error: unknown) => {
   console.error('[majors-trends] Failed', error);
   process.exit(1);
 });

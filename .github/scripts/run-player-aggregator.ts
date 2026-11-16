@@ -106,7 +106,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err: unknown) => {
   console.error('[player-aggregator] Failed', err);
   process.exit(1);
 });

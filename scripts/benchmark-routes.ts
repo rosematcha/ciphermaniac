@@ -733,7 +733,7 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(err => {
+main().catch((err: unknown) => {
   console.error('[bench] Fatal:', err);
   process.exit(1);
 });

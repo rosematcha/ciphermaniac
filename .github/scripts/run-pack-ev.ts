@@ -73,7 +73,7 @@ async function main(): Promise<void> {
   console.log(`Published ${index.sets.length} sets${out ? ` to ${out}` : ''}`);
 }
 
-main().catch(error => {
+main().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 });

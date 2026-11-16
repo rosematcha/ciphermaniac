@@ -114,7 +114,7 @@ async function main() {
   console.info(`[local-build] Wrote to ${OUT_BASE}/players/`);
 }
 
-main().catch(err => {
+main().catch((err: unknown) => {
   console.error('[local-build] Failed', err);
   process.exit(1);
 });

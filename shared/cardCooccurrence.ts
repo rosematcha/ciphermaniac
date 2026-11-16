@@ -107,7 +107,7 @@ export function buildCooccurrence(decks: Deck[], reportItems: ReportItemLike[]):
             set: card.set,
             number: card.number,
             category: card.category
-          } as CardRef);
+          } satisfies CardRef);
         entry = { ref, deckIds: new Set(), count: 0 };
         presence.set(cid, entry);
       }

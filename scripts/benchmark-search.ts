@@ -49,7 +49,7 @@ for (const query of queries) {
   const timing = measure(() => searchTiered(index, query).hits.length);
   console.log(JSON.stringify({ query, ...timing }));
 }
-const missing = { name: 'Missing', set: 'ZZZ', number: '999' } as CardItem;
+const missing: CardItem = { name: 'Missing', set: 'ZZZ', number: '999', found: 0, total: 0, pct: 0 };
 const nameOnly = { ...missing, name: report.items[0].name };
 for (const card of [missing, nameOnly]) {
   const timing = measure(() => Number(findCardInArchetypeReport(report, card) !== null));

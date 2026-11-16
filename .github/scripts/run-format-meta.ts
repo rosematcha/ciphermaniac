@@ -55,7 +55,7 @@ async function mirrorJapaneseCardImages(): Promise<void> {
   }
 }
 
-main().catch(error => {
+main().catch((error: unknown) => {
   console.error('[format-meta] Failed:', error);
   process.exitCode = 1;
 });

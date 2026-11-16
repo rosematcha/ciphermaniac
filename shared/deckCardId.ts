@@ -56,7 +56,7 @@ export function buildCanonicalCardId(
     return null;
   }
   const canonical = db
-    ? canonicalizeDeckCard({ name: card.name ?? '', set: card.set, number: card.number, count: 0 } as DeckCard, db)
+    ? canonicalizeDeckCard({ name: card.name ?? '', set: card.set, number: card.number, count: 0 }, db)
     : card;
   return canonical.set ? buildCardId(canonical.set, canonical.number ?? null) : null;
 }

@@ -95,7 +95,7 @@ async function main(): Promise<void> {
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  main().catch(error => {
+  main().catch((error: unknown) => {
     console.error('[publish-release]', error instanceof Error ? error.message : error);
     process.exit(1);
   });

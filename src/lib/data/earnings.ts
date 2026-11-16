@@ -36,7 +36,7 @@ export function fetchEarnings(): Promise<EarningsPayload> {
 let eventsPromise: Promise<EarningsEventsPayload> | null = null;
 
 export function fetchEarningsEvents(): Promise<EarningsEventsPayload> {
-  eventsPromise ??= fetchStatic<EarningsEventsPayload>(EVENTS_PATH).catch(err => {
+  eventsPromise ??= fetchStatic<EarningsEventsPayload>(EVENTS_PATH).catch((err: unknown) => {
     // Don't cache a failure — a later expand should be able to retry.
     eventsPromise = null;
     throw err;

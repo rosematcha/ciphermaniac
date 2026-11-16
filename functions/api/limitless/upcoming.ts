@@ -37,7 +37,7 @@ export async function onRequest(context: Context): Promise<Response> {
   const url = new URL(context.request.url);
   url.search = '';
   const key = new Request(url, { method: 'GET' });
-  const hit = await cache?.match(key).catch(err => {
+  const hit = await cache?.match(key).catch((err: unknown) => {
     console.warn('upcoming cache read failed', err);
     return undefined;
   });
@@ -51,7 +51,9 @@ export async function onRequest(context: Context): Promise<Response> {
     return jsonError(`Fetch failed: ${err instanceof Error ? err.message : String(err)}`, 502, ERROR_HEADERS);
   }
   if (cache) {
-    const write = cache.put(key, response.clone()).catch(err => console.warn('upcoming cache write failed', err));
+    const write = cache
+      .put(key, response.clone())
+      .catch((err: unknown) => console.warn('upcoming cache write failed', err));
     if (context.waitUntil) {
       context.waitUntil(write);
     } else {

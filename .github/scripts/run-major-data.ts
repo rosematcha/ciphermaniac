@@ -41,7 +41,7 @@ export async function runMajorData(): Promise<void> {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runMajorData().catch(error => {
+  runMajorData().catch((error: unknown) => {
     console.error(error);
     process.exitCode = 1;
   });

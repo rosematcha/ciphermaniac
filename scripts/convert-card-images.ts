@@ -408,7 +408,7 @@ async function main(): Promise<void> {
   exitOnFailure();
 }
 
-main().catch(err => {
+main().catch((err: unknown) => {
   console.error(err);
   process.exit(1);
 });
