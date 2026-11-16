@@ -1595,14 +1595,12 @@ const A11Y_PATHS = [
  * - The muted small text in the archetype stat band, the matchup interval and
  *   the player profile sits under 4.5:1; its colour comes from the design
  *   package.
- * - The map credit link is under the 24px target minimum.
  */
 const A11Y_KNOWN = new Set([
   '/archetypes/Dragapult|color-contrast|.is-lead > dt > small',
   '/archetypes/Dragapult|color-contrast|.is-muted > dt > small',
   '/archetypes/Dragapult|color-contrast|span[title="95% interval 44–77%"]',
-  '/players/1272|color-contrast|small',
-  '/events?r=25|target-size|.lm-credit'
+  '/players/1272|color-contrast|small'
 ]);
 
 for (const path of A11Y_PATHS) {
