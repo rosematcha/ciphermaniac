@@ -136,11 +136,7 @@ export function parseDecklistPage(html: string, id: string): CityLeagueList {
   return { id, cards };
 }
 
-function printFromRow(
-  $: CheerioAPI,
-  row: Selection,
-  self: PrintRef
-): { section: 'int' | 'jp'; print: PrintRef } | null {
+function printFromRow(row: Selection, self: PrintRef): { section: 'int' | 'jp'; print: PrintRef } | null {
   const link = row.find('a').first();
   const href = link.attr('href');
   const jp = JP_CARD_HREF.exec(href ?? '');
@@ -166,7 +162,7 @@ export function parseJpCardPrints(html: string, self: PrintRef): JpCardPrints {
   const $ = cheerio.load(html);
   const result: JpCardPrints = { international: [], japanese: [] };
   $('table.card-prints-versions tr').each((_, element) => {
-    const found = printFromRow($, $(element), self);
+    const found = printFromRow($(element), self);
     if (found?.section === 'int') {
       result.international.push(found.print);
     } else if (found) {

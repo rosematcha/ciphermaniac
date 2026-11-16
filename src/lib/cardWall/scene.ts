@@ -136,7 +136,7 @@ export function dealRows(deal: WallDeal, rows: number, cardsPerRow: number, rng:
 }
 
 /** Build the scene for a stage of the given pixel size. */
-export function buildScene(config: WallConfig, deal: WallDeal, width: number, height: number): WallScene {
+export function buildScene(config: WallConfig, deal: WallDeal, _width: number, height: number): WallScene {
   const rows = Math.max(1, Math.floor(config.rows));
   const cardsPerRow = Math.max(1, Math.floor(config.cardsPerRow));
   const band = height / rows;
