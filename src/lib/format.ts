@@ -79,18 +79,16 @@ export function parseISODate(s: string | null | undefined): Date | null {
 
 /**
  * Win percentage (0–100) from a W/L record, ties excluded, or null when
- * unplayed. Whole numbers: the player pages show this in table rows and stat
- * feet, and a tenth of a percent is noise at any sample size we publish.
+ * unplayed. Unrounded, so two players are compared on the exact figure.
  */
 export function winPercent(wins: number, losses: number): number | null {
   const denom = wins + losses;
-  return denom ? Math.round((wins / denom) * 100) : null;
+  return denom ? (wins / denom) * 100 : null;
 }
 
-/** {@link winPercent} as a display string, em dash when unplayed. */
+/** {@link winPercent} to one decimal, as every table's percents are; em dash when unplayed. */
 export function winPercentLabel(wins: number, losses: number): string {
-  const pct = winPercent(wins, losses);
-  return pct == null ? '—' : `${pct}%`;
+  return formatPercent(winPercent(wins, losses));
 }
 
 export function shortDate(d: Date | null): string {

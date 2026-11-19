@@ -7,15 +7,15 @@
   gap: var(--space-2);
 }
 
-.set-impact-table .data td.set-impact-name {
-  white-space: nowrap;
-}
-
 .set-impact-code {
   margin-left: 4px;
   color: var(--muted);
   font-size: var(--text-sm);
-  letter-spacing: 0.04em;
+}
+
+/* Rows carry card art. */
+.set-impact-table .data tbody tr > * {
+  height: 48px;
 }
 
 /* The lifetime figure with its bar, so the ranking reads without the digits. */
@@ -92,28 +92,12 @@
 /* A phone keeps the set, its per-major figure and its lifetime; the dates,
    counts and art are on the desktop table. */
 @media (max-width: 640px) {
-  .set-impact-table .data .set-impact-wide,
   .set-impact-note {
     display: none;
   }
 
-  /* Fixed layout so the name takes what the figures leave and truncates,
-     rather than wrapping every row to three lines. */
-  .set-impact-table .data {
-    table-layout: fixed;
-  }
-
-  .set-impact-table .data .num {
-    width: 76px;
-  }
-
   .set-impact-table .data .set-impact-lifetime {
-    width: 34%;
-  }
-
-  .set-impact-table .data td.set-impact-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
+    width: 30%;
   }
 
   .set-impact-pick {
@@ -127,16 +111,6 @@
   /* The name alone fits; the code only pushed it into an ellipsis. */
   .set-impact-code {
     display: none;
-  }
-
-  .set-impact-table .data th,
-  .set-impact-table .data td {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
-
-  .set-impact-table .data th.sortable button.th-sort {
-    padding: 0 10px;
   }
 
   /* Each toggle takes the full width with even halves, rather than two
@@ -174,7 +148,7 @@
 }
 
 /* Too few majors to rank: the figures stay readable but step back. */
-.set-impact-table .data tr.is-unranked td,
+.set-impact-table .data tr.is-unranked > *,
 .set-impact-table .data tr.is-unranked .set-impact-value {
   color: var(--muted);
   font-weight: 400;
@@ -184,8 +158,16 @@
   background: color-mix(in srgb, var(--muted) 35%, transparent);
 }
 
-.set-impact-table .data tr.is-selected td {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+.set-impact-table .data tr.is-selected > * {
+  background: var(--surface-2);
+}
+
+/* The panel beside the table lists the set's top cards, so Most played goes
+   while it is there. */
+@media (min-width: 901px) {
+  .set-impact-art {
+    display: none;
+  }
 }
 
 /* The name is the row's button; it reads as plain text. */
@@ -381,25 +363,4 @@
 .set-impact-table th .info-tip-bubble::after {
   top: auto;
   bottom: 100%;
-}
-
-.set-impact-th {
-  display: flex;
-  align-items: center;
-  height: 100%;
-  white-space: nowrap;
-}
-
-.set-impact-table th.num .set-impact-th {
-  justify-content: flex-end;
-}
-
-/* The note takes the header's right padding, so the button gives it up. */
-.set-impact-table .data th.sortable .set-impact-th:has(.info-tip) button.th-sort {
-  width: auto;
-  padding-right: 0;
-}
-
-.set-impact-th .info-tip {
-  margin-right: 10px;
 }

@@ -25,6 +25,10 @@
   flex: 1 1 0;
   min-width: 0;
 }
+/* The column heads park under the bar rather than behind it. */
+.live-bar ~ section {
+  --sticky-offset: 58px;
+}
 
 /* `‹ R8 ›`. The label is the third button: it opens the full round list, so a
    jump from R2 to R13 is still one press rather than eleven. */
@@ -110,6 +114,9 @@
   .live-bar .filters-btn {
     width: 44px;
     height: 44px;
+  }
+  .live-bar ~ section {
+    --sticky-offset: 64px;
   }
   /* Less the stepper's own 1px borders, which sit outside the buttons. */
   .round-step button {

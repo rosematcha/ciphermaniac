@@ -328,6 +328,38 @@ test('archetypes index lists archetypes @mobile', async ({ page }) => {
   await expect(page.locator('body')).toContainText('Dragapult');
 });
 
+for (const [path, view, link] of [
+  ['/archetypes', 'cm:archetypesView', /^\/archetypes\/[^/]+$/],
+  ['/cards', 'cm:cardsView', /^\/cards\/[^/]+\/[^/]+$/]
+] as const) {
+  test(`a ${path} list row names itself with a link and a plain click on it follows it @mobile`, async ({ page }) => {
+    await page.addInitScript(key => localStorage.setItem(key, 'list'), view);
+    await gotoClean(page, path);
+    const row = page.locator('main table.data tbody tr').first();
+    const href = await row.locator('.col-name a').getAttribute('href');
+    expect(href).toMatch(link);
+    await expect(row).not.toHaveAttribute('tabindex');
+    const figure = row.locator('td.num').nth(1);
+
+    // Dragging across a figure to copy it selects it and stays on the page.
+    const box = (await figure.boundingBox())!;
+    await page.mouse.move(box.x + 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 5 });
+    await page.mouse.up();
+    expect(await page.evaluate(() => getSelection()?.toString().trim())).not.toBe('');
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    await page.evaluate(() => getSelection()?.removeAllRanges());
+
+    // A modifier click outside the name link is not the row's to take either.
+    await figure.click({ modifiers: ['ControlOrMeta'] });
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+
+    await figure.click();
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
+  });
+}
+
 test('archetype thumbnails take the smallest tier that covers their slot', async ({ page }) => {
   // Fixed tiers had home's stories fetch SM and its archetype tiles XS of the
   // same art. With a `sizes` hint both resolve to XS at 1x, so it is one file.
@@ -580,12 +612,13 @@ test('players index ranks the fixture players with a rank switch', async ({ page
   const bar = page.locator('.players-bar');
   await expect(bar.getByRole('radio', { name: 'Day 2s' })).toHaveAttribute('aria-checked', 'true');
   // Rank, player, events, Day 2s, top cuts, win rate. Top cuts is hidden by CSS
-  // below 900px, so the mobile project counts the same six.
-  await expect(page.locator('.players-table thead th')).toHaveCount(6);
+  // below 640px, so the mobile project counts the same six.
+  const table = page.getByRole('table', { name: 'Players' });
+  await expect(table.locator('thead th')).toHaveCount(6);
 
   await bar.getByRole('radio', { name: 'Win %' }).click();
   await expect(page).toHaveURL(/sort=winPct/);
-  await expect(page.locator('.players-table th[aria-sort="descending"]')).toHaveText(/Win %/);
+  await expect(table.locator('th[aria-sort="descending"]')).toHaveText(/Win %/);
 });
 
 test('a player profile renders their history as the first tab @mobile', async ({ page }) => {
@@ -799,7 +832,7 @@ test('set impact ranks sets by lifetime and keeps its toggles in the URL', async
   await page.getByRole('radio', { name: 'Keeps it legal' }).click();
   await expect(page).toHaveURL(/[?&]attr=legal/);
   await page.getByRole('button', { name: /^Set/ }).click();
-  const names = await page.locator('td.set-impact-name').allTextContents();
+  const names = await page.locator('.set-impact-pick').allTextContents();
   expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
 });
 

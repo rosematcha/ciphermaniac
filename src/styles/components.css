@@ -1291,12 +1291,10 @@
 }
 
 /* ---------- Card hover preview (decklist lines) ----------
-   The anchor is inline so it doesn't disturb the list's text flow; the preview
-   itself is portalled to <body> and fixed-positioned (see CardHoverPreview),
-   because .table-wrap clips overflow and would cut an in-flow layer off. */
-.card-hover-anchor {
-  display: inline;
-}
+   The anchor is an inline span so it doesn't disturb the list's text flow
+   (CardNameLink sets it in a table's name cell). The preview itself is
+   portalled to <body> and fixed-positioned (see CardHoverPreview), because
+   .table-wrap clips overflow and would cut an in-flow layer off. */
 .card-hover-preview {
   position: fixed;
   z-index: 300;

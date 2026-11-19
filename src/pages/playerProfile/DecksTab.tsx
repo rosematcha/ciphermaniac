@@ -1,11 +1,12 @@
-import { createMemo, createSignal, For, Show } from 'solid-js';
+import { createSignal, createUniqueId, For, Show } from 'solid-js';
+import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { TableSkeleton } from '@ciphermaniac/design/components/TableSkeleton';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
-import { ordinalSuffix } from '../../lib/format';
+import { formatPercent, ordinalSuffix } from '../../lib/format';
 import type { PlayerArchetypeBreakdown, PlayerProfile } from '../../types';
 import type { EventDetailSource } from './EventDetail';
-import { HistoryTable } from './HistoryTable';
-import { winRateWhole } from './model';
+import { historyColumns, HistoryTable } from './HistoryTable';
 
 /** The first few groups open on arrival; the long tail stays folded. */
 const OPEN_BY_DEFAULT = 3;
@@ -42,6 +43,46 @@ export function DecksTab(props: DecksTabProps) {
   );
 }
 
+/** The five figures' widths as they print, so the placeholders wrap where the figures will. */
+const STAT_WIDTHS = ['55px', '110px', '108px', '54px', '56px'];
+/** A 13px bar centred in the figures' 19.5px line. */
+const STAT_LINE = { margin: '3.25px 0' };
+
+/** The tab loading: groups open and folded as they will arrive, each head with its figures' line. */
+export function DecksSkeleton() {
+  return (
+    <div class='deck-groups' aria-busy='true'>
+      <For each={Array.from({ length: 5 })}>
+        {(_, index) => (
+          <section class='deck-group'>
+            <div class='deck-group-head'>
+              <Skeleton inline width='11px' height='11px' />
+              <Skeleton inline width='38px' height='22px' />
+              <span class='deck-group-name'>
+                <Skeleton inline width='160px' height='1em' />
+              </span>
+              <span class='deck-group-stats'>
+                <For each={STAT_WIDTHS}>
+                  {(width, slot) => (
+                    <span class='deck-group-stat' classList={{ 'is-record': slot() === 1 }}>
+                      <Skeleton inline width={width} height='1em' style={STAT_LINE} />
+                    </span>
+                  )}
+                </For>
+              </span>
+            </div>
+            <Show when={index() < OPEN_BY_DEFAULT}>
+              <div class='deck-group-body'>
+                <TableSkeleton class='history-table' columns={historyColumns(false)} rows={5} />
+              </div>
+            </Show>
+          </section>
+        )}
+      </For>
+    </div>
+  );
+}
+
 interface DeckGroupProps {
   archetype: PlayerArchetypeBreakdown;
   name: string;
@@ -56,7 +97,8 @@ function DeckGroup(props: DeckGroupProps) {
   // eslint-disable-next-line solid/reactivity -- initial state only; the group owns its open flag after mount
   const [open, setOpen] = createSignal(props.openByDefault);
   const iconMap = getArchetypeIconMap();
-  const winRate = createMemo(() => winRateWhole(props.archetype.wins, props.archetype.losses));
+  const nameId = createUniqueId();
+  const games = () => props.archetype.wins + props.archetype.losses;
   const best = () => {
     const b = props.archetype.bestPlacement;
     return b == null ? '—' : b === 1 ? 'Won' : `${b.toLocaleString()}${ordinalSuffix(b)}`;
@@ -68,10 +110,12 @@ function DeckGroup(props: DeckGroupProps) {
           ▸
         </span>
         <ArchetypeIcons slugs={resolveArchetypeIcons({ name: props.name }, iconMap)} size={22} reserveSlot />
-        <span class='deck-group-name'>{props.name}</span>
+        <span class='deck-group-name' id={nameId}>
+          {props.name}
+        </span>
         {/* Five figures set inline ran together into one sentence of numbers,
-            and started at a different x in every group. One slot each, fixed
-            width, so they read as a column down the page. */}
+            and started at a different x in every group. One slot each, at
+            least a fixed width, so they read as a column down the page. */}
         <span class='deck-group-stats'>
           <span class='deck-group-stat'>
             <b>{props.archetype.eventCount}</b>
@@ -84,7 +128,7 @@ function DeckGroup(props: DeckGroupProps) {
             <small>record</small>
           </span>
           <span class='deck-group-stat'>
-            <b>{winRate() == null ? '—' : `${winRate()}% · n=${props.archetype.wins + props.archetype.losses}`}</b>
+            <b>{games() ? `${formatPercent((props.archetype.wins / games()) * 100)} · n=${games()}` : '—'}</b>
             <small>win</small>
           </span>
           <span class='deck-group-stat'>
@@ -105,6 +149,7 @@ function DeckGroup(props: DeckGroupProps) {
             playerId={props.playerId}
             source={props.source}
             showDeck={false}
+            labelledBy={nameId}
           />
         </div>
       </Show>

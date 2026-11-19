@@ -108,8 +108,8 @@
    Three columns of comparison and five of shared events do not fit, and auto
    layout put the second player off the right edge behind a hidden scrollbar —
    a comparison with one player in it. Fixed layout honours the shares the
-   table already declares, the decks go (they are on each profile), and the
-   long labels truncate. */
+   table already declares, and the long labels truncate. The decks go with
+   the shared phone rule (they are on each profile). */
 @media (max-width: 640px) {
   .compare-table,
   .compare-events .data {
@@ -121,9 +121,6 @@
   .compare-events .data td {
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-  .compare-events .compare-deck-col {
-    display: none;
   }
   /* A metric label that truncates to "Medi..." has stopped being a label. */
   .compare-table th:first-child,

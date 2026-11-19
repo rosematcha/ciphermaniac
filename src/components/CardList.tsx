@@ -1,11 +1,12 @@
-import { createMemo, createSignal, For, Show } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
+import { createMemo, createSignal, createUniqueId, For, Show } from 'solid-js';
 import type { CardItem } from '../types';
 import { EmptyState } from './EmptyState';
 import { CardTile } from './CardTile';
 import { CardCropTile } from './CardCropTile';
 import { cutCards } from './cardCut';
-import { CardHoverPreview } from './CardHoverPreview';
+import type { SkeletonColumn } from '@ciphermaniac/design/components/TableSkeleton';
+import { CardNameLink } from './CardNameLink';
+import { followRowLink } from '../lib/rowLink';
 import { averageCopies, categoryLabel } from '../lib/cardStats';
 
 export type CardListItem = CardItem & {
@@ -13,6 +14,15 @@ export type CardListItem = CardItem & {
 };
 
 export type ViewMode = 'grid' | 'compact' | 'list';
+
+/** The list view's columns, for its table and the page's loading skeleton. */
+export const CARD_COLUMNS: SkeletonColumn[] = [
+  { label: 'Card', class: 'col-name', width: '55%' },
+  { label: 'Set', class: 'col-secondary', width: '56px' },
+  { label: 'Type', class: 'col-secondary', width: '56px' },
+  { label: 'Inclusion', class: 'num', width: '40px' },
+  { label: 'Avg copies', class: 'num', width: '32px' }
+];
 
 export function CardList(props: {
   title: string;
@@ -26,6 +36,7 @@ export function CardList(props: {
   cutPct?: number;
 }) {
   const [open, setOpen] = createSignal(false);
+  const headingId = createUniqueId();
   const cut = createMemo(() => cutCards(props.items, props.cutPct, open()));
   const visible = () => cut().shown;
   const cutLabel = () => {
@@ -42,7 +53,7 @@ export function CardList(props: {
   return (
     <Show when={props.items.length > 0} fallback={<EmptyState title={props.emptyMessage} />}>
       <div class='section-head'>
-        <h2>{props.title}</h2>
+        <h2 id={headingId}>{props.title}</h2>
         <span class='right'>{props.rightSlot ?? `${props.items.length.toLocaleString()} cards`}</span>
       </div>
       <Show
@@ -50,7 +61,7 @@ export function CardList(props: {
         fallback={
           <>
             <Show when={visible().length > 0}>
-              <CardsTable items={visible()} />
+              <CardsTable items={visible()} labelledBy={headingId} />
             </Show>
             <Show when={cut().under > 0}>
               <div class='cards-grid-more'>{cutButton('btn btn-secondary')}</div>
@@ -74,54 +85,27 @@ export function CardList(props: {
   );
 }
 
-function CardsTable(props: { items: readonly CardListItem[] }) {
-  const navigate = useNavigate();
-  const goto = (item: CardListItem) => {
-    if (item.set && item.number !== undefined) {
-      navigate(`/cards/${item.set}/${item.number}`);
-    }
-  };
+function CardsTable(props: { items: readonly CardListItem[]; labelledBy: string }) {
   return (
     <div class='table-wrap'>
-      <table class='data'>
+      <table class='data' aria-labelledby={props.labelledBy}>
         <thead>
           <tr>
-            <th>Card</th>
-            <th>Set</th>
-            <th>Type</th>
-            <th class='num'>Inclusion</th>
-            <th class='num'>Avg copies</th>
+            <For each={CARD_COLUMNS}>{column => <th class={column.class}>{column.label}</th>}</For>
           </tr>
         </thead>
         <tbody>
           <For each={props.items}>
             {item => (
-              <tr
-                class={item.set ? 'is-link' : ''}
-                onClick={() => goto(item)}
-                tabIndex={item.set ? 0 : -1}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    goto(item);
-                  }
-                }}
-              >
-                <td>
-                  <Show
-                    when={item.set && item.number !== undefined}
-                    fallback={<span class='cardname'>{item.name}</span>}
-                  >
-                    <CardHoverPreview set={item.set!} number={item.number!}>
-                      <span class='cardname'>{item.name}</span>
-                    </CardHoverPreview>
-                  </Show>
-                </td>
-                <td class='muted-cell'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
-                <td class='muted-cell'>{categoryLabel(item)}</td>
+              <tr classList={{ 'is-link': Boolean(item.set) }} onClick={followRowLink}>
+                <th scope='row' class='col-name'>
+                  <CardNameLink name={item.name} set={item.set} number={item.number} />
+                </th>
+                <td class='muted-cell col-secondary'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
+                <td class='muted-cell col-secondary'>{categoryLabel(item)}</td>
                 <td class='num'>
                   {item.pct.toFixed(1)}%{' '}
-                  <span class='muted-cell'>
+                  <span class='muted-cell col-secondary'>
                     {item.found.toLocaleString()}/{item.total.toLocaleString()}
                   </span>
                 </td>

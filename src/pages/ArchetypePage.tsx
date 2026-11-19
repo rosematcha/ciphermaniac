@@ -37,8 +37,9 @@ import { EmptyState } from '../components/EmptyState';
 import { FanTranslationCredited } from '../components/FanTranslationCredit';
 import { hasJapanOnlyCard } from '../../shared/data/japanOnlyCards';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { TableSkeleton } from '@ciphermaniac/design/components/TableSkeleton';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
-import { CardList, type ViewMode } from '../components/CardList';
+import { CARD_COLUMNS, CardList, type ViewMode } from '../components/CardList';
 import { AdvancedPanel } from '../components/AdvancedPanel';
 import { MatchupsPanel } from '../components/MatchupsPanel';
 import { createPersistentSignal } from '../lib/persistentSignal';
@@ -216,7 +217,7 @@ export function ArchetypePage() {
       <Show
         when={effectiveReport()}
         fallback={
-          <Show when={showEmpty()} fallback={<ArchetypeSkeleton />}>
+          <Show when={showEmpty()} fallback={<ArchetypeSkeleton list={tab() === 'cards' && viewMode() === 'list'} />}>
             <EmptyState
               title="Couldn't load this archetype."
               description={`The archetype "${params.slug}" doesn't exist in the current scope, or its report failed to load.`}
@@ -628,7 +629,7 @@ function CostStat(props: { loading: boolean; cost: number | null }) {
   );
 }
 
-function ArchetypeSkeleton() {
+function ArchetypeSkeleton(props: { list: boolean }) {
   return (
     <>
       <section class='hero'>
@@ -642,7 +643,9 @@ function ArchetypeSkeleton() {
       <section>
         <Skeleton height='44px' />
         <div style={{ 'margin-top': '24px' }}>
-          <Skeleton height='320px' />
+          <Show when={props.list} fallback={<Skeleton height='320px' />}>
+            <TableSkeleton columns={CARD_COLUMNS} />
+          </Show>
         </div>
       </section>
     </>

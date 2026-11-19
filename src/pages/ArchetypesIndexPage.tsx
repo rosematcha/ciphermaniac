@@ -1,6 +1,6 @@
 import { formatIdFromKey } from '../../shared/formats/registry';
 import { createMemo, createResource, createSignal, For, onMount, Show } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
+import { A } from '@solidjs/router';
 import { fetchArchetypes, getArchetypeIconMap, prettyTournamentName, resolveArchetypeIcons } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
@@ -8,7 +8,8 @@ import type { ArchetypeIndexEntry } from '../types';
 import { Section } from '../components/Section';
 import { SearchInput } from '../components/Chip';
 import { Segmented } from '@ciphermaniac/design/components/Segmented';
-import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { SortTh } from '@ciphermaniac/design/components/SortTh';
+import { type SkeletonColumn, TableSkeleton } from '@ciphermaniac/design/components/TableSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { ArchetypeCard, ArchetypeCardSkeleton } from '../components/ArchetypeCard';
 import { ArchetypeIcons } from '../components/ArchetypeIcon';
@@ -16,6 +17,7 @@ import { createPersistentViewMode } from '../lib/persistentSignal';
 import { formatPercent } from '../lib/format';
 import { latestValue } from '../lib/resource';
 import { prefetchArchetypePage } from '../lib/prefetch';
+import { followRowLink } from '../lib/rowLink';
 import { fetchAllArchetypeWinRates, type WinRateAggregate } from '../lib/archetypeWinRate';
 import { matchPointWilson, sampleTier } from '../lib/confidence';
 import { formatPlusMinus, formatRange } from '../components/matchupsPanel/model';
@@ -52,7 +54,6 @@ export function ArchetypesIndexPage() {
   const iconMap = getArchetypeIconMap;
   const [query, setQuery] = createSignal('');
   const [viewMode, setViewMode] = createPersistentViewMode('cm:archetypesView');
-  const navigate = useNavigate();
 
   // Online aggregates arrive with the index. Legacy majors load their shared
   // matchup profile only when its win-rate column is visible.
@@ -141,7 +142,6 @@ export function ArchetypesIndexPage() {
                   winRates={winRateData()}
                   totalDecks={totalDecks()}
                   scopeLabel={scopeLabel()}
-                  onSelect={slug => navigate(`/archetypes/${encodeURIComponent(slug)}`)}
                 />
               }
             >
@@ -165,14 +165,14 @@ type SortDir = 'ascending' | 'descending';
 
 // Single source of truth for the list table's column headers, shared by the
 // real table and its loading skeleton so the two never drift.
-const COLUMNS: { label: string; class?: string; sort?: SortCol }[] = [
-  { label: '#', class: 'num arche-rank-col' },
-  { label: 'Archetype' },
-  { label: 'Meta share', class: 'num', sort: 'share' },
+const COLUMNS: (SkeletonColumn & { sort?: SortCol })[] = [
+  { label: '#', class: 'num col-rank', width: '20px' },
+  { label: 'Archetype', class: 'col-name', width: '55%' },
+  { label: 'Meta share', class: 'num', sort: 'share', width: '40px' },
   // Deck count is meta share counted a second way; it is the column a phone
   // drops so the two rates stay on screen.
-  { label: 'Decks', class: 'num arche-decks-col', sort: 'decks' },
-  { label: 'Win rate', class: 'num', sort: 'winRate' }
+  { label: 'Decks', class: 'num col-secondary', sort: 'decks', width: '48px' },
+  { label: 'Win rate', class: 'num', sort: 'winRate', width: '56px' }
 ];
 
 function ArchetypesListView(props: {
@@ -181,7 +181,6 @@ function ArchetypesListView(props: {
   winRates?: Map<string, WinRateAggregate>;
   totalDecks: number | null;
   scopeLabel: string;
-  onSelect: (slug: string) => void;
 }) {
   const [sortCol, setSortCol] = createSignal<SortCol>('share');
   const [sortDir, setSortDir] = createSignal<SortDir>('descending');
@@ -229,60 +228,43 @@ function ArchetypesListView(props: {
     });
   });
 
-  const SortHeader = (p: { col: SortCol; label: string; class?: string }) => (
-    <th class={`${p.class ?? 'num'} sortable`} aria-sort={ariaSort(p.col)}>
-      <button type='button' class='th-sort' onClick={() => toggle(p.col)}>
-        {p.label}
-        {/* Always present, hidden when inactive: `table-layout` is auto, so a
-            mark that appears on click re-solves every column width and the
-            whole table jumps sideways under the pointer. */}
-        <span class='sort-mark' classList={{ 'is-idle': sortCol() !== p.col }} aria-hidden='true'>
-          {sortDir() === 'ascending' ? '▲' : '▼'}
-        </span>
-      </button>
-    </th>
-  );
-
   return (
     <div class='table-wrap arche-list'>
-      <table class='data'>
+      <table class='data' aria-label='Archetypes'>
         <thead>
           <tr>
             <For each={COLUMNS}>
-              {col =>
-                col.sort ? (
-                  <SortHeader col={col.sort} label={col.label} class={col.class} />
-                ) : (
-                  <th class={col.class}>{col.label}</th>
-                )
-              }
+              {col => (
+                <Show when={col.sort} fallback={<th class={col.class}>{col.label}</th>}>
+                  {sortCol => (
+                    <SortTh class={col.class} sort={ariaSort(sortCol())} onSort={() => toggle(sortCol())}>
+                      {col.label}
+                    </SortTh>
+                  )}
+                </Show>
+              )}
             </For>
           </tr>
         </thead>
         <tbody>
           <For each={sorted()}>
             {(entry, i) => (
-              <tr
-                class='is-link'
-                onClick={() => props.onSelect(entry.name)}
-                onMouseEnter={prefetchArchetypePage}
-                onFocus={prefetchArchetypePage}
-                tabIndex={0}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    props.onSelect(entry.name);
-                  }
-                }}
-              >
-                <td class='num muted-cell arche-rank-col'>{i() + 1}</td>
-                <td class='arche-name-col'>
+              <tr class='is-link' onClick={followRowLink} onMouseEnter={prefetchArchetypePage}>
+                <td class='num col-rank'>{i() + 1}</td>
+                <th scope='row' class='col-name'>
                   <span class='arche-name-cell'>
                     <ArchetypeIcons slugs={resolveArchetypeIcons(entry, props.iconMap)} size={28} reserveSlot />
-                    <span class='cardname'>{entry.label || entry.name}</span>
+                    <A
+                      href={`/archetypes/${encodeURIComponent(entry.name)}`}
+                      class='cardname'
+                      onFocus={prefetchArchetypePage}
+                    >
+                      {entry.label || entry.name}
+                    </A>
                   </span>
-                </td>
+                </th>
                 <td class='num'>{formatPercent(entry.percent)}</td>
-                <td class='num muted-cell arche-decks-col'>{entry.deckCount?.toLocaleString() ?? '—'}</td>
+                <td class='num muted-cell col-secondary'>{entry.deckCount?.toLocaleString() ?? '—'}</td>
                 <td class='num' classList={{ 'wr-cell': true, 'is-muted': sampleTier(gamesOf(entry)) !== 'solid' }}>
                   <Show
                     when={sampleTier(gamesOf(entry)) !== 'thin' && winRateOf(entry) !== null}
@@ -305,38 +287,5 @@ function ArchetypesListView(props: {
 }
 
 function ListSkeleton() {
-  return (
-    <div class='table-wrap arche-list'>
-      <table class='data'>
-        <thead>
-          <tr>
-            <For each={COLUMNS}>{col => <th class={col.class}>{col.label}</th>}</For>
-          </tr>
-        </thead>
-        <tbody>
-          <For each={Array.from({ length: 12 })}>
-            {() => (
-              <tr>
-                <td class='num arche-rank-col'>
-                  <Skeleton width='20px' />
-                </td>
-                <td>
-                  <Skeleton width='60%' />
-                </td>
-                <td class='num'>
-                  <Skeleton width='40px' />
-                </td>
-                <td class='num arche-decks-col'>
-                  <Skeleton width='48px' />
-                </td>
-                <td class='num'>
-                  <Skeleton width='56px' />
-                </td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </div>
-  );
+  return <TableSkeleton class='arche-list' columns={COLUMNS} rows={12} />;
 }

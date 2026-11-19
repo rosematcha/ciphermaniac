@@ -4,7 +4,8 @@ import { fetchSetImpact } from '../lib/data/setImpact';
 import { resolved } from '../lib/resource';
 import { Section } from '../components/Section';
 import { Segmented } from '@ciphermaniac/design/components/Segmented';
-import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { SortTh } from '@ciphermaniac/design/components/SortTh';
+import { TableSkeleton } from '@ciphermaniac/design/components/TableSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
 import { SetPanel } from './setImpact/SetPanel';
@@ -102,7 +103,10 @@ export function SetImpactPage() {
         <Show
           when={data()}
           fallback={
-            <Show when={payload.error} fallback={<TableSkeleton />}>
+            <Show
+              when={payload.error}
+              fallback={<TableSkeleton class='set-impact-table' columns={[...COLUMNS, ART_COLUMN]} />}
+            >
               <EmptyState title='Set Impact data unavailable' description="The data file didn't load." />
             </Show>
           }
@@ -133,12 +137,13 @@ export function SetImpactPage() {
   );
 }
 
-const COLUMNS: { column: SetImpactSortColumn; label: string; class: string; note?: string }[] = [
-  { column: 'name', label: 'Set', class: 'set-impact-name' },
-  { column: 'majors', label: 'Majors', class: 'num set-impact-wide', note: NOTES.majors },
-  { column: 'perMajor', label: 'Cards per deck', class: 'num', note: NOTES.perMajor },
-  { column: 'lifetime', label: 'Lifetime', class: 'num set-impact-lifetime', note: NOTES.lifetime }
+const COLUMNS: { column: SetImpactSortColumn; label: string; class: string; note?: string; width: string }[] = [
+  { column: 'name', label: 'Set', class: 'col-name', width: '55%' },
+  { column: 'majors', label: 'Majors', class: 'num col-secondary', note: NOTES.majors, width: '36px' },
+  { column: 'perMajor', label: 'Cards per deck', class: 'num', note: NOTES.perMajor, width: '36px' },
+  { column: 'lifetime', label: 'Lifetime', class: 'num set-impact-lifetime', note: NOTES.lifetime, width: '100%' }
 ];
+const ART_COLUMN = { label: 'Most played', class: 'col-secondary set-impact-art', width: '110px' };
 
 function ImpactTable(props: {
   rows: SetImpactRow[];
@@ -152,33 +157,23 @@ function ImpactTable(props: {
   const span = createVisibleColumns();
   return (
     <div class='table-wrap set-impact-table'>
-      <table class='data'>
+      <table class='data' aria-label='Set impact'>
         <thead>
           <tr>
             <For each={COLUMNS}>
               {col => (
-                <th
-                  class={`${col.class} sortable`}
-                  aria-sort={props.sortColumn === col.column ? props.sortDirection : 'none'}
+                <SortTh
+                  class={col.class}
+                  sort={props.sortColumn === col.column ? props.sortDirection : 'none'}
+                  onSort={() => props.onSort(col.column)}
+                  note={col.note ? <Note text={col.note} /> : undefined}
                 >
-                  <div class='set-impact-th'>
-                    <button type='button' class='th-sort' onClick={() => props.onSort(col.column)}>
-                      {col.label}
-                      <span
-                        class='sort-mark'
-                        classList={{ 'is-idle': props.sortColumn !== col.column }}
-                        aria-hidden='true'
-                      >
-                        {props.sortDirection === 'ascending' ? '▲' : '▼'}
-                      </span>
-                    </button>
-                    <Show when={col.note}>{note => <Note text={note()} />}</Show>
-                  </div>
-                </th>
+                  {col.label}
+                </SortTh>
               )}
             </For>
-            <th class='set-impact-wide'>
-              Most played <Note text={NOTES.mostPlayed} />
+            <th class={ART_COLUMN.class}>
+              {ART_COLUMN.label} <Note text={NOTES.mostPlayed} />
             </th>
           </tr>
         </thead>
@@ -220,12 +215,12 @@ function ImpactRow(props: {
         classList={{ 'is-selected': props.selected, 'is-unranked': !props.row.ranked }}
         onClick={() => props.onSelect()}
       >
-        <td class='set-impact-name'>
+        <th scope='row' class='col-name'>
           <button type='button' class='set-impact-pick' aria-pressed={props.selected}>
             {props.row.name} <span class='set-impact-code'>{props.row.code}</span>
           </button>
-        </td>
-        <td class='num set-impact-wide'>{props.row.majors}</td>
+        </th>
+        <td class='num col-secondary'>{props.row.majors}</td>
         <td class='num'>{props.row.perMajor.toFixed(1)}</td>
         <td class='num set-impact-lifetime'>
           <div class='set-impact-bar'>
@@ -235,7 +230,7 @@ function ImpactRow(props: {
             <span class='set-impact-value'>{props.row.lifetime.toFixed(1)}</span>
           </div>
         </td>
-        <td class='set-impact-wide'>
+        <td class={ART_COLUMN.class}>
           <div class='set-impact-thumbs'>
             <For each={props.row.cards.slice(0, THUMBNAILS)}>
               {card => (
@@ -259,41 +254,5 @@ function ImpactRow(props: {
         </tr>
       </Show>
     </>
-  );
-}
-
-function TableSkeleton() {
-  return (
-    <div class='table-wrap set-impact-table'>
-      <table class='data'>
-        <thead>
-          <tr>
-            <For each={COLUMNS}>{col => <th class={col.class}>{col.label}</th>}</For>
-            <th class='set-impact-wide'>Most played</th>
-          </tr>
-        </thead>
-        <tbody>
-          <For each={Array.from({ length: 12 })}>
-            {() => (
-              <tr>
-                <td class='set-impact-name'>
-                  <Skeleton width='60%' />
-                </td>
-                <For each={COLUMNS.slice(1)}>
-                  {col => (
-                    <td class={col.class}>
-                      <Skeleton width='36px' />
-                    </td>
-                  )}
-                </For>
-                <td class='set-impact-wide'>
-                  <Skeleton width='110px' />
-                </td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </div>
   );
 }

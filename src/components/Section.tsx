@@ -2,6 +2,8 @@ import { type JSX, type ParentComponent, Show } from 'solid-js';
 
 interface SectionProps {
   title?: string;
+  /** An id for the heading, so a table under it can take it as its name. */
+  headingId?: string;
   right?: JSX.Element | string;
 }
 
@@ -16,7 +18,7 @@ export const Section: ParentComponent<SectionProps> = props => {
       <Show when={props.title || props.right}>
         <div class='section-head'>
           <Show when={props.title}>
-            <h2>{props.title}</h2>
+            <h2 id={props.headingId}>{props.title}</h2>
           </Show>
           <Show when={props.right}>
             <span class='right'>{props.right}</span>

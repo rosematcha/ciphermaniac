@@ -27,8 +27,9 @@
 .players-bar .segmented {
   flex: none;
 }
-.players-rank {
-  width: 30px;
+/* The column heads park under the bar rather than behind it. */
+.players-bar ~ section {
+  --sticky-offset: 58px;
 }
 /* Name and country as one flex line rather than two inline runs: the cell
    truncates, and inline content let the ellipsis land mid-country-code, which
@@ -38,16 +39,6 @@
   align-items: baseline;
   gap: 6px;
   min-width: 0;
-}
-/* Ink, not accent: fifty accent-coloured names spent the page's whole accent
-   budget on its least-ranked column. The row is the link, and the name takes
-   the accent on hover exactly as the profile's event and deck names do. */
-.players-name .cardname {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--fg);
 }
 .players-country {
   flex: none;
@@ -60,54 +51,23 @@
   color: var(--muted);
   opacity: 0.5;
 }
-.players-table .data th,
-.players-table .data td {
-  height: 30px;
-  padding: 0 10px;
-  font-size: 13px;
-}
-/* A share of the row rather than a fixed width: the figures then keep the same
-   proportion of the table whether it is showing four columns or the phone's
-   three, instead of huddling at the right edge with the names a screen away.
-   Auto layout treats this as a preference, so a long name still wins the space
-   it needs. */
-.players-table .data th.num:not(.players-rank),
-.players-table .data td.num:not(.players-rank) {
-  width: 13.5%;
-}
-@media (max-width: 900px) {
-  /* Top cuts are the column a career already implies; it goes first when the
-     row runs out of room. */
-  .players-wide-col {
-    display: none;
+/* Under a finger the switch's 40px buttons make the bar 68px tall. */
+@media (max-width: 640px), (pointer: coarse) {
+  .players-bar ~ section {
+    --sticky-offset: 68px;
   }
 }
 @media (max-width: 640px) {
   .players-bar .segmented button {
     padding: 5px 10px;
   }
-  .players-table .data th,
-  .players-table .data td {
-    padding: 0 6px;
+  /* The ranking fits a phone without scrolling sideways, so its wrapper can
+     clip rather than scroll, and the heads park under the bar here too. */
+  .players-bar ~ section .table-wrap {
+    overflow: clip;
   }
-  /* A phone has no slack to distribute, and auto layout would not give it to
-     the name: a cell capped with `max-width: 0` only ever asks for its longest
-     word, so every spare pixel went to the figures and the ranking read
-     "Ga… 43 35 72%". Fixed layout is the only way to say the name gets the
-     rest — the three figures are two or three characters and never need more
-     than their header. */
-  .players-table .data {
-    table-layout: fixed;
-  }
-  .players-table .data th.num:not(.players-rank),
-  .players-table .data td.num:not(.players-rank) {
-    width: 17%;
-  }
-  /* The name column takes what the figures leave and truncates. */
-  .players-table .data td.players-name {
-    width: auto;
-    max-width: none;
-    overflow: hidden;
+  .players-bar ~ section .data thead th {
+    position: sticky;
   }
   /* Every pixel the country code takes is a pixel off the end of the name. */
   .players-name .players-ident {
@@ -210,6 +170,11 @@
 .history-deck a:hover {
   color: var(--accent-ink);
 }
+/* Above a phone the event name wraps rather than pushing the record off the
+   table; a phone truncates it with the shared rule. */
+.history-table .history-name {
+  white-space: normal;
+}
 /* Three states and only two of them print, so the column reads as sparse marks
    rather than forty repetitions of its own header. Right-aligned: left-aligned
    it floated in a hundred-odd pixels of dead gutter at the table's edge. */
@@ -220,9 +185,6 @@
   text-align: right;
   white-space: nowrap;
   color: var(--muted);
-}
-.history-table .data tbody tr.open > td {
-  background: var(--surface-2);
 }
 /* Between a phone and a full desktop the full event names wrapped to three
    lines a row. The short name and no date buys the width back, which is worth
@@ -240,10 +202,6 @@
   }
 }
 @media (max-width: 640px) {
-  .history-table .data th,
-  .history-table .data td {
-    padding: 0 8px;
-  }
   /* The caret stays at every width: it is the only keyboard/AT affordance for
      opening a row, so hiding it left the row tappable but not operable. It just
      gets tighter. */
@@ -253,8 +211,6 @@
     padding-left: 6px;
     padding-right: 0;
   }
-  .history-table .history-deck,
-  .history-table .history-day2,
   .history-table .history-date,
   .history-table .history-full,
   .history-table .finish-place {
@@ -273,14 +229,6 @@
   }
   .finish-share.is-cut {
     color: var(--accent-ink);
-  }
-  /* The name column absorbs whatever the other three leave, and truncates
-     rather than pushing them off the screen. `max-width: 0` with `width: 100%`
-     is what makes an auto-layout table cell ellipsis instead of grow. */
-  .history-table .data td.history-name {
-    width: 100%;
-    max-width: 0;
-    overflow: hidden;
   }
   /* The cell clips, but nothing inside it was constrained to the cell, so a
      long name was cut mid-word instead of ellipsized. Cap the inline-flex at
@@ -446,6 +394,7 @@
 .deck-group-stats {
   display: flex;
   flex: none;
+  column-gap: 12px;
   font-size: 13px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -456,12 +405,13 @@
   align-items: baseline;
   justify-content: flex-end;
   gap: 5px;
-  width: 92px;
+  min-width: 92px;
 }
 /* Ten tabular digits and two hyphens; the other four slots hold three or four
-   characters each. */
+   characters each. A slot grows with a longer figure rather than letting it
+   run into the next. */
 .deck-group-stat.is-record {
-  width: 116px;
+  min-width: 116px;
 }
 .deck-group-stats b {
   color: var(--fg);
@@ -482,34 +432,33 @@
   background: transparent;
 }
 /* Repeated once per group, these headers were as loud as the deck names they
-   sat under. Hairline and small: they label the columns without competing. */
-.deck-group-body .data th {
+   sat under. No band: they label the columns without competing. */
+.deck-group-body .data thead th {
   background: transparent;
-  height: 24px;
-  font-size: 9px;
-  color: var(--muted);
-  border-bottom: 1px solid var(--rule);
 }
-.deck-group-body .data tbody tr:last-child > td {
-  border-bottom: 0;
-}
-@media (max-width: 640px) {
+/* Below a full desktop the figures take their own line, so the deck's name
+   stops truncating. */
+@media (max-width: 900px) {
   .deck-group-head {
     flex-wrap: wrap;
+    row-gap: 4px;
   }
   .deck-group-stats {
     flex-basis: 100%;
     padding-left: 26px;
     flex-wrap: wrap;
+    column-gap: 0;
   }
   /* Wrapped onto their own line, fixed slots leave ragged gaps; the figures
      size to their own content and sit at an even rhythm instead. */
   .deck-group-stat,
   .deck-group-stat.is-record {
-    width: auto;
+    min-width: 0;
     justify-content: flex-start;
     margin-right: 12px;
   }
+}
+@media (max-width: 640px) {
   .deck-group-body {
     padding-left: 0;
   }

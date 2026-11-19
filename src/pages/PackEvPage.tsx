@@ -1,10 +1,13 @@
 import { createMemo, createResource, For, Match, onMount, type Resource, Show, Switch } from 'solid-js';
-import { useSearchParams } from '@solidjs/router';
+import { A, useSearchParams } from '@solidjs/router';
 import { EmptyState } from '../components/EmptyState';
 import { Section } from '../components/Section';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { type SkeletonColumn, TableSkeleton } from '@ciphermaniac/design/components/TableSkeleton';
 import { fetchPackEvIndex, fetchPackEvSet } from '../lib/data/packEv';
 import { resolved } from '../lib/resource';
+import { followRowLink } from '../lib/rowLink';
+import { formatPercent } from '../lib/format';
 import { SetDetail } from './packEv/SetDetail';
 import { money, priceDate, rate, returnPercent } from './packEv/model';
 import '../styles/pages/pack-ev.css';
@@ -26,9 +29,15 @@ function settledEmpty<T>(resource: Resource<T | null>): boolean {
  * rates; this page puts the resulting per-pack value against what the sealed
  * product costs, and lets you rip packs against the same model.
  */
+const INDEX_COLUMNS: SkeletonColumn[] = [
+  { label: 'Set', class: 'col-name', width: '55%' },
+  { label: 'Market', class: 'num', width: '44px' },
+  { label: 'Avg. return', class: 'num', width: '36px' }
+];
+
 export function PackEvPage() {
   const [index] = createResource(fetchPackEvIndex);
-  const [params, setParams] = useSearchParams<{ set?: string }>();
+  const [params] = useSearchParams<{ set?: string }>();
 
   onMount(() => {
     document.title = 'Pack Value Simulator — Ciphermaniac';
@@ -58,7 +67,11 @@ export function PackEvPage() {
         fallback={
           <Show
             when={index.state === 'ready' || index.state === 'errored'}
-            fallback={<Skeleton width='100%' height='220px' />}
+            fallback={
+              <Section title='Sets'>
+                <TableSkeleton columns={INDEX_COLUMNS} rows={5} />
+              </Section>
+            }
           >
             <EmptyState title='No pack data.' />
           </Show>
@@ -66,12 +79,10 @@ export function PackEvPage() {
       >
         <Section title='Sets'>
           <div class='table-wrap'>
-            <table class='data packev-index'>
+            <table class='data packev-index' aria-label='Sets'>
               <thead>
                 <tr>
-                  <th>Set</th>
-                  <th class='num'>Market</th>
-                  <th class='num'>Avg. return</th>
+                  <For each={INDEX_COLUMNS}>{column => <th class={column.class}>{column.label}</th>}</For>
                 </tr>
               </thead>
               <tbody>
@@ -82,19 +93,22 @@ export function PackEvPage() {
                       <tr
                         class='is-link'
                         classList={{ 'is-selected': row.code === selected() }}
-                        aria-current={row.code === selected() ? 'true' : undefined}
-                        tabIndex={0}
-                        onClick={() => setParams({ set: row.code }, { replace: true })}
-                        onKeyDown={event => {
-                          if (event.key === 'Enter') {
-                            setParams({ set: row.code }, { replace: true });
-                          }
-                        }}
+                        onClick={followRowLink}
                       >
-                        <td class='cardname'>{row.name}</td>
+                        <th scope='row' class='col-name'>
+                          <A
+                            href={`/tools/pack-ev?set=${row.code}`}
+                            class='cardname'
+                            aria-current={row.code === selected() ? 'true' : undefined}
+                            replace
+                            noScroll
+                          >
+                            {row.name}
+                          </A>
+                        </th>
                         <td class='num'>{row.costPerPack === null ? '—' : money(row.costPerPack)}</td>
                         <td class='num' classList={{ 'is-down': (percent() ?? 100) < 100 }}>
-                          {percent() === null ? '—' : `${percent()}%`}
+                          {formatPercent(percent())}
                         </td>
                       </tr>
                     );

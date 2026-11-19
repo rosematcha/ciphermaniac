@@ -294,9 +294,9 @@ function ComparisonBody(props: {
 
   return (
     <>
-      <Section title='Career'>
+      <Section title='Career' headingId='compare-career'>
         <div class='table-wrap'>
-          <table class='data compare-table'>
+          <table class='data compare-table' aria-labelledby='compare-career'>
             <thead>
               <tr>
                 <th>Metric</th>
@@ -325,6 +325,7 @@ function ComparisonBody(props: {
 
       <Section
         title='Shared events'
+        headingId='compare-shared'
         right={
           <span class='compare-h2h'>
             <Show when={props.shared.length > 0} fallback='—'>
@@ -349,14 +350,14 @@ function ComparisonBody(props: {
           fallback={<EmptyState title='No shared events.' description='These two players have no events in common.' />}
         >
           <div class='table-wrap compare-events'>
-            <table class='data'>
+            <table class='data' aria-labelledby='compare-shared'>
               <thead>
                 <tr>
                   <th class='compare-event-col'>Event</th>
                   <th class='num'>{props.a.name}</th>
-                  <th class='compare-deck-col'>Deck</th>
+                  <th class='col-secondary'>Deck</th>
                   <th class='num'>{props.b.name}</th>
-                  <th class='compare-deck-col'>Deck</th>
+                  <th class='col-secondary'>Deck</th>
                 </tr>
               </thead>
               <tbody>
@@ -377,7 +378,7 @@ function ComparisonBody(props: {
                           {placementLabel(ev.a.placement)}
                           <span class='muted-cell'> · {record(ev.a.wins, ev.a.losses, ev.a.ties)}</span>
                         </td>
-                        <td class='muted-cell compare-deck-col'>{deckCell(props.a, ev.a.archetype)}</td>
+                        <td class='muted-cell col-secondary'>{deckCell(props.a, ev.a.archetype)}</td>
                         <td class='num' classList={{ 'compare-lead': cmp === 1 }}>
                           <Show when={cmp === 1}>
                             <span class='compare-caret' aria-label='Higher finish'>
@@ -387,7 +388,7 @@ function ComparisonBody(props: {
                           {placementLabel(ev.b.placement)}
                           <span class='muted-cell'> · {record(ev.b.wins, ev.b.losses, ev.b.ties)}</span>
                         </td>
-                        <td class='muted-cell compare-deck-col'>{deckCell(props.b, ev.b.archetype)}</td>
+                        <td class='muted-cell col-secondary'>{deckCell(props.b, ev.b.archetype)}</td>
                       </tr>
                     );
                   }}

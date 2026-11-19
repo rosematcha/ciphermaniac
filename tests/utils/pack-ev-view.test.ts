@@ -32,7 +32,7 @@ test('money is always to the cent; buylist rates keep their tenth', () => {
 });
 
 test('return is what the contents give back per dollar, or nothing to compare', () => {
-  assert.equal(returnPercent(3.25, 9.89), 33);
+  assert.equal(returnPercent(3.25, 9.89)?.toFixed(1), '32.9');
   assert.equal(returnPercent(3.25, null), null);
   assert.equal(returnPercent(3.25, 0), null);
 });
@@ -41,6 +41,8 @@ test('loss is the rest of the price, negative when a pack is worth more than it 
   assert.equal(lossPercent(3.25, 9.89), 67);
   assert.equal(lossPercent(12, 10), -20);
   assert.equal(lossPercent(3.25, null), null);
+  // The return rounds first, so an exact half loses the same way it always has.
+  assert.equal(lossPercent(3.25, 10), 67);
 });
 
 test('the price date is the day the job ran, and a bad stamp prints nothing', () => {

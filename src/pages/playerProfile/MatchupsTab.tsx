@@ -3,6 +3,7 @@ import { createMemo, For, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { EmptyState } from '../../components/EmptyState';
 import { getArchetypeIconMap, resolveArchetypeIcons } from '../../lib/data';
+import { formatPercent } from '../../lib/format';
 import {
   type CareerRoundAggregates,
   MATCHUP_MIN_GAMES,
@@ -65,7 +66,7 @@ function MatchupsBody(props: { aggregates: CareerRoundAggregates }) {
         </dl>
       </Show>
 
-      <h3 class='profile-h3'>
+      <h3 class='profile-h3' id='matchups-decks'>
         Decks faced
         <span class='muted-note'>{MATCHUP_MIN_GAMES}+ games</span>
       </h3>
@@ -74,7 +75,7 @@ function MatchupsBody(props: { aggregates: CareerRoundAggregates }) {
         fallback={<p class='profile-note'>No deck faced {MATCHUP_MIN_GAMES} times yet.</p>}
       >
         <div class='table-wrap'>
-          <table class='data matchup-table'>
+          <table class='data matchup-table' aria-labelledby='matchups-decks'>
             <thead>
               <tr>
                 <th>Opponent's deck</th>
@@ -117,13 +118,15 @@ function MatchupsBody(props: { aggregates: CareerRoundAggregates }) {
         </p>
       </Show>
 
-      <h3 class='profile-h3'>Players faced more than once</h3>
+      <h3 class='profile-h3' id='matchups-players'>
+        Players faced more than once
+      </h3>
       <Show
         when={repeats().length > 0}
         fallback={<p class='profile-note'>No opponent has come up {REPEAT_MIN_MEETINGS} times yet.</p>}
       >
         <div class='table-wrap'>
-          <table class='data'>
+          <table class='data' aria-labelledby='matchups-players'>
             <thead>
               <tr>
                 <th>Opponent</th>
@@ -168,7 +171,7 @@ function formatRate(rate: number | null): string {
   return rate == null ? '—' : `${rate}%`;
 }
 
-/** Whole-number win rate beside its deviation gauge. */
+/** The win rate, to one decimal like every table's percents, beside its deviation gauge. */
 function WinRate(props: { rate: number | null }) {
   const down = () => props.rate != null && props.rate < 0.5;
   const fill = () => (props.rate == null ? 0 : Math.round((Math.abs(props.rate - 0.5) / 0.5) * 100));
@@ -178,7 +181,7 @@ function WinRate(props: { rate: number | null }) {
         <i style={{ width: `${fill()}%` }} />
       </span>
       <b class='wr-value' classList={{ up: !down(), down: down() }}>
-        {Math.round(props.rate! * 100)}%
+        {formatPercent(props.rate! * 100)}
       </b>
     </Show>
   );

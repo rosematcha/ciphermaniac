@@ -6,6 +6,7 @@ import { Section } from '../components/Section';
 import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { Pagination } from '../components/Pagination';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { type SkeletonColumn, TableSkeleton } from '@ciphermaniac/design/components/TableSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { parseISODate, shortDate } from '../lib/format';
@@ -152,7 +153,7 @@ export function EarningsPage() {
   return (
     <>
       <section class='hero'>
-        <h1>Earnings</h1>
+        <h1 id='earnings-heading'>Earnings</h1>
         <div class='hero-meta'>{heroMeta()}</div>
       </section>
 
@@ -187,7 +188,7 @@ export function EarningsPage() {
         <Show
           when={data()}
           fallback={
-            <Show when={payload.error} fallback={<TableSkeleton />}>
+            <Show when={payload.error} fallback={<TableSkeleton columns={SKELETON_COLUMNS} />}>
               <EmptyState
                 title='Earnings data unavailable'
                 description="The earnings file didn't load. Try again in a moment."
@@ -200,13 +201,13 @@ export function EarningsPage() {
             fallback={<EmptyState title='Nobody ranked here.' description='No player has earnings under this view.' />}
           >
             <div class='table-wrap earnings-table'>
-              <table class='data'>
+              <table class='data' aria-labelledby='earnings-heading'>
                 <thead>
                   <tr>
-                    <th class='earnings-rank'>#</th>
+                    <th class='num col-rank'>#</th>
                     <th class='num expand-col' aria-label='Expand' />
-                    <th class='earnings-name'>Player</th>
-                    <th class='earnings-country'>Country</th>
+                    <th class='col-name'>Player</th>
+                    <th class='col-secondary'>Country</th>
                     <th class='num earnings-amount'>{amountHeader()}</th>
                   </tr>
                 </thead>
@@ -258,7 +259,7 @@ function BreakdownRow(props: {
   return (
     <>
       <tr class='is-link' onClick={() => props.onToggle()}>
-        <td class='earnings-rank'>{props.row.rank.toLocaleString()}</td>
+        <td class='num col-rank'>{props.row.rank.toLocaleString()}</td>
         <td class='num expand-col'>
           <button
             type='button'
@@ -274,7 +275,7 @@ function BreakdownRow(props: {
             ▸
           </button>
         </td>
-        <td class='earnings-name'>
+        <th scope='row' class='col-name'>
           {/* Stops the row toggle so a click on the name still leaves for Limitless. */}
           <a
             class='cardname'
@@ -285,8 +286,8 @@ function BreakdownRow(props: {
           >
             {props.row.player.name}
           </a>
-        </td>
-        <td class='muted-cell earnings-country'>{props.row.player.country || '—'}</td>
+        </th>
+        <td class='muted-cell col-secondary'>{props.row.player.country || '—'}</td>
         <td class='num earnings-amount'>
           {formatEarnings(props.row.amount)}
           <Show when={props.row.seasonKey && props.seasonLabel(props.row.seasonKey)}>
@@ -400,41 +401,10 @@ function EventLines(props: { events: EarningsEvent[]; basis: EarningsBasis }) {
   );
 }
 
-function TableSkeleton() {
-  return (
-    <div class='table-wrap earnings-table'>
-      <table class='data'>
-        <thead>
-          <tr>
-            <th class='earnings-rank'>#</th>
-            <th class='num expand-col' aria-label='Expand' />
-            <th class='earnings-name'>Player</th>
-            <th class='earnings-country'>Country</th>
-            <th class='num earnings-amount'>Career</th>
-          </tr>
-        </thead>
-        <tbody>
-          <For each={Array.from({ length: 10 })}>
-            {() => (
-              <tr>
-                <td class='earnings-rank'>
-                  <Skeleton width='16px' />
-                </td>
-                <td class='num expand-col' />
-                <td class='earnings-name'>
-                  <Skeleton width='60%' />
-                </td>
-                <td class='earnings-country'>
-                  <Skeleton width='40px' />
-                </td>
-                <td class='num earnings-amount'>
-                  <Skeleton width='64px' />
-                </td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </div>
-  );
-}
+const SKELETON_COLUMNS: SkeletonColumn[] = [
+  { label: '#', class: 'num col-rank', width: '16px' },
+  { label: '', class: 'num expand-col' },
+  { label: 'Player', class: 'col-name', width: '55%' },
+  { label: 'Country', class: 'col-secondary', width: '40px' },
+  { label: 'Career', class: 'num earnings-amount', width: '64px' }
+];

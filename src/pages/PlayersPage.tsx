@@ -1,16 +1,19 @@
-import { createMemo, createResource, For, type JSX, onMount, Show } from 'solid-js';
-import { A, useNavigate, useSearchParams } from '@solidjs/router';
+import { createMemo, createResource, For, onMount, Show } from 'solid-js';
+import { A, useSearchParams } from '@solidjs/router';
 import { fetchPlayerIndexSlim } from '../lib/data';
 import { resolved } from '../lib/resource';
 import { Section } from '../components/Section';
 import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { SearchInput } from '../components/Chip';
 import { Pagination } from '../components/Pagination';
-import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { SortTh } from '@ciphermaniac/design/components/SortTh';
+import { type SkeletonColumn, TableSkeleton } from '@ciphermaniac/design/components/TableSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { createPagination, createQueryPageSignal } from '../lib/pagination';
 import { debounced } from '../lib/debounce';
 import { prefetchPlayerProfilePage } from '../lib/prefetch';
+import { followRowLink } from '../lib/rowLink';
+import { formatPercent } from '../lib/format';
 import type { PlayerIndexSlimEntry } from '../types';
 import { foldSearch } from '../utils/searchFold';
 import { filterSortedPlayers } from '../utils/playerSearch';
@@ -35,7 +38,6 @@ const RANK_OPTIONS: { value: PlayerSortKey; label: string }[] = [
  */
 export function PlayersPage() {
   const [index] = createResource(fetchPlayerIndexSlim);
-  const navigate = useNavigate();
 
   // Filter/sort/page state lives in the URL so a refresh, a shared link, or
   // coming back from a profile lands on the same view. Every write replaces —
@@ -98,7 +100,7 @@ export function PlayersPage() {
 
   const profileHref = (p: PlayerIndexSlimEntry) => `/players/${encodeURIComponent(p.playerId)}`;
   const rankOf = (i: number) => (page() - 1) * PAGE_SIZE + i + 1;
-  const winLabel = (p: PlayerIndexSlimEntry) => (p.wins + p.losses > 0 ? `${Math.round(winPct(p) * 100)}%` : '—');
+  const winLabel = (p: PlayerIndexSlimEntry) => (p.wins + p.losses > 0 ? formatPercent(winPct(p) * 100) : '—');
   /* Many of 1,500 careers have no top cut. Printing the zeros gave a column of
      "0"; blank leaves them reading as marks against a quiet field, the same way
      the profile's Day 2 column does. */
@@ -133,7 +135,7 @@ export function PlayersPage() {
         <Show
           when={indexData()}
           fallback={
-            <Show when={index.error || indexData() === null} fallback={<TableSkeleton />}>
+            <Show when={index.error || indexData() === null} fallback={<TableSkeleton columns={COLUMNS} />}>
               <EmptyState
                 title='Player data unavailable'
                 description="Player data isn't available yet. Check back after the next data update."
@@ -159,46 +161,32 @@ export function PlayersPage() {
               />
             }
           >
-            <div class='table-wrap players-table'>
-              <table class='data'>
+            <div class='table-wrap'>
+              <table class='data' aria-label='Players'>
                 <thead>
                   <tr>
-                    <th class='num players-rank'>#</th>
-                    <th>Player</th>
-                    <SortableTh ariaSort={ariaSort('events')} onSort={() => toggleSort('events')}>
+                    <th class='num col-rank'>#</th>
+                    <th class='col-name'>Player</th>
+                    <SortTh class='num' sort={ariaSort('events')} onSort={() => toggleSort('events')}>
                       Events
-                    </SortableTh>
-                    <SortableTh ariaSort={ariaSort('day2s')} onSort={() => toggleSort('day2s')}>
+                    </SortTh>
+                    <SortTh class='num' sort={ariaSort('day2s')} onSort={() => toggleSort('day2s')}>
                       Day 2s
-                    </SortableTh>
-                    <SortableTh
-                      class='players-wide-col'
-                      ariaSort={ariaSort('topCuts')}
-                      onSort={() => toggleSort('topCuts')}
-                    >
+                    </SortTh>
+                    <SortTh class='num col-secondary' sort={ariaSort('topCuts')} onSort={() => toggleSort('topCuts')}>
                       Top cuts
-                    </SortableTh>
-                    <SortableTh ariaSort={ariaSort('winPct')} onSort={() => toggleSort('winPct')}>
+                    </SortTh>
+                    <SortTh class='num' sort={ariaSort('winPct')} onSort={() => toggleSort('winPct')}>
                       Win %
-                    </SortableTh>
+                    </SortTh>
                   </tr>
                 </thead>
                 <tbody>
                   <For each={pageRows()}>
                     {(p, i) => (
-                      <tr
-                        class='is-link'
-                        onClick={e => {
-                          // The name link handles its own (and modified) clicks.
-                          if (e.target instanceof Element && e.target.closest('a')) {
-                            return;
-                          }
-                          navigate(profileHref(p));
-                        }}
-                        onMouseEnter={prefetchPlayerProfilePage}
-                      >
-                        <td class='num muted-cell players-rank'>{rankOf(i())}</td>
-                        <td class='players-name'>
+                      <tr class='is-link' onClick={followRowLink} onMouseEnter={prefetchPlayerProfilePage}>
+                        <td class='num col-rank'>{rankOf(i())}</td>
+                        <th scope='row' class='col-name players-name'>
                           <span class='players-ident'>
                             <A href={profileHref(p)} class='cardname' onFocus={prefetchPlayerProfilePage}>
                               {p.name}
@@ -207,10 +195,10 @@ export function PlayersPage() {
                               <span class='players-country'>{p.country}</span>
                             </Show>
                           </span>
-                        </td>
+                        </th>
                         <td class='num'>{p.eventCount.toLocaleString()}</td>
                         <td class='num'>{p.day2s.toLocaleString()}</td>
-                        <td class='num players-wide-col'>{markLabel(p.topCuts)}</td>
+                        <td class='num col-secondary'>{markLabel(p.topCuts)}</td>
                         <td class='num' classList={{ 'stat-dim': p.eventCount < RATE_MIN_EVENTS }}>
                           {winLabel(p)}
                         </td>
@@ -230,62 +218,11 @@ export function PlayersPage() {
   );
 }
 
-function SortableTh(props: {
-  ariaSort: 'ascending' | 'descending' | 'none';
-  onSort: () => void;
-  class?: string;
-  children: JSX.Element;
-}) {
-  return (
-    <th aria-sort={props.ariaSort} class={`sortable num${props.class ? ` ${props.class}` : ''}`}>
-      <button type='button' class='th-sort' onClick={() => props.onSort()}>
-        {props.children}
-      </button>
-    </th>
-  );
-}
-
-function TableSkeleton() {
-  return (
-    <div class='table-wrap players-table'>
-      <table class='data'>
-        <thead>
-          <tr>
-            <th class='num players-rank'>#</th>
-            <th>Player</th>
-            <th class='num'>Events</th>
-            <th class='num'>Day 2s</th>
-            <th class='num players-wide-col'>Top cuts</th>
-            <th class='num'>Win %</th>
-          </tr>
-        </thead>
-        <tbody>
-          <For each={Array.from({ length: 10 })}>
-            {() => (
-              <tr>
-                <td class='num'>
-                  <Skeleton width='20px' />
-                </td>
-                <td>
-                  <Skeleton width='60%' />
-                </td>
-                <td class='num'>
-                  <Skeleton width='32px' />
-                </td>
-                <td class='num'>
-                  <Skeleton width='32px' />
-                </td>
-                <td class='num players-wide-col'>
-                  <Skeleton width='24px' />
-                </td>
-                <td class='num'>
-                  <Skeleton width='40px' />
-                </td>
-              </tr>
-            )}
-          </For>
-        </tbody>
-      </table>
-    </div>
-  );
-}
+const COLUMNS: SkeletonColumn[] = [
+  { label: '#', class: 'num col-rank', width: '20px' },
+  { label: 'Player', class: 'col-name', width: '55%' },
+  { label: 'Events', class: 'num', width: '32px' },
+  { label: 'Day 2s', class: 'num', width: '32px' },
+  { label: 'Top cuts', class: 'num col-secondary', width: '24px' },
+  { label: 'Win %', class: 'num', width: '40px' }
+];

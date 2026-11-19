@@ -40,13 +40,13 @@ test('formatRecord treats missing fields as 0 once at least one value is reporte
   }
 });
 
-test('winPercent excludes ties and rounds to a whole percent, and is null for an unplayed record', () => {
-  assert.equal(winPercent(330, 126), 72);
+test('winPercent excludes ties, prints to one decimal, and is null for an unplayed record', () => {
+  assert.equal(winPercent(330, 126)?.toFixed(1), '72.4');
   assert.equal(winPercent(3, 1), 75);
   // Ties never enter the denominator: 6-2-1 is the same 75% as 6-2-0.
   assert.equal(winPercent(6, 2), 75);
   assert.equal(winPercent(0, 0), null);
-  assert.equal(winPercentLabel(330, 126), '72%');
+  assert.equal(winPercentLabel(330, 126), '72.4%');
   assert.equal(winPercentLabel(0, 0), '—');
 });
 

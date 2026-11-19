@@ -31,7 +31,9 @@ test('/cards on the online meta loads only its own prices', async ({ page }) => 
   await page.goto('/cards', { waitUntil: 'load' });
   await page.locator('.cards-filter-bar').getByText('List', { exact: true }).click();
   // A rendered price means the price read has settled, fallback included.
-  await expect(page.locator('.cards-list tr', { hasText: "Boss's Orders" })).toContainText('$0.24');
+  await expect(page.getByRole('table', { name: 'Cards' }).locator('tr', { hasText: "Boss's Orders" })).toContainText(
+    '$0.24'
+  );
   expect(priceFiles).toEqual(['prices-meta.json']);
 });
 

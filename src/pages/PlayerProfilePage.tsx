@@ -1,15 +1,16 @@
 import { A, useParams, useSearchParams } from '@solidjs/router';
-import { createEffect, createMemo, createResource, createSignal, Show } from 'solid-js';
+import { createEffect, createMemo, createResource, createSignal, Match, Show, Switch } from 'solid-js';
 import { fetchPlayerDecks, fetchPlayerProfile } from '../lib/data';
 import { EmptyState } from '../components/EmptyState';
 import { LivePlayerRun } from '../components/LiveRow';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { TableSkeleton } from '@ciphermaniac/design/components/TableSkeleton';
 import { TabPanel, Tabs } from '@ciphermaniac/design/components/Tabs';
 import { resolved } from '../lib/resource';
 import type { PlayerProfile } from '../types';
 import type { EventDetailSource } from './playerProfile/EventDetail';
-import { DecksTab } from './playerProfile/DecksTab';
-import { HistoryTable } from './playerProfile/HistoryTable';
+import { DecksSkeleton, DecksTab } from './playerProfile/DecksTab';
+import { historyColumns, HistoryTable } from './playerProfile/HistoryTable';
 import { MatchupsTab } from './playerProfile/MatchupsTab';
 import { careerRoundAggregates, careerSummary } from './playerProfile/model';
 import '../styles/pages/players-tables.css';
@@ -179,6 +180,7 @@ function ProfileBody(props: { profile: PlayerProfile; playerId: string }) {
 }
 
 function ProfileSkeleton() {
+  const [params] = useSearchParams<{ tab?: string }>();
   return (
     <>
       <section class='hero'>
@@ -195,7 +197,14 @@ function ProfileSkeleton() {
       <section class='player-tabs'>
         <Skeleton width='240px' height='41px' />
         <div style={{ 'margin-top': '20px' }}>
-          <Skeleton height='420px' />
+          <Switch fallback={<TableSkeleton class='history-table' columns={historyColumns(true)} />}>
+            <Match when={params.tab === 'decks'}>
+              <DecksSkeleton />
+            </Match>
+            <Match when={params.tab === 'matchups'}>
+              <Skeleton height='420px' />
+            </Match>
+          </Switch>
         </div>
       </section>
     </>

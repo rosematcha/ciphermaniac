@@ -7,13 +7,16 @@ import { ChipGroup, SearchInput } from '../components/Chip';
 import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { Pagination } from '../components/Pagination';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
+import { type SkeletonColumn, TableSkeleton } from '@ciphermaniac/design/components/TableSkeleton';
+import { type SortState, SortTh } from '@ciphermaniac/design/components/SortTh';
 import { EmptyState } from '../components/EmptyState';
 import { CardTile } from '../components/CardTile';
-import { CardHoverPreview } from '../components/CardHoverPreview';
+import { CardNameLink } from '../components/CardNameLink';
 import { BottomSheet } from '../components/BottomSheet';
 import { createPagination } from '../lib/pagination';
 import { debounced } from '../lib/debounce';
 import { latestValue } from '../lib/resource';
+import { isRowClick } from '../lib/rowLink';
 import { averageCopies, categoryLabel } from '../lib/cardStats';
 import { foldSearch } from '../utils/searchFold';
 import { matchesCardFilters } from '../lib/cardFilters';
@@ -322,33 +325,17 @@ export function CardsIndexPage() {
 
 /* ---------- List view ---------- */
 
-function SortableTh(props: {
-  label: string;
-  sortKey: SortKey;
-  activeKey: SortKey;
-  dir: SortDir;
-  onSort: (key: SortKey) => void;
-  num?: boolean;
-  class?: string;
-}) {
-  const active = () => props.activeKey === props.sortKey;
-  return (
-    <th
-      class={`sortable${props.class ? ` ${props.class}` : ''}`}
-      classList={{ num: props.num }}
-      aria-sort={active() ? (props.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
-    >
-      <button class='th-sort' type='button' onClick={() => props.onSort(props.sortKey)}>
-        {props.label}
-        {/* Always present, hidden when inactive — see the note in
-            ArchetypesIndexPage's SortHeader. */}
-        <span class='sort-mark' classList={{ 'is-idle': !active() }} aria-hidden='true'>
-          {props.dir === 'asc' ? '▲' : '▼'}
-        </span>
-      </button>
-    </th>
-  );
-}
+const SORT_DIR: Record<SortDir, SortState> = { asc: 'ascending', desc: 'descending' };
+
+const LIST_COLUMNS: SkeletonColumn[] = [
+  { label: '#', class: 'num col-rank', width: '20px' },
+  { label: 'Card', class: 'col-name', width: '55%' },
+  { label: 'Set', class: 'col-secondary', width: '50px' },
+  { label: 'Type', class: 'col-secondary', width: '80px' },
+  { label: 'Inclusion', class: 'num', width: '40px' },
+  { label: 'Avg copies', class: 'num col-secondary', width: '36px' },
+  { label: 'Price', class: 'num', width: '44px' }
+];
 
 function ListView(props: {
   items: CardItem[];
@@ -358,46 +345,27 @@ function ListView(props: {
   sortDir: SortDir;
   onSort: (key: SortKey) => void;
 }) {
+  const sort = (key: SortKey): SortState => (props.sortKey === key ? SORT_DIR[props.sortDir] : 'none');
   return (
-    <div class='table-wrap cards-list'>
-      <table class='data'>
+    <div class='table-wrap'>
+      <table class='data' aria-label='Cards'>
         <thead>
           <tr>
-            <th class='num cards-rank-col'>#</th>
-            <SortableTh
-              label='Card'
-              sortKey='name'
-              activeKey={props.sortKey}
-              dir={props.sortDir}
-              onSort={props.onSort}
-            />
-            <th class='cards-set-col'>Set</th>
-            <th class='cards-type-col'>Type</th>
-            <SortableTh
-              label='Inclusion'
-              sortKey='inclusion'
-              activeKey={props.sortKey}
-              dir={props.sortDir}
-              onSort={props.onSort}
-              num
-            />
-            <SortableTh
-              label='Avg copies'
-              sortKey='avgCopies'
-              activeKey={props.sortKey}
-              dir={props.sortDir}
-              onSort={props.onSort}
-              num
-              class='cards-copies-col'
-            />
-            <SortableTh
-              label='Price'
-              sortKey='price'
-              activeKey={props.sortKey}
-              dir={props.sortDir}
-              onSort={props.onSort}
-              num
-            />
+            <th class='num col-rank'>#</th>
+            <SortTh class='col-name' sort={sort('name')} onSort={() => props.onSort('name')}>
+              Card
+            </SortTh>
+            <th class='col-secondary'>Set</th>
+            <th class='col-secondary'>Type</th>
+            <SortTh class='num' sort={sort('inclusion')} onSort={() => props.onSort('inclusion')}>
+              Inclusion
+            </SortTh>
+            <SortTh class='num col-secondary' sort={sort('avgCopies')} onSort={() => props.onSort('avgCopies')}>
+              Avg copies
+            </SortTh>
+            <SortTh class='num' sort={sort('price')} onSort={() => props.onSort('price')}>
+              Price
+            </SortTh>
           </tr>
         </thead>
         <tbody>
@@ -407,29 +375,20 @@ function ListView(props: {
               return (
                 <tr
                   class='is-link'
-                  onClick={() => props.onCardClick(item)}
-                  tabIndex={0}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
+                  onClick={e => {
+                    if (isRowClick(e)) {
                       props.onCardClick(item);
                     }
                   }}
                 >
-                  <td class='num muted-cell cards-rank-col'>{item.rank ?? '—'}</td>
-                  <td class='cards-name-col'>
-                    <Show
-                      when={item.set && item.number !== undefined}
-                      fallback={<span class='cardname'>{item.name}</span>}
-                    >
-                      <CardHoverPreview set={item.set!} number={item.number!}>
-                        <span class='cardname'>{item.name}</span>
-                      </CardHoverPreview>
-                    </Show>
-                  </td>
-                  <td class='muted-cell cards-set-col'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
-                  <td class='muted-cell cards-type-col'>{categoryLabel(item)}</td>
+                  <td class='num col-rank'>{item.rank ?? '—'}</td>
+                  <th scope='row' class='col-name'>
+                    <CardNameLink name={item.name} set={item.set} number={item.number} />
+                  </th>
+                  <td class='muted-cell col-secondary'>{item.set ? `${item.set}/${item.number}` : '—'}</td>
+                  <td class='muted-cell col-secondary'>{categoryLabel(item)}</td>
                   <td class='num'>{item.pct.toFixed(1)}%</td>
-                  <td class='num muted-cell cards-copies-col'>{averageCopies(item)}</td>
+                  <td class='num muted-cell col-secondary'>{averageCopies(item)}</td>
                   <td class='num'>
                     <Show when={price() !== null} fallback={<span class='muted-cell'>—</span>}>
                       ${price()!.toFixed(2)}
@@ -482,50 +441,7 @@ function ViewSkeleton(props: { mode: ViewMode }) {
         </CardsIndexGrid>
       }
     >
-      <div class='table-wrap cards-list'>
-        <table class='data'>
-          <thead>
-            <tr>
-              <th class='num cards-rank-col'>#</th>
-              <th>Card</th>
-              <th class='cards-set-col'>Set</th>
-              <th class='cards-type-col'>Type</th>
-              <th class='num'>Inclusion</th>
-              <th class='num cards-copies-col'>Avg copies</th>
-              <th class='num'>Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={Array.from({ length: 12 })}>
-              {() => (
-                <tr>
-                  <td class='num cards-rank-col'>
-                    <Skeleton width='20px' />
-                  </td>
-                  <td class='cards-name-col'>
-                    <Skeleton width='60%' />
-                  </td>
-                  <td class='cards-set-col'>
-                    <Skeleton width='50px' />
-                  </td>
-                  <td class='cards-type-col'>
-                    <Skeleton width='80px' />
-                  </td>
-                  <td class='num'>
-                    <Skeleton width='40px' />
-                  </td>
-                  <td class='num cards-copies-col'>
-                    <Skeleton width='36px' />
-                  </td>
-                  <td class='num'>
-                    <Skeleton width='44px' />
-                  </td>
-                </tr>
-              )}
-            </For>
-          </tbody>
-        </table>
-      </div>
+      <TableSkeleton columns={LIST_COLUMNS} rows={12} />
     </Show>
   );
 }

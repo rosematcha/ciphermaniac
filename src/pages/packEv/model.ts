@@ -25,18 +25,18 @@ export function rate(value: number): string {
   return `$${value.toFixed(3).replace(/0$/, '')}`;
 }
 
-/** What you get back per dollar spent, as a whole-number percentage. */
+/** What you get back per dollar spent, as a percentage. */
 export function returnPercent(value: number, cost: number | null): number | null {
   if (cost === null || cost <= 0) {
     return null;
   }
-  return Math.round((value / cost) * 100);
+  return (value / cost) * 100;
 }
 
-/** The share of the price a pack loses opened; negative when opening wins. Null when unpriced. */
+/** The whole-number share of the price a pack loses opened; negative when opening wins. Null when unpriced. */
 export function lossPercent(value: number, cost: number | null): number | null {
   const percent = returnPercent(value, cost);
-  return percent === null ? null : 100 - percent;
+  return percent === null ? null : 100 - Math.round(percent);
 }
 
 /** `2026-09-16` → `16 Sep 2026`, for the "prices from" line. */

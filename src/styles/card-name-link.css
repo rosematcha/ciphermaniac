@@ -1,0 +1,8 @@
+/* A card's name in a table's name cell (CardNameLink). The hover anchor is a
+   block as wide as the name, so the name can truncate and the art opens over
+   the name alone, not the whole cell. */
+.col-name > .card-hover-anchor {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+}
