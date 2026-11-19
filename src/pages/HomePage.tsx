@@ -26,6 +26,7 @@ import { formatPercent, nameFromTournamentKey, parseISODate, shortDateParts } fr
 import { latestValue, resolved } from '../lib/resource';
 import type { UpcomingEvent } from '../../shared/upcomingTypes.js';
 import { useTournament } from '../lib/tournamentContext';
+import { scopeHref } from '../lib/scopeUrl';
 import { ONLINE_META_NAME } from '../lib/constants';
 
 /**
@@ -747,11 +748,11 @@ function isOtherEntry(a: ArchetypeIndexEntry): boolean {
 
 function RecentMajorRow(props: { tournamentKey: string }) {
   return (
-    <div class='tournament-row tournament-row-dated'>
+    <A class='tournament-row tournament-row-dated tournament-row-link' href={scopeHref(props.tournamentKey)}>
       <DateCell date={tournamentDate(props.tournamentKey)} />
       <span class='name'>{nameFromTournamentKey(props.tournamentKey)}</span>
       <span class='players'>{classifyByName(props.tournamentKey)}</span>
-    </div>
+    </A>
   );
 }
 

@@ -35,6 +35,12 @@ export function scopeParam(key: string): string | undefined {
   return scopeSlug(key);
 }
 
+/** The home page scoped to a tournament, per the `?scope=` URL param. */
+export function scopeHref(key: string): string {
+  const scope = scopeParam(key);
+  return scope ? `/?scope=${encodeURIComponent(scope)}` : '/';
+}
+
 export function writeScopeParam(params: URLSearchParams, key: string): void {
   const value = scopeParam(key);
   if (value) {
