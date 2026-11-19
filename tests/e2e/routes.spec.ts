@@ -73,6 +73,16 @@ test('home reads the published upcoming schedule without invoking the API @mobil
   expect(requests).toEqual(['/upcoming.json']);
 });
 
+test('a recent major on home opens that event', async ({ page }) => {
+  await gotoClean(page, '/');
+  await page
+    .locator('.tournament-list')
+    .getByRole('link', { name: /New Orleans/ })
+    .click();
+  await expect(page).toHaveURL(/[?&]scope=/);
+  await expect(page.locator('.callout-title')).toContainText('New Orleans');
+});
+
 test('cards index lists cards from the fixture master report @mobile', async ({ page }) => {
   await gotoClean(page, '/cards');
   // The fixture's top card. If the index rendered from real data this would be

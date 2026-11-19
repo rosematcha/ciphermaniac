@@ -13,7 +13,7 @@ import type { PlayerIndexSlimEntry } from '../../shared/playerTypes';
 import { tournamentDate } from '../../shared/data/tournamentKeys';
 import { foldSearch } from '../utils/searchFold';
 import { formatPercent, nameFromTournamentKey, shortDate } from './format';
-import { scopeParam } from './scopeUrl';
+import { scopeHref } from './scopeUrl';
 import type { ArchetypeIndexEntry, CardItem } from '../types';
 
 export type SearchKind = 'archetype' | 'card' | 'player' | 'tournament';
@@ -149,12 +149,6 @@ function playerEntries(list: readonly PlayerIndexSlimEntry[]): SearchEntry[] {
   }));
 }
 
-/** The home page scoped to a tournament, per the `?scope=` URL param. */
-function tournamentHref(key: string): string {
-  const scope = scopeParam(key);
-  return scope ? `/?scope=${encodeURIComponent(scope)}` : '/';
-}
-
 function tournamentEntries(keys: readonly string[]): SearchEntry[] {
   return keys.map((key, i) => {
     const date = tournamentDate(key);
@@ -162,7 +156,7 @@ function tournamentEntries(keys: readonly string[]): SearchEntry[] {
       ...base({
         label: nameFromTournamentKey(key),
         sublabel: date ? date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '',
-        href: tournamentHref(key),
+        href: scopeHref(key),
         extraKeys: [key],
         weight: -i
       }),
