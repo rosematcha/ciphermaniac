@@ -10,6 +10,8 @@
  */
 
 import { dataClient } from './client';
+import { isRecord } from '../../../shared/data/validate';
+import { ONLINE } from './paths';
 
 const { fetchJsonOptional } = dataClient;
 
@@ -17,9 +19,13 @@ export interface PricingEntry {
   price?: number;
   tcgPlayerId?: string;
 }
-interface PricingPayload {
-  /** Map of `Name::SET::NUMBER` → entry */
-  cardPrices: Record<string, PricingEntry>;
+
+/** `cardPrices` (`Name::SET::NUMBER` → entry) from a price file, or null when it is absent. */
+async function readPrices(path: string): Promise<Record<string, PricingEntry> | null> {
+  const payload = await fetchJsonOptional<unknown>(path);
+  return isRecord(payload) && isRecord(payload.cardPrices)
+    ? (payload.cardPrices as Record<string, PricingEntry>)
+    : null;
 }
 
 /**
@@ -27,8 +33,26 @@ interface PricingPayload {
  * `{ price, tcgPlayerId }`.
  */
 export async function fetchPrices(): Promise<Record<string, PricingEntry>> {
-  const payload = await fetchJsonOptional<PricingPayload>('/reports/prices.json');
-  return payload?.cardPrices ?? {};
+  return (await readPrices('/reports/prices.json')) ?? {};
+}
+
+/**
+ * Prices for the cards a tournament's pages list. The online meta reads the file
+ * cut to its own cards; other sources, releases from before that file, and any
+ * failed read of it read every price.
+ */
+export async function fetchPricesFor(tournament: string): Promise<Record<string, PricingEntry>> {
+  const meta = tournament === ONLINE ? await readPrices('/reports/prices-meta.json').catch(() => null) : null;
+  return meta ?? fetchPrices();
+}
+
+/**
+ * Limitless per-print prices for the card page's printings strip, in release
+ * order, or null in releases where they still ride in the synonym database.
+ */
+export async function fetchPrintPrices(): Promise<Record<string, number | null> | null> {
+  const payload = await fetchJsonOptional<unknown>('/assets/card-prints.json');
+  return isRecord(payload) && isRecord(payload.prints) ? (payload.prints as Record<string, number | null>) : null;
 }
 
 /** One dated price observation from the rolling history. */

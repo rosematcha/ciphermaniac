@@ -68,6 +68,8 @@ export {
   fetchPriceHistoryForSet,
   fetchPriceMovers,
   fetchPrices,
+  fetchPricesFor,
+  fetchPrintPrices,
   PRICE_HISTORY_MIN_DAYS,
   priceHistorySpanDays
 } from './data/prices';

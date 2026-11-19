@@ -39,6 +39,9 @@ PRICES_CACHE_CONTROL = 'public, max-age=21600'
 HISTORY_WINDOW_DAYS = 90
 MIN_PRICE_COVERAGE = 0.8
 PRICES_KEY = 'reports/prices.json'
+# The same snapshot cut to every print of the cards in the current online meta,
+# for the pages that show that meta (about a seventh of the full file's bytes).
+PRICES_META_KEY = 'reports/prices-meta.json'
 
 # Client-facing derivatives of the rolling history. The monolith above stays the
 # job's own append state (it is the only place the full series lives), but no
@@ -381,6 +384,22 @@ def extract_current_meta_canonicals(master_report, synonyms_data):
         if canonical_uid:
             card_set.add(canonical_uid)
     return card_set
+
+
+def meta_price_uids(master_report, synonyms_data):
+    """The prints the online meta's pages look up prices for.
+
+    Each master card exactly as the report names it, since the browser keeps a
+    UID with no synonym edge even where its name maps elsewhere, plus its
+    canonical, and every print in their clusters, so a canonical that flips
+    after this run still finds its price.
+    """
+    exact = {
+        item.get('uid') or build_uid_from_parts(item.get('name'), item.get('set'), item.get('number'))
+        for item in master_report.get('items', [])
+    }
+    exact.discard(None)
+    return expand_to_clusters(exact | extract_current_meta_canonicals(master_report, synonyms_data), synonyms_data)
 
 
 def load_all_event_cards(r2_client, bucket_name, release):
@@ -1305,33 +1324,30 @@ def upload_price_history_to_r2(r2_client, bucket_name, history):
     print(f"  ✓ History upload complete ({len(history)} cards)")
 
 
-def upload_prices_to_r2(r2_client, bucket_name, price_data):
-    """Upload the spot-price snapshot to R2 (frontend-compatible format).
+def upload_prices_to_r2(r2_client, bucket_name, price_data, meta_uids=frozenset()):
+    """Upload the spot-price snapshot to R2 (frontend-compatible format), whole
+    and cut to ``meta_uids``.
 
-    Every priced UID is included. Card index and archetype pages still look up
-    only canonical UIDs, while the card page uses a selected printing's exact
-    entry to link its market price to the matching TCGplayer product.
+    Every priced UID goes in the whole file: the card page uses a selected
+    printing's exact entry to link its market price to the matching TCGplayer
+    product, and other formats and events price cards outside the meta. The
+    meta cut is ``meta_uids`` (see ``meta_price_uids``).
     """
-    key = PRICES_KEY
-
-    # Format for frontend compatibility (matches old API response)
-    output = {
-        'cardPrices': price_data,  # Frontend expects 'cardPrices' key
-        'metadata': {
-            'generated': datetime.now(timezone.utc).isoformat(),
-            'totalCards': len(price_data),
-            'source': 'tcgcsv.com'
+    meta = {uid: entry for uid, entry in price_data.items() if uid in meta_uids}
+    generated = datetime.now(timezone.utc).isoformat()
+    for key, prices in ((PRICES_KEY, price_data), (PRICES_META_KEY, meta)):
+        output = {
+            'cardPrices': prices,  # Frontend expects 'cardPrices' key
+            'metadata': {'generated': generated, 'totalCards': len(prices), 'source': 'tcgcsv.com'}
         }
-    }
-    
-    print(f"\nUploading to R2: {key}")
-    r2_client.put_object(
-        Bucket=bucket_name,
-        Key=key,
-        Body=json.dumps(output, separators=(',', ':')),
-        ContentType='application/json',
-        CacheControl=PRICES_CACHE_CONTROL
-    )
+        print(f"\nUploading to R2: {key} ({len(prices)} prints)")
+        r2_client.put_object(
+            Bucket=bucket_name,
+            Key=key,
+            Body=json.dumps(output, separators=(',', ':')),
+            ContentType='application/json',
+            CacheControl=PRICES_CACHE_CONTROL
+        )
     print("  ✓ Upload complete")
 
 
@@ -1394,7 +1410,9 @@ def main(argv=()):
     today = datetime.now(timezone.utc).date()
     history = update_price_history(existing_history, price_data, today, failed_sets=failed_sets)
     retain_failed_set_prices(price_data, previous_prices, failed_sets)
-    upload_prices_to_r2(r2_client, bucket_name, price_data)
+    # The meta cut follows the online master this run wrote, so a card new to
+    # today's meta is in it.
+    upload_prices_to_r2(r2_client, bucket_name, price_data, meta_price_uids(master_report, synonyms_data))
     upload_price_history_to_r2(r2_client, bucket_name, history)
     upload_derived_artifacts(r2_client, bucket_name, history, price_data, synonyms_data, today,
                              current_canonicals)

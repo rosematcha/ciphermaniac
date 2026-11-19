@@ -213,6 +213,32 @@ class PriceSavingTest(unittest.TestCase):
         self.assertIn('Leaving::SET::001', backfill)
         self.assertNotIn('Entering::SET::002', backfill)
 
+    def test_meta_prices_are_cut_from_the_staged_online_master(self):
+        staged_key = 'reports/Online - Last 14 Days/master.json'
+        masters = {
+            staged_key: {'items': [{'uid': 'Entering::SET::002'}]},
+            'releases/v1/online/aaaaaaaaaaaa/master.json': {'items': [{'uid': 'Leaving::SET::001'}]},
+        }
+        puts = {}
+        client = Mock()
+        client.get_object.side_effect = lambda Bucket, Key: {'Body': io.BytesIO(json.dumps(masters[Key]).encode())}
+        client.put_object.side_effect = lambda Bucket, Key, Body, **_: puts.__setitem__(Key, Body)
+        synonyms = {'synonyms': {}, 'canonicals': {}}
+        real = {
+            'initialize_r2_client': Mock(return_value=client),
+            'load_card_synonyms': Mock(return_value=synonyms),
+            'load_online_meta_report': update_prices.load_online_meta_report,
+            'extract_current_meta_canonicals': update_prices.extract_current_meta_canonicals,
+            'expand_to_clusters': update_prices.expand_to_clusters,
+            'upload_prices_to_r2': update_prices.upload_prices_to_r2,
+        }
+        release = {'roots': {'online': '/releases/v1/online/aaaaaaaaaaaa'}}
+        prices = {'Entering::SET::002': {'price': 2}, 'Leaving::SET::001': {'price': 1}}
+        self.run_main(prices, set(), prices, {}, argv=['--online-master', staged_key], release=release, **real)
+        cut = json.loads(puts[update_prices.PRICES_META_KEY])['cardPrices']
+        self.assertEqual(cut, {'Entering::SET::002': {'price': 2}})
+        self.assertEqual(json.loads(puts[update_prices.PRICES_KEY])['cardPrices'], prices)
+
 
 class SelectMarketPriceTest(unittest.TestCase):
     def test_picks_the_preferred_priced_variant(self):
@@ -743,6 +769,36 @@ class StandardScopeTest(unittest.TestCase):
             sorted(rising("all")), ["Iono::PAF::237", "Lost Vacuum::CRZ::162"]
         )
         self.assertEqual(rising("standard"), ["Iono::PAF::237"])
+
+
+class MetaPricesTest(unittest.TestCase):
+    def test_meta_cut_keeps_only_priced_meta_prints_in_snapshot_order(self):
+        client = _RecordingR2Client()
+        price_data = {
+            "Iono::PAF::237": {"price": 3.0},
+            "Lost Vacuum::CRZ::162": {"price": 1.5},
+            "Iono::PAL::185": {"price": 2.0},
+        }
+        meta_uids = {"Iono::PAL::185", "Iono::PAF::237", "Unpriced::SET::001"}
+        update_prices.upload_prices_to_r2(client, "bucket", price_data, meta_uids)
+        whole = json.loads(client.puts[update_prices.PRICES_KEY])
+        meta = json.loads(client.puts[update_prices.PRICES_META_KEY])
+        self.assertEqual(whole["cardPrices"], price_data)
+        self.assertEqual(list(meta["cardPrices"]), ["Iono::PAF::237", "Iono::PAL::185"])
+        self.assertEqual(meta["metadata"]["totalCards"], 2)
+
+
+class MetaPriceUidsTest(unittest.TestCase):
+    def test_a_print_whose_name_maps_to_another_card_keeps_its_own_price(self):
+        # The browser keeps Dunsparce JTG 120 as is (no synonym edge), though
+        # the name alone maps to TEF 128, a different card.
+        synonyms = {'synonyms': {}, 'canonicals': {'Dunsparce': 'Dunsparce::TEF::128'}}
+        master = {'items': [{'uid': 'Dunsparce::JTG::120'}]}
+        client = _RecordingR2Client()
+        prices = {'Dunsparce::JTG::120': {'price': 0.2}, 'Dunsparce::TEF::128': {'price': 0.1}}
+        update_prices.upload_prices_to_r2(client, 'bucket', prices, update_prices.meta_price_uids(master, synonyms))
+        cut = json.loads(client.puts[update_prices.PRICES_META_KEY])['cardPrices']
+        self.assertEqual(cut, prices)
 
 
 class _DictR2Client:

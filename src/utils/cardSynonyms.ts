@@ -11,7 +11,10 @@ import { isNonEmptyString, isRecord } from '../../shared/data/validate';
 import { dataClient } from '../lib/data/client';
 
 const SYNONYM_CACHE_KEY = 'cardSynonymsData';
-const SYNONYMS_PATH = '/assets/card-synonyms.json';
+// The slim file leaves out the per-print prices only the card page reads
+// (fetchPrintPrices); releases from before it carry the whole database.
+const SYNONYMS_PATH = '/assets/card-synonyms-slim.json';
+const FULL_SYNONYMS_PATH = '/assets/card-synonyms.json';
 // A cached entry is reused only for the URL it was fetched from, so a reload
 // onto a new release refetches. The TTL bounds mutable development URLs, which
 // keep their path across synonym rebuilds; it matches the edge redirect's
@@ -30,6 +33,11 @@ function isStringMap(value: unknown): boolean {
 
 function isSynonymDatabase(value: unknown): value is SynonymDatabase {
   return isRecord(value) && isStringMap(value.synonyms) && isStringMap(value.canonicals);
+}
+
+async function fetchSynonyms(path: string): Promise<SynonymDatabase | null> {
+  const loaded = await dataClient.fetchJsonOptional<unknown>(path);
+  return isSynonymDatabase(loaded) ? loaded : null;
 }
 
 // The promise is memoized (not the resolved value) so the concurrent callers
@@ -62,8 +70,9 @@ async function loadSynonymData(): Promise<SynonymDatabase> {
   }
 
   try {
-    const loaded = await dataClient.fetchJsonOptional<unknown>(SYNONYMS_PATH);
-    if (!isSynonymDatabase(loaded)) {
+    // Any failed slim read (an HTTP error, broken JSON, a wrong shape) falls back to the full file.
+    const loaded = (await fetchSynonyms(SYNONYMS_PATH).catch(() => null)) ?? (await fetchSynonyms(FULL_SYNONYMS_PATH));
+    if (!loaded) {
       synonymPromise = null;
       return EMPTY_DATABASE;
     }

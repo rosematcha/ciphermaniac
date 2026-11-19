@@ -23,6 +23,10 @@ for (const exhausted of [false, true]) {
         body: '<svg xmlns="http://www.w3.org/2000/svg" width="274" height="381"/>'
       });
     });
+    // The printings strip loads the same xs thumbnail; without reprints it stays out of the count.
+    await page.route('**/card-synonyms-slim.json', route =>
+      route.fulfill({ json: { synonyms: {}, canonicals: {} }, headers: { 'access-control-allow-origin': '*' } })
+    );
     await page.goto('/cards/MEG/114');
     const hero = page.locator('.card-image-real');
     if (exhausted) {

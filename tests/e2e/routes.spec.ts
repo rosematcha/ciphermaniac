@@ -153,6 +153,56 @@ test('prices without a shopping destination remain plain text', async ({ page })
   await expect(page.locator('.stat-value--price a')).toHaveCount(0);
 });
 
+/** Boss's Orders' printings in release order: promos first, then expansions oldest to newest. */
+const BOSS_RELEASE_ORDER = [
+  'SP 251',
+  'RCL 154',
+  'RCL 189',
+  'RCL 200',
+  'SHF 058',
+  'BRS 132',
+  'LOR TG24',
+  'PAL 172',
+  'PAL 248',
+  'PAL 265',
+  'MEG 114',
+  'ASC 183',
+  'ASC 256'
+];
+
+test('printings show in release order whether or not their prices have landed @mobile', async ({ page }) => {
+  await gotoClean(page, '/cards/MEG/114');
+  const frames = page.locator('.ps-frame');
+  await expect(frames.last()).toHaveAttribute('title', /\$\d/);
+  expect(await frames.evaluateAll(els => els.map(el => el.getAttribute('title')?.split(' · ')[0]))).toEqual(
+    BOSS_RELEASE_ORDER
+  );
+});
+
+test('a printing picked before its prices land stays picked, focused and in place @mobile', async ({ page }) => {
+  let release = () => {};
+  const held = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  await page.route('**/card-prints.json', async route => {
+    await held;
+    await route.continue();
+  });
+  await gotoClean(page, '/cards/MEG/114');
+  const frames = page.locator('.ps-frame');
+  await expect(frames).toHaveCount(13);
+  const labels = () => frames.evaluateAll(els => els.map(el => el.getAttribute('title')?.split(' · ')[0]));
+  expect(await labels()).toEqual(BOSS_RELEASE_ORDER);
+  const picked = await frames.nth(2).elementHandle();
+  await frames.nth(2).click();
+  await expect(frames.nth(2)).toHaveAttribute('aria-pressed', 'true');
+  release();
+  await expect(frames.nth(2)).toHaveAttribute('title', /\$\d/);
+  expect(await labels()).toEqual(BOSS_RELEASE_ORDER);
+  expect(await picked!.evaluate(el => el.isConnected && el === document.activeElement)).toBe(true);
+  await expect(frames.nth(2)).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('a variant card URL resolves to its canonical card', async ({ page }) => {
   // TWM/130 is a Dragapult ex reprint; PRE/073 is the cluster's canonical print.
   // The URL does NOT change here, and that is correct: the 301 lives in the edge
@@ -1654,6 +1704,12 @@ const A11Y_KNOWN = new Set([
 for (const path of A11Y_PATHS) {
   test(`${path} meets WCAG 2.2 AA and fits the screen @mobile`, async ({ page }) => {
     await gotoClean(page, path);
+    if (path.startsWith('/archetypes/')) {
+      // axe names a node by its shortest unique selector, so a stat label scanned while
+      // another cell is still loading gets a different key than A11Y_KNOWN lists.
+      await expect(page.locator('.arche-band')).toBeVisible();
+      await expect(page.locator('.arche-band .skeleton')).toHaveCount(0);
+    }
     const { violations } = await new AxeBuilder({ page }).withTags(A11Y_TAGS).analyze();
     const found = violations.flatMap(v => v.nodes.map(n => `${path}|${v.id}|${n.target.join(' ')}`));
     expect(found.filter(key => !A11Y_KNOWN.has(key))).toEqual([]);

@@ -26,6 +26,7 @@ import {
   fetchMaster,
   fetchPriceHistoryForSet,
   fetchPrices,
+  fetchPrintPrices,
   fetchRotationIndex,
   findCardBySetNumberCanonical,
   PRICE_HISTORY_MIN_DAYS,
@@ -44,7 +45,7 @@ import { computeSparkBounds } from '../lib/sparkline';
 import type { CardItem } from '../types';
 import { Badge } from '../components/Badge';
 import { nameFromTournamentKey } from '../lib/format';
-import { buildPrintingRows, formatPrintPrice, type PrintingRow } from '../utils/printings';
+import { buildPrintingRows, formatPrintPrice, type PrintingRow, withPrintOrder } from '../utils/printings';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { CardImage } from '../components/CardImage';
@@ -77,6 +78,8 @@ export function CardPage() {
   // use the global canonical — resolving both sides through this DB aligns them.
   const [synonymDb] = createResource(() => getSynonymDatabase());
   const db = (): SynonymDatabase | null => synonymDb() ?? null;
+  // The printings strip's per-print prices, fetched alongside the rest.
+  const [printPrices] = createResource(fetchPrintPrices);
   // Non-suspending reads (see lib/resource.ts). Master/prices are
   // tournament-scoped, so keep the last value while a refetch is in flight;
   // the per-card fan-out below uses `resolved` so a param change shows the
@@ -368,6 +371,7 @@ export function CardPage() {
         <CardPageBody
           card={card()!}
           db={db()}
+          prints={resolved(printPrices)}
           setNumber={setNumber()}
           previewPrint={previewPrint()}
           onPreview={setPreviewPrint}
@@ -397,6 +401,8 @@ export function CardPage() {
 function CardPageBody(props: {
   card: CardItem;
   db: SynonymDatabase | null;
+  /** Per-print prices; null when the release keeps them in `db`. */
+  prints: Record<string, number | null> | null | undefined;
   setNumber: string;
   previewPrint: PrintingRow | null;
   onPreview: (print: PrintingRow | null) => void;
@@ -427,9 +433,13 @@ function CardPageBody(props: {
   // Printings strip: every printing in this card's reprint cluster, with the
   // per-print prices the synonym producer scrapes — plus, on September 10th or
   // under `?j=1`, one printing that was never printed. See lib/jokeMode.
+  // Older releases carry those prices in the synonym database itself. Until
+  // they arrive the strip shows every printing unpriced, in release order, so
+  // it keeps its space and its order.
   const [searchParams] = useSearchParams();
   const joke = createMemo(() => isJokeMode(searchParams[JOKE_PARAM]));
-  const printings = createMemo<PrintingRow[]>(() => buildPrintingRows(props.db, itemUid(props.card), joke()));
+  const orderedDb = createMemo(() => withPrintOrder(props.db, props.prints ?? props.db?.prints));
+  const printings = createMemo<PrintingRow[]>(() => buildPrintingRows(orderedDb(), itemUid(props.card), joke()));
 
   // The rail is sticky by its top edge; with thirteen printings it outgrows a
   // laptop window, so pin it by whichever edge keeps all of it reachable.
@@ -650,6 +660,9 @@ function CardHeroArt(props: { card: CardItem; shown: PrintingRow | null }) {
  * focusing a frame previews its art and price; a click pins that preview until
  * the frame is clicked again. The page's print uses the Market price row's
  * figure so the two sources never disagree by a few cents.
+ *
+ * Frames and the selection are keyed by printing UID, so prices that land
+ * later fill in without remounting or unpinning a frame, or taking its focus.
  */
 function PrintingsStrip(props: {
   prints: PrintingRow[];
@@ -657,15 +670,19 @@ function PrintingsStrip(props: {
   onSelect: (print: PrintingRow | null) => void;
 }) {
   const framePrice = (p: PrintingRow): number | null => (p.isPage ? (props.pagePrice ?? p.price) : p.price);
-  const [pinned, setPinned] = createSignal<PrintingRow | null>(null);
-  const [hovered, setHovered] = createSignal<PrintingRow | null>(null);
+  const rows = createMemo(() => new Map(props.prints.map(p => [p.uid, p])));
+  const order = () => props.prints.map(p => p.uid);
+  const [pinned, setPinned] = createSignal<string | null>(null);
+  const [hovered, setHovered] = createSignal<string | null>(null);
   const pagePrint = () => props.prints.find(p => p.isPage) ?? props.prints[0];
-  const activePrint = createMemo(() => hovered() ?? pinned() ?? pagePrint());
-  const isShown = (p: PrintingRow): boolean => activePrint() === p;
+  const activePrint = createMemo(() => rows().get(hovered() ?? pinned() ?? '') ?? pagePrint());
+  const isShown = (uid: string): boolean => activePrint().uid === uid;
+  // A memo, so the reset below follows a change of card and not each new row list.
+  const pageUid = createMemo(() => pagePrint().uid);
 
   createEffect(
     on(
-      () => props.prints,
+      pageUid,
       () => {
         setPinned(null);
         setHovered(null);
@@ -676,11 +693,11 @@ function PrintingsStrip(props: {
 
   createEffect(() => {
     const active = activePrint();
-    props.onSelect(active === pagePrint() ? null : active);
+    props.onSelect(active.uid === pagePrint().uid ? null : active);
   });
 
-  const pin = (print: PrintingRow) => {
-    setPinned(current => (current === print ? null : print));
+  const pin = (uid: string) => {
+    setPinned(current => (current === uid ? null : uid));
   };
 
   return (
@@ -689,23 +706,26 @@ function PrintingsStrip(props: {
         Printings <span class='count'>{props.prints.length}</span>
       </h3>
       <div class='ps-frames' onMouseLeave={() => setHovered(null)}>
-        <For each={props.prints}>
-          {p => (
-            <button
-              type='button'
-              class='ps-frame'
-              classList={{ pinned: isShown(p) }}
-              aria-pressed={isShown(p)}
-              aria-label={`Show the ${p.set} ${p.number} art · ${formatPrintPrice(framePrice(p))}`}
-              title={`${p.set} ${p.number} · ${formatPrintPrice(framePrice(p))}`}
-              onMouseEnter={() => setHovered(p)}
-              onFocus={() => setHovered(p)}
-              onBlur={() => setHovered(null)}
-              onClick={() => pin(p)}
-            >
-              <CardImage set={p.set} number={p.number} size='xs' alt='' skipR2 />
-            </button>
-          )}
+        <For each={order()}>
+          {uid => {
+            const p = () => rows().get(uid)!;
+            return (
+              <button
+                type='button'
+                class='ps-frame'
+                classList={{ pinned: isShown(uid) }}
+                aria-pressed={isShown(uid)}
+                aria-label={`Show the ${p().set} ${p().number} art · ${formatPrintPrice(framePrice(p()))}`}
+                title={`${p().set} ${p().number} · ${formatPrintPrice(framePrice(p()))}`}
+                onMouseEnter={() => setHovered(uid)}
+                onFocus={() => setHovered(uid)}
+                onBlur={() => setHovered(null)}
+                onClick={() => pin(uid)}
+              >
+                <CardImage set={p().set} number={p().number} size='xs' alt='' skipR2 />
+              </button>
+            );
+          }}
         </For>
       </div>
     </div>

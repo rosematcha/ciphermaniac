@@ -2,6 +2,12 @@ export interface SynonymDatabase {
   synonyms: Record<string, string>;
   canonicals: Record<string, string>;
   prints?: Record<string, number | null>;
+  /**
+   * Slim file only: each cluster's canonical position in release order, where it
+   * is not first. With `synonyms` written in release order, it orders a card's
+   * printings before their prices load.
+   */
+  canonicalAt?: Record<string, number>;
 }
 
 export const EMPTY_DATABASE: SynonymDatabase = { synonyms: {}, canonicals: {} };

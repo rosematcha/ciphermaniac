@@ -238,7 +238,7 @@ async function discoverCapturedScopes(
     list('assets/', 'assets/', key => !key.startsWith('assets/print-prices/')),
     list('reports/price-history/', 'reports/'),
     Promise.all(
-      ['prices.json', 'prices-history.json', 'price-movers.json'].map(relativeKey =>
+      ['prices.json', 'prices-meta.json', 'prices-history.json', 'price-movers.json'].map(relativeKey =>
         describeObject(client, bucket, `reports/${relativeKey}`, relativeKey)
       )
     ),

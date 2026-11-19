@@ -16,7 +16,7 @@ import {
   fetchArchetype,
   fetchArchetypes,
   fetchOnlineTrendReport,
-  fetchPrices,
+  fetchPricesFor,
   fetchRotationIndex,
   getArchetypeIconMap,
   normalizeArchetypeKey,
@@ -306,7 +306,7 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
     );
 
   // Typical-list cost from card prices; null (renders nothing) when coverage is thin.
-  const [prices] = createResource(fetchPrices);
+  const [prices] = createResource(() => props.tournament, fetchPricesFor);
   const deckCost = createMemo(() => {
     const p = latestValue(prices);
     return p ? estimateDeckCost(props.report.items as CardItem[], p) : null;

@@ -95,3 +95,37 @@ export function buildPrintingRows(database: SynonymDatabase | null, pageUid: str
 export function formatPrintPrice(price: number | null): string {
   return price === null ? '—' : `$${price.toFixed(2)}`;
 }
+
+/** Every clustered print in release order: aliases as written, each canonical at its `canonicalAt`. */
+function releaseOrder(synonyms: Record<string, string>, canonicalAt: Record<string, number>): string[] {
+  const clusters = new Map<string, string[]>();
+  for (const [alias, canonical] of Object.entries(synonyms)) {
+    const aliases = clusters.get(canonical) ?? [];
+    aliases.push(alias);
+    clusters.set(canonical, aliases);
+  }
+  return [...clusters].flatMap(([canonical, aliases]) => {
+    const at = Number.isInteger(canonicalAt[canonical]) ? canonicalAt[canonical] : 0;
+    return [...aliases.slice(0, at), canonical, ...aliases.slice(at)];
+  });
+}
+
+/**
+ * The database the printings strip reads, with `prints` keyed in release order.
+ * A slim database orders each cluster from its own synonyms and `canonicalAt`,
+ * so the order is set before the prices load and holds when they do; `prices`
+ * only fills in the values. A database without that order keeps its own map.
+ * @param database - Synonym database, or null before load
+ * @param prices - Per-print prices, once loaded
+ * @returns The database with an ordered `prints` map, or null
+ */
+export function withPrintOrder(
+  database: SynonymDatabase | null,
+  prices: Record<string, number | null> | null | undefined
+): SynonymDatabase | null {
+  if (!database?.canonicalAt) {
+    return database && { ...database, prints: prices ?? database.prints ?? {} };
+  }
+  const order = releaseOrder(database.synonyms, database.canonicalAt);
+  return { ...database, prints: Object.fromEntries(order.map(uid => [uid, prices?.[uid] ?? null])) };
+}

@@ -4,7 +4,13 @@ import { BottomSheet } from '../components/BottomSheet';
 import { CardImage } from '../components/CardImage';
 import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
-import { fetchArchetype, fetchArchetypes, fetchPrices, fetchTournamentsList, prettyTournamentName } from '../lib/data';
+import {
+  fetchArchetype,
+  fetchArchetypes,
+  fetchPricesFor,
+  fetchTournamentsList,
+  prettyTournamentName
+} from '../lib/data';
 import { ONLINE_META_NAME } from '../lib/constants';
 import { latestValue, resolved } from '../lib/resource';
 import { type BinderArchetypeInput, type BinderCard, binderChecklist, buildBinder } from '../lib/metaBinder';
@@ -31,7 +37,6 @@ export function MetaBinderPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tournaments] = createResource(fetchTournamentsList);
   const tournamentsData = () => latestValue(tournaments);
-  const [prices] = createResource(fetchPrices);
   const [sheetOpen, setSheetOpen] = createSignal(false);
   const [copied, setCopied] = createSignal(false);
 
@@ -48,6 +53,7 @@ export function MetaBinderPage() {
   });
 
   const tournament = () => (typeof searchParams.t === 'string' && searchParams.t ? searchParams.t : ONLINE_META_NAME);
+  const [prices] = createResource(tournament, fetchPricesFor);
 
   const [archetypes] = createResource(tournament, fetchArchetypes);
   const archetypeList = () => latestValue(archetypes) ?? [];

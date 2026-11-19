@@ -18,6 +18,7 @@ import { createR2Client, getJsonResult, readJson } from './lib/r2.mjs';
 import { loadEventSources, productionScopeRoot } from './lib/build/productionRelease.ts';
 import { loadFormatDecks, loadOnlineDecks } from './lib/build/onlineDecks.ts';
 import { mergeSynonymMaps } from './lib/synonymMerge.ts';
+import { synonymObjects } from './lib/synonymObjects.ts';
 import { releaseFormatRoots } from './lib/build/formatReports.ts';
 import { newSetCodes, parseSetCardList } from './lib/setSeeds.ts';
 
@@ -639,7 +640,9 @@ async function saveSynonyms(data) {
 
 async function uploadToR2(data) {
   log('\nUploading to R2...');
-  await putObject('assets/card-synonyms.json', data);
+  for (const [key, body] of synonymObjects(data)) {
+    await putObject(key, body);
+  }
   log('  ✓ Uploaded successfully');
 }
 
