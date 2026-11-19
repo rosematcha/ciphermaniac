@@ -1,4 +1,5 @@
 import importlib.util
+import io
 import json
 import unittest
 from datetime import date, timedelta
@@ -125,7 +126,7 @@ class PriceCoverageTest(unittest.TestCase):
 
 
 class PriceSavingTest(unittest.TestCase):
-    def run_main(self, fresh, failed, previous, history, history_error=None):
+    def run_main(self, fresh, failed, previous, history, history_error=None, argv=(), release=None, **real):
         overrides = {
             'initialize_r2_client': Mock(),
             'load_online_meta_report': Mock(return_value={}),
@@ -142,12 +143,13 @@ class PriceSavingTest(unittest.TestCase):
             'upload_prices_to_r2': Mock(),
             'upload_price_history_to_r2': Mock(),
             'upload_derived_artifacts': Mock(),
+            **real,
         }
         with ExitStack() as stack:
             stack.enter_context(patch.multiple(update_prices, **overrides))
-            stack.enter_context(patch.object(update_prices.r2, 'load_production_release', return_value={}))
+            stack.enter_context(patch.object(update_prices.r2, 'load_production_release', return_value=release or {}))
             try:
-                update_prices.main()
+                update_prices.main(argv)
             finally:
                 self.uploads = [overrides[name] for name in (
                     'upload_prices_to_r2', 'upload_price_history_to_r2', 'upload_derived_artifacts')]
@@ -181,6 +183,35 @@ class PriceSavingTest(unittest.TestCase):
         self.assertEqual(uploads[0].call_args.args[2]['A::S4::001'], previous['A::S4::001'])
         self.assertEqual(uploads[1].call_args.args[2]['A::S4::001'], points)
         self.assertEqual(uploads[2].call_args.args[2]['A::S4::001'], points)
+
+
+    def test_daily_movers_use_the_staged_online_master(self):
+        staged_key = 'reports/Online - Last 14 Days/master.json'
+        masters = {
+            staged_key: {'items': [{'uid': 'Entering::SET::002'}]},
+            'releases/v1/online/aaaaaaaaaaaa/master.json': {'items': [{'uid': 'Leaving::SET::001'}]},
+        }
+        client = Mock()
+        client.get_object.side_effect = lambda Bucket, Key: {'Body': io.BytesIO(json.dumps(masters[Key]).encode())}
+        real = {
+            'initialize_r2_client': Mock(return_value=client),
+            'load_card_synonyms': Mock(return_value={'synonyms': {}, 'canonicals': {}}),
+            'load_online_meta_report': update_prices.load_online_meta_report,
+            'extract_current_meta_canonicals': update_prices.extract_current_meta_canonicals,
+        }
+        release = {'roots': {'online': '/releases/v1/online/aaaaaaaaaaaa'}}
+        prices = {'A::SET::001': {'price': 1}}
+
+        def standard_canonicals(argv):
+            uploads = self.run_main(prices, set(), prices, {}, argv=argv, release=release, **real)
+            return uploads[2].call_args.args[6]
+
+        daily = standard_canonicals(['--online-master', staged_key])
+        self.assertIn('Entering::SET::002', daily)
+        self.assertNotIn('Leaving::SET::001', daily)
+        backfill = standard_canonicals(())
+        self.assertIn('Leaving::SET::001', backfill)
+        self.assertNotIn('Entering::SET::002', backfill)
 
 
 class SelectMarketPriceTest(unittest.TestCase):

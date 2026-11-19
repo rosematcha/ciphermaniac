@@ -116,6 +116,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="write locally, skip R2 upload")
     parser.add_argument("--days", type=int, default=up.HISTORY_WINDOW_DAYS)
     parser.add_argument("--cache-dir", default=".price-archives")
+    parser.add_argument("--online-master", help="staged online master.json key (default: the released one)")
     parser.add_argument("--marker", help="producer marker to set unfinished before the first write")
     args = parser.parse_args()
 
@@ -131,7 +132,7 @@ def main():
     # every card any archived event reported, not just the canonicals, so newly
     # tracked collector/cheap siblings get their full 90 days rather than the
     # single point the daily job seeds them with.
-    master_report = up.load_online_meta_report(r2_client, bucket, release)
+    master_report = up.load_online_meta_report(r2_client, bucket, release, args.online_master)
     synonyms_data = up.load_card_synonyms(r2_client, bucket)
     current_canonicals = up.extract_current_meta_canonicals(master_report, synonyms_data)
     archive_prints = up.expand_to_clusters(

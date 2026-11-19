@@ -6,6 +6,10 @@ import { completedStage, pipelineStore, type StageStore } from './lib/pipelineSt
 import { builderRevision } from './lib/build/revision';
 import { runMajorData } from './run-major-data';
 import { refreshCardAssets } from './lib/cardAssets';
+import { ONLINE_PREFIX } from './lib/build/capturedScope';
+
+/** The online master release capture publishes; price movers judge Standard eligibility by it. */
+const STAGED_ONLINE_MASTER = `${ONLINE_PREFIX}master.json`;
 
 function node(script: string, args: string[] = []): void {
   execFileSync(process.execPath, ['--import', 'tsx', `.github/scripts/${script}`, ...args], { stdio: 'inherit' });
@@ -45,7 +49,7 @@ async function daily(): Promise<void> {
       // After online meta, whose fetch of the same rules the run's cache already holds.
       node('publish-deck-rules.ts');
       node('run-trends.ts');
-      python('update-prices.py');
+      python('update-prices.py', ['--online-master', STAGED_ONLINE_MASTER]);
       node('run-pack-ev.ts');
       node('run-format-meta.ts');
     }
@@ -97,7 +101,14 @@ async function maintenance(): Promise<void> {
 
 const repairs: Record<string, (marker: string) => void> = {
   'price-history': marker =>
-    python('backfill-price-history.py', ['--days', process.env.DAYS ?? '90', '--marker', marker]),
+    python('backfill-price-history.py', [
+      '--days',
+      process.env.DAYS ?? '90',
+      '--online-master',
+      STAGED_ONLINE_MASTER,
+      '--marker',
+      marker
+    ]),
   'print-prices': marker =>
     python('backfill-print-prices.py', [
       ...(process.env.DATES ? ['--dates', process.env.DATES] : []),

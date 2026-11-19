@@ -1,4 +1,4 @@
-"""The price-history repair marks itself unfinished before its first upload."""
+"""The price-history repair reads the online master it is told to, and marks itself unfinished before writing."""
 
 import importlib.util
 import json
@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 
 def _load_module():
@@ -20,6 +20,20 @@ def _load_module():
 
 
 bph = _load_module()
+
+
+class OnlineMasterTest(unittest.TestCase):
+    def test_reads_the_staged_online_master_it_is_given(self):
+        staged_key = "reports/Online - Last 14 Days/master.json"
+        load = Mock(side_effect=RuntimeError("stop after the master read"))
+        with tempfile.TemporaryDirectory() as cache_dir, \
+                patch.object(sys, "argv", ["backfill", "--cache-dir", cache_dir, "--online-master", staged_key]), \
+                patch.object(bph, "find_7z", return_value="7z"), \
+                patch.multiple(bph.up, initialize_r2_client=Mock(), load_online_meta_report=load), \
+                patch.object(bph.up.r2, "load_production_release", return_value={}):
+            with self.assertRaisesRegex(RuntimeError, "stop after the master read"):
+                bph.main()
+        load.assert_called_once_with(ANY, ANY, {}, staged_key)
 
 
 class RepairMarkerOrderTest(unittest.TestCase):

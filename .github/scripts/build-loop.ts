@@ -29,7 +29,12 @@ import { loadEventSources } from './lib/build/productionRelease.ts';
 import { capturePlayers, currentPlayerObjects, type PlayerInventory } from './lib/build/playerCapture';
 import type { PlayerAggregateManifest } from '../../shared/playerTypes';
 import { assertProducerComplete, inputFingerprint, type ProducerState } from './lib/build/provenance';
-import { isFormatsReportObject, isOnlineReportObject, staleCapturedReport } from './lib/build/capturedScope';
+import {
+  isFormatsReportObject,
+  isOnlineReportObject,
+  ONLINE_PREFIX,
+  staleCapturedReport
+} from './lib/build/capturedScope';
 
 const CACHE = 'public, max-age=31536000, immutable';
 
@@ -222,7 +227,7 @@ async function discoverCapturedScopes(
   const list = (prefix: string, relativeTo: string, include?: (key: string) => boolean) =>
     listJsonObjects({ client, bucket, prefix, relativeTo, include });
   const [online, trends, players, snapshots, assets, priceShards, priceGlobals, majors, formats] = await Promise.all([
-    list('reports/Online - Last 14 Days/', 'reports/Online - Last 14 Days/', isOnlineReportObject),
+    list(ONLINE_PREFIX, ONLINE_PREFIX, isOnlineReportObject),
     Promise.all(
       ['meta.json', 'trends.json', 'history.json'].map(relativeKey =>
         describeObject(client, bucket, `reports/Trends - Last 30 Days/${relativeKey}`, relativeKey)

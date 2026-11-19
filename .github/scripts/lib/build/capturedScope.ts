@@ -1,6 +1,7 @@
 import { BANLIST_FILE } from '../../../../shared/formats/banlist';
 
-const ONLINE_PREFIX = 'reports/Online - Last 14 Days/';
+/** Where release capture reads the staged online report. */
+export const ONLINE_PREFIX = 'reports/Online - Last 14 Days/';
 const TRENDS_PREFIX = 'reports/Trends - Last 30 Days/';
 const FORMATS_PREFIX = 'reports/Formats/';
 const SNAPSHOT_DECK_SHARD = /^reports\/Snapshots\/[^/]+\/archetypes\/[^/]+\/decks\.json$/;

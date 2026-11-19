@@ -5,6 +5,7 @@ Fetches prices for all cards in "Online - Last 14 Days" report, every
 archived event and every published non-Standard format
 """
 
+import argparse
 import os
 import sys
 import json
@@ -248,9 +249,10 @@ def initialize_r2_client():
     return r2.make_r2_client(r2_account_id, r2_access_key_id, r2_secret_access_key)
 
 
-def load_online_meta_report(r2_client, bucket_name, release):
-    """Load the master.json from Online - Last 14 Days report."""
-    key = r2.production_scope_key(release, 'online', 'master.json')
+def load_online_meta_report(r2_client, bucket_name, release, key=None):
+    """Load the Online - Last 14 Days master.json: ``key`` when the daily run names
+    the one it just staged, else the released one (standalone backfills)."""
+    key = key or r2.production_scope_key(release, 'online', 'master.json')
     print(f"Loading {key}...")
     
     try:
@@ -1333,7 +1335,10 @@ def upload_prices_to_r2(r2_client, bucket_name, price_data):
     print("  ✓ Upload complete")
 
 
-def main():
+def main(argv=()):
+    parser = argparse.ArgumentParser(description='Daily price check')
+    parser.add_argument('--online-master', help='R2 key of the staged online master.json')
+    online_master = parser.parse_args(argv).online_master
     bucket_name = os.environ.get('R2_BUCKET_NAME', 'ciphermaniac-reports')
     
     print("=" * 60)
@@ -1345,7 +1350,7 @@ def main():
     release = r2.load_production_release(r2_client, bucket_name)
     
     # Load data
-    master_report = load_online_meta_report(r2_client, bucket_name, release)
+    master_report = load_online_meta_report(r2_client, bucket_name, release, online_master)
     synonyms_data = load_card_synonyms(r2_client, bucket_name)
     
     # Canonical cards drive the snapshot; the full print universe (every
@@ -1425,4 +1430,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
