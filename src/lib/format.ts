@@ -41,6 +41,16 @@ export function formatPercent(p: number | null | undefined, fractionDigits = 1):
   return `${p.toFixed(fractionDigits)}%`;
 }
 
+/**
+ * Tooltip text for one copy-count bucket, e.g. "2 copies: 60% (382 decks)".
+ * A non-zero share under 1% reads "<1%" instead of rounding to "0%".
+ */
+export function copyBucketLabel(copies: number, pct: number, decks?: number): string {
+  const share = pct > 0 && pct < 1 ? '<1%' : `${pct.toFixed(0)}%`;
+  const count = decks === undefined ? '' : ` (${decks.toLocaleString()} deck${decks === 1 ? '' : 's'})`;
+  return `${copies} cop${copies === 1 ? 'y' : 'ies'}: ${share}${count}`;
+}
+
 const TOURNAMENT_KEY_RE = /^\d{4}-\d{2}-\d{2},\s*(.+)$/;
 
 export function nameFromTournamentKey(key: string): string {

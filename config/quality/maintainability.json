@@ -137,10 +137,6 @@
     "max-lines-per-function:cd616685ebb021599061eb32bde6aa0256c7bc895b25e6c7fec85d7fec79690e:Function 'useAdvancedPanel' has too many lines (447). Maximum allowed is 250.",
     "max-lines-per-function:5177a456368b2ba46c0dd29a90381bd2b4f5c831ef9de76e2ebff1c7abe70b5e:Function 'AdvancedPanel' has too many lines (271). Maximum allowed is 250."
   ],
-  "src/components/CardTile.tsx": [
-    "max-depth:aaddb8d0c23fc798e8c02794b0069fdc23a5fcba0d9f8718514f2699500a8446:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "complexity:aaddb8d0c23fc798e8c02794b0069fdc23a5fcba0d9f8718514f2699500a8446:Arrow function has a complexity of 13. Maximum allowed is 12."
-  ],
   "src/components/MatchupsPanel.tsx": [
     "max-lines-per-function:867adcd30f6c8e294d22f7da07cea44029ea5635013227fb00cbd40a24e66ced:Function 'MatchupsPanel' has too many lines (469). Maximum allowed is 250."
   ],
