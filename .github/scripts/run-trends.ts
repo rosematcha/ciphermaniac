@@ -78,7 +78,7 @@ class R2Binding {
   }
 
   async put(key: string, data: unknown) {
-    const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    const body = typeof data === 'string' ? data : JSON.stringify(data);
     await reports.put(this.withPrefix(key), body);
     if (key === HISTORY_KEY) {
       await this.removeStaleTrendArtifacts();

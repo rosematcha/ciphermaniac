@@ -56,7 +56,6 @@ interface Settings {
   dailyDays: number;
   minDayLists: number;
   minDeckLists: number;
-  minDeckDayLists: number;
   archetypeLimit: number;
   deckLimit: number;
   deckCardLimit: number;
@@ -133,7 +132,6 @@ const DEFAULTS: Omit<Settings, 'endMs'> = {
   dailyDays: 14,
   minDayLists: 100,
   minDeckLists: 20,
-  minDeckDayLists: 8,
   archetypeLimit: 32,
   deckLimit: 8,
   deckCardLimit: 8,
@@ -307,7 +305,7 @@ function buildArchetypes(tallies: Tallies, dates: string[], s: Settings): Weekly
 }
 
 function deckCard(ctx: Ctx, uid: string, inArchetype: CardInArchetype, archetype: ArchetypeTally): WeeklyDeckCard {
-  const { tallies, s } = ctx;
+  const { tallies } = ctx;
   const meta = tallies.cards.get(uid);
   const inclusion = pctOf(inArchetype.lists.period[RECENT], archetype.lists.period[RECENT]);
   const priorInclusion = pctOf(inArchetype.lists.period[PRIOR], archetype.lists.period[PRIOR]);
@@ -319,10 +317,7 @@ function deckCard(ctx: Ctx, uid: string, inArchetype: CardInArchetype, archetype
     inclusion,
     priorInclusion,
     delta: round1(inclusion - priorInclusion),
-    isNew: priorInclusion < NEW_CARD_THRESHOLD && inclusion >= NEW_CARD_THRESHOLD,
-    daily: archetype.lists.day.map((lists, i) =>
-      lists >= s.minDeckDayLists ? pctOf(inArchetype.lists.day[i], lists) : null
-    )
+    isNew: priorInclusion < NEW_CARD_THRESHOLD && inclusion >= NEW_CARD_THRESHOLD
   };
   return card;
 }

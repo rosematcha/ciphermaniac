@@ -378,8 +378,6 @@ export interface WeeklyDeckCard {
   delta: number;
   /** Went from under 5% of lists to 5% or more. */
   isNew: boolean;
-  /** Inclusion per day over the daily window; null where the deck had too few lists. */
-  daily: (number | null)[];
 }
 
 export interface WeeklyDeck {
@@ -444,8 +442,6 @@ export interface BuildWeeklyReportOptions {
   minDayLists?: number;
   /** An archetype needs this many lists in BOTH periods to get a deck block. Default 20. */
   minDeckLists?: number;
-  /** A day inside an archetype needs this many lists for its inclusion point. Default 8. */
-  minDeckDayLists?: number;
   /** Archetype rows kept. Default 32. */
   archetypeLimit?: number;
   /** Deck blocks kept, by this week's share. Default 8. */

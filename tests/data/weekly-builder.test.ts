@@ -39,7 +39,7 @@ const lists = (n: number, daysAgo: number, archetype: string, cards: Card[] = []
   Array.from({ length: n }, () => list(daysAgo, archetype, cards, top10));
 
 /** Loose floors so a handful of lists is enough for every section. */
-const LOOSE = { windowEnd: END, minDayLists: 1, minDeckLists: 1, minDeckDayLists: 1, minMoverLists: 1 };
+const LOOSE = { windowEnd: END, minDayLists: 1, minDeckLists: 1, minMoverLists: 1 };
 
 describe('buildWeeklyReport periods', () => {
   it('splits whole UTC days into the recent and prior weeks', () => {
@@ -174,15 +174,6 @@ describe('buildWeeklyReport decks', () => {
       report.decks.map(d => d.displayName),
       ['B']
     );
-  });
-
-  it('gives each deck card a daily inclusion series with a per-day floor', () => {
-    const decks = [...lists(4, 1, 'A', [judge]), ...lists(4, 1, 'A'), list(2, 'A', [judge]), ...lists(2, 8, 'A')];
-    const report = buildWeeklyReport(decks, { ...LOOSE, minDeckDayLists: 2 });
-    const j = report.decks[0].added.find(c => c.name === 'Judge')!;
-    assert.equal(j.daily.length, 14);
-    assert.equal(j.daily[13], 50, 'Sep 10: 4 of 8 lists');
-    assert.equal(j.daily[12], null, 'Sep 9 had one list, under the floor');
   });
 
   it('leaves basic energy out of the deck changes', () => {
