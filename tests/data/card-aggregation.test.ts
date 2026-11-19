@@ -66,6 +66,34 @@ test('Card type enrichment from database and cache behavior', async () => {
   assert.strictEqual(enrichedMissing.name, 'Unknown');
 });
 
+test('a decklist number without padding still finds its card-types entry', () => {
+  // Limitless decklists send "57"; the database keys pad to "SFA::057". A miss
+  // left the name heuristic to call this supporter an item.
+  const database = { 'SFA::057': { cardType: 'trainer', subType: 'supporter', regulationMark: 'H' } };
+  const card: { name: string; set: string; number: string; trainerType?: string; regulationMark?: string } = {
+    name: "Colress's Tenacity",
+    set: 'SFA',
+    number: '57'
+  };
+  const enriched = enrichCardWithType(card, database);
+  assert.strictEqual(enriched.trainerType, 'supporter');
+  assert.strictEqual(enriched.regulationMark, 'H');
+});
+
+test('a lower-case set or a number 0 still finds its card-types entry', () => {
+  const database = {
+    'SFA::057': { cardType: 'trainer', subType: 'supporter' },
+    'SVP::000': { cardType: 'trainer', subType: 'item' }
+  };
+  const lookup = (set: string, number: string | number) =>
+    enrichCardWithType<{ name: string; set: string; number: string | number; trainerType?: string }>(
+      { name: 'Card', set, number },
+      database
+    ).trainerType;
+  assert.strictEqual(lookup('sfa', '57'), 'supporter');
+  assert.strictEqual(lookup('SVP', 0), 'item');
+});
+
 // Trainer subtype heuristics via gatherDecks flow
 test('Extract trainer subtypes and detect ACE SPEC cards via gatherDecks heuristics', async () => {
   const tournaments = [{ id: 'tX', name: 'Heuristic Test', date: '2025-12-01T00:00:00Z', players: 8 }];

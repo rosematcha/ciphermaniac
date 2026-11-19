@@ -3,6 +3,8 @@
  * @module lib/cardTypesDatabase
  */
 
+import { canonicalizeVariant } from './cardIdentity';
+
 interface WorkerEnv {
   /** Only `get` is needed here; accepts an R2 bucket or any structural equivalent (e.g. the CI S3 shim). */
   REPORTS?: { get(key: string): Promise<{ text(): Promise<string> } | null> };
@@ -85,42 +87,45 @@ export async function loadCardTypesDatabase(env: WorkerEnv): Promise<CardTypesDa
   }
 }
 
+/** Report fields the database fills when a card doesn't carry them already. */
+type FillableField = 'category' | 'trainerType' | 'energyType' | 'evolutionInfo' | 'fullType';
+
+function fillableFields(info: CardTypeInfo): [FillableField, string | undefined][] {
+  return [
+    ['category', info.cardType],
+    ['trainerType', info.cardType === 'trainer' ? info.subType : undefined],
+    ['energyType', info.cardType === 'energy' ? info.subType : undefined],
+    ['evolutionInfo', info.cardType === 'pokemon' ? info.evolutionInfo : undefined],
+    ['fullType', info.fullType]
+  ];
+}
+
+/**
+ * The database key for a card. Keys use an upper-case set and a padded number
+ * (`SFA::057`) while Limitless decklists don't pad (`57`), so both are
+ * normalized first.
+ */
+function databaseKey(card: CardRecord | null | undefined): string | null {
+  const [set, number] = canonicalizeVariant(card?.set, card?.number);
+  return set && number ? `${set}::${number}` : null;
+}
+
 export function enrichCardWithType<T extends CardRecord>(card: T, database: CardTypesDatabase): T {
-  if (!card) {
-    return card;
-  }
-
-  const key = card?.set && card?.number ? `${card.set}::${card.number}` : null;
-
+  const key = databaseKey(card);
   if (!key) {
     return card;
   }
 
-  const enriched = { ...card };
+  const enriched: T = { ...card };
   const typeInfo = database[key];
-
   if (!typeInfo) {
-    return enriched as T;
+    return enriched;
   }
 
-  if (typeInfo.cardType && !enriched.category) {
-    enriched.category = typeInfo.cardType;
-  }
-
-  if (typeInfo.cardType === 'trainer' && typeInfo.subType && !enriched.trainerType) {
-    enriched.trainerType = typeInfo.subType;
-  }
-
-  if (typeInfo.cardType === 'energy' && typeInfo.subType && !enriched.energyType) {
-    enriched.energyType = typeInfo.subType;
-  }
-
-  if (typeInfo.cardType === 'pokemon' && typeInfo.evolutionInfo && !enriched.evolutionInfo) {
-    enriched.evolutionInfo = typeInfo.evolutionInfo;
-  }
-
-  if (typeInfo.fullType && !enriched.fullType) {
-    enriched.fullType = typeInfo.fullType;
+  for (const [field, value] of fillableFields(typeInfo)) {
+    if (value && !enriched[field]) {
+      (enriched as CardRecord)[field] = value;
+    }
   }
 
   if (typeInfo.regulationMark) {
@@ -133,5 +138,5 @@ export function enrichCardWithType<T extends CardRecord>(card: T, database: Card
     enriched.aceSpec = true;
   }
 
-  return enriched as T;
+  return enriched;
 }
