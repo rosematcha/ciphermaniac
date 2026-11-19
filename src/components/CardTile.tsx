@@ -3,6 +3,7 @@ import { createMemo, For, Show } from 'solid-js';
 import type { CardItem } from '../types';
 import { CardImage } from './CardImage';
 import { prefetchCardPage } from '../lib/prefetch';
+import { copyBucketLabel } from '../lib/format';
 
 /**
  * Grid cell for the /cards page.
@@ -21,46 +22,48 @@ import { prefetchCardPage } from '../lib/prefetch';
  *
  * The whole tile is a single link to the card detail page.
  */
-export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; eagerImage?: boolean }) {
-  const buckets = createMemo<{ copies: number; pct: number }[]>(() => {
-    const dist = props.card.dist ?? [];
-    const valid: { copies: number; pct: number }[] = [];
-    for (const d of dist) {
-      const copies = Number(d.copies ?? 0);
-      if (!Number.isFinite(copies) || copies <= 0) {
-        continue;
-      }
-      const pct = Number(d.percent ?? 0);
-      if (pct <= 0) {
-        continue;
-      }
-      valid.push({ copies, pct });
-    }
+interface CopyBucket {
+  copies: number;
+  pct: number;
+  decks?: number;
+}
 
-    // Always render exactly 4 bars. For "normal" cards every copy count we have
-    // is 1×–4×, so this is a no-op. For Basic Energy (which can show 1×–15×
-    // buckets), we show only the four MOST USED counts — keeps the histogram
-    // legible at small sizes and surfaces the meaningful play patterns.
-    let chosen: { copies: number; pct: number }[];
-    if (valid.length <= 4) {
-      chosen = [...valid];
-      // In the filtered Advanced view, omit the 0% padding — the filtered
-      // subset constrains exact copy counts, so showing greyed-out columns is
-      // visual noise that obscures the actual distribution.
-      if (!props.hideEmptyBuckets) {
-        for (let i = 1; i <= 4 && chosen.length < 4; i++) {
-          if (!chosen.some(b => b.copies === i)) {
-            chosen.push({ copies: i, pct: 0 });
-          }
-        }
-      }
-    } else {
-      chosen = [...valid].sort((a, b) => b.pct - a.pct).slice(0, 4);
+/** Copy-count buckets with a positive copy count and share. */
+function validBuckets(card: CardItem): CopyBucket[] {
+  const valid: CopyBucket[] = [];
+  for (const d of card.dist ?? []) {
+    const copies = Number(d.copies ?? 0);
+    const pct = Number(d.percent ?? 0);
+    if (Number.isFinite(copies) && copies > 0 && pct > 0) {
+      valid.push({ copies, pct, decks: d.players });
     }
-    // Display in ascending copy-count order so the x-axis reads left-to-right.
-    chosen.sort((a, b) => a.copies - b.copies);
-    return chosen;
-  });
+  }
+  return valid;
+}
+
+/**
+ * Always render exactly 4 bars. For "normal" cards every copy count we have
+ * is 1×–4×, so this is a no-op. For Basic Energy (which can show 1×–15×
+ * buckets), we show only the four MOST USED counts — keeps the histogram
+ * legible at small sizes and surfaces the meaningful play patterns.
+ *
+ * In the filtered Advanced view (`pad` false), omit the 0% padding — the
+ * filtered subset constrains exact copy counts, so showing greyed-out columns
+ * is visual noise that obscures the actual distribution.
+ */
+function histogramBuckets(valid: CopyBucket[], pad: boolean): CopyBucket[] {
+  const chosen = valid.length <= 4 ? [...valid] : [...valid].sort((a, b) => b.pct - a.pct).slice(0, 4);
+  for (let i = 1; i <= 4 && chosen.length < 4; i++) {
+    if (pad && !chosen.some(b => b.copies === i)) {
+      chosen.push({ copies: i, pct: 0 });
+    }
+  }
+  // Display in ascending copy-count order so the x-axis reads left-to-right.
+  return chosen.sort((a, b) => a.copies - b.copies);
+}
+
+export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; eagerImage?: boolean }) {
+  const buckets = createMemo(() => histogramBuckets(validBuckets(props.card), !props.hideEmptyBuckets));
 
   // Scale the bars to the largest single-bucket value so even small-percentage
   // bars stay visible. (If every card scaled to 0–100%, low-inclusion cards
@@ -79,8 +82,7 @@ export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; ea
   // Accessible summary + tooltip for the copy-count histogram. Reads like
   // "1 copy: 12%, 2 copies: 60%, ..." so screen readers (and hover) get the
   // real distribution instead of a generic label.
-  const bucketText = (b: { copies: number; pct: number }) =>
-    `${b.copies} cop${b.copies === 1 ? 'y' : 'ies'}: ${b.pct.toFixed(0)}%`;
+  const bucketText = (b: CopyBucket) => copyBucketLabel(b.copies, b.pct, b.decks);
   const histSummary = createMemo(() => {
     const b = buckets();
     if (b.length === 0) {

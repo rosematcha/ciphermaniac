@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  copyBucketLabel,
   formatRecord,
   ordinal,
   placementLabel,
@@ -74,4 +75,10 @@ test('placementLabel renders an em dash for an unplaced entry', () => {
   assert.equal(placementLabel(null), '—');
   assert.equal(placementLabel(undefined), '—');
   assert.equal(placementLabel(46), '46th');
+});
+
+test('copyBucketLabel shows a sliver of a bucket as <1% with its deck count', () => {
+  assert.equal(copyBucketLabel(1, 0.4, 3), '1 copy: <1% (3 decks)');
+  assert.equal(copyBucketLabel(2, 60.2, 1), '2 copies: 60% (1 deck)');
+  assert.equal(copyBucketLabel(4, 0), '4 copies: 0%');
 });
