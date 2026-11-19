@@ -3,6 +3,7 @@ import { useNavigate } from '@solidjs/router';
 import type { CardItem } from '../types';
 import { EmptyState } from './EmptyState';
 import { CardTile } from './CardTile';
+import { CardCropTile } from './CardCropTile';
 import { cutCards } from './cardCut';
 import { CardHoverPreview } from './CardHoverPreview';
 import { averageCopies, categoryLabel } from '../lib/cardStats';
@@ -11,7 +12,7 @@ export type CardListItem = CardItem & {
   cardId?: string;
 };
 
-export type ViewMode = 'grid' | 'list';
+export type ViewMode = 'grid' | 'compact' | 'list';
 
 export function CardList(props: {
   title: string;
@@ -45,7 +46,7 @@ export function CardList(props: {
         <span class='right'>{props.rightSlot ?? `${props.items.length.toLocaleString()} cards`}</span>
       </div>
       <Show
-        when={props.viewMode === 'grid'}
+        when={props.viewMode !== 'list'}
         fallback={
           <>
             <Show when={visible().length > 0}>
@@ -57,8 +58,15 @@ export function CardList(props: {
           </>
         }
       >
-        <div class='cards-grid'>
-          <For each={visible()}>{item => <CardTile card={item} hideEmptyBuckets={props.hideEmptyBuckets} />}</For>
+        <div class={props.viewMode === 'compact' ? 'card-crop-grid' : 'cards-grid'}>
+          <Show
+            when={props.viewMode === 'compact'}
+            fallback={
+              <For each={visible()}>{item => <CardTile card={item} hideEmptyBuckets={props.hideEmptyBuckets} />}</For>
+            }
+          >
+            <For each={visible()}>{item => <CardCropTile card={item} hideEmptyBuckets={props.hideEmptyBuckets} />}</For>
+          </Show>
           <Show when={cut().under > 0}>{cutButton('card-cut-cell')}</Show>
         </div>
       </Show>

@@ -318,7 +318,7 @@ test('List view shows no empty table for a section that is all under 10%', async
   await expect(tools.locator('tbody tr')).toHaveCount(2);
 });
 
-test('an archetype section holds its cards under 10% behind an end cell', async ({ page }) => {
+test('an archetype section holds its cards under 10% behind an end cell, in grid and compact', async ({ page }) => {
   await gotoClean(page, '/archetypes/Dragapult');
   const pokemon = page.locator('.arche-tier', { has: page.getByRole('heading', { name: 'Pokémon', exact: true }) });
   const cell = pokemon.locator('.card-cut-cell');
@@ -328,8 +328,11 @@ test('an archetype section holds its cards under 10% behind an end cell', async 
   await cell.click();
   await expect(pokemon.locator('.card-tile')).toHaveCount(15);
   await expect(pokemon.locator('.cards-grid > :last-child')).toHaveText('Hide cards under 10%');
-  await cell.click();
-  await expect(pokemon.locator('.card-tile')).toHaveCount(12);
+
+  await page.getByRole('radio', { name: 'Compact' }).click();
+  await expect(pokemon.locator('.card-crop')).toHaveCount(15);
+  await pokemon.locator('.card-cut-cell').click();
+  await expect(pokemon.locator('.card-crop')).toHaveCount(12);
 });
 
 test('a scope deep link loads the selected tournament', async ({ page }) => {

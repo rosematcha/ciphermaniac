@@ -12,6 +12,89 @@
   padding-top: var(--space-5);
   border-top: 1px solid var(--rule);
 }
+.is-compact .arche-tier + .arche-tier {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+}
+
+/* ---------- Compact view ----------
+   The card's illustration only, framed per card type, with the histogram and
+   usage bar over it. Each frame is the art window measured on SV and Mega era
+   prints, scaled to fill a 4:3 tile; a basic energy frames its type symbol. */
+.card-crop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px 12px;
+}
+.card-crop {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--fg);
+  text-decoration: none;
+}
+.card-crop:hover {
+  text-decoration: none;
+}
+.card-crop-art {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.card-crop-art .card-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  height: auto;
+}
+.card-crop-art.is-pokemon .card-img {
+  width: 140.1%;
+  transform: translate(-14.31%, -10%);
+}
+.card-crop-art.is-pokemon-ex .card-img {
+  width: 149.83%;
+  transform: translate(-16.63%, -16%);
+}
+.card-crop-art.is-trainer .card-img {
+  width: 141.94%;
+  transform: translate(-14.77%, -13.5%);
+}
+.card-crop-art.is-energy-special .card-img {
+  width: 117.65%;
+  transform: translate(-7%, -15.58%);
+}
+.card-crop-art.is-energy-basic .card-img {
+  width: 135.14%;
+  transform: translate(-12%, -32.84%);
+}
+.card-crop-art .card-image-fallback {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+.card-crop .card-tile-shade {
+  height: 70%;
+}
+.card-crop .card-tile-overlay {
+  padding: 4px;
+  gap: 3px;
+}
+.card-crop .card-tile-usage {
+  height: 16px;
+}
+.card-crop .card-tile-hist {
+  height: 26px;
+}
+@media (max-width: 640px) {
+  .card-crop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 10px;
+  }
+}
 
 /* ---------- Cards under the cut-off ----------
    A card-sized cell ends each section's grid: it shows the cards under 10%,
@@ -42,4 +125,9 @@
 .cards-grid .card-cut-cell {
   aspect-ratio: 5 / 7;
   align-self: start;
+}
+.card-crop-grid .card-cut-cell {
+  aspect-ratio: 4 / 3;
+  align-self: start;
+  border-radius: var(--radius-sm);
 }

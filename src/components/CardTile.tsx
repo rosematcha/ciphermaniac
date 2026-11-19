@@ -62,7 +62,8 @@ function histogramBuckets(valid: CopyBucket[], pad: boolean): CopyBucket[] {
   return chosen.sort((a, b) => a.copies - b.copies);
 }
 
-export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; eagerImage?: boolean }) {
+/** The copy-count histogram and usage bar drawn over a card's art. */
+export function CardTileOverlay(props: { card: CardItem; hideEmptyBuckets?: boolean }) {
   const buckets = createMemo(() => histogramBuckets(validBuckets(props.card), !props.hideEmptyBuckets));
 
   // Scale the bars to the largest single-bucket value so even small-percentage
@@ -91,11 +92,49 @@ export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; ea
     return `Copies per deck — ${b.map(bucketText).join(', ')}`;
   });
 
-  const href = () =>
-    props.card.set && props.card.number !== undefined ? `/cards/${props.card.set}/${props.card.number}` : '#';
-
   return (
-    <A class='card-tile' href={href()} onMouseEnter={prefetchCardPage} onFocus={prefetchCardPage}>
+    <div class='card-tile-overlay'>
+      <div class='card-tile-hist' role='img' aria-label={histSummary()} title={histSummary()}>
+        <For each={buckets()}>
+          {bucket => {
+            const heightPct = () => {
+              const peak = peakBucketPct();
+              if (peak <= 0) {
+                return 0;
+              }
+              // Map to 6–100% range so a tiny non-zero bar is still visible.
+              return Math.max(bucket.pct > 0 ? 8 : 0, (bucket.pct / peak) * 100);
+            };
+            return (
+              <div class='card-tile-hist-col' title={bucketText(bucket)}>
+                <Show when={bucket.pct > 0}>
+                  <div class='card-tile-hist-fill' style={{ height: `${heightPct()}%` }} />
+                </Show>
+                <span class='card-tile-hist-label'>{bucket.copies}</span>
+              </div>
+            );
+          }}
+        </For>
+      </div>
+      <div
+        class='card-tile-usage'
+        title={`Found in ${props.card.found.toLocaleString()} of ${props.card.total.toLocaleString()} decks`}
+      >
+        <div class='card-tile-usage-fill' style={{ width: `${Math.min(100, props.card.pct)}%` }} />
+        <span class='card-tile-usage-pct'>{props.card.pct.toFixed(1)}%</span>
+      </div>
+    </div>
+  );
+}
+
+/** A card's page, or `#` when the report row has no printing. */
+export function cardHref(card: CardItem): string {
+  return card.set && card.number !== undefined ? `/cards/${card.set}/${card.number}` : '#';
+}
+
+export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; eagerImage?: boolean }) {
+  return (
+    <A class='card-tile' href={cardHref(props.card)} onMouseEnter={prefetchCardPage} onFocus={prefetchCardPage}>
       <div class='card-tile-card'>
         <CardImage
           set={props.card.set ?? '?'}
@@ -106,50 +145,27 @@ export function CardTile(props: { card: CardItem; hideEmptyBuckets?: boolean; ea
           lazy={props.eagerImage ? false : undefined}
         />
         <div class='card-tile-shade' aria-hidden='true' />
-        <div class='card-tile-overlay'>
-          <div class='card-tile-hist' role='img' aria-label={histSummary()} title={histSummary()}>
-            <For each={buckets()}>
-              {bucket => {
-                const heightPct = () => {
-                  const peak = peakBucketPct();
-                  if (peak <= 0) {
-                    return 0;
-                  }
-                  // Map to 6–100% range so a tiny non-zero bar is still visible.
-                  return Math.max(bucket.pct > 0 ? 8 : 0, (bucket.pct / peak) * 100);
-                };
-                return (
-                  <div class='card-tile-hist-col' title={bucketText(bucket)}>
-                    <Show when={bucket.pct > 0}>
-                      <div class='card-tile-hist-fill' style={{ height: `${heightPct()}%` }} />
-                    </Show>
-                    <span class='card-tile-hist-label'>{bucket.copies}</span>
-                  </div>
-                );
-              }}
-            </For>
-          </div>
-          <div
-            class='card-tile-usage'
-            title={`Found in ${props.card.found.toLocaleString()} of ${props.card.total.toLocaleString()} decks`}
-          >
-            <div class='card-tile-usage-fill' style={{ width: `${Math.min(100, props.card.pct)}%` }} />
-            <span class='card-tile-usage-pct'>{props.card.pct.toFixed(1)}%</span>
-          </div>
-        </div>
+        <CardTileOverlay card={props.card} hideEmptyBuckets={props.hideEmptyBuckets} />
       </div>
       <div class='card-tile-meta'>
         <div class='card-tile-name-row'>
           <span class='card-tile-name'>{props.card.name}</span>
-          <span class='card-tile-set'>
-            {props.card.set ?? ''}
-            {props.card.number !== undefined ? ` ${props.card.number}` : ''}
-          </span>
+          <CardTileSet card={props.card} />
         </div>
         <div class='card-tile-decks'>
           {props.card.found.toLocaleString()} / {props.card.total.toLocaleString()} decks
         </div>
       </div>
     </A>
+  );
+}
+
+/** The set code and number beside a tile's name. */
+export function CardTileSet(props: { card: CardItem }) {
+  return (
+    <span class='card-tile-set'>
+      {props.card.set ?? ''}
+      {props.card.number !== undefined ? ` ${props.card.number}` : ''}
+    </span>
   );
 }

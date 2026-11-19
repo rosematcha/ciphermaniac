@@ -38,7 +38,7 @@ import { ArchetypeIcons } from '../components/ArchetypeIcon';
 import { CardList, type ViewMode } from '../components/CardList';
 import { AdvancedPanel } from '../components/AdvancedPanel';
 import { MatchupsPanel } from '../components/MatchupsPanel';
-import { createPersistentViewMode } from '../lib/persistentSignal';
+import { createPersistentSignal } from '../lib/persistentSignal';
 import { latestValue, resolved } from '../lib/resource';
 import { fetchArchetypeWinRate, type WinRateAggregate } from '../lib/archetypeWinRate';
 import { matchPointWilson, sampleTier } from '../lib/confidence';
@@ -60,6 +60,7 @@ const TAB_OPTIONS: { value: ArchTab; label: string }[] = [
 ];
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: 'grid', label: 'Grid' },
+  { value: 'compact', label: 'Compact' },
   { value: 'list', label: 'List' }
 ];
 
@@ -70,7 +71,8 @@ const CUT_PCT = 10;
 const ListsTab = lazy(() => import('./archetypePage/ListsTab'));
 
 // View mode preference is shared with the /cards page under `cm:cardsView` — a
-// user who picks list view on /cards almost certainly wants it here too.
+// user who picks list view on /cards almost certainly wants it here too. /cards
+// has no Compact view, so it reads a stored `compact` as its default.
 
 export function ArchetypePage() {
   const params = useParams<{ slug: string }>();
@@ -131,7 +133,9 @@ export function ArchetypePage() {
       ? ('cards' as ArchTab)
       : null;
   const [tab, setTab] = createSignal<ArchTab>(sharedTab ?? (sharedFilters ? 'advanced' : 'cards'));
-  const [viewMode, setViewMode] = createPersistentViewMode('cm:cardsView');
+  const [viewMode, setViewMode] = createPersistentSignal<ViewMode>('cm:cardsView', 'grid', v =>
+    v === 'grid' || v === 'compact' || v === 'list' ? v : null
+  );
 
   // Pre-rotation snapshot fallback. Fires when the live archetype lookup has
   // settled with an error (404 from R2) and the rotation index knows where
@@ -401,19 +405,21 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
         <TabPanel tabs='archetype' selected={props.tab}>
           <Show when={props.tab === 'cards'}>
             <Show when={sections().length > 0} fallback={<EmptyState title='No cards in this report.' />}>
-              <For each={sections()}>
-                {section => (
-                  <div class='arche-tier'>
-                    <CardList
-                      title={section.title}
-                      items={section.items}
-                      viewMode={props.viewMode}
-                      emptyMessage='No cards in this report.'
-                      cutPct={CUT_PCT}
-                    />
-                  </div>
-                )}
-              </For>
+              <div classList={{ 'is-compact': props.viewMode === 'compact' }}>
+                <For each={sections()}>
+                  {section => (
+                    <div class='arche-tier'>
+                      <CardList
+                        title={section.title}
+                        items={section.items}
+                        viewMode={props.viewMode}
+                        emptyMessage='No cards in this report.'
+                        cutPct={CUT_PCT}
+                      />
+                    </div>
+                  )}
+                </For>
+              </div>
             </Show>
           </Show>
 
