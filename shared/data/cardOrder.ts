@@ -388,7 +388,9 @@ function isFossil(stage: string | null, evolutionInfo: string): boolean {
 /**
  * A report's items in deck order for the producers that write archetype
  * `cards.json`, each carrying the category it was sorted under so the page
- * groups it in the same section. With facets the order is complete and marked
+ * groups it in the same section, and, for a Pokémon whose pre-evolution the
+ * list also plays, that card's name in `evolvesFrom`, so the page can read
+ * evolution lines without card data. With facets the order is complete and marked
  * `itemOrder: 'deck'`, which lets the browser keep it through its read-time
  * canonicalization. Without them, or when any Pokémon lacks a facet (a print
  * newer than the database), the evolution lines can't all be placed: it stays
@@ -403,9 +405,10 @@ export function deckOrderedItems<T extends OrderableCard>(
   items: readonly T[],
   facets: CardFacetMap | null,
   warn: (message: string) => void
-): { items: T[]; itemOrder?: 'deck' } {
+): { items: (T & { evolvesFrom?: string })[]; itemOrder?: 'deck' } {
+  const parentOf = listedParent(items, facets);
   const sorted = sortByDeckOrder(
-    items.map(item => withCategory(item, resolveCategory(item, facets))),
+    items.map(item => withParent(withCategory(item, resolveCategory(item, facets)), parentOf(item))),
     facets
   );
   if (!facets) {
@@ -442,6 +445,20 @@ function placesEvolution(facet: CardFacet | undefined): boolean {
 
 function withCategory<T extends OrderableCard>(item: T, category: string | null): T {
   return category && category !== item.category ? { ...item, category } : item;
+}
+
+function withParent<T extends OrderableCard>(item: T, evolvesFrom: string | undefined): T & { evolvesFrom?: string } {
+  return evolvesFrom ? { ...item, evolvesFrom } : item;
+}
+
+/** A card's pre-evolution as the list names it, when the list plays it. */
+function listedParent(items: readonly OrderableCard[], facets: CardFacetMap | null) {
+  const names = new Map(items.map(item => [nameKey(item.name), item.name]));
+  return (item: OrderableCard): string | undefined => {
+    const key = facetKey(item);
+    const parent = key && facets?.get(key)?.evolvesFrom;
+    return parent ? names.get(nameKey(parent)) : undefined;
+  };
 }
 
 /**

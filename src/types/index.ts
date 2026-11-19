@@ -24,6 +24,8 @@ export interface CardItem {
   pct: number;
   dist?: CardDistributionEntry[];
   price?: number | null;
+  /** The pre-evolution's name, when the same report plays it (archetype reports in deck order). */
+  evolvesFrom?: string;
 }
 
 export interface TournamentParticipant {

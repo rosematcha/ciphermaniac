@@ -8,6 +8,8 @@ import { FORMAT_SCOPES, type FormatScope, type FormatsIndex } from '../../shared
 import { releaseGroups, windowDays } from '../../shared/formats/window';
 import { decodeStandings } from '../../shared/api/limitlessDecoders';
 import { fetchRecentOnlineTournaments } from '../../shared/onlineMeta/tournamentFetcher';
+import { parseArchetypeTrends } from '../../src/lib/data/archetypeTrends';
+import { weeklyChanges } from '../../src/pages/archetypePage/changesModel';
 
 /** A card as Cube Koga's API sends it. */
 function cubeCard(id: string, name: string, set: string): Record<string, string> {
@@ -382,4 +384,44 @@ test('a format names cards by its own prints and marks the payloads that carry t
   const standard = read('reports/Formats/rspk-standard/master.json');
   assert.equal(standard.canonicalizedAt, undefined);
   assert.ok(standard.items?.some(item => item.uid === 'Rare Candy::MEG::125'));
+});
+
+test("a format's trends name cards by its own prints, as its card reports do", async () => {
+  const rareCandy = {
+    synonyms: { 'Rare Candy::SS::088': 'Rare Candy::MEG::125' },
+    canonicals: { 'Rare Candy': 'Rare Candy::MEG::125' },
+    prints: { 'Rare Candy::MEG::125': 0.21, 'Rare Candy::SS::088': 8.16 }
+  };
+  // Twenty Slowking lists a week; this week's all add Rare Candy, listed as the modern print.
+  const withCandy = { ...SLOWKING_LIST, trainer: [{ name: 'Rare Candy', count: 4, set: 'MEG', number: '125' }] };
+  const events = [
+    { id: 't-EX', date: '2026-10-15T17:00:00.000Z', decklist: SLOWKING_LIST },
+    { id: 'u-EX', date: '2026-10-22T17:00:00.000Z', decklist: withCandy }
+  ];
+  const slowking = { id: 'slowking-scr', name: 'Slowking', icons: ['slowking'] };
+  const fetchJson: OnlineMetaOptions['fetchJson'] = async (path, options) => {
+    if (path === '/tournaments') {
+      const query = options?.searchParams as Record<string, unknown>;
+      return query.page === 1 && query.format === 'EX'
+        ? events.map(({ id, date }) => ({ id, name: 'RS-PK Tournament', date, players: 20 }))
+        : [];
+    }
+    if (path === '/games/PTCG/decks' || path.endsWith('/pairings')) {
+      return [];
+    }
+    if (path.endsWith('/details')) {
+      return { decklists: true, isOnline: true, format: 'EX', organizer: { name: 'JustInBasil', id: 90 } };
+    }
+    const event = events.find(({ id }) => path.includes(id))!;
+    return Array.from({ length: 20 }, (_, index) => player(index + 1, slowking, event.decklist));
+  };
+  const bucket = memoryStore({ 'assets/card-synonyms.json': rareCandy });
+  await runFormatMetas(runOptions(bucket.store, fetchJson, [RSPK]));
+
+  const folder = 'reports/Formats/rspk/archetypes/Slowking';
+  const cards = bucket.objects.get(`${folder}/cards.json`) as { items: Array<{ uid: string }> };
+  assert.ok(cards.items.some(item => item.uid === 'Rare Candy::SS::088'));
+  const trends = parseArchetypeTrends(bucket.objects.get(`${folder}/trends.json`))!;
+  const candy = weeklyChanges(trends, []).rows.find(row => row.name === 'Rare Candy');
+  assert.deepEqual([candy?.set, candy?.number, candy?.delta], ['SS', '088', 100]);
 });

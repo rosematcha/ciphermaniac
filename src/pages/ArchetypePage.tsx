@@ -26,6 +26,8 @@ import {
   type TrendTimelinePoint
 } from '../lib/data';
 import { useTournament } from '../lib/tournamentContext';
+import { fetchArchetypeTrends } from '../lib/data/matchups';
+import { formatIdFromKey } from '../../shared/formats/registry';
 import { ONLINE_META_NAME } from '../lib/constants';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
 import { TabPanel, Tabs } from '@ciphermaniac/design/components/Tabs';
@@ -50,10 +52,11 @@ import { createListsState, ListsControls } from './archetypePage/listsControls';
 import '../styles/pages/archetype.css';
 import '../styles/pages/archetype-tiers.css';
 
-type ArchTab = 'cards' | 'lists' | 'matchups' | 'advanced';
+type ArchTab = 'cards' | 'changes' | 'lists' | 'matchups' | 'advanced';
 
 const TAB_OPTIONS: { value: ArchTab; label: string }[] = [
   { value: 'cards', label: 'All cards' },
+  { value: 'changes', label: 'Changes' },
   { value: 'lists', label: 'Lists' },
   { value: 'matchups', label: 'Matchups' },
   { value: 'advanced', label: 'Filters' }
@@ -69,6 +72,7 @@ const CUT_PCT = 10;
 
 // The Lists tab's body (table, filmstrip, deck) loads with the tab, not the page.
 const ListsTab = lazy(() => import('./archetypePage/ListsTab'));
+const ChangesTab = lazy(() => import('./archetypePage/ChangesTab'));
 
 // View mode preference is shared with the /cards page under `cm:cardsView` — a
 // user who picks list view on /cards almost certainly wants it here too. /cards
@@ -123,7 +127,7 @@ export function ArchetypePage() {
   // Land a shared filter link straight on the Filters tab, or a matrix deep-link
   // straight on the Matchups tab.
   const sharedFilters = Boolean(searchParams.b || searchParams.s || searchParams.t);
-  const TAB_VALUES: readonly ArchTab[] = ['cards', 'lists', 'matchups', 'advanced'];
+  const TAB_VALUES: readonly ArchTab[] = ['cards', 'changes', 'lists', 'matchups', 'advanced'];
   // 'core' and 'tech' were separate tabs before the card tiers were merged into
   // one page; old links land on the combined list rather than nothing.
   const rawTab = typeof searchParams.tab === 'string' ? searchParams.tab : '';
@@ -348,6 +352,28 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
     ({ t, names }) => import('./archetypePage/loadLists').then(m => m.fetchArchetypeLists(t, names)).catch(() => [])
   );
   const listsData = () => latestValue(archetypeLists);
+
+  // Week-to-week changes need a rolling window: the online meta or a format,
+  // never a single event or a frozen snapshot. The trends file is the one the
+  // Matchups tab reads, and loads the first time the tab opens.
+  const rolling = () =>
+    !props.snapshotDate && (props.tournament === ONLINE_META_NAME || formatIdFromKey(props.tournament) !== null);
+  const tabOptions = () => (rolling() ? TAB_OPTIONS : TAB_OPTIONS.filter(o => o.value !== 'changes'));
+  const [changesWanted, setChangesWanted] = createSignal(false);
+  createEffect(() => {
+    if (props.tab !== 'changes') {
+      return;
+    }
+    if (rolling()) {
+      setChangesWanted(true);
+    } else {
+      props.onTabChange('cards');
+    }
+  });
+  const [archetypeTrends] = createResource(
+    () => (changesWanted() && rolling() ? { t: props.tournament, slug: props.slug } : null),
+    ({ t, slug }) => fetchArchetypeTrends(t, slug).catch(() => null)
+  );
   const bothVenues = createMemo(() => {
     const venues = new Set((listsData() ?? []).map(l => l.venue));
     return venues.size > 1;
@@ -383,14 +409,14 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
 
       <section>
         <div class='arche-toolbar'>
-          <Tabs id='archetype' options={TAB_OPTIONS} selected={props.tab} onSelect={props.onTabChange} />
+          <Tabs id='archetype' options={tabOptions()} selected={props.tab} onSelect={props.onTabChange} />
           {/* Grid/List only affects the card views; the Matchups tab has its own layout. */}
           <Show when={props.tab === 'lists'}>
             <div class='arche-toolbar-controls'>
               <ListsControls state={listsState} bothVenues={bothVenues()} />
             </div>
           </Show>
-          <Show when={props.tab !== 'matchups' && props.tab !== 'lists'}>
+          <Show when={props.tab === 'cards' || props.tab === 'advanced'}>
             <div class='arche-toolbar-controls'>
               <Segmented<ViewMode>
                 options={VIEW_OPTIONS}
@@ -421,6 +447,14 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
                 </For>
               </div>
             </Show>
+          </Show>
+
+          <Show when={props.tab === 'changes'}>
+            <ErrorBoundary fallback={<p class='muted'>Couldn't load this week's changes.</p>}>
+              <Suspense fallback={<Skeleton height='320px' />}>
+                <ChangesTab trends={resolved(archetypeTrends)} items={props.report.items as CardItem[]} />
+              </Suspense>
+            </ErrorBoundary>
           </Show>
 
           <Show when={props.tab === 'lists'}>

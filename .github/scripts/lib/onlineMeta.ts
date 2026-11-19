@@ -430,6 +430,10 @@ interface TrendBuildInput {
   tournaments: OnlineTournamentSummary[];
   synonymDb: SynonymDatabase;
   pairingsData: PairingData[];
+  /** The report's exclusive window end, from its meta.json. */
+  windowEnd: string;
+  /** The scope's own print choice, as the card reports use it. */
+  resolveUid?: (uid: string) => string;
 }
 
 function buildArchetypeTrends(
@@ -454,7 +458,7 @@ function buildArchetypeTrends(
           decks as unknown as Parameters<typeof generateArchetypeTrends>[0],
           input.tournaments,
           input.synonymDb,
-          { pairingsData: input.pairingsData, archetypeName }
+          { pairingsData: input.pairingsData, archetypeName, windowEnd: input.windowEnd, resolveUid: input.resolveUid }
         )
       );
     } catch (error) {
@@ -662,7 +666,9 @@ export async function runOnlineMeta(options: OnlineMetaOptions): Promise<Record<
     archetypes,
     tournaments: reportTournaments,
     synonymDb,
-    pairingsData
+    pairingsData,
+    windowEnd: String(meta.windowEnd),
+    resolveUid
   });
 
   // Per-card finish rates, computed with the trends above and for the same

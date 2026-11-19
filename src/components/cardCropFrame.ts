@@ -14,7 +14,9 @@ export type CropFrame = 'pokemon' | 'pokemon-ex' | 'trainer' | 'energy-special' 
  * @param card - The card to frame
  * @returns Its crop frame
  */
-export function cropFrame(card: CardItem): CropFrame {
+export function cropFrame(
+  card: Pick<CardItem, 'name' | 'category' | 'supertype' | 'energyType' | 'trainerType'>
+): CropFrame {
   const [main = '', sub = ''] = (card.category ?? '').toLowerCase().split('/');
   const type = main || (card.supertype ?? '').toLowerCase();
   if (type === 'energy') {

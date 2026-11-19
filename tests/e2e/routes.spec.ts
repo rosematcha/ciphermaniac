@@ -516,6 +516,23 @@ test('the Matchups tab loads under its own skeleton, keeping the page and scroll
   await expect(page.locator('.mu-gauge[title^="95% interval"]').first()).toBeVisible();
 });
 
+test('the Changes tab loads under its own skeleton, then compares this week with last', async ({ page }) => {
+  const release = await holdRequests(page, '**/archetypes/Dragapult/trends.json');
+  await gotoClean(page, '/archetypes/Dragapult');
+  const scrollY = await openArchetypeTab(page, 'Changes');
+
+  await expect(page.locator('[role=tabpanel] .skeleton')).toBeVisible();
+  await expectShellKept(page, scrollY);
+
+  await release();
+  // Two different cards called Budew: each row names its printing.
+  const row = page.getByRole('row', { name: /^Budew PRE 004/ });
+  await expect(row).toContainText('25% → 50%');
+  await expect(row).toContainText('+25%');
+  await expect(row.locator('.sr-only')).toHaveText(/^95% range \+\d+% to \+\d+%$/);
+  await expect(page.getByRole('row', { name: /^Budew ASC 001/ })).toContainText('50% → 25%');
+});
+
 test('a failed card-lens fetch settles the lens instead of the page', async ({ page }) => {
   await page.route('**/archetypes/Dragapult/decks.json', route => route.fulfill({ status: 500, body: '' }));
   await gotoClean(page, '/archetypes/Dragapult?tab=matchups');

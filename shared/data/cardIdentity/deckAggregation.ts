@@ -15,10 +15,15 @@ export interface CanonicalDeckCard {
   copies: number;
 }
 
-function canonicalCard(card: RawDeckCard, synonymDb: SynonymDatabase | null): CanonicalDeckCard {
+function canonicalCard(
+  card: RawDeckCard,
+  synonymDb: SynonymDatabase | null,
+  resolveUid: ((uid: string) => string) | undefined
+): CanonicalDeckCard {
   const name = card.name || 'Unknown Card';
   const [set, number] = canonicalizeVariant(card.set, card.number);
-  const uid = getCanonicalCardFromData(synonymDb, cardUidOrName(name, set, number));
+  const raw = cardUidOrName(name, set, number);
+  const uid = resolveUid ? resolveUid(raw) : getCanonicalCardFromData(synonymDb, raw);
   const parsed = parseCardUid(uid);
   return {
     uid,
@@ -29,13 +34,21 @@ function canonicalCard(card: RawDeckCard, synonymDb: SynonymDatabase | null): Ca
   };
 }
 
+/**
+ * One deck's cards keyed by canonical UID, copies summed across printings.
+ * @param cards - The deck's card rows
+ * @param synonymDb - Synonym database for the global canonical (or null)
+ * @param resolveUid - A scope's own print choice, used instead of the global canonical
+ * @returns Canonical UID → card
+ */
 export function aggregateCanonicalCardsPerDeck(
   cards: RawDeckCard[] | null | undefined,
-  synonymDb: SynonymDatabase | null
+  synonymDb: SynonymDatabase | null,
+  resolveUid?: (uid: string) => string
 ): Map<string, CanonicalDeckCard> {
   const result = new Map<string, CanonicalDeckCard>();
   for (const row of cards ?? []) {
-    const card = canonicalCard(row, synonymDb);
+    const card = canonicalCard(row, synonymDb, resolveUid);
     if (!card.copies) {
       continue;
     }

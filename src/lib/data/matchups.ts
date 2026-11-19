@@ -12,7 +12,10 @@
 
 import { dataClient } from './client';
 import { tournamentPath } from './paths';
+import type { ArchetypeTrends, OnlineMatchupRecord } from './archetypeTrends';
 import type { PlayerMatchRecord } from '../../types';
+
+export type { OnlineMatchupRecord };
 
 const { fetchJsonOptional } = dataClient;
 
@@ -73,22 +76,21 @@ export function fetchMatchupProfiles(tournament: string): Promise<MatchupProfile
 }
 
 /**
- * One opponent's head-to-head record as stored in the online meta. Unlike the
- * majors file, `winRate` here is `wins / total` (ties excluded from the numerator,
- * included in the denominator) — recompute as `(wins + ties/2)/total` if you want
- * the ties-as-half convention the majors file uses.
+ * An archetype's trends from a rolling scope (the online meta or a format).
+ * The Matchups tab, the win-rate stat and the Changes tab all read it through
+ * here, so they share one download (the data client keeps it for its TTL).
+ * @param tournament - The scope key
+ * @param archetypeBase - The archetype's folder name
+ * @returns The trends, or null when the scope has none for it or the file is malformed
  */
-export interface OnlineMatchupRecord {
-  opponent: string;
-  wins: number;
-  losses: number;
-  ties: number;
-  total: number;
-  winRate: number;
-}
-
-interface ArchetypeTrendsPayload {
-  matchups?: Record<string, OnlineMatchupRecord>;
+export async function fetchArchetypeTrends(tournament: string, archetypeBase: string): Promise<ArchetypeTrends | null> {
+  const [raw, { parseArchetypeTrends }] = await Promise.all([
+    fetchJsonOptional<unknown>(
+      `${tournamentPath(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}/trends.json`
+    ),
+    import('./archetypeTrends')
+  ]);
+  return raw === null ? null : parseArchetypeTrends(raw);
 }
 
 /**
@@ -101,10 +103,7 @@ export async function fetchArchetypeMatchupsOnline(
   tournament: string,
   archetypeBase: string
 ): Promise<Record<string, OnlineMatchupRecord> | null> {
-  const trends = await fetchJsonOptional<ArchetypeTrendsPayload>(
-    `${tournamentPath(tournament)}/archetypes/${encodeURIComponent(archetypeBase)}/trends.json`
-  );
-  return trends?.matchups ?? null;
+  return (await fetchArchetypeTrends(tournament, archetypeBase))?.matchups ?? null;
 }
 
 /**

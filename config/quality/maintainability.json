@@ -66,8 +66,7 @@
     "complexity:3287638f680aafa3f7879713b243950ef7be7634fae05d496ba9e97e3b5c14cd:Function 'buildDeckCards' has a complexity of 20. Maximum allowed is 12."
   ],
   "shared/data/analysis/archetypeTrends.ts": [
-    "complexity:8be9d872d29304a2eec7b8b7f360427c08d1be611648d0e4fc4d1e96e1e03c31:Function 'classifyCard' has a complexity of 13. Maximum allowed is 12.",
-    "max-depth:20aa1000ca0af63ce12b6ffe4d85f4b68ab45a8c4e60ae29428e62de686dc8d0:Blocks are nested too deeply (4). Maximum allowed is 3."
+    "complexity:8be9d872d29304a2eec7b8b7f360427c08d1be611648d0e4fc4d1e96e1e03c31:Function 'classifyCard' has a complexity of 13. Maximum allowed is 12."
   ],
   "shared/data/archetypes/build.ts": [
     "complexity:62a365e85da1a980abd2aad56e44fea86b435dbbf153ef3fc346559dfb3a9697:Function 'buildArchetypeReports' has a complexity of 23. Maximum allowed is 12."

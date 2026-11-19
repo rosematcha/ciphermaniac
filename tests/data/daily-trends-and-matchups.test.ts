@@ -112,7 +112,13 @@ test('generateArchetypeTrends tracks card playrate across days', () => {
       ['top8'],
       [{ name: 'Test Card', count: 4, set: 'TST', number: '001' }]
     ),
-    makeDeck('t1', '2025-12-01T10:00:00Z', 'TestDeck', ['top8'], []),
+    makeDeck(
+      't1',
+      '2025-12-01T10:00:00Z',
+      'TestDeck',
+      ['top8'],
+      [{ name: 'Other Card', count: 4, set: 'TST', number: '002' }]
+    ),
     // Day 2: 2 decks, 2 with card (100% playrate)
     makeDeck(
       't2',
@@ -417,7 +423,7 @@ test('generateArchetypeTrends reports 0 playrate when card absent on last day (P
   ];
   const decks = [
     makeDeck('t1', '2026-01-01T12:00:00Z', 'A', ['top8'], [{ name: 'X', count: 1, set: 'TST', number: '001' }]),
-    makeDeck('t2', '2026-01-02T12:00:00Z', 'A', ['top8'], [])
+    makeDeck('t2', '2026-01-02T12:00:00Z', 'A', ['top8'], [{ name: 'Y', count: 1, set: 'TST', number: '002' }])
   ];
 
   const result = generateArchetypeTrends(decks, tournaments, null);
@@ -481,4 +487,77 @@ test('buildMatchupMatrix counts mirror matches symmetrically (P-26)', () => {
   assert.strictEqual(mirror.winRate, 50, 'Win rate pinned at 50 regardless of who is player1');
   assert.strictEqual(mirror.wins + mirror.losses + mirror.ties, 3, 'Record reconciles with total');
   assert.ok(Math.abs(mirror.wins - mirror.losses) <= 1, 'Wins and losses split as evenly as possible');
+});
+
+test('generateArchetypeTrends counts only listed decks toward each day', () => {
+  const tournaments = [makeTournament('t1', '2026-01-01T12:00:00Z')];
+  const card = { name: 'X', count: 1, set: 'TST', number: '001' };
+  // Two lists, both with X, and two standings that published no list.
+  const decks = [
+    makeDeck('t1', '2026-01-01T12:00:00Z', 'A', ['top8'], [card]),
+    makeDeck('t1', '2026-01-01T12:00:00Z', 'A', ['top8'], [card]),
+    makeDeck('t1', '2026-01-01T12:00:00Z', 'A', ['top8'], []),
+    makeDeck('t1', '2026-01-01T12:00:00Z', 'A', ['top8'], [])
+  ];
+  const result = generateArchetypeTrends(decks, tournaments, null);
+  assert.equal(result.days[0].totals.all, 2);
+  assert.equal(Object.values(result.cards)[0].currentPlayrate, 100);
+});
+
+test('generateArchetypeTrends ends its window on the scope window, not the last day with lists', () => {
+  const tournaments = [makeTournament('t1', '2026-01-01T12:00:00Z'), makeTournament('t2', '2026-01-09T12:00:00Z')];
+  const decks = [
+    makeDeck('t1', '2026-01-01T12:00:00Z', 'A', ['top8'], [{ name: 'X', count: 1, set: 'TST', number: '001' }])
+  ];
+  const scoped = generateArchetypeTrends(decks, tournaments, null, { windowEnd: '2026-01-10T00:00:00.000Z' });
+  assert.equal(scoped.meta.windowEnd, '2026-01-09');
+  assert.equal(generateArchetypeTrends(decks, tournaments, null).meta.windowEnd, '2026-01-01');
+});
+
+test('generateArchetypeTrends keeps a card whose weekly share moved, however small its daily peak', () => {
+  // 100 lists a day for 14 days; Y rises from none to 4 lists a day in the last week, never 5% on any day.
+  const days = Array.from({ length: 14 }, (_, i) => `2026-01-${String(i + 1).padStart(2, '0')}T12:00:00Z`);
+  const tournaments = days.map((date, i) => makeTournament(`t${i}`, date));
+  const filler = { name: 'Filler', count: 4, set: 'TST', number: '001' };
+  const y = { name: 'Y', count: 1, set: 'TST', number: '002' };
+  const decks = days.flatMap((date, i) =>
+    Array.from({ length: 100 }, (_, n) => makeDeck(`t${i}`, date, 'A', [], i >= 7 && n < 4 ? [filler, y] : [filler]))
+  );
+  const result = generateArchetypeTrends(decks, tournaments, null, { windowEnd: '2026-01-15T00:00:00.000Z' });
+  assert.ok(Object.values(result.cards).some(card => card.name === 'Y'));
+});
+
+test('generateArchetypeTrends keeps the matchups when no deck published a list', () => {
+  const pairingsData = [
+    {
+      tournamentId: 't1',
+      standings: [makeStanding('a', 'A'), makeStanding('b', 'B')],
+      pairings: Array.from({ length: 5 }, () => makePairing('a', 'b', 'a'))
+    }
+  ];
+  const decks = [makeDeck('t1', '2026-01-01T12:00:00Z', 'A', ['top8'], [])];
+  const result = generateArchetypeTrends(decks, [makeTournament('t1', '2026-01-01T12:00:00Z')], null, {
+    pairingsData,
+    archetypeName: 'A',
+    minMatchupGames: 1
+  });
+  assert.deepEqual(result.days, []);
+  assert.equal(result.matchups.B?.wins, 5);
+});
+
+test('generateArchetypeTrends keeps a card whose weekly share moved exactly two points', () => {
+  // 250 lists a week, 35 or 36 a day: Z is in 2 last week and 7 this week, one a day, so 0.8% → 2.8%,
+  // which floating point makes 1.9999999999999998.
+  const days = Array.from({ length: 14 }, (_, i) => `2026-01-${String(i + 1).padStart(2, '0')}T12:00:00Z`);
+  const tournaments = days.map((date, i) => makeTournament(`t${i}`, date));
+  const filler = { name: 'Filler', count: 4, set: 'TST', number: '001' };
+  const z = { name: 'Z', count: 1, set: 'TST', number: '002' };
+  const withZ = (day: number) => (day < 7 ? day < 2 : true);
+  const decks = days.flatMap((date, i) =>
+    Array.from({ length: i % 7 < 5 ? 36 : 35 }, (_, n) =>
+      makeDeck(`t${i}`, date, 'A', [], n === 0 && withZ(i) ? [filler, z] : [filler])
+    )
+  );
+  const result = generateArchetypeTrends(decks, tournaments, null, { windowEnd: '2026-01-15T00:00:00.000Z' });
+  assert.ok(Object.values(result.cards).some(card => card.name === 'Z'));
 });

@@ -41,6 +41,8 @@ interface CardInterestStats {
   maxShare: number;
   startShare: number;
   endShare: number;
+  /** Points its share of lists moved from the week before last to the last week of the window. */
+  weeklyChange: number;
 }
 
 /** One opponent's aggregated record in a {@link buildMatchupMatrix} result. */
@@ -106,6 +108,15 @@ export interface TrendOptions {
   archetypeName?: string | null;
   /** Games an opponent needs before its record is published (default {@link MIN_MATCHUP_GAMES}). */
   minMatchupGames?: number;
+  /**
+   * The scope's window end, exclusive, as its meta.json writes it. The file's
+   * `meta.windowEnd` is then the last day the scope covers, so its weeks line
+   * up with the scope's even when this archetype had no lists on the last days.
+   * Without it, the archetype's last day with lists.
+   */
+  windowEnd?: string;
+  /** A scope's own print choice, so cards are keyed as its card reports key them. */
+  resolveUid?: (uid: string) => string;
 }
 
 interface CopyTrendEntry {
@@ -187,6 +198,9 @@ const MIN_PEAK_SHARE_PERCENT = 5.0;
 const INTERESTING_START_SHARE = 10.0;
 const INTERESTING_END_SHARE = 1.0;
 const INTERESTING_RISE_DELTA = 8.0;
+// A card whose share moved this many points between the window's last two
+// weeks is kept for the archetype page's week-to-week comparison.
+const WEEKLY_MOVER_POINTS = 2.0;
 
 // Thresholds for card classification
 const CORE_PLAYRATE_THRESHOLD = 90; // 90%+ playrate = core
@@ -370,9 +384,10 @@ function classifyCard(stats: CardClassificationStats): string {
  * @returns {boolean}
  */
 function isInterestingCard(cardStats: CardInterestStats): boolean {
-  const { maxShare, startShare, endShare } = cardStats;
+  const { maxShare, startShare, endShare, weeklyChange } = cardStats;
 
-  if (maxShare >= MIN_PEAK_SHARE_PERCENT) {
+  // The slack keeps a move of exactly WEEKLY_MOVER_POINTS that floating point puts a hair under it (0.8% → 2.8%).
+  if (maxShare >= MIN_PEAK_SHARE_PERCENT || Math.abs(weeklyChange) + 1e-9 >= WEEKLY_MOVER_POINTS) {
     return true;
   }
 
@@ -731,7 +746,12 @@ function tierCountsFor(
  * per deck, or decksWithCard climbs above totalDecks and yields playrates over
  * 100% and negative zero-copy buckets.
  */
-function aggregateDecksByDay(decks: Deck[], buckets: TournamentBuckets, synonymDb: SynonymDb | null): CardAggregate {
+function aggregateDecksByDay(
+  decks: Deck[],
+  buckets: TournamentBuckets,
+  synonymDb: SynonymDb | null,
+  resolveUid: ((uid: string) => string) | undefined
+): CardAggregate {
   const cardDayData: CardAggregate['cardDayData'] = new Map();
   const cardMeta: CardAggregate['cardMeta'] = new Map();
 
@@ -745,16 +765,19 @@ function aggregateDecksByDay(decks: Deck[], buckets: TournamentBuckets, synonymD
     creditDeckToTotals(deck, buckets, dateStr, weekStart);
 
     const deckTags = new Set<string>(['all', ...(deck.successTags || [])]);
-    for (const { uid, name, set, number, copies } of aggregateCanonicalCardsPerDeck(deck.cards, synonymDb).values()) {
+    const tiers = SUCCESS_TAGS.filter(tag => deckTags.has(tag));
+    for (const { uid, name, set, number, copies } of aggregateCanonicalCardsPerDeck(
+      deck.cards,
+      synonymDb,
+      resolveUid
+    ).values()) {
       if (!cardMeta.has(uid)) {
         cardMeta.set(uid, { name, set, number });
       }
       const dayEntry = tierCountsFor(cardDayData, uid, dateStr);
-      for (const tag of SUCCESS_TAGS) {
-        if (deckTags.has(tag)) {
-          dayEntry[tag].counts.push(copies);
-          dayEntry[tag].decksWithCard += 1;
-        }
+      for (const tag of tiers) {
+        dayEntry[tag].counts.push(copies);
+        dayEntry[tag].decksWithCard += 1;
       }
     }
   }
@@ -819,6 +842,40 @@ function buildDailySeries(
   return series;
 }
 
+function hasList(deck: Deck): boolean {
+  return Boolean(deck.cards?.length);
+}
+
+/** The last day the window covers: the day before the scope's exclusive end, or the archetype's last day with lists. */
+function lastCoveredDay(windowEnd: string | undefined, activeDays: DayEntry[]): string {
+  return windowEnd
+    ? new Date(Date.parse(windowEnd) - 1).toISOString().slice(0, 10)
+    : activeDays[activeDays.length - 1].date;
+}
+
+/** A YYYY-MM-DD date shifted by whole days. */
+function shiftDay(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * Points a card's share of lists moved from the week before last to the last
+ * week ending `lastDay`, the two weeks the archetype page compares.
+ */
+function weeklyChange(
+  daysData: Map<string, Record<SuccessTag, TierCounts>>,
+  activeDays: DayEntry[],
+  lastDay: string
+): number {
+  const share = (from: string, to: string): number => {
+    const days = activeDays.filter(day => day.date >= from && day.date <= to);
+    const lists = days.reduce((sum, day) => sum + day.totals.all, 0);
+    const withCard = days.reduce((sum, day) => sum + (daysData.get(day.date)?.all?.counts.length ?? 0), 0);
+    return lists > 0 ? (100 * withCard) / lists : 0;
+  };
+  return share(shiftDay(lastDay, -6), lastDay) - share(shiftDay(lastDay, -13), shiftDay(lastDay, -7));
+}
+
 /**
  * Stage 3b — turn one card's series into its published trend record, or null
  * when the card is too flat to be worth publishing.
@@ -829,13 +886,16 @@ function buildDailySeries(
  */
 function buildCardTrend(
   meta: { name: string; set: string | null; number: string | null },
-  series: DailySeries
+  series: DailySeries,
+  weeklyChange: number
 ): CardTrendData | null {
   const { playrates, copies, copyTrend } = series;
   const startPlayrate = playrates.length > 0 ? playrates[0] : 0;
   const endPlayrate = playrates.length > 0 ? playrates[playrates.length - 1] : 0;
 
-  if (!isInterestingCard({ maxShare: series.maxShare, startShare: startPlayrate, endShare: endPlayrate })) {
+  if (
+    !isInterestingCard({ maxShare: series.maxShare, startShare: startPlayrate, endShare: endPlayrate, weeklyChange })
+  ) {
     return null;
   }
 
@@ -976,7 +1036,13 @@ export function generateArchetypeTrends(
   synonymDb: SynonymDb | null,
   options?: TrendOptions
 ): TrendReport {
-  const { pairingsData = [], archetypeName = null, minMatchupGames = MIN_MATCHUP_GAMES } = options || {};
+  const {
+    pairingsData = [],
+    archetypeName = null,
+    minMatchupGames = MIN_MATCHUP_GAMES,
+    windowEnd,
+    resolveUid
+  } = options || {};
 
   if (!decks || !decks.length) {
     return emptyTrendReport();
@@ -987,7 +1053,11 @@ export function generateArchetypeTrends(
   );
 
   const buckets = bucketTournaments(sortedTournaments);
-  const { cardDayData, cardMeta } = aggregateDecksByDay(decks, buckets, synonymDb);
+  // A standing without a decklist can't contain a card, so only listed decks
+  // count toward the lists each day, as in the archetype's card report.
+  const { cardDayData, cardMeta } = aggregateDecksByDay(decks.filter(hasList), buckets, synonymDb, resolveUid);
+  const matchups: Record<string, MatchupRecord> =
+    pairingsData.length > 0 && archetypeName ? buildMatchupMatrix(archetypeName, pairingsData, minMatchupGames) : {};
 
   const activeDays = [...buckets.dayMap.values()]
     .filter(dayEntry => dayEntry.totals.all > 0)
@@ -997,8 +1067,9 @@ export function generateArchetypeTrends(
     .sort((first, second) => first.weekStart.localeCompare(second.weekStart));
 
   if (activeDays.length === 0) {
-    return emptyTrendReport();
+    return { ...emptyTrendReport(), matchups };
   }
+  const lastDay = lastCoveredDay(windowEnd, activeDays);
 
   const dayIndex = new Map<string, number>(activeDays.map((dayItem, idx) => [dayItem.date, idx]));
 
@@ -1007,7 +1078,7 @@ export function generateArchetypeTrends(
 
   for (const [uid, daysData] of cardDayData.entries()) {
     const series = buildDailySeries(daysData, activeDays, dayIndex);
-    const card = buildCardTrend(cardMeta.get(uid)!, series);
+    const card = buildCardTrend(cardMeta.get(uid)!, series, weeklyChange(daysData, activeDays, lastDay));
     if (!card) {
       continue;
     }
@@ -1018,9 +1089,6 @@ export function generateArchetypeTrends(
   const insights = buildInsights(finalCards);
   insights.substitutions = findSubstitutions(Object.keys(finalCards), cardPlayrateTimelines);
 
-  const matchups: Record<string, MatchupRecord> =
-    pairingsData.length > 0 && archetypeName ? buildMatchupMatrix(archetypeName, pairingsData, minMatchupGames) : {};
-
   return {
     meta: {
       generatedAt: new Date().toISOString(),
@@ -1029,7 +1097,7 @@ export function generateArchetypeTrends(
       dayCount: activeDays.length,
       weekCount: activeWeeks.length,
       windowStart: activeDays[0].date,
-      windowEnd: activeDays[activeDays.length - 1].date
+      windowEnd: lastDay
     },
     days: activeDays.map(dayItem => ({
       date: dayItem.date,

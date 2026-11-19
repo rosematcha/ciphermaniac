@@ -343,6 +343,42 @@ describe('deckOrderedItems', () => {
     assert.equal(warnings.length, 1);
     assert.match(warnings[0], /TWM::129/);
   });
+
+  it('names a pre-evolution only when the list plays it, as the list writes it', () => {
+    const lines = facetMap({
+      'DRI::041': ['pokemon', 'stage1', 'torchic'],
+      'DRI::040': ['pokemon', 'basic', null],
+      'JTG::024': ['pokemon', 'stage2', 'combusken']
+    });
+    const { items } = deckOrderedItems(
+      [card('Combusken', 'DRI', '041', 97), card('Torchic', 'DRI', '040', 99), card('Blaziken ex', 'JTG', '024', 60)],
+      lines,
+      ignore
+    );
+    assert.deepEqual(
+      items.map(item => [item.name, item.evolvesFrom]),
+      [
+        ['Torchic', undefined],
+        ['Combusken', 'Torchic'],
+        ['Blaziken ex', 'Combusken']
+      ]
+    );
+    const alone = deckOrderedItems([card('Blaziken ex', 'JTG', '024', 60)], lines, ignore).items[0];
+    assert.equal('evolvesFrom' in alone, false);
+    // Card types spell it "Flabebe"; the list's own spelling is what the page matches.
+    const floette = deckOrderedItems(
+      [card('Floette', 'TWM', '087', 30, 'pokemon'), card('Flabébé', 'TWM', '086', 20, 'pokemon')],
+      cardFacetsFromTypes({
+        'TWM::086': { cardType: 'pokemon', stage: 'basic', evolutionInfo: 'Basic' },
+        'TWM::087': { cardType: 'pokemon', stage: 'stage1', evolutionInfo: 'Stage 1 - Evolves from Flabebe' }
+      }),
+      ignore
+    );
+    assert.deepEqual(
+      floette.items.map(item => item.evolvesFrom),
+      [undefined, 'Flabébé']
+    );
+  });
 });
 
 it('a bare trainer facet does not hide a more specific report category', () => {
