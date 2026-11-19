@@ -53,8 +53,6 @@ export function MetaBinderPage() {
   });
 
   const tournament = () => (typeof searchParams.t === 'string' && searchParams.t ? searchParams.t : ONLINE_META_NAME);
-  const [prices] = createResource(tournament, fetchPricesFor);
-
   const [archetypes] = createResource(tournament, fetchArchetypes);
   const archetypeList = () => latestValue(archetypes) ?? [];
 
@@ -148,6 +146,12 @@ export function MetaBinderPage() {
   );
 
   const binder = createMemo(() => buildBinder(resolved(reports) ?? []));
+  const binderCards = createMemo(() => [...binder().sections, ...binder().archetypeGroups].flatMap(g => g.cards));
+
+  const [prices] = createResource(
+    () => ({ t: tournament(), uids: binderCards().map(c => c.uid) }),
+    ({ t, uids }) => fetchPricesFor(t, uids)
+  );
 
   const priceFor = (card: BinderCard): number | null => {
     const entry = resolved(prices)?.[card.uid];
@@ -160,8 +164,7 @@ export function MetaBinderPage() {
     if (!table) {
       return null;
     }
-    const b = binder();
-    const all = [...b.sections.flatMap(s => s.cards), ...b.archetypeGroups.flatMap(g => g.cards)];
+    const all = binderCards();
     let sum = 0;
     let priced = 0;
     for (const card of all) {

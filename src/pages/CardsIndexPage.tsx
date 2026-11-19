@@ -1,7 +1,5 @@
-import { createMemo, createResource, createSignal, For, type JSX, onMount, Show } from 'solid-js';
+import { createMemo, createSignal, For, type JSX, onMount, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { fetchMaster, fetchPrices, type PricingEntry } from '../lib/data';
-import { cardUid } from '../../shared/data/cardIdentity';
 import { useTournament } from '../lib/tournamentContext';
 import type { CardItem } from '../types';
 import { Section } from '../components/Section';
@@ -16,50 +14,25 @@ import { BottomSheet } from '../components/BottomSheet';
 import { createPagination } from '../lib/pagination';
 import { debounced } from '../lib/debounce';
 import { latestValue } from '../lib/resource';
-import { averageCopies, averageCopiesValue, categoryLabel } from '../lib/cardStats';
+import { averageCopies, categoryLabel } from '../lib/cardStats';
 import { foldSearch } from '../utils/searchFold';
-import { type CardFilters, countActiveCardFilters, matchesCardFilters, type PriceBand } from '../lib/cardFilters';
+import { matchesCardFilters } from '../lib/cardFilters';
 import {
   createPersistentNumberSignal,
   createPersistentSignal,
   createPersistentViewMode
 } from '../lib/persistentSignal';
+import { createCardFilterState } from './cardsIndex/filterState';
+import { FilterGroups, FilterStrip } from './cardsIndex/FilterGroups';
+import { createCardSortState, priceOf, sortCards, type SortDir, type SortKey } from './cardsIndex/sorting';
+import { createPricedRows } from './cardsIndex/pricedRows';
 import '../styles/pages/cards.css';
 
-type SortKey = 'rank' | 'name' | 'price' | 'inclusion' | 'avgCopies';
-type SortDir = 'asc' | 'desc';
-type TypeFilter = 'all' | 'pokemon' | 'trainer' | 'energy';
 type ViewMode = 'grid' | 'list';
-type Subtype = string; // 'all' or a trainer/energy subtype value
-type RegMark = 'all' | 'G' | 'H' | 'I' | 'J';
 
 // Divisible by every column count .cards-index-grid allows (1-4, 6, 7), so a
 // full page always ends on a full row.
 const PAGE_SIZE = 84;
-
-// Contextual subtype options, keyed by the parent type. Only trainers and
-// energy carry a meaningful subdivision; Pokémon show no subtype group.
-const SUBTYPE_OPTIONS: Record<'trainer' | 'energy', { value: string; label: string }[]> = {
-  trainer: [
-    { value: 'supporter', label: 'Supporter' },
-    { value: 'item', label: 'Item' },
-    { value: 'tool', label: 'Tool' },
-    { value: 'stadium', label: 'Stadium' }
-  ],
-  energy: [
-    { value: 'basic', label: 'Basic' },
-    { value: 'special', label: 'Special' }
-  ]
-};
-
-const REG_MARKS: RegMark[] = ['G', 'H', 'I', 'J'];
-
-const PRICE_BANDS: { value: PriceBand; label: string }[] = [
-  { value: 'lt1', label: 'Under $1' },
-  { value: '1to5', label: '$1–5' },
-  { value: '5to15', label: '$5–15' },
-  { value: 'gte15', label: '$15+' }
-];
 
 // Sort options offered inside the mobile sheet — the headline three plus
 // inclusion, matching the round-2 prototype's sort group.
@@ -77,12 +50,6 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'name', label: 'Name' }
 ];
 
-// Default sort direction when switching to a column, so each metric opens in
-// the order people expect (best-first) rather than a blanket ascending.
-function defaultDir(key: SortKey): SortDir {
-  return key === 'rank' || key === 'name' ? 'asc' : 'desc';
-}
-
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: 'grid', label: 'Grid' },
   { value: 'list', label: 'List' }
@@ -90,50 +57,14 @@ const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
 
 export function CardsIndexPage() {
   const { tournament } = useTournament();
-  const [master, { refetch: refetchMaster }] = createResource(tournament, fetchMaster);
-  const [prices] = createResource(fetchPrices);
   const [query, setQuery] = createPersistentSignal<string>('cm:cardsQuery', '', v => v, sessionStorage);
-  const [typeFilter, setTypeFilter] = createPersistentSignal<TypeFilter>(
-    'cm:cardsType',
-    'all',
-    v => (v === 'all' || v === 'pokemon' || v === 'trainer' || v === 'energy' ? v : null),
-    sessionStorage
-  );
-  const [sortKey, setSortKey] = createPersistentSignal<SortKey>(
-    'cm:cardsSort',
-    'rank',
-    v => (v === 'rank' || v === 'name' || v === 'price' || v === 'inclusion' || v === 'avgCopies' ? v : null),
-    sessionStorage
-  );
-  const [sortDir, setSortDir] = createPersistentSignal<SortDir>(
-    'cm:cardsSortDir',
-    'asc',
-    v => (v === 'asc' || v === 'desc' ? v : null),
-    sessionStorage
-  );
+  const { sortKey, setSortKey, sortDir, changeSort, setSort } = createCardSortState();
   const [viewMode, setViewMode] = createPersistentViewMode('cm:cardsView');
-
-  // Metadata filters (shared by the desktop bar and the mobile sheet). Each is
-  // an independent persistent signal so the URL-less session state survives a
-  // reload the same way the type/sort filters already do.
-  const [subtype, setSubtype] = createPersistentSignal<Subtype>('cm:cardsSubtype', 'all', v => v, sessionStorage);
-  const [reg, setReg] = createPersistentSignal<RegMark>(
-    'cm:cardsReg',
-    'all',
-    v => (v === 'all' || v === 'G' || v === 'H' || v === 'I' || v === 'J' ? v : null),
-    sessionStorage
-  );
-  const [aceSpec, setAceSpec] = createPersistentSignal<'true' | 'false'>(
-    'cm:cardsAceSpec',
-    'false',
-    v => (v === 'true' || v === 'false' ? v : null),
-    sessionStorage
-  );
-  const [priceBand, setPriceBand] = createPersistentSignal<'all' | PriceBand>(
-    'cm:cardsPriceBand',
-    'all',
-    v => (v === 'all' || v === 'lt1' || v === '1to5' || v === '5to15' || v === 'gte15' ? v : null),
-    sessionStorage
+  const filters = createCardFilterState();
+  const { activeFilterCount, clearFilters } = filters;
+  const { master, rows, retry } = createPricedRows(
+    tournament,
+    () => filters.priceBand() !== 'all' || sortKey() === 'price'
   );
 
   // Refine-surface visibility. Two independent signals because the surfaces
@@ -153,42 +84,18 @@ export function CardsIndexPage() {
   // table in place while a tournament switch refetches — better than a
   // skeleton flash for context-keyed data.
   const masterData = () => latestValue(master);
-  const pricesData = () => latestValue(prices);
 
   // The input binds the raw `query` signal so typing echoes instantly; the
   // filter → sort → 60-tile render chain reads this debounced view so it runs
   // once per pause instead of once per keystroke.
   const debouncedQuery = debounced(query, 150);
 
-  const priceFor = (item: CardItem): number | null => {
-    const map = pricesData();
-    if (!map) {
-      return null;
-    }
-    const key = cardUid(item.name, item.set, item.number);
-    if (!key) {
-      return null;
-    }
-    const entry: PricingEntry | undefined = map[key];
-    const p = entry?.price;
-    return typeof p === 'number' && Number.isFinite(p) ? p : null;
-  };
-
-  // Snapshot of the metadata facets in the shape the pure predicate expects.
-  const cardFilters = (): CardFilters => ({
-    type: typeFilter(),
-    subtype: subtype(),
-    reg: reg(),
-    aceSpec: aceSpec() === 'true',
-    priceBand: priceBand()
-  });
-
-  const activeFilterCount = () => countActiveCardFilters(cardFilters());
+  const priceFor = (item: CardItem): number | null => priceOf(rows().prices, item);
 
   const filtered = createMemo(() => {
-    const items = masterData()?.items ?? [];
+    const { items } = rows();
     const q = foldSearch(debouncedQuery().trim());
-    const filters = cardFilters();
+    const cardFilters = filters.cardFilters();
     return items.filter(item => {
       if (!item.set || item.number === undefined) {
         return false;
@@ -198,71 +105,26 @@ export function CardsIndexPage() {
       }
       // Price is only resolved when a band filter is active — the lookup is a
       // string build + map read we'd rather skip for the common case.
-      const price = filters.priceBand === 'all' ? null : priceFor(item);
-      return matchesCardFilters(item, filters, price);
+      const price = cardFilters.priceBand === 'all' ? null : priceFor(item);
+      return matchesCardFilters(item, cardFilters, price);
     });
   });
 
-  const sorted = createMemo(() => {
-    const key = sortKey();
-    const mul = sortDir() === 'asc' ? 1 : -1;
-
-    if (key === 'name') {
-      return [...filtered()].sort((a, b) => mul * a.name.localeCompare(b.name));
-    }
-
-    if (key === 'price') {
-      // Decorate once: `priceFor` builds a key + map lookup, so compute per item
-      // rather than twice per comparison. Missing prices always sort last.
-      const decorated = filtered().map(item => ({ item, price: priceFor(item), rank: item.rank ?? 9e9 }));
-      decorated.sort((a, b) => {
-        if (a.price === null && b.price === null) {
-          return a.rank - b.rank;
-        }
-        if (a.price === null) {
-          return 1;
-        }
-        if (b.price === null) {
-          return -1;
-        }
-        return mul * (a.price - b.price);
-      });
-      return decorated.map(d => d.item);
-    }
-
-    // Remaining keys are plain numeric — precompute each item's sort value once
-    // (avgCopies is two reduces per item) instead of recomputing per comparison.
-    const valueOf = (item: CardItem): number => {
-      switch (key) {
-        case 'inclusion':
-          return item.pct ?? 0;
-        case 'avgCopies':
-          return averageCopiesValue(item) ?? 0;
-        case 'rank':
-        default:
-          return item.rank ?? 9e9;
-      }
-    };
-    const decorated = filtered().map(item => ({ item, v: valueOf(item) }));
-    decorated.sort((a, b) => mul * (a.v - b.v));
-    return decorated.map(d => d.item);
-  });
-
-  // Header clicks toggle direction on the active column and reset to the
-  // metric's natural direction when moving to a new one.
-  function changeSort(key: SortKey) {
-    if (sortKey() === key) {
-      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir(defaultDir(key));
-    }
-  }
+  const sorted = createMemo(() => sortCards(filtered(), sortKey(), sortDir(), priceFor));
 
   const { page, totalPages, pageItems, setPage } = createPagination(
     sorted,
     PAGE_SIZE,
-    [debouncedQuery, typeFilter, subtype, reg, aceSpec, priceBand, sortKey, tournament],
+    [
+      debouncedQuery,
+      filters.typeFilter,
+      filters.subtype,
+      filters.reg,
+      filters.aceSpec,
+      filters.priceBand,
+      sortKey,
+      tournament
+    ],
     pageSignal
   );
 
@@ -272,125 +134,6 @@ export function CardsIndexPage() {
     }
     navigate(`/cards/${item.set}/${item.number}`);
   }
-
-  // Changing the top-level type invalidates any contextual subtype (a trainer
-  // subtype is meaningless once Energy is selected), so clear it in lockstep.
-  function selectType(next: TypeFilter) {
-    setTypeFilter(next);
-    setSubtype('all');
-  }
-
-  // Subtype options for whichever specific type is selected; empty for
-  // Pokémon / "all", which suppresses the group entirely.
-  const subtypeOptions = () => {
-    const t = typeFilter();
-    return t === 'trainer' || t === 'energy' ? SUBTYPE_OPTIONS[t] : [];
-  };
-
-  function setSort(key: SortKey) {
-    setSortKey(key);
-    setSortDir(defaultDir(key));
-  }
-
-  function clearFilters() {
-    setTypeFilter('all');
-    setSubtype('all');
-    setReg('all');
-    setAceSpec('false');
-    setPriceBand('all');
-  }
-
-  // Removable summary chips shown under the mobile control row when filters are
-  // active and the sheet is closed. Each carries the label and its own clear.
-  const summaryChips = () => {
-    const chips: { key: string; label: string; clear: () => void }[] = [];
-    const t = typeFilter();
-    if (t !== 'all') {
-      const label = t === 'pokemon' ? 'Pokémon' : t === 'trainer' ? 'Trainer' : 'Energy';
-      chips.push({ key: 'type', label, clear: () => selectType('all') });
-    }
-    if (subtype() !== 'all') {
-      const opt = subtypeOptions().find(o => o.value === subtype());
-      chips.push({ key: 'subtype', label: opt?.label ?? subtype(), clear: () => setSubtype('all') });
-    }
-    if (reg() !== 'all') {
-      chips.push({ key: 'reg', label: `Reg ${reg()}`, clear: () => setReg('all') });
-    }
-    if (aceSpec() === 'true') {
-      chips.push({ key: 'ace', label: 'Ace Spec', clear: () => setAceSpec('false') });
-    }
-    if (priceBand() !== 'all') {
-      const opt = PRICE_BANDS.find(o => o.value === priceBand());
-      chips.push({ key: 'price', label: opt?.label ?? priceBand(), clear: () => setPriceBand('all') });
-    }
-    return chips;
-  };
-
-  // The five metadata filter groups, shared verbatim by the mobile sheet and
-  // the desktop disclosure panel so the two surfaces never drift apart. Sort
-  // and View stay out: they are sheet-only additions (desktop keeps its
-  // segmented controls inline).
-  const FilterGroups = () => (
-    <>
-      <div class='group'>
-        <p class='group-label'>Card type</p>
-        <ChipGroup
-          options={[
-            { value: 'all', label: 'All types' },
-            { value: 'pokemon', label: 'Pokémon' },
-            { value: 'trainer', label: 'Trainer' },
-            { value: 'energy', label: 'Energy' }
-          ]}
-          selected={typeFilter()}
-          onSelect={v => selectType(v as TypeFilter)}
-        />
-      </div>
-
-      <Show when={subtypeOptions().length > 0}>
-        <div class='group'>
-          <p class='group-label'>Subtype</p>
-          <ChipGroup
-            options={[{ value: 'all', label: 'All subtypes' }, ...subtypeOptions()]}
-            selected={subtype()}
-            onSelect={setSubtype}
-          />
-        </div>
-      </Show>
-
-      <div class='group'>
-        <p class='group-label'>Regulation mark</p>
-        <p class='group-caption'>Post-rotation legality</p>
-        <ChipGroup
-          options={[{ value: 'all', label: 'All regs' }, ...REG_MARKS.map(m => ({ value: m, label: `Reg ${m}` }))]}
-          selected={reg()}
-          onSelect={v => setReg(v as RegMark)}
-        />
-      </div>
-
-      <div class='group group-inline'>
-        <p class='group-label'>Ace Spec</p>
-        <div class='chips'>
-          <button
-            type='button'
-            class='chip'
-            aria-pressed={aceSpec() === 'true' ? 'true' : 'false'}
-            onClick={() => setAceSpec(v => (v === 'true' ? 'false' : 'true'))}
-          >
-            Ace Spec only
-          </button>
-        </div>
-      </div>
-
-      <div class='group'>
-        <p class='group-label'>Price band</p>
-        <ChipGroup
-          options={[{ value: 'all', label: 'All prices' }, ...PRICE_BANDS]}
-          selected={priceBand()}
-          onSelect={v => setPriceBand(v as 'all' | PriceBand)}
-        />
-      </div>
-    </>
-  );
 
   return (
     <>
@@ -437,7 +180,7 @@ export function CardsIndexPage() {
           </div>
           <Show when={panelOpen()}>
             <div class='cards-filter-panel' id='cards-filter-panel'>
-              <FilterGroups />
+              <FilterGroups filters={filters} />
             </div>
           </Show>
         </div>
@@ -476,28 +219,7 @@ export function CardsIndexPage() {
           </div>
         </div>
 
-        {/* Active-filter summary: removable mini-chips, shown on every
-            breakpoint whenever filters are set (the facets themselves are
-            hidden behind the trigger, so this is the at-rest state readout). */}
-        <Show when={summaryChips().length > 0}>
-          <div class='filter-strip' aria-label='Active filters'>
-            <For each={summaryChips()}>
-              {chip => (
-                <button
-                  type='button'
-                  class='mini-chip'
-                  aria-label={`Remove ${chip.label} filter`}
-                  onClick={() => chip.clear()}
-                >
-                  {chip.label}
-                  <span class='mc-x' aria-hidden='true'>
-                    ✕
-                  </span>
-                </button>
-              )}
-            </For>
-          </div>
-        </Show>
+        <FilterStrip filters={filters} />
       </Section>
 
       <BottomSheet
@@ -516,7 +238,7 @@ export function CardsIndexPage() {
           </>
         }
       >
-        <FilterGroups />
+        <FilterGroups filters={filters} />
 
         <div class='group'>
           <p class='group-label'>Sort by</p>
@@ -538,7 +260,7 @@ export function CardsIndexPage() {
                 title="Couldn't load card data."
                 description='Refresh to try again.'
                 actions={
-                  <button class='btn btn-secondary' type='button' onClick={() => void refetchMaster()}>
+                  <button class='btn btn-secondary' type='button' onClick={retry}>
                     Retry
                   </button>
                 }

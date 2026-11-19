@@ -1331,13 +1331,17 @@ def upload_prices_to_r2(r2_client, bucket_name, price_data, meta_uids=frozenset(
     Every priced UID goes in the whole file: the card page uses a selected
     printing's exact entry to link its market price to the matching TCGplayer
     product, and other formats and events price cards outside the meta. The
-    meta cut is ``meta_uids`` (see ``meta_price_uids``).
+    meta cut is ``meta_uids`` (see ``meta_price_uids``). It also lists the cut's
+    unpriced UIDs, so the browser can tell a card the cut covers from one it
+    was never built for, and read the whole file for the latter.
     """
     meta = {uid: entry for uid, entry in price_data.items() if uid in meta_uids}
+    unpriced = {'unpriced': sorted(meta_uids - meta.keys())}
     generated = datetime.now(timezone.utc).isoformat()
-    for key, prices in ((PRICES_KEY, price_data), (PRICES_META_KEY, meta)):
+    for key, prices, extra in ((PRICES_KEY, price_data, {}), (PRICES_META_KEY, meta, unpriced)):
         output = {
             'cardPrices': prices,  # Frontend expects 'cardPrices' key
+            **extra,
             'metadata': {'generated': generated, 'totalCards': len(prices), 'source': 'tcgcsv.com'}
         }
         print(f"\nUploading to R2: {key} ({len(prices)} prints)")

@@ -30,6 +30,7 @@ import { fetchArchetypeTrends } from '../lib/data/matchups';
 import { formatIdFromKey } from '../../shared/formats/registry';
 import { ONLINE_META_NAME } from '../lib/constants';
 import type { ArchetypeIndexEntry, ArchetypeReport, CardItem } from '../types';
+import { cardUid } from '../../shared/data/cardIdentity';
 import { TabPanel, Tabs } from '@ciphermaniac/design/components/Tabs';
 import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { EmptyState } from '../components/EmptyState';
@@ -310,7 +311,14 @@ function ArchetypeBody(props: ArchetypeBodyProps) {
     );
 
   // Typical-list cost from card prices; null (renders nothing) when coverage is thin.
-  const [prices] = createResource(() => props.tournament, fetchPricesFor);
+  const [prices] = createResource(
+    () => ({ t: props.tournament, items: props.report.items as CardItem[] }),
+    ({ t, items }) =>
+      fetchPricesFor(
+        t,
+        items.map(i => cardUid(i.name, i.set, i.number))
+      )
+  );
   const deckCost = createMemo(() => {
     const p = latestValue(prices);
     return p ? estimateDeckCost(props.report.items as CardItem[], p) : null;

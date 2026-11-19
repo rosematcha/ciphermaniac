@@ -198,9 +198,6 @@
   "src/lib/tierList/rowSortable.ts": [
     "max-lines-per-function:36ca0164f47d31e788d107fbdee3d2b89fb538508e381195a23a64f13cecaf11:Function 'installRowSortable' has too many lines (177). Maximum allowed is 100."
   ],
-  "src/pages/CardsIndexPage.tsx": [
-    "max-lines-per-function:298a9e7ec73c647da1afaeeb644cf932cefc89eae422f21edd402b6c184fc5b1:Function 'CardsIndexPage' has too many lines (441). Maximum allowed is 250."
-  ],
   "src/pages/HomePage.tsx": [
     "complexity:b104f095892157eed023b5fa9d73312a5a4d87cc1877ecde786b576a2eb6c3ea:Arrow function has a complexity of 13. Maximum allowed is 12.",
     "complexity:d60426ddfd918a06254bdbd7da0a3c60643ea1a4666cf06e9a197400da361cd8:Arrow function has a complexity of 23. Maximum allowed is 12."

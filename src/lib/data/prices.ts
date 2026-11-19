@@ -20,12 +20,38 @@ export interface PricingEntry {
   tcgPlayerId?: string;
 }
 
-/** `cardPrices` (`Name::SET::NUMBER` → entry) from a price file, or null when it is absent. */
-async function readPrices(path: string): Promise<Record<string, PricingEntry> | null> {
-  const payload = await fetchJsonOptional<unknown>(path);
+function pricesIn(payload: unknown): Record<string, PricingEntry> | null {
   return isRecord(payload) && isRecord(payload.cardPrices)
     ? (payload.cardPrices as Record<string, PricingEntry>)
     : null;
+}
+
+/** `cardPrices` (`Name::SET::NUMBER` → entry) from a price file, or null when it is absent. */
+async function readPrices(path: string): Promise<Record<string, PricingEntry> | null> {
+  return pricesIn(await fetchJsonOptional<unknown>(path));
+}
+
+type PriceUids = Iterable<string | null> | Promise<Iterable<string | null>>;
+
+/**
+ * The online meta's cut, or null unless it covers every UID in `uids`: priced,
+ * or listed as unpriced. A UID outside it means the cut was built for other
+ * cards, say before newer synonyms or a newer master, so only the whole file
+ * can answer for it. The cut downloads while `uids` is still pending.
+ */
+async function readMetaPrices(uids: PriceUids): Promise<Record<string, PricingEntry> | null> {
+  const [payload, shown] = await Promise.all([fetchJsonOptional<unknown>('/reports/prices-meta.json'), uids]);
+  const prices = pricesIn(payload);
+  if (!prices) {
+    return null;
+  }
+  const unpriced = new Set(isRecord(payload) && Array.isArray(payload.unpriced) ? payload.unpriced : []);
+  for (const uid of shown) {
+    if (uid && !Object.hasOwn(prices, uid) && !unpriced.has(uid)) {
+      return null;
+    }
+  }
+  return prices;
 }
 
 /**
@@ -37,12 +63,13 @@ export async function fetchPrices(): Promise<Record<string, PricingEntry>> {
 }
 
 /**
- * Prices for the cards a tournament's pages list. The online meta reads the file
- * cut to its own cards; other sources, releases from before that file, and any
- * failed read of it read every price.
+ * Prices for `uids`, the cards a tournament's page looks up. The online meta
+ * reads the file cut to its own cards; other sources, releases from before that
+ * file, a cut that doesn't cover every UID, and any failed read of it read
+ * every price.
  */
-export async function fetchPricesFor(tournament: string): Promise<Record<string, PricingEntry>> {
-  const meta = tournament === ONLINE ? await readPrices('/reports/prices-meta.json').catch(() => null) : null;
+export async function fetchPricesFor(tournament: string, uids: PriceUids): Promise<Record<string, PricingEntry>> {
+  const meta = tournament === ONLINE ? await readMetaPrices(uids).catch(() => null) : null;
   return meta ?? fetchPrices();
 }
 

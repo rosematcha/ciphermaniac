@@ -785,6 +785,8 @@ class MetaPricesTest(unittest.TestCase):
         meta = json.loads(client.puts[update_prices.PRICES_META_KEY])
         self.assertEqual(whole["cardPrices"], price_data)
         self.assertEqual(list(meta["cardPrices"]), ["Iono::PAF::237", "Iono::PAL::185"])
+        self.assertEqual(meta["unpriced"], ["Unpriced::SET::001"])
+        self.assertNotIn("unpriced", whole)
         self.assertEqual(meta["metadata"]["totalCards"], 2)
 
 
