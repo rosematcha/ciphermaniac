@@ -7,17 +7,29 @@
  */
 
 import { EMPTY_DATABASE, type SynonymDatabase } from '../../shared/data/cardIdentity.js';
+import { isNonEmptyString, isRecord } from '../../shared/data/validate';
 import { dataClient } from '../lib/data/client';
 
 const SYNONYM_CACHE_KEY = 'cardSynonymsData';
-// Bound the sessionStorage cache so a tab left open across the daily synonym
-// rebuild doesn't canonicalize with a stale DB all session. Matches the edge
-// redirect's 1-hour isolate cache (functions/cards/[set]/[number].ts).
+const SYNONYMS_PATH = '/assets/card-synonyms.json';
+// A cached entry is reused only for the URL it was fetched from, so a reload
+// onto a new release refetches. The TTL bounds mutable development URLs, which
+// keep their path across synonym rebuilds; it matches the edge redirect's
+// 1-hour isolate cache (functions/cards/[set]/[number].ts).
 const SYNONYM_CACHE_TTL_MS = 60 * 60 * 1000;
 
 interface CachedSynonyms {
   cachedAt: number;
+  url: string;
   data: SynonymDatabase;
+}
+
+function isStringMap(value: unknown): boolean {
+  return isRecord(value) && Object.values(value).every(isNonEmptyString);
+}
+
+function isSynonymDatabase(value: unknown): value is SynonymDatabase {
+  return isRecord(value) && isStringMap(value.synonyms) && isStringMap(value.canonicals);
 }
 
 // The promise is memoized (not the resolved value) so the concurrent callers
@@ -28,6 +40,7 @@ interface CachedSynonyms {
 let synonymPromise: Promise<SynonymDatabase> | null = null;
 
 async function loadSynonymData(): Promise<SynonymDatabase> {
+  const url = dataClient.resolveUrl(SYNONYMS_PATH);
   // Try sessionStorage first to avoid re-fetching on page navigation within the
   // same session — but only while the cache is fresh. A stale or legacy-shaped
   // entry is ignored and refetched.
@@ -36,9 +49,9 @@ async function loadSynonymData(): Promise<SynonymDatabase> {
     if (cached) {
       const parsed = JSON.parse(cached) as Partial<CachedSynonyms> | null;
       if (
-        parsed &&
+        parsed?.url === url &&
         typeof parsed.cachedAt === 'number' &&
-        parsed.data &&
+        isSynonymDatabase(parsed.data) &&
         Date.now() - parsed.cachedAt < SYNONYM_CACHE_TTL_MS
       ) {
         return parsed.data;
@@ -49,15 +62,15 @@ async function loadSynonymData(): Promise<SynonymDatabase> {
   }
 
   try {
-    const loaded = await dataClient.fetchJsonOptional<SynonymDatabase>('/assets/card-synonyms.json');
-    if (!loaded) {
+    const loaded = await dataClient.fetchJsonOptional<unknown>(SYNONYMS_PATH);
+    if (!isSynonymDatabase(loaded)) {
       synonymPromise = null;
       return EMPTY_DATABASE;
     }
     const data = loaded;
     // Cache in sessionStorage (with a timestamp) for subsequent page navigations
     try {
-      const entry: CachedSynonyms = { cachedAt: Date.now(), data };
+      const entry: CachedSynonyms = { cachedAt: Date.now(), url, data };
       sessionStorage.setItem(SYNONYM_CACHE_KEY, JSON.stringify(entry));
     } catch {
       // Quota exceeded — still works via the memoized promise
