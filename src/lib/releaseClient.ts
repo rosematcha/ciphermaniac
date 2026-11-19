@@ -1,17 +1,38 @@
 /**
  * Release-aware data path resolution for the browser.
  *
- * Builds one resolver from the embedded release manifest (frozen for the
- * document lifetime) and maps legacy `reports/…` / `players/…` paths to their
+ * Builds one resolver from the release manifest that the build inlines into
+ * index.html (frozen for the document lifetime) and maps legacy `reports/…` / `players/…` paths to their
  * immutable `/releases/v1/…` roots when a release is embedded. The committed
  * null state leaves local development usable without a published release.
  */
 
-import { EMBEDDED_RELEASE } from '../../shared/generated/release';
-import { createReleaseResolver, type ReleaseResolver } from '../../shared/releaseManifest';
-import type { ReleaseScope } from '../../shared/data/build/release';
+import { coerceManifest, createReleaseResolver, type ReleaseResolver } from '../../shared/releaseManifest';
+import type { ReleaseManifest, ReleaseScope } from '../../shared/data/build/release';
 
-const resolver = createReleaseResolver(EMBEDDED_RELEASE);
+/**
+ * Read the manifest from the document's `<script type="application/json" id="release">`
+ * (written by vite.config.ts). No tag means no release: local builds and Node tests.
+ * A tag that doesn't parse or validate throws, as a bad embedded module did.
+ * @param doc - The document to read, if any
+ * @returns The validated manifest, or null when none is embedded
+ */
+export function readEmbeddedRelease(doc: Pick<Document, 'getElementById'> | undefined): ReleaseManifest | null {
+  const text = doc?.getElementById('release')?.textContent;
+  if (text === null || text === undefined) {
+    return null;
+  }
+  const manifest = coerceManifest(JSON.parse(text) as unknown);
+  if (manifest === null) {
+    throw new Error('Invalid embedded release manifest');
+  }
+  return manifest;
+}
+
+/** The release this document was built with, or null without one. */
+export const embeddedRelease = readEmbeddedRelease(globalThis.document);
+
+const resolver = createReleaseResolver(embeddedRelease);
 
 /** True when an immutable release drives resolution. */
 export const { isReleaseAware } = resolver;

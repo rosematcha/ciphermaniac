@@ -153,3 +153,29 @@ test('format reports resolve under the formats root, and a release without one r
   );
   assert.throws(() => resolvePathWith(release({}), '/reports/Formats/index.json'), /no root for scope "formats"/);
 });
+
+test('the embedded release is read from the document, and a bad tag fails loudly', async () => {
+  const { readEmbeddedRelease } = await import('../../src/lib/releaseClient.ts');
+  const manifest = {
+    contractVersion: 2,
+    releaseId: '20261118T000000Z-abc',
+    publishedAt: '2026-11-18T00:00:00Z',
+    roots: Object.fromEntries(
+      ['online', 'trends', 'players', 'prices', 'catalogs', 'snapshots', 'assets'].map(scope => [
+        scope,
+        `/releases/v1/${scope}/aaa`
+      ])
+    ),
+    events: { '2026-01-16, A </script> B': '/releases/v1/events/2026-01-16, A </script> B/999' },
+    dependencies: {}
+  };
+  const doc = (text: string | null) => ({
+    getElementById: (id: string) => (id === 'release' && text !== null ? ({ textContent: text } as HTMLElement) : null)
+  });
+  const escaped = JSON.stringify(manifest).replaceAll('<', '\\u003c');
+  assert.deepStrictEqual(readEmbeddedRelease(doc(escaped)), manifest);
+  assert.strictEqual(readEmbeddedRelease(doc(null)), null);
+  assert.strictEqual(readEmbeddedRelease(undefined), null);
+  assert.throws(() => readEmbeddedRelease(doc('{"contractVersion":1}')), /Invalid embedded release manifest/);
+  assert.throws(() => readEmbeddedRelease(doc('not json')), SyntaxError);
+});

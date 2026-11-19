@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { budgetFailures, entryFiles, splitRelease } from '../../scripts/quality/bundle-budget.mjs';
+import { gzipSync } from 'node:zlib';
+import { budgetFailures, entryFiles, releaseJsonSize } from '../../scripts/quality/bundle-budget.mjs';
 
 test('counts shared chunks once, tolerates cycles, and excludes lazy imports', () => {
   const manifest = {
@@ -22,13 +23,9 @@ test('accepts the limit and rejects a one-byte regression', () => {
   assert.equal(budgetFailures({ initialJs: 11 }, { initialJs: 10 }).length, 1);
 });
 
-test('the embedded release chunk is measured apart from the code', () => {
-  const manifest = {
-    main: { file: 'main.js', imports: ['_release'] },
-    _release: { file: 'release.js', name: 'release' }
-  };
-  const { code, release } = splitRelease(manifest, entryFiles(manifest, 'main'));
-  assert.deepEqual([...code], ['main.js']);
-  assert.deepEqual([...release], ['release.js']);
-  assert.deepEqual([...splitRelease({ main: manifest.main }, ['main.js']).release], []);
+test('measures only the release manifest inlined into the document', () => {
+  const json = JSON.stringify({ releaseId: 'r'.repeat(500) });
+  const html = `<head><script type="application/json" id="release">${json}</script></head><body>${'x'.repeat(5000)}</body>`;
+  assert.equal(releaseJsonSize(html), gzipSync(json).byteLength);
+  assert.equal(releaseJsonSize('<head></head>'), gzipSync('').byteLength);
 });

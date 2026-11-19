@@ -9,16 +9,14 @@ import { createDataClient, dataClient } from './client';
 import { decodeSlimIndex } from '../../../shared/playerTypes.js';
 import type { PlayerDecks, PlayerIndexEntry, PlayerIndexSlimEntry, PlayerProfile } from '../../types';
 
-import { EMBEDDED_RELEASE } from '../../../shared/generated/release';
+import { embeddedRelease } from '../releaseClient';
 import { createPlayerBodyReader } from './playerBodyReader';
-import { coerceManifest } from '../../../shared/releaseManifest';
 
 const { fetchJsonOptional } = dataClient;
 const immutableClient = createDataClient({ resolvePath: path => path });
-const release = coerceManifest(EMBEDDED_RELEASE);
 
 const fetchPlayerBody = createPlayerBodyReader({
-  routed: release?.dependencies.playerLayout === 'routes-v1',
+  routed: embeddedRelease?.dependencies.playerLayout === 'routes-v1',
   legacy: fetchPlayerJson,
   routes: path => dataClient.fetchJson<Record<string, string>>(path),
   immutable: path => immutableClient.fetchJson(path)

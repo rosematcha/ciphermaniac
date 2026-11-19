@@ -43,8 +43,7 @@ import { type BrowserContext, type CDPSession, chromium, type Page } from '@play
 import { build, mergeConfig } from 'vite';
 import { decodeSlimIndex } from '../shared/playerTypes.js';
 import { resolveCurrentManifest } from '../.github/scripts/embed-current-release.ts';
-import { renderModule } from '../.github/scripts/generate-release-module.ts';
-import viteConfig from '../vite.config.ts';
+import { appConfig } from '../vite.config.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, '.cache', 'bench-dist');
@@ -211,13 +210,7 @@ async function buildWithCurrentRelease(): Promise<void> {
   if (!manifest) {
     throw new Error(`No valid production release at ${R2_BASE} to embed`);
   }
-  const source = renderModule(manifest);
-  const embed = {
-    name: 'bench-embedded-release',
-    enforce: 'pre' as const,
-    load: (id: string) => (id.endsWith('/shared/generated/release.ts') ? source : null)
-  };
-  await build(mergeConfig(viteConfig, { logLevel: 'warn', build: { outDir: DIST }, plugins: [embed] }));
+  await build(mergeConfig(appConfig(manifest), { logLevel: 'warn', build: { outDir: DIST } }));
 }
 
 function startPreview(): ChildProcess {

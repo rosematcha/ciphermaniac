@@ -1,18 +1,4 @@
-import { mergeConfig } from 'vite';
-import base from '../../vite.config.ts';
+import { appConfig } from '../../vite.config.ts';
 import { fixtureRelease } from './release-fixture.ts';
 
-export default mergeConfig(base, {
-  plugins: [
-    {
-      name: 'embedded-release-fixture',
-      enforce: 'pre',
-      load(id: string) {
-        if (id.endsWith('/shared/generated/release.ts')) {
-          return `export const EMBEDDED_RELEASE = ${JSON.stringify(fixtureRelease)};`;
-        }
-        return null;
-      }
-    }
-  ]
-});
+export default appConfig(fixtureRelease);
