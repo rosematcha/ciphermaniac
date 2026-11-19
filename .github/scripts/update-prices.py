@@ -1272,6 +1272,16 @@ def upload_history_shards_to_r2(r2_client, bucket_name, history):
     print(f"  ✓ Shard upload complete ({sum(len(s) for s in shards.values())} cards)")
 
 
+def mark_repair_unfinished(r2_client, bucket_name, marker_key, pending=()):
+    """Mark a maintenance repair unfinished just before its first write, so the
+    release guard waits for it; a repair that fails before writing blocks nothing.
+    ``pending`` records the work a retry has to finish."""
+    if marker_key:
+        state = {'status': 'building', 'pending': list(pending)}
+        r2_client.put_object(Bucket=bucket_name, Key=marker_key, Body=json.dumps(state),
+                             ContentType='application/json')
+
+
 def upload_price_history_to_r2(r2_client, bucket_name, history):
     """Upload the rolling price-history artifact (compact, no whitespace)."""
     output = {

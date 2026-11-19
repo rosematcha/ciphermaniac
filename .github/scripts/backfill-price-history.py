@@ -116,6 +116,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="write locally, skip R2 upload")
     parser.add_argument("--days", type=int, default=up.HISTORY_WINDOW_DAYS)
     parser.add_argument("--cache-dir", default=".price-archives")
+    parser.add_argument("--marker", help="producer marker to set unfinished before the first write")
     args = parser.parse_args()
 
     seven_zip = find_7z()
@@ -210,6 +211,7 @@ def main():
         print(f"Dry run: wrote {out_path}")
         return
 
+    up.mark_repair_unfinished(r2_client, bucket, args.marker)
     up.upload_price_history_to_r2(r2_client, bucket, history)
 
     # Refresh the client-facing derivatives from the rebuilt window so trends and

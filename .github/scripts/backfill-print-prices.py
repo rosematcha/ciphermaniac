@@ -278,6 +278,40 @@ def load_synonyms(r2_client, bucket, local_path):
     return data
 
 
+def is_calendar_date(value):
+    """True for an exact YYYY-MM-DD string naming a real calendar date."""
+    try:
+        return isinstance(value, str) and datetime.strptime(value, "%Y-%m-%d").strftime("%Y-%m-%d") == value
+    except ValueError:
+        return False
+
+
+def requested_dates(value):
+    """Parse --dates, rejecting anything but YYYY-MM-DD calendar dates before the run writes anything."""
+    dates = sorted({d.strip() for d in value.split(",") if d.strip()})
+    malformed = [d for d in dates if not is_calendar_date(d)]
+    if malformed:
+        raise argparse.ArgumentTypeError(f"not YYYY-MM-DD calendar dates: {', '.join(malformed)}")
+    return dates
+
+
+def interrupted_dates(r2_client, bucket, marker_key):
+    """Dates an interrupted run of this repair left pending in its marker."""
+    if not marker_key:
+        return set()
+    result = r2.read_json(r2_client, bucket, marker_key)
+    if result.status == "missing":
+        return set()
+    if result.status != "found":
+        raise RuntimeError(f"Cannot read repair marker {marker_key}: {result.status}")
+    state = result.value if isinstance(result.value, dict) else {}
+    pending = state.get("pending", []) if state.get("status") == "building" else []
+    malformed = [d for d in pending if not is_calendar_date(d)]
+    if malformed:
+        print(f"Warning: dropping malformed pending dates from {marker_key}: {malformed}")
+    return {d for d in pending if is_calendar_date(d)}
+
+
 def upload_artifact(r2_client, bucket, date_str, artifact):
     """Upload one date's print-price artifact to R2 (compact JSON)."""
     key = f"{PRINT_PRICES_PREFIX}{date_str}.json"
@@ -297,7 +331,7 @@ def upload_artifact(r2_client, bucket, date_str, artifact):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--dates",
+        "--dates", type=requested_dates,
         help="Comma-separated YYYY-MM-DD dates to backfill instead of every event date.",
     )
     parser.add_argument(
@@ -313,6 +347,7 @@ def main():
         help="Write artifacts to <cache-dir>/print-prices/ locally; upload nothing.",
     )
     parser.add_argument("--cache-dir", default=".price-archives")
+    parser.add_argument("--marker", help="Producer marker to set unfinished before the first write.")
     args = parser.parse_args()
 
     seven_zip = find_7z()
@@ -360,7 +395,7 @@ def main():
 
     # 4. Which dates?
     if args.dates:
-        dates = sorted({d.strip() for d in args.dates.split(",") if d.strip()})
+        dates = args.dates
         old = [d for d in dates if d < ARCHIVE_FLOOR]
         if old:
             print(f"\nWarning: skipping {len(old)} dates before archive floor "
@@ -371,6 +406,9 @@ def main():
         if skipped_old:
             print(f"Warning: {len(skipped_old)} event dates before archive floor "
                   f"{ARCHIVE_FLOOR} skipped: {skipped_old}")
+    # A retry also finishes the dates an interrupted run left pending, so the
+    # marker clears only once each is present, written, or has no archive.
+    dates = sorted(set(dates) | interrupted_dates(r2_client, bucket, args.marker))
     print(f"\nBackfilling {len(dates)} dates...")
 
     dry_out_dir = cache_dir / "print-prices"
@@ -404,6 +442,8 @@ def main():
             out_path.write_text(json.dumps(artifact, separators=(",", ":")))
             print(f"  {date_str}: {len(day_prices)} prints priced -> {out_path} (dry-run)")
         else:
+            if not written:
+                up.mark_repair_unfinished(r2_client, bucket, args.marker, dates)
             upload_artifact(r2_client, bucket, date_str, artifact)
             print(f"  {date_str}: {len(day_prices)} prints priced -> R2 {key}")
         written += 1

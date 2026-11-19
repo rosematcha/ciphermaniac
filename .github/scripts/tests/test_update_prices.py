@@ -818,5 +818,20 @@ class VintageGroupIdsTest(unittest.TestCase):
                 )
 
 
+class RepairMarkerTest(unittest.TestCase):
+    def test_marks_the_named_repair_unfinished(self):
+        client = Mock()
+        update_prices.mark_repair_unfinished(client, 'bucket', 'build/v1/producers/repair-print-prices.json',
+                                             ['2026-11-01'])
+        upload = client.put_object.call_args.kwargs
+        self.assertEqual(upload['Key'], 'build/v1/producers/repair-print-prices.json')
+        self.assertEqual(json.loads(upload['Body']), {'status': 'building', 'pending': ['2026-11-01']})
+
+    def test_standalone_runs_write_no_marker(self):
+        client = Mock()
+        update_prices.mark_repair_unfinished(client, 'bucket', None)
+        client.put_object.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

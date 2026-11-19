@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { rm } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { boolEnv } from './lib/env';
-import { completedStage, pipelineStore } from './lib/pipelineStore';
+import { completedStage, pipelineStore, type StageStore } from './lib/pipelineStore';
 import { builderRevision } from './lib/build/revision';
 import { runMajorData } from './run-major-data';
 import { refreshCardAssets } from './lib/cardAssets';
@@ -92,22 +92,34 @@ async function maintenance(): Promise<void> {
     node('bootstrap-deployment.ts');
     return;
   }
-  const store = pipelineStore();
-  await completedStage(store, 'daily', {
+  await runRepair(pipelineStore(), operation);
+}
+
+const repairs: Record<string, (marker: string) => void> = {
+  'price-history': marker =>
+    python('backfill-price-history.py', ['--days', process.env.DAYS ?? '90', '--marker', marker]),
+  'print-prices': marker =>
+    python('backfill-print-prices.py', [
+      ...(process.env.DATES ? ['--dates', process.env.DATES] : []),
+      '--marker',
+      marker
+    ])
+};
+
+/**
+ * Each repair keeps its own marker, so it never clears a failed daily run or another repair. The
+ * repair script marks it unfinished just before its first write, so one that fails earlier blocks
+ * nothing.
+ */
+export async function runRepair(store: StageStore, operation: string, run = repairs[operation]): Promise<void> {
+  if (!run) {
+    throw new Error(`Unknown maintenance operation: ${operation}`);
+  }
+  const marker = `build/v1/producers/repair-${operation}.json`;
+  run(marker);
+  await store.write(marker, {
     inputs: { operation, days: process.env.DAYS, dates: process.env.DATES },
-    revision: 'repair-v1',
-    force: true,
-    run: async () => {
-      if (operation === 'price-history') {
-        python('backfill-price-history.py', ['--days', process.env.DAYS ?? '90']);
-        return;
-      }
-      if (operation === 'print-prices') {
-        python('backfill-print-prices.py', process.env.DATES ? ['--dates', process.env.DATES] : []);
-        return;
-      }
-      throw new Error(`Unknown maintenance operation: ${operation}`);
-    }
+    status: 'complete'
   });
 }
 

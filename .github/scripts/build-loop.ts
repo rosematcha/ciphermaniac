@@ -356,11 +356,21 @@ async function selectCurrentPlayerScope(
   console.log(`[build-loop] selected ${playerScope.objects.length}/${listed} current player objects`);
 }
 
+// Only print prices stay out of releases, so only that marker is safe to delete by hand. A partial
+// price-history repair has to finish, or new history would ship beside stale shards and movers.
+const REPAIR_RECOVERY: Record<string, string> = {
+  'repair-price-history': '; re-run the price-history maintenance operation to clear it',
+  'repair-print-prices':
+    '; re-run the print-prices maintenance operation to clear it, or delete ' +
+    'build/v1/producers/repair-print-prices.json if it keeps failing'
+};
+
 export async function assertNoIncompleteProducers(load: <T>(key: string) => Promise<T | null>): Promise<void> {
-  for (const producer of ['daily', 'assets']) {
+  for (const producer of ['daily', 'assets', 'repair-price-history', 'repair-print-prices']) {
     const state = await load<ProducerState>(`build/v1/producers/${producer}.json`);
     if (state && state.status !== 'complete') {
-      throw new Error(`${producer} producer is incomplete; refusing partial publication`);
+      const recovery = REPAIR_RECOVERY[producer] ?? '';
+      throw new Error(`${producer} producer is incomplete; refusing partial publication${recovery}`);
     }
   }
 }

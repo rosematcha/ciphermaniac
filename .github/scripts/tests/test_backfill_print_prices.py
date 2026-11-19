@@ -6,9 +6,15 @@ to TCGCSV-group resolution is update-prices' resolve_group_ids, tested there.
 """
 
 import importlib.util
+import io
+import json
+import sys
+import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 def _load_module():
@@ -124,6 +130,55 @@ class BuildDatePricesTest(unittest.TestCase):
         group_products = {42: (products, "SVI", ["Pikachu::SVI::050"])}
         prices = bpp.build_date_prices(group_products, prices_by_group)
         self.assertEqual(prices, {"Pikachu::SVI::050": 0.5})
+
+
+class RepairRetryTest(unittest.TestCase):
+    MARKER = "build/v1/producers/repair-print-prices.json"
+
+    def run_main(self, dates, previous_marker, present):
+        puts = self.puts = []
+        client = Mock()
+        client.put_object.side_effect = lambda **kw: puts.append((kw["Key"], json.loads(kw["Body"])))
+        found = bpp.r2.ReadResult("found", previous_marker, None)
+        with tempfile.TemporaryDirectory() as cache_dir, \
+                patch.object(sys, "argv", ["bpp", "--dates", ",".join(dates), "--marker", self.MARKER,
+                                           "--cache-dir", cache_dir]), \
+                patch.multiple(bpp, find_7z=Mock(return_value="7z"), load_synonyms=Mock(return_value={}),
+                               map_sets_to_group_ids=Mock(return_value=({}, [])),
+                               download_archive=Mock(return_value=Path("archive.7z")),
+                               extract_group_prices=Mock(return_value={})), \
+                patch.multiple(bpp.up, initialize_r2_client=Mock(return_value=client),
+                               load_all_event_cards=Mock(return_value=set()),
+                               fetch_tcgcsv_results=Mock(return_value=[])), \
+                patch.multiple(bpp.r2, load_production_release=Mock(return_value={"events": {}}),
+                               read_json=Mock(return_value=found),
+                               object_exists=Mock(side_effect=lambda _c, _b, key: key in present)):
+            bpp.main()
+        return puts
+
+    def test_a_retry_finishes_the_dates_an_interrupted_run_left_pending(self):
+        interrupted = {"status": "building", "pending": ["2026-11-01", "2026-11-02"]}
+        present = {"assets/print-prices/2026-11-01.json"}
+        puts = self.run_main(["2026-11-03"], interrupted, present)
+        pending = ["2026-11-01", "2026-11-02", "2026-11-03"]
+        self.assertEqual(puts[0], (self.MARKER, {"status": "building", "pending": pending}))
+        self.assertEqual([key for key, _ in puts[1:]],
+                         ["assets/print-prices/2026-11-02.json", "assets/print-prices/2026-11-03.json"])
+
+    def test_a_malformed_requested_date_rejects_the_run_before_any_write(self):
+        for malformed in ["2026-02-30", "2026-1-05", "2026-11-09" + "9" * 250]:
+            with self.subTest(malformed=malformed[:12]):
+                with self.assertRaises(SystemExit), redirect_stderr(io.StringIO()):
+                    self.run_main(["2026-11-01", malformed], None, set())
+                self.assertEqual(self.puts, [])
+
+    def test_a_retry_drops_malformed_pending_dates_with_a_warning(self):
+        interrupted = {"status": "building", "pending": ["2026-11-02", "2026-11-0" + "9" * 250, 7]}
+        output = io.StringIO()
+        with redirect_stdout(output):
+            puts = self.run_main(["2026-11-03"], interrupted, set())
+        self.assertEqual(puts[0], (self.MARKER, {"status": "building", "pending": ["2026-11-02", "2026-11-03"]}))
+        self.assertIn("Warning: dropping malformed pending dates", output.getvalue())
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ export function pipelineStore() {
   return { read, write };
 }
 
-interface StageStore {
+export interface StageStore {
   read<T>(key: string): Promise<T | null>;
   write(key: string, value: unknown): Promise<void>;
 }
