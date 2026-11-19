@@ -165,3 +165,31 @@ test('canonicalizeReport: null/empty db is a no-op', () => {
   const result = canonicalizeReport(report, null);
   assert.deepStrictEqual(result, report);
 });
+
+test('canonicalizeReport: a deck-ordered report keeps its order through the merge, ranked by usage', () => {
+  const db: SynonymDatabase = {
+    synonyms: { 'Dreepy::TWM::999': 'Dreepy::TWM::128' },
+    canonicals: { Dreepy: 'Dreepy::TWM::128' }
+  };
+  const report = {
+    deckTotal: 100,
+    itemOrder: 'deck' as const,
+    items: [
+      makeItem({ name: 'Dreepy', set: 'TWM', number: '128', found: 40, total: 100 }),
+      makeItem({ name: 'Dragapult ex', set: 'TWM', number: '130', found: 99, total: 100 }),
+      makeItem({ name: 'Ultra Ball', set: 'MEG', number: '131', found: 95, total: 100 }),
+      makeItem({ name: 'Dreepy', set: 'TWM', number: '999', found: 30, total: 100 })
+    ]
+  };
+
+  const out = canonicalizeReport(report, db);
+
+  assert.deepEqual(
+    out.items.map(i => [i.name, i.found, i.rank]),
+    [
+      ['Dreepy', 70, 3],
+      ['Dragapult ex', 99, 1],
+      ['Ultra Ball', 95, 2]
+    ]
+  );
+});

@@ -5,7 +5,8 @@
  * reinterpret artifacts written under an older contract:
  *
  * - {@link canonicalizeReport} collapses variant printings in a report that was
- *   built before the current synonym mapping existed.
+ *   built before the current synonym mapping existed, keeping a deck-ordered
+ *   archetype report in deck order.
  * - {@link normalizeIndexPercentScale} detects an archetype index still written
  *   on the 0-1 fraction scale instead of 0-100.
  * - {@link canonicalizeCardTrendEntries} re-keys trend rows onto canonical UIDs.
@@ -45,8 +46,9 @@ export type AnyCardItem = CardItem & {
  *
  * Merges `found`, `dist` buckets (by `copies`), and any `deckInstances`
  * (archetype reports). Recomputes `pct` from `(found / deckTotal) * 100` and
- * each `dist[].percent` from `(players / found) * 100`. Re-sorts by `found`
- * desc and reassigns `rank`.
+ * each `dist[].percent` from `(players / found) * 100`. Reassigns `rank` by
+ * `found` desc, and sorts that way too unless the report is in deck order
+ * (`itemOrder: 'deck'`), where each merged card keeps its first printing's place.
  */
 export function canonicalizeReport<T extends { deckTotal: number; items: AnyCardItem[] }>(
   report: T,
@@ -65,111 +67,131 @@ export function canonicalizeReport<T extends { deckTotal: number; items: AnyCard
     return report;
   }
 
-  const grouped = new Map<string, AnyCardItem>();
-
-  for (const item of report.items) {
-    const uid = itemUid(item);
-    const canonicalUid = getCanonicalCardFromData(db, uid);
-    const canonicalParts = parseCardUid(canonicalUid);
-
-    const existing = grouped.get(canonicalUid);
-    if (!existing) {
-      // First occurrence — clone and stamp with canonical identity. Only
-      // rewrite name/set/number when a real synonym mapping applied
-      // (canonicalUid !== uid); otherwise keep the item's own display fields so
-      // the padded lookup UID doesn't leak into the rendered number.
-      const next: AnyCardItem = { ...item, uid: canonicalUid };
-      if (canonicalUid !== uid && canonicalParts) {
-        next.name = canonicalParts.name;
-        next.set = canonicalParts.set;
-        next.number = canonicalParts.number;
-      }
-      if (item.dist) {
-        next.dist = item.dist.map(d => ({ ...d }));
-      }
-      if (item.deckInstances) {
-        next.deckInstances = [...item.deckInstances];
-      }
-      grouped.set(canonicalUid, next);
-      continue;
-    }
-
-    // Merge variant into existing canonical entry.
-    existing.found = (existing.found ?? 0) + (item.found ?? 0);
-
-    const distMap = new Map<number, CardDistributionEntry>();
-    for (const d of existing.dist ?? []) {
-      if (d.copies === undefined) {
-        continue;
-      }
-      distMap.set(d.copies, { ...d });
-    }
-    for (const d of item.dist ?? []) {
-      if (d.copies === undefined) {
-        continue;
-      }
-      const prev = distMap.get(d.copies);
-      if (prev) {
-        prev.players = (prev.players ?? 0) + (d.players ?? 0);
-      } else {
-        distMap.set(d.copies, { ...d });
-      }
-    }
-    existing.dist = Array.from(distMap.values()).sort((a, b) => (a.copies ?? 0) - (b.copies ?? 0));
-
-    if (item.deckInstances?.length) {
-      existing.deckInstances = [...(existing.deckInstances ?? []), ...item.deckInstances];
-    }
+  const merged = mergeVariants(report.items, db);
+  for (const item of merged) {
+    recomputeStats(item, report.deckTotal);
   }
 
-  // Recompute derived stats now that variants are merged.
-  for (const item of grouped.values()) {
-    // A deck that ran two variant printings of one canonical card is counted in
-    // each variant row's `found`, so naively summing double-counts it (pct can
-    // exceed 100%). When per-deck identity is available (archetype reports carry
-    // `deckInstances`), dedupe by deckId and recompute `found` from the distinct
-    // decks. Otherwise (pre-aggregated master rows without deckIds) the overlap
-    // can't be recovered, so clamp `found` to the deck total as a floor defense.
-    if (item.deckInstances?.length) {
-      const seen = new Set<string>();
-      const deduped: Array<{ deckId: string; count: number; archetype?: string }> = [];
-      for (const inst of item.deckInstances) {
-        const id = inst?.deckId;
-        if (id) {
-          if (seen.has(id)) {
-            continue;
-          }
-          seen.add(id);
-        }
-        deduped.push(inst);
-      }
-      if (deduped.length !== item.deckInstances.length) {
-        item.deckInstances = deduped;
-        item.found = deduped.length;
-      }
-    }
-    if (item.found !== undefined && item.found > report.deckTotal) {
-      // A producer double-counted a canonical card. Clamp so the UI stays
-      // sane, but say so — silently rendering 100% would hide the regression.
-      console.warn(
-        `[canonicalizeReport] found (${item.found}) exceeds deckTotal (${report.deckTotal}) for ${item.uid ?? item.name}; clamping`
-      );
-      item.found = report.deckTotal;
-    }
-    item.pct = calculatePercentage(item.found ?? 0, report.deckTotal);
-    if (item.dist) {
-      for (const d of item.dist) {
-        d.percent = calculatePercentage(d.players ?? 0, item.found ?? 0);
-      }
-    }
-  }
-
-  const sorted = Array.from(grouped.values()).sort((a, b) => (b.found ?? 0) - (a.found ?? 0));
-  sorted.forEach((item, idx) => {
+  const byFound = [...merged].sort((a, b) => (b.found ?? 0) - (a.found ?? 0));
+  byFound.forEach((item, idx) => {
     item.rank = idx + 1;
   });
 
-  return { ...report, items: sorted };
+  const deckOrder = (report as { itemOrder?: string }).itemOrder === 'deck';
+  return { ...report, items: deckOrder ? merged : byFound };
+}
+
+/** Group a report's rows by canonical UID, in first-seen order. */
+function mergeVariants(items: AnyCardItem[], db: SynonymDatabase): AnyCardItem[] {
+  const grouped = new Map<string, AnyCardItem>();
+  for (const item of items) {
+    const uid = itemUid(item);
+    const canonicalUid = getCanonicalCardFromData(db, uid);
+    const existing = grouped.get(canonicalUid);
+    if (existing) {
+      mergeInto(existing, item);
+    } else {
+      grouped.set(canonicalUid, canonicalRow(item, uid, canonicalUid));
+    }
+  }
+  return [...grouped.values()];
+}
+
+/**
+ * First occurrence of a canonical card: a clone stamped with the canonical
+ * identity. Name/set/number are rewritten only when a real synonym mapping
+ * applied (canonicalUid !== uid); otherwise the item keeps its own display
+ * fields so the padded lookup UID doesn't leak into the rendered number.
+ */
+function canonicalRow(item: AnyCardItem, uid: string, canonicalUid: string): AnyCardItem {
+  const next: AnyCardItem = { ...item, uid: canonicalUid };
+  const canonicalParts = parseCardUid(canonicalUid);
+  if (canonicalUid !== uid && canonicalParts) {
+    next.name = canonicalParts.name;
+    next.set = canonicalParts.set;
+    next.number = canonicalParts.number;
+  }
+  if (item.dist) {
+    next.dist = item.dist.map(d => ({ ...d }));
+  }
+  if (item.deckInstances) {
+    next.deckInstances = [...item.deckInstances];
+  }
+  return next;
+}
+
+/** Merge a variant row into its canonical entry. */
+function mergeInto(entry: AnyCardItem, item: AnyCardItem): void {
+  entry.found = (entry.found ?? 0) + (item.found ?? 0);
+  entry.dist = mergeDist(entry.dist ?? [], item.dist ?? []);
+  if (item.deckInstances?.length) {
+    entry.deckInstances = [...(entry.deckInstances ?? []), ...item.deckInstances];
+  }
+}
+
+/** Sum two copy-count distributions by `copies`, ascending. */
+function mergeDist(into: CardDistributionEntry[], from: CardDistributionEntry[]): CardDistributionEntry[] {
+  const distMap = new Map<number, CardDistributionEntry>();
+  for (const d of [...into, ...from]) {
+    if (d.copies === undefined) {
+      continue;
+    }
+    const prev = distMap.get(d.copies);
+    if (prev) {
+      prev.players = (prev.players ?? 0) + (d.players ?? 0);
+    } else {
+      distMap.set(d.copies, { ...d });
+    }
+  }
+  return [...distMap.values()].sort((a, b) => (a.copies ?? 0) - (b.copies ?? 0));
+}
+
+/**
+ * A deck that ran two variant printings of one canonical card is counted in
+ * each variant row's `found`, so naively summing double-counts it (pct can
+ * exceed 100%). When per-deck identity is available (archetype reports carry
+ * `deckInstances`), dedupe by deckId and recompute `found` from the distinct
+ * decks.
+ */
+function dedupeInstances(item: AnyCardItem): void {
+  if (!item.deckInstances?.length) {
+    return;
+  }
+  const seen = new Set<string>();
+  const deduped = item.deckInstances.filter(inst => {
+    const id = inst?.deckId;
+    if (!id) {
+      return true;
+    }
+    if (seen.has(id)) {
+      return false;
+    }
+    seen.add(id);
+    return true;
+  });
+  if (deduped.length !== item.deckInstances.length) {
+    item.deckInstances = deduped;
+    item.found = deduped.length;
+  }
+}
+
+/** Recompute derived stats now that variants are merged. */
+function recomputeStats(item: AnyCardItem, deckTotal: number): void {
+  dedupeInstances(item);
+  // Pre-aggregated master rows without deckIds can't recover the overlap, so
+  // clamp `found` to the deck total as a floor defense.
+  if (item.found !== undefined && item.found > deckTotal) {
+    // A producer double-counted a canonical card. Clamp so the UI stays
+    // sane, but say so — silently rendering 100% would hide the regression.
+    console.warn(
+      `[canonicalizeReport] found (${item.found}) exceeds deckTotal (${deckTotal}) for ${item.uid ?? item.name}; clamping`
+    );
+    item.found = deckTotal;
+  }
+  item.pct = calculatePercentage(item.found ?? 0, deckTotal);
+  for (const d of item.dist ?? []) {
+    d.percent = calculatePercentage(d.players ?? 0, item.found ?? 0);
+  }
 }
 
 /**

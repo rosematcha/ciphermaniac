@@ -1,8 +1,9 @@
-import { createSignal, For, Show } from 'solid-js';
+import { createMemo, createSignal, For, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import type { CardItem } from '../types';
 import { EmptyState } from './EmptyState';
 import { CardTile } from './CardTile';
+import { cutCards } from './cardCut';
 import { CardHoverPreview } from './CardHoverPreview';
 import { averageCopies, categoryLabel } from '../lib/cardStats';
 
@@ -19,42 +20,53 @@ export function CardList(props: {
   emptyMessage: string;
   rightSlot?: string;
   hideEmptyBuckets?: boolean;
-  /** Render at most this many items until the reader asks for the rest — a
-   * full archetype report is ~70–200 tiles (~15 DOM nodes each). */
-  initialLimit?: number;
+  /** Keep cards under this inclusion % behind a cell that ends the grid until
+   * the reader opens it. */
+  cutPct?: number;
 }) {
-  const [expanded, setExpanded] = createSignal(false);
-  const visible = () => {
-    const limit = props.initialLimit;
-    if (!limit || expanded()) {
-      return props.items;
-    }
-    return props.items.slice(0, limit);
+  const [open, setOpen] = createSignal(false);
+  const cut = createMemo(() => cutCards(props.items, props.cutPct, open()));
+  const visible = () => cut().shown;
+  const cutLabel = () => {
+    const count = cut().under;
+    return open()
+      ? `Hide cards under ${props.cutPct}%`
+      : `Show ${count.toLocaleString()} card${count === 1 ? '' : 's'} under ${props.cutPct}%`;
   };
-  const hiddenCount = () => props.items.length - visible().length;
+  const cutButton = (cls: string) => (
+    <button class={cls} type='button' aria-expanded={open()} onClick={() => setOpen(!open())}>
+      {cutLabel()}
+    </button>
+  );
   return (
     <Show when={props.items.length > 0} fallback={<EmptyState title={props.emptyMessage} />}>
       <div class='section-head'>
         <h2>{props.title}</h2>
         <span class='right'>{props.rightSlot ?? `${props.items.length.toLocaleString()} cards`}</span>
       </div>
-      <Show when={props.viewMode === 'grid'} fallback={<CardsTable items={visible()} />}>
+      <Show
+        when={props.viewMode === 'grid'}
+        fallback={
+          <>
+            <Show when={visible().length > 0}>
+              <CardsTable items={visible()} />
+            </Show>
+            <Show when={cut().under > 0}>
+              <div class='cards-grid-more'>{cutButton('btn btn-secondary')}</div>
+            </Show>
+          </>
+        }
+      >
         <div class='cards-grid'>
           <For each={visible()}>{item => <CardTile card={item} hideEmptyBuckets={props.hideEmptyBuckets} />}</For>
-        </div>
-      </Show>
-      <Show when={hiddenCount() > 0}>
-        <div class='cards-grid-more'>
-          <button class='btn btn-secondary' type='button' onClick={() => setExpanded(true)}>
-            Show all {props.items.length.toLocaleString()} cards
-          </button>
+          <Show when={cut().under > 0}>{cutButton('card-cut-cell')}</Show>
         </div>
       </Show>
     </Show>
   );
 }
 
-function CardsTable(props: { items: CardListItem[] }) {
+function CardsTable(props: { items: readonly CardListItem[] }) {
   const navigate = useNavigate();
   const goto = (item: CardListItem) => {
     if (item.set && item.number !== undefined) {

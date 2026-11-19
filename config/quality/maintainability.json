@@ -152,9 +152,6 @@
   "src/lib/cardLens.ts": [
     "complexity:44652fb45655230685bba3cb08bd6ac6b1ef01dc1035c5c846111eb230c3e3c3:Function 'tallyLens' has a complexity of 13. Maximum allowed is 12."
   ],
-  "src/lib/cardOrder.ts": [
-    "complexity:c2a69008e9c79f9b8bd8991712329825c3b27330cfa9948d4a5aca2f60efc1e0:Function 'deckSection' has a complexity of 13. Maximum allowed is 12."
-  ],
   "src/lib/cardWall/gif.ts": [
     "complexity:daa6246ecc6ba86fda2db9c925095564d4d121a9cddbf7934a221dc7dfb5a8b3:Function 'buildPalette' has a complexity of 14. Maximum allowed is 12.",
     "max-depth:ba67cf76de3af92112157af97aa15d5abfa9c32be5485849f7aa0e7eabe6662d:Blocks are nested too deeply (4). Maximum allowed is 3."
@@ -163,11 +160,6 @@
     "max-params:0b20f2a52b3867f6f60e51e4feaf3fc16a35f3b4997ff00400ae1a7ca0b841c5:Function 'drawRow' has too many parameters (7). Maximum allowed is 4.",
     "max-params:103f3fe3a4b7df494562d637b947fde83252da9ee800505942af502badf6e02d:Function 'drawStage' has too many parameters (6). Maximum allowed is 4.",
     "max-params:6d039df043abe98b5213d8c7dc4b8a631729c42ff6f5349257a2917c8355e21a:Method 'paint' has too many parameters (7). Maximum allowed is 4."
-  ],
-  "src/lib/data/compat.ts": [
-    "max-depth:77ee94f4893e64634c3b70d1fed60de416373a00ef79c259fee6ae6b03ad291a:Blocks are nested too deeply (4). Maximum allowed is 3.",
-    "max-depth:77ee94f4893e64634c3b70d1fed60de416373a00ef79c259fee6ae6b03ad291a:Blocks are nested too deeply (5). Maximum allowed is 3.",
-    "complexity:77ee94f4893e64634c3b70d1fed60de416373a00ef79c259fee6ae6b03ad291a:Function 'canonicalizeReport' has a complexity of 42. Maximum allowed is 12."
   ],
   "src/lib/data/events.ts": [
     "complexity:ad2b2063edf0309160283859f54d0df4476edaca237ed96f1cece2d733aec2f5:Async function 'day2CardStatsFromDecks' has a complexity of 18. Maximum allowed is 12."

@@ -12,8 +12,10 @@ import { dirname, join } from 'node:path';
 import {
   buildDecksArtifact,
   buildEventArtifacts,
-  buildPlayersArtifact
+  buildPlayersArtifact,
+  orderArchetypeCards
 } from '../../shared/data/reports/eventArtifacts.ts';
+import { cardFacetsFromTypes } from '../../shared/data/cardOrder.ts';
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import type { NormalizedEvent } from '../../shared/data/contracts.ts';
 
@@ -164,4 +166,47 @@ test('D13: decklist-less decks are excluded from master deckTotal (all scopes)',
   const withList = withEmpty.decks.filter(d => d.hasDecklist).length;
   assert.strictEqual(master.deckTotal, withList);
   assert.notStrictEqual(master.deckTotal, withEmpty.decks.length);
+});
+
+test('an event ships each archetype cards.json in deck order, evolution lines together', () => {
+  const report = (items: { name: string; set: string; number: string; pct: number; category: string }[]) => ({
+    deckTotal: 10,
+    items
+  });
+  const usageOrder = [
+    { name: "Erika's Vileplume ex", set: 'ASC', number: '003', pct: 100, category: 'pokemon' },
+    { name: 'Ultra Ball', set: 'MEG', number: '131', pct: 90, category: 'trainer/item' },
+    { name: "Erika's Oddish", set: 'ASC', number: '001', pct: 80, category: 'pokemon' },
+    { name: "Boss's Orders", set: 'MEG', number: '114', pct: 70, category: 'trainer/supporter' },
+    { name: "Erika's Gloom", set: 'ASC', number: '002', pct: 60, category: 'pokemon' }
+  ];
+  const artifacts = new Map<string, unknown>([
+    ['master.json', report(usageOrder)],
+    ['slices/phase2/archetypes/Vileplume/cards.json', report(usageOrder)]
+  ]);
+  // The card-types database escapes apostrophes in the evolution line.
+  const facets = cardFacetsFromTypes({
+    'ASC::001': { cardType: 'pokemon', stage: 'basic', evolutionInfo: 'Basic' },
+    'ASC::002': { cardType: 'pokemon', stage: 'stage1', evolutionInfo: 'Stage 1 - Evolves from Erika&#039;s Oddish' },
+    'ASC::003': { cardType: 'pokemon', stage: 'stage2', evolutionInfo: 'Stage 2 - Evolves from Erika&#039;s Gloom' }
+  });
+
+  orderArchetypeCards(artifacts, facets, () => {});
+
+  const names = (path: string) => (artifacts.get(path) as { items: { name: string }[] }).items.map(i => i.name);
+  assert.deepEqual(names('slices/phase2/archetypes/Vileplume/cards.json'), [
+    "Erika's Oddish",
+    "Erika's Gloom",
+    "Erika's Vileplume ex",
+    "Boss's Orders",
+    'Ultra Ball'
+  ]);
+  assert.equal(
+    (artifacts.get('slices/phase2/archetypes/Vileplume/cards.json') as { itemOrder?: string }).itemOrder,
+    'deck'
+  );
+  assert.deepEqual(
+    names('master.json'),
+    usageOrder.map(i => i.name)
+  );
 });

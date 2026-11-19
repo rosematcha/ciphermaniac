@@ -251,3 +251,32 @@ test('P-29: pre-rotation window spans exactly windowDays dates and excludes the 
     'snapshot does not duplicate decks per archetype'
   );
 });
+
+test('a rotation snapshot writes each archetype in deck order, evolution lines together', async () => {
+  const ROTATION = '2026-04-10';
+  const KEY = '2026-04-01, Regional Bar';
+  const gloom = { name: "Erika's Gloom", set: 'ASC', number: '002', count: 2 };
+  const store: Record<string, string> = {
+    'reports/tournaments.json': JSON.stringify([KEY]),
+    [`reports/${KEY}/decks.json`]: JSON.stringify([
+      { archetype: 'Vileplume', cards: [gloom, { name: "Erika's Oddish", set: 'ASC', number: '001', count: 2 }] },
+      { archetype: 'Vileplume', cards: [gloom] }
+    ]),
+    'assets/data/card-types.json': JSON.stringify({
+      'ASC::001': { cardType: 'pokemon', stage: 'basic', evolutionInfo: 'Basic' },
+      'ASC::002': { cardType: 'pokemon', stage: 'stage1', evolutionInfo: 'Stage 1 - Evolves from Erika&#039;s Oddish' }
+    })
+  };
+
+  await runRotationSnapshot(makeEnv(store), { rotationDate: ROTATION, windowDays: 30 });
+
+  const cards = JSON.parse(store[`reports/Snapshots/${ROTATION}/archetypes/vileplume/cards.json`]) as {
+    items: { name: string }[];
+    itemOrder?: string;
+  };
+  assert.deepEqual(
+    cards.items.map(item => item.name),
+    ["Erika's Oddish", "Erika's Gloom"]
+  );
+  assert.equal(cards.itemOrder, 'deck');
+});

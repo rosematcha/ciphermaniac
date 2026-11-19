@@ -167,6 +167,16 @@ export function rulesFromPersisted(
 }
 
 /**
+ * Report items most-used first, so the rule search's capped matches prefer the
+ * cards decks actually play; archetype reports arrive in deck order.
+ * @param items - The archetype report's items
+ * @returns A new array sorted by inclusion, descending
+ */
+export function byUsage<T extends { pct?: number }>(items: readonly T[]): T[] {
+  return [...items].sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0));
+}
+
+/**
  * Autocomplete matches for the rule search box.
  * @param items - The archetype report's items
  * @param query - Raw search text

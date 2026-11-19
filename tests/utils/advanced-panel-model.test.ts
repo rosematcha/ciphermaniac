@@ -14,6 +14,7 @@ import test from 'node:test';
 import {
   applyFilters,
   buildBaselinePct,
+  byUsage,
   canonicalizeDecks,
   inclusionPct,
   indexItemsByCardId,
@@ -226,6 +227,22 @@ test('search matches folded names, skips cards already in a rule, and caps its r
       name
     );
   }
+});
+
+test('the rule search reads a deck-ordered report most-used first, so its cap keeps the staples', () => {
+  // Deck order puts special energy before basic energy; eight 3% matches would
+  // otherwise fill the cap ahead of the 100% Fire Energy.
+  const deckOrdered = [
+    ...Array.from({ length: 8 }, (_, i) => ({
+      name: `Special Energy ${i}`,
+      set: 'TEF',
+      number: String(150 + i),
+      pct: 3
+    })),
+    { name: 'Fire Energy', set: 'MEE', number: '002', pct: 100 }
+  ] as CardItem[];
+  const names = searchCandidates(byUsage(deckOrdered), 'energy', new Set(), null).map(i => i.name);
+  assert.equal(names[0], 'Fire Energy');
 });
 
 // ---------------------------------------------------------------------------

@@ -6,8 +6,9 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -16,17 +17,42 @@ import {
   buildFromFile,
   buildTournamentCatalog,
   publishEventArtifacts,
+  publishLabsSource,
   reindexFromDecks
 } from '../../.github/scripts/event-cli.ts';
 
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'data-pipeline');
 const labsPath = join(fixturesDir, 'labs-event.json');
+const cliPath = fileURLToPath(new URL('../../.github/scripts/event-cli.ts', import.meta.url));
 
 test('builds the full artifact set from a valid normalized event file', async () => {
   const artifacts = await buildFromFile({ input: labsPath, outDir: 'unused' });
   assert.ok(artifacts.has('master.json'));
   assert.ok(artifacts.has('archetypes/index.json'));
   assert.ok(artifacts.size >= 15);
+});
+
+test('a local build orders archetype cards with a card-types file', async t => {
+  // A card-types entry for every card the event plays, typed as the report has
+  // it, each with a standalone stage so the order counts as complete.
+  const master = (await buildFromFile({ input: labsPath, outDir: 'unused' })).get('master.json') as {
+    items: { set?: string; number?: string; category?: string }[];
+  };
+  const database = Object.fromEntries(
+    master.items.map(item => [
+      `${item.set}::${item.number}`,
+      { cardType: (item.category ?? 'pokemon').split('/')[0], stage: 'basic' }
+    ])
+  );
+  const cardTypes = join(tmpdir(), `event-cli-card-types-${process.pid}.json`);
+  writeFileSync(cardTypes, JSON.stringify(database));
+  t.after(() => rmSync(cardTypes, { force: true }));
+  const artifacts = await buildFromFile({ input: labsPath, outDir: 'unused', cardTypes });
+  const archetypeCards = [...artifacts].filter(([path]) => /^archetypes\/[^/]+\/cards\.json$/.test(path));
+  assert.ok(archetypeCards.length > 0);
+  for (const [, body] of archetypeCards) {
+    assert.equal((body as { itemOrder?: string }).itemOrder, 'deck');
+  }
 });
 
 test('rejects a malformed normalized event with collected errors (never publishes)', async () => {
@@ -37,29 +63,31 @@ test('rejects a malformed normalized event with collected errors (never publishe
   await assert.rejects(() => buildFromFile({ input: badPath, outDir: 'unused' }), /Invalid normalized event/);
 });
 
+const LABS_SOURCE = {
+  labsCode: '0099',
+  fetchedAt: '2026-07-13T00:00:00.000Z',
+  meta: { name: 'Src Event', date: '2026-07-01', players: 2, hasDay2: false },
+  standings: [
+    { tpId: 1, name: 'A', placement: 1, wins: 1, losses: 0, ties: 0, deckName: 'Gardevoir ex' },
+    { tpId: 2, name: 'B', placement: 2, wins: 0, losses: 1, ties: 0, deckName: 'Charizard Pidgeot' }
+  ],
+  decklists: {
+    '1': [{ name: 'Gardevoir ex', set: 'SVI', number: '86', count: 4, category: 'pokemon' }],
+    '2': [{ name: 'Charizard ex', set: 'OBF', number: '125', count: 3, category: 'pokemon' }]
+  },
+  matches: [{ round: 1, phase: 1, table: 1, completed: true, p1Id: 1, p2Id: 2, winner: 1 }]
+};
+
 test('builds from a Labs source record (adapter runs before validation)', async () => {
-  const src = {
-    labsCode: '0099',
-    fetchedAt: '2026-07-13T00:00:00.000Z',
-    meta: { name: 'Src Event', date: '2026-07-01', players: 2, hasDay2: false },
-    standings: [
-      { tpId: 1, name: 'A', placement: 1, wins: 1, losses: 0, ties: 0, deckName: 'Gardevoir ex' },
-      { tpId: 2, name: 'B', placement: 2, wins: 0, losses: 1, ties: 0, deckName: 'Charizard Pidgeot' }
-    ],
-    decklists: {
-      '1': [{ name: 'Gardevoir ex', set: 'SVI', number: '86', count: 4, category: 'pokemon' }],
-      '2': [{ name: 'Charizard ex', set: 'OBF', number: '125', count: 3, category: 'pokemon' }]
-    },
-    matches: [{ round: 1, phase: 1, table: 1, completed: true, p1Id: 1, p2Id: 2, winner: 1 }]
-  };
   const srcPath = join(tmpdir(), 'event-cli-src.json');
-  writeFileSync(srcPath, JSON.stringify(src));
+  writeFileSync(srcPath, JSON.stringify(LABS_SOURCE));
   const artifacts = await buildFromFile({ input: srcPath, from: 'labs-source', outDir: 'unused' });
   assert.ok(artifacts.has('master.json'));
   assert.ok(artifacts.has('matches.json'));
 });
 
-test('publishes immutable bodies before conditionally registering a pending event', async () => {
+/** An in-memory immutable event store with a conditional pending-events pointer. */
+function memoryStore() {
   const bodies = new Map<string, string>();
   let pointer: { events?: Record<string, string>; updatedAt?: string } | null = null;
   let etag = '0';
@@ -91,6 +119,11 @@ test('publishes immutable bodies before conditionally registering a pending even
       etag = String(Number(etag) + 1);
     }
   };
+  return { bodies, store, pointer: () => pointer };
+}
+
+test('publishes immutable bodies before conditionally registering a pending event', async () => {
+  const { bodies, store, pointer: currentPointer } = memoryStore();
   const artifacts = new Map<string, unknown>([
     ['master.json', { value: 1 }],
     ['decks.json', []]
@@ -98,12 +131,60 @@ test('publishes immutable bodies before conditionally registering a pending even
   const folder = '2026-01-01, Event';
   const first = await publishEventArtifacts(store, folder, artifacts, '2026-09-12T00:00:00Z');
   assert.match(first, /^\/releases\/v1\/events\/2026-01-01, Event\/[a-f0-9]{12}$/);
-  assert.ok(pointer);
-  assert.equal((pointer as { events?: Record<string, string> }).events?.[folder], first);
+  assert.ok(currentPointer());
+  assert.equal(currentPointer()?.events?.[folder], first);
   assert.ok(bodies.has(`${first.slice(1)}/_complete.json`));
   const { size } = bodies;
   assert.equal(await publishEventArtifacts(store, folder, artifacts), first);
   assert.equal(bodies.size, size);
+});
+
+test('an unreadable card-types asset still publishes the event, without the deck-order marker', async () => {
+  const { bodies, store } = memoryStore();
+  const read = async <T>(key: string): Promise<T | null> => {
+    if (key === 'assets/data/card-types.json') {
+      throw new SyntaxError('Unexpected token < in JSON');
+    }
+    return key === 'assets/card-synonyms.json' ? ({ synonyms: {}, canonicals: {} } as T) : null;
+  };
+
+  const root = await publishLabsSource(LABS_SOURCE, read, store);
+
+  const archetypeCards = [...bodies].filter(
+    ([key]) => key.startsWith(root.slice(1)) && /\/archetypes\/[^/]+\/cards\.json$/.test(key)
+  );
+  assert.ok(archetypeCards.length > 0);
+  for (const [, body] of archetypeCards) {
+    assert.equal((JSON.parse(body) as { itemOrder?: string }).itemOrder, undefined);
+  }
+});
+
+test('the build rejects --card-types with no path', () => {
+  for (const tail of [['--card-types'], ['--card-types', '--rolling']]) {
+    const run = spawnSync(
+      process.execPath,
+      ['--import', 'tsx', cliPath, 'build', '--input', labsPath, '--out-dir', tmpdir(), ...tail],
+      { encoding: 'utf8' }
+    );
+    assert.notEqual(run.status, 0, tail.join(' '));
+    assert.match(run.stderr, /--card-types needs a value/, tail.join(' '));
+  }
+});
+
+test('a card-types entry with a numeric stage still publishes the event', async () => {
+  const { bodies, store, pointer } = memoryStore();
+  const cardTypes = { 'SVI::086': { cardType: 'pokemon', stage: 1 }, 'OBF::125': { cardType: 'pokemon', stage: 2 } };
+  const read = async <T>(key: string): Promise<T | null> => {
+    if (key === 'assets/data/card-types.json') {
+      return cardTypes as T;
+    }
+    return key === 'assets/card-synonyms.json' ? ({ synonyms: {}, canonicals: {} } as T) : null;
+  };
+
+  const root = await publishLabsSource(LABS_SOURCE, read, store);
+
+  assert.ok(bodies.has(`${root.slice(1)}/_complete.json`));
+  assert.equal(pointer()?.events?.['2026-07-01, Src Event'], root);
 });
 
 test('the catalog keeps each dated folder once, newest first then by name', () => {

@@ -15,6 +15,8 @@ interface CardTypeInfo {
   subType?: string;
   fullType?: string;
   evolutionInfo?: string;
+  /** Structured evolution stage (`basic`, `stage1`, `stage2`, `vstar`, ...). */
+  stage?: string;
   regulationMark?: string;
   aceSpec?: boolean;
   abilities?: string[];

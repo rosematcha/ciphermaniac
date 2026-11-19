@@ -9,7 +9,7 @@
  * consumes them.
  *
  * Usage:
- *   tsx event-cli.ts build --input <normalized.json> --out-dir <dir>
+ *   tsx event-cli.ts build --input <normalized.json> --out-dir <dir> [--card-types <card-types.json>]
  *   tsx event-cli.ts publish-source --input <labs-source.json>
  *
  * R2 mode needs R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY /
@@ -22,7 +22,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { validateNormalizedEvent } from '../../shared/data/contracts.ts';
-import { buildEventArtifacts } from '../../shared/data/reports/eventArtifacts.ts';
+import { buildEventArtifacts, orderArchetypeCards } from '../../shared/data/reports/eventArtifacts.ts';
+import { type CardFacetMap, producerFacets } from '../../shared/data/cardOrder.ts';
+import type { CardTypesDatabase } from '../../shared/data/cardTypesDatabase.ts';
 import { type LabsSourceEvent, labsSourceToNormalized } from '../../shared/data/adapters/labsSource.ts';
 import { buildArchetypeReports } from '../../shared/data/archetypes/build.ts';
 import { buildCardUsageIndex } from '../../shared/data/reports/cardUsage.ts';
@@ -46,7 +48,17 @@ interface BuildArgs {
   rolling?: boolean;
   /** Path to an `assets/print-prices/{date}.json` artifact for --rolling. */
   printPrices?: string;
+  /** Path to `assets/data/card-types.json`, for deck-ordered archetype cards. */
+  cardTypes?: string;
 }
+
+const VALUE_FLAGS: Record<string, 'input' | 'outDir' | 'synonyms' | 'printPrices' | 'cardTypes'> = {
+  '--input': 'input',
+  '--out-dir': 'outDir',
+  '--synonyms': 'synonyms',
+  '--print-prices': 'printPrices',
+  '--card-types': 'cardTypes'
+};
 
 function parseArgs(argv: string[]): BuildArgs {
   const args: Partial<BuildArgs> = { from: 'normalized' };
@@ -57,22 +69,21 @@ function parseArgs(argv: string[]): BuildArgs {
       continue;
     }
     const value = argv[++i];
-    if (flag === '--input') {
-      args.input = value;
-    } else if (flag === '--out-dir') {
-      args.outDir = value;
-    } else if (flag === '--synonyms') {
-      args.synonyms = value;
-    } else if (flag === '--print-prices') {
-      args.printPrices = value;
-    } else if (flag === '--from') {
+    if (flag === '--from') {
       if (value !== 'normalized' && value !== 'labs-source') {
         throw new Error(`--from must be normalized|labs-source, got "${value}"`);
       }
       args.from = value;
-    } else {
+      continue;
+    }
+    const key = Object.hasOwn(VALUE_FLAGS, flag) ? VALUE_FLAGS[flag] : undefined;
+    if (!key) {
       throw new Error(`Unknown flag: ${flag}`);
     }
+    if (!value || value.startsWith('--')) {
+      throw new Error(`${flag} needs a value`);
+    }
+    args[key] = value;
   }
   if (!args.input) {
     throw new Error('Missing --input <event.json>');
@@ -104,7 +115,18 @@ export async function buildFromFile(args: BuildArgs): Promise<Map<string, unknow
   const printPrices = args.printPrices
     ? (((await loadJson(args.printPrices)) as { prices?: Record<string, number | null> }).prices ?? null)
     : null;
-  return buildEventArtifacts(result.value, { synonymDb, rollingCanonicals: args.rolling === true, printPrices });
+  const artifacts = buildEventArtifacts(result.value, {
+    synonymDb,
+    rollingCanonicals: args.rolling === true,
+    printPrices
+  });
+  const cardTypes = args.cardTypes ? ((await loadJson(args.cardTypes)) as CardTypesDatabase) : null;
+  orderArchetypeCards(artifacts, producerFacets(cardTypes, warnEventCli), warnEventCli);
+  return artifacts;
+}
+
+function warnEventCli(message: string): void {
+  console.warn(`[event-cli] ${message}`);
 }
 
 async function writeLocal(artifacts: Map<string, unknown>, outDir: string): Promise<void> {
@@ -165,6 +187,20 @@ export async function publishEventArtifacts(
   return `/${root}`;
 }
 
+/**
+ * The card-types database for ordering archetype cards. Ordering is optional,
+ * so an unreadable or corrupt copy is logged and treated as missing rather
+ * than stopping the publish; the cards then ship unmarked in category order.
+ */
+async function readCardTypes(read: <T>(key: string) => Promise<T | null>): Promise<CardTypesDatabase | null> {
+  try {
+    return await read<CardTypesDatabase>('assets/data/card-types.json');
+  } catch (error) {
+    warnEventCli(`Could not read card types (${error instanceof Error ? error.message : String(error)})`);
+    return null;
+  }
+}
+
 async function publishSource(input: string): Promise<void> {
   const source = (await loadJson(input)) as LabsSourceEvent;
   const accountId = requireEnv('R2_ACCOUNT_ID');
@@ -174,7 +210,26 @@ async function publishSource(input: string): Promise<void> {
     accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
     secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY')
   });
-  const read = <T>(key: string) => readJson<T>(client, bucket, key);
+  const root = await publishLabsSource(
+    source,
+    key => readJson(client, bucket, key),
+    createR2ObjectStore<{ events?: Record<string, string>; updatedAt?: string }>(client, bucket)
+  );
+  console.log(`[event-cli] Published immutable event ${root}`);
+}
+
+/**
+ * Build a Labs source event's artifacts and publish them to an immutable root.
+ * @param source - The Labs source record
+ * @param read - Reads a JSON object from the bucket (null when missing, throws when unreadable)
+ * @param store - The immutable event store
+ * @returns The published root
+ */
+export async function publishLabsSource(
+  source: LabsSourceEvent,
+  read: <T>(key: string) => Promise<T | null>,
+  store: ImmutableEventStore
+): Promise<string> {
   const synonymDb = await read<SynonymDatabase>('assets/card-synonyms.json');
   const candidate = labsSourceToNormalized(source, { synonymDb });
   const validated = validateNormalizedEvent(candidate);
@@ -190,12 +245,8 @@ async function publishSource(input: string): Promise<void> {
     rollingCanonicals: true,
     printPrices: printPrices?.prices ?? null
   });
-  const root = await publishEventArtifacts(
-    createR2ObjectStore<{ events?: Record<string, string>; updatedAt?: string }>(client, bucket),
-    eventFolder(source),
-    artifacts
-  );
-  console.log(`[event-cli] Published immutable event ${root}`);
+  orderArchetypeCards(artifacts, producerFacets(await readCardTypes(read), warnEventCli), warnEventCli);
+  return publishEventArtifacts(store, eventFolder(source), artifacts);
 }
 
 /** A legacy `decks.json` deck row, only the fields reindex/rebake need. */
@@ -274,16 +325,18 @@ export function reindexFromDecks(
  * @param decks - The stored `decks.json` rows
  * @param synonymDb - The synonym DB (cluster identity + current prints)
  * @param asOfDate - The event's start date (ISO)
- * @param printPrices - Event-date prices from `assets/print-prices/{date}.json`
+ * @param options - Optional inputs
+ * @param options.printPrices - Event-date prices from `assets/print-prices/{date}.json`
+ * @param options.cardFacets - Card facets for deck-ordered archetype cards (category order without them)
  * @returns Bodies keyed by path relative to the event folder
  */
 export function rebakeFromDecks(
   decks: ReindexDeck[],
   synonymDb: SynonymDatabase,
   asOfDate: string,
-  printPrices: Record<string, number | null> | null = null
+  options: { printPrices?: Record<string, number | null> | null; cardFacets?: CardFacetMap | null } = {}
 ): Map<string, unknown> {
-  const resolveUid = makeRollingResolver(synonymDb, asOfDate, printPrices);
+  const resolveUid = makeRollingResolver(synonymDb, asOfDate, options.printPrices ?? null);
   const out = new Map<string, unknown>();
 
   const bundle = (subset: ReindexDeck[], prefix: string): void => {
@@ -339,6 +392,7 @@ export function rebakeFromDecks(
     conversion.canonicalizedAt = asOfDate;
     out.set('conversion.json', conversion);
   }
+  orderArchetypeCards(out, options.cardFacets ?? null, warnEventCli);
   return out;
 }
 

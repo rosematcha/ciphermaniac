@@ -1,4 +1,6 @@
-import { generateReportFromDecks, listedDeckCount } from '../data/reports/cardReport.js';
+import { generateReportFromDecks, type LegacyCardReport, listedDeckCount } from '../data/reports/cardReport.js';
+import { deckOrderedItems, producerFacets } from '../data/cardOrder';
+import { type CardTypesDatabase, loadCardTypesDatabase } from '../data/cardTypesDatabase';
 import { loadCardSynonyms } from '../data/cardSynonyms.js';
 import { ARCHETYPE_THUMBNAILS, buildArchetypeReports } from './reportGenerator';
 import { batchPutJson, getJsonResult } from './storageWriter';
@@ -102,12 +104,34 @@ async function loadStoredDecks(
 }
 
 /**
+ * Each archetype's cards.json write, with its cards in deck order.
+ * @param files - The built archetype files
+ * @param root - The snapshot's archetypes folder
+ * @param cardTypes - The card-types database (empty when missing)
+ * @param warn - Logger for cards left unmarked
+ * @returns The writes, keyed by R2 path
+ */
+function deckOrderedWrites(
+  files: Array<{ base: string; data: LegacyCardReport }>,
+  root: string,
+  cardTypes: CardTypesDatabase,
+  warn: (message: string) => void
+): { key: string; data: unknown }[] {
+  const facets = producerFacets(cardTypes, warn);
+  return files.map(file => ({
+    key: `${root}/${file.base}/cards.json`,
+    data: { ...file.data, ...deckOrderedItems(file.data.items, facets, message => warn(`${file.base}: ${message}`)) }
+  }));
+}
+
+/**
  * Build a frozen pre-rotation snapshot from R2 data alone. No Limitless API
  * traffic — the per-tournament decks.json files already on R2 are everything
  * the report and archetype builders need. Skipped: card-type enrichment (the
  * stored decks were enriched at write time; re-enriching now would overwrite
  * historical regulation marks with current ones), trends, sqlite, player
- * aggregates.
+ * aggregates. The card-types database is read only to put archetype cards in
+ * deck order, which may correct a card's category but nothing else.
  */
 export async function runRotationSnapshot(
   env: any,
@@ -206,13 +230,12 @@ export async function runRotationSnapshot(
     { key: `${reportBaseKey}/decks.json`, data: decks },
     { key: `${reportBaseKey}/archetypes/index.json`, data: archetypeIndex }
   ];
-  const archetypeWrites: { key: string; data: unknown }[] = [];
-  for (const file of archetypeFiles as Array<{ base: string; data: unknown }>) {
-    archetypeWrites.push({
-      key: `${reportBaseKey}/archetypes/${file.base}/cards.json`,
-      data: file.data
-    });
-  }
+  const archetypeWrites = deckOrderedWrites(
+    archetypeFiles as Array<{ base: string; data: LegacyCardReport }>,
+    `${reportBaseKey}/archetypes`,
+    await loadCardTypesDatabase(env),
+    message => console.warn(`[Snapshot ${rotationDate}] ${message}`)
+  );
 
   await batchPutJson(env, [...baseWrites, ...archetypeWrites], r2Concurrency);
 

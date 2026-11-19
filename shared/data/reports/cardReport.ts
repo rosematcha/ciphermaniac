@@ -51,6 +51,8 @@ export interface LegacyCardReport {
   deckTotal: number;
   items: ReportItem[];
   canonicalizedAt?: string;
+  /** `deck` when the producer wrote `items` in deck order (shared/data/cardOrder). */
+  itemOrder?: 'deck';
 }
 
 export interface CanonicalizeOptions {

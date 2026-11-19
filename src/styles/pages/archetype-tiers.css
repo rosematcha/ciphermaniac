@@ -3,11 +3,43 @@
    share archetype.css through its components don't carry it.
    ===================================================================== */
 
-/* ---------- Card tiers ----------
-   Core, tech and the rest stack on the Cards tab. A rule and real space
-   between them keep each heading with its own cards, not the grid above. */
+/* ---------- Card sections ----------
+   Pokémon, trainers by subtype and energy stack on the Cards tab. A rule and
+   real space between them keep each heading with its own cards, not the grid
+   above. */
 .arche-tier + .arche-tier {
   margin-top: var(--space-6);
   padding-top: var(--space-5);
   border-top: 1px solid var(--rule);
+}
+
+/* ---------- Cards under the cut-off ----------
+   A card-sized cell ends each section's grid: it shows the cards under 10%,
+   then hides them again from after the last card. */
+.card-cut-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 72px;
+  padding: 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--ms-fast) var(--ease-base);
+}
+.card-cut-cell:hover {
+  background: var(--row-hover);
+}
+.cards-grid .card-cut-cell {
+  aspect-ratio: 5 / 7;
+  align-self: start;
 }

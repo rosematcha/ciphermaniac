@@ -297,6 +297,41 @@ test('an archetype page renders its card list', async ({ page }) => {
   await expect(page.locator('.card-tile, .card-row, [data-card]').first()).toBeVisible({ timeout: 10_000 });
 });
 
+test('an archetype page keeps the deck order its report was written in', async ({ page }) => {
+  await gotoClean(page, '/archetypes/Dragapult');
+  const pokemon = page.locator('.arche-tier', { has: page.getByRole('heading', { name: 'Pokémon', exact: true }) });
+  await expect(pokemon.locator('.card-tile-name').nth(2)).toHaveText('Dragapult ex');
+  expect((await pokemon.locator('.card-tile-name').allTextContents()).slice(0, 3)).toEqual([
+    'Dreepy',
+    'Drakloak',
+    'Dragapult ex'
+  ]);
+});
+
+test('List view shows no empty table for a section that is all under 10%', async ({ page }) => {
+  await gotoClean(page, '/archetypes/Dragapult');
+  await page.getByRole('radio', { name: 'List' }).click();
+  const tools = page.locator('.arche-tier', { has: page.getByRole('heading', { name: 'Tools', exact: true }) });
+  await expect(tools.getByRole('button', { name: 'Show 2 cards under 10%' })).toBeVisible();
+  await expect(tools.locator('table')).toHaveCount(0);
+  await tools.getByRole('button', { name: 'Show 2 cards under 10%' }).click();
+  await expect(tools.locator('tbody tr')).toHaveCount(2);
+});
+
+test('an archetype section holds its cards under 10% behind an end cell', async ({ page }) => {
+  await gotoClean(page, '/archetypes/Dragapult');
+  const pokemon = page.locator('.arche-tier', { has: page.getByRole('heading', { name: 'Pokémon', exact: true }) });
+  const cell = pokemon.locator('.card-cut-cell');
+  await expect(cell).toHaveText('Show 3 cards under 10%');
+  await expect(pokemon.locator('.card-tile')).toHaveCount(12);
+
+  await cell.click();
+  await expect(pokemon.locator('.card-tile')).toHaveCount(15);
+  await expect(pokemon.locator('.cards-grid > :last-child')).toHaveText('Hide cards under 10%');
+  await cell.click();
+  await expect(pokemon.locator('.card-tile')).toHaveCount(12);
+});
+
 test('a scope deep link loads the selected tournament', async ({ page }) => {
   await gotoClean(page, '/archetypes?scope=2026-06-12-international-championship-new-orleans');
   await expect(page.locator('body')).toContainText('Event Dragapult');

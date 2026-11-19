@@ -28,6 +28,7 @@ import { buildListIndex } from './listIndex';
 import { buildConversionIndex } from './conversion';
 import { buildCanonicalMatches, buildPlayerMatches } from './eventMatches';
 import { buildMatchupProfiles } from './matchupProfiles';
+import { type CardFacetMap, deckOrderedItems } from '../cardOrder';
 
 /**
  * Archetype-build profile: group by the
@@ -335,6 +336,29 @@ export function buildEventArtifacts(
   artifacts.set('index.json', buildEventIndex(event, decks, decks.filter(deck => deck.hasDecklist).length));
   artifacts.set('meta.json', buildEventMeta(event));
   return artifacts;
+}
+
+/**
+ * Put every archetype `cards.json` in a built artifact set (slices included)
+ * into deck order.
+ * @param artifacts - The output of {@link buildEventArtifacts}
+ * @param facets - Card facets from the card-types database, or null to order on report categories alone
+ * @param warn - Logger for a report left unmarked
+ */
+export function orderArchetypeCards(
+  artifacts: Map<string, unknown>,
+  facets: CardFacetMap | null,
+  warn: (message: string) => void
+): void {
+  for (const [path, body] of artifacts) {
+    if (/(^|\/)archetypes\/[^/]+\/cards\.json$/.test(path)) {
+      const report = body as LegacyCardReport;
+      artifacts.set(path, {
+        ...report,
+        ...deckOrderedItems(report.items, facets, message => warn(`${path}: ${message}`))
+      });
+    }
+  }
 }
 
 /** Build the `index.json` event summary (counts only, deterministic). */

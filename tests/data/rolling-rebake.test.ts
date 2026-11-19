@@ -99,7 +99,7 @@ test('event-date price overrides change the accessibility outcome', () => {
   // pricey PAL 248 is out of cap — but 172 remains the only accessible print
   // when its historical price was actually low. Verify the override is applied:
   // price 172 out of reach, so 248 (11.18) vs 172 (50) -> cap picks 248.
-  const bodies = rebakeFromDecks(decks, DB, '2025-09-13', { "Boss's Orders::PAL::172": 50 });
+  const bodies = rebakeFromDecks(decks, DB, '2025-09-13', { printPrices: { "Boss's Orders::PAL::172": 50 } });
   const usage = bodies.get('cardUsage.json') as { usage: Record<string, unknown> };
   assert.ok(usage.usage["Boss's Orders::PAL::248"], 'override redirects the rolling canonical');
 });
@@ -112,4 +112,12 @@ test('rebake emits slice masters with markers and skips slice cardUsage', () => 
   assert.ok(bodies.get('slices/topcut/master.json'), 'topcut slice present');
   assert.ok(bodies.get('slices/phase2/archetypes/Gardevoir_ex/cards.json'), 'slice archetype cards present');
   assert.equal(bodies.get('slices/phase2/cardUsage.json'), undefined, 'slices publish no cardUsage');
+});
+
+test('rebake writes archetype cards in deck order when given card facets', () => {
+  const bodies = rebakeFromDecks(decks, DB, '2025-09-13', {
+    cardFacets: new Map([['PAL::172', { category: 'trainer/supporter', stage: null, evolvesFrom: null }]])
+  });
+  const archetype = bodies.get('archetypes/Charizard_ex/cards.json') as { itemOrder?: string };
+  assert.equal(archetype.itemOrder, 'deck');
 });

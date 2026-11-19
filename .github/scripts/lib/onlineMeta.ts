@@ -17,6 +17,7 @@
 
 import { aggregateOnlineWinRate } from '../../../shared/data/archetypes/winRate';
 import type { CardTypesDatabase } from '../../../shared/data/cardTypesDatabase.js';
+import { deckOrderedItems, producerFacets } from '../../../shared/data/cardOrder.js';
 import { generateArchetypeTrends, MIN_MATCHUP_GAMES } from '../../../shared/data/analysis/archetypeTrends.js';
 import { generateReportFromDecks, listedDeckCount } from '../../../shared/data/reports/cardReport.js';
 import { type ArchetypeBuildResult, buildArchetypeReports } from '../../../shared/data/archetypes/build.js';
@@ -641,8 +642,14 @@ export async function runOnlineMeta(options: OnlineMetaOptions): Promise<Record<
       resolveUid
     }
   );
+  // Cards ship in deck order so the archetype page never loads card data to sort.
+  const facets = producerFacets(cardTypesDb, message => run.warn(`[online-meta] ${message}`));
   for (const file of archetypes.files) {
-    Object.assign(file.data, marker);
+    Object.assign(
+      file.data,
+      marker,
+      deckOrderedItems(file.data.items, facets, message => run.warn(`[online-meta] ${file.base}: ${message}`))
+    );
   }
 
   const meta = buildMeta(run, window, { minDecks: archetypes.minDecks, pairingsFailures });
