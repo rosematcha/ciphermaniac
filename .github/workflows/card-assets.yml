@@ -27,8 +27,26 @@ concurrency:
   queue: max
   cancel-in-progress: false
 jobs:
+  # Daily Data completes on every start, its skipped fallback starts included;
+  # follow only a run whose daily job ran.
+  slot:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      open: ${{ steps.check.outputs.open }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TRIGGER: ${{ github.event.workflow_run.id }}
+    steps:
+      - id: check
+        run: |
+          daily=$(gh run view "$TRIGGER" -R "$GITHUB_REPOSITORY" --json jobs --jq '.jobs[] | select(.name == "daily") | .conclusion')
+          if [ "$daily" = skipped ]; then open=false; else open=true; fi
+          echo "open=$open" >> "$GITHUB_OUTPUT"
   assets:
-    if: github.ref == 'refs/heads/main'
+    needs: slot
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.slot.outputs.open != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 150
     env:

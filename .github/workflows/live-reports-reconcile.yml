@@ -1,11 +1,19 @@
 name: Live Reports Reconcile
 
 on:
+  # Botan dispatches this every 5 minutes because GitHub runs the cron a few
+  # times a day. The cron is the fallback.
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions: {}
+
+# Botan's dispatches and the cron can overlap; one run at a time, with at most
+# one waiting. Separate from the release writers, since it writes live keys only.
+concurrency:
+  group: live-reports-reconcile
+  cancel-in-progress: false
 
 jobs:
   reconcile:

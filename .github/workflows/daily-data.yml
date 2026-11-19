@@ -1,5 +1,7 @@
 name: Daily Data
 on:
+  # Botan dispatches this at 12:17 UTC because GitHub starts the cron 4 to 10
+  # hours late. The cron is the fallback: see the slot job.
   schedule:
     - cron: '17 12 * * *'
   workflow_dispatch:
@@ -18,8 +20,36 @@ concurrency:
   queue: max
   cancel-in-progress: false
 jobs:
+  # A scheduled start runs only after today's 12:17 UTC slot, and only while no
+  # run since then has succeeded or is still open, so the day has one real run.
+  # A start delayed past midnight waits for its own day's slot. A failed run
+  # does not count, so the fallback retries it.
+  slot:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      open: ${{ steps.check.outputs.open }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - id: check
+        shell: bash
+        run: |
+          slot="$(date -u +%F)T12:17:00Z"
+          # A failed lookup counts as no run, so the fallback runs rather than skips the day.
+          if runs=$(gh run list -R "$GITHUB_REPOSITORY" --workflow daily-data.yml --branch main --created ">=$slot" \
+            --json databaseId,status,conclusion); then
+            taken=$(jq --argjson self "$GITHUB_RUN_ID" '[.[] | select(.databaseId != $self and (.status != "completed" or .conclusion == "success"))] | length' <<< "$runs")
+          else
+            echo "::warning::Could not list today's Daily Data runs; running"
+            taken=0
+          fi
+          if [ "$(date -u +%H%M)" -ge 1217 ] && [ "$taken" -eq 0 ]; then open=true; else open=false; fi
+          echo "open=$open" >> "$GITHUB_OUTPUT"
   daily:
-    if: github.ref == 'refs/heads/main'
+    needs: slot
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.slot.outputs.open != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
