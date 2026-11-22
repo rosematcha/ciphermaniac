@@ -15,6 +15,7 @@ import {
 import { Section } from '../../components/Section';
 import { fetchPlayerIndexSlim } from '../../lib/data';
 import { fetchLiveRound } from '../../lib/data/live';
+import { fetchPostedRound } from '../../lib/liveRounds';
 import { createLiveIndex, createPolled, liveDelay } from '../../lib/livePoll';
 import { latestValue, resolved } from '../../lib/resource';
 import { useDeckReports } from './deckReports';
@@ -57,8 +58,11 @@ export function PlayerRun(props: PlayerRunProps) {
   // changes nothing must not re-run the search.
   const [ended] = createResource(
     () => (latestValue(round) && playing().length === 0 ? (current() ?? null) : null),
-
-    at => lastSeatInEvent(at, n => fetchLiveRound(props.event.slug, n), names(), [...props.countries])
+    // Read as the run reads them, so the files the search fetches are the run's too.
+    at => {
+      const posted = latestValue(index) ?? { round: at, hash: undefined };
+      return lastSeatInEvent(at, n => fetchPostedRound(props.event.slug, n, posted), names(), [...props.countries]);
+    }
   );
   const seats = createMemo((): readonly SeatView[] => {
     const tail = playing().length > 0 ? null : latestValue(ended);

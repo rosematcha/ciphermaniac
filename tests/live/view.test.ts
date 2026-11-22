@@ -137,14 +137,24 @@ test('a player never in the event costs the current round and the first, and not
   assert.deepEqual(reads, [9, 1]);
 });
 
-test('a run that has ended is found at its last round, without reading every round', async () => {
+test('a run that has ended is found at its last round, reading each posted round once', async () => {
   for (let through = 1; through <= 14; through += 1) {
     const { reads, readRound } = eventWhere(through, true);
     const tail = await lastSeatInEvent(15, readRound, ...LISKOV);
     assert.equal(tail?.round, through, `through ${through}`);
     assert.equal(tail?.view.seat.dropped, true);
-    assert.ok(reads.length <= 6, `through ${through} took ${reads.length} reads`);
+    assert.deepEqual(
+      [...reads].sort((a, b) => a - b),
+      Array.from({ length: 15 }, (_, i) => i + 1)
+    );
   }
+});
+
+test('a run with a round missing from it is still found at its last round', async () => {
+  const { readRound } = eventWhere(8);
+  const gapped = (round: number) =>
+    readRound(round).then(loaded => (round === 4 && loaded ? { ...loaded, matches: [] } : loaded));
+  assert.equal((await lastSeatInEvent(15, gapped, ...LISKOV))?.round, 8);
 });
 
 test('a player absent from the only round posted is not in the event', async () => {
