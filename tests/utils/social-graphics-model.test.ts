@@ -123,7 +123,12 @@ test('nothing collapses without both halves of a pair and a map naming them', ()
 // Mode selection
 // ---------------------------------------------------------------------------
 
-const MASTER = [item('Alpha', 90), item('Beta', 80, { uid: 'Beta::SVI::002' }), item('Energy', 70, { set: 'SVE' })];
+const MASTER = [
+  item('Alpha', 90),
+  item('Beta', 80, { uid: 'Beta::SVI::002' }),
+  item('Energy', 70, { set: 'SVE' }),
+  item('Psychic Energy', 60, { set: 'MEE', uid: 'Psychic Energy::MEE::005', category: 'energy/basic' })
+];
 
 test('standard mode ranks the master report from one, minus basic energy', () => {
   const out = buildRenderModel({ mode: 'standard', size: 10, minDecks: 5, items: MASTER });
@@ -259,7 +264,16 @@ test('converting mode drops rows below the sample floor', () => {
 
 test('converting mode excludes basic energy', () => {
   const stats = [
-    { uid: 'a', name: 'Basic', set: 'SVE', number: '1', conversion: 99, day1Count: 50, day2Count: 49 }
+    { uid: 'a', name: 'Basic', set: 'SVE', number: '1', conversion: 99, day1Count: 50, day2Count: 49 },
+    {
+      uid: 'Psychic Energy::MEE::005',
+      name: 'Psychic Energy',
+      set: 'MEE',
+      number: '005',
+      conversion: 98,
+      day1Count: 50,
+      day2Count: 49
+    }
   ] as never;
   assert.deepEqual(
     buildRenderModel({ mode: 'converting', size: 10, minDecks: 5, items: MASTER, day2Stats: stats }),

@@ -114,9 +114,9 @@ export function playRateZScore(
   return sigma === 0 ? 0 : (eventFound / eventTotal - onlineFound / onlineTotal) / sigma;
 }
 
-/** Basic energy is its own set code; it never belongs in a usage graphic. */
-export function isBasicEnergy(item: Pick<CardItem, 'set'>): boolean {
-  return item.set === 'SVE';
+/** Basic energy never belongs in a usage graphic, whichever set printed it. */
+export function isBasicEnergy(item: CardItem): boolean {
+  return item.set === 'SVE' || classify(item) === 'energy-basic';
 }
 
 /** Which visual category a card renders as. */
@@ -260,19 +260,27 @@ function fromDay2Stat(stat: Day2CardStat, master: CardItem | undefined): RenderI
   };
 }
 
+/** A day-2 row is basic energy when its master row says so; without one, by set. */
+function isBasicStat(stat: Day2CardStat, master: CardItem | undefined): boolean {
+  return master ? isBasicEnergy(master) : stat.set === 'SVE';
+}
+
 /** Day-2 rows with enough of a sample to mean anything, joined to master. */
-function day2Candidates(stats: Day2CardStat[], master: CardItem[], minDecks: number): RenderItem[] {
-  const byUid = indexByUid(master);
-  return stats.filter(s => s.day1Count >= minDecks && s.set !== 'SVE').map(s => fromDay2Stat(s, byUid.get(s.uid)));
+function day2Candidates(stats: Day2CardStat[], items: CardItem[], minDecks: number): RenderItem[] {
+  const byUid = indexByUid(items);
+  return stats
+    .filter(s => s.day1Count >= minDecks && !isBasicStat(s, byUid.get(s.uid)))
+    .map(s => fromDay2Stat(s, byUid.get(s.uid)));
 }
 
 /** Highest Day 1 to Day 2 conversion first. */
-function convertingCandidates(input: RenderModelInput, master: CardItem[], pool: number): RenderItem[] {
+function convertingCandidates(input: RenderModelInput, pool: number): RenderItem[] {
   const stats = input.day2Stats;
   if (!stats) {
     return [];
   }
-  return day2Candidates(stats, master, input.minDecks)
+  // The full report, basic energy included, so its rows can be recognised and dropped.
+  return day2Candidates(stats, input.items ?? [], input.minDecks)
     .sort((a, b) =>
       // Tie-break on sample size so a higher-confidence row wins.
       b.pct !== a.pct ? b.pct - a.pct : b.total - a.total
@@ -294,7 +302,7 @@ function playedAtEvent(item: CardItem, field: EventField): boolean {
 
 /** Whether an online row is even eligible to be called a fraud. */
 function isFraudCandidate(item: CardItem, field: EventField, floor: number): boolean {
-  if (isBasicEnergy(item) || classify(item) === 'energy-basic') {
+  if (isBasicEnergy(item)) {
     return false;
   }
   return item.pct >= floor && playedAtEvent(item, field);
@@ -456,7 +464,7 @@ function fromMasterItem(item: CardItem): RenderItem {
 /** The candidate pool for a mode, before evolution collapsing. */
 function candidatesFor(input: RenderModelInput, master: CardItem[], pool: number): RenderItem[] {
   if (input.mode === 'converting') {
-    return convertingCandidates(input, master, pool);
+    return convertingCandidates(input, pool);
   }
   if (input.mode === 'fraudulent') {
     return fraudulentCandidates(input, pool);
