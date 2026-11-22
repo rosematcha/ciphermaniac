@@ -1,11 +1,12 @@
 /* ============================================================
    Social Graphics — /tools/social-graphics
-   Page chrome uses the global Stamp tokens.
+   Page chrome uses the global tokens.
    The exported canvas (`.sg-canvas`) declares its own scoped
    token set so it can be exported in light or dark independent
-   of the page's `data-mode`. The values mirror the global ones
-   and have to be updated alongside them — the drift check
-   exempts this sheet, so nothing else will catch it.
+   of the page's `data-mode`. The values copy the design
+   package's tokens.css and have to be updated alongside it —
+   the drift check exempts this sheet, so nothing else will
+   catch it.
    ============================================================ */
 
 .sg-page {
@@ -156,43 +157,48 @@
   display: grid;
   gap: 24px;
   /* Light is the default */
-  --sg-bg: #f1eee8;
-  --sg-surface: #faf8f4;
-  --sg-surface-2: #e6e1d8;
-  --sg-fg: #1d1913;
-  --sg-muted: #6a6055;
-  --sg-border: #8a7f74;
-  --sg-rule: #d7d1c7;
-  /* Words take the ink; the marigold fill is too light for text on stone. */
+  --sg-bg: #ececea;
+  --sg-surface: #ffffff;
+  --sg-surface-2: #e3e4e1;
+  --sg-fg: #20221f;
+  --sg-muted: #50544f;
+  --sg-border: #7b8079;
+  --sg-rule: #bfc3bc;
+  /* Words take the ink; the marigold fill is too light for text on grey. */
   --sg-accent: #8c5900;
 }
 
 .sg-canvas[data-mode='dark'] {
-  --sg-bg: #181514;
-  --sg-surface: #211f1d;
-  --sg-surface-2: #2b2827;
-  --sg-fg: #ede8e6;
-  --sg-muted: #9e9792;
+  --sg-bg: #161615;
+  --sg-surface: #252523;
+  --sg-surface-2: #33332f;
+  --sg-fg: #f5f3eb;
+  --sg-muted: #b9b6aa;
+  /* The package's dark rule, not its border: #8e8e88 is too loud on every tile. */
   --sg-border: #59594f;
   --sg-rule: #59594f;
   --sg-accent: #ea1;
 }
 
 /* ---- Head ----
-   A dark band in both modes, like the site's topnav: it bleeds to the canvas
+   A dark band in both modes, like the site's head bar: it bleeds to the canvas
    edges and takes the dark token set whatever the export mode. */
 
 .sg-head {
-  --sg-fg: #ede8e6;
-  --sg-muted: #9e9792;
+  --sg-fg: #f5f3eb;
+  --sg-muted: #b9b6aa;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 24px;
   margin: -37px -45px 0;
   padding: 18px 44px;
-  background: #181514;
-  border-bottom: 1px solid #373533;
+  background: #1c1d1b;
+  border-bottom: 1px solid #1c1d1b;
+}
+.sg-canvas[data-mode='dark'] .sg-head {
+  background: #232422;
+  border-bottom-color: #59594f;
 }
 .sg-mark {
   display: inline-flex;
@@ -432,7 +438,7 @@
   grid-template-rows: auto auto;
 }
 .sg-cell-img {
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 2 / 1;
   background: var(--sg-surface-2);
   overflow: hidden;
   position: relative;
@@ -440,23 +446,23 @@
 }
 .sg-cell-body {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: end;
-  padding: 12px 14px;
+  padding: 12px 16px 14px;
 }
 .sg-cell-name {
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.015em;
-  line-height: 1.1;
+  line-height: 1.2;
   color: var(--sg-fg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .sg-cell-pct {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 800;
   letter-spacing: -0.028em;
   line-height: 0.9;
@@ -464,46 +470,37 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- Tail: ranks 13-20 ---- */
+/* ---- Tail: ranks 13-20, a two-column list ---- */
 
 .sg-tail {
   display: grid;
-  gap: 12px;
-  padding-top: 18px;
-  border-top: 1px solid var(--sg-border);
+  grid-auto-flow: column;
+  column-gap: 48px;
+  padding-top: 4px;
 }
 .sg-tail-cell {
   min-width: 0;
-  padding-left: 10px;
-  border-left: 1px solid var(--sg-rule);
-}
-.sg-tail-cell:first-child {
-  border-left: none;
-  padding-left: 0;
-}
-.sg-tail-rank {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: var(--sg-accent);
-  font-weight: 700;
-  margin-bottom: 4px;
-  font-variant-numeric: tabular-nums;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--sg-rule);
 }
 .sg-tail-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   letter-spacing: -0.012em;
   line-height: 1.3;
   color: var(--sg-fg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-bottom: 2px;
 }
 .sg-tail-pct {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--sg-fg);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--sg-accent);
   letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
 }
@@ -514,25 +511,43 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 14px;
-  border-top: 2px dashed var(--sg-rule);
-  font-size: 11px;
+  gap: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--sg-rule);
+  font-size: 15px;
   color: var(--sg-muted);
   font-weight: 600;
 }
-.sg-foot > span {
-  white-space: nowrap;
-}
 .sg-foot .src {
-  background: var(--sg-accent);
-  color: var(--sg-bg);
-  padding: 5px 12px 4px;
+  white-space: nowrap;
+  color: var(--sg-fg);
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: -0.01em;
 }
 .sg-foot b {
   color: var(--sg-fg);
   font-weight: 700;
+}
+
+/* ---- Two-part cards: both prints, zoomed toward the seam where the art joins ---- */
+
+.sg-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.sg-split img {
+  object-position: 50% 45%;
+  transform: scale(1.5);
+}
+.sg-split img:first-child {
+  transform-origin: 100% 45%;
+}
+.sg-split img:last-child {
+  transform-origin: 0% 45%;
 }
 
 /* ---- Fallback placeholder image ---- */

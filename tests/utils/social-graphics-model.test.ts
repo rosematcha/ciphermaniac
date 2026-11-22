@@ -22,6 +22,7 @@ import {
   rateZScore,
   type RenderItem,
   shortTournament,
+  splitPartner,
   statsAreClose,
   thumbUrl
 } from '../../src/pages/socialGraphics/model.ts';
@@ -63,6 +64,13 @@ test('an export is named in plain ASCII, accents folded to their base letter', (
     exportFileName({ tournament: '2026-11-20, International Championship São Paulo', ...selection }, 'png'),
     'international-championship-sao-paulo-standard-top20-light.png'
   );
+});
+
+test('a Legendary stadium shows both of its prints, any other card one', () => {
+  assert.equal(splitPartner('DLR', '094'), '095');
+  assert.equal(splitPartner('dlr', '098'), '099');
+  assert.equal(splitPartner('DLR', '095'), null);
+  assert.equal(splitPartner('SVI', '094'), null);
 });
 
 test('a tournament label drops its date prefix', () => {

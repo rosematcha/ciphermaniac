@@ -6,6 +6,7 @@ import {
   needsTournament,
   type RenderItem,
   shortTournament,
+  splitPartner,
   thumbUrl
 } from './socialGraphics/model';
 import { baselineTournaments } from './socialGraphics/baseline';
@@ -57,7 +58,7 @@ const PLAY_FLOOR_OPTIONS: { value: string; label: string }[] = [
   { value: '33', label: '33%' }
 ];
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
-  { value: 'light', label: 'Cream' },
+  { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' }
 ];
 
@@ -68,8 +69,8 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
 const NAME_FIT: Record<'hero' | 'row' | 'cell' | 'tail', FitBounds> = {
   hero: { max: 42, min: 24 },
   row: { max: 22, min: 15 },
-  cell: { max: 17, min: 11 },
-  tail: { max: 13, min: 10 }
+  cell: { max: 20, min: 14 },
+  tail: { max: 22, min: 15 }
 };
 
 /** The two-part headline per mode; the second half renders in the accent. */
@@ -444,7 +445,7 @@ function SocialCanvas(props: CanvasProps) {
       // The header names the tournament already, so the row only has to say
       // which side each number came from.
       const played = `${c.pct.toFixed(1)}% online → ${(c.eventRate ?? 0).toFixed(1)}% here`;
-      return c.conversion === undefined ? played : `${played} · ${Math.round(c.conversion)}% to Day 2`;
+      return c.conversion === undefined ? played : `${played}, ${Math.round(c.conversion)}%\u00a0to\u00a0Day\u00a02`;
     }
     if (props.mode === 'converting') {
       return `${c.day2Count?.toLocaleString()} / ${c.day1Count?.toLocaleString()} to Day 2`;
@@ -470,7 +471,7 @@ function SocialCanvas(props: CanvasProps) {
   /** The field's own conversion rate, the yardstick every row is read against. */
   function fieldNote(): string {
     const field = props.fieldConversion;
-    return field === null ? '' : ` · field ${Math.round(field)}%`;
+    return field === null ? '' : `, field ${Math.round(field)}%`;
   }
 
   /** How the footer describes the ranking. */
@@ -482,13 +483,9 @@ function SocialCanvas(props: CanvasProps) {
       return fraudNote();
     }
     if (props.mode === 'converting') {
-      return `Day 1 → Day 2 conversion (min ${props.minDecks} decks)${fieldNote()}`;
+      return `Day 1 → Day 2 conversion (min ${props.minDecks} decks${fieldNote()})`;
     }
     return 'inclusion rate';
-  }
-
-  function rankStr(n: number) {
-    return String(n).padStart(2, '0');
   }
 
   // Element-only children (no bare text nodes) so DOM-to-image export can't drop
@@ -507,20 +504,23 @@ function SocialCanvas(props: CanvasProps) {
             <strong>{(h.eventRate ?? 0).toFixed(1)}%</strong>
             <span> here</span>
           </span>
-          <Show when={h.conversion !== undefined}>
-            <span> · </span>
-            <span class='sg-nowrap'>
-              <strong>{Math.round(h.conversion ?? 0)}%</strong>
-              <span> to Day 2</span>
-            </span>
-          </Show>
-          <Show when={h.onlineSuccessRate !== undefined}>
-            <span> · </span>
-            <span class='sg-nowrap'>
-              <strong>{Math.round(h.onlineSuccessRate ?? 0)}%</strong>
-              <span> cut online</span>
-            </span>
-          </Show>
+          <div>
+            <Show when={h.conversion !== undefined}>
+              <span class='sg-nowrap'>
+                <strong>{Math.round(h.conversion ?? 0)}%</strong>
+                <span> to Day 2</span>
+              </span>
+            </Show>
+            <Show when={h.conversion !== undefined && h.onlineSuccessRate !== undefined}>
+              <span>, </span>
+            </Show>
+            <Show when={h.onlineSuccessRate !== undefined}>
+              <span class='sg-nowrap'>
+                <strong>{Math.round(h.onlineSuccessRate ?? 0)}%</strong>
+                <span> cut online</span>
+              </span>
+            </Show>
+          </div>
         </>
       );
     }
@@ -648,12 +648,14 @@ function SocialCanvas(props: CanvasProps) {
       <Show when={tail().length > 0}>
         <div
           class='sg-tail'
-          style={{ 'grid-template-columns': `repeat(${Math.min(8, tail().length)}, minmax(0, 1fr))` }}
+          style={{
+            'grid-template-columns': `repeat(${Math.min(2, tail().length)}, minmax(0, 1fr))`,
+            'grid-template-rows': `repeat(${Math.ceil(tail().length / 2)}, auto)`
+          }}
         >
           <For each={tail()}>
             {c => (
               <div class='sg-tail-cell'>
-                <div class='sg-tail-rank'>№ {rankStr(c.rank)}</div>
                 <div class='sg-tail-name' ref={el => fitText(el, () => c.name, NAME_FIT.tail)}>
                   {c.name}
                 </div>
@@ -668,13 +670,28 @@ function SocialCanvas(props: CanvasProps) {
         <span>
           <b>Top {props.items.length}</b> by {footNote()}
         </span>
-        <span class='src'>CIPHERMANIAC.COM</span>
+        <span class='src'>ciphermaniac.com</span>
       </div>
     </div>
   );
 }
 
+/** A card's art, or both prints side by side for a card printed across two. */
 function CanvasImg(props: { item: RenderItem }) {
+  const partner = () => splitPartner(props.item.set, props.item.number);
+  return (
+    <Show when={partner()} fallback={<CardImg item={props.item} />}>
+      {other => (
+        <div class='sg-split'>
+          <CardImg item={props.item} />
+          <CardImg item={{ ...props.item, number: other() }} />
+        </div>
+      )}
+    </Show>
+  );
+}
+
+function CardImg(props: { item: RenderItem }) {
   const [errored, setErrored] = createSignal(false);
   return (
     <Show

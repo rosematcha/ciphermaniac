@@ -133,6 +133,17 @@ export function classify(item: CardItem): CatKind {
 }
 
 /**
+ * The Legendary stadiums print one card across two, side by side. Each left
+ * half (the print the reports name) maps to its right half.
+ */
+const SPLIT_PARTNERS: Readonly<Record<string, string>> = { 'DLR/094': '095', 'DLR/096': '097', 'DLR/098': '099' };
+
+/** The other print of a card printed across two, or null for an ordinary card. */
+export function splitPartner(set: string, number: string): string | null {
+  return SPLIT_PARTNERS[`${set.toUpperCase()}/${number}`] ?? null;
+}
+
+/**
  * Download name for an export: the event in plain ASCII words, then the selection.
  * Accents fold to their base letter, so São Paulo saves as sao-paulo.
  */
