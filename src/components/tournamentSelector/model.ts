@@ -37,7 +37,8 @@ export function selectorGroups({ keys, formats, query, expanded, label }: Select
   const q = foldSearch(query.trim());
   const matches = (...texts: string[]) => !q || texts.some(text => foldSearch(text).includes(q));
   const standard = keys
-    .filter(key => key !== ONLINE_META_NAME && matches(key, label(key)))
+    // Labels are built only to search them; with no query every key matches.
+    .filter(key => key !== ONLINE_META_NAME && (!q || matches(key, label(key))))
     .sort((a, b) => b.localeCompare(a));
   const capped = !q && !expanded && standard.length > RECENT_STANDARD_COUNT;
   return {

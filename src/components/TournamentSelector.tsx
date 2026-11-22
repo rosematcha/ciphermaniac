@@ -13,6 +13,7 @@ import { fetchFormatsList, fetchTournamentsList, prettyTournamentName, shortTour
 import { useTournament } from '../lib/tournamentContext';
 import { ONLINE_META_DATE_LABEL, ONLINE_META_LABEL, ONLINE_META_NAME } from '../lib/constants';
 import { selectorGroups } from './tournamentSelector/model';
+import { dateFormatter } from '../../shared/data/dateFormat';
 import { formatIdFromKey, formatLabel, formatScopeKey } from '../../shared/formats/registry';
 
 /**
@@ -208,5 +209,5 @@ function datePart(key: string): string {
   if (Number.isNaN(date.getTime())) {
     return '';
   }
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return dateFormatter({ month: 'short', day: 'numeric', year: 'numeric' }).format(date);
 }

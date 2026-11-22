@@ -14,6 +14,7 @@ import { tournamentDate } from '../../shared/data/tournamentKeys';
 import { foldSearch } from '../utils/searchFold';
 import { formatPercent, nameFromTournamentKey, shortDate } from './format';
 import { scopeHref } from './scopeUrl';
+import { dateFormatter } from '../../shared/data/dateFormat';
 import type { ArchetypeIndexEntry, CardItem } from '../types';
 
 export type SearchKind = 'archetype' | 'card' | 'player' | 'tournament';
@@ -155,7 +156,7 @@ function tournamentEntries(keys: readonly string[]): SearchEntry[] {
     return {
       ...base({
         label: nameFromTournamentKey(key),
-        sublabel: date ? date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '',
+        sublabel: date ? dateFormatter({ year: 'numeric', month: 'long', day: 'numeric' }).format(date) : '',
         href: scopeHref(key),
         extraKeys: [key],
         weight: -i

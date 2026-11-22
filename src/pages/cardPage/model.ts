@@ -27,6 +27,7 @@ import type { BannedPrint } from '../../../shared/formats/banlist';
 import { findByClusterUid } from '../../lib/data';
 import { type CardUsageEntry, cardUsageForCard, type CardUsagePayload } from '../../lib/data/cards';
 import type { Day2CardStat } from '../../lib/data/events';
+import { dateFormatter } from '../../../shared/data/dateFormat';
 import type { PricePoint, PricingEntry } from '../../lib/data/prices';
 import { snapshotSourceKey } from '../../lib/data/paths';
 import { ONLINE_META_NAME } from '../../lib/constants';
@@ -125,9 +126,7 @@ export function snapshotDateLabel(raw: string | null): string {
     return raw;
   }
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return Number.isNaN(d.getTime())
-    ? raw
-    : d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+  return Number.isNaN(d.getTime()) ? raw : dateFormatter({ month: 'long', day: 'numeric', year: 'numeric' }).format(d);
 }
 
 /**
