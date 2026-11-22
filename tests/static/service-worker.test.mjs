@@ -248,3 +248,34 @@ test('uncached report response and stored response remain independently readable
   assert.notEqual(worker.writes[0].response, fresh);
   assert.equal(await worker.writes[0].response.text(), 'fresh');
 });
+
+test('immutable release bodies are served from cache without a network refresh', async () => {
+  const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
+  const cached = new Response('cached');
+  let fetches = 0;
+  const hit = harness({
+    cached,
+    fetcher: () => {
+      fetches += 1;
+      return Promise.resolve(new Response('{}', { headers: { 'content-type': 'application/json' } }));
+    }
+  });
+  const event = hit.dispatch(release);
+  assert.equal(await event.response, cached);
+  await Promise.all(event.lifetimes);
+  assert.equal(fetches, 0);
+  assert.equal(hit.writes.length, 0);
+
+  const opened = [];
+  const miss = harness({
+    open: name => {
+      opened.push(name);
+      return Promise.resolve({ match: () => Promise.resolve(undefined), put: () => Promise.resolve() });
+    }
+  });
+  const first = miss.dispatch(release);
+  assert.equal((await first.response).ok, true);
+  await flush();
+  assert.equal(miss.timers.length, 1, 'a stored release body is trimmed with the JSON cache');
+  assert.match(opened[0], /^cm-json-/);
+});

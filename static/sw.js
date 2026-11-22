@@ -3,7 +3,8 @@
  *
  * Deliberately conservative — three behaviors only:
  *
- *  1. Report JSON from r2.ciphermaniac.com: stale-while-revalidate. Repeat
+ *  1. Report JSON from r2.ciphermaniac.com: stale-while-revalidate, except
+ *     immutable /releases/v1/ bodies, which are cache-first. Repeat
  *     visits render from the last-seen data instantly while a background
  *     refresh updates the cache. Data changes ~daily, so briefly-stale is
  *     fine (same policy as the 6h HTTP cache, but instant and offline-safe).
@@ -118,8 +119,8 @@ async function staleWhileRevalidate(request, keepAlive) {
   return fresh ?? Response.error();
 }
 
-async function cacheFirst(request, keepAlive) {
-  const cache = await caches.open(ASSET_CACHE);
+async function cacheFirst(request, keepAlive, cacheName = ASSET_CACHE) {
+  const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
   if (cached) {
     return cached;
@@ -135,9 +136,15 @@ async function cacheFirst(request, keepAlive) {
     return Response.error();
   }
   if (cacheable(response)) {
-    keepAlive(writeCache(cache, request, response.clone()));
+    keepAlive(writeCache(cache, request, response.clone(), cacheName === JSON_CACHE));
   }
   return response;
+}
+
+// Release bodies sit under content-addressed keys and never change, so a refresh could only
+// rewrite the same bytes: serve them from the JSON cache without going back to the network.
+function releaseCacheFirst(request, keepAlive) {
+  return cacheFirst(request, keepAlive, JSON_CACHE);
 }
 
 async function navigationNetworkFirst(request, keepAlive) {
@@ -181,7 +188,7 @@ self.addEventListener('fetch', event => {
     !url.pathname.startsWith('/live/') &&
     !url.pathname.startsWith('/tournaments/')
   ) {
-    respondWithBackground(event, staleWhileRevalidate);
+    respondWithBackground(event, url.pathname.startsWith('/releases/v1/') ? releaseCacheFirst : staleWhileRevalidate);
     return;
   }
   if (
