@@ -66,7 +66,18 @@ export interface FormatScope {
   minMatchupFieldPlayers: number;
   /** The format's own print choice; absent means the Standard canonical. */
   canon?: FormatCanon;
+  /** Which archetypes get a page; absent means those with 0.5% of the decks. */
+  archetypePages?: ArchetypePages;
 }
+
+/** Archetypes that get a page: at least `minDecks` decks, the `max` largest. */
+export interface ArchetypePages {
+  minDecks: number;
+  max: number;
+}
+
+/** The 100 largest archetypes with at least 5 decks. */
+export const TOP_ARCHETYPE_PAGES: ArchetypePages = { minDecks: 5, max: 100 };
 
 const EX_ERA_BASIC_TYPES = ['Grass', 'Fire', 'Water', 'Lightning', 'Psychic', 'Fighting'] as const;
 const BASIC_TYPES = [...EX_ERA_BASIC_TYPES, 'Darkness', 'Metal'] as const;
@@ -80,7 +91,8 @@ export const FORMAT_SCOPES: readonly FormatScope[] = [
     window: { kind: 'days', days: 14 },
     source: { kind: 'limitless-jp' },
     minFieldPlayers: 0,
-    minMatchupFieldPlayers: 0
+    minMatchupFieldPlayers: 0,
+    archetypePages: TOP_ARCHETYPE_PAGES
   },
   {
     id: 'expanded',

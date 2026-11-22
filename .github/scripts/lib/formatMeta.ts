@@ -154,6 +154,7 @@ export function formatReportScope(
     ...(FORMAT_BANLISTS[format.id] ? { keep: [BANLIST_FILE] } : {}),
     icons: { ...ruleIcons(rules), ...FORMAT_ICONS[format.id], ...icons },
     ...(format.canon ? { canon: format.canon } : {}),
+    ...(format.archetypePages ? { archetypePages: format.archetypePages } : {}),
     ...(rules.length ? { classify: deck => matchArchetypeRule(deck.cards, rules)?.name ?? null } : {})
   };
 }

@@ -57,6 +57,10 @@ export interface ArchetypeBuildOptions {
    * reportGenerator `minPercent / 100`, Python 0 (no filter).
    */
   minDecksFraction: number;
+  /** A fixed floor in decks; when set it replaces `minDecksFraction`. */
+  minDecks?: number;
+  /** Keep only this many archetypes, largest first (ties in first-seen order). */
+  maxArchetypes?: number;
   /**
    * Index `percent` representation. 'fraction' = raw deckCount/deckTotal
    * (online + reportGenerator); 'fraction6' = rounded to 6 decimals (Python).
@@ -203,6 +207,121 @@ function tierCounter(
 }
 
 /**
+ * The groups that get a page: at the floor, not a generic bucket, and within the cap.
+ * Two names can sanitize to one file base ("Arceus Giratina", "Arceus: Giratina");
+ * only the larger keeps it, since both would write the same files.
+ * @param groups - Groups in first-seen order
+ * @param minDecks - Smallest group kept
+ * @param max - Most groups kept, largest first; ties keep first-seen order
+ * @param excludeGeneric - Drop "Other" / "Unknown" style groups
+ * @returns The kept groups, still in first-seen order
+ */
+function pagedGroups<G extends { base: string; displayName: string; decks: unknown[] }>(
+  groups: G[],
+  minDecks: number,
+  max: number,
+  excludeGeneric: boolean
+): G[] {
+  const eligible = groups.filter(
+    group => group.decks.length >= minDecks && !(excludeGeneric && isGenericArchetypeName(group.displayName))
+  );
+  const bases = new Set<string>();
+  const kept = new Set<G>();
+  for (const group of [...eligible].sort((a, b) => b.decks.length - a.decks.length)) {
+    if (kept.size < max && !bases.has(group.base)) {
+      bases.add(group.base);
+      kept.add(group);
+    }
+  }
+  return eligible.filter(group => kept.has(group));
+}
+
+type DeckGroup = { base: string; displayName: string; decks: ArchetypeDeckInput[] };
+
+/**
+ * Group decks by identity key; the first-seen deck fixes the display label and base.
+ * @param decks - Decks with archetype labels
+ * @param options - Producer shape options
+ * @returns Groups in first-seen order
+ */
+function groupDecks(decks: ArchetypeDeckInput[], options: ArchetypeBuildOptions): DeckGroup[] {
+  const { nameCasing, displayNames = 'raw', emptyBaseFallback = 'Unknown' } = options;
+  const groups = new Map<string, DeckGroup>();
+  for (const deck of decks) {
+    const rawLabel = deck?.archetype || 'Unknown';
+    const displayName = displayNames === 'trimmed' ? String(rawLabel).trim() || 'Unknown' : rawLabel;
+    const { key, base } = deriveArchetypeGrouping(displayName, nameCasing, emptyBaseFallback);
+    const group = groups.get(key);
+    if (group) {
+      group.decks.push(deck);
+    } else {
+      groups.set(key, { base, displayName, decks: [deck] });
+    }
+  }
+  return [...groups.values()];
+}
+
+/**
+ * Order files for the index in place.
+ * @param files - Built archetype files
+ * @param sortMode - Producer ordering
+ */
+function sortFiles(files: ArchetypeFile[], sortMode: ArchetypeBuildOptions['sortMode']): void {
+  if (sortMode === 'deckCountThenLabel') {
+    // Python: index sorted by deckCount desc, then label asc.
+    files.sort(
+      (a, b) =>
+        b.deckCount - a.deckCount || (a.displayName < b.displayName ? -1 : a.displayName > b.displayName ? 1 : 0)
+    );
+  } else {
+    // Online + reportGenerator: deckCount desc; ties keep first-seen order
+    // (Array.prototype.sort is stable).
+    files.sort((a, b) => b.deckCount - a.deckCount);
+  }
+}
+
+/**
+ * One index entry with its thumbnails, signature cards and icons as the options ask.
+ * @param file - The archetype's built file
+ * @param deckTotal - Decks in the window
+ * @param options - Producer shape options
+ * @param lookups - Card meta and meta usage, built once per run
+ * @returns The index entry
+ */
+function indexEntry(
+  file: ArchetypeFile,
+  deckTotal: number,
+  options: ArchetypeBuildOptions,
+  lookups: {
+    cardMetaLookup: ReturnType<typeof buildCardMetaLookup> | null;
+    metaUsage: ReturnType<typeof buildMetaUsage> | null;
+  }
+): ArchetypeIndexEntry {
+  const { thumbnailConfig = null, masterReport = null, iconConfig = null } = options;
+  const thumbnails = resolveArchetypeThumbnails(file.base, file.displayName, file.data, {
+    config: thumbnailConfig,
+    ...lookups
+  });
+  const fraction = deckTotal ? file.deckCount / deckTotal : 0;
+  const entry: ArchetypeIndexEntry = {
+    name: file.base,
+    label: file.displayName || file.base.replace(/_/g, ' '),
+    deckCount: file.deckCount,
+    percent: options.percentMode === 'fraction6' ? Math.round(fraction * 1e6) / 1e6 : fraction,
+    thumbnails
+  };
+  if (options.includeSignatureCards) {
+    entry.signatureCards = masterReport
+      ? generateSignatureCards(file.displayName, file.data, masterReport, thumbnails)
+      : [];
+  }
+  if (iconConfig) {
+    entry.icons = resolveArchetypeIcons(file.base, file.displayName, thumbnails, file.data, iconConfig);
+  }
+  return entry;
+}
+
+/**
  * Group decks by archetype identity, build per-archetype card reports, and
  * construct the archetype index with thumbnails / signature cards / icons.
  * @param decks - Decks with archetype labels
@@ -215,53 +334,26 @@ export function buildArchetypeReports(
   synonymDb: SynonymDatabase | null,
   options: ArchetypeBuildOptions
 ): ArchetypeBuildResult {
-  const {
-    nameCasing,
-    minDecksFraction,
-    percentMode,
-    sortMode,
-    displayNames = 'raw',
-    emptyBaseFallback = 'Unknown',
-    excludeGenericGroups = false,
-    thumbnailConfig = null,
-    cardTypesDb = null,
-    masterReport = null,
-    includeSignatureCards,
-    iconConfig = null,
-    resolveUid
-  } = options;
-
-  const cardMetaLookup = cardTypesDb ? buildCardMetaLookup(cardTypesDb) : null;
-  const metaUsage = masterReport ? buildMetaUsage(masterReport) : null;
+  const { cardTypesDb = null, masterReport = null, resolveUid } = options;
+  const lookups = {
+    cardMetaLookup: cardTypesDb ? buildCardMetaLookup(cardTypesDb) : null,
+    metaUsage: masterReport ? buildMetaUsage(masterReport) : null
+  };
 
   const deckList = Array.isArray(decks) ? decks : [];
-  const deckTotal = deckList.length || 0;
-  const minDecks = Math.max(1, Math.ceil(deckTotal * minDecksFraction));
-
-  // Group by identity key; first-seen deck fixes the display label and base.
-  const groups = new Map<string, { base: string; displayName: string; decks: ArchetypeDeckInput[] }>();
-  for (const deck of deckList) {
-    const rawLabel = deck?.archetype || 'Unknown';
-    const displayName = displayNames === 'trimmed' ? String(rawLabel).trim() || 'Unknown' : rawLabel;
-    const { key, base } = deriveArchetypeGrouping(displayName, nameCasing, emptyBaseFallback);
-    const group = groups.get(key);
-    if (group) {
-      group.decks.push(deck);
-    } else {
-      groups.set(key, { base, displayName, decks: [deck] });
-    }
-  }
+  const deckTotal = deckList.length;
+  const minDecks = options.minDecks ?? Math.max(1, Math.ceil(deckTotal * options.minDecksFraction));
+  const paged = pagedGroups(
+    groupDecks(deckList, options),
+    minDecks,
+    options.maxArchetypes ?? Infinity,
+    options.excludeGenericGroups ?? false
+  );
 
   const tiersOf = tierCounter(deckList, synonymDb, resolveUid);
   const files: ArchetypeFile[] = [];
   const decksByBase = new Map<string, ArchetypeDeckInput[]>();
-  for (const { base, displayName, decks: archetypeDecks } of groups.values()) {
-    if (archetypeDecks.length < minDecks) {
-      continue;
-    }
-    if (excludeGenericGroups && isGenericArchetypeName(displayName)) {
-      continue;
-    }
+  for (const { base, displayName, decks: archetypeDecks } of paged) {
     files.push({
       base,
       displayName,
@@ -276,43 +368,7 @@ export function buildArchetypeReports(
     decksByBase.set(base, archetypeDecks);
   }
 
-  if (sortMode === 'deckCountThenLabel') {
-    // Python: index sorted by deckCount desc, then label asc.
-    files.sort(
-      (a, b) =>
-        b.deckCount - a.deckCount || (a.displayName < b.displayName ? -1 : a.displayName > b.displayName ? 1 : 0)
-    );
-  } else {
-    // Online + reportGenerator: deckCount desc; ties keep first-seen order
-    // (Array.prototype.sort is stable).
-    files.sort((a, b) => b.deckCount - a.deckCount);
-  }
-
-  const index: ArchetypeIndexEntry[] = files.map(file => {
-    const thumbnails = resolveArchetypeThumbnails(file.base, file.displayName, file.data, {
-      config: thumbnailConfig,
-      cardMetaLookup,
-      metaUsage
-    });
-
-    const fraction = deckTotal ? file.deckCount / deckTotal : 0;
-    const entry: ArchetypeIndexEntry = {
-      name: file.base,
-      label: file.displayName || file.base.replace(/_/g, ' '),
-      deckCount: file.deckCount,
-      percent: percentMode === 'fraction6' ? Math.round(fraction * 1e6) / 1e6 : fraction,
-      thumbnails
-    };
-    if (includeSignatureCards) {
-      entry.signatureCards = masterReport
-        ? generateSignatureCards(file.displayName, file.data, masterReport, thumbnails)
-        : [];
-    }
-    if (iconConfig) {
-      entry.icons = resolveArchetypeIcons(file.base, file.displayName, thumbnails, file.data, iconConfig);
-    }
-    return entry;
-  });
-
+  sortFiles(files, options.sortMode);
+  const index = files.map(file => indexEntry(file, deckTotal, options, lookups));
   return { minDecks, deckTotal, files, index, decksByBase };
 }

@@ -244,6 +244,9 @@ test('Eternal counts a three-player event and its archetypes carry Limitless spr
   const meta = bucket.objects.get('reports/Formats/eternal/meta.json') as Record<string, unknown>;
   assert.equal(meta.deckTotal, 3);
   assert.equal(meta.name, 'Eternal');
+  // Formats other than City Leagues keep the 0.5% floor.
+  assert.equal(meta.archetypeMinPercent, 0.5);
+  assert.equal(meta.archetypeMax, undefined);
   const archetypes = bucket.objects.get('reports/Formats/eternal/archetypes/index.json') as Array<{
     label: string;
     icons?: string[];

@@ -27,7 +27,7 @@ import { buildListIndex } from '../../../shared/data/reports/listIndex.js';
 import { buildCardSuccessIndex } from '../../../shared/data/reports/cardSuccess.js';
 import { requireSynonymDatabase, type SynonymDatabase } from '../../../shared/data/cardIdentity.js';
 import { makeFormatResolver } from '../../../shared/data/canonicalPrint';
-import type { FormatCanon } from '../../../shared/formats/registry';
+import { type ArchetypePages, type FormatCanon, TOP_ARCHETYPE_PAGES } from '../../../shared/formats/registry';
 import { runR2Batch } from './r2.mjs';
 
 const R2_WRITE_CONCURRENCY = 24;
@@ -90,6 +90,8 @@ export interface ReportScope {
   classify?: (deck: GatheredDeck) => string | null;
   /** The format's own print choice; Standard leaves this unset and keeps the global canonical. */
   canon?: FormatCanon;
+  /** Which archetypes get a page; absent means those with 0.5% of the decks. */
+  archetypePages?: ArchetypePages;
 }
 
 /** What a non-Play source gathered, and the days it covered (ISO, end exclusive). */
@@ -109,7 +111,8 @@ export const STANDARD_SCOPE: ReportScope = {
   windowDays: WINDOW_DAYS,
   fetch: {},
   minFieldPlayers: DEFAULT_MIN_FIELD_PLAYERS,
-  minMatchupFieldPlayers: MIN_MATCHUP_FIELD_PLAYERS
+  minMatchupFieldPlayers: MIN_MATCHUP_FIELD_PLAYERS,
+  archetypePages: TOP_ARCHETYPE_PAGES
 };
 
 /** Where the run reads its inputs and publishes the report. */
@@ -393,7 +396,7 @@ function buildMeta(
     windowEnd: span.end,
     deckTotal: window.decks.length,
     tournamentCount: window.tournaments.length,
-    archetypeMinPercent: 0.5,
+    ...(scope.archetypePages ? { archetypeMax: scope.archetypePages.max } : { archetypeMinPercent: 0.5 }),
     archetypeMinDecks: archetypes.minDecks,
     refreshMode: run.cleanRefresh,
     refreshLookbackDays: window.fetchWindowDays,
@@ -649,15 +652,15 @@ export async function runOnlineMeta(options: OnlineMetaOptions): Promise<Record<
     ),
     ...marker
   };
-  // The frozen 'preserve' online profile: case-preserving group keys (D3
-  // quirk), 0.5% deck floor, fraction percent, deckCount-desc ordering,
+  // The 'preserve' online profile: case-preserving group keys (D3
+  // quirk), the scope's page floor (0.5% unless it names one), fraction percent, deckCount-desc ordering,
   // thumbnails + signature cards on index entries. The "Other" bucket stays in
   // the denominator but gets no page.
   const archetypes = buildArchetypeReports(
     reportDecks as unknown as Parameters<typeof buildArchetypeReports>[0],
     synonymDb,
     {
-      ...onlineArchetypeOptions(run.thumbnails, cardTypesDb, masterReport),
+      ...onlineArchetypeOptions(run.thumbnails, cardTypesDb, masterReport, run.scope.archetypePages),
       ...scopeIconConfig(run.scope, diagnostics),
       resolveUid
     }

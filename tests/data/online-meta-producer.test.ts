@@ -116,6 +116,10 @@ test('publishes the whole report, with meta.json written last', async () => {
   assert.equal(bucket.writes.at(-1), `${BASE}/meta.json`);
   assert.equal(meta.deckTotal, 16);
   assert.equal(meta.tournamentCount, 1);
+  // Online names its page rule: the 100 largest archetypes with 5+ decks.
+  assert.equal(meta.archetypeMax, 100);
+  assert.equal(meta.archetypeMinDecks, 5);
+  assert.equal(meta.archetypeMinPercent, undefined);
   const report = bucket.report();
   for (const key of [
     'master.json',

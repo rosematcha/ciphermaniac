@@ -137,6 +137,7 @@ export interface MetaReport {
   deckTotal: number;
   tournamentCount: number;
   archetypeMinPercent?: number;
+  archetypeMax?: number;
   archetypeMinDecks?: number;
   tournaments: MetaTournamentEntry[];
 }
