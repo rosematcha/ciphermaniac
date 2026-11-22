@@ -5,7 +5,12 @@ import { rowsFromOnlineMatchups } from '../../src/lib/matchups';
 import type { ArchetypeIndexEntry } from '../../src/types';
 import type { TrendReport } from '../../shared/data/analysis/archetypeTrends';
 
-import { type OnlineMetaOptions, type OnlineMetaStore, runOnlineMeta } from '../../.github/scripts/lib/onlineMeta';
+import {
+  type OnlineMetaOptions,
+  type OnlineMetaStore,
+  runOnlineMeta,
+  synonymsDate
+} from '../../.github/scripts/lib/onlineMeta';
 
 const BASE = 'reports/Online - Last 14 Days';
 const NOW = new Date('2026-08-21T12:00:00Z');
@@ -330,4 +335,13 @@ test('an index without pairings publishes explicit empty aggregates', async () =
   for (const entry of index) {
     assert.deepEqual(entry.winRateAggregate, { wins: 0, losses: 0, ties: 0, games: 0, winRate: null });
   }
+});
+
+test('a scope is stamped with its synonym database date, not the run date', () => {
+  assert.equal(
+    synonymsDate({ synonyms: {}, canonicals: {}, metadata: { generated: '2026-11-19T12:34:47.385Z' } } as never),
+    '2026-11-19'
+  );
+  assert.equal(synonymsDate({ synonyms: {}, canonicals: {} }), null);
+  assert.equal(synonymsDate({ synonyms: {}, canonicals: {}, metadata: { generated: 'soon' } } as never), null);
 });

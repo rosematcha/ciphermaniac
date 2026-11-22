@@ -29,6 +29,8 @@ import { requireSynonymDatabase, type SynonymDatabase } from '../../../shared/da
 import { makeFormatResolver } from '../../../shared/data/canonicalPrint';
 import type { FormatCanon } from '../../../shared/formats/registry';
 import { runR2Batch } from './r2.mjs';
+
+const R2_WRITE_CONCURRENCY = 24;
 import type { fetchLimitlessJson } from './onlineFetch';
 import {
   compileExclusions,
@@ -487,8 +489,17 @@ function scopeCanonicalization(run: Run, synonymDb: SynonymDatabase): ScopeCanon
   }
   return {
     resolveUid: makeFormatResolver(synonymDb, run.scope.canon),
-    canonicalizedAt: run.now.toISOString().slice(0, 10)
+    canonicalizedAt: synonymsDate(synonymDb) ?? run.now.toISOString().slice(0, 10)
   };
+}
+
+/**
+ * The day the synonym database the prints were chosen with was generated. It changes only when the
+ * mappings do, where the run date changed every day and so rewrote every unchanged format file.
+ */
+export function synonymsDate(synonymDb: SynonymDatabase): string | null {
+  const generated = (synonymDb as { metadata?: { generated?: unknown } }).metadata?.generated;
+  return typeof generated === 'string' && /^\d{4}-\d{2}-\d{2}/.test(generated) ? generated.slice(0, 10) : null;
 }
 
 /** The marker a payload built with a scope's own prints carries; empty for Standard. */
@@ -549,18 +560,23 @@ async function publishArchetypes(run: Run, input: PublishInput): Promise<void> {
   if (listIndex) {
     await publish(run, 'lists.json', listIndex);
   }
-  await runR2Batch(files, async file => {
-    await publish(run, `archetypes/${file.base}/cards.json`, file.data);
-    const trends = input.trendsByBase.get(file.base);
-    if (trends) {
-      await publish(run, `archetypes/${file.base}/trends.json`, trends);
-    }
-  });
+  // Each write is a HEAD and maybe a PUT, all latency: run them wide, as release capture does.
+  await runR2Batch(
+    files,
+    async file => {
+      await publish(run, `archetypes/${file.base}/cards.json`, file.data);
+      const trends = input.trendsByBase.get(file.base);
+      if (trends) {
+        await publish(run, `archetypes/${file.base}/trends.json`, trends);
+      }
+    },
+    R2_WRITE_CONCURRENCY
+  );
   const deckShards = partitionDecks(
     input.reportDecks,
     files.map(file => ({ base: file.base, decks: (decksByBase.get(file.base) ?? []) as GatheredDeck[] }))
   );
-  await runR2Batch(deckShards, shard => publish(run, shard.path, shard.decks));
+  await runR2Batch(deckShards, shard => publish(run, shard.path, shard.decks), R2_WRITE_CONCURRENCY);
   await publish(run, 'decks/index.json', deckShards.map(shard => shard.path).sort());
   const removed = await removeSupersededOnlineObjects(run);
   run.log(`[online-meta] Removed ${removed} superseded or duplicate object(s)`);

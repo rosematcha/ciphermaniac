@@ -14,6 +14,7 @@ import time
 import unicodedata
 from datetime import datetime, timezone, date, timedelta
 from collections import defaultdict
+from concurrent.futures import FIRST_EXCEPTION, ThreadPoolExecutor, wait
 from pathlib import Path
 
 import requests
@@ -402,6 +403,35 @@ def meta_price_uids(master_report, synonyms_data):
     return expand_to_clusters(exact | extract_current_meta_canonicals(master_report, synonyms_data), synonyms_data)
 
 
+# botocore keeps ten connections per client; stay inside them.
+R2_WORKERS = 8
+
+
+def run_concurrently(items, work):
+    """Run ``work`` over ``items`` side by side; results keep the order of ``items``.
+
+    The first failure cancels the work not yet started and is raised once the work in flight
+    has finished, so a failed run stops writing instead of finishing every queued upload.
+    """
+    with ThreadPoolExecutor(R2_WORKERS) as pool:
+        futures = [pool.submit(work, item) for item in items]
+        # Watch for the first failure wherever it lands, not in input order: a slow first item
+        # must not leave the rest of the queue running after a later one has failed.
+        done, _ = wait(futures, return_when=FIRST_EXCEPTION)
+        failed = next((future for future in done if future.exception() is not None), None)
+        if failed is not None:
+            for future in futures:
+                future.cancel()
+            wait(futures)
+            raise failed.exception()
+        return [future.result() for future in futures]
+
+
+def read_json_concurrently(r2_client, bucket_name, keys):
+    """Read many R2 objects side by side; results keep the order of ``keys``."""
+    return run_concurrently(keys, lambda key: r2.read_json(r2_client, bucket_name, key))
+
+
 def load_all_event_cards(r2_client, bucket_name, release):
     """Every card UID that has appeared in any tournament report we host.
 
@@ -418,13 +448,8 @@ def load_all_event_cards(r2_client, bucket_name, release):
 
     uids = set()
     skipped = 0
-    for tournament in tournaments:
-        folder = tournament
-        report = r2.read_json(
-            r2_client,
-            bucket_name,
-            r2.production_event_key(release, folder, 'master.json'),
-        )
+    keys = [r2.production_event_key(release, folder, 'master.json') for folder in tournaments]
+    for report in read_json_concurrently(r2_client, bucket_name, keys):
         if report.status != 'found':
             skipped += 1
             continue
@@ -475,8 +500,9 @@ def release_format_roots(r2_client, bucket_name, release):
 def load_format_cards(r2_client, bucket_name, release):
     """Every card UID in a published format's ``master.json``."""
     uids = set()
-    for root in release_format_roots(r2_client, bucket_name, release):
-        report = r2.read_json(r2_client, bucket_name, f"{root}/master.json")
+    roots = release_format_roots(r2_client, bucket_name, release)
+    reports = read_json_concurrently(r2_client, bucket_name, [f"{root}/master.json" for root in roots])
+    for root, report in zip(roots, reports, strict=True):
         if report.status != 'found':
             raise RuntimeError(f"Format report unavailable: {root}/master.json ({report.status})")
         for item in (report.value or {}).get('items', []):
@@ -944,7 +970,7 @@ def fetch_all_prices(card_sets_map, set_mappings):
                 failed_sets.add(set_code)
             for uid, entry in (fetched or {}).items():
                 set_prices.setdefault(uid, entry)
-            time.sleep(0.25)  # per TCGCSV FAQ etiquette
+            time.sleep(0.1)  # TCGCSV asks for a 100 ms pause between requests
         all_prices.update(set_prices)
 
     return all_prices, failed_sets
@@ -1274,7 +1300,9 @@ def upload_history_shards_to_r2(r2_client, bucket_name, history):
     shards = shard_history_by_set(history)
     print(f"\nUploading {len(shards)} price-history shards under {HISTORY_SHARD_PREFIX}")
     generated = datetime.now(timezone.utc).isoformat()
-    for set_code, shard in shards.items():
+
+    def upload(item):
+        set_code, shard = item
         output = {
             'history': shard,
             'metadata': {
@@ -1290,6 +1318,9 @@ def upload_history_shards_to_r2(r2_client, bucket_name, history):
             ContentType='application/json',
             CacheControl=PRICES_CACHE_CONTROL
         )
+
+    # Release capture snapshots the whole prefix afterwards, so write order is not observable.
+    run_concurrently(list(shards.items()), upload)
     print(f"  ✓ Shard upload complete ({sum(len(s) for s in shards.values())} cards)")
 
 
