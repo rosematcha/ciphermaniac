@@ -282,16 +282,38 @@ async function requestWithRetries(url, retries = 3) {
 // Per-run dedupe for Limitless scrapes. A single (set, number) lookup returns
 // the full print-versions table, so multiple cards routed to the same page
 // share one fetch. Keyed by `SET::NUMBER` (uppercased, normalized).
+// Holds the pending scrape, so a lookup made while a prefetch is in flight shares it.
 const SCRAPE_CACHE = new Map();
 
-async function scrapeCardPrintVariations(setCode, number) {
+function scrapeCardPrintVariations(setCode, number) {
   const cacheKey = `${(setCode || '').toUpperCase()}::${number}`;
-  if (SCRAPE_CACHE.has(cacheKey)) {
-    return SCRAPE_CACHE.get(cacheKey);
+  if (!SCRAPE_CACHE.has(cacheKey)) {
+    SCRAPE_CACHE.set(cacheKey, _scrapeCardPrintVariations(setCode, number));
   }
-  const result = await _scrapeCardPrintVariations(setCode, number);
-  SCRAPE_CACHE.set(cacheKey, result);
-  return result;
+  return SCRAPE_CACHE.get(cacheKey);
+}
+
+// Limitless pages answer in about 90 ms, so a few requests at once cut the scrape from minutes.
+const SCRAPE_CONCURRENCY = 4;
+
+/**
+ * Fetch every print table the fold below will ask for, a few at a time. The fold then runs in
+ * its usual order on cached results, so first-seen metadata and the output stay the same.
+ */
+async function prefetchPrintTables(cardsByName) {
+  const entries = [...cardsByName.values()].flatMap(printSet =>
+    [...printSet].filter(entry => typeof entry === 'string' && entry.includes('::'))
+  );
+  let next = 0;
+  const worker = async () => {
+    while (next < entries.length) {
+      const [set, number] = entries[next++].split('::');
+      if (set && number) {
+        await scrapeCardPrintVariations(set, number);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: SCRAPE_CONCURRENCY }, worker));
 }
 
 /**
@@ -343,7 +365,7 @@ async function _scrapeCardPrintVariations(setCode, number) {
     return [];
   }
 
-  let html;
+  let $;
   for (const variant of numberVariants) {
     const url = `https://limitlesstcg.com/cards/${setCode}/${variant}`;
     const resp = await requestWithRetries(url, 2);
@@ -351,24 +373,17 @@ async function _scrapeCardPrintVariations(setCode, number) {
       continue;
     }
 
-    html = await resp.text();
-    const $ = cheerio.load(html);
-    const table = $('table.card-prints-versions');
-    if (table.length) {
+    const page = cheerio.load(await resp.text());
+    if (page('table.card-prints-versions').length) {
+      $ = page;
       break;
     }
-    html = null;
   }
 
-  if (!html) {
+  if (!$) {
     return [];
   }
-
-  const $ = cheerio.load(html);
   const table = $('table.card-prints-versions');
-  if (!table.length) {
-    return [];
-  }
 
   const variations = [];
   let inJpSection = false;
@@ -716,6 +731,7 @@ async function main() {
   await seedNewSets(cardsByName);
 
   // Generate canonical synonyms (fresh clusters from this run's data)
+  await prefetchPrintTables(cardsByName);
   let synonymsData = await generateSynonyms(cardsByName);
 
   // Merge previous mappings UNDER the fresh ones: any card re-clustered this
