@@ -25,6 +25,7 @@ import { sha256HexString } from '../../shared/data/hash.ts';
 import { buildTournamentCatalog } from './event-cli.ts';
 import { createR2Client, getJsonResult, putJson, withR2Retry } from './lib/r2.mjs';
 import { listR2Objects } from './lib/r2Inventory.mjs';
+import { decimalBoundaries, listR2ObjectsInRanges } from './lib/build/rangedListing';
 import { loadEventSources } from './lib/build/productionRelease.ts';
 import { capturePlayers, currentPlayerObjects, type PlayerInventory } from './lib/build/playerCapture';
 import type { PlayerAggregateManifest } from '../../shared/playerTypes';
@@ -37,6 +38,8 @@ import {
 } from './lib/build/capturedScope';
 
 const CACHE = 'public, max-age=31536000, immutable';
+/** Server-side copies are pure latency; R2 throttling is absorbed by withR2Retry. */
+const COPY_CONCURRENCY = 48;
 
 interface ScopeObject {
   sourceKey: string;
@@ -51,10 +54,14 @@ async function listJsonObjects(options: {
   prefix: string;
   relativeTo: string;
   include?: (key: string) => boolean;
+  boundaries?: readonly string[];
 }): Promise<ScopeObject[]> {
-  const { client, bucket, prefix, relativeTo, include = () => true } = options;
+  const { client, bucket, prefix, relativeTo, include = () => true, boundaries } = options;
   const objects: ScopeObject[] = [];
-  for await (const object of listR2Objects(client, bucket, prefix)) {
+  const listed = boundaries
+    ? await listR2ObjectsInRanges({ client, bucket, prefix }, boundaries)
+    : listR2Objects(client, bucket, prefix);
+  for await (const object of listed) {
     const key = object.Key;
     if (key?.endsWith('.json') && object.ETag && include(key)) {
       objects.push({
@@ -123,23 +130,27 @@ async function captureScope(options: {
   if (marker.status !== 'missing') {
     throw new Error(`Cannot verify ${markerKey}: ${marker.status}`);
   }
-  await runConcurrent(objects, async object => {
-    const target = `${root}/${object.relativeKey}`;
-    await withR2Retry(() =>
-      client.send(
-        new CopyObjectCommand({
-          Bucket: bucket,
-          Key: target,
-          CopySource: encodedCopySource(bucket, object.sourceKey),
-          CopySourceIfMatch: object.etag,
-          MetadataDirective: 'REPLACE',
-          ContentType: 'application/json',
-          CacheControl: CACHE
-        })
-      )
-    );
-    written.push(target);
-  });
+  await runConcurrent(
+    objects,
+    async object => {
+      const target = `${root}/${object.relativeKey}`;
+      await withR2Retry(() =>
+        client.send(
+          new CopyObjectCommand({
+            Bucket: bucket,
+            Key: target,
+            CopySource: encodedCopySource(bucket, object.sourceKey),
+            CopySourceIfMatch: object.etag,
+            MetadataDirective: 'REPLACE',
+            ContentType: 'application/json',
+            CacheControl: CACHE
+          })
+        )
+      );
+      written.push(target);
+    },
+    COPY_CONCURRENCY
+  );
   await putJson(client, bucket, markerKey, { generation, objectCount: objects.length }, { cacheControl: CACHE });
   written.push(markerKey);
   return `/${root}`;
@@ -181,19 +192,26 @@ export async function assertNoEventRegression(
   console.log(`[build-loop] regression guard: ${previous.length} served event(s) all present`);
 }
 
+/**
+ * Check each event generation is complete before it is published. A root production already serves
+ * was checked in full when it was first published and is immutable, so only its marker is re-read;
+ * that skips downloading every served event (over 400 MB) on each run.
+ */
 export async function validateEventSources(
   sources: Record<string, string>,
-  load: <T>(key: string) => Promise<T | null>
+  load: <T>(key: string) => Promise<T | null>,
+  served: Record<string, string> = {}
 ): Promise<Record<string, string>> {
   const started = Date.now();
   console.log(`[build-loop] validating ${Object.keys(sources).length} event generations`);
   await runConcurrent(Object.entries(sources), async ([folder, sourceRoot]) => {
     const root = sourceRoot.replace(/^\/+|\/+$/g, '');
+    const known = served[folder] === sourceRoot;
     const [marker, decks, meta, master] = await Promise.all([
       load<{ generation?: string; objectCount?: number }>(`${root}/_complete.json`),
-      load<unknown[]>(`${root}/decks.json`),
-      load<unknown>(`${root}/meta.json`),
-      load<unknown>(`${root}/master.json`)
+      known ? [] : load<unknown[]>(`${root}/decks.json`),
+      known ? {} : load<unknown>(`${root}/meta.json`),
+      known ? {} : load<unknown>(`${root}/master.json`)
     ]);
     const generation = root.split('/').at(-1);
     if (
@@ -224,8 +242,12 @@ async function discoverCapturedScopes(
 > {
   const started = Date.now();
   console.log('[build-loop] listing captured scopes from R2');
-  const list = (prefix: string, relativeTo: string, include?: (key: string) => boolean) =>
-    listJsonObjects({ client, bucket, prefix, relativeTo, include });
+  const list = (
+    prefix: string,
+    relativeTo: string,
+    include?: (key: string) => boolean,
+    boundaries?: readonly string[]
+  ) => listJsonObjects({ client, bucket, prefix, relativeTo, include, boundaries });
   const [online, trends, players, snapshots, assets, priceShards, priceGlobals, majors, formats] = await Promise.all([
     list(ONLINE_PREFIX, ONLINE_PREFIX, isOnlineReportObject),
     Promise.all(
@@ -233,7 +255,8 @@ async function discoverCapturedScopes(
         describeObject(client, bucket, `reports/Trends - Last 30 Days/${relativeKey}`, relativeKey)
       )
     ).then(objects => objects.filter((object): object is ScopeObject => object !== null)),
-    list('players/', 'players/', key => !key.startsWith('players/_')),
+    // Over 200,000 keys: one page at a time took a minute, so list decimal id ranges side by side.
+    list('players/', 'players/', key => !key.startsWith('players/_'), decimalBoundaries('players/')),
     list('reports/Snapshots/', 'reports/Snapshots/', key => !staleCapturedReport(key)),
     list('assets/', 'assets/', key => !key.startsWith('assets/print-prices/')),
     list('reports/price-history/', 'reports/'),
@@ -460,7 +483,7 @@ async function main(): Promise<void> {
 
   const roots: Partial<Record<ReleaseScope, string>> = {};
   const selectedSources = Object.fromEntries(eventFolders.map(folder => [folder, sources[folder]]));
-  const events = await validateEventSources(selectedSources, load);
+  const events = await validateEventSources(selectedSources, load, release.events);
   if (!argv.includes('--allow-shrink') && limit === Infinity) {
     await assertNoEventRegression(Object.keys(events), load);
   }

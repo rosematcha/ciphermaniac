@@ -71,3 +71,17 @@ test('the old cleanup flag is rejected before any credentials or writes are used
   assert.equal(result.status, 1);
   assert.match(result.stderr, /--gc is unsafe/);
 });
+
+test('a generation production already serves is checked by its marker alone', async () => {
+  const folder = '2026-01-01, Event';
+  const root = `/releases/v1/events/${folder}/aaaaaaaaaaaa`;
+  const read = async <T>(key: string): Promise<T | null> => {
+    if (key !== `${root.slice(1)}/_complete.json`) {
+      throw new Error(`unexpected read of ${key}`);
+    }
+    return { generation: 'aaaaaaaaaaaa', objectCount: 3 } as T;
+  };
+  assert.deepEqual(await validateEventSources({ [folder]: root }, read, { [folder]: root }), { [folder]: root });
+  const missingMarker = async <T>(): Promise<T | null> => null;
+  await assert.rejects(validateEventSources({ [folder]: root }, missingMarker, { [folder]: root }), /incomplete/);
+});
