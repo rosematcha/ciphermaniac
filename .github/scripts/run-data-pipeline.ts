@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { rm } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { boolEnv } from './lib/env';
@@ -15,7 +15,27 @@ function node(script: string, args: string[] = []): void {
   execFileSync(process.execPath, ['--import', 'tsx', `.github/scripts/${script}`, ...args], { stdio: 'inherit' });
 }
 function python(script: string, args: string[] = []): void {
-  execFileSync('python3', [`.github/scripts/${script}`, ...args], { stdio: 'inherit' });
+  execFileSync('python3', ['-u', `.github/scripts/${script}`, ...args], { stdio: 'inherit' });
+}
+
+/** Run a child to completion without blocking the others; rejects on a non-zero exit. */
+function spawned(command: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: 'inherit' });
+    child.once('error', reject);
+    child.once('exit', (code, signal) =>
+      code === 0 ? resolve() : reject(new Error(`${args.join(' ')} exited with ${signal ?? code}`))
+    );
+  });
+}
+
+/** Wait for every child, then fail with the first failure, so no child is left running unwatched. */
+export async function runSideBySide(runs: Array<() => Promise<void>>): Promise<void> {
+  const results = await Promise.allSettled(runs.map(run => run()));
+  const failed = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+  if (failed) {
+    throw failed.reason;
+  }
 }
 
 async function daily(): Promise<void> {
@@ -49,9 +69,15 @@ async function daily(): Promise<void> {
       // After online meta, whose fetch of the same rules the run's cache already holds.
       node('publish-deck-rules.ts');
       node('run-trends.ts');
-      python('update-prices.py', ['--online-master', STAGED_ONLINE_MASTER]);
-      node('run-pack-ev.ts');
-      node('run-format-meta.ts');
+      // Two lanes on separate hosts and key prefixes: TCGCSV (prices, then pack EV, one request at a
+      // time) beside Limitless (format meta). Prices still price format prints from the served release.
+      await runSideBySide([
+        async () => {
+          await spawned('python3', ['-u', '.github/scripts/update-prices.py', '--online-master', STAGED_ONLINE_MASTER]);
+          await spawned(process.execPath, ['--import', 'tsx', '.github/scripts/run-pack-ev.ts']);
+        },
+        () => spawned(process.execPath, ['--import', 'tsx', '.github/scripts/run-format-meta.ts'])
+      ]);
     }
   });
 }

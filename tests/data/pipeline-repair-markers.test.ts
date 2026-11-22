@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 
 import { assertNoIncompleteProducers } from '../../.github/scripts/build-loop.ts';
 import { completedStage } from '../../.github/scripts/lib/pipelineStore.ts';
-import { runRepair } from '../../.github/scripts/run-data-pipeline.ts';
+import { runRepair, runSideBySide } from '../../.github/scripts/run-data-pipeline.ts';
 
 function memoryStore() {
   const objects = new Map<string, unknown>();
@@ -64,4 +64,21 @@ test('a repair that fails before writing blocks nothing', async () => {
   const store = memoryStore();
   await assert.rejects(runRepair(store, 'print-prices', fail), /producer failed/);
   await assertNoIncompleteProducers(store.read);
+});
+
+test('side-by-side producers all finish before the first failure is reported', async () => {
+  const finished: string[] = [];
+  const slow = async () => {
+    await new Promise(resolve => {
+      setTimeout(resolve, 20);
+    });
+    finished.push('slow');
+  };
+  const failing = async () => {
+    finished.push('failing');
+    throw new Error('format meta failed');
+  };
+  await assert.rejects(runSideBySide([failing, slow]), /format meta failed/);
+  assert.deepEqual(finished, ['failing', 'slow']);
+  await runSideBySide([slow]);
 });

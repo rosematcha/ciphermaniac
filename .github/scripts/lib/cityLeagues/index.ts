@@ -28,7 +28,8 @@ export { createPoliteFetcher } from './fetch';
 const DAY_MS = 86_400_000;
 const LISTING_PAGE_SIZE = 100;
 const MAX_LISTING_PAGES = 20;
-const READ_CONCURRENCY = 8;
+// Cache reads go to R2 only, never Limitless, so they can run wide.
+const READ_CONCURRENCY = 32;
 const FAILURE_RATIO = 0.25;
 const FAILURE_ALLOWANCE = 2;
 /** Placings an event page lists when its field reached the top cut. */

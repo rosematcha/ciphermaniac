@@ -29,6 +29,8 @@ import { requireSynonymDatabase, type SynonymDatabase } from '../../../shared/da
 import { makeFormatResolver } from '../../../shared/data/canonicalPrint';
 import type { FormatCanon } from '../../../shared/formats/registry';
 import { runR2Batch } from './r2.mjs';
+
+const R2_WRITE_CONCURRENCY = 24;
 import type { fetchLimitlessJson } from './onlineFetch';
 import {
   compileExclusions,
@@ -549,18 +551,23 @@ async function publishArchetypes(run: Run, input: PublishInput): Promise<void> {
   if (listIndex) {
     await publish(run, 'lists.json', listIndex);
   }
-  await runR2Batch(files, async file => {
-    await publish(run, `archetypes/${file.base}/cards.json`, file.data);
-    const trends = input.trendsByBase.get(file.base);
-    if (trends) {
-      await publish(run, `archetypes/${file.base}/trends.json`, trends);
-    }
-  });
+  // Each write is a HEAD and maybe a PUT, all latency: run them wide, as release capture does.
+  await runR2Batch(
+    files,
+    async file => {
+      await publish(run, `archetypes/${file.base}/cards.json`, file.data);
+      const trends = input.trendsByBase.get(file.base);
+      if (trends) {
+        await publish(run, `archetypes/${file.base}/trends.json`, trends);
+      }
+    },
+    R2_WRITE_CONCURRENCY
+  );
   const deckShards = partitionDecks(
     input.reportDecks,
     files.map(file => ({ base: file.base, decks: (decksByBase.get(file.base) ?? []) as GatheredDeck[] }))
   );
-  await runR2Batch(deckShards, shard => publish(run, shard.path, shard.decks));
+  await runR2Batch(deckShards, shard => publish(run, shard.path, shard.decks), R2_WRITE_CONCURRENCY);
   await publish(run, 'decks/index.json', deckShards.map(shard => shard.path).sort());
   const removed = await removeSupersededOnlineObjects(run);
   run.log(`[online-meta] Removed ${removed} superseded or duplicate object(s)`);
