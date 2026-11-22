@@ -64,16 +64,8 @@ export {
 } from './data/matchups';
 export type { MatchupProfile, OnlineMatchupRecord } from './data/matchups';
 
-export {
-  fetchPriceHistoryForSet,
-  fetchPriceMovers,
-  fetchPrices,
-  fetchPricesFor,
-  fetchPrintPrices,
-  PRICE_HISTORY_MIN_DAYS,
-  priceHistorySpanDays
-} from './data/prices';
-export type { PriceMoverList, PriceMoverMetric, PriceMoverRow, PricePoint, PricingEntry } from './data/prices';
+export { fetchPriceMovers, fetchPrices, fetchPricesFor, fetchPrintPrices } from './data/prices';
+export type { PriceMoverList, PriceMoverMetric, PriceMoverRow, PricingEntry } from './data/prices';
 
 export function fetchUpcomingTournaments(): Promise<UpcomingPayload | null> {
   return fetchUpcoming();

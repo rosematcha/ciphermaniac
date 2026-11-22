@@ -67,10 +67,6 @@ test('with an embedded manifest, scope paths resolve to immutable release roots'
     '/releases/v1/prices/ddd/price-movers.json'
   );
   assert.strictEqual(
-    resolvePathWith(resolver, '/reports/price-history/SCR.json'),
-    '/releases/v1/prices/ddd/price-history/SCR.json'
-  );
-  assert.strictEqual(
     resolvePathWith(resolver, '/reports/majors-trends.json'),
     '/releases/v1/trends/bbb/majors-trends.json'
   );

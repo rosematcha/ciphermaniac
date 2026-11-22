@@ -15,62 +15,6 @@
   font-size: 11px;
 }
 
-/* ---------- Market-price sparkline (CardPage) ---------- */
-/* The price value stacks over its 90-day sparkline; align to the row's end so the
-   number stays right-aligned with the other stat values. */
-.stats-list .stat-value--price {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-.price-spark {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.price-spark-svg {
-  display: block;
-  overflow: visible;
-}
-.price-spark-line {
-  stroke: var(--muted);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.price-spark-dot {
-  fill: var(--muted);
-}
-/* Color the line by stroke only — a CSS `fill` would override the path's
-   fill="none" attribute and flood the open line shape. */
-.price-spark.up .price-spark-line,
-.price-spark.up .price-spark-dot {
-  stroke: var(--positive);
-}
-.price-spark.up .price-spark-dot {
-  fill: var(--positive);
-}
-.price-spark.down .price-spark-line,
-.price-spark.down .price-spark-dot {
-  stroke: var(--negative);
-}
-.price-spark.down .price-spark-dot {
-  fill: var(--negative);
-}
-.price-spark-delta {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.price-spark.up .price-spark-delta {
-  color: var(--positive);
-}
-.price-spark.down .price-spark-delta {
-  color: var(--negative);
-}
-
 /* ---------- Per-archetype usage rows (CardPage "Where it's played") ----------
    Expandable rows: collapsed = icons + name + inclusion + modal copy-count
    chip; expanded = full copy distribution with filter deep links. No inclusion

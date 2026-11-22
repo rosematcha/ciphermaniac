@@ -52,7 +52,6 @@ const SCOPE_FILES: Readonly<Record<string, { scope: ReleaseScope; rel: string }>
   'reports/tournaments.json': { scope: 'catalogs', rel: 'tournaments.json' },
   'reports/prices.json': { scope: 'prices', rel: 'prices.json' },
   'reports/prices-meta.json': { scope: 'prices', rel: 'prices-meta.json' },
-  'reports/prices-history.json': { scope: 'prices', rel: 'prices-history.json' },
   'reports/price-movers.json': { scope: 'prices', rel: 'price-movers.json' },
   'reports/majors-trends.json': { scope: 'trends', rel: 'majors-trends.json' }
 };
@@ -63,9 +62,6 @@ function classify(path: string): { scope: ReleaseScope; rel: string } | null {
   const prefixed = SCOPE_PREFIXES.find(([prefix]) => p.startsWith(prefix));
   if (prefixed) {
     return { scope: prefixed[1], rel: p.slice(prefixed[0].length) };
-  }
-  if (p.startsWith('reports/price-history/')) {
-    return { scope: 'prices', rel: p.slice('reports/'.length) };
   }
   return SCOPE_FILES[p] ?? null;
 }

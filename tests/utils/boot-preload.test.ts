@@ -29,7 +29,7 @@ test('a cold card page starts its scope and card data at boot', async t => {
   const requested = requests(t);
   preloadRoute('/cards/meg/114', '');
   await settle();
-  for (const file of ['master.json', 'cardUsage.json', 'prices.json', 'card-synonyms-slim.json', 'MEG.json']) {
+  for (const file of ['master.json', 'cardUsage.json', 'prices.json', 'card-synonyms-slim.json']) {
     assert.ok(
       requested.some(path => path.endsWith(`/${file}`)),
       `${file} was not requested: ${requested.join(', ')}`

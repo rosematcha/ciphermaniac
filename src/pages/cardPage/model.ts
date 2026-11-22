@@ -2,7 +2,7 @@
  * The card page's calculations, as pure functions.
  *
  * CardPage is an orchestrator over half a dozen independent fetches — master
- * report, rotation snapshot, prices, price history, archetype index, card
+ * report, rotation snapshot, prices, archetype index, card
  * usage, day-2 conversion — and the logic that joins them was spread through
  * its reactive memos, where it could only be exercised by driving a browser.
  *
@@ -28,7 +28,7 @@ import { findByClusterUid } from '../../lib/data';
 import { type CardUsageEntry, cardUsageForCard, type CardUsagePayload } from '../../lib/data/cards';
 import type { Day2CardStat } from '../../lib/data/events';
 import { dateFormatter } from '../../../shared/data/dateFormat';
-import type { PricePoint, PricingEntry } from '../../lib/data/prices';
+import type { PricingEntry } from '../../lib/data/prices';
 import { snapshotSourceKey } from '../../lib/data/paths';
 import { ONLINE_META_NAME } from '../../lib/constants';
 import { averageCopiesValue } from '../../lib/cardStats';
@@ -170,29 +170,6 @@ export function resolvePriceEntry(
     return price === undefined || price === null ? null : { price, tcgPlayerId: entry?.tcgPlayerId };
   }
   return prices[cardUidOrName(card.name, card.set, card.number)] ?? prices[lookup.globalUid ?? ''] ?? null;
-}
-
-/**
- * The sparkline series for the card or selected printing.
- * @param card - The rendered card
- * @param history - Per-set price history, or null
- * @param ready - Whether the history spans enough days to plot
- * @param globalUid - The card's global canonical UID
- * @returns The points to plot, possibly empty
- */
-export function resolvePriceSeries(
-  card: CardItem | undefined,
-  history: Record<string, PricePoint[]> | null | undefined,
-  ready: boolean,
-  lookup: PriceLookup
-): PricePoint[] {
-  if (!card || !history || !ready) {
-    return [];
-  }
-  if (lookup.selected) {
-    return history[lookup.selected.uid] ?? [];
-  }
-  return history[cardUidOrName(card.name, card.set, card.number)] ?? history[lookup.globalUid ?? ''] ?? [];
 }
 
 // ---------------------------------------------------------------------------

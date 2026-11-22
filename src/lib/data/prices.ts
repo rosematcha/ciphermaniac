@@ -1,11 +1,9 @@
 /**
- * Card pricing: today's market prices, the rolling per-set history, and the
- * daily movers list.
+ * Card pricing: today's market prices and the daily movers list.
  *
- * All three are optional artifacts — the pipeline may not have produced them
+ * These are optional artifacts — the pipeline may not have produced them
  * yet for a given set or day — so every reader here degrades to an empty result
- * rather than erroring. A card page without a sparkline is fine; a card page
- * that throws is not.
+ * rather than erroring.
  * @module src/lib/data/prices
  */
 
@@ -82,49 +80,6 @@ export async function fetchPrintPrices(): Promise<Record<string, number | null> 
   return isRecord(payload) && isRecord(payload.prints) ? (payload.prints as Record<string, number | null>) : null;
 }
 
-/** One dated price observation from the rolling history. */
-export interface PricePoint {
-  /** YYYY-MM-DD */
-  date: string;
-  /** Market price in USD on that date. */
-  price: number;
-}
-
-/**
- * Rolling price history keyed by `Name::SET::NUMBER`. Written daily by
- * `.github/scripts/update-prices.py`, bounded to a 90-day window, with flat
- * runs collapsed to a single point (so a card whose price never moved carries
- * one point and callers degrade it to nothing). Stored compactly as `{d, p}`;
- * expanded here to `{date, price}`. Absent (null → {}) until the pipeline has
- * run at least once.
- */
-interface PriceHistoryPayload {
-  history: Record<string, { d: string; p: number }[]>;
-}
-
-/**
- * Rolling price history for a single set, sharded by the set code as it appears
- * in the UID (`Name::SET::NUMBER`). A card page only needs its own set, so this
- * downloads a few KB instead of the whole site's history.
- *
- * Returns {} when the shard is absent (unknown set, or the pipeline has not run
- * for it yet) so callers degrade to no sparkline rather than erroring.
- */
-export async function fetchPriceHistoryForSet(setCode: string): Promise<Record<string, PricePoint[]>> {
-  const payload = await fetchJsonOptional<PriceHistoryPayload>(
-    `/reports/price-history/${encodeURIComponent(setCode)}.json`
-  );
-  const raw = payload?.history;
-  if (!raw) {
-    return {};
-  }
-  const out: Record<string, PricePoint[]> = {};
-  for (const [uid, points] of Object.entries(raw)) {
-    out[uid] = points.map(pt => ({ date: pt.d, price: pt.p }));
-  }
-  return out;
-}
-
 /** One row of a pre-computed price-movers list. */
 export interface PriceMoverRow {
   /** `Name::SET::NUMBER` */
@@ -183,41 +138,4 @@ export interface PriceMoversPayload {
  */
 export function fetchPriceMovers(): Promise<PriceMoversPayload | null> {
   return fetchJsonOptional<PriceMoversPayload>('/reports/price-movers.json');
-}
-
-/**
- * Minimum calendar span the rolling price history must cover before any
- * price-trend UI is surfaced. The artifact accumulates one day at a time from
- * the daily pipeline (no backfill), so trends are withheld until enough has
- * been collected to be meaningful.
- */
-export const PRICE_HISTORY_MIN_DAYS = 30;
-
-/**
- * Days spanned by the whole rolling history (latest observation − earliest,
- * across every card). Flat runs collapse to a single point, so the earliest
- * date across volatile cards is the best proxy for when accumulation began.
- * Gate price UIs on this being ≥ {@link PRICE_HISTORY_MIN_DAYS}.
- */
-export function priceHistorySpanDays(history: Record<string, PricePoint[]>): number {
-  let min = Infinity;
-  let max = -Infinity;
-  for (const points of Object.values(history)) {
-    for (const pt of points) {
-      const t = Date.parse(pt.date);
-      if (Number.isNaN(t)) {
-        continue;
-      }
-      if (t < min) {
-        min = t;
-      }
-      if (t > max) {
-        max = t;
-      }
-    }
-  }
-  if (min === Infinity) {
-    return 0;
-  }
-  return Math.round((max - min) / 86_400_000);
 }

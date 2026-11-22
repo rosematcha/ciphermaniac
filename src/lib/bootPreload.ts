@@ -10,7 +10,7 @@
 import { ONLINE_META_NAME } from './constants';
 import { fetchCardUsage } from './data/cards';
 import { fetchArchetype, fetchArchetypes } from './data/archetypes';
-import { fetchPriceHistoryForSet, fetchPrices, fetchPricesFor, fetchPrintPrices } from './data/prices';
+import { fetchPrices, fetchPricesFor, fetchPrintPrices } from './data/prices';
 import { fetchPlayerIndexSlim, fetchPlayerTop } from './data/players';
 import { fetchMaster } from './data/reports';
 import { fetchOnlineTrendReport } from './data/trends';
@@ -35,8 +35,8 @@ function knownScope(search: string): string | null {
   }
 }
 
-function cardPage(set: string, scope: string | null): Array<Promise<unknown>> {
-  const shared = [getSynonymDatabase(), fetchPrices(), fetchPrintPrices(), fetchPriceHistoryForSet(set.toUpperCase())];
+function cardPage(scope: string | null): Array<Promise<unknown>> {
+  const shared = [getSynonymDatabase(), fetchPrices(), fetchPrintPrices()];
   return scope ? [...shared, fetchMaster(scope), fetchArchetypes(scope), fetchCardUsage(scope)] : shared;
 }
 
@@ -58,7 +58,7 @@ function routeFetches(pathname: string, search: string): Array<Promise<unknown>>
   const scope = knownScope(search);
   const [, section, first, second, extra] = pathname.split('/').map(decodeURIComponent);
   if (section === 'cards' && first && second && extra === undefined) {
-    return cardPage(first, scope);
+    return cardPage(scope);
   }
   if (section === 'players' && first === undefined) {
     return [fetchPlayerTop(), fetchPlayerIndexSlim()];

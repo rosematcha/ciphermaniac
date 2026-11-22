@@ -23,7 +23,6 @@ import {
   formatWholePct,
   isBannedCard,
   resolvePriceEntry,
-  resolvePriceSeries,
   snapshotDateLabel,
   supportsConversion
 } from '../../src/pages/cardPage/model.ts';
@@ -121,21 +120,6 @@ test('a price resolves by UID, then the global canonical, then a selected printi
   ] as const;
   for (const [name, card, prices, selected, globalUid, expected] of cases) {
     assert.deepEqual(resolvePriceEntry(card, prices, { selected, globalUid }), expected, name);
-  }
-});
-
-const HISTORY = { 'Dragapult ex::PRE::073': [{ date: '2026-01-01', price: 10 }] };
-
-test('the sparkline series follows the price fallback chain, but never borrows across printings', () => {
-  const cases = [
-    ['own UID', CARD, HISTORY, true, null, null, 1],
-    ['global canonical', ROLLING_CARD, HISTORY, true, null, GLOBAL, 1],
-    ["a selected printing never borrows another printing's sparkline", CARD, HISTORY, true, SELECTED, GLOBAL, 0],
-    ['an unready history plots nothing', CARD, HISTORY, false, null, null, 0],
-    ['no history plots nothing', CARD, null, true, null, null, 0]
-  ] as const;
-  for (const [name, card, history, ready, selected, globalUid, points] of cases) {
-    assert.equal(resolvePriceSeries(card, history, ready, { selected, globalUid }).length, points, name);
   }
 });
 
