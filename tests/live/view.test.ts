@@ -150,7 +150,7 @@ test('a run that has ended is found at its last round, reading each posted round
   }
 });
 
-test('a run with a round missing from it is still found at its last round', async () => {
+test('a run with a round missing after round one is still found at its last round', async () => {
   const { readRound } = eventWhere(8);
   const gapped = (round: number) =>
     readRound(round).then(loaded => (round === 4 && loaded ? { ...loaded, matches: [] } : loaded));

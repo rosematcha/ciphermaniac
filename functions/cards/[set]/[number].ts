@@ -23,6 +23,8 @@ import {
 } from '../../../shared/data/canonicalCardRoute';
 import { loadCardSynonyms } from '../../../shared/data/cardSynonyms';
 import { coalescedRead } from '../../../shared/coalesce';
+import { type ReleaseManifest, resolveScopePath } from '../../../shared/data/build/release';
+import { EMBEDDED_RELEASE } from '../../../shared/generated/release.js';
 import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
 
 interface Env {
@@ -55,17 +57,23 @@ function getRouteIndex(db: SynonymDatabase): CanonicalRouteIndex {
 
 // The producer publishes the solved index (a few thousand entries) beside the synonym database.
 // Reading it skips parsing the whole database and solving the route graph, which cost a cold isolate
-// about 18 ms of CPU. Whether a table was found is pinned per bucket for the synonym database's hour,
-// and concurrent cold requests share one lookup, fallback included.
-const ROUTES_KEY = 'assets/card-routes.json';
+// about 18 ms of CPU. Both are read from the deployed release's assets, never the staged tree, so the
+// redirect agrees with the SPA it sends people to even while a newer table is staged or after a
+// rollback. Whether a table was found is pinned per key for an hour, and concurrent cold requests
+// share one lookup, fallback included.
 const ROUTES_TTL_MS = 60 * 60 * 1000;
-const publishedRoutes = new WeakMap<R2Bucket, { index: CanonicalRouteIndex | null; expiresAt: number }>();
+const publishedRoutes = new WeakMap<R2Bucket, Map<string, { index: CanonicalRouteIndex | null; expiresAt: number }>>();
 // As long as a synonym read may be joined, since a cold lookup can fall back to one.
 const readIndex = coalescedRead<CanonicalRouteIndex | null>(5000);
 
-async function fetchPublishedRoutes(bucket: R2Bucket): Promise<CanonicalRouteIndex | null> {
+/** An assets file as the release serves it; the staged copy only for an unreleased local build. */
+function assetsKey(release: ReleaseManifest | null, path: string): string {
+  return release ? resolveScopePath(release, 'assets', path).replace(/^\/+/, '') : `assets/${path}`;
+}
+
+async function fetchPublishedRoutes(bucket: R2Bucket, key: string): Promise<CanonicalRouteIndex | null> {
   try {
-    const object = await bucket.get(ROUTES_KEY);
+    const object = await bucket.get(key);
     return object ? routeIndexFromJson(JSON.parse(await object.text())) : null;
   } catch (error) {
     console.error('cards edge redirect: route table unreadable', error);
@@ -73,56 +81,66 @@ async function fetchPublishedRoutes(bucket: R2Bucket): Promise<CanonicalRouteInd
   }
 }
 
-function pinnedRoutes(bucket: R2Bucket): { index: CanonicalRouteIndex | null } | null {
-  const pinned = publishedRoutes.get(bucket);
+function pinnedRoutes(bucket: R2Bucket, key: string): { index: CanonicalRouteIndex | null } | null {
+  const pinned = publishedRoutes.get(bucket)?.get(key);
   return pinned && Date.now() < pinned.expiresAt ? pinned : null;
 }
 
-/** The published table, or the index solved from the synonym database until one is published. */
-async function readOrSolve(env: Env, bucket: R2Bucket): Promise<CanonicalRouteIndex | null> {
-  let pinned = pinnedRoutes(bucket);
+/** The published table, or the index solved from the same release's synonym database until it has one. */
+async function readOrSolve(env: Env, release: ReleaseManifest | null): Promise<CanonicalRouteIndex | null> {
+  const bucket = env.REPORTS!;
+  const key = assetsKey(release, 'card-routes.json');
+  let pinned = pinnedRoutes(bucket, key);
   if (!pinned) {
-    pinned = { index: await fetchPublishedRoutes(bucket) };
-    publishedRoutes.set(bucket, { ...pinned, expiresAt: Date.now() + ROUTES_TTL_MS });
+    pinned = { index: await fetchPublishedRoutes(bucket, key) };
+    const byKey = publishedRoutes.get(bucket) ?? new Map();
+    publishedRoutes.set(bucket, byKey.set(key, { ...pinned, expiresAt: Date.now() + ROUTES_TTL_MS }));
   }
   if (pinned.index) {
     return pinned.index;
   }
-  const db = await loadCardSynonyms(env);
+  const db = await loadCardSynonyms(env, assetsKey(release, 'card-synonyms.json'));
   return db?.synonyms ? getRouteIndex(db) : null;
 }
 
-async function loadRouteIndex(env: Env): Promise<CanonicalRouteIndex | null> {
+function loadRouteIndex(env: Env, release: ReleaseManifest | null): Promise<CanonicalRouteIndex | null> {
   const bucket = env.REPORTS;
   if (!bucket) {
-    return null;
+    return Promise.resolve(null);
   }
-  return pinnedRoutes(bucket)?.index ?? readIndex(bucket, ROUTES_KEY, () => readOrSolve(env, bucket));
+  const key = assetsKey(release, 'card-routes.json');
+  const pinned = pinnedRoutes(bucket, key)?.index;
+  return pinned ? Promise.resolve(pinned) : readIndex(bucket, key, () => readOrSolve(env, release));
 }
 
-export async function onRequest(context: Context): Promise<Response> {
-  const { params, env, request } = context;
+/** The redirect for one release; `onRequest` is the deployed release's. */
+export function createCardRedirect(release: ReleaseManifest | null) {
+  return async (context: Context): Promise<Response> => {
+    const { params, env, request } = context;
 
-  if (!cardRouteKey(params.set, params.number)) {
-    return context.next();
-  }
-
-  try {
-    const index = await loadRouteIndex(env);
-    if (!index) {
+    if (!cardRouteKey(params.set, params.number)) {
       return context.next();
     }
 
-    const canonical = resolveCanonicalRoute(index, params.set, params.number);
-    if (canonical) {
-      const dest = new URL(`/cards/${canonical.set}/${canonical.number}`, request.url);
-      return Response.redirect(dest.toString(), 301);
-    }
-  } catch (err) {
-    // If synonym lookup fails for any reason, fall through to the SPA shell.
-    // The client-side resolver will still try to recover.
-    console.error('cards edge redirect: synonym lookup failed', err);
-  }
+    try {
+      const index = await loadRouteIndex(env, release);
+      if (!index) {
+        return context.next();
+      }
 
-  return context.next();
+      const canonical = resolveCanonicalRoute(index, params.set, params.number);
+      if (canonical) {
+        const dest = new URL(`/cards/${canonical.set}/${canonical.number}`, request.url);
+        return Response.redirect(dest.toString(), 301);
+      }
+    } catch (err) {
+      // If synonym lookup fails for any reason, fall through to the SPA shell.
+      // The client-side resolver will still try to recover.
+      console.error('cards edge redirect: synonym lookup failed', err);
+    }
+
+    return context.next();
+  };
 }
+
+export const onRequest = createCardRedirect(EMBEDDED_RELEASE);

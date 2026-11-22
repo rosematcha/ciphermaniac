@@ -26,8 +26,11 @@ const VERSION = 'v4'; // v4: event listings leave the JSON cache (see below)
 const JSON_CACHE = `cm-json-${VERSION}`;
 const ASSET_CACHE = `cm-assets-${VERSION}`;
 const SHELL_CACHE = `cm-shell-${VERSION}`;
+// Its own cache and version: entries here are never revalidated, so none written before the
+// parse check below may be trusted.
+const RELEASE_CACHE = 'cm-release-v1';
 const JSON_MAX_ENTRIES = 120;
-let jsonTrimPending = null;
+const trimsPending = new Map();
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -36,7 +39,7 @@ self.addEventListener('install', () => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     (async () => {
-      const keep = [JSON_CACHE, ASSET_CACHE, SHELL_CACHE];
+      const keep = [JSON_CACHE, RELEASE_CACHE, ASSET_CACHE, SHELL_CACHE];
       for (const key of await caches.keys()) {
         if (!keep.includes(key)) {
           await caches.delete(key);
@@ -56,16 +59,17 @@ async function trimCache(cacheName, maxEntries) {
   }
 }
 
-function scheduleJsonTrim() {
-  if (jsonTrimPending) {
-    return jsonTrimPending;
+function scheduleTrim(cacheName) {
+  if (trimsPending.has(cacheName)) {
+    return trimsPending.get(cacheName);
   }
-  jsonTrimPending = new Promise(resolve => setTimeout(resolve, 1000))
-    .then(() => trimCache(JSON_CACHE, JSON_MAX_ENTRIES))
+  const pending = new Promise(resolve => setTimeout(resolve, 1000))
+    .then(() => trimCache(cacheName, JSON_MAX_ENTRIES))
     .finally(() => {
-      jsonTrimPending = null;
+      trimsPending.delete(cacheName);
     });
-  return jsonTrimPending;
+  trimsPending.set(cacheName, pending);
+  return pending;
 }
 
 // Never cache an HTML body under a data/asset URL. During an outage the
@@ -78,11 +82,11 @@ function cacheable(response) {
 }
 
 // Storage failures must not turn a usable network response into a fetch error.
-async function writeCache(cache, request, response, trim = false) {
+async function writeCache(cache, request, response, trim = null) {
   try {
     await cache.put(request, response);
     if (trim) {
-      await scheduleJsonTrim();
+      await scheduleTrim(trim);
     }
   } catch {
     // Quota, eviction, and trimming failures are safe to retry next request.
@@ -108,7 +112,7 @@ async function staleWhileRevalidate(request, keepAlive) {
   keepAlive(
     refresh.then(response => {
       if (response && cacheable(response)) {
-        return writeCache(cache, request, cached ? response : response.clone(), true);
+        return writeCache(cache, request, cached ? response : response.clone(), JSON_CACHE);
       }
     })
   );
@@ -119,8 +123,8 @@ async function staleWhileRevalidate(request, keepAlive) {
   return fresh ?? Response.error();
 }
 
-async function cacheFirst(request, keepAlive, cacheName = ASSET_CACHE) {
-  const cache = await caches.open(cacheName);
+async function cacheFirst(request, keepAlive) {
+  const cache = await caches.open(ASSET_CACHE);
   const cached = await cache.match(request);
   if (cached) {
     return cached;
@@ -136,15 +140,41 @@ async function cacheFirst(request, keepAlive, cacheName = ASSET_CACHE) {
     return Response.error();
   }
   if (cacheable(response)) {
-    keepAlive(writeCache(cache, request, response.clone(), cacheName === JSON_CACHE));
+    keepAlive(writeCache(cache, request, response.clone()));
   }
   return response;
 }
 
+async function parsesAsJson(response) {
+  try {
+    await response.clone().json();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Release bodies sit under content-addressed keys and never change, so a refresh could only
-// rewrite the same bytes: serve them from the JSON cache without going back to the network.
-function releaseCacheFirst(request, keepAlive) {
-  return cacheFirst(request, keepAlive, JSON_CACHE);
+// rewrite the same bytes: serve them from cache without going back to the network. Because a
+// cached body is never checked again, one is admitted only once it parses: a truncated or garbled
+// 200 is served this once and refetched next time.
+async function releaseCacheFirst(request, keepAlive) {
+  const cache = await caches.open(RELEASE_CACHE);
+  const cached = await cache.match(request);
+  if (cached) {
+    return cached;
+  }
+  let response;
+  try {
+    response = await fetch(request);
+  } catch {
+    return Response.error();
+  }
+  if (cacheable(response)) {
+    const copy = response.clone();
+    keepAlive(parsesAsJson(copy).then(ok => (ok ? writeCache(cache, request, copy, RELEASE_CACHE) : undefined)));
+  }
+  return response;
 }
 
 async function navigationNetworkFirst(request, keepAlive) {

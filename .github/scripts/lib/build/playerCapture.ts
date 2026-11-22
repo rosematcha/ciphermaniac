@@ -125,7 +125,6 @@ export async function capturePlayers(options: {
     return { ...result, copied: 0 };
   }
   // Bounded concurrency; a failed copy cannot publish a completion marker.
-  let next = 0;
   let completed = 0;
   const started = Date.now();
   const progress = (): void => {
@@ -135,16 +134,17 @@ export async function capturePlayers(options: {
   };
   const heartbeat = setInterval(progress, 30_000);
   heartbeat.unref();
-  const worker = async (): Promise<void> => {
-    while (next < copies.length) {
-      const { object, target } = copies[next++];
-      await store.copy(object, target);
-      completed++;
-    }
-  };
   try {
     // Copies are pure latency (about 0.6 s each), so they run wide; withR2Retry absorbs throttling.
-    await Promise.all(Array.from({ length: Math.min(48, copies.length) }, worker));
+    // A failed copy stops new ones and lets those in flight finish before the capture rejects.
+    await runR2Batch(
+      copies,
+      async ({ object, target }) => {
+        await store.copy(object, target);
+        completed++;
+      },
+      48
+    );
   } finally {
     clearInterval(heartbeat);
     progress();

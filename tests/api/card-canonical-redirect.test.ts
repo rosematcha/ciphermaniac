@@ -10,7 +10,8 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { onRequest } from '../../functions/cards/[set]/[number].ts';
+import { createCardRedirect, onRequest } from '../../functions/cards/[set]/[number].ts';
+import type { ReleaseManifest } from '../../shared/data/build/release.ts';
 import { never } from '../__utils__/deferred.ts';
 
 const SYNONYMS = {
@@ -314,4 +315,44 @@ test('a malformed route table falls back to the synonym database', async () => {
     next: async () => new Response(NEXT_BODY)
   });
   assert.equal(res.headers.get('Location'), 'https://ciphermaniac.com/cards/PRE/073');
+});
+
+test('the redirect reads the deployed release, not a newer table staged beside it', async () => {
+  const release = {
+    contractVersion: 1,
+    releaseId: 'deployed',
+    publishedAt: '',
+    roots: { assets: '/releases/v1/assets/aaaaaaaaaaaa' },
+    events: {},
+    dependencies: {}
+  } as unknown as ReleaseManifest;
+  const files: Record<string, unknown> = {
+    // Staged for the next release, which makes PRE/073 the variant.
+    'assets/card-routes.json': { 'PRE::73': 'TWM/130' },
+    // What the deployed SPA resolves with: TWM/130 is the variant.
+    'releases/v1/assets/aaaaaaaaaaaa/card-synonyms.json': SYNONYMS
+  };
+  const redirect = createCardRedirect(release);
+  const reads: string[] = [];
+  const env = {
+    REPORTS: {
+      get: async (key: string) => {
+        reads.push(key);
+        return key in files ? { text: async () => JSON.stringify(files[key]) } : null;
+      }
+    } as unknown as R2Bucket
+  };
+  const run = (set: string, number: string) =>
+    redirect({
+      request: new Request(`https://ciphermaniac.com/cards/${set}/${number}`),
+      env,
+      params: { set, number },
+      next: async () => new Response(NEXT_BODY)
+    });
+  assert.equal((await run('PRE', '073')).status, 200);
+  assert.equal((await run('TWM', '130')).headers.get('Location'), 'https://ciphermaniac.com/cards/PRE/073');
+  assert.ok(
+    reads.every(key => key.startsWith('releases/v1/assets/aaaaaaaaaaaa/')),
+    reads.join(', ')
+  );
 });

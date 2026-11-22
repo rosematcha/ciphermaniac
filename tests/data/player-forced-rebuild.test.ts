@@ -81,18 +81,21 @@ test('players tied on date and event count are indexed by id, whatever order the
   );
 });
 
-test('the slim index arrives in the players page default ranking', async () => {
+test('a forced rebuild that could not read an event keeps that event players files', async () => {
   const later = '2026-02-10, Regional Later';
-  const day2 = { ...participant(3, 'Third'), madePhase2: true };
   const store: Record<string, string> = {
-    ...makeStore([participant(1, 'Beta'), participant(2, 'alpha'), day2]),
+    ...makeStore([participant(1, 'Ash Ketchum')]),
     'reports/tournaments.json': JSON.stringify([EVENT, later]),
-    [`reports/${later}/players.json`]: JSON.stringify([participant(1, 'Beta'), participant(2, 'alpha'), day2]),
+    [`reports/${later}/players.json`]: JSON.stringify([participant(2, 'Tim Franklin')]),
     [`reports/${later}/decks.json`]: JSON.stringify([]),
     [`reports/${later}/meta.json`]: JSON.stringify({ fetchedAt: '2026-02-11T00:00:00.000Z' })
   };
-  await buildPlayerAggregates(makeEnv(store));
-  const slim = JSON.parse(store['players/index-slim.json']) as { names: string[]; day2s: number[] };
-  assert.deepEqual(slim.names, ['Third', 'alpha', 'Beta']);
-  assert.equal(slim.day2s[0], 2);
+  const env = makeEnv(store);
+  await buildPlayerAggregates(env);
+  assert.ok(store['players/2/profile.json']);
+
+  Reflect.deleteProperty(store, `reports/${later}/players.json`);
+  const rebuild = await buildPlayerAggregates(env, { forceFullRebuild: true });
+  assert.equal(rebuild.tournamentsSkipped, 1);
+  assert.ok(store['players/2/profile.json'], 'a skipped event is not a player dropping out');
 });

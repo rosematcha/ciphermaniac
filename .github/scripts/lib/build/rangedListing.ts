@@ -1,5 +1,5 @@
 import { type _Object, ListObjectsV2Command, type S3Client } from '@aws-sdk/client-s3';
-import { withR2Retry } from '../r2.mjs';
+import { runR2Batch, withR2Retry } from '../r2.mjs';
 
 /**
  * Split boundaries for one prefix: `prefix + p` for every two-digit `p` from 10 to 99. Any sorted
@@ -26,12 +26,29 @@ interface KeyRange {
   upTo?: string;
 }
 
+/** R2 answered a StartAfter listing from the start of the prefix. */
+class StartAfterIgnored extends Error {}
+
 /** Keep one page's keys inside the range; `done` once a key passes the upper bound. */
 function keepInRange(contents: _Object[], { after, upTo }: KeyRange): { kept: _Object[]; done: boolean } {
-  // Keys at or below the lower bound would only come back if StartAfter were ignored.
+  // Keys at or below the lower bound only come back when StartAfter is ignored; filter them so the
+  // range stays exact (proofs/RangedListing.lean covers both cases).
   const above = after === undefined ? contents : contents.filter(object => pastBound(object.Key ?? '', after));
   const end = upTo === undefined ? -1 : above.findIndex(object => pastBound(object.Key ?? '', upTo));
   return end < 0 ? { kept: above, done: false } : { kept: above.slice(0, end), done: true };
+}
+
+function pageStart(cursor: string | undefined, after: string | undefined): Record<string, string> {
+  if (cursor) {
+    return { ContinuationToken: cursor };
+  }
+  return after ? { StartAfter: after } : {};
+}
+
+/** A first page that opens at or below its StartAfter key: R2 listed from the start of the prefix. */
+function ignoredStartAfter(contents: _Object[] | undefined, after: string | undefined): boolean {
+  const first = contents?.[0]?.Key;
+  return after !== undefined && first !== undefined && !pastBound(first, after);
 }
 
 /** List one range, stopping at the first page that passes its upper bound. */
@@ -40,10 +57,13 @@ async function listRange({ client, bucket, prefix }: Listing, range: KeyRange): 
   let token: string | undefined;
   do {
     const cursor = token;
-    const start = cursor ? { ContinuationToken: cursor } : range.after ? { StartAfter: range.after } : {};
     const page = await withR2Retry(() =>
-      client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ...start }))
+      client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ...pageStart(cursor, range.after) }))
     );
+    // Every range would then page from the start of the prefix: hand back to one serial listing.
+    if (!cursor && ignoredStartAfter(page.Contents, range.after)) {
+      throw new StartAfterIgnored();
+    }
     const { kept, done } = keepInRange(page.Contents ?? [], range);
     objects.push(...kept);
     if (done) {
@@ -76,13 +96,19 @@ export async function listR2ObjectsInRanges(
     upTo: boundaries[index]
   }));
   const results = new Array<_Object[]>(ranges.length);
-  let next = 0;
-  async function worker(): Promise<void> {
-    while (next < ranges.length) {
-      const index = next++;
-      results[index] = await listRange(listing, ranges[index]);
+  try {
+    await runR2Batch(
+      ranges.map((range, index) => ({ range, index })),
+      async ({ range, index }) => {
+        results[index] = await listRange(listing, range);
+      },
+      concurrency
+    );
+  } catch (error) {
+    if (!(error instanceof StartAfterIgnored)) {
+      throw error;
     }
+    return listRange(listing, {});
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, ranges.length) }, () => worker()));
   return results.flat();
 }

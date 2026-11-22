@@ -21,6 +21,7 @@ import { mergeSynonymMaps } from './lib/synonymMerge.ts';
 import { synonymObjects } from './lib/synonymObjects.ts';
 import { releaseFormatRoots } from './lib/build/formatReports.ts';
 import { newSetCodes, parseSetCardList } from './lib/setSeeds.ts';
+import { createThrottledFetch } from './lib/throttledFetch.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -254,13 +255,20 @@ function buildNumberVariants(number) {
   return variants;
 }
 
+// The four-wide scrape waits out Limitless throttling, and fails the run if pages stay refused.
+const limitless = createThrottledFetch();
+
+async function wait(ms) {
+  await new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
+
 async function requestWithRetries(url, retries = 3) {
   let lastError;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const response = await fetch(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0' }
-      });
+      const response = await limitless.fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
       if (response.ok) {
         return response;
       }
@@ -270,9 +278,7 @@ async function requestWithRetries(url, retries = 3) {
     }
 
     if (attempt < retries) {
-      await new Promise(resolve => {
-        setTimeout(resolve, 500 * 2 ** (attempt - 1));
-      });
+      await wait(500 * 2 ** (attempt - 1));
     }
   }
   log(`  Giving up on ${url} after ${retries} attempts: ${lastError?.message ?? 'unknown error'}`);
@@ -732,6 +738,7 @@ async function main() {
 
   // Generate canonical synonyms (fresh clusters from this run's data)
   await prefetchPrintTables(cardsByName);
+  limitless.assertWithinLimit();
   let synonymsData = await generateSynonyms(cardsByName);
 
   // Merge previous mappings UNDER the fresh ones: any card re-clustered this

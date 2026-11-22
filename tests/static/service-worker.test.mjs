@@ -276,6 +276,28 @@ test('immutable release bodies are served from cache without a network refresh',
   const first = miss.dispatch(release);
   assert.equal((await first.response).ok, true);
   await flush();
-  assert.equal(miss.timers.length, 1, 'a stored release body is trimmed with the JSON cache');
-  assert.match(opened[0], /^cm-json-/);
+  assert.equal(miss.timers.length, 1, 'the release cache is trimmed like the JSON cache');
+  assert.match(opened[0], /^cm-release-/);
+});
+
+test('a release body that does not parse is served once, never stored, and refetched next time', async () => {
+  const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
+  const bodies = ['{"items": [', '{"items": []}'];
+  let fetches = 0;
+  const worker = harness({
+    fetcher: () => {
+      const body = bodies[Math.min(fetches, bodies.length - 1)];
+      fetches += 1;
+      return Promise.resolve(new Response(body, { headers: { 'content-type': 'application/json' } }));
+    }
+  });
+  const broken = worker.dispatch(release);
+  assert.equal(await (await broken.response).text(), '{"items": [');
+  await Promise.all(broken.lifetimes);
+  assert.equal(worker.writes.length, 0);
+  const healthy = worker.dispatch(release);
+  assert.equal(await (await healthy.response).text(), '{"items": []}');
+  await flush();
+  assert.equal(fetches, 2);
+  assert.equal(worker.writes.length, 1);
 });

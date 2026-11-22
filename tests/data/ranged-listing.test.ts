@@ -97,3 +97,18 @@ test('a truncated page without a cursor throws', async () => {
     /truncated without a cursor/
   );
 });
+
+test('listing costs about one serial pass of requests, and stays serial if StartAfter is ignored', async () => {
+  const keys = Array.from({ length: 5000 }, (_, index) => `players/${index + 1}/profile.json`);
+  for (const honor of [true, false]) {
+    const bucket = fakeBucket(keys, 100, honor);
+    const listed = await listR2ObjectsInRanges(
+      { client: bucket.client, bucket: 'bucket', prefix: 'players/' },
+      decimalBoundaries('players/'),
+      16
+    );
+    assert.equal(listed.length, 5000);
+    // A serial pass is 50 pages; each range adds at most one partial page, and a fallback the probes.
+    assert.ok(bucket.calls <= 50 + 91, `StartAfter ${honor ? 'honored' : 'ignored'}: ${bucket.calls} requests`);
+  }
+});

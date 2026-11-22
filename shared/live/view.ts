@@ -250,9 +250,11 @@ export interface RunTail {
  * never at the event, so those cost one or two round files. For a run that has
  * ended, every posted round is read at once and the last one carrying the
  * player wins: the profile then shows the whole run, which reads those same
- * files, so a search one file at a time only added round trips. Scanning from
- * the end also finds a run with a gap in it (a bye, a late entry), which halving
- * on the assumption of one unbroken run did not.
+ * files, so a search one file at a time only added round trips. Taking the last
+ * round that has them also finds a run with a gap after round one (a missed
+ * pairing), which halving on the assumption of one unbroken run did not. A
+ * player who entered after round one and is out again is still not found: that
+ * would cost every visitor's profile every round file.
  *
  * The boundary is searched on the name alone, not on `findSeat`, because
  * `findSeat` also refuses a name two players in one round share — a refusal

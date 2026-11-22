@@ -23,7 +23,7 @@ import { composeRelease, type ReleaseRoots, type ReleaseScope } from '../../shar
 import { canonicalStringify } from '../../shared/data/canonicalJson.ts';
 import { sha256HexString } from '../../shared/data/hash.ts';
 import { buildTournamentCatalog } from './event-cli.ts';
-import { createR2Client, getJsonResult, putJson, withR2Retry } from './lib/r2.mjs';
+import { createR2Client, getJsonResult, putJson, runR2Batch, withR2Retry } from './lib/r2.mjs';
 import { listR2Objects } from './lib/r2Inventory.mjs';
 import { decimalBoundaries, listR2ObjectsInRanges } from './lib/build/rangedListing';
 import { loadEventSources } from './lib/build/productionRelease.ts';
@@ -92,15 +92,9 @@ async function describeObject(
   }
 }
 
-async function runConcurrent<T>(items: readonly T[], worker: (item: T) => Promise<void>, limit = 24): Promise<void> {
-  let next = 0;
-  async function run(): Promise<void> {
-    while (next < items.length) {
-      const item = items[next++];
-      await worker(item);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => run()));
+/** Bounded concurrency that stops admitting work at the first failure and drains what is in flight. */
+function runConcurrent<T>(items: readonly T[], worker: (item: T) => Promise<void>, limit = 24): Promise<void> {
+  return runR2Batch(items, worker, limit);
 }
 
 function encodedCopySource(bucket: string, key: string): string {

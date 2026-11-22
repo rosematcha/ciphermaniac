@@ -149,14 +149,8 @@ const SLIM_INDEX_KEY = 'players/index-slim.json';
  * path) so the file exists as soon as this code ships, not only after the next
  * real rebuild.
  */
-// The players page's default ranking (Day 2s, then events, then name; src/utils/playerSort.ts).
-// The page still sorts, but rows that already arrive in that order sort about ten times faster.
-const byName = new Intl.Collator(undefined, { sensitivity: 'base' });
-const byDefaultRank = (a: PlayerIndexEntry, b: PlayerIndexEntry): number =>
-  b.day2s - a.day2s || b.eventCount - a.eventCount || byName.compare(a.name, b.name);
-
 async function writeSlimIndex(env: unknown, index: PlayerIndexEntry[]): Promise<void> {
-  await putJson(env, SLIM_INDEX_KEY, encodeSlimIndex([...index].sort(byDefaultRank)), {
+  await putJson(env, SLIM_INDEX_KEY, encodeSlimIndex(index), {
     cacheControl: 'public, max-age=21600'
   });
 }
@@ -1208,6 +1202,20 @@ function foldSlices(
   return { accs, fingerprints, scanned };
 }
 
+/**
+ * The manifest whose players this run may delete when they drop out. A forced rebuild ignores the
+ * stored manifest for reuse, but its players still name the objects to delete; without it they were
+ * left behind for good. Only a run that read every event it loaded for may say who dropped out: a
+ * player whose one event failed to load is missing from this run, not gone.
+ */
+function orphanBase(
+  stored: PlayerAggregateManifestV2 | null,
+  scanned: number,
+  loaded: number
+): PlayerAggregateManifestV2 | null {
+  return scanned === loaded ? stored : null;
+}
+
 async function rebuildPlayers(
   env: unknown,
   keys: string[],
@@ -1232,9 +1240,10 @@ async function rebuildPlayers(
     identityRevision: IDENTITY_OVERRIDES_REVISION,
     builderRevision: options.builderRevision
   };
-  // A forced rebuild ignores the stored manifest for reuse, but its players still name the
-  // objects to delete when they drop out; without it they were left behind for good.
-  await publishPlayerPlan(env, plan, options.stored, { manifest, concurrency: options.r2Concurrency ?? 6 });
+  await publishPlayerPlan(env, plan, orphanBase(options.stored, scanned, slices.length), {
+    manifest,
+    concurrency: options.r2Concurrency ?? 6
+  });
   return {
     index: plan.index,
     profileCount: Object.keys(plan.manifestPlayers).length,

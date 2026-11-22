@@ -167,3 +167,38 @@ test('a failed route shard write leaves the generation without a completion mark
     false
   );
 });
+
+test('a permanently failed copy admits no further copies and writes no marker', async () => {
+  const objects = Array.from({ length: 200 }, (_, index) => ({
+    ...object,
+    sourceKey: `players/${index}/profile.json`,
+    relativeKey: `${index}/profile.json`,
+    etag: `new-${index}`
+  }));
+  const writes: string[] = [];
+  let started = 0;
+  const store = {
+    read: async () => null,
+    write: async (key: string) => {
+      writes.push(key);
+    },
+    copy: async () => {
+      started += 1;
+      if (started === 1) {
+        throw new Error('etag mismatch');
+      }
+      await new Promise(resolve => {
+        setImmediate(resolve);
+      });
+    }
+  };
+  await assert.rejects(capturePlayers({ objects, previous, previousRoot: prior, store, write: true }), /etag mismatch/);
+  // Give any copies still being admitted in the background time to start.
+  for (let tick = 0; tick < 20; tick += 1) {
+    await new Promise(resolve => {
+      setImmediate(resolve);
+    });
+  }
+  assert.ok(started <= 48, `${started} copies started after the failure`);
+  assert.deepEqual(writes, []);
+});

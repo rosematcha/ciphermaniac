@@ -91,7 +91,7 @@ jobs:
           DRY_RUN: 'true'
   # Waiting on CI for a just-pushed commit can take minutes, so it happens here,
   # before the job below joins r2-bucket-writers and holds up every other writer.
-  # The deploy action checks approval again just before it deploys.
+  # That job checks again, once, inside the lock.
   verified:
     needs: watch
     if: >-
@@ -135,6 +135,11 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           python: 'true'
+      # Again inside the lock, before any write: main may have moved while this
+      # run queued, and an obsolete commit must not ingest. The checks already
+      # passed above, so this answers on its first look.
+      - name: Require verified main commit
+        run: npx tsx .github/scripts/require-verified-code.ts
       - name: Discover or ingest major events
         if: >-
           github.event_name != 'push' &&
