@@ -173,8 +173,8 @@
   --sg-surface-2: #2b2827;
   --sg-fg: #ede8e6;
   --sg-muted: #9e9792;
-  --sg-border: #373533;
-  --sg-rule: #262422;
+  --sg-border: #59594f;
+  --sg-rule: #59594f;
   --sg-accent: #ea1;
 }
 
@@ -314,6 +314,9 @@
   margin-top: 6px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
+}
+.sg-nowrap {
+  white-space: nowrap;
 }
 .sg-hero-decks strong {
   color: var(--sg-fg);
@@ -488,12 +491,12 @@
 
 .sg-tail {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
   gap: 12px;
   padding-top: 18px;
   border-top: 1px solid var(--sg-border);
 }
 .sg-tail-cell {
+  min-width: 0;
   padding-left: 10px;
   border-left: 1px solid var(--sg-rule);
 }
@@ -513,13 +516,12 @@
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.012em;
-  line-height: 1.1;
+  line-height: 1.3;
   color: var(--sg-fg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  height: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .sg-tail-pct {
   font-size: 14px;

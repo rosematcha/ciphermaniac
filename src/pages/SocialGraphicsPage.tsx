@@ -494,9 +494,19 @@ function SocialCanvas(props: CanvasProps) {
     return `${c.found.toLocaleString()} / ${c.total.toLocaleString()} decks`;
   }
 
-  /** The size of the online sample, so the drop can be read against something. */
-  function onlineNote(): string {
-    return props.onlineDecks > 0 ? ` · ${props.onlineDecks.toLocaleString()} online decks` : '';
+  /** What the pooled score measured, naming only the signals it had. */
+  function fraudNote(): string {
+    const signals = ['play rate here against online'];
+    // An event with no published cut leaves every row without a conversion.
+    if (props.items.some(c => c.conversion !== undefined)) {
+      signals.push('Day 2 against the field');
+    }
+    if (props.scoresFinishes) {
+      signals.push('online finishes against the ladder');
+    }
+    const listed = signals.length > 1 ? `${signals.slice(0, -1).join(', ')} and ${signals.at(-1)}` : signals[0];
+    const decks = props.onlineDecks > 0 ? `, ${props.onlineDecks.toLocaleString()} online decks` : '';
+    return `${listed}, pooled (min ${props.playFloor}% online${decks})`;
   }
 
   /** The field's own conversion rate, the yardstick every row is read against. */
@@ -511,8 +521,7 @@ function SocialCanvas(props: CanvasProps) {
       return 'biggest gain';
     }
     if (props.mode === 'fraudulent') {
-      const signals = props.scoresFinishes ? 'play rate, Day 2 and online finishes' : 'play rate and Day 2';
-      return `${signals} against its online rate (min ${props.playFloor}%)${onlineNote()}`;
+      return fraudNote();
     }
     if (props.mode === 'converting') {
       return `Day 1 → Day 2 conversion (min ${props.minDecks} decks)${fieldNote()}`;
@@ -532,19 +541,27 @@ function SocialCanvas(props: CanvasProps) {
     if (props.mode === 'fraudulent') {
       return (
         <>
-          <strong>{h.pct.toFixed(1)}%</strong>
-          <span> of decks online, </span>
-          <strong>{(h.eventRate ?? 0).toFixed(1)}%</strong>
-          <span> here</span>
+          <span class='sg-nowrap'>
+            <strong>{h.pct.toFixed(1)}%</strong>
+            <span> of decks online,</span>
+          </span>{' '}
+          <span class='sg-nowrap'>
+            <strong>{(h.eventRate ?? 0).toFixed(1)}%</strong>
+            <span> here</span>
+          </span>
           <Show when={h.conversion !== undefined}>
             <span> · </span>
-            <strong>{Math.round(h.conversion ?? 0)}%</strong>
-            <span> to Day 2</span>
+            <span class='sg-nowrap'>
+              <strong>{Math.round(h.conversion ?? 0)}%</strong>
+              <span> to Day 2</span>
+            </span>
           </Show>
           <Show when={h.onlineSuccessRate !== undefined}>
             <span> · </span>
-            <strong>{Math.round(h.onlineSuccessRate ?? 0)}%</strong>
-            <span> cut online</span>
+            <span class='sg-nowrap'>
+              <strong>{Math.round(h.onlineSuccessRate ?? 0)}%</strong>
+              <span> cut online</span>
+            </span>
           </Show>
         </>
       );
@@ -672,7 +689,10 @@ function SocialCanvas(props: CanvasProps) {
       </Show>
 
       <Show when={tail().length > 0}>
-        <div class='sg-tail'>
+        <div
+          class='sg-tail'
+          style={{ 'grid-template-columns': `repeat(${Math.min(8, tail().length)}, minmax(0, 1fr))` }}
+        >
           <For each={tail()}>
             {c => (
               <div class='sg-tail-cell'>
