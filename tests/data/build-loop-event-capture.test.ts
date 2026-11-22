@@ -7,7 +7,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 
-import { assertNoEventRegression, validateEventSources } from '../../.github/scripts/build-loop.ts';
+import type { S3Client } from '@aws-sdk/client-s3';
+import { assertNoEventRegression, captureScope, validateEventSources } from '../../.github/scripts/build-loop.ts';
 import { loadEventSources } from '../../.github/scripts/lib/build/productionRelease.ts';
 
 test('release builds read immutable production events with pending overrides', async () => {
@@ -70,4 +71,70 @@ test('the old cleanup flag is rejected before any credentials or writes are used
   });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /--gc is unsafe/);
+});
+
+test('a generation production already serves is checked by its marker and body probes alone', async () => {
+  const folder = '2026-01-01, Event';
+  const root = `/releases/v1/events/${folder}/aaaaaaaaaaaa`;
+  const read = async <T>(key: string): Promise<T | null> => {
+    if (key !== `${root.slice(1)}/_complete.json`) {
+      throw new Error(`unexpected read of ${key}`);
+    }
+    return { generation: 'aaaaaaaaaaaa', objectCount: 3 } as T;
+  };
+  const probed: string[] = [];
+  const present = new Set(['decks.json', 'meta.json', 'master.json'].map(file => `${root.slice(1)}/${file}`));
+  const served = {
+    roots: { [folder]: root },
+    exists: async (key: string) => {
+      probed.push(key);
+      return present.has(key);
+    }
+  };
+  assert.deepEqual(await validateEventSources({ [folder]: root }, read, served), { [folder]: root });
+  assert.equal(probed.length, 3);
+  // A body deleted out of band, marker intact, still blocks the release.
+  present.delete(`${root.slice(1)}/decks.json`);
+  await assert.rejects(validateEventSources({ [folder]: root }, read, served), /incomplete/);
+  const missingMarker = async <T>(): Promise<T | null> => null;
+  present.add(`${root.slice(1)}/decks.json`);
+  await assert.rejects(validateEventSources({ [folder]: root }, missingMarker, served), /incomplete/);
+});
+
+test('a scope copy that fails for good starts no further copies and writes no marker', async () => {
+  const sent: string[] = [];
+  const client = {
+    send: async (command: { constructor: { name: string }; input: { Key: string } }) => {
+      const kind = command.constructor.name;
+      sent.push(`${kind} ${command.input.Key}`);
+      if (kind === 'GetObjectCommand') {
+        throw Object.assign(new Error('missing'), { name: 'NoSuchKey' });
+      }
+      if (kind === 'CopyObjectCommand' && command.input.Key.endsWith('/0.json')) {
+        throw Object.assign(new Error('precondition'), { $metadata: { httpStatusCode: 412 } });
+      }
+      await new Promise(resolve => {
+        setImmediate(resolve);
+      });
+      return {};
+    }
+  } as unknown as S3Client;
+  const objects = Array.from({ length: 200 }, (_, index) => ({
+    sourceKey: `reports/x/${index}.json`,
+    relativeKey: `${index}.json`,
+    etag: `"${index}"`,
+    size: 1
+  }));
+  await assert.rejects(
+    captureScope({ client, bucket: 'b', scope: 'online', objects, write: true, written: [], gen: () => 'g' }),
+    /precondition/
+  );
+  for (let tick = 0; tick < 20; tick += 1) {
+    await new Promise(resolve => {
+      setImmediate(resolve);
+    });
+  }
+  const copies = sent.filter(line => line.startsWith('CopyObjectCommand'));
+  assert.ok(copies.length <= 48, `${copies.length} copies started`);
+  assert.ok(!sent.some(line => line.includes('_complete.json') && line.startsWith('PutObjectCommand')));
 });

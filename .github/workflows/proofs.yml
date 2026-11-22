@@ -1,0 +1,40 @@
+name: Proofs
+on:
+  pull_request:
+    paths: ['proofs/**', '.github/scripts/lib/build/rangedListing.ts', '.github/workflows/proofs.yml']
+  push:
+    branches: [main]
+    paths: ['proofs/**', '.github/scripts/lib/build/rangedListing.ts', '.github/workflows/proofs.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LEAN_VERSION: 4.36.0
+      LEAN_SHA256: 2b7ab1ed8b92d2e6abfaf41344823b510064dbc9c0260cac73eb496ab2dea6eb
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - id: cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/lean
+          key: lean-${{ env.LEAN_VERSION }}-${{ env.LEAN_SHA256 }}
+      - if: steps.cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          curl -sSfL -o lean.tar.zst "https://github.com/leanprover/lean4/releases/download/v${LEAN_VERSION}/lean-${LEAN_VERSION}-linux.tar.zst"
+          echo "${LEAN_SHA256}  lean.tar.zst" | sha256sum -c -
+          mkdir -p ~/lean
+          tar --zstd -xf lean.tar.zst -C ~/lean --strip-components=1
+      - name: Check every proof
+        shell: bash
+        run: |
+          for proof in proofs/*.lean; do
+            echo "::group::$proof"
+            # A sorry is only a warning by default; it must fail the check.
+            ~/lean/bin/lean -DwarningAsError=true "$proof"
+            echo "::endgroup::"
+          done
