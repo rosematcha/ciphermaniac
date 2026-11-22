@@ -23,6 +23,7 @@ import { initTheme } from './lib/theme';
 import { EVENTS_SITE_URL } from './lib/flags';
 import { configurePrefetch } from './lib/prefetch';
 import { loadArchetypeIconMap } from './lib/data/archetypes';
+import { preloadRoute } from './lib/bootPreload';
 
 // A deploy replaces every content-hashed chunk, so a tab that predates it will
 // fail the next lazy route's preload. Recover before any route can hit it.
@@ -32,6 +33,7 @@ installPreloadRecovery();
 // demand-loaded by card-facing data fetches; most routes never need its payload.
 probeR2Ready();
 loadArchetypeIconMap().catch((error: unknown) => console.warn(error));
+preloadRoute(location.pathname, location.search);
 
 const routeLoaders: Record<string, () => Promise<unknown>> = {
   '/cards': () => import('./pages/CardsIndexPage'),

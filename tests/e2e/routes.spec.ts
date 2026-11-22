@@ -1767,3 +1767,32 @@ for (const path of A11Y_PATHS) {
     expect(overflow, 'horizontal overflow in px').toBeLessThanOrEqual(0);
   });
 }
+
+test('a cold card page asks for its data before its route chunk arrives', async ({ page, request }) => {
+  // The shell's own scripts boot the app; every other chunk is a lazy route's. Hold those back
+  // until the card's data has been requested, or for at most five seconds.
+  const shell = await (await request.get('/cards/MEG/114')).text();
+  const bootScripts = new Set([...shell.matchAll(/\/assets\/[^"']+\.js/g)].map(match => match[0]));
+  let dataRequested: () => void = () => {};
+  const data = new Promise<void>(resolve => {
+    dataRequested = resolve;
+  });
+  page.on('request', sent => {
+    if (sent.url().endsWith('/master.json')) {
+      dataRequested();
+    }
+  });
+  let heldUntilData = true;
+  await page.route('**/assets/*.js', async route => {
+    if (!bootScripts.has(new URL(route.request().url()).pathname)) {
+      const timeout = new Promise<boolean>(resolve => {
+        setTimeout(() => resolve(false), 5000);
+      });
+      heldUntilData &&= await Promise.race([data.then(() => true), timeout]);
+    }
+    await route.continue();
+  });
+  await gotoClean(page, '/cards/MEG/114');
+  await expect(page.locator('body')).toContainText("Boss's Orders");
+  expect(heldUntilData, 'master.json waited for the lazy route chunk').toBe(true);
+});

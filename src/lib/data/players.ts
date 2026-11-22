@@ -7,6 +7,7 @@
 
 import { createDataClient, dataClient } from './client';
 import { decodeSlimIndex } from '../../../shared/playerTypes.js';
+import { isNonEmptyString, isRecord } from '../../../shared/data/validate';
 import type { PlayerDecks, PlayerIndexEntry, PlayerIndexSlimEntry, PlayerProfile } from '../../types';
 
 import { embeddedRelease } from '../releaseClient';
@@ -59,6 +60,33 @@ export async function fetchPlayerIndexSlim(): Promise<PlayerIndexSlimEntry[] | n
   // declared type says otherwise. Handed to the table raw, `wins + losses` is
   // NaN and every row's win rate reads as a dash.
   return decodeSlimIndex(await fetchPlayerJson<PlayerIndexEntry[]>('/players/index.json'));
+}
+
+/**
+ * The players page's first page under its default ranking, so the table paints before the full
+ * index arrives. Null in releases from before the file, and the page then waits for the index.
+ */
+export async function fetchPlayerTop(): Promise<PlayerIndexSlimEntry[] | null> {
+  const rows = decodeSlimIndex(await fetchPlayerJson<unknown>('/players/top.json'));
+  // Only a preview: a file the page could not render is dropped, and the page waits for the index.
+  // An empty one would paint as "no players match" until the index arrives.
+  return rows?.length && rows.every(playerRow) ? rows : null;
+}
+
+// The table links each row by its ID, and `encodeURIComponent` throws on a lone surrogate.
+const LONE_SURROGATE = /\p{Cs}/u;
+
+const COUNTS = ['eventCount', 'wins', 'losses', 'day2s', 'topCuts', 'tournamentWins'] as const;
+
+function playerRow(row: unknown): boolean {
+  return (
+    isRecord(row) &&
+    isNonEmptyString(row.playerId) &&
+    !LONE_SURROGATE.test(row.playerId) &&
+    typeof row.name === 'string' &&
+    (row.country === undefined || typeof row.country === 'string') &&
+    COUNTS.every(field => Number.isFinite(row[field]))
+  );
 }
 
 export function fetchPlayerProfile(playerId: string): Promise<PlayerProfile | null> {

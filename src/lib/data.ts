@@ -20,7 +20,7 @@ export { fetchEvolutionMap } from './data/evolution';
 
 export { snapshotSourceKey } from './data/paths';
 export { fetchRotationIndex, snapshotDateForArchetype, snapshotDateForCard } from './data/snapshots';
-export { fetchPlayerDecks, fetchPlayerIndexSlim, fetchPlayerProfile } from './data/players';
+export { fetchPlayerDecks, fetchPlayerIndexSlim, fetchPlayerProfile, fetchPlayerTop } from './data/players';
 export { fetchEarnings, fetchEarningsEvents } from './data/earnings';
 export { fetchMajorsTrendReport, fetchOnlineTrendReport } from './data/trends';
 export type { TrendTimelinePoint, WeeklyDeck, WeeklyDeckCard, WeeklyMover, WeeklyReport } from './data/trends';

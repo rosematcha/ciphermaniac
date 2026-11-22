@@ -1,6 +1,6 @@
 import { createMemo, createResource, For, onMount, Show } from 'solid-js';
 import { A, useSearchParams } from '@solidjs/router';
-import { fetchPlayerIndexSlim } from '../lib/data';
+import { fetchPlayerIndexSlim, fetchPlayerTop } from '../lib/data';
 import { resolved } from '../lib/resource';
 import { Section } from '../components/Section';
 import { Segmented } from '@ciphermaniac/design/components/Segmented';
@@ -38,6 +38,8 @@ const RANK_OPTIONS: { value: PlayerSortKey; label: string }[] = [
  */
 export function PlayersPage() {
   const [index] = createResource(fetchPlayerIndexSlim);
+  // The first page, a few KB, to show while the full index (about 300 KB) loads.
+  const [top] = createResource(fetchPlayerTop);
 
   // Filter/sort/page state lives in the URL so a refresh, a shared link, or
   // coming back from a profile lands on the same view. Every write replaces —
@@ -60,12 +62,17 @@ export function PlayersPage() {
   // Non-suspending read: keeps navigation instant and lets the skeleton /
   // error fallbacks below actually render (see lib/resource.ts).
   const indexData = () => resolved(index);
+  const defaultView = () => !query() && !params.sort && !params.dir && (!params.page || params.page === '1');
+  // While the index loads, the default view shows the published first page; anything else waits,
+  // and an index that failed shows its error rather than 50 rows passing for the whole list.
+  const indexFailed = () => Boolean(index.error) || indexData() === null;
+  const rowsSource = () => (indexFailed() ? undefined : (indexData() ?? (defaultView() ? resolved(top) : undefined)));
 
   // Fold once per index load; lookup stays aligned when the ranking changes.
-  const foldedNames = createMemo(() => new Map((indexData() ?? []).map(entry => [entry, foldSearch(entry.name)])));
+  const foldedNames = createMemo(() => new Map((rowsSource() ?? []).map(entry => [entry, foldSearch(entry.name)])));
 
   // Search never invalidates this memo: only data or ranking changes re-sort.
-  const sortedBase = createMemo(() => [...(indexData() ?? [])].sort(comparePlayers(sortKey(), sortDir())));
+  const sortedBase = createMemo(() => [...(rowsSource() ?? [])].sort(comparePlayers(sortKey(), sortDir())));
 
   const filtered = createMemo<PlayerIndexSlimEntry[]>(() => {
     const q = foldSearch(debouncedQuery().trim());
@@ -133,7 +140,7 @@ export function PlayersPage() {
 
       <Section>
         <Show
-          when={indexData()}
+          when={rowsSource()}
           fallback={
             <Show when={index.error || indexData() === null} fallback={<TableSkeleton columns={COLUMNS} />}>
               <EmptyState
@@ -208,7 +215,7 @@ export function PlayersPage() {
                 </tbody>
               </table>
             </div>
-            <Show when={totalPages() > 1}>
+            <Show when={indexData() && totalPages() > 1}>
               <Pagination page={page()} totalPages={totalPages()} onChange={setPage} />
             </Show>
           </Show>
