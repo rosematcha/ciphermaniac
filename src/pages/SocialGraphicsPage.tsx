@@ -1,5 +1,6 @@
 import {
   buildRenderModel,
+  exportFileName,
   type Mode,
   needsDay2Stats,
   needsTournament,
@@ -11,6 +12,7 @@ import { baselineTournaments } from './socialGraphics/baseline';
 import { type EventField, fetchEventField } from './socialGraphics/eventField';
 import { fetchOnlineField } from './socialGraphics/onlineField';
 import { type FitBounds, fitText } from './socialGraphics/fitText';
+import { exportCanvas } from './socialGraphics/exportCanvas';
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import {
   fetchConversionIndex,
@@ -24,7 +26,6 @@ import { ONLINE_META_NAME } from '../lib/constants';
 import { Segmented } from '@ciphermaniac/design/components/Segmented';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
-import { interEmbedCss } from '../utils/fontEmbed';
 import { latestValue } from '../lib/resource';
 import '../styles/pages/social-graphics.css';
 
@@ -209,20 +210,21 @@ export function SocialGraphicsPage() {
     })
   );
 
+  // Whether anything the ACTIVE mode reads is still loading: rising's baseline
+  // events, fraudulent's event and online sides, converting's Day-2 stats.
+  const loading = () =>
+    master.loading ||
+    (mode() === 'rising' && baseline.loading) ||
+    (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading || onlineField.loading)) ||
+    (needsDay2Stats(mode()) && day2Stats.loading);
+
   // Export rasterizes the live preview canvas, so it must stay disabled until
-  // every resource the ACTIVE mode reads has resolved — rising needs the
-  // baseline events, converting needs the Day-2 stats — and until there's a
-  // rendered canvas to snapshot (items present). Gating only on `master.loading`
-  // let a click during a mode's secondary load hit "Canvas not ready."
-  const exportBlocked = createMemo(
-    () =>
-      busy() !== null ||
-      master.loading ||
-      items().length === 0 ||
-      (mode() === 'rising' && baseline.loading) ||
-      (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading || onlineField.loading)) ||
-      (needsDay2Stats(mode()) && day2Stats.loading)
-  );
+  // everything above has resolved and there's a rendered canvas to snapshot
+  // (items present). Gating only on `master.loading` let a click during a
+  // mode's secondary load hit "Canvas not ready."
+  const exportBlocked = createMemo(() => busy() !== null || items().length === 0 || loading());
+  const exportLabel = (format: 'png' | 'jpg') => (busy() === format ? 'Exporting…' : `Export ${format.toUpperCase()}`);
+  const deckTotal = (payload: { deckTotal: number } | null | undefined) => payload?.deckTotal ?? 0;
 
   // Fraudulent only shows cards whose shortfall clears the outlier test, so a
   // small event can fill fewer slots than the chosen size. Say so rather than
@@ -232,48 +234,12 @@ export function SocialGraphicsPage() {
   async function exportImage(format: 'png' | 'jpg') {
     setBusy(format);
     setError(null);
-    const node = document.getElementById('sg-canvas') as HTMLElement | null;
-    if (!node) {
-      setError('Canvas not ready.');
-      setBusy(null);
-      return;
-    }
-    try {
-      // Wait for any in-flight images on the canvas before snapshotting,
-      // otherwise modern-screenshot can race a half-decoded thumbnail.
-      const imgs = Array.from(node.querySelectorAll('img'));
-      await Promise.all(
-        imgs.map(img =>
-          img.complete && img.naturalWidth > 0
-            ? Promise.resolve()
-            : new Promise<void>(resolve => {
-                img.addEventListener('load', () => resolve(), { once: true });
-                img.addEventListener('error', () => resolve(), { once: true });
-              })
-        )
-      );
-      const [{ domToPng, domToJpeg }, fontCssText] = await Promise.all([import('modern-screenshot'), interEmbedCss()]);
-      const renderer = format === 'png' ? domToPng : domToJpeg;
-      const dataUrl = await renderer(node, {
-        scale: 1,
-        backgroundColor: theme() === 'dark' ? '#181514' : '#f1eee8',
-        quality: format === 'jpg' ? 0.92 : undefined,
-        font: { cssText: fontCssText }
-      });
-      const a = document.createElement('a');
-      const slug = shortTournament(tournament())
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-+|-+$)/g, '');
-      a.download = `${slug}-${mode()}-top${size()}-${theme()}.${format}`;
-      a.href = dataUrl;
-      a.click();
-    } catch (err) {
+    const name = exportFileName({ tournament: tournament(), mode: mode(), size: size(), theme: theme() }, format);
+    await exportCanvas(format, name).catch((err: unknown) => {
       console.error(err);
       setError(err instanceof Error ? err.message : 'Export failed');
-    } finally {
-      setBusy(null);
-    }
+    });
+    setBusy(null);
   }
 
   return (
@@ -382,10 +348,10 @@ export function SocialGraphicsPage() {
               disabled={exportBlocked()}
               onClick={() => void exportImage('png')}
             >
-              {busy() === 'png' ? 'Exporting…' : 'Export PNG'}
+              {exportLabel('png')}
             </button>
             <button class='sg-btn' type='button' disabled={exportBlocked()} onClick={() => void exportImage('jpg')}>
-              {busy() === 'jpg' ? 'Exporting…' : 'Export JPG'}
+              {exportLabel('jpg')}
             </button>
             <Show when={error()}>
               <span class='sg-status error'>{error()}</span>
@@ -402,15 +368,7 @@ export function SocialGraphicsPage() {
           <Show
             when={!master.loading && items().length > 0}
             fallback={
-              <Show
-                when={
-                  master.loading ||
-                  (mode() === 'rising' && baseline.loading) ||
-                  (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading || onlineField.loading)) ||
-                  (needsDay2Stats(mode()) && day2Stats.loading)
-                }
-                fallback={<EmptyState title={emptyNote(mode())} />}
-              >
+              <Show when={loading()} fallback={<EmptyState title={emptyNote(mode())} />}>
                 <Skeleton height='540px' />
               </Show>
             }
@@ -419,12 +377,12 @@ export function SocialGraphicsPage() {
               theme={theme()}
               mode={mode()}
               tournamentLabel={shortTournament(tournament())}
-              deckTotal={masterData()?.deckTotal ?? 0}
+              deckTotal={deckTotal(masterData())}
               items={items()}
               minDecks={minDecks()}
               playFloor={playFloor()}
               fieldConversion={fieldConversion()}
-              onlineDecks={onlineMasterData()?.deckTotal ?? 0}
+              onlineDecks={deckTotal(onlineMasterData())}
               scoresFinishes={onlineFieldData() !== null}
             />
           </Show>

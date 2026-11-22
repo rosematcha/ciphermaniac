@@ -132,6 +132,23 @@ export function classify(item: CardItem): CatKind {
   return 'pokemon';
 }
 
+/**
+ * Download name for an export: the event in plain ASCII words, then the selection.
+ * Accents fold to their base letter, so São Paulo saves as sao-paulo.
+ */
+export function exportFileName(
+  { tournament, mode, size, theme }: { tournament: string; mode: Mode; size: number; theme: string },
+  format: string
+): string {
+  const slug = shortTournament(tournament)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-+|-+$)/g, '');
+  return `${slug}-${mode}-top${size}-${theme}.${format}`;
+}
+
 /** Same-origin thumbnail path; hotlinking the CDN taints the export canvas. */
 export function thumbUrl(set: string, number: string | number): string {
   return `/thumbnails/lg/${String(set).toUpperCase()}/${String(number)}`;

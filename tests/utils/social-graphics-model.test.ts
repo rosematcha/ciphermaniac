@@ -15,6 +15,7 @@ import {
   buildRenderModel,
   classify,
   collapseEvolutions,
+  exportFileName,
   FRAUD_MAX_Z,
   fraudScore,
   playRateZScore,
@@ -54,6 +55,14 @@ test('cards classify into the graphic s visual categories', () => {
 
 test('thumbnails load same-origin, which is what keeps the export canvas untainted', () => {
   assert.equal(thumbUrl('svi', 181), '/thumbnails/lg/SVI/181');
+});
+
+test('an export is named in plain ASCII, accents folded to their base letter', () => {
+  const selection = { mode: 'standard', size: 20, theme: 'light' } as const;
+  assert.equal(
+    exportFileName({ tournament: '2026-11-20, International Championship São Paulo', ...selection }, 'png'),
+    'international-championship-sao-paulo-standard-top20-light.png'
+  );
 });
 
 test('a tournament label drops its date prefix', () => {
