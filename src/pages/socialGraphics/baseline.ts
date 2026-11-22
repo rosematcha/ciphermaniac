@@ -75,10 +75,10 @@ export function baselineRate(fields: readonly EventField[], uid: string, set: st
     const key = field.synonymDatabase ? getCanonicalCardFromData(field.synonymDatabase, uid) : uid;
     return { field, card: field.cards.get(key) };
   });
-  const legal = rows.filter(({ field, card }) => (card?.found ?? 0) > 0 || !set || field.sets.has(set.toUpperCase()));
+  const legal = rows.filter(({ field, card }) => (card ?? 0) > 0 || !set || field.sets.has(set.toUpperCase()));
   const total = legal.reduce((sum, { field }) => sum + field.deckTotal, 0);
   if (total <= 0) {
     return null;
   }
-  return { found: legal.reduce((sum, { card }) => sum + (card?.found ?? 0), 0), total };
+  return { found: legal.reduce((sum, { card }) => sum + (card ?? 0), 0), total };
 }

@@ -321,9 +321,6 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
-.sg-nowrap {
-  white-space: nowrap;
-}
 .sg-hero-decks strong {
   color: var(--sg-fg);
   font-weight: 700;
@@ -350,8 +347,8 @@
   grid-template-rows: auto 1fr;
   gap: 18px;
 }
-/* Font size is driven by fitText(): 'FRAUDULENT CARDS' is wider than the
-   column at the design size, so the headline scales like the card names do. */
+/* Font size is driven by fitText(), so a headline wider than the column at
+   the design size scales like the card names do. */
 .sg-title {
   font-size: 64px;
   overflow: hidden;
