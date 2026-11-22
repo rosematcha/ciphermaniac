@@ -143,6 +143,8 @@ export async function imageInputs(store: Reader): Promise<Record<string, unknown
   const { release, sources } = await loadEventSources(store);
   return {
     synonyms: content(await store.read('assets/card-synonyms.json')),
+    // The mirror reads printings from this file, so restoring it alone must rerun the stage.
+    prints: content(await store.read('assets/card-prints.json')),
     sources,
     online: productionScopeRoot(release, 'online'),
     ...whenPresent('formats', releaseFormatsRoot(release))
@@ -154,6 +156,9 @@ async function images(store: Store): Promise<void> {
     inputs: await imageInputs(store),
     revision: await builderRevision([
       'scripts/convert-card-images.ts',
+      'scripts/cardImageSource.ts',
+      'scripts/cdnObject.ts',
+      'src/components/cardImage/sources.ts',
       'src/utils/ptcgio.ts',
       '.github/scripts/lib/build/formatReports.ts',
       '.github/scripts/lib/r2.mjs',

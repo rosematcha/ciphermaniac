@@ -48,7 +48,7 @@ import { nameFromTournamentKey } from '../lib/format';
 import { buildPrintingRows, formatPrintPrice, type PrintingRow, withPrintOrder } from '../utils/printings';
 import { Skeleton } from '@ciphermaniac/design/components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
-import { CardImage } from '../components/CardImage';
+import { CardImage, printOnR2 } from '../components/CardImage';
 import { FanTranslationCredited } from '../components/FanTranslationCredit';
 import { isJapanOnlySet } from '../../shared/data/japanOnlyCards';
 import { InfoTip } from '@ciphermaniac/design/components/InfoTip';
@@ -639,14 +639,14 @@ function CardHeroArt(props: { card: CardItem; shown: PrintingRow | null }) {
         }
       >
         {/* skipR2: a selected printing may be one the conversion pipeline never
-            covered, so go straight to the origin. */}
+            covered, so go to the origin unless the mirror says it has it. */}
         <CardImage
           set={set()}
           number={number()}
           size='lg'
           sizes='(max-width: 760px) 240px, 300px'
           lazy={false}
-          skipR2={Boolean(props.shown)}
+          skipR2={Boolean(props.shown) && !printOnR2(set(), number())}
           alt={`${props.card.name} card`}
         />
       </Show>
@@ -722,7 +722,13 @@ function PrintingsStrip(props: {
                 onBlur={() => setHovered(null)}
                 onClick={() => pin(uid)}
               >
-                <CardImage set={p().set} number={p().number} size='xs' alt='' skipR2 />
+                <CardImage
+                  set={p().set}
+                  number={p().number}
+                  size='xs'
+                  alt=''
+                  skipR2={!printOnR2(p().set, p().number)}
+                />
               </button>
             );
           }}

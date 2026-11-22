@@ -33,7 +33,19 @@ import sharp from 'sharp';
 import { isMissingObject } from './cdnObject';
 import { loadEventSources, productionScopeRoot } from '../.github/scripts/lib/build/productionRelease';
 import { releaseFormatRoots } from '../.github/scripts/lib/build/formatReports';
-import { type Tier, tierSource } from './cardImageSource';
+import {
+  mayPrune,
+  mirrorable,
+  PRINTS_KEY,
+  readyMarker,
+  stripInventory,
+  SYNONYMS_KEY,
+  type Tier,
+  tierSource,
+  unconvertedPrints
+} from './cardImageSource';
+// The browser builds image URLs with the same normalization, so every key written is one it asks for.
+import { imageKey, paddedNumber } from '../src/components/cardImage/sources';
 import { createR2Client, putJsonIfChanged, readJson, runR2Batch, withR2Retry } from '../.github/scripts/lib/r2.mjs';
 import { deleteR2Keys, listR2Keys } from '../.github/scripts/lib/r2Inventory.mjs';
 import { withinPruneCeiling } from '../.github/scripts/lib/build/pruneCeiling';
@@ -77,13 +89,6 @@ interface CardRef {
   number: string;
 }
 
-/** Zero-pad to the CDN's canonical 3-digit form (PRE_037, not PRE_37). */
-function paddedNumber(number: string): string {
-  const stripped = number.replace(/^0+/, '') || '0';
-  const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
-  return parts ? `${parts[1].padStart(3, '0')}${parts[2] ?? ''}` : stripped;
-}
-
 function cardKey(ref: CardRef): string {
   return `${ref.set.toUpperCase()}~${paddedNumber(ref.number)}`;
 }
@@ -96,11 +101,27 @@ function collectFromItems(items: unknown, out: Map<string, CardRef>): void {
     if (item && typeof item === 'object' && 'set' in item && 'number' in item) {
       const set = String((item as { set: unknown }).set ?? '').trim();
       const number = String((item as { number: unknown }).number ?? '').trim();
-      if (/^[A-Za-z0-9-]{2,8}$/.test(set) && /^\d+[A-Za-z]?$/.test(number.replace(/^0+/, '') || '0')) {
+      if (mirrorable(set, number)) {
         const ref = { set: set.toUpperCase(), number };
         out.set(cardKey(ref), ref);
       }
     }
+  }
+}
+
+// The printings list once read, so the ready marker only claims printings it covered.
+let printsRead: Array<{ set: string; number: string }> | null = null;
+
+/**
+ * Every printing the card page's printings strip can show, so the strip can load our WebP rather
+ * than call the thumbnail Function. Read from staging, which is what the next release captures.
+ */
+function collectFromPrints(payload: unknown, graph: unknown, out: Map<string, CardRef>): void {
+  const { strip, covered } = stripInventory(payload, graph);
+  printsRead = covered;
+  collectFromItems(strip, out);
+  for (const key of unconvertedPrints(strip, imageKey)) {
+    unmirrored.add(key);
   }
 }
 
@@ -170,6 +191,7 @@ async function discoverViaS3(cards: Map<string, CardRef>): Promise<void> {
     ...(await releaseFormatRoots({ read }, release)).map(root => `${root}/`)
   ];
   await runR2Batch(prefixes, prefix => collectReportCards(cards, prefix, getJsonFromR2));
+  collectFromPrints(await getJsonFromR2(PRINTS_KEY), await getJsonFromR2(SYNONYMS_KEY), cards);
 }
 
 /** Discover via the public HTTP edge — the fallback for `--dry-run` with no creds. */
@@ -185,6 +207,7 @@ async function discoverViaHttp(cards: Map<string, CardRef>): Promise<void> {
   for (const root of roots) {
     await collectReportCards(cards, `${R2_BASE}/${encodeURI(root.replace(/^\/+/, ''))}/`, fetchJson);
   }
+  collectFromPrints(await fetchJson(`${R2_BASE}/${PRINTS_KEY}`), await fetchJson(`${R2_BASE}/${SYNONYMS_KEY}`), cards);
 }
 
 async function discoverCards(): Promise<CardRef[]> {
@@ -218,6 +241,8 @@ async function discoverCards(): Promise<CardRef[]> {
 }
 
 const stats = { uploaded: 0, skipped: 0, missingSource: 0, failed: 0, pngBytes: 0, webpBytes: 0 };
+// Cards with a tier no source has, so the ready marker can say which ones R2 lacks.
+const unmirrored = new Set<string>();
 
 const SOURCE_FETCH_RETRIES = 3;
 
@@ -283,6 +308,7 @@ async function convertCard(ref: CardRef, tier: Tier, existing: Set<string>): Pro
   const source = await fetchFirstSource(urls);
   if (source.kind === 'missing') {
     stats.missingSource++;
+    unmirrored.add(imageKey(setU, num));
     return;
   }
   if (source.kind === 'failed') {
@@ -349,7 +375,8 @@ function expectedImageKeys(cards: CardRef[]): Set<string> {
 }
 
 async function pruneCardImages(cards: CardRef[], existing: Set<string>): Promise<void> {
-  if (DRY_RUN || !s3Client || !r2Bucket || stats.failed > 0) {
+  // Without the printings list the expected set is short, and a printing's art would read as stale.
+  if (DRY_RUN || !s3Client || !r2Bucket || !mayPrune(stats.failed, printsRead)) {
     return;
   }
   const expected = expectedImageKeys(cards);
@@ -382,7 +409,8 @@ async function writeReadyMarker(cards: CardRef[]): Promise<void> {
     return;
   }
   const changed = await putJsonIfChanged(s3Client, r2Bucket, 'card-images/_ready', {
-    value: { cards: cards.length },
+    // `prints`: every printing is mirrored too, so the card page's strip may load from here.
+    value: readyMarker(cards.length, printsRead, unmirrored),
     cacheControl: 'public, max-age=86400'
   });
   console.log(`${changed ? 'Wrote' : 'Kept'} card-images/_ready marker — CardImage will prefer R2 WebP.`);

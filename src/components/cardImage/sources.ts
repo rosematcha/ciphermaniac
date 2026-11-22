@@ -74,11 +74,31 @@ const SIZE_CHAINS: Record<CardImageSize, CardImageSize[]> = {
   xs: ['xs']
 };
 
-// Limitless filenames use three-digit numbers and lowercase variant suffixes.
-function paddedNumber(number: string | number): string {
+/**
+ * A collector number as Limitless files and our mirror key it: three digits and a lowercase variant
+ * suffix (`061`, `182a`), other forms as given (`TG24`). The mirror writes the keys this builds.
+ */
+export function paddedNumber(number: string | number): string {
   const stripped = String(number).replace(/^0+/, '') || '0';
   const parts = stripped.match(/^(\d+)([A-Za-z]*)$/);
   return parts ? `${parts[1].padStart(3, '0')}${(parts[2] ?? '').toLowerCase()}` : stripped;
+}
+
+/** A card's image key stem as the mirror writes it and the ready marker lists it: `SET_NUM`. */
+export function imageKey(set: string, number: string | number): string {
+  return `${set.toUpperCase()}_${paddedNumber(number)}`;
+}
+
+/**
+ * Whether a printing's art is on R2, given the bucket's ready marker: every printing mirrored, and
+ * this one not among those the mirror could not source.
+ */
+export function printOnR2From(
+  readiness: { prints: boolean; unmirrored: ReadonlySet<string> },
+  set: string,
+  number: string | number
+): boolean {
+  return readiness.prints && !readiness.unmirrored.has(imageKey(set, number));
 }
 
 const TIER_URLS = { r2: r2TierUrl, hotlink: cdnTierUrl, proxy: thumbTierUrl };

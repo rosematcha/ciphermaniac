@@ -165,3 +165,41 @@ test('server rendering never probes or preloads images', async t => {
   await preloadImage('/card.webp');
   assert.equal(fetch.mock.callCount(), 0);
 });
+
+test('the marker says whether every printing is mirrored and which cards are not, and the session remembers it', async t => {
+  const full = '{"prints":true,"unmirrored":["LOR_TG24"]}';
+  for (const [body, expected, stored] of [
+    ['{"cards":10,"prints":true,"unmirrored":["LOR_TG24",7]}', { prints: true, unmirrored: ['LOR_TG24'] }, full],
+    ['{"cards":10}', { prints: false, unmirrored: [] }, '1'],
+    ['', { prints: false, unmirrored: [] }, '1']
+  ] as const) {
+    const writes: string[] = [];
+    browserGlobals(t, {
+      window: {},
+      sessionStorage: { getItem: () => null, setItem: (_key: string, value: string) => writes.push(value) }
+    });
+    t.mock.method(globalThis, 'fetch', async () => new Response(body, { status: 200 }));
+    const seen: unknown[] = [];
+    createReadinessProbe(readiness => seen.push(readiness))();
+    await flush();
+    await flush();
+    assert.deepEqual(seen, [expected], body);
+    assert.deepEqual(writes, [stored], body);
+    t.mock.restoreAll();
+  }
+  browserGlobals(t, { window: {}, sessionStorage: { getItem: () => full } });
+  const seen: unknown[] = [];
+  createReadinessProbe(readiness => seen.push(readiness))();
+  assert.deepEqual(seen, [{ prints: true, unmirrored: ['LOR_TG24'] }]);
+});
+
+test('a session value this code cannot read asks the bucket again', async t => {
+  browserGlobals(t, { window: {}, sessionStorage: { getItem: () => '{bad', setItem: () => {} } });
+  const fetch = t.mock.method(globalThis, 'fetch', async () => new Response('{"prints":true}', { status: 200 }));
+  const seen: unknown[] = [];
+  createReadinessProbe(readiness => seen.push(readiness))();
+  await flush();
+  await flush();
+  assert.equal(fetch.mock.callCount(), 1);
+  assert.equal(seen.length, 1);
+});

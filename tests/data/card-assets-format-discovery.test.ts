@@ -78,8 +78,15 @@ test('synonym inputs are unchanged without formats and gain the format cards wit
 
 test('image inputs carry the formats root only when the release has one', async () => {
   const before = await imageInputs(bucket());
-  assert.deepEqual(Object.keys(before), ['synonyms', 'sources', 'online']);
+  assert.deepEqual(Object.keys(before), ['synonyms', 'prints', 'sources', 'online']);
   const after = await imageInputs(bucket({}, { formats: '/releases/v1/formats/bbbbbbbbbbbb' }));
   assert.equal(after.formats, 'releases/v1/formats/bbbbbbbbbbbb');
   assert.equal(after.online, before.online);
+});
+
+test('restoring the staged printings list alone changes the image inputs', async () => {
+  const missing = await imageInputs(bucket());
+  const restored = await imageInputs(bucket({ 'assets/card-prints.json': { prints: { 'Iono::PAL::185': 0.25 } } }));
+  assert.notDeepEqual(restored.prints, missing.prints);
+  assert.equal(restored.synonyms, missing.synonyms);
 });

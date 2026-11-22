@@ -1,6 +1,6 @@
-import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, on, onMount, Show, untrack } from 'solid-js';
 import { createReadinessProbe, preloadImage } from './cardImage/loading';
-import { type ArtSource, buildAttempts, buildSrcset, type CardImageSize } from './cardImage/sources';
+import { type ArtSource, buildAttempts, buildSrcset, type CardImageSize, printOnR2From } from './cardImage/sources';
 
 /**
  * Our R2 bucket serves the same art re-encoded as WebP at ~25% of the PNG
@@ -10,6 +10,15 @@ import { type ArtSource, buildAttempts, buildSrcset, type CardImageSize } from '
  * The probe result is cached per session.
  */
 const [r2Ready, setR2Ready] = createSignal(false);
+// Whether every printing is mirrored too, not only the cards tournaments played, and the cards
+// no source had, which R2 therefore lacks.
+const [printsReady, setPrintsReady] = createSignal(false);
+const [unmirrored, setUnmirrored] = createSignal<ReadonlySet<string>>(new Set());
+
+/** Whether this printing's art is on R2, so the printings strip may load it from there. */
+export function printOnR2(set: string, number: string | number): boolean {
+  return printOnR2From({ prints: printsReady(), unmirrored: unmirrored() }, set, number);
+}
 
 /**
  * Kicks off the R2 readiness probe. Called once from app startup (main.tsx)
@@ -18,7 +27,11 @@ const [r2Ready, setR2Ready] = createSignal(false);
  * art on cold loads. Safe to call more than once; only fires the network
  * request when nothing is cached yet.
  */
-export const probeR2Ready = createReadinessProbe(() => setR2Ready(true));
+export const probeR2Ready = createReadinessProbe(readiness => {
+  setR2Ready(true);
+  setUnmirrored(new Set(readiness.unmirrored));
+  setPrintsReady(readiness.prints);
+});
 
 interface CardImageProps {
   set: string;
@@ -119,9 +132,10 @@ export function preloadCardImage(
 }
 
 export function CardImage(props: CardImageProps) {
-  // Capture the R2 decision once per instance: an async probe flipping the
-  // global signal mid-session must not re-source already-rendered images
-  // (double download + flicker). Future mounts pick up the new value.
+  // Capture the R2 decision once per requested image: an async probe flipping
+  // the global signal mid-session must not re-source already-rendered images
+  // (double download + flicker). Future mounts, and this instance's next card,
+  // pick up the new value.
   //
   // `skipR2` DOES track, unlike the probe: it changes with the previewed
   // printing on the card page, and that already re-sources the image (set and
@@ -129,8 +143,15 @@ export function CardImage(props: CardImageProps) {
   // ignoring it would 404 the hero at `lg` on every hover over an unconverted
   // print.
 
-  const r2Probed = r2Ready();
-  const source = createMemo(() => artSource(r2Probed, props));
+  // Read again only when the image asked for changes (a new card, or the previewed printing), so a
+  // marker that answers after mount reaches the next request without re-sourcing loaded art.
+  const r2Probed = createMemo(
+    on(
+      () => [props.set, props.number],
+      () => untrack(r2Ready)
+    )
+  );
+  const source = createMemo(() => artSource(r2Probed(), props));
   const attempts = createMemo(() => buildAttempts(props.set, props.number, props.size ?? 'sm', source()));
   const [attemptIndex, setAttemptIndex] = createSignal(0);
   const [errored, setErrored] = createSignal(false);

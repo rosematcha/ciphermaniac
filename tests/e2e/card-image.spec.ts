@@ -41,3 +41,38 @@ for (const exhausted of [false, true]) {
     }
   });
 }
+
+test('a printing picked after a late ready marker loads its mirrored art', async ({ page }) => {
+  let releaseMarker: () => void = () => {};
+  const markerHeld = new Promise<void>(resolve => {
+    releaseMarker = resolve;
+  });
+  await page.route('**/card-images/_ready', async route => {
+    await markerHeld;
+    await route.fulfill({
+      json: { cards: 1, prints: true, unmirrored: [] },
+      headers: { 'access-control-allow-origin': '*' }
+    });
+  });
+  await page.route('**/*', route => {
+    if (route.request().resourceType() !== 'image') {
+      return route.fallback();
+    }
+    return route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="274" height="381"/>'
+    });
+  });
+  await page.goto('/cards/MEG/114');
+  const frames = page.locator('.ps-frame');
+  await expect(frames.nth(1)).toBeVisible();
+  releaseMarker();
+  await page.waitForFunction(() => sessionStorage.getItem('cm:r2CardImages')?.startsWith('{'));
+  await frames.nth(1).click();
+  const label = (await frames.nth(1).getAttribute('title')) ?? '';
+  const [set, number] = label.split(' · ')[0].split(' ');
+  await expect(page.locator('.card-image-real img')).toHaveAttribute(
+    'src',
+    new RegExp(`/card-images/${set}/${set}_0*${number}_R_EN_(LG|SM|XS)\\.webp`, 'i')
+  );
+});
