@@ -143,3 +143,27 @@ test('publication requires completed producer inputs, not just pre-existing outp
   }
   assertProducerComplete({ status: 'complete', inputs: 'a', revision: 'v1' }, 'a', 'players');
 });
+
+test('a failed route shard write leaves the generation without a completion marker', async () => {
+  const bodies = new Map<string, unknown>();
+  let writes = 0;
+  const store = {
+    read: async <T>(key: string) => (bodies.get(key) as T) ?? null,
+    write: async (key: string, body: unknown) => {
+      writes += 1;
+      if (writes === 100) {
+        throw new Error('shard write failed');
+      }
+      bodies.set(key, body);
+    },
+    copy: async () => {}
+  };
+  await assert.rejects(
+    capturePlayers({ objects: [object], previous, previousRoot: prior, store, write: true }),
+    /shard write failed/
+  );
+  assert.equal(
+    [...bodies.keys()].some(key => key.endsWith('/_complete.json')),
+    false
+  );
+});

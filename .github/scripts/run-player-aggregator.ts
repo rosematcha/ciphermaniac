@@ -16,7 +16,7 @@
 
 import { boolEnv, requireEnv } from './lib/env.ts';
 import process from 'node:process';
-import { createR2Client, createReportsBinding } from './lib/r2.mjs';
+import { createR2Client, createReportsBinding, putJson } from './lib/r2.mjs';
 import { buildPlayerAggregates } from '../../shared/onlineMeta/playerAggregator.ts';
 import { loadEventSources } from './lib/build/productionRelease.ts';
 import { builderRevision, PLAYER_BUILD_FILES } from './lib/build/revision';
@@ -49,6 +49,13 @@ async function main() {
   const catalog = buildTournamentCatalog(Object.keys(sources));
   const productionBinding = {
     ...reportsBinding,
+    // The aggregator writes only players whose events changed, and each body carries a fresh
+    // generatedAt, so the binding's compare-first HEAD never matched: a wasted round trip a write.
+    put: (key: string, data: string, opts?: { httpMetadata?: { contentType?: string; cacheControl?: string } }) =>
+      putJson(s3Client, R2_BUCKET_NAME, key, data, {
+        contentType: opts?.httpMetadata?.contentType,
+        cacheControl: opts?.httpMetadata?.cacheControl
+      }),
     get: (key: string) => {
       if (key === 'reports/tournaments.json') {
         return Promise.resolve({
@@ -68,7 +75,8 @@ async function main() {
 
   const result = await buildPlayerAggregates({ REPORTS: productionBinding } as any, {
     concurrency: 6,
-    r2Concurrency: 8,
+    // Writes are pure latency (about 0.5 s each); a full rebuild took 110 minutes at 8.
+    r2Concurrency: 32,
     forceFullRebuild: FORCE_FULL_REBUILD,
     builderRevision: await builderRevision(PLAYER_BUILD_FILES),
     // Immutable event metas carry no fetch timestamp; the content-addressed

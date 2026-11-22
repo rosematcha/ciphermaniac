@@ -1159,7 +1159,13 @@ async function publishPlayerPlan(
   options: { manifest: PlayerAggregateManifestV2; concurrency: number }
 ): Promise<void> {
   const { manifest, concurrency } = options;
-  plan.index.sort((a, b) => b.lastEventDate.localeCompare(a.lastEventDate) || b.eventCount - a.eventCount);
+  // The id tiebreak makes the order total, so full and incremental builds write the same bytes.
+  plan.index.sort(
+    (a, b) =>
+      b.lastEventDate.localeCompare(a.lastEventDate) ||
+      b.eventCount - a.eventCount ||
+      a.playerId.localeCompare(b.playerId)
+  );
   await batchPutJson(env, [...plan.profileWrites, ...plan.deckWrites], concurrency);
   await batchDelete(
     env,
@@ -1200,7 +1206,7 @@ async function rebuildPlayers(
   env: unknown,
   keys: string[],
   previous: PlayerAggregateManifestV2 | null,
-  options: AggregateOptions
+  options: AggregateOptions & { stored: PlayerAggregateManifestV2 | null }
 ): Promise<BuildPlayerAggregatesResult> {
   const { slices, affected } = await loadBuildSlices(env, keys, previous, options);
   const { accs, fingerprints, scanned } = foldSlices(slices, keys, affected ? previous : null, affected);
@@ -1220,7 +1226,9 @@ async function rebuildPlayers(
     identityRevision: IDENTITY_OVERRIDES_REVISION,
     builderRevision: options.builderRevision
   };
-  await publishPlayerPlan(env, plan, previous, { manifest, concurrency: options.r2Concurrency ?? 6 });
+  // A forced rebuild ignores the stored manifest for reuse, but its players still name the
+  // objects to delete when they drop out; without it they were left behind for good.
+  await publishPlayerPlan(env, plan, options.stored, { manifest, concurrency: options.r2Concurrency ?? 6 });
   return {
     index: plan.index,
     profileCount: Object.keys(plan.manifestPlayers).length,
@@ -1239,11 +1247,12 @@ export async function buildPlayerAggregates(
   if (!Array.isArray(keys) || !keys.length) {
     return emptyAggregateResult();
   }
-  const previous = options.forceFullRebuild ? null : await getJson<PlayerAggregateManifestV2>(env, MANIFEST_KEY);
+  const stored = await getJson<PlayerAggregateManifestV2>(env, MANIFEST_KEY);
+  const previous = options.forceFullRebuild ? null : stored;
   const reused = await tryFastPath(env, keys, previous, {
     sliceConcurrency: options.concurrency ?? 4,
     fingerprintOf: options.fingerprintOf,
     builderRevision: options.builderRevision
   });
-  return reused ?? rebuildPlayers(env, keys, previous, options);
+  return reused ?? rebuildPlayers(env, keys, previous, { ...options, stored });
 }

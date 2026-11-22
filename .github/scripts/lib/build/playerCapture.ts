@@ -1,4 +1,5 @@
 import { inputFingerprint } from './provenance';
+import { runR2Batch } from '../r2.mjs';
 import { playerObjectPath, playerRouteShard } from '../../../../shared/playerObjectRoutes';
 
 export interface CapturedObject {
@@ -142,15 +143,19 @@ export async function capturePlayers(options: {
     }
   };
   try {
-    await Promise.all(Array.from({ length: Math.min(24, copies.length) }, worker));
+    // Copies are pure latency (about 0.6 s each), so they run wide; withR2Retry absorbs throttling.
+    await Promise.all(Array.from({ length: Math.min(48, copies.length) }, worker));
   } finally {
     clearInterval(heartbeat);
     progress();
   }
   console.log('[players] writing 256 route shards, inventory, references, and completion marker');
-  for (const [path, body] of routingArtifacts(inventory)) {
-    await store.write(`${root.slice(1)}/${path}`, body);
-  }
+  // Side by side: one at a time took over two minutes. The completion marker still goes last.
+  await runR2Batch(
+    [...routingArtifacts(inventory)],
+    ([path, body]) => store.write(`${root.slice(1)}/${path}`, body),
+    16
+  );
   const references = [...new Set(Object.values(inventory).map(entry => entry.path.split('/').slice(0, 5).join('/')))];
   await store.write(`${root.slice(1)}/_inventory.json`, inventory);
   await store.write(

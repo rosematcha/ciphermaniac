@@ -89,10 +89,28 @@ jobs:
         run: python3 .github/scripts/ingest-new-tournaments.py
         env:
           DRY_RUN: 'true'
-  tournaments:
+  # Waiting on CI for a just-pushed commit can take minutes, so it happens here,
+  # before the job below joins r2-bucket-writers and holds up every other writer.
+  # The deploy action checks approval again just before it deploys.
+  verified:
     needs: watch
     if: >-
       !cancelled() && github.ref == 'refs/heads/main' &&
+      (needs.watch.result == 'skipped' || needs.watch.outputs.pending != '' ||
+      needs.watch.outputs.unpublished != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: ./.github/actions/setup
+      - name: Require verified main commit
+        run: npx tsx .github/scripts/require-verified-code.ts
+  tournaments:
+    needs: [watch, verified]
+    if: >-
+      !cancelled() && needs.verified.result == 'success' && github.ref == 'refs/heads/main' &&
       (needs.watch.result == 'skipped' || needs.watch.outputs.pending != '' ||
       needs.watch.outputs.unpublished != '')
     runs-on: ubuntu-latest
@@ -117,8 +135,6 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           python: 'true'
-      - name: Require verified main commit
-        run: npx tsx .github/scripts/require-verified-code.ts
       - name: Discover or ingest major events
         if: >-
           github.event_name != 'push' &&
