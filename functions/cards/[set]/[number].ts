@@ -18,9 +18,11 @@ import {
   buildCanonicalRouteIndex,
   type CanonicalRouteIndex,
   cardRouteKey,
-  resolveCanonicalRoute
+  resolveCanonicalRoute,
+  routeIndexFromJson
 } from '../../../shared/data/canonicalCardRoute';
 import { loadCardSynonyms } from '../../../shared/data/cardSynonyms';
+import { coalescedRead } from '../../../shared/coalesce';
 import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
 
 interface Env {
@@ -51,6 +53,53 @@ function getRouteIndex(db: SynonymDatabase): CanonicalRouteIndex {
   return index;
 }
 
+// The producer publishes the solved index (a few thousand entries) beside the synonym database.
+// Reading it skips parsing the whole database and solving the route graph, which cost a cold isolate
+// about 18 ms of CPU. Whether a table was found is pinned per bucket for the synonym database's hour,
+// and concurrent cold requests share one lookup, fallback included.
+const ROUTES_KEY = 'assets/card-routes.json';
+const ROUTES_TTL_MS = 60 * 60 * 1000;
+const publishedRoutes = new WeakMap<R2Bucket, { index: CanonicalRouteIndex | null; expiresAt: number }>();
+// As long as a synonym read may be joined, since a cold lookup can fall back to one.
+const readIndex = coalescedRead<CanonicalRouteIndex | null>(5000);
+
+async function fetchPublishedRoutes(bucket: R2Bucket): Promise<CanonicalRouteIndex | null> {
+  try {
+    const object = await bucket.get(ROUTES_KEY);
+    return object ? routeIndexFromJson(JSON.parse(await object.text())) : null;
+  } catch (error) {
+    console.error('cards edge redirect: route table unreadable', error);
+    return null;
+  }
+}
+
+function pinnedRoutes(bucket: R2Bucket): { index: CanonicalRouteIndex | null } | null {
+  const pinned = publishedRoutes.get(bucket);
+  return pinned && Date.now() < pinned.expiresAt ? pinned : null;
+}
+
+/** The published table, or the index solved from the synonym database until one is published. */
+async function readOrSolve(env: Env, bucket: R2Bucket): Promise<CanonicalRouteIndex | null> {
+  let pinned = pinnedRoutes(bucket);
+  if (!pinned) {
+    pinned = { index: await fetchPublishedRoutes(bucket) };
+    publishedRoutes.set(bucket, { ...pinned, expiresAt: Date.now() + ROUTES_TTL_MS });
+  }
+  if (pinned.index) {
+    return pinned.index;
+  }
+  const db = await loadCardSynonyms(env);
+  return db?.synonyms ? getRouteIndex(db) : null;
+}
+
+async function loadRouteIndex(env: Env): Promise<CanonicalRouteIndex | null> {
+  const bucket = env.REPORTS;
+  if (!bucket) {
+    return null;
+  }
+  return pinnedRoutes(bucket)?.index ?? readIndex(bucket, ROUTES_KEY, () => readOrSolve(env, bucket));
+}
+
 export async function onRequest(context: Context): Promise<Response> {
   const { params, env, request } = context;
 
@@ -59,12 +108,12 @@ export async function onRequest(context: Context): Promise<Response> {
   }
 
   try {
-    const db = await loadCardSynonyms(env);
-    if (!db?.synonyms) {
+    const index = await loadRouteIndex(env);
+    if (!index) {
       return context.next();
     }
 
-    const canonical = resolveCanonicalRoute(getRouteIndex(db), params.set, params.number);
+    const canonical = resolveCanonicalRoute(index, params.set, params.number);
     if (canonical) {
       const dest = new URL(`/cards/${canonical.set}/${canonical.number}`, request.url);
       return Response.redirect(dest.toString(), 301);

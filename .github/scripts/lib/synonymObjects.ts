@@ -4,6 +4,7 @@
  */
 
 import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
+import { buildCanonicalRouteIndex, routeIndexToJson } from '../../../shared/data/canonicalCardRoute';
 
 /**
  * The browser's synonyms in printing release order (the `prints` map's key
@@ -35,6 +36,8 @@ function slimDatabase(data: SynonymDatabase): Pick<SynonymDatabase, 'synonyms' |
 export function synonymObjects(data: SynonymDatabase): Array<[key: string, body: unknown]> {
   return [
     ['assets/card-synonyms-slim.json', JSON.stringify(slimDatabase(data))],
+    // The edge redirect's lookup table, solved here once rather than in every cold isolate.
+    ['assets/card-routes.json', JSON.stringify(routeIndexToJson(buildCanonicalRouteIndex(data)))],
     ['assets/card-prints.json', JSON.stringify({ prints: data.prints })],
     ['assets/card-synonyms.json', data]
   ];

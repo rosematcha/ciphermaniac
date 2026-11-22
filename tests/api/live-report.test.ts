@@ -634,3 +634,12 @@ test('reset keeps published outbox rows for an event that still has dirty votes'
   assert.equal(database.raw.prepare('SELECT COUNT(*) AS n FROM live_report_outbox').get()?.n, 2);
   assert.equal(dirtyCount(), 1);
 });
+
+test('a sweep with nothing to publish costs one indexed D1 read', async () => {
+  const counted = countingTrips(fakeDb());
+  const store = createVoteStore(counted.db);
+  assert.deepEqual(await store.pending(), []);
+  assert.equal(counted.trips(), 1);
+  await createVoteStore(fakeDb()).settle([report('Dragapult', 1)], 0);
+  assert.deepEqual(await store.pending(), [SLUG]);
+});

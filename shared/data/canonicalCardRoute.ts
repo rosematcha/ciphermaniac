@@ -40,6 +40,7 @@
  */
 
 import { cardNumberIndexKey, parseCardUid, type SynonymDatabase } from './cardIdentity';
+import { isRecord } from './validate';
 
 /**
  * A resolved canonical card route.
@@ -227,6 +228,39 @@ export function buildCanonicalRouteIndex(
       continue;
     }
     index.set(from, { key: edge.to, set: edge.toSet, number: edge.toNumber });
+  }
+  return index;
+}
+
+/**
+ * The index as published in `assets/card-routes.json`: variant key → canonical `SET/NUMBER` path,
+ * so the edge redirect reads a small lookup table instead of solving the route graph per isolate.
+ * @param index - Index from {@link buildCanonicalRouteIndex}
+ * @returns A plain object, sorted by key
+ */
+export function routeIndexToJson(index: CanonicalRouteIndex): Record<string, string> {
+  return Object.fromEntries(
+    [...index].sort(([a], [b]) => (a < b ? -1 : 1)).map(([from, route]) => [from, `${route.set}/${route.number}`])
+  );
+}
+
+/**
+ * Read a published route table back into an index; `null` when the value is not one.
+ * @param value - Parsed `assets/card-routes.json`
+ * @returns The index {@link buildCanonicalRouteIndex} produced, or `null`
+ */
+export function routeIndexFromJson(value: unknown): CanonicalRouteIndex | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const index = new Map<string, CanonicalCardRoute>();
+  for (const [from, path] of Object.entries(value)) {
+    const [set, number, extra] = typeof path === 'string' ? path.split('/') : [];
+    const key = cardRouteKey(set, number);
+    if (!key || extra !== undefined || key === from) {
+      return null;
+    }
+    index.set(from, { key, set, number });
   }
   return index;
 }

@@ -14,15 +14,21 @@ test('the browser parts are written before the whole database the next run compa
   const objects = synonymObjects(data);
   assert.deepEqual(
     objects.map(([key]) => key),
-    ['assets/card-synonyms-slim.json', 'assets/card-prints.json', 'assets/card-synonyms.json']
+    [
+      'assets/card-synonyms-slim.json',
+      'assets/card-routes.json',
+      'assets/card-prints.json',
+      'assets/card-synonyms.json'
+    ]
   );
+  assert.deepEqual(JSON.parse(objects[1][1] as string), { 'PAL::269': 'PAL/185' });
   assert.deepEqual(JSON.parse(objects[0][1] as string), {
     synonyms: data.synonyms,
     canonicals: data.canonicals,
     canonicalAt: { 'Iono::PAL::185': 1 }
   });
-  assert.deepEqual(JSON.parse(objects[1][1] as string), { prints: data.prints });
-  assert.equal(objects[2][1], data);
+  assert.deepEqual(JSON.parse(objects[2][1] as string), { prints: data.prints });
+  assert.equal(objects[3][1], data);
 });
 
 test('the slim database orders every strip as the full one does, before and after its prices load', () => {

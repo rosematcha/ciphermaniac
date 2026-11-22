@@ -14,13 +14,16 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import {
   assertCanonicalRoutesSound,
   buildCanonicalRouteIndex,
   canonicalRouteKey,
   cardRouteKey,
   findCanonicalRouteViolations,
-  resolveCanonicalRoute
+  resolveCanonicalRoute,
+  routeIndexFromJson,
+  routeIndexToJson
 } from '../../shared/data/canonicalCardRoute.ts';
 import { normalizeSynonymDatabase, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 
@@ -324,4 +327,15 @@ test('a plain self-mapping on its own is not an ambiguity', () => {
     nonTerminal: [],
     ambiguous: []
   });
+});
+
+test('the published route table reads back as the index it was solved from', () => {
+  const fixture = new URL('../fixtures/e2e/assets/card-synonyms.json', import.meta.url);
+  const db = JSON.parse(readFileSync(fixture, 'utf8')) as SynonymDatabase;
+  const index = buildCanonicalRouteIndex(db);
+  assert.ok(index.size > 0);
+  const table = JSON.parse(JSON.stringify(routeIndexToJson(index)));
+  assert.deepEqual(routeIndexFromJson(table), index);
+  assert.equal(routeIndexFromJson(['TWM/130']), null);
+  assert.equal(routeIndexFromJson({ 'TWM::130': 'TWM' }), null);
 });
