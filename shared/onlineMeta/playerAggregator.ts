@@ -149,8 +149,14 @@ const SLIM_INDEX_KEY = 'players/index-slim.json';
  * path) so the file exists as soon as this code ships, not only after the next
  * real rebuild.
  */
+// The players page's default ranking (Day 2s, then events, then name; src/utils/playerSort.ts).
+// The page still sorts, but rows that already arrive in that order sort about ten times faster.
+const byName = new Intl.Collator(undefined, { sensitivity: 'base' });
+const byDefaultRank = (a: PlayerIndexEntry, b: PlayerIndexEntry): number =>
+  b.day2s - a.day2s || b.eventCount - a.eventCount || byName.compare(a.name, b.name);
+
 async function writeSlimIndex(env: unknown, index: PlayerIndexEntry[]): Promise<void> {
-  await putJson(env, SLIM_INDEX_KEY, encodeSlimIndex(index), {
+  await putJson(env, SLIM_INDEX_KEY, encodeSlimIndex([...index].sort(byDefaultRank)), {
     cacheControl: 'public, max-age=21600'
   });
 }
