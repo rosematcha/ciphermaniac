@@ -62,6 +62,13 @@ function tallyStatement(db: D1Like, report: DeckReport): D1Statement {
 export function createVoteStore(db: D1Like): VoteStore {
   return {
     async pending() {
+      // The partial dirty index answers this without a scan; the sweep usually finds nothing.
+      const anyDirty = await db
+        .prepare('SELECT 1 FROM live_report_outbox WHERE revision > published_revision LIMIT 1')
+        .first();
+      if (!anyDirty) {
+        return [];
+      }
       const { results } = await db
         .prepare(
           // Include clean seats so new seats cannot reset a repeatedly attempted event's priority.

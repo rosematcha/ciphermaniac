@@ -18,7 +18,7 @@ import { createR2Client, getJsonResult, readJson } from './lib/r2.mjs';
 import { loadEventSources, productionScopeRoot } from './lib/build/productionRelease.ts';
 import { loadFormatDecks, loadOnlineDecks } from './lib/build/onlineDecks.ts';
 import { mergeSynonymMaps } from './lib/synonymMerge.ts';
-import { synonymObjects } from './lib/synonymObjects.ts';
+import { objectsToWrite } from './lib/synonymObjects.ts';
 import { releaseFormatRoots } from './lib/build/formatReports.ts';
 import { newSetCodes, parseSetCardList } from './lib/setSeeds.ts';
 import { createThrottledFetch, prefetchAll } from './lib/throttledFetch.ts';
@@ -644,14 +644,6 @@ async function saveSynonyms(data) {
   log('  ✓ Saved successfully');
 }
 
-async function uploadToR2(data) {
-  log('\nUploading to R2...');
-  for (const [key, body] of synonymObjects(data)) {
-    await putObject(key, body);
-  }
-  log('  ✓ Uploaded successfully');
-}
-
 async function readReleaseReference(key) {
   return readJson(s3Client, R2_BUCKET_NAME, key);
 }
@@ -785,10 +777,10 @@ async function main() {
       canonicals: data?.canonicals ?? {},
       prints: data?.prints ?? {}
     });
-  if (semantic(synonymsData) !== semantic(previous)) {
-    await uploadToR2(synonymsData);
-  } else {
-    log('Semantic card data unchanged; keeping the published database');
+  const changed = semantic(synonymsData) !== semantic(previous);
+  log(changed ? '\nUploading to R2...' : 'Semantic card data unchanged; rewriting the parts beside the database');
+  for (const [key, body] of objectsToWrite(synonymsData, changed)) {
+    await putObject(key, body);
   }
 
   log(`\n${'='.repeat(60)}`);

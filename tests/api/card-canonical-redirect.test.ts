@@ -10,7 +10,8 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { onRequest } from '../../functions/cards/[set]/[number].ts';
+import { createCardRedirect, onRequest } from '../../functions/cards/[set]/[number].ts';
+import type { ReleaseManifest } from '../../shared/data/build/release.ts';
 import { never } from '../__utils__/deferred.ts';
 
 const SYNONYMS = {
@@ -27,6 +28,8 @@ const SYNONYMS = {
 };
 
 const NEXT_BODY = 'spa-shell';
+// Tests below that read the synonym database have no published route table.
+const ROUTES_KEY = 'assets/card-routes.json';
 
 function makeEnv(db: unknown | null) {
   return {
@@ -118,7 +121,10 @@ test('concurrent cold and warm card routes share one R2 fetch and parse', async 
   let parses = 0;
   const env = {
     REPORTS: {
-      get: async () => {
+      get: async (key: string) => {
+        if (key === ROUTES_KEY) {
+          return null;
+        }
         gets++;
         await new Promise<void>(resolve => {
           setImmediate(resolve);
@@ -167,7 +173,10 @@ test('TTL refresh replaces the route index and coalesces concurrent R2 reads', a
   let gets = 0;
   const env = {
     REPORTS: {
-      get: async () => {
+      get: async (key: string) => {
+        if (key === ROUTES_KEY) {
+          return null;
+        }
         gets++;
         const target = gets === 1 ? 'PRE::073' : 'ASC::160';
         return {
@@ -199,7 +208,10 @@ for (const failure of ['missing', 'json', 'network']) {
     let gets = 0;
     const env = {
       REPORTS: {
-        get: async () => {
+        get: async (key: string) => {
+          if (key === ROUTES_KEY) {
+            return null;
+          }
           gets++;
           if (gets > 1) {
             return { text: async () => JSON.stringify(SYNONYMS) };
@@ -233,6 +245,9 @@ test('a synonym read that never settles stops holding up later requests', async 
     REPORTS: {
       // The first read is a canceled request's I/O: it never settles.
       get: (key: string) => {
+        if (key === ROUTES_KEY) {
+          return Promise.resolve(null);
+        }
         reads += 1;
         return reads === 1
           ? never()
@@ -251,8 +266,123 @@ test('a synonym read that never settles stops holding up later requests', async 
     } as never);
   void call();
   const joiner = call();
+  // Let both requests reach their reads before the clock moves.
+  await new Promise(resolve => {
+    setImmediate(resolve);
+  });
   t.mock.timers.tick(5000);
   assert.equal((await joiner).status, 301);
   assert.equal((await call()).status, 301);
   assert.equal(reads, 2, 'the joiner read once for itself, and its result was cached');
+});
+
+test('a published route table answers without reading the synonym database', async () => {
+  const reads: string[] = [];
+  const table = { source: 'test', routes: { 'TWM::130': 'PRE/073', 'SUM::123': 'SVI/181' } };
+  const env = {
+    REPORTS: {
+      get: async (key: string) => {
+        reads.push(key);
+        return key === ROUTES_KEY ? { text: async () => JSON.stringify(table) } : null;
+      }
+    } as unknown as R2Bucket
+  };
+  const run = (set: string, number: string) =>
+    onRequest({
+      request: new Request(`https://ciphermaniac.com/cards/${set}/${number}`),
+      env,
+      params: { set, number },
+      next: async () => new Response(NEXT_BODY)
+    });
+  assert.equal((await run('TWM', '130')).headers.get('Location'), 'https://ciphermaniac.com/cards/PRE/073');
+  assert.equal((await run('SUM', '0123')).headers.get('Location'), 'https://ciphermaniac.com/cards/SVI/181');
+  assert.equal((await run('PRE', '073')).status, 200);
+  assert.deepEqual(reads, [ROUTES_KEY]);
+});
+
+test('a malformed route table falls back to the synonym database', async () => {
+  const env = {
+    REPORTS: {
+      get: async (key: string) => ({
+        text: async () =>
+          JSON.stringify(key === ROUTES_KEY ? { source: 'test', routes: { 'TWM::130': 'TWM/130' } } : SYNONYMS)
+      })
+    } as unknown as R2Bucket
+  };
+  const res = await onRequest({
+    request: new Request('https://ciphermaniac.com/cards/TWM/130'),
+    env,
+    params: { set: 'TWM', number: '130' },
+    next: async () => new Response(NEXT_BODY)
+  });
+  assert.equal(res.headers.get('Location'), 'https://ciphermaniac.com/cards/PRE/073');
+});
+
+test('the redirect reads the deployed release, not a newer table staged beside it', async () => {
+  const release = {
+    contractVersion: 1,
+    releaseId: 'deployed',
+    publishedAt: '',
+    roots: { assets: '/releases/v1/assets/aaaaaaaaaaaa' },
+    events: {},
+    dependencies: {}
+  } as unknown as ReleaseManifest;
+  const files: Record<string, unknown> = {
+    // Staged for the next release, which makes PRE/073 the variant.
+    'assets/card-routes.json': { source: 'next', routes: { 'PRE::73': 'TWM/130' } },
+    // What the deployed SPA resolves with: TWM/130 is the variant.
+    'releases/v1/assets/aaaaaaaaaaaa/card-synonyms.json': SYNONYMS
+  };
+  const redirect = createCardRedirect(release);
+  const reads: string[] = [];
+  const env = {
+    REPORTS: {
+      get: async (key: string) => {
+        reads.push(key);
+        return key in files ? { text: async () => JSON.stringify(files[key]) } : null;
+      }
+    } as unknown as R2Bucket
+  };
+  const run = (set: string, number: string) =>
+    redirect({
+      request: new Request(`https://ciphermaniac.com/cards/${set}/${number}`),
+      env,
+      params: { set, number },
+      next: async () => new Response(NEXT_BODY)
+    });
+  assert.equal((await run('PRE', '073')).status, 200);
+  assert.equal((await run('TWM', '130')).headers.get('Location'), 'https://ciphermaniac.com/cards/PRE/073');
+  assert.ok(
+    reads.every(key => key.startsWith('releases/v1/assets/aaaaaaaaaaaa/')),
+    reads.join(', ')
+  );
+});
+
+test('a route table read that fails is retried on the next request, not pinned for the hour', async () => {
+  let routeReads = 0;
+  const table = { source: 'x', routes: { 'TWM::130': 'PRE/073' } };
+  const env = {
+    REPORTS: {
+      get: async (key: string) => {
+        if (key === ROUTES_KEY) {
+          routeReads += 1;
+          if (routeReads === 1) {
+            throw new Error('R2 unavailable');
+          }
+          return { text: async () => JSON.stringify(table) };
+        }
+        return { text: async () => JSON.stringify(SYNONYMS) };
+      }
+    } as unknown as R2Bucket
+  };
+  const run = () =>
+    onRequest({
+      request: new Request('https://ciphermaniac.com/cards/TWM/130'),
+      env,
+      params: { set: 'TWM', number: '130' },
+      next: async () => new Response(NEXT_BODY)
+    });
+  await run();
+  await run();
+  assert.equal(routeReads, 2);
 });

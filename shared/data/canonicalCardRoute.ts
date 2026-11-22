@@ -40,6 +40,7 @@
  */
 
 import { cardNumberIndexKey, parseCardUid, type SynonymDatabase } from './cardIdentity';
+import { isRecord } from './validate';
 
 /**
  * A resolved canonical card route.
@@ -122,9 +123,12 @@ function collectRouteEdges(db: Pick<SynonymDatabase, 'synonyms'> | null | undefi
       canonicalUid
     });
   }
-  // Deterministic order: the index and the violation report must not depend on
-  // `Object.entries` insertion order of a JSON parse.
-  edges.sort((a, b) =>
+  return edges;
+}
+
+/** The edges in a fixed order, so the violation report does not depend on a JSON parse's key order. */
+function sortedEdges(edges: RouteEdge[]): RouteEdge[] {
+  return edges.sort((a, b) =>
     a.from === b.from
       ? a.to === b.to
         ? a.variantUid < b.variantUid
@@ -139,7 +143,6 @@ function collectRouteEdges(db: Pick<SynonymDatabase, 'synonyms'> | null | undefi
         ? -1
         : 1
   );
-  return edges;
 }
 
 /**
@@ -147,9 +150,12 @@ function collectRouteEdges(db: Pick<SynonymDatabase, 'synonyms'> | null | undefi
  *
  * When several synonym entries project onto the same variant key with different
  * canonical routes (an {@link CanonicalRouteViolations.ambiguous} defect), the
- * lexicographically smallest canonical key wins. Any deterministic rule works;
- * what matters is that the edge function and the SPA pick the SAME one, or one
- * 301s to a target the other immediately wants to leave.
+ * lexicographically smallest canonical key wins, and among edges to that key the
+ * smallest variant UID (whose canonical UID fixes the URL's spelling). Any
+ * deterministic rule works; what matters is that the edge function and the SPA
+ * pick the SAME one, or one 301s to a target the other immediately wants to leave.
+ * The minimum does not depend on the edges' order, so no sort is needed
+ * (proofs/RouteReduce.lean).
  */
 function reduceToSingleEdges(edges: RouteEdge[]): Map<string, RouteEdge> {
   const chosen = new Map<string, RouteEdge>();
@@ -160,7 +166,7 @@ function reduceToSingleEdges(edges: RouteEdge[]): Map<string, RouteEdge> {
       continue;
     }
     const existing = chosen.get(edge.from);
-    if (!existing || edge.to < existing.to) {
+    if (!existing || edge.to < existing.to || (edge.to === existing.to && edge.variantUid < existing.variantUid)) {
       chosen.set(edge.from, edge);
     }
   }
@@ -229,6 +235,41 @@ export function buildCanonicalRouteIndex(
     index.set(from, { key: edge.to, set: edge.toSet, number: edge.toNumber });
   }
   return index;
+}
+
+/**
+ * The index as published in `assets/card-routes.json`: variant key → canonical `SET/NUMBER` path,
+ * so the edge redirect reads a small lookup table instead of solving the route graph per isolate.
+ * @param index - Index from {@link buildCanonicalRouteIndex}
+ * @returns A plain object, sorted by key
+ */
+export function routeIndexToJson(index: CanonicalRouteIndex): Record<string, string> {
+  return Object.fromEntries(
+    [...index].sort(([a], [b]) => (a < b ? -1 : 1)).map(([from, route]) => [from, `${route.set}/${route.number}`])
+  );
+}
+
+/**
+ * Read a published route table (`{ source, routes }`) back into an index; `null` when it is not
+ * one, or when it breaks the guarantees {@link buildCanonicalRouteIndex} gives: no self-route, and
+ * every target terminal, so no 301 lands on a URL that redirects again.
+ * @param value - Parsed `assets/card-routes.json`
+ * @returns The index {@link buildCanonicalRouteIndex} produced, or `null`
+ */
+export function routeIndexFromJson(value: unknown): CanonicalRouteIndex | null {
+  if (!isRecord(value) || !isRecord(value.routes)) {
+    return null;
+  }
+  const index = new Map<string, CanonicalCardRoute>();
+  for (const [from, path] of Object.entries(value.routes)) {
+    const [set, number, extra] = typeof path === 'string' ? path.split('/') : [];
+    const key = cardRouteKey(set, number);
+    if (!key || extra !== undefined || key === from) {
+      return null;
+    }
+    index.set(from, { key, set, number });
+  }
+  return [...index.values()].some(route => index.has(route.key)) ? null : index;
 }
 
 /**
@@ -307,7 +348,7 @@ export interface CanonicalRouteViolations {
 export function findCanonicalRouteViolations(
   db: Pick<SynonymDatabase, 'synonyms'> | null | undefined
 ): CanonicalRouteViolations {
-  const allEdges = collectRouteEdges(db);
+  const allEdges = sortedEdges(collectRouteEdges(db));
 
   // A self-edge (`from === to`) is a real claim: "this route IS its own
   // canonical". Skipping it here — as an earlier version did — hid the case

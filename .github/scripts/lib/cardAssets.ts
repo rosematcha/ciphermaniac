@@ -118,7 +118,14 @@ async function synonyms(store: Store): Promise<void> {
       '.github/scripts/lib/build/onlineDecks.ts',
       '.github/scripts/lib/build/formatReports.ts',
       '.github/scripts/lib/setSeeds.ts',
-      '.github/scripts/data/set-catalog.json'
+      '.github/scripts/data/set-catalog.json',
+      // The published route table is solved here, so a solver change must re-run the stage.
+      '.github/scripts/lib/synonymObjects.ts',
+      '.github/scripts/lib/throttledFetch.ts',
+      'shared/data/canonicalCardRoute.ts',
+      'shared/data/cardIdentity.ts',
+      'shared/data/cardIdentity/identifiers.ts',
+      'shared/data/cardIdentity/synonyms.ts'
     ]),
     force: boolEnv('FORCE_REFRESH'),
     run: async () => {

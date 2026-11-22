@@ -27,6 +27,7 @@ import { createR2Client, getJsonResult, putJson, runR2Batch, withR2Retry } from 
 import { listR2Objects } from './lib/r2Inventory.mjs';
 import { decimalBoundaries, listR2ObjectsInRanges } from './lib/build/rangedListing';
 import { loadEventSources } from './lib/build/productionRelease.ts';
+import { routeTableSource } from './lib/synonymObjects';
 import { capturePlayers, currentPlayerObjects, type PlayerInventory } from './lib/build/playerCapture';
 import type { PlayerAggregateManifest } from '../../shared/playerTypes';
 import { assertProducerComplete, inputFingerprint, type ProducerState } from './lib/build/provenance';
@@ -375,6 +376,29 @@ function assertRequiredArtifacts(captures: Array<{ scope: ReleaseScope; objects:
   }
 }
 
+/**
+ * Keep the card route table only beside the synonym database it was solved from. A table left in
+ * staging by a newer producer, or written by a run that died before the database, would have the
+ * edge redirect by a graph the SPA does not use; without one, the edge solves from the database.
+ */
+export async function dropStaleRouteTable(
+  captures: Array<{ scope: ReleaseScope; objects: ScopeObject[] }>,
+  load: <T>(key: string) => Promise<T | null>
+): Promise<void> {
+  const assets = captures.find(capture => capture.scope === 'assets');
+  if (!assets?.objects.some(object => object.relativeKey === 'card-routes.json')) {
+    return;
+  }
+  const [table, database] = await Promise.all([
+    load<{ source?: unknown }>('assets/card-routes.json'),
+    load<{ synonyms?: Record<string, string> }>('assets/card-synonyms.json')
+  ]);
+  if (table?.source !== routeTableSource(database?.synonyms ?? {})) {
+    console.log('[build-loop] card-routes.json does not match card-synonyms.json; leaving it out of the release');
+    assets.objects = assets.objects.filter(object => object.relativeKey !== 'card-routes.json');
+  }
+}
+
 async function selectCurrentPlayerScope(
   captures: Array<{ scope: ReleaseScope; objects: ScopeObject[] }>,
   load: <T>(key: string) => Promise<T | null>
@@ -508,7 +532,7 @@ async function main(): Promise<void> {
 
   // ---- Complete captured scopes ----
   const captures = await discoverCapturedScopes(client, bucket);
-  await selectCurrentPlayerScope(captures, load);
+  await Promise.all([selectCurrentPlayerScope(captures, load), dropStaleRouteTable(captures, load)]);
   assertRequiredArtifacts(captures);
   for (const capture of captures) {
     const before = written.length;

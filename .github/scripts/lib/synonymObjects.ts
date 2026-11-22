@@ -4,6 +4,17 @@
  */
 
 import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
+import { buildCanonicalRouteIndex, routeIndexToJson } from '../../../shared/data/canonicalCardRoute';
+import { canonicalStringify } from '../../../shared/data/canonicalJson';
+import { sha256HexString } from '../../../shared/data/hash';
+
+/**
+ * Which synonym map a route table was solved from. Release capture keeps a table only beside the
+ * database it names, so the edge and the SPA can never answer from two different graphs.
+ */
+export function routeTableSource(synonyms: SynonymDatabase['synonyms']): string {
+  return sha256HexString(canonicalStringify(synonyms)).slice(0, 16);
+}
 
 /**
  * The browser's synonyms in printing release order (the `prints` map's key
@@ -35,7 +46,29 @@ function slimDatabase(data: SynonymDatabase): Pick<SynonymDatabase, 'synonyms' |
 export function synonymObjects(data: SynonymDatabase): Array<[key: string, body: unknown]> {
   return [
     ['assets/card-synonyms-slim.json', JSON.stringify(slimDatabase(data))],
+    // The edge redirect's lookup table, solved here once rather than in every cold isolate.
+    [
+      'assets/card-routes.json',
+      JSON.stringify({
+        source: routeTableSource(data.synonyms),
+        routes: routeIndexToJson(buildCanonicalRouteIndex(data))
+      })
+    ],
     ['assets/card-prints.json', JSON.stringify({ prints: data.prints })],
     ['assets/card-synonyms.json', data]
   ];
+}
+
+/**
+ * What a run writes: every object when the card data changed. Otherwise everything but the whole
+ * database, which the next run compares against: the browser's parts and the route table are cheap,
+ * and rewriting them is how a run that failed partway through, then found the data unchanged on its
+ * retry, brings them back in step with the database it keeps.
+ * @param data - The database this run publishes
+ * @param changed - Whether its synonyms, canonicals or prints differ from the published ones
+ * @returns `[key, body]` pairs, in write order
+ */
+export function objectsToWrite(data: SynonymDatabase, changed: boolean): Array<[key: string, body: unknown]> {
+  const objects = synonymObjects(data);
+  return changed ? objects : objects.filter(([key]) => key !== 'assets/card-synonyms.json');
 }

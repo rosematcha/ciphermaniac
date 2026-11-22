@@ -8,7 +8,13 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 
 import type { S3Client } from '@aws-sdk/client-s3';
-import { assertNoEventRegression, captureScope, validateEventSources } from '../../.github/scripts/build-loop.ts';
+import {
+  assertNoEventRegression,
+  captureScope,
+  dropStaleRouteTable,
+  validateEventSources
+} from '../../.github/scripts/build-loop.ts';
+import { routeTableSource } from '../../.github/scripts/lib/synonymObjects.ts';
 import { loadEventSources } from '../../.github/scripts/lib/build/productionRelease.ts';
 
 test('release builds read immutable production events with pending overrides', async () => {
@@ -99,6 +105,37 @@ test('a generation production already serves is checked by its marker and body p
   const missingMarker = async <T>(): Promise<T | null> => null;
   present.add(`${root.slice(1)}/decks.json`);
   await assert.rejects(validateEventSources({ [folder]: root }, missingMarker, served), /incomplete/);
+});
+
+test('a route table solved from another synonym map is left out of the release', async () => {
+  const synonyms = { 'Iono::PAL::269': 'Iono::PAL::185' };
+  const captures = () => [
+    {
+      scope: 'assets' as const,
+      objects: ['card-routes.json', 'card-synonyms.json'].map(relativeKey => ({
+        sourceKey: `assets/${relativeKey}`,
+        relativeKey,
+        etag: 'e',
+        size: 1
+      }))
+    }
+  ];
+  for (const [source, kept] of [
+    [routeTableSource(synonyms), true],
+    [routeTableSource({}), false],
+    [undefined, false]
+  ] as const) {
+    const bodies: Record<string, unknown> = {
+      'assets/card-routes.json': { source, routes: {} },
+      'assets/card-synonyms.json': { synonyms }
+    };
+    const scopes = captures();
+    await dropStaleRouteTable(scopes, async <T>(key: string) => (bodies[key] as T) ?? null);
+    assert.equal(
+      scopes[0].objects.some(object => object.relativeKey === 'card-routes.json'),
+      kept
+    );
+  }
 });
 
 test('a scope copy that fails for good starts no further copies and writes no marker', async () => {

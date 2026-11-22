@@ -14,13 +14,16 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import {
   assertCanonicalRoutesSound,
   buildCanonicalRouteIndex,
   canonicalRouteKey,
   cardRouteKey,
   findCanonicalRouteViolations,
-  resolveCanonicalRoute
+  resolveCanonicalRoute,
+  routeIndexFromJson,
+  routeIndexToJson
 } from '../../shared/data/canonicalCardRoute.ts';
 import { normalizeSynonymDatabase, type SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 
@@ -324,4 +327,46 @@ test('a plain self-mapping on its own is not an ambiguity', () => {
     nonTerminal: [],
     ambiguous: []
   });
+});
+
+test('the published route table reads back as the index it was solved from', () => {
+  const fixture = new URL('../fixtures/e2e/assets/card-synonyms.json', import.meta.url);
+  const db = JSON.parse(readFileSync(fixture, 'utf8')) as SynonymDatabase;
+  const index = buildCanonicalRouteIndex(db);
+  assert.ok(index.size > 0);
+  const table = JSON.parse(JSON.stringify({ source: 'x', routes: routeIndexToJson(index) }));
+  assert.deepEqual(routeIndexFromJson(table), index);
+  assert.equal(routeIndexFromJson(['TWM/130']), null);
+  assert.equal(routeIndexFromJson({ routes: { 'TWM::130': 'TWM' } }), null);
+  // A cycle, or a target that redirects again, is never served.
+  assert.equal(routeIndexFromJson({ routes: { 'TWM::130': 'PRE/073', 'PRE::73': 'TWM/130' } }), null);
+  assert.equal(routeIndexFromJson({ routes: { 'A::1': 'B/1', 'B::1': 'C/1' } }), null);
+});
+
+test('the route index does not depend on the order synonym entries arrive in', () => {
+  const fixture = new URL('../fixtures/e2e/assets/card-synonyms.json', import.meta.url);
+  const db = JSON.parse(readFileSync(fixture, 'utf8')) as SynonymDatabase;
+  const ambiguous = {
+    ...db.synonyms,
+    // Two names on one variant key, pointing at one canonical key spelled two ways.
+    'Alpha::ZZZ::001': 'Alpha::YYY::061',
+    'Beta::ZZZ::1': 'Beta::YYY::61',
+    'Gamma::ZZZ::1': 'Gamma::XXX::5'
+  };
+  const entries = Object.entries(ambiguous);
+  const expected = routeIndexToJson(buildCanonicalRouteIndex({ synonyms: ambiguous }));
+  assert.equal(expected['ZZZ::1'], 'XXX/5');
+  for (let seed = 1; seed <= 5; seed += 1) {
+    const shuffled = entries
+      .map((entry, index) => ({ entry, key: (index * 7919 * seed) % 104729 }))
+      .sort((a, b) => a.key - b.key)
+      .map(({ entry }) => entry);
+    assert.deepEqual(routeIndexToJson(buildCanonicalRouteIndex({ synonyms: Object.fromEntries(shuffled) })), expected);
+    assert.deepEqual(
+      routeIndexToJson(buildCanonicalRouteIndex({ synonyms: Object.fromEntries(shuffled.reverse()) })),
+      expected
+    );
+  }
+  const tie = { 'Beta::ZZZ::1': 'Beta::YYY::61', 'Alpha::ZZZ::001': 'Alpha::YYY::061' };
+  assert.equal(routeIndexToJson(buildCanonicalRouteIndex({ synonyms: tie }))['ZZZ::1'], 'YYY/061');
 });

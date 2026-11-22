@@ -1,10 +1,22 @@
 name: Proofs
 on:
   pull_request:
-    paths: ['proofs/**', '.github/scripts/lib/build/rangedListing.ts', '.github/workflows/proofs.yml']
+    paths:
+      [
+        'proofs/**',
+        '.github/scripts/lib/build/rangedListing.ts',
+        'shared/data/canonicalCardRoute.ts',
+        '.github/workflows/proofs.yml'
+      ]
   push:
     branches: [main]
-    paths: ['proofs/**', '.github/scripts/lib/build/rangedListing.ts', '.github/workflows/proofs.yml']
+    paths:
+      [
+        'proofs/**',
+        '.github/scripts/lib/build/rangedListing.ts',
+        'shared/data/canonicalCardRoute.ts',
+        '.github/workflows/proofs.yml'
+      ]
   workflow_dispatch:
 permissions:
   contents: read

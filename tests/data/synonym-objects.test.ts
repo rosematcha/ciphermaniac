@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { synonymObjects } from '../../.github/scripts/lib/synonymObjects.ts';
+import { objectsToWrite, routeTableSource, synonymObjects } from '../../.github/scripts/lib/synonymObjects.ts';
 import { buildPrintingRows, withPrintOrder } from '../../src/utils/printings.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 
@@ -14,15 +14,24 @@ test('the browser parts are written before the whole database the next run compa
   const objects = synonymObjects(data);
   assert.deepEqual(
     objects.map(([key]) => key),
-    ['assets/card-synonyms-slim.json', 'assets/card-prints.json', 'assets/card-synonyms.json']
+    [
+      'assets/card-synonyms-slim.json',
+      'assets/card-routes.json',
+      'assets/card-prints.json',
+      'assets/card-synonyms.json'
+    ]
   );
+  assert.deepEqual(JSON.parse(objects[1][1] as string), {
+    source: routeTableSource(data.synonyms),
+    routes: { 'PAL::269': 'PAL/185' }
+  });
   assert.deepEqual(JSON.parse(objects[0][1] as string), {
     synonyms: data.synonyms,
     canonicals: data.canonicals,
     canonicalAt: { 'Iono::PAL::185': 1 }
   });
-  assert.deepEqual(JSON.parse(objects[1][1] as string), { prints: data.prints });
-  assert.equal(objects[2][1], data);
+  assert.deepEqual(JSON.parse(objects[2][1] as string), { prints: data.prints });
+  assert.equal(objects[3][1], data);
 });
 
 test('the slim database orders every strip as the full one does, before and after its prices load', () => {
@@ -39,4 +48,20 @@ test('the slim database orders every strip as the full one does, before and afte
     assert.deepEqual(order(withPrintOrder(slim, undefined), uid), expected, `${uid} before prices`);
     assert.deepEqual(order(withPrintOrder(slim, prints), uid), expected, `${uid} after prices`);
   }
+});
+
+test('a run with unchanged card data rewrites every part but the database it compares against', () => {
+  const data = {
+    synonyms: { 'Iono::PAL::269': 'Iono::PAL::185' },
+    canonicals: { Iono: 'Iono::PAL::185' },
+    prints: { 'Iono::PAL::269': 12, 'Iono::PAL::185': 0.25 }
+  };
+  assert.deepEqual(
+    objectsToWrite(data, false).map(([key]) => key),
+    ['assets/card-synonyms-slim.json', 'assets/card-routes.json', 'assets/card-prints.json']
+  );
+  assert.deepEqual(
+    objectsToWrite(data, true).map(([key]) => key),
+    synonymObjects(data).map(([key]) => key)
+  );
 });

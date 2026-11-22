@@ -31,12 +31,14 @@ interface WorkerEnv {
 const SYNONYM_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 // Fetching and parsing the whole DB from R2 can outlast a D1 read, so joiners wait longer.
 const SYNONYM_JOIN_MS = 5000;
-const dbCache = new WeakMap<R2Bucket, { db: SynonymDatabase; expiresAt: number }>();
+const dbCache = new WeakMap<R2Bucket, Map<string, { db: SynonymDatabase; expiresAt: number }>>();
 const readSynonyms = coalescedRead<SynonymDatabase>(SYNONYM_JOIN_MS);
 
-async function fetchCardSynonyms(bucket: R2Bucket): Promise<SynonymDatabase> {
+const STAGED_KEY = 'assets/card-synonyms.json';
+
+async function fetchCardSynonyms(bucket: R2Bucket, key: string): Promise<SynonymDatabase> {
   try {
-    const object = await bucket.get('assets/card-synonyms.json');
+    const object = await bucket.get(key);
     if (!object) {
       console.warn('Card synonyms database not found');
       return EMPTY_DATABASE;
@@ -48,19 +50,25 @@ async function fetchCardSynonyms(bucket: R2Bucket): Promise<SynonymDatabase> {
   }
 }
 
-/** Only a parsed DB is pinned; a fetch in flight is shared through `coalescedRead`, never cached. */
-export async function loadCardSynonyms(env: WorkerEnv): Promise<SynonymDatabase> {
+/**
+ * Only a parsed DB is pinned; a fetch in flight is shared through `coalescedRead`, never cached.
+ * @param env - Worker bindings
+ * @param key - The database's key: the staged copy by default, or a release's copy
+ */
+export async function loadCardSynonyms(env: WorkerEnv, key = STAGED_KEY): Promise<SynonymDatabase> {
   const bucket = env.REPORTS;
   if (!bucket) {
     return EMPTY_DATABASE;
   }
-  const cached = dbCache.get(bucket);
+  const pinned = dbCache.get(bucket) ?? new Map<string, { db: SynonymDatabase; expiresAt: number }>();
+  dbCache.set(bucket, pinned);
+  const cached = pinned.get(key);
   if (cached && Date.now() < cached.expiresAt) {
     return cached.db;
   }
-  const db = await readSynonyms(bucket, 'synonyms', () => fetchCardSynonyms(bucket));
+  const db = await readSynonyms(bucket, key, () => fetchCardSynonyms(bucket, key));
   if (db !== EMPTY_DATABASE) {
-    dbCache.set(bucket, { db, expiresAt: Date.now() + SYNONYM_CACHE_TTL_MS });
+    pinned.set(key, { db, expiresAt: Date.now() + SYNONYM_CACHE_TTL_MS });
   }
   return db;
 }
