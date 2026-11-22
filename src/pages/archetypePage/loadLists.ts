@@ -66,8 +66,10 @@ export async function fetchArchetypeLists(tournament: string, names: readonly st
     if (!payload) {
       return [];
     }
-    return decodeListIndex(payload, db)
-      .filter(record => wanted.has(normalizeArchetypeName(record.archetype)))
-      .map(record => ({ key: `${i}:${record.id}`, record, venue: source.venue }));
+    return decodeListIndex(payload, db, label => wanted.has(normalizeArchetypeName(label))).map(record => ({
+      key: `${i}:${record.id}`,
+      record,
+      venue: source.venue
+    }));
   });
 }
