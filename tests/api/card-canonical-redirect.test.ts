@@ -278,7 +278,7 @@ test('a synonym read that never settles stops holding up later requests', async 
 
 test('a published route table answers without reading the synonym database', async () => {
   const reads: string[] = [];
-  const table = { 'TWM::130': 'PRE/073', 'SUM::123': 'SVI/181' };
+  const table = { source: 'test', routes: { 'TWM::130': 'PRE/073', 'SUM::123': 'SVI/181' } };
   const env = {
     REPORTS: {
       get: async (key: string) => {
@@ -304,7 +304,8 @@ test('a malformed route table falls back to the synonym database', async () => {
   const env = {
     REPORTS: {
       get: async (key: string) => ({
-        text: async () => JSON.stringify(key === ROUTES_KEY ? { 'TWM::130': 'TWM/130' } : SYNONYMS)
+        text: async () =>
+          JSON.stringify(key === ROUTES_KEY ? { source: 'test', routes: { 'TWM::130': 'TWM/130' } } : SYNONYMS)
       })
     } as unknown as R2Bucket
   };
@@ -328,7 +329,7 @@ test('the redirect reads the deployed release, not a newer table staged beside i
   } as unknown as ReleaseManifest;
   const files: Record<string, unknown> = {
     // Staged for the next release, which makes PRE/073 the variant.
-    'assets/card-routes.json': { 'PRE::73': 'TWM/130' },
+    'assets/card-routes.json': { source: 'next', routes: { 'PRE::73': 'TWM/130' } },
     // What the deployed SPA resolves with: TWM/130 is the variant.
     'releases/v1/assets/aaaaaaaaaaaa/card-synonyms.json': SYNONYMS
   };

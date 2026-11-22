@@ -924,3 +924,29 @@ class RepairMarkerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RunConcurrentlyTest(unittest.TestCase):
+    def test_a_failure_cancels_the_work_not_yet_started(self):
+        import threading
+        started = []
+        lock = threading.Lock()
+        release = threading.Event()
+
+        def work(item):
+            with lock:
+                started.append(item)
+            if item == 0:
+                raise RuntimeError('PUT refused')
+            release.wait(1)
+            return item
+
+        with self.assertRaises(RuntimeError):
+            try:
+                update_prices.run_concurrently(list(range(100)), work)
+            finally:
+                release.set()
+        self.assertLessEqual(len(started), update_prices.R2_WORKERS + 1)
+
+    def test_results_keep_item_order(self):
+        self.assertEqual(update_prices.run_concurrently([3, 1, 2], lambda item: item * 2), [6, 2, 4])

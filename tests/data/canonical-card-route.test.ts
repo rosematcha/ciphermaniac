@@ -334,10 +334,13 @@ test('the published route table reads back as the index it was solved from', () 
   const db = JSON.parse(readFileSync(fixture, 'utf8')) as SynonymDatabase;
   const index = buildCanonicalRouteIndex(db);
   assert.ok(index.size > 0);
-  const table = JSON.parse(JSON.stringify(routeIndexToJson(index)));
+  const table = JSON.parse(JSON.stringify({ source: 'x', routes: routeIndexToJson(index) }));
   assert.deepEqual(routeIndexFromJson(table), index);
   assert.equal(routeIndexFromJson(['TWM/130']), null);
-  assert.equal(routeIndexFromJson({ 'TWM::130': 'TWM' }), null);
+  assert.equal(routeIndexFromJson({ routes: { 'TWM::130': 'TWM' } }), null);
+  // A cycle, or a target that redirects again, is never served.
+  assert.equal(routeIndexFromJson({ routes: { 'TWM::130': 'PRE/073', 'PRE::73': 'TWM/130' } }), null);
+  assert.equal(routeIndexFromJson({ routes: { 'A::1': 'B/1', 'B::1': 'C/1' } }), null);
 });
 
 test('the route index does not depend on the order synonym entries arrive in', () => {

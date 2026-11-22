@@ -155,26 +155,43 @@ async function parsesAsJson(response) {
 }
 
 // Release bodies sit under content-addressed keys and never change, so a refresh could only
-// rewrite the same bytes: serve them from cache without going back to the network. Because a
-// cached body is never checked again, one is admitted only once it parses: a truncated or garbled
-// 200 is served this once and refetched next time.
+// rewrite the same bytes: serve them from cache without going back to the network. A body is
+// stored only once it parses, and with the time it was stored; after a day it is served once more
+// while a refetch replaces it, so a wrong body from a bad moment at the origin cannot stick.
+const RELEASE_FRESH_MS = 24 * 60 * 60 * 1000;
+const STORED_AT = 'x-cm-stored-at';
+
+function storedRecently(cached) {
+  const at = Number(cached.headers.get(STORED_AT));
+  return Number.isFinite(at) && Date.now() - at < RELEASE_FRESH_MS;
+}
+
+async function admitRelease(cache, request, response) {
+  if (!(await parsesAsJson(response))) {
+    return;
+  }
+  const headers = new Headers(response.headers);
+  headers.set(STORED_AT, String(Date.now()));
+  const stored = new Response(response.body, { status: response.status, headers });
+  await writeCache(cache, request, stored, RELEASE_CACHE);
+}
+
 async function releaseCacheFirst(request, keepAlive) {
   const cache = await caches.open(RELEASE_CACHE);
   const cached = await cache.match(request);
+  if (cached && storedRecently(cached)) {
+    return cached;
+  }
+  const refresh = fetch(request).catch(() => null);
+  keepAlive(
+    refresh.then(response =>
+      response && cacheable(response) ? admitRelease(cache, request, response.clone()) : undefined
+    )
+  );
   if (cached) {
     return cached;
   }
-  let response;
-  try {
-    response = await fetch(request);
-  } catch {
-    return Response.error();
-  }
-  if (cacheable(response)) {
-    const copy = response.clone();
-    keepAlive(parsesAsJson(copy).then(ok => (ok ? writeCache(cache, request, copy, RELEASE_CACHE) : undefined)));
-  }
-  return response;
+  return (await refresh) ?? Response.error();
 }
 
 async function navigationNetworkFirst(request, keepAlive) {

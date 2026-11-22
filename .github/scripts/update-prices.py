@@ -407,10 +407,25 @@ def meta_price_uids(master_report, synonyms_data):
 R2_WORKERS = 8
 
 
+def run_concurrently(items, work):
+    """Run ``work`` over ``items`` side by side; results keep the order of ``items``.
+
+    The first failure cancels the work not yet started and is raised once the work in flight
+    has finished, so a failed run stops writing instead of finishing every queued upload.
+    """
+    with ThreadPoolExecutor(R2_WORKERS) as pool:
+        futures = [pool.submit(work, item) for item in items]
+        try:
+            return [future.result() for future in futures]
+        except BaseException:
+            for future in futures:
+                future.cancel()
+            raise
+
+
 def read_json_concurrently(r2_client, bucket_name, keys):
     """Read many R2 objects side by side; results keep the order of ``keys``."""
-    with ThreadPoolExecutor(R2_WORKERS) as pool:
-        return list(pool.map(lambda key: r2.read_json(r2_client, bucket_name, key), keys))
+    return run_concurrently(keys, lambda key: r2.read_json(r2_client, bucket_name, key))
 
 
 def load_all_event_cards(r2_client, bucket_name, release):
@@ -1301,8 +1316,7 @@ def upload_history_shards_to_r2(r2_client, bucket_name, history):
         )
 
     # Release capture snapshots the whole prefix afterwards, so write order is not observable.
-    with ThreadPoolExecutor(R2_WORKERS) as pool:
-        list(pool.map(upload, shards.items()))
+    run_concurrently(list(shards.items()), upload)
     print(f"  ✓ Shard upload complete ({sum(len(s) for s in shards.values())} cards)")
 
 

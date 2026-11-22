@@ -250,16 +250,18 @@ export function routeIndexToJson(index: CanonicalRouteIndex): Record<string, str
 }
 
 /**
- * Read a published route table back into an index; `null` when the value is not one.
+ * Read a published route table (`{ source, routes }`) back into an index; `null` when it is not
+ * one, or when it breaks the guarantees {@link buildCanonicalRouteIndex} gives: no self-route, and
+ * every target terminal, so no 301 lands on a URL that redirects again.
  * @param value - Parsed `assets/card-routes.json`
  * @returns The index {@link buildCanonicalRouteIndex} produced, or `null`
  */
 export function routeIndexFromJson(value: unknown): CanonicalRouteIndex | null {
-  if (!isRecord(value)) {
+  if (!isRecord(value) || !isRecord(value.routes)) {
     return null;
   }
   const index = new Map<string, CanonicalCardRoute>();
-  for (const [from, path] of Object.entries(value)) {
+  for (const [from, path] of Object.entries(value.routes)) {
     const [set, number, extra] = typeof path === 'string' ? path.split('/') : [];
     const key = cardRouteKey(set, number);
     if (!key || extra !== undefined || key === from) {
@@ -267,7 +269,7 @@ export function routeIndexFromJson(value: unknown): CanonicalRouteIndex | null {
     }
     index.set(from, { key, set, number });
   }
-  return index;
+  return [...index.values()].some(route => index.has(route.key)) ? null : index;
 }
 
 /**

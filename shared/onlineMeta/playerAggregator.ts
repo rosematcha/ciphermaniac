@@ -1068,6 +1068,11 @@ interface AggregateOptions {
   forceFullRebuild?: boolean;
   fingerprintOf?: FingerprintOf;
   builderRevision?: string;
+  /**
+   * Refuse to write anything when an event fails to load. The release producer needs every
+   * selected event and fails such a run anyway; stopping first keeps the staged players intact.
+   */
+  requireEveryEvent?: boolean;
 }
 
 function affectedPlayers(
@@ -1155,7 +1160,7 @@ function preserveUnchanged(
 async function publishPlayerPlan(
   env: unknown,
   plan: WritePlan,
-  previous: PlayerAggregateManifestV2 | null,
+  previous: Pick<PlayerAggregateManifestV2, 'players'> | null,
   options: { manifest: PlayerAggregateManifestV2; concurrency: number }
 ): Promise<void> {
   const { manifest, concurrency } = options;
@@ -1202,18 +1207,31 @@ function foldSlices(
   return { accs, fingerprints, scanned };
 }
 
+function assertEveryEventLoaded(slices: (TournamentSlice | null)[], options: AggregateOptions): void {
+  const missing = slices.filter(slice => slice === null).length;
+  if (options.requireEveryEvent && missing > 0) {
+    throw new Error(`${missing} selected event(s) could not be read; refusing to rewrite player data`);
+  }
+}
+
 /**
- * The manifest whose players this run may delete when they drop out. A forced rebuild ignores the
- * stored manifest for reuse, but its players still name the objects to delete; without it they were
- * left behind for good. Only a run that read every event it loaded for may say who dropped out: a
- * player whose one event failed to load is missing from this run, not gone.
+ * The stored players this run may delete when they drop out. A forced rebuild ignores the stored
+ * manifest for reuse, but its players still name the objects to delete; without it they were left
+ * behind for good. A player with an event still in the catalogue that this run could not read is
+ * missing from the run, not gone, so those players are kept off the list.
  */
 function orphanBase(
   stored: PlayerAggregateManifestV2 | null,
-  scanned: number,
-  loaded: number
-): PlayerAggregateManifestV2 | null {
-  return scanned === loaded ? stored : null;
+  keys: readonly string[],
+  slices: (TournamentSlice | null)[]
+): Pick<PlayerAggregateManifestV2, 'players'> | null {
+  if (!stored) {
+    return null;
+  }
+  const read = new Set(slices.flatMap(slice => (slice ? [slice.key] : [])));
+  const unread = new Set(keys.filter(key => !read.has(key)));
+  const keep = (events: readonly string[]) => !events.some(key => unread.has(key));
+  return { players: Object.fromEntries(Object.entries(stored.players).filter(([, events]) => keep(events))) };
 }
 
 async function rebuildPlayers(
@@ -1223,6 +1241,7 @@ async function rebuildPlayers(
   options: AggregateOptions & { stored: PlayerAggregateManifestV2 | null }
 ): Promise<BuildPlayerAggregatesResult> {
   const { slices, affected } = await loadBuildSlices(env, keys, previous, options);
+  assertEveryEventLoaded(slices, options);
   const { accs, fingerprints, scanned } = foldSlices(slices, keys, affected ? previous : null, affected);
   const generatedAt = new Date().toISOString();
   const priorFingerprints = previous?.builderRevision === options.builderRevision ? previous?.fingerprints : undefined;
@@ -1240,7 +1259,7 @@ async function rebuildPlayers(
     identityRevision: IDENTITY_OVERRIDES_REVISION,
     builderRevision: options.builderRevision
   };
-  await publishPlayerPlan(env, plan, orphanBase(options.stored, scanned, slices.length), {
+  await publishPlayerPlan(env, plan, orphanBase(options.stored, keys, slices), {
     manifest,
     concurrency: options.r2Concurrency ?? 6
   });

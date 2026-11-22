@@ -5,6 +5,16 @@
 
 import type { SynonymDatabase } from '../../../shared/data/cardIdentity';
 import { buildCanonicalRouteIndex, routeIndexToJson } from '../../../shared/data/canonicalCardRoute';
+import { canonicalStringify } from '../../../shared/data/canonicalJson';
+import { sha256HexString } from '../../../shared/data/hash';
+
+/**
+ * Which synonym map a route table was solved from. Release capture keeps a table only beside the
+ * database it names, so the edge and the SPA can never answer from two different graphs.
+ */
+export function routeTableSource(synonyms: SynonymDatabase['synonyms']): string {
+  return sha256HexString(canonicalStringify(synonyms)).slice(0, 16);
+}
 
 /**
  * The browser's synonyms in printing release order (the `prints` map's key
@@ -37,7 +47,13 @@ export function synonymObjects(data: SynonymDatabase): Array<[key: string, body:
   return [
     ['assets/card-synonyms-slim.json', JSON.stringify(slimDatabase(data))],
     // The edge redirect's lookup table, solved here once rather than in every cold isolate.
-    ['assets/card-routes.json', JSON.stringify(routeIndexToJson(buildCanonicalRouteIndex(data)))],
+    [
+      'assets/card-routes.json',
+      JSON.stringify({
+        source: routeTableSource(data.synonyms),
+        routes: routeIndexToJson(buildCanonicalRouteIndex(data))
+      })
+    ],
     ['assets/card-prints.json', JSON.stringify({ prints: data.prints })],
     ['assets/card-synonyms.json', data]
   ];

@@ -21,7 +21,7 @@ import { mergeSynonymMaps } from './lib/synonymMerge.ts';
 import { synonymObjects } from './lib/synonymObjects.ts';
 import { releaseFormatRoots } from './lib/build/formatReports.ts';
 import { newSetCodes, parseSetCardList } from './lib/setSeeds.ts';
-import { createThrottledFetch } from './lib/throttledFetch.ts';
+import { createThrottledFetch, prefetchAll } from './lib/throttledFetch.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -310,16 +310,15 @@ async function prefetchPrintTables(cardsByName) {
   const entries = [...cardsByName.values()].flatMap(printSet =>
     [...printSet].filter(entry => typeof entry === 'string' && entry.includes('::'))
   );
-  let next = 0;
-  const worker = async () => {
-    while (next < entries.length) {
-      const [set, number] = entries[next++].split('::');
-      if (set && number) {
-        await scrapeCardPrintVariations(set, number);
-      }
-    }
-  };
-  await Promise.all(Array.from({ length: SCRAPE_CONCURRENCY }, worker));
+  // Once Limitless has refused more pages than the run can absorb, stop asking: the run fails.
+  await prefetchAll(
+    entries,
+    entry => {
+      const [set, number] = entry.split('::');
+      return set && number ? scrapeCardPrintVariations(set, number) : Promise.resolve();
+    },
+    { concurrency: SCRAPE_CONCURRENCY, stop: () => limitless.exhausted() }
+  );
 }
 
 /**
@@ -804,6 +803,10 @@ async function main() {
     await uploadToR2(synonymsData);
   } else {
     log('Semantic card data unchanged; keeping the published database');
+    // The route table is still rewritten: it is cheap, and it is how a table missing or left
+    // behind by an older producer comes back in step with the database it serves.
+    const [key, body] = synonymObjects(synonymsData).find(([objectKey]) => objectKey === 'assets/card-routes.json');
+    await putObject(key, body);
   }
 
   log(`\n${'='.repeat(60)}`);

@@ -78,6 +78,7 @@ async function main() {
     // Writes are pure latency (about 0.5 s each); a full rebuild took 110 minutes at 8.
     r2Concurrency: 32,
     forceFullRebuild: FORCE_FULL_REBUILD,
+    requireEveryEvent: true,
     builderRevision: await builderRevision(PLAYER_BUILD_FILES),
     // Immutable event metas carry no fetch timestamp; the content-addressed
     // root changes exactly when the event's content does.

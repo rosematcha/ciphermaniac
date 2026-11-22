@@ -35,6 +35,7 @@ function harness({ cached, fetcher, put, keys, remove, open } = {}) {
     caches: { open: open ?? (() => Promise.resolve(cache)) },
     fetch: fetcher ?? (() => Promise.resolve(new Response('{}', { headers: { 'content-type': 'application/json' } }))),
     Response,
+    Headers,
     URL,
     setTimeout: callback => timers.push(callback)
   });
@@ -251,7 +252,7 @@ test('uncached report response and stored response remain independently readable
 
 test('immutable release bodies are served from cache without a network refresh', async () => {
   const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
-  const cached = new Response('cached');
+  const cached = new Response('cached', { headers: { 'x-cm-stored-at': String(Date.now()) } });
   let fetches = 0;
   const hit = harness({
     cached,
@@ -300,4 +301,19 @@ test('a release body that does not parse is served once, never stored, and refet
   await flush();
   assert.equal(fetches, 2);
   assert.equal(worker.writes.length, 1);
+});
+
+test('a release body stored over a day ago is served once more while a refetch replaces it', async () => {
+  const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
+  const stale = new Response('null', { headers: { 'x-cm-stored-at': String(Date.now() - 2 * 24 * 60 * 60 * 1000) } });
+  const worker = harness({
+    cached: stale,
+    fetcher: () => Promise.resolve(new Response('{"items": []}', { headers: { 'content-type': 'application/json' } }))
+  });
+  const event = worker.dispatch(release);
+  assert.equal(await (await event.response).text(), 'null');
+  await flush();
+  assert.equal(worker.writes.length, 1);
+  assert.equal(await worker.writes[0].response.text(), '{"items": []}');
+  assert.ok(Number(worker.writes[0].response.headers.get('x-cm-stored-at')) > Date.now() - 60_000);
 });

@@ -20,6 +20,8 @@ interface ThrottleOptions {
 export interface ThrottledFetch {
   /** The response, after waiting out throttling; the last throttled one when that runs out. */
   fetch(url: string, init?: RequestInit): Promise<Response>;
+  /** Whether more requests than the limit ended throttled; the run cannot publish once it has. */
+  exhausted(): boolean;
   /** Throws when more requests than the limit ended throttled. */
   assertWithinLimit(): void;
 }
@@ -51,10 +53,31 @@ export function createThrottledFetch(options: ThrottleOptions = {}): ThrottledFe
         await wait(waitMs(response, attempt));
       }
     },
+    exhausted() {
+      return refused > limit;
+    },
     assertWithinLimit() {
       if (refused > limit) {
         throw new Error(`${refused} requests stayed throttled past every retry; try the run again later`);
       }
     }
   };
+}
+
+/**
+ * Run `work` over `items` a few at a time, admitting no more once `stop` says so; the work in
+ * flight still finishes.
+ */
+export async function prefetchAll<T>(
+  items: readonly T[],
+  work: (item: T) => Promise<unknown>,
+  options: { concurrency: number; stop: () => boolean }
+): Promise<void> {
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length && !options.stop()) {
+      await work(items[next++]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(options.concurrency, items.length) }, worker));
 }

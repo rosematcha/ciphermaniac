@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { synonymObjects } from '../../.github/scripts/lib/synonymObjects.ts';
+import { routeTableSource, synonymObjects } from '../../.github/scripts/lib/synonymObjects.ts';
 import { buildPrintingRows, withPrintOrder } from '../../src/utils/printings.ts';
 import type { SynonymDatabase } from '../../shared/data/cardIdentity.ts';
 
@@ -21,7 +21,10 @@ test('the browser parts are written before the whole database the next run compa
       'assets/card-synonyms.json'
     ]
   );
-  assert.deepEqual(JSON.parse(objects[1][1] as string), { 'PAL::269': 'PAL/185' });
+  assert.deepEqual(JSON.parse(objects[1][1] as string), {
+    source: routeTableSource(data.synonyms),
+    routes: { 'PAL::269': 'PAL/185' }
+  });
   assert.deepEqual(JSON.parse(objects[0][1] as string), {
     synonyms: data.synonyms,
     canonicals: data.canonicals,
