@@ -3,7 +3,6 @@ import {
   exportFileName,
   type Mode,
   needsDay2Stats,
-  needsTournament,
   type RenderItem,
   shortTournament,
   splitPartner,
@@ -11,7 +10,6 @@ import {
 } from './socialGraphics/model';
 import { baselineTournaments } from './socialGraphics/baseline';
 import { type EventField, fetchEventField } from './socialGraphics/eventField';
-import { fetchOnlineField } from './socialGraphics/onlineField';
 import { type FitBounds, fitText } from './socialGraphics/fitText';
 import { exportCanvas } from './socialGraphics/exportCanvas';
 import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
@@ -33,13 +31,11 @@ import '../styles/pages/social-graphics.css';
 type Size = 8 | 12 | 20;
 type Theme = 'light' | 'dark';
 type MinDecks = 5 | 10 | 25;
-type PlayFloor = 5 | 10 | 20 | 33;
 
 const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: 'standard', label: 'Standard' },
   { value: 'rising', label: 'Rising' },
-  { value: 'converting', label: 'Converting' },
-  { value: 'fraudulent', label: 'Fraudulent' }
+  { value: 'converting', label: 'Converting' }
 ];
 const SIZE_OPTIONS: { value: string; label: string }[] = [
   { value: '8', label: 'Top 8' },
@@ -50,12 +46,6 @@ const MIN_DECKS_OPTIONS: { value: string; label: string }[] = [
   { value: '5', label: 'Min 5' },
   { value: '10', label: 'Min 10' },
   { value: '25', label: 'Min 25' }
-];
-const PLAY_FLOOR_OPTIONS: { value: string; label: string }[] = [
-  { value: '5', label: '5%' },
-  { value: '10', label: '10%' },
-  { value: '20', label: '20%' },
-  { value: '33', label: '33%' }
 ];
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'light', label: 'Light' },
@@ -77,18 +67,14 @@ const NAME_FIT: Record<'hero' | 'row' | 'cell' | 'tail', FitBounds> = {
 const TITLES: Record<Mode, { lead: string; accent: string }> = {
   standard: { lead: 'MOST', accent: 'PLAYED' },
   rising: { lead: 'RISING', accent: 'CARDS' },
-  converting: { lead: 'BEST', accent: 'CONVERTERS' },
-  fraudulent: { lead: 'FRAUDULENT', accent: 'CARDS' }
+  converting: { lead: 'BEST', accent: 'CONVERTERS' }
 };
 
-/** The headline is one line too, and 'FRAUDULENT CARDS' is wider than the column. */
+/** The headline is one line too, and shrinks to fit the column. */
 const TITLE_FIT: FitBounds = { max: 64, min: 44 };
 
 /** Why the canvas is empty, in the terms of the mode the user picked. */
 function emptyNote(mode: Mode): string {
-  if (mode === 'fraudulent') {
-    return 'No card drops far enough at this event to clear the outlier filter — try a lower play rate.';
-  }
   if (mode === 'converting') {
     return 'No Day 2 data for this tournament (or no cards clear the min-decks filter).';
   }
@@ -105,7 +91,6 @@ export function SocialGraphicsPage() {
   const [size, setSize] = createSignal<Size>(20);
   const [theme, setTheme] = createSignal<Theme>('light');
   const [minDecks, setMinDecks] = createSignal<MinDecks>(10);
-  const [playFloor, setPlayFloor] = createSignal<PlayFloor>(10);
   const [busy, setBusy] = createSignal<null | 'png' | 'jpg'>(null);
   const [error, setError] = createSignal<string | null>(null);
 
@@ -127,12 +112,11 @@ export function SocialGraphicsPage() {
     onCleanup(() => narrowQuery?.removeEventListener('change', onChange));
   });
 
-  // Converting reads a Day 1 → Day 2 cut and Fraudulent measures a tournament
-  // against the online window, so neither means anything with the rolling
-  // Online Meta itself selected. Auto-revert to Standard whenever the user
-  // lands on Online Meta with one of them chosen.
+  // Converting reads a Day 1 → Day 2 cut, which the rolling Online Meta
+  // doesn't have. Auto-revert to Standard whenever the user lands on Online
+  // Meta with it chosen.
   createEffect(() => {
-    if (needsTournament(mode()) && tournament() === ONLINE_META_NAME) {
+    if (needsDay2Stats(mode()) && tournament() === ONLINE_META_NAME) {
       setMode('standard');
     }
   });
@@ -166,22 +150,6 @@ export function SocialGraphicsPage() {
     () => (needsDay2Stats(mode()) && tournament() !== ONLINE_META_NAME ? tournament() : null),
     key => (key ? fetchConversionIndex(key) : Promise.resolve(null))
   );
-  // Fraudulent's two sides: the selected tournament, indexed for lookup, and
-  // the online window it is measured against.
-  const [eventField] = createResource(
-    () => (mode() === 'fraudulent' && tournament() !== ONLINE_META_NAME ? tournament() : null),
-    key => (key ? fetchEventField(key) : Promise.resolve(null))
-  );
-  const [onlineMaster] = createResource(
-    () => (mode() === 'fraudulent' ? ONLINE_META_NAME : null),
-    key => (key ? fetchMaster(key) : Promise.resolve(null))
-  );
-  // How the ladder's own decks finished. Optional: reports built before the
-  // cron published it drop the term from the score rather than the whole view.
-  const [onlineField] = createResource(
-    () => (mode() === 'fraudulent' ? ONLINE_META_NAME : null),
-    key => (key ? fetchOnlineField() : Promise.resolve(null))
-  );
   const [evolutionMap] = createResource(fetchEvolutionMap);
   const fieldConversion = () => {
     const payload = latestValue(conversionIndex);
@@ -190,9 +158,6 @@ export function SocialGraphicsPage() {
   const masterData = () => latestValue(master);
   const baselineData = () => latestValue(baseline);
   const day2StatsData = () => latestValue(day2Stats);
-  const eventFieldData = () => latestValue(eventField);
-  const onlineMasterData = () => latestValue(onlineMaster);
-  const onlineFieldData = () => latestValue(onlineField);
   const evolutionMapData = () => latestValue(evolutionMap);
 
   const items = createMemo<RenderItem[]>(() =>
@@ -201,10 +166,6 @@ export function SocialGraphicsPage() {
       size: size(),
       minDecks: minDecks(),
       items: masterData()?.items ?? null,
-      onlineItems: onlineMasterData()?.items ?? null,
-      eventField: eventFieldData(),
-      onlineField: onlineFieldData(),
-      playFloor: playFloor(),
       baseline: baselineData() ?? null,
       day2Stats: day2StatsData(),
       evolutionMap: evolutionMapData()
@@ -212,12 +173,9 @@ export function SocialGraphicsPage() {
   );
 
   // Whether anything the ACTIVE mode reads is still loading: rising's baseline
-  // events, fraudulent's event and online sides, converting's Day-2 stats.
+  // events, converting's Day-2 stats.
   const loading = () =>
-    master.loading ||
-    (mode() === 'rising' && baseline.loading) ||
-    (mode() === 'fraudulent' && (eventField.loading || onlineMaster.loading || onlineField.loading)) ||
-    (needsDay2Stats(mode()) && day2Stats.loading);
+    master.loading || (mode() === 'rising' && baseline.loading) || (needsDay2Stats(mode()) && day2Stats.loading);
 
   // Export rasterizes the live preview canvas, so it must stay disabled until
   // everything above has resolved and there's a rendered canvas to snapshot
@@ -226,11 +184,6 @@ export function SocialGraphicsPage() {
   const exportBlocked = createMemo(() => busy() !== null || items().length === 0 || loading());
   const exportLabel = (format: 'png' | 'jpg') => (busy() === format ? 'Exporting…' : `Export ${format.toUpperCase()}`);
   const deckTotal = (payload: { deckTotal: number } | null | undefined) => payload?.deckTotal ?? 0;
-
-  // Fraudulent only shows cards whose shortfall clears the outlier test, so a
-  // small event can fill fewer slots than the chosen size. Say so rather than
-  // leaving the user to wonder why Top 20 rendered six cards.
-  const shortList = () => mode() === 'fraudulent' && !exportBlocked() && items().length > 0 && items().length < size();
 
   async function exportImage(format: 'png' | 'jpg') {
     setBusy(format);
@@ -298,7 +251,7 @@ export function SocialGraphicsPage() {
               Mode
               <Segmented<Mode>
                 options={
-                  tournament() === ONLINE_META_NAME ? MODE_OPTIONS.filter(o => !needsTournament(o.value)) : MODE_OPTIONS
+                  tournament() === ONLINE_META_NAME ? MODE_OPTIONS.filter(o => !needsDay2Stats(o.value)) : MODE_OPTIONS
                 }
                 selected={mode()}
                 onSelect={setMode}
@@ -325,17 +278,6 @@ export function SocialGraphicsPage() {
                 />
               </label>
             </Show>
-            <Show when={mode() === 'fraudulent'}>
-              <label>
-                Min online play
-                <Segmented
-                  options={PLAY_FLOOR_OPTIONS}
-                  selected={String(playFloor())}
-                  onSelect={v => setPlayFloor(Number(v) as PlayFloor)}
-                  ariaLabel='Minimum share of online decks'
-                />
-              </label>
-            </Show>
             <label>
               Theme
               <Segmented<Theme> options={THEME_OPTIONS} selected={theme()} onSelect={setTheme} ariaLabel='Theme' />
@@ -357,11 +299,6 @@ export function SocialGraphicsPage() {
             <Show when={error()}>
               <span class='sg-status error'>{error()}</span>
             </Show>
-            <Show when={!error() && shortList()}>
-              <span class='sg-status'>
-                {items().length} of {size()} slots filled — the rest of the field is within noise at this play rate.
-              </span>
-            </Show>
           </div>
         </div>
 
@@ -381,10 +318,7 @@ export function SocialGraphicsPage() {
               deckTotal={deckTotal(masterData())}
               items={items()}
               minDecks={minDecks()}
-              playFloor={playFloor()}
               fieldConversion={fieldConversion()}
-              onlineDecks={deckTotal(onlineMasterData())}
-              scoresFinishes={onlineFieldData() !== null}
             />
           </Show>
         </div>
@@ -400,13 +334,8 @@ interface CanvasProps {
   deckTotal: number;
   items: RenderItem[];
   minDecks: number;
-  playFloor: number;
   /** The event's overall Day 1 to Day 2 rate, when it is known. */
   fieldConversion: number | null;
-  /** Fraudulent mode: decks in the online window the event is measured against. */
-  onlineDecks: number;
-  /** Fraudulent mode: whether online finish rates made it into the score. */
-  scoresFinishes: boolean;
 }
 
 function SocialCanvas(props: CanvasProps) {
@@ -425,11 +354,6 @@ function SocialCanvas(props: CanvasProps) {
     if (props.mode === 'rising' && c.delta !== undefined) {
       return `+${c.delta.toFixed(1)}`;
     }
-    if (props.mode === 'fraudulent') {
-      // The score pools play rate, conversion and finishes, so no single
-      // percentage can carry the ranking; sigma is what the rows are sorted by.
-      return `${Math.abs(c.score ?? 0).toFixed(1)}σ`;
-    }
     if (needsDay2Stats(props.mode)) {
       return `${Math.round(c.pct)}%`;
     }
@@ -441,31 +365,10 @@ function SocialCanvas(props: CanvasProps) {
     if (props.mode === 'rising' && c.delta !== undefined) {
       return `${c.pct.toFixed(1)}% (+${c.delta.toFixed(1)} pts)`;
     }
-    if (props.mode === 'fraudulent') {
-      // The header names the tournament already, so the row only has to say
-      // which side each number came from.
-      const played = `${c.pct.toFixed(1)}% online → ${(c.eventRate ?? 0).toFixed(1)}% here`;
-      return c.conversion === undefined ? played : `${played}, ${Math.round(c.conversion)}%\u00a0to\u00a0Day\u00a02`;
-    }
     if (props.mode === 'converting') {
       return `${c.day2Count?.toLocaleString()} / ${c.day1Count?.toLocaleString()} to Day 2`;
     }
     return `${c.found.toLocaleString()} / ${c.total.toLocaleString()} decks`;
-  }
-
-  /** What the pooled score measured, naming only the signals it had. */
-  function fraudNote(): string {
-    const signals = ['play rate here against online'];
-    // An event with no published cut leaves every row without a conversion.
-    if (props.items.some(c => c.conversion !== undefined)) {
-      signals.push('Day 2 against the field');
-    }
-    if (props.scoresFinishes) {
-      signals.push('online finishes against the ladder');
-    }
-    const listed = signals.length > 1 ? `${signals.slice(0, -1).join(', ')} and ${signals.at(-1)}` : signals[0];
-    const decks = props.onlineDecks > 0 ? `, ${props.onlineDecks.toLocaleString()} online decks` : '';
-    return `${listed}, pooled (min ${props.playFloor}% online${decks})`;
   }
 
   /** The field's own conversion rate, the yardstick every row is read against. */
@@ -479,9 +382,6 @@ function SocialCanvas(props: CanvasProps) {
     if (props.mode === 'rising') {
       return 'biggest gain';
     }
-    if (props.mode === 'fraudulent') {
-      return fraudNote();
-    }
     if (props.mode === 'converting') {
       return `Day 1 → Day 2 conversion (min ${props.minDecks} decks${fieldNote()})`;
     }
@@ -493,37 +393,6 @@ function SocialCanvas(props: CanvasProps) {
   // export environments while element children survived.
   function heroDecks() {
     const h = hero()!;
-    if (props.mode === 'fraudulent') {
-      return (
-        <>
-          <span class='sg-nowrap'>
-            <strong>{h.pct.toFixed(1)}%</strong>
-            <span> of decks online,</span>
-          </span>{' '}
-          <span class='sg-nowrap'>
-            <strong>{(h.eventRate ?? 0).toFixed(1)}%</strong>
-            <span> here</span>
-          </span>
-          <div>
-            <Show when={h.conversion !== undefined}>
-              <span class='sg-nowrap'>
-                <strong>{Math.round(h.conversion ?? 0)}%</strong>
-                <span> to Day 2</span>
-              </span>
-            </Show>
-            <Show when={h.conversion !== undefined && h.onlineSuccessRate !== undefined}>
-              <span>, </span>
-            </Show>
-            <Show when={h.onlineSuccessRate !== undefined}>
-              <span class='sg-nowrap'>
-                <strong>{Math.round(h.onlineSuccessRate ?? 0)}%</strong>
-                <span> cut online</span>
-              </span>
-            </Show>
-          </div>
-        </>
-      );
-    }
     if (props.mode === 'converting') {
       return (
         <>
@@ -587,9 +456,6 @@ function SocialCanvas(props: CanvasProps) {
                 <Show when={props.mode === 'rising'}>
                   <div class='sg-hero-delta'>pts gained</div>
                 </Show>
-                <Show when={props.mode === 'fraudulent'}>
-                  <div class='sg-hero-delta'>below its billing</div>
-                </Show>
                 <Show when={needsDay2Stats(props.mode)}>
                   <div class='sg-hero-delta'>to Day 2</div>
                 </Show>
@@ -624,8 +490,8 @@ function SocialCanvas(props: CanvasProps) {
       </Show>
 
       <Show when={grid().length > 0}>
-        {/* A short list (fraudulent mode filters hard) would otherwise leave a
-            half-empty row of cells; spread them across the width instead. */}
+        {/* A short list would otherwise leave a half-empty row of cells;
+            spread them across the width instead. */}
         <div class='sg-grid' style={{ 'grid-template-columns': `repeat(${Math.min(4, grid().length)}, 1fr)` }}>
           <For each={grid()}>
             {c => (

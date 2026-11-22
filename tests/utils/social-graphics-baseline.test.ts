@@ -48,9 +48,8 @@ test('an undated selection anchors on now', () => {
 function field(deckTotal: number, found: number, sets: string[]): EventField {
   return {
     deckTotal,
-    cards: new Map([['Mew::NEW::030', { found, day1: 0, day2: 0 }]]),
-    sets: new Set(sets),
-    fieldConversion: null
+    cards: new Map([['Mew::NEW::030', found]]),
+    sets: new Set(sets)
   };
 }
 
