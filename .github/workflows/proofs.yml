@@ -5,6 +5,7 @@ on:
       [
         'proofs/**',
         '.github/scripts/lib/build/rangedListing.ts',
+        'src/lib/data/lists.ts',
         'shared/data/canonicalCardRoute.ts',
         '.github/workflows/proofs.yml'
       ]
@@ -14,6 +15,7 @@ on:
       [
         'proofs/**',
         '.github/scripts/lib/build/rangedListing.ts',
+        'src/lib/data/lists.ts',
         'shared/data/canonicalCardRoute.ts',
         '.github/workflows/proofs.yml'
       ]

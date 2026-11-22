@@ -57,48 +57,67 @@ function canonicalUids(payload: ListIndexPayload, db: SynonymDatabase | null): s
   });
 }
 
-/**
- * Decode every row of the index. Done once per payload rather than per query;
- * 8k rows decode in a few milliseconds and the result is what the card page
- * filters.
- */
-export function decodeListIndex(payload: ListIndexPayload, db: SynonymDatabase | null): ListRecord[] {
-  const uids = canonicalUids(payload, db);
-  const canonicalIdentityAvailable = Boolean(db && Object.keys(db.synonyms).length > 0);
-  const events = payload.events.map(([id, name, date, players]) => ({ id, name, date, players }));
-  return payload.decks.map((row, id) => {
-    const [player, country, placement, archetype, event, tagBits, pairs] = row;
-    const cards: ListCard[] = [];
-    const listUids = new Set<string>();
-    for (let i = 0; i + 1 < pairs.length; i += 2) {
-      const entry = payload.cards[pairs[i]];
-      if (!entry) {
-        continue;
-      }
-      const [name, set, number, category] = entry;
-      const uid = uids[pairs[i]] ?? '';
-      cards.push({ name, set, number, category, count: pairs[i + 1], uid });
-      if (uid) {
-        listUids.add(uid);
-      }
+interface DecodeContext {
+  payload: ListIndexPayload;
+  uids: string[];
+  events: Array<ListRecord['event']>;
+  canonicalIdentityAvailable: boolean;
+}
+
+function decodeRow(context: DecodeContext, row: ListIndexPayload['decks'][number], id: number): ListRecord {
+  const { payload, uids, events, canonicalIdentityAvailable } = context;
+  const [player, country, placement, archetype, event, tagBits, pairs] = row;
+  const cards: ListCard[] = [];
+  const listUids = new Set<string>();
+  for (let i = 0; i + 1 < pairs.length; i += 2) {
+    const entry = payload.cards[pairs[i]];
+    if (!entry) {
+      continue;
     }
-    const tags = new Set<string>();
-    payload.tags.forEach((tag, bit) => {
-      if (tagBits & (1 << bit)) {
-        tags.add(tag);
-      }
-    });
-    return {
-      id,
-      player,
-      country,
-      placement,
-      archetype: payload.archetypes[archetype] ?? '',
-      event: events[event] ?? null,
-      tags,
-      cards,
-      canonicalIdentityAvailable,
-      uids: listUids
-    };
+    const [name, set, number, category] = entry;
+    const uid = uids[pairs[i]] ?? '';
+    cards.push({ name, set, number, category, count: pairs[i + 1], uid });
+    if (uid) {
+      listUids.add(uid);
+    }
+  }
+  return {
+    id,
+    player,
+    country,
+    placement,
+    archetype: payload.archetypes[archetype] ?? '',
+    event: events[event] ?? null,
+    tags: new Set(payload.tags.filter((_, bit) => tagBits & (1 << bit))),
+    cards,
+    canonicalIdentityAvailable,
+    uids: listUids
+  };
+}
+
+/**
+ * Decode the index's rows, every one or only those whose archetype label `keep` accepts. A row
+ * keeps its position in the index as its `id` either way, so filtering never renumbers a list.
+ * Filtering before decoding matters: the online index holds over 6,000 lists and a page wants one
+ * archetype's few hundred.
+ */
+export function decodeListIndex(
+  payload: ListIndexPayload,
+  db: SynonymDatabase | null,
+  keep: (archetype: string) => boolean = () => true
+): ListRecord[] {
+  const context: DecodeContext = {
+    payload,
+    uids: canonicalUids(payload, db),
+    events: payload.events.map(([id, name, date, players]) => ({ id, name, date, players })),
+    canonicalIdentityAvailable: Boolean(db && Object.keys(db.synonyms).length > 0)
+  };
+  const kept = payload.archetypes.map(label => keep(label ?? ''));
+  const records: ListRecord[] = [];
+  payload.decks.forEach((row, id) => {
+    if (kept[row[3]] ?? keep('')) {
+      records.push(decodeRow(context, row, id));
+    }
   });
+  return records;
 }
