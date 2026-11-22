@@ -123,9 +123,12 @@ function collectRouteEdges(db: Pick<SynonymDatabase, 'synonyms'> | null | undefi
       canonicalUid
     });
   }
-  // Deterministic order: the index and the violation report must not depend on
-  // `Object.entries` insertion order of a JSON parse.
-  edges.sort((a, b) =>
+  return edges;
+}
+
+/** The edges in a fixed order, so the violation report does not depend on a JSON parse's key order. */
+function sortedEdges(edges: RouteEdge[]): RouteEdge[] {
+  return edges.sort((a, b) =>
     a.from === b.from
       ? a.to === b.to
         ? a.variantUid < b.variantUid
@@ -140,7 +143,6 @@ function collectRouteEdges(db: Pick<SynonymDatabase, 'synonyms'> | null | undefi
         ? -1
         : 1
   );
-  return edges;
 }
 
 /**
@@ -148,9 +150,12 @@ function collectRouteEdges(db: Pick<SynonymDatabase, 'synonyms'> | null | undefi
  *
  * When several synonym entries project onto the same variant key with different
  * canonical routes (an {@link CanonicalRouteViolations.ambiguous} defect), the
- * lexicographically smallest canonical key wins. Any deterministic rule works;
- * what matters is that the edge function and the SPA pick the SAME one, or one
- * 301s to a target the other immediately wants to leave.
+ * lexicographically smallest canonical key wins, and among edges to that key the
+ * smallest variant UID (whose canonical UID fixes the URL's spelling). Any
+ * deterministic rule works; what matters is that the edge function and the SPA
+ * pick the SAME one, or one 301s to a target the other immediately wants to leave.
+ * The minimum does not depend on the edges' order, so no sort is needed
+ * (proofs/RouteReduce.lean).
  */
 function reduceToSingleEdges(edges: RouteEdge[]): Map<string, RouteEdge> {
   const chosen = new Map<string, RouteEdge>();
@@ -161,7 +166,7 @@ function reduceToSingleEdges(edges: RouteEdge[]): Map<string, RouteEdge> {
       continue;
     }
     const existing = chosen.get(edge.from);
-    if (!existing || edge.to < existing.to) {
+    if (!existing || edge.to < existing.to || (edge.to === existing.to && edge.variantUid < existing.variantUid)) {
       chosen.set(edge.from, edge);
     }
   }
@@ -341,7 +346,7 @@ export interface CanonicalRouteViolations {
 export function findCanonicalRouteViolations(
   db: Pick<SynonymDatabase, 'synonyms'> | null | undefined
 ): CanonicalRouteViolations {
-  const allEdges = collectRouteEdges(db);
+  const allEdges = sortedEdges(collectRouteEdges(db));
 
   // A self-edge (`from === to`) is a real claim: "this route IS its own
   // canonical". Skipping it here — as an earlier version did — hid the case

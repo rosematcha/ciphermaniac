@@ -339,3 +339,31 @@ test('the published route table reads back as the index it was solved from', () 
   assert.equal(routeIndexFromJson(['TWM/130']), null);
   assert.equal(routeIndexFromJson({ 'TWM::130': 'TWM' }), null);
 });
+
+test('the route index does not depend on the order synonym entries arrive in', () => {
+  const fixture = new URL('../fixtures/e2e/assets/card-synonyms.json', import.meta.url);
+  const db = JSON.parse(readFileSync(fixture, 'utf8')) as SynonymDatabase;
+  const ambiguous = {
+    ...db.synonyms,
+    // Two names on one variant key, pointing at one canonical key spelled two ways.
+    'Alpha::ZZZ::001': 'Alpha::YYY::061',
+    'Beta::ZZZ::1': 'Beta::YYY::61',
+    'Gamma::ZZZ::1': 'Gamma::XXX::5'
+  };
+  const entries = Object.entries(ambiguous);
+  const expected = routeIndexToJson(buildCanonicalRouteIndex({ synonyms: ambiguous }));
+  assert.equal(expected['ZZZ::1'], 'XXX/5');
+  for (let seed = 1; seed <= 5; seed += 1) {
+    const shuffled = entries
+      .map((entry, index) => ({ entry, key: (index * 7919 * seed) % 104729 }))
+      .sort((a, b) => a.key - b.key)
+      .map(({ entry }) => entry);
+    assert.deepEqual(routeIndexToJson(buildCanonicalRouteIndex({ synonyms: Object.fromEntries(shuffled) })), expected);
+    assert.deepEqual(
+      routeIndexToJson(buildCanonicalRouteIndex({ synonyms: Object.fromEntries(shuffled.reverse()) })),
+      expected
+    );
+  }
+  const tie = { 'Beta::ZZZ::1': 'Beta::YYY::61', 'Alpha::ZZZ::001': 'Alpha::YYY::061' };
+  assert.equal(routeIndexToJson(buildCanonicalRouteIndex({ synonyms: tie }))['ZZZ::1'], 'YYY/061');
+});
