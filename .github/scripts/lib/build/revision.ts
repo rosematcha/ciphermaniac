@@ -7,6 +7,7 @@ export async function builderRevision(paths: string[]): Promise<string> {
 
 export const PLAYER_BUILD_FILES = [
   'shared/onlineMeta/playerAggregator.ts',
+  'shared/onlineMeta/playerTop.ts',
   'shared/onlineMeta/playerIdentity.ts',
   'shared/playerTypes.ts',
   'shared/cardUtils.ts',

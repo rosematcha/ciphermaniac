@@ -2,6 +2,7 @@ import { normalizeArchetypeName, sanitizeForFilename } from '../cardUtils.js';
 import { canonicalPlayerId, IDENTITY_OVERRIDES_REVISION, overriddenPlayerName } from './playerIdentity';
 import { encodeSlimIndex } from '../playerTypes';
 import { runWithConcurrency } from './tournamentFetcher';
+import { TOP_PLAYERS_KEY, topPlayers } from './playerTop';
 import { batchDelete, batchPutJson, getJson, getJsonResult, putJson } from './storageWriter';
 import type {
   PlayerAggregateManifest,
@@ -153,6 +154,7 @@ async function writeSlimIndex(env: unknown, index: PlayerIndexEntry[]): Promise<
   await putJson(env, SLIM_INDEX_KEY, encodeSlimIndex(index), {
     cacheControl: 'public, max-age=21600'
   });
+  await putJson(env, TOP_PLAYERS_KEY, encodeSlimIndex(topPlayers(index)), { cacheControl: 'public, max-age=21600' });
 }
 // Players with only one event dominate the long tail and inflate the index ~2x
 // without adding signal — they're still reachable via direct /players/:id URLs.
@@ -1068,6 +1070,11 @@ interface AggregateOptions {
   forceFullRebuild?: boolean;
   fingerprintOf?: FingerprintOf;
   builderRevision?: string;
+  /**
+   * Refuse to write anything when an event fails to load. The release producer needs every
+   * selected event and fails such a run anyway; stopping first keeps the staged players intact.
+   */
+  requireEveryEvent?: boolean;
 }
 
 function affectedPlayers(
@@ -1155,11 +1162,17 @@ function preserveUnchanged(
 async function publishPlayerPlan(
   env: unknown,
   plan: WritePlan,
-  previous: PlayerAggregateManifestV2 | null,
+  previous: Pick<PlayerAggregateManifestV2, 'players'> | null,
   options: { manifest: PlayerAggregateManifestV2; concurrency: number }
 ): Promise<void> {
   const { manifest, concurrency } = options;
-  plan.index.sort((a, b) => b.lastEventDate.localeCompare(a.lastEventDate) || b.eventCount - a.eventCount);
+  // The id tiebreak makes the order total, so full and incremental builds write the same bytes.
+  plan.index.sort(
+    (a, b) =>
+      b.lastEventDate.localeCompare(a.lastEventDate) ||
+      b.eventCount - a.eventCount ||
+      a.playerId.localeCompare(b.playerId)
+  );
   await batchPutJson(env, [...plan.profileWrites, ...plan.deckWrites], concurrency);
   await batchDelete(
     env,
@@ -1196,13 +1209,41 @@ function foldSlices(
   return { accs, fingerprints, scanned };
 }
 
+function assertEveryEventLoaded(slices: (TournamentSlice | null)[], options: AggregateOptions): void {
+  const missing = slices.filter(slice => slice === null).length;
+  if (options.requireEveryEvent && missing > 0) {
+    throw new Error(`${missing} selected event(s) could not be read; refusing to rewrite player data`);
+  }
+}
+
+/**
+ * The stored players this run may delete when they drop out. A forced rebuild ignores the stored
+ * manifest for reuse, but its players still name the objects to delete; without it they were left
+ * behind for good. A player with an event still in the catalogue that this run could not read is
+ * missing from the run, not gone, so those players are kept off the list.
+ */
+function orphanBase(
+  stored: PlayerAggregateManifestV2 | null,
+  keys: readonly string[],
+  slices: (TournamentSlice | null)[]
+): Pick<PlayerAggregateManifestV2, 'players'> | null {
+  if (!stored) {
+    return null;
+  }
+  const read = new Set(slices.flatMap(slice => (slice ? [slice.key] : [])));
+  const unread = new Set(keys.filter(key => !read.has(key)));
+  const keep = (events: readonly string[]) => !events.some(key => unread.has(key));
+  return { players: Object.fromEntries(Object.entries(stored.players).filter(([, events]) => keep(events))) };
+}
+
 async function rebuildPlayers(
   env: unknown,
   keys: string[],
   previous: PlayerAggregateManifestV2 | null,
-  options: AggregateOptions
+  options: AggregateOptions & { stored: PlayerAggregateManifestV2 | null }
 ): Promise<BuildPlayerAggregatesResult> {
   const { slices, affected } = await loadBuildSlices(env, keys, previous, options);
+  assertEveryEventLoaded(slices, options);
   const { accs, fingerprints, scanned } = foldSlices(slices, keys, affected ? previous : null, affected);
   const generatedAt = new Date().toISOString();
   const priorFingerprints = previous?.builderRevision === options.builderRevision ? previous?.fingerprints : undefined;
@@ -1220,7 +1261,10 @@ async function rebuildPlayers(
     identityRevision: IDENTITY_OVERRIDES_REVISION,
     builderRevision: options.builderRevision
   };
-  await publishPlayerPlan(env, plan, previous, { manifest, concurrency: options.r2Concurrency ?? 6 });
+  await publishPlayerPlan(env, plan, orphanBase(options.stored, keys, slices), {
+    manifest,
+    concurrency: options.r2Concurrency ?? 6
+  });
   return {
     index: plan.index,
     profileCount: Object.keys(plan.manifestPlayers).length,
@@ -1239,11 +1283,12 @@ export async function buildPlayerAggregates(
   if (!Array.isArray(keys) || !keys.length) {
     return emptyAggregateResult();
   }
-  const previous = options.forceFullRebuild ? null : await getJson<PlayerAggregateManifestV2>(env, MANIFEST_KEY);
+  const stored = await getJson<PlayerAggregateManifestV2>(env, MANIFEST_KEY);
+  const previous = options.forceFullRebuild ? null : stored;
   const reused = await tryFastPath(env, keys, previous, {
     sliceConcurrency: options.concurrency ?? 4,
     fingerprintOf: options.fingerprintOf,
     builderRevision: options.builderRevision
   });
-  return reused ?? rebuildPlayers(env, keys, previous, options);
+  return reused ?? rebuildPlayers(env, keys, previous, { ...options, stored });
 }

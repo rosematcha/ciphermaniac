@@ -285,7 +285,8 @@ test('rounds ride on the profile rather than an object of their own', async () =
     '_manifest.json',
     'index-slim.json',
     'index.json',
-    'profile.json'
+    'profile.json',
+    'top.json'
   ]);
 });
 

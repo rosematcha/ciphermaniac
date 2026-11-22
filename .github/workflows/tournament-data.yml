@@ -89,10 +89,28 @@ jobs:
         run: python3 .github/scripts/ingest-new-tournaments.py
         env:
           DRY_RUN: 'true'
-  tournaments:
+  # Waiting on CI for a just-pushed commit can take minutes, so it happens here,
+  # before the job below joins r2-bucket-writers and holds up every other writer.
+  # That job checks again, once, inside the lock.
+  verified:
     needs: watch
     if: >-
       !cancelled() && github.ref == 'refs/heads/main' &&
+      (needs.watch.result == 'skipped' || needs.watch.outputs.pending != '' ||
+      needs.watch.outputs.unpublished != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: ./.github/actions/setup
+      - name: Require verified main commit
+        run: npx tsx .github/scripts/require-verified-code.ts
+  tournaments:
+    needs: [watch, verified]
+    if: >-
+      !cancelled() && needs.verified.result == 'success' && github.ref == 'refs/heads/main' &&
       (needs.watch.result == 'skipped' || needs.watch.outputs.pending != '' ||
       needs.watch.outputs.unpublished != '')
     runs-on: ubuntu-latest
@@ -117,8 +135,11 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           python: 'true'
+      # Again inside the lock, before any write: main may have moved while this
+      # run queued, and an obsolete commit must not ingest. One look only: the
+      # checks passed above, and waiting here would hold up every other writer.
       - name: Require verified main commit
-        run: npx tsx .github/scripts/require-verified-code.ts
+        run: npx tsx .github/scripts/require-verified-code.ts --once
       - name: Discover or ingest major events
         if: >-
           github.event_name != 'push' &&

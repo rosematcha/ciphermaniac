@@ -3,7 +3,8 @@ import test from 'node:test';
 import {
   assertVerifiedCode,
   getVerificationState,
-  requiredCheckRunsPaths
+  requiredCheckRunsPaths,
+  verificationAttempts
 } from '../../.github/scripts/require-verified-code';
 
 const sha = 'a'.repeat(40);
@@ -54,4 +55,9 @@ test('required checks are queried by name so other workflow runs cannot page the
     paths.map(path => new URL(path, 'https://api.github.com/').searchParams.get('check_name')),
     ['quality-gates', 'lighthouse']
   );
+});
+
+test('inside the writer lock the check looks once; elsewhere it waits for CI', () => {
+  assert.equal(verificationAttempts(['--once']), 1);
+  assert.equal(verificationAttempts([]), 100);
 });

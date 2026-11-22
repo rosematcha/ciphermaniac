@@ -60,20 +60,28 @@ export async function runWithConcurrency<T, R>(
   const maxConcurrency = Math.max(1, Math.min(Number(limit) || 1, items.length));
   const results: R[] = new Array(items.length);
   let nextIndex = 0;
+  let failed = false;
 
+  // The first failure stops new work, and the call rejects only once the work in flight has
+  // settled, so a caller never writes its marker while earlier writes are still landing.
   async function worker() {
-    while (nextIndex < items.length) {
+    while (!failed && nextIndex < items.length) {
       const currentIndex = nextIndex;
       nextIndex += 1;
-      if (currentIndex >= items.length) {
-        break;
+      try {
+        results[currentIndex] = await handler(items[currentIndex], currentIndex);
+      } catch (error) {
+        failed = true;
+        throw error;
       }
-
-      results[currentIndex] = await handler(items[currentIndex], currentIndex);
     }
   }
 
-  await Promise.all(Array.from({ length: maxConcurrency }, () => worker()));
+  const settled = await Promise.allSettled(Array.from({ length: maxConcurrency }, () => worker()));
+  const rejection = settled.find((outcome): outcome is PromiseRejectedResult => outcome.status === 'rejected');
+  if (rejection) {
+    throw rejection.reason;
+  }
   return results;
 }
 

@@ -54,10 +54,19 @@ function api<T>(path: string): T {
   return JSON.parse(execFileSync('gh', ['api', path], { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 })) as T;
 }
 
+/**
+ * How many times to look. `--once` is for callers already holding the R2 writer lock: checks that
+ * are not finished there are a failure, not something to wait out while every other writer queues.
+ */
+export function verificationAttempts(argv: readonly string[]): number {
+  return argv.includes('--once') ? 1 : 100;
+}
+
 async function main(): Promise<void> {
   const repository = requireEnv('GITHUB_REPOSITORY');
   const sha = requireEnv('GITHUB_SHA');
-  for (let attempt = 0; attempt < 100; attempt++) {
+  const attempts = verificationAttempts(process.argv.slice(2));
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const head = api<{ sha: string }>(`repos/${repository}/commits/main`);
     const checks = requiredCheckRunsPaths(repository, sha).flatMap(
       path => api<{ check_runs: CheckRun[] }>(path).check_runs
@@ -70,8 +79,8 @@ async function main(): Promise<void> {
     if (state === 'failure') {
       assertVerifiedCode(sha, head.sha, checks);
     }
-    if (attempt === 99) {
-      throw new Error(`Timed out waiting for checks on ${sha}`);
+    if (attempt === attempts - 1) {
+      throw new Error(`${attempts === 1 ? 'Checks are not finished' : 'Timed out waiting for checks'} on ${sha}`);
     }
     if (attempt === 0) {
       console.log(`Waiting for quality and performance checks on ${sha}`);

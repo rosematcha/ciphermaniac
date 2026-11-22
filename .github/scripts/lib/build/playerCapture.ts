@@ -1,4 +1,5 @@
 import { inputFingerprint } from './provenance';
+import { runR2Batch } from '../r2.mjs';
 import { playerObjectPath, playerRouteShard } from '../../../../shared/playerObjectRoutes';
 
 export interface CapturedObject {
@@ -15,11 +16,14 @@ interface InventoryEntry {
 export type PlayerInventory = Record<string, InventoryEntry>;
 
 /** The producer manifest is the complete set of current careers. Old keys can linger in R2. */
+/** The scope's whole-field files: both indexes and the players page's first page. */
+const INDEX_FILES = new Set(['index.json', 'index-slim.json', 'top.json']);
+
 export function currentPlayerObjects(objects: CapturedObject[], players: Record<string, string[]>): CapturedObject[] {
   const ids = new Set(Object.keys(players));
   const selected = objects.filter(object => {
     const key = object.relativeKey;
-    return key === 'index.json' || key === 'index-slim.json' || (playerObjectPath(key) && ids.has(key.split('/')[0]));
+    return INDEX_FILES.has(key) || (playerObjectPath(key) && ids.has(key.split('/')[0]));
   });
   const profiles = new Set(
     selected
@@ -124,7 +128,6 @@ export async function capturePlayers(options: {
     return { ...result, copied: 0 };
   }
   // Bounded concurrency; a failed copy cannot publish a completion marker.
-  let next = 0;
   let completed = 0;
   const started = Date.now();
   const progress = (): void => {
@@ -134,23 +137,28 @@ export async function capturePlayers(options: {
   };
   const heartbeat = setInterval(progress, 30_000);
   heartbeat.unref();
-  const worker = async (): Promise<void> => {
-    while (next < copies.length) {
-      const { object, target } = copies[next++];
-      await store.copy(object, target);
-      completed++;
-    }
-  };
   try {
-    await Promise.all(Array.from({ length: Math.min(24, copies.length) }, worker));
+    // Copies are pure latency (about 0.6 s each), so they run wide; withR2Retry absorbs throttling.
+    // A failed copy stops new ones and lets those in flight finish before the capture rejects.
+    await runR2Batch(
+      copies,
+      async ({ object, target }) => {
+        await store.copy(object, target);
+        completed++;
+      },
+      48
+    );
   } finally {
     clearInterval(heartbeat);
     progress();
   }
   console.log('[players] writing 256 route shards, inventory, references, and completion marker');
-  for (const [path, body] of routingArtifacts(inventory)) {
-    await store.write(`${root.slice(1)}/${path}`, body);
-  }
+  // Side by side: one at a time took over two minutes. The completion marker still goes last.
+  await runR2Batch(
+    [...routingArtifacts(inventory)],
+    ([path, body]) => store.write(`${root.slice(1)}/${path}`, body),
+    16
+  );
   const references = [...new Set(Object.values(inventory).map(entry => entry.path.split('/').slice(0, 5).join('/')))];
   await store.write(`${root.slice(1)}/_inventory.json`, inventory);
   await store.write(

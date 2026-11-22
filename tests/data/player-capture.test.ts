@@ -143,3 +143,62 @@ test('publication requires completed producer inputs, not just pre-existing outp
   }
   assertProducerComplete({ status: 'complete', inputs: 'a', revision: 'v1' }, 'a', 'players');
 });
+
+test('a failed route shard write leaves the generation without a completion marker', async () => {
+  const bodies = new Map<string, unknown>();
+  let writes = 0;
+  const store = {
+    read: async <T>(key: string) => (bodies.get(key) as T) ?? null,
+    write: async (key: string, body: unknown) => {
+      writes += 1;
+      if (writes === 100) {
+        throw new Error('shard write failed');
+      }
+      bodies.set(key, body);
+    },
+    copy: async () => {}
+  };
+  await assert.rejects(
+    capturePlayers({ objects: [object], previous, previousRoot: prior, store, write: true }),
+    /shard write failed/
+  );
+  assert.equal(
+    [...bodies.keys()].some(key => key.endsWith('/_complete.json')),
+    false
+  );
+});
+
+test('a permanently failed copy admits no further copies and writes no marker', async () => {
+  const objects = Array.from({ length: 200 }, (_, index) => ({
+    ...object,
+    sourceKey: `players/${index}/profile.json`,
+    relativeKey: `${index}/profile.json`,
+    etag: `new-${index}`
+  }));
+  const writes: string[] = [];
+  let started = 0;
+  const store = {
+    read: async () => null,
+    write: async (key: string) => {
+      writes.push(key);
+    },
+    copy: async () => {
+      started += 1;
+      if (started === 1) {
+        throw new Error('etag mismatch');
+      }
+      await new Promise(resolve => {
+        setImmediate(resolve);
+      });
+    }
+  };
+  await assert.rejects(capturePlayers({ objects, previous, previousRoot: prior, store, write: true }), /etag mismatch/);
+  // Give any copies still being admitted in the background time to start.
+  for (let tick = 0; tick < 20; tick += 1) {
+    await new Promise(resolve => {
+      setImmediate(resolve);
+    });
+  }
+  assert.ok(started <= 48, `${started} copies started after the failure`);
+  assert.deepEqual(writes, []);
+});
