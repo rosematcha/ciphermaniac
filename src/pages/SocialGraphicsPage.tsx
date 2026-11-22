@@ -647,7 +647,6 @@ function SocialCanvas(props: CanvasProps) {
               <For each={stack()}>
                 {c => (
                   <div class='sg-row-card'>
-                    <div class='sg-row-rank'>{rankStr(c.rank)}</div>
                     <div class='sg-row-img' data-cat={c.cat}>
                       <CanvasImg item={c} />
                     </div>
