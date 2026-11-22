@@ -35,6 +35,7 @@ function harness({ cached, fetcher, put, keys, remove, open } = {}) {
     caches: { open: open ?? (() => Promise.resolve(cache)) },
     fetch: fetcher ?? (() => Promise.resolve(new Response('{}', { headers: { 'content-type': 'application/json' } }))),
     Response,
+    Headers,
     URL,
     setTimeout: callback => timers.push(callback)
   });
@@ -247,4 +248,192 @@ test('uncached report response and stored response remain independently readable
   await Promise.all(event.lifetimes);
   assert.notEqual(worker.writes[0].response, fresh);
   assert.equal(await worker.writes[0].response.text(), 'fresh');
+});
+
+test('immutable release bodies are served from cache without a network refresh', async () => {
+  const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
+  const cached = new Response('cached', { headers: { 'x-cm-stored-at': String(Date.now()) } });
+  let fetches = 0;
+  const hit = harness({
+    cached,
+    fetcher: () => {
+      fetches += 1;
+      return Promise.resolve(new Response('{}', { headers: { 'content-type': 'application/json' } }));
+    }
+  });
+  const event = hit.dispatch(release);
+  assert.equal(await event.response, cached);
+  await Promise.all(event.lifetimes);
+  assert.equal(fetches, 0);
+  assert.equal(hit.writes.length, 0);
+
+  const opened = [];
+  const miss = harness({
+    open: name => {
+      opened.push(name);
+      return Promise.resolve({ match: () => Promise.resolve(undefined), put: () => Promise.resolve() });
+    }
+  });
+  const first = miss.dispatch(release);
+  assert.equal((await first.response).ok, true);
+  await flush();
+  assert.equal(miss.timers.length, 1, 'the release cache is trimmed like the JSON cache');
+  assert.match(opened[0], /^cm-release-/);
+});
+
+test('a release body that does not parse is served once, never stored, and refetched next time', async () => {
+  const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
+  const bodies = ['{"items": [', '{"items": [', '{"items": []}'];
+  let fetches = 0;
+  const worker = harness({
+    fetcher: () => {
+      const body = bodies[Math.min(fetches, bodies.length - 1)];
+      fetches += 1;
+      return Promise.resolve(new Response(body, { headers: { 'content-type': 'application/json' } }));
+    }
+  });
+  const broken = worker.dispatch(release);
+  assert.equal(await (await broken.response).text(), '{"items": [');
+  await Promise.all(broken.lifetimes);
+  assert.equal(worker.writes.length, 0);
+  const healthy = worker.dispatch(release);
+  assert.equal(await (await healthy.response).text(), '{"items": []}');
+  await flush();
+  assert.equal(fetches, 3, 'the bad body was retried once past the browser cache, then fetched anew');
+  assert.equal(worker.writes.length, 1);
+});
+
+test('a release body that does not parse is fetched again past the browser cache, and the good copy stored', async () => {
+  const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
+  const inits = [];
+  const worker = harness({
+    fetcher: (_request, init) => {
+      inits.push(init);
+      const body = init?.cache === 'reload' ? '{"items": []}' : '{"items": [';
+      return Promise.resolve(new Response(body, { headers: { 'content-type': 'application/json' } }));
+    }
+  });
+  const event = worker.dispatch(release);
+  assert.equal(await (await event.response).text(), '{"items": [');
+  await flush();
+  await flush();
+  assert.deepEqual(
+    inits.map(init => init?.cache),
+    [undefined, 'reload']
+  );
+  assert.equal(worker.writes.length, 1);
+  assert.equal(await worker.writes[0].response.text(), '{"items": []}');
+});
+
+test('a release body stored over a day ago is served once more while a refetch replaces it', async () => {
+  const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
+  const stale = new Response('null', { headers: { 'x-cm-stored-at': String(Date.now() - 2 * 24 * 60 * 60 * 1000) } });
+  const inits = [];
+  const worker = harness({
+    cached: stale,
+    fetcher: (_request, init) => {
+      inits.push(init);
+      return Promise.resolve(new Response('{"items": []}', { headers: { 'content-type': 'application/json' } }));
+    }
+  });
+  const event = worker.dispatch(release);
+  assert.equal(await (await event.response).text(), 'null');
+  await flush();
+  assert.equal(worker.writes.length, 1);
+  assert.equal(await worker.writes[0].response.text(), '{"items": []}');
+  assert.ok(Number(worker.writes[0].response.headers.get('x-cm-stored-at')) > Date.now() - 60_000);
+  assert.equal(inits[0]?.cache, 'reload', 'the refetch skips the browser HTTP cache');
+});
+
+test('a mutable report refresh uses the browser HTTP cache as usual', async () => {
+  const inits = [];
+  const worker = harness({
+    cached: new Response('cached'),
+    fetcher: (_request, init) => {
+      inits.push(init);
+      return Promise.resolve(new Response('{}', { headers: { 'content-type': 'application/json' } }));
+    }
+  });
+  await worker.dispatch(report).response;
+  assert.equal(inits.length, 1);
+  assert.equal(inits[0], undefined);
+});
+
+test('a write that lands while a trim is deleting makes the trim read the keys again', async () => {
+  const deletion = deferred();
+  let keyReads = 0;
+  const worker = harness({
+    keys: () => {
+      keyReads += 1;
+      return Promise.resolve(Array.from({ length: 121 }, (_, index) => `report-${index}`));
+    },
+    remove: () => (keyReads === 1 ? deletion.promise : Promise.resolve(true))
+  });
+  const first = worker.dispatch(report);
+  await first.response;
+  await flush();
+  worker.timers[0]();
+  await flush();
+  assert.equal(keyReads, 1, 'the first trim read the keys and is deleting');
+  const second = worker.dispatch(report);
+  await second.response;
+  await flush();
+  deletion.resolve(true);
+  await Promise.all([...first.lifetimes, ...second.lifetimes]);
+  assert.equal(keyReads, 2);
+});
+
+test('a stored release body drops the transfer encoding and length the browser already undid', async () => {
+  const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
+  const worker = harness({
+    fetcher: () =>
+      Promise.resolve(
+        new Response('{"items": []}', {
+          headers: { 'content-type': 'application/json', 'content-encoding': 'br', 'content-length': '9' }
+        })
+      )
+  });
+  await worker.dispatch(release).response;
+  await flush();
+  assert.equal(worker.writes.length, 1);
+  const stored = worker.writes[0].response;
+  assert.equal(stored.headers.get('content-encoding'), null);
+  assert.equal(stored.headers.get('content-length'), null);
+  assert.equal(stored.headers.get('content-type'), 'application/json');
+});
+
+test('a reload past a day that does not parse is not reloaded a second time', async () => {
+  const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
+  const stale = new Response('{}', { headers: { 'x-cm-stored-at': String(Date.now() - 2 * 24 * 60 * 60 * 1000) } });
+  const inits = [];
+  const worker = harness({
+    cached: stale,
+    fetcher: (_request, init) => {
+      inits.push(init);
+      return Promise.resolve(new Response('{"items": [', { headers: { 'content-type': 'application/json' } }));
+    }
+  });
+  const event = worker.dispatch(release);
+  await event.response;
+  await Promise.all(event.lifetimes);
+  assert.deepEqual(
+    inits.map(init => init?.cache),
+    ['reload']
+  );
+  assert.equal(worker.writes.length, 0);
+});
+
+test('a release body stored "in the future" by a clock that stepped back counts as stale', async () => {
+  const release = { url: 'https://r2.ciphermaniac.com/releases/v1/online/abc123/master.json', method: 'GET' };
+  const future = new Response('{}', { headers: { 'x-cm-stored-at': String(Date.now() + 60 * 60 * 1000) } });
+  let fetches = 0;
+  const worker = harness({
+    cached: future,
+    fetcher: () => {
+      fetches += 1;
+      return Promise.resolve(new Response('{"items": []}', { headers: { 'content-type': 'application/json' } }));
+    }
+  });
+  await worker.dispatch(release).response;
+  assert.equal(fetches, 1);
 });

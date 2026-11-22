@@ -3,7 +3,8 @@
  *
  * Deliberately conservative — three behaviors only:
  *
- *  1. Report JSON from r2.ciphermaniac.com: stale-while-revalidate. Repeat
+ *  1. Report JSON from r2.ciphermaniac.com: stale-while-revalidate, except
+ *     immutable /releases/v1/ bodies, which are cache-first. Repeat
  *     visits render from the last-seen data instantly while a background
  *     refresh updates the cache. Data changes ~daily, so briefly-stale is
  *     fine (same policy as the 6h HTTP cache, but instant and offline-safe).
@@ -25,8 +26,11 @@ const VERSION = 'v4'; // v4: event listings leave the JSON cache (see below)
 const JSON_CACHE = `cm-json-${VERSION}`;
 const ASSET_CACHE = `cm-assets-${VERSION}`;
 const SHELL_CACHE = `cm-shell-${VERSION}`;
+// Its own cache and version: entries here are never revalidated, so none written before the
+// parse check below may be trusted.
+const RELEASE_CACHE = 'cm-release-v1';
 const JSON_MAX_ENTRIES = 120;
-let jsonTrimPending = null;
+const trimsPending = new Map();
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -35,7 +39,7 @@ self.addEventListener('install', () => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     (async () => {
-      const keep = [JSON_CACHE, ASSET_CACHE, SHELL_CACHE];
+      const keep = [JSON_CACHE, RELEASE_CACHE, ASSET_CACHE, SHELL_CACHE];
       for (const key of await caches.keys()) {
         if (!keep.includes(key)) {
           await caches.delete(key);
@@ -55,16 +59,39 @@ async function trimCache(cacheName, maxEntries) {
   }
 }
 
-function scheduleJsonTrim() {
-  if (jsonTrimPending) {
-    return jsonTrimPending;
+// A write that joins a trim after it has read the cache's keys is not in that read, so the trim
+// runs once more rather than leave the cache over its cap.
+async function trimUntilSettled(cacheName, entry) {
+  do {
+    entry.missed = false;
+    entry.reading = true;
+    await trimCache(cacheName, JSON_MAX_ENTRIES);
+    entry.reading = false;
+  } while (entry.missed);
+  // Synchronously, so a write that finishes before the promise settles starts a trim of its own.
+  releaseTrim(cacheName, entry);
+}
+
+function releaseTrim(cacheName, entry) {
+  if (trimsPending.get(cacheName) === entry) {
+    trimsPending.delete(cacheName);
   }
-  jsonTrimPending = new Promise(resolve => setTimeout(resolve, 1000))
-    .then(() => trimCache(JSON_CACHE, JSON_MAX_ENTRIES))
+}
+
+function scheduleTrim(cacheName) {
+  const running = trimsPending.get(cacheName);
+  if (running) {
+    running.missed ||= running.reading;
+    return running.promise;
+  }
+  const entry = { reading: false, missed: false, promise: null };
+  entry.promise = new Promise(resolve => setTimeout(resolve, 1000))
+    .then(() => trimUntilSettled(cacheName, entry))
     .finally(() => {
-      jsonTrimPending = null;
+      releaseTrim(cacheName, entry);
     });
-  return jsonTrimPending;
+  trimsPending.set(cacheName, entry);
+  return entry.promise;
 }
 
 // Never cache an HTML body under a data/asset URL. During an outage the
@@ -77,11 +104,11 @@ function cacheable(response) {
 }
 
 // Storage failures must not turn a usable network response into a fetch error.
-async function writeCache(cache, request, response, trim = false) {
+async function writeCache(cache, request, response, trim = null) {
   try {
     await cache.put(request, response);
     if (trim) {
-      await scheduleJsonTrim();
+      await scheduleTrim(trim);
     }
   } catch {
     // Quota, eviction, and trimming failures are safe to retry next request.
@@ -107,7 +134,7 @@ async function staleWhileRevalidate(request, keepAlive) {
   keepAlive(
     refresh.then(response => {
       if (response && cacheable(response)) {
-        return writeCache(cache, request, cached ? response : response.clone(), true);
+        return writeCache(cache, request, cached ? response : response.clone(), JSON_CACHE);
       }
     })
   );
@@ -138,6 +165,69 @@ async function cacheFirst(request, keepAlive) {
     keepAlive(writeCache(cache, request, response.clone()));
   }
   return response;
+}
+
+async function parsesAsJson(response) {
+  try {
+    await response.clone().json();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Release bodies sit under content-addressed keys and never change, so a refresh could only
+// rewrite the same bytes: serve them from cache without going back to the network. A body is
+// stored only once it parses, and with the time it was stored; after a day it is served once more
+// while a refetch replaces it, so a wrong body from a bad moment at the origin cannot stick.
+const RELEASE_FRESH_MS = 24 * 60 * 60 * 1000;
+const STORED_AT = 'x-cm-stored-at';
+
+function storedRecently(cached) {
+  const age = Date.now() - Number(cached.headers.get(STORED_AT));
+  // A clock that stepped back would read a stored body as younger than it is; treat that as stale.
+  return Number.isFinite(age) && age >= 0 && age < RELEASE_FRESH_MS;
+}
+
+async function admitRelease(cache, request, response, reloaded) {
+  if (!(await parsesAsJson(response))) {
+    // The browser's HTTP cache may hold the same bad bytes for a year: ask the origin once more,
+    // past it, and store that answer only if it parses.
+    const retry = reloaded ? null : await fetch(request, { cache: 'reload' }).catch(() => null);
+    if (retry && cacheable(retry)) {
+      await admitRelease(cache, request, retry, true);
+    }
+    return;
+  }
+  const headers = new Headers(response.headers);
+  // The body is already decoded; the transfer's encoding and compressed length no longer describe it.
+  headers.delete('content-encoding');
+  headers.delete('content-length');
+  headers.set(STORED_AT, String(Date.now()));
+  const stored = new Response(response.body, { status: response.status, headers });
+  await writeCache(cache, request, stored, RELEASE_CACHE);
+}
+
+async function releaseCacheFirst(request, keepAlive) {
+  const cache = await caches.open(RELEASE_CACHE);
+  const cached = await cache.match(request);
+  if (cached && storedRecently(cached)) {
+    return cached;
+  }
+  // Past its day, ask the origin itself: the browser's HTTP cache would hand back the same bytes,
+  // since release bodies are served immutable for a year.
+  const refresh = fetch(request, cached ? { cache: 'reload' } : undefined).catch(() => null);
+  keepAlive(
+    refresh.then(response =>
+      response && cacheable(response)
+        ? admitRelease(cache, request, cached ? response : response.clone(), Boolean(cached))
+        : undefined
+    )
+  );
+  if (cached) {
+    return cached;
+  }
+  return (await refresh) ?? Response.error();
 }
 
 async function navigationNetworkFirst(request, keepAlive) {
@@ -181,7 +271,7 @@ self.addEventListener('fetch', event => {
     !url.pathname.startsWith('/live/') &&
     !url.pathname.startsWith('/tournaments/')
   ) {
-    respondWithBackground(event, staleWhileRevalidate);
+    respondWithBackground(event, url.pathname.startsWith('/releases/v1/') ? releaseCacheFirst : staleWhileRevalidate);
     return;
   }
   if (
