@@ -29,10 +29,20 @@ export function foldName(value: string): string {
   if (held !== undefined) {
     return held;
   }
-  const folded = value.toLowerCase().normalize('NFKD').replace(COMBINING_MARKS, '').replace(/\s+/g, ' ').trim();
+  const folded = foldNameUncached(value);
   if (FOLDED.size >= FOLDED_MAX) {
     FOLDED.clear();
   }
   FOLDED.set(value, folded);
   return folded;
+}
+
+/**
+ * {@link foldName} without the memo, for a one-off pass over more names than it holds (the
+ * player index): memoising those would only evict the field's names.
+ * @param value - Raw name
+ * @returns The folded form
+ */
+export function foldNameUncached(value: string): string {
+  return value.toLowerCase().normalize('NFKD').replace(COMBINING_MARKS, '').replace(/\s+/g, ' ').trim();
 }

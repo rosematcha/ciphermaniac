@@ -65,6 +65,24 @@ export function fetchPostedRounds(
   );
 }
 
+/**
+ * One posted round, read the way {@link fetchPostedRounds} reads it, so a lookup that runs first
+ * (a profile's search for the player's last seat) leaves the run its files in flight or held.
+ * @param slug - Event slug
+ * @param round - Round to read
+ * @param index - The live index's round and hash the round is read under
+ * @param read - Round reader; defaults to the live data client
+ * @returns The round, or null when its file is not there yet
+ */
+export function fetchPostedRound(
+  slug: string,
+  round: number,
+  index: { round: number; hash?: string },
+  read: RoundReader = fetchLiveRound
+): Promise<LiveRound | null> {
+  return round === index.round ? read(slug, round, index.hash) : fetchArchivedRound(slug, round, read);
+}
+
 /** The version to read a round at: the index hash while it is the current round, else none, since it no longer changes. */
 export function roundVersion(index: LiveIndex | null | undefined, round: number): string | undefined {
   return index?.round === round ? index.hash : undefined;

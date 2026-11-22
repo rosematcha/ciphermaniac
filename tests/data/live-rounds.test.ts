@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 
 import type { LiveRound } from '../../shared/live/types.ts';
-import { clearRoundArchive, fetchPostedRounds, type RoundReader } from '../../src/lib/liveRounds.ts';
+import { clearRoundArchive, fetchPostedRound, fetchPostedRounds, type RoundReader } from '../../src/lib/liveRounds.ts';
 
 let read: string[] = [];
 let missing = new Set<number>();
@@ -93,4 +93,13 @@ test('each event keeps its own archive', async () => {
   read = [];
   await fetchPostedRounds('other-2027', 2, undefined, reader);
   assert.deepEqual(read, ['other-2027|1', 'other-2027|2']);
+});
+
+test('a round read one at a time is the one the whole run reads, held or at the index hash', async () => {
+  assert.equal((await fetchPostedRound('test-2027', 2, { round: 3, hash: 'abc' }, reader))?.round, 2);
+  assert.equal((await fetchPostedRound('test-2027', 3, { round: 3, hash: 'abc' }, reader))?.round, 3);
+  assert.deepEqual(read, ['test-2027|2', 'test-2027|3@abc']);
+  read = [];
+  await fetchPostedRounds('test-2027', 3, 'abc', reader);
+  assert.deepEqual(read, ['test-2027|1', 'test-2027|3@abc'], 'round two is already held');
 });

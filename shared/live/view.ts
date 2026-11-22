@@ -6,7 +6,7 @@
  * @module shared/live/view
  */
 
-import { foldName } from './fold';
+import { foldName, foldNameUncached } from './fold';
 import type { LiveMatch, LiveResult, LiveRound, LiveSeat } from './types';
 
 export { foldName };
@@ -161,7 +161,8 @@ export function createProfileLookup(
   const byName = new Map<string, NamedPlayer | null>();
   const byId = new Map<string, NamedPlayer>();
   for (const player of players) {
-    const key = foldName(player.name);
+    // Folded once each, outside the shared memo: the index holds far more names than it keeps.
+    const key = foldNameUncached(player.name);
     byName.set(key, byName.has(key) ? null : player);
     byId.set(player.playerId, player);
   }
@@ -245,12 +246,15 @@ export interface RunTail {
  * Where a player's event has got to, from the rounds published so far: their
  * current pairing, or the last one they had once they are out of the draw.
  *
- * A player is paired every round until they drop or miss the cut, so the rounds
- * that carry their name are a run from the first one: a player absent from
- * round one was never in the event, and the last round that has them is a
- * boundary the search can halve for rather than walk back to. That keeps a
- * profile page during an event to one round file for a player still in, two for
- * everyone who is not at the event, and a handful for a run that has ended.
+ * The current round settles a player still in, and round one everyone who was
+ * never at the event, so those cost one or two round files. For a run that has
+ * ended, every posted round is read at once and the last one carrying the
+ * player wins: the profile then shows the whole run, which reads those same
+ * files, so a search one file at a time only added round trips. Taking the last
+ * round that has them also finds a run with a gap after round one (a missed
+ * pairing), which halving on the assumption of one unbroken run did not. A
+ * player who entered after round one and is out again is still not found: that
+ * would cost every visitor's profile every round file.
  *
  * The boundary is searched on the name alone, not on `findSeat`, because
  * `findSeat` also refuses a name two players in one round share — a refusal
@@ -279,20 +283,9 @@ export async function lastSeatInEvent(
   if (!first) {
     return null;
   }
-  let found = first;
-  let low = 2;
-  let high = current - 1;
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    const round = await paired(mid);
-    if (round) {
-      found = round;
-      low = mid + 1;
-    } else {
-      high = mid - 1;
-    }
-  }
-  return tail(found);
+  // A round that fails to load only narrows the search: the run mounts on what did load and retries it.
+  const later = await Promise.all(Array.from({ length: current - 2 }, (_, i) => paired(i + 2).catch(() => null)));
+  return tail(later.reduce<LiveRound>((last, round) => round ?? last, first));
 }
 
 export interface RunSeatEntry {
