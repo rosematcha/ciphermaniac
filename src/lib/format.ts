@@ -1,6 +1,7 @@
 import type { TournamentParticipant } from '../types';
 import { ONLINE_META_LABEL, ONLINE_META_NAME } from './constants';
 import { shortTournamentName } from '../../shared/data/tournamentKeys';
+import { dateFormatter } from '../../shared/data/dateFormat';
 import { formatIdFromKey, formatLabel } from '../../shared/formats/registry';
 
 export function capitalize(s: string): string {
@@ -41,13 +42,16 @@ export function formatPercent(p: number | null | undefined, fractionDigits = 1):
   return `${p.toFixed(fractionDigits)}%`;
 }
 
+// Reused: toLocaleString builds a formatter on every call, and /cards labels every bucket.
+const COUNT_FORMAT = new Intl.NumberFormat();
+
 /**
  * Tooltip text for one copy-count bucket, e.g. "2 copies: 60% (382 decks)".
  * A non-zero share under 1% reads "<1%" instead of rounding to "0%".
  */
 export function copyBucketLabel(copies: number, pct: number, decks?: number): string {
   const share = pct > 0 && pct < 1 ? '<1%' : `${pct.toFixed(0)}%`;
-  const count = decks === undefined ? '' : ` (${decks.toLocaleString()} deck${decks === 1 ? '' : 's'})`;
+  const count = decks === undefined ? '' : ` (${COUNT_FORMAT.format(decks)} deck${decks === 1 ? '' : 's'})`;
   return `${copies} cop${copies === 1 ? 'y' : 'ies'}: ${share}${count}`;
 }
 
@@ -95,7 +99,7 @@ export function shortDate(d: Date | null): string {
   if (!d || Number.isNaN(d.getTime())) {
     return '—';
   }
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return dateFormatter({ month: 'short', day: 'numeric' }).format(d);
 }
 
 /**
@@ -107,7 +111,7 @@ export function shortDateParts(d: Date | null): { month: string; day: string } |
   if (!d || Number.isNaN(d.getTime())) {
     return null;
   }
-  const parts = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).formatToParts(d);
+  const parts = dateFormatter({ month: 'short', day: 'numeric' }).formatToParts(d);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(p => p.type === type)?.value ?? '';
   return { month: part('month'), day: part('day') };
 }

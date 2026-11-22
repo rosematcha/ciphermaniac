@@ -13,6 +13,7 @@
  * @module shared/data/tournamentKeys
  */
 
+import { dateFormatter } from './dateFormat';
 import { formatIdFromKey, formatLabel } from '../formats/registry';
 
 /**
@@ -104,7 +105,7 @@ export function prettyTournamentName(key: string): string {
   if (!date) {
     return key;
   }
-  const dateLabel = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const dateLabel = dateFormatter({ month: 'short', day: 'numeric', year: 'numeric' }).format(date);
   return `${shortTournamentName(rest)} · ${dateLabel}`;
 }
 

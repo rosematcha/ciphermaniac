@@ -7,6 +7,7 @@
  */
 import { nameFromTournamentKey } from '../../lib/format';
 import { shortTournamentName as formatShortTournamentName, tournamentDate } from '../../../shared/data/tournamentKeys';
+import { dateFormatter } from '../../../shared/data/dateFormat';
 import type { PlayerProfile, PlayerRound, PlayerTournamentEntry } from '../../types';
 
 /**
@@ -29,7 +30,7 @@ export function shortTournamentName(key: string): string {
 /** "Jun 12, 2026" from a tournament key, or an empty string when it carries no date. */
 export function tournamentDateLabel(key: string): string {
   const date = tournamentDate(key);
-  return date ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  return date ? dateFormatter({ month: 'short', day: 'numeric', year: 'numeric' }).format(date) : '';
 }
 
 /** "Sep 2024" from an ISO date. */
@@ -38,7 +39,7 @@ export function monthYear(iso: string): string {
   if (!y || !m) {
     return '';
   }
-  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  return dateFormatter({ month: 'short', year: 'numeric' }).format(new Date(y, m - 1, 1));
 }
 
 /** Placement as a share of the field, 0–1; null when either number is missing. */
