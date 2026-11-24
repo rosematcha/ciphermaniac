@@ -13,11 +13,11 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  assertSetsCatalogued,
   buildClusterIndex,
-  isSetLegalAt,
+  chooseCanonicalPrint,
   resolveCanonicalUidAt,
   SET_CATALOG,
-  STANDARD_LEGAL_SETS,
   type SynonymDatabase
 } from '../../shared/data/canonicalPrint.ts';
 
@@ -85,14 +85,26 @@ describe('resolveCanonicalUidAt', () => {
 });
 
 describe('set catalog legality windows', () => {
-  // Pinned to the date the windows were authored. When a rotation or set
-  // release updates standardLegalSets, the windows must move with it (and
-  // this pin date advances) — the two views of legality may never diverge.
-  const PINNED_TODAY = '2026-09-22';
+  // 30C and DLR had windows but sat outside a hand-kept legal-set list (DLR
+  // outside the catalog), so their cards went to their MEP promos.
+  it('names a new set print over its promo once the set is legal', () => {
+    const umbreon = [
+      { set: 'MEP', number: '110' },
+      { set: '30C', number: '092' }
+    ];
+    const magmortar = [
+      { set: 'MEP', number: '112' },
+      { set: 'DLR', number: '021' },
+      { set: 'DLR', number: '107' }
+    ];
+    assert.deepEqual(chooseCanonicalPrint(umbreon, 'Umbreon ex'), umbreon[1]);
+    assert.deepEqual(chooseCanonicalPrint(magmortar, 'Magmortar'), magmortar[1]);
+    assert.deepEqual(chooseCanonicalPrint(magmortar, 'Magmortar', { asOfDate: '2026-11-10' }), magmortar[0]);
+  });
 
-  it('derive standardLegalSets exactly', () => {
-    const derived = SET_CATALOG.filter(entry => isSetLegalAt(entry.code, PINNED_TODAY)).map(entry => entry.code);
-    assert.deepEqual(new Set(derived), STANDARD_LEGAL_SETS);
+  it('rejects card data from a set the catalog lacks', () => {
+    assert.doesNotThrow(() => assertSetsCatalogued(['Magmortar::DLR::021', 'Umbreon ex::30C::092']));
+    assert.throws(() => assertSetsCatalogued(['Magmortar::DLR::021', 'Foo::ZZZ::001']), /Add ZZZ to/);
   });
 
   it('windows are well-formed', () => {

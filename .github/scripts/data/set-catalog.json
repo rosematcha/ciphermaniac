@@ -1,6 +1,12 @@
 {
-  "_comment": "Set catalog for pipeline scripts. sets is ordered newest-first and drives release-order comparisons. Sets from SSH onward carry a standard-legality window: legalFrom is the tournament-legality date (the second Friday after release) and legalUntil is the rotation date that removed the set (null = still legal); the window is [legalFrom, legalUntil). Sets without a window were never standard-legal during the dataset era. standardLegalSets is the current-date view of those windows and must be updated together with them when a new set releases and at each rotation (a unit test pins the two in sync). promoSets are deprioritized when choosing canonical prints. olderPromoSets are the promo sets of earlier eras; format canonicals skip them and promoSets unless a card has no other print. specialSets (special and reprint sets) and popSeriesSets are skipped by format canonicals unless the print is the card's first printing or its only one. classicCollectionSets carry a CC-numbered Classic Collection subset that never names a card while any other print exists.",
+  "_comment": "Set catalog for pipeline scripts. sets is ordered newest-first and drives release-order comparisons. Sets from SSH onward carry a standard-legality window: legalFrom is the tournament-legality date (the second Friday after release) and legalUntil is the rotation date that removed the set (null = still legal); the window is [legalFrom, legalUntil). Sets without a window were never standard-legal during the dataset era. Standard legality is read from the windows on the date in question, so a new set needs only its entry here, and a rotation only its legalUntil dates. Every set the card data names must be listed: the synonyms job fails on one that is not. promoSets are deprioritized when choosing canonical prints. olderPromoSets are the promo sets of earlier eras; format canonicals skip them and promoSets unless a card has no other print. specialSets (special and reprint sets) and popSeriesSets are skipped by format canonicals unless the print is the card's first printing or its only one. classicCollectionSets carry a CC-numbered Classic Collection subset that never names a card while any other print exists.",
   "sets": [
+    {
+      "code": "DLR",
+      "name": "Delta Reign",
+      "legalFrom": "2026-11-20",
+      "legalUntil": null
+    },
     {
       "code": "30C",
       "name": "30th Celebration",
@@ -705,28 +711,6 @@
       "code": "WP",
       "name": "WotC Promos"
     }
-  ],
-  "standardLegalSets": [
-    "PBL",
-    "CRI",
-    "POR",
-    "ASC",
-    "PFL",
-    "MEG",
-    "MEE",
-    "MEP",
-    "BLK",
-    "WHT",
-    "DRI",
-    "JTG",
-    "PRE",
-    "SSP",
-    "SCR",
-    "SFA",
-    "TWM",
-    "TEF",
-    "SVE",
-    "SVP"
   ],
   "promoSets": [
     "SVP",

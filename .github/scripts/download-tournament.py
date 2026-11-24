@@ -1093,7 +1093,6 @@ def _load_set_catalog():
 _SET_CATALOG_DATA = _load_set_catalog()
 # sets is ordered newest-first, so a larger index means an older set.
 _SET_RELEASE_INDEX = {entry["code"]: index for index, entry in enumerate(_SET_CATALOG_DATA["sets"])}
-_STANDARD_LEGAL_SETS = set(_SET_CATALOG_DATA["standardLegalSets"])
 _PROMO_SETS = set(_SET_CATALOG_DATA["promoSets"])
 _CANONICAL_BASIC_ENERGY_NAMES = set(_SET_CATALOG_DATA["basicEnergyNames"])
 _ENERGY_SETS = set(_SET_CATALOG_DATA["energySets"])
@@ -1160,7 +1159,7 @@ def choose_canonical_print(variations, card_name, as_of_date=None):
     cheap print instead.
 
     With as_of_date (ISO YYYY-MM-DD), standard legality is evaluated on that
-    date instead of today's standardLegalSets — the rolling canonical for a
+    date instead of today — the rolling canonical for a
     historical event uses the event's start date. Prints from sets not yet
     legal on the date are treated as nonexistent. Prices remain today's
     scrape; the accessibility rule is kept as an approximation.
@@ -1171,26 +1170,20 @@ def choose_canonical_print(variations, card_name, as_of_date=None):
     if not variations:
         return None
 
-    if as_of_date is not None and not _ISO_DATE_RE.match(str(as_of_date)):
+    if as_of_date is None:
+        as_of_date = datetime.now(timezone.utc).date().isoformat()
+    elif not _ISO_DATE_RE.match(str(as_of_date)):
         raise ValueError(f'choose_canonical_print: invalid as_of_date "{as_of_date}" (expected YYYY-MM-DD)')
 
     # 0. Classic Collection reprints (CEL CC12, 30C CC9) never name a card
     #    while it has any other print.
     variations = [v for v in variations if not _is_classic_collection(v)] or list(variations)
 
-    # 1. Standard legality, on the event date when one is given. If nothing is
-    #    legal (a fully rotated card in historical data), fall back to every
-    #    print that existed on the date.
-    if as_of_date is not None:
-        legal = [v for v in variations if is_set_legal_at(v.get("set"), as_of_date)]
-        if legal:
-            pool = legal
-        else:
-            existing = [v for v in variations if _print_existed_at(v.get("set"), as_of_date)]
-            pool = existing if existing else list(variations)
-    else:
-        legal = [v for v in variations if str(v.get("set", "")).upper() in _STANDARD_LEGAL_SETS]
-        pool = legal if legal else list(variations)
+    # 1. Standard legality on the date. If nothing is legal (a fully rotated
+    #    card in historical data), fall back to every print that existed on it.
+    pool = [v for v in variations if is_set_legal_at(v.get("set"), as_of_date)]
+    if not pool:
+        pool = [v for v in variations if _print_existed_at(v.get("set"), as_of_date)] or list(variations)
 
     # 2. Accessibility. Strike collector-priced prints, and prints with no
     #    price at all when priced alternatives exist. A print is accessible

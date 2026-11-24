@@ -11,7 +11,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import * as cheerio from 'cheerio';
-import { chooseCanonicalPrint } from '../../shared/data/canonicalPrint.ts';
+import { assertSetsCatalogued, chooseCanonicalPrint } from '../../shared/data/canonicalPrint.ts';
 import { assertCanonicalRoutesSound } from '../../shared/data/canonicalCardRoute.ts';
 import { normalizeSynonymDatabase, unpadLetterNumbers } from '../../shared/data/cardIdentity.ts';
 import { createR2Client, getJsonResult, readJson } from './lib/r2.mjs';
@@ -717,6 +717,7 @@ async function main() {
   await prefetchPrintTables(cardsByName);
   limitless.assertWithinLimit();
   let synonymsData = await generateSynonyms(cardsByName);
+  assertSetsCatalogued(Object.keys(synonymsData.prints));
 
   // Merge previous mappings UNDER the fresh ones: any card re-clustered this
   // run overrides its old entry, while mappings whose source was missing this

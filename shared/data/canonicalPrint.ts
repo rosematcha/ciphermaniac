@@ -42,7 +42,6 @@ interface SetEntry {
 }
 
 export const SET_CATALOG: SetEntry[] = CATALOG.sets;
-export const STANDARD_LEGAL_SETS = new Set<string>(CATALOG.standardLegalSets);
 export const PROMO_SETS = new Set<string>(CATALOG.promoSets);
 export const ENERGY_SETS = new Set<string>(CATALOG.energySets);
 export const BASIC_ENERGY_NAMES = new Set<string>(CATALOG.basicEnergyNames);
@@ -61,6 +60,25 @@ const SET_BY_CODE = new Map<string, SetEntry>(SET_CATALOG.map(entry => [entry.co
 const UNKNOWN_SET_INDEX = -1;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Throw when card UIDs name a set the catalog doesn't list. An uncatalogued
+ * set is never standard-legal, so its prints would silently lose canonicals
+ * to promos (Delta Reign's cards went to their MEP prerelease promos).
+ * @param uids - Card UIDs (Name::SET::NUMBER)
+ */
+export function assertSetsCatalogued(uids: Iterable<string>): void {
+  const missing = new Set<string>();
+  for (const uid of uids) {
+    const set = parseCardUid(uid)?.set.toUpperCase();
+    if (set && !SET_BY_CODE.has(set)) {
+      missing.add(set);
+    }
+  }
+  if (missing.size) {
+    throw new Error(`Add ${[...missing].sort().join(', ')} to .github/scripts/data/set-catalog.json`);
+  }
+}
 
 /** Was the set standard-legal on the given ISO date? Window is [legalFrom, legalUntil). */
 export function isSetLegalAt(setCode: string | null | undefined, asOfDate: string): boolean {
@@ -119,7 +137,7 @@ export interface ChooseCanonicalPrintOptions {
    * canonical is the oldest print that was legal and reasonably priced *then*
    * (prices are still today's scrape; we keep the accessibility rule as an
    * approximation). Prints from sets not yet legal on the date are treated as
-   * nonexistent. Omitted = current standardLegalSets behavior.
+   * nonexistent. Omitted = today.
    */
   asOfDate?: string | null;
 }
@@ -168,13 +186,9 @@ function pickByAge(pool: PrintVariation[], newest: boolean): PrintVariation {
   return pool.reduce((best, v) => (compareKeys(sortKey(v), sortKey(best)) < 0 ? v : best));
 }
 
-// 1. Standard legality, on the event date when one is given. If nothing is
-//    legal (a fully rotated card in historical data), fall back to every
-//    print that existed on the date.
-function standardPool(variations: PrintVariation[], asOfDate: string | null): PrintVariation[] {
-  if (asOfDate === null) {
-    return narrow(variations, v => STANDARD_LEGAL_SETS.has(setOf(v)));
-  }
+// 1. Standard legality on the date. If nothing is legal (a fully rotated card
+//    in historical data), fall back to every print that existed on the date.
+function standardPool(variations: PrintVariation[], asOfDate: string): PrintVariation[] {
   const legal = variations.filter(v => isSetLegalAt(v.set, asOfDate));
   return legal.length ? legal : narrow(variations, v => printExistedAt(v.set, asOfDate));
 }
@@ -191,8 +205,8 @@ export function chooseCanonicalPrint(
     return null;
   }
 
-  const asOfDate = options?.asOfDate ?? null;
-  if (asOfDate !== null && !ISO_DATE.test(asOfDate)) {
+  const asOfDate = options?.asOfDate ?? new Date().toISOString().slice(0, 10);
+  if (!ISO_DATE.test(asOfDate)) {
     throw new Error(`chooseCanonicalPrint: invalid asOfDate "${asOfDate}" (expected YYYY-MM-DD)`);
   }
 
