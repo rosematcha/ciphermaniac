@@ -16,7 +16,11 @@ import { baselineRate } from './baseline';
 import type { EventField } from './eventField';
 import type { CardItem } from '../../types';
 
-export type Mode = 'standard' | 'rising' | 'converting';
+/** Graphics that rank cards. */
+export type CardMode = 'standard' | 'rising' | 'converting';
+/** Graphics about decks rather than cards. */
+export type DeckMode = 'deck-conversion' | 'matchups';
+export type Mode = CardMode | DeckMode;
 export type CatKind = 'pokemon' | 'trainer' | 'energy-basic' | 'energy-special';
 
 /** One row in the rendered graphic. */
@@ -37,6 +41,15 @@ export interface RenderItem {
   day2Count?: number;
   /** Converting mode only: count of all Day 1 decks playing this card. */
   day1Count?: number;
+}
+
+export function isDeckMode(mode: Mode): mode is DeckMode {
+  return mode === 'deck-conversion' || mode === 'matchups';
+}
+
+/** Modes that need one event's results, which the rolling Online Meta does not have. */
+export function needsEvent(mode: Mode): boolean {
+  return needsDay2Stats(mode) || isDeckMode(mode);
 }
 
 /** Modes whose numbers come from the event's Day 1 to Day 2 cut. */
@@ -84,7 +97,7 @@ export function splitPartner(set: string, number: string): string | null {
  * Accents fold to their base letter, so São Paulo saves as sao-paulo.
  */
 export function exportFileName(
-  { tournament, mode, size, theme }: { tournament: string; mode: Mode; size: number; theme: string },
+  { tournament, mode, size, theme }: { tournament: string; mode: Mode; size?: number; theme: string },
   format: string
 ): string {
   const slug = shortTournament(tournament)
@@ -93,7 +106,8 @@ export function exportFileName(
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-+|-+$)/g, '');
-  return `${slug}-${mode}-top${size}-${theme}.${format}`;
+  const top = size ? `-top${size}` : '';
+  return `${slug}-${mode}${top}-${theme}.${format}`;
 }
 
 /** Same-origin thumbnail path; hotlinking the CDN taints the export canvas. */
@@ -175,7 +189,7 @@ export function collapseEvolutions(
 
 /** Everything the render model needs, per mode. */
 export interface RenderModelInput {
-  mode: Mode;
+  mode: CardMode;
   size: number;
   minDecks: number;
   /** The selected tournament's master report items. */

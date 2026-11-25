@@ -1,8 +1,12 @@
 import {
   buildRenderModel,
+  type CardMode,
+  type DeckMode,
   exportFileName,
+  isDeckMode,
   type Mode,
   needsDay2Stats,
+  needsEvent,
   type RenderItem,
   shortTournament,
   splitPartner,
@@ -12,7 +16,20 @@ import { baselineTournaments } from './socialGraphics/baseline';
 import { type EventField, fetchEventField } from './socialGraphics/eventField';
 import { type FitBounds, fitText } from './socialGraphics/fitText';
 import { exportCanvas } from './socialGraphics/exportCanvas';
-import { createEffect, createMemo, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createDeckData } from './socialGraphics/deckData';
+import { CanvasHead, DeckGraphic } from './socialGraphics/DeckCanvases';
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  For,
+  Match,
+  onCleanup,
+  onMount,
+  Show,
+  Switch
+} from 'solid-js';
 import {
   fetchConversionIndex,
   fetchDay2CardStats,
@@ -35,8 +52,11 @@ type MinDecks = 5 | 10 | 25;
 const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: 'standard', label: 'Standard' },
   { value: 'rising', label: 'Rising' },
-  { value: 'converting', label: 'Converting' }
+  { value: 'converting', label: 'Converting' },
+  { value: 'deck-conversion', label: 'Deck conversion' },
+  { value: 'matchups', label: 'Matchups' }
 ];
+
 const SIZE_OPTIONS: { value: string; label: string }[] = [
   { value: '8', label: 'Top 8' },
   { value: '12', label: 'Top 12' },
@@ -64,7 +84,7 @@ const NAME_FIT: Record<'hero' | 'row' | 'cell' | 'tail', FitBounds> = {
 };
 
 /** The two-part headline per mode; the second half renders in the accent. */
-const TITLES: Record<Mode, { lead: string; accent: string }> = {
+const TITLES: Record<CardMode, { lead: string; accent: string }> = {
   standard: { lead: 'MOST', accent: 'PLAYED' },
   rising: { lead: 'RISING', accent: 'CARDS' },
   converting: { lead: 'BEST', accent: 'CONVERTERS' }
@@ -77,6 +97,12 @@ const TITLE_FIT: FitBounds = { max: 64, min: 44 };
 function emptyNote(mode: Mode): string {
   if (mode === 'converting') {
     return 'No Day 2 data for this tournament (or no cards clear the min-decks filter).';
+  }
+  if (mode === 'deck-conversion') {
+    return 'No Day 2 data for this tournament.';
+  }
+  if (mode === 'matchups') {
+    return 'No matchup data for this tournament.';
   }
   return 'No data yet for this selection.';
 }
@@ -112,11 +138,11 @@ export function SocialGraphicsPage() {
     onCleanup(() => narrowQuery?.removeEventListener('change', onChange));
   });
 
-  // Converting reads a Day 1 → Day 2 cut, which the rolling Online Meta
-  // doesn't have. Auto-revert to Standard whenever the user lands on Online
-  // Meta with it chosen.
+  // Converting and the deck graphics read one event's results, which the
+  // rolling Online Meta doesn't have. Auto-revert to Standard whenever the user
+  // lands on Online Meta with one chosen.
   createEffect(() => {
-    if (needsDay2Stats(mode()) && tournament() === ONLINE_META_NAME) {
+    if (needsEvent(mode()) && tournament() === ONLINE_META_NAME) {
       setMode('standard');
     }
   });
@@ -151,6 +177,7 @@ export function SocialGraphicsPage() {
     key => (key ? fetchConversionIndex(key) : Promise.resolve(null))
   );
   const [evolutionMap] = createResource(fetchEvolutionMap);
+  const decks = createDeckData(mode, () => (tournament() === ONLINE_META_NAME ? null : tournament()));
   const fieldConversion = () => {
     const payload = latestValue(conversionIndex);
     return payload && payload.day1Total > 0 ? (payload.day2Total / payload.day1Total) * 100 : null;
@@ -160,35 +187,56 @@ export function SocialGraphicsPage() {
   const day2StatsData = () => latestValue(day2Stats);
   const evolutionMapData = () => latestValue(evolutionMap);
 
-  const items = createMemo<RenderItem[]>(() =>
-    buildRenderModel({
-      mode: mode(),
+  const cardMode = createMemo((): CardMode | null => {
+    const m = mode();
+    return isDeckMode(m) ? null : m;
+  });
+  const deckMode = createMemo((): DeckMode | null => {
+    const m = mode();
+    return isDeckMode(m) ? m : null;
+  });
+  const items = createMemo<RenderItem[]>(() => {
+    const m = cardMode();
+    if (!m) {
+      return [];
+    }
+    return buildRenderModel({
+      mode: m,
       size: size(),
       minDecks: minDecks(),
       items: masterData()?.items ?? null,
       baseline: baselineData() ?? null,
       day2Stats: day2StatsData(),
       evolutionMap: evolutionMapData()
-    })
-  );
+    });
+  });
 
   // Whether anything the ACTIVE mode reads is still loading: rising's baseline
-  // events, converting's Day-2 stats.
+  // events, converting's Day-2 stats, the deck graphics' players and matchups.
   const loading = () =>
-    master.loading || (mode() === 'rising' && baseline.loading) || (needsDay2Stats(mode()) && day2Stats.loading);
+    master.loading ||
+    (mode() === 'rising' && baseline.loading) ||
+    (needsDay2Stats(mode()) && day2Stats.loading) ||
+    decks.loading();
+
+  /** Whether the active mode has everything it draws. */
+  const ready = () => (cardMode() ? items().length > 0 : decks.ready());
 
   // Export rasterizes the live preview canvas, so it must stay disabled until
   // everything above has resolved and there's a rendered canvas to snapshot
   // (items present). Gating only on `master.loading` let a click during a
   // mode's secondary load hit "Canvas not ready."
-  const exportBlocked = createMemo(() => busy() !== null || items().length === 0 || loading());
+  const exportBlocked = createMemo(() => busy() !== null || !ready() || loading());
   const exportLabel = (format: 'png' | 'jpg') => (busy() === format ? 'Exporting…' : `Export ${format.toUpperCase()}`);
   const deckTotal = (payload: { deckTotal: number } | null | undefined) => payload?.deckTotal ?? 0;
 
   async function exportImage(format: 'png' | 'jpg') {
     setBusy(format);
     setError(null);
-    const name = exportFileName({ tournament: tournament(), mode: mode(), size: size(), theme: theme() }, format);
+    const name = exportFileName(
+      { tournament: tournament(), mode: mode(), size: cardMode() ? size() : undefined, theme: theme() },
+      format
+    );
     await exportCanvas(format, name).catch((err: unknown) => {
       console.error(err);
       setError(err instanceof Error ? err.message : 'Export failed');
@@ -251,22 +299,24 @@ export function SocialGraphicsPage() {
               Mode
               <Segmented<Mode>
                 options={
-                  tournament() === ONLINE_META_NAME ? MODE_OPTIONS.filter(o => !needsDay2Stats(o.value)) : MODE_OPTIONS
+                  tournament() === ONLINE_META_NAME ? MODE_OPTIONS.filter(o => !needsEvent(o.value)) : MODE_OPTIONS
                 }
                 selected={mode()}
                 onSelect={setMode}
                 ariaLabel='Display mode'
               />
             </label>
-            <label>
-              Size
-              <Segmented
-                options={SIZE_OPTIONS}
-                selected={String(size())}
-                onSelect={v => setSize(Number(v) as Size)}
-                ariaLabel='Layout size'
-              />
-            </label>
+            <Show when={cardMode()}>
+              <label>
+                Size
+                <Segmented
+                  options={SIZE_OPTIONS}
+                  selected={String(size())}
+                  onSelect={v => setSize(Number(v) as Size)}
+                  ariaLabel='Layout size'
+                />
+              </label>
+            </Show>
             <Show when={mode() === 'converting'}>
               <label>
                 Min decks
@@ -303,24 +353,38 @@ export function SocialGraphicsPage() {
         </div>
 
         <div class='sg-stage'>
-          <Show
-            when={!master.loading && items().length > 0}
+          <Switch
             fallback={
               <Show when={loading()} fallback={<EmptyState title={emptyNote(mode())} />}>
                 <Skeleton height='540px' />
               </Show>
             }
           >
-            <SocialCanvas
-              theme={theme()}
-              mode={mode()}
-              tournamentLabel={shortTournament(tournament())}
-              deckTotal={deckTotal(masterData())}
-              items={items()}
-              minDecks={minDecks()}
-              fieldConversion={fieldConversion()}
-            />
-          </Show>
+            <Match when={!master.loading && ready() && deckMode()}>
+              {m => (
+                <DeckGraphic
+                  theme={theme()}
+                  mode={m()}
+                  tournamentLabel={shortTournament(tournament())}
+                  deckTotal={deckTotal(masterData())}
+                  data={decks}
+                />
+              )}
+            </Match>
+            <Match when={!master.loading && ready() && cardMode()}>
+              {m => (
+                <SocialCanvas
+                  theme={theme()}
+                  mode={m()}
+                  tournamentLabel={shortTournament(tournament())}
+                  deckTotal={deckTotal(masterData())}
+                  items={items()}
+                  minDecks={minDecks()}
+                  fieldConversion={fieldConversion()}
+                />
+              )}
+            </Match>
+          </Switch>
         </div>
       </Show>
     </div>
@@ -329,7 +393,7 @@ export function SocialGraphicsPage() {
 
 interface CanvasProps {
   theme: Theme;
-  mode: Mode;
+  mode: CardMode;
   tournamentLabel: string;
   deckTotal: number;
   items: RenderItem[];
@@ -425,18 +489,7 @@ function SocialCanvas(props: CanvasProps) {
 
   return (
     <div id='sg-canvas' class='sg-canvas' data-mode={props.theme}>
-      <div class='sg-head'>
-        <div class='sg-mark'>
-          <img src='/logo.svg' alt='' width='24' height='28' />
-          Ciphermaniac
-        </div>
-        <div class='sg-tournament'>
-          <strong>{props.tournamentLabel}</strong>
-        </div>
-        <div class='sg-meta'>
-          <strong>{props.deckTotal.toLocaleString()} decks</strong>
-        </div>
-      </div>
+      <CanvasHead tournamentLabel={props.tournamentLabel} deckTotal={props.deckTotal} />
 
       <Show when={hero()}>
         <div class='sg-feature'>

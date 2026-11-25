@@ -166,6 +166,9 @@
   --sg-rule: #bfc3bc;
   /* Words take the ink; the marigold fill is too light for text on grey. */
   --sg-accent: #8c5900;
+  /* The package's positive and negative, as channels for the matchup tints. */
+  --sg-pos-rgb: 27, 115, 50;
+  --sg-neg-rgb: 200, 0, 15;
 }
 
 .sg-canvas[data-mode='dark'] {
@@ -178,6 +181,8 @@
   --sg-border: #59594f;
   --sg-rule: #59594f;
   --sg-accent: #ea1;
+  --sg-pos-rgb: 48, 209, 88;
+  --sg-neg-rgb: 255, 138, 128;
 }
 
 /* ---- Head ----
@@ -525,6 +530,151 @@
 .sg-foot b {
   color: var(--sg-fg);
   font-weight: 700;
+}
+
+/* A footer with nothing but the site name keeps it at the right. */
+.sg-foot-end {
+  justify-content: flex-end;
+}
+
+/* ---- Deck sprites: native proportions at one scale, centered in a fixed slot ---- */
+
+.sg-sprites {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+.sg-sprites img {
+  display: block;
+  image-rendering: pixelated;
+}
+.sg-sprites img + img {
+  margin-left: -9px;
+}
+
+/* ---- Day 2 conversion: bars from zero, one line for the field ----
+   Columns are fixed so the field line can sit at the track's start plus the
+   field's share of it. */
+
+.sg-conv {
+  --sg-conv-icon: 110px;
+  --sg-conv-name: 472px;
+  --sg-conv-track: 440px;
+  --sg-conv-gap: 20px;
+  --sg-conv-line: calc(
+    var(--sg-conv-icon) + var(--sg-conv-name) + var(--sg-conv-gap) * 2 + var(--sg-field) * var(--sg-conv-track)
+  );
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding-top: 40px;
+}
+.sg-conv-field {
+  position: absolute;
+  top: 0;
+  left: var(--sg-conv-line);
+  transform: translateX(-50%);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--sg-muted);
+  white-space: nowrap;
+}
+.sg-conv::after {
+  content: '';
+  position: absolute;
+  top: 34px;
+  bottom: -6px;
+  left: calc(var(--sg-conv-line) - 1px);
+  width: 2px;
+  background: var(--sg-muted);
+  opacity: 0.7;
+}
+.sg-conv-row {
+  display: grid;
+  grid-template-columns: var(--sg-conv-icon) var(--sg-conv-name) var(--sg-conv-track) 1fr;
+  gap: var(--sg-conv-gap);
+  align-items: center;
+}
+.sg-conv-sprites {
+  height: 70px;
+}
+.sg-conv-name {
+  font-size: 29px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sg-conv-bar {
+  height: 46px;
+  background: var(--sg-surface-2);
+  border: 1px solid var(--sg-border);
+}
+.sg-conv-row.beats .sg-conv-bar {
+  background: var(--sg-accent);
+  border-color: var(--sg-accent);
+}
+.sg-conv-pct {
+  text-align: right;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.sg-conv-row.beats .sg-conv-pct {
+  color: var(--sg-accent);
+}
+
+/* ---- Matchups: the top eight against each other ---- */
+
+.sg-mx {
+  width: calc(100% + 12px);
+  margin: -6px;
+  border-collapse: separate;
+  border-spacing: 6px;
+  table-layout: fixed;
+}
+.sg-mx-label {
+  width: 270px;
+}
+.sg-mx th {
+  padding: 0 0 4px;
+  vertical-align: bottom;
+}
+.sg-mx tbody th {
+  padding: 0;
+  vertical-align: middle;
+  text-align: left;
+}
+.sg-mx-sprites {
+  width: 112px;
+  height: 84px;
+}
+.sg-mx-deck {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.sg-mx td {
+  height: 96px;
+  text-align: center;
+  border: 1px solid var(--sg-rule);
+  background: linear-gradient(var(--sg-tint, transparent), var(--sg-tint, transparent)), var(--sg-surface);
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.sg-mx td.self {
+  background: transparent;
+  border-color: transparent;
 }
 
 /* ---- Two-part cards: both prints, zoomed toward the seam where the art joins ---- */
