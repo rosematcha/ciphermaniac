@@ -25,6 +25,10 @@ export type TierMode = 'icons' | 'previews' | 'arts' | 'formats';
 
 const TIER_MODES: readonly string[] = ['icons', 'previews', 'arts', 'formats'] satisfies TierMode[];
 
+export function isTierMode(value: unknown): value is TierMode {
+  return typeof value === 'string' && TIER_MODES.includes(value);
+}
+
 export interface Tier {
   /** Stable across renames, reorders and recolours. Placement keys off this. */
   id: string;
@@ -353,13 +357,7 @@ function isWireState(value: unknown): value is WireState {
 }
 
 function hasWireMetadata(candidate: Record<string, unknown>): boolean {
-  return (
-    candidate.v === 1 &&
-    typeof candidate.m === 'string' &&
-    TIER_MODES.includes(candidate.m) &&
-    isBoundedString(candidate.s) &&
-    isBoundedString(candidate.t)
-  );
+  return candidate.v === 1 && isTierMode(candidate.m) && isBoundedString(candidate.s) && isBoundedString(candidate.t);
 }
 
 function hasWireRows(candidate: Record<string, unknown>): boolean {

@@ -24,7 +24,8 @@ import {
   For,
   onCleanup,
   onMount,
-  Show
+  Show,
+  type Signal
 } from 'solid-js';
 import { useSearchParams } from '@solidjs/router';
 import { parseCardUid } from '../../shared/data/cardIdentity';
@@ -65,6 +66,7 @@ import {
   defaultTiers,
   distribute,
   encodeShare,
+  isTierMode,
   type Placement,
   type Tier,
   type TierItem,
@@ -168,12 +170,22 @@ function spriteLabel(slug: string): string {
  */
 const SPRITES: SpriteOption[] = [...new Set(SPRITE_SLUGS)].sort().map(slug => ({ slug, label: spriteLabel(slug) }));
 
+/** The view rides in the URL, so a link can open straight onto Formats. */
+function useViewParam(): Signal<TierMode> {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [mode, setMode] = createSignal<TierMode>(isTierMode(searchParams.view) ? searchParams.view : 'icons');
+  createEffect(() => {
+    setSearchParams({ view: mode() === 'icons' ? undefined : mode() }, { replace: true });
+  });
+  return [mode, setMode];
+}
+
 function useTierListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [artCards] = createResource(fetchArtCards);
   const [synonyms] = createResource(getSynonymDatabase);
 
-  const [mode, setMode] = createSignal<TierMode>('icons');
+  const [mode, setMode] = useViewParam();
   const [labelChoice, setLabelChoice] = createSignal<boolean | null>(null);
   const [tiers, setTiers] = createSignal<Tier[]>(defaultTiers());
   const [placement, setPlacement] = createSignal<Placement>(new Map());

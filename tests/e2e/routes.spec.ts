@@ -1177,6 +1177,17 @@ test('a lazy route whose chunk a deploy removed recovers with one reload', async
   expect(errors, 'the preload failure should be handled, not thrown').toEqual([]);
 });
 
+test('a tier list link can open straight onto Formats, and the tabs keep the URL in step', async ({ page }) => {
+  await gotoClean(page, '/tools/tier-list?view=formats');
+  await expect(page.getByRole('tab', { name: 'Formats', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.tl-tray .tl-fmt').first()).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Archetypes', exact: true }).click();
+  await expect(page).not.toHaveURL(/view=/);
+  await page.getByRole('tab', { name: 'Card arts', exact: true }).click();
+  await expect(page).toHaveURL(/[?&]view=arts/);
+});
+
 test('a tier-list tile always has artwork, even with no sprite to show @mobile', async ({ page }) => {
   // Both sprite sources cut off, which is the worst case and the one the
   // fixture run is already in: every chip has to fall through to the committed
