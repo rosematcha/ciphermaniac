@@ -107,9 +107,9 @@ const LABEL_DEFAULT: Record<TierMode, boolean> = { icons: true, previews: false,
 const NOMINAL_ITEM_H: Record<TierMode, { bare: number; labelled: number }> = {
   icons: { bare: 44, labelled: 40 },
   previews: { bare: 72, labelled: 90 },
-  arts: { bare: 87, labelled: 104 },
+  arts: { bare: 70, labelled: 87 },
   // A format's name sits on its art, so the label toggle does not change it.
-  formats: { bare: 84, labelled: 84 }
+  formats: { bare: 69, labelled: 69 }
 };
 
 /**

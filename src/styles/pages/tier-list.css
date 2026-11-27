@@ -330,7 +330,7 @@ body:not(.tl-labels) .tl-ico {
 
 /* item — 5:7 card art */
 .tl-art {
-  width: var(--art, 62px);
+  width: var(--art, 50px);
 }
 .tl-art img {
   display: block;
@@ -353,7 +353,7 @@ body:not(.tl-labels) .tl-ico {
    no well behind them, and the format's name across the foot of the fan. */
 .tl-fmt {
   position: relative;
-  width: 112px;
+  width: var(--fmt, 92px);
   aspect-ratio: 4 / 3;
 }
 .tl-fmt .card-stack {
@@ -381,10 +381,10 @@ body:not(.tl-labels) .tl-ico {
 .tl-fmt-name {
   position: absolute;
   inset-inline: 0;
-  bottom: 5px;
+  bottom: 4px;
   z-index: 4;
   color: #fff;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1;
@@ -803,6 +803,12 @@ body:not(.tl-labels) .tl-ico {
   .tl-tools button {
     width: 50%;
     height: 26px;
+  }
+  /* A size down from the desktop's, so more of the pile fits a row. */
+  .tl-tray,
+  .tl-board:not([data-exporting]) {
+    --fmt: 84px;
+    --art: 46px;
   }
   /* The tray keeps the phone's spacing either way — it is never exported. */
   .tl-tray .tl-zone,
