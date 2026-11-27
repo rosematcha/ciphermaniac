@@ -1508,6 +1508,44 @@ test('on a phone a tap picks a tile up and a tap on a tier places it @mobile', a
   await expect(unranked).toHaveText(String(before - 1));
 });
 
+test('the export inlines card art at the size it is drawn, not the size of its file @mobile', async ({
+  page
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'tap-to-place, on the phone project');
+  // The rasteriser inlines every image into one SVG the phone has to decode,
+  // and a vintage card is a 180 KB file drawn 46px wide. A full Formats board
+  // put 7 MB into that SVG and took an Android phone down with it.
+  const heavy = `<svg xmlns="http://www.w3.org/2000/svg" width="460" height="644"><!--${'x'.repeat(100_000)}--><rect width="460" height="644" fill="#c33"/></svg>`;
+  await page.route('**/thumbnails/**', route =>
+    route.fulfill({ status: 200, contentType: 'image/svg+xml', body: heavy })
+  );
+  await page.addInitScript(() => {
+    const src = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src')!;
+    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      get() {
+        return src.get!.call(this) as string;
+      },
+      set(value: string) {
+        if (value.startsWith('data:image/svg+xml')) {
+          (window as unknown as { exportSvg: number }).exportSvg = value.length;
+        }
+        src.set!.call(this, value);
+      }
+    });
+  });
+  await gotoClean(page, '/tools/tier-list?view=formats');
+  for (let i = 0; i < 4; i++) {
+    await page.locator('.tl-tray .tl-item').first().tap();
+    await page.locator('.tl-board .tl-row[data-row]').nth(i).tap();
+  }
+  await expect(page.locator('.tl-board .card-stack-slot img[data-loaded]')).toHaveCount(12);
+
+  await page.locator('.tl-dockbar .tl-btn.primary').tap();
+  const size = await page.waitForFunction(() => (window as unknown as { exportSvg?: number }).exportSvg);
+  // Twelve cards at full size would inline 1.6 MB of art alone.
+  expect(await size.jsonValue()).toBeLessThan(800_000);
+});
+
 test('on a phone quick rank empties the pile one archetype at a time @mobile', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'the phone layout, on the phone project');
   await gotoClean(page, '/tools/tier-list');

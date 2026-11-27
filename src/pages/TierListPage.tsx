@@ -46,6 +46,7 @@ import { type ArtCard, browsableArtCards, fetchArtCards, findArtCard } from '../
 import { downloadBlob, isTouchDevice } from '../lib/download';
 import { latestValue } from '../lib/resource';
 import { fitBoardForExport } from '../lib/tierList/exportFit';
+import { shrinkCardArt } from '../lib/tierList/exportImages';
 import { installItemSortable, type ItemDrop } from '../lib/tierList/itemSortable';
 import { installRowSortable } from '../lib/tierList/rowSortable';
 import { getSynonymDatabase } from '../utils/cardSynonyms';
@@ -132,6 +133,7 @@ type EditSubject = { kind: 'tier'; id: string } | { kind: 'archetype' | 'format'
  * phone block in tier-list.css; the two have to agree.
  */
 const PHONE_QUERY = '(max-width: 720px)';
+const EXPORT_SCALE = 2;
 
 const MODE_LABELS: { value: TierMode; label: string }[] = [
   { value: 'icons', label: 'Archetypes' },
@@ -604,10 +606,11 @@ function useTierExport({
       const unfit = fitBoardForExport(node);
       const blob = await domToBlob(node, {
         type: 'image/jpeg',
-        scale: 2,
+        scale: EXPORT_SCALE,
         quality: 0.92,
         backgroundColor: dark ? '#25221f' : '#fbf5e6',
-        font: { cssText: fontCssText }
+        font: { cssText: fontCssText },
+        onEmbedNode: shrinkCardArt(node, EXPORT_SCALE)
       }).finally(() => {
         unfit();
         delete node.dataset.exporting;
