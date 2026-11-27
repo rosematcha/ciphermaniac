@@ -278,6 +278,23 @@ test('pinning the tray writes the visible order down, so an index means what it 
 // Sharing
 // ---------------------------------------------------------------------------
 
+test('a shared Formats list round-trips through the URL payload', () => {
+  const tiers = defaultTiers();
+  const back = decodeShare(
+    encodeShare({
+      mode: 'formats',
+      subject: '',
+      title: '',
+      tiers,
+      placement: new Map([[tiers[0]!.id, ['glc', 'base-rocket']]]),
+      custom: []
+    })
+  );
+  assert.ok(back);
+  assert.equal(back.mode, 'formats');
+  assert.deepEqual(back.placement.get(back.tiers[0]!.id), ['glc', 'base-rocket']);
+});
+
 test('a shared list round-trips through the URL payload', () => {
   const tiers = defaultTiers();
   const state = {

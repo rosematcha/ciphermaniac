@@ -17,6 +17,7 @@ import { createMemo, createSignal, For, type JSX, Show } from 'solid-js';
 import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { CardImage } from '../../components/CardImage';
 import { swatch } from './palette';
+import { FormatArt } from './Tile';
 import type { Tier, TierItem } from './model';
 
 interface QuickRankProps {
@@ -30,9 +31,20 @@ interface QuickRankProps {
 
 /**
  * The item the queue is on, drawn at a size worth tapping about — sprites for
- * an archetype, the art itself for a card.
+ * an archetype, the art itself for a card, the fan for a format.
  */
 function Face(props: { item: TierItem }): JSX.Element {
+  return (
+    <Show when={props.item.kind === 'format'} fallback={<ArchetypeFace item={props.item} />}>
+      {/* The tile's own picture already says its name. */}
+      <div class='tl-qface tl-qfmt'>
+        <FormatArt item={props.item} />
+      </div>
+    </Show>
+  );
+}
+
+function ArchetypeFace(props: { item: TierItem }): JSX.Element {
   return (
     <div class='tl-qface'>
       <Show

@@ -210,7 +210,7 @@ body.tl-rowdrag {
    cold cache the tray reads as forty cards that lost their pictures. A pending
    image wears a still skeleton fill until it paints. Keyed on the attribute
    rather than a wrapper class so the fill goes the moment the bitmap lands. */
-:is(.tl-prev, .tl-art) img:not([data-loaded]) {
+:is(.tl-prev, .tl-art, .tl-fmt) img:not([data-loaded]) {
   /* --rule rather than the generic skeleton's --surface-2: the tile sits in a
      --surface-2 well, and a placeholder the colour of the well behind it does
      not read as a card that is still arriving. */
@@ -347,6 +347,43 @@ body:not(.tl-labels) .tl-ico {
   text-align: center;
   padding-top: 2px;
   font-variant-numeric: tabular-nums;
+}
+
+/* item — a format: three cards fanned wide enough that each one shows, with
+   no well behind them, and the format's name across the foot of the fan. */
+.tl-fmt {
+  position: relative;
+  width: 112px;
+  aspect-ratio: 4 / 3;
+}
+.tl-fmt .card-stack {
+  padding: 0;
+}
+.tl-fmt .card-stack-slot {
+  height: 92%;
+}
+.tl-fmt .card-stack-3 .card-stack-slot:nth-child(1) {
+  transform: translate(-46%, 6%) rotate(-9deg);
+}
+.tl-fmt .card-stack-3 .card-stack-slot:nth-child(3) {
+  transform: translate(46%, 4%) rotate(8deg);
+}
+.tl-fmt-name {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 5px;
+  z-index: 4;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  /* A real stroke painted under the fill, so busy card art cannot eat into
+     the letters. Em-based so the quick-rank face scales it with the type. */
+  -webkit-text-stroke: 0.21em #000;
+  paint-order: stroke fill;
 }
 
 .tl-frame {
@@ -1036,6 +1073,13 @@ body:not(.tl-labels) .tl-ico {
   width: 150px;
   border-radius: 4px;
   border: 1px solid var(--border);
+}
+.tl-qfmt .tl-fmt {
+  width: 240px;
+}
+.tl-qfmt .tl-fmt-name {
+  bottom: 10px;
+  font-size: 28px;
 }
 /* Two rows of three: six tiers is the default board, and a 3-up grid puts
    every one of them under a thumb without scrolling. */

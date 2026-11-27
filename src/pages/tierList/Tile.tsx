@@ -1,6 +1,7 @@
 /**
- * The three things a tier can hold: an archetype as sprite icons, an archetype
- * as a 1:1 card-stack preview, or a single card art at 5:7.
+ * The four things a tier can hold: an archetype as sprite icons, an archetype
+ * as a 1:1 card-stack preview, a single card art at 5:7, or a format as three
+ * fanned cards under its name.
  *
  * Every tile is `.tl-item` with a `data-id`, which is the whole contract the
  * sortable needs. Captions are always rendered and hidden by a body-scoped
@@ -51,9 +52,11 @@ function EditButton(props: TileProps): JSX.Element {
 
 export function Tile(props: TileProps): JSX.Element {
   return (
-    <Show when={props.item.kind !== 'art'} fallback={<ArtTile {...props} />}>
-      <Show when={props.item.kind === 'preview'} fallback={<IconTile {...props} />}>
-        <PreviewTile {...props} />
+    <Show when={props.item.kind !== 'format'} fallback={<FormatTile {...props} />}>
+      <Show when={props.item.kind !== 'art'} fallback={<ArtTile {...props} />}>
+        <Show when={props.item.kind === 'preview'} fallback={<IconTile {...props} />}>
+          <PreviewTile {...props} />
+        </Show>
       </Show>
     </Show>
   );
@@ -86,18 +89,7 @@ function PreviewTile(props: TileProps): JSX.Element {
           // here, so the box carries its name rather than sitting blank.
           fallback={<div class='tl-noart'>{props.item.label}</div>}
         >
-          <div class={`card-stack card-stack-${Math.min(3, thumbs().length)}`}>
-            <For each={thumbs().slice(0, 3)}>
-              {thumb => {
-                const [set, number] = thumb.split('/');
-                return (
-                  <div class='card-stack-slot'>
-                    <CardImage set={set ?? ''} number={number ?? ''} size='xs' lazy skipR2 />
-                  </div>
-                );
-              }}
-            </For>
-          </div>
+          <CardStack thumbs={thumbs()} />
         </Show>
       </div>
       <div class='cap'>{props.item.label}</div>
@@ -111,6 +103,41 @@ function ArtTile(props: TileProps): JSX.Element {
     <div class='tl-item tl-art' classList={{ 'tl-held': props.held }} data-id={props.item.id} title={props.item.label}>
       <CardImage set={props.item.set ?? ''} number={props.item.number ?? ''} size='sm' lazy skipR2 />
       <div class='cap'>{props.item.label}</div>
+    </div>
+  );
+}
+
+function CardStack(props: { thumbs: readonly string[] }): JSX.Element {
+  return (
+    <div class={`card-stack card-stack-${Math.min(3, props.thumbs.length)}`}>
+      <For each={props.thumbs.slice(0, 3)}>
+        {thumb => {
+          const [set, number] = thumb.split('/');
+          return (
+            <div class='card-stack-slot'>
+              <CardImage set={set ?? ''} number={number ?? ''} size='xs' lazy skipR2 />
+            </div>
+          );
+        }}
+      </For>
+    </div>
+  );
+}
+
+/** A format's fan and name, shared by its tile and the quick-rank face. */
+export function FormatArt(props: { item: TierItem }): JSX.Element {
+  return (
+    <div class='tl-fmt'>
+      <CardStack thumbs={props.item.thumbs ?? []} />
+      <span class='tl-fmt-name'>{props.item.label}</span>
+    </div>
+  );
+}
+
+function FormatTile(props: TileProps): JSX.Element {
+  return (
+    <div class='tl-item' classList={{ 'tl-held': props.held }} data-id={props.item.id} title={props.item.label}>
+      <FormatArt item={props.item} />
     </div>
   );
 }

@@ -21,7 +21,9 @@
 import { DEFAULT_RAMP, DEFAULT_TIER_NAMES, nextSwatchId } from './palette';
 
 /** Which subject is being ranked. */
-export type TierMode = 'icons' | 'previews' | 'arts';
+export type TierMode = 'icons' | 'previews' | 'arts' | 'formats';
+
+const TIER_MODES: readonly string[] = ['icons', 'previews', 'arts', 'formats'] satisfies TierMode[];
 
 export interface Tier {
   /** Stable across renames, reorders and recolours. Placement keys off this. */
@@ -33,13 +35,13 @@ export interface Tier {
 
 /** A tile on the board, whatever the current mode renders. */
 export interface TierItem {
-  /** Unique within the current mode: an archetype name, or a `SET::NUMBER`. */
+  /** Unique within the current mode: an archetype name, a `SET::NUMBER`, or a format id. */
   id: string;
   label: string;
-  kind: 'icon' | 'preview' | 'art';
+  kind: 'icon' | 'preview' | 'art' | 'format';
   /** Pokémon sprite slugs, at most two. Icon mode. */
   icons?: string[];
-  /** `SET/NUMBER` thumbnails, at most three. Preview mode. */
+  /** `SET/NUMBER` thumbnails, at most three. Preview and format modes. */
   thumbs?: string[];
   set?: string;
   number?: string;
@@ -225,7 +227,7 @@ export function withRenamedPlacement(placement: Placement, from: string, to: str
 /** Everything a shared link has to carry. */
 export interface ShareState {
   mode: TierMode;
-  /** Format id, or the card's cluster key in `arts` mode. */
+  /** Format id, the card's cluster key in `arts` mode, or empty in `formats` mode. */
   subject: string;
   title: string;
   tiers: Tier[];
@@ -342,7 +344,8 @@ function isWireState(value: unknown): value is WireState {
 function hasWireMetadata(candidate: Record<string, unknown>): boolean {
   return (
     candidate.v === 1 &&
-    (candidate.m === 'icons' || candidate.m === 'previews' || candidate.m === 'arts') &&
+    typeof candidate.m === 'string' &&
+    TIER_MODES.includes(candidate.m) &&
     isBoundedString(candidate.s) &&
     isBoundedString(candidate.t)
   );

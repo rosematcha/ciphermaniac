@@ -1,10 +1,11 @@
 /**
  * Tier List Maker.
  *
- * Rank the archetypes of a format, or the distinct arts of one card, and export
- * the result as a JPG. The card-art tab is the reason the art-grouping pipeline
- * exists: Rare Candy has twenty-two printings but fourteen distinct
- * illustrations, and ranking the same picture six times is not a tier list.
+ * Rank the archetypes of a format, the distinct arts of one card, or the formats
+ * themselves, and export the result as a JPG. The card-art tab is the reason
+ * the art-grouping pipeline exists: Rare Candy has twenty-two printings but
+ * fourteen distinct illustrations, and ranking the same picture six times is
+ * not a tier list.
  *
  * The structural rule the whole page follows: **the board is the document.**
  * The exported image and the on-screen board are the same node, so every
@@ -51,6 +52,7 @@ import { interEmbedCss } from '../utils/fontEmbed';
 import { Actions, DockStrip } from './tierList/Actions';
 import { Combo, splitMatch } from '@ciphermaniac/design/components/Combo';
 import { type CanonicalOption, Editor, type EditorTarget, type SpriteOption } from './tierList/Editor';
+import { FORMAT_ITEMS } from './tierList/formats';
 import { QuickRank } from './tierList/QuickRank';
 import { animateRows, collapseRow } from './tierList/rowMotion';
 import { Shot } from './tierList/Shot';
@@ -83,7 +85,7 @@ import '../styles/pages/tier-list.css';
  * view — an explicit decision outranks our guess everywhere, not only where it
  * was made.
  */
-const LABEL_DEFAULT: Record<TierMode, boolean> = { icons: true, previews: false, arts: false };
+const LABEL_DEFAULT: Record<TierMode, boolean> = { icons: true, previews: false, arts: false, formats: false };
 
 /**
  * Tile height per view, for before there is a tile to measure.
@@ -101,7 +103,9 @@ const LABEL_DEFAULT: Record<TierMode, boolean> = { icons: true, previews: false,
 const NOMINAL_ITEM_H: Record<TierMode, { bare: number; labelled: number }> = {
   icons: { bare: 44, labelled: 40 },
   previews: { bare: 72, labelled: 90 },
-  arts: { bare: 87, labelled: 104 }
+  arts: { bare: 87, labelled: 104 },
+  // A format's name sits on its art, so the label toggle does not change it.
+  formats: { bare: 84, labelled: 84 }
 };
 
 /**
@@ -127,8 +131,17 @@ const PHONE_QUERY = '(max-width: 720px)';
 
 const MODE_LABELS: { value: TierMode; label: string }[] = [
   { value: 'icons', label: 'Archetypes' },
-  { value: 'arts', label: 'Card arts' }
+  { value: 'arts', label: 'Card arts' },
+  { value: 'formats', label: 'Formats' }
 ];
+
+/** What the board is about, for share links and export filenames. */
+function subjectOf(mode: TierMode, format: TierFormat, card: ArtCard | undefined): { id: string; name: string } {
+  if (mode === 'arts') {
+    return { id: card?.key ?? '', name: card?.name ?? 'cards' };
+  }
+  return mode === 'formats' ? { id: '', name: 'formats' } : { id: format.id, name: format.label };
+}
 
 /**
  * The picker's two halves. Formats still being played move; the ones below the
@@ -387,7 +400,7 @@ function useTierListPage() {
   async function share(): Promise<void> {
     const encoded = encodeShare({
       mode: mode(),
-      subject: mode() === 'arts' ? (activeCard()?.key ?? '') : format().id,
+      subject: subjectOf(mode(), format(), activeCard()).id,
       title: title(),
       tiers: tiers(),
       placement: placement(),
@@ -517,7 +530,7 @@ function useTierExport({
   setError: (error: string | null) => void;
 }) {
   function exportName(): string {
-    const subject = mode() === 'arts' ? (activeCard()?.name ?? 'cards') : format().label;
+    const subject = subjectOf(mode(), format(), activeCard()).name;
     const slug = (title() || subject)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -649,7 +662,7 @@ function useTierContent({
         number: art.number
       }));
     }
-    return [...scrapedItems(), ...customItems()];
+    return mode() === 'formats' ? [...FORMAT_ITEMS] : [...scrapedItems(), ...customItems()];
   });
 
   // Names and colours do not affect placement. Keep redistribution tied to
@@ -764,86 +777,91 @@ function renderTierList(state: ReturnType<typeof useTierListPage>) {
             </For>
           </div>
 
-          <Show
-            when={mode() === 'arts'}
-            fallback={
-              <select
-                class='sel'
-                value={format().id}
-                onChange={e => setSearchParams({ format: e.currentTarget.value })}
-                aria-label='Format'
-              >
-                <For each={FORMAT_GROUPS}>
-                  {section => (
-                    <optgroup label={section.label}>
-                      <For each={tierFormats().filter(entry => entry.group === section.group)}>
-                        {entry => <option value={entry.id}>{entry.label}</option>}
-                      </For>
-                    </optgroup>
-                  )}
-                </For>
-              </select>
-            }
-          >
-            {/* One box, like the format select beside the other tab: it shows
+          {/* A format tile carries its own name and needs no format picked,
+              so the Formats tab drops the controls that only shape the
+              other two. */}
+          <Show when={mode() !== 'formats'}>
+            <Show
+              when={mode() === 'arts'}
+              fallback={
+                <select
+                  class='sel'
+                  value={format().id}
+                  onChange={e => setSearchParams({ format: e.currentTarget.value })}
+                  aria-label='Format'
+                >
+                  <For each={FORMAT_GROUPS}>
+                    {section => (
+                      <optgroup label={section.label}>
+                        <For each={tierFormats().filter(entry => entry.group === section.group)}>
+                          {entry => <option value={entry.id}>{entry.label}</option>}
+                        </For>
+                      </optgroup>
+                    )}
+                  </For>
+                </select>
+              }
+            >
+              {/* One box, like the format select beside the other tab: it shows
                 the card the board is ranking and turns into the search for
                 the next one when focused. See Combo. */}
-            <Combo
-              placeholder='Search cards by name...'
-              options={cards()}
-              browse={browseCards()}
-              label={c => c.name}
-              weight={c => c.arts.length}
-              selected={activeCard()}
-              adorn={c => <CardImage set={c.arts[0]!.set} number={c.arts[0]!.number} size='xs' lazy skipR2 />}
-              width='250px'
-              onPick={c => setCardKey(c.key)}
-            >
-              {(card, query) => {
-                const [before, hit, after] = splitMatch(card.name, query);
-                return (
-                  <>
-                    <CardImage set={card.arts[0]!.set} number={card.arts[0]!.number} size='xs' lazy skipR2 />
-                    <b>
-                      {before}
-                      <mark>{hit}</mark>
-                      {after}
-                    </b>
-                    <span>{card.arts.length} arts</span>
-                  </>
-                );
-              }}
-            </Combo>
-          </Show>
+              <Combo
+                placeholder='Search cards by name...'
+                options={cards()}
+                browse={browseCards()}
+                label={c => c.name}
+                weight={c => c.arts.length}
+                selected={activeCard()}
+                adorn={c => <CardImage set={c.arts[0]!.set} number={c.arts[0]!.number} size='xs' lazy skipR2 />}
+                width='250px'
+                onPick={c => setCardKey(c.key)}
+              >
+                {(card, query) => {
+                  const [before, hit, after] = splitMatch(card.name, query);
+                  return (
+                    <>
+                      <CardImage set={card.arts[0]!.set} number={card.arts[0]!.number} size='xs' lazy skipR2 />
+                      <b>
+                        {before}
+                        <mark>{hit}</mark>
+                        {after}
+                      </b>
+                      <span>{card.arts.length} arts</span>
+                    </>
+                  );
+                }}
+              </Combo>
+            </Show>
 
-          {/* Offering Previews on a format whose snapshot predates card art
+            {/* Offering Previews on a format whose snapshot predates card art
               would be a toggle that changes nothing. */}
-          <Show when={mode() !== 'arts' && format().previews}>
-            <div class='segmented tl-artwork' role='tablist' aria-label='Archetype artwork'>
-              <button
-                type='button'
-                role='tab'
-                class={mode() === 'icons' ? 'active' : ''}
-                aria-selected={mode() === 'icons'}
-                onClick={() => setMode('icons')}
-              >
-                Icons
-              </button>
-              <button
-                type='button'
-                role='tab'
-                class={mode() === 'previews' ? 'active' : ''}
-                aria-selected={mode() === 'previews'}
-                onClick={() => setMode('previews')}
-              >
-                Previews
-              </button>
-            </div>
-          </Show>
+            <Show when={mode() !== 'arts' && format().previews}>
+              <div class='segmented tl-artwork' role='tablist' aria-label='Archetype artwork'>
+                <button
+                  type='button'
+                  role='tab'
+                  class={mode() === 'icons' ? 'active' : ''}
+                  aria-selected={mode() === 'icons'}
+                  onClick={() => setMode('icons')}
+                >
+                  Icons
+                </button>
+                <button
+                  type='button'
+                  role='tab'
+                  class={mode() === 'previews' ? 'active' : ''}
+                  aria-selected={mode() === 'previews'}
+                  onClick={() => setMode('previews')}
+                >
+                  Previews
+                </button>
+              </div>
+            </Show>
 
-          <button type='button' class='chip' aria-pressed={labels()} onClick={() => setLabelChoice(!labels())}>
-            Labels
-          </button>
+            <button type='button' class='chip' aria-pressed={labels()} onClick={() => setLabelChoice(!labels())}>
+              Labels
+            </button>
+          </Show>
 
           <span class='grow' />
 
@@ -877,7 +895,9 @@ function renderTierList(state: ReturnType<typeof useTierListPage>) {
             onEditTier={id => setEditing({ kind: 'tier', id })}
             onEditItem={id => setEditing({ kind: 'archetype', id })}
             onAddTier={() => setTiers(withAddedTier)}
-            onAddArchetype={mode() === 'arts' ? undefined : () => setEditing({ kind: 'archetype', id: null })}
+            onAddArchetype={
+              mode() === 'arts' || mode() === 'formats' ? undefined : () => setEditing({ kind: 'archetype', id: null })
+            }
             actions={
               phone() ? (
                 <DockStrip
