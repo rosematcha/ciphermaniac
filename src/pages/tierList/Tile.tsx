@@ -11,7 +11,7 @@
  */
 
 import { For, type JSX, Show } from 'solid-js';
-import { ArchetypeIcons } from '../../components/ArchetypeIcon';
+import { ArchetypeIcons, SUBSTITUTE } from '../../components/ArchetypeIcon';
 import { CardImage } from '../../components/CardImage';
 import { Icon } from './icons';
 import type { TierItem } from './model';
@@ -124,11 +124,17 @@ function CardStack(props: { thumbs: readonly string[] }): JSX.Element {
   );
 }
 
-/** A format's fan and name, shared by its tile and the quick-rank face. */
+/** A format's fan (or doll) and name, shared by its tile and the quick-rank face. */
 export function FormatArt(props: { item: TierItem }): JSX.Element {
   return (
     <div class='tl-fmt'>
-      <CardStack thumbs={props.item.thumbs ?? []} />
+      {/* A typed format has no cards; the doll stands in for all three. */}
+      <Show
+        when={(props.item.thumbs ?? []).length > 0}
+        fallback={<img class='tl-sub' src={SUBSTITUTE} alt='' width={30} height={30} decoding='async' />}
+      >
+        <CardStack thumbs={props.item.thumbs ?? []} />
+      </Show>
       <span class='tl-fmt-name'>{props.item.label}</span>
     </div>
   );
@@ -138,6 +144,7 @@ function FormatTile(props: TileProps): JSX.Element {
   return (
     <div class='tl-item' classList={{ 'tl-held': props.held }} data-id={props.item.id} title={props.item.label}>
       <FormatArt item={props.item} />
+      <EditButton {...props} />
     </div>
   );
 }

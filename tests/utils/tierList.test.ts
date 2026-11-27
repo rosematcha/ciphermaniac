@@ -278,7 +278,7 @@ test('pinning the tray writes the visible order down, so an index means what it 
 // Sharing
 // ---------------------------------------------------------------------------
 
-test('a shared Formats list round-trips through the URL payload', () => {
+test('a shared Formats list round-trips through the URL payload, typed formats included', () => {
   const tiers = defaultTiers();
   const back = decodeShare(
     encodeShare({
@@ -286,13 +286,15 @@ test('a shared Formats list round-trips through the URL payload', () => {
       subject: '',
       title: '',
       tiers,
-      placement: new Map([[tiers[0]!.id, ['glc', 'base-rocket']]]),
-      custom: []
+      placement: new Map([[tiers[0]!.id, ['glc', 'custom:Gym-Neo']]]),
+      custom: [],
+      formats: [{ id: 1, name: 'Gym-Neo' }]
     })
   );
   assert.ok(back);
   assert.equal(back.mode, 'formats');
-  assert.deepEqual(back.placement.get(back.tiers[0]!.id), ['glc', 'base-rocket']);
+  assert.deepEqual(back.placement.get(back.tiers[0]!.id), ['glc', 'custom:Gym-Neo']);
+  assert.deepEqual(back.formats, [{ id: 1, name: 'Gym-Neo' }]);
 });
 
 test('a shared list round-trips through the URL payload', () => {
@@ -306,7 +308,8 @@ test('a shared list round-trips through the URL payload', () => {
       [tiers[0]!.id, ['SVI::191', 'DEX::100']],
       [tiers[2]!.id, ['UL::082']]
     ]),
-    custom: [{ id: 1, name: 'Rogue Deck', icons: ['dragapult'], cards: ['ASC/160'] }]
+    custom: [{ id: 1, name: 'Rogue Deck', icons: ['dragapult'], cards: ['ASC/160'] }],
+    formats: []
   };
   const back = decodeShare(encodeShare(state));
   assert.ok(back);
@@ -327,7 +330,15 @@ test('a shared list round-trips through the URL payload', () => {
 test('names outside ASCII survive the round trip', () => {
   const tiers = [makeTier('Étage', 'vivid-red')];
   const back = decodeShare(
-    encodeShare({ mode: 'icons', subject: 'Pokémon', title: 'Café', tiers, placement: new Map(), custom: [] })
+    encodeShare({
+      mode: 'icons',
+      subject: 'Pokémon',
+      title: 'Café',
+      tiers,
+      placement: new Map(),
+      custom: [],
+      formats: []
+    })
   );
   assert.equal(back?.subject, 'Pokémon');
   assert.equal(back?.title, 'Café');

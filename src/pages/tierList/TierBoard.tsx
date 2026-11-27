@@ -30,6 +30,8 @@ interface TierBoardProps {
   onAddTier: () => void;
   /** Absent in card-arts view: a printing either exists or it does not. */
   onAddArchetype?: () => void;
+  /** What the add control says; the Formats tab adds formats, not archetypes. */
+  addLabel?: string;
   /**
    * Reset/Share/Export, rendered on the tray. On a phone the tray is docked to
    * the bottom edge, which makes it the one strip always in reach — see the
@@ -231,7 +233,7 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
           <Show when={props.onAddArchetype}>
             {add => (
               <button type='button' class='tl-mini' data-addarch onClick={() => add()()}>
-                + Add archetype
+                {props.addLabel ?? '+ Add archetype'}
               </button>
             )}
           </Show>

@@ -59,6 +59,12 @@ export interface CustomArchetype {
   cards: string[];
 }
 
+/** A format the user typed in because the Formats tab lacked it. */
+export interface CustomFormat {
+  id: number;
+  name: string;
+}
+
 /** Zone key for the unranked tray. Tiers use their own ids. */
 export const TRAY = 'tray';
 
@@ -234,6 +240,7 @@ export interface ShareState {
   /** Zone key → ordered item ids. Absence from every zone means unranked. */
   placement: Map<string, string[]>;
   custom: CustomArchetype[];
+  formats: CustomFormat[];
 }
 
 interface WireState {
@@ -244,6 +251,8 @@ interface WireState {
   /** `[name, swatch, ...itemIds]` per tier, in board order. */
   r: string[][];
   c: [number, string, string[], string[]][];
+  /** Custom formats. Absent when there are none, so older links stay byte-identical. */
+  f?: [number, string][];
 }
 
 /**
@@ -261,7 +270,8 @@ export function encodeShare(state: Omit<ShareState, 'placement'> & { placement: 
     s: state.subject,
     t: state.title,
     r: state.tiers.map(t => [t.name, t.swatch, ...(state.placement.get(t.id) ?? [])]),
-    c: state.custom.map(c => [c.id, c.name, c.icons, c.cards])
+    c: state.custom.map(c => [c.id, c.name, c.icons, c.cards]),
+    ...(state.formats.length > 0 ? { f: state.formats.map(f => [f.id, f.name]) } : {})
   };
   return toBase64Url(JSON.stringify(wire));
 }
@@ -288,7 +298,8 @@ export function decodeShare(encoded: string): ShareState | null {
     title: wire.t,
     tiers: tiers.length > 0 ? tiers : defaultTiers(),
     placement,
-    custom: wire.c.map(([id, name, icons, cards]) => ({ id, name, icons, cards }))
+    custom: wire.c.map(([id, name, icons, cards]) => ({ id, name, icons, cards })),
+    formats: (wire.f ?? []).map(([id, name]) => ({ id, name }))
   };
 }
 
@@ -338,7 +349,7 @@ function isWireState(value: unknown): value is WireState {
     return false;
   }
   const candidate = value as Record<string, unknown>;
-  return hasWireMetadata(candidate) && hasWireRows(candidate) && hasWireCustom(candidate);
+  return hasWireMetadata(candidate) && hasWireRows(candidate) && hasWireCustom(candidate) && hasWireFormats(candidate);
 }
 
 function hasWireMetadata(candidate: Record<string, unknown>): boolean {
@@ -357,6 +368,24 @@ function hasWireRows(candidate: Record<string, unknown>): boolean {
 
 function hasWireCustom(candidate: Record<string, unknown>): boolean {
   return Array.isArray(candidate.c) && candidate.c.length <= MAX_WIRE_CUSTOM && candidate.c.every(isWireCustom);
+}
+
+function isWireFormat(value: unknown): value is [number, string] {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    typeof value[0] === 'number' &&
+    Number.isFinite(value[0]) &&
+    isBoundedString(value[1])
+  );
+}
+
+function hasWireFormats(candidate: Record<string, unknown>): boolean {
+  const formats = candidate.f;
+  return (
+    formats === undefined ||
+    (Array.isArray(formats) && formats.length <= MAX_WIRE_CUSTOM && formats.every(isWireFormat))
+  );
 }
 
 /** Base64url over UTF-8, so card names with accents survive the round trip. */

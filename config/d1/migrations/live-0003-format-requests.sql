@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS format_requests (
+  name_key TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  count INTEGER NOT NULL,
+  first_seen INTEGER NOT NULL,
+  last_seen INTEGER NOT NULL
+) WITHOUT ROWID;

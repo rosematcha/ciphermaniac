@@ -6,7 +6,7 @@
  * @module pages/tierList/formats
  */
 
-import type { TierItem } from './model';
+import type { CustomFormat, TierItem } from './model';
 
 interface RankedFormat {
   /** Rides in shared links, so never rename one. */
@@ -41,3 +41,37 @@ export const FORMAT_ITEMS: readonly TierItem[] = FORMATS.map(format => ({
   kind: 'format',
   thumbs: format.cards
 }));
+
+/** Lowercased, for refusing a typed name the list already has. */
+export const FORMAT_LABELS: readonly string[] = FORMATS.map(format => format.label.toLowerCase());
+
+/**
+ * A typed format drawn as the Substitute doll under its name. Its id is
+ * prefixed so a typed "2010" can never be mistaken for the listed one in a
+ * placement or a shared link.
+ */
+export function customFormatItem(format: CustomFormat): TierItem {
+  return { id: `custom:${format.name}`, label: format.name, kind: 'format', thumbs: [], customId: format.id };
+}
+
+/** Names already sent this session, so retyping one counts it once. */
+const reported = new Set<string>();
+
+/**
+ * Tells the site a format was typed in, so the list can grow toward what people
+ * actually rank. Fire and forget: nothing about it may slow down or fail the
+ * board.
+ */
+export function reportCustomFormat(name: string): void {
+  const key = name.toLowerCase();
+  if (reported.has(key)) {
+    return;
+  }
+  reported.add(key);
+  fetch('/api/format-request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+    keepalive: true
+  }).catch(() => undefined);
+}

@@ -25,7 +25,7 @@ const ICON_FALLBACK_BASE = 'https://r2.limitlesstcg.net/pokemon/gen9';
  * the only one that survives the tier list's export, since a cross-origin
  * bitmap taints the canvas the rasteriser reads back.
  */
-const SUBSTITUTE = '/img/substitute.png';
+export const SUBSTITUTE = '/img/substitute.png';
 
 /** Type icons, committed and served same-origin like the Substitute doll. */
 const TYPE_ICON_PREFIX = 'type-';

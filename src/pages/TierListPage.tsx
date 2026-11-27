@@ -52,13 +52,15 @@ import { interEmbedCss } from '../utils/fontEmbed';
 import { Actions, DockStrip } from './tierList/Actions';
 import { Combo, splitMatch } from '@ciphermaniac/design/components/Combo';
 import { type CanonicalOption, Editor, type EditorTarget, type SpriteOption } from './tierList/Editor';
-import { FORMAT_ITEMS } from './tierList/formats';
+import { useCustomFormats } from './tierList/customFormats';
+import { customFormatItem, FORMAT_ITEMS, FORMAT_LABELS } from './tierList/formats';
 import { QuickRank } from './tierList/QuickRank';
 import { animateRows, collapseRow } from './tierList/rowMotion';
 import { Shot } from './tierList/Shot';
 import { TierBoard } from './tierList/TierBoard';
 import {
   type CustomArchetype,
+  type CustomFormat,
   decodeShare,
   defaultTiers,
   distribute,
@@ -115,7 +117,7 @@ const NOMINAL_ITEM_H: Record<TierMode, { bare: number; labelled: number }> = {
  * the old one goes stale — so the target it renders from is derived fresh from
  * `tiers()` and `custom()` instead. A null archetype id is a new one.
  */
-type EditSubject = { kind: 'tier'; id: string } | { kind: 'archetype'; id: number | null };
+type EditSubject = { kind: 'tier'; id: string } | { kind: 'archetype' | 'format'; id: number | null };
 
 /**
  * Below this the page is a different tool.
@@ -191,6 +193,8 @@ function useTierListPage() {
 
   let board: HTMLDivElement | undefined;
   let nextCustomId = 1;
+  const formats = useCustomFormats({ setPlacement, onDone: () => setEditing(null) });
+  const { customFormats, setCustomFormats } = formats;
 
   // Resolved, not raw: an unknown id in the URL falls back to Standard rather
   // than fetching a format that does not exist.
@@ -309,11 +313,12 @@ function useTierListPage() {
 
   // -------------------------------------------------------------- content
 
-  const { items, split, heldItem, editorTarget, canonicals } = useTierContent({
+  const { items, split, heldItem, editorTarget, canonicals, takenFormats } = useTierContent({
     mode,
     activeCard,
     archetypes: () => latestValue(archetypes),
     custom,
+    customFormats,
     tiers,
     placement,
     held,
@@ -389,6 +394,7 @@ function useTierListPage() {
     setTiers(state.tiers);
     setPlacement(state.placement);
     setCustom(state.custom);
+    setCustomFormats(state.formats);
     nextCustomId = Math.max(0, ...state.custom.map(c => c.id));
     if (state.mode === 'arts') {
       setCardKey(state.subject);
@@ -404,7 +410,8 @@ function useTierListPage() {
       title: title(),
       tiers: tiers(),
       placement: placement(),
-      custom: custom()
+      custom: custom(),
+      formats: customFormats()
     });
     const url = `${window.location.origin}${window.location.pathname}${window.location.search}#l=${encoded}`;
     window.history.replaceState(null, '', url);
@@ -467,6 +474,8 @@ function useTierListPage() {
     editing,
     saveArchetype,
     deleteArchetype,
+    ...formats,
+    takenFormats,
     ranking,
     placeAtEnd,
     shot,
@@ -607,6 +616,7 @@ function useTierContent({
   activeCard,
   archetypes,
   custom,
+  customFormats,
   tiers,
   placement,
   held,
@@ -617,6 +627,7 @@ function useTierContent({
   activeCard: Accessor<ArtCard | undefined>;
   archetypes: Accessor<Awaited<ReturnType<typeof fetchFormatArchetypes>> | undefined>;
   custom: Accessor<CustomArchetype[]>;
+  customFormats: Accessor<CustomFormat[]>;
   tiers: Accessor<Tier[]>;
   placement: Accessor<Placement>;
   held: Accessor<string | null>;
@@ -662,7 +673,9 @@ function useTierContent({
         number: art.number
       }));
     }
-    return mode() === 'formats' ? [...FORMAT_ITEMS] : [...scrapedItems(), ...customItems()];
+    return mode() === 'formats'
+      ? [...FORMAT_ITEMS, ...customFormats().map(customFormatItem)]
+      : [...scrapedItems(), ...customItems()];
   });
 
   // Names and colours do not affect placement. Keep redistribution tied to
@@ -687,7 +700,17 @@ function useTierContent({
       const tier = tiers().find(t => t.id === subject.id);
       return tier ? { kind: 'tier', tier } : null;
     }
+    if (subject.kind === 'format') {
+      return { kind: 'format', draft: customFormats().find(c => c.id === subject.id) ?? null };
+    }
     return { kind: 'archetype', draft: custom().find(c => c.id === subject.id) ?? null };
+  });
+
+  /** Names a format being added or renamed may not take: the list's and the other typed ones. */
+  const takenFormats = createMemo<string[]>(() => {
+    const subject = editing();
+    const others = customFormats().filter(c => subject?.kind !== 'format' || c.id !== subject.id);
+    return [...FORMAT_LABELS, ...others.map(c => c.name.toLowerCase())];
   });
 
   const canonicals = createMemo<CanonicalOption[]>(() => {
@@ -703,7 +726,7 @@ function useTierContent({
       .sort((a, b) => a.name.localeCompare(b.name));
   });
 
-  return { items, split, heldItem, editorTarget, canonicals };
+  return { items, split, heldItem, editorTarget, canonicals, takenFormats };
 }
 
 export function TierListPage() {
@@ -746,6 +769,9 @@ function renderTierList(state: ReturnType<typeof useTierListPage>) {
     editing,
     saveArchetype,
     deleteArchetype,
+    saveFormat,
+    deleteFormat,
+    takenFormats,
     ranking,
     placeAtEnd,
     shot,
@@ -893,11 +919,14 @@ function renderTierList(state: ReturnType<typeof useTierListPage>) {
             onMove={(id, step) => animateRows(() => setTiers(list => withMovedTier(list, id, step)))}
             onDelete={deleteTier}
             onEditTier={id => setEditing({ kind: 'tier', id })}
-            onEditItem={id => setEditing({ kind: 'archetype', id })}
+            onEditItem={id => setEditing({ kind: mode() === 'formats' ? 'format' : 'archetype', id })}
             onAddTier={() => setTiers(withAddedTier)}
             onAddArchetype={
-              mode() === 'arts' || mode() === 'formats' ? undefined : () => setEditing({ kind: 'archetype', id: null })
+              mode() === 'arts'
+                ? undefined
+                : () => setEditing({ kind: mode() === 'formats' ? 'format' : 'archetype', id: null })
             }
+            addLabel={mode() === 'formats' ? '+ Add format' : undefined}
             actions={
               phone() ? (
                 <DockStrip
@@ -933,6 +962,9 @@ function renderTierList(state: ReturnType<typeof useTierListPage>) {
             }}
             onArchetypeSave={saveArchetype}
             onArchetypeDelete={deleteArchetype}
+            takenFormats={takenFormats()}
+            onFormatSave={saveFormat}
+            onFormatDelete={deleteFormat}
             onClose={() => setEditing(null)}
           />
         )}

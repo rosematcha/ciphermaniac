@@ -21,3 +21,14 @@ CREATE TABLE IF NOT EXISTS live_report_outbox (
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS live_report_outbox_dirty ON live_report_outbox (slug)
   WHERE revision > published_revision;
+
+-- Formats typed into the tier list's Formats tab, one row per name folded to
+-- lowercase. Counts only: nothing about who asked is stored. Not emptied by
+-- the weekly reset.
+CREATE TABLE IF NOT EXISTS format_requests (
+  name_key TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  count INTEGER NOT NULL,
+  first_seen INTEGER NOT NULL,
+  last_seen INTEGER NOT NULL
+) WITHOUT ROWID;

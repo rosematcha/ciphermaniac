@@ -1,5 +1,5 @@
 /**
- * The editor popover, shared by tiers and custom archetypes.
+ * The editor popover, shared by tiers, custom archetypes and custom formats.
  *
  * A floating module rather than a modal, deliberately: the board stays visible
  * and updates live underneath, so a colour is judged against the tiles it will
@@ -20,7 +20,7 @@ import { ArchetypeIcons } from '../../components/ArchetypeIcon';
 import { Combo, splitMatch } from '@ciphermaniac/design/components/Combo';
 import { Icon } from './icons';
 import { SWATCHES, type SwatchTone } from './palette';
-import type { CustomArchetype, Tier } from './model';
+import type { CustomArchetype, CustomFormat, Tier } from './model';
 
 /** A Pokémon sprite the mirror actually holds. */
 export interface SpriteOption {
@@ -36,7 +36,10 @@ export interface CanonicalOption {
 }
 
 /** What the popover is editing. Derived state, rebuilt whenever the subject changes. */
-export type EditorTarget = { kind: 'tier'; tier: Tier } | { kind: 'archetype'; draft: CustomArchetype | null };
+export type EditorTarget =
+  | { kind: 'tier'; tier: Tier }
+  | { kind: 'archetype'; draft: CustomArchetype | null }
+  | { kind: 'format'; draft: CustomFormat | null };
 
 /** Live lookup of the control the popover hangs from. Null means leave it be. */
 function anchorFor(target: EditorTarget): HTMLElement | null {
@@ -53,6 +56,10 @@ interface EditorProps {
   onTierChange: (patch: Partial<Omit<Tier, 'id'>>) => void;
   onArchetypeSave: (draft: CustomArchetype) => void;
   onArchetypeDelete: (id: number) => void;
+  /** Lowercased names a new or renamed format may not take. */
+  takenFormats: readonly string[];
+  onFormatSave: (draft: CustomFormat) => void;
+  onFormatDelete: (id: number) => void;
   onClose: () => void;
 }
 
@@ -107,7 +114,9 @@ export function Editor(props: EditorProps): JSX.Element {
   });
 
   const subjectKey = createMemo(() =>
-    props.target.kind === 'tier' ? `tier:${props.target.tier.id}` : `archetype:${props.target.draft?.id ?? 'new'}`
+    props.target.kind === 'tier'
+      ? `tier:${props.target.tier.id}`
+      : `${props.target.kind}:${props.target.draft?.id ?? 'new'}`
   );
 
   createEffect(() => {
@@ -137,6 +146,17 @@ export function Editor(props: EditorProps): JSX.Element {
             canonicals={props.canonicals}
             onSave={props.onArchetypeSave}
             onDelete={props.onArchetypeDelete}
+            onClose={props.onClose}
+          />
+        )}
+      </Show>
+      <Show when={props.target.kind === 'format' ? props.target : null} keyed>
+        {target => (
+          <FormatFields
+            existing={target.draft}
+            taken={props.takenFormats}
+            onSave={props.onFormatSave}
+            onDelete={props.onFormatDelete}
             onClose={props.onClose}
           />
         )}
@@ -374,22 +394,95 @@ function ArchetypeFields(props: {
         </div>
       </div>
 
-      <footer>
-        <Show when={props.existing}>
-          {existing => (
-            <button type='button' class='tl-btn danger' onClick={() => props.onDelete(existing().id)}>
-              Delete
-            </button>
-          )}
-        </Show>
-        <span class='grow' />
-        <button type='button' class='tl-btn' onClick={() => props.onClose()}>
-          Cancel
-        </button>
-        <button type='button' class='tl-btn primary' disabled={!name().trim()} onClick={save}>
-          {props.existing ? 'Save' : 'Add'}
-        </button>
-      </footer>
+      <Footer
+        existing={props.existing}
+        canSave={name().trim() !== ''}
+        onSave={save}
+        onDelete={props.onDelete}
+        onClose={props.onClose}
+      />
+    </>
+  );
+}
+
+function Footer(props: {
+  existing: { id: number } | null;
+  canSave: boolean;
+  onSave: () => void;
+  onDelete: (id: number) => void;
+  onClose: () => void;
+}): JSX.Element {
+  return (
+    <footer>
+      <Show when={props.existing}>
+        {existing => (
+          <button type='button' class='tl-btn danger' onClick={() => props.onDelete(existing().id)}>
+            Delete
+          </button>
+        )}
+      </Show>
+      <span class='grow' />
+      <button type='button' class='tl-btn' onClick={() => props.onClose()}>
+        Cancel
+      </button>
+      <button type='button' class='tl-btn primary' disabled={!props.canSave} onClick={() => props.onSave()}>
+        {props.existing ? 'Save' : 'Add'}
+      </button>
+    </footer>
+  );
+}
+
+/**
+ * A format is only a name: its tile is always the Substitute doll. A name the
+ * list or another typed format already has is refused, since two tiles reading
+ * "GLC" would rank nothing.
+ */
+function FormatFields(props: {
+  existing: CustomFormat | null;
+  taken: readonly string[];
+  onSave: (draft: CustomFormat) => void;
+  onDelete: (id: number) => void;
+  onClose: () => void;
+}): JSX.Element {
+  // Seeded once, like the archetype fields: a different format remounts this.
+  // eslint-disable-next-line solid/reactivity
+  const [name, setName] = createSignal(props.existing?.name ?? '');
+  const trimmed = (): string => name().trim();
+  const free = (): boolean => trimmed() !== '' && !props.taken.includes(trimmed().toLowerCase());
+
+  const save = (): void => {
+    if (free()) {
+      props.onSave({ id: props.existing?.id ?? 0, name: trimmed() });
+    }
+  };
+
+  return (
+    <>
+      <Header title='Format' onClose={props.onClose} />
+      <div class='tl-field'>
+        <span class='tl-legend'>Name</span>
+        <input
+          type='text'
+          class='search'
+          placeholder='Format name'
+          maxLength={24}
+          spellcheck={false}
+          value={name()}
+          onInput={e => setName(e.currentTarget.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              save();
+            }
+          }}
+        />
+      </div>
+      <Footer
+        existing={props.existing}
+        canSave={free()}
+        onSave={save}
+        onDelete={props.onDelete}
+        onClose={props.onClose}
+      />
     </>
   );
 }
