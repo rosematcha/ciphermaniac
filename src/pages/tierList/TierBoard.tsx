@@ -10,6 +10,7 @@
  */
 
 import { createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
+import { useDock } from './dock';
 import { Icon } from './icons';
 import { swatch } from './palette';
 import { Tile } from './Tile';
@@ -63,9 +64,9 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
   // `hover: none` block in tier-list.css); a mouse reveals them by hovering and
   // hides them by leaving, which needs no state at all.
   const [open, setOpen] = createSignal<string | null>(null);
-  // Whether the phone's dock is standing tall. Inert on a desktop, where the
-  // tray is a panel in the page and its handle is not rendered at all.
-  const [expanded, setExpanded] = createSignal(false);
+  // The phone's dock height. Inert on a desktop, where the tray is a panel in
+  // the page and its handle is not rendered at all.
+  const dock = useDock();
 
   onMount(() => {
     // The tap that reveals the tools must not also press one. The tools cover
@@ -216,7 +217,12 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
         + Add tier
       </button>
 
-      <div class='tl-tray' classList={{ tall: expanded() }}>
+      <div
+        class='tl-tray'
+        ref={dock.ref}
+        classList={{ dragging: dock.dragging() }}
+        style={{ '--dock-h': dock.height() }}
+      >
         {/* The handle is the dock's, and only the dock's: on a desktop the tray
             is a panel in the page and has nothing to grab. Two rows of the pile
             is the resting height — enough to place from, little enough to leave
@@ -224,9 +230,9 @@ export function TierBoard(props: TierBoardProps): JSX.Element {
         <button
           type='button'
           class='tl-grip'
-          aria-expanded={expanded()}
-          aria-label={expanded() ? 'Collapse unranked' : 'Expand unranked'}
-          onClick={() => setExpanded(tall => !tall)}
+          aria-expanded={dock.raised()}
+          aria-label='Resize unranked'
+          {...dock.grip}
         />
         <h4>
           Unranked <span>{props.tray.length}</span>

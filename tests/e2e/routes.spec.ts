@@ -1453,13 +1453,30 @@ test('on a phone the tray docks to the bottom edge and carries the actions @mobi
   await expect(page.locator('.tl-dockbar .tl-actions .tl-btn')).toHaveCount(3);
   await expect(page.locator('.tl-conf .tl-actions')).toHaveCount(0);
 
-  // The dock rests at two rows of the pile and stands up to show the rest.
+  // The dock rests at two rows of the pile. Taps raise it a stop at a time,
+  // and from the top it drops back to rest.
+  const grip = page.locator('.tl-grip');
   const height = async () => (await tray.boundingBox())!.height;
   const resting = await height();
-  await page.locator('.tl-grip').tap();
+  await grip.tap();
   await expect.poll(height).toBeGreaterThan(resting);
-  await page.locator('.tl-grip').tap();
+  const half = await height();
+  await grip.tap();
+  await expect.poll(height).toBeGreaterThan(half);
+  await grip.tap();
   await expect.poll(height).toBe(resting);
+
+  // Dragged down, it settles on the lowest stop: the header and actions, with
+  // the pile tucked away below the screen's edge.
+  const box = (await grip.boundingBox())!;
+  const x = box.x + box.width / 2;
+  await page.mouse.move(x, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, box.y + 200, { steps: 8 });
+  await page.mouse.up();
+  const zone = page.locator('.tl-tray > .tl-zone');
+  await expect.poll(height).toBeLessThan(resting);
+  await expect.poll(async () => (await zone.boundingBox())!.y).toBeGreaterThanOrEqual(page.viewportSize()!.height - 1);
 });
 
 test('on a phone a tap picks a tile up and a tap on a tier places it @mobile', async ({ page }, testInfo) => {

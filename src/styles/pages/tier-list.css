@@ -880,15 +880,14 @@ body:not(.tl-labels) .tl-ico {
     /* A height, not a max-height: the dock is anchored to the bottom edge, so
        a tray that grows into its cap as the tiles arrive drags its own top up
        the screen and spends the page's whole layout-shift budget. */
-    height: 176px;
+    height: var(--dock-h, 176px);
     border-radius: var(--radius-md) var(--radius-md) 0 0;
     border-bottom: 0;
     transition: height var(--ms-base) var(--ease-base);
   }
-  /* Standing tall to read the pile. Short by default, because the board is
-     what the dock is aiming at and a tall dock leaves two tiers on screen. */
-  .tl-tray.tall {
-    height: 62vh;
+  /* The height follows the finger while the handle is dragged. */
+  .tl-tray.dragging {
+    transition: none;
   }
   /* Room for the dock at the end of the page, so the last tier is reachable. */
   .tl-page {
@@ -923,6 +922,7 @@ body:not(.tl-labels) .tl-ico {
     border: 0;
     cursor: pointer;
     box-sizing: content-box;
+    touch-action: none;
   }
   .tl-grip::before {
     content: '';
