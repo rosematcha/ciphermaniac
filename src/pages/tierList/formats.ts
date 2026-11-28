@@ -32,7 +32,21 @@ const FORMATS: readonly RankedFormat[] = [
   { id: '2016', label: '2016', cards: ['BKP/040', 'PHF/026', 'AOR/010'] },
   { id: 'prc-gri', label: 'PRC-GRI', cards: ['GRI/060', 'SUM/012', 'STS/026'] },
   { id: 'sum-lot', label: 'SUM-LOT', cards: ['SLG/053', 'FLI/051', 'LOT/052'] },
-  { id: 'teu-evs', label: 'TEU-EVS', cards: ['TEU/033', 'SSH/138', 'BST/088'] }
+  { id: 'teu-evs', label: 'TEU-EVS', cards: ['CEC/156', 'SSH/138', 'BST/088'] },
+  { id: '2017', label: '2017', cards: ['BUS/093', 'GRI/051', 'BUS/017'] },
+  { id: '2006', label: '2006', cards: ['LM/088', 'UF/105', 'RG/107'] },
+  { id: 'hs-nvi', label: 'HS-NVI', cards: ['NVI/040', 'NVI/060', 'NVI/083'] },
+  { id: 'sum-unb', label: 'SUM-UNB', cards: ['UNB/020', 'TEU/033', 'TEU/040'] },
+  { id: 'bkt-cin', label: 'BKT-CIN', cards: ['CIN/057', 'SLG/053', 'GRI/074'] },
+  { id: 'ssh-sit', label: 'SSH-SIT', cards: ['SIT/139', 'LOR/079', 'FST/185'] },
+  { id: 'xy-evo', label: 'XY-EVO', cards: ['XY/079', 'ROS/076', 'FFI/020'] },
+  { id: 'base-fossil', label: 'Base-Fossil', cards: ['JU/038', 'BS/002', 'BS/007'] },
+  { id: '2014', label: '2014', cards: ['PLB/009', 'PLS/108', 'FLF/020'] },
+  { id: '2004', label: '2004', cards: ['DR/096', 'MA/009', 'RS/003'] },
+  { id: 'prop-15-3', label: 'Prop 15/3', cards: ['JU/016', 'G2/015', 'G2/033'] },
+  { id: '2018', label: '2018', cards: ['CES/109', 'FLI/077', 'FLI/073'] },
+  { id: '2015', label: '2015', cards: ['PLB/016', 'PRC/086', 'PHF/033'] },
+  { id: '2009', label: '2009', cards: ['RR/108', 'RR/105', 'GE/015'] }
 ];
 
 export const FORMAT_ITEMS: readonly TierItem[] = FORMATS.map(format => ({
